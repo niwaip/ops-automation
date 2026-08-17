@@ -43,6 +43,9 @@ function buildPlan(): DeterministicPlanDraftV1 {
         title: 'Consumer',
         kind: 'llm_operation',
         operationId: 'summarize_text',
+        operationVersion: '1',
+        operationDigest: 'sha256:planner-untrusted',
+        contractDigest: 'sha256:planner-untrusted',
         promptTemplateId: 'p1',
         promptTemplateVersion: '1',
         modelPolicyId: 'm1',
@@ -68,8 +71,12 @@ function createService() {
     schemaDigest: jest.fn(() => 'dummy-digest'),
     computeContractDigest: jest.fn(() => 'dummy-digest'),
   };
-  const service = new DeterministicPlanFreezeService({} as any, validator, catalog as any);
-  return { service, catalog, validator };
+  const attestationClient = {
+    hasValidAttestation: jest.fn(),
+    hasValidAttestationForVersion: jest.fn(),
+  };
+  const service = new DeterministicPlanFreezeService({} as any, validator, catalog as any, attestationClient as any);
+  return { service, catalog, validator, attestationClient };
 }
 
 function validateEdges(
@@ -95,6 +102,32 @@ function defaultCompatMap(): CompatMap {
 }
 
 describe('DeterministicPlanFreezeService — composition validation (§10.4)', () => {
+  describe('authoritative output contract projection', () => {
+    it('projects ArtifactRef semantics while preserving the physical field name', () => {
+      const { service } = createService();
+
+      const contract = (service as any).schemaToOutputContract({
+        type: 'object',
+        'x-primary-output': 'artifact',
+        properties: {
+          artifact: {
+            type: 'object',
+            'x-value-type': 'artifact_ref',
+            properties: {
+              name: { type: 'string' },
+              url: { type: 'string' },
+              mimeType: { type: 'string' },
+            },
+          },
+          artifacts: { type: 'array' },
+        },
+      });
+
+      expect(contract).toEqual({ artifact: 'artifact_ref', artifacts: 'json' });
+      expect(contract).not.toHaveProperty('artifact_ref');
+    });
+  });
+
   describe('primitive type compatibility (existing check, §15.3 item 4)', () => {
     it('rejects a definite primitive type conflict', () => {
       const { service } = createService();
@@ -614,7 +647,7 @@ describe('DeterministicPlanFreezeService — composition validation (§10.4)', (
 
   describe('freezeAndPersistPlan — composition details on validationJson', () => {
     it('persists requiredOnlyEdges in validationJson and keeps planJson canonical', async () => {
-      const { service, catalog } = createService();
+      const { service, catalog, attestationClient } = createService();
       catalog.resolveContract.mockImplementation(async (_client: any, node: any) => {
         if (node.nodeId === 'producer') {
           return {
@@ -628,11 +661,15 @@ describe('DeterministicPlanFreezeService — composition validation (§10.4)', (
           };
         }
         return {
+          capabilityRef: { id: 'summarize_text', version: '1', digest: 'sha256:op-v1' },
           inputSchema: { type: 'object', properties: { data: { type: 'string' } } },
-          outputSchema: { type: 'object', properties: {} },
+          outputSchema: { type: 'object', properties: { summary: { type: 'string' } } },
           contractCompatibility: 'backward',
+          sourceType: 'llm_operation',
         };
       });
+
+      attestationClient.hasValidAttestationForVersion.mockResolvedValue(true);
 
       const client = {
         executionPlan: { create: jest.fn().mockResolvedValue({ id: 'plan-1' }) },
@@ -661,7 +698,7 @@ describe('DeterministicPlanFreezeService — composition validation (§10.4)', (
     });
 
     it('stamps contractDigest via the shared contract-envelope digest (fix ④)', async () => {
-      const { service, catalog } = createService();
+      const { service, catalog, attestationClient } = createService();
       catalog.resolveContract.mockImplementation(async (_client: any, node: any) => {
         if (node.nodeId === 'producer') {
           return {
@@ -672,13 +709,16 @@ describe('DeterministicPlanFreezeService — composition validation (§10.4)', (
           };
         }
         return {
-          inputSchema: { type: 'object', properties: { q: { type: 'string' } } },
-          outputSchema: { type: 'object', properties: {} },
+          capabilityRef: { id: 'summarize_text', version: '1', digest: 'sha256:op-v1' },
+          inputSchema: { type: 'object', properties: { data: { type: 'string' } } },
+          outputSchema: { type: 'object', properties: { summary: { type: 'string' } } },
           contractCompatibility: 'backward',
-          sourceType: 'builtin_skill',
+          sourceType: 'llm_operation',
         };
       });
       catalog.computeContractDigest.mockReturnValue('sha256:shared-envelope-digest');
+
+      attestationClient.hasValidAttestationForVersion.mockResolvedValue(true);
 
       const client = {
         executionPlan: { create: jest.fn().mockResolvedValue({ id: 'plan-1' }) },
@@ -693,13 +733,162 @@ describe('DeterministicPlanFreezeService — composition validation (§10.4)', (
       expect(catalog.computeContractDigest).toHaveBeenCalledWith(
         plan.nodes[1],
         expect.objectContaining({
-          inputSchema: expect.objectContaining({ properties: expect.objectContaining({ q: expect.anything() }) }),
-          outputSchema: { type: 'object', properties: {} },
-          sourceType: 'builtin_skill',
+          inputSchema: expect.objectContaining({ properties: expect.objectContaining({ data: expect.anything() }) }),
+          outputSchema: { type: 'object', properties: { summary: { type: 'string' } } },
+          sourceType: 'llm_operation',
         })
       );
       expect(plan.nodes[1].contractDigest).toBe('sha256:shared-envelope-digest');
       expect(catalog.schemaDigest).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Phase 2-γ — freeze-time gates for llm_operation nodes', () => {
+    it('replaces missing planner operationVersion with catalog authority', async () => {
+      const { service, catalog, attestationClient } = createService();
+      const plan = buildPlan();
+      delete (plan.nodes[1] as any).operationVersion;
+      delete (plan.nodes[1] as any).promptTemplateVersion;
+
+      catalog.resolveContract.mockImplementation(async (_client: any, node: any) =>
+        node.nodeId === 'producer'
+          ? {
+              inputSchema: null,
+              outputSchema: { type: 'object', properties: { data: { type: 'string' } } },
+              contractCompatibility: 'backward',
+              sourceType: 'builtin_skill',
+            }
+          : {
+              capabilityRef: { id: 'summarize_text', version: '1', digest: 'sha256:op-v1' },
+              inputSchema: { type: 'object', properties: { data: { type: 'string' } } },
+              outputSchema: { type: 'object', properties: { summary: { type: 'string' } } },
+              contractCompatibility: 'backward',
+              sourceType: 'llm_operation',
+            },
+      );
+
+      attestationClient.hasValidAttestationForVersion.mockResolvedValue(true);
+      const client = {
+        executionPlan: { create: jest.fn().mockResolvedValue({ id: 'plan-1' }) },
+        executionStep: { create: jest.fn().mockResolvedValue({ id: 'step-1' }) },
+      };
+
+      await service.freezeAndPersistPlan('exec-1', plan, client as any);
+      expect((plan.nodes[1] as any).operationVersion).toBe('1');
+      expect((plan.nodes[1] as any).operationDigest).toBe('sha256:op-v1');
+    });
+
+    it('rejects freeze when attestation is missing', async () => {
+      const { service, catalog, attestationClient } = createService();
+      const plan = buildPlan();
+
+      catalog.resolveContract.mockResolvedValue({
+        capabilityRef: { id: 'summarize_text', version: '1', digest: 'sha256:op-v1' },
+        inputSchema: { type: 'object', properties: { data: { type: 'string' } } },
+        outputSchema: { type: 'object', properties: {} },
+        contractCompatibility: 'backward',
+        sourceType: 'llm_operation',
+      });
+
+      attestationClient.hasValidAttestationForVersion.mockResolvedValue(false);
+
+      const client = {
+        executionPlan: { create: jest.fn() },
+        executionStep: { create: jest.fn() },
+      };
+
+      await expect(
+        service.freezeAndPersistPlan('exec-1', plan, client as any),
+      ).rejects.toThrow("LLM operation 'summarize_text' version '1' has no valid attestation");
+    });
+
+    it('allows freeze when attestation passes', async () => {
+      const { service, catalog, attestationClient } = createService();
+      const plan = buildPlan();
+
+      catalog.resolveContract.mockImplementation(async (_client: any, node: any) => {
+        if (node.nodeId === 'producer') {
+          return {
+            inputSchema: null,
+            outputSchema: { type: 'object', properties: { data: { type: 'string' } } },
+            contractCompatibility: 'backward',
+            sourceType: 'builtin_skill',
+          };
+        }
+        return {
+          capabilityRef: { id: 'summarize_text', version: '1', digest: 'sha256:op-v1' },
+          inputSchema: { type: 'object', properties: { data: { type: 'string' } } },
+          outputSchema: { type: 'object', properties: { summary: { type: 'string' } } },
+          contractCompatibility: 'backward',
+          sourceType: 'llm_operation',
+        };
+      });
+
+      attestationClient.hasValidAttestationForVersion.mockResolvedValue(true);
+
+      const client = {
+        executionPlan: { create: jest.fn().mockResolvedValue({ id: 'plan-1' }) },
+        executionStep: { create: jest.fn().mockResolvedValue({ id: 'step-1' }) },
+      };
+
+      const result = await service.freezeAndPersistPlan('exec-1', plan, client as any);
+
+      expect(result.planId).toBe('plan-1');
+      expect(attestationClient.hasValidAttestationForVersion).toHaveBeenCalledWith(
+        'summarize_text',
+        '1',
+      );
+    });
+
+    it('rejects freeze on attestation client error (fail-closed)', async () => {
+      const { service, catalog, attestationClient } = createService();
+      const plan = buildPlan();
+
+      catalog.resolveContract.mockResolvedValue({
+        capabilityRef: { id: 'summarize_text', version: '1', digest: 'sha256:op-v1' },
+        inputSchema: { type: 'object', properties: { data: { type: 'string' } } },
+        outputSchema: { type: 'object', properties: {} },
+        contractCompatibility: 'backward',
+        sourceType: 'llm_operation',
+      });
+
+      attestationClient.hasValidAttestationForVersion.mockRejectedValue(
+        new Error('Network timeout'),
+      );
+
+      const client = {
+        executionPlan: { create: jest.fn() },
+        executionStep: { create: jest.fn() },
+      };
+
+      await expect(
+        service.freezeAndPersistPlan('exec-1', plan, client as any),
+      ).rejects.toThrow("LLM operation 'summarize_text' version '1' attestation check failed");
+    });
+
+    it('does not call attestationClient for skill nodes', async () => {
+      const { service, catalog, attestationClient } = createService();
+      const plan = buildPlan();
+      plan.nodes[1].kind = 'skill';
+      (plan.nodes[1] as any).skillId = 'test_skill';
+      (plan.nodes[1] as any).skillVersion = '1.0.0';
+      delete (plan.nodes[1] as any).operationId;
+
+      catalog.resolveContract.mockResolvedValue({
+        inputSchema: { type: 'object', properties: { data: { type: 'string' } } },
+        outputSchema: { type: 'object', properties: { data: { type: 'string' } } },
+        contractCompatibility: 'backward',
+        sourceType: 'builtin_skill',
+      });
+
+      const client = {
+        executionPlan: { create: jest.fn().mockResolvedValue({ id: 'plan-1' }) },
+        executionStep: { create: jest.fn().mockResolvedValue({ id: 'step-1' }) },
+      };
+
+      await service.freezeAndPersistPlan('exec-1', plan, client as any);
+
+      expect(attestationClient.hasValidAttestationForVersion).not.toHaveBeenCalled();
     });
   });
 });

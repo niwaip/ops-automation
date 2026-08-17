@@ -59,7 +59,6 @@ export interface RealValidationModalProps {
   workflowClassName: string;
   taskQueue: string;
   initialInputParams: Record<string, string>;
-  hasHttpRequest: boolean;
   onApplySuggestedResponsePath: (path: string) => void;
   onRegenerateCode?: (errorContext: string) => void;
 }
@@ -71,7 +70,6 @@ export const RealValidationModal: React.FC<RealValidationModalProps> = ({
   workflowClassName,
   taskQueue,
   initialInputParams,
-  hasHttpRequest,
   onApplySuggestedResponsePath,
   onRegenerateCode,
 }) => {
@@ -99,10 +97,6 @@ export const RealValidationModal: React.FC<RealValidationModalProps> = ({
         finalParams[key] = normalizedValue;
       }
     });
-    if (hasHttpRequest) {
-      finalParams.__httpResponsePreview = 'true';
-    }
-
     try {
       await temporalWorkflowApi.validateWorkflowRealStream(
         generatedCode,

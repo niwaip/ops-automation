@@ -1,17 +1,17 @@
 import { useMutation, useQueryClient } from 'react-query';
 import { message } from 'antd';
+import type { FormInstance } from 'antd';
 import {
   temporalWorkflowApi,
   WorkflowDsl,
   ActivityDsl,
   WorkflowCodeResult,
   WorkflowCodeStreamEvent,
-  WorkflowRealValidationResult,
   HttpRequestOptimizeResult,
   HttpRequestPreviewResult,
   CreateTemporalWorkflowDTO,
+  TemporalWorkflowDTO,
 } from '@/api/temporal';
-import { normalizeExecutionResult } from '@/api/execution-normalizer';
 import {
   resolveApiErrorMessage,
   buildSynchronizedWorkflowInputPolicy,
@@ -21,13 +21,14 @@ import {
   HttpRequestStepConfig,
 } from '../utils/workflowEditHelpers';
 import type { WorkflowSelectableActivity } from './useWorkflowEditState';
+import { buildInitialWorkflowValidationValues } from '../components/WorkflowValidationInputFields';
 
 export interface UseWorkflowSaveAndValidateProps {
-  form: any;
+  form: FormInstance;
   workflowDsl: WorkflowDsl;
   activityDsl: ActivityDsl;
-  editingWorkflow: any;
-  setEditingWorkflow: (wf: any) => void;
+  editingWorkflow: TemporalWorkflowDTO | null;
+  setEditingWorkflow: (wf: TemporalWorkflowDTO | null) => void;
   generatedCode: string | null;
   setGeneratedCode: (code: string | null) => void;
   lastGeneratedSignature: string | null;
@@ -39,7 +40,10 @@ export interface UseWorkflowSaveAndValidateProps {
   saveSubmitting: boolean;
   setSaveSubmitting: (submitting: boolean) => void;
   loading?: boolean;
-  onSave: (data: CreateTemporalWorkflowDTO) => void;
+  onSave: (
+    data: CreateTemporalWorkflowDTO,
+    workflowId?: string
+  ) => Promise<TemporalWorkflowDTO | void> | void;
   dispatchCodeGeneration: (action: any) => void;
   dispatchRealValidation: (action: any) => void;
   setValidationResult: (res: any) => void;
@@ -228,18 +232,14 @@ export const useWorkflowSaveAndValidate = ({
   );
 
   const collectWorkflowInputParams = (): Record<string, string> => {
-    const params: Record<string, string> = {};
     const declaredInputParams = workflowDsl.inputParams || {};
-    Object.entries(declaredInputParams).forEach(([key, config]) => {
-      params[key] = normalizeValidationInputValue(
-        config?.defaultValue !== undefined && config?.defaultValue !== ''
-          ? config.defaultValue
-          : config?.exampleValue
-      );
-    });
     if (Object.keys(declaredInputParams).length > 0) {
-      return params;
+      return buildInitialWorkflowValidationValues(
+        declaredInputParams,
+        workflowDsl.validation?.scenarios
+      );
     }
+    const params: Record<string, string> = {};
     workflowDsl.steps.forEach((step) => {
       getStepInputPublicEntries(step).forEach(([key, value]) => {
         if (!params[key]) {
@@ -258,6 +258,48 @@ export const useWorkflowSaveAndValidate = ({
       }
     });
     return params;
+  };
+
+  const buildWorkflowPersistenceData = async (): Promise<CreateTemporalWorkflowDTO> => {
+    const values = (await form.validateFields()) as {
+      name?: string;
+      description?: string;
+      taskQueue?: string;
+    };
+    const workflowName = values.name || workflowDsl.name;
+    const shouldPersistGeneratedCode =
+      Boolean(generatedCode) &&
+      (!editingWorkflow || String(editingWorkflow.generatedCode || '') !== generatedCode);
+    const persistedGeneratedCode =
+      shouldPersistGeneratedCode && typeof generatedCode === 'string' ? generatedCode : undefined;
+    const synchronizedInputPolicy = buildSynchronizedWorkflowInputPolicy(
+      workflowDsl.inputParams,
+      workflowDsl.inputPolicy
+    );
+
+    return {
+      name: workflowName,
+      description: values.description,
+      taskQueue: values.taskQueue,
+      workflowDsl: {
+        ...workflowDsl,
+        name: workflowName,
+        ...(synchronizedInputPolicy ? { inputPolicy: synchronizedInputPolicy } : {}),
+        steps: workflowDsl.steps.map((step) => {
+          if (step.type !== 'activity') {
+            return step;
+          }
+          const resolved = resolveStepActivity(step);
+          return {
+            ...step,
+            activityRef: step.activityRef || resolved?.ref,
+            activityName: step.activityName || resolved?.name,
+          };
+        }),
+      },
+      activityDsl,
+      generatedCode: persistedGeneratedCode,
+    };
   };
 
   const handleValidate = () => {
@@ -524,8 +566,10 @@ export const useWorkflowSaveAndValidate = ({
       void message.warning('请先生成并保存代码');
       return;
     }
-    const fn =
-      workflowDsl.workflowClassName?.trim() || workflowDsl.name.replace(/\s+/g, '') + 'Workflow';
+    if (isGeneratedCodeStale) {
+      void message.warning('当前代码已落后于 DSL，请先重新生成并保存代码');
+      return;
+    }
     dispatchRealValidation({ type: 'START' });
 
     const inputParams: Record<string, string> = {};
@@ -535,63 +579,43 @@ export const useWorkflowSaveAndValidate = ({
         inputParams[key] = normalizedValue;
       }
     });
-    if (workflowDsl.steps.some((step) => isHttpRequestActivity(resolveStepActivity(step), step))) {
-      inputParams.__httpResponsePreview = 'true';
-    }
-
     try {
-      if (editingWorkflow?.id && !isGeneratedCodeStale) {
-        appendRealValidationLog(`[${new Date().toISOString()}] 开始校验已保存 Workflow artifact`);
-        const persistedValidation = await temporalWorkflowApi.validateSavedArtifact(
-          editingWorkflow.id,
-          { input: inputParams }
+      let persistedWorkflow = editingWorkflow;
+      if (!persistedWorkflow?.id) {
+        appendRealValidationLog(
+          `[${new Date().toISOString()}] 当前为未保存工作流，先持久化精确 DSL 与代码 artifact`
         );
-        dispatchRealValidation({
-          type: 'SET_RESULT',
-          payload: persistedValidation.validation,
-        });
-        setEditingWorkflow(persistedValidation.workflow);
+        const persistenceData = await buildWorkflowPersistenceData();
+        if (!persistenceData.generatedCode) {
+          throw new Error('未找到可持久化的生成代码，无法绑定验证证据');
+        }
+        persistedWorkflow = await temporalWorkflowApi.create(persistenceData);
+        setEditingWorkflow(persistedWorkflow);
+        setGeneratedCode(persistedWorkflow.generatedCode || generatedCode);
+        setLastGeneratedSignature(currentDraftSignature);
+        setIsGeneratedCodeStale(false);
+        appendRealValidationLog(
+          `[${new Date().toISOString()}] artifact 已保存，ID=${persistedWorkflow.id}，开始持久化端到端验证`
+        );
         void queryClient.invalidateQueries(['temporal']);
-        return;
+        void queryClient.invalidateQueries(['temporal-options']);
+      } else {
+        appendRealValidationLog(
+          `[${new Date().toISOString()}] 开始校验已保存 Workflow artifact ${persistedWorkflow.id}`
+        );
       }
 
-      await temporalWorkflowApi.validateWorkflowRealStream(
-        generatedCode,
-        fn,
-        inputParams,
-        workflowDsl.taskQueue,
-        (event) => {
-          if (event.type === 'log' && event.content) {
-            appendRealValidationLog(event.content);
-          } else if (event.type === 'done') {
-            const normalized = normalizeExecutionResult(event, {
-              defaultSuccessScore: 100,
-              defaultFailureScore: 0,
-            });
-            const rawResult: unknown = event.result as unknown;
-            dispatchRealValidation({
-              type: 'SET_RESULT',
-              payload: {
-                success: normalized.success,
-                logs: [],
-                result: rawResult as WorkflowRealValidationResult['result'],
-                error: normalized.error,
-                score: normalized.score,
-              },
-            });
-          } else if (event.type === 'error') {
-            dispatchRealValidation({
-              type: 'SET_RESULT',
-              payload: {
-                success: false,
-                logs: [],
-                error: event.content || 'Unknown error',
-                score: 0,
-              },
-            });
-          }
-        }
+      const persistedValidation = await temporalWorkflowApi.validateSavedArtifact(
+        persistedWorkflow.id,
+        { input: inputParams }
       );
+      persistedValidation.validation.logs.forEach(appendRealValidationLog);
+      dispatchRealValidation({
+        type: 'SET_RESULT',
+        payload: persistedValidation.validation,
+      });
+      setEditingWorkflow(persistedValidation.workflow);
+      void queryClient.invalidateQueries(['temporal']);
     } catch (error: unknown) {
       const errorMessage = resolveApiErrorMessage(error, '真实验证启动失败');
       appendRealValidationLog(`错误: ${errorMessage}`);
@@ -614,45 +638,8 @@ export const useWorkflowSaveAndValidate = ({
     }
     setSaveSubmitting(true);
     try {
-      const values = (await form.validateFields()) as {
-        name?: string;
-        description?: string;
-        taskQueue?: string;
-      };
-      const workflowName = values.name || workflowDsl.name;
-      const shouldPersistGeneratedCode =
-        Boolean(generatedCode) &&
-        (!editingWorkflow || String(editingWorkflow.generatedCode || '') !== generatedCode);
-      const persistedGeneratedCode =
-        shouldPersistGeneratedCode && typeof generatedCode === 'string' ? generatedCode : undefined;
-      const synchronizedInputPolicy = buildSynchronizedWorkflowInputPolicy(
-        workflowDsl.inputParams,
-        workflowDsl.inputPolicy
-      );
-      const data: CreateTemporalWorkflowDTO = {
-        name: workflowName,
-        description: values.description,
-        taskQueue: values.taskQueue,
-        workflowDsl: {
-          ...workflowDsl,
-          name: workflowName,
-          ...(synchronizedInputPolicy ? { inputPolicy: synchronizedInputPolicy } : {}),
-          steps: workflowDsl.steps.map((step) => {
-            if (step.type !== 'activity') {
-              return step;
-            }
-            const resolved = resolveStepActivity(step);
-            return {
-              ...step,
-              activityRef: step.activityRef || resolved?.ref,
-              activityName: step.activityName || resolved?.name,
-            };
-          }),
-        },
-        activityDsl,
-        generatedCode: persistedGeneratedCode,
-      };
-      await Promise.resolve(onSave(data));
+      const data = await buildWorkflowPersistenceData();
+      await Promise.resolve(onSave(data, editingWorkflow?.id));
     } catch (error: unknown) {
       void message.error(resolveApiErrorMessage(error, '表单校验失败'));
     } finally {

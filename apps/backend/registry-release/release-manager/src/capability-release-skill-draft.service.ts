@@ -82,7 +82,7 @@ export class CapabilityReleaseSkillDraftService {
 
     const finalDescription =
       description.length > 500 ? description.slice(0, 497) + '...' : description;
-    const outputSchema = this.extractOutputSchema(payload);
+    const outputSchema = this.extractOutputSchema(payload, validation);
 
     if (release.sourceType === 'browser_recording') {
       const browserExecutionFlow =
@@ -508,7 +508,10 @@ export class CapabilityReleaseSkillDraftService {
    * Carried into the skill draft so `skill_configs.output_schema` is saved
    * at publish time (the authoritative custom-skill output contract §6.3).
    */
-  private extractOutputSchema(payload: Record<string, unknown>): Record<string, unknown> | undefined {
+  private extractOutputSchema(
+    payload: Record<string, unknown>,
+    validation: CapabilityValidationDTO
+  ): Record<string, unknown> | undefined {
     const contracts =
       (payload.contracts as Record<string, unknown>) ||
       (payload.manifest as any)?.spec?.contracts ||
@@ -520,7 +523,86 @@ export class CapabilityReleaseSkillDraftService {
     if (schema && typeof schema === 'object' && !Array.isArray(schema) && Object.keys(schema).length > 0) {
       return schema as Record<string, unknown>;
     }
+
+    const outputParams =
+      (payload.outputParams as Record<string, unknown>) ||
+      (payload.apiEndpoints as any)?.runtimeMetadata?.outputParams ||
+      (payload.runtimeMetadata as any)?.outputParams;
+
+    if (outputParams && typeof outputParams === 'object' && Object.keys(outputParams).length > 0) {
+      const observedBusinessData = this.extractObservedBusinessData(validation);
+      const properties: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(outputParams)) {
+        const paramDef =
+          typeof val === 'object' && val !== null ? (val as Record<string, unknown>) : {};
+        const description =
+          typeof paramDef.description === 'string'
+            ? paramDef.description
+            : `Output field ${key}`;
+        properties[key] = {
+          ...this.inferOutputPropertySchema(observedBusinessData?.[key], key, description),
+          ...(typeof paramDef.type === 'string' ? { type: paramDef.type } : {}),
+          description,
+        };
+      }
+      return {
+        type: 'object',
+        properties,
+        required: Object.keys(properties),
+        additionalProperties: false,
+      };
+    }
+
     return undefined;
+  }
+
+  private extractObservedBusinessData(
+    validation: CapabilityValidationDTO
+  ): Record<string, unknown> | undefined {
+    let current: unknown = validation.resultSnapshot;
+    for (let depth = 0; depth < 8; depth += 1) {
+      const record = asRecord(current);
+      if (!record) return undefined;
+      const businessData = asRecord(record.businessData);
+      if (businessData) return businessData;
+      const data = asRecord(record.data);
+      if (data) return data;
+      if (record.result === undefined) return undefined;
+      current = record.result;
+    }
+    return undefined;
+  }
+
+  private inferOutputPropertySchema(
+    value: unknown,
+    key: string,
+    description: string
+  ): Record<string, unknown> {
+    if (Array.isArray(value)) {
+      return {
+        type: 'array',
+        items:
+          value.length > 0
+            ? this.inferOutputPropertySchema(value[0], `${key}Item`, description)
+            : { type: 'object' },
+      };
+    }
+    if (value && typeof value === 'object') {
+      return { type: 'object' };
+    }
+    if (typeof value === 'number') {
+      return { type: Number.isInteger(value) ? 'integer' : 'number' };
+    }
+    if (typeof value === 'boolean') {
+      return { type: 'boolean' };
+    }
+    if (/结果数组|列表|results?/i.test(`${key} ${description}`)) {
+      return { type: 'array', items: { type: 'object' } };
+    }
+    if (/metadata|元数据/i.test(`${key} ${description}`)) {
+      return { type: 'object' };
+    }
+    return { type: 'string' };
   }
 
   private pickFirstNonEmptyString(...values: unknown[]): string | undefined {

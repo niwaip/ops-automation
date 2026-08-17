@@ -7,7 +7,7 @@ import {
   StopOutlined,
 } from '@ant-design/icons';
 import { Button, Input, Select, Segmented, Switch, Typography, message as antdMessage } from 'antd';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import type { AIModel } from '@ops/user-core';
 import { apiClient, runtimeConfig } from '../../../api';
@@ -15,6 +15,7 @@ import { authStore } from '../../../adapters/auth/authStore';
 import { supportsNativeReasoning } from '@/shared/lib/aiModelReasoning';
 
 import styles from '../pages/ChatPage.module.css';
+
 
 const { TextArea } = Input;
 
@@ -103,6 +104,8 @@ interface UserChatComposerProps {
   modelsLoading?: boolean;
   disabled?: boolean;
   placeholder: string;
+  /** 已发送的历史消息列表，由父组件传入 */
+  sentHistory?: string[];
 }
 
 export function UserChatComposer(props: UserChatComposerProps) {
@@ -126,6 +129,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
     modelsLoading = false,
     disabled = false,
     placeholder,
+    sentHistory = [],
   } = props;
 
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -143,6 +147,95 @@ export function UserChatComposer(props: UserChatComposerProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  // History navigation state
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
+  const savedDraftRef = useRef<string>('');
+  const isNavigatingHistoryRef = useRef<boolean>(false);
+
+  const effectiveHistory = useMemo(() => {
+    const list: string[] = [];
+    for (const item of sentHistory) {
+      const trimmed = (item || '').trim();
+      if (trimmed && list[list.length - 1] !== trimmed) {
+        list.push(trimmed);
+      }
+    }
+    return list;
+  }, [sentHistory]);
+
+  // Reset history cursor when history list changes (new message sent)
+  useEffect(() => {
+    setHistoryIndex(-1);
+  }, [effectiveHistory.length]);
+
+  const moveCaretToEnd = useCallback((el: HTMLTextAreaElement) => {
+    requestAnimationFrame(() => {
+      try {
+        const len = el.value.length;
+        el.setSelectionRange(len, len);
+      } catch {
+        // ignore
+      }
+    });
+  }, []);
+
+  const handleHistoryKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (
+        (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') ||
+        e.shiftKey ||
+        e.ctrlKey ||
+        e.metaKey ||
+        e.altKey
+      ) {
+        return;
+      }
+
+      // Only navigate when caret is at first/last line
+      const el = e.currentTarget;
+      const { selectionStart, value } = el;
+      const lines = value.split('\n');
+
+      if (e.key === 'ArrowUp') {
+        // Navigate back into history only if caret is on the first line
+        const firstLineEnd = lines[0]?.length ?? 0;
+        if (selectionStart > firstLineEnd) return;
+
+        const nextIndex = historyIndex + 1;
+        if (nextIndex >= effectiveHistory.length) return;
+        e.preventDefault();
+        isNavigatingHistoryRef.current = true;
+        if (historyIndex === -1) {
+          savedDraftRef.current = draft;
+        }
+        setHistoryIndex(nextIndex);
+        const nextText = effectiveHistory[effectiveHistory.length - 1 - nextIndex] ?? '';
+        onDraftChange(nextText);
+        moveCaretToEnd(el);
+      } else if (e.key === 'ArrowDown') {
+        if (historyIndex === -1) return;
+
+        // Navigate forward in history only if caret is on the last line
+        const lastLineStart = value.length - (lines[lines.length - 1]?.length ?? 0);
+        if (selectionStart < lastLineStart) return;
+
+        e.preventDefault();
+        isNavigatingHistoryRef.current = true;
+        const nextIndex = historyIndex - 1;
+        if (nextIndex < 0) {
+          setHistoryIndex(-1);
+          onDraftChange(savedDraftRef.current);
+        } else {
+          setHistoryIndex(nextIndex);
+          const nextText = effectiveHistory[effectiveHistory.length - 1 - nextIndex] ?? '';
+          onDraftChange(nextText);
+        }
+        moveCaretToEnd(el);
+      }
+    },
+    [draft, effectiveHistory, historyIndex, moveCaretToEnd, onDraftChange]
+  );
 
   const stopListening = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -231,10 +324,22 @@ export function UserChatComposer(props: UserChatComposerProps) {
             ref={inputRef}
             autoSize={{ minRows: 2, maxRows: 6 }}
             value={draft}
-            onChange={(event) => onDraftChange(event.target.value)}
+            onChange={(event) => {
+              if (!isNavigatingHistoryRef.current) {
+                setHistoryIndex(-1);
+              }
+              isNavigatingHistoryRef.current = false;
+              onDraftChange(event.target.value);
+            }}
             placeholder={placeholder}
             className={styles['user-chat-input-textarea']}
             disabled={disabled || isTranscribing}
+            onKeyDown={(e) => {
+              // Arrow-key history navigation (no modifier keys)
+              if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                handleHistoryKeyDown(e as React.KeyboardEvent<HTMLTextAreaElement>);
+              }
+            }}
             onPressEnter={(event) => {
               if (!event.shiftKey) {
                 event.preventDefault();
@@ -297,7 +402,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
           />
           <div className={styles['user-chat-input-toolbar-spacer']} />
           <Typography.Text type="secondary" className={styles['user-chat-input-shortcut-hint']}>
-            Enter 发送，Shift + Enter 换行
+            Enter 发送，Shift + Enter 换行，↑↓ 切换历史
           </Typography.Text>
           <div className={styles['user-chat-input-voice-group']}>
             <Select

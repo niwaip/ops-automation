@@ -22,6 +22,7 @@ import MessageContentRenderer from '@chat-web/components/MessageContentRenderer'
 import ThoughtProcessPanel from '@chat-web/components/ThoughtProcessPanel';
 import TaskOutcomeCard from '@chat-web/components/TaskOutcomeCard';
 import TaskProgressCard from '@chat-web/components/TaskProgressCard';
+import { resolveChatOutcomePresentation } from '@ops/user-core';
 import {
   beautifyText,
   buildPromptDebugClipboardText,
@@ -32,7 +33,6 @@ import {
   parseMessageContent,
   stripThinkingContent,
   summarizeOutcomeFinalResult,
-  toStructuredResultText,
 } from './lib/chatMessagePresentation';
 import './ChatMessage.css';
 
@@ -196,9 +196,25 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     }
     return '还需要你补充以下信息，请直接在下方聊天框回复，任务会继续执行。';
   }, [finalSummary, isWaitingInput, waitingInputLabels]);
+  const outcomePresentation = useMemo(
+    () =>
+      resolveChatOutcomePresentation({
+        finalResult,
+        finalSummary,
+        normalizedResult: message.metadata?.normalizedResult,
+        rawResult: finalResultData ?? taskParts.structuredResultData,
+      }),
+    [
+      finalResult,
+      finalResultData,
+      finalSummary,
+      message.metadata?.normalizedResult,
+      taskParts.structuredResultData,
+    ]
+  );
   const structuredResultText = useMemo(
-    () => toStructuredResultText(finalResultData),
-    [finalResultData]
+    () => outcomePresentation.structuredText,
+    [outcomePresentation.structuredText]
   );
   const shouldShowStructuredResult = Boolean(
     structuredResultText &&
@@ -284,6 +300,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const temporalLink = fixLocalhostLink(message.metadata?.temporalLink || partDetailUrl);
   const executionDetailLink = executionId ? `/executions/${executionId}` : undefined;
   const outcomeFinalResult = useMemo(() => {
+    if (!browserExecutionMode && outcomePresentation.primaryText) {
+      return outcomePresentation.primaryText;
+    }
     return summarizeOutcomeFinalResult(
       finalResult
         ? beautifyText(fixLocalhostLink(stripThinkingContent(finalResult)) || '')
@@ -291,7 +310,14 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       finalResultData ?? taskParts.structuredResultData,
       downloadUrl
     );
-  }, [downloadUrl, finalResult, finalResultData, taskParts.structuredResultData]);
+  }, [
+    browserExecutionMode,
+    downloadUrl,
+    finalResult,
+    finalResultData,
+    outcomePresentation.primaryText,
+    taskParts.structuredResultData,
+  ]);
   const contractChatSummary = useMemo(() => {
     const dataObj = (finalResultData || metadataRecord) as Record<string, unknown> | undefined;
     if (dataObj?._version === '1' && typeof dataObj.chatSummary === 'string' && dataObj.chatSummary.trim()) {
@@ -519,7 +545,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
               errorMessage={errorMessage}
               failureReason={failureReason}
               finalResult={outcomeFinalResult}
-              hasBusinessResult={hasBusinessResult}
+              hasBusinessResult={outcomePresentation.hasBusinessResult || hasBusinessResult}
               shouldShowStructuredResult={shouldShowStructuredResult}
               structuredResultText={structuredResultText}
               waitingInputSummary={waitingInputSummary}

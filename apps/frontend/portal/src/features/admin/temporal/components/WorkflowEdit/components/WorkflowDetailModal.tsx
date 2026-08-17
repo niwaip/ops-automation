@@ -1,6 +1,6 @@
 import React from 'react';
-import { Modal, Space, Card, Row, Col, Typography, Tag, Button, Collapse } from 'antd';
-import { ThunderboltOutlined, PlayCircleOutlined, CodeOutlined } from '@ant-design/icons';
+import { Modal, Space, Card, Row, Col, Typography, Tag, Collapse } from 'antd';
+import { ThunderboltOutlined, CodeOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 const { Panel } = Collapse;
@@ -10,9 +10,6 @@ export interface WorkflowDetailModalProps {
   onCancel: () => void;
   selectedWorkflow: any | null;
   SECTION_CARD_STYLE: React.CSSProperties;
-  resolveWorkflowSourceSkillId: (wf: any) => string | null;
-  handleCreateExecutionFromWorkflow: () => void;
-  creatingExecutionWorkflowId: string | null;
   getActivitySourceMeta: (step: any) => any;
 }
 
@@ -21,9 +18,6 @@ export const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
   onCancel,
   selectedWorkflow,
   SECTION_CARD_STYLE,
-  resolveWorkflowSourceSkillId,
-  handleCreateExecutionFromWorkflow,
-  creatingExecutionWorkflowId,
   getActivitySourceMeta,
 }) => {
   return (
@@ -68,8 +62,20 @@ export const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
               <Col span={12}>
                 <Text>
                   <strong>状态:</strong>{' '}
-                  <Tag color={selectedWorkflow.isActive ? 'green' : 'default'}>
-                    {selectedWorkflow.isActive ? '已启用' : '已禁用'}
+                  <Tag
+                    color={
+                      !selectedWorkflow.deployedAt
+                        ? 'default'
+                        : selectedWorkflow.isActive
+                          ? 'green'
+                          : 'orange'
+                    }
+                  >
+                    {!selectedWorkflow.deployedAt
+                      ? '未发布'
+                      : selectedWorkflow.isActive
+                        ? '已发布'
+                        : '已停用'}
                   </Tag>
                 </Text>
               </Col>
@@ -79,27 +85,6 @@ export const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                 </Text>
               </Col>
             </Row>
-          </Card>
-          <Card size="small" style={SECTION_CARD_STYLE} styles={{ body: { padding: 14 } }}>
-            <Space style={{ width: '100%', justifyContent: 'space-between' }} align="center">
-              <Space direction="vertical" size={0}>
-                <Text strong>执行记录</Text>
-                <Text type="secondary">
-                  {resolveWorkflowSourceSkillId(selectedWorkflow)
-                    ? `已关联 Skill: ${resolveWorkflowSourceSkillId(selectedWorkflow)}`
-                    : '当前工作流未关联 Skill，无法直接创建 executions 记录'}
-                </Text>
-              </Space>
-              <Button
-                type="primary"
-                icon={<PlayCircleOutlined />}
-                onClick={handleCreateExecutionFromWorkflow}
-                loading={creatingExecutionWorkflowId === selectedWorkflow.id}
-                disabled={!resolveWorkflowSourceSkillId(selectedWorkflow)}
-              >
-                创建执行记录
-              </Button>
-            </Space>
           </Card>
           <Collapse defaultActiveKey={['workflow', 'activities']} ghost>
             <Panel

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { getAiOrchestratorUrl } from '../../config/service-endpoints';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -23,6 +23,7 @@ import {
   simulateFixedStructuredTransformOutputSample,
   validateAiWorkflowDraftPlan,
 } from './temporal-workflow-draft-plan.helpers';
+import { compileDraftValidationContract } from './temporal-workflow-draft-validation.compiler';
 import type {
   ActivityDsl,
   AiWorkflowDraft,
@@ -30,6 +31,8 @@ import type {
   RefineAiWorkflowDraftDTO,
   WorkflowDsl,
   WorkflowInputParamDefinition,
+  WorkflowOutputParamDefinition,
+  WorkflowValidationContract,
   WorkflowStep,
 } from './temporal-workflow.types';
 
@@ -52,7 +55,8 @@ export interface AiWorkflowDraftPlan {
   workflowDefnName?: string;
   taskQueue?: string;
   inputParams?: Record<string, WorkflowInputParamDefinition>;
-  outputParams?: Record<string, { description?: string; sourceStep?: string }>;
+  validation?: WorkflowValidationContract;
+  outputParams?: Record<string, WorkflowOutputParamDefinition>;
   extraPrompt?: string;
   warnings?: string[];
   steps?: Array<{
@@ -148,10 +152,10 @@ export interface TemporalWorkflowAiDraftSupport {
     referenceUrl?: string
   ): WorkflowDsl['inputParams'];
   normalizeDraftOutputParams(
-    outputParams?: Record<string, { description?: string; sourceStep?: string }>
+    outputParams?: Record<string, WorkflowOutputParamDefinition>
   ): WorkflowDsl['outputParams'];
   deriveV2OutputFromOutputParams(args: {
-    outputParams?: Record<string, { description?: string; sourceStep?: string }>;
+    outputParams?: Record<string, WorkflowOutputParamDefinition>;
     steps: WorkflowStep[];
   }): WorkflowDsl['v2Output'];
   normalizeAiDraftStepInput(
@@ -176,6 +180,8 @@ export interface AiDraftGenerationContext {
 
 @Injectable()
 export class TemporalWorkflowAiDraftService {
+  private readonly logger = new Logger(TemporalWorkflowAiDraftService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly builtinActivityRegistry: BuiltinActivityRegistry
@@ -669,27 +675,34 @@ export class TemporalWorkflowAiDraftService {
     currentPlan: AiWorkflowDraftPlan,
     issues: string[]
   ): Promise<AiWorkflowDraftPlan> {
-    const { description, referenceUrl, referenceExcerpt, activityResources, support } = ctx;
-    const aiOrchestratorUrl = getAiOrchestratorUrl();
-    const prompt = buildRepairAiWorkflowDraftPlanPrompt({
-      currentPlan,
-      issues,
-      description,
-      referenceUrl,
-      referenceExcerpt,
-      activityResources,
-    });
+    try {
+      const { description, referenceUrl, referenceExcerpt, activityResources, support } = ctx;
+      const aiOrchestratorUrl = getAiOrchestratorUrl();
+      const prompt = buildRepairAiWorkflowDraftPlanPrompt({
+        currentPlan,
+        issues,
+        description,
+        referenceUrl,
+        referenceExcerpt,
+        activityResources,
+      });
 
-    const response = await axios.post<{ result: string }>(
-      `${aiOrchestratorUrl}/ai/model/call`,
-      {
-        modelId: 'default',
-        prompt,
-      },
-      { timeout: this.getAiDraftTimeoutMs() }
-    );
+      const response = await axios.post<{ result: string }>(
+        `${aiOrchestratorUrl}/ai/model/call`,
+        {
+          modelId: 'default',
+          prompt,
+        },
+        { timeout: this.getAiDraftTimeoutMs() }
+      );
 
-    return support.parseJsonFromAiContent(response.data?.result || '') as AiWorkflowDraftPlan;
+      return support.parseJsonFromAiContent(response.data?.result || '') as AiWorkflowDraftPlan;
+    } catch (error: any) {
+      this.logger.warn(
+        `Failed to parse or repair AI workflow draft plan, falling back to current plan: ${error?.message || error}`
+      );
+      return currentPlan;
+    }
   }
 
   private async analyzeAiWorkflowRefinement(
@@ -807,7 +820,7 @@ export class TemporalWorkflowAiDraftService {
       typeof plan.outputParams === 'object' &&
       !Array.isArray(plan.outputParams) &&
       Object.keys(plan.outputParams).length > 0
-        ? (plan.outputParams as Record<string, { description?: string; sourceStep?: string }>)
+        ? (plan.outputParams as Record<string, WorkflowOutputParamDefinition>)
         : undefined;
     const derivedV2Output = declaredOutputParams
       ? support.deriveV2OutputFromOutputParams({
@@ -815,6 +828,12 @@ export class TemporalWorkflowAiDraftService {
           steps,
         })
       : undefined;
+    const compiledValidation = compileDraftValidationContract(plan.validation, derivedV2Output);
+    if (compiledValidation.issues.length > 0) {
+      throw new BadRequestException(
+        `AI 草图输出与验证契约不一致: ${compiledValidation.issues.join('；')}`
+      );
+    }
     const workflowDsl = await support.normalizeWorkflowDsl(
       {
         name: workflowName,
@@ -833,6 +852,9 @@ export class TemporalWorkflowAiDraftService {
             : [],
         },
         inputParams: support.normalizeDraftInputParams(plan.inputParams, steps, referenceUrl),
+        ...(compiledValidation.validation
+          ? { validation: support.sanitizeJsonValue(compiledValidation.validation) }
+          : {}),
         outputParams: support.normalizeDraftOutputParams(plan.outputParams),
         ...(derivedV2Output ? { v2Output: derivedV2Output } : {}),
         extraPrompt: [

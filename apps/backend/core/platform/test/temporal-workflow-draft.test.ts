@@ -37,6 +37,7 @@ import {
 import { TemporalWorkflowValidationFacadeService } from '../src/modules/temporal-workflow/temporal-workflow-validation-facade.service';
 import { TemporalWorkflowValidationService } from '../src/modules/temporal-workflow/temporal-workflow-validation.service';
 import { TemporalWorkflowArtifactValidationService } from '../src/workflow-registry/validation/temporal-workflow-artifact-validation.service';
+import { TemporalWorkflowValidationContractService } from '../src/workflow-registry/validation/temporal-workflow-validation-contract.service';
 import { TemporalWorkflowDslValidationService } from '../src/workflow-registry/validation/temporal-workflow-dsl-validation.service';
 import { TemporalWorkflowCodegenOrchestrationService } from '../src/workflow-registry/codegen/temporal-workflow-codegen-orchestration.service';
 import {
@@ -131,7 +132,8 @@ describe('TemporalWorkflowAiDraftService', () => {
     const workflowArtifactValidationService = new TemporalWorkflowArtifactValidationService(
       prisma as any,
       validationFacade,
-      workflowArtifactService
+      workflowArtifactService,
+      new TemporalWorkflowValidationContractService()
     );
     const workflowDslValidationService = new TemporalWorkflowDslValidationService(
       workflowSupportService
@@ -140,7 +142,8 @@ describe('TemporalWorkflowAiDraftService', () => {
       prisma as any,
       codegenService,
       workflowArtifactService,
-      workflowSupportService
+      workflowSupportService,
+      workflowNormalizationService
     );
     const service = new TemporalWorkflowService(
       workflowCodegenOrchestrationService,
@@ -2322,7 +2325,7 @@ describe('TemporalWorkflowAiDraftService', () => {
     });
   });
 
-  it('derives httpRequest envelope keys only in full mode and bodyMap keys in bodyMap mode', () => {
+  it('derives HTTP output fields for full, bodyMap, and normalized body modes', () => {
     const httpStep = (responseMode: string, responseFieldMappings: Record<string, any> = {}) => ({
       id: 'step_1',
       name: '请求接口',
@@ -2353,7 +2356,15 @@ describe('TemporalWorkflowAiDraftService', () => {
       outputParams: { result: { sourceStep: 'step_1' } },
       steps: [httpStep('body')],
     });
-    expect(defaultBodyMode).toBeUndefined();
+    expect(defaultBodyMode).toEqual({
+      fields: {
+        result: {
+          type: undefined,
+          required: false,
+          source: { step: 'step_1', path: '$.result' },
+        },
+      },
+    });
   });
 
   it('skips unknown steps, missing sourceStep, and empty outputParams', () => {
@@ -2452,7 +2463,7 @@ describe('TemporalWorkflowAiDraftService', () => {
     expect(draft.workflowDsl.v2Output!.fields!.mystery).toBeUndefined();
   });
 
-  it('does not seal v2Output when the AI declared no outputParams (legacy fallback preserved)', async () => {
+  it('seals the normalized default output mapping when the AI declared no outputParams', async () => {
     const { service } = createService();
 
     mockedAxios.post.mockResolvedValue({
@@ -2500,7 +2511,16 @@ describe('TemporalWorkflowAiDraftService', () => {
       description: '创建一个不声明输出的工作流',
     });
 
-    expect(draft.workflowDsl.v2Output).toBeUndefined();
+    expect(draft.workflowDsl.v2Output).toEqual({
+      dataPath: '$.result.businessData',
+      fields: {
+        result: {
+          description: '工作流输出结果',
+          required: true,
+          source: { step: 'step_1', path: '$.result.result' },
+        },
+      },
+    });
     expect(draft.workflowDsl.outputParams).toEqual({
       result: { description: '工作流输出结果', sourceStep: 'step_1' },
     });

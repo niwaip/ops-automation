@@ -350,7 +350,6 @@ describe('CapabilityContractCatalogService (fix ③ — version-precise resoluti
 
       expect(contract.outputSchema).toEqual({ type: 'object', properties: { released: { type: 'string' } } });
       expect(contract.outputSchema).not.toHaveProperty('properties.live');
-      // Snapshot paramsSchema (with constraints) is the input contract, not live params
       expect(contract.inputSchema).toEqual({
         type: 'object',
         properties: {
@@ -358,7 +357,7 @@ describe('CapabilityContractCatalogService (fix ③ — version-precise resoluti
         },
         required: ['topic'],
       });
-      expect(contract.sourceType).toBe('custom_skill');
+      expect(contract.sourceType).toBe('published_skill');
     });
 
     it('rejects a pinned custom-skill version that does not exist in capability_releases (fail-closed)', async () => {
@@ -453,7 +452,7 @@ describe('CapabilityContractCatalogService (fix ③ — version-precise resoluti
           }),
         })
       );
-      expect(contract.sourceType).toBe('custom_skill');
+      expect(contract.sourceType).toBe('published_skill');
     });
 
     it('derives a lenient output schema from top-level outputParams (recorder-style payload)', async () => {
@@ -566,57 +565,6 @@ describe('CapabilityContractCatalogService (fix ③ — version-precise resoluti
     });
   });
 
-  describe('llm_operation — registry version verification (§6.4)', () => {
-    const opNode = (over: Record<string, unknown> = {}) => ({
-      nodeId: 'op1',
-      kind: 'llm_operation',
-      operationId: 'summarize_text',
-      promptTemplateId: 'summarize_text:1',
-      promptTemplateVersion: '1',
-      ...over,
-    });
-
-    it('resolves the registry definition when the pinned version matches', async () => {
-      const contract = await service.resolveContract({} as any, opNode());
-      expect(contract.outputSchema).toEqual(
-        expect.objectContaining({ properties: expect.objectContaining({ summary: { type: 'string' } }) })
-      );
-      expect(contract.inputSchema).toEqual(
-        expect.objectContaining({ properties: expect.objectContaining({ text: { type: 'string' } }) })
-      );
-    });
-
-    it('rejects a pinned promptTemplateVersion that differs from the registry (fail-closed)', async () => {
-      await expect(service.resolveContract({} as any, opNode({ promptTemplateVersion: '2' }))).rejects.toMatchObject({
-        response: expect.objectContaining({
-          details: expect.objectContaining({
-            reason: expect.stringContaining("version mismatch: node pins promptTemplateVersion '2', registry serves '1'"),
-          }),
-        }),
-      });
-    });
-
-    it('rejects a pinned promptTemplateId that differs from the registry (fail-closed)', async () => {
-      await expect(service.resolveContract({} as any, opNode({ promptTemplateId: 'other:9' }))).rejects.toMatchObject({
-        response: expect.objectContaining({
-          details: expect.objectContaining({
-            reason: expect.stringContaining('promptTemplateId mismatch'),
-          }),
-        }),
-      });
-    });
-
-    it('accepts the current registry definition when the node pins nothing', async () => {
-      const contract = await service.resolveContract({} as any, opNode({ promptTemplateVersion: undefined }));
-      expect(contract.outputSchema).not.toBeNull();
-    });
-
-    it('tryResolveContract converts version-drift to null (runtime legacy treatment, never throws)', async () => {
-      const result = await service.tryResolveContract({} as any, opNode({ promptTemplateVersion: '999' }));
-      expect(result).toBeNull();
-    });
-  });
-
   describe('computeContractDigest — shared contract-envelope semantics (fix ④)', () => {
     const inputSchema = { type: 'object', properties: { q: { type: 'string' } }, required: ['q'] };
     const outputSchema = { type: 'object', properties: { data: { type: 'string' } } };
@@ -696,6 +644,93 @@ describe('CapabilityContractCatalogService (fix ③ — version-precise resoluti
           { inputSchema: null, outputSchema, sourceType: 'llm_operation' }
         )
       );
+    });
+
+    it('normalizes custom_skill to published_skill in digest envelope', () => {
+      const customDigest = service.computeContractDigest(
+        node(),
+        { inputSchema, outputSchema, sourceType: 'custom_skill' as any }
+      );
+      const publishedDigest = service.computeContractDigest(
+        node(),
+        { inputSchema, outputSchema, sourceType: 'published_skill' }
+      );
+      expect(customDigest).toBe(publishedDigest);
+    });
+  });
+
+  describe('llm_operation — new catalog endpoint with digest validation', () => {
+    const opNode = (over: Record<string, unknown> = {}) => ({
+      nodeId: 'op1',
+      kind: 'llm_operation',
+      operationId: 'summarize_text',
+      promptTemplateId: 'summarize_text:1',
+      promptTemplateVersion: '1',
+      ...over,
+    });
+
+    beforeEach(() => {
+      axiosGet.mockReset();
+      axiosGet.mockResolvedValue({
+        data: {
+          capabilityRef: {
+            id: 'summarize_text',
+            version: '1',
+            digest: 'sha256:abc123def456',
+          },
+          inputSchema: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] },
+          outputSchema: { type: 'object', properties: { summary: { type: 'string' } }, required: ['summary'] },
+        },
+      } as any);
+    });
+
+    it('calls the new catalog endpoint /ai/internal/operations/catalog/:operationId', async () => {
+      await service.resolveContract({} as any, opNode());
+      expect(axiosGet).toHaveBeenCalledWith(
+        expect.stringContaining('/ai/internal/operations/catalog/'),
+        expect.any(Object)
+      );
+    });
+
+    it('returns llm_operation sourceType and schemas from catalog', async () => {
+      const contract = await service.resolveContract({} as any, opNode());
+      expect(contract.sourceType).toBe('llm_operation');
+      expect(contract.outputSchema).toEqual(
+        expect.objectContaining({ properties: expect.objectContaining({ summary: { type: 'string' } }) })
+      );
+      expect(contract.inputSchema).toEqual(
+        expect.objectContaining({ properties: expect.objectContaining({ text: { type: 'string' } }) })
+      );
+    });
+
+    it('ignores planner-authored operationDigest and returns catalog authority', async () => {
+      const contract = await service.resolveContract(
+        {} as any,
+        opNode({ operationDigest: 'sha256:different' }),
+      );
+      expect(contract.capabilityRef).toEqual({
+        id: 'summarize_text',
+        version: '1',
+        digest: 'sha256:abc123def456',
+      });
+    });
+
+    it('accepts when operationDigest pin matches catalog digest', async () => {
+      const contract = await service.resolveContract({} as any, opNode({ operationDigest: 'sha256:abc123def456' }));
+      expect(contract.outputSchema).not.toBeNull();
+    });
+
+    it('accepts legacy promptTemplateVersion pin matching catalog version', async () => {
+      const contract = await service.resolveContract({} as any, opNode({ promptTemplateVersion: '1' }));
+      expect(contract.outputSchema).not.toBeNull();
+    });
+
+    it('ignores legacy planner version and returns the activated catalog version', async () => {
+      const contract = await service.resolveContract(
+        {} as any,
+        opNode({ promptTemplateVersion: '2' }),
+      );
+      expect(contract.capabilityRef?.version).toBe('1');
     });
   });
 });

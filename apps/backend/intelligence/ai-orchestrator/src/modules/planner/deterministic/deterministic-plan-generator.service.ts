@@ -1,16 +1,27 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, Optional } from '@nestjs/common';
 import { ERROR_CODES } from '@ops/backend-error-codes';
 import { ModelService } from '../../model/model.service';
 import { CapabilityCandidateSelectorService } from '../candidate-selection/capability-candidate-selector.service';
-import { LLM_OPERATION_TEMPLATES } from '../../llm-operation/llm-operation.registry';
+import { LlmOperationRegistryService } from '../../llm-operation/registry/llm-operation-registry.service';
 import type {
   DeterministicPlanDraftV1,
   CompactCapabilityCardV1,
 } from '@ops/backend-deterministic-plan';
+import { projectOutputSchemaV1 } from '@ops/backend-deterministic-plan';
+
+import { MultiNodeParameterBinderService } from '../binding/multi-node-parameter-binder.service';
+import { DeterministicContractAssemblerService } from './deterministic-contract-assembler.service';
+import { RoutingCapabilityCardProjector } from '../candidate-selection/routing-capability-card.projector';
+import { DeterministicTopologyPlannerService } from '../topology/deterministic-topology-planner.service';
+import { DeterministicTopologyValidatorService } from '../topology/deterministic-topology-validator.service';
+import { isAcceptedSkillMatch } from '../skill/skill-match-policy';
+import { DeterministicRecipeMatcherService } from '../topology/deterministic-recipe-matcher.service';
+import { DeterministicRecipeTopologyBuilderService } from '../topology/deterministic-recipe-topology-builder.service';
 
 export interface GenerateDeterministicPlanRequestDto {
   userRequest: string;
   availableSkills?: any[];
+  systemInputs?: Record<string, unknown>;
 }
 
 @Injectable()
@@ -20,10 +31,26 @@ export class DeterministicPlanGeneratorService {
   constructor(
     private readonly modelService: ModelService,
     private readonly candidateSelector: CapabilityCandidateSelectorService,
+    @Optional()
+    private readonly llmOperationRegistry?: LlmOperationRegistryService,
+    @Optional()
+    private readonly parameterBinder?: MultiNodeParameterBinderService,
+    @Optional()
+    private readonly contractAssembler?: DeterministicContractAssemblerService,
+    @Optional()
+    private readonly cardProjector?: RoutingCapabilityCardProjector,
+    @Optional()
+    private readonly topologyPlanner?: DeterministicTopologyPlannerService,
+    @Optional()
+    private readonly topologyValidator?: DeterministicTopologyValidatorService,
+    @Optional()
+    private readonly recipeMatcher?: DeterministicRecipeMatcherService,
+    @Optional()
+    private readonly recipeTopologyBuilder?: DeterministicRecipeTopologyBuilderService,
   ) {}
 
   public async generatePlan(dto: GenerateDeterministicPlanRequestDto): Promise<DeterministicPlanDraftV1> {
-    const { skillCards, llmOperationCards } = this.candidateSelector.selectCandidates(
+    const { skillCards, llmOperationCards } = await this.candidateSelector.selectCandidates(
       dto.userRequest,
       dto.availableSkills || [],
     );
@@ -34,14 +61,96 @@ export class DeterministicPlanGeneratorService {
       throw err;
     }
 
-    const requiresArtifactOutput = this.requiresArtifactOutput(dto.userRequest);
-    if (requiresArtifactOutput && !skillCards.some((card) => card.supportsArtifactOutput)) {
-      const err: any = new Error('用户要求生成文件，但当前可用能力中没有已发布且可执行的文件/产物输出 Skill');
-      err.code = 'CAPABILITY_NOT_FOUND';
-      throw err;
+    // Stage 1: LLM intent recognition and minimal topology planning.
+    if (
+      this.cardProjector &&
+      this.topologyPlanner &&
+      this.topologyValidator &&
+      this.parameterBinder &&
+      this.contractAssembler
+    ) {
+      try {
+        const { routingCards, aliasMap } = this.cardProjector.projectCandidateCards(
+          skillCards,
+          llmOperationCards,
+        );
+
+        const recipe = this.recipeMatcher?.matchRecipe(
+          dto.userRequest,
+          skillCards,
+          llmOperationCards,
+        );
+        const recipeTopology = recipe
+          ? this.recipeTopologyBuilder?.buildTopologyFromRecipe(
+              recipe,
+              skillCards,
+              llmOperationCards,
+            )
+          : null;
+        const topologyDraft =
+          recipeTopology ||
+          (await this.topologyPlanner.planTopology(dto.userRequest, routingCards));
+
+        if (topologyDraft) {
+          if (
+            topologyDraft.matchDecision !== 'matched' ||
+            !isAcceptedSkillMatch(topologyDraft.matchConfidence)
+          ) {
+            const err: any = new Error(
+              topologyDraft.matchReason || 'No sufficiently matching Skill is available'
+            );
+            err.code = 'CAPABILITY_NOT_FOUND';
+            throw err;
+          }
+          const validation = this.topologyValidator.validateTopology(
+            topologyDraft,
+            aliasMap,
+          );
+
+          if (validation.valid) {
+            this.logger.log(`Two-Stage LLM Topology Planner succeeded for request: "${dto.userRequest}"`);
+
+            const bindingResult = await this.parameterBinder.bindParameters(
+              dto.userRequest,
+              topologyDraft.nodes,
+              aliasMap,
+              undefined,
+              dto.systemInputs,
+            );
+
+            const planDraft = this.contractAssembler.assemblePlan(
+              topologyDraft,
+              bindingResult,
+              aliasMap,
+            );
+
+            (planDraft as any).promptDebug = {
+              debugSource: 'planner',
+              systemPrompt: `Two-Stage LLM Topology Planner`,
+              userPrompt: dto.userRequest,
+              systemPromptSectionKeys: ['routing_cards', 'topology_dag'],
+              userPromptSectionKeys: ['user_request'],
+              notes: [
+                'Generated via LLM topology recognition followed by selected-capability parameter recognition.',
+                ...(bindingResult.notes || []),
+              ],
+              llmCalls: bindingResult.llmCalls || [],
+            };
+
+            return planDraft;
+          }
+          throw new Error(`LLM topology validation failed: ${validation.errors.join('; ')}`);
+        }
+        throw new Error('LLM topology planner returned no topology');
+      } catch (twoStageErr: any) {
+        this.logger.error(`Two-Stage Topology Planner failed: ${twoStageErr.message}`);
+        throw twoStageErr;
+      }
     }
 
-    const systemPrompt = this.buildSystemPrompt(skillCards, llmOperationCards);
+    // Compatibility path for isolated/unit deployments that have not wired the
+    // two-stage services yet. Production PlannerModule wires all of them.
+    const systemPrompt = this.buildSystemPrompt(skillCards, llmOperationCards, dto.systemInputs);
     const userPrompt = `用户请求: "${dto.userRequest}"`;
 
     const activeModel = this.modelService.getPreferredDefaultModel({ mode: 'task' });
@@ -57,31 +166,70 @@ export class DeterministicPlanGeneratorService {
       'reasoning',
     );
 
+    let planDraft: DeterministicPlanDraftV1;
     try {
-      return this.parseAndValidatePlanJson(
+      planDraft = await this.parseAndValidatePlanJson(
         response.content,
         dto.userRequest,
         skillCards,
-        requiresArtifactOutput,
       );
     } catch (firstErr) {
       this.logger.warn(`Failed to parse initial plan JSON output, attempting format repair...`);
       const repairReason = firstErr instanceof Error ? firstErr.message : String(firstErr);
       const repairPrompt = `${systemPrompt}\n\n${userPrompt}\n\n你的上次输出未通过校验：${repairReason}\n上次输出：\n${response.content}\n\n请保留用户的完整目标并重新输出符合 Schema 的纯 JSON。若用户要求生成文件，必须包含 supportsArtifactOutput=true 的最终 Skill 节点，并声明 artifact_ref finalOutput。`;
       response = await this.modelService.callModel(activeModel.id, repairPrompt, 'reasoning');
-      return this.parseAndValidatePlanJson(
+      planDraft = await this.parseAndValidatePlanJson(
         response.content,
         dto.userRequest,
         skillCards,
-        requiresArtifactOutput,
       );
     }
+
+    (planDraft as any).promptDebug = {
+      debugSource: 'planner',
+      systemPrompt,
+      userPrompt,
+      systemPromptSectionKeys: ['candidate_selection', 'decomposition_constraints'],
+      userPromptSectionKeys: ['user_request'],
+      modelId: activeModel.id,
+      llmRequestMessages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      llmResponseText: response.content,
+      llmCalls: [
+        {
+          stage: 'planner',
+          label: '确定性任务拆分规划',
+          modelId: activeModel.id,
+          requestMessages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          responseText: response.content,
+        },
+      ],
+    };
+
+    return planDraft;
   }
 
   private buildSystemPrompt(
     skillCards: CompactCapabilityCardV1[],
     llmOperationCards: CompactCapabilityCardV1[],
+    systemInputs?: Record<string, unknown>,
   ): string {
+    const previousResultText =
+      typeof systemInputs?.previousResultText === 'string'
+        ? systemInputs.previousResultText.slice(0, 6000)
+        : undefined;
+    const sessionContextSection = previousResultText
+      ? `\n【会话上下文】用户本会话上一次任务的输出结果如下（节选）：
+${previousResultText}
+
+若本次任务的能力需要内容类参数（如 content、text、markdown、summary），可规划直接使用该输出作为输入（inputBindings 中声明 content 等参数并交由参数绑定阶段处理）；若该输出与本次任务无关，则忽略。\n`
+      : '';
+
     return `你是一个企业级 AI 系统的确定性任务拆分规划器 (Deterministic Task Decomposition Planner)。
 你的唯一职责是将用户复合请求分解为一个受约束的顺序执行计划 (DeterministicPlanDraftV1)。
 
@@ -95,13 +243,14 @@ export class DeterministicPlanGeneratorService {
    - "node_output": 依赖上游节点的输出路径
 6. 禁止把 apiKey、token、secret、password、authorization 等凭据字段写入 inputBindings；这些字段由 Skill 发布配置或运行时默认值处理。
 7. 只输出纯 JSON 格式，严禁附带 Markdown 解释。
-8. 【关键】禁止在节点 JSON 中声明 outputContract 字段——它由规划器根据可信来源自动派生：skill 节点取自候选卡片声明的 outputs（搜索类 Skill 通常为 "searchResults"/"results"），llm_operation 节点恒为 { markdown_content: "markdown_content" }。LLM 声明的 outputContract 一律被丢弃，无法影响最终计划。
+8. 【关键】禁止在节点 JSON 中声明 outputContract 字段——它由控制面根据候选能力的权威 outputSchema 自动派生。不同 llm_operation 的输出字段可以不同；LLM 声明的 outputContract 一律被丢弃，无法影响最终计划。
 9. 【关键】finalOutputs[i].expectedType 必须与上游节点实际输出字段的系统类型标签一致。合法取值为：
    - "artifact_ref"：文件产物节点（supportsArtifactOutput=true 的 skill）
    - "markdown_content"：llm_operation 汇总节点
    - "news_item_list"：搜索节点的列表类结果
    严禁使用 "text"、"string"、"content"、"data" 等非系统定义类型标签。
-
+10. llm_operation 节点只输出 operationId、依赖和 inputBindings；禁止输出 Prompt、模型参数、Version 或 Digest。这些权威字段由 Registry 和控制面冻结阶段补全。
+${sessionContextSection}
 【候选 Skill 能力卡片】:
 ${JSON.stringify(skillCards, null, 2)}
 
@@ -138,12 +287,6 @@ ${JSON.stringify(llmOperationCards, null, 2)}
       "title": "汇总股票情报",
       "kind": "llm_operation",
       "operationId": "summarize_list",
-      "promptTemplateId": "news-summary",
-      "promptTemplateVersion": "1",
-      "modelPolicyId": "task-default",
-      "temperature": 0,
-      "maxInputTokens": 4000,
-      "maxOutputTokens": 2000,
       "dependsOn": ["search_stock_step"],
       "inputBindings": {
         "items": { "source": "node_output", "nodeId": "search_stock_step", "path": "results" }
@@ -191,12 +334,6 @@ ${JSON.stringify(llmOperationCards, null, 2)}
       "title": "总结内容",
       "kind": "llm_operation",
       "operationId": "summarize_list",
-      "promptTemplateId": "news-summary",
-      "promptTemplateVersion": "1",
-      "modelPolicyId": "task-default",
-      "temperature": 0,
-      "maxInputTokens": 4000,
-      "maxOutputTokens": 2000,
       "dependsOn": ["search_step"],
       "inputBindings": {
         "items": { "source": "node_output", "nodeId": "search_step", "path": "results" }
@@ -232,12 +369,11 @@ ${JSON.stringify(llmOperationCards, null, 2)}
 }`;
   }
 
-  private parseAndValidatePlanJson(
+  private async parseAndValidatePlanJson(
     rawText: string,
     originalRequest: string,
     skillCards: CompactCapabilityCardV1[],
-    requiresArtifactOutput: boolean,
-  ): DeterministicPlanDraftV1 {
+  ): Promise<DeterministicPlanDraftV1> {
     let cleaned = rawText.trim();
     if (cleaned.startsWith('```json')) {
       cleaned = cleaned.replace(/^```json/i, '').replace(/```$/i, '').trim();
@@ -264,17 +400,16 @@ ${JSON.stringify(llmOperationCards, null, 2)}
     parsed.originalRequest = originalRequest;
     parsed.status = 'draft';
 
-    // Strictly validate Skill nodes against available candidate cards
     if (Array.isArray(parsed.nodes)) {
       for (const node of parsed.nodes) {
         if (node.kind === 'skill') {
-          const card = skillCards.find(
-            (c) =>
-              c.publishedSkillId === node.skillId ||
-              c.id === node.skillId ||
-              c.displayName === node.skillId ||
-              c.displayName === (node as any).capabilityKey ||
-              c.id === (node as any).capabilityKey,
+          const declaredIdentifiers = [node.skillId, (node as any).capabilityKey].filter(
+            (value): value is string => typeof value === 'string' && value.trim().length > 0,
+          );
+          const card = skillCards.find((candidate) =>
+            [candidate.publishedSkillId, candidate.id, candidate.displayName]
+              .filter((value): value is string => typeof value === 'string' && value.length > 0)
+              .some((value) => declaredIdentifiers.includes(value)),
           );
 
           if (!card) {
@@ -308,21 +443,26 @@ ${JSON.stringify(llmOperationCards, null, 2)}
           this.removeSensitiveInputBindings(node.inputBindings);
           this.validateAndNormalizeInputBindingEnums(node.inputBindings, card);
         } else if (node.kind === 'llm_operation') {
-          const tmpl = LLM_OPERATION_TEMPLATES[node.operationId as keyof typeof LLM_OPERATION_TEMPLATES];
-          if (tmpl) {
-            // Enforce canonical promptTemplateId/version/modelPolicyId from the registry,
-            // ignoring whatever the LLM hallucinated.
-            node.promptTemplateId = tmpl.promptTemplateId;
-            node.promptTemplateVersion = tmpl.version;
-            node.modelPolicyId = tmpl.modelPolicyId;
-            node.temperature = tmpl.temperature;
-            node.maxInputTokens = tmpl.maxInputTokens;
-            node.maxOutputTokens = tmpl.maxOutputTokens;
+          if (!this.llmOperationRegistry) {
+            throw new Error('LLM Operation registry is unavailable');
           }
-          // Normalize llm_operation outputContract: only allow well-known output field names.
-          // LLMs frequently hallucinate field names like "summary", "content", "text" for
-          // what should always be "markdown_content".
-          this.normalizeLlmOperationOutputContract(node);
+          const resolved = await this.llmOperationRegistry.resolveActiveVersion(
+            node.operationId,
+            'production',
+          );
+
+          const manifest = resolved.version.manifestJson || {};
+          node.promptTemplateId = manifest.promptTemplateId || node.operationId;
+          node.promptTemplateVersion = resolved.version.version;
+          node.operationVersion = resolved.version.version;
+          node.operationDigest = resolved.version.operationDigest || '';
+          node.contractDigest = resolved.version.contractDigest || '';
+          node.modelPolicyId = manifest.modelPolicyId || 'task-default';
+          node.temperature = manifest.temperature ?? 0;
+          node.maxInputTokens = manifest.maxInputTokens ?? 4000;
+          node.maxOutputTokens = manifest.maxOutputTokens ?? 2000;
+
+          this.normalizeLlmOperationOutputContract(node, manifest.outputSchema);
         }
       }
     }
@@ -341,7 +481,12 @@ ${JSON.stringify(llmOperationCards, null, 2)}
     // raises INPUT_TYPE_MISMATCH because binding.path doesn't exist in outputContract.
     this.alignInputBindingPaths(parsed);
 
-    if (requiresArtifactOutput) {
+    if (
+      Array.isArray(parsed.finalOutputs) &&
+      parsed.finalOutputs.some(
+        (output: any) => output?.isArtifact === true || output?.expectedType === 'artifact_ref',
+      )
+    ) {
       this.assertPlanProducesArtifact(parsed, skillCards);
     }
 
@@ -399,24 +544,17 @@ ${JSON.stringify(llmOperationCards, null, 2)}
   }
 
   /**
-   * Derive an llm_operation node's outputContract (fix ⑤). The LLM's own
-   * declaration is DISCARDED — an llm_operation node always exposes exactly
-   * `{ markdown_content: "markdown_content" }` in this system. LLMs commonly
-   * hallucinate field names like "summary", "content", "text", "result"; any
-   * such declaration would fail FINAL_OUTPUT_UNSATISFIED validation later.
+   * Derive an llm_operation node's outputContract from the authoritative DB schema.
+   * The LLM's own declaration is DISCARDED — the DB is the trusted source.
    */
-  private normalizeLlmOperationOutputContract(node: any): void {
-    const contract = node.outputContract;
-    if (contract && typeof contract === 'object') {
-      const unexpected = Object.keys(contract).filter((key) => key !== 'markdown_content');
-      if (unexpected.length > 0) {
-        this.logger.warn(
-          `llm_operation node '${node.nodeId}' declared outputContract field(s) ${unexpected.join(', ')} — ` +
-            `ignoring LLM-declared outputContract (fix ⑤, derived contract used instead)`,
-        );
-      }
+  private normalizeLlmOperationOutputContract(node: any, outputSchema: any): void {
+    const projected = projectOutputSchemaV1(outputSchema).outputContract;
+    if (Object.keys(projected).length > 0) {
+      node.outputContract = projected;
+    } else {
+      // Fallback to markdown_content if no schema available
+      node.outputContract = { markdown_content: 'markdown_content' };
     }
-    node.outputContract = { markdown_content: 'markdown_content' };
   }
 
   /**
@@ -493,20 +631,6 @@ ${JSON.stringify(llmOperationCards, null, 2)}
         output.expectedType = declaredType;
       }
     }
-  }
-
-  private requiresArtifactOutput(userRequest: string): boolean {
-    const normalized = (userRequest || '').replace(/\s+/g, '').toLowerCase();
-    return (
-      normalized.includes('输出md') ||
-      normalized.includes('生成md') ||
-      normalized.includes('md文件') ||
-      normalized.includes('markdown文件') ||
-      normalized.includes('输出文件') ||
-      normalized.includes('生成文件') ||
-      normalized.includes('保存为') ||
-      normalized.includes('导出')
-    );
   }
 
   private removeSensitiveInputBindings(inputBindings?: Record<string, any>): void {

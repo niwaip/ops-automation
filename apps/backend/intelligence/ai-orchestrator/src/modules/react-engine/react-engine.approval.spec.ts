@@ -6,6 +6,7 @@ import {
   StreamEventType,
   ToolDefinition,
 } from './interfaces';
+import { PromptDebugSettingsService } from '../debug-settings/prompt-debug-settings.service';
 
 describe('ReActEngineService approval resume', () => {
   it('resumes the blocked action when approval is granted without a new message', async () => {
@@ -153,7 +154,8 @@ describe('ReActEngineService approval resume', () => {
       toolExecutor,
       sessionService,
       capabilityResolver,
-      modelRouterService
+      modelRouterService,
+      new PromptDebugSettingsService()
     );
 
     const context: ExecutionContext = {

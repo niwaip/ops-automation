@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { CapabilityReleaseRecorderBridgeCompilerService } from '../compiler/capability-release-recorder-bridge-compiler.service';
 import { BrowserRecordingExecutionPlanValidatorService } from '../validator/browser-recording-execution-plan-validator.service';
@@ -24,30 +24,12 @@ import {
   UpdateSkillDraftDTO,
 } from '../interfaces';
 
-type ExceptionLike = Error & {
-  name: string;
-  status: number;
-  response: string | Record<string, unknown>;
-};
-
-function createBadRequestException(response: string | Record<string, unknown>): ExceptionLike {
-  const message =
-    typeof response === 'string' ? response : String((response as Record<string, unknown>).message ?? 'Bad Request');
-  const error = new Error(message) as ExceptionLike;
-  error.name = 'BadRequestException';
-  error.status = 400;
-  error.response = response;
-  return error;
+function createBadRequestException(response: string | Record<string, unknown>): BadRequestException {
+  return new BadRequestException(response);
 }
 
-function createNotFoundException(response: string | Record<string, unknown>): ExceptionLike {
-  const message =
-    typeof response === 'string' ? response : String((response as Record<string, unknown>).message ?? 'Not Found');
-  const error = new Error(message) as ExceptionLike;
-  error.name = 'NotFoundException';
-  error.status = 404;
-  error.response = response;
-  return error;
+function createNotFoundException(response: string | Record<string, unknown>): NotFoundException {
+  return new NotFoundException(response);
 }
 
 export interface CapabilityReleasePublishAccessors {
@@ -375,10 +357,28 @@ export class CapabilityReleasePublishService {
       });
     }
 
+    const buildId = release.currentBuildId || release.latestSuccessfulBuildId;
+
     // §10.3 hard gate: publish is blocked until the fixture set is complete
     // (≥1 input, ≥1 runtime output, ≥1 negative fixture). An incomplete
     // fixture set cannot be published as a contract-guaranteed capability.
-    const fixtureResult = await this.capabilityFixtureService.validateFixturesExist(id);
+    // When the current immutable build has successful runtime evidence, first
+    // materialize the three-piece bundle from that evidence. This closes the
+    // former gap where the gate existed but no production path stored fixtures.
+    let fixtureResult = await this.capabilityFixtureService.validateFixturesExist(
+      id,
+      buildId || undefined
+    );
+    if (!fixtureResult.valid && buildId) {
+      const materialized = await this.capabilityFixtureService.ensureFixturesForBuild({
+        releaseId: id,
+        buildId,
+        draftPayload: normalizedDraftPayload,
+      });
+      fixtureResult = materialized.valid
+        ? await this.capabilityFixtureService.validateFixturesExist(id, buildId)
+        : { valid: false, errors: materialized.errors };
+    }
     if (!fixtureResult.valid) {
       await accessors.insertAuditEvent(
         id,
@@ -386,11 +386,12 @@ export class CapabilityReleasePublishService {
         userId,
         false,
         `发布被 Fixture 门禁拦截: ${fixtureResult.errors.join('; ')}`,
-        { errors: fixtureResult.errors }
+        { buildId: buildId || null, errors: fixtureResult.errors }
       );
       throw createBadRequestException({
         code: this.capabilityFixtureService.errorCode,
         message: `Capability 缺少必要 Fixture，无法发布: ${fixtureResult.errors.join('; ')}`,
+        buildId: buildId || null,
         errors: fixtureResult.errors,
       });
     }
@@ -418,7 +419,6 @@ export class CapabilityReleasePublishService {
     // pass the activation gate, so the publish itself is BLOCKED on failure.
     // The error is logged and recorded as an audit event (fix ⑨) before
     // throwing so operators can see exactly why the publish was blocked.
-    const buildId = release.currentBuildId || release.latestSuccessfulBuildId;
     if (buildId) {
       try {
         await this.capabilityAttestationService.buildAttestation(

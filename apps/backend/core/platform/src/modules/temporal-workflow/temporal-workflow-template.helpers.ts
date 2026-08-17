@@ -740,6 +740,9 @@ export function normalizeWorkflowInputParamType(
   buildWorkflowSemanticHint: BuildWorkflowSemanticHint
 ): WorkflowInputParamType {
   const hint = buildWorkflowSemanticHint(dataType, fieldName);
+  if (/\b(integer|int|int32|int64|long)\b/.test(hint)) {
+    return 'integer';
+  }
   if (/\b(number|int|float|double|decimal|amount|price|count|qty|quantity|ratio)\b/.test(hint)) {
     return 'number';
   }
@@ -763,7 +766,10 @@ function normalizeWorkflowExampleValue(
       return undefined;
     }
     const type = normalizeWorkflowInputParamType(dataType, '', buildWorkflowSemanticHint);
-    if (type === 'number' && /^-?\d+(\.\d+)?$/.test(trimmed.replace(/,/g, ''))) {
+    if (
+      (type === 'number' || type === 'integer') &&
+      /^-?\d+(\.\d+)?$/.test(trimmed.replace(/,/g, ''))
+    ) {
       return Number(trimmed.replace(/,/g, ''));
     }
     if (type === 'boolean') {

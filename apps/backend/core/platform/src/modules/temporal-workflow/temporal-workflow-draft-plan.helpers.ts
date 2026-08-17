@@ -3,6 +3,7 @@ import {
   STRUCTURED_TRANSFORM_STEP_CONFIG_KEY,
 } from './builtin-activity.registry';
 import { buildStructuredTransformPlaceholderKeys } from './temporal-workflow-draft.helpers';
+import { compileDraftValidationContract } from './temporal-workflow-draft-validation.compiler';
 import {
   buildGenericAiDraftSampleValue,
   extractAiDraftSampleValuesFromReferenceUrl,
@@ -45,7 +46,9 @@ export function validateAiWorkflowDraftPlan(
     }
     const declaredType = String(definition?.type || '').trim();
     const incompatibleValues = enumValues.filter((value) =>
-      declaredType === 'number' ? typeof value !== 'number' : typeof value !== 'string'
+      declaredType === 'number' || declaredType === 'integer'
+        ? typeof value !== 'number'
+        : typeof value !== 'string'
     );
     if (declaredType && incompatibleValues.length > 0) {
       issues.push(`输入参数 ${paramName} 的 enum 值类型必须与 type=${declaredType} 一致。`);
@@ -66,6 +69,21 @@ export function validateAiWorkflowDraftPlan(
       issues.push(`输入参数 ${paramName} 的 exampleValue 必须属于 enum。`);
     }
   });
+
+  const declaredOutputFields = Object.keys(plan.outputParams || {}).filter((field) =>
+    String(field || '').trim()
+  );
+  if (plan.validation?.assertions?.length) {
+    const compiledValidation = compileDraftValidationContract(plan.validation, {
+      fields: Object.fromEntries(
+        declaredOutputFields.map((field) => [
+          field,
+          { source: { step: '__draft__', path: '$' } },
+        ])
+      ),
+    });
+    issues.push(...compiledValidation.issues);
+  }
 
   steps.forEach((step, index) => {
     const stepName = deps.pickFirstNonEmptyString(step?.name) || `步骤 ${index + 1}`;

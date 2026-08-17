@@ -149,10 +149,14 @@ export const activityApi = {
     config: CreateActivityDto,
     errorContext?: string
   ): Promise<GenerateCodeResult> => {
-    return apiClient.post<GenerateCodeResult>('/activities/generate-code', {
-      config,
-      errorContext,
-    });
+    return apiClient.post<GenerateCodeResult>(
+      '/activities/generate-code',
+      {
+        config,
+        errorContext,
+      },
+      { timeout: 300000 }
+    );
   },
 
   executeCode: async (data: ExecuteCodeDto): Promise<ExecuteCodeResult> => {

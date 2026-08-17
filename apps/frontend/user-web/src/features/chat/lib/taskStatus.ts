@@ -135,6 +135,16 @@ export const resolveMessageTaskStatus = (message: ChatMessage): ChatTaskStatus |
   return metadataStatus || partsStatus;
 };
 
+/**
+ * Resolve the execution represented by a chat message.
+ *
+ * The task card is emitted by the current stream event, while metadata can be
+ * retained when local and persisted messages are reconciled. Prefer the task
+ * card so a stale metadata value can never make an action target another run.
+ */
+export const resolveMessageExecutionId = (message: ChatMessage): string | undefined =>
+  resolveTaskParts(message.contentParts).executionId || message.metadata?.executionId;
+
 export const getLatestWaitingInputExecutionId = (
   messages: ChatMessage[]
 ): string | undefined => {
@@ -144,8 +154,7 @@ export const getLatestWaitingInputExecutionId = (
     if (resolveMessageTaskStatus(message) !== 'waiting_input') {
       continue;
     }
-    const executionId =
-      message.metadata?.executionId || resolveTaskParts(message.contentParts).executionId;
+    const executionId = resolveMessageExecutionId(message);
     if (executionId) {
       return executionId;
     }

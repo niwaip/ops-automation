@@ -4,7 +4,9 @@ import type { ExecutionCreateFormValues } from '@/features/executions/create/lib
 import { useQuery } from 'react-query';
 import { useSearchParams } from 'react-router-dom';
 import { capabilityReleaseApi } from '@/api/capabilities';
+import { savedSkillApi } from '@/api/savedSkills';
 import { skillApi } from '@/api/skill';
+import type { SkillConfigDTO, SkillParamsSchema } from '@/api/skill';
 import {
   getDefaultScheduleName,
   getInitialInputValues,
@@ -16,6 +18,8 @@ type PublishedSkillOption = {
   skillId: string;
   skillName: string;
   updatedAt: string;
+  sourceType: 'published' | 'saved-workflow';
+  skillVersion?: string;
 };
 
 type PublishedSkillCandidate = PublishedSkillOption & {
@@ -23,7 +27,7 @@ type PublishedSkillCandidate = PublishedSkillOption & {
 };
 
 interface UseExecutionCreateSkillStateOptions {
-  form: FormInstance;
+  form: FormInstance<ExecutionCreateFormValues>;
 }
 
 export function useExecutionCreateSkillState({
@@ -34,6 +38,7 @@ export function useExecutionCreateSkillState({
   const { user } = useAuthStore();
   const initializedSkillIdRef = useRef<string | undefined>();
   const initialSkillId = searchParams.get('skillId') || undefined;
+  const initialMode = searchParams.get('mode');
 
   const publishedSkillsQuery = useQuery(
     ['published-skills-for-execution-create'],
@@ -42,6 +47,11 @@ export function useExecutionCreateSkillState({
   const authorizedSkillsQuery = useQuery(
     ['authorized-skills-for-execution-create'],
     skillApi.list
+  );
+  const savedSkillsQuery = useQuery(
+    ['user-saved-skills'],
+    () => savedSkillApi.list(),
+    { staleTime: 15_000 }
   );
 
   const authorizedSkillIds = useMemo(
@@ -71,6 +81,7 @@ export function useExecutionCreateSkillState({
         skillName: release.sourceName || release.sourceId || release.publishedSkillId,
         updatedAt: release.updatedAt,
         releaseVersion: release.releaseVersion || 0,
+        sourceType: 'published',
       };
       const currentItem = skillMap.get(sourceKey);
 
@@ -85,23 +96,64 @@ export function useExecutionCreateSkillState({
       }
     });
 
-    return Array.from(skillMap.values())
-      .map(({ releaseVersion: _releaseVersion, ...item }) => item)
-      .sort((left, right) => left.skillName.localeCompare(right.skillName));
-  }, [authorizedSkillIds, publishedSkillsQuery.data?.releases, user?.role]);
+    const publishedOptions = Array.from(skillMap.values())
+      .map(({ releaseVersion: _releaseVersion, ...item }) => item);
+    const savedOptions: PublishedSkillOption[] = (savedSkillsQuery.data?.skills || [])
+      .filter((skill) => skill.status === 'active')
+      .map((skill) => ({
+        skillId: skill.id,
+        skillName: skill.name,
+        updatedAt: skill.updatedAt,
+        sourceType: 'saved-workflow',
+        skillVersion: skill.version,
+      }));
+
+    return [...savedOptions, ...publishedOptions].sort((left, right) =>
+      left.skillName.localeCompare(right.skillName)
+    );
+  }, [
+    authorizedSkillIds,
+    publishedSkillsQuery.data?.releases,
+    savedSkillsQuery.data?.skills,
+    user?.role,
+  ]);
 
   const selectedSkillOption = useMemo(
     () => skillOptions.find((skill) => skill.skillId === selectedSkillId),
     [selectedSkillId, skillOptions]
   );
+  const selectedSavedSkill = useMemo(
+    () =>
+      (savedSkillsQuery.data?.skills || []).find(
+        (skill) => skill.id === selectedSkillId && skill.status === 'active'
+      ),
+    [savedSkillsQuery.data?.skills, selectedSkillId]
+  );
 
   const selectedSkillQuery = useQuery(
     ['skill-detail-for-execution-create', selectedSkillId],
     () => skillApi.getById(selectedSkillId ?? ''),
-    { enabled: Boolean(selectedSkillId) }
+    {
+      enabled: Boolean(selectedSkillId) && !savedSkillsQuery.isLoading && !selectedSavedSkill,
+    }
   );
 
-  const selectedSkill = selectedSkillQuery.data;
+  const selectedSkill = useMemo<SkillConfigDTO | undefined>(() => {
+    if (!selectedSavedSkill) return selectedSkillQuery.data;
+    return {
+      id: selectedSavedSkill.id,
+      name: selectedSavedSkill.name,
+      description: selectedSavedSkill.description || '从成功执行保存的固定多步工作流',
+      triggerKeywords: [],
+      paramsSchema: selectedSavedSkill.paramsSchema as unknown as SkillParamsSchema,
+      executionFlowTemplateIds: [],
+      tools: [],
+      isActive: selectedSavedSkill.status === 'active',
+      isPublished: false,
+      publishedReleaseVersion: Number(selectedSavedSkill.version),
+      publishedSourceType: 'user_saved_workflow',
+    };
+  }, [selectedSavedSkill, selectedSkillQuery.data]);
   const selectedSkillDisplayName =
     selectedSkillOption?.skillName || selectedSkill?.name || selectedSkillId || '-';
   const schemaFields = useMemo(
@@ -122,6 +174,12 @@ export function useExecutionCreateSkillState({
   }, [form, initialSkillId]);
 
   useEffect(() => {
+    if (initialMode === 'schedule') {
+      form.setFieldValue('executionMode', 'schedule');
+    }
+  }, [form, initialMode]);
+
+  useEffect(() => {
     if (!selectedSkill?.id) {
       initializedSkillIdRef.current = undefined;
       form.setFieldValue('input', {});
@@ -133,9 +191,7 @@ export function useExecutionCreateSkillState({
     }
 
     initializedSkillIdRef.current = selectedSkill.id;
-    form.setFieldsValue({
-      input: getInitialInputValues(schemaFields),
-    });
+    form.setFieldValue('input', getInitialInputValues(schemaFields));
   }, [form, schemaFields, selectedSkill]);
 
   useEffect(() => {
@@ -143,13 +199,11 @@ export function useExecutionCreateSkillState({
       return;
     }
 
-    const currentScheduleName = form.getFieldValue('scheduleName');
-    if (!currentScheduleName) {
+    if (!form.getFieldValue('scheduleName')) {
       form.setFieldValue('scheduleName', getDefaultScheduleName(selectedSkillDisplayName));
     }
 
-    const currentTimezone = form.getFieldValue('timezone');
-    if (!currentTimezone) {
+    if (!form.getFieldValue('timezone')) {
       form.setFieldValue('timezone', 'Asia/Shanghai');
     }
 
@@ -172,10 +226,12 @@ export function useExecutionCreateSkillState({
 
   return {
     initialSkillId,
-    isSkillOptionsLoading: publishedSkillsQuery.isLoading || authorizedSkillsQuery.isLoading,
+    isSkillOptionsLoading:
+      publishedSkillsQuery.isLoading || authorizedSkillsQuery.isLoading || savedSkillsQuery.isLoading,
     selectedSkill,
     selectedSkillDisplayName,
-    selectedSkillLoading: selectedSkillQuery.isFetching,
+    selectedSkillLoading: savedSkillsQuery.isLoading || selectedSkillQuery.isFetching,
+    selectedSkillVersion: selectedSkillOption?.skillVersion,
     skillOptions,
     schemaFields,
     requiredFieldCount,

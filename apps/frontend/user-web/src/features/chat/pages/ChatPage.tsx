@@ -6,7 +6,7 @@ import {
   App,
   Button,
 } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from 'react-query';
 import {
   type AIModel,
@@ -63,6 +63,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   const clearDraftContext = useChatStore((state) => state.clearDraftContext);
   const setCurrentSession = useChatStore((state) => state.setCurrentSession);
   const [draft, setDraft] = useState('');
+  const [sentHistory, setSentHistory] = useState<string[]>([]);
   const [pendingExecutionId, setPendingExecutionId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>('default');
   const [chatMode, setChatMode] = useState<'chat' | 'task'>('task');
@@ -211,6 +212,17 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     updateSessionMeta,
   });
 
+  // Wrap handleSend to push draft into sent history before clearing it
+  const handleSendWithHistory = useCallback(() => {
+    if (draft.trim()) {
+      setSentHistory((prev) => {
+        const next = [...prev, draft.trim()];
+        return next.length > 50 ? next.slice(next.length - 50) : next;
+      });
+    }
+    handleSend();
+  }, [draft, handleSend]);
+
   useEffect(() => {
     const models = modelsQuery.data || [];
     setSelectedModel((current) => current || models[0]?.id || 'default');
@@ -242,6 +254,25 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeMessages, isStreaming]);
+
+  useEffect(() => {
+    if (!activeMessages || activeMessages.length === 0) return;
+    const historyUserContents = activeMessages
+      .filter((m) => m.role === 'user' && typeof m.content === 'string' && m.content.trim())
+      .map((m) => m.content.trim());
+    if (historyUserContents.length > 0) {
+      setSentHistory((prev) => {
+        const combined = [...historyUserContents, ...prev];
+        const result: string[] = [];
+        for (const item of combined) {
+          if (item && result[result.length - 1] !== item) {
+            result.push(item);
+          }
+        }
+        return result.length > 50 ? result.slice(result.length - 50) : result;
+      });
+    }
+  }, [activeMessages]);
 
   const placeholder = useMemo(
     () => {
@@ -320,7 +351,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
           <UserChatComposer
             draft={draft}
             onDraftChange={setDraft}
-            onSend={handleSend}
+            onSend={handleSendWithHistory}
             onStop={handleStopStreaming}
             onNewSession={handleCreateSession}
             chatMode={chatMode}
@@ -337,6 +368,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             modelsLoading={modelsQuery.isLoading}
             disabled={false}
             placeholder={placeholder}
+            sentHistory={sentHistory}
           />
         </div>
       </div>

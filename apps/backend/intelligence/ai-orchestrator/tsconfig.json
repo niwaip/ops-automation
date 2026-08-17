@@ -6,8 +6,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@ops/backend-agent-profile": ["../../../../packages/backend-contracts/agent-profile/index.d.ts"],
-      "@ops/backend-deterministic-plan": ["../../../../packages/backend-contracts/deterministic-plan/index.d.ts"]
+      "@ops/backend-agent-profile": ["../../../../packages/backend-contracts/agent-profile/index.d.ts"]
     },
     "isolatedModules": true,
     "noUnusedLocals": false,

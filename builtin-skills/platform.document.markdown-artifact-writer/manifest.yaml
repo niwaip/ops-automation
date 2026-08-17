@@ -9,7 +9,7 @@ metadata:
     category: artifact
     domain: document
 spec:
-  definitionVersion: 1.0.1
+  definitionVersion: 1.0.2
   lifecycle: stable
   defaultAccess:
     mode: authenticated
@@ -43,10 +43,12 @@ spec:
       schemaRef: inline
       schema:
         type: object
+        x-primary-output: artifact
         required: [artifact, artifacts]
         properties:
           artifact:
             type: object
+            x-value-type: artifact_ref
             required: [type, name, url, mimeType, metadata]
             properties:
               type: { type: string }

@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { SchedulerService } from './scheduler.service';
@@ -29,22 +30,24 @@ export class SchedulerController {
     @Body() dto: CreateScheduleDto,
     @Req() req: AuthenticatedRequest
   ): Promise<ScheduleDto> {
-    const userId = req.user?.id || 'anonymous';
-    return this.schedulerService.create(userId, dto);
+    return this.schedulerService.create(this.requireUserId(req), dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'List schedules' })
   @ApiResponse({ status: 200, type: ScheduleDto, isArray: true })
   async list(@Req() req: AuthenticatedRequest): Promise<ScheduleDto[]> {
-    return this.schedulerService.list();
+    return this.schedulerService.list(this.requireUserId(req));
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get schedule by ID' })
   @ApiResponse({ status: 200, type: ScheduleDto })
-  async getById(@Param('id') id: string): Promise<ScheduleDto> {
-    const schedule = await this.schedulerService.getById(id);
+  async getById(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest
+  ): Promise<ScheduleDto> {
+    const schedule = await this.schedulerService.getById(id, this.requireUserId(req));
     if (!schedule) {
       throw new NotFoundException(`Schedule with ID ${id} not found.`);
     }
@@ -56,16 +59,20 @@ export class SchedulerController {
   @ApiResponse({ status: 200, type: ScheduleDto })
   async update(
     @Param('id') id: string,
-    @Body() dto: UpdateScheduleDto
+    @Body() dto: UpdateScheduleDto,
+    @Req() req: AuthenticatedRequest
   ): Promise<ScheduleDto> {
-    return this.schedulerService.update(id, dto);
+    return this.schedulerService.update(id, this.requireUserId(req), dto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete schedule' })
   @ApiResponse({ status: 200, description: 'Deleted successfully' })
-  async delete(@Param('id') id: string): Promise<{ success: boolean }> {
-    await this.schedulerService.delete(id);
+  async delete(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest
+  ): Promise<{ success: boolean }> {
+    await this.schedulerService.delete(id, this.requireUserId(req));
     return { success: true };
   }
 
@@ -77,8 +84,13 @@ export class SchedulerController {
     @Param('id') id: string,
     @Req() req: AuthenticatedRequest
   ): Promise<{ success: boolean }> {
-    const userId = req.user?.id || 'anonymous';
-    await this.schedulerService.triggerManually(id, userId);
+    await this.schedulerService.triggerManually(id, this.requireUserId(req));
     return { success: true };
+  }
+
+  private requireUserId(req: AuthenticatedRequest): string {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Authentication required');
+    return userId;
   }
 }

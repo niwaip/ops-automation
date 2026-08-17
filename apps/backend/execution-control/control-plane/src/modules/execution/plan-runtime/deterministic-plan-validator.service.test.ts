@@ -41,6 +41,9 @@ describe('DeterministicPlanValidatorService', () => {
         title: '总结新闻内容',
         kind: 'llm_operation',
         operationId: 'summarize_list',
+        operationVersion: '1',
+        operationDigest: 'test-digest-123',
+        contractDigest: 'test-contract-digest-456',
         promptTemplateId: 'news-summary',
         promptTemplateVersion: '1',
         modelPolicyId: 'task-default',
@@ -91,6 +94,43 @@ describe('DeterministicPlanValidatorService', () => {
     const result = validator.validatePlan(valid3NodePlan);
     expect(result.valid).toBe(true);
     expect(result.errors).toHaveLength(0);
+  });
+
+  it('validates artifact production by output contract instead of Skill naming conventions', () => {
+    const contractDrivenPlan: DeterministicPlanDraftV1 = JSON.parse(JSON.stringify(valid3NodePlan));
+    const producer = contractDrivenPlan.nodes[2] as any;
+    producer.nodeId = 'n3_opaque';
+    producer.skillId = 'custom.capability.42';
+    producer.runtimeType = 'workflow';
+    contractDrivenPlan.finalOutputs[0].fromNodeId = producer.nodeId;
+
+    const result = validator.validatePlan(contractDrivenPlan);
+
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('rejects artifact_ref final output from an LLM operation even when the type tag is declared', () => {
+    const invalidPlan: DeterministicPlanDraftV1 = JSON.parse(JSON.stringify(valid3NodePlan));
+    const producer = invalidPlan.nodes[2] as any;
+    producer.kind = 'llm_operation';
+    producer.operationId = 'rewrite_to_markdown';
+    producer.operationVersion = '1';
+    producer.operationDigest = 'digest';
+    producer.contractDigest = 'contract-digest';
+    delete producer.skillId;
+    delete producer.skillVersion;
+    delete producer.runtimeType;
+
+    const result = validator.validatePlan(invalidPlan);
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: ERROR_CODES.FINAL_OUTPUT_UNSATISFIED,
+        message: expect.stringContaining('artifact-producing Skill node'),
+      }),
+    ]));
   });
 
   it('should fail validation if schema version is unsupported', () => {

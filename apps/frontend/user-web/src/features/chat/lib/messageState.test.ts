@@ -5,7 +5,9 @@ import {
   dedupeThoughtTexts,
   mergeDefinedMetadata,
   areMessagesEquivalent,
+  mergeHistoryMessages,
 } from './messageState';
+import { resolveMessageExecutionId } from './taskStatus';
 
 describe('normalizeComparableMessageText', () => {
   it('should remove think tags and clean up whitespace', () => {
@@ -75,10 +77,10 @@ describe('areMessagesEquivalent', () => {
     expect(areMessagesEquivalent(baseUserMsg, msg2)).toBe(false);
   });
 
-  it('should return false for user message if time difference is greater than 15 seconds', () => {
+  it('should return false for user message if time difference is greater than 5 minutes', () => {
     const msg2 = {
       ...baseUserMsg,
-      timestamp: '2026-07-20T12:00:16.000Z',
+      timestamp: '2026-07-20T12:05:01.000Z',
     };
     expect(areMessagesEquivalent(baseUserMsg, msg2)).toBe(false);
   });
@@ -135,5 +137,92 @@ describe('areMessagesEquivalent', () => {
       timestamp: '2026-07-20T12:04:50.000Z',
     };
     expect(areMessagesEquivalent(ephemeralMsg, msg2)).toBe(true);
+  });
+
+  it('does not merge nearby task messages from different executions', () => {
+    const localMessage: ChatMessage = {
+      ...baseAssistantMsg,
+      metadata: { mode: 'task', taskStatus: 'completed', executionId: 'execution-bilibili' },
+    };
+    const remoteMessage: ChatMessage = {
+      ...baseAssistantMsg,
+      id: 'a2',
+      timestamp: '2026-07-20T12:00:30.000Z',
+      metadata: { mode: 'task', taskStatus: 'completed', executionId: 'execution-weibo' },
+    };
+
+    expect(areMessagesEquivalent(localMessage, remoteMessage)).toBe(false);
+    expect(mergeHistoryMessages([remoteMessage], [localMessage])).toHaveLength(2);
+  });
+
+  it('matches the same execution even when persisted after a long task', () => {
+    const localMessage: ChatMessage = {
+      ...baseAssistantMsg,
+      metadata: { mode: 'task', taskStatus: 'completed', executionId: 'execution-weibo' },
+    };
+    const remoteMessage: ChatMessage = {
+      ...baseAssistantMsg,
+      id: 'a2',
+      timestamp: '2026-07-20T12:10:00.000Z',
+      metadata: { mode: 'task', taskStatus: 'completed', executionId: 'execution-weibo' },
+    };
+
+    expect(areMessagesEquivalent(localMessage, remoteMessage)).toBe(true);
+  });
+
+  it('requires matching outcome text for task messages without execution IDs', () => {
+    const localMessage: ChatMessage = {
+      ...baseAssistantMsg,
+      content: '',
+      metadata: { mode: 'task', taskStatus: 'completed', finalSummary: 'Bilibili 热点总结' },
+    };
+    const remoteMessage: ChatMessage = {
+      ...baseAssistantMsg,
+      id: 'a2',
+      content: '',
+      timestamp: '2026-07-20T12:00:30.000Z',
+      metadata: { mode: 'task', taskStatus: 'completed', finalSummary: '微博热点总结' },
+    };
+
+    expect(areMessagesEquivalent(localMessage, remoteMessage)).toBe(false);
+  });
+
+  it('preserves the streamed task card when persisted history omits structured parts', () => {
+    const localMessage: ChatMessage = {
+      ...baseAssistantMsg,
+      content: '',
+      contentParts: [
+        { type: 'task_card', taskStatus: 'completed', executionId: 'execution-weibo' },
+      ],
+      metadata: { mode: 'task', taskStatus: 'completed', finalSummary: '微博热点总结' },
+    };
+    const remoteMessage: ChatMessage = {
+      ...baseAssistantMsg,
+      id: 'a2',
+      content: '微博热点总结',
+      timestamp: '2026-07-20T12:00:30.000Z',
+      metadata: { mode: 'task', taskStatus: 'completed', finalSummary: '微博热点总结' },
+    };
+
+    const [mergedMessage] = mergeHistoryMessages([remoteMessage], [localMessage]);
+    expect(resolveMessageExecutionId(mergedMessage)).toBe('execution-weibo');
+  });
+});
+
+describe('resolveMessageExecutionId', () => {
+  it('prefers the current task card when reconciled metadata is stale', () => {
+    const message: ChatMessage = {
+      id: 'a1',
+      sessionId: 's1',
+      role: 'assistant',
+      content: '',
+      timestamp: '2026-07-20T12:00:00.000Z',
+      metadata: { mode: 'task', executionId: 'execution-bilibili' },
+      contentParts: [
+        { type: 'task_card', taskStatus: 'completed', executionId: 'execution-weibo' },
+      ],
+    };
+
+    expect(resolveMessageExecutionId(message)).toBe('execution-weibo');
   });
 });

@@ -11,7 +11,8 @@ export class ParamContextMergeService {
     context?: Record<string, unknown>
   ): RecognizeParamsResponseDTO {
     const collectedParams = this.extractCollectedParamsFromContext(context, schema);
-    if (Object.keys(collectedParams).length === 0) {
+    const systemCollected = this.extractSystemCollectedParams(context, schema);
+    if (Object.keys(collectedParams).length === 0 && Object.keys(systemCollected).length === 0) {
       return recognized;
     }
 
@@ -20,16 +21,19 @@ export class ParamContextMergeService {
     const mergedParams = {
       ...collectedParams,
       ...recognizedParams,
+      ...systemCollected,
     };
 
     const mergedFieldConfidences: Record<string, number> = {
       ...Object.fromEntries(Object.keys(collectedParams).map((key) => [key, 1])),
       ...(recognized.field_confidences || {}),
+      ...Object.fromEntries(Object.keys(systemCollected).map((key) => [key, 1])),
     };
 
     const mergedUncertainFields = (recognized.uncertain_fields || []).filter(
       (field) =>
-        !Object.prototype.hasOwnProperty.call(collectedParams, field) || recognizedKeys.has(field)
+        (!Object.prototype.hasOwnProperty.call(collectedParams, field) || recognizedKeys.has(field)) &&
+        !Object.prototype.hasOwnProperty.call(systemCollected, field)
     );
 
     return {
@@ -44,10 +48,29 @@ export class ParamContextMergeService {
         llmCalls: recognized.debug?.llmCalls,
         notes: [
           ...(recognized.debug?.notes || []),
-          `planner 已合并 waiting_input 上下文中的 ${Object.keys(collectedParams).length} 个已确认参数`,
+          `planner 已合并 ${Object.keys(collectedParams).length} 个 waiting_input 参数和 ${Object.keys(systemCollected).length} 个系统附件参数`,
         ],
       },
     };
+  }
+
+  private extractSystemCollectedParams(
+    context: Record<string, unknown> | undefined,
+    schema: SkillMatchResult['paramsSchema']
+  ): Record<string, unknown> {
+    const systemCollected =
+      context?.system_collected &&
+      typeof context.system_collected === 'object' &&
+      !Array.isArray(context.system_collected)
+        ? (context.system_collected as Record<string, unknown>)
+        : {};
+    const schemaProperties = schema?.properties || {};
+    return Object.fromEntries(
+      Object.entries(systemCollected)
+        .filter(([key]) => Boolean(schemaProperties[key]))
+        .map(([key, value]) => [key, this.normalizeMeaningfulInputValue(value)] as const)
+        .filter(([, value]) => value !== undefined)
+    );
   }
 
   extractCollectedParamsFromContext(

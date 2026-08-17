@@ -1,55 +1,23 @@
-import { Injectable, Logger } from '@nestjs/common';
-import type { CompactCapabilityCardV1, SkillPlanNodeV1 } from '@ops/backend-deterministic-plan';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import {
+  projectOutputSchemaV1,
+  type CompactCapabilityCardV1,
+  type SkillPlanNodeV1,
+} from '@ops/backend-deterministic-plan';
 import { resolveParamEnumValues } from '../params/param-enum-constraint';
-
-const LLM_OPERATION_CARDS: CompactCapabilityCardV1[] = [
-  {
-    id: 'summarize_list',
-    kind: 'llm_operation',
-    displayName: '列表摘要',
-    summary: '对列表文本、搜索结果或文章项集合做精炼要点总结',
-    goals: ['summarize', 'news_summary', 'list_summary'],
-    inputs: { items: 'text_list|news_item_list' },
-    outputs: { markdown_content: 'markdown_content' },
-  },
-  {
-    id: 'rewrite_to_markdown',
-    kind: 'llm_operation',
-    displayName: 'Markdown 格式化',
-    summary: '将结构化或非结构化内容重写格式化为干净规范的 Markdown 文本',
-    goals: ['format_markdown', 'rewrite'],
-    inputs: { content: 'string|json' },
-    outputs: { markdown_content: 'markdown_content' },
-  },
-  {
-    id: 'summarize_text',
-    kind: 'llm_operation',
-    displayName: '文本摘要',
-    summary: '对长文本段落做关键摘要提取',
-    goals: ['summarize_text'],
-    inputs: { text: 'string' },
-    outputs: { summary: 'string' },
-  },
-  {
-    id: 'extract_structured_fields',
-    kind: 'llm_operation',
-    displayName: '结构化字段提取',
-    summary: '从非结构化文本中提取结构化 JSON 字段',
-    goals: ['extract_fields'],
-    inputs: { text: 'string' },
-    outputs: { fields: 'json' },
-  },
-];
+import { LlmOperationCatalogProjector } from '../../llm-operation/llm-operation-catalog.projector';
 
 @Injectable()
 export class CapabilityCandidateSelectorService {
   private readonly logger = new Logger(CapabilityCandidateSelectorService.name);
 
-  public selectCandidates(
-    userRequest: string,
+  constructor(@Optional() private readonly catalogProjector?: LlmOperationCatalogProjector) {}
+
+  public async selectCandidates(
+    _userRequest: string,
     availableSkills: Array<{
       id: string;
-      name: string;
+      name?: string;
       description?: string;
       category?: string;
       inputSchema?: any;
@@ -75,13 +43,14 @@ export class CapabilityCandidateSelectorService {
       runtimeHints?: { outputParams?: any };
       apiEndpoints?: { runtimeMetadata?: any };
     }> = [],
-  ): {
+  ): Promise<{
     skillCards: CompactCapabilityCardV1[];
     llmOperationCards: CompactCapabilityCardV1[];
-  } {
+  }> {
     const skillCards: CompactCapabilityCardV1[] = [];
+    const validSkills: any[] = [];
 
-    for (const skill of availableSkills.slice(0, 12) as any[]) {
+    for (const skill of (availableSkills || []) as any[]) {
       const skillId = skill.skillId || skill.id || skill.skillName || skill.name;
       const publishedSkillId = skill.publishedSkillId || skill.id || skillId;
       const executableVersion =
@@ -122,10 +91,6 @@ export class CapabilityCandidateSelectorService {
         continue;
       }
 
-      // P0 hard rule (§15.1): a custom skill without an authoritative output
-      // schema must NEVER enter the deterministic candidate set. Publishing
-      // now writes skill_configs.output_schema (fix ①), so a custom skill
-      // that reaches here without one is a schema-less capability.
       if (!isBuiltin) {
         const authoritativeOutput =
           skill.outputSchema ||
@@ -145,10 +110,23 @@ export class CapabilityCandidateSelectorService {
         }
       }
 
+      validSkills.push(skill);
+    }
+
+    // Intent matching belongs to the topology LLM. This layer only applies
+    // deterministic publication/deployment/contract gates and a stable token cap.
+    for (const skill of validSkills.slice(0, 12)) {
+      const skillId = skill.skillId || skill.id || skill.skillName || skill.name;
+      const publishedSkillId = skill.publishedSkillId || skill.id || skillId;
+      const executableVersion =
+        skill.executableVersion ||
+        skill.publishedVersion ||
+        skill.version ||
+        (skill.publishedReleaseVersion != null ? String(skill.publishedReleaseVersion) : undefined) ||
+        '1.0.0';
+
       const summary = (skill.description || skill.skillName || skill.name || '').substring(0, 200);
       const inputSchema = skill.paramsSchema || skill.inputSchema || skill.params;
-      // The enriched DTO's outputSchema is the authoritative contract when
-      // present; legacy projections are only fallbacks for older sources.
       const outputSchema =
         skill.outputSchema ||
         skill.outputParams ||
@@ -161,10 +139,10 @@ export class CapabilityCandidateSelectorService {
         runtimeMetadata,
       );
       const executionRuntimeType = runtimeMetadata?.runtimeType || undefined;
+      const outputProjection = projectOutputSchemaV1(outputSchema);
       const supportsArtifactOutput = this.detectArtifactSupport(
-        outputSchema,
+        outputProjection.outputContract,
         runtimeMetadata,
-        skill.skillName || skill.name,
         skill.supportsArtifact,
       );
 
@@ -175,20 +153,68 @@ export class CapabilityCandidateSelectorService {
         summary,
         goals: [runtimeType, skill.skillName || skill.name || skillId],
         inputs: this.extractSchemaSummary(inputSchema),
-        outputs: this.extractSchemaSummary(outputSchema),
+        outputs: outputProjection.outputContract,
+        primaryOutput: outputProjection.primaryOutput,
         category: runtimeType,
         executionRuntimeType,
         supportsArtifactOutput,
         publishedSkillId,
         executableVersion,
-      };
+        // Store the original required[] array so the parameter binder can correctly
+        // distinguish required vs optional fields without relying on compressed summary strings.
+        _rawInputSchema: inputSchema ? {
+          required: Array.isArray(inputSchema.required) ? inputSchema.required : [],
+          defaults: this.extractParamDefaults(inputSchema),
+          properties: this.extractRecognizerProperties(inputSchema),
+        } : undefined,
+      } as any;
       skillCards.push(this.truncateCard(card));
     }
 
-    return {
-      skillCards,
-      llmOperationCards: LLM_OPERATION_CARDS.slice(0, 8),
-    };
+    const llmOperationCards = await this.projectLlmOperationCards();
+    return { skillCards, llmOperationCards };
+  }
+
+  /**
+   * Project LLM Operation cards from the catalog projector.
+   * Returns empty array on error (fail-open) to avoid breaking planner flow.
+   */
+  private async projectLlmOperationCards(): Promise<CompactCapabilityCardV1[]> {
+    if (!this.catalogProjector) {
+      this.logger.warn('LlmOperationCatalogProjector not available, returning empty LLM Operation cards');
+      return [];
+    }
+
+    try {
+      const projections = await this.catalogProjector.projectAll();
+      return projections.map((projection) => {
+        const outputProjection = projectOutputSchemaV1(projection.outputSchema);
+        const card: CompactCapabilityCardV1 = {
+          id: projection.capabilityRef.id,
+          kind: 'llm_operation',
+          displayName: projection.displayName,
+          summary: projection.summary,
+          goals: projection.goals,
+          inputs: this.extractSchemaSummary(projection.inputSchema),
+          outputs: outputProjection.outputContract,
+          primaryOutput: outputProjection.primaryOutput,
+          executableVersion: projection.capabilityRef.version,
+          operationDigest: projection.capabilityRef.digest,
+          contractDigest: projection.capabilityRef.contractDigest,
+          _rawInputSchema: {
+            required: Array.isArray((projection.inputSchema as any)?.required)
+              ? (projection.inputSchema as any).required
+              : [],
+            defaults: this.extractParamDefaults(projection.inputSchema),
+            properties: this.extractRecognizerProperties(projection.inputSchema),
+          },
+        } as any;
+        return this.truncateCard(card);
+      });
+    } catch (error) {
+      this.logger.warn(`Failed to project LLM Operation cards: ${error instanceof Error ? error.message : String(error)}`);
+      return [];
+    }
   }
 
   private mapExecutionTypeToRuntimeType(
@@ -209,24 +235,13 @@ export class CapabilityCandidateSelectorService {
   }
 
   private detectArtifactSupport(
-    outputSchema: any,
+    outputContract: Record<string, string>,
     runtimeMetadata?: any,
-    skillName?: string,
     supportsArtifactFlag?: boolean,
   ): boolean {
     if (supportsArtifactFlag === true) return true;
-    if (skillName === 'markdown_artifact_writer' || skillName === 'platform.document.markdown-artifact-writer') return true;
     if (runtimeMetadata?.supportsArtifact || runtimeMetadata?.producesArtifact) return true;
-    if (!outputSchema || typeof outputSchema !== 'object') return false;
-    const props = outputSchema.properties || outputSchema;
-    if (typeof props !== 'object') return false;
-    return Object.keys(props).some(
-      (k) =>
-        k === 'artifact' ||
-        k === 'artifacts' ||
-        k === 'artifact_ref' ||
-        (typeof props[k] === 'object' && props[k]?.valueType === 'artifact_ref'),
-    );
+    return Object.values(outputContract).includes('artifact_ref');
   }
 
   private extractSchemaSummary(schema: any): Record<string, string> {
@@ -400,5 +415,65 @@ export class CapabilityCandidateSelectorService {
       };
     }
     return card;
+  }
+
+  private extractParamDefaults(inputSchema: any): Record<string, unknown> {
+    const defaults: Record<string, unknown> = {};
+    if (!inputSchema || typeof inputSchema !== 'object') return defaults;
+    const props = inputSchema.properties || inputSchema;
+    if (Array.isArray(props)) {
+      for (const param of props) {
+        const k = param?.name || param?.fieldName || param?.key;
+        if (!k || this.isSensitiveFieldName(k)) continue;
+        const defVal = param?.default ?? param?.defaultValue;
+        if (defVal !== undefined) defaults[k] = defVal;
+      }
+    } else if (typeof props === 'object') {
+      for (const [k, v] of Object.entries(props)) {
+        if (this.isSensitiveFieldName(k)) continue;
+        const defVal = (v as any)?.default ?? (v as any)?.defaultValue;
+        if (defVal !== undefined) defaults[k] = defVal;
+      }
+    }
+    return defaults;
+  }
+
+  private extractRecognizerProperties(inputSchema: any): Record<string, Record<string, unknown>> {
+    if (!inputSchema || typeof inputSchema !== 'object') return {};
+    const props = inputSchema.properties || inputSchema;
+    const result: Record<string, Record<string, unknown>> = {};
+
+    if (Array.isArray(props)) {
+      for (const param of props) {
+        const key = param?.name || param?.fieldName || param?.key;
+        if (!key || this.isSensitiveFieldName(key)) continue;
+        result[key] = this.toRecognizerProperty(param);
+      }
+      return result;
+    }
+
+    for (const [key, value] of Object.entries(props)) {
+      if (this.isSensitiveFieldName(key)) continue;
+      result[key] = this.toRecognizerProperty(value);
+    }
+    return result;
+  }
+
+  private toRecognizerProperty(value: unknown): Record<string, unknown> {
+    const source = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+    const enumValues = resolveParamEnumValues(source);
+    return {
+      type: source.type || source.valueType || (typeof value === 'string' ? value : 'string'),
+      ...(typeof source.description === 'string' ? { description: source.description } : {}),
+      ...(typeof source.displayName === 'string' ? { displayName: source.displayName } : {}),
+      ...(typeof source.extractionPrompt === 'string'
+        ? { extractionPrompt: source.extractionPrompt }
+        : {}),
+      ...(typeof source.semanticRole === 'string' ? { semanticRole: source.semanticRole } : {}),
+      ...(Array.isArray(source.extractionHints)
+        ? { extractionHints: source.extractionHints }
+        : {}),
+      ...(enumValues ? { enum: enumValues } : {}),
+    };
   }
 }

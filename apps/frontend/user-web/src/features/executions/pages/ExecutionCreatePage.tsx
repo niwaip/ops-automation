@@ -42,6 +42,7 @@ const ExecutionCreatePage: React.FC = () => {
     selectedSkill,
     selectedSkillDisplayName,
     selectedSkillLoading,
+    selectedSkillVersion,
     skillOptions,
   } = useExecutionCreateSkillState({
     form,
@@ -82,6 +83,7 @@ const ExecutionCreatePage: React.FC = () => {
     form,
     schemaFields,
     selectedSkillDisplayName,
+    selectedSkillVersion,
   });
   const formLoadingIndicator = <LoadingOutlined style={{ fontSize: 24 }} spin />;
   const {
@@ -109,11 +111,11 @@ const ExecutionCreatePage: React.FC = () => {
       toggleScheduleMutation.isLoading ? toggleScheduleMutation.variables?.id : undefined,
     deletingScheduleId:
       deleteScheduleMutation.isLoading
-        ? (deleteScheduleMutation.variables as string | undefined)
+        ? deleteScheduleMutation.variables
         : undefined,
     triggeringScheduleId:
       triggerScheduleMutation.isLoading
-        ? (triggerScheduleMutation.variables as string | undefined)
+        ? triggerScheduleMutation.variables
         : undefined,
     loadingIndicator: formLoadingIndicator,
     aiGenerating,

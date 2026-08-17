@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { getAiOrchestratorUrl } from '../../config/service-endpoints';
 import { AIMatchResponse, LLMUsage, SkillConfigDto, SkillMatchResult } from './interfaces';
+import { getSkillMatchMinConfidence, isAcceptedSkillMatch } from './skill-match-policy';
 
 @Injectable()
 export class SkillMatcherService {
@@ -12,7 +13,8 @@ export class SkillMatcherService {
     loadSkills: () => Promise<SkillConfigDto[]>
   ): Promise<SkillMatchResult | null> {
     const skills = await loadSkills();
-    return this.matchSkillFallback(userInput, skills);
+    const match = this.matchSkillFallback(userInput, skills);
+    return match && isAcceptedSkillMatch(match.confidence) ? match : null;
   }
 
   async matchSkillWithAI(
@@ -36,6 +38,7 @@ ${skillsXml}
 用户输入：${userInput}
 
 请分析用户意图，返回最匹配的技能信息。如果没有任何技能匹配，返回 null。
+只有当技能名称、描述与用户目标明确匹配，且置信度不低于 ${getSkillMatchMinConfidence()} 时才返回技能；否则 matchedSkill 必须返回 null。不要因为某个技能是候选列表中唯一接近的能力就勉强匹配。
 
 请严格按照以下 JSON 格式返回（不要添加任何其他文字）：
 {
@@ -62,7 +65,7 @@ ${skillsXml}
 
       const aiResponse = this.parseAiMatchResponse(response.data.result, availableSkills);
 
-      if (aiResponse) {
+      if (aiResponse && isAcceptedSkillMatch(aiResponse.confidence)) {
         const matchedSkill = availableSkills.find(
           (skill) => skill.name === aiResponse.matchedSkill
         );
@@ -103,11 +106,16 @@ ${skillsXml}
         }
       }
 
+      if (aiResponse?.matchedSkill) {
+        this.logger.log(
+          `Rejected low-confidence skill match '${aiResponse.matchedSkill}' (${aiResponse.confidence}); minimum is ${getSkillMatchMinConfidence()}`
+        );
+      }
       return null;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`AI match failed: ${errorMsg}`);
-      return this.matchSkillFallback(userInput, availableSkills);
+      return null;
     }
   }
 

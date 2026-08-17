@@ -5,6 +5,7 @@
 
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
+import { isAcceptedSkillMatch } from '../../planner/skill/skill-match-policy';
 import { getAuthServiceUrl } from '../../../config/service-endpoints';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext, SkillMatchResult } from '../interfaces';
@@ -101,10 +102,10 @@ export class SkillMatchTool extends BaseTool {
 
       const matchResult = response.data.match;
 
-      if (!matchResult || matchResult.confidence <= 0) {
+      if (!matchResult || !isAcceptedSkillMatch(matchResult.confidence)) {
         return {
           success: false,
-          output: `未能匹配到合适的技能。请尝试更清晰地描述您的需求。`,
+          output: `当前没有可执行且与该请求充分匹配的 Skills，任务未执行。`,
           data: { error: 'no_match_found', userInput },
         };
       }

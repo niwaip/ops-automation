@@ -1,16 +1,40 @@
 export function parseJsonFromAiContent(content: string): Record<string, any> {
-  const sanitized = (content || '').replace(/```json|```/g, '').trim();
+  let sanitized = (content || '').replace(/```json|```/g, '').trim();
 
+  // 1. Direct JSON parse
   try {
     const parsed = JSON.parse(sanitized);
     return recursiveSanitizeTemplates(parsed);
   } catch {
-    const start = sanitized.indexOf('{');
-    const end = sanitized.lastIndexOf('}');
-    if (start >= 0 && end > start) {
-      const parsed = JSON.parse(sanitized.slice(start, end + 1));
+    // Continue to repair
+  }
+
+  // 2. Extract content inside outermost { and }
+  const start = sanitized.indexOf('{');
+  const end = sanitized.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    const sliced = sanitized.slice(start, end + 1);
+    try {
+      const parsed = JSON.parse(sliced);
       return recursiveSanitizeTemplates(parsed);
+    } catch {
+      sanitized = sliced;
     }
+  }
+
+  // 3. Robust repair: remove trailing commas, fix unescaped control chars / newlines in JSON strings
+  try {
+    const repaired = sanitized
+      .replace(/,\s*([}\]])/g, '$1')
+      .replace(/[\u0000-\u001F\u007F-\u009F]/g, (match) => {
+        if (match === '\n') return '\\n';
+        if (match === '\r') return '\\r';
+        if (match === '\t') return '\\t';
+        return '';
+      });
+    const parsed = JSON.parse(repaired);
+    return recursiveSanitizeTemplates(parsed);
+  } catch {
     throw new Error('AI 返回内容不是有效 JSON');
   }
 }

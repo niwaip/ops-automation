@@ -1,8 +1,8 @@
 import type { AppNotification, ChatMessage } from '@ops/user-core';
 import type { MessageInstance } from 'antd/es/message/interface';
-import { resolveTaskParts } from '@chat-web/lib/contentParts';
 import { notificationStore } from '@/adapters/notifications/notificationStore';
 import {
+  resolveMessageExecutionId,
   resolveMessageTaskStatus,
   terminalExecutionStatuses,
   terminalTaskStatuses,
@@ -28,8 +28,7 @@ export const notifyTaskTerminalState = ({
     return;
   }
 
-  const executionId =
-    message.metadata?.executionId || resolveTaskParts(message.contentParts).executionId;
+  const executionId = resolveMessageExecutionId(message);
   const executionStatus = message.metadata?.executionStatus?.trim();
   if (executionId && (!executionStatus || !terminalExecutionStatuses.has(executionStatus))) {
     return;

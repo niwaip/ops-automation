@@ -20,7 +20,13 @@ export class DeterministicTaskExecutionService {
   public async executeDeterministicTask(
     userRequest: string,
     userId: string,
-    options?: { authToken?: string; user?: { userId: string; userRoles?: string[] }; availableSkills?: any[] },
+    options?: {
+      authToken?: string;
+      user?: { userId: string; userRoles?: string[] };
+      availableSkills?: any[];
+      systemInputs?: Record<string, unknown>;
+      planningRequest?: string;
+    },
   ): Promise<{
     success: boolean;
     executionId?: string;
@@ -33,9 +39,14 @@ export class DeterministicTaskExecutionService {
     let planDraft: any;
     try {
       planDraft = await this.planGenerator.generatePlan({
-        userRequest,
+        userRequest: options?.planningRequest || userRequest,
         availableSkills: options?.availableSkills || [],
+        systemInputs: options?.systemInputs,
       });
+      if (options?.planningRequest && options.planningRequest !== userRequest) {
+        planDraft.objective = userRequest;
+        planDraft.originalRequest = userRequest;
+      }
     } catch (planErr: any) {
       const errorCode = planErr.code || planErr.response?.data?.code || 'PLANNER_OUTPUT_INVALID';
       this.logger.error(`Deterministic planning failed [${errorCode}]: ${planErr.message}`);
@@ -47,10 +58,15 @@ export class DeterministicTaskExecutionService {
     }
 
     try {
+      const promptDebug = (planDraft as any)?.promptDebug;
       const executionResult = await this.controlPlaneClient.createExecution(
         {
           executionMode: 'deterministic_plan',
-          input: { prompt: userRequest },
+          input: {
+            prompt: userRequest,
+            ...(options?.systemInputs || {}),
+            ...(promptDebug ? { __promptDebug: promptDebug } : {}),
+          },
           deterministicPlan: planDraft,
         } as any,
         {

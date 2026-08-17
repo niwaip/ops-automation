@@ -33,6 +33,51 @@ export type RuntimeSession = $Result.DefaultSelection<Prisma.$RuntimeSessionPayl
  * 
  */
 export type ExecutionEvent = $Result.DefaultSelection<Prisma.$ExecutionEventPayload>
+/**
+ * Model LlmOperation
+ * 
+ */
+export type LlmOperation = $Result.DefaultSelection<Prisma.$LlmOperationPayload>
+/**
+ * Model LlmOperationVersion
+ * 
+ */
+export type LlmOperationVersion = $Result.DefaultSelection<Prisma.$LlmOperationVersionPayload>
+/**
+ * Model LlmOperationActivation
+ * 
+ */
+export type LlmOperationActivation = $Result.DefaultSelection<Prisma.$LlmOperationActivationPayload>
+/**
+ * Model LlmOperationActivationEvent
+ * 
+ */
+export type LlmOperationActivationEvent = $Result.DefaultSelection<Prisma.$LlmOperationActivationEventPayload>
+/**
+ * Model LlmOperationEvalSuite
+ * 
+ */
+export type LlmOperationEvalSuite = $Result.DefaultSelection<Prisma.$LlmOperationEvalSuitePayload>
+/**
+ * Model LlmOperationEvalCase
+ * 
+ */
+export type LlmOperationEvalCase = $Result.DefaultSelection<Prisma.$LlmOperationEvalCasePayload>
+/**
+ * Model LlmOperationEvalRun
+ * 
+ */
+export type LlmOperationEvalRun = $Result.DefaultSelection<Prisma.$LlmOperationEvalRunPayload>
+/**
+ * Model LlmOperationInvocation
+ * 
+ */
+export type LlmOperationInvocation = $Result.DefaultSelection<Prisma.$LlmOperationInvocationPayload>
+/**
+ * Model LlmOperationAttestation
+ * 
+ */
+export type LlmOperationAttestation = $Result.DefaultSelection<Prisma.$LlmOperationAttestationPayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -196,6 +241,96 @@ export class PrismaClient<
     * ```
     */
   get executionEvent(): Prisma.ExecutionEventDelegate<ExtArgs>;
+
+  /**
+   * `prisma.llmOperation`: Exposes CRUD operations for the **LlmOperation** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more LlmOperations
+    * const llmOperations = await prisma.llmOperation.findMany()
+    * ```
+    */
+  get llmOperation(): Prisma.LlmOperationDelegate<ExtArgs>;
+
+  /**
+   * `prisma.llmOperationVersion`: Exposes CRUD operations for the **LlmOperationVersion** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more LlmOperationVersions
+    * const llmOperationVersions = await prisma.llmOperationVersion.findMany()
+    * ```
+    */
+  get llmOperationVersion(): Prisma.LlmOperationVersionDelegate<ExtArgs>;
+
+  /**
+   * `prisma.llmOperationActivation`: Exposes CRUD operations for the **LlmOperationActivation** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more LlmOperationActivations
+    * const llmOperationActivations = await prisma.llmOperationActivation.findMany()
+    * ```
+    */
+  get llmOperationActivation(): Prisma.LlmOperationActivationDelegate<ExtArgs>;
+
+  /**
+   * `prisma.llmOperationActivationEvent`: Exposes CRUD operations for the **LlmOperationActivationEvent** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more LlmOperationActivationEvents
+    * const llmOperationActivationEvents = await prisma.llmOperationActivationEvent.findMany()
+    * ```
+    */
+  get llmOperationActivationEvent(): Prisma.LlmOperationActivationEventDelegate<ExtArgs>;
+
+  /**
+   * `prisma.llmOperationEvalSuite`: Exposes CRUD operations for the **LlmOperationEvalSuite** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more LlmOperationEvalSuites
+    * const llmOperationEvalSuites = await prisma.llmOperationEvalSuite.findMany()
+    * ```
+    */
+  get llmOperationEvalSuite(): Prisma.LlmOperationEvalSuiteDelegate<ExtArgs>;
+
+  /**
+   * `prisma.llmOperationEvalCase`: Exposes CRUD operations for the **LlmOperationEvalCase** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more LlmOperationEvalCases
+    * const llmOperationEvalCases = await prisma.llmOperationEvalCase.findMany()
+    * ```
+    */
+  get llmOperationEvalCase(): Prisma.LlmOperationEvalCaseDelegate<ExtArgs>;
+
+  /**
+   * `prisma.llmOperationEvalRun`: Exposes CRUD operations for the **LlmOperationEvalRun** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more LlmOperationEvalRuns
+    * const llmOperationEvalRuns = await prisma.llmOperationEvalRun.findMany()
+    * ```
+    */
+  get llmOperationEvalRun(): Prisma.LlmOperationEvalRunDelegate<ExtArgs>;
+
+  /**
+   * `prisma.llmOperationInvocation`: Exposes CRUD operations for the **LlmOperationInvocation** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more LlmOperationInvocations
+    * const llmOperationInvocations = await prisma.llmOperationInvocation.findMany()
+    * ```
+    */
+  get llmOperationInvocation(): Prisma.LlmOperationInvocationDelegate<ExtArgs>;
+
+  /**
+   * `prisma.llmOperationAttestation`: Exposes CRUD operations for the **LlmOperationAttestation** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more LlmOperationAttestations
+    * const llmOperationAttestations = await prisma.llmOperationAttestation.findMany()
+    * ```
+    */
+  get llmOperationAttestation(): Prisma.LlmOperationAttestationDelegate<ExtArgs>;
 }
 
 export namespace Prisma {
@@ -640,7 +775,16 @@ export namespace Prisma {
     Execution: 'Execution',
     ExecutionStep: 'ExecutionStep',
     RuntimeSession: 'RuntimeSession',
-    ExecutionEvent: 'ExecutionEvent'
+    ExecutionEvent: 'ExecutionEvent',
+    LlmOperation: 'LlmOperation',
+    LlmOperationVersion: 'LlmOperationVersion',
+    LlmOperationActivation: 'LlmOperationActivation',
+    LlmOperationActivationEvent: 'LlmOperationActivationEvent',
+    LlmOperationEvalSuite: 'LlmOperationEvalSuite',
+    LlmOperationEvalCase: 'LlmOperationEvalCase',
+    LlmOperationEvalRun: 'LlmOperationEvalRun',
+    LlmOperationInvocation: 'LlmOperationInvocation',
+    LlmOperationAttestation: 'LlmOperationAttestation'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -656,7 +800,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "execution" | "executionStep" | "runtimeSession" | "executionEvent"
+      modelProps: "execution" | "executionStep" | "runtimeSession" | "executionEvent" | "llmOperation" | "llmOperationVersion" | "llmOperationActivation" | "llmOperationActivationEvent" | "llmOperationEvalSuite" | "llmOperationEvalCase" | "llmOperationEvalRun" | "llmOperationInvocation" | "llmOperationAttestation"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -940,6 +1084,636 @@ export namespace Prisma {
           }
         }
       }
+      LlmOperation: {
+        payload: Prisma.$LlmOperationPayload<ExtArgs>
+        fields: Prisma.LlmOperationFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.LlmOperationFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.LlmOperationFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationPayload>
+          }
+          findFirst: {
+            args: Prisma.LlmOperationFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.LlmOperationFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationPayload>
+          }
+          findMany: {
+            args: Prisma.LlmOperationFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationPayload>[]
+          }
+          create: {
+            args: Prisma.LlmOperationCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationPayload>
+          }
+          createMany: {
+            args: Prisma.LlmOperationCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.LlmOperationCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationPayload>[]
+          }
+          delete: {
+            args: Prisma.LlmOperationDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationPayload>
+          }
+          update: {
+            args: Prisma.LlmOperationUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationPayload>
+          }
+          deleteMany: {
+            args: Prisma.LlmOperationDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.LlmOperationUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.LlmOperationUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationPayload>
+          }
+          aggregate: {
+            args: Prisma.LlmOperationAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateLlmOperation>
+          }
+          groupBy: {
+            args: Prisma.LlmOperationGroupByArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.LlmOperationCountArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationCountAggregateOutputType> | number
+          }
+        }
+      }
+      LlmOperationVersion: {
+        payload: Prisma.$LlmOperationVersionPayload<ExtArgs>
+        fields: Prisma.LlmOperationVersionFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.LlmOperationVersionFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationVersionPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.LlmOperationVersionFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationVersionPayload>
+          }
+          findFirst: {
+            args: Prisma.LlmOperationVersionFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationVersionPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.LlmOperationVersionFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationVersionPayload>
+          }
+          findMany: {
+            args: Prisma.LlmOperationVersionFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationVersionPayload>[]
+          }
+          create: {
+            args: Prisma.LlmOperationVersionCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationVersionPayload>
+          }
+          createMany: {
+            args: Prisma.LlmOperationVersionCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.LlmOperationVersionCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationVersionPayload>[]
+          }
+          delete: {
+            args: Prisma.LlmOperationVersionDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationVersionPayload>
+          }
+          update: {
+            args: Prisma.LlmOperationVersionUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationVersionPayload>
+          }
+          deleteMany: {
+            args: Prisma.LlmOperationVersionDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.LlmOperationVersionUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.LlmOperationVersionUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationVersionPayload>
+          }
+          aggregate: {
+            args: Prisma.LlmOperationVersionAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateLlmOperationVersion>
+          }
+          groupBy: {
+            args: Prisma.LlmOperationVersionGroupByArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationVersionGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.LlmOperationVersionCountArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationVersionCountAggregateOutputType> | number
+          }
+        }
+      }
+      LlmOperationActivation: {
+        payload: Prisma.$LlmOperationActivationPayload<ExtArgs>
+        fields: Prisma.LlmOperationActivationFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.LlmOperationActivationFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.LlmOperationActivationFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationPayload>
+          }
+          findFirst: {
+            args: Prisma.LlmOperationActivationFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.LlmOperationActivationFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationPayload>
+          }
+          findMany: {
+            args: Prisma.LlmOperationActivationFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationPayload>[]
+          }
+          create: {
+            args: Prisma.LlmOperationActivationCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationPayload>
+          }
+          createMany: {
+            args: Prisma.LlmOperationActivationCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.LlmOperationActivationCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationPayload>[]
+          }
+          delete: {
+            args: Prisma.LlmOperationActivationDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationPayload>
+          }
+          update: {
+            args: Prisma.LlmOperationActivationUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationPayload>
+          }
+          deleteMany: {
+            args: Prisma.LlmOperationActivationDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.LlmOperationActivationUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.LlmOperationActivationUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationPayload>
+          }
+          aggregate: {
+            args: Prisma.LlmOperationActivationAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateLlmOperationActivation>
+          }
+          groupBy: {
+            args: Prisma.LlmOperationActivationGroupByArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationActivationGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.LlmOperationActivationCountArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationActivationCountAggregateOutputType> | number
+          }
+        }
+      }
+      LlmOperationActivationEvent: {
+        payload: Prisma.$LlmOperationActivationEventPayload<ExtArgs>
+        fields: Prisma.LlmOperationActivationEventFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.LlmOperationActivationEventFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationEventPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.LlmOperationActivationEventFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationEventPayload>
+          }
+          findFirst: {
+            args: Prisma.LlmOperationActivationEventFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationEventPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.LlmOperationActivationEventFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationEventPayload>
+          }
+          findMany: {
+            args: Prisma.LlmOperationActivationEventFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationEventPayload>[]
+          }
+          create: {
+            args: Prisma.LlmOperationActivationEventCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationEventPayload>
+          }
+          createMany: {
+            args: Prisma.LlmOperationActivationEventCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.LlmOperationActivationEventCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationEventPayload>[]
+          }
+          delete: {
+            args: Prisma.LlmOperationActivationEventDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationEventPayload>
+          }
+          update: {
+            args: Prisma.LlmOperationActivationEventUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationEventPayload>
+          }
+          deleteMany: {
+            args: Prisma.LlmOperationActivationEventDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.LlmOperationActivationEventUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.LlmOperationActivationEventUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationActivationEventPayload>
+          }
+          aggregate: {
+            args: Prisma.LlmOperationActivationEventAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateLlmOperationActivationEvent>
+          }
+          groupBy: {
+            args: Prisma.LlmOperationActivationEventGroupByArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationActivationEventGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.LlmOperationActivationEventCountArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationActivationEventCountAggregateOutputType> | number
+          }
+        }
+      }
+      LlmOperationEvalSuite: {
+        payload: Prisma.$LlmOperationEvalSuitePayload<ExtArgs>
+        fields: Prisma.LlmOperationEvalSuiteFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.LlmOperationEvalSuiteFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalSuitePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.LlmOperationEvalSuiteFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalSuitePayload>
+          }
+          findFirst: {
+            args: Prisma.LlmOperationEvalSuiteFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalSuitePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.LlmOperationEvalSuiteFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalSuitePayload>
+          }
+          findMany: {
+            args: Prisma.LlmOperationEvalSuiteFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalSuitePayload>[]
+          }
+          create: {
+            args: Prisma.LlmOperationEvalSuiteCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalSuitePayload>
+          }
+          createMany: {
+            args: Prisma.LlmOperationEvalSuiteCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.LlmOperationEvalSuiteCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalSuitePayload>[]
+          }
+          delete: {
+            args: Prisma.LlmOperationEvalSuiteDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalSuitePayload>
+          }
+          update: {
+            args: Prisma.LlmOperationEvalSuiteUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalSuitePayload>
+          }
+          deleteMany: {
+            args: Prisma.LlmOperationEvalSuiteDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.LlmOperationEvalSuiteUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.LlmOperationEvalSuiteUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalSuitePayload>
+          }
+          aggregate: {
+            args: Prisma.LlmOperationEvalSuiteAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateLlmOperationEvalSuite>
+          }
+          groupBy: {
+            args: Prisma.LlmOperationEvalSuiteGroupByArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationEvalSuiteGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.LlmOperationEvalSuiteCountArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationEvalSuiteCountAggregateOutputType> | number
+          }
+        }
+      }
+      LlmOperationEvalCase: {
+        payload: Prisma.$LlmOperationEvalCasePayload<ExtArgs>
+        fields: Prisma.LlmOperationEvalCaseFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.LlmOperationEvalCaseFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalCasePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.LlmOperationEvalCaseFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalCasePayload>
+          }
+          findFirst: {
+            args: Prisma.LlmOperationEvalCaseFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalCasePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.LlmOperationEvalCaseFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalCasePayload>
+          }
+          findMany: {
+            args: Prisma.LlmOperationEvalCaseFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalCasePayload>[]
+          }
+          create: {
+            args: Prisma.LlmOperationEvalCaseCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalCasePayload>
+          }
+          createMany: {
+            args: Prisma.LlmOperationEvalCaseCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.LlmOperationEvalCaseCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalCasePayload>[]
+          }
+          delete: {
+            args: Prisma.LlmOperationEvalCaseDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalCasePayload>
+          }
+          update: {
+            args: Prisma.LlmOperationEvalCaseUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalCasePayload>
+          }
+          deleteMany: {
+            args: Prisma.LlmOperationEvalCaseDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.LlmOperationEvalCaseUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.LlmOperationEvalCaseUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalCasePayload>
+          }
+          aggregate: {
+            args: Prisma.LlmOperationEvalCaseAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateLlmOperationEvalCase>
+          }
+          groupBy: {
+            args: Prisma.LlmOperationEvalCaseGroupByArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationEvalCaseGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.LlmOperationEvalCaseCountArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationEvalCaseCountAggregateOutputType> | number
+          }
+        }
+      }
+      LlmOperationEvalRun: {
+        payload: Prisma.$LlmOperationEvalRunPayload<ExtArgs>
+        fields: Prisma.LlmOperationEvalRunFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.LlmOperationEvalRunFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalRunPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.LlmOperationEvalRunFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalRunPayload>
+          }
+          findFirst: {
+            args: Prisma.LlmOperationEvalRunFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalRunPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.LlmOperationEvalRunFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalRunPayload>
+          }
+          findMany: {
+            args: Prisma.LlmOperationEvalRunFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalRunPayload>[]
+          }
+          create: {
+            args: Prisma.LlmOperationEvalRunCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalRunPayload>
+          }
+          createMany: {
+            args: Prisma.LlmOperationEvalRunCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.LlmOperationEvalRunCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalRunPayload>[]
+          }
+          delete: {
+            args: Prisma.LlmOperationEvalRunDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalRunPayload>
+          }
+          update: {
+            args: Prisma.LlmOperationEvalRunUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalRunPayload>
+          }
+          deleteMany: {
+            args: Prisma.LlmOperationEvalRunDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.LlmOperationEvalRunUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.LlmOperationEvalRunUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationEvalRunPayload>
+          }
+          aggregate: {
+            args: Prisma.LlmOperationEvalRunAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateLlmOperationEvalRun>
+          }
+          groupBy: {
+            args: Prisma.LlmOperationEvalRunGroupByArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationEvalRunGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.LlmOperationEvalRunCountArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationEvalRunCountAggregateOutputType> | number
+          }
+        }
+      }
+      LlmOperationInvocation: {
+        payload: Prisma.$LlmOperationInvocationPayload<ExtArgs>
+        fields: Prisma.LlmOperationInvocationFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.LlmOperationInvocationFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationInvocationPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.LlmOperationInvocationFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationInvocationPayload>
+          }
+          findFirst: {
+            args: Prisma.LlmOperationInvocationFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationInvocationPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.LlmOperationInvocationFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationInvocationPayload>
+          }
+          findMany: {
+            args: Prisma.LlmOperationInvocationFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationInvocationPayload>[]
+          }
+          create: {
+            args: Prisma.LlmOperationInvocationCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationInvocationPayload>
+          }
+          createMany: {
+            args: Prisma.LlmOperationInvocationCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.LlmOperationInvocationCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationInvocationPayload>[]
+          }
+          delete: {
+            args: Prisma.LlmOperationInvocationDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationInvocationPayload>
+          }
+          update: {
+            args: Prisma.LlmOperationInvocationUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationInvocationPayload>
+          }
+          deleteMany: {
+            args: Prisma.LlmOperationInvocationDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.LlmOperationInvocationUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.LlmOperationInvocationUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationInvocationPayload>
+          }
+          aggregate: {
+            args: Prisma.LlmOperationInvocationAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateLlmOperationInvocation>
+          }
+          groupBy: {
+            args: Prisma.LlmOperationInvocationGroupByArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationInvocationGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.LlmOperationInvocationCountArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationInvocationCountAggregateOutputType> | number
+          }
+        }
+      }
+      LlmOperationAttestation: {
+        payload: Prisma.$LlmOperationAttestationPayload<ExtArgs>
+        fields: Prisma.LlmOperationAttestationFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.LlmOperationAttestationFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationAttestationPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.LlmOperationAttestationFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationAttestationPayload>
+          }
+          findFirst: {
+            args: Prisma.LlmOperationAttestationFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationAttestationPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.LlmOperationAttestationFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationAttestationPayload>
+          }
+          findMany: {
+            args: Prisma.LlmOperationAttestationFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationAttestationPayload>[]
+          }
+          create: {
+            args: Prisma.LlmOperationAttestationCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationAttestationPayload>
+          }
+          createMany: {
+            args: Prisma.LlmOperationAttestationCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.LlmOperationAttestationCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationAttestationPayload>[]
+          }
+          delete: {
+            args: Prisma.LlmOperationAttestationDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationAttestationPayload>
+          }
+          update: {
+            args: Prisma.LlmOperationAttestationUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationAttestationPayload>
+          }
+          deleteMany: {
+            args: Prisma.LlmOperationAttestationDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.LlmOperationAttestationUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.LlmOperationAttestationUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LlmOperationAttestationPayload>
+          }
+          aggregate: {
+            args: Prisma.LlmOperationAttestationAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateLlmOperationAttestation>
+          }
+          groupBy: {
+            args: Prisma.LlmOperationAttestationGroupByArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationAttestationGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.LlmOperationAttestationCountArgs<ExtArgs>
+            result: $Utils.Optional<LlmOperationAttestationCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -1142,6 +1916,171 @@ export namespace Prisma {
    */
   export type ExecutionCountOutputTypeCountEventsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: ExecutionEventWhereInput
+  }
+
+
+  /**
+   * Count Type LlmOperationCountOutputType
+   */
+
+  export type LlmOperationCountOutputType = {
+    versions: number
+    activations: number
+    activationEvents: number
+    attestations: number
+  }
+
+  export type LlmOperationCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    versions?: boolean | LlmOperationCountOutputTypeCountVersionsArgs
+    activations?: boolean | LlmOperationCountOutputTypeCountActivationsArgs
+    activationEvents?: boolean | LlmOperationCountOutputTypeCountActivationEventsArgs
+    attestations?: boolean | LlmOperationCountOutputTypeCountAttestationsArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * LlmOperationCountOutputType without action
+   */
+  export type LlmOperationCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationCountOutputType
+     */
+    select?: LlmOperationCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * LlmOperationCountOutputType without action
+   */
+  export type LlmOperationCountOutputTypeCountVersionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationVersionWhereInput
+  }
+
+  /**
+   * LlmOperationCountOutputType without action
+   */
+  export type LlmOperationCountOutputTypeCountActivationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationActivationWhereInput
+  }
+
+  /**
+   * LlmOperationCountOutputType without action
+   */
+  export type LlmOperationCountOutputTypeCountActivationEventsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationActivationEventWhereInput
+  }
+
+  /**
+   * LlmOperationCountOutputType without action
+   */
+  export type LlmOperationCountOutputTypeCountAttestationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationAttestationWhereInput
+  }
+
+
+  /**
+   * Count Type LlmOperationVersionCountOutputType
+   */
+
+  export type LlmOperationVersionCountOutputType = {
+    activations: number
+    activationEvents: number
+    evalRuns: number
+    invocations: number
+    attestations: number
+  }
+
+  export type LlmOperationVersionCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    activations?: boolean | LlmOperationVersionCountOutputTypeCountActivationsArgs
+    activationEvents?: boolean | LlmOperationVersionCountOutputTypeCountActivationEventsArgs
+    evalRuns?: boolean | LlmOperationVersionCountOutputTypeCountEvalRunsArgs
+    invocations?: boolean | LlmOperationVersionCountOutputTypeCountInvocationsArgs
+    attestations?: boolean | LlmOperationVersionCountOutputTypeCountAttestationsArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * LlmOperationVersionCountOutputType without action
+   */
+  export type LlmOperationVersionCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationVersionCountOutputType
+     */
+    select?: LlmOperationVersionCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * LlmOperationVersionCountOutputType without action
+   */
+  export type LlmOperationVersionCountOutputTypeCountActivationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationActivationWhereInput
+  }
+
+  /**
+   * LlmOperationVersionCountOutputType without action
+   */
+  export type LlmOperationVersionCountOutputTypeCountActivationEventsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationActivationEventWhereInput
+  }
+
+  /**
+   * LlmOperationVersionCountOutputType without action
+   */
+  export type LlmOperationVersionCountOutputTypeCountEvalRunsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationEvalRunWhereInput
+  }
+
+  /**
+   * LlmOperationVersionCountOutputType without action
+   */
+  export type LlmOperationVersionCountOutputTypeCountInvocationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationInvocationWhereInput
+  }
+
+  /**
+   * LlmOperationVersionCountOutputType without action
+   */
+  export type LlmOperationVersionCountOutputTypeCountAttestationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationAttestationWhereInput
+  }
+
+
+  /**
+   * Count Type LlmOperationEvalSuiteCountOutputType
+   */
+
+  export type LlmOperationEvalSuiteCountOutputType = {
+    cases: number
+    evalRuns: number
+  }
+
+  export type LlmOperationEvalSuiteCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    cases?: boolean | LlmOperationEvalSuiteCountOutputTypeCountCasesArgs
+    evalRuns?: boolean | LlmOperationEvalSuiteCountOutputTypeCountEvalRunsArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * LlmOperationEvalSuiteCountOutputType without action
+   */
+  export type LlmOperationEvalSuiteCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalSuiteCountOutputType
+     */
+    select?: LlmOperationEvalSuiteCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * LlmOperationEvalSuiteCountOutputType without action
+   */
+  export type LlmOperationEvalSuiteCountOutputTypeCountCasesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationEvalCaseWhereInput
+  }
+
+  /**
+   * LlmOperationEvalSuiteCountOutputType without action
+   */
+  export type LlmOperationEvalSuiteCountOutputTypeCountEvalRunsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationEvalRunWhereInput
   }
 
 
@@ -5466,6 +6405,9483 @@ export namespace Prisma {
 
 
   /**
+   * Model LlmOperation
+   */
+
+  export type AggregateLlmOperation = {
+    _count: LlmOperationCountAggregateOutputType | null
+    _min: LlmOperationMinAggregateOutputType | null
+    _max: LlmOperationMaxAggregateOutputType | null
+  }
+
+  export type LlmOperationMinAggregateOutputType = {
+    id: string | null
+    operationKey: string | null
+    displayName: string | null
+    description: string | null
+    owner: string | null
+    status: string | null
+    source: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type LlmOperationMaxAggregateOutputType = {
+    id: string | null
+    operationKey: string | null
+    displayName: string | null
+    description: string | null
+    owner: string | null
+    status: string | null
+    source: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type LlmOperationCountAggregateOutputType = {
+    id: number
+    operationKey: number
+    displayName: number
+    description: number
+    owner: number
+    status: number
+    source: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type LlmOperationMinAggregateInputType = {
+    id?: true
+    operationKey?: true
+    displayName?: true
+    description?: true
+    owner?: true
+    status?: true
+    source?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type LlmOperationMaxAggregateInputType = {
+    id?: true
+    operationKey?: true
+    displayName?: true
+    description?: true
+    owner?: true
+    status?: true
+    source?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type LlmOperationCountAggregateInputType = {
+    id?: true
+    operationKey?: true
+    displayName?: true
+    description?: true
+    owner?: true
+    status?: true
+    source?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type LlmOperationAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperation to aggregate.
+     */
+    where?: LlmOperationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperations to fetch.
+     */
+    orderBy?: LlmOperationOrderByWithRelationInput | LlmOperationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: LlmOperationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned LlmOperations
+    **/
+    _count?: true | LlmOperationCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: LlmOperationMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: LlmOperationMaxAggregateInputType
+  }
+
+  export type GetLlmOperationAggregateType<T extends LlmOperationAggregateArgs> = {
+        [P in keyof T & keyof AggregateLlmOperation]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateLlmOperation[P]>
+      : GetScalarType<T[P], AggregateLlmOperation[P]>
+  }
+
+
+
+
+  export type LlmOperationGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationWhereInput
+    orderBy?: LlmOperationOrderByWithAggregationInput | LlmOperationOrderByWithAggregationInput[]
+    by: LlmOperationScalarFieldEnum[] | LlmOperationScalarFieldEnum
+    having?: LlmOperationScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: LlmOperationCountAggregateInputType | true
+    _min?: LlmOperationMinAggregateInputType
+    _max?: LlmOperationMaxAggregateInputType
+  }
+
+  export type LlmOperationGroupByOutputType = {
+    id: string
+    operationKey: string
+    displayName: string
+    description: string
+    owner: string
+    status: string
+    source: string
+    createdAt: Date
+    updatedAt: Date
+    _count: LlmOperationCountAggregateOutputType | null
+    _min: LlmOperationMinAggregateOutputType | null
+    _max: LlmOperationMaxAggregateOutputType | null
+  }
+
+  type GetLlmOperationGroupByPayload<T extends LlmOperationGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<LlmOperationGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof LlmOperationGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], LlmOperationGroupByOutputType[P]>
+            : GetScalarType<T[P], LlmOperationGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type LlmOperationSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    operationKey?: boolean
+    displayName?: boolean
+    description?: boolean
+    owner?: boolean
+    status?: boolean
+    source?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    versions?: boolean | LlmOperation$versionsArgs<ExtArgs>
+    activations?: boolean | LlmOperation$activationsArgs<ExtArgs>
+    activationEvents?: boolean | LlmOperation$activationEventsArgs<ExtArgs>
+    attestations?: boolean | LlmOperation$attestationsArgs<ExtArgs>
+    _count?: boolean | LlmOperationCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["llmOperation"]>
+
+  export type LlmOperationSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    operationKey?: boolean
+    displayName?: boolean
+    description?: boolean
+    owner?: boolean
+    status?: boolean
+    source?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["llmOperation"]>
+
+  export type LlmOperationSelectScalar = {
+    id?: boolean
+    operationKey?: boolean
+    displayName?: boolean
+    description?: boolean
+    owner?: boolean
+    status?: boolean
+    source?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type LlmOperationInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    versions?: boolean | LlmOperation$versionsArgs<ExtArgs>
+    activations?: boolean | LlmOperation$activationsArgs<ExtArgs>
+    activationEvents?: boolean | LlmOperation$activationEventsArgs<ExtArgs>
+    attestations?: boolean | LlmOperation$attestationsArgs<ExtArgs>
+    _count?: boolean | LlmOperationCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type LlmOperationIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+
+  export type $LlmOperationPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "LlmOperation"
+    objects: {
+      versions: Prisma.$LlmOperationVersionPayload<ExtArgs>[]
+      activations: Prisma.$LlmOperationActivationPayload<ExtArgs>[]
+      activationEvents: Prisma.$LlmOperationActivationEventPayload<ExtArgs>[]
+      attestations: Prisma.$LlmOperationAttestationPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      operationKey: string
+      displayName: string
+      description: string
+      owner: string
+      status: string
+      source: string
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["llmOperation"]>
+    composites: {}
+  }
+
+  type LlmOperationGetPayload<S extends boolean | null | undefined | LlmOperationDefaultArgs> = $Result.GetResult<Prisma.$LlmOperationPayload, S>
+
+  type LlmOperationCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<LlmOperationFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: LlmOperationCountAggregateInputType | true
+    }
+
+  export interface LlmOperationDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['LlmOperation'], meta: { name: 'LlmOperation' } }
+    /**
+     * Find zero or one LlmOperation that matches the filter.
+     * @param {LlmOperationFindUniqueArgs} args - Arguments to find a LlmOperation
+     * @example
+     * // Get one LlmOperation
+     * const llmOperation = await prisma.llmOperation.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends LlmOperationFindUniqueArgs>(args: SelectSubset<T, LlmOperationFindUniqueArgs<ExtArgs>>): Prisma__LlmOperationClient<$Result.GetResult<Prisma.$LlmOperationPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one LlmOperation that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {LlmOperationFindUniqueOrThrowArgs} args - Arguments to find a LlmOperation
+     * @example
+     * // Get one LlmOperation
+     * const llmOperation = await prisma.llmOperation.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends LlmOperationFindUniqueOrThrowArgs>(args: SelectSubset<T, LlmOperationFindUniqueOrThrowArgs<ExtArgs>>): Prisma__LlmOperationClient<$Result.GetResult<Prisma.$LlmOperationPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first LlmOperation that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationFindFirstArgs} args - Arguments to find a LlmOperation
+     * @example
+     * // Get one LlmOperation
+     * const llmOperation = await prisma.llmOperation.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends LlmOperationFindFirstArgs>(args?: SelectSubset<T, LlmOperationFindFirstArgs<ExtArgs>>): Prisma__LlmOperationClient<$Result.GetResult<Prisma.$LlmOperationPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first LlmOperation that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationFindFirstOrThrowArgs} args - Arguments to find a LlmOperation
+     * @example
+     * // Get one LlmOperation
+     * const llmOperation = await prisma.llmOperation.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends LlmOperationFindFirstOrThrowArgs>(args?: SelectSubset<T, LlmOperationFindFirstOrThrowArgs<ExtArgs>>): Prisma__LlmOperationClient<$Result.GetResult<Prisma.$LlmOperationPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more LlmOperations that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all LlmOperations
+     * const llmOperations = await prisma.llmOperation.findMany()
+     * 
+     * // Get first 10 LlmOperations
+     * const llmOperations = await prisma.llmOperation.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const llmOperationWithIdOnly = await prisma.llmOperation.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends LlmOperationFindManyArgs>(args?: SelectSubset<T, LlmOperationFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a LlmOperation.
+     * @param {LlmOperationCreateArgs} args - Arguments to create a LlmOperation.
+     * @example
+     * // Create one LlmOperation
+     * const LlmOperation = await prisma.llmOperation.create({
+     *   data: {
+     *     // ... data to create a LlmOperation
+     *   }
+     * })
+     * 
+     */
+    create<T extends LlmOperationCreateArgs>(args: SelectSubset<T, LlmOperationCreateArgs<ExtArgs>>): Prisma__LlmOperationClient<$Result.GetResult<Prisma.$LlmOperationPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many LlmOperations.
+     * @param {LlmOperationCreateManyArgs} args - Arguments to create many LlmOperations.
+     * @example
+     * // Create many LlmOperations
+     * const llmOperation = await prisma.llmOperation.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends LlmOperationCreateManyArgs>(args?: SelectSubset<T, LlmOperationCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many LlmOperations and returns the data saved in the database.
+     * @param {LlmOperationCreateManyAndReturnArgs} args - Arguments to create many LlmOperations.
+     * @example
+     * // Create many LlmOperations
+     * const llmOperation = await prisma.llmOperation.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many LlmOperations and only return the `id`
+     * const llmOperationWithIdOnly = await prisma.llmOperation.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends LlmOperationCreateManyAndReturnArgs>(args?: SelectSubset<T, LlmOperationCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a LlmOperation.
+     * @param {LlmOperationDeleteArgs} args - Arguments to delete one LlmOperation.
+     * @example
+     * // Delete one LlmOperation
+     * const LlmOperation = await prisma.llmOperation.delete({
+     *   where: {
+     *     // ... filter to delete one LlmOperation
+     *   }
+     * })
+     * 
+     */
+    delete<T extends LlmOperationDeleteArgs>(args: SelectSubset<T, LlmOperationDeleteArgs<ExtArgs>>): Prisma__LlmOperationClient<$Result.GetResult<Prisma.$LlmOperationPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one LlmOperation.
+     * @param {LlmOperationUpdateArgs} args - Arguments to update one LlmOperation.
+     * @example
+     * // Update one LlmOperation
+     * const llmOperation = await prisma.llmOperation.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends LlmOperationUpdateArgs>(args: SelectSubset<T, LlmOperationUpdateArgs<ExtArgs>>): Prisma__LlmOperationClient<$Result.GetResult<Prisma.$LlmOperationPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more LlmOperations.
+     * @param {LlmOperationDeleteManyArgs} args - Arguments to filter LlmOperations to delete.
+     * @example
+     * // Delete a few LlmOperations
+     * const { count } = await prisma.llmOperation.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends LlmOperationDeleteManyArgs>(args?: SelectSubset<T, LlmOperationDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more LlmOperations.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many LlmOperations
+     * const llmOperation = await prisma.llmOperation.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends LlmOperationUpdateManyArgs>(args: SelectSubset<T, LlmOperationUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one LlmOperation.
+     * @param {LlmOperationUpsertArgs} args - Arguments to update or create a LlmOperation.
+     * @example
+     * // Update or create a LlmOperation
+     * const llmOperation = await prisma.llmOperation.upsert({
+     *   create: {
+     *     // ... data to create a LlmOperation
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the LlmOperation we want to update
+     *   }
+     * })
+     */
+    upsert<T extends LlmOperationUpsertArgs>(args: SelectSubset<T, LlmOperationUpsertArgs<ExtArgs>>): Prisma__LlmOperationClient<$Result.GetResult<Prisma.$LlmOperationPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of LlmOperations.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationCountArgs} args - Arguments to filter LlmOperations to count.
+     * @example
+     * // Count the number of LlmOperations
+     * const count = await prisma.llmOperation.count({
+     *   where: {
+     *     // ... the filter for the LlmOperations we want to count
+     *   }
+     * })
+    **/
+    count<T extends LlmOperationCountArgs>(
+      args?: Subset<T, LlmOperationCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], LlmOperationCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a LlmOperation.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends LlmOperationAggregateArgs>(args: Subset<T, LlmOperationAggregateArgs>): Prisma.PrismaPromise<GetLlmOperationAggregateType<T>>
+
+    /**
+     * Group by LlmOperation.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends LlmOperationGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: LlmOperationGroupByArgs['orderBy'] }
+        : { orderBy?: LlmOperationGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, LlmOperationGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetLlmOperationGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the LlmOperation model
+   */
+  readonly fields: LlmOperationFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for LlmOperation.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__LlmOperationClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    versions<T extends LlmOperation$versionsArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperation$versionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationVersionPayload<ExtArgs>, T, "findMany"> | Null>
+    activations<T extends LlmOperation$activationsArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperation$activationsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationActivationPayload<ExtArgs>, T, "findMany"> | Null>
+    activationEvents<T extends LlmOperation$activationEventsArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperation$activationEventsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationActivationEventPayload<ExtArgs>, T, "findMany"> | Null>
+    attestations<T extends LlmOperation$attestationsArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperation$attestationsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationAttestationPayload<ExtArgs>, T, "findMany"> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the LlmOperation model
+   */ 
+  interface LlmOperationFieldRefs {
+    readonly id: FieldRef<"LlmOperation", 'String'>
+    readonly operationKey: FieldRef<"LlmOperation", 'String'>
+    readonly displayName: FieldRef<"LlmOperation", 'String'>
+    readonly description: FieldRef<"LlmOperation", 'String'>
+    readonly owner: FieldRef<"LlmOperation", 'String'>
+    readonly status: FieldRef<"LlmOperation", 'String'>
+    readonly source: FieldRef<"LlmOperation", 'String'>
+    readonly createdAt: FieldRef<"LlmOperation", 'DateTime'>
+    readonly updatedAt: FieldRef<"LlmOperation", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * LlmOperation findUnique
+   */
+  export type LlmOperationFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperation
+     */
+    select?: LlmOperationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperation to fetch.
+     */
+    where: LlmOperationWhereUniqueInput
+  }
+
+  /**
+   * LlmOperation findUniqueOrThrow
+   */
+  export type LlmOperationFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperation
+     */
+    select?: LlmOperationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperation to fetch.
+     */
+    where: LlmOperationWhereUniqueInput
+  }
+
+  /**
+   * LlmOperation findFirst
+   */
+  export type LlmOperationFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperation
+     */
+    select?: LlmOperationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperation to fetch.
+     */
+    where?: LlmOperationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperations to fetch.
+     */
+    orderBy?: LlmOperationOrderByWithRelationInput | LlmOperationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperations.
+     */
+    cursor?: LlmOperationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperations.
+     */
+    distinct?: LlmOperationScalarFieldEnum | LlmOperationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperation findFirstOrThrow
+   */
+  export type LlmOperationFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperation
+     */
+    select?: LlmOperationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperation to fetch.
+     */
+    where?: LlmOperationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperations to fetch.
+     */
+    orderBy?: LlmOperationOrderByWithRelationInput | LlmOperationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperations.
+     */
+    cursor?: LlmOperationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperations.
+     */
+    distinct?: LlmOperationScalarFieldEnum | LlmOperationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperation findMany
+   */
+  export type LlmOperationFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperation
+     */
+    select?: LlmOperationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperations to fetch.
+     */
+    where?: LlmOperationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperations to fetch.
+     */
+    orderBy?: LlmOperationOrderByWithRelationInput | LlmOperationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing LlmOperations.
+     */
+    cursor?: LlmOperationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperations.
+     */
+    skip?: number
+    distinct?: LlmOperationScalarFieldEnum | LlmOperationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperation create
+   */
+  export type LlmOperationCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperation
+     */
+    select?: LlmOperationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInclude<ExtArgs> | null
+    /**
+     * The data needed to create a LlmOperation.
+     */
+    data: XOR<LlmOperationCreateInput, LlmOperationUncheckedCreateInput>
+  }
+
+  /**
+   * LlmOperation createMany
+   */
+  export type LlmOperationCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many LlmOperations.
+     */
+    data: LlmOperationCreateManyInput | LlmOperationCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * LlmOperation createManyAndReturn
+   */
+  export type LlmOperationCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperation
+     */
+    select?: LlmOperationSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many LlmOperations.
+     */
+    data: LlmOperationCreateManyInput | LlmOperationCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * LlmOperation update
+   */
+  export type LlmOperationUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperation
+     */
+    select?: LlmOperationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInclude<ExtArgs> | null
+    /**
+     * The data needed to update a LlmOperation.
+     */
+    data: XOR<LlmOperationUpdateInput, LlmOperationUncheckedUpdateInput>
+    /**
+     * Choose, which LlmOperation to update.
+     */
+    where: LlmOperationWhereUniqueInput
+  }
+
+  /**
+   * LlmOperation updateMany
+   */
+  export type LlmOperationUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update LlmOperations.
+     */
+    data: XOR<LlmOperationUpdateManyMutationInput, LlmOperationUncheckedUpdateManyInput>
+    /**
+     * Filter which LlmOperations to update
+     */
+    where?: LlmOperationWhereInput
+  }
+
+  /**
+   * LlmOperation upsert
+   */
+  export type LlmOperationUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperation
+     */
+    select?: LlmOperationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInclude<ExtArgs> | null
+    /**
+     * The filter to search for the LlmOperation to update in case it exists.
+     */
+    where: LlmOperationWhereUniqueInput
+    /**
+     * In case the LlmOperation found by the `where` argument doesn't exist, create a new LlmOperation with this data.
+     */
+    create: XOR<LlmOperationCreateInput, LlmOperationUncheckedCreateInput>
+    /**
+     * In case the LlmOperation was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<LlmOperationUpdateInput, LlmOperationUncheckedUpdateInput>
+  }
+
+  /**
+   * LlmOperation delete
+   */
+  export type LlmOperationDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperation
+     */
+    select?: LlmOperationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInclude<ExtArgs> | null
+    /**
+     * Filter which LlmOperation to delete.
+     */
+    where: LlmOperationWhereUniqueInput
+  }
+
+  /**
+   * LlmOperation deleteMany
+   */
+  export type LlmOperationDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperations to delete
+     */
+    where?: LlmOperationWhereInput
+  }
+
+  /**
+   * LlmOperation.versions
+   */
+  export type LlmOperation$versionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationVersion
+     */
+    select?: LlmOperationVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationVersionInclude<ExtArgs> | null
+    where?: LlmOperationVersionWhereInput
+    orderBy?: LlmOperationVersionOrderByWithRelationInput | LlmOperationVersionOrderByWithRelationInput[]
+    cursor?: LlmOperationVersionWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: LlmOperationVersionScalarFieldEnum | LlmOperationVersionScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperation.activations
+   */
+  export type LlmOperation$activationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivation
+     */
+    select?: LlmOperationActivationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationInclude<ExtArgs> | null
+    where?: LlmOperationActivationWhereInput
+    orderBy?: LlmOperationActivationOrderByWithRelationInput | LlmOperationActivationOrderByWithRelationInput[]
+    cursor?: LlmOperationActivationWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: LlmOperationActivationScalarFieldEnum | LlmOperationActivationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperation.activationEvents
+   */
+  export type LlmOperation$activationEventsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivationEvent
+     */
+    select?: LlmOperationActivationEventSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationEventInclude<ExtArgs> | null
+    where?: LlmOperationActivationEventWhereInput
+    orderBy?: LlmOperationActivationEventOrderByWithRelationInput | LlmOperationActivationEventOrderByWithRelationInput[]
+    cursor?: LlmOperationActivationEventWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: LlmOperationActivationEventScalarFieldEnum | LlmOperationActivationEventScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperation.attestations
+   */
+  export type LlmOperation$attestationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationAttestation
+     */
+    select?: LlmOperationAttestationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationAttestationInclude<ExtArgs> | null
+    where?: LlmOperationAttestationWhereInput
+    orderBy?: LlmOperationAttestationOrderByWithRelationInput | LlmOperationAttestationOrderByWithRelationInput[]
+    cursor?: LlmOperationAttestationWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: LlmOperationAttestationScalarFieldEnum | LlmOperationAttestationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperation without action
+   */
+  export type LlmOperationDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperation
+     */
+    select?: LlmOperationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model LlmOperationVersion
+   */
+
+  export type AggregateLlmOperationVersion = {
+    _count: LlmOperationVersionCountAggregateOutputType | null
+    _min: LlmOperationVersionMinAggregateOutputType | null
+    _max: LlmOperationVersionMaxAggregateOutputType | null
+  }
+
+  export type LlmOperationVersionMinAggregateOutputType = {
+    id: string | null
+    operationId: string | null
+    version: string | null
+    state: string | null
+    operationDigest: string | null
+    contractDigest: string | null
+    changeSummary: string | null
+    source: string | null
+    approvedBy: string | null
+    approvedAt: Date | null
+    createdBy: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type LlmOperationVersionMaxAggregateOutputType = {
+    id: string | null
+    operationId: string | null
+    version: string | null
+    state: string | null
+    operationDigest: string | null
+    contractDigest: string | null
+    changeSummary: string | null
+    source: string | null
+    approvedBy: string | null
+    approvedAt: Date | null
+    createdBy: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type LlmOperationVersionCountAggregateOutputType = {
+    id: number
+    operationId: number
+    version: number
+    state: number
+    manifestJson: number
+    operationDigest: number
+    contractDigest: number
+    changeSummary: number
+    source: number
+    approvedBy: number
+    approvedAt: number
+    createdBy: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type LlmOperationVersionMinAggregateInputType = {
+    id?: true
+    operationId?: true
+    version?: true
+    state?: true
+    operationDigest?: true
+    contractDigest?: true
+    changeSummary?: true
+    source?: true
+    approvedBy?: true
+    approvedAt?: true
+    createdBy?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type LlmOperationVersionMaxAggregateInputType = {
+    id?: true
+    operationId?: true
+    version?: true
+    state?: true
+    operationDigest?: true
+    contractDigest?: true
+    changeSummary?: true
+    source?: true
+    approvedBy?: true
+    approvedAt?: true
+    createdBy?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type LlmOperationVersionCountAggregateInputType = {
+    id?: true
+    operationId?: true
+    version?: true
+    state?: true
+    manifestJson?: true
+    operationDigest?: true
+    contractDigest?: true
+    changeSummary?: true
+    source?: true
+    approvedBy?: true
+    approvedAt?: true
+    createdBy?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type LlmOperationVersionAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperationVersion to aggregate.
+     */
+    where?: LlmOperationVersionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationVersions to fetch.
+     */
+    orderBy?: LlmOperationVersionOrderByWithRelationInput | LlmOperationVersionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: LlmOperationVersionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationVersions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationVersions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned LlmOperationVersions
+    **/
+    _count?: true | LlmOperationVersionCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: LlmOperationVersionMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: LlmOperationVersionMaxAggregateInputType
+  }
+
+  export type GetLlmOperationVersionAggregateType<T extends LlmOperationVersionAggregateArgs> = {
+        [P in keyof T & keyof AggregateLlmOperationVersion]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateLlmOperationVersion[P]>
+      : GetScalarType<T[P], AggregateLlmOperationVersion[P]>
+  }
+
+
+
+
+  export type LlmOperationVersionGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationVersionWhereInput
+    orderBy?: LlmOperationVersionOrderByWithAggregationInput | LlmOperationVersionOrderByWithAggregationInput[]
+    by: LlmOperationVersionScalarFieldEnum[] | LlmOperationVersionScalarFieldEnum
+    having?: LlmOperationVersionScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: LlmOperationVersionCountAggregateInputType | true
+    _min?: LlmOperationVersionMinAggregateInputType
+    _max?: LlmOperationVersionMaxAggregateInputType
+  }
+
+  export type LlmOperationVersionGroupByOutputType = {
+    id: string
+    operationId: string
+    version: string
+    state: string
+    manifestJson: JsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary: string
+    source: string
+    approvedBy: string | null
+    approvedAt: Date | null
+    createdBy: string
+    createdAt: Date
+    updatedAt: Date
+    _count: LlmOperationVersionCountAggregateOutputType | null
+    _min: LlmOperationVersionMinAggregateOutputType | null
+    _max: LlmOperationVersionMaxAggregateOutputType | null
+  }
+
+  type GetLlmOperationVersionGroupByPayload<T extends LlmOperationVersionGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<LlmOperationVersionGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof LlmOperationVersionGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], LlmOperationVersionGroupByOutputType[P]>
+            : GetScalarType<T[P], LlmOperationVersionGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type LlmOperationVersionSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    operationId?: boolean
+    version?: boolean
+    state?: boolean
+    manifestJson?: boolean
+    operationDigest?: boolean
+    contractDigest?: boolean
+    changeSummary?: boolean
+    source?: boolean
+    approvedBy?: boolean
+    approvedAt?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    operation?: boolean | LlmOperationDefaultArgs<ExtArgs>
+    activations?: boolean | LlmOperationVersion$activationsArgs<ExtArgs>
+    activationEvents?: boolean | LlmOperationVersion$activationEventsArgs<ExtArgs>
+    evalRuns?: boolean | LlmOperationVersion$evalRunsArgs<ExtArgs>
+    invocations?: boolean | LlmOperationVersion$invocationsArgs<ExtArgs>
+    attestations?: boolean | LlmOperationVersion$attestationsArgs<ExtArgs>
+    _count?: boolean | LlmOperationVersionCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["llmOperationVersion"]>
+
+  export type LlmOperationVersionSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    operationId?: boolean
+    version?: boolean
+    state?: boolean
+    manifestJson?: boolean
+    operationDigest?: boolean
+    contractDigest?: boolean
+    changeSummary?: boolean
+    source?: boolean
+    approvedBy?: boolean
+    approvedAt?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    operation?: boolean | LlmOperationDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["llmOperationVersion"]>
+
+  export type LlmOperationVersionSelectScalar = {
+    id?: boolean
+    operationId?: boolean
+    version?: boolean
+    state?: boolean
+    manifestJson?: boolean
+    operationDigest?: boolean
+    contractDigest?: boolean
+    changeSummary?: boolean
+    source?: boolean
+    approvedBy?: boolean
+    approvedAt?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type LlmOperationVersionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    operation?: boolean | LlmOperationDefaultArgs<ExtArgs>
+    activations?: boolean | LlmOperationVersion$activationsArgs<ExtArgs>
+    activationEvents?: boolean | LlmOperationVersion$activationEventsArgs<ExtArgs>
+    evalRuns?: boolean | LlmOperationVersion$evalRunsArgs<ExtArgs>
+    invocations?: boolean | LlmOperationVersion$invocationsArgs<ExtArgs>
+    attestations?: boolean | LlmOperationVersion$attestationsArgs<ExtArgs>
+    _count?: boolean | LlmOperationVersionCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type LlmOperationVersionIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    operation?: boolean | LlmOperationDefaultArgs<ExtArgs>
+  }
+
+  export type $LlmOperationVersionPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "LlmOperationVersion"
+    objects: {
+      operation: Prisma.$LlmOperationPayload<ExtArgs>
+      activations: Prisma.$LlmOperationActivationPayload<ExtArgs>[]
+      activationEvents: Prisma.$LlmOperationActivationEventPayload<ExtArgs>[]
+      evalRuns: Prisma.$LlmOperationEvalRunPayload<ExtArgs>[]
+      invocations: Prisma.$LlmOperationInvocationPayload<ExtArgs>[]
+      attestations: Prisma.$LlmOperationAttestationPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      operationId: string
+      version: string
+      state: string
+      manifestJson: Prisma.JsonValue
+      operationDigest: string
+      contractDigest: string
+      changeSummary: string
+      source: string
+      approvedBy: string | null
+      approvedAt: Date | null
+      createdBy: string
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["llmOperationVersion"]>
+    composites: {}
+  }
+
+  type LlmOperationVersionGetPayload<S extends boolean | null | undefined | LlmOperationVersionDefaultArgs> = $Result.GetResult<Prisma.$LlmOperationVersionPayload, S>
+
+  type LlmOperationVersionCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<LlmOperationVersionFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: LlmOperationVersionCountAggregateInputType | true
+    }
+
+  export interface LlmOperationVersionDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['LlmOperationVersion'], meta: { name: 'LlmOperationVersion' } }
+    /**
+     * Find zero or one LlmOperationVersion that matches the filter.
+     * @param {LlmOperationVersionFindUniqueArgs} args - Arguments to find a LlmOperationVersion
+     * @example
+     * // Get one LlmOperationVersion
+     * const llmOperationVersion = await prisma.llmOperationVersion.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends LlmOperationVersionFindUniqueArgs>(args: SelectSubset<T, LlmOperationVersionFindUniqueArgs<ExtArgs>>): Prisma__LlmOperationVersionClient<$Result.GetResult<Prisma.$LlmOperationVersionPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one LlmOperationVersion that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {LlmOperationVersionFindUniqueOrThrowArgs} args - Arguments to find a LlmOperationVersion
+     * @example
+     * // Get one LlmOperationVersion
+     * const llmOperationVersion = await prisma.llmOperationVersion.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends LlmOperationVersionFindUniqueOrThrowArgs>(args: SelectSubset<T, LlmOperationVersionFindUniqueOrThrowArgs<ExtArgs>>): Prisma__LlmOperationVersionClient<$Result.GetResult<Prisma.$LlmOperationVersionPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first LlmOperationVersion that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationVersionFindFirstArgs} args - Arguments to find a LlmOperationVersion
+     * @example
+     * // Get one LlmOperationVersion
+     * const llmOperationVersion = await prisma.llmOperationVersion.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends LlmOperationVersionFindFirstArgs>(args?: SelectSubset<T, LlmOperationVersionFindFirstArgs<ExtArgs>>): Prisma__LlmOperationVersionClient<$Result.GetResult<Prisma.$LlmOperationVersionPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first LlmOperationVersion that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationVersionFindFirstOrThrowArgs} args - Arguments to find a LlmOperationVersion
+     * @example
+     * // Get one LlmOperationVersion
+     * const llmOperationVersion = await prisma.llmOperationVersion.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends LlmOperationVersionFindFirstOrThrowArgs>(args?: SelectSubset<T, LlmOperationVersionFindFirstOrThrowArgs<ExtArgs>>): Prisma__LlmOperationVersionClient<$Result.GetResult<Prisma.$LlmOperationVersionPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more LlmOperationVersions that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationVersionFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all LlmOperationVersions
+     * const llmOperationVersions = await prisma.llmOperationVersion.findMany()
+     * 
+     * // Get first 10 LlmOperationVersions
+     * const llmOperationVersions = await prisma.llmOperationVersion.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const llmOperationVersionWithIdOnly = await prisma.llmOperationVersion.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends LlmOperationVersionFindManyArgs>(args?: SelectSubset<T, LlmOperationVersionFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationVersionPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a LlmOperationVersion.
+     * @param {LlmOperationVersionCreateArgs} args - Arguments to create a LlmOperationVersion.
+     * @example
+     * // Create one LlmOperationVersion
+     * const LlmOperationVersion = await prisma.llmOperationVersion.create({
+     *   data: {
+     *     // ... data to create a LlmOperationVersion
+     *   }
+     * })
+     * 
+     */
+    create<T extends LlmOperationVersionCreateArgs>(args: SelectSubset<T, LlmOperationVersionCreateArgs<ExtArgs>>): Prisma__LlmOperationVersionClient<$Result.GetResult<Prisma.$LlmOperationVersionPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many LlmOperationVersions.
+     * @param {LlmOperationVersionCreateManyArgs} args - Arguments to create many LlmOperationVersions.
+     * @example
+     * // Create many LlmOperationVersions
+     * const llmOperationVersion = await prisma.llmOperationVersion.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends LlmOperationVersionCreateManyArgs>(args?: SelectSubset<T, LlmOperationVersionCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many LlmOperationVersions and returns the data saved in the database.
+     * @param {LlmOperationVersionCreateManyAndReturnArgs} args - Arguments to create many LlmOperationVersions.
+     * @example
+     * // Create many LlmOperationVersions
+     * const llmOperationVersion = await prisma.llmOperationVersion.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many LlmOperationVersions and only return the `id`
+     * const llmOperationVersionWithIdOnly = await prisma.llmOperationVersion.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends LlmOperationVersionCreateManyAndReturnArgs>(args?: SelectSubset<T, LlmOperationVersionCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationVersionPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a LlmOperationVersion.
+     * @param {LlmOperationVersionDeleteArgs} args - Arguments to delete one LlmOperationVersion.
+     * @example
+     * // Delete one LlmOperationVersion
+     * const LlmOperationVersion = await prisma.llmOperationVersion.delete({
+     *   where: {
+     *     // ... filter to delete one LlmOperationVersion
+     *   }
+     * })
+     * 
+     */
+    delete<T extends LlmOperationVersionDeleteArgs>(args: SelectSubset<T, LlmOperationVersionDeleteArgs<ExtArgs>>): Prisma__LlmOperationVersionClient<$Result.GetResult<Prisma.$LlmOperationVersionPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one LlmOperationVersion.
+     * @param {LlmOperationVersionUpdateArgs} args - Arguments to update one LlmOperationVersion.
+     * @example
+     * // Update one LlmOperationVersion
+     * const llmOperationVersion = await prisma.llmOperationVersion.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends LlmOperationVersionUpdateArgs>(args: SelectSubset<T, LlmOperationVersionUpdateArgs<ExtArgs>>): Prisma__LlmOperationVersionClient<$Result.GetResult<Prisma.$LlmOperationVersionPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more LlmOperationVersions.
+     * @param {LlmOperationVersionDeleteManyArgs} args - Arguments to filter LlmOperationVersions to delete.
+     * @example
+     * // Delete a few LlmOperationVersions
+     * const { count } = await prisma.llmOperationVersion.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends LlmOperationVersionDeleteManyArgs>(args?: SelectSubset<T, LlmOperationVersionDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more LlmOperationVersions.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationVersionUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many LlmOperationVersions
+     * const llmOperationVersion = await prisma.llmOperationVersion.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends LlmOperationVersionUpdateManyArgs>(args: SelectSubset<T, LlmOperationVersionUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one LlmOperationVersion.
+     * @param {LlmOperationVersionUpsertArgs} args - Arguments to update or create a LlmOperationVersion.
+     * @example
+     * // Update or create a LlmOperationVersion
+     * const llmOperationVersion = await prisma.llmOperationVersion.upsert({
+     *   create: {
+     *     // ... data to create a LlmOperationVersion
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the LlmOperationVersion we want to update
+     *   }
+     * })
+     */
+    upsert<T extends LlmOperationVersionUpsertArgs>(args: SelectSubset<T, LlmOperationVersionUpsertArgs<ExtArgs>>): Prisma__LlmOperationVersionClient<$Result.GetResult<Prisma.$LlmOperationVersionPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of LlmOperationVersions.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationVersionCountArgs} args - Arguments to filter LlmOperationVersions to count.
+     * @example
+     * // Count the number of LlmOperationVersions
+     * const count = await prisma.llmOperationVersion.count({
+     *   where: {
+     *     // ... the filter for the LlmOperationVersions we want to count
+     *   }
+     * })
+    **/
+    count<T extends LlmOperationVersionCountArgs>(
+      args?: Subset<T, LlmOperationVersionCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], LlmOperationVersionCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a LlmOperationVersion.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationVersionAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends LlmOperationVersionAggregateArgs>(args: Subset<T, LlmOperationVersionAggregateArgs>): Prisma.PrismaPromise<GetLlmOperationVersionAggregateType<T>>
+
+    /**
+     * Group by LlmOperationVersion.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationVersionGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends LlmOperationVersionGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: LlmOperationVersionGroupByArgs['orderBy'] }
+        : { orderBy?: LlmOperationVersionGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, LlmOperationVersionGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetLlmOperationVersionGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the LlmOperationVersion model
+   */
+  readonly fields: LlmOperationVersionFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for LlmOperationVersion.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__LlmOperationVersionClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    operation<T extends LlmOperationDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationDefaultArgs<ExtArgs>>): Prisma__LlmOperationClient<$Result.GetResult<Prisma.$LlmOperationPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    activations<T extends LlmOperationVersion$activationsArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationVersion$activationsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationActivationPayload<ExtArgs>, T, "findMany"> | Null>
+    activationEvents<T extends LlmOperationVersion$activationEventsArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationVersion$activationEventsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationActivationEventPayload<ExtArgs>, T, "findMany"> | Null>
+    evalRuns<T extends LlmOperationVersion$evalRunsArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationVersion$evalRunsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationEvalRunPayload<ExtArgs>, T, "findMany"> | Null>
+    invocations<T extends LlmOperationVersion$invocationsArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationVersion$invocationsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationInvocationPayload<ExtArgs>, T, "findMany"> | Null>
+    attestations<T extends LlmOperationVersion$attestationsArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationVersion$attestationsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationAttestationPayload<ExtArgs>, T, "findMany"> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the LlmOperationVersion model
+   */ 
+  interface LlmOperationVersionFieldRefs {
+    readonly id: FieldRef<"LlmOperationVersion", 'String'>
+    readonly operationId: FieldRef<"LlmOperationVersion", 'String'>
+    readonly version: FieldRef<"LlmOperationVersion", 'String'>
+    readonly state: FieldRef<"LlmOperationVersion", 'String'>
+    readonly manifestJson: FieldRef<"LlmOperationVersion", 'Json'>
+    readonly operationDigest: FieldRef<"LlmOperationVersion", 'String'>
+    readonly contractDigest: FieldRef<"LlmOperationVersion", 'String'>
+    readonly changeSummary: FieldRef<"LlmOperationVersion", 'String'>
+    readonly source: FieldRef<"LlmOperationVersion", 'String'>
+    readonly approvedBy: FieldRef<"LlmOperationVersion", 'String'>
+    readonly approvedAt: FieldRef<"LlmOperationVersion", 'DateTime'>
+    readonly createdBy: FieldRef<"LlmOperationVersion", 'String'>
+    readonly createdAt: FieldRef<"LlmOperationVersion", 'DateTime'>
+    readonly updatedAt: FieldRef<"LlmOperationVersion", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * LlmOperationVersion findUnique
+   */
+  export type LlmOperationVersionFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationVersion
+     */
+    select?: LlmOperationVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationVersionInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationVersion to fetch.
+     */
+    where: LlmOperationVersionWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationVersion findUniqueOrThrow
+   */
+  export type LlmOperationVersionFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationVersion
+     */
+    select?: LlmOperationVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationVersionInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationVersion to fetch.
+     */
+    where: LlmOperationVersionWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationVersion findFirst
+   */
+  export type LlmOperationVersionFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationVersion
+     */
+    select?: LlmOperationVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationVersionInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationVersion to fetch.
+     */
+    where?: LlmOperationVersionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationVersions to fetch.
+     */
+    orderBy?: LlmOperationVersionOrderByWithRelationInput | LlmOperationVersionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperationVersions.
+     */
+    cursor?: LlmOperationVersionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationVersions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationVersions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperationVersions.
+     */
+    distinct?: LlmOperationVersionScalarFieldEnum | LlmOperationVersionScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationVersion findFirstOrThrow
+   */
+  export type LlmOperationVersionFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationVersion
+     */
+    select?: LlmOperationVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationVersionInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationVersion to fetch.
+     */
+    where?: LlmOperationVersionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationVersions to fetch.
+     */
+    orderBy?: LlmOperationVersionOrderByWithRelationInput | LlmOperationVersionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperationVersions.
+     */
+    cursor?: LlmOperationVersionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationVersions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationVersions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperationVersions.
+     */
+    distinct?: LlmOperationVersionScalarFieldEnum | LlmOperationVersionScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationVersion findMany
+   */
+  export type LlmOperationVersionFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationVersion
+     */
+    select?: LlmOperationVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationVersionInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationVersions to fetch.
+     */
+    where?: LlmOperationVersionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationVersions to fetch.
+     */
+    orderBy?: LlmOperationVersionOrderByWithRelationInput | LlmOperationVersionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing LlmOperationVersions.
+     */
+    cursor?: LlmOperationVersionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationVersions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationVersions.
+     */
+    skip?: number
+    distinct?: LlmOperationVersionScalarFieldEnum | LlmOperationVersionScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationVersion create
+   */
+  export type LlmOperationVersionCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationVersion
+     */
+    select?: LlmOperationVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationVersionInclude<ExtArgs> | null
+    /**
+     * The data needed to create a LlmOperationVersion.
+     */
+    data: XOR<LlmOperationVersionCreateInput, LlmOperationVersionUncheckedCreateInput>
+  }
+
+  /**
+   * LlmOperationVersion createMany
+   */
+  export type LlmOperationVersionCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many LlmOperationVersions.
+     */
+    data: LlmOperationVersionCreateManyInput | LlmOperationVersionCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * LlmOperationVersion createManyAndReturn
+   */
+  export type LlmOperationVersionCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationVersion
+     */
+    select?: LlmOperationVersionSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many LlmOperationVersions.
+     */
+    data: LlmOperationVersionCreateManyInput | LlmOperationVersionCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationVersionIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * LlmOperationVersion update
+   */
+  export type LlmOperationVersionUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationVersion
+     */
+    select?: LlmOperationVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationVersionInclude<ExtArgs> | null
+    /**
+     * The data needed to update a LlmOperationVersion.
+     */
+    data: XOR<LlmOperationVersionUpdateInput, LlmOperationVersionUncheckedUpdateInput>
+    /**
+     * Choose, which LlmOperationVersion to update.
+     */
+    where: LlmOperationVersionWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationVersion updateMany
+   */
+  export type LlmOperationVersionUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update LlmOperationVersions.
+     */
+    data: XOR<LlmOperationVersionUpdateManyMutationInput, LlmOperationVersionUncheckedUpdateManyInput>
+    /**
+     * Filter which LlmOperationVersions to update
+     */
+    where?: LlmOperationVersionWhereInput
+  }
+
+  /**
+   * LlmOperationVersion upsert
+   */
+  export type LlmOperationVersionUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationVersion
+     */
+    select?: LlmOperationVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationVersionInclude<ExtArgs> | null
+    /**
+     * The filter to search for the LlmOperationVersion to update in case it exists.
+     */
+    where: LlmOperationVersionWhereUniqueInput
+    /**
+     * In case the LlmOperationVersion found by the `where` argument doesn't exist, create a new LlmOperationVersion with this data.
+     */
+    create: XOR<LlmOperationVersionCreateInput, LlmOperationVersionUncheckedCreateInput>
+    /**
+     * In case the LlmOperationVersion was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<LlmOperationVersionUpdateInput, LlmOperationVersionUncheckedUpdateInput>
+  }
+
+  /**
+   * LlmOperationVersion delete
+   */
+  export type LlmOperationVersionDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationVersion
+     */
+    select?: LlmOperationVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationVersionInclude<ExtArgs> | null
+    /**
+     * Filter which LlmOperationVersion to delete.
+     */
+    where: LlmOperationVersionWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationVersion deleteMany
+   */
+  export type LlmOperationVersionDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperationVersions to delete
+     */
+    where?: LlmOperationVersionWhereInput
+  }
+
+  /**
+   * LlmOperationVersion.activations
+   */
+  export type LlmOperationVersion$activationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivation
+     */
+    select?: LlmOperationActivationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationInclude<ExtArgs> | null
+    where?: LlmOperationActivationWhereInput
+    orderBy?: LlmOperationActivationOrderByWithRelationInput | LlmOperationActivationOrderByWithRelationInput[]
+    cursor?: LlmOperationActivationWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: LlmOperationActivationScalarFieldEnum | LlmOperationActivationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationVersion.activationEvents
+   */
+  export type LlmOperationVersion$activationEventsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivationEvent
+     */
+    select?: LlmOperationActivationEventSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationEventInclude<ExtArgs> | null
+    where?: LlmOperationActivationEventWhereInput
+    orderBy?: LlmOperationActivationEventOrderByWithRelationInput | LlmOperationActivationEventOrderByWithRelationInput[]
+    cursor?: LlmOperationActivationEventWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: LlmOperationActivationEventScalarFieldEnum | LlmOperationActivationEventScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationVersion.evalRuns
+   */
+  export type LlmOperationVersion$evalRunsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalRun
+     */
+    select?: LlmOperationEvalRunSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalRunInclude<ExtArgs> | null
+    where?: LlmOperationEvalRunWhereInput
+    orderBy?: LlmOperationEvalRunOrderByWithRelationInput | LlmOperationEvalRunOrderByWithRelationInput[]
+    cursor?: LlmOperationEvalRunWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: LlmOperationEvalRunScalarFieldEnum | LlmOperationEvalRunScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationVersion.invocations
+   */
+  export type LlmOperationVersion$invocationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationInvocation
+     */
+    select?: LlmOperationInvocationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInvocationInclude<ExtArgs> | null
+    where?: LlmOperationInvocationWhereInput
+    orderBy?: LlmOperationInvocationOrderByWithRelationInput | LlmOperationInvocationOrderByWithRelationInput[]
+    cursor?: LlmOperationInvocationWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: LlmOperationInvocationScalarFieldEnum | LlmOperationInvocationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationVersion.attestations
+   */
+  export type LlmOperationVersion$attestationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationAttestation
+     */
+    select?: LlmOperationAttestationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationAttestationInclude<ExtArgs> | null
+    where?: LlmOperationAttestationWhereInput
+    orderBy?: LlmOperationAttestationOrderByWithRelationInput | LlmOperationAttestationOrderByWithRelationInput[]
+    cursor?: LlmOperationAttestationWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: LlmOperationAttestationScalarFieldEnum | LlmOperationAttestationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationVersion without action
+   */
+  export type LlmOperationVersionDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationVersion
+     */
+    select?: LlmOperationVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationVersionInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model LlmOperationActivation
+   */
+
+  export type AggregateLlmOperationActivation = {
+    _count: LlmOperationActivationCountAggregateOutputType | null
+    _avg: LlmOperationActivationAvgAggregateOutputType | null
+    _sum: LlmOperationActivationSumAggregateOutputType | null
+    _min: LlmOperationActivationMinAggregateOutputType | null
+    _max: LlmOperationActivationMaxAggregateOutputType | null
+  }
+
+  export type LlmOperationActivationAvgAggregateOutputType = {
+    rolloutPercent: number | null
+  }
+
+  export type LlmOperationActivationSumAggregateOutputType = {
+    rolloutPercent: number | null
+  }
+
+  export type LlmOperationActivationMinAggregateOutputType = {
+    id: string | null
+    operationId: string | null
+    versionId: string | null
+    environment: string | null
+    label: string | null
+    activatedBy: string | null
+    reason: string | null
+    rolloutPercent: number | null
+    activatedAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type LlmOperationActivationMaxAggregateOutputType = {
+    id: string | null
+    operationId: string | null
+    versionId: string | null
+    environment: string | null
+    label: string | null
+    activatedBy: string | null
+    reason: string | null
+    rolloutPercent: number | null
+    activatedAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type LlmOperationActivationCountAggregateOutputType = {
+    id: number
+    operationId: number
+    versionId: number
+    environment: number
+    label: number
+    activatedBy: number
+    reason: number
+    rolloutPercent: number
+    activatedAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type LlmOperationActivationAvgAggregateInputType = {
+    rolloutPercent?: true
+  }
+
+  export type LlmOperationActivationSumAggregateInputType = {
+    rolloutPercent?: true
+  }
+
+  export type LlmOperationActivationMinAggregateInputType = {
+    id?: true
+    operationId?: true
+    versionId?: true
+    environment?: true
+    label?: true
+    activatedBy?: true
+    reason?: true
+    rolloutPercent?: true
+    activatedAt?: true
+    updatedAt?: true
+  }
+
+  export type LlmOperationActivationMaxAggregateInputType = {
+    id?: true
+    operationId?: true
+    versionId?: true
+    environment?: true
+    label?: true
+    activatedBy?: true
+    reason?: true
+    rolloutPercent?: true
+    activatedAt?: true
+    updatedAt?: true
+  }
+
+  export type LlmOperationActivationCountAggregateInputType = {
+    id?: true
+    operationId?: true
+    versionId?: true
+    environment?: true
+    label?: true
+    activatedBy?: true
+    reason?: true
+    rolloutPercent?: true
+    activatedAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type LlmOperationActivationAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperationActivation to aggregate.
+     */
+    where?: LlmOperationActivationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationActivations to fetch.
+     */
+    orderBy?: LlmOperationActivationOrderByWithRelationInput | LlmOperationActivationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: LlmOperationActivationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationActivations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationActivations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned LlmOperationActivations
+    **/
+    _count?: true | LlmOperationActivationCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: LlmOperationActivationAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: LlmOperationActivationSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: LlmOperationActivationMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: LlmOperationActivationMaxAggregateInputType
+  }
+
+  export type GetLlmOperationActivationAggregateType<T extends LlmOperationActivationAggregateArgs> = {
+        [P in keyof T & keyof AggregateLlmOperationActivation]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateLlmOperationActivation[P]>
+      : GetScalarType<T[P], AggregateLlmOperationActivation[P]>
+  }
+
+
+
+
+  export type LlmOperationActivationGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationActivationWhereInput
+    orderBy?: LlmOperationActivationOrderByWithAggregationInput | LlmOperationActivationOrderByWithAggregationInput[]
+    by: LlmOperationActivationScalarFieldEnum[] | LlmOperationActivationScalarFieldEnum
+    having?: LlmOperationActivationScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: LlmOperationActivationCountAggregateInputType | true
+    _avg?: LlmOperationActivationAvgAggregateInputType
+    _sum?: LlmOperationActivationSumAggregateInputType
+    _min?: LlmOperationActivationMinAggregateInputType
+    _max?: LlmOperationActivationMaxAggregateInputType
+  }
+
+  export type LlmOperationActivationGroupByOutputType = {
+    id: string
+    operationId: string
+    versionId: string
+    environment: string
+    label: string | null
+    activatedBy: string
+    reason: string
+    rolloutPercent: number | null
+    activatedAt: Date
+    updatedAt: Date
+    _count: LlmOperationActivationCountAggregateOutputType | null
+    _avg: LlmOperationActivationAvgAggregateOutputType | null
+    _sum: LlmOperationActivationSumAggregateOutputType | null
+    _min: LlmOperationActivationMinAggregateOutputType | null
+    _max: LlmOperationActivationMaxAggregateOutputType | null
+  }
+
+  type GetLlmOperationActivationGroupByPayload<T extends LlmOperationActivationGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<LlmOperationActivationGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof LlmOperationActivationGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], LlmOperationActivationGroupByOutputType[P]>
+            : GetScalarType<T[P], LlmOperationActivationGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type LlmOperationActivationSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    operationId?: boolean
+    versionId?: boolean
+    environment?: boolean
+    label?: boolean
+    activatedBy?: boolean
+    reason?: boolean
+    rolloutPercent?: boolean
+    activatedAt?: boolean
+    updatedAt?: boolean
+    operation?: boolean | LlmOperationDefaultArgs<ExtArgs>
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["llmOperationActivation"]>
+
+  export type LlmOperationActivationSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    operationId?: boolean
+    versionId?: boolean
+    environment?: boolean
+    label?: boolean
+    activatedBy?: boolean
+    reason?: boolean
+    rolloutPercent?: boolean
+    activatedAt?: boolean
+    updatedAt?: boolean
+    operation?: boolean | LlmOperationDefaultArgs<ExtArgs>
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["llmOperationActivation"]>
+
+  export type LlmOperationActivationSelectScalar = {
+    id?: boolean
+    operationId?: boolean
+    versionId?: boolean
+    environment?: boolean
+    label?: boolean
+    activatedBy?: boolean
+    reason?: boolean
+    rolloutPercent?: boolean
+    activatedAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type LlmOperationActivationInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    operation?: boolean | LlmOperationDefaultArgs<ExtArgs>
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+  }
+  export type LlmOperationActivationIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    operation?: boolean | LlmOperationDefaultArgs<ExtArgs>
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+  }
+
+  export type $LlmOperationActivationPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "LlmOperationActivation"
+    objects: {
+      operation: Prisma.$LlmOperationPayload<ExtArgs>
+      version: Prisma.$LlmOperationVersionPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      operationId: string
+      versionId: string
+      environment: string
+      label: string | null
+      activatedBy: string
+      reason: string
+      rolloutPercent: number | null
+      activatedAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["llmOperationActivation"]>
+    composites: {}
+  }
+
+  type LlmOperationActivationGetPayload<S extends boolean | null | undefined | LlmOperationActivationDefaultArgs> = $Result.GetResult<Prisma.$LlmOperationActivationPayload, S>
+
+  type LlmOperationActivationCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<LlmOperationActivationFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: LlmOperationActivationCountAggregateInputType | true
+    }
+
+  export interface LlmOperationActivationDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['LlmOperationActivation'], meta: { name: 'LlmOperationActivation' } }
+    /**
+     * Find zero or one LlmOperationActivation that matches the filter.
+     * @param {LlmOperationActivationFindUniqueArgs} args - Arguments to find a LlmOperationActivation
+     * @example
+     * // Get one LlmOperationActivation
+     * const llmOperationActivation = await prisma.llmOperationActivation.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends LlmOperationActivationFindUniqueArgs>(args: SelectSubset<T, LlmOperationActivationFindUniqueArgs<ExtArgs>>): Prisma__LlmOperationActivationClient<$Result.GetResult<Prisma.$LlmOperationActivationPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one LlmOperationActivation that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {LlmOperationActivationFindUniqueOrThrowArgs} args - Arguments to find a LlmOperationActivation
+     * @example
+     * // Get one LlmOperationActivation
+     * const llmOperationActivation = await prisma.llmOperationActivation.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends LlmOperationActivationFindUniqueOrThrowArgs>(args: SelectSubset<T, LlmOperationActivationFindUniqueOrThrowArgs<ExtArgs>>): Prisma__LlmOperationActivationClient<$Result.GetResult<Prisma.$LlmOperationActivationPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first LlmOperationActivation that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationActivationFindFirstArgs} args - Arguments to find a LlmOperationActivation
+     * @example
+     * // Get one LlmOperationActivation
+     * const llmOperationActivation = await prisma.llmOperationActivation.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends LlmOperationActivationFindFirstArgs>(args?: SelectSubset<T, LlmOperationActivationFindFirstArgs<ExtArgs>>): Prisma__LlmOperationActivationClient<$Result.GetResult<Prisma.$LlmOperationActivationPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first LlmOperationActivation that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationActivationFindFirstOrThrowArgs} args - Arguments to find a LlmOperationActivation
+     * @example
+     * // Get one LlmOperationActivation
+     * const llmOperationActivation = await prisma.llmOperationActivation.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends LlmOperationActivationFindFirstOrThrowArgs>(args?: SelectSubset<T, LlmOperationActivationFindFirstOrThrowArgs<ExtArgs>>): Prisma__LlmOperationActivationClient<$Result.GetResult<Prisma.$LlmOperationActivationPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more LlmOperationActivations that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationActivationFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all LlmOperationActivations
+     * const llmOperationActivations = await prisma.llmOperationActivation.findMany()
+     * 
+     * // Get first 10 LlmOperationActivations
+     * const llmOperationActivations = await prisma.llmOperationActivation.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const llmOperationActivationWithIdOnly = await prisma.llmOperationActivation.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends LlmOperationActivationFindManyArgs>(args?: SelectSubset<T, LlmOperationActivationFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationActivationPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a LlmOperationActivation.
+     * @param {LlmOperationActivationCreateArgs} args - Arguments to create a LlmOperationActivation.
+     * @example
+     * // Create one LlmOperationActivation
+     * const LlmOperationActivation = await prisma.llmOperationActivation.create({
+     *   data: {
+     *     // ... data to create a LlmOperationActivation
+     *   }
+     * })
+     * 
+     */
+    create<T extends LlmOperationActivationCreateArgs>(args: SelectSubset<T, LlmOperationActivationCreateArgs<ExtArgs>>): Prisma__LlmOperationActivationClient<$Result.GetResult<Prisma.$LlmOperationActivationPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many LlmOperationActivations.
+     * @param {LlmOperationActivationCreateManyArgs} args - Arguments to create many LlmOperationActivations.
+     * @example
+     * // Create many LlmOperationActivations
+     * const llmOperationActivation = await prisma.llmOperationActivation.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends LlmOperationActivationCreateManyArgs>(args?: SelectSubset<T, LlmOperationActivationCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many LlmOperationActivations and returns the data saved in the database.
+     * @param {LlmOperationActivationCreateManyAndReturnArgs} args - Arguments to create many LlmOperationActivations.
+     * @example
+     * // Create many LlmOperationActivations
+     * const llmOperationActivation = await prisma.llmOperationActivation.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many LlmOperationActivations and only return the `id`
+     * const llmOperationActivationWithIdOnly = await prisma.llmOperationActivation.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends LlmOperationActivationCreateManyAndReturnArgs>(args?: SelectSubset<T, LlmOperationActivationCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationActivationPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a LlmOperationActivation.
+     * @param {LlmOperationActivationDeleteArgs} args - Arguments to delete one LlmOperationActivation.
+     * @example
+     * // Delete one LlmOperationActivation
+     * const LlmOperationActivation = await prisma.llmOperationActivation.delete({
+     *   where: {
+     *     // ... filter to delete one LlmOperationActivation
+     *   }
+     * })
+     * 
+     */
+    delete<T extends LlmOperationActivationDeleteArgs>(args: SelectSubset<T, LlmOperationActivationDeleteArgs<ExtArgs>>): Prisma__LlmOperationActivationClient<$Result.GetResult<Prisma.$LlmOperationActivationPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one LlmOperationActivation.
+     * @param {LlmOperationActivationUpdateArgs} args - Arguments to update one LlmOperationActivation.
+     * @example
+     * // Update one LlmOperationActivation
+     * const llmOperationActivation = await prisma.llmOperationActivation.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends LlmOperationActivationUpdateArgs>(args: SelectSubset<T, LlmOperationActivationUpdateArgs<ExtArgs>>): Prisma__LlmOperationActivationClient<$Result.GetResult<Prisma.$LlmOperationActivationPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more LlmOperationActivations.
+     * @param {LlmOperationActivationDeleteManyArgs} args - Arguments to filter LlmOperationActivations to delete.
+     * @example
+     * // Delete a few LlmOperationActivations
+     * const { count } = await prisma.llmOperationActivation.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends LlmOperationActivationDeleteManyArgs>(args?: SelectSubset<T, LlmOperationActivationDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more LlmOperationActivations.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationActivationUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many LlmOperationActivations
+     * const llmOperationActivation = await prisma.llmOperationActivation.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends LlmOperationActivationUpdateManyArgs>(args: SelectSubset<T, LlmOperationActivationUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one LlmOperationActivation.
+     * @param {LlmOperationActivationUpsertArgs} args - Arguments to update or create a LlmOperationActivation.
+     * @example
+     * // Update or create a LlmOperationActivation
+     * const llmOperationActivation = await prisma.llmOperationActivation.upsert({
+     *   create: {
+     *     // ... data to create a LlmOperationActivation
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the LlmOperationActivation we want to update
+     *   }
+     * })
+     */
+    upsert<T extends LlmOperationActivationUpsertArgs>(args: SelectSubset<T, LlmOperationActivationUpsertArgs<ExtArgs>>): Prisma__LlmOperationActivationClient<$Result.GetResult<Prisma.$LlmOperationActivationPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of LlmOperationActivations.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationActivationCountArgs} args - Arguments to filter LlmOperationActivations to count.
+     * @example
+     * // Count the number of LlmOperationActivations
+     * const count = await prisma.llmOperationActivation.count({
+     *   where: {
+     *     // ... the filter for the LlmOperationActivations we want to count
+     *   }
+     * })
+    **/
+    count<T extends LlmOperationActivationCountArgs>(
+      args?: Subset<T, LlmOperationActivationCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], LlmOperationActivationCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a LlmOperationActivation.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationActivationAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends LlmOperationActivationAggregateArgs>(args: Subset<T, LlmOperationActivationAggregateArgs>): Prisma.PrismaPromise<GetLlmOperationActivationAggregateType<T>>
+
+    /**
+     * Group by LlmOperationActivation.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationActivationGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends LlmOperationActivationGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: LlmOperationActivationGroupByArgs['orderBy'] }
+        : { orderBy?: LlmOperationActivationGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, LlmOperationActivationGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetLlmOperationActivationGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the LlmOperationActivation model
+   */
+  readonly fields: LlmOperationActivationFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for LlmOperationActivation.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__LlmOperationActivationClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    operation<T extends LlmOperationDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationDefaultArgs<ExtArgs>>): Prisma__LlmOperationClient<$Result.GetResult<Prisma.$LlmOperationPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    version<T extends LlmOperationVersionDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationVersionDefaultArgs<ExtArgs>>): Prisma__LlmOperationVersionClient<$Result.GetResult<Prisma.$LlmOperationVersionPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the LlmOperationActivation model
+   */ 
+  interface LlmOperationActivationFieldRefs {
+    readonly id: FieldRef<"LlmOperationActivation", 'String'>
+    readonly operationId: FieldRef<"LlmOperationActivation", 'String'>
+    readonly versionId: FieldRef<"LlmOperationActivation", 'String'>
+    readonly environment: FieldRef<"LlmOperationActivation", 'String'>
+    readonly label: FieldRef<"LlmOperationActivation", 'String'>
+    readonly activatedBy: FieldRef<"LlmOperationActivation", 'String'>
+    readonly reason: FieldRef<"LlmOperationActivation", 'String'>
+    readonly rolloutPercent: FieldRef<"LlmOperationActivation", 'Int'>
+    readonly activatedAt: FieldRef<"LlmOperationActivation", 'DateTime'>
+    readonly updatedAt: FieldRef<"LlmOperationActivation", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * LlmOperationActivation findUnique
+   */
+  export type LlmOperationActivationFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivation
+     */
+    select?: LlmOperationActivationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationActivation to fetch.
+     */
+    where: LlmOperationActivationWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationActivation findUniqueOrThrow
+   */
+  export type LlmOperationActivationFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivation
+     */
+    select?: LlmOperationActivationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationActivation to fetch.
+     */
+    where: LlmOperationActivationWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationActivation findFirst
+   */
+  export type LlmOperationActivationFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivation
+     */
+    select?: LlmOperationActivationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationActivation to fetch.
+     */
+    where?: LlmOperationActivationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationActivations to fetch.
+     */
+    orderBy?: LlmOperationActivationOrderByWithRelationInput | LlmOperationActivationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperationActivations.
+     */
+    cursor?: LlmOperationActivationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationActivations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationActivations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperationActivations.
+     */
+    distinct?: LlmOperationActivationScalarFieldEnum | LlmOperationActivationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationActivation findFirstOrThrow
+   */
+  export type LlmOperationActivationFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivation
+     */
+    select?: LlmOperationActivationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationActivation to fetch.
+     */
+    where?: LlmOperationActivationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationActivations to fetch.
+     */
+    orderBy?: LlmOperationActivationOrderByWithRelationInput | LlmOperationActivationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperationActivations.
+     */
+    cursor?: LlmOperationActivationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationActivations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationActivations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperationActivations.
+     */
+    distinct?: LlmOperationActivationScalarFieldEnum | LlmOperationActivationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationActivation findMany
+   */
+  export type LlmOperationActivationFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivation
+     */
+    select?: LlmOperationActivationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationActivations to fetch.
+     */
+    where?: LlmOperationActivationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationActivations to fetch.
+     */
+    orderBy?: LlmOperationActivationOrderByWithRelationInput | LlmOperationActivationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing LlmOperationActivations.
+     */
+    cursor?: LlmOperationActivationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationActivations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationActivations.
+     */
+    skip?: number
+    distinct?: LlmOperationActivationScalarFieldEnum | LlmOperationActivationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationActivation create
+   */
+  export type LlmOperationActivationCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivation
+     */
+    select?: LlmOperationActivationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationInclude<ExtArgs> | null
+    /**
+     * The data needed to create a LlmOperationActivation.
+     */
+    data: XOR<LlmOperationActivationCreateInput, LlmOperationActivationUncheckedCreateInput>
+  }
+
+  /**
+   * LlmOperationActivation createMany
+   */
+  export type LlmOperationActivationCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many LlmOperationActivations.
+     */
+    data: LlmOperationActivationCreateManyInput | LlmOperationActivationCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * LlmOperationActivation createManyAndReturn
+   */
+  export type LlmOperationActivationCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivation
+     */
+    select?: LlmOperationActivationSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many LlmOperationActivations.
+     */
+    data: LlmOperationActivationCreateManyInput | LlmOperationActivationCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * LlmOperationActivation update
+   */
+  export type LlmOperationActivationUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivation
+     */
+    select?: LlmOperationActivationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationInclude<ExtArgs> | null
+    /**
+     * The data needed to update a LlmOperationActivation.
+     */
+    data: XOR<LlmOperationActivationUpdateInput, LlmOperationActivationUncheckedUpdateInput>
+    /**
+     * Choose, which LlmOperationActivation to update.
+     */
+    where: LlmOperationActivationWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationActivation updateMany
+   */
+  export type LlmOperationActivationUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update LlmOperationActivations.
+     */
+    data: XOR<LlmOperationActivationUpdateManyMutationInput, LlmOperationActivationUncheckedUpdateManyInput>
+    /**
+     * Filter which LlmOperationActivations to update
+     */
+    where?: LlmOperationActivationWhereInput
+  }
+
+  /**
+   * LlmOperationActivation upsert
+   */
+  export type LlmOperationActivationUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivation
+     */
+    select?: LlmOperationActivationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationInclude<ExtArgs> | null
+    /**
+     * The filter to search for the LlmOperationActivation to update in case it exists.
+     */
+    where: LlmOperationActivationWhereUniqueInput
+    /**
+     * In case the LlmOperationActivation found by the `where` argument doesn't exist, create a new LlmOperationActivation with this data.
+     */
+    create: XOR<LlmOperationActivationCreateInput, LlmOperationActivationUncheckedCreateInput>
+    /**
+     * In case the LlmOperationActivation was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<LlmOperationActivationUpdateInput, LlmOperationActivationUncheckedUpdateInput>
+  }
+
+  /**
+   * LlmOperationActivation delete
+   */
+  export type LlmOperationActivationDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivation
+     */
+    select?: LlmOperationActivationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationInclude<ExtArgs> | null
+    /**
+     * Filter which LlmOperationActivation to delete.
+     */
+    where: LlmOperationActivationWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationActivation deleteMany
+   */
+  export type LlmOperationActivationDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperationActivations to delete
+     */
+    where?: LlmOperationActivationWhereInput
+  }
+
+  /**
+   * LlmOperationActivation without action
+   */
+  export type LlmOperationActivationDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivation
+     */
+    select?: LlmOperationActivationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model LlmOperationActivationEvent
+   */
+
+  export type AggregateLlmOperationActivationEvent = {
+    _count: LlmOperationActivationEventCountAggregateOutputType | null
+    _min: LlmOperationActivationEventMinAggregateOutputType | null
+    _max: LlmOperationActivationEventMaxAggregateOutputType | null
+  }
+
+  export type LlmOperationActivationEventMinAggregateOutputType = {
+    id: string | null
+    operationId: string | null
+    previousVersionId: string | null
+    newVersionId: string | null
+    environment: string | null
+    action: string | null
+    actor: string | null
+    reason: string | null
+    createdAt: Date | null
+  }
+
+  export type LlmOperationActivationEventMaxAggregateOutputType = {
+    id: string | null
+    operationId: string | null
+    previousVersionId: string | null
+    newVersionId: string | null
+    environment: string | null
+    action: string | null
+    actor: string | null
+    reason: string | null
+    createdAt: Date | null
+  }
+
+  export type LlmOperationActivationEventCountAggregateOutputType = {
+    id: number
+    operationId: number
+    previousVersionId: number
+    newVersionId: number
+    environment: number
+    action: number
+    actor: number
+    reason: number
+    metadataJson: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type LlmOperationActivationEventMinAggregateInputType = {
+    id?: true
+    operationId?: true
+    previousVersionId?: true
+    newVersionId?: true
+    environment?: true
+    action?: true
+    actor?: true
+    reason?: true
+    createdAt?: true
+  }
+
+  export type LlmOperationActivationEventMaxAggregateInputType = {
+    id?: true
+    operationId?: true
+    previousVersionId?: true
+    newVersionId?: true
+    environment?: true
+    action?: true
+    actor?: true
+    reason?: true
+    createdAt?: true
+  }
+
+  export type LlmOperationActivationEventCountAggregateInputType = {
+    id?: true
+    operationId?: true
+    previousVersionId?: true
+    newVersionId?: true
+    environment?: true
+    action?: true
+    actor?: true
+    reason?: true
+    metadataJson?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type LlmOperationActivationEventAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperationActivationEvent to aggregate.
+     */
+    where?: LlmOperationActivationEventWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationActivationEvents to fetch.
+     */
+    orderBy?: LlmOperationActivationEventOrderByWithRelationInput | LlmOperationActivationEventOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: LlmOperationActivationEventWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationActivationEvents from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationActivationEvents.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned LlmOperationActivationEvents
+    **/
+    _count?: true | LlmOperationActivationEventCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: LlmOperationActivationEventMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: LlmOperationActivationEventMaxAggregateInputType
+  }
+
+  export type GetLlmOperationActivationEventAggregateType<T extends LlmOperationActivationEventAggregateArgs> = {
+        [P in keyof T & keyof AggregateLlmOperationActivationEvent]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateLlmOperationActivationEvent[P]>
+      : GetScalarType<T[P], AggregateLlmOperationActivationEvent[P]>
+  }
+
+
+
+
+  export type LlmOperationActivationEventGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationActivationEventWhereInput
+    orderBy?: LlmOperationActivationEventOrderByWithAggregationInput | LlmOperationActivationEventOrderByWithAggregationInput[]
+    by: LlmOperationActivationEventScalarFieldEnum[] | LlmOperationActivationEventScalarFieldEnum
+    having?: LlmOperationActivationEventScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: LlmOperationActivationEventCountAggregateInputType | true
+    _min?: LlmOperationActivationEventMinAggregateInputType
+    _max?: LlmOperationActivationEventMaxAggregateInputType
+  }
+
+  export type LlmOperationActivationEventGroupByOutputType = {
+    id: string
+    operationId: string
+    previousVersionId: string | null
+    newVersionId: string
+    environment: string
+    action: string
+    actor: string
+    reason: string
+    metadataJson: JsonValue | null
+    createdAt: Date
+    _count: LlmOperationActivationEventCountAggregateOutputType | null
+    _min: LlmOperationActivationEventMinAggregateOutputType | null
+    _max: LlmOperationActivationEventMaxAggregateOutputType | null
+  }
+
+  type GetLlmOperationActivationEventGroupByPayload<T extends LlmOperationActivationEventGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<LlmOperationActivationEventGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof LlmOperationActivationEventGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], LlmOperationActivationEventGroupByOutputType[P]>
+            : GetScalarType<T[P], LlmOperationActivationEventGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type LlmOperationActivationEventSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    operationId?: boolean
+    previousVersionId?: boolean
+    newVersionId?: boolean
+    environment?: boolean
+    action?: boolean
+    actor?: boolean
+    reason?: boolean
+    metadataJson?: boolean
+    createdAt?: boolean
+    operation?: boolean | LlmOperationDefaultArgs<ExtArgs>
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["llmOperationActivationEvent"]>
+
+  export type LlmOperationActivationEventSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    operationId?: boolean
+    previousVersionId?: boolean
+    newVersionId?: boolean
+    environment?: boolean
+    action?: boolean
+    actor?: boolean
+    reason?: boolean
+    metadataJson?: boolean
+    createdAt?: boolean
+    operation?: boolean | LlmOperationDefaultArgs<ExtArgs>
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["llmOperationActivationEvent"]>
+
+  export type LlmOperationActivationEventSelectScalar = {
+    id?: boolean
+    operationId?: boolean
+    previousVersionId?: boolean
+    newVersionId?: boolean
+    environment?: boolean
+    action?: boolean
+    actor?: boolean
+    reason?: boolean
+    metadataJson?: boolean
+    createdAt?: boolean
+  }
+
+  export type LlmOperationActivationEventInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    operation?: boolean | LlmOperationDefaultArgs<ExtArgs>
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+  }
+  export type LlmOperationActivationEventIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    operation?: boolean | LlmOperationDefaultArgs<ExtArgs>
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+  }
+
+  export type $LlmOperationActivationEventPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "LlmOperationActivationEvent"
+    objects: {
+      operation: Prisma.$LlmOperationPayload<ExtArgs>
+      version: Prisma.$LlmOperationVersionPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      operationId: string
+      previousVersionId: string | null
+      newVersionId: string
+      environment: string
+      action: string
+      actor: string
+      reason: string
+      metadataJson: Prisma.JsonValue | null
+      createdAt: Date
+    }, ExtArgs["result"]["llmOperationActivationEvent"]>
+    composites: {}
+  }
+
+  type LlmOperationActivationEventGetPayload<S extends boolean | null | undefined | LlmOperationActivationEventDefaultArgs> = $Result.GetResult<Prisma.$LlmOperationActivationEventPayload, S>
+
+  type LlmOperationActivationEventCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<LlmOperationActivationEventFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: LlmOperationActivationEventCountAggregateInputType | true
+    }
+
+  export interface LlmOperationActivationEventDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['LlmOperationActivationEvent'], meta: { name: 'LlmOperationActivationEvent' } }
+    /**
+     * Find zero or one LlmOperationActivationEvent that matches the filter.
+     * @param {LlmOperationActivationEventFindUniqueArgs} args - Arguments to find a LlmOperationActivationEvent
+     * @example
+     * // Get one LlmOperationActivationEvent
+     * const llmOperationActivationEvent = await prisma.llmOperationActivationEvent.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends LlmOperationActivationEventFindUniqueArgs>(args: SelectSubset<T, LlmOperationActivationEventFindUniqueArgs<ExtArgs>>): Prisma__LlmOperationActivationEventClient<$Result.GetResult<Prisma.$LlmOperationActivationEventPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one LlmOperationActivationEvent that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {LlmOperationActivationEventFindUniqueOrThrowArgs} args - Arguments to find a LlmOperationActivationEvent
+     * @example
+     * // Get one LlmOperationActivationEvent
+     * const llmOperationActivationEvent = await prisma.llmOperationActivationEvent.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends LlmOperationActivationEventFindUniqueOrThrowArgs>(args: SelectSubset<T, LlmOperationActivationEventFindUniqueOrThrowArgs<ExtArgs>>): Prisma__LlmOperationActivationEventClient<$Result.GetResult<Prisma.$LlmOperationActivationEventPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first LlmOperationActivationEvent that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationActivationEventFindFirstArgs} args - Arguments to find a LlmOperationActivationEvent
+     * @example
+     * // Get one LlmOperationActivationEvent
+     * const llmOperationActivationEvent = await prisma.llmOperationActivationEvent.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends LlmOperationActivationEventFindFirstArgs>(args?: SelectSubset<T, LlmOperationActivationEventFindFirstArgs<ExtArgs>>): Prisma__LlmOperationActivationEventClient<$Result.GetResult<Prisma.$LlmOperationActivationEventPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first LlmOperationActivationEvent that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationActivationEventFindFirstOrThrowArgs} args - Arguments to find a LlmOperationActivationEvent
+     * @example
+     * // Get one LlmOperationActivationEvent
+     * const llmOperationActivationEvent = await prisma.llmOperationActivationEvent.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends LlmOperationActivationEventFindFirstOrThrowArgs>(args?: SelectSubset<T, LlmOperationActivationEventFindFirstOrThrowArgs<ExtArgs>>): Prisma__LlmOperationActivationEventClient<$Result.GetResult<Prisma.$LlmOperationActivationEventPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more LlmOperationActivationEvents that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationActivationEventFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all LlmOperationActivationEvents
+     * const llmOperationActivationEvents = await prisma.llmOperationActivationEvent.findMany()
+     * 
+     * // Get first 10 LlmOperationActivationEvents
+     * const llmOperationActivationEvents = await prisma.llmOperationActivationEvent.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const llmOperationActivationEventWithIdOnly = await prisma.llmOperationActivationEvent.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends LlmOperationActivationEventFindManyArgs>(args?: SelectSubset<T, LlmOperationActivationEventFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationActivationEventPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a LlmOperationActivationEvent.
+     * @param {LlmOperationActivationEventCreateArgs} args - Arguments to create a LlmOperationActivationEvent.
+     * @example
+     * // Create one LlmOperationActivationEvent
+     * const LlmOperationActivationEvent = await prisma.llmOperationActivationEvent.create({
+     *   data: {
+     *     // ... data to create a LlmOperationActivationEvent
+     *   }
+     * })
+     * 
+     */
+    create<T extends LlmOperationActivationEventCreateArgs>(args: SelectSubset<T, LlmOperationActivationEventCreateArgs<ExtArgs>>): Prisma__LlmOperationActivationEventClient<$Result.GetResult<Prisma.$LlmOperationActivationEventPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many LlmOperationActivationEvents.
+     * @param {LlmOperationActivationEventCreateManyArgs} args - Arguments to create many LlmOperationActivationEvents.
+     * @example
+     * // Create many LlmOperationActivationEvents
+     * const llmOperationActivationEvent = await prisma.llmOperationActivationEvent.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends LlmOperationActivationEventCreateManyArgs>(args?: SelectSubset<T, LlmOperationActivationEventCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many LlmOperationActivationEvents and returns the data saved in the database.
+     * @param {LlmOperationActivationEventCreateManyAndReturnArgs} args - Arguments to create many LlmOperationActivationEvents.
+     * @example
+     * // Create many LlmOperationActivationEvents
+     * const llmOperationActivationEvent = await prisma.llmOperationActivationEvent.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many LlmOperationActivationEvents and only return the `id`
+     * const llmOperationActivationEventWithIdOnly = await prisma.llmOperationActivationEvent.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends LlmOperationActivationEventCreateManyAndReturnArgs>(args?: SelectSubset<T, LlmOperationActivationEventCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationActivationEventPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a LlmOperationActivationEvent.
+     * @param {LlmOperationActivationEventDeleteArgs} args - Arguments to delete one LlmOperationActivationEvent.
+     * @example
+     * // Delete one LlmOperationActivationEvent
+     * const LlmOperationActivationEvent = await prisma.llmOperationActivationEvent.delete({
+     *   where: {
+     *     // ... filter to delete one LlmOperationActivationEvent
+     *   }
+     * })
+     * 
+     */
+    delete<T extends LlmOperationActivationEventDeleteArgs>(args: SelectSubset<T, LlmOperationActivationEventDeleteArgs<ExtArgs>>): Prisma__LlmOperationActivationEventClient<$Result.GetResult<Prisma.$LlmOperationActivationEventPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one LlmOperationActivationEvent.
+     * @param {LlmOperationActivationEventUpdateArgs} args - Arguments to update one LlmOperationActivationEvent.
+     * @example
+     * // Update one LlmOperationActivationEvent
+     * const llmOperationActivationEvent = await prisma.llmOperationActivationEvent.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends LlmOperationActivationEventUpdateArgs>(args: SelectSubset<T, LlmOperationActivationEventUpdateArgs<ExtArgs>>): Prisma__LlmOperationActivationEventClient<$Result.GetResult<Prisma.$LlmOperationActivationEventPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more LlmOperationActivationEvents.
+     * @param {LlmOperationActivationEventDeleteManyArgs} args - Arguments to filter LlmOperationActivationEvents to delete.
+     * @example
+     * // Delete a few LlmOperationActivationEvents
+     * const { count } = await prisma.llmOperationActivationEvent.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends LlmOperationActivationEventDeleteManyArgs>(args?: SelectSubset<T, LlmOperationActivationEventDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more LlmOperationActivationEvents.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationActivationEventUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many LlmOperationActivationEvents
+     * const llmOperationActivationEvent = await prisma.llmOperationActivationEvent.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends LlmOperationActivationEventUpdateManyArgs>(args: SelectSubset<T, LlmOperationActivationEventUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one LlmOperationActivationEvent.
+     * @param {LlmOperationActivationEventUpsertArgs} args - Arguments to update or create a LlmOperationActivationEvent.
+     * @example
+     * // Update or create a LlmOperationActivationEvent
+     * const llmOperationActivationEvent = await prisma.llmOperationActivationEvent.upsert({
+     *   create: {
+     *     // ... data to create a LlmOperationActivationEvent
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the LlmOperationActivationEvent we want to update
+     *   }
+     * })
+     */
+    upsert<T extends LlmOperationActivationEventUpsertArgs>(args: SelectSubset<T, LlmOperationActivationEventUpsertArgs<ExtArgs>>): Prisma__LlmOperationActivationEventClient<$Result.GetResult<Prisma.$LlmOperationActivationEventPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of LlmOperationActivationEvents.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationActivationEventCountArgs} args - Arguments to filter LlmOperationActivationEvents to count.
+     * @example
+     * // Count the number of LlmOperationActivationEvents
+     * const count = await prisma.llmOperationActivationEvent.count({
+     *   where: {
+     *     // ... the filter for the LlmOperationActivationEvents we want to count
+     *   }
+     * })
+    **/
+    count<T extends LlmOperationActivationEventCountArgs>(
+      args?: Subset<T, LlmOperationActivationEventCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], LlmOperationActivationEventCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a LlmOperationActivationEvent.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationActivationEventAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends LlmOperationActivationEventAggregateArgs>(args: Subset<T, LlmOperationActivationEventAggregateArgs>): Prisma.PrismaPromise<GetLlmOperationActivationEventAggregateType<T>>
+
+    /**
+     * Group by LlmOperationActivationEvent.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationActivationEventGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends LlmOperationActivationEventGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: LlmOperationActivationEventGroupByArgs['orderBy'] }
+        : { orderBy?: LlmOperationActivationEventGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, LlmOperationActivationEventGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetLlmOperationActivationEventGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the LlmOperationActivationEvent model
+   */
+  readonly fields: LlmOperationActivationEventFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for LlmOperationActivationEvent.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__LlmOperationActivationEventClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    operation<T extends LlmOperationDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationDefaultArgs<ExtArgs>>): Prisma__LlmOperationClient<$Result.GetResult<Prisma.$LlmOperationPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    version<T extends LlmOperationVersionDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationVersionDefaultArgs<ExtArgs>>): Prisma__LlmOperationVersionClient<$Result.GetResult<Prisma.$LlmOperationVersionPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the LlmOperationActivationEvent model
+   */ 
+  interface LlmOperationActivationEventFieldRefs {
+    readonly id: FieldRef<"LlmOperationActivationEvent", 'String'>
+    readonly operationId: FieldRef<"LlmOperationActivationEvent", 'String'>
+    readonly previousVersionId: FieldRef<"LlmOperationActivationEvent", 'String'>
+    readonly newVersionId: FieldRef<"LlmOperationActivationEvent", 'String'>
+    readonly environment: FieldRef<"LlmOperationActivationEvent", 'String'>
+    readonly action: FieldRef<"LlmOperationActivationEvent", 'String'>
+    readonly actor: FieldRef<"LlmOperationActivationEvent", 'String'>
+    readonly reason: FieldRef<"LlmOperationActivationEvent", 'String'>
+    readonly metadataJson: FieldRef<"LlmOperationActivationEvent", 'Json'>
+    readonly createdAt: FieldRef<"LlmOperationActivationEvent", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * LlmOperationActivationEvent findUnique
+   */
+  export type LlmOperationActivationEventFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivationEvent
+     */
+    select?: LlmOperationActivationEventSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationEventInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationActivationEvent to fetch.
+     */
+    where: LlmOperationActivationEventWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationActivationEvent findUniqueOrThrow
+   */
+  export type LlmOperationActivationEventFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivationEvent
+     */
+    select?: LlmOperationActivationEventSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationEventInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationActivationEvent to fetch.
+     */
+    where: LlmOperationActivationEventWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationActivationEvent findFirst
+   */
+  export type LlmOperationActivationEventFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivationEvent
+     */
+    select?: LlmOperationActivationEventSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationEventInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationActivationEvent to fetch.
+     */
+    where?: LlmOperationActivationEventWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationActivationEvents to fetch.
+     */
+    orderBy?: LlmOperationActivationEventOrderByWithRelationInput | LlmOperationActivationEventOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperationActivationEvents.
+     */
+    cursor?: LlmOperationActivationEventWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationActivationEvents from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationActivationEvents.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperationActivationEvents.
+     */
+    distinct?: LlmOperationActivationEventScalarFieldEnum | LlmOperationActivationEventScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationActivationEvent findFirstOrThrow
+   */
+  export type LlmOperationActivationEventFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivationEvent
+     */
+    select?: LlmOperationActivationEventSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationEventInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationActivationEvent to fetch.
+     */
+    where?: LlmOperationActivationEventWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationActivationEvents to fetch.
+     */
+    orderBy?: LlmOperationActivationEventOrderByWithRelationInput | LlmOperationActivationEventOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperationActivationEvents.
+     */
+    cursor?: LlmOperationActivationEventWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationActivationEvents from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationActivationEvents.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperationActivationEvents.
+     */
+    distinct?: LlmOperationActivationEventScalarFieldEnum | LlmOperationActivationEventScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationActivationEvent findMany
+   */
+  export type LlmOperationActivationEventFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivationEvent
+     */
+    select?: LlmOperationActivationEventSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationEventInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationActivationEvents to fetch.
+     */
+    where?: LlmOperationActivationEventWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationActivationEvents to fetch.
+     */
+    orderBy?: LlmOperationActivationEventOrderByWithRelationInput | LlmOperationActivationEventOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing LlmOperationActivationEvents.
+     */
+    cursor?: LlmOperationActivationEventWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationActivationEvents from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationActivationEvents.
+     */
+    skip?: number
+    distinct?: LlmOperationActivationEventScalarFieldEnum | LlmOperationActivationEventScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationActivationEvent create
+   */
+  export type LlmOperationActivationEventCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivationEvent
+     */
+    select?: LlmOperationActivationEventSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationEventInclude<ExtArgs> | null
+    /**
+     * The data needed to create a LlmOperationActivationEvent.
+     */
+    data: XOR<LlmOperationActivationEventCreateInput, LlmOperationActivationEventUncheckedCreateInput>
+  }
+
+  /**
+   * LlmOperationActivationEvent createMany
+   */
+  export type LlmOperationActivationEventCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many LlmOperationActivationEvents.
+     */
+    data: LlmOperationActivationEventCreateManyInput | LlmOperationActivationEventCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * LlmOperationActivationEvent createManyAndReturn
+   */
+  export type LlmOperationActivationEventCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivationEvent
+     */
+    select?: LlmOperationActivationEventSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many LlmOperationActivationEvents.
+     */
+    data: LlmOperationActivationEventCreateManyInput | LlmOperationActivationEventCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationEventIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * LlmOperationActivationEvent update
+   */
+  export type LlmOperationActivationEventUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivationEvent
+     */
+    select?: LlmOperationActivationEventSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationEventInclude<ExtArgs> | null
+    /**
+     * The data needed to update a LlmOperationActivationEvent.
+     */
+    data: XOR<LlmOperationActivationEventUpdateInput, LlmOperationActivationEventUncheckedUpdateInput>
+    /**
+     * Choose, which LlmOperationActivationEvent to update.
+     */
+    where: LlmOperationActivationEventWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationActivationEvent updateMany
+   */
+  export type LlmOperationActivationEventUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update LlmOperationActivationEvents.
+     */
+    data: XOR<LlmOperationActivationEventUpdateManyMutationInput, LlmOperationActivationEventUncheckedUpdateManyInput>
+    /**
+     * Filter which LlmOperationActivationEvents to update
+     */
+    where?: LlmOperationActivationEventWhereInput
+  }
+
+  /**
+   * LlmOperationActivationEvent upsert
+   */
+  export type LlmOperationActivationEventUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivationEvent
+     */
+    select?: LlmOperationActivationEventSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationEventInclude<ExtArgs> | null
+    /**
+     * The filter to search for the LlmOperationActivationEvent to update in case it exists.
+     */
+    where: LlmOperationActivationEventWhereUniqueInput
+    /**
+     * In case the LlmOperationActivationEvent found by the `where` argument doesn't exist, create a new LlmOperationActivationEvent with this data.
+     */
+    create: XOR<LlmOperationActivationEventCreateInput, LlmOperationActivationEventUncheckedCreateInput>
+    /**
+     * In case the LlmOperationActivationEvent was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<LlmOperationActivationEventUpdateInput, LlmOperationActivationEventUncheckedUpdateInput>
+  }
+
+  /**
+   * LlmOperationActivationEvent delete
+   */
+  export type LlmOperationActivationEventDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivationEvent
+     */
+    select?: LlmOperationActivationEventSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationEventInclude<ExtArgs> | null
+    /**
+     * Filter which LlmOperationActivationEvent to delete.
+     */
+    where: LlmOperationActivationEventWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationActivationEvent deleteMany
+   */
+  export type LlmOperationActivationEventDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperationActivationEvents to delete
+     */
+    where?: LlmOperationActivationEventWhereInput
+  }
+
+  /**
+   * LlmOperationActivationEvent without action
+   */
+  export type LlmOperationActivationEventDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationActivationEvent
+     */
+    select?: LlmOperationActivationEventSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationActivationEventInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model LlmOperationEvalSuite
+   */
+
+  export type AggregateLlmOperationEvalSuite = {
+    _count: LlmOperationEvalSuiteCountAggregateOutputType | null
+    _min: LlmOperationEvalSuiteMinAggregateOutputType | null
+    _max: LlmOperationEvalSuiteMaxAggregateOutputType | null
+  }
+
+  export type LlmOperationEvalSuiteMinAggregateOutputType = {
+    id: string | null
+    operationId: string | null
+    versionId: string | null
+    name: string | null
+    description: string | null
+    suiteDigest: string | null
+    createdBy: string | null
+    createdAt: Date | null
+  }
+
+  export type LlmOperationEvalSuiteMaxAggregateOutputType = {
+    id: string | null
+    operationId: string | null
+    versionId: string | null
+    name: string | null
+    description: string | null
+    suiteDigest: string | null
+    createdBy: string | null
+    createdAt: Date | null
+  }
+
+  export type LlmOperationEvalSuiteCountAggregateOutputType = {
+    id: number
+    operationId: number
+    versionId: number
+    name: number
+    description: number
+    suiteDigest: number
+    createdBy: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type LlmOperationEvalSuiteMinAggregateInputType = {
+    id?: true
+    operationId?: true
+    versionId?: true
+    name?: true
+    description?: true
+    suiteDigest?: true
+    createdBy?: true
+    createdAt?: true
+  }
+
+  export type LlmOperationEvalSuiteMaxAggregateInputType = {
+    id?: true
+    operationId?: true
+    versionId?: true
+    name?: true
+    description?: true
+    suiteDigest?: true
+    createdBy?: true
+    createdAt?: true
+  }
+
+  export type LlmOperationEvalSuiteCountAggregateInputType = {
+    id?: true
+    operationId?: true
+    versionId?: true
+    name?: true
+    description?: true
+    suiteDigest?: true
+    createdBy?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type LlmOperationEvalSuiteAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperationEvalSuite to aggregate.
+     */
+    where?: LlmOperationEvalSuiteWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationEvalSuites to fetch.
+     */
+    orderBy?: LlmOperationEvalSuiteOrderByWithRelationInput | LlmOperationEvalSuiteOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: LlmOperationEvalSuiteWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationEvalSuites from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationEvalSuites.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned LlmOperationEvalSuites
+    **/
+    _count?: true | LlmOperationEvalSuiteCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: LlmOperationEvalSuiteMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: LlmOperationEvalSuiteMaxAggregateInputType
+  }
+
+  export type GetLlmOperationEvalSuiteAggregateType<T extends LlmOperationEvalSuiteAggregateArgs> = {
+        [P in keyof T & keyof AggregateLlmOperationEvalSuite]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateLlmOperationEvalSuite[P]>
+      : GetScalarType<T[P], AggregateLlmOperationEvalSuite[P]>
+  }
+
+
+
+
+  export type LlmOperationEvalSuiteGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationEvalSuiteWhereInput
+    orderBy?: LlmOperationEvalSuiteOrderByWithAggregationInput | LlmOperationEvalSuiteOrderByWithAggregationInput[]
+    by: LlmOperationEvalSuiteScalarFieldEnum[] | LlmOperationEvalSuiteScalarFieldEnum
+    having?: LlmOperationEvalSuiteScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: LlmOperationEvalSuiteCountAggregateInputType | true
+    _min?: LlmOperationEvalSuiteMinAggregateInputType
+    _max?: LlmOperationEvalSuiteMaxAggregateInputType
+  }
+
+  export type LlmOperationEvalSuiteGroupByOutputType = {
+    id: string
+    operationId: string
+    versionId: string | null
+    name: string
+    description: string | null
+    suiteDigest: string
+    createdBy: string
+    createdAt: Date
+    _count: LlmOperationEvalSuiteCountAggregateOutputType | null
+    _min: LlmOperationEvalSuiteMinAggregateOutputType | null
+    _max: LlmOperationEvalSuiteMaxAggregateOutputType | null
+  }
+
+  type GetLlmOperationEvalSuiteGroupByPayload<T extends LlmOperationEvalSuiteGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<LlmOperationEvalSuiteGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof LlmOperationEvalSuiteGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], LlmOperationEvalSuiteGroupByOutputType[P]>
+            : GetScalarType<T[P], LlmOperationEvalSuiteGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type LlmOperationEvalSuiteSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    operationId?: boolean
+    versionId?: boolean
+    name?: boolean
+    description?: boolean
+    suiteDigest?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    cases?: boolean | LlmOperationEvalSuite$casesArgs<ExtArgs>
+    evalRuns?: boolean | LlmOperationEvalSuite$evalRunsArgs<ExtArgs>
+    _count?: boolean | LlmOperationEvalSuiteCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["llmOperationEvalSuite"]>
+
+  export type LlmOperationEvalSuiteSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    operationId?: boolean
+    versionId?: boolean
+    name?: boolean
+    description?: boolean
+    suiteDigest?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["llmOperationEvalSuite"]>
+
+  export type LlmOperationEvalSuiteSelectScalar = {
+    id?: boolean
+    operationId?: boolean
+    versionId?: boolean
+    name?: boolean
+    description?: boolean
+    suiteDigest?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+  }
+
+  export type LlmOperationEvalSuiteInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    cases?: boolean | LlmOperationEvalSuite$casesArgs<ExtArgs>
+    evalRuns?: boolean | LlmOperationEvalSuite$evalRunsArgs<ExtArgs>
+    _count?: boolean | LlmOperationEvalSuiteCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type LlmOperationEvalSuiteIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+
+  export type $LlmOperationEvalSuitePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "LlmOperationEvalSuite"
+    objects: {
+      cases: Prisma.$LlmOperationEvalCasePayload<ExtArgs>[]
+      evalRuns: Prisma.$LlmOperationEvalRunPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      operationId: string
+      versionId: string | null
+      name: string
+      description: string | null
+      suiteDigest: string
+      createdBy: string
+      createdAt: Date
+    }, ExtArgs["result"]["llmOperationEvalSuite"]>
+    composites: {}
+  }
+
+  type LlmOperationEvalSuiteGetPayload<S extends boolean | null | undefined | LlmOperationEvalSuiteDefaultArgs> = $Result.GetResult<Prisma.$LlmOperationEvalSuitePayload, S>
+
+  type LlmOperationEvalSuiteCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<LlmOperationEvalSuiteFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: LlmOperationEvalSuiteCountAggregateInputType | true
+    }
+
+  export interface LlmOperationEvalSuiteDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['LlmOperationEvalSuite'], meta: { name: 'LlmOperationEvalSuite' } }
+    /**
+     * Find zero or one LlmOperationEvalSuite that matches the filter.
+     * @param {LlmOperationEvalSuiteFindUniqueArgs} args - Arguments to find a LlmOperationEvalSuite
+     * @example
+     * // Get one LlmOperationEvalSuite
+     * const llmOperationEvalSuite = await prisma.llmOperationEvalSuite.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends LlmOperationEvalSuiteFindUniqueArgs>(args: SelectSubset<T, LlmOperationEvalSuiteFindUniqueArgs<ExtArgs>>): Prisma__LlmOperationEvalSuiteClient<$Result.GetResult<Prisma.$LlmOperationEvalSuitePayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one LlmOperationEvalSuite that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {LlmOperationEvalSuiteFindUniqueOrThrowArgs} args - Arguments to find a LlmOperationEvalSuite
+     * @example
+     * // Get one LlmOperationEvalSuite
+     * const llmOperationEvalSuite = await prisma.llmOperationEvalSuite.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends LlmOperationEvalSuiteFindUniqueOrThrowArgs>(args: SelectSubset<T, LlmOperationEvalSuiteFindUniqueOrThrowArgs<ExtArgs>>): Prisma__LlmOperationEvalSuiteClient<$Result.GetResult<Prisma.$LlmOperationEvalSuitePayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first LlmOperationEvalSuite that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalSuiteFindFirstArgs} args - Arguments to find a LlmOperationEvalSuite
+     * @example
+     * // Get one LlmOperationEvalSuite
+     * const llmOperationEvalSuite = await prisma.llmOperationEvalSuite.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends LlmOperationEvalSuiteFindFirstArgs>(args?: SelectSubset<T, LlmOperationEvalSuiteFindFirstArgs<ExtArgs>>): Prisma__LlmOperationEvalSuiteClient<$Result.GetResult<Prisma.$LlmOperationEvalSuitePayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first LlmOperationEvalSuite that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalSuiteFindFirstOrThrowArgs} args - Arguments to find a LlmOperationEvalSuite
+     * @example
+     * // Get one LlmOperationEvalSuite
+     * const llmOperationEvalSuite = await prisma.llmOperationEvalSuite.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends LlmOperationEvalSuiteFindFirstOrThrowArgs>(args?: SelectSubset<T, LlmOperationEvalSuiteFindFirstOrThrowArgs<ExtArgs>>): Prisma__LlmOperationEvalSuiteClient<$Result.GetResult<Prisma.$LlmOperationEvalSuitePayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more LlmOperationEvalSuites that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalSuiteFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all LlmOperationEvalSuites
+     * const llmOperationEvalSuites = await prisma.llmOperationEvalSuite.findMany()
+     * 
+     * // Get first 10 LlmOperationEvalSuites
+     * const llmOperationEvalSuites = await prisma.llmOperationEvalSuite.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const llmOperationEvalSuiteWithIdOnly = await prisma.llmOperationEvalSuite.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends LlmOperationEvalSuiteFindManyArgs>(args?: SelectSubset<T, LlmOperationEvalSuiteFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationEvalSuitePayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a LlmOperationEvalSuite.
+     * @param {LlmOperationEvalSuiteCreateArgs} args - Arguments to create a LlmOperationEvalSuite.
+     * @example
+     * // Create one LlmOperationEvalSuite
+     * const LlmOperationEvalSuite = await prisma.llmOperationEvalSuite.create({
+     *   data: {
+     *     // ... data to create a LlmOperationEvalSuite
+     *   }
+     * })
+     * 
+     */
+    create<T extends LlmOperationEvalSuiteCreateArgs>(args: SelectSubset<T, LlmOperationEvalSuiteCreateArgs<ExtArgs>>): Prisma__LlmOperationEvalSuiteClient<$Result.GetResult<Prisma.$LlmOperationEvalSuitePayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many LlmOperationEvalSuites.
+     * @param {LlmOperationEvalSuiteCreateManyArgs} args - Arguments to create many LlmOperationEvalSuites.
+     * @example
+     * // Create many LlmOperationEvalSuites
+     * const llmOperationEvalSuite = await prisma.llmOperationEvalSuite.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends LlmOperationEvalSuiteCreateManyArgs>(args?: SelectSubset<T, LlmOperationEvalSuiteCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many LlmOperationEvalSuites and returns the data saved in the database.
+     * @param {LlmOperationEvalSuiteCreateManyAndReturnArgs} args - Arguments to create many LlmOperationEvalSuites.
+     * @example
+     * // Create many LlmOperationEvalSuites
+     * const llmOperationEvalSuite = await prisma.llmOperationEvalSuite.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many LlmOperationEvalSuites and only return the `id`
+     * const llmOperationEvalSuiteWithIdOnly = await prisma.llmOperationEvalSuite.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends LlmOperationEvalSuiteCreateManyAndReturnArgs>(args?: SelectSubset<T, LlmOperationEvalSuiteCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationEvalSuitePayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a LlmOperationEvalSuite.
+     * @param {LlmOperationEvalSuiteDeleteArgs} args - Arguments to delete one LlmOperationEvalSuite.
+     * @example
+     * // Delete one LlmOperationEvalSuite
+     * const LlmOperationEvalSuite = await prisma.llmOperationEvalSuite.delete({
+     *   where: {
+     *     // ... filter to delete one LlmOperationEvalSuite
+     *   }
+     * })
+     * 
+     */
+    delete<T extends LlmOperationEvalSuiteDeleteArgs>(args: SelectSubset<T, LlmOperationEvalSuiteDeleteArgs<ExtArgs>>): Prisma__LlmOperationEvalSuiteClient<$Result.GetResult<Prisma.$LlmOperationEvalSuitePayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one LlmOperationEvalSuite.
+     * @param {LlmOperationEvalSuiteUpdateArgs} args - Arguments to update one LlmOperationEvalSuite.
+     * @example
+     * // Update one LlmOperationEvalSuite
+     * const llmOperationEvalSuite = await prisma.llmOperationEvalSuite.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends LlmOperationEvalSuiteUpdateArgs>(args: SelectSubset<T, LlmOperationEvalSuiteUpdateArgs<ExtArgs>>): Prisma__LlmOperationEvalSuiteClient<$Result.GetResult<Prisma.$LlmOperationEvalSuitePayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more LlmOperationEvalSuites.
+     * @param {LlmOperationEvalSuiteDeleteManyArgs} args - Arguments to filter LlmOperationEvalSuites to delete.
+     * @example
+     * // Delete a few LlmOperationEvalSuites
+     * const { count } = await prisma.llmOperationEvalSuite.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends LlmOperationEvalSuiteDeleteManyArgs>(args?: SelectSubset<T, LlmOperationEvalSuiteDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more LlmOperationEvalSuites.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalSuiteUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many LlmOperationEvalSuites
+     * const llmOperationEvalSuite = await prisma.llmOperationEvalSuite.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends LlmOperationEvalSuiteUpdateManyArgs>(args: SelectSubset<T, LlmOperationEvalSuiteUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one LlmOperationEvalSuite.
+     * @param {LlmOperationEvalSuiteUpsertArgs} args - Arguments to update or create a LlmOperationEvalSuite.
+     * @example
+     * // Update or create a LlmOperationEvalSuite
+     * const llmOperationEvalSuite = await prisma.llmOperationEvalSuite.upsert({
+     *   create: {
+     *     // ... data to create a LlmOperationEvalSuite
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the LlmOperationEvalSuite we want to update
+     *   }
+     * })
+     */
+    upsert<T extends LlmOperationEvalSuiteUpsertArgs>(args: SelectSubset<T, LlmOperationEvalSuiteUpsertArgs<ExtArgs>>): Prisma__LlmOperationEvalSuiteClient<$Result.GetResult<Prisma.$LlmOperationEvalSuitePayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of LlmOperationEvalSuites.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalSuiteCountArgs} args - Arguments to filter LlmOperationEvalSuites to count.
+     * @example
+     * // Count the number of LlmOperationEvalSuites
+     * const count = await prisma.llmOperationEvalSuite.count({
+     *   where: {
+     *     // ... the filter for the LlmOperationEvalSuites we want to count
+     *   }
+     * })
+    **/
+    count<T extends LlmOperationEvalSuiteCountArgs>(
+      args?: Subset<T, LlmOperationEvalSuiteCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], LlmOperationEvalSuiteCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a LlmOperationEvalSuite.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalSuiteAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends LlmOperationEvalSuiteAggregateArgs>(args: Subset<T, LlmOperationEvalSuiteAggregateArgs>): Prisma.PrismaPromise<GetLlmOperationEvalSuiteAggregateType<T>>
+
+    /**
+     * Group by LlmOperationEvalSuite.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalSuiteGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends LlmOperationEvalSuiteGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: LlmOperationEvalSuiteGroupByArgs['orderBy'] }
+        : { orderBy?: LlmOperationEvalSuiteGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, LlmOperationEvalSuiteGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetLlmOperationEvalSuiteGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the LlmOperationEvalSuite model
+   */
+  readonly fields: LlmOperationEvalSuiteFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for LlmOperationEvalSuite.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__LlmOperationEvalSuiteClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    cases<T extends LlmOperationEvalSuite$casesArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationEvalSuite$casesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationEvalCasePayload<ExtArgs>, T, "findMany"> | Null>
+    evalRuns<T extends LlmOperationEvalSuite$evalRunsArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationEvalSuite$evalRunsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationEvalRunPayload<ExtArgs>, T, "findMany"> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the LlmOperationEvalSuite model
+   */ 
+  interface LlmOperationEvalSuiteFieldRefs {
+    readonly id: FieldRef<"LlmOperationEvalSuite", 'String'>
+    readonly operationId: FieldRef<"LlmOperationEvalSuite", 'String'>
+    readonly versionId: FieldRef<"LlmOperationEvalSuite", 'String'>
+    readonly name: FieldRef<"LlmOperationEvalSuite", 'String'>
+    readonly description: FieldRef<"LlmOperationEvalSuite", 'String'>
+    readonly suiteDigest: FieldRef<"LlmOperationEvalSuite", 'String'>
+    readonly createdBy: FieldRef<"LlmOperationEvalSuite", 'String'>
+    readonly createdAt: FieldRef<"LlmOperationEvalSuite", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * LlmOperationEvalSuite findUnique
+   */
+  export type LlmOperationEvalSuiteFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalSuite
+     */
+    select?: LlmOperationEvalSuiteSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalSuiteInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationEvalSuite to fetch.
+     */
+    where: LlmOperationEvalSuiteWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationEvalSuite findUniqueOrThrow
+   */
+  export type LlmOperationEvalSuiteFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalSuite
+     */
+    select?: LlmOperationEvalSuiteSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalSuiteInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationEvalSuite to fetch.
+     */
+    where: LlmOperationEvalSuiteWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationEvalSuite findFirst
+   */
+  export type LlmOperationEvalSuiteFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalSuite
+     */
+    select?: LlmOperationEvalSuiteSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalSuiteInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationEvalSuite to fetch.
+     */
+    where?: LlmOperationEvalSuiteWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationEvalSuites to fetch.
+     */
+    orderBy?: LlmOperationEvalSuiteOrderByWithRelationInput | LlmOperationEvalSuiteOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperationEvalSuites.
+     */
+    cursor?: LlmOperationEvalSuiteWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationEvalSuites from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationEvalSuites.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperationEvalSuites.
+     */
+    distinct?: LlmOperationEvalSuiteScalarFieldEnum | LlmOperationEvalSuiteScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationEvalSuite findFirstOrThrow
+   */
+  export type LlmOperationEvalSuiteFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalSuite
+     */
+    select?: LlmOperationEvalSuiteSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalSuiteInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationEvalSuite to fetch.
+     */
+    where?: LlmOperationEvalSuiteWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationEvalSuites to fetch.
+     */
+    orderBy?: LlmOperationEvalSuiteOrderByWithRelationInput | LlmOperationEvalSuiteOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperationEvalSuites.
+     */
+    cursor?: LlmOperationEvalSuiteWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationEvalSuites from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationEvalSuites.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperationEvalSuites.
+     */
+    distinct?: LlmOperationEvalSuiteScalarFieldEnum | LlmOperationEvalSuiteScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationEvalSuite findMany
+   */
+  export type LlmOperationEvalSuiteFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalSuite
+     */
+    select?: LlmOperationEvalSuiteSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalSuiteInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationEvalSuites to fetch.
+     */
+    where?: LlmOperationEvalSuiteWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationEvalSuites to fetch.
+     */
+    orderBy?: LlmOperationEvalSuiteOrderByWithRelationInput | LlmOperationEvalSuiteOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing LlmOperationEvalSuites.
+     */
+    cursor?: LlmOperationEvalSuiteWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationEvalSuites from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationEvalSuites.
+     */
+    skip?: number
+    distinct?: LlmOperationEvalSuiteScalarFieldEnum | LlmOperationEvalSuiteScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationEvalSuite create
+   */
+  export type LlmOperationEvalSuiteCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalSuite
+     */
+    select?: LlmOperationEvalSuiteSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalSuiteInclude<ExtArgs> | null
+    /**
+     * The data needed to create a LlmOperationEvalSuite.
+     */
+    data: XOR<LlmOperationEvalSuiteCreateInput, LlmOperationEvalSuiteUncheckedCreateInput>
+  }
+
+  /**
+   * LlmOperationEvalSuite createMany
+   */
+  export type LlmOperationEvalSuiteCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many LlmOperationEvalSuites.
+     */
+    data: LlmOperationEvalSuiteCreateManyInput | LlmOperationEvalSuiteCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * LlmOperationEvalSuite createManyAndReturn
+   */
+  export type LlmOperationEvalSuiteCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalSuite
+     */
+    select?: LlmOperationEvalSuiteSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many LlmOperationEvalSuites.
+     */
+    data: LlmOperationEvalSuiteCreateManyInput | LlmOperationEvalSuiteCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * LlmOperationEvalSuite update
+   */
+  export type LlmOperationEvalSuiteUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalSuite
+     */
+    select?: LlmOperationEvalSuiteSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalSuiteInclude<ExtArgs> | null
+    /**
+     * The data needed to update a LlmOperationEvalSuite.
+     */
+    data: XOR<LlmOperationEvalSuiteUpdateInput, LlmOperationEvalSuiteUncheckedUpdateInput>
+    /**
+     * Choose, which LlmOperationEvalSuite to update.
+     */
+    where: LlmOperationEvalSuiteWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationEvalSuite updateMany
+   */
+  export type LlmOperationEvalSuiteUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update LlmOperationEvalSuites.
+     */
+    data: XOR<LlmOperationEvalSuiteUpdateManyMutationInput, LlmOperationEvalSuiteUncheckedUpdateManyInput>
+    /**
+     * Filter which LlmOperationEvalSuites to update
+     */
+    where?: LlmOperationEvalSuiteWhereInput
+  }
+
+  /**
+   * LlmOperationEvalSuite upsert
+   */
+  export type LlmOperationEvalSuiteUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalSuite
+     */
+    select?: LlmOperationEvalSuiteSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalSuiteInclude<ExtArgs> | null
+    /**
+     * The filter to search for the LlmOperationEvalSuite to update in case it exists.
+     */
+    where: LlmOperationEvalSuiteWhereUniqueInput
+    /**
+     * In case the LlmOperationEvalSuite found by the `where` argument doesn't exist, create a new LlmOperationEvalSuite with this data.
+     */
+    create: XOR<LlmOperationEvalSuiteCreateInput, LlmOperationEvalSuiteUncheckedCreateInput>
+    /**
+     * In case the LlmOperationEvalSuite was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<LlmOperationEvalSuiteUpdateInput, LlmOperationEvalSuiteUncheckedUpdateInput>
+  }
+
+  /**
+   * LlmOperationEvalSuite delete
+   */
+  export type LlmOperationEvalSuiteDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalSuite
+     */
+    select?: LlmOperationEvalSuiteSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalSuiteInclude<ExtArgs> | null
+    /**
+     * Filter which LlmOperationEvalSuite to delete.
+     */
+    where: LlmOperationEvalSuiteWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationEvalSuite deleteMany
+   */
+  export type LlmOperationEvalSuiteDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperationEvalSuites to delete
+     */
+    where?: LlmOperationEvalSuiteWhereInput
+  }
+
+  /**
+   * LlmOperationEvalSuite.cases
+   */
+  export type LlmOperationEvalSuite$casesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalCase
+     */
+    select?: LlmOperationEvalCaseSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalCaseInclude<ExtArgs> | null
+    where?: LlmOperationEvalCaseWhereInput
+    orderBy?: LlmOperationEvalCaseOrderByWithRelationInput | LlmOperationEvalCaseOrderByWithRelationInput[]
+    cursor?: LlmOperationEvalCaseWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: LlmOperationEvalCaseScalarFieldEnum | LlmOperationEvalCaseScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationEvalSuite.evalRuns
+   */
+  export type LlmOperationEvalSuite$evalRunsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalRun
+     */
+    select?: LlmOperationEvalRunSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalRunInclude<ExtArgs> | null
+    where?: LlmOperationEvalRunWhereInput
+    orderBy?: LlmOperationEvalRunOrderByWithRelationInput | LlmOperationEvalRunOrderByWithRelationInput[]
+    cursor?: LlmOperationEvalRunWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: LlmOperationEvalRunScalarFieldEnum | LlmOperationEvalRunScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationEvalSuite without action
+   */
+  export type LlmOperationEvalSuiteDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalSuite
+     */
+    select?: LlmOperationEvalSuiteSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalSuiteInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model LlmOperationEvalCase
+   */
+
+  export type AggregateLlmOperationEvalCase = {
+    _count: LlmOperationEvalCaseCountAggregateOutputType | null
+    _min: LlmOperationEvalCaseMinAggregateOutputType | null
+    _max: LlmOperationEvalCaseMaxAggregateOutputType | null
+  }
+
+  export type LlmOperationEvalCaseMinAggregateOutputType = {
+    id: string | null
+    suiteId: string | null
+    name: string | null
+    isNegative: boolean | null
+    errorContains: string | null
+    createdAt: Date | null
+  }
+
+  export type LlmOperationEvalCaseMaxAggregateOutputType = {
+    id: string | null
+    suiteId: string | null
+    name: string | null
+    isNegative: boolean | null
+    errorContains: string | null
+    createdAt: Date | null
+  }
+
+  export type LlmOperationEvalCaseCountAggregateOutputType = {
+    id: number
+    suiteId: number
+    name: number
+    inputJson: number
+    expectedJson: number
+    isNegative: number
+    errorContains: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type LlmOperationEvalCaseMinAggregateInputType = {
+    id?: true
+    suiteId?: true
+    name?: true
+    isNegative?: true
+    errorContains?: true
+    createdAt?: true
+  }
+
+  export type LlmOperationEvalCaseMaxAggregateInputType = {
+    id?: true
+    suiteId?: true
+    name?: true
+    isNegative?: true
+    errorContains?: true
+    createdAt?: true
+  }
+
+  export type LlmOperationEvalCaseCountAggregateInputType = {
+    id?: true
+    suiteId?: true
+    name?: true
+    inputJson?: true
+    expectedJson?: true
+    isNegative?: true
+    errorContains?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type LlmOperationEvalCaseAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperationEvalCase to aggregate.
+     */
+    where?: LlmOperationEvalCaseWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationEvalCases to fetch.
+     */
+    orderBy?: LlmOperationEvalCaseOrderByWithRelationInput | LlmOperationEvalCaseOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: LlmOperationEvalCaseWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationEvalCases from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationEvalCases.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned LlmOperationEvalCases
+    **/
+    _count?: true | LlmOperationEvalCaseCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: LlmOperationEvalCaseMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: LlmOperationEvalCaseMaxAggregateInputType
+  }
+
+  export type GetLlmOperationEvalCaseAggregateType<T extends LlmOperationEvalCaseAggregateArgs> = {
+        [P in keyof T & keyof AggregateLlmOperationEvalCase]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateLlmOperationEvalCase[P]>
+      : GetScalarType<T[P], AggregateLlmOperationEvalCase[P]>
+  }
+
+
+
+
+  export type LlmOperationEvalCaseGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationEvalCaseWhereInput
+    orderBy?: LlmOperationEvalCaseOrderByWithAggregationInput | LlmOperationEvalCaseOrderByWithAggregationInput[]
+    by: LlmOperationEvalCaseScalarFieldEnum[] | LlmOperationEvalCaseScalarFieldEnum
+    having?: LlmOperationEvalCaseScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: LlmOperationEvalCaseCountAggregateInputType | true
+    _min?: LlmOperationEvalCaseMinAggregateInputType
+    _max?: LlmOperationEvalCaseMaxAggregateInputType
+  }
+
+  export type LlmOperationEvalCaseGroupByOutputType = {
+    id: string
+    suiteId: string
+    name: string
+    inputJson: JsonValue
+    expectedJson: JsonValue | null
+    isNegative: boolean
+    errorContains: string | null
+    createdAt: Date
+    _count: LlmOperationEvalCaseCountAggregateOutputType | null
+    _min: LlmOperationEvalCaseMinAggregateOutputType | null
+    _max: LlmOperationEvalCaseMaxAggregateOutputType | null
+  }
+
+  type GetLlmOperationEvalCaseGroupByPayload<T extends LlmOperationEvalCaseGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<LlmOperationEvalCaseGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof LlmOperationEvalCaseGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], LlmOperationEvalCaseGroupByOutputType[P]>
+            : GetScalarType<T[P], LlmOperationEvalCaseGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type LlmOperationEvalCaseSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    suiteId?: boolean
+    name?: boolean
+    inputJson?: boolean
+    expectedJson?: boolean
+    isNegative?: boolean
+    errorContains?: boolean
+    createdAt?: boolean
+    suite?: boolean | LlmOperationEvalSuiteDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["llmOperationEvalCase"]>
+
+  export type LlmOperationEvalCaseSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    suiteId?: boolean
+    name?: boolean
+    inputJson?: boolean
+    expectedJson?: boolean
+    isNegative?: boolean
+    errorContains?: boolean
+    createdAt?: boolean
+    suite?: boolean | LlmOperationEvalSuiteDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["llmOperationEvalCase"]>
+
+  export type LlmOperationEvalCaseSelectScalar = {
+    id?: boolean
+    suiteId?: boolean
+    name?: boolean
+    inputJson?: boolean
+    expectedJson?: boolean
+    isNegative?: boolean
+    errorContains?: boolean
+    createdAt?: boolean
+  }
+
+  export type LlmOperationEvalCaseInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    suite?: boolean | LlmOperationEvalSuiteDefaultArgs<ExtArgs>
+  }
+  export type LlmOperationEvalCaseIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    suite?: boolean | LlmOperationEvalSuiteDefaultArgs<ExtArgs>
+  }
+
+  export type $LlmOperationEvalCasePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "LlmOperationEvalCase"
+    objects: {
+      suite: Prisma.$LlmOperationEvalSuitePayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      suiteId: string
+      name: string
+      inputJson: Prisma.JsonValue
+      expectedJson: Prisma.JsonValue | null
+      isNegative: boolean
+      errorContains: string | null
+      createdAt: Date
+    }, ExtArgs["result"]["llmOperationEvalCase"]>
+    composites: {}
+  }
+
+  type LlmOperationEvalCaseGetPayload<S extends boolean | null | undefined | LlmOperationEvalCaseDefaultArgs> = $Result.GetResult<Prisma.$LlmOperationEvalCasePayload, S>
+
+  type LlmOperationEvalCaseCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<LlmOperationEvalCaseFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: LlmOperationEvalCaseCountAggregateInputType | true
+    }
+
+  export interface LlmOperationEvalCaseDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['LlmOperationEvalCase'], meta: { name: 'LlmOperationEvalCase' } }
+    /**
+     * Find zero or one LlmOperationEvalCase that matches the filter.
+     * @param {LlmOperationEvalCaseFindUniqueArgs} args - Arguments to find a LlmOperationEvalCase
+     * @example
+     * // Get one LlmOperationEvalCase
+     * const llmOperationEvalCase = await prisma.llmOperationEvalCase.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends LlmOperationEvalCaseFindUniqueArgs>(args: SelectSubset<T, LlmOperationEvalCaseFindUniqueArgs<ExtArgs>>): Prisma__LlmOperationEvalCaseClient<$Result.GetResult<Prisma.$LlmOperationEvalCasePayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one LlmOperationEvalCase that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {LlmOperationEvalCaseFindUniqueOrThrowArgs} args - Arguments to find a LlmOperationEvalCase
+     * @example
+     * // Get one LlmOperationEvalCase
+     * const llmOperationEvalCase = await prisma.llmOperationEvalCase.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends LlmOperationEvalCaseFindUniqueOrThrowArgs>(args: SelectSubset<T, LlmOperationEvalCaseFindUniqueOrThrowArgs<ExtArgs>>): Prisma__LlmOperationEvalCaseClient<$Result.GetResult<Prisma.$LlmOperationEvalCasePayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first LlmOperationEvalCase that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalCaseFindFirstArgs} args - Arguments to find a LlmOperationEvalCase
+     * @example
+     * // Get one LlmOperationEvalCase
+     * const llmOperationEvalCase = await prisma.llmOperationEvalCase.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends LlmOperationEvalCaseFindFirstArgs>(args?: SelectSubset<T, LlmOperationEvalCaseFindFirstArgs<ExtArgs>>): Prisma__LlmOperationEvalCaseClient<$Result.GetResult<Prisma.$LlmOperationEvalCasePayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first LlmOperationEvalCase that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalCaseFindFirstOrThrowArgs} args - Arguments to find a LlmOperationEvalCase
+     * @example
+     * // Get one LlmOperationEvalCase
+     * const llmOperationEvalCase = await prisma.llmOperationEvalCase.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends LlmOperationEvalCaseFindFirstOrThrowArgs>(args?: SelectSubset<T, LlmOperationEvalCaseFindFirstOrThrowArgs<ExtArgs>>): Prisma__LlmOperationEvalCaseClient<$Result.GetResult<Prisma.$LlmOperationEvalCasePayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more LlmOperationEvalCases that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalCaseFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all LlmOperationEvalCases
+     * const llmOperationEvalCases = await prisma.llmOperationEvalCase.findMany()
+     * 
+     * // Get first 10 LlmOperationEvalCases
+     * const llmOperationEvalCases = await prisma.llmOperationEvalCase.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const llmOperationEvalCaseWithIdOnly = await prisma.llmOperationEvalCase.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends LlmOperationEvalCaseFindManyArgs>(args?: SelectSubset<T, LlmOperationEvalCaseFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationEvalCasePayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a LlmOperationEvalCase.
+     * @param {LlmOperationEvalCaseCreateArgs} args - Arguments to create a LlmOperationEvalCase.
+     * @example
+     * // Create one LlmOperationEvalCase
+     * const LlmOperationEvalCase = await prisma.llmOperationEvalCase.create({
+     *   data: {
+     *     // ... data to create a LlmOperationEvalCase
+     *   }
+     * })
+     * 
+     */
+    create<T extends LlmOperationEvalCaseCreateArgs>(args: SelectSubset<T, LlmOperationEvalCaseCreateArgs<ExtArgs>>): Prisma__LlmOperationEvalCaseClient<$Result.GetResult<Prisma.$LlmOperationEvalCasePayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many LlmOperationEvalCases.
+     * @param {LlmOperationEvalCaseCreateManyArgs} args - Arguments to create many LlmOperationEvalCases.
+     * @example
+     * // Create many LlmOperationEvalCases
+     * const llmOperationEvalCase = await prisma.llmOperationEvalCase.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends LlmOperationEvalCaseCreateManyArgs>(args?: SelectSubset<T, LlmOperationEvalCaseCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many LlmOperationEvalCases and returns the data saved in the database.
+     * @param {LlmOperationEvalCaseCreateManyAndReturnArgs} args - Arguments to create many LlmOperationEvalCases.
+     * @example
+     * // Create many LlmOperationEvalCases
+     * const llmOperationEvalCase = await prisma.llmOperationEvalCase.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many LlmOperationEvalCases and only return the `id`
+     * const llmOperationEvalCaseWithIdOnly = await prisma.llmOperationEvalCase.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends LlmOperationEvalCaseCreateManyAndReturnArgs>(args?: SelectSubset<T, LlmOperationEvalCaseCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationEvalCasePayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a LlmOperationEvalCase.
+     * @param {LlmOperationEvalCaseDeleteArgs} args - Arguments to delete one LlmOperationEvalCase.
+     * @example
+     * // Delete one LlmOperationEvalCase
+     * const LlmOperationEvalCase = await prisma.llmOperationEvalCase.delete({
+     *   where: {
+     *     // ... filter to delete one LlmOperationEvalCase
+     *   }
+     * })
+     * 
+     */
+    delete<T extends LlmOperationEvalCaseDeleteArgs>(args: SelectSubset<T, LlmOperationEvalCaseDeleteArgs<ExtArgs>>): Prisma__LlmOperationEvalCaseClient<$Result.GetResult<Prisma.$LlmOperationEvalCasePayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one LlmOperationEvalCase.
+     * @param {LlmOperationEvalCaseUpdateArgs} args - Arguments to update one LlmOperationEvalCase.
+     * @example
+     * // Update one LlmOperationEvalCase
+     * const llmOperationEvalCase = await prisma.llmOperationEvalCase.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends LlmOperationEvalCaseUpdateArgs>(args: SelectSubset<T, LlmOperationEvalCaseUpdateArgs<ExtArgs>>): Prisma__LlmOperationEvalCaseClient<$Result.GetResult<Prisma.$LlmOperationEvalCasePayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more LlmOperationEvalCases.
+     * @param {LlmOperationEvalCaseDeleteManyArgs} args - Arguments to filter LlmOperationEvalCases to delete.
+     * @example
+     * // Delete a few LlmOperationEvalCases
+     * const { count } = await prisma.llmOperationEvalCase.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends LlmOperationEvalCaseDeleteManyArgs>(args?: SelectSubset<T, LlmOperationEvalCaseDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more LlmOperationEvalCases.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalCaseUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many LlmOperationEvalCases
+     * const llmOperationEvalCase = await prisma.llmOperationEvalCase.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends LlmOperationEvalCaseUpdateManyArgs>(args: SelectSubset<T, LlmOperationEvalCaseUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one LlmOperationEvalCase.
+     * @param {LlmOperationEvalCaseUpsertArgs} args - Arguments to update or create a LlmOperationEvalCase.
+     * @example
+     * // Update or create a LlmOperationEvalCase
+     * const llmOperationEvalCase = await prisma.llmOperationEvalCase.upsert({
+     *   create: {
+     *     // ... data to create a LlmOperationEvalCase
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the LlmOperationEvalCase we want to update
+     *   }
+     * })
+     */
+    upsert<T extends LlmOperationEvalCaseUpsertArgs>(args: SelectSubset<T, LlmOperationEvalCaseUpsertArgs<ExtArgs>>): Prisma__LlmOperationEvalCaseClient<$Result.GetResult<Prisma.$LlmOperationEvalCasePayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of LlmOperationEvalCases.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalCaseCountArgs} args - Arguments to filter LlmOperationEvalCases to count.
+     * @example
+     * // Count the number of LlmOperationEvalCases
+     * const count = await prisma.llmOperationEvalCase.count({
+     *   where: {
+     *     // ... the filter for the LlmOperationEvalCases we want to count
+     *   }
+     * })
+    **/
+    count<T extends LlmOperationEvalCaseCountArgs>(
+      args?: Subset<T, LlmOperationEvalCaseCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], LlmOperationEvalCaseCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a LlmOperationEvalCase.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalCaseAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends LlmOperationEvalCaseAggregateArgs>(args: Subset<T, LlmOperationEvalCaseAggregateArgs>): Prisma.PrismaPromise<GetLlmOperationEvalCaseAggregateType<T>>
+
+    /**
+     * Group by LlmOperationEvalCase.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalCaseGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends LlmOperationEvalCaseGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: LlmOperationEvalCaseGroupByArgs['orderBy'] }
+        : { orderBy?: LlmOperationEvalCaseGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, LlmOperationEvalCaseGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetLlmOperationEvalCaseGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the LlmOperationEvalCase model
+   */
+  readonly fields: LlmOperationEvalCaseFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for LlmOperationEvalCase.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__LlmOperationEvalCaseClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    suite<T extends LlmOperationEvalSuiteDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationEvalSuiteDefaultArgs<ExtArgs>>): Prisma__LlmOperationEvalSuiteClient<$Result.GetResult<Prisma.$LlmOperationEvalSuitePayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the LlmOperationEvalCase model
+   */ 
+  interface LlmOperationEvalCaseFieldRefs {
+    readonly id: FieldRef<"LlmOperationEvalCase", 'String'>
+    readonly suiteId: FieldRef<"LlmOperationEvalCase", 'String'>
+    readonly name: FieldRef<"LlmOperationEvalCase", 'String'>
+    readonly inputJson: FieldRef<"LlmOperationEvalCase", 'Json'>
+    readonly expectedJson: FieldRef<"LlmOperationEvalCase", 'Json'>
+    readonly isNegative: FieldRef<"LlmOperationEvalCase", 'Boolean'>
+    readonly errorContains: FieldRef<"LlmOperationEvalCase", 'String'>
+    readonly createdAt: FieldRef<"LlmOperationEvalCase", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * LlmOperationEvalCase findUnique
+   */
+  export type LlmOperationEvalCaseFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalCase
+     */
+    select?: LlmOperationEvalCaseSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalCaseInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationEvalCase to fetch.
+     */
+    where: LlmOperationEvalCaseWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationEvalCase findUniqueOrThrow
+   */
+  export type LlmOperationEvalCaseFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalCase
+     */
+    select?: LlmOperationEvalCaseSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalCaseInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationEvalCase to fetch.
+     */
+    where: LlmOperationEvalCaseWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationEvalCase findFirst
+   */
+  export type LlmOperationEvalCaseFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalCase
+     */
+    select?: LlmOperationEvalCaseSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalCaseInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationEvalCase to fetch.
+     */
+    where?: LlmOperationEvalCaseWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationEvalCases to fetch.
+     */
+    orderBy?: LlmOperationEvalCaseOrderByWithRelationInput | LlmOperationEvalCaseOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperationEvalCases.
+     */
+    cursor?: LlmOperationEvalCaseWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationEvalCases from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationEvalCases.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperationEvalCases.
+     */
+    distinct?: LlmOperationEvalCaseScalarFieldEnum | LlmOperationEvalCaseScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationEvalCase findFirstOrThrow
+   */
+  export type LlmOperationEvalCaseFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalCase
+     */
+    select?: LlmOperationEvalCaseSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalCaseInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationEvalCase to fetch.
+     */
+    where?: LlmOperationEvalCaseWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationEvalCases to fetch.
+     */
+    orderBy?: LlmOperationEvalCaseOrderByWithRelationInput | LlmOperationEvalCaseOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperationEvalCases.
+     */
+    cursor?: LlmOperationEvalCaseWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationEvalCases from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationEvalCases.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperationEvalCases.
+     */
+    distinct?: LlmOperationEvalCaseScalarFieldEnum | LlmOperationEvalCaseScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationEvalCase findMany
+   */
+  export type LlmOperationEvalCaseFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalCase
+     */
+    select?: LlmOperationEvalCaseSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalCaseInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationEvalCases to fetch.
+     */
+    where?: LlmOperationEvalCaseWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationEvalCases to fetch.
+     */
+    orderBy?: LlmOperationEvalCaseOrderByWithRelationInput | LlmOperationEvalCaseOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing LlmOperationEvalCases.
+     */
+    cursor?: LlmOperationEvalCaseWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationEvalCases from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationEvalCases.
+     */
+    skip?: number
+    distinct?: LlmOperationEvalCaseScalarFieldEnum | LlmOperationEvalCaseScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationEvalCase create
+   */
+  export type LlmOperationEvalCaseCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalCase
+     */
+    select?: LlmOperationEvalCaseSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalCaseInclude<ExtArgs> | null
+    /**
+     * The data needed to create a LlmOperationEvalCase.
+     */
+    data: XOR<LlmOperationEvalCaseCreateInput, LlmOperationEvalCaseUncheckedCreateInput>
+  }
+
+  /**
+   * LlmOperationEvalCase createMany
+   */
+  export type LlmOperationEvalCaseCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many LlmOperationEvalCases.
+     */
+    data: LlmOperationEvalCaseCreateManyInput | LlmOperationEvalCaseCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * LlmOperationEvalCase createManyAndReturn
+   */
+  export type LlmOperationEvalCaseCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalCase
+     */
+    select?: LlmOperationEvalCaseSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many LlmOperationEvalCases.
+     */
+    data: LlmOperationEvalCaseCreateManyInput | LlmOperationEvalCaseCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalCaseIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * LlmOperationEvalCase update
+   */
+  export type LlmOperationEvalCaseUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalCase
+     */
+    select?: LlmOperationEvalCaseSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalCaseInclude<ExtArgs> | null
+    /**
+     * The data needed to update a LlmOperationEvalCase.
+     */
+    data: XOR<LlmOperationEvalCaseUpdateInput, LlmOperationEvalCaseUncheckedUpdateInput>
+    /**
+     * Choose, which LlmOperationEvalCase to update.
+     */
+    where: LlmOperationEvalCaseWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationEvalCase updateMany
+   */
+  export type LlmOperationEvalCaseUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update LlmOperationEvalCases.
+     */
+    data: XOR<LlmOperationEvalCaseUpdateManyMutationInput, LlmOperationEvalCaseUncheckedUpdateManyInput>
+    /**
+     * Filter which LlmOperationEvalCases to update
+     */
+    where?: LlmOperationEvalCaseWhereInput
+  }
+
+  /**
+   * LlmOperationEvalCase upsert
+   */
+  export type LlmOperationEvalCaseUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalCase
+     */
+    select?: LlmOperationEvalCaseSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalCaseInclude<ExtArgs> | null
+    /**
+     * The filter to search for the LlmOperationEvalCase to update in case it exists.
+     */
+    where: LlmOperationEvalCaseWhereUniqueInput
+    /**
+     * In case the LlmOperationEvalCase found by the `where` argument doesn't exist, create a new LlmOperationEvalCase with this data.
+     */
+    create: XOR<LlmOperationEvalCaseCreateInput, LlmOperationEvalCaseUncheckedCreateInput>
+    /**
+     * In case the LlmOperationEvalCase was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<LlmOperationEvalCaseUpdateInput, LlmOperationEvalCaseUncheckedUpdateInput>
+  }
+
+  /**
+   * LlmOperationEvalCase delete
+   */
+  export type LlmOperationEvalCaseDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalCase
+     */
+    select?: LlmOperationEvalCaseSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalCaseInclude<ExtArgs> | null
+    /**
+     * Filter which LlmOperationEvalCase to delete.
+     */
+    where: LlmOperationEvalCaseWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationEvalCase deleteMany
+   */
+  export type LlmOperationEvalCaseDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperationEvalCases to delete
+     */
+    where?: LlmOperationEvalCaseWhereInput
+  }
+
+  /**
+   * LlmOperationEvalCase without action
+   */
+  export type LlmOperationEvalCaseDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalCase
+     */
+    select?: LlmOperationEvalCaseSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalCaseInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model LlmOperationEvalRun
+   */
+
+  export type AggregateLlmOperationEvalRun = {
+    _count: LlmOperationEvalRunCountAggregateOutputType | null
+    _min: LlmOperationEvalRunMinAggregateOutputType | null
+    _max: LlmOperationEvalRunMaxAggregateOutputType | null
+  }
+
+  export type LlmOperationEvalRunMinAggregateOutputType = {
+    id: string | null
+    versionId: string | null
+    suiteId: string | null
+    baselineVersionId: string | null
+    executedBy: string | null
+    startedAt: Date | null
+    completedAt: Date | null
+  }
+
+  export type LlmOperationEvalRunMaxAggregateOutputType = {
+    id: string | null
+    versionId: string | null
+    suiteId: string | null
+    baselineVersionId: string | null
+    executedBy: string | null
+    startedAt: Date | null
+    completedAt: Date | null
+  }
+
+  export type LlmOperationEvalRunCountAggregateOutputType = {
+    id: number
+    versionId: number
+    suiteId: number
+    modelPolicySnapshot: number
+    resultsJson: number
+    metricsJson: number
+    baselineVersionId: number
+    executedBy: number
+    startedAt: number
+    completedAt: number
+    _all: number
+  }
+
+
+  export type LlmOperationEvalRunMinAggregateInputType = {
+    id?: true
+    versionId?: true
+    suiteId?: true
+    baselineVersionId?: true
+    executedBy?: true
+    startedAt?: true
+    completedAt?: true
+  }
+
+  export type LlmOperationEvalRunMaxAggregateInputType = {
+    id?: true
+    versionId?: true
+    suiteId?: true
+    baselineVersionId?: true
+    executedBy?: true
+    startedAt?: true
+    completedAt?: true
+  }
+
+  export type LlmOperationEvalRunCountAggregateInputType = {
+    id?: true
+    versionId?: true
+    suiteId?: true
+    modelPolicySnapshot?: true
+    resultsJson?: true
+    metricsJson?: true
+    baselineVersionId?: true
+    executedBy?: true
+    startedAt?: true
+    completedAt?: true
+    _all?: true
+  }
+
+  export type LlmOperationEvalRunAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperationEvalRun to aggregate.
+     */
+    where?: LlmOperationEvalRunWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationEvalRuns to fetch.
+     */
+    orderBy?: LlmOperationEvalRunOrderByWithRelationInput | LlmOperationEvalRunOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: LlmOperationEvalRunWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationEvalRuns from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationEvalRuns.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned LlmOperationEvalRuns
+    **/
+    _count?: true | LlmOperationEvalRunCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: LlmOperationEvalRunMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: LlmOperationEvalRunMaxAggregateInputType
+  }
+
+  export type GetLlmOperationEvalRunAggregateType<T extends LlmOperationEvalRunAggregateArgs> = {
+        [P in keyof T & keyof AggregateLlmOperationEvalRun]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateLlmOperationEvalRun[P]>
+      : GetScalarType<T[P], AggregateLlmOperationEvalRun[P]>
+  }
+
+
+
+
+  export type LlmOperationEvalRunGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationEvalRunWhereInput
+    orderBy?: LlmOperationEvalRunOrderByWithAggregationInput | LlmOperationEvalRunOrderByWithAggregationInput[]
+    by: LlmOperationEvalRunScalarFieldEnum[] | LlmOperationEvalRunScalarFieldEnum
+    having?: LlmOperationEvalRunScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: LlmOperationEvalRunCountAggregateInputType | true
+    _min?: LlmOperationEvalRunMinAggregateInputType
+    _max?: LlmOperationEvalRunMaxAggregateInputType
+  }
+
+  export type LlmOperationEvalRunGroupByOutputType = {
+    id: string
+    versionId: string
+    suiteId: string
+    modelPolicySnapshot: JsonValue
+    resultsJson: JsonValue
+    metricsJson: JsonValue
+    baselineVersionId: string | null
+    executedBy: string
+    startedAt: Date
+    completedAt: Date | null
+    _count: LlmOperationEvalRunCountAggregateOutputType | null
+    _min: LlmOperationEvalRunMinAggregateOutputType | null
+    _max: LlmOperationEvalRunMaxAggregateOutputType | null
+  }
+
+  type GetLlmOperationEvalRunGroupByPayload<T extends LlmOperationEvalRunGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<LlmOperationEvalRunGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof LlmOperationEvalRunGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], LlmOperationEvalRunGroupByOutputType[P]>
+            : GetScalarType<T[P], LlmOperationEvalRunGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type LlmOperationEvalRunSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    versionId?: boolean
+    suiteId?: boolean
+    modelPolicySnapshot?: boolean
+    resultsJson?: boolean
+    metricsJson?: boolean
+    baselineVersionId?: boolean
+    executedBy?: boolean
+    startedAt?: boolean
+    completedAt?: boolean
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+    suite?: boolean | LlmOperationEvalSuiteDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["llmOperationEvalRun"]>
+
+  export type LlmOperationEvalRunSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    versionId?: boolean
+    suiteId?: boolean
+    modelPolicySnapshot?: boolean
+    resultsJson?: boolean
+    metricsJson?: boolean
+    baselineVersionId?: boolean
+    executedBy?: boolean
+    startedAt?: boolean
+    completedAt?: boolean
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+    suite?: boolean | LlmOperationEvalSuiteDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["llmOperationEvalRun"]>
+
+  export type LlmOperationEvalRunSelectScalar = {
+    id?: boolean
+    versionId?: boolean
+    suiteId?: boolean
+    modelPolicySnapshot?: boolean
+    resultsJson?: boolean
+    metricsJson?: boolean
+    baselineVersionId?: boolean
+    executedBy?: boolean
+    startedAt?: boolean
+    completedAt?: boolean
+  }
+
+  export type LlmOperationEvalRunInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+    suite?: boolean | LlmOperationEvalSuiteDefaultArgs<ExtArgs>
+  }
+  export type LlmOperationEvalRunIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+    suite?: boolean | LlmOperationEvalSuiteDefaultArgs<ExtArgs>
+  }
+
+  export type $LlmOperationEvalRunPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "LlmOperationEvalRun"
+    objects: {
+      version: Prisma.$LlmOperationVersionPayload<ExtArgs>
+      suite: Prisma.$LlmOperationEvalSuitePayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      versionId: string
+      suiteId: string
+      modelPolicySnapshot: Prisma.JsonValue
+      resultsJson: Prisma.JsonValue
+      metricsJson: Prisma.JsonValue
+      baselineVersionId: string | null
+      executedBy: string
+      startedAt: Date
+      completedAt: Date | null
+    }, ExtArgs["result"]["llmOperationEvalRun"]>
+    composites: {}
+  }
+
+  type LlmOperationEvalRunGetPayload<S extends boolean | null | undefined | LlmOperationEvalRunDefaultArgs> = $Result.GetResult<Prisma.$LlmOperationEvalRunPayload, S>
+
+  type LlmOperationEvalRunCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<LlmOperationEvalRunFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: LlmOperationEvalRunCountAggregateInputType | true
+    }
+
+  export interface LlmOperationEvalRunDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['LlmOperationEvalRun'], meta: { name: 'LlmOperationEvalRun' } }
+    /**
+     * Find zero or one LlmOperationEvalRun that matches the filter.
+     * @param {LlmOperationEvalRunFindUniqueArgs} args - Arguments to find a LlmOperationEvalRun
+     * @example
+     * // Get one LlmOperationEvalRun
+     * const llmOperationEvalRun = await prisma.llmOperationEvalRun.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends LlmOperationEvalRunFindUniqueArgs>(args: SelectSubset<T, LlmOperationEvalRunFindUniqueArgs<ExtArgs>>): Prisma__LlmOperationEvalRunClient<$Result.GetResult<Prisma.$LlmOperationEvalRunPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one LlmOperationEvalRun that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {LlmOperationEvalRunFindUniqueOrThrowArgs} args - Arguments to find a LlmOperationEvalRun
+     * @example
+     * // Get one LlmOperationEvalRun
+     * const llmOperationEvalRun = await prisma.llmOperationEvalRun.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends LlmOperationEvalRunFindUniqueOrThrowArgs>(args: SelectSubset<T, LlmOperationEvalRunFindUniqueOrThrowArgs<ExtArgs>>): Prisma__LlmOperationEvalRunClient<$Result.GetResult<Prisma.$LlmOperationEvalRunPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first LlmOperationEvalRun that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalRunFindFirstArgs} args - Arguments to find a LlmOperationEvalRun
+     * @example
+     * // Get one LlmOperationEvalRun
+     * const llmOperationEvalRun = await prisma.llmOperationEvalRun.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends LlmOperationEvalRunFindFirstArgs>(args?: SelectSubset<T, LlmOperationEvalRunFindFirstArgs<ExtArgs>>): Prisma__LlmOperationEvalRunClient<$Result.GetResult<Prisma.$LlmOperationEvalRunPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first LlmOperationEvalRun that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalRunFindFirstOrThrowArgs} args - Arguments to find a LlmOperationEvalRun
+     * @example
+     * // Get one LlmOperationEvalRun
+     * const llmOperationEvalRun = await prisma.llmOperationEvalRun.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends LlmOperationEvalRunFindFirstOrThrowArgs>(args?: SelectSubset<T, LlmOperationEvalRunFindFirstOrThrowArgs<ExtArgs>>): Prisma__LlmOperationEvalRunClient<$Result.GetResult<Prisma.$LlmOperationEvalRunPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more LlmOperationEvalRuns that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalRunFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all LlmOperationEvalRuns
+     * const llmOperationEvalRuns = await prisma.llmOperationEvalRun.findMany()
+     * 
+     * // Get first 10 LlmOperationEvalRuns
+     * const llmOperationEvalRuns = await prisma.llmOperationEvalRun.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const llmOperationEvalRunWithIdOnly = await prisma.llmOperationEvalRun.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends LlmOperationEvalRunFindManyArgs>(args?: SelectSubset<T, LlmOperationEvalRunFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationEvalRunPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a LlmOperationEvalRun.
+     * @param {LlmOperationEvalRunCreateArgs} args - Arguments to create a LlmOperationEvalRun.
+     * @example
+     * // Create one LlmOperationEvalRun
+     * const LlmOperationEvalRun = await prisma.llmOperationEvalRun.create({
+     *   data: {
+     *     // ... data to create a LlmOperationEvalRun
+     *   }
+     * })
+     * 
+     */
+    create<T extends LlmOperationEvalRunCreateArgs>(args: SelectSubset<T, LlmOperationEvalRunCreateArgs<ExtArgs>>): Prisma__LlmOperationEvalRunClient<$Result.GetResult<Prisma.$LlmOperationEvalRunPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many LlmOperationEvalRuns.
+     * @param {LlmOperationEvalRunCreateManyArgs} args - Arguments to create many LlmOperationEvalRuns.
+     * @example
+     * // Create many LlmOperationEvalRuns
+     * const llmOperationEvalRun = await prisma.llmOperationEvalRun.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends LlmOperationEvalRunCreateManyArgs>(args?: SelectSubset<T, LlmOperationEvalRunCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many LlmOperationEvalRuns and returns the data saved in the database.
+     * @param {LlmOperationEvalRunCreateManyAndReturnArgs} args - Arguments to create many LlmOperationEvalRuns.
+     * @example
+     * // Create many LlmOperationEvalRuns
+     * const llmOperationEvalRun = await prisma.llmOperationEvalRun.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many LlmOperationEvalRuns and only return the `id`
+     * const llmOperationEvalRunWithIdOnly = await prisma.llmOperationEvalRun.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends LlmOperationEvalRunCreateManyAndReturnArgs>(args?: SelectSubset<T, LlmOperationEvalRunCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationEvalRunPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a LlmOperationEvalRun.
+     * @param {LlmOperationEvalRunDeleteArgs} args - Arguments to delete one LlmOperationEvalRun.
+     * @example
+     * // Delete one LlmOperationEvalRun
+     * const LlmOperationEvalRun = await prisma.llmOperationEvalRun.delete({
+     *   where: {
+     *     // ... filter to delete one LlmOperationEvalRun
+     *   }
+     * })
+     * 
+     */
+    delete<T extends LlmOperationEvalRunDeleteArgs>(args: SelectSubset<T, LlmOperationEvalRunDeleteArgs<ExtArgs>>): Prisma__LlmOperationEvalRunClient<$Result.GetResult<Prisma.$LlmOperationEvalRunPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one LlmOperationEvalRun.
+     * @param {LlmOperationEvalRunUpdateArgs} args - Arguments to update one LlmOperationEvalRun.
+     * @example
+     * // Update one LlmOperationEvalRun
+     * const llmOperationEvalRun = await prisma.llmOperationEvalRun.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends LlmOperationEvalRunUpdateArgs>(args: SelectSubset<T, LlmOperationEvalRunUpdateArgs<ExtArgs>>): Prisma__LlmOperationEvalRunClient<$Result.GetResult<Prisma.$LlmOperationEvalRunPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more LlmOperationEvalRuns.
+     * @param {LlmOperationEvalRunDeleteManyArgs} args - Arguments to filter LlmOperationEvalRuns to delete.
+     * @example
+     * // Delete a few LlmOperationEvalRuns
+     * const { count } = await prisma.llmOperationEvalRun.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends LlmOperationEvalRunDeleteManyArgs>(args?: SelectSubset<T, LlmOperationEvalRunDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more LlmOperationEvalRuns.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalRunUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many LlmOperationEvalRuns
+     * const llmOperationEvalRun = await prisma.llmOperationEvalRun.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends LlmOperationEvalRunUpdateManyArgs>(args: SelectSubset<T, LlmOperationEvalRunUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one LlmOperationEvalRun.
+     * @param {LlmOperationEvalRunUpsertArgs} args - Arguments to update or create a LlmOperationEvalRun.
+     * @example
+     * // Update or create a LlmOperationEvalRun
+     * const llmOperationEvalRun = await prisma.llmOperationEvalRun.upsert({
+     *   create: {
+     *     // ... data to create a LlmOperationEvalRun
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the LlmOperationEvalRun we want to update
+     *   }
+     * })
+     */
+    upsert<T extends LlmOperationEvalRunUpsertArgs>(args: SelectSubset<T, LlmOperationEvalRunUpsertArgs<ExtArgs>>): Prisma__LlmOperationEvalRunClient<$Result.GetResult<Prisma.$LlmOperationEvalRunPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of LlmOperationEvalRuns.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalRunCountArgs} args - Arguments to filter LlmOperationEvalRuns to count.
+     * @example
+     * // Count the number of LlmOperationEvalRuns
+     * const count = await prisma.llmOperationEvalRun.count({
+     *   where: {
+     *     // ... the filter for the LlmOperationEvalRuns we want to count
+     *   }
+     * })
+    **/
+    count<T extends LlmOperationEvalRunCountArgs>(
+      args?: Subset<T, LlmOperationEvalRunCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], LlmOperationEvalRunCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a LlmOperationEvalRun.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalRunAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends LlmOperationEvalRunAggregateArgs>(args: Subset<T, LlmOperationEvalRunAggregateArgs>): Prisma.PrismaPromise<GetLlmOperationEvalRunAggregateType<T>>
+
+    /**
+     * Group by LlmOperationEvalRun.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationEvalRunGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends LlmOperationEvalRunGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: LlmOperationEvalRunGroupByArgs['orderBy'] }
+        : { orderBy?: LlmOperationEvalRunGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, LlmOperationEvalRunGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetLlmOperationEvalRunGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the LlmOperationEvalRun model
+   */
+  readonly fields: LlmOperationEvalRunFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for LlmOperationEvalRun.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__LlmOperationEvalRunClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    version<T extends LlmOperationVersionDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationVersionDefaultArgs<ExtArgs>>): Prisma__LlmOperationVersionClient<$Result.GetResult<Prisma.$LlmOperationVersionPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    suite<T extends LlmOperationEvalSuiteDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationEvalSuiteDefaultArgs<ExtArgs>>): Prisma__LlmOperationEvalSuiteClient<$Result.GetResult<Prisma.$LlmOperationEvalSuitePayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the LlmOperationEvalRun model
+   */ 
+  interface LlmOperationEvalRunFieldRefs {
+    readonly id: FieldRef<"LlmOperationEvalRun", 'String'>
+    readonly versionId: FieldRef<"LlmOperationEvalRun", 'String'>
+    readonly suiteId: FieldRef<"LlmOperationEvalRun", 'String'>
+    readonly modelPolicySnapshot: FieldRef<"LlmOperationEvalRun", 'Json'>
+    readonly resultsJson: FieldRef<"LlmOperationEvalRun", 'Json'>
+    readonly metricsJson: FieldRef<"LlmOperationEvalRun", 'Json'>
+    readonly baselineVersionId: FieldRef<"LlmOperationEvalRun", 'String'>
+    readonly executedBy: FieldRef<"LlmOperationEvalRun", 'String'>
+    readonly startedAt: FieldRef<"LlmOperationEvalRun", 'DateTime'>
+    readonly completedAt: FieldRef<"LlmOperationEvalRun", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * LlmOperationEvalRun findUnique
+   */
+  export type LlmOperationEvalRunFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalRun
+     */
+    select?: LlmOperationEvalRunSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalRunInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationEvalRun to fetch.
+     */
+    where: LlmOperationEvalRunWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationEvalRun findUniqueOrThrow
+   */
+  export type LlmOperationEvalRunFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalRun
+     */
+    select?: LlmOperationEvalRunSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalRunInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationEvalRun to fetch.
+     */
+    where: LlmOperationEvalRunWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationEvalRun findFirst
+   */
+  export type LlmOperationEvalRunFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalRun
+     */
+    select?: LlmOperationEvalRunSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalRunInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationEvalRun to fetch.
+     */
+    where?: LlmOperationEvalRunWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationEvalRuns to fetch.
+     */
+    orderBy?: LlmOperationEvalRunOrderByWithRelationInput | LlmOperationEvalRunOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperationEvalRuns.
+     */
+    cursor?: LlmOperationEvalRunWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationEvalRuns from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationEvalRuns.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperationEvalRuns.
+     */
+    distinct?: LlmOperationEvalRunScalarFieldEnum | LlmOperationEvalRunScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationEvalRun findFirstOrThrow
+   */
+  export type LlmOperationEvalRunFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalRun
+     */
+    select?: LlmOperationEvalRunSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalRunInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationEvalRun to fetch.
+     */
+    where?: LlmOperationEvalRunWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationEvalRuns to fetch.
+     */
+    orderBy?: LlmOperationEvalRunOrderByWithRelationInput | LlmOperationEvalRunOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperationEvalRuns.
+     */
+    cursor?: LlmOperationEvalRunWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationEvalRuns from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationEvalRuns.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperationEvalRuns.
+     */
+    distinct?: LlmOperationEvalRunScalarFieldEnum | LlmOperationEvalRunScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationEvalRun findMany
+   */
+  export type LlmOperationEvalRunFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalRun
+     */
+    select?: LlmOperationEvalRunSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalRunInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationEvalRuns to fetch.
+     */
+    where?: LlmOperationEvalRunWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationEvalRuns to fetch.
+     */
+    orderBy?: LlmOperationEvalRunOrderByWithRelationInput | LlmOperationEvalRunOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing LlmOperationEvalRuns.
+     */
+    cursor?: LlmOperationEvalRunWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationEvalRuns from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationEvalRuns.
+     */
+    skip?: number
+    distinct?: LlmOperationEvalRunScalarFieldEnum | LlmOperationEvalRunScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationEvalRun create
+   */
+  export type LlmOperationEvalRunCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalRun
+     */
+    select?: LlmOperationEvalRunSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalRunInclude<ExtArgs> | null
+    /**
+     * The data needed to create a LlmOperationEvalRun.
+     */
+    data: XOR<LlmOperationEvalRunCreateInput, LlmOperationEvalRunUncheckedCreateInput>
+  }
+
+  /**
+   * LlmOperationEvalRun createMany
+   */
+  export type LlmOperationEvalRunCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many LlmOperationEvalRuns.
+     */
+    data: LlmOperationEvalRunCreateManyInput | LlmOperationEvalRunCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * LlmOperationEvalRun createManyAndReturn
+   */
+  export type LlmOperationEvalRunCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalRun
+     */
+    select?: LlmOperationEvalRunSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many LlmOperationEvalRuns.
+     */
+    data: LlmOperationEvalRunCreateManyInput | LlmOperationEvalRunCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalRunIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * LlmOperationEvalRun update
+   */
+  export type LlmOperationEvalRunUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalRun
+     */
+    select?: LlmOperationEvalRunSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalRunInclude<ExtArgs> | null
+    /**
+     * The data needed to update a LlmOperationEvalRun.
+     */
+    data: XOR<LlmOperationEvalRunUpdateInput, LlmOperationEvalRunUncheckedUpdateInput>
+    /**
+     * Choose, which LlmOperationEvalRun to update.
+     */
+    where: LlmOperationEvalRunWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationEvalRun updateMany
+   */
+  export type LlmOperationEvalRunUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update LlmOperationEvalRuns.
+     */
+    data: XOR<LlmOperationEvalRunUpdateManyMutationInput, LlmOperationEvalRunUncheckedUpdateManyInput>
+    /**
+     * Filter which LlmOperationEvalRuns to update
+     */
+    where?: LlmOperationEvalRunWhereInput
+  }
+
+  /**
+   * LlmOperationEvalRun upsert
+   */
+  export type LlmOperationEvalRunUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalRun
+     */
+    select?: LlmOperationEvalRunSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalRunInclude<ExtArgs> | null
+    /**
+     * The filter to search for the LlmOperationEvalRun to update in case it exists.
+     */
+    where: LlmOperationEvalRunWhereUniqueInput
+    /**
+     * In case the LlmOperationEvalRun found by the `where` argument doesn't exist, create a new LlmOperationEvalRun with this data.
+     */
+    create: XOR<LlmOperationEvalRunCreateInput, LlmOperationEvalRunUncheckedCreateInput>
+    /**
+     * In case the LlmOperationEvalRun was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<LlmOperationEvalRunUpdateInput, LlmOperationEvalRunUncheckedUpdateInput>
+  }
+
+  /**
+   * LlmOperationEvalRun delete
+   */
+  export type LlmOperationEvalRunDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalRun
+     */
+    select?: LlmOperationEvalRunSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalRunInclude<ExtArgs> | null
+    /**
+     * Filter which LlmOperationEvalRun to delete.
+     */
+    where: LlmOperationEvalRunWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationEvalRun deleteMany
+   */
+  export type LlmOperationEvalRunDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperationEvalRuns to delete
+     */
+    where?: LlmOperationEvalRunWhereInput
+  }
+
+  /**
+   * LlmOperationEvalRun without action
+   */
+  export type LlmOperationEvalRunDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationEvalRun
+     */
+    select?: LlmOperationEvalRunSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationEvalRunInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model LlmOperationInvocation
+   */
+
+  export type AggregateLlmOperationInvocation = {
+    _count: LlmOperationInvocationCountAggregateOutputType | null
+    _avg: LlmOperationInvocationAvgAggregateOutputType | null
+    _sum: LlmOperationInvocationSumAggregateOutputType | null
+    _min: LlmOperationInvocationMinAggregateOutputType | null
+    _max: LlmOperationInvocationMaxAggregateOutputType | null
+  }
+
+  export type LlmOperationInvocationAvgAggregateOutputType = {
+    latencyMs: number | null
+    estimatedCost: Decimal | null
+    parseAttempts: number | null
+    repairAttempts: number | null
+  }
+
+  export type LlmOperationInvocationSumAggregateOutputType = {
+    latencyMs: number | null
+    estimatedCost: Decimal | null
+    parseAttempts: number | null
+    repairAttempts: number | null
+  }
+
+  export type LlmOperationInvocationMinAggregateOutputType = {
+    id: string | null
+    versionId: string | null
+    executionId: string | null
+    stepId: string | null
+    tenantId: string | null
+    provider: string | null
+    requestedModel: string | null
+    resolvedModel: string | null
+    inputDigest: string | null
+    outputDigest: string | null
+    idempotencyKey: string | null
+    inputStorageRef: string | null
+    outputStorageRef: string | null
+    latencyMs: number | null
+    estimatedCost: Decimal | null
+    parseAttempts: number | null
+    repairAttempts: number | null
+    validationResult: string | null
+    finishReason: string | null
+    errorCode: string | null
+    actor: string | null
+    environment: string | null
+    startedAt: Date | null
+    completedAt: Date | null
+  }
+
+  export type LlmOperationInvocationMaxAggregateOutputType = {
+    id: string | null
+    versionId: string | null
+    executionId: string | null
+    stepId: string | null
+    tenantId: string | null
+    provider: string | null
+    requestedModel: string | null
+    resolvedModel: string | null
+    inputDigest: string | null
+    outputDigest: string | null
+    idempotencyKey: string | null
+    inputStorageRef: string | null
+    outputStorageRef: string | null
+    latencyMs: number | null
+    estimatedCost: Decimal | null
+    parseAttempts: number | null
+    repairAttempts: number | null
+    validationResult: string | null
+    finishReason: string | null
+    errorCode: string | null
+    actor: string | null
+    environment: string | null
+    startedAt: Date | null
+    completedAt: Date | null
+  }
+
+  export type LlmOperationInvocationCountAggregateOutputType = {
+    id: number
+    versionId: number
+    executionId: number
+    stepId: number
+    tenantId: number
+    provider: number
+    requestedModel: number
+    resolvedModel: number
+    inputDigest: number
+    outputDigest: number
+    idempotencyKey: number
+    resultJson: number
+    inputStorageRef: number
+    outputStorageRef: number
+    tokenUsageJson: number
+    latencyMs: number
+    estimatedCost: number
+    parseAttempts: number
+    repairAttempts: number
+    validationResult: number
+    finishReason: number
+    errorCode: number
+    actor: number
+    environment: number
+    startedAt: number
+    completedAt: number
+    _all: number
+  }
+
+
+  export type LlmOperationInvocationAvgAggregateInputType = {
+    latencyMs?: true
+    estimatedCost?: true
+    parseAttempts?: true
+    repairAttempts?: true
+  }
+
+  export type LlmOperationInvocationSumAggregateInputType = {
+    latencyMs?: true
+    estimatedCost?: true
+    parseAttempts?: true
+    repairAttempts?: true
+  }
+
+  export type LlmOperationInvocationMinAggregateInputType = {
+    id?: true
+    versionId?: true
+    executionId?: true
+    stepId?: true
+    tenantId?: true
+    provider?: true
+    requestedModel?: true
+    resolvedModel?: true
+    inputDigest?: true
+    outputDigest?: true
+    idempotencyKey?: true
+    inputStorageRef?: true
+    outputStorageRef?: true
+    latencyMs?: true
+    estimatedCost?: true
+    parseAttempts?: true
+    repairAttempts?: true
+    validationResult?: true
+    finishReason?: true
+    errorCode?: true
+    actor?: true
+    environment?: true
+    startedAt?: true
+    completedAt?: true
+  }
+
+  export type LlmOperationInvocationMaxAggregateInputType = {
+    id?: true
+    versionId?: true
+    executionId?: true
+    stepId?: true
+    tenantId?: true
+    provider?: true
+    requestedModel?: true
+    resolvedModel?: true
+    inputDigest?: true
+    outputDigest?: true
+    idempotencyKey?: true
+    inputStorageRef?: true
+    outputStorageRef?: true
+    latencyMs?: true
+    estimatedCost?: true
+    parseAttempts?: true
+    repairAttempts?: true
+    validationResult?: true
+    finishReason?: true
+    errorCode?: true
+    actor?: true
+    environment?: true
+    startedAt?: true
+    completedAt?: true
+  }
+
+  export type LlmOperationInvocationCountAggregateInputType = {
+    id?: true
+    versionId?: true
+    executionId?: true
+    stepId?: true
+    tenantId?: true
+    provider?: true
+    requestedModel?: true
+    resolvedModel?: true
+    inputDigest?: true
+    outputDigest?: true
+    idempotencyKey?: true
+    resultJson?: true
+    inputStorageRef?: true
+    outputStorageRef?: true
+    tokenUsageJson?: true
+    latencyMs?: true
+    estimatedCost?: true
+    parseAttempts?: true
+    repairAttempts?: true
+    validationResult?: true
+    finishReason?: true
+    errorCode?: true
+    actor?: true
+    environment?: true
+    startedAt?: true
+    completedAt?: true
+    _all?: true
+  }
+
+  export type LlmOperationInvocationAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperationInvocation to aggregate.
+     */
+    where?: LlmOperationInvocationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationInvocations to fetch.
+     */
+    orderBy?: LlmOperationInvocationOrderByWithRelationInput | LlmOperationInvocationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: LlmOperationInvocationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationInvocations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationInvocations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned LlmOperationInvocations
+    **/
+    _count?: true | LlmOperationInvocationCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: LlmOperationInvocationAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: LlmOperationInvocationSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: LlmOperationInvocationMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: LlmOperationInvocationMaxAggregateInputType
+  }
+
+  export type GetLlmOperationInvocationAggregateType<T extends LlmOperationInvocationAggregateArgs> = {
+        [P in keyof T & keyof AggregateLlmOperationInvocation]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateLlmOperationInvocation[P]>
+      : GetScalarType<T[P], AggregateLlmOperationInvocation[P]>
+  }
+
+
+
+
+  export type LlmOperationInvocationGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationInvocationWhereInput
+    orderBy?: LlmOperationInvocationOrderByWithAggregationInput | LlmOperationInvocationOrderByWithAggregationInput[]
+    by: LlmOperationInvocationScalarFieldEnum[] | LlmOperationInvocationScalarFieldEnum
+    having?: LlmOperationInvocationScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: LlmOperationInvocationCountAggregateInputType | true
+    _avg?: LlmOperationInvocationAvgAggregateInputType
+    _sum?: LlmOperationInvocationSumAggregateInputType
+    _min?: LlmOperationInvocationMinAggregateInputType
+    _max?: LlmOperationInvocationMaxAggregateInputType
+  }
+
+  export type LlmOperationInvocationGroupByOutputType = {
+    id: string
+    versionId: string
+    executionId: string | null
+    stepId: string | null
+    tenantId: string | null
+    provider: string
+    requestedModel: string
+    resolvedModel: string | null
+    inputDigest: string | null
+    outputDigest: string | null
+    idempotencyKey: string | null
+    resultJson: JsonValue | null
+    inputStorageRef: string | null
+    outputStorageRef: string | null
+    tokenUsageJson: JsonValue | null
+    latencyMs: number | null
+    estimatedCost: Decimal | null
+    parseAttempts: number
+    repairAttempts: number
+    validationResult: string
+    finishReason: string | null
+    errorCode: string | null
+    actor: string
+    environment: string
+    startedAt: Date
+    completedAt: Date | null
+    _count: LlmOperationInvocationCountAggregateOutputType | null
+    _avg: LlmOperationInvocationAvgAggregateOutputType | null
+    _sum: LlmOperationInvocationSumAggregateOutputType | null
+    _min: LlmOperationInvocationMinAggregateOutputType | null
+    _max: LlmOperationInvocationMaxAggregateOutputType | null
+  }
+
+  type GetLlmOperationInvocationGroupByPayload<T extends LlmOperationInvocationGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<LlmOperationInvocationGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof LlmOperationInvocationGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], LlmOperationInvocationGroupByOutputType[P]>
+            : GetScalarType<T[P], LlmOperationInvocationGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type LlmOperationInvocationSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    versionId?: boolean
+    executionId?: boolean
+    stepId?: boolean
+    tenantId?: boolean
+    provider?: boolean
+    requestedModel?: boolean
+    resolvedModel?: boolean
+    inputDigest?: boolean
+    outputDigest?: boolean
+    idempotencyKey?: boolean
+    resultJson?: boolean
+    inputStorageRef?: boolean
+    outputStorageRef?: boolean
+    tokenUsageJson?: boolean
+    latencyMs?: boolean
+    estimatedCost?: boolean
+    parseAttempts?: boolean
+    repairAttempts?: boolean
+    validationResult?: boolean
+    finishReason?: boolean
+    errorCode?: boolean
+    actor?: boolean
+    environment?: boolean
+    startedAt?: boolean
+    completedAt?: boolean
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["llmOperationInvocation"]>
+
+  export type LlmOperationInvocationSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    versionId?: boolean
+    executionId?: boolean
+    stepId?: boolean
+    tenantId?: boolean
+    provider?: boolean
+    requestedModel?: boolean
+    resolvedModel?: boolean
+    inputDigest?: boolean
+    outputDigest?: boolean
+    idempotencyKey?: boolean
+    resultJson?: boolean
+    inputStorageRef?: boolean
+    outputStorageRef?: boolean
+    tokenUsageJson?: boolean
+    latencyMs?: boolean
+    estimatedCost?: boolean
+    parseAttempts?: boolean
+    repairAttempts?: boolean
+    validationResult?: boolean
+    finishReason?: boolean
+    errorCode?: boolean
+    actor?: boolean
+    environment?: boolean
+    startedAt?: boolean
+    completedAt?: boolean
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["llmOperationInvocation"]>
+
+  export type LlmOperationInvocationSelectScalar = {
+    id?: boolean
+    versionId?: boolean
+    executionId?: boolean
+    stepId?: boolean
+    tenantId?: boolean
+    provider?: boolean
+    requestedModel?: boolean
+    resolvedModel?: boolean
+    inputDigest?: boolean
+    outputDigest?: boolean
+    idempotencyKey?: boolean
+    resultJson?: boolean
+    inputStorageRef?: boolean
+    outputStorageRef?: boolean
+    tokenUsageJson?: boolean
+    latencyMs?: boolean
+    estimatedCost?: boolean
+    parseAttempts?: boolean
+    repairAttempts?: boolean
+    validationResult?: boolean
+    finishReason?: boolean
+    errorCode?: boolean
+    actor?: boolean
+    environment?: boolean
+    startedAt?: boolean
+    completedAt?: boolean
+  }
+
+  export type LlmOperationInvocationInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+  }
+  export type LlmOperationInvocationIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+  }
+
+  export type $LlmOperationInvocationPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "LlmOperationInvocation"
+    objects: {
+      version: Prisma.$LlmOperationVersionPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      versionId: string
+      executionId: string | null
+      stepId: string | null
+      tenantId: string | null
+      provider: string
+      requestedModel: string
+      resolvedModel: string | null
+      inputDigest: string | null
+      outputDigest: string | null
+      idempotencyKey: string | null
+      resultJson: Prisma.JsonValue | null
+      inputStorageRef: string | null
+      outputStorageRef: string | null
+      tokenUsageJson: Prisma.JsonValue | null
+      latencyMs: number | null
+      estimatedCost: Prisma.Decimal | null
+      parseAttempts: number
+      repairAttempts: number
+      validationResult: string
+      finishReason: string | null
+      errorCode: string | null
+      actor: string
+      environment: string
+      startedAt: Date
+      completedAt: Date | null
+    }, ExtArgs["result"]["llmOperationInvocation"]>
+    composites: {}
+  }
+
+  type LlmOperationInvocationGetPayload<S extends boolean | null | undefined | LlmOperationInvocationDefaultArgs> = $Result.GetResult<Prisma.$LlmOperationInvocationPayload, S>
+
+  type LlmOperationInvocationCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<LlmOperationInvocationFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: LlmOperationInvocationCountAggregateInputType | true
+    }
+
+  export interface LlmOperationInvocationDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['LlmOperationInvocation'], meta: { name: 'LlmOperationInvocation' } }
+    /**
+     * Find zero or one LlmOperationInvocation that matches the filter.
+     * @param {LlmOperationInvocationFindUniqueArgs} args - Arguments to find a LlmOperationInvocation
+     * @example
+     * // Get one LlmOperationInvocation
+     * const llmOperationInvocation = await prisma.llmOperationInvocation.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends LlmOperationInvocationFindUniqueArgs>(args: SelectSubset<T, LlmOperationInvocationFindUniqueArgs<ExtArgs>>): Prisma__LlmOperationInvocationClient<$Result.GetResult<Prisma.$LlmOperationInvocationPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one LlmOperationInvocation that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {LlmOperationInvocationFindUniqueOrThrowArgs} args - Arguments to find a LlmOperationInvocation
+     * @example
+     * // Get one LlmOperationInvocation
+     * const llmOperationInvocation = await prisma.llmOperationInvocation.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends LlmOperationInvocationFindUniqueOrThrowArgs>(args: SelectSubset<T, LlmOperationInvocationFindUniqueOrThrowArgs<ExtArgs>>): Prisma__LlmOperationInvocationClient<$Result.GetResult<Prisma.$LlmOperationInvocationPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first LlmOperationInvocation that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationInvocationFindFirstArgs} args - Arguments to find a LlmOperationInvocation
+     * @example
+     * // Get one LlmOperationInvocation
+     * const llmOperationInvocation = await prisma.llmOperationInvocation.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends LlmOperationInvocationFindFirstArgs>(args?: SelectSubset<T, LlmOperationInvocationFindFirstArgs<ExtArgs>>): Prisma__LlmOperationInvocationClient<$Result.GetResult<Prisma.$LlmOperationInvocationPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first LlmOperationInvocation that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationInvocationFindFirstOrThrowArgs} args - Arguments to find a LlmOperationInvocation
+     * @example
+     * // Get one LlmOperationInvocation
+     * const llmOperationInvocation = await prisma.llmOperationInvocation.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends LlmOperationInvocationFindFirstOrThrowArgs>(args?: SelectSubset<T, LlmOperationInvocationFindFirstOrThrowArgs<ExtArgs>>): Prisma__LlmOperationInvocationClient<$Result.GetResult<Prisma.$LlmOperationInvocationPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more LlmOperationInvocations that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationInvocationFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all LlmOperationInvocations
+     * const llmOperationInvocations = await prisma.llmOperationInvocation.findMany()
+     * 
+     * // Get first 10 LlmOperationInvocations
+     * const llmOperationInvocations = await prisma.llmOperationInvocation.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const llmOperationInvocationWithIdOnly = await prisma.llmOperationInvocation.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends LlmOperationInvocationFindManyArgs>(args?: SelectSubset<T, LlmOperationInvocationFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationInvocationPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a LlmOperationInvocation.
+     * @param {LlmOperationInvocationCreateArgs} args - Arguments to create a LlmOperationInvocation.
+     * @example
+     * // Create one LlmOperationInvocation
+     * const LlmOperationInvocation = await prisma.llmOperationInvocation.create({
+     *   data: {
+     *     // ... data to create a LlmOperationInvocation
+     *   }
+     * })
+     * 
+     */
+    create<T extends LlmOperationInvocationCreateArgs>(args: SelectSubset<T, LlmOperationInvocationCreateArgs<ExtArgs>>): Prisma__LlmOperationInvocationClient<$Result.GetResult<Prisma.$LlmOperationInvocationPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many LlmOperationInvocations.
+     * @param {LlmOperationInvocationCreateManyArgs} args - Arguments to create many LlmOperationInvocations.
+     * @example
+     * // Create many LlmOperationInvocations
+     * const llmOperationInvocation = await prisma.llmOperationInvocation.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends LlmOperationInvocationCreateManyArgs>(args?: SelectSubset<T, LlmOperationInvocationCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many LlmOperationInvocations and returns the data saved in the database.
+     * @param {LlmOperationInvocationCreateManyAndReturnArgs} args - Arguments to create many LlmOperationInvocations.
+     * @example
+     * // Create many LlmOperationInvocations
+     * const llmOperationInvocation = await prisma.llmOperationInvocation.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many LlmOperationInvocations and only return the `id`
+     * const llmOperationInvocationWithIdOnly = await prisma.llmOperationInvocation.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends LlmOperationInvocationCreateManyAndReturnArgs>(args?: SelectSubset<T, LlmOperationInvocationCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationInvocationPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a LlmOperationInvocation.
+     * @param {LlmOperationInvocationDeleteArgs} args - Arguments to delete one LlmOperationInvocation.
+     * @example
+     * // Delete one LlmOperationInvocation
+     * const LlmOperationInvocation = await prisma.llmOperationInvocation.delete({
+     *   where: {
+     *     // ... filter to delete one LlmOperationInvocation
+     *   }
+     * })
+     * 
+     */
+    delete<T extends LlmOperationInvocationDeleteArgs>(args: SelectSubset<T, LlmOperationInvocationDeleteArgs<ExtArgs>>): Prisma__LlmOperationInvocationClient<$Result.GetResult<Prisma.$LlmOperationInvocationPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one LlmOperationInvocation.
+     * @param {LlmOperationInvocationUpdateArgs} args - Arguments to update one LlmOperationInvocation.
+     * @example
+     * // Update one LlmOperationInvocation
+     * const llmOperationInvocation = await prisma.llmOperationInvocation.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends LlmOperationInvocationUpdateArgs>(args: SelectSubset<T, LlmOperationInvocationUpdateArgs<ExtArgs>>): Prisma__LlmOperationInvocationClient<$Result.GetResult<Prisma.$LlmOperationInvocationPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more LlmOperationInvocations.
+     * @param {LlmOperationInvocationDeleteManyArgs} args - Arguments to filter LlmOperationInvocations to delete.
+     * @example
+     * // Delete a few LlmOperationInvocations
+     * const { count } = await prisma.llmOperationInvocation.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends LlmOperationInvocationDeleteManyArgs>(args?: SelectSubset<T, LlmOperationInvocationDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more LlmOperationInvocations.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationInvocationUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many LlmOperationInvocations
+     * const llmOperationInvocation = await prisma.llmOperationInvocation.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends LlmOperationInvocationUpdateManyArgs>(args: SelectSubset<T, LlmOperationInvocationUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one LlmOperationInvocation.
+     * @param {LlmOperationInvocationUpsertArgs} args - Arguments to update or create a LlmOperationInvocation.
+     * @example
+     * // Update or create a LlmOperationInvocation
+     * const llmOperationInvocation = await prisma.llmOperationInvocation.upsert({
+     *   create: {
+     *     // ... data to create a LlmOperationInvocation
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the LlmOperationInvocation we want to update
+     *   }
+     * })
+     */
+    upsert<T extends LlmOperationInvocationUpsertArgs>(args: SelectSubset<T, LlmOperationInvocationUpsertArgs<ExtArgs>>): Prisma__LlmOperationInvocationClient<$Result.GetResult<Prisma.$LlmOperationInvocationPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of LlmOperationInvocations.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationInvocationCountArgs} args - Arguments to filter LlmOperationInvocations to count.
+     * @example
+     * // Count the number of LlmOperationInvocations
+     * const count = await prisma.llmOperationInvocation.count({
+     *   where: {
+     *     // ... the filter for the LlmOperationInvocations we want to count
+     *   }
+     * })
+    **/
+    count<T extends LlmOperationInvocationCountArgs>(
+      args?: Subset<T, LlmOperationInvocationCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], LlmOperationInvocationCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a LlmOperationInvocation.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationInvocationAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends LlmOperationInvocationAggregateArgs>(args: Subset<T, LlmOperationInvocationAggregateArgs>): Prisma.PrismaPromise<GetLlmOperationInvocationAggregateType<T>>
+
+    /**
+     * Group by LlmOperationInvocation.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationInvocationGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends LlmOperationInvocationGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: LlmOperationInvocationGroupByArgs['orderBy'] }
+        : { orderBy?: LlmOperationInvocationGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, LlmOperationInvocationGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetLlmOperationInvocationGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the LlmOperationInvocation model
+   */
+  readonly fields: LlmOperationInvocationFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for LlmOperationInvocation.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__LlmOperationInvocationClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    version<T extends LlmOperationVersionDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationVersionDefaultArgs<ExtArgs>>): Prisma__LlmOperationVersionClient<$Result.GetResult<Prisma.$LlmOperationVersionPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the LlmOperationInvocation model
+   */ 
+  interface LlmOperationInvocationFieldRefs {
+    readonly id: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly versionId: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly executionId: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly stepId: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly tenantId: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly provider: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly requestedModel: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly resolvedModel: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly inputDigest: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly outputDigest: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly idempotencyKey: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly resultJson: FieldRef<"LlmOperationInvocation", 'Json'>
+    readonly inputStorageRef: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly outputStorageRef: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly tokenUsageJson: FieldRef<"LlmOperationInvocation", 'Json'>
+    readonly latencyMs: FieldRef<"LlmOperationInvocation", 'Int'>
+    readonly estimatedCost: FieldRef<"LlmOperationInvocation", 'Decimal'>
+    readonly parseAttempts: FieldRef<"LlmOperationInvocation", 'Int'>
+    readonly repairAttempts: FieldRef<"LlmOperationInvocation", 'Int'>
+    readonly validationResult: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly finishReason: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly errorCode: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly actor: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly environment: FieldRef<"LlmOperationInvocation", 'String'>
+    readonly startedAt: FieldRef<"LlmOperationInvocation", 'DateTime'>
+    readonly completedAt: FieldRef<"LlmOperationInvocation", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * LlmOperationInvocation findUnique
+   */
+  export type LlmOperationInvocationFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationInvocation
+     */
+    select?: LlmOperationInvocationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInvocationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationInvocation to fetch.
+     */
+    where: LlmOperationInvocationWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationInvocation findUniqueOrThrow
+   */
+  export type LlmOperationInvocationFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationInvocation
+     */
+    select?: LlmOperationInvocationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInvocationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationInvocation to fetch.
+     */
+    where: LlmOperationInvocationWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationInvocation findFirst
+   */
+  export type LlmOperationInvocationFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationInvocation
+     */
+    select?: LlmOperationInvocationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInvocationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationInvocation to fetch.
+     */
+    where?: LlmOperationInvocationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationInvocations to fetch.
+     */
+    orderBy?: LlmOperationInvocationOrderByWithRelationInput | LlmOperationInvocationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperationInvocations.
+     */
+    cursor?: LlmOperationInvocationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationInvocations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationInvocations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperationInvocations.
+     */
+    distinct?: LlmOperationInvocationScalarFieldEnum | LlmOperationInvocationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationInvocation findFirstOrThrow
+   */
+  export type LlmOperationInvocationFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationInvocation
+     */
+    select?: LlmOperationInvocationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInvocationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationInvocation to fetch.
+     */
+    where?: LlmOperationInvocationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationInvocations to fetch.
+     */
+    orderBy?: LlmOperationInvocationOrderByWithRelationInput | LlmOperationInvocationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperationInvocations.
+     */
+    cursor?: LlmOperationInvocationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationInvocations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationInvocations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperationInvocations.
+     */
+    distinct?: LlmOperationInvocationScalarFieldEnum | LlmOperationInvocationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationInvocation findMany
+   */
+  export type LlmOperationInvocationFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationInvocation
+     */
+    select?: LlmOperationInvocationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInvocationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationInvocations to fetch.
+     */
+    where?: LlmOperationInvocationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationInvocations to fetch.
+     */
+    orderBy?: LlmOperationInvocationOrderByWithRelationInput | LlmOperationInvocationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing LlmOperationInvocations.
+     */
+    cursor?: LlmOperationInvocationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationInvocations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationInvocations.
+     */
+    skip?: number
+    distinct?: LlmOperationInvocationScalarFieldEnum | LlmOperationInvocationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationInvocation create
+   */
+  export type LlmOperationInvocationCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationInvocation
+     */
+    select?: LlmOperationInvocationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInvocationInclude<ExtArgs> | null
+    /**
+     * The data needed to create a LlmOperationInvocation.
+     */
+    data: XOR<LlmOperationInvocationCreateInput, LlmOperationInvocationUncheckedCreateInput>
+  }
+
+  /**
+   * LlmOperationInvocation createMany
+   */
+  export type LlmOperationInvocationCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many LlmOperationInvocations.
+     */
+    data: LlmOperationInvocationCreateManyInput | LlmOperationInvocationCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * LlmOperationInvocation createManyAndReturn
+   */
+  export type LlmOperationInvocationCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationInvocation
+     */
+    select?: LlmOperationInvocationSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many LlmOperationInvocations.
+     */
+    data: LlmOperationInvocationCreateManyInput | LlmOperationInvocationCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInvocationIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * LlmOperationInvocation update
+   */
+  export type LlmOperationInvocationUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationInvocation
+     */
+    select?: LlmOperationInvocationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInvocationInclude<ExtArgs> | null
+    /**
+     * The data needed to update a LlmOperationInvocation.
+     */
+    data: XOR<LlmOperationInvocationUpdateInput, LlmOperationInvocationUncheckedUpdateInput>
+    /**
+     * Choose, which LlmOperationInvocation to update.
+     */
+    where: LlmOperationInvocationWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationInvocation updateMany
+   */
+  export type LlmOperationInvocationUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update LlmOperationInvocations.
+     */
+    data: XOR<LlmOperationInvocationUpdateManyMutationInput, LlmOperationInvocationUncheckedUpdateManyInput>
+    /**
+     * Filter which LlmOperationInvocations to update
+     */
+    where?: LlmOperationInvocationWhereInput
+  }
+
+  /**
+   * LlmOperationInvocation upsert
+   */
+  export type LlmOperationInvocationUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationInvocation
+     */
+    select?: LlmOperationInvocationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInvocationInclude<ExtArgs> | null
+    /**
+     * The filter to search for the LlmOperationInvocation to update in case it exists.
+     */
+    where: LlmOperationInvocationWhereUniqueInput
+    /**
+     * In case the LlmOperationInvocation found by the `where` argument doesn't exist, create a new LlmOperationInvocation with this data.
+     */
+    create: XOR<LlmOperationInvocationCreateInput, LlmOperationInvocationUncheckedCreateInput>
+    /**
+     * In case the LlmOperationInvocation was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<LlmOperationInvocationUpdateInput, LlmOperationInvocationUncheckedUpdateInput>
+  }
+
+  /**
+   * LlmOperationInvocation delete
+   */
+  export type LlmOperationInvocationDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationInvocation
+     */
+    select?: LlmOperationInvocationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInvocationInclude<ExtArgs> | null
+    /**
+     * Filter which LlmOperationInvocation to delete.
+     */
+    where: LlmOperationInvocationWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationInvocation deleteMany
+   */
+  export type LlmOperationInvocationDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperationInvocations to delete
+     */
+    where?: LlmOperationInvocationWhereInput
+  }
+
+  /**
+   * LlmOperationInvocation without action
+   */
+  export type LlmOperationInvocationDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationInvocation
+     */
+    select?: LlmOperationInvocationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationInvocationInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model LlmOperationAttestation
+   */
+
+  export type AggregateLlmOperationAttestation = {
+    _count: LlmOperationAttestationCountAggregateOutputType | null
+    _min: LlmOperationAttestationMinAggregateOutputType | null
+    _max: LlmOperationAttestationMaxAggregateOutputType | null
+  }
+
+  export type LlmOperationAttestationMinAggregateOutputType = {
+    id: string | null
+    operationId: string | null
+    versionId: string | null
+    operationDigest: string | null
+    contractDigest: string | null
+    evalSuiteDigest: string | null
+    validatorVersion: string | null
+    schemaTests: string | null
+    offlineEvals: string | null
+    liveEvals: string | null
+    securityEvals: string | null
+    createdBy: string | null
+    createdAt: Date | null
+  }
+
+  export type LlmOperationAttestationMaxAggregateOutputType = {
+    id: string | null
+    operationId: string | null
+    versionId: string | null
+    operationDigest: string | null
+    contractDigest: string | null
+    evalSuiteDigest: string | null
+    validatorVersion: string | null
+    schemaTests: string | null
+    offlineEvals: string | null
+    liveEvals: string | null
+    securityEvals: string | null
+    createdBy: string | null
+    createdAt: Date | null
+  }
+
+  export type LlmOperationAttestationCountAggregateOutputType = {
+    id: number
+    operationId: number
+    versionId: number
+    operationDigest: number
+    contractDigest: number
+    evalSuiteDigest: number
+    validatorVersion: number
+    schemaTests: number
+    offlineEvals: number
+    liveEvals: number
+    securityEvals: number
+    gateResultsJson: number
+    createdBy: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type LlmOperationAttestationMinAggregateInputType = {
+    id?: true
+    operationId?: true
+    versionId?: true
+    operationDigest?: true
+    contractDigest?: true
+    evalSuiteDigest?: true
+    validatorVersion?: true
+    schemaTests?: true
+    offlineEvals?: true
+    liveEvals?: true
+    securityEvals?: true
+    createdBy?: true
+    createdAt?: true
+  }
+
+  export type LlmOperationAttestationMaxAggregateInputType = {
+    id?: true
+    operationId?: true
+    versionId?: true
+    operationDigest?: true
+    contractDigest?: true
+    evalSuiteDigest?: true
+    validatorVersion?: true
+    schemaTests?: true
+    offlineEvals?: true
+    liveEvals?: true
+    securityEvals?: true
+    createdBy?: true
+    createdAt?: true
+  }
+
+  export type LlmOperationAttestationCountAggregateInputType = {
+    id?: true
+    operationId?: true
+    versionId?: true
+    operationDigest?: true
+    contractDigest?: true
+    evalSuiteDigest?: true
+    validatorVersion?: true
+    schemaTests?: true
+    offlineEvals?: true
+    liveEvals?: true
+    securityEvals?: true
+    gateResultsJson?: true
+    createdBy?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type LlmOperationAttestationAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperationAttestation to aggregate.
+     */
+    where?: LlmOperationAttestationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationAttestations to fetch.
+     */
+    orderBy?: LlmOperationAttestationOrderByWithRelationInput | LlmOperationAttestationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: LlmOperationAttestationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationAttestations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationAttestations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned LlmOperationAttestations
+    **/
+    _count?: true | LlmOperationAttestationCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: LlmOperationAttestationMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: LlmOperationAttestationMaxAggregateInputType
+  }
+
+  export type GetLlmOperationAttestationAggregateType<T extends LlmOperationAttestationAggregateArgs> = {
+        [P in keyof T & keyof AggregateLlmOperationAttestation]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateLlmOperationAttestation[P]>
+      : GetScalarType<T[P], AggregateLlmOperationAttestation[P]>
+  }
+
+
+
+
+  export type LlmOperationAttestationGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LlmOperationAttestationWhereInput
+    orderBy?: LlmOperationAttestationOrderByWithAggregationInput | LlmOperationAttestationOrderByWithAggregationInput[]
+    by: LlmOperationAttestationScalarFieldEnum[] | LlmOperationAttestationScalarFieldEnum
+    having?: LlmOperationAttestationScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: LlmOperationAttestationCountAggregateInputType | true
+    _min?: LlmOperationAttestationMinAggregateInputType
+    _max?: LlmOperationAttestationMaxAggregateInputType
+  }
+
+  export type LlmOperationAttestationGroupByOutputType = {
+    id: string
+    operationId: string
+    versionId: string
+    operationDigest: string
+    contractDigest: string
+    evalSuiteDigest: string | null
+    validatorVersion: string
+    schemaTests: string
+    offlineEvals: string
+    liveEvals: string
+    securityEvals: string
+    gateResultsJson: JsonValue
+    createdBy: string
+    createdAt: Date
+    _count: LlmOperationAttestationCountAggregateOutputType | null
+    _min: LlmOperationAttestationMinAggregateOutputType | null
+    _max: LlmOperationAttestationMaxAggregateOutputType | null
+  }
+
+  type GetLlmOperationAttestationGroupByPayload<T extends LlmOperationAttestationGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<LlmOperationAttestationGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof LlmOperationAttestationGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], LlmOperationAttestationGroupByOutputType[P]>
+            : GetScalarType<T[P], LlmOperationAttestationGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type LlmOperationAttestationSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    operationId?: boolean
+    versionId?: boolean
+    operationDigest?: boolean
+    contractDigest?: boolean
+    evalSuiteDigest?: boolean
+    validatorVersion?: boolean
+    schemaTests?: boolean
+    offlineEvals?: boolean
+    liveEvals?: boolean
+    securityEvals?: boolean
+    gateResultsJson?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    operation?: boolean | LlmOperationDefaultArgs<ExtArgs>
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["llmOperationAttestation"]>
+
+  export type LlmOperationAttestationSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    operationId?: boolean
+    versionId?: boolean
+    operationDigest?: boolean
+    contractDigest?: boolean
+    evalSuiteDigest?: boolean
+    validatorVersion?: boolean
+    schemaTests?: boolean
+    offlineEvals?: boolean
+    liveEvals?: boolean
+    securityEvals?: boolean
+    gateResultsJson?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    operation?: boolean | LlmOperationDefaultArgs<ExtArgs>
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["llmOperationAttestation"]>
+
+  export type LlmOperationAttestationSelectScalar = {
+    id?: boolean
+    operationId?: boolean
+    versionId?: boolean
+    operationDigest?: boolean
+    contractDigest?: boolean
+    evalSuiteDigest?: boolean
+    validatorVersion?: boolean
+    schemaTests?: boolean
+    offlineEvals?: boolean
+    liveEvals?: boolean
+    securityEvals?: boolean
+    gateResultsJson?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+  }
+
+  export type LlmOperationAttestationInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    operation?: boolean | LlmOperationDefaultArgs<ExtArgs>
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+  }
+  export type LlmOperationAttestationIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    operation?: boolean | LlmOperationDefaultArgs<ExtArgs>
+    version?: boolean | LlmOperationVersionDefaultArgs<ExtArgs>
+  }
+
+  export type $LlmOperationAttestationPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "LlmOperationAttestation"
+    objects: {
+      operation: Prisma.$LlmOperationPayload<ExtArgs>
+      version: Prisma.$LlmOperationVersionPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      operationId: string
+      versionId: string
+      operationDigest: string
+      contractDigest: string
+      evalSuiteDigest: string | null
+      validatorVersion: string
+      schemaTests: string
+      offlineEvals: string
+      liveEvals: string
+      securityEvals: string
+      gateResultsJson: Prisma.JsonValue
+      createdBy: string
+      createdAt: Date
+    }, ExtArgs["result"]["llmOperationAttestation"]>
+    composites: {}
+  }
+
+  type LlmOperationAttestationGetPayload<S extends boolean | null | undefined | LlmOperationAttestationDefaultArgs> = $Result.GetResult<Prisma.$LlmOperationAttestationPayload, S>
+
+  type LlmOperationAttestationCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<LlmOperationAttestationFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: LlmOperationAttestationCountAggregateInputType | true
+    }
+
+  export interface LlmOperationAttestationDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['LlmOperationAttestation'], meta: { name: 'LlmOperationAttestation' } }
+    /**
+     * Find zero or one LlmOperationAttestation that matches the filter.
+     * @param {LlmOperationAttestationFindUniqueArgs} args - Arguments to find a LlmOperationAttestation
+     * @example
+     * // Get one LlmOperationAttestation
+     * const llmOperationAttestation = await prisma.llmOperationAttestation.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends LlmOperationAttestationFindUniqueArgs>(args: SelectSubset<T, LlmOperationAttestationFindUniqueArgs<ExtArgs>>): Prisma__LlmOperationAttestationClient<$Result.GetResult<Prisma.$LlmOperationAttestationPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one LlmOperationAttestation that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {LlmOperationAttestationFindUniqueOrThrowArgs} args - Arguments to find a LlmOperationAttestation
+     * @example
+     * // Get one LlmOperationAttestation
+     * const llmOperationAttestation = await prisma.llmOperationAttestation.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends LlmOperationAttestationFindUniqueOrThrowArgs>(args: SelectSubset<T, LlmOperationAttestationFindUniqueOrThrowArgs<ExtArgs>>): Prisma__LlmOperationAttestationClient<$Result.GetResult<Prisma.$LlmOperationAttestationPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first LlmOperationAttestation that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationAttestationFindFirstArgs} args - Arguments to find a LlmOperationAttestation
+     * @example
+     * // Get one LlmOperationAttestation
+     * const llmOperationAttestation = await prisma.llmOperationAttestation.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends LlmOperationAttestationFindFirstArgs>(args?: SelectSubset<T, LlmOperationAttestationFindFirstArgs<ExtArgs>>): Prisma__LlmOperationAttestationClient<$Result.GetResult<Prisma.$LlmOperationAttestationPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first LlmOperationAttestation that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationAttestationFindFirstOrThrowArgs} args - Arguments to find a LlmOperationAttestation
+     * @example
+     * // Get one LlmOperationAttestation
+     * const llmOperationAttestation = await prisma.llmOperationAttestation.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends LlmOperationAttestationFindFirstOrThrowArgs>(args?: SelectSubset<T, LlmOperationAttestationFindFirstOrThrowArgs<ExtArgs>>): Prisma__LlmOperationAttestationClient<$Result.GetResult<Prisma.$LlmOperationAttestationPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more LlmOperationAttestations that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationAttestationFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all LlmOperationAttestations
+     * const llmOperationAttestations = await prisma.llmOperationAttestation.findMany()
+     * 
+     * // Get first 10 LlmOperationAttestations
+     * const llmOperationAttestations = await prisma.llmOperationAttestation.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const llmOperationAttestationWithIdOnly = await prisma.llmOperationAttestation.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends LlmOperationAttestationFindManyArgs>(args?: SelectSubset<T, LlmOperationAttestationFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationAttestationPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a LlmOperationAttestation.
+     * @param {LlmOperationAttestationCreateArgs} args - Arguments to create a LlmOperationAttestation.
+     * @example
+     * // Create one LlmOperationAttestation
+     * const LlmOperationAttestation = await prisma.llmOperationAttestation.create({
+     *   data: {
+     *     // ... data to create a LlmOperationAttestation
+     *   }
+     * })
+     * 
+     */
+    create<T extends LlmOperationAttestationCreateArgs>(args: SelectSubset<T, LlmOperationAttestationCreateArgs<ExtArgs>>): Prisma__LlmOperationAttestationClient<$Result.GetResult<Prisma.$LlmOperationAttestationPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many LlmOperationAttestations.
+     * @param {LlmOperationAttestationCreateManyArgs} args - Arguments to create many LlmOperationAttestations.
+     * @example
+     * // Create many LlmOperationAttestations
+     * const llmOperationAttestation = await prisma.llmOperationAttestation.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends LlmOperationAttestationCreateManyArgs>(args?: SelectSubset<T, LlmOperationAttestationCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many LlmOperationAttestations and returns the data saved in the database.
+     * @param {LlmOperationAttestationCreateManyAndReturnArgs} args - Arguments to create many LlmOperationAttestations.
+     * @example
+     * // Create many LlmOperationAttestations
+     * const llmOperationAttestation = await prisma.llmOperationAttestation.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many LlmOperationAttestations and only return the `id`
+     * const llmOperationAttestationWithIdOnly = await prisma.llmOperationAttestation.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends LlmOperationAttestationCreateManyAndReturnArgs>(args?: SelectSubset<T, LlmOperationAttestationCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LlmOperationAttestationPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a LlmOperationAttestation.
+     * @param {LlmOperationAttestationDeleteArgs} args - Arguments to delete one LlmOperationAttestation.
+     * @example
+     * // Delete one LlmOperationAttestation
+     * const LlmOperationAttestation = await prisma.llmOperationAttestation.delete({
+     *   where: {
+     *     // ... filter to delete one LlmOperationAttestation
+     *   }
+     * })
+     * 
+     */
+    delete<T extends LlmOperationAttestationDeleteArgs>(args: SelectSubset<T, LlmOperationAttestationDeleteArgs<ExtArgs>>): Prisma__LlmOperationAttestationClient<$Result.GetResult<Prisma.$LlmOperationAttestationPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one LlmOperationAttestation.
+     * @param {LlmOperationAttestationUpdateArgs} args - Arguments to update one LlmOperationAttestation.
+     * @example
+     * // Update one LlmOperationAttestation
+     * const llmOperationAttestation = await prisma.llmOperationAttestation.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends LlmOperationAttestationUpdateArgs>(args: SelectSubset<T, LlmOperationAttestationUpdateArgs<ExtArgs>>): Prisma__LlmOperationAttestationClient<$Result.GetResult<Prisma.$LlmOperationAttestationPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more LlmOperationAttestations.
+     * @param {LlmOperationAttestationDeleteManyArgs} args - Arguments to filter LlmOperationAttestations to delete.
+     * @example
+     * // Delete a few LlmOperationAttestations
+     * const { count } = await prisma.llmOperationAttestation.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends LlmOperationAttestationDeleteManyArgs>(args?: SelectSubset<T, LlmOperationAttestationDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more LlmOperationAttestations.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationAttestationUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many LlmOperationAttestations
+     * const llmOperationAttestation = await prisma.llmOperationAttestation.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends LlmOperationAttestationUpdateManyArgs>(args: SelectSubset<T, LlmOperationAttestationUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one LlmOperationAttestation.
+     * @param {LlmOperationAttestationUpsertArgs} args - Arguments to update or create a LlmOperationAttestation.
+     * @example
+     * // Update or create a LlmOperationAttestation
+     * const llmOperationAttestation = await prisma.llmOperationAttestation.upsert({
+     *   create: {
+     *     // ... data to create a LlmOperationAttestation
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the LlmOperationAttestation we want to update
+     *   }
+     * })
+     */
+    upsert<T extends LlmOperationAttestationUpsertArgs>(args: SelectSubset<T, LlmOperationAttestationUpsertArgs<ExtArgs>>): Prisma__LlmOperationAttestationClient<$Result.GetResult<Prisma.$LlmOperationAttestationPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of LlmOperationAttestations.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationAttestationCountArgs} args - Arguments to filter LlmOperationAttestations to count.
+     * @example
+     * // Count the number of LlmOperationAttestations
+     * const count = await prisma.llmOperationAttestation.count({
+     *   where: {
+     *     // ... the filter for the LlmOperationAttestations we want to count
+     *   }
+     * })
+    **/
+    count<T extends LlmOperationAttestationCountArgs>(
+      args?: Subset<T, LlmOperationAttestationCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], LlmOperationAttestationCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a LlmOperationAttestation.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationAttestationAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends LlmOperationAttestationAggregateArgs>(args: Subset<T, LlmOperationAttestationAggregateArgs>): Prisma.PrismaPromise<GetLlmOperationAttestationAggregateType<T>>
+
+    /**
+     * Group by LlmOperationAttestation.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LlmOperationAttestationGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends LlmOperationAttestationGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: LlmOperationAttestationGroupByArgs['orderBy'] }
+        : { orderBy?: LlmOperationAttestationGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, LlmOperationAttestationGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetLlmOperationAttestationGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the LlmOperationAttestation model
+   */
+  readonly fields: LlmOperationAttestationFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for LlmOperationAttestation.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__LlmOperationAttestationClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    operation<T extends LlmOperationDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationDefaultArgs<ExtArgs>>): Prisma__LlmOperationClient<$Result.GetResult<Prisma.$LlmOperationPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    version<T extends LlmOperationVersionDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LlmOperationVersionDefaultArgs<ExtArgs>>): Prisma__LlmOperationVersionClient<$Result.GetResult<Prisma.$LlmOperationVersionPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the LlmOperationAttestation model
+   */ 
+  interface LlmOperationAttestationFieldRefs {
+    readonly id: FieldRef<"LlmOperationAttestation", 'String'>
+    readonly operationId: FieldRef<"LlmOperationAttestation", 'String'>
+    readonly versionId: FieldRef<"LlmOperationAttestation", 'String'>
+    readonly operationDigest: FieldRef<"LlmOperationAttestation", 'String'>
+    readonly contractDigest: FieldRef<"LlmOperationAttestation", 'String'>
+    readonly evalSuiteDigest: FieldRef<"LlmOperationAttestation", 'String'>
+    readonly validatorVersion: FieldRef<"LlmOperationAttestation", 'String'>
+    readonly schemaTests: FieldRef<"LlmOperationAttestation", 'String'>
+    readonly offlineEvals: FieldRef<"LlmOperationAttestation", 'String'>
+    readonly liveEvals: FieldRef<"LlmOperationAttestation", 'String'>
+    readonly securityEvals: FieldRef<"LlmOperationAttestation", 'String'>
+    readonly gateResultsJson: FieldRef<"LlmOperationAttestation", 'Json'>
+    readonly createdBy: FieldRef<"LlmOperationAttestation", 'String'>
+    readonly createdAt: FieldRef<"LlmOperationAttestation", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * LlmOperationAttestation findUnique
+   */
+  export type LlmOperationAttestationFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationAttestation
+     */
+    select?: LlmOperationAttestationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationAttestationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationAttestation to fetch.
+     */
+    where: LlmOperationAttestationWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationAttestation findUniqueOrThrow
+   */
+  export type LlmOperationAttestationFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationAttestation
+     */
+    select?: LlmOperationAttestationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationAttestationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationAttestation to fetch.
+     */
+    where: LlmOperationAttestationWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationAttestation findFirst
+   */
+  export type LlmOperationAttestationFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationAttestation
+     */
+    select?: LlmOperationAttestationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationAttestationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationAttestation to fetch.
+     */
+    where?: LlmOperationAttestationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationAttestations to fetch.
+     */
+    orderBy?: LlmOperationAttestationOrderByWithRelationInput | LlmOperationAttestationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperationAttestations.
+     */
+    cursor?: LlmOperationAttestationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationAttestations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationAttestations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperationAttestations.
+     */
+    distinct?: LlmOperationAttestationScalarFieldEnum | LlmOperationAttestationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationAttestation findFirstOrThrow
+   */
+  export type LlmOperationAttestationFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationAttestation
+     */
+    select?: LlmOperationAttestationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationAttestationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationAttestation to fetch.
+     */
+    where?: LlmOperationAttestationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationAttestations to fetch.
+     */
+    orderBy?: LlmOperationAttestationOrderByWithRelationInput | LlmOperationAttestationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LlmOperationAttestations.
+     */
+    cursor?: LlmOperationAttestationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationAttestations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationAttestations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LlmOperationAttestations.
+     */
+    distinct?: LlmOperationAttestationScalarFieldEnum | LlmOperationAttestationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationAttestation findMany
+   */
+  export type LlmOperationAttestationFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationAttestation
+     */
+    select?: LlmOperationAttestationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationAttestationInclude<ExtArgs> | null
+    /**
+     * Filter, which LlmOperationAttestations to fetch.
+     */
+    where?: LlmOperationAttestationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LlmOperationAttestations to fetch.
+     */
+    orderBy?: LlmOperationAttestationOrderByWithRelationInput | LlmOperationAttestationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing LlmOperationAttestations.
+     */
+    cursor?: LlmOperationAttestationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LlmOperationAttestations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LlmOperationAttestations.
+     */
+    skip?: number
+    distinct?: LlmOperationAttestationScalarFieldEnum | LlmOperationAttestationScalarFieldEnum[]
+  }
+
+  /**
+   * LlmOperationAttestation create
+   */
+  export type LlmOperationAttestationCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationAttestation
+     */
+    select?: LlmOperationAttestationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationAttestationInclude<ExtArgs> | null
+    /**
+     * The data needed to create a LlmOperationAttestation.
+     */
+    data: XOR<LlmOperationAttestationCreateInput, LlmOperationAttestationUncheckedCreateInput>
+  }
+
+  /**
+   * LlmOperationAttestation createMany
+   */
+  export type LlmOperationAttestationCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many LlmOperationAttestations.
+     */
+    data: LlmOperationAttestationCreateManyInput | LlmOperationAttestationCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * LlmOperationAttestation createManyAndReturn
+   */
+  export type LlmOperationAttestationCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationAttestation
+     */
+    select?: LlmOperationAttestationSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many LlmOperationAttestations.
+     */
+    data: LlmOperationAttestationCreateManyInput | LlmOperationAttestationCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationAttestationIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * LlmOperationAttestation update
+   */
+  export type LlmOperationAttestationUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationAttestation
+     */
+    select?: LlmOperationAttestationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationAttestationInclude<ExtArgs> | null
+    /**
+     * The data needed to update a LlmOperationAttestation.
+     */
+    data: XOR<LlmOperationAttestationUpdateInput, LlmOperationAttestationUncheckedUpdateInput>
+    /**
+     * Choose, which LlmOperationAttestation to update.
+     */
+    where: LlmOperationAttestationWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationAttestation updateMany
+   */
+  export type LlmOperationAttestationUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update LlmOperationAttestations.
+     */
+    data: XOR<LlmOperationAttestationUpdateManyMutationInput, LlmOperationAttestationUncheckedUpdateManyInput>
+    /**
+     * Filter which LlmOperationAttestations to update
+     */
+    where?: LlmOperationAttestationWhereInput
+  }
+
+  /**
+   * LlmOperationAttestation upsert
+   */
+  export type LlmOperationAttestationUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationAttestation
+     */
+    select?: LlmOperationAttestationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationAttestationInclude<ExtArgs> | null
+    /**
+     * The filter to search for the LlmOperationAttestation to update in case it exists.
+     */
+    where: LlmOperationAttestationWhereUniqueInput
+    /**
+     * In case the LlmOperationAttestation found by the `where` argument doesn't exist, create a new LlmOperationAttestation with this data.
+     */
+    create: XOR<LlmOperationAttestationCreateInput, LlmOperationAttestationUncheckedCreateInput>
+    /**
+     * In case the LlmOperationAttestation was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<LlmOperationAttestationUpdateInput, LlmOperationAttestationUncheckedUpdateInput>
+  }
+
+  /**
+   * LlmOperationAttestation delete
+   */
+  export type LlmOperationAttestationDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationAttestation
+     */
+    select?: LlmOperationAttestationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationAttestationInclude<ExtArgs> | null
+    /**
+     * Filter which LlmOperationAttestation to delete.
+     */
+    where: LlmOperationAttestationWhereUniqueInput
+  }
+
+  /**
+   * LlmOperationAttestation deleteMany
+   */
+  export type LlmOperationAttestationDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LlmOperationAttestations to delete
+     */
+    where?: LlmOperationAttestationWhereInput
+  }
+
+  /**
+   * LlmOperationAttestation without action
+   */
+  export type LlmOperationAttestationDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LlmOperationAttestation
+     */
+    select?: LlmOperationAttestationSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LlmOperationAttestationInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -5565,6 +15981,169 @@ export namespace Prisma {
   export type ExecutionEventScalarFieldEnum = (typeof ExecutionEventScalarFieldEnum)[keyof typeof ExecutionEventScalarFieldEnum]
 
 
+  export const LlmOperationScalarFieldEnum: {
+    id: 'id',
+    operationKey: 'operationKey',
+    displayName: 'displayName',
+    description: 'description',
+    owner: 'owner',
+    status: 'status',
+    source: 'source',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type LlmOperationScalarFieldEnum = (typeof LlmOperationScalarFieldEnum)[keyof typeof LlmOperationScalarFieldEnum]
+
+
+  export const LlmOperationVersionScalarFieldEnum: {
+    id: 'id',
+    operationId: 'operationId',
+    version: 'version',
+    state: 'state',
+    manifestJson: 'manifestJson',
+    operationDigest: 'operationDigest',
+    contractDigest: 'contractDigest',
+    changeSummary: 'changeSummary',
+    source: 'source',
+    approvedBy: 'approvedBy',
+    approvedAt: 'approvedAt',
+    createdBy: 'createdBy',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type LlmOperationVersionScalarFieldEnum = (typeof LlmOperationVersionScalarFieldEnum)[keyof typeof LlmOperationVersionScalarFieldEnum]
+
+
+  export const LlmOperationActivationScalarFieldEnum: {
+    id: 'id',
+    operationId: 'operationId',
+    versionId: 'versionId',
+    environment: 'environment',
+    label: 'label',
+    activatedBy: 'activatedBy',
+    reason: 'reason',
+    rolloutPercent: 'rolloutPercent',
+    activatedAt: 'activatedAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type LlmOperationActivationScalarFieldEnum = (typeof LlmOperationActivationScalarFieldEnum)[keyof typeof LlmOperationActivationScalarFieldEnum]
+
+
+  export const LlmOperationActivationEventScalarFieldEnum: {
+    id: 'id',
+    operationId: 'operationId',
+    previousVersionId: 'previousVersionId',
+    newVersionId: 'newVersionId',
+    environment: 'environment',
+    action: 'action',
+    actor: 'actor',
+    reason: 'reason',
+    metadataJson: 'metadataJson',
+    createdAt: 'createdAt'
+  };
+
+  export type LlmOperationActivationEventScalarFieldEnum = (typeof LlmOperationActivationEventScalarFieldEnum)[keyof typeof LlmOperationActivationEventScalarFieldEnum]
+
+
+  export const LlmOperationEvalSuiteScalarFieldEnum: {
+    id: 'id',
+    operationId: 'operationId',
+    versionId: 'versionId',
+    name: 'name',
+    description: 'description',
+    suiteDigest: 'suiteDigest',
+    createdBy: 'createdBy',
+    createdAt: 'createdAt'
+  };
+
+  export type LlmOperationEvalSuiteScalarFieldEnum = (typeof LlmOperationEvalSuiteScalarFieldEnum)[keyof typeof LlmOperationEvalSuiteScalarFieldEnum]
+
+
+  export const LlmOperationEvalCaseScalarFieldEnum: {
+    id: 'id',
+    suiteId: 'suiteId',
+    name: 'name',
+    inputJson: 'inputJson',
+    expectedJson: 'expectedJson',
+    isNegative: 'isNegative',
+    errorContains: 'errorContains',
+    createdAt: 'createdAt'
+  };
+
+  export type LlmOperationEvalCaseScalarFieldEnum = (typeof LlmOperationEvalCaseScalarFieldEnum)[keyof typeof LlmOperationEvalCaseScalarFieldEnum]
+
+
+  export const LlmOperationEvalRunScalarFieldEnum: {
+    id: 'id',
+    versionId: 'versionId',
+    suiteId: 'suiteId',
+    modelPolicySnapshot: 'modelPolicySnapshot',
+    resultsJson: 'resultsJson',
+    metricsJson: 'metricsJson',
+    baselineVersionId: 'baselineVersionId',
+    executedBy: 'executedBy',
+    startedAt: 'startedAt',
+    completedAt: 'completedAt'
+  };
+
+  export type LlmOperationEvalRunScalarFieldEnum = (typeof LlmOperationEvalRunScalarFieldEnum)[keyof typeof LlmOperationEvalRunScalarFieldEnum]
+
+
+  export const LlmOperationInvocationScalarFieldEnum: {
+    id: 'id',
+    versionId: 'versionId',
+    executionId: 'executionId',
+    stepId: 'stepId',
+    tenantId: 'tenantId',
+    provider: 'provider',
+    requestedModel: 'requestedModel',
+    resolvedModel: 'resolvedModel',
+    inputDigest: 'inputDigest',
+    outputDigest: 'outputDigest',
+    idempotencyKey: 'idempotencyKey',
+    resultJson: 'resultJson',
+    inputStorageRef: 'inputStorageRef',
+    outputStorageRef: 'outputStorageRef',
+    tokenUsageJson: 'tokenUsageJson',
+    latencyMs: 'latencyMs',
+    estimatedCost: 'estimatedCost',
+    parseAttempts: 'parseAttempts',
+    repairAttempts: 'repairAttempts',
+    validationResult: 'validationResult',
+    finishReason: 'finishReason',
+    errorCode: 'errorCode',
+    actor: 'actor',
+    environment: 'environment',
+    startedAt: 'startedAt',
+    completedAt: 'completedAt'
+  };
+
+  export type LlmOperationInvocationScalarFieldEnum = (typeof LlmOperationInvocationScalarFieldEnum)[keyof typeof LlmOperationInvocationScalarFieldEnum]
+
+
+  export const LlmOperationAttestationScalarFieldEnum: {
+    id: 'id',
+    operationId: 'operationId',
+    versionId: 'versionId',
+    operationDigest: 'operationDigest',
+    contractDigest: 'contractDigest',
+    evalSuiteDigest: 'evalSuiteDigest',
+    validatorVersion: 'validatorVersion',
+    schemaTests: 'schemaTests',
+    offlineEvals: 'offlineEvals',
+    liveEvals: 'liveEvals',
+    securityEvals: 'securityEvals',
+    gateResultsJson: 'gateResultsJson',
+    createdBy: 'createdBy',
+    createdAt: 'createdAt'
+  };
+
+  export type LlmOperationAttestationScalarFieldEnum = (typeof LlmOperationAttestationScalarFieldEnum)[keyof typeof LlmOperationAttestationScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -5579,6 +16158,13 @@ export namespace Prisma {
   };
 
   export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+  export const JsonNullValueInput: {
+    JsonNull: typeof JsonNull
+  };
+
+  export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
   export const QueryMode: {
@@ -5664,6 +16250,20 @@ export namespace Prisma {
    * Reference to a field of type 'Int[]'
    */
   export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'Decimal'
+   */
+  export type DecimalFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Decimal'>
+    
+
+
+  /**
+   * Reference to a field of type 'Decimal[]'
+   */
+  export type ListDecimalFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Decimal[]'>
     
 
 
@@ -6121,6 +16721,869 @@ export namespace Prisma {
     eventSource?: StringNullableWithAggregatesFilter<"ExecutionEvent"> | string | null
     payloadJson?: JsonNullableWithAggregatesFilter<"ExecutionEvent">
     createdAt?: DateTimeWithAggregatesFilter<"ExecutionEvent"> | Date | string
+  }
+
+  export type LlmOperationWhereInput = {
+    AND?: LlmOperationWhereInput | LlmOperationWhereInput[]
+    OR?: LlmOperationWhereInput[]
+    NOT?: LlmOperationWhereInput | LlmOperationWhereInput[]
+    id?: UuidFilter<"LlmOperation"> | string
+    operationKey?: StringFilter<"LlmOperation"> | string
+    displayName?: StringFilter<"LlmOperation"> | string
+    description?: StringFilter<"LlmOperation"> | string
+    owner?: StringFilter<"LlmOperation"> | string
+    status?: StringFilter<"LlmOperation"> | string
+    source?: StringFilter<"LlmOperation"> | string
+    createdAt?: DateTimeFilter<"LlmOperation"> | Date | string
+    updatedAt?: DateTimeFilter<"LlmOperation"> | Date | string
+    versions?: LlmOperationVersionListRelationFilter
+    activations?: LlmOperationActivationListRelationFilter
+    activationEvents?: LlmOperationActivationEventListRelationFilter
+    attestations?: LlmOperationAttestationListRelationFilter
+  }
+
+  export type LlmOperationOrderByWithRelationInput = {
+    id?: SortOrder
+    operationKey?: SortOrder
+    displayName?: SortOrder
+    description?: SortOrder
+    owner?: SortOrder
+    status?: SortOrder
+    source?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    versions?: LlmOperationVersionOrderByRelationAggregateInput
+    activations?: LlmOperationActivationOrderByRelationAggregateInput
+    activationEvents?: LlmOperationActivationEventOrderByRelationAggregateInput
+    attestations?: LlmOperationAttestationOrderByRelationAggregateInput
+  }
+
+  export type LlmOperationWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    operationKey?: string
+    AND?: LlmOperationWhereInput | LlmOperationWhereInput[]
+    OR?: LlmOperationWhereInput[]
+    NOT?: LlmOperationWhereInput | LlmOperationWhereInput[]
+    displayName?: StringFilter<"LlmOperation"> | string
+    description?: StringFilter<"LlmOperation"> | string
+    owner?: StringFilter<"LlmOperation"> | string
+    status?: StringFilter<"LlmOperation"> | string
+    source?: StringFilter<"LlmOperation"> | string
+    createdAt?: DateTimeFilter<"LlmOperation"> | Date | string
+    updatedAt?: DateTimeFilter<"LlmOperation"> | Date | string
+    versions?: LlmOperationVersionListRelationFilter
+    activations?: LlmOperationActivationListRelationFilter
+    activationEvents?: LlmOperationActivationEventListRelationFilter
+    attestations?: LlmOperationAttestationListRelationFilter
+  }, "id" | "operationKey">
+
+  export type LlmOperationOrderByWithAggregationInput = {
+    id?: SortOrder
+    operationKey?: SortOrder
+    displayName?: SortOrder
+    description?: SortOrder
+    owner?: SortOrder
+    status?: SortOrder
+    source?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: LlmOperationCountOrderByAggregateInput
+    _max?: LlmOperationMaxOrderByAggregateInput
+    _min?: LlmOperationMinOrderByAggregateInput
+  }
+
+  export type LlmOperationScalarWhereWithAggregatesInput = {
+    AND?: LlmOperationScalarWhereWithAggregatesInput | LlmOperationScalarWhereWithAggregatesInput[]
+    OR?: LlmOperationScalarWhereWithAggregatesInput[]
+    NOT?: LlmOperationScalarWhereWithAggregatesInput | LlmOperationScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"LlmOperation"> | string
+    operationKey?: StringWithAggregatesFilter<"LlmOperation"> | string
+    displayName?: StringWithAggregatesFilter<"LlmOperation"> | string
+    description?: StringWithAggregatesFilter<"LlmOperation"> | string
+    owner?: StringWithAggregatesFilter<"LlmOperation"> | string
+    status?: StringWithAggregatesFilter<"LlmOperation"> | string
+    source?: StringWithAggregatesFilter<"LlmOperation"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"LlmOperation"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"LlmOperation"> | Date | string
+  }
+
+  export type LlmOperationVersionWhereInput = {
+    AND?: LlmOperationVersionWhereInput | LlmOperationVersionWhereInput[]
+    OR?: LlmOperationVersionWhereInput[]
+    NOT?: LlmOperationVersionWhereInput | LlmOperationVersionWhereInput[]
+    id?: UuidFilter<"LlmOperationVersion"> | string
+    operationId?: UuidFilter<"LlmOperationVersion"> | string
+    version?: StringFilter<"LlmOperationVersion"> | string
+    state?: StringFilter<"LlmOperationVersion"> | string
+    manifestJson?: JsonFilter<"LlmOperationVersion">
+    operationDigest?: StringFilter<"LlmOperationVersion"> | string
+    contractDigest?: StringFilter<"LlmOperationVersion"> | string
+    changeSummary?: StringFilter<"LlmOperationVersion"> | string
+    source?: StringFilter<"LlmOperationVersion"> | string
+    approvedBy?: StringNullableFilter<"LlmOperationVersion"> | string | null
+    approvedAt?: DateTimeNullableFilter<"LlmOperationVersion"> | Date | string | null
+    createdBy?: StringFilter<"LlmOperationVersion"> | string
+    createdAt?: DateTimeFilter<"LlmOperationVersion"> | Date | string
+    updatedAt?: DateTimeFilter<"LlmOperationVersion"> | Date | string
+    operation?: XOR<LlmOperationRelationFilter, LlmOperationWhereInput>
+    activations?: LlmOperationActivationListRelationFilter
+    activationEvents?: LlmOperationActivationEventListRelationFilter
+    evalRuns?: LlmOperationEvalRunListRelationFilter
+    invocations?: LlmOperationInvocationListRelationFilter
+    attestations?: LlmOperationAttestationListRelationFilter
+  }
+
+  export type LlmOperationVersionOrderByWithRelationInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    version?: SortOrder
+    state?: SortOrder
+    manifestJson?: SortOrder
+    operationDigest?: SortOrder
+    contractDigest?: SortOrder
+    changeSummary?: SortOrder
+    source?: SortOrder
+    approvedBy?: SortOrderInput | SortOrder
+    approvedAt?: SortOrderInput | SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    operation?: LlmOperationOrderByWithRelationInput
+    activations?: LlmOperationActivationOrderByRelationAggregateInput
+    activationEvents?: LlmOperationActivationEventOrderByRelationAggregateInput
+    evalRuns?: LlmOperationEvalRunOrderByRelationAggregateInput
+    invocations?: LlmOperationInvocationOrderByRelationAggregateInput
+    attestations?: LlmOperationAttestationOrderByRelationAggregateInput
+  }
+
+  export type LlmOperationVersionWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    operationId_version?: LlmOperationVersionOperationIdVersionCompoundUniqueInput
+    operationId_operationDigest?: LlmOperationVersionOperationIdOperationDigestCompoundUniqueInput
+    AND?: LlmOperationVersionWhereInput | LlmOperationVersionWhereInput[]
+    OR?: LlmOperationVersionWhereInput[]
+    NOT?: LlmOperationVersionWhereInput | LlmOperationVersionWhereInput[]
+    operationId?: UuidFilter<"LlmOperationVersion"> | string
+    version?: StringFilter<"LlmOperationVersion"> | string
+    state?: StringFilter<"LlmOperationVersion"> | string
+    manifestJson?: JsonFilter<"LlmOperationVersion">
+    operationDigest?: StringFilter<"LlmOperationVersion"> | string
+    contractDigest?: StringFilter<"LlmOperationVersion"> | string
+    changeSummary?: StringFilter<"LlmOperationVersion"> | string
+    source?: StringFilter<"LlmOperationVersion"> | string
+    approvedBy?: StringNullableFilter<"LlmOperationVersion"> | string | null
+    approvedAt?: DateTimeNullableFilter<"LlmOperationVersion"> | Date | string | null
+    createdBy?: StringFilter<"LlmOperationVersion"> | string
+    createdAt?: DateTimeFilter<"LlmOperationVersion"> | Date | string
+    updatedAt?: DateTimeFilter<"LlmOperationVersion"> | Date | string
+    operation?: XOR<LlmOperationRelationFilter, LlmOperationWhereInput>
+    activations?: LlmOperationActivationListRelationFilter
+    activationEvents?: LlmOperationActivationEventListRelationFilter
+    evalRuns?: LlmOperationEvalRunListRelationFilter
+    invocations?: LlmOperationInvocationListRelationFilter
+    attestations?: LlmOperationAttestationListRelationFilter
+  }, "id" | "operationId_version" | "operationId_operationDigest">
+
+  export type LlmOperationVersionOrderByWithAggregationInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    version?: SortOrder
+    state?: SortOrder
+    manifestJson?: SortOrder
+    operationDigest?: SortOrder
+    contractDigest?: SortOrder
+    changeSummary?: SortOrder
+    source?: SortOrder
+    approvedBy?: SortOrderInput | SortOrder
+    approvedAt?: SortOrderInput | SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: LlmOperationVersionCountOrderByAggregateInput
+    _max?: LlmOperationVersionMaxOrderByAggregateInput
+    _min?: LlmOperationVersionMinOrderByAggregateInput
+  }
+
+  export type LlmOperationVersionScalarWhereWithAggregatesInput = {
+    AND?: LlmOperationVersionScalarWhereWithAggregatesInput | LlmOperationVersionScalarWhereWithAggregatesInput[]
+    OR?: LlmOperationVersionScalarWhereWithAggregatesInput[]
+    NOT?: LlmOperationVersionScalarWhereWithAggregatesInput | LlmOperationVersionScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"LlmOperationVersion"> | string
+    operationId?: UuidWithAggregatesFilter<"LlmOperationVersion"> | string
+    version?: StringWithAggregatesFilter<"LlmOperationVersion"> | string
+    state?: StringWithAggregatesFilter<"LlmOperationVersion"> | string
+    manifestJson?: JsonWithAggregatesFilter<"LlmOperationVersion">
+    operationDigest?: StringWithAggregatesFilter<"LlmOperationVersion"> | string
+    contractDigest?: StringWithAggregatesFilter<"LlmOperationVersion"> | string
+    changeSummary?: StringWithAggregatesFilter<"LlmOperationVersion"> | string
+    source?: StringWithAggregatesFilter<"LlmOperationVersion"> | string
+    approvedBy?: StringNullableWithAggregatesFilter<"LlmOperationVersion"> | string | null
+    approvedAt?: DateTimeNullableWithAggregatesFilter<"LlmOperationVersion"> | Date | string | null
+    createdBy?: StringWithAggregatesFilter<"LlmOperationVersion"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"LlmOperationVersion"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"LlmOperationVersion"> | Date | string
+  }
+
+  export type LlmOperationActivationWhereInput = {
+    AND?: LlmOperationActivationWhereInput | LlmOperationActivationWhereInput[]
+    OR?: LlmOperationActivationWhereInput[]
+    NOT?: LlmOperationActivationWhereInput | LlmOperationActivationWhereInput[]
+    id?: UuidFilter<"LlmOperationActivation"> | string
+    operationId?: UuidFilter<"LlmOperationActivation"> | string
+    versionId?: UuidFilter<"LlmOperationActivation"> | string
+    environment?: StringFilter<"LlmOperationActivation"> | string
+    label?: StringNullableFilter<"LlmOperationActivation"> | string | null
+    activatedBy?: StringFilter<"LlmOperationActivation"> | string
+    reason?: StringFilter<"LlmOperationActivation"> | string
+    rolloutPercent?: IntNullableFilter<"LlmOperationActivation"> | number | null
+    activatedAt?: DateTimeFilter<"LlmOperationActivation"> | Date | string
+    updatedAt?: DateTimeFilter<"LlmOperationActivation"> | Date | string
+    operation?: XOR<LlmOperationRelationFilter, LlmOperationWhereInput>
+    version?: XOR<LlmOperationVersionRelationFilter, LlmOperationVersionWhereInput>
+  }
+
+  export type LlmOperationActivationOrderByWithRelationInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    versionId?: SortOrder
+    environment?: SortOrder
+    label?: SortOrderInput | SortOrder
+    activatedBy?: SortOrder
+    reason?: SortOrder
+    rolloutPercent?: SortOrderInput | SortOrder
+    activatedAt?: SortOrder
+    updatedAt?: SortOrder
+    operation?: LlmOperationOrderByWithRelationInput
+    version?: LlmOperationVersionOrderByWithRelationInput
+  }
+
+  export type LlmOperationActivationWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    operationId_environment?: LlmOperationActivationOperationIdEnvironmentCompoundUniqueInput
+    AND?: LlmOperationActivationWhereInput | LlmOperationActivationWhereInput[]
+    OR?: LlmOperationActivationWhereInput[]
+    NOT?: LlmOperationActivationWhereInput | LlmOperationActivationWhereInput[]
+    operationId?: UuidFilter<"LlmOperationActivation"> | string
+    versionId?: UuidFilter<"LlmOperationActivation"> | string
+    environment?: StringFilter<"LlmOperationActivation"> | string
+    label?: StringNullableFilter<"LlmOperationActivation"> | string | null
+    activatedBy?: StringFilter<"LlmOperationActivation"> | string
+    reason?: StringFilter<"LlmOperationActivation"> | string
+    rolloutPercent?: IntNullableFilter<"LlmOperationActivation"> | number | null
+    activatedAt?: DateTimeFilter<"LlmOperationActivation"> | Date | string
+    updatedAt?: DateTimeFilter<"LlmOperationActivation"> | Date | string
+    operation?: XOR<LlmOperationRelationFilter, LlmOperationWhereInput>
+    version?: XOR<LlmOperationVersionRelationFilter, LlmOperationVersionWhereInput>
+  }, "id" | "operationId_environment">
+
+  export type LlmOperationActivationOrderByWithAggregationInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    versionId?: SortOrder
+    environment?: SortOrder
+    label?: SortOrderInput | SortOrder
+    activatedBy?: SortOrder
+    reason?: SortOrder
+    rolloutPercent?: SortOrderInput | SortOrder
+    activatedAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: LlmOperationActivationCountOrderByAggregateInput
+    _avg?: LlmOperationActivationAvgOrderByAggregateInput
+    _max?: LlmOperationActivationMaxOrderByAggregateInput
+    _min?: LlmOperationActivationMinOrderByAggregateInput
+    _sum?: LlmOperationActivationSumOrderByAggregateInput
+  }
+
+  export type LlmOperationActivationScalarWhereWithAggregatesInput = {
+    AND?: LlmOperationActivationScalarWhereWithAggregatesInput | LlmOperationActivationScalarWhereWithAggregatesInput[]
+    OR?: LlmOperationActivationScalarWhereWithAggregatesInput[]
+    NOT?: LlmOperationActivationScalarWhereWithAggregatesInput | LlmOperationActivationScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"LlmOperationActivation"> | string
+    operationId?: UuidWithAggregatesFilter<"LlmOperationActivation"> | string
+    versionId?: UuidWithAggregatesFilter<"LlmOperationActivation"> | string
+    environment?: StringWithAggregatesFilter<"LlmOperationActivation"> | string
+    label?: StringNullableWithAggregatesFilter<"LlmOperationActivation"> | string | null
+    activatedBy?: StringWithAggregatesFilter<"LlmOperationActivation"> | string
+    reason?: StringWithAggregatesFilter<"LlmOperationActivation"> | string
+    rolloutPercent?: IntNullableWithAggregatesFilter<"LlmOperationActivation"> | number | null
+    activatedAt?: DateTimeWithAggregatesFilter<"LlmOperationActivation"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"LlmOperationActivation"> | Date | string
+  }
+
+  export type LlmOperationActivationEventWhereInput = {
+    AND?: LlmOperationActivationEventWhereInput | LlmOperationActivationEventWhereInput[]
+    OR?: LlmOperationActivationEventWhereInput[]
+    NOT?: LlmOperationActivationEventWhereInput | LlmOperationActivationEventWhereInput[]
+    id?: UuidFilter<"LlmOperationActivationEvent"> | string
+    operationId?: UuidFilter<"LlmOperationActivationEvent"> | string
+    previousVersionId?: UuidNullableFilter<"LlmOperationActivationEvent"> | string | null
+    newVersionId?: UuidFilter<"LlmOperationActivationEvent"> | string
+    environment?: StringFilter<"LlmOperationActivationEvent"> | string
+    action?: StringFilter<"LlmOperationActivationEvent"> | string
+    actor?: StringFilter<"LlmOperationActivationEvent"> | string
+    reason?: StringFilter<"LlmOperationActivationEvent"> | string
+    metadataJson?: JsonNullableFilter<"LlmOperationActivationEvent">
+    createdAt?: DateTimeFilter<"LlmOperationActivationEvent"> | Date | string
+    operation?: XOR<LlmOperationRelationFilter, LlmOperationWhereInput>
+    version?: XOR<LlmOperationVersionRelationFilter, LlmOperationVersionWhereInput>
+  }
+
+  export type LlmOperationActivationEventOrderByWithRelationInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    previousVersionId?: SortOrderInput | SortOrder
+    newVersionId?: SortOrder
+    environment?: SortOrder
+    action?: SortOrder
+    actor?: SortOrder
+    reason?: SortOrder
+    metadataJson?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    operation?: LlmOperationOrderByWithRelationInput
+    version?: LlmOperationVersionOrderByWithRelationInput
+  }
+
+  export type LlmOperationActivationEventWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: LlmOperationActivationEventWhereInput | LlmOperationActivationEventWhereInput[]
+    OR?: LlmOperationActivationEventWhereInput[]
+    NOT?: LlmOperationActivationEventWhereInput | LlmOperationActivationEventWhereInput[]
+    operationId?: UuidFilter<"LlmOperationActivationEvent"> | string
+    previousVersionId?: UuidNullableFilter<"LlmOperationActivationEvent"> | string | null
+    newVersionId?: UuidFilter<"LlmOperationActivationEvent"> | string
+    environment?: StringFilter<"LlmOperationActivationEvent"> | string
+    action?: StringFilter<"LlmOperationActivationEvent"> | string
+    actor?: StringFilter<"LlmOperationActivationEvent"> | string
+    reason?: StringFilter<"LlmOperationActivationEvent"> | string
+    metadataJson?: JsonNullableFilter<"LlmOperationActivationEvent">
+    createdAt?: DateTimeFilter<"LlmOperationActivationEvent"> | Date | string
+    operation?: XOR<LlmOperationRelationFilter, LlmOperationWhereInput>
+    version?: XOR<LlmOperationVersionRelationFilter, LlmOperationVersionWhereInput>
+  }, "id">
+
+  export type LlmOperationActivationEventOrderByWithAggregationInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    previousVersionId?: SortOrderInput | SortOrder
+    newVersionId?: SortOrder
+    environment?: SortOrder
+    action?: SortOrder
+    actor?: SortOrder
+    reason?: SortOrder
+    metadataJson?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    _count?: LlmOperationActivationEventCountOrderByAggregateInput
+    _max?: LlmOperationActivationEventMaxOrderByAggregateInput
+    _min?: LlmOperationActivationEventMinOrderByAggregateInput
+  }
+
+  export type LlmOperationActivationEventScalarWhereWithAggregatesInput = {
+    AND?: LlmOperationActivationEventScalarWhereWithAggregatesInput | LlmOperationActivationEventScalarWhereWithAggregatesInput[]
+    OR?: LlmOperationActivationEventScalarWhereWithAggregatesInput[]
+    NOT?: LlmOperationActivationEventScalarWhereWithAggregatesInput | LlmOperationActivationEventScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"LlmOperationActivationEvent"> | string
+    operationId?: UuidWithAggregatesFilter<"LlmOperationActivationEvent"> | string
+    previousVersionId?: UuidNullableWithAggregatesFilter<"LlmOperationActivationEvent"> | string | null
+    newVersionId?: UuidWithAggregatesFilter<"LlmOperationActivationEvent"> | string
+    environment?: StringWithAggregatesFilter<"LlmOperationActivationEvent"> | string
+    action?: StringWithAggregatesFilter<"LlmOperationActivationEvent"> | string
+    actor?: StringWithAggregatesFilter<"LlmOperationActivationEvent"> | string
+    reason?: StringWithAggregatesFilter<"LlmOperationActivationEvent"> | string
+    metadataJson?: JsonNullableWithAggregatesFilter<"LlmOperationActivationEvent">
+    createdAt?: DateTimeWithAggregatesFilter<"LlmOperationActivationEvent"> | Date | string
+  }
+
+  export type LlmOperationEvalSuiteWhereInput = {
+    AND?: LlmOperationEvalSuiteWhereInput | LlmOperationEvalSuiteWhereInput[]
+    OR?: LlmOperationEvalSuiteWhereInput[]
+    NOT?: LlmOperationEvalSuiteWhereInput | LlmOperationEvalSuiteWhereInput[]
+    id?: UuidFilter<"LlmOperationEvalSuite"> | string
+    operationId?: UuidFilter<"LlmOperationEvalSuite"> | string
+    versionId?: UuidNullableFilter<"LlmOperationEvalSuite"> | string | null
+    name?: StringFilter<"LlmOperationEvalSuite"> | string
+    description?: StringNullableFilter<"LlmOperationEvalSuite"> | string | null
+    suiteDigest?: StringFilter<"LlmOperationEvalSuite"> | string
+    createdBy?: StringFilter<"LlmOperationEvalSuite"> | string
+    createdAt?: DateTimeFilter<"LlmOperationEvalSuite"> | Date | string
+    cases?: LlmOperationEvalCaseListRelationFilter
+    evalRuns?: LlmOperationEvalRunListRelationFilter
+  }
+
+  export type LlmOperationEvalSuiteOrderByWithRelationInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    versionId?: SortOrderInput | SortOrder
+    name?: SortOrder
+    description?: SortOrderInput | SortOrder
+    suiteDigest?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    cases?: LlmOperationEvalCaseOrderByRelationAggregateInput
+    evalRuns?: LlmOperationEvalRunOrderByRelationAggregateInput
+  }
+
+  export type LlmOperationEvalSuiteWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: LlmOperationEvalSuiteWhereInput | LlmOperationEvalSuiteWhereInput[]
+    OR?: LlmOperationEvalSuiteWhereInput[]
+    NOT?: LlmOperationEvalSuiteWhereInput | LlmOperationEvalSuiteWhereInput[]
+    operationId?: UuidFilter<"LlmOperationEvalSuite"> | string
+    versionId?: UuidNullableFilter<"LlmOperationEvalSuite"> | string | null
+    name?: StringFilter<"LlmOperationEvalSuite"> | string
+    description?: StringNullableFilter<"LlmOperationEvalSuite"> | string | null
+    suiteDigest?: StringFilter<"LlmOperationEvalSuite"> | string
+    createdBy?: StringFilter<"LlmOperationEvalSuite"> | string
+    createdAt?: DateTimeFilter<"LlmOperationEvalSuite"> | Date | string
+    cases?: LlmOperationEvalCaseListRelationFilter
+    evalRuns?: LlmOperationEvalRunListRelationFilter
+  }, "id">
+
+  export type LlmOperationEvalSuiteOrderByWithAggregationInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    versionId?: SortOrderInput | SortOrder
+    name?: SortOrder
+    description?: SortOrderInput | SortOrder
+    suiteDigest?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    _count?: LlmOperationEvalSuiteCountOrderByAggregateInput
+    _max?: LlmOperationEvalSuiteMaxOrderByAggregateInput
+    _min?: LlmOperationEvalSuiteMinOrderByAggregateInput
+  }
+
+  export type LlmOperationEvalSuiteScalarWhereWithAggregatesInput = {
+    AND?: LlmOperationEvalSuiteScalarWhereWithAggregatesInput | LlmOperationEvalSuiteScalarWhereWithAggregatesInput[]
+    OR?: LlmOperationEvalSuiteScalarWhereWithAggregatesInput[]
+    NOT?: LlmOperationEvalSuiteScalarWhereWithAggregatesInput | LlmOperationEvalSuiteScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"LlmOperationEvalSuite"> | string
+    operationId?: UuidWithAggregatesFilter<"LlmOperationEvalSuite"> | string
+    versionId?: UuidNullableWithAggregatesFilter<"LlmOperationEvalSuite"> | string | null
+    name?: StringWithAggregatesFilter<"LlmOperationEvalSuite"> | string
+    description?: StringNullableWithAggregatesFilter<"LlmOperationEvalSuite"> | string | null
+    suiteDigest?: StringWithAggregatesFilter<"LlmOperationEvalSuite"> | string
+    createdBy?: StringWithAggregatesFilter<"LlmOperationEvalSuite"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"LlmOperationEvalSuite"> | Date | string
+  }
+
+  export type LlmOperationEvalCaseWhereInput = {
+    AND?: LlmOperationEvalCaseWhereInput | LlmOperationEvalCaseWhereInput[]
+    OR?: LlmOperationEvalCaseWhereInput[]
+    NOT?: LlmOperationEvalCaseWhereInput | LlmOperationEvalCaseWhereInput[]
+    id?: UuidFilter<"LlmOperationEvalCase"> | string
+    suiteId?: UuidFilter<"LlmOperationEvalCase"> | string
+    name?: StringFilter<"LlmOperationEvalCase"> | string
+    inputJson?: JsonFilter<"LlmOperationEvalCase">
+    expectedJson?: JsonNullableFilter<"LlmOperationEvalCase">
+    isNegative?: BoolFilter<"LlmOperationEvalCase"> | boolean
+    errorContains?: StringNullableFilter<"LlmOperationEvalCase"> | string | null
+    createdAt?: DateTimeFilter<"LlmOperationEvalCase"> | Date | string
+    suite?: XOR<LlmOperationEvalSuiteRelationFilter, LlmOperationEvalSuiteWhereInput>
+  }
+
+  export type LlmOperationEvalCaseOrderByWithRelationInput = {
+    id?: SortOrder
+    suiteId?: SortOrder
+    name?: SortOrder
+    inputJson?: SortOrder
+    expectedJson?: SortOrderInput | SortOrder
+    isNegative?: SortOrder
+    errorContains?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    suite?: LlmOperationEvalSuiteOrderByWithRelationInput
+  }
+
+  export type LlmOperationEvalCaseWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: LlmOperationEvalCaseWhereInput | LlmOperationEvalCaseWhereInput[]
+    OR?: LlmOperationEvalCaseWhereInput[]
+    NOT?: LlmOperationEvalCaseWhereInput | LlmOperationEvalCaseWhereInput[]
+    suiteId?: UuidFilter<"LlmOperationEvalCase"> | string
+    name?: StringFilter<"LlmOperationEvalCase"> | string
+    inputJson?: JsonFilter<"LlmOperationEvalCase">
+    expectedJson?: JsonNullableFilter<"LlmOperationEvalCase">
+    isNegative?: BoolFilter<"LlmOperationEvalCase"> | boolean
+    errorContains?: StringNullableFilter<"LlmOperationEvalCase"> | string | null
+    createdAt?: DateTimeFilter<"LlmOperationEvalCase"> | Date | string
+    suite?: XOR<LlmOperationEvalSuiteRelationFilter, LlmOperationEvalSuiteWhereInput>
+  }, "id">
+
+  export type LlmOperationEvalCaseOrderByWithAggregationInput = {
+    id?: SortOrder
+    suiteId?: SortOrder
+    name?: SortOrder
+    inputJson?: SortOrder
+    expectedJson?: SortOrderInput | SortOrder
+    isNegative?: SortOrder
+    errorContains?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    _count?: LlmOperationEvalCaseCountOrderByAggregateInput
+    _max?: LlmOperationEvalCaseMaxOrderByAggregateInput
+    _min?: LlmOperationEvalCaseMinOrderByAggregateInput
+  }
+
+  export type LlmOperationEvalCaseScalarWhereWithAggregatesInput = {
+    AND?: LlmOperationEvalCaseScalarWhereWithAggregatesInput | LlmOperationEvalCaseScalarWhereWithAggregatesInput[]
+    OR?: LlmOperationEvalCaseScalarWhereWithAggregatesInput[]
+    NOT?: LlmOperationEvalCaseScalarWhereWithAggregatesInput | LlmOperationEvalCaseScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"LlmOperationEvalCase"> | string
+    suiteId?: UuidWithAggregatesFilter<"LlmOperationEvalCase"> | string
+    name?: StringWithAggregatesFilter<"LlmOperationEvalCase"> | string
+    inputJson?: JsonWithAggregatesFilter<"LlmOperationEvalCase">
+    expectedJson?: JsonNullableWithAggregatesFilter<"LlmOperationEvalCase">
+    isNegative?: BoolWithAggregatesFilter<"LlmOperationEvalCase"> | boolean
+    errorContains?: StringNullableWithAggregatesFilter<"LlmOperationEvalCase"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"LlmOperationEvalCase"> | Date | string
+  }
+
+  export type LlmOperationEvalRunWhereInput = {
+    AND?: LlmOperationEvalRunWhereInput | LlmOperationEvalRunWhereInput[]
+    OR?: LlmOperationEvalRunWhereInput[]
+    NOT?: LlmOperationEvalRunWhereInput | LlmOperationEvalRunWhereInput[]
+    id?: UuidFilter<"LlmOperationEvalRun"> | string
+    versionId?: UuidFilter<"LlmOperationEvalRun"> | string
+    suiteId?: UuidFilter<"LlmOperationEvalRun"> | string
+    modelPolicySnapshot?: JsonFilter<"LlmOperationEvalRun">
+    resultsJson?: JsonFilter<"LlmOperationEvalRun">
+    metricsJson?: JsonFilter<"LlmOperationEvalRun">
+    baselineVersionId?: UuidNullableFilter<"LlmOperationEvalRun"> | string | null
+    executedBy?: StringFilter<"LlmOperationEvalRun"> | string
+    startedAt?: DateTimeFilter<"LlmOperationEvalRun"> | Date | string
+    completedAt?: DateTimeNullableFilter<"LlmOperationEvalRun"> | Date | string | null
+    version?: XOR<LlmOperationVersionRelationFilter, LlmOperationVersionWhereInput>
+    suite?: XOR<LlmOperationEvalSuiteRelationFilter, LlmOperationEvalSuiteWhereInput>
+  }
+
+  export type LlmOperationEvalRunOrderByWithRelationInput = {
+    id?: SortOrder
+    versionId?: SortOrder
+    suiteId?: SortOrder
+    modelPolicySnapshot?: SortOrder
+    resultsJson?: SortOrder
+    metricsJson?: SortOrder
+    baselineVersionId?: SortOrderInput | SortOrder
+    executedBy?: SortOrder
+    startedAt?: SortOrder
+    completedAt?: SortOrderInput | SortOrder
+    version?: LlmOperationVersionOrderByWithRelationInput
+    suite?: LlmOperationEvalSuiteOrderByWithRelationInput
+  }
+
+  export type LlmOperationEvalRunWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: LlmOperationEvalRunWhereInput | LlmOperationEvalRunWhereInput[]
+    OR?: LlmOperationEvalRunWhereInput[]
+    NOT?: LlmOperationEvalRunWhereInput | LlmOperationEvalRunWhereInput[]
+    versionId?: UuidFilter<"LlmOperationEvalRun"> | string
+    suiteId?: UuidFilter<"LlmOperationEvalRun"> | string
+    modelPolicySnapshot?: JsonFilter<"LlmOperationEvalRun">
+    resultsJson?: JsonFilter<"LlmOperationEvalRun">
+    metricsJson?: JsonFilter<"LlmOperationEvalRun">
+    baselineVersionId?: UuidNullableFilter<"LlmOperationEvalRun"> | string | null
+    executedBy?: StringFilter<"LlmOperationEvalRun"> | string
+    startedAt?: DateTimeFilter<"LlmOperationEvalRun"> | Date | string
+    completedAt?: DateTimeNullableFilter<"LlmOperationEvalRun"> | Date | string | null
+    version?: XOR<LlmOperationVersionRelationFilter, LlmOperationVersionWhereInput>
+    suite?: XOR<LlmOperationEvalSuiteRelationFilter, LlmOperationEvalSuiteWhereInput>
+  }, "id">
+
+  export type LlmOperationEvalRunOrderByWithAggregationInput = {
+    id?: SortOrder
+    versionId?: SortOrder
+    suiteId?: SortOrder
+    modelPolicySnapshot?: SortOrder
+    resultsJson?: SortOrder
+    metricsJson?: SortOrder
+    baselineVersionId?: SortOrderInput | SortOrder
+    executedBy?: SortOrder
+    startedAt?: SortOrder
+    completedAt?: SortOrderInput | SortOrder
+    _count?: LlmOperationEvalRunCountOrderByAggregateInput
+    _max?: LlmOperationEvalRunMaxOrderByAggregateInput
+    _min?: LlmOperationEvalRunMinOrderByAggregateInput
+  }
+
+  export type LlmOperationEvalRunScalarWhereWithAggregatesInput = {
+    AND?: LlmOperationEvalRunScalarWhereWithAggregatesInput | LlmOperationEvalRunScalarWhereWithAggregatesInput[]
+    OR?: LlmOperationEvalRunScalarWhereWithAggregatesInput[]
+    NOT?: LlmOperationEvalRunScalarWhereWithAggregatesInput | LlmOperationEvalRunScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"LlmOperationEvalRun"> | string
+    versionId?: UuidWithAggregatesFilter<"LlmOperationEvalRun"> | string
+    suiteId?: UuidWithAggregatesFilter<"LlmOperationEvalRun"> | string
+    modelPolicySnapshot?: JsonWithAggregatesFilter<"LlmOperationEvalRun">
+    resultsJson?: JsonWithAggregatesFilter<"LlmOperationEvalRun">
+    metricsJson?: JsonWithAggregatesFilter<"LlmOperationEvalRun">
+    baselineVersionId?: UuidNullableWithAggregatesFilter<"LlmOperationEvalRun"> | string | null
+    executedBy?: StringWithAggregatesFilter<"LlmOperationEvalRun"> | string
+    startedAt?: DateTimeWithAggregatesFilter<"LlmOperationEvalRun"> | Date | string
+    completedAt?: DateTimeNullableWithAggregatesFilter<"LlmOperationEvalRun"> | Date | string | null
+  }
+
+  export type LlmOperationInvocationWhereInput = {
+    AND?: LlmOperationInvocationWhereInput | LlmOperationInvocationWhereInput[]
+    OR?: LlmOperationInvocationWhereInput[]
+    NOT?: LlmOperationInvocationWhereInput | LlmOperationInvocationWhereInput[]
+    id?: UuidFilter<"LlmOperationInvocation"> | string
+    versionId?: UuidFilter<"LlmOperationInvocation"> | string
+    executionId?: UuidNullableFilter<"LlmOperationInvocation"> | string | null
+    stepId?: UuidNullableFilter<"LlmOperationInvocation"> | string | null
+    tenantId?: UuidNullableFilter<"LlmOperationInvocation"> | string | null
+    provider?: StringFilter<"LlmOperationInvocation"> | string
+    requestedModel?: StringFilter<"LlmOperationInvocation"> | string
+    resolvedModel?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    inputDigest?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    outputDigest?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    idempotencyKey?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    resultJson?: JsonNullableFilter<"LlmOperationInvocation">
+    inputStorageRef?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    outputStorageRef?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    tokenUsageJson?: JsonNullableFilter<"LlmOperationInvocation">
+    latencyMs?: IntNullableFilter<"LlmOperationInvocation"> | number | null
+    estimatedCost?: DecimalNullableFilter<"LlmOperationInvocation"> | Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: IntFilter<"LlmOperationInvocation"> | number
+    repairAttempts?: IntFilter<"LlmOperationInvocation"> | number
+    validationResult?: StringFilter<"LlmOperationInvocation"> | string
+    finishReason?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    errorCode?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    actor?: StringFilter<"LlmOperationInvocation"> | string
+    environment?: StringFilter<"LlmOperationInvocation"> | string
+    startedAt?: DateTimeFilter<"LlmOperationInvocation"> | Date | string
+    completedAt?: DateTimeNullableFilter<"LlmOperationInvocation"> | Date | string | null
+    version?: XOR<LlmOperationVersionRelationFilter, LlmOperationVersionWhereInput>
+  }
+
+  export type LlmOperationInvocationOrderByWithRelationInput = {
+    id?: SortOrder
+    versionId?: SortOrder
+    executionId?: SortOrderInput | SortOrder
+    stepId?: SortOrderInput | SortOrder
+    tenantId?: SortOrderInput | SortOrder
+    provider?: SortOrder
+    requestedModel?: SortOrder
+    resolvedModel?: SortOrderInput | SortOrder
+    inputDigest?: SortOrderInput | SortOrder
+    outputDigest?: SortOrderInput | SortOrder
+    idempotencyKey?: SortOrderInput | SortOrder
+    resultJson?: SortOrderInput | SortOrder
+    inputStorageRef?: SortOrderInput | SortOrder
+    outputStorageRef?: SortOrderInput | SortOrder
+    tokenUsageJson?: SortOrderInput | SortOrder
+    latencyMs?: SortOrderInput | SortOrder
+    estimatedCost?: SortOrderInput | SortOrder
+    parseAttempts?: SortOrder
+    repairAttempts?: SortOrder
+    validationResult?: SortOrder
+    finishReason?: SortOrderInput | SortOrder
+    errorCode?: SortOrderInput | SortOrder
+    actor?: SortOrder
+    environment?: SortOrder
+    startedAt?: SortOrder
+    completedAt?: SortOrderInput | SortOrder
+    version?: LlmOperationVersionOrderByWithRelationInput
+  }
+
+  export type LlmOperationInvocationWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    versionId_idempotencyKey?: LlmOperationInvocationVersionIdIdempotencyKeyCompoundUniqueInput
+    AND?: LlmOperationInvocationWhereInput | LlmOperationInvocationWhereInput[]
+    OR?: LlmOperationInvocationWhereInput[]
+    NOT?: LlmOperationInvocationWhereInput | LlmOperationInvocationWhereInput[]
+    versionId?: UuidFilter<"LlmOperationInvocation"> | string
+    executionId?: UuidNullableFilter<"LlmOperationInvocation"> | string | null
+    stepId?: UuidNullableFilter<"LlmOperationInvocation"> | string | null
+    tenantId?: UuidNullableFilter<"LlmOperationInvocation"> | string | null
+    provider?: StringFilter<"LlmOperationInvocation"> | string
+    requestedModel?: StringFilter<"LlmOperationInvocation"> | string
+    resolvedModel?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    inputDigest?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    outputDigest?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    idempotencyKey?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    resultJson?: JsonNullableFilter<"LlmOperationInvocation">
+    inputStorageRef?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    outputStorageRef?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    tokenUsageJson?: JsonNullableFilter<"LlmOperationInvocation">
+    latencyMs?: IntNullableFilter<"LlmOperationInvocation"> | number | null
+    estimatedCost?: DecimalNullableFilter<"LlmOperationInvocation"> | Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: IntFilter<"LlmOperationInvocation"> | number
+    repairAttempts?: IntFilter<"LlmOperationInvocation"> | number
+    validationResult?: StringFilter<"LlmOperationInvocation"> | string
+    finishReason?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    errorCode?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    actor?: StringFilter<"LlmOperationInvocation"> | string
+    environment?: StringFilter<"LlmOperationInvocation"> | string
+    startedAt?: DateTimeFilter<"LlmOperationInvocation"> | Date | string
+    completedAt?: DateTimeNullableFilter<"LlmOperationInvocation"> | Date | string | null
+    version?: XOR<LlmOperationVersionRelationFilter, LlmOperationVersionWhereInput>
+  }, "id" | "versionId_idempotencyKey">
+
+  export type LlmOperationInvocationOrderByWithAggregationInput = {
+    id?: SortOrder
+    versionId?: SortOrder
+    executionId?: SortOrderInput | SortOrder
+    stepId?: SortOrderInput | SortOrder
+    tenantId?: SortOrderInput | SortOrder
+    provider?: SortOrder
+    requestedModel?: SortOrder
+    resolvedModel?: SortOrderInput | SortOrder
+    inputDigest?: SortOrderInput | SortOrder
+    outputDigest?: SortOrderInput | SortOrder
+    idempotencyKey?: SortOrderInput | SortOrder
+    resultJson?: SortOrderInput | SortOrder
+    inputStorageRef?: SortOrderInput | SortOrder
+    outputStorageRef?: SortOrderInput | SortOrder
+    tokenUsageJson?: SortOrderInput | SortOrder
+    latencyMs?: SortOrderInput | SortOrder
+    estimatedCost?: SortOrderInput | SortOrder
+    parseAttempts?: SortOrder
+    repairAttempts?: SortOrder
+    validationResult?: SortOrder
+    finishReason?: SortOrderInput | SortOrder
+    errorCode?: SortOrderInput | SortOrder
+    actor?: SortOrder
+    environment?: SortOrder
+    startedAt?: SortOrder
+    completedAt?: SortOrderInput | SortOrder
+    _count?: LlmOperationInvocationCountOrderByAggregateInput
+    _avg?: LlmOperationInvocationAvgOrderByAggregateInput
+    _max?: LlmOperationInvocationMaxOrderByAggregateInput
+    _min?: LlmOperationInvocationMinOrderByAggregateInput
+    _sum?: LlmOperationInvocationSumOrderByAggregateInput
+  }
+
+  export type LlmOperationInvocationScalarWhereWithAggregatesInput = {
+    AND?: LlmOperationInvocationScalarWhereWithAggregatesInput | LlmOperationInvocationScalarWhereWithAggregatesInput[]
+    OR?: LlmOperationInvocationScalarWhereWithAggregatesInput[]
+    NOT?: LlmOperationInvocationScalarWhereWithAggregatesInput | LlmOperationInvocationScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"LlmOperationInvocation"> | string
+    versionId?: UuidWithAggregatesFilter<"LlmOperationInvocation"> | string
+    executionId?: UuidNullableWithAggregatesFilter<"LlmOperationInvocation"> | string | null
+    stepId?: UuidNullableWithAggregatesFilter<"LlmOperationInvocation"> | string | null
+    tenantId?: UuidNullableWithAggregatesFilter<"LlmOperationInvocation"> | string | null
+    provider?: StringWithAggregatesFilter<"LlmOperationInvocation"> | string
+    requestedModel?: StringWithAggregatesFilter<"LlmOperationInvocation"> | string
+    resolvedModel?: StringNullableWithAggregatesFilter<"LlmOperationInvocation"> | string | null
+    inputDigest?: StringNullableWithAggregatesFilter<"LlmOperationInvocation"> | string | null
+    outputDigest?: StringNullableWithAggregatesFilter<"LlmOperationInvocation"> | string | null
+    idempotencyKey?: StringNullableWithAggregatesFilter<"LlmOperationInvocation"> | string | null
+    resultJson?: JsonNullableWithAggregatesFilter<"LlmOperationInvocation">
+    inputStorageRef?: StringNullableWithAggregatesFilter<"LlmOperationInvocation"> | string | null
+    outputStorageRef?: StringNullableWithAggregatesFilter<"LlmOperationInvocation"> | string | null
+    tokenUsageJson?: JsonNullableWithAggregatesFilter<"LlmOperationInvocation">
+    latencyMs?: IntNullableWithAggregatesFilter<"LlmOperationInvocation"> | number | null
+    estimatedCost?: DecimalNullableWithAggregatesFilter<"LlmOperationInvocation"> | Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: IntWithAggregatesFilter<"LlmOperationInvocation"> | number
+    repairAttempts?: IntWithAggregatesFilter<"LlmOperationInvocation"> | number
+    validationResult?: StringWithAggregatesFilter<"LlmOperationInvocation"> | string
+    finishReason?: StringNullableWithAggregatesFilter<"LlmOperationInvocation"> | string | null
+    errorCode?: StringNullableWithAggregatesFilter<"LlmOperationInvocation"> | string | null
+    actor?: StringWithAggregatesFilter<"LlmOperationInvocation"> | string
+    environment?: StringWithAggregatesFilter<"LlmOperationInvocation"> | string
+    startedAt?: DateTimeWithAggregatesFilter<"LlmOperationInvocation"> | Date | string
+    completedAt?: DateTimeNullableWithAggregatesFilter<"LlmOperationInvocation"> | Date | string | null
+  }
+
+  export type LlmOperationAttestationWhereInput = {
+    AND?: LlmOperationAttestationWhereInput | LlmOperationAttestationWhereInput[]
+    OR?: LlmOperationAttestationWhereInput[]
+    NOT?: LlmOperationAttestationWhereInput | LlmOperationAttestationWhereInput[]
+    id?: UuidFilter<"LlmOperationAttestation"> | string
+    operationId?: UuidFilter<"LlmOperationAttestation"> | string
+    versionId?: UuidFilter<"LlmOperationAttestation"> | string
+    operationDigest?: StringFilter<"LlmOperationAttestation"> | string
+    contractDigest?: StringFilter<"LlmOperationAttestation"> | string
+    evalSuiteDigest?: StringNullableFilter<"LlmOperationAttestation"> | string | null
+    validatorVersion?: StringFilter<"LlmOperationAttestation"> | string
+    schemaTests?: StringFilter<"LlmOperationAttestation"> | string
+    offlineEvals?: StringFilter<"LlmOperationAttestation"> | string
+    liveEvals?: StringFilter<"LlmOperationAttestation"> | string
+    securityEvals?: StringFilter<"LlmOperationAttestation"> | string
+    gateResultsJson?: JsonFilter<"LlmOperationAttestation">
+    createdBy?: StringFilter<"LlmOperationAttestation"> | string
+    createdAt?: DateTimeFilter<"LlmOperationAttestation"> | Date | string
+    operation?: XOR<LlmOperationRelationFilter, LlmOperationWhereInput>
+    version?: XOR<LlmOperationVersionRelationFilter, LlmOperationVersionWhereInput>
+  }
+
+  export type LlmOperationAttestationOrderByWithRelationInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    versionId?: SortOrder
+    operationDigest?: SortOrder
+    contractDigest?: SortOrder
+    evalSuiteDigest?: SortOrderInput | SortOrder
+    validatorVersion?: SortOrder
+    schemaTests?: SortOrder
+    offlineEvals?: SortOrder
+    liveEvals?: SortOrder
+    securityEvals?: SortOrder
+    gateResultsJson?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    operation?: LlmOperationOrderByWithRelationInput
+    version?: LlmOperationVersionOrderByWithRelationInput
+  }
+
+  export type LlmOperationAttestationWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    versionId_operationDigest?: LlmOperationAttestationVersionIdOperationDigestCompoundUniqueInput
+    AND?: LlmOperationAttestationWhereInput | LlmOperationAttestationWhereInput[]
+    OR?: LlmOperationAttestationWhereInput[]
+    NOT?: LlmOperationAttestationWhereInput | LlmOperationAttestationWhereInput[]
+    operationId?: UuidFilter<"LlmOperationAttestation"> | string
+    versionId?: UuidFilter<"LlmOperationAttestation"> | string
+    operationDigest?: StringFilter<"LlmOperationAttestation"> | string
+    contractDigest?: StringFilter<"LlmOperationAttestation"> | string
+    evalSuiteDigest?: StringNullableFilter<"LlmOperationAttestation"> | string | null
+    validatorVersion?: StringFilter<"LlmOperationAttestation"> | string
+    schemaTests?: StringFilter<"LlmOperationAttestation"> | string
+    offlineEvals?: StringFilter<"LlmOperationAttestation"> | string
+    liveEvals?: StringFilter<"LlmOperationAttestation"> | string
+    securityEvals?: StringFilter<"LlmOperationAttestation"> | string
+    gateResultsJson?: JsonFilter<"LlmOperationAttestation">
+    createdBy?: StringFilter<"LlmOperationAttestation"> | string
+    createdAt?: DateTimeFilter<"LlmOperationAttestation"> | Date | string
+    operation?: XOR<LlmOperationRelationFilter, LlmOperationWhereInput>
+    version?: XOR<LlmOperationVersionRelationFilter, LlmOperationVersionWhereInput>
+  }, "id" | "versionId_operationDigest">
+
+  export type LlmOperationAttestationOrderByWithAggregationInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    versionId?: SortOrder
+    operationDigest?: SortOrder
+    contractDigest?: SortOrder
+    evalSuiteDigest?: SortOrderInput | SortOrder
+    validatorVersion?: SortOrder
+    schemaTests?: SortOrder
+    offlineEvals?: SortOrder
+    liveEvals?: SortOrder
+    securityEvals?: SortOrder
+    gateResultsJson?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    _count?: LlmOperationAttestationCountOrderByAggregateInput
+    _max?: LlmOperationAttestationMaxOrderByAggregateInput
+    _min?: LlmOperationAttestationMinOrderByAggregateInput
+  }
+
+  export type LlmOperationAttestationScalarWhereWithAggregatesInput = {
+    AND?: LlmOperationAttestationScalarWhereWithAggregatesInput | LlmOperationAttestationScalarWhereWithAggregatesInput[]
+    OR?: LlmOperationAttestationScalarWhereWithAggregatesInput[]
+    NOT?: LlmOperationAttestationScalarWhereWithAggregatesInput | LlmOperationAttestationScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"LlmOperationAttestation"> | string
+    operationId?: UuidWithAggregatesFilter<"LlmOperationAttestation"> | string
+    versionId?: UuidWithAggregatesFilter<"LlmOperationAttestation"> | string
+    operationDigest?: StringWithAggregatesFilter<"LlmOperationAttestation"> | string
+    contractDigest?: StringWithAggregatesFilter<"LlmOperationAttestation"> | string
+    evalSuiteDigest?: StringNullableWithAggregatesFilter<"LlmOperationAttestation"> | string | null
+    validatorVersion?: StringWithAggregatesFilter<"LlmOperationAttestation"> | string
+    schemaTests?: StringWithAggregatesFilter<"LlmOperationAttestation"> | string
+    offlineEvals?: StringWithAggregatesFilter<"LlmOperationAttestation"> | string
+    liveEvals?: StringWithAggregatesFilter<"LlmOperationAttestation"> | string
+    securityEvals?: StringWithAggregatesFilter<"LlmOperationAttestation"> | string
+    gateResultsJson?: JsonWithAggregatesFilter<"LlmOperationAttestation">
+    createdBy?: StringWithAggregatesFilter<"LlmOperationAttestation"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"LlmOperationAttestation"> | Date | string
   }
 
   export type ExecutionCreateInput = {
@@ -6650,6 +18113,991 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type LlmOperationCreateInput = {
+    id?: string
+    operationKey: string
+    displayName: string
+    description: string
+    owner: string
+    status?: string
+    source?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    versions?: LlmOperationVersionCreateNestedManyWithoutOperationInput
+    activations?: LlmOperationActivationCreateNestedManyWithoutOperationInput
+    activationEvents?: LlmOperationActivationEventCreateNestedManyWithoutOperationInput
+    attestations?: LlmOperationAttestationCreateNestedManyWithoutOperationInput
+  }
+
+  export type LlmOperationUncheckedCreateInput = {
+    id?: string
+    operationKey: string
+    displayName: string
+    description: string
+    owner: string
+    status?: string
+    source?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    versions?: LlmOperationVersionUncheckedCreateNestedManyWithoutOperationInput
+    activations?: LlmOperationActivationUncheckedCreateNestedManyWithoutOperationInput
+    activationEvents?: LlmOperationActivationEventUncheckedCreateNestedManyWithoutOperationInput
+    attestations?: LlmOperationAttestationUncheckedCreateNestedManyWithoutOperationInput
+  }
+
+  export type LlmOperationUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationKey?: StringFieldUpdateOperationsInput | string
+    displayName?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    owner?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    versions?: LlmOperationVersionUpdateManyWithoutOperationNestedInput
+    activations?: LlmOperationActivationUpdateManyWithoutOperationNestedInput
+    activationEvents?: LlmOperationActivationEventUpdateManyWithoutOperationNestedInput
+    attestations?: LlmOperationAttestationUpdateManyWithoutOperationNestedInput
+  }
+
+  export type LlmOperationUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationKey?: StringFieldUpdateOperationsInput | string
+    displayName?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    owner?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    versions?: LlmOperationVersionUncheckedUpdateManyWithoutOperationNestedInput
+    activations?: LlmOperationActivationUncheckedUpdateManyWithoutOperationNestedInput
+    activationEvents?: LlmOperationActivationEventUncheckedUpdateManyWithoutOperationNestedInput
+    attestations?: LlmOperationAttestationUncheckedUpdateManyWithoutOperationNestedInput
+  }
+
+  export type LlmOperationCreateManyInput = {
+    id?: string
+    operationKey: string
+    displayName: string
+    description: string
+    owner: string
+    status?: string
+    source?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type LlmOperationUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationKey?: StringFieldUpdateOperationsInput | string
+    displayName?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    owner?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationKey?: StringFieldUpdateOperationsInput | string
+    displayName?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    owner?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationVersionCreateInput = {
+    id?: string
+    version: string
+    state?: string
+    manifestJson: JsonNullValueInput | InputJsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary?: string
+    source?: string
+    approvedBy?: string | null
+    approvedAt?: Date | string | null
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    operation: LlmOperationCreateNestedOneWithoutVersionsInput
+    activations?: LlmOperationActivationCreateNestedManyWithoutVersionInput
+    activationEvents?: LlmOperationActivationEventCreateNestedManyWithoutVersionInput
+    evalRuns?: LlmOperationEvalRunCreateNestedManyWithoutVersionInput
+    invocations?: LlmOperationInvocationCreateNestedManyWithoutVersionInput
+    attestations?: LlmOperationAttestationCreateNestedManyWithoutVersionInput
+  }
+
+  export type LlmOperationVersionUncheckedCreateInput = {
+    id?: string
+    operationId: string
+    version: string
+    state?: string
+    manifestJson: JsonNullValueInput | InputJsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary?: string
+    source?: string
+    approvedBy?: string | null
+    approvedAt?: Date | string | null
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    activations?: LlmOperationActivationUncheckedCreateNestedManyWithoutVersionInput
+    activationEvents?: LlmOperationActivationEventUncheckedCreateNestedManyWithoutVersionInput
+    evalRuns?: LlmOperationEvalRunUncheckedCreateNestedManyWithoutVersionInput
+    invocations?: LlmOperationInvocationUncheckedCreateNestedManyWithoutVersionInput
+    attestations?: LlmOperationAttestationUncheckedCreateNestedManyWithoutVersionInput
+  }
+
+  export type LlmOperationVersionUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    operation?: LlmOperationUpdateOneRequiredWithoutVersionsNestedInput
+    activations?: LlmOperationActivationUpdateManyWithoutVersionNestedInput
+    activationEvents?: LlmOperationActivationEventUpdateManyWithoutVersionNestedInput
+    evalRuns?: LlmOperationEvalRunUpdateManyWithoutVersionNestedInput
+    invocations?: LlmOperationInvocationUpdateManyWithoutVersionNestedInput
+    attestations?: LlmOperationAttestationUpdateManyWithoutVersionNestedInput
+  }
+
+  export type LlmOperationVersionUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    activations?: LlmOperationActivationUncheckedUpdateManyWithoutVersionNestedInput
+    activationEvents?: LlmOperationActivationEventUncheckedUpdateManyWithoutVersionNestedInput
+    evalRuns?: LlmOperationEvalRunUncheckedUpdateManyWithoutVersionNestedInput
+    invocations?: LlmOperationInvocationUncheckedUpdateManyWithoutVersionNestedInput
+    attestations?: LlmOperationAttestationUncheckedUpdateManyWithoutVersionNestedInput
+  }
+
+  export type LlmOperationVersionCreateManyInput = {
+    id?: string
+    operationId: string
+    version: string
+    state?: string
+    manifestJson: JsonNullValueInput | InputJsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary?: string
+    source?: string
+    approvedBy?: string | null
+    approvedAt?: Date | string | null
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type LlmOperationVersionUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationVersionUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationActivationCreateInput = {
+    id?: string
+    environment: string
+    label?: string | null
+    activatedBy: string
+    reason: string
+    rolloutPercent?: number | null
+    activatedAt?: Date | string
+    updatedAt?: Date | string
+    operation: LlmOperationCreateNestedOneWithoutActivationsInput
+    version: LlmOperationVersionCreateNestedOneWithoutActivationsInput
+  }
+
+  export type LlmOperationActivationUncheckedCreateInput = {
+    id?: string
+    operationId: string
+    versionId: string
+    environment: string
+    label?: string | null
+    activatedBy: string
+    reason: string
+    rolloutPercent?: number | null
+    activatedAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type LlmOperationActivationUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    label?: NullableStringFieldUpdateOperationsInput | string | null
+    activatedBy?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    rolloutPercent?: NullableIntFieldUpdateOperationsInput | number | null
+    activatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    operation?: LlmOperationUpdateOneRequiredWithoutActivationsNestedInput
+    version?: LlmOperationVersionUpdateOneRequiredWithoutActivationsNestedInput
+  }
+
+  export type LlmOperationActivationUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    versionId?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    label?: NullableStringFieldUpdateOperationsInput | string | null
+    activatedBy?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    rolloutPercent?: NullableIntFieldUpdateOperationsInput | number | null
+    activatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationActivationCreateManyInput = {
+    id?: string
+    operationId: string
+    versionId: string
+    environment: string
+    label?: string | null
+    activatedBy: string
+    reason: string
+    rolloutPercent?: number | null
+    activatedAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type LlmOperationActivationUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    label?: NullableStringFieldUpdateOperationsInput | string | null
+    activatedBy?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    rolloutPercent?: NullableIntFieldUpdateOperationsInput | number | null
+    activatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationActivationUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    versionId?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    label?: NullableStringFieldUpdateOperationsInput | string | null
+    activatedBy?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    rolloutPercent?: NullableIntFieldUpdateOperationsInput | number | null
+    activatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationActivationEventCreateInput = {
+    id?: string
+    previousVersionId?: string | null
+    environment: string
+    action: string
+    actor: string
+    reason: string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    operation: LlmOperationCreateNestedOneWithoutActivationEventsInput
+    version: LlmOperationVersionCreateNestedOneWithoutActivationEventsInput
+  }
+
+  export type LlmOperationActivationEventUncheckedCreateInput = {
+    id?: string
+    operationId: string
+    previousVersionId?: string | null
+    newVersionId: string
+    environment: string
+    action: string
+    actor: string
+    reason: string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationActivationEventUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    previousVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    environment?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    actor?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    operation?: LlmOperationUpdateOneRequiredWithoutActivationEventsNestedInput
+    version?: LlmOperationVersionUpdateOneRequiredWithoutActivationEventsNestedInput
+  }
+
+  export type LlmOperationActivationEventUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    previousVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    newVersionId?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    actor?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationActivationEventCreateManyInput = {
+    id?: string
+    operationId: string
+    previousVersionId?: string | null
+    newVersionId: string
+    environment: string
+    action: string
+    actor: string
+    reason: string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationActivationEventUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    previousVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    environment?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    actor?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationActivationEventUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    previousVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    newVersionId?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    actor?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationEvalSuiteCreateInput = {
+    id?: string
+    operationId: string
+    versionId?: string | null
+    name: string
+    description?: string | null
+    suiteDigest: string
+    createdBy: string
+    createdAt?: Date | string
+    cases?: LlmOperationEvalCaseCreateNestedManyWithoutSuiteInput
+    evalRuns?: LlmOperationEvalRunCreateNestedManyWithoutSuiteInput
+  }
+
+  export type LlmOperationEvalSuiteUncheckedCreateInput = {
+    id?: string
+    operationId: string
+    versionId?: string | null
+    name: string
+    description?: string | null
+    suiteDigest: string
+    createdBy: string
+    createdAt?: Date | string
+    cases?: LlmOperationEvalCaseUncheckedCreateNestedManyWithoutSuiteInput
+    evalRuns?: LlmOperationEvalRunUncheckedCreateNestedManyWithoutSuiteInput
+  }
+
+  export type LlmOperationEvalSuiteUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    versionId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    suiteDigest?: StringFieldUpdateOperationsInput | string
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    cases?: LlmOperationEvalCaseUpdateManyWithoutSuiteNestedInput
+    evalRuns?: LlmOperationEvalRunUpdateManyWithoutSuiteNestedInput
+  }
+
+  export type LlmOperationEvalSuiteUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    versionId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    suiteDigest?: StringFieldUpdateOperationsInput | string
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    cases?: LlmOperationEvalCaseUncheckedUpdateManyWithoutSuiteNestedInput
+    evalRuns?: LlmOperationEvalRunUncheckedUpdateManyWithoutSuiteNestedInput
+  }
+
+  export type LlmOperationEvalSuiteCreateManyInput = {
+    id?: string
+    operationId: string
+    versionId?: string | null
+    name: string
+    description?: string | null
+    suiteDigest: string
+    createdBy: string
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationEvalSuiteUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    versionId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    suiteDigest?: StringFieldUpdateOperationsInput | string
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationEvalSuiteUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    versionId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    suiteDigest?: StringFieldUpdateOperationsInput | string
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationEvalCaseCreateInput = {
+    id?: string
+    name: string
+    inputJson: JsonNullValueInput | InputJsonValue
+    expectedJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: boolean
+    errorContains?: string | null
+    createdAt?: Date | string
+    suite: LlmOperationEvalSuiteCreateNestedOneWithoutCasesInput
+  }
+
+  export type LlmOperationEvalCaseUncheckedCreateInput = {
+    id?: string
+    suiteId: string
+    name: string
+    inputJson: JsonNullValueInput | InputJsonValue
+    expectedJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: boolean
+    errorContains?: string | null
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationEvalCaseUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    inputJson?: JsonNullValueInput | InputJsonValue
+    expectedJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: BoolFieldUpdateOperationsInput | boolean
+    errorContains?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    suite?: LlmOperationEvalSuiteUpdateOneRequiredWithoutCasesNestedInput
+  }
+
+  export type LlmOperationEvalCaseUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    suiteId?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    inputJson?: JsonNullValueInput | InputJsonValue
+    expectedJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: BoolFieldUpdateOperationsInput | boolean
+    errorContains?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationEvalCaseCreateManyInput = {
+    id?: string
+    suiteId: string
+    name: string
+    inputJson: JsonNullValueInput | InputJsonValue
+    expectedJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: boolean
+    errorContains?: string | null
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationEvalCaseUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    inputJson?: JsonNullValueInput | InputJsonValue
+    expectedJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: BoolFieldUpdateOperationsInput | boolean
+    errorContains?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationEvalCaseUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    suiteId?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    inputJson?: JsonNullValueInput | InputJsonValue
+    expectedJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: BoolFieldUpdateOperationsInput | boolean
+    errorContains?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationEvalRunCreateInput = {
+    id?: string
+    modelPolicySnapshot: JsonNullValueInput | InputJsonValue
+    resultsJson: JsonNullValueInput | InputJsonValue
+    metricsJson: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: string | null
+    executedBy: string
+    startedAt?: Date | string
+    completedAt?: Date | string | null
+    version: LlmOperationVersionCreateNestedOneWithoutEvalRunsInput
+    suite: LlmOperationEvalSuiteCreateNestedOneWithoutEvalRunsInput
+  }
+
+  export type LlmOperationEvalRunUncheckedCreateInput = {
+    id?: string
+    versionId: string
+    suiteId: string
+    modelPolicySnapshot: JsonNullValueInput | InputJsonValue
+    resultsJson: JsonNullValueInput | InputJsonValue
+    metricsJson: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: string | null
+    executedBy: string
+    startedAt?: Date | string
+    completedAt?: Date | string | null
+  }
+
+  export type LlmOperationEvalRunUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    modelPolicySnapshot?: JsonNullValueInput | InputJsonValue
+    resultsJson?: JsonNullValueInput | InputJsonValue
+    metricsJson?: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    executedBy?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    version?: LlmOperationVersionUpdateOneRequiredWithoutEvalRunsNestedInput
+    suite?: LlmOperationEvalSuiteUpdateOneRequiredWithoutEvalRunsNestedInput
+  }
+
+  export type LlmOperationEvalRunUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    versionId?: StringFieldUpdateOperationsInput | string
+    suiteId?: StringFieldUpdateOperationsInput | string
+    modelPolicySnapshot?: JsonNullValueInput | InputJsonValue
+    resultsJson?: JsonNullValueInput | InputJsonValue
+    metricsJson?: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    executedBy?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type LlmOperationEvalRunCreateManyInput = {
+    id?: string
+    versionId: string
+    suiteId: string
+    modelPolicySnapshot: JsonNullValueInput | InputJsonValue
+    resultsJson: JsonNullValueInput | InputJsonValue
+    metricsJson: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: string | null
+    executedBy: string
+    startedAt?: Date | string
+    completedAt?: Date | string | null
+  }
+
+  export type LlmOperationEvalRunUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    modelPolicySnapshot?: JsonNullValueInput | InputJsonValue
+    resultsJson?: JsonNullValueInput | InputJsonValue
+    metricsJson?: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    executedBy?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type LlmOperationEvalRunUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    versionId?: StringFieldUpdateOperationsInput | string
+    suiteId?: StringFieldUpdateOperationsInput | string
+    modelPolicySnapshot?: JsonNullValueInput | InputJsonValue
+    resultsJson?: JsonNullValueInput | InputJsonValue
+    metricsJson?: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    executedBy?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type LlmOperationInvocationCreateInput = {
+    id?: string
+    executionId?: string | null
+    stepId?: string | null
+    tenantId?: string | null
+    provider: string
+    requestedModel: string
+    resolvedModel?: string | null
+    inputDigest?: string | null
+    outputDigest?: string | null
+    idempotencyKey?: string | null
+    resultJson?: NullableJsonNullValueInput | InputJsonValue
+    inputStorageRef?: string | null
+    outputStorageRef?: string | null
+    tokenUsageJson?: NullableJsonNullValueInput | InputJsonValue
+    latencyMs?: number | null
+    estimatedCost?: Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: number
+    repairAttempts?: number
+    validationResult: string
+    finishReason?: string | null
+    errorCode?: string | null
+    actor: string
+    environment: string
+    startedAt?: Date | string
+    completedAt?: Date | string | null
+    version: LlmOperationVersionCreateNestedOneWithoutInvocationsInput
+  }
+
+  export type LlmOperationInvocationUncheckedCreateInput = {
+    id?: string
+    versionId: string
+    executionId?: string | null
+    stepId?: string | null
+    tenantId?: string | null
+    provider: string
+    requestedModel: string
+    resolvedModel?: string | null
+    inputDigest?: string | null
+    outputDigest?: string | null
+    idempotencyKey?: string | null
+    resultJson?: NullableJsonNullValueInput | InputJsonValue
+    inputStorageRef?: string | null
+    outputStorageRef?: string | null
+    tokenUsageJson?: NullableJsonNullValueInput | InputJsonValue
+    latencyMs?: number | null
+    estimatedCost?: Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: number
+    repairAttempts?: number
+    validationResult: string
+    finishReason?: string | null
+    errorCode?: string | null
+    actor: string
+    environment: string
+    startedAt?: Date | string
+    completedAt?: Date | string | null
+  }
+
+  export type LlmOperationInvocationUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    stepId?: NullableStringFieldUpdateOperationsInput | string | null
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: StringFieldUpdateOperationsInput | string
+    requestedModel?: StringFieldUpdateOperationsInput | string
+    resolvedModel?: NullableStringFieldUpdateOperationsInput | string | null
+    inputDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    outputDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
+    resultJson?: NullableJsonNullValueInput | InputJsonValue
+    inputStorageRef?: NullableStringFieldUpdateOperationsInput | string | null
+    outputStorageRef?: NullableStringFieldUpdateOperationsInput | string | null
+    tokenUsageJson?: NullableJsonNullValueInput | InputJsonValue
+    latencyMs?: NullableIntFieldUpdateOperationsInput | number | null
+    estimatedCost?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: IntFieldUpdateOperationsInput | number
+    repairAttempts?: IntFieldUpdateOperationsInput | number
+    validationResult?: StringFieldUpdateOperationsInput | string
+    finishReason?: NullableStringFieldUpdateOperationsInput | string | null
+    errorCode?: NullableStringFieldUpdateOperationsInput | string | null
+    actor?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    version?: LlmOperationVersionUpdateOneRequiredWithoutInvocationsNestedInput
+  }
+
+  export type LlmOperationInvocationUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    versionId?: StringFieldUpdateOperationsInput | string
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    stepId?: NullableStringFieldUpdateOperationsInput | string | null
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: StringFieldUpdateOperationsInput | string
+    requestedModel?: StringFieldUpdateOperationsInput | string
+    resolvedModel?: NullableStringFieldUpdateOperationsInput | string | null
+    inputDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    outputDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
+    resultJson?: NullableJsonNullValueInput | InputJsonValue
+    inputStorageRef?: NullableStringFieldUpdateOperationsInput | string | null
+    outputStorageRef?: NullableStringFieldUpdateOperationsInput | string | null
+    tokenUsageJson?: NullableJsonNullValueInput | InputJsonValue
+    latencyMs?: NullableIntFieldUpdateOperationsInput | number | null
+    estimatedCost?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: IntFieldUpdateOperationsInput | number
+    repairAttempts?: IntFieldUpdateOperationsInput | number
+    validationResult?: StringFieldUpdateOperationsInput | string
+    finishReason?: NullableStringFieldUpdateOperationsInput | string | null
+    errorCode?: NullableStringFieldUpdateOperationsInput | string | null
+    actor?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type LlmOperationInvocationCreateManyInput = {
+    id?: string
+    versionId: string
+    executionId?: string | null
+    stepId?: string | null
+    tenantId?: string | null
+    provider: string
+    requestedModel: string
+    resolvedModel?: string | null
+    inputDigest?: string | null
+    outputDigest?: string | null
+    idempotencyKey?: string | null
+    resultJson?: NullableJsonNullValueInput | InputJsonValue
+    inputStorageRef?: string | null
+    outputStorageRef?: string | null
+    tokenUsageJson?: NullableJsonNullValueInput | InputJsonValue
+    latencyMs?: number | null
+    estimatedCost?: Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: number
+    repairAttempts?: number
+    validationResult: string
+    finishReason?: string | null
+    errorCode?: string | null
+    actor: string
+    environment: string
+    startedAt?: Date | string
+    completedAt?: Date | string | null
+  }
+
+  export type LlmOperationInvocationUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    stepId?: NullableStringFieldUpdateOperationsInput | string | null
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: StringFieldUpdateOperationsInput | string
+    requestedModel?: StringFieldUpdateOperationsInput | string
+    resolvedModel?: NullableStringFieldUpdateOperationsInput | string | null
+    inputDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    outputDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
+    resultJson?: NullableJsonNullValueInput | InputJsonValue
+    inputStorageRef?: NullableStringFieldUpdateOperationsInput | string | null
+    outputStorageRef?: NullableStringFieldUpdateOperationsInput | string | null
+    tokenUsageJson?: NullableJsonNullValueInput | InputJsonValue
+    latencyMs?: NullableIntFieldUpdateOperationsInput | number | null
+    estimatedCost?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: IntFieldUpdateOperationsInput | number
+    repairAttempts?: IntFieldUpdateOperationsInput | number
+    validationResult?: StringFieldUpdateOperationsInput | string
+    finishReason?: NullableStringFieldUpdateOperationsInput | string | null
+    errorCode?: NullableStringFieldUpdateOperationsInput | string | null
+    actor?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type LlmOperationInvocationUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    versionId?: StringFieldUpdateOperationsInput | string
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    stepId?: NullableStringFieldUpdateOperationsInput | string | null
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: StringFieldUpdateOperationsInput | string
+    requestedModel?: StringFieldUpdateOperationsInput | string
+    resolvedModel?: NullableStringFieldUpdateOperationsInput | string | null
+    inputDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    outputDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
+    resultJson?: NullableJsonNullValueInput | InputJsonValue
+    inputStorageRef?: NullableStringFieldUpdateOperationsInput | string | null
+    outputStorageRef?: NullableStringFieldUpdateOperationsInput | string | null
+    tokenUsageJson?: NullableJsonNullValueInput | InputJsonValue
+    latencyMs?: NullableIntFieldUpdateOperationsInput | number | null
+    estimatedCost?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: IntFieldUpdateOperationsInput | number
+    repairAttempts?: IntFieldUpdateOperationsInput | number
+    validationResult?: StringFieldUpdateOperationsInput | string
+    finishReason?: NullableStringFieldUpdateOperationsInput | string | null
+    errorCode?: NullableStringFieldUpdateOperationsInput | string | null
+    actor?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type LlmOperationAttestationCreateInput = {
+    id?: string
+    operationDigest: string
+    contractDigest: string
+    evalSuiteDigest?: string | null
+    validatorVersion: string
+    schemaTests: string
+    offlineEvals: string
+    liveEvals: string
+    securityEvals: string
+    gateResultsJson: JsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+    operation: LlmOperationCreateNestedOneWithoutAttestationsInput
+    version: LlmOperationVersionCreateNestedOneWithoutAttestationsInput
+  }
+
+  export type LlmOperationAttestationUncheckedCreateInput = {
+    id?: string
+    operationId: string
+    versionId: string
+    operationDigest: string
+    contractDigest: string
+    evalSuiteDigest?: string | null
+    validatorVersion: string
+    schemaTests: string
+    offlineEvals: string
+    liveEvals: string
+    securityEvals: string
+    gateResultsJson: JsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationAttestationUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    evalSuiteDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    validatorVersion?: StringFieldUpdateOperationsInput | string
+    schemaTests?: StringFieldUpdateOperationsInput | string
+    offlineEvals?: StringFieldUpdateOperationsInput | string
+    liveEvals?: StringFieldUpdateOperationsInput | string
+    securityEvals?: StringFieldUpdateOperationsInput | string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    operation?: LlmOperationUpdateOneRequiredWithoutAttestationsNestedInput
+    version?: LlmOperationVersionUpdateOneRequiredWithoutAttestationsNestedInput
+  }
+
+  export type LlmOperationAttestationUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    versionId?: StringFieldUpdateOperationsInput | string
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    evalSuiteDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    validatorVersion?: StringFieldUpdateOperationsInput | string
+    schemaTests?: StringFieldUpdateOperationsInput | string
+    offlineEvals?: StringFieldUpdateOperationsInput | string
+    liveEvals?: StringFieldUpdateOperationsInput | string
+    securityEvals?: StringFieldUpdateOperationsInput | string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationAttestationCreateManyInput = {
+    id?: string
+    operationId: string
+    versionId: string
+    operationDigest: string
+    contractDigest: string
+    evalSuiteDigest?: string | null
+    validatorVersion: string
+    schemaTests: string
+    offlineEvals: string
+    liveEvals: string
+    securityEvals: string
+    gateResultsJson: JsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationAttestationUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    evalSuiteDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    validatorVersion?: StringFieldUpdateOperationsInput | string
+    schemaTests?: StringFieldUpdateOperationsInput | string
+    offlineEvals?: StringFieldUpdateOperationsInput | string
+    liveEvals?: StringFieldUpdateOperationsInput | string
+    securityEvals?: StringFieldUpdateOperationsInput | string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationAttestationUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    versionId?: StringFieldUpdateOperationsInput | string
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    evalSuiteDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    validatorVersion?: StringFieldUpdateOperationsInput | string
+    schemaTests?: StringFieldUpdateOperationsInput | string
+    offlineEvals?: StringFieldUpdateOperationsInput | string
+    liveEvals?: StringFieldUpdateOperationsInput | string
+    securityEvals?: StringFieldUpdateOperationsInput | string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type UuidFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -7171,6 +19619,627 @@ export namespace Prisma {
     createdAt?: SortOrder
   }
 
+  export type LlmOperationVersionListRelationFilter = {
+    every?: LlmOperationVersionWhereInput
+    some?: LlmOperationVersionWhereInput
+    none?: LlmOperationVersionWhereInput
+  }
+
+  export type LlmOperationActivationListRelationFilter = {
+    every?: LlmOperationActivationWhereInput
+    some?: LlmOperationActivationWhereInput
+    none?: LlmOperationActivationWhereInput
+  }
+
+  export type LlmOperationActivationEventListRelationFilter = {
+    every?: LlmOperationActivationEventWhereInput
+    some?: LlmOperationActivationEventWhereInput
+    none?: LlmOperationActivationEventWhereInput
+  }
+
+  export type LlmOperationAttestationListRelationFilter = {
+    every?: LlmOperationAttestationWhereInput
+    some?: LlmOperationAttestationWhereInput
+    none?: LlmOperationAttestationWhereInput
+  }
+
+  export type LlmOperationVersionOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type LlmOperationActivationOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type LlmOperationActivationEventOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type LlmOperationAttestationOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type LlmOperationCountOrderByAggregateInput = {
+    id?: SortOrder
+    operationKey?: SortOrder
+    displayName?: SortOrder
+    description?: SortOrder
+    owner?: SortOrder
+    status?: SortOrder
+    source?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type LlmOperationMaxOrderByAggregateInput = {
+    id?: SortOrder
+    operationKey?: SortOrder
+    displayName?: SortOrder
+    description?: SortOrder
+    owner?: SortOrder
+    status?: SortOrder
+    source?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type LlmOperationMinOrderByAggregateInput = {
+    id?: SortOrder
+    operationKey?: SortOrder
+    displayName?: SortOrder
+    description?: SortOrder
+    owner?: SortOrder
+    status?: SortOrder
+    source?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+  export type JsonFilter<$PrismaModel = never> = 
+    | PatchUndefined<
+        Either<Required<JsonFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
+
+  export type LlmOperationRelationFilter = {
+    is?: LlmOperationWhereInput
+    isNot?: LlmOperationWhereInput
+  }
+
+  export type LlmOperationEvalRunListRelationFilter = {
+    every?: LlmOperationEvalRunWhereInput
+    some?: LlmOperationEvalRunWhereInput
+    none?: LlmOperationEvalRunWhereInput
+  }
+
+  export type LlmOperationInvocationListRelationFilter = {
+    every?: LlmOperationInvocationWhereInput
+    some?: LlmOperationInvocationWhereInput
+    none?: LlmOperationInvocationWhereInput
+  }
+
+  export type LlmOperationEvalRunOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type LlmOperationInvocationOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type LlmOperationVersionOperationIdVersionCompoundUniqueInput = {
+    operationId: string
+    version: string
+  }
+
+  export type LlmOperationVersionOperationIdOperationDigestCompoundUniqueInput = {
+    operationId: string
+    operationDigest: string
+  }
+
+  export type LlmOperationVersionCountOrderByAggregateInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    version?: SortOrder
+    state?: SortOrder
+    manifestJson?: SortOrder
+    operationDigest?: SortOrder
+    contractDigest?: SortOrder
+    changeSummary?: SortOrder
+    source?: SortOrder
+    approvedBy?: SortOrder
+    approvedAt?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type LlmOperationVersionMaxOrderByAggregateInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    version?: SortOrder
+    state?: SortOrder
+    operationDigest?: SortOrder
+    contractDigest?: SortOrder
+    changeSummary?: SortOrder
+    source?: SortOrder
+    approvedBy?: SortOrder
+    approvedAt?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type LlmOperationVersionMinOrderByAggregateInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    version?: SortOrder
+    state?: SortOrder
+    operationDigest?: SortOrder
+    contractDigest?: SortOrder
+    changeSummary?: SortOrder
+    source?: SortOrder
+    approvedBy?: SortOrder
+    approvedAt?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+  export type JsonWithAggregatesFilter<$PrismaModel = never> = 
+    | PatchUndefined<
+        Either<Required<JsonWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonWithAggregatesFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonWithAggregatesFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedJsonFilter<$PrismaModel>
+    _max?: NestedJsonFilter<$PrismaModel>
+  }
+
+  export type IntNullableFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableFilter<$PrismaModel> | number | null
+  }
+
+  export type LlmOperationVersionRelationFilter = {
+    is?: LlmOperationVersionWhereInput
+    isNot?: LlmOperationVersionWhereInput
+  }
+
+  export type LlmOperationActivationOperationIdEnvironmentCompoundUniqueInput = {
+    operationId: string
+    environment: string
+  }
+
+  export type LlmOperationActivationCountOrderByAggregateInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    versionId?: SortOrder
+    environment?: SortOrder
+    label?: SortOrder
+    activatedBy?: SortOrder
+    reason?: SortOrder
+    rolloutPercent?: SortOrder
+    activatedAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type LlmOperationActivationAvgOrderByAggregateInput = {
+    rolloutPercent?: SortOrder
+  }
+
+  export type LlmOperationActivationMaxOrderByAggregateInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    versionId?: SortOrder
+    environment?: SortOrder
+    label?: SortOrder
+    activatedBy?: SortOrder
+    reason?: SortOrder
+    rolloutPercent?: SortOrder
+    activatedAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type LlmOperationActivationMinOrderByAggregateInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    versionId?: SortOrder
+    environment?: SortOrder
+    label?: SortOrder
+    activatedBy?: SortOrder
+    reason?: SortOrder
+    rolloutPercent?: SortOrder
+    activatedAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type LlmOperationActivationSumOrderByAggregateInput = {
+    rolloutPercent?: SortOrder
+  }
+
+  export type IntNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedIntNullableFilter<$PrismaModel>
+    _max?: NestedIntNullableFilter<$PrismaModel>
+  }
+
+  export type LlmOperationActivationEventCountOrderByAggregateInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    previousVersionId?: SortOrder
+    newVersionId?: SortOrder
+    environment?: SortOrder
+    action?: SortOrder
+    actor?: SortOrder
+    reason?: SortOrder
+    metadataJson?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type LlmOperationActivationEventMaxOrderByAggregateInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    previousVersionId?: SortOrder
+    newVersionId?: SortOrder
+    environment?: SortOrder
+    action?: SortOrder
+    actor?: SortOrder
+    reason?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type LlmOperationActivationEventMinOrderByAggregateInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    previousVersionId?: SortOrder
+    newVersionId?: SortOrder
+    environment?: SortOrder
+    action?: SortOrder
+    actor?: SortOrder
+    reason?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type LlmOperationEvalCaseListRelationFilter = {
+    every?: LlmOperationEvalCaseWhereInput
+    some?: LlmOperationEvalCaseWhereInput
+    none?: LlmOperationEvalCaseWhereInput
+  }
+
+  export type LlmOperationEvalCaseOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type LlmOperationEvalSuiteCountOrderByAggregateInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    versionId?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    suiteDigest?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type LlmOperationEvalSuiteMaxOrderByAggregateInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    versionId?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    suiteDigest?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type LlmOperationEvalSuiteMinOrderByAggregateInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    versionId?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    suiteDigest?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type LlmOperationEvalSuiteRelationFilter = {
+    is?: LlmOperationEvalSuiteWhereInput
+    isNot?: LlmOperationEvalSuiteWhereInput
+  }
+
+  export type LlmOperationEvalCaseCountOrderByAggregateInput = {
+    id?: SortOrder
+    suiteId?: SortOrder
+    name?: SortOrder
+    inputJson?: SortOrder
+    expectedJson?: SortOrder
+    isNegative?: SortOrder
+    errorContains?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type LlmOperationEvalCaseMaxOrderByAggregateInput = {
+    id?: SortOrder
+    suiteId?: SortOrder
+    name?: SortOrder
+    isNegative?: SortOrder
+    errorContains?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type LlmOperationEvalCaseMinOrderByAggregateInput = {
+    id?: SortOrder
+    suiteId?: SortOrder
+    name?: SortOrder
+    isNegative?: SortOrder
+    errorContains?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type LlmOperationEvalRunCountOrderByAggregateInput = {
+    id?: SortOrder
+    versionId?: SortOrder
+    suiteId?: SortOrder
+    modelPolicySnapshot?: SortOrder
+    resultsJson?: SortOrder
+    metricsJson?: SortOrder
+    baselineVersionId?: SortOrder
+    executedBy?: SortOrder
+    startedAt?: SortOrder
+    completedAt?: SortOrder
+  }
+
+  export type LlmOperationEvalRunMaxOrderByAggregateInput = {
+    id?: SortOrder
+    versionId?: SortOrder
+    suiteId?: SortOrder
+    baselineVersionId?: SortOrder
+    executedBy?: SortOrder
+    startedAt?: SortOrder
+    completedAt?: SortOrder
+  }
+
+  export type LlmOperationEvalRunMinOrderByAggregateInput = {
+    id?: SortOrder
+    versionId?: SortOrder
+    suiteId?: SortOrder
+    baselineVersionId?: SortOrder
+    executedBy?: SortOrder
+    startedAt?: SortOrder
+    completedAt?: SortOrder
+  }
+
+  export type DecimalNullableFilter<$PrismaModel = never> = {
+    equals?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel> | null
+    in?: Decimal[] | DecimalJsLike[] | number[] | string[] | ListDecimalFieldRefInput<$PrismaModel> | null
+    notIn?: Decimal[] | DecimalJsLike[] | number[] | string[] | ListDecimalFieldRefInput<$PrismaModel> | null
+    lt?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    lte?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    gt?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    gte?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    not?: NestedDecimalNullableFilter<$PrismaModel> | Decimal | DecimalJsLike | number | string | null
+  }
+
+  export type LlmOperationInvocationVersionIdIdempotencyKeyCompoundUniqueInput = {
+    versionId: string
+    idempotencyKey: string
+  }
+
+  export type LlmOperationInvocationCountOrderByAggregateInput = {
+    id?: SortOrder
+    versionId?: SortOrder
+    executionId?: SortOrder
+    stepId?: SortOrder
+    tenantId?: SortOrder
+    provider?: SortOrder
+    requestedModel?: SortOrder
+    resolvedModel?: SortOrder
+    inputDigest?: SortOrder
+    outputDigest?: SortOrder
+    idempotencyKey?: SortOrder
+    resultJson?: SortOrder
+    inputStorageRef?: SortOrder
+    outputStorageRef?: SortOrder
+    tokenUsageJson?: SortOrder
+    latencyMs?: SortOrder
+    estimatedCost?: SortOrder
+    parseAttempts?: SortOrder
+    repairAttempts?: SortOrder
+    validationResult?: SortOrder
+    finishReason?: SortOrder
+    errorCode?: SortOrder
+    actor?: SortOrder
+    environment?: SortOrder
+    startedAt?: SortOrder
+    completedAt?: SortOrder
+  }
+
+  export type LlmOperationInvocationAvgOrderByAggregateInput = {
+    latencyMs?: SortOrder
+    estimatedCost?: SortOrder
+    parseAttempts?: SortOrder
+    repairAttempts?: SortOrder
+  }
+
+  export type LlmOperationInvocationMaxOrderByAggregateInput = {
+    id?: SortOrder
+    versionId?: SortOrder
+    executionId?: SortOrder
+    stepId?: SortOrder
+    tenantId?: SortOrder
+    provider?: SortOrder
+    requestedModel?: SortOrder
+    resolvedModel?: SortOrder
+    inputDigest?: SortOrder
+    outputDigest?: SortOrder
+    idempotencyKey?: SortOrder
+    inputStorageRef?: SortOrder
+    outputStorageRef?: SortOrder
+    latencyMs?: SortOrder
+    estimatedCost?: SortOrder
+    parseAttempts?: SortOrder
+    repairAttempts?: SortOrder
+    validationResult?: SortOrder
+    finishReason?: SortOrder
+    errorCode?: SortOrder
+    actor?: SortOrder
+    environment?: SortOrder
+    startedAt?: SortOrder
+    completedAt?: SortOrder
+  }
+
+  export type LlmOperationInvocationMinOrderByAggregateInput = {
+    id?: SortOrder
+    versionId?: SortOrder
+    executionId?: SortOrder
+    stepId?: SortOrder
+    tenantId?: SortOrder
+    provider?: SortOrder
+    requestedModel?: SortOrder
+    resolvedModel?: SortOrder
+    inputDigest?: SortOrder
+    outputDigest?: SortOrder
+    idempotencyKey?: SortOrder
+    inputStorageRef?: SortOrder
+    outputStorageRef?: SortOrder
+    latencyMs?: SortOrder
+    estimatedCost?: SortOrder
+    parseAttempts?: SortOrder
+    repairAttempts?: SortOrder
+    validationResult?: SortOrder
+    finishReason?: SortOrder
+    errorCode?: SortOrder
+    actor?: SortOrder
+    environment?: SortOrder
+    startedAt?: SortOrder
+    completedAt?: SortOrder
+  }
+
+  export type LlmOperationInvocationSumOrderByAggregateInput = {
+    latencyMs?: SortOrder
+    estimatedCost?: SortOrder
+    parseAttempts?: SortOrder
+    repairAttempts?: SortOrder
+  }
+
+  export type DecimalNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel> | null
+    in?: Decimal[] | DecimalJsLike[] | number[] | string[] | ListDecimalFieldRefInput<$PrismaModel> | null
+    notIn?: Decimal[] | DecimalJsLike[] | number[] | string[] | ListDecimalFieldRefInput<$PrismaModel> | null
+    lt?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    lte?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    gt?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    gte?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    not?: NestedDecimalNullableWithAggregatesFilter<$PrismaModel> | Decimal | DecimalJsLike | number | string | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedDecimalNullableFilter<$PrismaModel>
+    _sum?: NestedDecimalNullableFilter<$PrismaModel>
+    _min?: NestedDecimalNullableFilter<$PrismaModel>
+    _max?: NestedDecimalNullableFilter<$PrismaModel>
+  }
+
+  export type LlmOperationAttestationVersionIdOperationDigestCompoundUniqueInput = {
+    versionId: string
+    operationDigest: string
+  }
+
+  export type LlmOperationAttestationCountOrderByAggregateInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    versionId?: SortOrder
+    operationDigest?: SortOrder
+    contractDigest?: SortOrder
+    evalSuiteDigest?: SortOrder
+    validatorVersion?: SortOrder
+    schemaTests?: SortOrder
+    offlineEvals?: SortOrder
+    liveEvals?: SortOrder
+    securityEvals?: SortOrder
+    gateResultsJson?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type LlmOperationAttestationMaxOrderByAggregateInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    versionId?: SortOrder
+    operationDigest?: SortOrder
+    contractDigest?: SortOrder
+    evalSuiteDigest?: SortOrder
+    validatorVersion?: SortOrder
+    schemaTests?: SortOrder
+    offlineEvals?: SortOrder
+    liveEvals?: SortOrder
+    securityEvals?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type LlmOperationAttestationMinOrderByAggregateInput = {
+    id?: SortOrder
+    operationId?: SortOrder
+    versionId?: SortOrder
+    operationDigest?: SortOrder
+    contractDigest?: SortOrder
+    evalSuiteDigest?: SortOrder
+    validatorVersion?: SortOrder
+    schemaTests?: SortOrder
+    offlineEvals?: SortOrder
+    liveEvals?: SortOrder
+    securityEvals?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+  }
+
   export type ExecutionStepCreateNestedManyWithoutExecutionInput = {
     create?: XOR<ExecutionStepCreateWithoutExecutionInput, ExecutionStepUncheckedCreateWithoutExecutionInput> | ExecutionStepCreateWithoutExecutionInput[] | ExecutionStepUncheckedCreateWithoutExecutionInput[]
     connectOrCreate?: ExecutionStepCreateOrConnectWithoutExecutionInput | ExecutionStepCreateOrConnectWithoutExecutionInput[]
@@ -7367,6 +20436,638 @@ export namespace Prisma {
     upsert?: ExecutionUpsertWithoutEventsInput
     connect?: ExecutionWhereUniqueInput
     update?: XOR<XOR<ExecutionUpdateToOneWithWhereWithoutEventsInput, ExecutionUpdateWithoutEventsInput>, ExecutionUncheckedUpdateWithoutEventsInput>
+  }
+
+  export type LlmOperationVersionCreateNestedManyWithoutOperationInput = {
+    create?: XOR<LlmOperationVersionCreateWithoutOperationInput, LlmOperationVersionUncheckedCreateWithoutOperationInput> | LlmOperationVersionCreateWithoutOperationInput[] | LlmOperationVersionUncheckedCreateWithoutOperationInput[]
+    connectOrCreate?: LlmOperationVersionCreateOrConnectWithoutOperationInput | LlmOperationVersionCreateOrConnectWithoutOperationInput[]
+    createMany?: LlmOperationVersionCreateManyOperationInputEnvelope
+    connect?: LlmOperationVersionWhereUniqueInput | LlmOperationVersionWhereUniqueInput[]
+  }
+
+  export type LlmOperationActivationCreateNestedManyWithoutOperationInput = {
+    create?: XOR<LlmOperationActivationCreateWithoutOperationInput, LlmOperationActivationUncheckedCreateWithoutOperationInput> | LlmOperationActivationCreateWithoutOperationInput[] | LlmOperationActivationUncheckedCreateWithoutOperationInput[]
+    connectOrCreate?: LlmOperationActivationCreateOrConnectWithoutOperationInput | LlmOperationActivationCreateOrConnectWithoutOperationInput[]
+    createMany?: LlmOperationActivationCreateManyOperationInputEnvelope
+    connect?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+  }
+
+  export type LlmOperationActivationEventCreateNestedManyWithoutOperationInput = {
+    create?: XOR<LlmOperationActivationEventCreateWithoutOperationInput, LlmOperationActivationEventUncheckedCreateWithoutOperationInput> | LlmOperationActivationEventCreateWithoutOperationInput[] | LlmOperationActivationEventUncheckedCreateWithoutOperationInput[]
+    connectOrCreate?: LlmOperationActivationEventCreateOrConnectWithoutOperationInput | LlmOperationActivationEventCreateOrConnectWithoutOperationInput[]
+    createMany?: LlmOperationActivationEventCreateManyOperationInputEnvelope
+    connect?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+  }
+
+  export type LlmOperationAttestationCreateNestedManyWithoutOperationInput = {
+    create?: XOR<LlmOperationAttestationCreateWithoutOperationInput, LlmOperationAttestationUncheckedCreateWithoutOperationInput> | LlmOperationAttestationCreateWithoutOperationInput[] | LlmOperationAttestationUncheckedCreateWithoutOperationInput[]
+    connectOrCreate?: LlmOperationAttestationCreateOrConnectWithoutOperationInput | LlmOperationAttestationCreateOrConnectWithoutOperationInput[]
+    createMany?: LlmOperationAttestationCreateManyOperationInputEnvelope
+    connect?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+  }
+
+  export type LlmOperationVersionUncheckedCreateNestedManyWithoutOperationInput = {
+    create?: XOR<LlmOperationVersionCreateWithoutOperationInput, LlmOperationVersionUncheckedCreateWithoutOperationInput> | LlmOperationVersionCreateWithoutOperationInput[] | LlmOperationVersionUncheckedCreateWithoutOperationInput[]
+    connectOrCreate?: LlmOperationVersionCreateOrConnectWithoutOperationInput | LlmOperationVersionCreateOrConnectWithoutOperationInput[]
+    createMany?: LlmOperationVersionCreateManyOperationInputEnvelope
+    connect?: LlmOperationVersionWhereUniqueInput | LlmOperationVersionWhereUniqueInput[]
+  }
+
+  export type LlmOperationActivationUncheckedCreateNestedManyWithoutOperationInput = {
+    create?: XOR<LlmOperationActivationCreateWithoutOperationInput, LlmOperationActivationUncheckedCreateWithoutOperationInput> | LlmOperationActivationCreateWithoutOperationInput[] | LlmOperationActivationUncheckedCreateWithoutOperationInput[]
+    connectOrCreate?: LlmOperationActivationCreateOrConnectWithoutOperationInput | LlmOperationActivationCreateOrConnectWithoutOperationInput[]
+    createMany?: LlmOperationActivationCreateManyOperationInputEnvelope
+    connect?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+  }
+
+  export type LlmOperationActivationEventUncheckedCreateNestedManyWithoutOperationInput = {
+    create?: XOR<LlmOperationActivationEventCreateWithoutOperationInput, LlmOperationActivationEventUncheckedCreateWithoutOperationInput> | LlmOperationActivationEventCreateWithoutOperationInput[] | LlmOperationActivationEventUncheckedCreateWithoutOperationInput[]
+    connectOrCreate?: LlmOperationActivationEventCreateOrConnectWithoutOperationInput | LlmOperationActivationEventCreateOrConnectWithoutOperationInput[]
+    createMany?: LlmOperationActivationEventCreateManyOperationInputEnvelope
+    connect?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+  }
+
+  export type LlmOperationAttestationUncheckedCreateNestedManyWithoutOperationInput = {
+    create?: XOR<LlmOperationAttestationCreateWithoutOperationInput, LlmOperationAttestationUncheckedCreateWithoutOperationInput> | LlmOperationAttestationCreateWithoutOperationInput[] | LlmOperationAttestationUncheckedCreateWithoutOperationInput[]
+    connectOrCreate?: LlmOperationAttestationCreateOrConnectWithoutOperationInput | LlmOperationAttestationCreateOrConnectWithoutOperationInput[]
+    createMany?: LlmOperationAttestationCreateManyOperationInputEnvelope
+    connect?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+  }
+
+  export type LlmOperationVersionUpdateManyWithoutOperationNestedInput = {
+    create?: XOR<LlmOperationVersionCreateWithoutOperationInput, LlmOperationVersionUncheckedCreateWithoutOperationInput> | LlmOperationVersionCreateWithoutOperationInput[] | LlmOperationVersionUncheckedCreateWithoutOperationInput[]
+    connectOrCreate?: LlmOperationVersionCreateOrConnectWithoutOperationInput | LlmOperationVersionCreateOrConnectWithoutOperationInput[]
+    upsert?: LlmOperationVersionUpsertWithWhereUniqueWithoutOperationInput | LlmOperationVersionUpsertWithWhereUniqueWithoutOperationInput[]
+    createMany?: LlmOperationVersionCreateManyOperationInputEnvelope
+    set?: LlmOperationVersionWhereUniqueInput | LlmOperationVersionWhereUniqueInput[]
+    disconnect?: LlmOperationVersionWhereUniqueInput | LlmOperationVersionWhereUniqueInput[]
+    delete?: LlmOperationVersionWhereUniqueInput | LlmOperationVersionWhereUniqueInput[]
+    connect?: LlmOperationVersionWhereUniqueInput | LlmOperationVersionWhereUniqueInput[]
+    update?: LlmOperationVersionUpdateWithWhereUniqueWithoutOperationInput | LlmOperationVersionUpdateWithWhereUniqueWithoutOperationInput[]
+    updateMany?: LlmOperationVersionUpdateManyWithWhereWithoutOperationInput | LlmOperationVersionUpdateManyWithWhereWithoutOperationInput[]
+    deleteMany?: LlmOperationVersionScalarWhereInput | LlmOperationVersionScalarWhereInput[]
+  }
+
+  export type LlmOperationActivationUpdateManyWithoutOperationNestedInput = {
+    create?: XOR<LlmOperationActivationCreateWithoutOperationInput, LlmOperationActivationUncheckedCreateWithoutOperationInput> | LlmOperationActivationCreateWithoutOperationInput[] | LlmOperationActivationUncheckedCreateWithoutOperationInput[]
+    connectOrCreate?: LlmOperationActivationCreateOrConnectWithoutOperationInput | LlmOperationActivationCreateOrConnectWithoutOperationInput[]
+    upsert?: LlmOperationActivationUpsertWithWhereUniqueWithoutOperationInput | LlmOperationActivationUpsertWithWhereUniqueWithoutOperationInput[]
+    createMany?: LlmOperationActivationCreateManyOperationInputEnvelope
+    set?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+    disconnect?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+    delete?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+    connect?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+    update?: LlmOperationActivationUpdateWithWhereUniqueWithoutOperationInput | LlmOperationActivationUpdateWithWhereUniqueWithoutOperationInput[]
+    updateMany?: LlmOperationActivationUpdateManyWithWhereWithoutOperationInput | LlmOperationActivationUpdateManyWithWhereWithoutOperationInput[]
+    deleteMany?: LlmOperationActivationScalarWhereInput | LlmOperationActivationScalarWhereInput[]
+  }
+
+  export type LlmOperationActivationEventUpdateManyWithoutOperationNestedInput = {
+    create?: XOR<LlmOperationActivationEventCreateWithoutOperationInput, LlmOperationActivationEventUncheckedCreateWithoutOperationInput> | LlmOperationActivationEventCreateWithoutOperationInput[] | LlmOperationActivationEventUncheckedCreateWithoutOperationInput[]
+    connectOrCreate?: LlmOperationActivationEventCreateOrConnectWithoutOperationInput | LlmOperationActivationEventCreateOrConnectWithoutOperationInput[]
+    upsert?: LlmOperationActivationEventUpsertWithWhereUniqueWithoutOperationInput | LlmOperationActivationEventUpsertWithWhereUniqueWithoutOperationInput[]
+    createMany?: LlmOperationActivationEventCreateManyOperationInputEnvelope
+    set?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+    disconnect?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+    delete?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+    connect?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+    update?: LlmOperationActivationEventUpdateWithWhereUniqueWithoutOperationInput | LlmOperationActivationEventUpdateWithWhereUniqueWithoutOperationInput[]
+    updateMany?: LlmOperationActivationEventUpdateManyWithWhereWithoutOperationInput | LlmOperationActivationEventUpdateManyWithWhereWithoutOperationInput[]
+    deleteMany?: LlmOperationActivationEventScalarWhereInput | LlmOperationActivationEventScalarWhereInput[]
+  }
+
+  export type LlmOperationAttestationUpdateManyWithoutOperationNestedInput = {
+    create?: XOR<LlmOperationAttestationCreateWithoutOperationInput, LlmOperationAttestationUncheckedCreateWithoutOperationInput> | LlmOperationAttestationCreateWithoutOperationInput[] | LlmOperationAttestationUncheckedCreateWithoutOperationInput[]
+    connectOrCreate?: LlmOperationAttestationCreateOrConnectWithoutOperationInput | LlmOperationAttestationCreateOrConnectWithoutOperationInput[]
+    upsert?: LlmOperationAttestationUpsertWithWhereUniqueWithoutOperationInput | LlmOperationAttestationUpsertWithWhereUniqueWithoutOperationInput[]
+    createMany?: LlmOperationAttestationCreateManyOperationInputEnvelope
+    set?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+    disconnect?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+    delete?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+    connect?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+    update?: LlmOperationAttestationUpdateWithWhereUniqueWithoutOperationInput | LlmOperationAttestationUpdateWithWhereUniqueWithoutOperationInput[]
+    updateMany?: LlmOperationAttestationUpdateManyWithWhereWithoutOperationInput | LlmOperationAttestationUpdateManyWithWhereWithoutOperationInput[]
+    deleteMany?: LlmOperationAttestationScalarWhereInput | LlmOperationAttestationScalarWhereInput[]
+  }
+
+  export type LlmOperationVersionUncheckedUpdateManyWithoutOperationNestedInput = {
+    create?: XOR<LlmOperationVersionCreateWithoutOperationInput, LlmOperationVersionUncheckedCreateWithoutOperationInput> | LlmOperationVersionCreateWithoutOperationInput[] | LlmOperationVersionUncheckedCreateWithoutOperationInput[]
+    connectOrCreate?: LlmOperationVersionCreateOrConnectWithoutOperationInput | LlmOperationVersionCreateOrConnectWithoutOperationInput[]
+    upsert?: LlmOperationVersionUpsertWithWhereUniqueWithoutOperationInput | LlmOperationVersionUpsertWithWhereUniqueWithoutOperationInput[]
+    createMany?: LlmOperationVersionCreateManyOperationInputEnvelope
+    set?: LlmOperationVersionWhereUniqueInput | LlmOperationVersionWhereUniqueInput[]
+    disconnect?: LlmOperationVersionWhereUniqueInput | LlmOperationVersionWhereUniqueInput[]
+    delete?: LlmOperationVersionWhereUniqueInput | LlmOperationVersionWhereUniqueInput[]
+    connect?: LlmOperationVersionWhereUniqueInput | LlmOperationVersionWhereUniqueInput[]
+    update?: LlmOperationVersionUpdateWithWhereUniqueWithoutOperationInput | LlmOperationVersionUpdateWithWhereUniqueWithoutOperationInput[]
+    updateMany?: LlmOperationVersionUpdateManyWithWhereWithoutOperationInput | LlmOperationVersionUpdateManyWithWhereWithoutOperationInput[]
+    deleteMany?: LlmOperationVersionScalarWhereInput | LlmOperationVersionScalarWhereInput[]
+  }
+
+  export type LlmOperationActivationUncheckedUpdateManyWithoutOperationNestedInput = {
+    create?: XOR<LlmOperationActivationCreateWithoutOperationInput, LlmOperationActivationUncheckedCreateWithoutOperationInput> | LlmOperationActivationCreateWithoutOperationInput[] | LlmOperationActivationUncheckedCreateWithoutOperationInput[]
+    connectOrCreate?: LlmOperationActivationCreateOrConnectWithoutOperationInput | LlmOperationActivationCreateOrConnectWithoutOperationInput[]
+    upsert?: LlmOperationActivationUpsertWithWhereUniqueWithoutOperationInput | LlmOperationActivationUpsertWithWhereUniqueWithoutOperationInput[]
+    createMany?: LlmOperationActivationCreateManyOperationInputEnvelope
+    set?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+    disconnect?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+    delete?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+    connect?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+    update?: LlmOperationActivationUpdateWithWhereUniqueWithoutOperationInput | LlmOperationActivationUpdateWithWhereUniqueWithoutOperationInput[]
+    updateMany?: LlmOperationActivationUpdateManyWithWhereWithoutOperationInput | LlmOperationActivationUpdateManyWithWhereWithoutOperationInput[]
+    deleteMany?: LlmOperationActivationScalarWhereInput | LlmOperationActivationScalarWhereInput[]
+  }
+
+  export type LlmOperationActivationEventUncheckedUpdateManyWithoutOperationNestedInput = {
+    create?: XOR<LlmOperationActivationEventCreateWithoutOperationInput, LlmOperationActivationEventUncheckedCreateWithoutOperationInput> | LlmOperationActivationEventCreateWithoutOperationInput[] | LlmOperationActivationEventUncheckedCreateWithoutOperationInput[]
+    connectOrCreate?: LlmOperationActivationEventCreateOrConnectWithoutOperationInput | LlmOperationActivationEventCreateOrConnectWithoutOperationInput[]
+    upsert?: LlmOperationActivationEventUpsertWithWhereUniqueWithoutOperationInput | LlmOperationActivationEventUpsertWithWhereUniqueWithoutOperationInput[]
+    createMany?: LlmOperationActivationEventCreateManyOperationInputEnvelope
+    set?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+    disconnect?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+    delete?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+    connect?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+    update?: LlmOperationActivationEventUpdateWithWhereUniqueWithoutOperationInput | LlmOperationActivationEventUpdateWithWhereUniqueWithoutOperationInput[]
+    updateMany?: LlmOperationActivationEventUpdateManyWithWhereWithoutOperationInput | LlmOperationActivationEventUpdateManyWithWhereWithoutOperationInput[]
+    deleteMany?: LlmOperationActivationEventScalarWhereInput | LlmOperationActivationEventScalarWhereInput[]
+  }
+
+  export type LlmOperationAttestationUncheckedUpdateManyWithoutOperationNestedInput = {
+    create?: XOR<LlmOperationAttestationCreateWithoutOperationInput, LlmOperationAttestationUncheckedCreateWithoutOperationInput> | LlmOperationAttestationCreateWithoutOperationInput[] | LlmOperationAttestationUncheckedCreateWithoutOperationInput[]
+    connectOrCreate?: LlmOperationAttestationCreateOrConnectWithoutOperationInput | LlmOperationAttestationCreateOrConnectWithoutOperationInput[]
+    upsert?: LlmOperationAttestationUpsertWithWhereUniqueWithoutOperationInput | LlmOperationAttestationUpsertWithWhereUniqueWithoutOperationInput[]
+    createMany?: LlmOperationAttestationCreateManyOperationInputEnvelope
+    set?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+    disconnect?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+    delete?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+    connect?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+    update?: LlmOperationAttestationUpdateWithWhereUniqueWithoutOperationInput | LlmOperationAttestationUpdateWithWhereUniqueWithoutOperationInput[]
+    updateMany?: LlmOperationAttestationUpdateManyWithWhereWithoutOperationInput | LlmOperationAttestationUpdateManyWithWhereWithoutOperationInput[]
+    deleteMany?: LlmOperationAttestationScalarWhereInput | LlmOperationAttestationScalarWhereInput[]
+  }
+
+  export type LlmOperationCreateNestedOneWithoutVersionsInput = {
+    create?: XOR<LlmOperationCreateWithoutVersionsInput, LlmOperationUncheckedCreateWithoutVersionsInput>
+    connectOrCreate?: LlmOperationCreateOrConnectWithoutVersionsInput
+    connect?: LlmOperationWhereUniqueInput
+  }
+
+  export type LlmOperationActivationCreateNestedManyWithoutVersionInput = {
+    create?: XOR<LlmOperationActivationCreateWithoutVersionInput, LlmOperationActivationUncheckedCreateWithoutVersionInput> | LlmOperationActivationCreateWithoutVersionInput[] | LlmOperationActivationUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationActivationCreateOrConnectWithoutVersionInput | LlmOperationActivationCreateOrConnectWithoutVersionInput[]
+    createMany?: LlmOperationActivationCreateManyVersionInputEnvelope
+    connect?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+  }
+
+  export type LlmOperationActivationEventCreateNestedManyWithoutVersionInput = {
+    create?: XOR<LlmOperationActivationEventCreateWithoutVersionInput, LlmOperationActivationEventUncheckedCreateWithoutVersionInput> | LlmOperationActivationEventCreateWithoutVersionInput[] | LlmOperationActivationEventUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationActivationEventCreateOrConnectWithoutVersionInput | LlmOperationActivationEventCreateOrConnectWithoutVersionInput[]
+    createMany?: LlmOperationActivationEventCreateManyVersionInputEnvelope
+    connect?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+  }
+
+  export type LlmOperationEvalRunCreateNestedManyWithoutVersionInput = {
+    create?: XOR<LlmOperationEvalRunCreateWithoutVersionInput, LlmOperationEvalRunUncheckedCreateWithoutVersionInput> | LlmOperationEvalRunCreateWithoutVersionInput[] | LlmOperationEvalRunUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationEvalRunCreateOrConnectWithoutVersionInput | LlmOperationEvalRunCreateOrConnectWithoutVersionInput[]
+    createMany?: LlmOperationEvalRunCreateManyVersionInputEnvelope
+    connect?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+  }
+
+  export type LlmOperationInvocationCreateNestedManyWithoutVersionInput = {
+    create?: XOR<LlmOperationInvocationCreateWithoutVersionInput, LlmOperationInvocationUncheckedCreateWithoutVersionInput> | LlmOperationInvocationCreateWithoutVersionInput[] | LlmOperationInvocationUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationInvocationCreateOrConnectWithoutVersionInput | LlmOperationInvocationCreateOrConnectWithoutVersionInput[]
+    createMany?: LlmOperationInvocationCreateManyVersionInputEnvelope
+    connect?: LlmOperationInvocationWhereUniqueInput | LlmOperationInvocationWhereUniqueInput[]
+  }
+
+  export type LlmOperationAttestationCreateNestedManyWithoutVersionInput = {
+    create?: XOR<LlmOperationAttestationCreateWithoutVersionInput, LlmOperationAttestationUncheckedCreateWithoutVersionInput> | LlmOperationAttestationCreateWithoutVersionInput[] | LlmOperationAttestationUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationAttestationCreateOrConnectWithoutVersionInput | LlmOperationAttestationCreateOrConnectWithoutVersionInput[]
+    createMany?: LlmOperationAttestationCreateManyVersionInputEnvelope
+    connect?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+  }
+
+  export type LlmOperationActivationUncheckedCreateNestedManyWithoutVersionInput = {
+    create?: XOR<LlmOperationActivationCreateWithoutVersionInput, LlmOperationActivationUncheckedCreateWithoutVersionInput> | LlmOperationActivationCreateWithoutVersionInput[] | LlmOperationActivationUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationActivationCreateOrConnectWithoutVersionInput | LlmOperationActivationCreateOrConnectWithoutVersionInput[]
+    createMany?: LlmOperationActivationCreateManyVersionInputEnvelope
+    connect?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+  }
+
+  export type LlmOperationActivationEventUncheckedCreateNestedManyWithoutVersionInput = {
+    create?: XOR<LlmOperationActivationEventCreateWithoutVersionInput, LlmOperationActivationEventUncheckedCreateWithoutVersionInput> | LlmOperationActivationEventCreateWithoutVersionInput[] | LlmOperationActivationEventUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationActivationEventCreateOrConnectWithoutVersionInput | LlmOperationActivationEventCreateOrConnectWithoutVersionInput[]
+    createMany?: LlmOperationActivationEventCreateManyVersionInputEnvelope
+    connect?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+  }
+
+  export type LlmOperationEvalRunUncheckedCreateNestedManyWithoutVersionInput = {
+    create?: XOR<LlmOperationEvalRunCreateWithoutVersionInput, LlmOperationEvalRunUncheckedCreateWithoutVersionInput> | LlmOperationEvalRunCreateWithoutVersionInput[] | LlmOperationEvalRunUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationEvalRunCreateOrConnectWithoutVersionInput | LlmOperationEvalRunCreateOrConnectWithoutVersionInput[]
+    createMany?: LlmOperationEvalRunCreateManyVersionInputEnvelope
+    connect?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+  }
+
+  export type LlmOperationInvocationUncheckedCreateNestedManyWithoutVersionInput = {
+    create?: XOR<LlmOperationInvocationCreateWithoutVersionInput, LlmOperationInvocationUncheckedCreateWithoutVersionInput> | LlmOperationInvocationCreateWithoutVersionInput[] | LlmOperationInvocationUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationInvocationCreateOrConnectWithoutVersionInput | LlmOperationInvocationCreateOrConnectWithoutVersionInput[]
+    createMany?: LlmOperationInvocationCreateManyVersionInputEnvelope
+    connect?: LlmOperationInvocationWhereUniqueInput | LlmOperationInvocationWhereUniqueInput[]
+  }
+
+  export type LlmOperationAttestationUncheckedCreateNestedManyWithoutVersionInput = {
+    create?: XOR<LlmOperationAttestationCreateWithoutVersionInput, LlmOperationAttestationUncheckedCreateWithoutVersionInput> | LlmOperationAttestationCreateWithoutVersionInput[] | LlmOperationAttestationUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationAttestationCreateOrConnectWithoutVersionInput | LlmOperationAttestationCreateOrConnectWithoutVersionInput[]
+    createMany?: LlmOperationAttestationCreateManyVersionInputEnvelope
+    connect?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+  }
+
+  export type LlmOperationUpdateOneRequiredWithoutVersionsNestedInput = {
+    create?: XOR<LlmOperationCreateWithoutVersionsInput, LlmOperationUncheckedCreateWithoutVersionsInput>
+    connectOrCreate?: LlmOperationCreateOrConnectWithoutVersionsInput
+    upsert?: LlmOperationUpsertWithoutVersionsInput
+    connect?: LlmOperationWhereUniqueInput
+    update?: XOR<XOR<LlmOperationUpdateToOneWithWhereWithoutVersionsInput, LlmOperationUpdateWithoutVersionsInput>, LlmOperationUncheckedUpdateWithoutVersionsInput>
+  }
+
+  export type LlmOperationActivationUpdateManyWithoutVersionNestedInput = {
+    create?: XOR<LlmOperationActivationCreateWithoutVersionInput, LlmOperationActivationUncheckedCreateWithoutVersionInput> | LlmOperationActivationCreateWithoutVersionInput[] | LlmOperationActivationUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationActivationCreateOrConnectWithoutVersionInput | LlmOperationActivationCreateOrConnectWithoutVersionInput[]
+    upsert?: LlmOperationActivationUpsertWithWhereUniqueWithoutVersionInput | LlmOperationActivationUpsertWithWhereUniqueWithoutVersionInput[]
+    createMany?: LlmOperationActivationCreateManyVersionInputEnvelope
+    set?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+    disconnect?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+    delete?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+    connect?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+    update?: LlmOperationActivationUpdateWithWhereUniqueWithoutVersionInput | LlmOperationActivationUpdateWithWhereUniqueWithoutVersionInput[]
+    updateMany?: LlmOperationActivationUpdateManyWithWhereWithoutVersionInput | LlmOperationActivationUpdateManyWithWhereWithoutVersionInput[]
+    deleteMany?: LlmOperationActivationScalarWhereInput | LlmOperationActivationScalarWhereInput[]
+  }
+
+  export type LlmOperationActivationEventUpdateManyWithoutVersionNestedInput = {
+    create?: XOR<LlmOperationActivationEventCreateWithoutVersionInput, LlmOperationActivationEventUncheckedCreateWithoutVersionInput> | LlmOperationActivationEventCreateWithoutVersionInput[] | LlmOperationActivationEventUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationActivationEventCreateOrConnectWithoutVersionInput | LlmOperationActivationEventCreateOrConnectWithoutVersionInput[]
+    upsert?: LlmOperationActivationEventUpsertWithWhereUniqueWithoutVersionInput | LlmOperationActivationEventUpsertWithWhereUniqueWithoutVersionInput[]
+    createMany?: LlmOperationActivationEventCreateManyVersionInputEnvelope
+    set?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+    disconnect?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+    delete?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+    connect?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+    update?: LlmOperationActivationEventUpdateWithWhereUniqueWithoutVersionInput | LlmOperationActivationEventUpdateWithWhereUniqueWithoutVersionInput[]
+    updateMany?: LlmOperationActivationEventUpdateManyWithWhereWithoutVersionInput | LlmOperationActivationEventUpdateManyWithWhereWithoutVersionInput[]
+    deleteMany?: LlmOperationActivationEventScalarWhereInput | LlmOperationActivationEventScalarWhereInput[]
+  }
+
+  export type LlmOperationEvalRunUpdateManyWithoutVersionNestedInput = {
+    create?: XOR<LlmOperationEvalRunCreateWithoutVersionInput, LlmOperationEvalRunUncheckedCreateWithoutVersionInput> | LlmOperationEvalRunCreateWithoutVersionInput[] | LlmOperationEvalRunUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationEvalRunCreateOrConnectWithoutVersionInput | LlmOperationEvalRunCreateOrConnectWithoutVersionInput[]
+    upsert?: LlmOperationEvalRunUpsertWithWhereUniqueWithoutVersionInput | LlmOperationEvalRunUpsertWithWhereUniqueWithoutVersionInput[]
+    createMany?: LlmOperationEvalRunCreateManyVersionInputEnvelope
+    set?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+    disconnect?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+    delete?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+    connect?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+    update?: LlmOperationEvalRunUpdateWithWhereUniqueWithoutVersionInput | LlmOperationEvalRunUpdateWithWhereUniqueWithoutVersionInput[]
+    updateMany?: LlmOperationEvalRunUpdateManyWithWhereWithoutVersionInput | LlmOperationEvalRunUpdateManyWithWhereWithoutVersionInput[]
+    deleteMany?: LlmOperationEvalRunScalarWhereInput | LlmOperationEvalRunScalarWhereInput[]
+  }
+
+  export type LlmOperationInvocationUpdateManyWithoutVersionNestedInput = {
+    create?: XOR<LlmOperationInvocationCreateWithoutVersionInput, LlmOperationInvocationUncheckedCreateWithoutVersionInput> | LlmOperationInvocationCreateWithoutVersionInput[] | LlmOperationInvocationUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationInvocationCreateOrConnectWithoutVersionInput | LlmOperationInvocationCreateOrConnectWithoutVersionInput[]
+    upsert?: LlmOperationInvocationUpsertWithWhereUniqueWithoutVersionInput | LlmOperationInvocationUpsertWithWhereUniqueWithoutVersionInput[]
+    createMany?: LlmOperationInvocationCreateManyVersionInputEnvelope
+    set?: LlmOperationInvocationWhereUniqueInput | LlmOperationInvocationWhereUniqueInput[]
+    disconnect?: LlmOperationInvocationWhereUniqueInput | LlmOperationInvocationWhereUniqueInput[]
+    delete?: LlmOperationInvocationWhereUniqueInput | LlmOperationInvocationWhereUniqueInput[]
+    connect?: LlmOperationInvocationWhereUniqueInput | LlmOperationInvocationWhereUniqueInput[]
+    update?: LlmOperationInvocationUpdateWithWhereUniqueWithoutVersionInput | LlmOperationInvocationUpdateWithWhereUniqueWithoutVersionInput[]
+    updateMany?: LlmOperationInvocationUpdateManyWithWhereWithoutVersionInput | LlmOperationInvocationUpdateManyWithWhereWithoutVersionInput[]
+    deleteMany?: LlmOperationInvocationScalarWhereInput | LlmOperationInvocationScalarWhereInput[]
+  }
+
+  export type LlmOperationAttestationUpdateManyWithoutVersionNestedInput = {
+    create?: XOR<LlmOperationAttestationCreateWithoutVersionInput, LlmOperationAttestationUncheckedCreateWithoutVersionInput> | LlmOperationAttestationCreateWithoutVersionInput[] | LlmOperationAttestationUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationAttestationCreateOrConnectWithoutVersionInput | LlmOperationAttestationCreateOrConnectWithoutVersionInput[]
+    upsert?: LlmOperationAttestationUpsertWithWhereUniqueWithoutVersionInput | LlmOperationAttestationUpsertWithWhereUniqueWithoutVersionInput[]
+    createMany?: LlmOperationAttestationCreateManyVersionInputEnvelope
+    set?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+    disconnect?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+    delete?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+    connect?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+    update?: LlmOperationAttestationUpdateWithWhereUniqueWithoutVersionInput | LlmOperationAttestationUpdateWithWhereUniqueWithoutVersionInput[]
+    updateMany?: LlmOperationAttestationUpdateManyWithWhereWithoutVersionInput | LlmOperationAttestationUpdateManyWithWhereWithoutVersionInput[]
+    deleteMany?: LlmOperationAttestationScalarWhereInput | LlmOperationAttestationScalarWhereInput[]
+  }
+
+  export type LlmOperationActivationUncheckedUpdateManyWithoutVersionNestedInput = {
+    create?: XOR<LlmOperationActivationCreateWithoutVersionInput, LlmOperationActivationUncheckedCreateWithoutVersionInput> | LlmOperationActivationCreateWithoutVersionInput[] | LlmOperationActivationUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationActivationCreateOrConnectWithoutVersionInput | LlmOperationActivationCreateOrConnectWithoutVersionInput[]
+    upsert?: LlmOperationActivationUpsertWithWhereUniqueWithoutVersionInput | LlmOperationActivationUpsertWithWhereUniqueWithoutVersionInput[]
+    createMany?: LlmOperationActivationCreateManyVersionInputEnvelope
+    set?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+    disconnect?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+    delete?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+    connect?: LlmOperationActivationWhereUniqueInput | LlmOperationActivationWhereUniqueInput[]
+    update?: LlmOperationActivationUpdateWithWhereUniqueWithoutVersionInput | LlmOperationActivationUpdateWithWhereUniqueWithoutVersionInput[]
+    updateMany?: LlmOperationActivationUpdateManyWithWhereWithoutVersionInput | LlmOperationActivationUpdateManyWithWhereWithoutVersionInput[]
+    deleteMany?: LlmOperationActivationScalarWhereInput | LlmOperationActivationScalarWhereInput[]
+  }
+
+  export type LlmOperationActivationEventUncheckedUpdateManyWithoutVersionNestedInput = {
+    create?: XOR<LlmOperationActivationEventCreateWithoutVersionInput, LlmOperationActivationEventUncheckedCreateWithoutVersionInput> | LlmOperationActivationEventCreateWithoutVersionInput[] | LlmOperationActivationEventUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationActivationEventCreateOrConnectWithoutVersionInput | LlmOperationActivationEventCreateOrConnectWithoutVersionInput[]
+    upsert?: LlmOperationActivationEventUpsertWithWhereUniqueWithoutVersionInput | LlmOperationActivationEventUpsertWithWhereUniqueWithoutVersionInput[]
+    createMany?: LlmOperationActivationEventCreateManyVersionInputEnvelope
+    set?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+    disconnect?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+    delete?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+    connect?: LlmOperationActivationEventWhereUniqueInput | LlmOperationActivationEventWhereUniqueInput[]
+    update?: LlmOperationActivationEventUpdateWithWhereUniqueWithoutVersionInput | LlmOperationActivationEventUpdateWithWhereUniqueWithoutVersionInput[]
+    updateMany?: LlmOperationActivationEventUpdateManyWithWhereWithoutVersionInput | LlmOperationActivationEventUpdateManyWithWhereWithoutVersionInput[]
+    deleteMany?: LlmOperationActivationEventScalarWhereInput | LlmOperationActivationEventScalarWhereInput[]
+  }
+
+  export type LlmOperationEvalRunUncheckedUpdateManyWithoutVersionNestedInput = {
+    create?: XOR<LlmOperationEvalRunCreateWithoutVersionInput, LlmOperationEvalRunUncheckedCreateWithoutVersionInput> | LlmOperationEvalRunCreateWithoutVersionInput[] | LlmOperationEvalRunUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationEvalRunCreateOrConnectWithoutVersionInput | LlmOperationEvalRunCreateOrConnectWithoutVersionInput[]
+    upsert?: LlmOperationEvalRunUpsertWithWhereUniqueWithoutVersionInput | LlmOperationEvalRunUpsertWithWhereUniqueWithoutVersionInput[]
+    createMany?: LlmOperationEvalRunCreateManyVersionInputEnvelope
+    set?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+    disconnect?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+    delete?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+    connect?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+    update?: LlmOperationEvalRunUpdateWithWhereUniqueWithoutVersionInput | LlmOperationEvalRunUpdateWithWhereUniqueWithoutVersionInput[]
+    updateMany?: LlmOperationEvalRunUpdateManyWithWhereWithoutVersionInput | LlmOperationEvalRunUpdateManyWithWhereWithoutVersionInput[]
+    deleteMany?: LlmOperationEvalRunScalarWhereInput | LlmOperationEvalRunScalarWhereInput[]
+  }
+
+  export type LlmOperationInvocationUncheckedUpdateManyWithoutVersionNestedInput = {
+    create?: XOR<LlmOperationInvocationCreateWithoutVersionInput, LlmOperationInvocationUncheckedCreateWithoutVersionInput> | LlmOperationInvocationCreateWithoutVersionInput[] | LlmOperationInvocationUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationInvocationCreateOrConnectWithoutVersionInput | LlmOperationInvocationCreateOrConnectWithoutVersionInput[]
+    upsert?: LlmOperationInvocationUpsertWithWhereUniqueWithoutVersionInput | LlmOperationInvocationUpsertWithWhereUniqueWithoutVersionInput[]
+    createMany?: LlmOperationInvocationCreateManyVersionInputEnvelope
+    set?: LlmOperationInvocationWhereUniqueInput | LlmOperationInvocationWhereUniqueInput[]
+    disconnect?: LlmOperationInvocationWhereUniqueInput | LlmOperationInvocationWhereUniqueInput[]
+    delete?: LlmOperationInvocationWhereUniqueInput | LlmOperationInvocationWhereUniqueInput[]
+    connect?: LlmOperationInvocationWhereUniqueInput | LlmOperationInvocationWhereUniqueInput[]
+    update?: LlmOperationInvocationUpdateWithWhereUniqueWithoutVersionInput | LlmOperationInvocationUpdateWithWhereUniqueWithoutVersionInput[]
+    updateMany?: LlmOperationInvocationUpdateManyWithWhereWithoutVersionInput | LlmOperationInvocationUpdateManyWithWhereWithoutVersionInput[]
+    deleteMany?: LlmOperationInvocationScalarWhereInput | LlmOperationInvocationScalarWhereInput[]
+  }
+
+  export type LlmOperationAttestationUncheckedUpdateManyWithoutVersionNestedInput = {
+    create?: XOR<LlmOperationAttestationCreateWithoutVersionInput, LlmOperationAttestationUncheckedCreateWithoutVersionInput> | LlmOperationAttestationCreateWithoutVersionInput[] | LlmOperationAttestationUncheckedCreateWithoutVersionInput[]
+    connectOrCreate?: LlmOperationAttestationCreateOrConnectWithoutVersionInput | LlmOperationAttestationCreateOrConnectWithoutVersionInput[]
+    upsert?: LlmOperationAttestationUpsertWithWhereUniqueWithoutVersionInput | LlmOperationAttestationUpsertWithWhereUniqueWithoutVersionInput[]
+    createMany?: LlmOperationAttestationCreateManyVersionInputEnvelope
+    set?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+    disconnect?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+    delete?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+    connect?: LlmOperationAttestationWhereUniqueInput | LlmOperationAttestationWhereUniqueInput[]
+    update?: LlmOperationAttestationUpdateWithWhereUniqueWithoutVersionInput | LlmOperationAttestationUpdateWithWhereUniqueWithoutVersionInput[]
+    updateMany?: LlmOperationAttestationUpdateManyWithWhereWithoutVersionInput | LlmOperationAttestationUpdateManyWithWhereWithoutVersionInput[]
+    deleteMany?: LlmOperationAttestationScalarWhereInput | LlmOperationAttestationScalarWhereInput[]
+  }
+
+  export type LlmOperationCreateNestedOneWithoutActivationsInput = {
+    create?: XOR<LlmOperationCreateWithoutActivationsInput, LlmOperationUncheckedCreateWithoutActivationsInput>
+    connectOrCreate?: LlmOperationCreateOrConnectWithoutActivationsInput
+    connect?: LlmOperationWhereUniqueInput
+  }
+
+  export type LlmOperationVersionCreateNestedOneWithoutActivationsInput = {
+    create?: XOR<LlmOperationVersionCreateWithoutActivationsInput, LlmOperationVersionUncheckedCreateWithoutActivationsInput>
+    connectOrCreate?: LlmOperationVersionCreateOrConnectWithoutActivationsInput
+    connect?: LlmOperationVersionWhereUniqueInput
+  }
+
+  export type NullableIntFieldUpdateOperationsInput = {
+    set?: number | null
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
+  export type LlmOperationUpdateOneRequiredWithoutActivationsNestedInput = {
+    create?: XOR<LlmOperationCreateWithoutActivationsInput, LlmOperationUncheckedCreateWithoutActivationsInput>
+    connectOrCreate?: LlmOperationCreateOrConnectWithoutActivationsInput
+    upsert?: LlmOperationUpsertWithoutActivationsInput
+    connect?: LlmOperationWhereUniqueInput
+    update?: XOR<XOR<LlmOperationUpdateToOneWithWhereWithoutActivationsInput, LlmOperationUpdateWithoutActivationsInput>, LlmOperationUncheckedUpdateWithoutActivationsInput>
+  }
+
+  export type LlmOperationVersionUpdateOneRequiredWithoutActivationsNestedInput = {
+    create?: XOR<LlmOperationVersionCreateWithoutActivationsInput, LlmOperationVersionUncheckedCreateWithoutActivationsInput>
+    connectOrCreate?: LlmOperationVersionCreateOrConnectWithoutActivationsInput
+    upsert?: LlmOperationVersionUpsertWithoutActivationsInput
+    connect?: LlmOperationVersionWhereUniqueInput
+    update?: XOR<XOR<LlmOperationVersionUpdateToOneWithWhereWithoutActivationsInput, LlmOperationVersionUpdateWithoutActivationsInput>, LlmOperationVersionUncheckedUpdateWithoutActivationsInput>
+  }
+
+  export type LlmOperationCreateNestedOneWithoutActivationEventsInput = {
+    create?: XOR<LlmOperationCreateWithoutActivationEventsInput, LlmOperationUncheckedCreateWithoutActivationEventsInput>
+    connectOrCreate?: LlmOperationCreateOrConnectWithoutActivationEventsInput
+    connect?: LlmOperationWhereUniqueInput
+  }
+
+  export type LlmOperationVersionCreateNestedOneWithoutActivationEventsInput = {
+    create?: XOR<LlmOperationVersionCreateWithoutActivationEventsInput, LlmOperationVersionUncheckedCreateWithoutActivationEventsInput>
+    connectOrCreate?: LlmOperationVersionCreateOrConnectWithoutActivationEventsInput
+    connect?: LlmOperationVersionWhereUniqueInput
+  }
+
+  export type LlmOperationUpdateOneRequiredWithoutActivationEventsNestedInput = {
+    create?: XOR<LlmOperationCreateWithoutActivationEventsInput, LlmOperationUncheckedCreateWithoutActivationEventsInput>
+    connectOrCreate?: LlmOperationCreateOrConnectWithoutActivationEventsInput
+    upsert?: LlmOperationUpsertWithoutActivationEventsInput
+    connect?: LlmOperationWhereUniqueInput
+    update?: XOR<XOR<LlmOperationUpdateToOneWithWhereWithoutActivationEventsInput, LlmOperationUpdateWithoutActivationEventsInput>, LlmOperationUncheckedUpdateWithoutActivationEventsInput>
+  }
+
+  export type LlmOperationVersionUpdateOneRequiredWithoutActivationEventsNestedInput = {
+    create?: XOR<LlmOperationVersionCreateWithoutActivationEventsInput, LlmOperationVersionUncheckedCreateWithoutActivationEventsInput>
+    connectOrCreate?: LlmOperationVersionCreateOrConnectWithoutActivationEventsInput
+    upsert?: LlmOperationVersionUpsertWithoutActivationEventsInput
+    connect?: LlmOperationVersionWhereUniqueInput
+    update?: XOR<XOR<LlmOperationVersionUpdateToOneWithWhereWithoutActivationEventsInput, LlmOperationVersionUpdateWithoutActivationEventsInput>, LlmOperationVersionUncheckedUpdateWithoutActivationEventsInput>
+  }
+
+  export type LlmOperationEvalCaseCreateNestedManyWithoutSuiteInput = {
+    create?: XOR<LlmOperationEvalCaseCreateWithoutSuiteInput, LlmOperationEvalCaseUncheckedCreateWithoutSuiteInput> | LlmOperationEvalCaseCreateWithoutSuiteInput[] | LlmOperationEvalCaseUncheckedCreateWithoutSuiteInput[]
+    connectOrCreate?: LlmOperationEvalCaseCreateOrConnectWithoutSuiteInput | LlmOperationEvalCaseCreateOrConnectWithoutSuiteInput[]
+    createMany?: LlmOperationEvalCaseCreateManySuiteInputEnvelope
+    connect?: LlmOperationEvalCaseWhereUniqueInput | LlmOperationEvalCaseWhereUniqueInput[]
+  }
+
+  export type LlmOperationEvalRunCreateNestedManyWithoutSuiteInput = {
+    create?: XOR<LlmOperationEvalRunCreateWithoutSuiteInput, LlmOperationEvalRunUncheckedCreateWithoutSuiteInput> | LlmOperationEvalRunCreateWithoutSuiteInput[] | LlmOperationEvalRunUncheckedCreateWithoutSuiteInput[]
+    connectOrCreate?: LlmOperationEvalRunCreateOrConnectWithoutSuiteInput | LlmOperationEvalRunCreateOrConnectWithoutSuiteInput[]
+    createMany?: LlmOperationEvalRunCreateManySuiteInputEnvelope
+    connect?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+  }
+
+  export type LlmOperationEvalCaseUncheckedCreateNestedManyWithoutSuiteInput = {
+    create?: XOR<LlmOperationEvalCaseCreateWithoutSuiteInput, LlmOperationEvalCaseUncheckedCreateWithoutSuiteInput> | LlmOperationEvalCaseCreateWithoutSuiteInput[] | LlmOperationEvalCaseUncheckedCreateWithoutSuiteInput[]
+    connectOrCreate?: LlmOperationEvalCaseCreateOrConnectWithoutSuiteInput | LlmOperationEvalCaseCreateOrConnectWithoutSuiteInput[]
+    createMany?: LlmOperationEvalCaseCreateManySuiteInputEnvelope
+    connect?: LlmOperationEvalCaseWhereUniqueInput | LlmOperationEvalCaseWhereUniqueInput[]
+  }
+
+  export type LlmOperationEvalRunUncheckedCreateNestedManyWithoutSuiteInput = {
+    create?: XOR<LlmOperationEvalRunCreateWithoutSuiteInput, LlmOperationEvalRunUncheckedCreateWithoutSuiteInput> | LlmOperationEvalRunCreateWithoutSuiteInput[] | LlmOperationEvalRunUncheckedCreateWithoutSuiteInput[]
+    connectOrCreate?: LlmOperationEvalRunCreateOrConnectWithoutSuiteInput | LlmOperationEvalRunCreateOrConnectWithoutSuiteInput[]
+    createMany?: LlmOperationEvalRunCreateManySuiteInputEnvelope
+    connect?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+  }
+
+  export type LlmOperationEvalCaseUpdateManyWithoutSuiteNestedInput = {
+    create?: XOR<LlmOperationEvalCaseCreateWithoutSuiteInput, LlmOperationEvalCaseUncheckedCreateWithoutSuiteInput> | LlmOperationEvalCaseCreateWithoutSuiteInput[] | LlmOperationEvalCaseUncheckedCreateWithoutSuiteInput[]
+    connectOrCreate?: LlmOperationEvalCaseCreateOrConnectWithoutSuiteInput | LlmOperationEvalCaseCreateOrConnectWithoutSuiteInput[]
+    upsert?: LlmOperationEvalCaseUpsertWithWhereUniqueWithoutSuiteInput | LlmOperationEvalCaseUpsertWithWhereUniqueWithoutSuiteInput[]
+    createMany?: LlmOperationEvalCaseCreateManySuiteInputEnvelope
+    set?: LlmOperationEvalCaseWhereUniqueInput | LlmOperationEvalCaseWhereUniqueInput[]
+    disconnect?: LlmOperationEvalCaseWhereUniqueInput | LlmOperationEvalCaseWhereUniqueInput[]
+    delete?: LlmOperationEvalCaseWhereUniqueInput | LlmOperationEvalCaseWhereUniqueInput[]
+    connect?: LlmOperationEvalCaseWhereUniqueInput | LlmOperationEvalCaseWhereUniqueInput[]
+    update?: LlmOperationEvalCaseUpdateWithWhereUniqueWithoutSuiteInput | LlmOperationEvalCaseUpdateWithWhereUniqueWithoutSuiteInput[]
+    updateMany?: LlmOperationEvalCaseUpdateManyWithWhereWithoutSuiteInput | LlmOperationEvalCaseUpdateManyWithWhereWithoutSuiteInput[]
+    deleteMany?: LlmOperationEvalCaseScalarWhereInput | LlmOperationEvalCaseScalarWhereInput[]
+  }
+
+  export type LlmOperationEvalRunUpdateManyWithoutSuiteNestedInput = {
+    create?: XOR<LlmOperationEvalRunCreateWithoutSuiteInput, LlmOperationEvalRunUncheckedCreateWithoutSuiteInput> | LlmOperationEvalRunCreateWithoutSuiteInput[] | LlmOperationEvalRunUncheckedCreateWithoutSuiteInput[]
+    connectOrCreate?: LlmOperationEvalRunCreateOrConnectWithoutSuiteInput | LlmOperationEvalRunCreateOrConnectWithoutSuiteInput[]
+    upsert?: LlmOperationEvalRunUpsertWithWhereUniqueWithoutSuiteInput | LlmOperationEvalRunUpsertWithWhereUniqueWithoutSuiteInput[]
+    createMany?: LlmOperationEvalRunCreateManySuiteInputEnvelope
+    set?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+    disconnect?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+    delete?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+    connect?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+    update?: LlmOperationEvalRunUpdateWithWhereUniqueWithoutSuiteInput | LlmOperationEvalRunUpdateWithWhereUniqueWithoutSuiteInput[]
+    updateMany?: LlmOperationEvalRunUpdateManyWithWhereWithoutSuiteInput | LlmOperationEvalRunUpdateManyWithWhereWithoutSuiteInput[]
+    deleteMany?: LlmOperationEvalRunScalarWhereInput | LlmOperationEvalRunScalarWhereInput[]
+  }
+
+  export type LlmOperationEvalCaseUncheckedUpdateManyWithoutSuiteNestedInput = {
+    create?: XOR<LlmOperationEvalCaseCreateWithoutSuiteInput, LlmOperationEvalCaseUncheckedCreateWithoutSuiteInput> | LlmOperationEvalCaseCreateWithoutSuiteInput[] | LlmOperationEvalCaseUncheckedCreateWithoutSuiteInput[]
+    connectOrCreate?: LlmOperationEvalCaseCreateOrConnectWithoutSuiteInput | LlmOperationEvalCaseCreateOrConnectWithoutSuiteInput[]
+    upsert?: LlmOperationEvalCaseUpsertWithWhereUniqueWithoutSuiteInput | LlmOperationEvalCaseUpsertWithWhereUniqueWithoutSuiteInput[]
+    createMany?: LlmOperationEvalCaseCreateManySuiteInputEnvelope
+    set?: LlmOperationEvalCaseWhereUniqueInput | LlmOperationEvalCaseWhereUniqueInput[]
+    disconnect?: LlmOperationEvalCaseWhereUniqueInput | LlmOperationEvalCaseWhereUniqueInput[]
+    delete?: LlmOperationEvalCaseWhereUniqueInput | LlmOperationEvalCaseWhereUniqueInput[]
+    connect?: LlmOperationEvalCaseWhereUniqueInput | LlmOperationEvalCaseWhereUniqueInput[]
+    update?: LlmOperationEvalCaseUpdateWithWhereUniqueWithoutSuiteInput | LlmOperationEvalCaseUpdateWithWhereUniqueWithoutSuiteInput[]
+    updateMany?: LlmOperationEvalCaseUpdateManyWithWhereWithoutSuiteInput | LlmOperationEvalCaseUpdateManyWithWhereWithoutSuiteInput[]
+    deleteMany?: LlmOperationEvalCaseScalarWhereInput | LlmOperationEvalCaseScalarWhereInput[]
+  }
+
+  export type LlmOperationEvalRunUncheckedUpdateManyWithoutSuiteNestedInput = {
+    create?: XOR<LlmOperationEvalRunCreateWithoutSuiteInput, LlmOperationEvalRunUncheckedCreateWithoutSuiteInput> | LlmOperationEvalRunCreateWithoutSuiteInput[] | LlmOperationEvalRunUncheckedCreateWithoutSuiteInput[]
+    connectOrCreate?: LlmOperationEvalRunCreateOrConnectWithoutSuiteInput | LlmOperationEvalRunCreateOrConnectWithoutSuiteInput[]
+    upsert?: LlmOperationEvalRunUpsertWithWhereUniqueWithoutSuiteInput | LlmOperationEvalRunUpsertWithWhereUniqueWithoutSuiteInput[]
+    createMany?: LlmOperationEvalRunCreateManySuiteInputEnvelope
+    set?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+    disconnect?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+    delete?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+    connect?: LlmOperationEvalRunWhereUniqueInput | LlmOperationEvalRunWhereUniqueInput[]
+    update?: LlmOperationEvalRunUpdateWithWhereUniqueWithoutSuiteInput | LlmOperationEvalRunUpdateWithWhereUniqueWithoutSuiteInput[]
+    updateMany?: LlmOperationEvalRunUpdateManyWithWhereWithoutSuiteInput | LlmOperationEvalRunUpdateManyWithWhereWithoutSuiteInput[]
+    deleteMany?: LlmOperationEvalRunScalarWhereInput | LlmOperationEvalRunScalarWhereInput[]
+  }
+
+  export type LlmOperationEvalSuiteCreateNestedOneWithoutCasesInput = {
+    create?: XOR<LlmOperationEvalSuiteCreateWithoutCasesInput, LlmOperationEvalSuiteUncheckedCreateWithoutCasesInput>
+    connectOrCreate?: LlmOperationEvalSuiteCreateOrConnectWithoutCasesInput
+    connect?: LlmOperationEvalSuiteWhereUniqueInput
+  }
+
+  export type LlmOperationEvalSuiteUpdateOneRequiredWithoutCasesNestedInput = {
+    create?: XOR<LlmOperationEvalSuiteCreateWithoutCasesInput, LlmOperationEvalSuiteUncheckedCreateWithoutCasesInput>
+    connectOrCreate?: LlmOperationEvalSuiteCreateOrConnectWithoutCasesInput
+    upsert?: LlmOperationEvalSuiteUpsertWithoutCasesInput
+    connect?: LlmOperationEvalSuiteWhereUniqueInput
+    update?: XOR<XOR<LlmOperationEvalSuiteUpdateToOneWithWhereWithoutCasesInput, LlmOperationEvalSuiteUpdateWithoutCasesInput>, LlmOperationEvalSuiteUncheckedUpdateWithoutCasesInput>
+  }
+
+  export type LlmOperationVersionCreateNestedOneWithoutEvalRunsInput = {
+    create?: XOR<LlmOperationVersionCreateWithoutEvalRunsInput, LlmOperationVersionUncheckedCreateWithoutEvalRunsInput>
+    connectOrCreate?: LlmOperationVersionCreateOrConnectWithoutEvalRunsInput
+    connect?: LlmOperationVersionWhereUniqueInput
+  }
+
+  export type LlmOperationEvalSuiteCreateNestedOneWithoutEvalRunsInput = {
+    create?: XOR<LlmOperationEvalSuiteCreateWithoutEvalRunsInput, LlmOperationEvalSuiteUncheckedCreateWithoutEvalRunsInput>
+    connectOrCreate?: LlmOperationEvalSuiteCreateOrConnectWithoutEvalRunsInput
+    connect?: LlmOperationEvalSuiteWhereUniqueInput
+  }
+
+  export type LlmOperationVersionUpdateOneRequiredWithoutEvalRunsNestedInput = {
+    create?: XOR<LlmOperationVersionCreateWithoutEvalRunsInput, LlmOperationVersionUncheckedCreateWithoutEvalRunsInput>
+    connectOrCreate?: LlmOperationVersionCreateOrConnectWithoutEvalRunsInput
+    upsert?: LlmOperationVersionUpsertWithoutEvalRunsInput
+    connect?: LlmOperationVersionWhereUniqueInput
+    update?: XOR<XOR<LlmOperationVersionUpdateToOneWithWhereWithoutEvalRunsInput, LlmOperationVersionUpdateWithoutEvalRunsInput>, LlmOperationVersionUncheckedUpdateWithoutEvalRunsInput>
+  }
+
+  export type LlmOperationEvalSuiteUpdateOneRequiredWithoutEvalRunsNestedInput = {
+    create?: XOR<LlmOperationEvalSuiteCreateWithoutEvalRunsInput, LlmOperationEvalSuiteUncheckedCreateWithoutEvalRunsInput>
+    connectOrCreate?: LlmOperationEvalSuiteCreateOrConnectWithoutEvalRunsInput
+    upsert?: LlmOperationEvalSuiteUpsertWithoutEvalRunsInput
+    connect?: LlmOperationEvalSuiteWhereUniqueInput
+    update?: XOR<XOR<LlmOperationEvalSuiteUpdateToOneWithWhereWithoutEvalRunsInput, LlmOperationEvalSuiteUpdateWithoutEvalRunsInput>, LlmOperationEvalSuiteUncheckedUpdateWithoutEvalRunsInput>
+  }
+
+  export type LlmOperationVersionCreateNestedOneWithoutInvocationsInput = {
+    create?: XOR<LlmOperationVersionCreateWithoutInvocationsInput, LlmOperationVersionUncheckedCreateWithoutInvocationsInput>
+    connectOrCreate?: LlmOperationVersionCreateOrConnectWithoutInvocationsInput
+    connect?: LlmOperationVersionWhereUniqueInput
+  }
+
+  export type NullableDecimalFieldUpdateOperationsInput = {
+    set?: Decimal | DecimalJsLike | number | string | null
+    increment?: Decimal | DecimalJsLike | number | string
+    decrement?: Decimal | DecimalJsLike | number | string
+    multiply?: Decimal | DecimalJsLike | number | string
+    divide?: Decimal | DecimalJsLike | number | string
+  }
+
+  export type LlmOperationVersionUpdateOneRequiredWithoutInvocationsNestedInput = {
+    create?: XOR<LlmOperationVersionCreateWithoutInvocationsInput, LlmOperationVersionUncheckedCreateWithoutInvocationsInput>
+    connectOrCreate?: LlmOperationVersionCreateOrConnectWithoutInvocationsInput
+    upsert?: LlmOperationVersionUpsertWithoutInvocationsInput
+    connect?: LlmOperationVersionWhereUniqueInput
+    update?: XOR<XOR<LlmOperationVersionUpdateToOneWithWhereWithoutInvocationsInput, LlmOperationVersionUpdateWithoutInvocationsInput>, LlmOperationVersionUncheckedUpdateWithoutInvocationsInput>
+  }
+
+  export type LlmOperationCreateNestedOneWithoutAttestationsInput = {
+    create?: XOR<LlmOperationCreateWithoutAttestationsInput, LlmOperationUncheckedCreateWithoutAttestationsInput>
+    connectOrCreate?: LlmOperationCreateOrConnectWithoutAttestationsInput
+    connect?: LlmOperationWhereUniqueInput
+  }
+
+  export type LlmOperationVersionCreateNestedOneWithoutAttestationsInput = {
+    create?: XOR<LlmOperationVersionCreateWithoutAttestationsInput, LlmOperationVersionUncheckedCreateWithoutAttestationsInput>
+    connectOrCreate?: LlmOperationVersionCreateOrConnectWithoutAttestationsInput
+    connect?: LlmOperationVersionWhereUniqueInput
+  }
+
+  export type LlmOperationUpdateOneRequiredWithoutAttestationsNestedInput = {
+    create?: XOR<LlmOperationCreateWithoutAttestationsInput, LlmOperationUncheckedCreateWithoutAttestationsInput>
+    connectOrCreate?: LlmOperationCreateOrConnectWithoutAttestationsInput
+    upsert?: LlmOperationUpsertWithoutAttestationsInput
+    connect?: LlmOperationWhereUniqueInput
+    update?: XOR<XOR<LlmOperationUpdateToOneWithWhereWithoutAttestationsInput, LlmOperationUpdateWithoutAttestationsInput>, LlmOperationUncheckedUpdateWithoutAttestationsInput>
+  }
+
+  export type LlmOperationVersionUpdateOneRequiredWithoutAttestationsNestedInput = {
+    create?: XOR<LlmOperationVersionCreateWithoutAttestationsInput, LlmOperationVersionUncheckedCreateWithoutAttestationsInput>
+    connectOrCreate?: LlmOperationVersionCreateOrConnectWithoutAttestationsInput
+    upsert?: LlmOperationVersionUpsertWithoutAttestationsInput
+    connect?: LlmOperationVersionWhereUniqueInput
+    update?: XOR<XOR<LlmOperationVersionUpdateToOneWithWhereWithoutAttestationsInput, LlmOperationVersionUpdateWithoutAttestationsInput>, LlmOperationVersionUncheckedUpdateWithoutAttestationsInput>
   }
 
   export type NestedUuidFilter<$PrismaModel = never> = {
@@ -7613,6 +21314,82 @@ export namespace Prisma {
     gt?: number | FloatFieldRefInput<$PrismaModel>
     gte?: number | FloatFieldRefInput<$PrismaModel>
     not?: NestedFloatFilter<$PrismaModel> | number
+  }
+  export type NestedJsonFilter<$PrismaModel = never> = 
+    | PatchUndefined<
+        Either<Required<NestedJsonFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonFilterBase<$PrismaModel>>, 'path'>>,
+        Required<NestedJsonFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<NestedJsonFilterBase<$PrismaModel>>, 'path'>>
+
+  export type NestedJsonFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
+
+  export type NestedIntNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedIntNullableFilter<$PrismaModel>
+    _max?: NestedIntNullableFilter<$PrismaModel>
+  }
+
+  export type NestedFloatNullableFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatNullableFilter<$PrismaModel> | number | null
+  }
+
+  export type NestedDecimalNullableFilter<$PrismaModel = never> = {
+    equals?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel> | null
+    in?: Decimal[] | DecimalJsLike[] | number[] | string[] | ListDecimalFieldRefInput<$PrismaModel> | null
+    notIn?: Decimal[] | DecimalJsLike[] | number[] | string[] | ListDecimalFieldRefInput<$PrismaModel> | null
+    lt?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    lte?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    gt?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    gte?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    not?: NestedDecimalNullableFilter<$PrismaModel> | Decimal | DecimalJsLike | number | string | null
+  }
+
+  export type NestedDecimalNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel> | null
+    in?: Decimal[] | DecimalJsLike[] | number[] | string[] | ListDecimalFieldRefInput<$PrismaModel> | null
+    notIn?: Decimal[] | DecimalJsLike[] | number[] | string[] | ListDecimalFieldRefInput<$PrismaModel> | null
+    lt?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    lte?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    gt?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    gte?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    not?: NestedDecimalNullableWithAggregatesFilter<$PrismaModel> | Decimal | DecimalJsLike | number | string | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedDecimalNullableFilter<$PrismaModel>
+    _sum?: NestedDecimalNullableFilter<$PrismaModel>
+    _min?: NestedDecimalNullableFilter<$PrismaModel>
+    _max?: NestedDecimalNullableFilter<$PrismaModel>
   }
 
   export type ExecutionStepCreateWithoutExecutionInput = {
@@ -8215,6 +21992,1684 @@ export namespace Prisma {
     runtimeSessions?: RuntimeSessionUncheckedUpdateManyWithoutExecutionNestedInput
   }
 
+  export type LlmOperationVersionCreateWithoutOperationInput = {
+    id?: string
+    version: string
+    state?: string
+    manifestJson: JsonNullValueInput | InputJsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary?: string
+    source?: string
+    approvedBy?: string | null
+    approvedAt?: Date | string | null
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    activations?: LlmOperationActivationCreateNestedManyWithoutVersionInput
+    activationEvents?: LlmOperationActivationEventCreateNestedManyWithoutVersionInput
+    evalRuns?: LlmOperationEvalRunCreateNestedManyWithoutVersionInput
+    invocations?: LlmOperationInvocationCreateNestedManyWithoutVersionInput
+    attestations?: LlmOperationAttestationCreateNestedManyWithoutVersionInput
+  }
+
+  export type LlmOperationVersionUncheckedCreateWithoutOperationInput = {
+    id?: string
+    version: string
+    state?: string
+    manifestJson: JsonNullValueInput | InputJsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary?: string
+    source?: string
+    approvedBy?: string | null
+    approvedAt?: Date | string | null
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    activations?: LlmOperationActivationUncheckedCreateNestedManyWithoutVersionInput
+    activationEvents?: LlmOperationActivationEventUncheckedCreateNestedManyWithoutVersionInput
+    evalRuns?: LlmOperationEvalRunUncheckedCreateNestedManyWithoutVersionInput
+    invocations?: LlmOperationInvocationUncheckedCreateNestedManyWithoutVersionInput
+    attestations?: LlmOperationAttestationUncheckedCreateNestedManyWithoutVersionInput
+  }
+
+  export type LlmOperationVersionCreateOrConnectWithoutOperationInput = {
+    where: LlmOperationVersionWhereUniqueInput
+    create: XOR<LlmOperationVersionCreateWithoutOperationInput, LlmOperationVersionUncheckedCreateWithoutOperationInput>
+  }
+
+  export type LlmOperationVersionCreateManyOperationInputEnvelope = {
+    data: LlmOperationVersionCreateManyOperationInput | LlmOperationVersionCreateManyOperationInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type LlmOperationActivationCreateWithoutOperationInput = {
+    id?: string
+    environment: string
+    label?: string | null
+    activatedBy: string
+    reason: string
+    rolloutPercent?: number | null
+    activatedAt?: Date | string
+    updatedAt?: Date | string
+    version: LlmOperationVersionCreateNestedOneWithoutActivationsInput
+  }
+
+  export type LlmOperationActivationUncheckedCreateWithoutOperationInput = {
+    id?: string
+    versionId: string
+    environment: string
+    label?: string | null
+    activatedBy: string
+    reason: string
+    rolloutPercent?: number | null
+    activatedAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type LlmOperationActivationCreateOrConnectWithoutOperationInput = {
+    where: LlmOperationActivationWhereUniqueInput
+    create: XOR<LlmOperationActivationCreateWithoutOperationInput, LlmOperationActivationUncheckedCreateWithoutOperationInput>
+  }
+
+  export type LlmOperationActivationCreateManyOperationInputEnvelope = {
+    data: LlmOperationActivationCreateManyOperationInput | LlmOperationActivationCreateManyOperationInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type LlmOperationActivationEventCreateWithoutOperationInput = {
+    id?: string
+    previousVersionId?: string | null
+    environment: string
+    action: string
+    actor: string
+    reason: string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    version: LlmOperationVersionCreateNestedOneWithoutActivationEventsInput
+  }
+
+  export type LlmOperationActivationEventUncheckedCreateWithoutOperationInput = {
+    id?: string
+    previousVersionId?: string | null
+    newVersionId: string
+    environment: string
+    action: string
+    actor: string
+    reason: string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationActivationEventCreateOrConnectWithoutOperationInput = {
+    where: LlmOperationActivationEventWhereUniqueInput
+    create: XOR<LlmOperationActivationEventCreateWithoutOperationInput, LlmOperationActivationEventUncheckedCreateWithoutOperationInput>
+  }
+
+  export type LlmOperationActivationEventCreateManyOperationInputEnvelope = {
+    data: LlmOperationActivationEventCreateManyOperationInput | LlmOperationActivationEventCreateManyOperationInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type LlmOperationAttestationCreateWithoutOperationInput = {
+    id?: string
+    operationDigest: string
+    contractDigest: string
+    evalSuiteDigest?: string | null
+    validatorVersion: string
+    schemaTests: string
+    offlineEvals: string
+    liveEvals: string
+    securityEvals: string
+    gateResultsJson: JsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+    version: LlmOperationVersionCreateNestedOneWithoutAttestationsInput
+  }
+
+  export type LlmOperationAttestationUncheckedCreateWithoutOperationInput = {
+    id?: string
+    versionId: string
+    operationDigest: string
+    contractDigest: string
+    evalSuiteDigest?: string | null
+    validatorVersion: string
+    schemaTests: string
+    offlineEvals: string
+    liveEvals: string
+    securityEvals: string
+    gateResultsJson: JsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationAttestationCreateOrConnectWithoutOperationInput = {
+    where: LlmOperationAttestationWhereUniqueInput
+    create: XOR<LlmOperationAttestationCreateWithoutOperationInput, LlmOperationAttestationUncheckedCreateWithoutOperationInput>
+  }
+
+  export type LlmOperationAttestationCreateManyOperationInputEnvelope = {
+    data: LlmOperationAttestationCreateManyOperationInput | LlmOperationAttestationCreateManyOperationInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type LlmOperationVersionUpsertWithWhereUniqueWithoutOperationInput = {
+    where: LlmOperationVersionWhereUniqueInput
+    update: XOR<LlmOperationVersionUpdateWithoutOperationInput, LlmOperationVersionUncheckedUpdateWithoutOperationInput>
+    create: XOR<LlmOperationVersionCreateWithoutOperationInput, LlmOperationVersionUncheckedCreateWithoutOperationInput>
+  }
+
+  export type LlmOperationVersionUpdateWithWhereUniqueWithoutOperationInput = {
+    where: LlmOperationVersionWhereUniqueInput
+    data: XOR<LlmOperationVersionUpdateWithoutOperationInput, LlmOperationVersionUncheckedUpdateWithoutOperationInput>
+  }
+
+  export type LlmOperationVersionUpdateManyWithWhereWithoutOperationInput = {
+    where: LlmOperationVersionScalarWhereInput
+    data: XOR<LlmOperationVersionUpdateManyMutationInput, LlmOperationVersionUncheckedUpdateManyWithoutOperationInput>
+  }
+
+  export type LlmOperationVersionScalarWhereInput = {
+    AND?: LlmOperationVersionScalarWhereInput | LlmOperationVersionScalarWhereInput[]
+    OR?: LlmOperationVersionScalarWhereInput[]
+    NOT?: LlmOperationVersionScalarWhereInput | LlmOperationVersionScalarWhereInput[]
+    id?: UuidFilter<"LlmOperationVersion"> | string
+    operationId?: UuidFilter<"LlmOperationVersion"> | string
+    version?: StringFilter<"LlmOperationVersion"> | string
+    state?: StringFilter<"LlmOperationVersion"> | string
+    manifestJson?: JsonFilter<"LlmOperationVersion">
+    operationDigest?: StringFilter<"LlmOperationVersion"> | string
+    contractDigest?: StringFilter<"LlmOperationVersion"> | string
+    changeSummary?: StringFilter<"LlmOperationVersion"> | string
+    source?: StringFilter<"LlmOperationVersion"> | string
+    approvedBy?: StringNullableFilter<"LlmOperationVersion"> | string | null
+    approvedAt?: DateTimeNullableFilter<"LlmOperationVersion"> | Date | string | null
+    createdBy?: StringFilter<"LlmOperationVersion"> | string
+    createdAt?: DateTimeFilter<"LlmOperationVersion"> | Date | string
+    updatedAt?: DateTimeFilter<"LlmOperationVersion"> | Date | string
+  }
+
+  export type LlmOperationActivationUpsertWithWhereUniqueWithoutOperationInput = {
+    where: LlmOperationActivationWhereUniqueInput
+    update: XOR<LlmOperationActivationUpdateWithoutOperationInput, LlmOperationActivationUncheckedUpdateWithoutOperationInput>
+    create: XOR<LlmOperationActivationCreateWithoutOperationInput, LlmOperationActivationUncheckedCreateWithoutOperationInput>
+  }
+
+  export type LlmOperationActivationUpdateWithWhereUniqueWithoutOperationInput = {
+    where: LlmOperationActivationWhereUniqueInput
+    data: XOR<LlmOperationActivationUpdateWithoutOperationInput, LlmOperationActivationUncheckedUpdateWithoutOperationInput>
+  }
+
+  export type LlmOperationActivationUpdateManyWithWhereWithoutOperationInput = {
+    where: LlmOperationActivationScalarWhereInput
+    data: XOR<LlmOperationActivationUpdateManyMutationInput, LlmOperationActivationUncheckedUpdateManyWithoutOperationInput>
+  }
+
+  export type LlmOperationActivationScalarWhereInput = {
+    AND?: LlmOperationActivationScalarWhereInput | LlmOperationActivationScalarWhereInput[]
+    OR?: LlmOperationActivationScalarWhereInput[]
+    NOT?: LlmOperationActivationScalarWhereInput | LlmOperationActivationScalarWhereInput[]
+    id?: UuidFilter<"LlmOperationActivation"> | string
+    operationId?: UuidFilter<"LlmOperationActivation"> | string
+    versionId?: UuidFilter<"LlmOperationActivation"> | string
+    environment?: StringFilter<"LlmOperationActivation"> | string
+    label?: StringNullableFilter<"LlmOperationActivation"> | string | null
+    activatedBy?: StringFilter<"LlmOperationActivation"> | string
+    reason?: StringFilter<"LlmOperationActivation"> | string
+    rolloutPercent?: IntNullableFilter<"LlmOperationActivation"> | number | null
+    activatedAt?: DateTimeFilter<"LlmOperationActivation"> | Date | string
+    updatedAt?: DateTimeFilter<"LlmOperationActivation"> | Date | string
+  }
+
+  export type LlmOperationActivationEventUpsertWithWhereUniqueWithoutOperationInput = {
+    where: LlmOperationActivationEventWhereUniqueInput
+    update: XOR<LlmOperationActivationEventUpdateWithoutOperationInput, LlmOperationActivationEventUncheckedUpdateWithoutOperationInput>
+    create: XOR<LlmOperationActivationEventCreateWithoutOperationInput, LlmOperationActivationEventUncheckedCreateWithoutOperationInput>
+  }
+
+  export type LlmOperationActivationEventUpdateWithWhereUniqueWithoutOperationInput = {
+    where: LlmOperationActivationEventWhereUniqueInput
+    data: XOR<LlmOperationActivationEventUpdateWithoutOperationInput, LlmOperationActivationEventUncheckedUpdateWithoutOperationInput>
+  }
+
+  export type LlmOperationActivationEventUpdateManyWithWhereWithoutOperationInput = {
+    where: LlmOperationActivationEventScalarWhereInput
+    data: XOR<LlmOperationActivationEventUpdateManyMutationInput, LlmOperationActivationEventUncheckedUpdateManyWithoutOperationInput>
+  }
+
+  export type LlmOperationActivationEventScalarWhereInput = {
+    AND?: LlmOperationActivationEventScalarWhereInput | LlmOperationActivationEventScalarWhereInput[]
+    OR?: LlmOperationActivationEventScalarWhereInput[]
+    NOT?: LlmOperationActivationEventScalarWhereInput | LlmOperationActivationEventScalarWhereInput[]
+    id?: UuidFilter<"LlmOperationActivationEvent"> | string
+    operationId?: UuidFilter<"LlmOperationActivationEvent"> | string
+    previousVersionId?: UuidNullableFilter<"LlmOperationActivationEvent"> | string | null
+    newVersionId?: UuidFilter<"LlmOperationActivationEvent"> | string
+    environment?: StringFilter<"LlmOperationActivationEvent"> | string
+    action?: StringFilter<"LlmOperationActivationEvent"> | string
+    actor?: StringFilter<"LlmOperationActivationEvent"> | string
+    reason?: StringFilter<"LlmOperationActivationEvent"> | string
+    metadataJson?: JsonNullableFilter<"LlmOperationActivationEvent">
+    createdAt?: DateTimeFilter<"LlmOperationActivationEvent"> | Date | string
+  }
+
+  export type LlmOperationAttestationUpsertWithWhereUniqueWithoutOperationInput = {
+    where: LlmOperationAttestationWhereUniqueInput
+    update: XOR<LlmOperationAttestationUpdateWithoutOperationInput, LlmOperationAttestationUncheckedUpdateWithoutOperationInput>
+    create: XOR<LlmOperationAttestationCreateWithoutOperationInput, LlmOperationAttestationUncheckedCreateWithoutOperationInput>
+  }
+
+  export type LlmOperationAttestationUpdateWithWhereUniqueWithoutOperationInput = {
+    where: LlmOperationAttestationWhereUniqueInput
+    data: XOR<LlmOperationAttestationUpdateWithoutOperationInput, LlmOperationAttestationUncheckedUpdateWithoutOperationInput>
+  }
+
+  export type LlmOperationAttestationUpdateManyWithWhereWithoutOperationInput = {
+    where: LlmOperationAttestationScalarWhereInput
+    data: XOR<LlmOperationAttestationUpdateManyMutationInput, LlmOperationAttestationUncheckedUpdateManyWithoutOperationInput>
+  }
+
+  export type LlmOperationAttestationScalarWhereInput = {
+    AND?: LlmOperationAttestationScalarWhereInput | LlmOperationAttestationScalarWhereInput[]
+    OR?: LlmOperationAttestationScalarWhereInput[]
+    NOT?: LlmOperationAttestationScalarWhereInput | LlmOperationAttestationScalarWhereInput[]
+    id?: UuidFilter<"LlmOperationAttestation"> | string
+    operationId?: UuidFilter<"LlmOperationAttestation"> | string
+    versionId?: UuidFilter<"LlmOperationAttestation"> | string
+    operationDigest?: StringFilter<"LlmOperationAttestation"> | string
+    contractDigest?: StringFilter<"LlmOperationAttestation"> | string
+    evalSuiteDigest?: StringNullableFilter<"LlmOperationAttestation"> | string | null
+    validatorVersion?: StringFilter<"LlmOperationAttestation"> | string
+    schemaTests?: StringFilter<"LlmOperationAttestation"> | string
+    offlineEvals?: StringFilter<"LlmOperationAttestation"> | string
+    liveEvals?: StringFilter<"LlmOperationAttestation"> | string
+    securityEvals?: StringFilter<"LlmOperationAttestation"> | string
+    gateResultsJson?: JsonFilter<"LlmOperationAttestation">
+    createdBy?: StringFilter<"LlmOperationAttestation"> | string
+    createdAt?: DateTimeFilter<"LlmOperationAttestation"> | Date | string
+  }
+
+  export type LlmOperationCreateWithoutVersionsInput = {
+    id?: string
+    operationKey: string
+    displayName: string
+    description: string
+    owner: string
+    status?: string
+    source?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    activations?: LlmOperationActivationCreateNestedManyWithoutOperationInput
+    activationEvents?: LlmOperationActivationEventCreateNestedManyWithoutOperationInput
+    attestations?: LlmOperationAttestationCreateNestedManyWithoutOperationInput
+  }
+
+  export type LlmOperationUncheckedCreateWithoutVersionsInput = {
+    id?: string
+    operationKey: string
+    displayName: string
+    description: string
+    owner: string
+    status?: string
+    source?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    activations?: LlmOperationActivationUncheckedCreateNestedManyWithoutOperationInput
+    activationEvents?: LlmOperationActivationEventUncheckedCreateNestedManyWithoutOperationInput
+    attestations?: LlmOperationAttestationUncheckedCreateNestedManyWithoutOperationInput
+  }
+
+  export type LlmOperationCreateOrConnectWithoutVersionsInput = {
+    where: LlmOperationWhereUniqueInput
+    create: XOR<LlmOperationCreateWithoutVersionsInput, LlmOperationUncheckedCreateWithoutVersionsInput>
+  }
+
+  export type LlmOperationActivationCreateWithoutVersionInput = {
+    id?: string
+    environment: string
+    label?: string | null
+    activatedBy: string
+    reason: string
+    rolloutPercent?: number | null
+    activatedAt?: Date | string
+    updatedAt?: Date | string
+    operation: LlmOperationCreateNestedOneWithoutActivationsInput
+  }
+
+  export type LlmOperationActivationUncheckedCreateWithoutVersionInput = {
+    id?: string
+    operationId: string
+    environment: string
+    label?: string | null
+    activatedBy: string
+    reason: string
+    rolloutPercent?: number | null
+    activatedAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type LlmOperationActivationCreateOrConnectWithoutVersionInput = {
+    where: LlmOperationActivationWhereUniqueInput
+    create: XOR<LlmOperationActivationCreateWithoutVersionInput, LlmOperationActivationUncheckedCreateWithoutVersionInput>
+  }
+
+  export type LlmOperationActivationCreateManyVersionInputEnvelope = {
+    data: LlmOperationActivationCreateManyVersionInput | LlmOperationActivationCreateManyVersionInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type LlmOperationActivationEventCreateWithoutVersionInput = {
+    id?: string
+    previousVersionId?: string | null
+    environment: string
+    action: string
+    actor: string
+    reason: string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    operation: LlmOperationCreateNestedOneWithoutActivationEventsInput
+  }
+
+  export type LlmOperationActivationEventUncheckedCreateWithoutVersionInput = {
+    id?: string
+    operationId: string
+    previousVersionId?: string | null
+    environment: string
+    action: string
+    actor: string
+    reason: string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationActivationEventCreateOrConnectWithoutVersionInput = {
+    where: LlmOperationActivationEventWhereUniqueInput
+    create: XOR<LlmOperationActivationEventCreateWithoutVersionInput, LlmOperationActivationEventUncheckedCreateWithoutVersionInput>
+  }
+
+  export type LlmOperationActivationEventCreateManyVersionInputEnvelope = {
+    data: LlmOperationActivationEventCreateManyVersionInput | LlmOperationActivationEventCreateManyVersionInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type LlmOperationEvalRunCreateWithoutVersionInput = {
+    id?: string
+    modelPolicySnapshot: JsonNullValueInput | InputJsonValue
+    resultsJson: JsonNullValueInput | InputJsonValue
+    metricsJson: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: string | null
+    executedBy: string
+    startedAt?: Date | string
+    completedAt?: Date | string | null
+    suite: LlmOperationEvalSuiteCreateNestedOneWithoutEvalRunsInput
+  }
+
+  export type LlmOperationEvalRunUncheckedCreateWithoutVersionInput = {
+    id?: string
+    suiteId: string
+    modelPolicySnapshot: JsonNullValueInput | InputJsonValue
+    resultsJson: JsonNullValueInput | InputJsonValue
+    metricsJson: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: string | null
+    executedBy: string
+    startedAt?: Date | string
+    completedAt?: Date | string | null
+  }
+
+  export type LlmOperationEvalRunCreateOrConnectWithoutVersionInput = {
+    where: LlmOperationEvalRunWhereUniqueInput
+    create: XOR<LlmOperationEvalRunCreateWithoutVersionInput, LlmOperationEvalRunUncheckedCreateWithoutVersionInput>
+  }
+
+  export type LlmOperationEvalRunCreateManyVersionInputEnvelope = {
+    data: LlmOperationEvalRunCreateManyVersionInput | LlmOperationEvalRunCreateManyVersionInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type LlmOperationInvocationCreateWithoutVersionInput = {
+    id?: string
+    executionId?: string | null
+    stepId?: string | null
+    tenantId?: string | null
+    provider: string
+    requestedModel: string
+    resolvedModel?: string | null
+    inputDigest?: string | null
+    outputDigest?: string | null
+    idempotencyKey?: string | null
+    resultJson?: NullableJsonNullValueInput | InputJsonValue
+    inputStorageRef?: string | null
+    outputStorageRef?: string | null
+    tokenUsageJson?: NullableJsonNullValueInput | InputJsonValue
+    latencyMs?: number | null
+    estimatedCost?: Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: number
+    repairAttempts?: number
+    validationResult: string
+    finishReason?: string | null
+    errorCode?: string | null
+    actor: string
+    environment: string
+    startedAt?: Date | string
+    completedAt?: Date | string | null
+  }
+
+  export type LlmOperationInvocationUncheckedCreateWithoutVersionInput = {
+    id?: string
+    executionId?: string | null
+    stepId?: string | null
+    tenantId?: string | null
+    provider: string
+    requestedModel: string
+    resolvedModel?: string | null
+    inputDigest?: string | null
+    outputDigest?: string | null
+    idempotencyKey?: string | null
+    resultJson?: NullableJsonNullValueInput | InputJsonValue
+    inputStorageRef?: string | null
+    outputStorageRef?: string | null
+    tokenUsageJson?: NullableJsonNullValueInput | InputJsonValue
+    latencyMs?: number | null
+    estimatedCost?: Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: number
+    repairAttempts?: number
+    validationResult: string
+    finishReason?: string | null
+    errorCode?: string | null
+    actor: string
+    environment: string
+    startedAt?: Date | string
+    completedAt?: Date | string | null
+  }
+
+  export type LlmOperationInvocationCreateOrConnectWithoutVersionInput = {
+    where: LlmOperationInvocationWhereUniqueInput
+    create: XOR<LlmOperationInvocationCreateWithoutVersionInput, LlmOperationInvocationUncheckedCreateWithoutVersionInput>
+  }
+
+  export type LlmOperationInvocationCreateManyVersionInputEnvelope = {
+    data: LlmOperationInvocationCreateManyVersionInput | LlmOperationInvocationCreateManyVersionInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type LlmOperationAttestationCreateWithoutVersionInput = {
+    id?: string
+    operationDigest: string
+    contractDigest: string
+    evalSuiteDigest?: string | null
+    validatorVersion: string
+    schemaTests: string
+    offlineEvals: string
+    liveEvals: string
+    securityEvals: string
+    gateResultsJson: JsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+    operation: LlmOperationCreateNestedOneWithoutAttestationsInput
+  }
+
+  export type LlmOperationAttestationUncheckedCreateWithoutVersionInput = {
+    id?: string
+    operationId: string
+    operationDigest: string
+    contractDigest: string
+    evalSuiteDigest?: string | null
+    validatorVersion: string
+    schemaTests: string
+    offlineEvals: string
+    liveEvals: string
+    securityEvals: string
+    gateResultsJson: JsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationAttestationCreateOrConnectWithoutVersionInput = {
+    where: LlmOperationAttestationWhereUniqueInput
+    create: XOR<LlmOperationAttestationCreateWithoutVersionInput, LlmOperationAttestationUncheckedCreateWithoutVersionInput>
+  }
+
+  export type LlmOperationAttestationCreateManyVersionInputEnvelope = {
+    data: LlmOperationAttestationCreateManyVersionInput | LlmOperationAttestationCreateManyVersionInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type LlmOperationUpsertWithoutVersionsInput = {
+    update: XOR<LlmOperationUpdateWithoutVersionsInput, LlmOperationUncheckedUpdateWithoutVersionsInput>
+    create: XOR<LlmOperationCreateWithoutVersionsInput, LlmOperationUncheckedCreateWithoutVersionsInput>
+    where?: LlmOperationWhereInput
+  }
+
+  export type LlmOperationUpdateToOneWithWhereWithoutVersionsInput = {
+    where?: LlmOperationWhereInput
+    data: XOR<LlmOperationUpdateWithoutVersionsInput, LlmOperationUncheckedUpdateWithoutVersionsInput>
+  }
+
+  export type LlmOperationUpdateWithoutVersionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationKey?: StringFieldUpdateOperationsInput | string
+    displayName?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    owner?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    activations?: LlmOperationActivationUpdateManyWithoutOperationNestedInput
+    activationEvents?: LlmOperationActivationEventUpdateManyWithoutOperationNestedInput
+    attestations?: LlmOperationAttestationUpdateManyWithoutOperationNestedInput
+  }
+
+  export type LlmOperationUncheckedUpdateWithoutVersionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationKey?: StringFieldUpdateOperationsInput | string
+    displayName?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    owner?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    activations?: LlmOperationActivationUncheckedUpdateManyWithoutOperationNestedInput
+    activationEvents?: LlmOperationActivationEventUncheckedUpdateManyWithoutOperationNestedInput
+    attestations?: LlmOperationAttestationUncheckedUpdateManyWithoutOperationNestedInput
+  }
+
+  export type LlmOperationActivationUpsertWithWhereUniqueWithoutVersionInput = {
+    where: LlmOperationActivationWhereUniqueInput
+    update: XOR<LlmOperationActivationUpdateWithoutVersionInput, LlmOperationActivationUncheckedUpdateWithoutVersionInput>
+    create: XOR<LlmOperationActivationCreateWithoutVersionInput, LlmOperationActivationUncheckedCreateWithoutVersionInput>
+  }
+
+  export type LlmOperationActivationUpdateWithWhereUniqueWithoutVersionInput = {
+    where: LlmOperationActivationWhereUniqueInput
+    data: XOR<LlmOperationActivationUpdateWithoutVersionInput, LlmOperationActivationUncheckedUpdateWithoutVersionInput>
+  }
+
+  export type LlmOperationActivationUpdateManyWithWhereWithoutVersionInput = {
+    where: LlmOperationActivationScalarWhereInput
+    data: XOR<LlmOperationActivationUpdateManyMutationInput, LlmOperationActivationUncheckedUpdateManyWithoutVersionInput>
+  }
+
+  export type LlmOperationActivationEventUpsertWithWhereUniqueWithoutVersionInput = {
+    where: LlmOperationActivationEventWhereUniqueInput
+    update: XOR<LlmOperationActivationEventUpdateWithoutVersionInput, LlmOperationActivationEventUncheckedUpdateWithoutVersionInput>
+    create: XOR<LlmOperationActivationEventCreateWithoutVersionInput, LlmOperationActivationEventUncheckedCreateWithoutVersionInput>
+  }
+
+  export type LlmOperationActivationEventUpdateWithWhereUniqueWithoutVersionInput = {
+    where: LlmOperationActivationEventWhereUniqueInput
+    data: XOR<LlmOperationActivationEventUpdateWithoutVersionInput, LlmOperationActivationEventUncheckedUpdateWithoutVersionInput>
+  }
+
+  export type LlmOperationActivationEventUpdateManyWithWhereWithoutVersionInput = {
+    where: LlmOperationActivationEventScalarWhereInput
+    data: XOR<LlmOperationActivationEventUpdateManyMutationInput, LlmOperationActivationEventUncheckedUpdateManyWithoutVersionInput>
+  }
+
+  export type LlmOperationEvalRunUpsertWithWhereUniqueWithoutVersionInput = {
+    where: LlmOperationEvalRunWhereUniqueInput
+    update: XOR<LlmOperationEvalRunUpdateWithoutVersionInput, LlmOperationEvalRunUncheckedUpdateWithoutVersionInput>
+    create: XOR<LlmOperationEvalRunCreateWithoutVersionInput, LlmOperationEvalRunUncheckedCreateWithoutVersionInput>
+  }
+
+  export type LlmOperationEvalRunUpdateWithWhereUniqueWithoutVersionInput = {
+    where: LlmOperationEvalRunWhereUniqueInput
+    data: XOR<LlmOperationEvalRunUpdateWithoutVersionInput, LlmOperationEvalRunUncheckedUpdateWithoutVersionInput>
+  }
+
+  export type LlmOperationEvalRunUpdateManyWithWhereWithoutVersionInput = {
+    where: LlmOperationEvalRunScalarWhereInput
+    data: XOR<LlmOperationEvalRunUpdateManyMutationInput, LlmOperationEvalRunUncheckedUpdateManyWithoutVersionInput>
+  }
+
+  export type LlmOperationEvalRunScalarWhereInput = {
+    AND?: LlmOperationEvalRunScalarWhereInput | LlmOperationEvalRunScalarWhereInput[]
+    OR?: LlmOperationEvalRunScalarWhereInput[]
+    NOT?: LlmOperationEvalRunScalarWhereInput | LlmOperationEvalRunScalarWhereInput[]
+    id?: UuidFilter<"LlmOperationEvalRun"> | string
+    versionId?: UuidFilter<"LlmOperationEvalRun"> | string
+    suiteId?: UuidFilter<"LlmOperationEvalRun"> | string
+    modelPolicySnapshot?: JsonFilter<"LlmOperationEvalRun">
+    resultsJson?: JsonFilter<"LlmOperationEvalRun">
+    metricsJson?: JsonFilter<"LlmOperationEvalRun">
+    baselineVersionId?: UuidNullableFilter<"LlmOperationEvalRun"> | string | null
+    executedBy?: StringFilter<"LlmOperationEvalRun"> | string
+    startedAt?: DateTimeFilter<"LlmOperationEvalRun"> | Date | string
+    completedAt?: DateTimeNullableFilter<"LlmOperationEvalRun"> | Date | string | null
+  }
+
+  export type LlmOperationInvocationUpsertWithWhereUniqueWithoutVersionInput = {
+    where: LlmOperationInvocationWhereUniqueInput
+    update: XOR<LlmOperationInvocationUpdateWithoutVersionInput, LlmOperationInvocationUncheckedUpdateWithoutVersionInput>
+    create: XOR<LlmOperationInvocationCreateWithoutVersionInput, LlmOperationInvocationUncheckedCreateWithoutVersionInput>
+  }
+
+  export type LlmOperationInvocationUpdateWithWhereUniqueWithoutVersionInput = {
+    where: LlmOperationInvocationWhereUniqueInput
+    data: XOR<LlmOperationInvocationUpdateWithoutVersionInput, LlmOperationInvocationUncheckedUpdateWithoutVersionInput>
+  }
+
+  export type LlmOperationInvocationUpdateManyWithWhereWithoutVersionInput = {
+    where: LlmOperationInvocationScalarWhereInput
+    data: XOR<LlmOperationInvocationUpdateManyMutationInput, LlmOperationInvocationUncheckedUpdateManyWithoutVersionInput>
+  }
+
+  export type LlmOperationInvocationScalarWhereInput = {
+    AND?: LlmOperationInvocationScalarWhereInput | LlmOperationInvocationScalarWhereInput[]
+    OR?: LlmOperationInvocationScalarWhereInput[]
+    NOT?: LlmOperationInvocationScalarWhereInput | LlmOperationInvocationScalarWhereInput[]
+    id?: UuidFilter<"LlmOperationInvocation"> | string
+    versionId?: UuidFilter<"LlmOperationInvocation"> | string
+    executionId?: UuidNullableFilter<"LlmOperationInvocation"> | string | null
+    stepId?: UuidNullableFilter<"LlmOperationInvocation"> | string | null
+    tenantId?: UuidNullableFilter<"LlmOperationInvocation"> | string | null
+    provider?: StringFilter<"LlmOperationInvocation"> | string
+    requestedModel?: StringFilter<"LlmOperationInvocation"> | string
+    resolvedModel?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    inputDigest?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    outputDigest?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    idempotencyKey?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    resultJson?: JsonNullableFilter<"LlmOperationInvocation">
+    inputStorageRef?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    outputStorageRef?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    tokenUsageJson?: JsonNullableFilter<"LlmOperationInvocation">
+    latencyMs?: IntNullableFilter<"LlmOperationInvocation"> | number | null
+    estimatedCost?: DecimalNullableFilter<"LlmOperationInvocation"> | Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: IntFilter<"LlmOperationInvocation"> | number
+    repairAttempts?: IntFilter<"LlmOperationInvocation"> | number
+    validationResult?: StringFilter<"LlmOperationInvocation"> | string
+    finishReason?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    errorCode?: StringNullableFilter<"LlmOperationInvocation"> | string | null
+    actor?: StringFilter<"LlmOperationInvocation"> | string
+    environment?: StringFilter<"LlmOperationInvocation"> | string
+    startedAt?: DateTimeFilter<"LlmOperationInvocation"> | Date | string
+    completedAt?: DateTimeNullableFilter<"LlmOperationInvocation"> | Date | string | null
+  }
+
+  export type LlmOperationAttestationUpsertWithWhereUniqueWithoutVersionInput = {
+    where: LlmOperationAttestationWhereUniqueInput
+    update: XOR<LlmOperationAttestationUpdateWithoutVersionInput, LlmOperationAttestationUncheckedUpdateWithoutVersionInput>
+    create: XOR<LlmOperationAttestationCreateWithoutVersionInput, LlmOperationAttestationUncheckedCreateWithoutVersionInput>
+  }
+
+  export type LlmOperationAttestationUpdateWithWhereUniqueWithoutVersionInput = {
+    where: LlmOperationAttestationWhereUniqueInput
+    data: XOR<LlmOperationAttestationUpdateWithoutVersionInput, LlmOperationAttestationUncheckedUpdateWithoutVersionInput>
+  }
+
+  export type LlmOperationAttestationUpdateManyWithWhereWithoutVersionInput = {
+    where: LlmOperationAttestationScalarWhereInput
+    data: XOR<LlmOperationAttestationUpdateManyMutationInput, LlmOperationAttestationUncheckedUpdateManyWithoutVersionInput>
+  }
+
+  export type LlmOperationCreateWithoutActivationsInput = {
+    id?: string
+    operationKey: string
+    displayName: string
+    description: string
+    owner: string
+    status?: string
+    source?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    versions?: LlmOperationVersionCreateNestedManyWithoutOperationInput
+    activationEvents?: LlmOperationActivationEventCreateNestedManyWithoutOperationInput
+    attestations?: LlmOperationAttestationCreateNestedManyWithoutOperationInput
+  }
+
+  export type LlmOperationUncheckedCreateWithoutActivationsInput = {
+    id?: string
+    operationKey: string
+    displayName: string
+    description: string
+    owner: string
+    status?: string
+    source?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    versions?: LlmOperationVersionUncheckedCreateNestedManyWithoutOperationInput
+    activationEvents?: LlmOperationActivationEventUncheckedCreateNestedManyWithoutOperationInput
+    attestations?: LlmOperationAttestationUncheckedCreateNestedManyWithoutOperationInput
+  }
+
+  export type LlmOperationCreateOrConnectWithoutActivationsInput = {
+    where: LlmOperationWhereUniqueInput
+    create: XOR<LlmOperationCreateWithoutActivationsInput, LlmOperationUncheckedCreateWithoutActivationsInput>
+  }
+
+  export type LlmOperationVersionCreateWithoutActivationsInput = {
+    id?: string
+    version: string
+    state?: string
+    manifestJson: JsonNullValueInput | InputJsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary?: string
+    source?: string
+    approvedBy?: string | null
+    approvedAt?: Date | string | null
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    operation: LlmOperationCreateNestedOneWithoutVersionsInput
+    activationEvents?: LlmOperationActivationEventCreateNestedManyWithoutVersionInput
+    evalRuns?: LlmOperationEvalRunCreateNestedManyWithoutVersionInput
+    invocations?: LlmOperationInvocationCreateNestedManyWithoutVersionInput
+    attestations?: LlmOperationAttestationCreateNestedManyWithoutVersionInput
+  }
+
+  export type LlmOperationVersionUncheckedCreateWithoutActivationsInput = {
+    id?: string
+    operationId: string
+    version: string
+    state?: string
+    manifestJson: JsonNullValueInput | InputJsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary?: string
+    source?: string
+    approvedBy?: string | null
+    approvedAt?: Date | string | null
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    activationEvents?: LlmOperationActivationEventUncheckedCreateNestedManyWithoutVersionInput
+    evalRuns?: LlmOperationEvalRunUncheckedCreateNestedManyWithoutVersionInput
+    invocations?: LlmOperationInvocationUncheckedCreateNestedManyWithoutVersionInput
+    attestations?: LlmOperationAttestationUncheckedCreateNestedManyWithoutVersionInput
+  }
+
+  export type LlmOperationVersionCreateOrConnectWithoutActivationsInput = {
+    where: LlmOperationVersionWhereUniqueInput
+    create: XOR<LlmOperationVersionCreateWithoutActivationsInput, LlmOperationVersionUncheckedCreateWithoutActivationsInput>
+  }
+
+  export type LlmOperationUpsertWithoutActivationsInput = {
+    update: XOR<LlmOperationUpdateWithoutActivationsInput, LlmOperationUncheckedUpdateWithoutActivationsInput>
+    create: XOR<LlmOperationCreateWithoutActivationsInput, LlmOperationUncheckedCreateWithoutActivationsInput>
+    where?: LlmOperationWhereInput
+  }
+
+  export type LlmOperationUpdateToOneWithWhereWithoutActivationsInput = {
+    where?: LlmOperationWhereInput
+    data: XOR<LlmOperationUpdateWithoutActivationsInput, LlmOperationUncheckedUpdateWithoutActivationsInput>
+  }
+
+  export type LlmOperationUpdateWithoutActivationsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationKey?: StringFieldUpdateOperationsInput | string
+    displayName?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    owner?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    versions?: LlmOperationVersionUpdateManyWithoutOperationNestedInput
+    activationEvents?: LlmOperationActivationEventUpdateManyWithoutOperationNestedInput
+    attestations?: LlmOperationAttestationUpdateManyWithoutOperationNestedInput
+  }
+
+  export type LlmOperationUncheckedUpdateWithoutActivationsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationKey?: StringFieldUpdateOperationsInput | string
+    displayName?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    owner?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    versions?: LlmOperationVersionUncheckedUpdateManyWithoutOperationNestedInput
+    activationEvents?: LlmOperationActivationEventUncheckedUpdateManyWithoutOperationNestedInput
+    attestations?: LlmOperationAttestationUncheckedUpdateManyWithoutOperationNestedInput
+  }
+
+  export type LlmOperationVersionUpsertWithoutActivationsInput = {
+    update: XOR<LlmOperationVersionUpdateWithoutActivationsInput, LlmOperationVersionUncheckedUpdateWithoutActivationsInput>
+    create: XOR<LlmOperationVersionCreateWithoutActivationsInput, LlmOperationVersionUncheckedCreateWithoutActivationsInput>
+    where?: LlmOperationVersionWhereInput
+  }
+
+  export type LlmOperationVersionUpdateToOneWithWhereWithoutActivationsInput = {
+    where?: LlmOperationVersionWhereInput
+    data: XOR<LlmOperationVersionUpdateWithoutActivationsInput, LlmOperationVersionUncheckedUpdateWithoutActivationsInput>
+  }
+
+  export type LlmOperationVersionUpdateWithoutActivationsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    operation?: LlmOperationUpdateOneRequiredWithoutVersionsNestedInput
+    activationEvents?: LlmOperationActivationEventUpdateManyWithoutVersionNestedInput
+    evalRuns?: LlmOperationEvalRunUpdateManyWithoutVersionNestedInput
+    invocations?: LlmOperationInvocationUpdateManyWithoutVersionNestedInput
+    attestations?: LlmOperationAttestationUpdateManyWithoutVersionNestedInput
+  }
+
+  export type LlmOperationVersionUncheckedUpdateWithoutActivationsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    activationEvents?: LlmOperationActivationEventUncheckedUpdateManyWithoutVersionNestedInput
+    evalRuns?: LlmOperationEvalRunUncheckedUpdateManyWithoutVersionNestedInput
+    invocations?: LlmOperationInvocationUncheckedUpdateManyWithoutVersionNestedInput
+    attestations?: LlmOperationAttestationUncheckedUpdateManyWithoutVersionNestedInput
+  }
+
+  export type LlmOperationCreateWithoutActivationEventsInput = {
+    id?: string
+    operationKey: string
+    displayName: string
+    description: string
+    owner: string
+    status?: string
+    source?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    versions?: LlmOperationVersionCreateNestedManyWithoutOperationInput
+    activations?: LlmOperationActivationCreateNestedManyWithoutOperationInput
+    attestations?: LlmOperationAttestationCreateNestedManyWithoutOperationInput
+  }
+
+  export type LlmOperationUncheckedCreateWithoutActivationEventsInput = {
+    id?: string
+    operationKey: string
+    displayName: string
+    description: string
+    owner: string
+    status?: string
+    source?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    versions?: LlmOperationVersionUncheckedCreateNestedManyWithoutOperationInput
+    activations?: LlmOperationActivationUncheckedCreateNestedManyWithoutOperationInput
+    attestations?: LlmOperationAttestationUncheckedCreateNestedManyWithoutOperationInput
+  }
+
+  export type LlmOperationCreateOrConnectWithoutActivationEventsInput = {
+    where: LlmOperationWhereUniqueInput
+    create: XOR<LlmOperationCreateWithoutActivationEventsInput, LlmOperationUncheckedCreateWithoutActivationEventsInput>
+  }
+
+  export type LlmOperationVersionCreateWithoutActivationEventsInput = {
+    id?: string
+    version: string
+    state?: string
+    manifestJson: JsonNullValueInput | InputJsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary?: string
+    source?: string
+    approvedBy?: string | null
+    approvedAt?: Date | string | null
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    operation: LlmOperationCreateNestedOneWithoutVersionsInput
+    activations?: LlmOperationActivationCreateNestedManyWithoutVersionInput
+    evalRuns?: LlmOperationEvalRunCreateNestedManyWithoutVersionInput
+    invocations?: LlmOperationInvocationCreateNestedManyWithoutVersionInput
+    attestations?: LlmOperationAttestationCreateNestedManyWithoutVersionInput
+  }
+
+  export type LlmOperationVersionUncheckedCreateWithoutActivationEventsInput = {
+    id?: string
+    operationId: string
+    version: string
+    state?: string
+    manifestJson: JsonNullValueInput | InputJsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary?: string
+    source?: string
+    approvedBy?: string | null
+    approvedAt?: Date | string | null
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    activations?: LlmOperationActivationUncheckedCreateNestedManyWithoutVersionInput
+    evalRuns?: LlmOperationEvalRunUncheckedCreateNestedManyWithoutVersionInput
+    invocations?: LlmOperationInvocationUncheckedCreateNestedManyWithoutVersionInput
+    attestations?: LlmOperationAttestationUncheckedCreateNestedManyWithoutVersionInput
+  }
+
+  export type LlmOperationVersionCreateOrConnectWithoutActivationEventsInput = {
+    where: LlmOperationVersionWhereUniqueInput
+    create: XOR<LlmOperationVersionCreateWithoutActivationEventsInput, LlmOperationVersionUncheckedCreateWithoutActivationEventsInput>
+  }
+
+  export type LlmOperationUpsertWithoutActivationEventsInput = {
+    update: XOR<LlmOperationUpdateWithoutActivationEventsInput, LlmOperationUncheckedUpdateWithoutActivationEventsInput>
+    create: XOR<LlmOperationCreateWithoutActivationEventsInput, LlmOperationUncheckedCreateWithoutActivationEventsInput>
+    where?: LlmOperationWhereInput
+  }
+
+  export type LlmOperationUpdateToOneWithWhereWithoutActivationEventsInput = {
+    where?: LlmOperationWhereInput
+    data: XOR<LlmOperationUpdateWithoutActivationEventsInput, LlmOperationUncheckedUpdateWithoutActivationEventsInput>
+  }
+
+  export type LlmOperationUpdateWithoutActivationEventsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationKey?: StringFieldUpdateOperationsInput | string
+    displayName?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    owner?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    versions?: LlmOperationVersionUpdateManyWithoutOperationNestedInput
+    activations?: LlmOperationActivationUpdateManyWithoutOperationNestedInput
+    attestations?: LlmOperationAttestationUpdateManyWithoutOperationNestedInput
+  }
+
+  export type LlmOperationUncheckedUpdateWithoutActivationEventsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationKey?: StringFieldUpdateOperationsInput | string
+    displayName?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    owner?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    versions?: LlmOperationVersionUncheckedUpdateManyWithoutOperationNestedInput
+    activations?: LlmOperationActivationUncheckedUpdateManyWithoutOperationNestedInput
+    attestations?: LlmOperationAttestationUncheckedUpdateManyWithoutOperationNestedInput
+  }
+
+  export type LlmOperationVersionUpsertWithoutActivationEventsInput = {
+    update: XOR<LlmOperationVersionUpdateWithoutActivationEventsInput, LlmOperationVersionUncheckedUpdateWithoutActivationEventsInput>
+    create: XOR<LlmOperationVersionCreateWithoutActivationEventsInput, LlmOperationVersionUncheckedCreateWithoutActivationEventsInput>
+    where?: LlmOperationVersionWhereInput
+  }
+
+  export type LlmOperationVersionUpdateToOneWithWhereWithoutActivationEventsInput = {
+    where?: LlmOperationVersionWhereInput
+    data: XOR<LlmOperationVersionUpdateWithoutActivationEventsInput, LlmOperationVersionUncheckedUpdateWithoutActivationEventsInput>
+  }
+
+  export type LlmOperationVersionUpdateWithoutActivationEventsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    operation?: LlmOperationUpdateOneRequiredWithoutVersionsNestedInput
+    activations?: LlmOperationActivationUpdateManyWithoutVersionNestedInput
+    evalRuns?: LlmOperationEvalRunUpdateManyWithoutVersionNestedInput
+    invocations?: LlmOperationInvocationUpdateManyWithoutVersionNestedInput
+    attestations?: LlmOperationAttestationUpdateManyWithoutVersionNestedInput
+  }
+
+  export type LlmOperationVersionUncheckedUpdateWithoutActivationEventsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    activations?: LlmOperationActivationUncheckedUpdateManyWithoutVersionNestedInput
+    evalRuns?: LlmOperationEvalRunUncheckedUpdateManyWithoutVersionNestedInput
+    invocations?: LlmOperationInvocationUncheckedUpdateManyWithoutVersionNestedInput
+    attestations?: LlmOperationAttestationUncheckedUpdateManyWithoutVersionNestedInput
+  }
+
+  export type LlmOperationEvalCaseCreateWithoutSuiteInput = {
+    id?: string
+    name: string
+    inputJson: JsonNullValueInput | InputJsonValue
+    expectedJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: boolean
+    errorContains?: string | null
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationEvalCaseUncheckedCreateWithoutSuiteInput = {
+    id?: string
+    name: string
+    inputJson: JsonNullValueInput | InputJsonValue
+    expectedJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: boolean
+    errorContains?: string | null
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationEvalCaseCreateOrConnectWithoutSuiteInput = {
+    where: LlmOperationEvalCaseWhereUniqueInput
+    create: XOR<LlmOperationEvalCaseCreateWithoutSuiteInput, LlmOperationEvalCaseUncheckedCreateWithoutSuiteInput>
+  }
+
+  export type LlmOperationEvalCaseCreateManySuiteInputEnvelope = {
+    data: LlmOperationEvalCaseCreateManySuiteInput | LlmOperationEvalCaseCreateManySuiteInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type LlmOperationEvalRunCreateWithoutSuiteInput = {
+    id?: string
+    modelPolicySnapshot: JsonNullValueInput | InputJsonValue
+    resultsJson: JsonNullValueInput | InputJsonValue
+    metricsJson: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: string | null
+    executedBy: string
+    startedAt?: Date | string
+    completedAt?: Date | string | null
+    version: LlmOperationVersionCreateNestedOneWithoutEvalRunsInput
+  }
+
+  export type LlmOperationEvalRunUncheckedCreateWithoutSuiteInput = {
+    id?: string
+    versionId: string
+    modelPolicySnapshot: JsonNullValueInput | InputJsonValue
+    resultsJson: JsonNullValueInput | InputJsonValue
+    metricsJson: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: string | null
+    executedBy: string
+    startedAt?: Date | string
+    completedAt?: Date | string | null
+  }
+
+  export type LlmOperationEvalRunCreateOrConnectWithoutSuiteInput = {
+    where: LlmOperationEvalRunWhereUniqueInput
+    create: XOR<LlmOperationEvalRunCreateWithoutSuiteInput, LlmOperationEvalRunUncheckedCreateWithoutSuiteInput>
+  }
+
+  export type LlmOperationEvalRunCreateManySuiteInputEnvelope = {
+    data: LlmOperationEvalRunCreateManySuiteInput | LlmOperationEvalRunCreateManySuiteInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type LlmOperationEvalCaseUpsertWithWhereUniqueWithoutSuiteInput = {
+    where: LlmOperationEvalCaseWhereUniqueInput
+    update: XOR<LlmOperationEvalCaseUpdateWithoutSuiteInput, LlmOperationEvalCaseUncheckedUpdateWithoutSuiteInput>
+    create: XOR<LlmOperationEvalCaseCreateWithoutSuiteInput, LlmOperationEvalCaseUncheckedCreateWithoutSuiteInput>
+  }
+
+  export type LlmOperationEvalCaseUpdateWithWhereUniqueWithoutSuiteInput = {
+    where: LlmOperationEvalCaseWhereUniqueInput
+    data: XOR<LlmOperationEvalCaseUpdateWithoutSuiteInput, LlmOperationEvalCaseUncheckedUpdateWithoutSuiteInput>
+  }
+
+  export type LlmOperationEvalCaseUpdateManyWithWhereWithoutSuiteInput = {
+    where: LlmOperationEvalCaseScalarWhereInput
+    data: XOR<LlmOperationEvalCaseUpdateManyMutationInput, LlmOperationEvalCaseUncheckedUpdateManyWithoutSuiteInput>
+  }
+
+  export type LlmOperationEvalCaseScalarWhereInput = {
+    AND?: LlmOperationEvalCaseScalarWhereInput | LlmOperationEvalCaseScalarWhereInput[]
+    OR?: LlmOperationEvalCaseScalarWhereInput[]
+    NOT?: LlmOperationEvalCaseScalarWhereInput | LlmOperationEvalCaseScalarWhereInput[]
+    id?: UuidFilter<"LlmOperationEvalCase"> | string
+    suiteId?: UuidFilter<"LlmOperationEvalCase"> | string
+    name?: StringFilter<"LlmOperationEvalCase"> | string
+    inputJson?: JsonFilter<"LlmOperationEvalCase">
+    expectedJson?: JsonNullableFilter<"LlmOperationEvalCase">
+    isNegative?: BoolFilter<"LlmOperationEvalCase"> | boolean
+    errorContains?: StringNullableFilter<"LlmOperationEvalCase"> | string | null
+    createdAt?: DateTimeFilter<"LlmOperationEvalCase"> | Date | string
+  }
+
+  export type LlmOperationEvalRunUpsertWithWhereUniqueWithoutSuiteInput = {
+    where: LlmOperationEvalRunWhereUniqueInput
+    update: XOR<LlmOperationEvalRunUpdateWithoutSuiteInput, LlmOperationEvalRunUncheckedUpdateWithoutSuiteInput>
+    create: XOR<LlmOperationEvalRunCreateWithoutSuiteInput, LlmOperationEvalRunUncheckedCreateWithoutSuiteInput>
+  }
+
+  export type LlmOperationEvalRunUpdateWithWhereUniqueWithoutSuiteInput = {
+    where: LlmOperationEvalRunWhereUniqueInput
+    data: XOR<LlmOperationEvalRunUpdateWithoutSuiteInput, LlmOperationEvalRunUncheckedUpdateWithoutSuiteInput>
+  }
+
+  export type LlmOperationEvalRunUpdateManyWithWhereWithoutSuiteInput = {
+    where: LlmOperationEvalRunScalarWhereInput
+    data: XOR<LlmOperationEvalRunUpdateManyMutationInput, LlmOperationEvalRunUncheckedUpdateManyWithoutSuiteInput>
+  }
+
+  export type LlmOperationEvalSuiteCreateWithoutCasesInput = {
+    id?: string
+    operationId: string
+    versionId?: string | null
+    name: string
+    description?: string | null
+    suiteDigest: string
+    createdBy: string
+    createdAt?: Date | string
+    evalRuns?: LlmOperationEvalRunCreateNestedManyWithoutSuiteInput
+  }
+
+  export type LlmOperationEvalSuiteUncheckedCreateWithoutCasesInput = {
+    id?: string
+    operationId: string
+    versionId?: string | null
+    name: string
+    description?: string | null
+    suiteDigest: string
+    createdBy: string
+    createdAt?: Date | string
+    evalRuns?: LlmOperationEvalRunUncheckedCreateNestedManyWithoutSuiteInput
+  }
+
+  export type LlmOperationEvalSuiteCreateOrConnectWithoutCasesInput = {
+    where: LlmOperationEvalSuiteWhereUniqueInput
+    create: XOR<LlmOperationEvalSuiteCreateWithoutCasesInput, LlmOperationEvalSuiteUncheckedCreateWithoutCasesInput>
+  }
+
+  export type LlmOperationEvalSuiteUpsertWithoutCasesInput = {
+    update: XOR<LlmOperationEvalSuiteUpdateWithoutCasesInput, LlmOperationEvalSuiteUncheckedUpdateWithoutCasesInput>
+    create: XOR<LlmOperationEvalSuiteCreateWithoutCasesInput, LlmOperationEvalSuiteUncheckedCreateWithoutCasesInput>
+    where?: LlmOperationEvalSuiteWhereInput
+  }
+
+  export type LlmOperationEvalSuiteUpdateToOneWithWhereWithoutCasesInput = {
+    where?: LlmOperationEvalSuiteWhereInput
+    data: XOR<LlmOperationEvalSuiteUpdateWithoutCasesInput, LlmOperationEvalSuiteUncheckedUpdateWithoutCasesInput>
+  }
+
+  export type LlmOperationEvalSuiteUpdateWithoutCasesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    versionId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    suiteDigest?: StringFieldUpdateOperationsInput | string
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    evalRuns?: LlmOperationEvalRunUpdateManyWithoutSuiteNestedInput
+  }
+
+  export type LlmOperationEvalSuiteUncheckedUpdateWithoutCasesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    versionId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    suiteDigest?: StringFieldUpdateOperationsInput | string
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    evalRuns?: LlmOperationEvalRunUncheckedUpdateManyWithoutSuiteNestedInput
+  }
+
+  export type LlmOperationVersionCreateWithoutEvalRunsInput = {
+    id?: string
+    version: string
+    state?: string
+    manifestJson: JsonNullValueInput | InputJsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary?: string
+    source?: string
+    approvedBy?: string | null
+    approvedAt?: Date | string | null
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    operation: LlmOperationCreateNestedOneWithoutVersionsInput
+    activations?: LlmOperationActivationCreateNestedManyWithoutVersionInput
+    activationEvents?: LlmOperationActivationEventCreateNestedManyWithoutVersionInput
+    invocations?: LlmOperationInvocationCreateNestedManyWithoutVersionInput
+    attestations?: LlmOperationAttestationCreateNestedManyWithoutVersionInput
+  }
+
+  export type LlmOperationVersionUncheckedCreateWithoutEvalRunsInput = {
+    id?: string
+    operationId: string
+    version: string
+    state?: string
+    manifestJson: JsonNullValueInput | InputJsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary?: string
+    source?: string
+    approvedBy?: string | null
+    approvedAt?: Date | string | null
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    activations?: LlmOperationActivationUncheckedCreateNestedManyWithoutVersionInput
+    activationEvents?: LlmOperationActivationEventUncheckedCreateNestedManyWithoutVersionInput
+    invocations?: LlmOperationInvocationUncheckedCreateNestedManyWithoutVersionInput
+    attestations?: LlmOperationAttestationUncheckedCreateNestedManyWithoutVersionInput
+  }
+
+  export type LlmOperationVersionCreateOrConnectWithoutEvalRunsInput = {
+    where: LlmOperationVersionWhereUniqueInput
+    create: XOR<LlmOperationVersionCreateWithoutEvalRunsInput, LlmOperationVersionUncheckedCreateWithoutEvalRunsInput>
+  }
+
+  export type LlmOperationEvalSuiteCreateWithoutEvalRunsInput = {
+    id?: string
+    operationId: string
+    versionId?: string | null
+    name: string
+    description?: string | null
+    suiteDigest: string
+    createdBy: string
+    createdAt?: Date | string
+    cases?: LlmOperationEvalCaseCreateNestedManyWithoutSuiteInput
+  }
+
+  export type LlmOperationEvalSuiteUncheckedCreateWithoutEvalRunsInput = {
+    id?: string
+    operationId: string
+    versionId?: string | null
+    name: string
+    description?: string | null
+    suiteDigest: string
+    createdBy: string
+    createdAt?: Date | string
+    cases?: LlmOperationEvalCaseUncheckedCreateNestedManyWithoutSuiteInput
+  }
+
+  export type LlmOperationEvalSuiteCreateOrConnectWithoutEvalRunsInput = {
+    where: LlmOperationEvalSuiteWhereUniqueInput
+    create: XOR<LlmOperationEvalSuiteCreateWithoutEvalRunsInput, LlmOperationEvalSuiteUncheckedCreateWithoutEvalRunsInput>
+  }
+
+  export type LlmOperationVersionUpsertWithoutEvalRunsInput = {
+    update: XOR<LlmOperationVersionUpdateWithoutEvalRunsInput, LlmOperationVersionUncheckedUpdateWithoutEvalRunsInput>
+    create: XOR<LlmOperationVersionCreateWithoutEvalRunsInput, LlmOperationVersionUncheckedCreateWithoutEvalRunsInput>
+    where?: LlmOperationVersionWhereInput
+  }
+
+  export type LlmOperationVersionUpdateToOneWithWhereWithoutEvalRunsInput = {
+    where?: LlmOperationVersionWhereInput
+    data: XOR<LlmOperationVersionUpdateWithoutEvalRunsInput, LlmOperationVersionUncheckedUpdateWithoutEvalRunsInput>
+  }
+
+  export type LlmOperationVersionUpdateWithoutEvalRunsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    operation?: LlmOperationUpdateOneRequiredWithoutVersionsNestedInput
+    activations?: LlmOperationActivationUpdateManyWithoutVersionNestedInput
+    activationEvents?: LlmOperationActivationEventUpdateManyWithoutVersionNestedInput
+    invocations?: LlmOperationInvocationUpdateManyWithoutVersionNestedInput
+    attestations?: LlmOperationAttestationUpdateManyWithoutVersionNestedInput
+  }
+
+  export type LlmOperationVersionUncheckedUpdateWithoutEvalRunsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    activations?: LlmOperationActivationUncheckedUpdateManyWithoutVersionNestedInput
+    activationEvents?: LlmOperationActivationEventUncheckedUpdateManyWithoutVersionNestedInput
+    invocations?: LlmOperationInvocationUncheckedUpdateManyWithoutVersionNestedInput
+    attestations?: LlmOperationAttestationUncheckedUpdateManyWithoutVersionNestedInput
+  }
+
+  export type LlmOperationEvalSuiteUpsertWithoutEvalRunsInput = {
+    update: XOR<LlmOperationEvalSuiteUpdateWithoutEvalRunsInput, LlmOperationEvalSuiteUncheckedUpdateWithoutEvalRunsInput>
+    create: XOR<LlmOperationEvalSuiteCreateWithoutEvalRunsInput, LlmOperationEvalSuiteUncheckedCreateWithoutEvalRunsInput>
+    where?: LlmOperationEvalSuiteWhereInput
+  }
+
+  export type LlmOperationEvalSuiteUpdateToOneWithWhereWithoutEvalRunsInput = {
+    where?: LlmOperationEvalSuiteWhereInput
+    data: XOR<LlmOperationEvalSuiteUpdateWithoutEvalRunsInput, LlmOperationEvalSuiteUncheckedUpdateWithoutEvalRunsInput>
+  }
+
+  export type LlmOperationEvalSuiteUpdateWithoutEvalRunsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    versionId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    suiteDigest?: StringFieldUpdateOperationsInput | string
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    cases?: LlmOperationEvalCaseUpdateManyWithoutSuiteNestedInput
+  }
+
+  export type LlmOperationEvalSuiteUncheckedUpdateWithoutEvalRunsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    versionId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    suiteDigest?: StringFieldUpdateOperationsInput | string
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    cases?: LlmOperationEvalCaseUncheckedUpdateManyWithoutSuiteNestedInput
+  }
+
+  export type LlmOperationVersionCreateWithoutInvocationsInput = {
+    id?: string
+    version: string
+    state?: string
+    manifestJson: JsonNullValueInput | InputJsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary?: string
+    source?: string
+    approvedBy?: string | null
+    approvedAt?: Date | string | null
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    operation: LlmOperationCreateNestedOneWithoutVersionsInput
+    activations?: LlmOperationActivationCreateNestedManyWithoutVersionInput
+    activationEvents?: LlmOperationActivationEventCreateNestedManyWithoutVersionInput
+    evalRuns?: LlmOperationEvalRunCreateNestedManyWithoutVersionInput
+    attestations?: LlmOperationAttestationCreateNestedManyWithoutVersionInput
+  }
+
+  export type LlmOperationVersionUncheckedCreateWithoutInvocationsInput = {
+    id?: string
+    operationId: string
+    version: string
+    state?: string
+    manifestJson: JsonNullValueInput | InputJsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary?: string
+    source?: string
+    approvedBy?: string | null
+    approvedAt?: Date | string | null
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    activations?: LlmOperationActivationUncheckedCreateNestedManyWithoutVersionInput
+    activationEvents?: LlmOperationActivationEventUncheckedCreateNestedManyWithoutVersionInput
+    evalRuns?: LlmOperationEvalRunUncheckedCreateNestedManyWithoutVersionInput
+    attestations?: LlmOperationAttestationUncheckedCreateNestedManyWithoutVersionInput
+  }
+
+  export type LlmOperationVersionCreateOrConnectWithoutInvocationsInput = {
+    where: LlmOperationVersionWhereUniqueInput
+    create: XOR<LlmOperationVersionCreateWithoutInvocationsInput, LlmOperationVersionUncheckedCreateWithoutInvocationsInput>
+  }
+
+  export type LlmOperationVersionUpsertWithoutInvocationsInput = {
+    update: XOR<LlmOperationVersionUpdateWithoutInvocationsInput, LlmOperationVersionUncheckedUpdateWithoutInvocationsInput>
+    create: XOR<LlmOperationVersionCreateWithoutInvocationsInput, LlmOperationVersionUncheckedCreateWithoutInvocationsInput>
+    where?: LlmOperationVersionWhereInput
+  }
+
+  export type LlmOperationVersionUpdateToOneWithWhereWithoutInvocationsInput = {
+    where?: LlmOperationVersionWhereInput
+    data: XOR<LlmOperationVersionUpdateWithoutInvocationsInput, LlmOperationVersionUncheckedUpdateWithoutInvocationsInput>
+  }
+
+  export type LlmOperationVersionUpdateWithoutInvocationsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    operation?: LlmOperationUpdateOneRequiredWithoutVersionsNestedInput
+    activations?: LlmOperationActivationUpdateManyWithoutVersionNestedInput
+    activationEvents?: LlmOperationActivationEventUpdateManyWithoutVersionNestedInput
+    evalRuns?: LlmOperationEvalRunUpdateManyWithoutVersionNestedInput
+    attestations?: LlmOperationAttestationUpdateManyWithoutVersionNestedInput
+  }
+
+  export type LlmOperationVersionUncheckedUpdateWithoutInvocationsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    activations?: LlmOperationActivationUncheckedUpdateManyWithoutVersionNestedInput
+    activationEvents?: LlmOperationActivationEventUncheckedUpdateManyWithoutVersionNestedInput
+    evalRuns?: LlmOperationEvalRunUncheckedUpdateManyWithoutVersionNestedInput
+    attestations?: LlmOperationAttestationUncheckedUpdateManyWithoutVersionNestedInput
+  }
+
+  export type LlmOperationCreateWithoutAttestationsInput = {
+    id?: string
+    operationKey: string
+    displayName: string
+    description: string
+    owner: string
+    status?: string
+    source?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    versions?: LlmOperationVersionCreateNestedManyWithoutOperationInput
+    activations?: LlmOperationActivationCreateNestedManyWithoutOperationInput
+    activationEvents?: LlmOperationActivationEventCreateNestedManyWithoutOperationInput
+  }
+
+  export type LlmOperationUncheckedCreateWithoutAttestationsInput = {
+    id?: string
+    operationKey: string
+    displayName: string
+    description: string
+    owner: string
+    status?: string
+    source?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    versions?: LlmOperationVersionUncheckedCreateNestedManyWithoutOperationInput
+    activations?: LlmOperationActivationUncheckedCreateNestedManyWithoutOperationInput
+    activationEvents?: LlmOperationActivationEventUncheckedCreateNestedManyWithoutOperationInput
+  }
+
+  export type LlmOperationCreateOrConnectWithoutAttestationsInput = {
+    where: LlmOperationWhereUniqueInput
+    create: XOR<LlmOperationCreateWithoutAttestationsInput, LlmOperationUncheckedCreateWithoutAttestationsInput>
+  }
+
+  export type LlmOperationVersionCreateWithoutAttestationsInput = {
+    id?: string
+    version: string
+    state?: string
+    manifestJson: JsonNullValueInput | InputJsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary?: string
+    source?: string
+    approvedBy?: string | null
+    approvedAt?: Date | string | null
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    operation: LlmOperationCreateNestedOneWithoutVersionsInput
+    activations?: LlmOperationActivationCreateNestedManyWithoutVersionInput
+    activationEvents?: LlmOperationActivationEventCreateNestedManyWithoutVersionInput
+    evalRuns?: LlmOperationEvalRunCreateNestedManyWithoutVersionInput
+    invocations?: LlmOperationInvocationCreateNestedManyWithoutVersionInput
+  }
+
+  export type LlmOperationVersionUncheckedCreateWithoutAttestationsInput = {
+    id?: string
+    operationId: string
+    version: string
+    state?: string
+    manifestJson: JsonNullValueInput | InputJsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary?: string
+    source?: string
+    approvedBy?: string | null
+    approvedAt?: Date | string | null
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    activations?: LlmOperationActivationUncheckedCreateNestedManyWithoutVersionInput
+    activationEvents?: LlmOperationActivationEventUncheckedCreateNestedManyWithoutVersionInput
+    evalRuns?: LlmOperationEvalRunUncheckedCreateNestedManyWithoutVersionInput
+    invocations?: LlmOperationInvocationUncheckedCreateNestedManyWithoutVersionInput
+  }
+
+  export type LlmOperationVersionCreateOrConnectWithoutAttestationsInput = {
+    where: LlmOperationVersionWhereUniqueInput
+    create: XOR<LlmOperationVersionCreateWithoutAttestationsInput, LlmOperationVersionUncheckedCreateWithoutAttestationsInput>
+  }
+
+  export type LlmOperationUpsertWithoutAttestationsInput = {
+    update: XOR<LlmOperationUpdateWithoutAttestationsInput, LlmOperationUncheckedUpdateWithoutAttestationsInput>
+    create: XOR<LlmOperationCreateWithoutAttestationsInput, LlmOperationUncheckedCreateWithoutAttestationsInput>
+    where?: LlmOperationWhereInput
+  }
+
+  export type LlmOperationUpdateToOneWithWhereWithoutAttestationsInput = {
+    where?: LlmOperationWhereInput
+    data: XOR<LlmOperationUpdateWithoutAttestationsInput, LlmOperationUncheckedUpdateWithoutAttestationsInput>
+  }
+
+  export type LlmOperationUpdateWithoutAttestationsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationKey?: StringFieldUpdateOperationsInput | string
+    displayName?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    owner?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    versions?: LlmOperationVersionUpdateManyWithoutOperationNestedInput
+    activations?: LlmOperationActivationUpdateManyWithoutOperationNestedInput
+    activationEvents?: LlmOperationActivationEventUpdateManyWithoutOperationNestedInput
+  }
+
+  export type LlmOperationUncheckedUpdateWithoutAttestationsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationKey?: StringFieldUpdateOperationsInput | string
+    displayName?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    owner?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    versions?: LlmOperationVersionUncheckedUpdateManyWithoutOperationNestedInput
+    activations?: LlmOperationActivationUncheckedUpdateManyWithoutOperationNestedInput
+    activationEvents?: LlmOperationActivationEventUncheckedUpdateManyWithoutOperationNestedInput
+  }
+
+  export type LlmOperationVersionUpsertWithoutAttestationsInput = {
+    update: XOR<LlmOperationVersionUpdateWithoutAttestationsInput, LlmOperationVersionUncheckedUpdateWithoutAttestationsInput>
+    create: XOR<LlmOperationVersionCreateWithoutAttestationsInput, LlmOperationVersionUncheckedCreateWithoutAttestationsInput>
+    where?: LlmOperationVersionWhereInput
+  }
+
+  export type LlmOperationVersionUpdateToOneWithWhereWithoutAttestationsInput = {
+    where?: LlmOperationVersionWhereInput
+    data: XOR<LlmOperationVersionUpdateWithoutAttestationsInput, LlmOperationVersionUncheckedUpdateWithoutAttestationsInput>
+  }
+
+  export type LlmOperationVersionUpdateWithoutAttestationsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    operation?: LlmOperationUpdateOneRequiredWithoutVersionsNestedInput
+    activations?: LlmOperationActivationUpdateManyWithoutVersionNestedInput
+    activationEvents?: LlmOperationActivationEventUpdateManyWithoutVersionNestedInput
+    evalRuns?: LlmOperationEvalRunUpdateManyWithoutVersionNestedInput
+    invocations?: LlmOperationInvocationUpdateManyWithoutVersionNestedInput
+  }
+
+  export type LlmOperationVersionUncheckedUpdateWithoutAttestationsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    activations?: LlmOperationActivationUncheckedUpdateManyWithoutVersionNestedInput
+    activationEvents?: LlmOperationActivationEventUncheckedUpdateManyWithoutVersionNestedInput
+    evalRuns?: LlmOperationEvalRunUncheckedUpdateManyWithoutVersionNestedInput
+    invocations?: LlmOperationInvocationUncheckedUpdateManyWithoutVersionNestedInput
+  }
+
   export type ExecutionStepCreateManyExecutionInput = {
     id?: string
     stepIndex: number
@@ -8399,6 +23854,648 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type LlmOperationVersionCreateManyOperationInput = {
+    id?: string
+    version: string
+    state?: string
+    manifestJson: JsonNullValueInput | InputJsonValue
+    operationDigest: string
+    contractDigest: string
+    changeSummary?: string
+    source?: string
+    approvedBy?: string | null
+    approvedAt?: Date | string | null
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type LlmOperationActivationCreateManyOperationInput = {
+    id?: string
+    versionId: string
+    environment: string
+    label?: string | null
+    activatedBy: string
+    reason: string
+    rolloutPercent?: number | null
+    activatedAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type LlmOperationActivationEventCreateManyOperationInput = {
+    id?: string
+    previousVersionId?: string | null
+    newVersionId: string
+    environment: string
+    action: string
+    actor: string
+    reason: string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationAttestationCreateManyOperationInput = {
+    id?: string
+    versionId: string
+    operationDigest: string
+    contractDigest: string
+    evalSuiteDigest?: string | null
+    validatorVersion: string
+    schemaTests: string
+    offlineEvals: string
+    liveEvals: string
+    securityEvals: string
+    gateResultsJson: JsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationVersionUpdateWithoutOperationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    activations?: LlmOperationActivationUpdateManyWithoutVersionNestedInput
+    activationEvents?: LlmOperationActivationEventUpdateManyWithoutVersionNestedInput
+    evalRuns?: LlmOperationEvalRunUpdateManyWithoutVersionNestedInput
+    invocations?: LlmOperationInvocationUpdateManyWithoutVersionNestedInput
+    attestations?: LlmOperationAttestationUpdateManyWithoutVersionNestedInput
+  }
+
+  export type LlmOperationVersionUncheckedUpdateWithoutOperationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    activations?: LlmOperationActivationUncheckedUpdateManyWithoutVersionNestedInput
+    activationEvents?: LlmOperationActivationEventUncheckedUpdateManyWithoutVersionNestedInput
+    evalRuns?: LlmOperationEvalRunUncheckedUpdateManyWithoutVersionNestedInput
+    invocations?: LlmOperationInvocationUncheckedUpdateManyWithoutVersionNestedInput
+    attestations?: LlmOperationAttestationUncheckedUpdateManyWithoutVersionNestedInput
+  }
+
+  export type LlmOperationVersionUncheckedUpdateManyWithoutOperationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    manifestJson?: JsonNullValueInput | InputJsonValue
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    changeSummary?: StringFieldUpdateOperationsInput | string
+    source?: StringFieldUpdateOperationsInput | string
+    approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    approvedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationActivationUpdateWithoutOperationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    label?: NullableStringFieldUpdateOperationsInput | string | null
+    activatedBy?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    rolloutPercent?: NullableIntFieldUpdateOperationsInput | number | null
+    activatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    version?: LlmOperationVersionUpdateOneRequiredWithoutActivationsNestedInput
+  }
+
+  export type LlmOperationActivationUncheckedUpdateWithoutOperationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    versionId?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    label?: NullableStringFieldUpdateOperationsInput | string | null
+    activatedBy?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    rolloutPercent?: NullableIntFieldUpdateOperationsInput | number | null
+    activatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationActivationUncheckedUpdateManyWithoutOperationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    versionId?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    label?: NullableStringFieldUpdateOperationsInput | string | null
+    activatedBy?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    rolloutPercent?: NullableIntFieldUpdateOperationsInput | number | null
+    activatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationActivationEventUpdateWithoutOperationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    previousVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    environment?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    actor?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    version?: LlmOperationVersionUpdateOneRequiredWithoutActivationEventsNestedInput
+  }
+
+  export type LlmOperationActivationEventUncheckedUpdateWithoutOperationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    previousVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    newVersionId?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    actor?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationActivationEventUncheckedUpdateManyWithoutOperationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    previousVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    newVersionId?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    actor?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationAttestationUpdateWithoutOperationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    evalSuiteDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    validatorVersion?: StringFieldUpdateOperationsInput | string
+    schemaTests?: StringFieldUpdateOperationsInput | string
+    offlineEvals?: StringFieldUpdateOperationsInput | string
+    liveEvals?: StringFieldUpdateOperationsInput | string
+    securityEvals?: StringFieldUpdateOperationsInput | string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    version?: LlmOperationVersionUpdateOneRequiredWithoutAttestationsNestedInput
+  }
+
+  export type LlmOperationAttestationUncheckedUpdateWithoutOperationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    versionId?: StringFieldUpdateOperationsInput | string
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    evalSuiteDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    validatorVersion?: StringFieldUpdateOperationsInput | string
+    schemaTests?: StringFieldUpdateOperationsInput | string
+    offlineEvals?: StringFieldUpdateOperationsInput | string
+    liveEvals?: StringFieldUpdateOperationsInput | string
+    securityEvals?: StringFieldUpdateOperationsInput | string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationAttestationUncheckedUpdateManyWithoutOperationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    versionId?: StringFieldUpdateOperationsInput | string
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    evalSuiteDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    validatorVersion?: StringFieldUpdateOperationsInput | string
+    schemaTests?: StringFieldUpdateOperationsInput | string
+    offlineEvals?: StringFieldUpdateOperationsInput | string
+    liveEvals?: StringFieldUpdateOperationsInput | string
+    securityEvals?: StringFieldUpdateOperationsInput | string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationActivationCreateManyVersionInput = {
+    id?: string
+    operationId: string
+    environment: string
+    label?: string | null
+    activatedBy: string
+    reason: string
+    rolloutPercent?: number | null
+    activatedAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type LlmOperationActivationEventCreateManyVersionInput = {
+    id?: string
+    operationId: string
+    previousVersionId?: string | null
+    environment: string
+    action: string
+    actor: string
+    reason: string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationEvalRunCreateManyVersionInput = {
+    id?: string
+    suiteId: string
+    modelPolicySnapshot: JsonNullValueInput | InputJsonValue
+    resultsJson: JsonNullValueInput | InputJsonValue
+    metricsJson: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: string | null
+    executedBy: string
+    startedAt?: Date | string
+    completedAt?: Date | string | null
+  }
+
+  export type LlmOperationInvocationCreateManyVersionInput = {
+    id?: string
+    executionId?: string | null
+    stepId?: string | null
+    tenantId?: string | null
+    provider: string
+    requestedModel: string
+    resolvedModel?: string | null
+    inputDigest?: string | null
+    outputDigest?: string | null
+    idempotencyKey?: string | null
+    resultJson?: NullableJsonNullValueInput | InputJsonValue
+    inputStorageRef?: string | null
+    outputStorageRef?: string | null
+    tokenUsageJson?: NullableJsonNullValueInput | InputJsonValue
+    latencyMs?: number | null
+    estimatedCost?: Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: number
+    repairAttempts?: number
+    validationResult: string
+    finishReason?: string | null
+    errorCode?: string | null
+    actor: string
+    environment: string
+    startedAt?: Date | string
+    completedAt?: Date | string | null
+  }
+
+  export type LlmOperationAttestationCreateManyVersionInput = {
+    id?: string
+    operationId: string
+    operationDigest: string
+    contractDigest: string
+    evalSuiteDigest?: string | null
+    validatorVersion: string
+    schemaTests: string
+    offlineEvals: string
+    liveEvals: string
+    securityEvals: string
+    gateResultsJson: JsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationActivationUpdateWithoutVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    label?: NullableStringFieldUpdateOperationsInput | string | null
+    activatedBy?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    rolloutPercent?: NullableIntFieldUpdateOperationsInput | number | null
+    activatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    operation?: LlmOperationUpdateOneRequiredWithoutActivationsNestedInput
+  }
+
+  export type LlmOperationActivationUncheckedUpdateWithoutVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    label?: NullableStringFieldUpdateOperationsInput | string | null
+    activatedBy?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    rolloutPercent?: NullableIntFieldUpdateOperationsInput | number | null
+    activatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationActivationUncheckedUpdateManyWithoutVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    label?: NullableStringFieldUpdateOperationsInput | string | null
+    activatedBy?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    rolloutPercent?: NullableIntFieldUpdateOperationsInput | number | null
+    activatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationActivationEventUpdateWithoutVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    previousVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    environment?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    actor?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    operation?: LlmOperationUpdateOneRequiredWithoutActivationEventsNestedInput
+  }
+
+  export type LlmOperationActivationEventUncheckedUpdateWithoutVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    previousVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    environment?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    actor?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationActivationEventUncheckedUpdateManyWithoutVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    previousVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    environment?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    actor?: StringFieldUpdateOperationsInput | string
+    reason?: StringFieldUpdateOperationsInput | string
+    metadataJson?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationEvalRunUpdateWithoutVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    modelPolicySnapshot?: JsonNullValueInput | InputJsonValue
+    resultsJson?: JsonNullValueInput | InputJsonValue
+    metricsJson?: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    executedBy?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    suite?: LlmOperationEvalSuiteUpdateOneRequiredWithoutEvalRunsNestedInput
+  }
+
+  export type LlmOperationEvalRunUncheckedUpdateWithoutVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    suiteId?: StringFieldUpdateOperationsInput | string
+    modelPolicySnapshot?: JsonNullValueInput | InputJsonValue
+    resultsJson?: JsonNullValueInput | InputJsonValue
+    metricsJson?: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    executedBy?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type LlmOperationEvalRunUncheckedUpdateManyWithoutVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    suiteId?: StringFieldUpdateOperationsInput | string
+    modelPolicySnapshot?: JsonNullValueInput | InputJsonValue
+    resultsJson?: JsonNullValueInput | InputJsonValue
+    metricsJson?: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    executedBy?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type LlmOperationInvocationUpdateWithoutVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    stepId?: NullableStringFieldUpdateOperationsInput | string | null
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: StringFieldUpdateOperationsInput | string
+    requestedModel?: StringFieldUpdateOperationsInput | string
+    resolvedModel?: NullableStringFieldUpdateOperationsInput | string | null
+    inputDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    outputDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
+    resultJson?: NullableJsonNullValueInput | InputJsonValue
+    inputStorageRef?: NullableStringFieldUpdateOperationsInput | string | null
+    outputStorageRef?: NullableStringFieldUpdateOperationsInput | string | null
+    tokenUsageJson?: NullableJsonNullValueInput | InputJsonValue
+    latencyMs?: NullableIntFieldUpdateOperationsInput | number | null
+    estimatedCost?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: IntFieldUpdateOperationsInput | number
+    repairAttempts?: IntFieldUpdateOperationsInput | number
+    validationResult?: StringFieldUpdateOperationsInput | string
+    finishReason?: NullableStringFieldUpdateOperationsInput | string | null
+    errorCode?: NullableStringFieldUpdateOperationsInput | string | null
+    actor?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type LlmOperationInvocationUncheckedUpdateWithoutVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    stepId?: NullableStringFieldUpdateOperationsInput | string | null
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: StringFieldUpdateOperationsInput | string
+    requestedModel?: StringFieldUpdateOperationsInput | string
+    resolvedModel?: NullableStringFieldUpdateOperationsInput | string | null
+    inputDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    outputDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
+    resultJson?: NullableJsonNullValueInput | InputJsonValue
+    inputStorageRef?: NullableStringFieldUpdateOperationsInput | string | null
+    outputStorageRef?: NullableStringFieldUpdateOperationsInput | string | null
+    tokenUsageJson?: NullableJsonNullValueInput | InputJsonValue
+    latencyMs?: NullableIntFieldUpdateOperationsInput | number | null
+    estimatedCost?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: IntFieldUpdateOperationsInput | number
+    repairAttempts?: IntFieldUpdateOperationsInput | number
+    validationResult?: StringFieldUpdateOperationsInput | string
+    finishReason?: NullableStringFieldUpdateOperationsInput | string | null
+    errorCode?: NullableStringFieldUpdateOperationsInput | string | null
+    actor?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type LlmOperationInvocationUncheckedUpdateManyWithoutVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    stepId?: NullableStringFieldUpdateOperationsInput | string | null
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: StringFieldUpdateOperationsInput | string
+    requestedModel?: StringFieldUpdateOperationsInput | string
+    resolvedModel?: NullableStringFieldUpdateOperationsInput | string | null
+    inputDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    outputDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
+    resultJson?: NullableJsonNullValueInput | InputJsonValue
+    inputStorageRef?: NullableStringFieldUpdateOperationsInput | string | null
+    outputStorageRef?: NullableStringFieldUpdateOperationsInput | string | null
+    tokenUsageJson?: NullableJsonNullValueInput | InputJsonValue
+    latencyMs?: NullableIntFieldUpdateOperationsInput | number | null
+    estimatedCost?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    parseAttempts?: IntFieldUpdateOperationsInput | number
+    repairAttempts?: IntFieldUpdateOperationsInput | number
+    validationResult?: StringFieldUpdateOperationsInput | string
+    finishReason?: NullableStringFieldUpdateOperationsInput | string | null
+    errorCode?: NullableStringFieldUpdateOperationsInput | string | null
+    actor?: StringFieldUpdateOperationsInput | string
+    environment?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type LlmOperationAttestationUpdateWithoutVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    evalSuiteDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    validatorVersion?: StringFieldUpdateOperationsInput | string
+    schemaTests?: StringFieldUpdateOperationsInput | string
+    offlineEvals?: StringFieldUpdateOperationsInput | string
+    liveEvals?: StringFieldUpdateOperationsInput | string
+    securityEvals?: StringFieldUpdateOperationsInput | string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    operation?: LlmOperationUpdateOneRequiredWithoutAttestationsNestedInput
+  }
+
+  export type LlmOperationAttestationUncheckedUpdateWithoutVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    evalSuiteDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    validatorVersion?: StringFieldUpdateOperationsInput | string
+    schemaTests?: StringFieldUpdateOperationsInput | string
+    offlineEvals?: StringFieldUpdateOperationsInput | string
+    liveEvals?: StringFieldUpdateOperationsInput | string
+    securityEvals?: StringFieldUpdateOperationsInput | string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationAttestationUncheckedUpdateManyWithoutVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    operationId?: StringFieldUpdateOperationsInput | string
+    operationDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    evalSuiteDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    validatorVersion?: StringFieldUpdateOperationsInput | string
+    schemaTests?: StringFieldUpdateOperationsInput | string
+    offlineEvals?: StringFieldUpdateOperationsInput | string
+    liveEvals?: StringFieldUpdateOperationsInput | string
+    securityEvals?: StringFieldUpdateOperationsInput | string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationEvalCaseCreateManySuiteInput = {
+    id?: string
+    name: string
+    inputJson: JsonNullValueInput | InputJsonValue
+    expectedJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: boolean
+    errorContains?: string | null
+    createdAt?: Date | string
+  }
+
+  export type LlmOperationEvalRunCreateManySuiteInput = {
+    id?: string
+    versionId: string
+    modelPolicySnapshot: JsonNullValueInput | InputJsonValue
+    resultsJson: JsonNullValueInput | InputJsonValue
+    metricsJson: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: string | null
+    executedBy: string
+    startedAt?: Date | string
+    completedAt?: Date | string | null
+  }
+
+  export type LlmOperationEvalCaseUpdateWithoutSuiteInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    inputJson?: JsonNullValueInput | InputJsonValue
+    expectedJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: BoolFieldUpdateOperationsInput | boolean
+    errorContains?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationEvalCaseUncheckedUpdateWithoutSuiteInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    inputJson?: JsonNullValueInput | InputJsonValue
+    expectedJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: BoolFieldUpdateOperationsInput | boolean
+    errorContains?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationEvalCaseUncheckedUpdateManyWithoutSuiteInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    inputJson?: JsonNullValueInput | InputJsonValue
+    expectedJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: BoolFieldUpdateOperationsInput | boolean
+    errorContains?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LlmOperationEvalRunUpdateWithoutSuiteInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    modelPolicySnapshot?: JsonNullValueInput | InputJsonValue
+    resultsJson?: JsonNullValueInput | InputJsonValue
+    metricsJson?: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    executedBy?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    version?: LlmOperationVersionUpdateOneRequiredWithoutEvalRunsNestedInput
+  }
+
+  export type LlmOperationEvalRunUncheckedUpdateWithoutSuiteInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    versionId?: StringFieldUpdateOperationsInput | string
+    modelPolicySnapshot?: JsonNullValueInput | InputJsonValue
+    resultsJson?: JsonNullValueInput | InputJsonValue
+    metricsJson?: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    executedBy?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type LlmOperationEvalRunUncheckedUpdateManyWithoutSuiteInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    versionId?: StringFieldUpdateOperationsInput | string
+    modelPolicySnapshot?: JsonNullValueInput | InputJsonValue
+    resultsJson?: JsonNullValueInput | InputJsonValue
+    metricsJson?: JsonNullValueInput | InputJsonValue
+    baselineVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    executedBy?: StringFieldUpdateOperationsInput | string
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
 
 
   /**
@@ -8408,6 +24505,18 @@ export namespace Prisma {
      * @deprecated Use ExecutionCountOutputTypeDefaultArgs instead
      */
     export type ExecutionCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ExecutionCountOutputTypeDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use LlmOperationCountOutputTypeDefaultArgs instead
+     */
+    export type LlmOperationCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = LlmOperationCountOutputTypeDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use LlmOperationVersionCountOutputTypeDefaultArgs instead
+     */
+    export type LlmOperationVersionCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = LlmOperationVersionCountOutputTypeDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use LlmOperationEvalSuiteCountOutputTypeDefaultArgs instead
+     */
+    export type LlmOperationEvalSuiteCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = LlmOperationEvalSuiteCountOutputTypeDefaultArgs<ExtArgs>
     /**
      * @deprecated Use ExecutionDefaultArgs instead
      */
@@ -8424,6 +24533,42 @@ export namespace Prisma {
      * @deprecated Use ExecutionEventDefaultArgs instead
      */
     export type ExecutionEventArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ExecutionEventDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use LlmOperationDefaultArgs instead
+     */
+    export type LlmOperationArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = LlmOperationDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use LlmOperationVersionDefaultArgs instead
+     */
+    export type LlmOperationVersionArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = LlmOperationVersionDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use LlmOperationActivationDefaultArgs instead
+     */
+    export type LlmOperationActivationArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = LlmOperationActivationDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use LlmOperationActivationEventDefaultArgs instead
+     */
+    export type LlmOperationActivationEventArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = LlmOperationActivationEventDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use LlmOperationEvalSuiteDefaultArgs instead
+     */
+    export type LlmOperationEvalSuiteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = LlmOperationEvalSuiteDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use LlmOperationEvalCaseDefaultArgs instead
+     */
+    export type LlmOperationEvalCaseArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = LlmOperationEvalCaseDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use LlmOperationEvalRunDefaultArgs instead
+     */
+    export type LlmOperationEvalRunArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = LlmOperationEvalRunDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use LlmOperationInvocationDefaultArgs instead
+     */
+    export type LlmOperationInvocationArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = LlmOperationInvocationDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use LlmOperationAttestationDefaultArgs instead
+     */
+    export type LlmOperationAttestationArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = LlmOperationAttestationDefaultArgs<ExtArgs>
 
   /**
    * Batch Payload for updateMany & deleteMany & createMany

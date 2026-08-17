@@ -1,10 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import axios from 'axios';
 import { getAiOrchestratorUrl } from '../../config/service-endpoints';
+import { ActivityPluginProbeService } from '../../modules/temporal-workflow/activity-plugin/activity-plugin-probe.service';
+import { buildHttpPluginRuntimeInput } from '../../modules/temporal-workflow/activity-plugin/activity-plugin-runtime-input';
 
 @Injectable()
 export class TemporalWorkflowConfigService {
   private readonly logger = new Logger(TemporalWorkflowConfigService.name);
+
+  constructor(
+    @Optional() private readonly activityPluginProbeService?: ActivityPluginProbeService
+  ) {}
 
   async optimizeHttpRequestConfig(
     stepConfig: Record<string, any>,
@@ -45,11 +51,18 @@ export class TemporalWorkflowConfigService {
         userGoal
       );
       const optimizedConfig = this.mergeHttpConfigWithAiResult(baseConfig, aiResult);
+      const optimizedPreview = await this.previewHttpRequestConfig(optimizedConfig, inputParams);
+      if (!optimizedPreview.success || !optimizedPreview.previewResponse) {
+        return {
+          success: false,
+          error: `AI 配置未通过固定 Activity 真实探测: ${optimizedPreview.error || '未知错误'}`,
+        };
+      }
 
       return {
         success: true,
         optimizedConfig,
-        previewResponse,
+        previewResponse: optimizedPreview.previewResponse,
         explanation: typeof aiResult?.reason === 'string' ? aiResult.reason : undefined,
       };
     } catch (error: any) {
@@ -74,8 +87,12 @@ export class TemporalWorkflowConfigService {
     try {
       const baseConfig = this.normalizeHttpRequestConfig(stepConfig);
       this.assertHttpRequestPreviewInputs(baseConfig, inputParams);
-      const resolvedRequest = this.buildHttpRequestPreviewInput(baseConfig, inputParams);
-      const previewResponse = await this.executeHttpPreviewRequest(resolvedRequest);
+      const resolvedRequest = this.activityPluginProbeService
+        ? buildHttpPluginRuntimeInput(baseConfig, inputParams)
+        : this.buildHttpRequestPreviewInput(baseConfig, inputParams);
+      const previewResponse = this.activityPluginProbeService
+        ? await this.executeHttpActivityPluginProbe(baseConfig, inputParams)
+        : await this.executeHttpPreviewRequest(resolvedRequest);
       return {
         success: true,
         baseConfig,
@@ -114,6 +131,24 @@ export class TemporalWorkflowConfigService {
         userGoal
       );
       const normalized = this.normalizeStructuredTransformConfig(aiResult || {});
+      if (this.activityPluginProbeService) {
+        const probe = await this.activityPluginProbeService.probe({
+          spec: {
+            pluginRef: 'builtin:structuredTransform',
+            pluginVersion: '1.0.0',
+            config: normalized,
+          },
+          sampleInput: sourceSample,
+        });
+        if (!probe.success) {
+          return {
+            success: false,
+            error: `生成配置未通过固定 Activity 真实探测: ${probe.diagnostics
+              .map((item) => item.message)
+              .join('; ')}`,
+          };
+        }
+      }
       return {
         success: true,
         config: normalized,
@@ -467,6 +502,24 @@ export class TemporalWorkflowConfigService {
         text: typeof response.data === 'string' ? response.data : JSON.stringify(response.data),
       };
     }
+  }
+
+  private async executeHttpActivityPluginProbe(
+    config: Record<string, any>,
+    inputParams: Record<string, any>
+  ): Promise<Record<string, any>> {
+    const probe = await this.activityPluginProbeService!.probe({
+      spec: {
+        pluginRef: 'builtin:httpRequest',
+        pluginVersion: '1.0.0',
+        config,
+      },
+      inputParams,
+    });
+    if (!probe.success || !probe.runtimeOutput) {
+      throw new Error(probe.diagnostics.map((item) => item.message).join('; ') || '真实探测失败');
+    }
+    return probe.runtimeOutput;
   }
 
   private async requestAiOptimizedHttpConfig(

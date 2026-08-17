@@ -15,10 +15,15 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prisma:seed": "ts-node -r tsconfig-paths/register src/modules/llm-operation/seed/run-seed.ts",
+    "prisma:seed:dev": "ts-node -r tsconfig-paths/register src/modules/llm-operation/seed/run-seed.ts"
   },
   "dependencies": {
     "@ops/backend-agent-profile": "file:../../../../packages/backend-contracts/agent-profile",
+    "@ops/backend-deterministic-plan": "file:../../../../packages/backend-contracts/deterministic-plan",
+    "@ops/backend-error-codes": "file:../../../../packages/backend-contracts/error-codes",
+    "@ops/backend-runtime-capability-contract": "file:../../../../packages/backend-contracts/runtime-capability-contract",
     "@nestjs/common": "^10.0.0",
     "@nestjs/core": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
@@ -50,7 +55,7 @@
   },
   "jest": {
     "moduleFileExtensions": ["js", "json", "ts"],
-    "rootDir": "src",
+    "roots": ["<rootDir>/src", "<rootDir>/test"],
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"

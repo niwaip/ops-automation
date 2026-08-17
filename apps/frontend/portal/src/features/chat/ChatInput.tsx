@@ -3,7 +3,7 @@
  * 聊天输入框组件 - 包含模式切换和停止按钮
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Input, Button, Upload, Tag, Switch, Select, message as antdMessage } from 'antd';
 import {
   SendOutlined,
@@ -94,7 +94,98 @@ const ChatInput: React.FC<ChatInputProps> = ({
     setEnableWebSearch,
     draftMessage,
     setDraftMessage,
+    messages,
   } = useChatStore();
+
+  // History navigation state
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
+  const savedDraftRef = useRef<string>('');
+  const isNavigatingHistoryRef = useRef<boolean>(false);
+
+  // Derive user message history from store
+  const effectiveHistory = useMemo(() => {
+    const list: string[] = [];
+    for (const m of messages || []) {
+      if (m.role === 'user' && typeof m.content === 'string') {
+        const trimmed = m.content.trim();
+        if (trimmed && list[list.length - 1] !== trimmed) {
+          list.push(trimmed);
+        }
+      }
+    }
+    return list;
+  }, [messages]);
+
+  // Reset history cursor when history list changes (e.g. new session or message sent)
+  useEffect(() => {
+    setHistoryIndex(-1);
+  }, [effectiveHistory.length]);
+
+  const moveCaretToEnd = useCallback((el: HTMLTextAreaElement) => {
+    requestAnimationFrame(() => {
+      try {
+        const len = el.value.length;
+        el.setSelectionRange(len, len);
+      } catch {
+        // ignore
+      }
+    });
+  }, []);
+
+  const handleHistoryKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (
+        (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') ||
+        e.shiftKey ||
+        e.ctrlKey ||
+        e.metaKey ||
+        e.altKey
+      ) {
+        return;
+      }
+
+      const el = e.currentTarget;
+      const { selectionStart, value } = el;
+      const lines = value.split('\n');
+
+      if (e.key === 'ArrowUp') {
+        const firstLineEnd = lines[0]?.length ?? 0;
+        if (selectionStart > firstLineEnd) return;
+
+        const nextIndex = historyIndex + 1;
+        if (nextIndex >= effectiveHistory.length) return;
+
+        e.preventDefault();
+        isNavigatingHistoryRef.current = true;
+        if (historyIndex === -1) {
+          savedDraftRef.current = value;
+        }
+        setHistoryIndex(nextIndex);
+        const nextText = effectiveHistory[effectiveHistory.length - 1 - nextIndex] ?? '';
+        setMessage(nextText);
+        moveCaretToEnd(el);
+      } else if (e.key === 'ArrowDown') {
+        if (historyIndex === -1) return;
+
+        const lastLineStart = value.length - (lines[lines.length - 1]?.length ?? 0);
+        if (selectionStart < lastLineStart) return;
+
+        e.preventDefault();
+        isNavigatingHistoryRef.current = true;
+        const nextIndex = historyIndex - 1;
+        if (nextIndex < 0) {
+          setHistoryIndex(-1);
+          setMessage(savedDraftRef.current);
+        } else {
+          setHistoryIndex(nextIndex);
+          const nextText = effectiveHistory[effectiveHistory.length - 1 - nextIndex] ?? '';
+          setMessage(nextText);
+        }
+        moveCaretToEnd(el);
+      }
+    },
+    [effectiveHistory, historyIndex, moveCaretToEnd]
+  );
 
   const getSpeechRecognitionConstructor = useCallback(() => {
     if (typeof window === 'undefined') {
@@ -175,6 +266,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
       }
       onSend(message);
       setMessage('');
+      setHistoryIndex(-1);
+      savedDraftRef.current = '';
     }
   };
 
@@ -199,6 +292,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   // 键盘事件
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    handleHistoryKeyDown(e as React.KeyboardEvent<HTMLTextAreaElement>);
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -291,9 +385,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
           <Input.TextArea
             ref={inputRef}
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => {
+              if (!isNavigatingHistoryRef.current) {
+                setHistoryIndex(-1);
+              }
+              isNavigatingHistoryRef.current = false;
+              setMessage(e.target.value);
+            }}
             onKeyDown={handleKeyDown}
-            placeholder="输入消息，按 Enter 发送..."
+            placeholder="输入消息，按 Enter 发送，按 ↑/↓ 导航历史消息..."
             autoSize={{ minRows: 4, maxRows: 8 }}
             disabled={disabled || uploading}
             className="chat-input-textarea"

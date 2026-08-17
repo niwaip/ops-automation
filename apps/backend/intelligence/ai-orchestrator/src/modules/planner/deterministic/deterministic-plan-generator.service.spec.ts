@@ -25,7 +25,34 @@ describe('DeterministicPlanGeneratorService', () => {
       }),
     };
 
-    return new DeterministicPlanGeneratorService(modelService as any, candidateSelector as any);
+    const llmOperationRegistry = {
+      resolveActiveVersion: jest.fn().mockResolvedValue({
+        source: 'database',
+        version: {
+          version: '1.0.0',
+          operationDigest: 'sha256:operation',
+          contractDigest: 'sha256:contract',
+          manifestJson: {
+            promptTemplateId: 'summarize-list',
+            modelPolicyId: 'task-default',
+            temperature: 0,
+            maxInputTokens: 4000,
+            maxOutputTokens: 2000,
+            outputSchema: {
+              type: 'object',
+              properties: { markdown_content: { type: 'string' } },
+              required: ['markdown_content'],
+            },
+          },
+        },
+      }),
+    };
+
+    return new DeterministicPlanGeneratorService(
+      modelService as any,
+      candidateSelector as any,
+      llmOperationRegistry as any,
+    );
   };
 
   it('normalizes Skill id, version, and runtimeType against trusted candidate cards', async () => {
@@ -77,10 +104,22 @@ describe('DeterministicPlanGeneratorService', () => {
     });
   });
 
-  it('keeps the artifact requirement and user request in the repair prompt', async () => {
+  it('keeps the artifact requirement and user request in the compatibility repair prompt', async () => {
     const invalidPlan = JSON.stringify({
       schemaVersion: 'deterministic-plan/v1',
-      nodes: [],
+      nodes: [
+        {
+          nodeId: 'unknown',
+          sequence: 1,
+          title: '未知能力',
+          kind: 'skill',
+          skillId: 'hallucinated-skill',
+          skillVersion: '1',
+          runtimeType: 'workflow',
+          dependsOn: [],
+          inputBindings: {},
+        },
+      ],
       finalOutputs: [],
     });
     const validPlan = JSON.stringify({
@@ -761,6 +800,24 @@ describe('DeterministicPlanGeneratorService', () => {
       const service = new DeterministicPlanGeneratorService(
         modelService as any,
         candidateSelector as any,
+        {
+          resolveActiveVersion: jest.fn().mockResolvedValue({
+            source: 'database',
+            version: {
+              version: '1.0.0',
+              operationDigest: 'sha256:operation',
+              contractDigest: 'sha256:contract',
+              manifestJson: {
+                promptTemplateId: 'summarize-list',
+                outputSchema: {
+                  type: 'object',
+                  properties: { markdown_content: { type: 'string' } },
+                  required: ['markdown_content'],
+                },
+              },
+            },
+          }),
+        } as any,
       );
 
 
@@ -780,6 +837,3 @@ describe('DeterministicPlanGeneratorService', () => {
     });
   });
 });
-
-
-

@@ -792,6 +792,26 @@ def _parse_json_from_text(raw_text: str) -> Any:
 @activity.defn(name="aiStructuredTransform")
 async def aiStructuredTransform(input_data: Dict[str, Any]) -> Dict[str, Any]:
     """AI-backed structured transform Activity."""
+    # Phase 3-γ: Legacy activity compatibility check
+    if os.getenv("OPS_DISABLE_LEGACY_AI_STRUCTURED_TRANSFORM", "").lower() in ("1", "true", "yes"):
+        raise ApplicationError(
+            "builtin:aiStructuredTransform is disabled by OPS_DISABLE_LEGACY_AI_STRUCTURED_TRANSFORM. "
+            "New tasks must execute llm_operation nodes directly through the control plane, not through a Temporal Activity. "
+            "See docs/design/three-capability-types-and-llm-operation-implementation-plan.md §10.3.",
+            non_retryable=True,
+        )
+
+    # Phase 3-γ: Record fallback event for legacy execution
+    import sys
+    fallback_marker = "LLM_OPERATION_LEGACY_ACTIVITY_FALLBACK"
+    activity.logger.warning(
+        f"{fallback_marker} executionId=%s stepId=%s actor=%s",
+        input_data.get("executionId") or "<unknown>",
+        input_data.get("stepId") or "<unknown>",
+        input_data.get("__structuredTransform", {}).get("__actor") if isinstance(input_data.get("__structuredTransform"), dict) else "<unknown>",
+    )
+    print(f"[{fallback_marker}] aiStructuredTransform invoked; migrate the model step to a control-plane llm_operation node", file=sys.stderr, flush=True)
+
     activity.logger.info("开始执行 AI 结构化转换任务")
 
     if not isinstance(input_data, dict):
@@ -1449,27 +1469,41 @@ async def jsonTransform(input_data: Dict[str, Any]) -> Dict[str, Any]:
     drop_null = bool(input_data.get("dropNullFields"))
     
     def _resolve_json_path(obj: Any, path: str) -> Any:
-        if path == "$":
-            return obj  # Root selector: return the entire object
-        if not path.startswith("$."):
-            return None
-        parts = [p for p in path[2:].split(".") if p]
+        raw_path = str(path or "").strip()
+        if raw_path in ("$", "$result", "$data", "$body", "result", "data", "body", ""):
+            return obj
+        if raw_path.startswith("$."):
+            raw_path = raw_path[2:]
+        elif raw_path.startswith("$"):
+            raw_path = raw_path[1:]
+        parts = [p for p in raw_path.split(".") if p]
         curr = obj
         for part in parts:
+            clean_part = part.lstrip("$")
             if isinstance(curr, dict):
-                curr = curr.get(part)
+                if part in curr:
+                    curr = curr[part]
+                elif clean_part in curr:
+                    curr = curr[clean_part]
+                elif clean_part in ("result", "data", "body") and not any(k in curr for k in ("result", "data", "body")):
+                    pass
+                else:
+                    return None
             elif isinstance(curr, list):
-                if part.endswith("]") and "[" in part:
-                    idx_str = part[part.find("[")+1:part.find("]")]
-                    clean_part = part[:part.find("[")]
-                    if clean_part:
-                        curr = curr.get(clean_part)
+                if clean_part.endswith("]") and "[" in clean_part:
+                    idx_str = clean_part[clean_part.find("[")+1:clean_part.find("]")]
+                    prefix = clean_part[:clean_part.find("[")]
+                    if prefix and isinstance(curr, dict):
+                        curr = curr.get(prefix)
                     if isinstance(curr, list):
                         if idx_str == "*":
                             return curr
                         elif idx_str.isdigit():
                             idx = int(idx_str)
                             curr = curr[idx] if 0 <= idx < len(curr) else None
+                elif clean_part.isdigit():
+                    idx = int(clean_part)
+                    curr = curr[idx] if 0 <= idx < len(curr) else None
                 else:
                     return None
             else:

@@ -12,6 +12,8 @@ import { DocumentRenderEntryController } from './render-entry/document-render-en
 import { DocumentSkillRenderEntryController } from './render-entry/document-skill-render-entry.controller';
 import { MarkdownArtifactController } from './markdown-artifact/markdown-artifact.controller';
 import { MarkdownArtifactService } from './markdown-artifact/markdown-artifact.service';
+import { DocumentContentExtractionController } from './content-extraction/document-content-extraction.controller';
+import { PdfContentExtractorService } from './content-extraction/pdf-content-extractor.service';
 
 @Module({
   imports: [PrismaModule],
@@ -19,6 +21,7 @@ import { MarkdownArtifactService } from './markdown-artifact/markdown-artifact.s
     DocumentRenderEntryController,
     DocumentSkillRenderEntryController,
     MarkdownArtifactController,
+    DocumentContentExtractionController,
   ],
   providers: [
     PreviewService,
@@ -30,6 +33,7 @@ import { MarkdownArtifactService } from './markdown-artifact/markdown-artifact.s
     TemplateWorkflowService,
     StudioSkillRenderDataService,
     MarkdownArtifactService,
+    PdfContentExtractorService,
   ],
   exports: [
     PreviewService,
@@ -41,6 +45,7 @@ import { MarkdownArtifactService } from './markdown-artifact/markdown-artifact.s
     TemplateWorkflowService,
     StudioSkillRenderDataService,
     MarkdownArtifactService,
+    PdfContentExtractorService,
   ],
 })
 export class DocumentRuntimeFacadeModule {}

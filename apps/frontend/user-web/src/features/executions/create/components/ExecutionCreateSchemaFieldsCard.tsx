@@ -61,7 +61,7 @@ const renderInputField = (field: SchemaField) => {
     return <Switch />;
   }
 
-  if (normalizedType === 'object' || normalizedType === 'json') {
+  if (normalizedType === 'object' || normalizedType === 'json' || normalizedType === 'array') {
     return <Input.TextArea rows={6} placeholder="请输入 JSON 字符串" />;
   }
 
@@ -113,7 +113,7 @@ const ExecutionCreateSchemaFieldsCard: React.FC<ExecutionCreateSchemaFieldsCardP
             }}
           >
             <Text type="secondary" style={{ fontSize: 12 }}>
-              填写本次执行所需参数
+              填写本次执行所需参数；我的工作流会复用冻结步骤，但允许覆盖本次运行值
             </Text>
             <Space wrap size={8}>
               <Button
@@ -236,7 +236,9 @@ const ExecutionCreateSchemaFieldsCard: React.FC<ExecutionCreateSchemaFieldsCardP
 
                               if (
                                 value &&
-                                (normalizedType === 'object' || normalizedType === 'json') &&
+                                (normalizedType === 'object' ||
+                                  normalizedType === 'json' ||
+                                  normalizedType === 'array') &&
                                 typeof value === 'string'
                               ) {
                                 JSON.parse(value);

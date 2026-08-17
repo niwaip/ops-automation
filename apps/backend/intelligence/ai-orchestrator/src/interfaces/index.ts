@@ -73,6 +73,10 @@ export interface LLMRateLimit {
  */
 export interface LLMResponse {
   content: string;
+  /** Provider termination reason (for example: stop, length, tool_calls). */
+  finishReason?: string;
+  /** Provider-native reasoning channel, retained for diagnostics but never parsed as business output. */
+  reasoningContent?: string;
   usage?: LLMUsage;
   rateLimit?: LLMRateLimit;
 }
@@ -218,6 +222,13 @@ export interface RecognizeParamsDTO {
   template_id: string;
   user_input: string;
   modelId?: string;
+  fallbackMode?: 'basic' | 'none';
+  /**
+   * `schema_only` keeps the LLM's semantic extraction authoritative and only
+   * applies deterministic schema validation. `semantic_augmentation` retains
+   * the legacy document-field completion helpers for document templates.
+   */
+  postProcessMode?: 'schema_only' | 'semantic_augmentation';
   context?: Record<string, unknown>;
   guide_context?: DocumentGuideContext;
   // 允许直接传入 params_schema，避免需要预先注册模版
@@ -269,6 +280,24 @@ export interface PromptDebugLLMCall {
   }>;
   responseText?: string;
   note?: string;
+}
+
+export interface PromptDebugPayload {
+  systemPrompt: string;
+  userPrompt: string;
+  debugSource?: 'planner' | 'react-engine';
+  systemPromptSectionKeys?: string[];
+  systemPromptSectionSources?: string[];
+  userPromptSectionKeys?: string[];
+  userPromptSectionSources?: string[];
+  modelId?: string;
+  llmRequestMessages?: Array<{
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+  }>;
+  llmResponseText?: string;
+  llmCalls?: PromptDebugLLMCall[];
+  notes?: string[];
 }
 
 export interface RecognizeParamsResponseDTO {

@@ -1,4 +1,5 @@
 import { DeterministicNodeInputResolverService } from '../src/modules/execution/plan-runtime/deterministic-node-input-resolver.service';
+import { ERROR_CODES } from '@ops/backend-error-codes';
 
 describe('DeterministicNodeInputResolverService', () => {
   let resolver: DeterministicNodeInputResolverService;
@@ -206,6 +207,61 @@ describe('DeterministicNodeInputResolverService', () => {
     );
 
     expect(resolved.query).toBe('AI 新闻');
+  });
+
+  it('deterministically extracts the only nested array from a generic JSON output', async () => {
+    prismaMock.executionStep.findMany.mockResolvedValueOnce([
+      {
+        planNodeId: 'hotboard',
+        status: 'succeeded',
+        outputJson: {
+          result: {
+            businessData: {
+              result: { type: 'weibo', list: [{ title: '热点一' }, { title: '热点二' }] },
+            },
+          },
+        },
+      },
+    ]);
+
+    const resolved = await resolver.resolveInputs(
+      'exec-1',
+      {
+        items: {
+          source: 'node_output',
+          nodeId: 'hotboard',
+          path: 'result',
+          expectedType: 'news_item_list',
+          transform: 'extract_unique_array',
+        },
+      },
+    );
+
+    expect(resolved.items).toEqual([{ title: '热点一' }, { title: '热点二' }]);
+  });
+
+  it('rejects an ambiguous generic JSON output instead of guessing an array path', async () => {
+    prismaMock.executionStep.findMany.mockResolvedValueOnce([
+      {
+        planNodeId: 'multi-list',
+        status: 'succeeded',
+        outputJson: { result: { list: [1], related: [2] } },
+      },
+    ]);
+
+    await expect(
+      resolver.resolveInputs('exec-1', {
+        items: {
+          source: 'node_output',
+          nodeId: 'multi-list',
+          path: 'result',
+          transform: 'extract_unique_array',
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: ERROR_CODES.INPUT_SCHEMA_VIOLATION,
+      message: expect.stringContaining('found multiple arrays'),
+    });
   });
 
   describe('§9.2 source distinction — user input is never rewritten', () => {

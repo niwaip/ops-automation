@@ -315,32 +315,32 @@ export class ChatExecutionStreamService {
               objective
             );
 
-          const rawRecord =
-            rawResult && typeof rawResult === 'object'
-              ? (rawResult as Record<string, unknown>)
-              : {};
-          const businessData =
-            rawRecord.businessData && typeof rawRecord.businessData === 'object'
-              ? (rawRecord.businessData as Record<string, unknown>)
-              : undefined;
+          const rawRecord = this.asRecord(rawResult) || {};
+          const businessData = this.asRecord(normalizedResult.structuredData);
 
           const isSearchOrDataResult =
             normalizedResult.resultType === 'tavily_search' ||
             Boolean(businessData?.results) ||
+            Boolean(businessData?.searchResults) ||
             Boolean(rawRecord.results);
+          const requestsAiSummary =
+            normalizedResult.envelope.presentation?.preferAiSummary === true;
+          const alreadyHasPresentationText = Boolean(
+            normalizedResult.summary || normalizedResult.detailText || normalizedResult.body
+          );
 
           // effectiveAiSummary tracks AI-generated summary to synchronize into
           // both event.content AND the data fields that the frontend prioritizes.
           let effectiveAiSummary: string | undefined;
 
           const shouldGeneratePresentationSummary =
-            execution.executionMode !== 'deterministic_plan' &&
-            (hasSummarizationIntent || isSearchOrDataResult);
+            !alreadyHasPresentationText &&
+            (requestsAiSummary || hasSummarizationIntent || isSearchOrDataResult);
 
           if (shouldGeneratePresentationSummary) {
             const aiResult = await this.generateAiSummary(
               objective || '对工具执行结果进行总结',
-              rawResult,
+              normalizedResult.structuredData ?? rawResult,
               executionId
             );
             if (aiResult?.summary) {
@@ -798,18 +798,18 @@ export class ChatExecutionStreamService {
 工具/技能实际执行返回的数据内容：
 ${payloadStr.length > 10000 ? payloadStr.slice(0, 10000) + '\n... (输出已截断)' : payloadStr}
 
-请根据以上数据内容，结合用户的需求「${objective}」，完成以下总结任务：
-1. 语言要求：必须全篇使用**中文（简体中文）**进行总结报告！即使原始数据是英文新闻，也必须翻译并整理成通顺、专业的中文要点。
-2. 总结结构：
-   - 核心摘要：用 2-3 句话总结整体动态或核心看点。
-   - 重点新闻/项目详情：按主题或看点分条归纳，每条包含中文标题、核心内容解读、主要影响或亮点。
-3. 格式要求：使用清晰漂亮的 Markdown 语法排版。`;
+请根据实际业务数据直接回答用户需求：
+1. 只使用数据中明确存在的信息，不猜测、不补造。
+2. 使用简体中文；必要时翻译原始英文值。
+3. 根据数据形态选择合适表达：单项结果简洁回答，多项结果分组或列表呈现，复杂分析才使用小标题。
+4. 保留对用户有意义的数值、单位、日期和状态，省略内部字段与调试信息。
+5. 使用清晰的 Markdown，避免输出原始 JSON。`;
 
       const response = await client.chatCompletion([
         {
           role: 'system',
           content:
-            '你是一个专业的 AI 智能总结助手。你的任务是将工具或技能执行获得的数据（包括英文搜索结果、API 输出、技术数据）总结提炼为结构清晰、专业易读的中文 Markdown 报告。无论原始数据是什么语言，输出必须全程使用中文。',
+            '你是业务结果呈现助手。请把已验证的结构化执行结果转换成忠于原始数据、简洁易读的中文 Markdown；不要改变结果含义。',
         },
         {
           role: 'user',
@@ -817,8 +817,11 @@ ${payloadStr.length > 10000 ? payloadStr.slice(0, 10000) + '\n... (输出已截�
         },
       ]);
 
-      const summaryText =
+      const rawSummaryText =
         typeof response?.content === 'string' ? response.content.trim() : undefined;
+      const summaryText = rawSummaryText
+        ? this.modelService.stripThinkingTags(rawSummaryText)
+        : undefined;
       if (summaryText) {
         this.logger.log(
           `AI summary generated successfully for execution ${executionId} (${summaryText.length} chars)`

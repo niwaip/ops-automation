@@ -1,4 +1,5 @@
 export * from './temporal-workflow.types';
+export * from './temporal-workflow-bundle.types';
 export * from './temporal-activity.types';
 export * from './builtin-activity.registry';
 export { TemporalWorkflowModule } from './temporal-workflow.module';
@@ -13,3 +14,7 @@ export { TemporalWorkflowValidationFacadeService } from './temporal-workflow-val
 export { TemporalWorkflowValidationHttpService } from './temporal-workflow-validation-http.service';
 export { ActivityCodegenService } from './temporal-activity-codegen.service';
 export { TemporalWorkflowCodegenService } from './temporal-workflow-codegen.service';
+export * from './activity-plugin/activity-plugin.types';
+export { ActivityPluginRegistryService } from './activity-plugin/activity-plugin-registry.service';
+export { ActivityPluginSpecValidatorService } from './activity-plugin/activity-plugin-spec-validator.service';
+export { ActivityPluginProbeService } from './activity-plugin/activity-plugin-probe.service';

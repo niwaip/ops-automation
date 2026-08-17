@@ -13,6 +13,7 @@ import { CapabilityContractCatalogService } from './capability-contract-catalog.
 import { OutputNormalizerService } from './output-normalizer.service';
 import { GracePolicyService } from './grace-policy.service';
 import { ERROR_CODES } from '@ops/backend-error-codes';
+import { buildDeterministicExecutionResult } from './deterministic-execution-result.builder';
 
 @Injectable()
 export class DeterministicPlanSchedulerService {
@@ -327,7 +328,7 @@ export class DeterministicPlanSchedulerService {
     };
     if (step.capabilityVersion) {
       node.skillVersion = step.capabilityVersion;
-      node.promptTemplateVersion = step.capabilityVersion;
+      node.operationVersion = step.capabilityVersion;
     }
     const contract = await this.contractCatalog.tryResolveContract(this.prisma, node);
     if (!contract?.outputSchema) {
@@ -390,7 +391,7 @@ export class DeterministicPlanSchedulerService {
     // the capability input contract) — exclude it from contract validation so
     // closed-object schemas (additionalProperties: false) don't reject it.
     const { apiKey: _apiKey, ...contractInput } = input;
-    const validation = jsonSchemaValidator.validate(contractInput || {}, inputSchema);
+    const validation = jsonSchemaValidator.validateInput(contractInput || {}, inputSchema);
     if (!validation.valid) {
       const firstError = validation.errors?.[0] as any;
       const errMsgs = validation.errors
@@ -415,27 +416,52 @@ export class DeterministicPlanSchedulerService {
   private async runLlmStep(execution: any, step: any, resolvedInput: Record<string, any>): Promise<void> {
     this.validateInputContract(step, resolvedInput, execution.id);
     const contractMeta = step.outputContractJson || {};
+    const planJson = (execution.plan?.planJson || {}) as any;
+    const planNodes = planJson.nodes || [];
+    const planNode = planNodes.find((n: any) => n.nodeId === step.planNodeId);
+
     const result = await this.llmAdapter.executeOperation({
       executionId: execution.id,
       stepId: step.id,
+      planHash: execution.plan?.planHash,
       operationId: step.capabilityId,
-      promptTemplateId: contractMeta.promptTemplateId || step.capabilityId,
-      promptTemplateVersion: contractMeta.promptTemplateVersion || step.capabilityVersion || '1',
-      modelPolicyId: contractMeta.modelPolicyId || 'task-default',
+      operationVersion: contractMeta.operationVersion || planNode?.operationVersion || step.capabilityVersion || '1',
+      operationDigest: contractMeta.operationDigest || planNode?.operationDigest || '',
+      contractDigest: contractMeta.contractDigest || planNode?.contractDigest || '',
+      environment: 'production',
       input: resolvedInput,
+      idempotencyKey: step.idempotencyKey || `${execution.id}:${step.id}`,
     });
 
     if (!result.success) {
+      // Persist the prompt snapshot (when the orchestrator emitted one) so the
+      // debug console can inspect failed LLM steps too.
+      if (result.promptDebug) {
+        await this.prisma.executionStep.update({
+          where: { id: step.id },
+          data: {
+            outputJson: { __promptDebug: result.promptDebug } as any,
+          },
+        });
+      }
       throw new Error(result.errorMessage || `LLM Operation '${step.capabilityId}' returned failure`);
     }
 
     const normalizedOutput = this.validateOutputContract(step, result.output || {}, execution.id);
 
+    // The frozen output schema (additionalProperties: false) is the sole arbiter
+    // for business output; the prompt snapshot is merged AFTER validation so it
+    // never participates in contract checks. Downstream consumers read
+    // outputJson by declared keys only, so the extra key is inert.
+    const persistedOutput = result.promptDebug
+      ? { ...normalizedOutput, __promptDebug: result.promptDebug }
+      : normalizedOutput;
+
     await this.prisma.executionStep.update({
       where: { id: step.id },
       data: {
         status: 'succeeded',
-        outputJson: normalizedOutput as any,
+        outputJson: persistedOutput as any,
         endedAt: new Date(),
         leaseExpiresAt: null,
       },
@@ -538,7 +564,9 @@ export class DeterministicPlanSchedulerService {
 
     if (!result || !result.success) {
       const errMsg = result?.errorMessage || `Skill execution '${capabilityId}' failed`;
-      throw new Error(errMsg);
+      const error = new Error(errMsg) as Error & { code?: string };
+      error.code = result?.errorCode || 'NODE_EXECUTION_FAILED';
+      throw error;
     }
 
     const outputJson = this.validateOutputContract(
@@ -670,22 +698,21 @@ export class DeterministicPlanSchedulerService {
       checkResult.artifacts || [],
     );
 
-    // Surface the resolved body/summary at the top level so the chat result
-    // normalizer can render it without triggering another LLM call.
-    const topLevelBody = this.pickTopLevelBody(finalOutputs);
-    const topLevelTitle = this.pickTopLevelTitle(finalOutputs, planDraft);
+    const endedAt = new Date();
+    const resultJson = buildDeterministicExecutionResult({
+      executionId: execution.id,
+      plan: planDraft,
+      finalOutputs,
+      artifacts: checkResult.artifacts || [],
+      finishedAt: endedAt,
+    });
 
     await this.prisma.execution.update({
       where: { id: execution.id },
       data: {
         status: 'succeeded',
-        endedAt: new Date(),
-        resultJson: {
-          artifacts: checkResult.artifacts || [],
-          finalOutputs,
-          ...(topLevelBody ? { body: topLevelBody, summary: topLevelBody } : {}),
-          ...(topLevelTitle ? { title: topLevelTitle } : {}),
-        } as any,
+        endedAt,
+        resultJson: resultJson as any,
       },
     });
     await this.eventPublisher.createEvent(
@@ -741,33 +768,6 @@ export class DeterministicPlanSchedulerService {
     }
 
     return outputs;
-  }
-
-  private pickTopLevelBody(finalOutputs: Array<Record<string, any>>): string | undefined {
-    const priorityKeys = ['markdown_content', 'summary', 'body', 'content', 'text'];
-    for (const key of priorityKeys) {
-      const match = finalOutputs.find((o) => typeof o.value === 'string' && o.value.length > 0);
-      if (!match) continue;
-      if (typeof match.value !== 'string') continue;
-      if (priorityKeys.includes(String(match.fromNodeOutput)) || priorityKeys.includes(String(match.targetField))) {
-        return match.value;
-      }
-    }
-    // Fallback: any non-artifact string value, longest first.
-    const stringCandidates = finalOutputs
-      .filter((o) => typeof o.value === 'string' && o.value.length > 0 && !o.isArtifact)
-      .sort((a, b) => (b.value as string).length - (a.value as string).length);
-    return stringCandidates[0]?.value;
-  }
-
-  private pickTopLevelTitle(
-    finalOutputs: Array<Record<string, any>>,
-    planDraft: DeterministicPlanDraftV1,
-  ): string | undefined {
-    const titled = finalOutputs.find((o) => typeof o.value === 'string' && o.value.length > 0 && o.isArtifact);
-    if (titled?.artifact?.name) return titled.artifact.name;
-    if (planDraft?.objective) return planDraft.objective;
-    return undefined;
   }
 
   private validateOutputContract(step: any, output: Record<string, any>, executionId: string): Record<string, any> {

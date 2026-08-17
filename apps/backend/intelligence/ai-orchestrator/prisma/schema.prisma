@@ -109,3 +109,212 @@ model ExecutionEvent {
   @@index([executionId, createdAt(sort: Desc)])
   @@map("execution_events")
 }
+
+// LLM Operation: stable identity
+model LlmOperation {
+  id              String    @id @default(uuid()) @db.Uuid
+  operationKey    String    @unique @map("operation_key") @db.VarChar(100)
+  displayName     String    @map("display_name") @db.VarChar(255)
+  description     String    @db.Text
+  owner           String    @db.VarChar(100)
+  status          String    @default("active") @db.VarChar(32)   // active | deprecated | disabled
+  source          String    @default("admin_created") @db.VarChar(32)  // system_seed | admin_created | imported
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  versions        LlmOperationVersion[]
+  activations     LlmOperationActivation[]
+  activationEvents LlmOperationActivationEvent[]
+  attestations    LlmOperationAttestation[]
+
+  @@map("llm_operations")
+}
+
+// LLM Operation Version: immutable version snapshot
+model LlmOperationVersion {
+  id                String   @id @default(uuid()) @db.Uuid
+  operationId       String   @map("operation_id") @db.Uuid
+  version           String   @db.VarChar(50)
+  state             String   @default("draft") @db.VarChar(32)  // draft | validating | candidate | approved | deprecated | retired | rejected | validation_failed | approval_rejected | activation_failed
+  manifestJson      Json     @map("manifest_json")
+  operationDigest   String   @map("operation_digest") @db.VarChar(128)
+  contractDigest    String   @map("contract_digest") @db.VarChar(128)
+  changeSummary     String   @default("") @map("change_summary") @db.Text
+  source            String   @default("admin_created") @db.VarChar(32)  // system_seed | admin_created | imported
+  approvedBy        String?  @map("approved_by") @db.VarChar(255)
+  approvedAt        DateTime? @map("approved_at") @db.Timestamptz
+  createdBy         String   @map("created_by") @db.VarChar(255)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  operation         LlmOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  activations       LlmOperationActivation[]
+  activationEvents  LlmOperationActivationEvent[]
+  evalRuns          LlmOperationEvalRun[]
+  invocations       LlmOperationInvocation[]
+  attestations      LlmOperationAttestation[]
+
+  @@unique([operationId, version])
+  @@unique([operationId, operationDigest])
+  @@index([operationId, state])
+  @@map("llm_operation_versions")
+}
+
+// Activation pointer (current env → version)
+model LlmOperationActivation {
+  id              String   @id @default(uuid()) @db.Uuid
+  operationId     String   @map("operation_id") @db.Uuid
+  versionId       String   @map("version_id") @db.Uuid
+  environment     String   @db.VarChar(32)  // dev | staging | production | canary
+  label           String?  @db.VarChar(32)  // staging | production | canary
+  activatedBy     String   @map("activated_by") @db.VarChar(255)
+  reason          String   @db.Text
+  rolloutPercent  Int?     @map("rollout_percent")
+  activatedAt     DateTime @default(now()) @map("activated_at") @db.Timestamptz
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  operation       LlmOperation        @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  version         LlmOperationVersion @relation(fields: [versionId], references: [id])
+
+  @@unique([operationId, environment])
+  @@index([environment])
+  @@map("llm_operation_activations")
+}
+
+// Activation history (append-only)
+model LlmOperationActivationEvent {
+  id                String   @id @default(uuid()) @db.Uuid
+  operationId       String   @map("operation_id") @db.Uuid
+  previousVersionId String?  @map("previous_version_id") @db.Uuid
+  newVersionId      String   @map("new_version_id") @db.Uuid
+  environment       String   @db.VarChar(32)
+  action            String   @db.VarChar(32)  // activate | rollback | disable | canary_adjust
+  actor             String   @db.VarChar(255)
+  reason            String   @db.Text
+  metadataJson      Json?    @map("metadata_json")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  operation         LlmOperation        @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  version           LlmOperationVersion @relation(fields: [newVersionId], references: [id])
+
+  @@index([operationId, createdAt(sort: Desc)])
+  @@map("llm_operation_activation_events")
+}
+
+// Eval suite (versioned fixture bundle)
+model LlmOperationEvalSuite {
+  id          String   @id @default(uuid()) @db.Uuid
+  operationId String   @map("operation_id") @db.Uuid
+  versionId   String?  @map("version_id") @db.Uuid
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  suiteDigest String   @map("suite_digest") @db.VarChar(128)
+  createdBy   String   @map("created_by") @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  cases       LlmOperationEvalCase[]
+  evalRuns    LlmOperationEvalRun[]
+
+  @@index([operationId, versionId])
+  @@map("llm_operation_eval_suites")
+}
+
+// Eval case (single fixture)
+model LlmOperationEvalCase {
+  id          String   @id @default(uuid()) @db.Uuid
+  suiteId     String   @map("suite_id") @db.Uuid
+  name        String   @db.VarChar(255)
+  inputJson   Json     @map("input_json")
+  expectedJson Json?   @map("expected_json")
+  isNegative  Boolean  @default(false) @map("is_negative")
+  errorContains String? @map("error_contains") @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  suite       LlmOperationEvalSuite @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+
+  @@index([suiteId])
+  @@map("llm_operation_eval_cases")
+}
+
+// Eval run (execution of a suite against a version)
+model LlmOperationEvalRun {
+  id            String   @id @default(uuid()) @db.Uuid
+  versionId     String   @map("version_id") @db.Uuid
+  suiteId       String   @map("suite_id") @db.Uuid
+  modelPolicySnapshot Json @map("model_policy_snapshot")
+  resultsJson   Json     @map("results_json")
+  metricsJson   Json     @map("metrics_json")
+  baselineVersionId String? @map("baseline_version_id") @db.Uuid
+  executedBy    String   @map("executed_by") @db.VarChar(255)
+  startedAt     DateTime @default(now()) @map("started_at") @db.Timestamptz
+  completedAt   DateTime? @map("completed_at") @db.Timestamptz
+
+  version       LlmOperationVersion @relation(fields: [versionId], references: [id])
+  suite         LlmOperationEvalSuite @relation(fields: [suiteId], references: [id])
+
+  @@index([versionId])
+  @@index([suiteId])
+  @@map("llm_operation_eval_runs")
+}
+
+// Invocation audit (per call)
+model LlmOperationInvocation {
+  id                String   @id @default(uuid()) @db.Uuid
+  versionId         String   @map("version_id") @db.Uuid
+  executionId       String?  @map("execution_id") @db.Uuid
+  stepId            String?  @map("step_id") @db.Uuid
+  tenantId          String?  @map("tenant_id") @db.Uuid
+  provider          String   @db.VarChar(64)
+  requestedModel    String   @map("requested_model") @db.VarChar(128)
+  resolvedModel     String?  @map("resolved_model") @db.VarChar(128)
+  inputDigest       String?  @map("input_digest") @db.VarChar(128)
+  outputDigest      String?  @map("output_digest") @db.VarChar(128)
+  idempotencyKey    String?  @map("idempotency_key") @db.VarChar(255)
+  resultJson        Json?    @map("result_json")
+  inputStorageRef   String?  @map("input_storage_ref") @db.VarChar(255)
+  outputStorageRef  String?  @map("output_storage_ref") @db.VarChar(255)
+  tokenUsageJson    Json?    @map("token_usage_json")
+  latencyMs         Int?     @map("latency_ms")
+  estimatedCost     Decimal? @map("estimated_cost") @db.Decimal(20, 8)
+  parseAttempts     Int      @default(1) @map("parse_attempts")
+  repairAttempts    Int      @default(0) @map("repair_attempts")
+  validationResult  String   @map("validation_result") @db.VarChar(32)  // passed | failed | skipped
+  finishReason      String?  @map("finish_reason") @db.VarChar(64)
+  errorCode         String?  @map("error_code") @db.VarChar(64)
+  actor             String   @map("actor") @db.VarChar(255)
+  environment       String   @db.VarChar(32)
+  startedAt         DateTime @default(now()) @map("started_at") @db.Timestamptz
+  completedAt       DateTime? @map("completed_at") @db.Timestamptz
+
+  version           LlmOperationVersion @relation(fields: [versionId], references: [id])
+
+  @@index([versionId, startedAt(sort: Desc)])
+  @@index([executionId])
+  @@unique([versionId, idempotencyKey])
+  @@map("llm_operation_invocations")
+}
+
+// Attestation: independent first-class attestation record
+model LlmOperationAttestation {
+  id                String   @id @default(uuid()) @db.Uuid
+  operationId       String   @map("operation_id") @db.Uuid
+  versionId         String   @map("version_id") @db.Uuid
+  operationDigest   String   @map("operation_digest") @db.VarChar(128)
+  contractDigest    String   @map("contract_digest") @db.VarChar(128)
+  evalSuiteDigest   String?  @map("eval_suite_digest") @db.VarChar(128)
+  validatorVersion  String   @map("validator_version") @db.VarChar(32)
+  schemaTests       String   @map("schema_tests") @db.VarChar(16)  // passed | failed | skipped
+  offlineEvals      String   @map("offline_evals") @db.VarChar(16)
+  liveEvals         String   @map("live_evals") @db.VarChar(16)
+  securityEvals     String   @map("security_evals") @db.VarChar(16)
+  gateResultsJson   Json     @map("gate_results_json")
+  createdBy         String   @map("created_by") @db.VarChar(255)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  operation         LlmOperation        @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  version           LlmOperationVersion @relation(fields: [versionId], references: [id])
+
+  @@unique([versionId, operationDigest])
+  @@index([operationId, createdAt(sort: Desc)])
+  @@map("llm_operation_attestations")
+}

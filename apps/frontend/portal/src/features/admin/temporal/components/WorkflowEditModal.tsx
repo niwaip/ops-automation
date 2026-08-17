@@ -18,11 +18,16 @@ import { useQuery } from 'react-query';
 import '@/features/chat/ChatMessage.css';
 import {
   temporalWorkflowApi,
+  CreateTemporalWorkflowDTO,
   WorkflowDsl,
+  ActivityDsl,
+  WorkflowRealValidationResult,
+  TemporalWorkflowDTO,
   DEFAULT_WORKFLOW_DSL,
   DEFAULT_ACTIVITY_DSL,
 } from '@/api/temporal';
 import { WorkflowValidationModals } from './WorkflowEdit/components/WorkflowValidationModals';
+import { VALIDATION_SCENARIO_FIELD } from './WorkflowEdit/components/WorkflowValidationInputFields';
 import { WorkflowExtraPromptCard } from './WorkflowEdit/components/WorkflowExtraPromptCard';
 import { WorkflowOutputParamsCard } from './WorkflowEdit/components/WorkflowOutputParamsCard';
 import { WorkflowEditTimelineSection } from './WorkflowEdit/components/WorkflowEditTimelineSection';
@@ -36,7 +41,6 @@ import {
   WorkflowDurationFieldEditor,
 } from './WorkflowEdit/components/WorkflowDurationEditors';
 import { useActivityResources } from './WorkflowEdit/hooks/useActivityResources';
-import { useWorkflowExecutionNav } from './WorkflowEdit/hooks/useWorkflowExecutionNav';
 import { useWorkflowStepHandlers } from './WorkflowEdit/hooks/useWorkflowStepHandlers';
 import { useWorkflowStepMutations } from './WorkflowEdit/hooks/useWorkflowStepMutations';
 import { useWorkflowDraftTemplates, TemplateModalMode } from './WorkflowEdit/hooks/useWorkflowDraftTemplates';
@@ -89,6 +93,45 @@ type WorkflowDurationField =
   | 'workflowRunTimeout'
   | 'workflowTaskTimeout';
 
+const restorePersistedValidation = (
+  workflow: TemporalWorkflowDTO
+): {
+  result: WorkflowRealValidationResult;
+  logs: string[];
+  inputParams: Record<string, string>;
+} | null => {
+  const persisted = workflow.validationResult;
+  if (!persisted || typeof persisted.success !== 'boolean') {
+    return null;
+  }
+  const logs = Array.isArray(persisted.logs)
+    ? persisted.logs.filter((item): item is string => typeof item === 'string')
+    : [];
+  const inputParams: Record<string, string> =
+    persisted.input && typeof persisted.input === 'object' && !Array.isArray(persisted.input)
+      ? Object.fromEntries(
+          Object.entries(persisted.input as Record<string, unknown>).map(([key, value]) => [
+            key,
+            normalizeValidationInputValue(value),
+          ])
+        )
+      : {};
+  if (typeof persisted.validationScenario === 'string' && persisted.validationScenario.trim()) {
+    inputParams[VALIDATION_SCENARIO_FIELD] = persisted.validationScenario.trim();
+  }
+  return {
+    result: {
+      success: persisted.success,
+      score: typeof persisted.score === 'number' ? persisted.score : 0,
+      logs,
+      result: persisted.result,
+      error: typeof persisted.error === 'string' ? persisted.error : undefined,
+    },
+    logs,
+    inputParams,
+  };
+};
+
 
 
 
@@ -114,6 +157,12 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     const initialize = async () => {
       if (initialWorkflow) {
         setEditingWorkflow(initialWorkflow);
+        const persistedValidation = restorePersistedValidation(initialWorkflow);
+        if (persistedValidation) {
+          dispatchRealValidation({ type: 'RESTORE', payload: persistedValidation });
+        } else {
+          dispatchRealValidation({ type: 'CLOSE' });
+        }
         didInitializeCodeSignatureRef.current = false;
         form.setFieldsValue({
           name: initialWorkflow.name,
@@ -139,6 +188,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
 
       if (initialDraftDsl) {
         setEditingWorkflow(null);
+        dispatchRealValidation({ type: 'CLOSE' });
         didInitializeCodeSignatureRef.current = false;
         form.resetFields();
         // 与 applyDraftToEditor 保持一致：把草稿的 name/description/taskQueue 写入表单，
@@ -166,6 +216,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
       }
 
       setEditingWorkflow(null);
+      dispatchRealValidation({ type: 'CLOSE' });
       didInitializeCodeSignatureRef.current = false;
       form.resetFields();
       setWorkflowDsl(DEFAULT_WORKFLOW_DSL);
@@ -243,8 +294,6 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     setForceAiGeneration,
     codeModalVisible,
     setCodeModalVisible,
-    creatingExecutionWorkflowId,
-    setCreatingExecutionWorkflowId,
     realValidationInputParams,
     setRealValidationInputParams,
     didInitializeCodeSignatureRef,
@@ -441,18 +490,6 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     didInitializeCodeSignatureRef.current = true;
     setLastGeneratedSignature(currentDraftSignature);
   }, [currentDraftSignature, visible, generatedCode, lastGeneratedSignature]);
-
-
-
-
-  const { resolveWorkflowSourceSkillId, handleCreateExecutionFromWorkflow } =
-    useWorkflowExecutionNav(
-      selectedWorkflow,
-      setCreatingExecutionWorkflowId,
-      setDetailModalVisible
-    );
-
-
 
   const groupedWorkflowInputParams = useMemo(
     () => groupWorkflowInputParams(workflowDsl.inputParams),
@@ -881,9 +918,6 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
         detailModalVisible={detailModalVisible}
         setDetailModalVisible={setDetailModalVisible}
         selectedWorkflow={selectedWorkflow}
-        resolveWorkflowSourceSkillId={resolveWorkflowSourceSkillId}
-        handleCreateExecutionFromWorkflow={handleCreateExecutionFromWorkflow}
-        creatingExecutionWorkflowId={creatingExecutionWorkflowId}
         getActivitySourceMeta={getActivitySourceMeta}
       />
       <Modal
@@ -1093,9 +1127,18 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
 export interface WorkflowEditModalProps {
   visible: boolean;
   onCancel: (saved?: boolean) => void;
-  onSave: (data: any) => void;
-  initialWorkflow?: any | null;
-  initialDraftDsl?: any | null;
+  onSave: (
+    data: CreateTemporalWorkflowDTO,
+    workflowId?: string
+  ) => Promise<TemporalWorkflowDTO | void> | void;
+  initialWorkflow?: TemporalWorkflowDTO | null;
+  initialDraftDsl?: {
+    name: string;
+    description: string;
+    taskQueue: string;
+    workflowDsl: WorkflowDsl;
+    activityDsl: ActivityDsl;
+  } | null;
   loading?: boolean;
   openTemplatePickerOnOpen?: boolean;
   initialTemplatePickerMode?: TemplateModalMode;

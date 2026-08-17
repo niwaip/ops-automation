@@ -6,6 +6,7 @@ import type {
   WorkflowDsl,
   WorkflowDslV2Field,
   WorkflowDslV2Output,
+  WorkflowOutputParamDefinition,
   WorkflowInputParamDefinition,
   WorkflowInputParamType,
   WorkflowStep,
@@ -252,13 +253,16 @@ export function inferWorkflowInputParamType(args: {
 }): WorkflowInputParamType {
   const { key, description, defaultValue, exampleValue, buildWorkflowSemanticHint } = args;
   const candidates = [defaultValue, exampleValue];
+  const text = buildWorkflowSemanticHint(key, description, defaultValue, exampleValue);
   if (candidates.some((value) => typeof value === 'boolean')) {
     return 'boolean';
+  }
+  if (/\b(integer|int|int32|int64|long)\b|整数/.test(text)) {
+    return 'integer';
   }
   if (candidates.some((value) => typeof value === 'number')) {
     return 'number';
   }
-  const text = buildWorkflowSemanticHint(key, description, defaultValue, exampleValue);
   if (/\b(bool|boolean|enable|disabled?)\b|启用|是否/.test(text)) {
     return 'boolean';
   }
@@ -500,6 +504,24 @@ export function normalizeDraftInputParams(args: {
               referenceUrl,
               buildWorkflowSemanticHint,
             });
+    const type =
+      value?.type ||
+      inferWorkflowInputParamType({
+        key: normalizedKey,
+        description,
+        defaultValue,
+        exampleValue,
+        buildWorkflowSemanticHint,
+      });
+    const format =
+      value?.format ||
+      (/毫秒|milliseconds?|epoch\s*ms|unix\s*ms/i.test(`${normalizedKey} ${description}`)
+        ? 'unix-milliseconds'
+        : /秒级时间戳|unix\s*seconds?|epoch\s*seconds?/i.test(
+              `${normalizedKey} ${description}`
+            )
+          ? 'unix-seconds'
+          : undefined);
     acc[String(key).trim()] = {
       description,
       required:
@@ -510,15 +532,8 @@ export function normalizeDraftInputParams(args: {
       ...(enumValues ? { enum: enumValues } : {}),
       localizedDefaultValue,
       source: value?.source,
-      type:
-        value?.type ||
-        inferWorkflowInputParamType({
-          key: normalizedKey,
-          description,
-          defaultValue,
-          exampleValue,
-          buildWorkflowSemanticHint,
-        }),
+      type,
+      ...(format ? { format } : {}),
       exampleValue,
       ...(normalizeWorkflowInputRenderPath(value?.renderPath)
         ? { renderPath: normalizeWorkflowInputRenderPath(value?.renderPath) }
@@ -529,7 +544,7 @@ export function normalizeDraftInputParams(args: {
 }
 
 export function normalizeDraftOutputParams(
-  outputParams: Record<string, { description?: string; sourceStep?: string }> | undefined,
+  outputParams: Record<string, WorkflowOutputParamDefinition> | undefined,
   pickFirstNonEmptyString: PickFirstNonEmptyString
 ): WorkflowDsl['outputParams'] {
   const entries = Object.entries(outputParams || {}).filter(([key]) => String(key || '').trim());
@@ -541,11 +556,16 @@ export function normalizeDraftOutputParams(
       },
     };
   }
-  return entries.reduce<Record<string, { description?: string; sourceStep?: string }>>(
+  return entries.reduce<Record<string, WorkflowOutputParamDefinition>>(
     (acc, [key, value]) => {
       acc[String(key).trim()] = {
         description: pickFirstNonEmptyString(value?.description) || '',
         sourceStep: pickFirstNonEmptyString(value?.sourceStep) || 'step_1',
+        ...(pickFirstNonEmptyString(value?.sourcePath)
+          ? { sourcePath: pickFirstNonEmptyString(value?.sourcePath) }
+          : {}),
+        ...(pickFirstNonEmptyString(value?.type) ? { type: pickFirstNonEmptyString(value?.type) } : {}),
+        ...(value?.required !== undefined ? { required: value.required === true } : {}),
       };
       return acc;
     },
@@ -593,7 +613,7 @@ function inferV2OutputFieldType(schemaHint: unknown): string {
  * safe for authoritative skill contracts.
  */
 export function deriveV2OutputFromOutputParams(args: {
-  outputParams?: Record<string, { description?: string; sourceStep?: string }>;
+  outputParams?: Record<string, WorkflowOutputParamDefinition>;
   steps: WorkflowStep[];
 }): WorkflowDslV2Output | undefined {
   const { outputParams, steps } = args;
@@ -618,6 +638,19 @@ export function deriveV2OutputFromOutputParams(args: {
       continue;
     }
     const description = String(rawSpec?.description || '').trim() || undefined;
+    const declaredSourcePath = String(rawSpec?.sourcePath || '').trim();
+    if (declaredSourcePath) {
+      fields[fieldName] = {
+        ...(rawSpec?.type ? { type: String(rawSpec.type).trim() } : {}),
+        required: rawSpec?.required === true,
+        source: {
+          step: sourceStepId,
+          path: declaredSourcePath.startsWith('$') ? declaredSourcePath : `$.${declaredSourcePath}`,
+        },
+        ...(description ? { description } : {}),
+      };
+      continue;
+    }
     const activityRef = String(sourceStep.activityRef || '').trim();
     const stepInput =
       sourceStep.input && typeof sourceStep.input === 'object' && !Array.isArray(sourceStep.input)
@@ -692,11 +725,18 @@ export function deriveV2OutputFromOutputParams(args: {
         if (knownEnvelopeKeys.has(fieldName)) {
           provablePath = `$.${fieldName}`;
         }
+      } else if (responseMode === 'body' || responseMode === 'bodypath') {
+        // The normalized step result is already the response body. The result
+        // builder's virtual result/data/body segment compatibility preserves
+        // legacy single-field identity mappings while named fields resolve
+        // directly from object bodies.
+        provablePath = `$.${fieldName}`;
       }
       if (provablePath) {
         fields[fieldName] = {
-          type: fieldName === 'body' || fieldName === 'text' ? 'string' : undefined,
-          required: false,
+          type:
+            rawSpec?.type || (fieldName === 'body' || fieldName === 'text' ? 'string' : undefined),
+          required: rawSpec?.required === true,
           source: { step: sourceStepId, path: provablePath },
           ...(description ? { description } : {}),
         };

@@ -69,10 +69,7 @@ export class PlanSemanticService {
   }
 
   isDocumentTask(matchedSkill: SkillMatchResult): boolean {
-    if (matchedSkill.executionType === 'document') {
-      return true;
-    }
-
+    const sourceType = matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType;
     const schemaProperties = matchedSkill.paramsSchema?.properties || {};
     const hasTemplateLoopMarkers = Object.entries(schemaProperties).some(([name, schema]) => {
       const description =
@@ -82,11 +79,17 @@ export class PlanSemanticService {
       return [name, description].some((value) => /\{#.+\}|\{\/.+\}/.test(value));
     });
 
+    if (typeof sourceType === 'string' && sourceType.trim()) {
+      return sourceType === 'document' || hasTemplateLoopMarkers;
+    }
+
+    if (matchedSkill.executionType === 'document') {
+      return true;
+    }
+
     return (
-      matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document' ||
       matchedSkill.executionFlow?.includes('document_render') ||
       Boolean(matchedSkill.carboneTemplateId) ||
-      Boolean(matchedSkill.executionFlowTemplateIds?.length) ||
       hasTemplateLoopMarkers
     );
   }

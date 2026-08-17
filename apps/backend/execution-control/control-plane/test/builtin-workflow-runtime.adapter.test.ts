@@ -94,4 +94,26 @@ describe('BuiltinWorkflowRuntimeAdapter Unit Tests', () => {
     expect((result.output?.artifact as any).mimeType).toBe('text/markdown; charset=utf-8');
     expect(result.artifacts).toHaveLength(1);
   });
+
+  it('dispatches PDF extraction through the manifest handler key', async () => {
+    registry.registerHandler('document.content-extractor.pdf', async () => ({
+      success: true,
+      output: { text: 'extracted', pageCount: 1, pages: [] },
+    }));
+
+    const result = await adapter.invokeStep({
+      requestId: 'req-pdf',
+      executionId: 'exec-pdf',
+      stepId: 'extract-pdf',
+      runtimeType: 'workflow',
+      capabilityType: 'builtin',
+      action: 'extract',
+      skillId: 'platform.document.pdf-content-extractor',
+      metadata: { definitionVersion: '1.0.0', handlerKey: 'document.content-extractor.pdf' },
+      input: { fileBase64: 'pdf-bytes' },
+    });
+
+    expect(result).toMatchObject({ success: true, status: 'completed' });
+    expect(result.output?.text).toBe('extracted');
+  });
 });

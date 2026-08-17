@@ -81,9 +81,9 @@ const ExecutionInputOutputCard: React.FC<ExecutionInputOutputCardProps> = ({
                   />
                 ) : null}
                 {executionNormalizedResult.summary || executionNormalizedResult.body ? (
-                  <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
-                    {executionNormalizedResult.summary || executionNormalizedResult.body}
-                  </Text>
+                  <ExecutionPayloadContent
+                    value={executionNormalizedResult.summary || executionNormalizedResult.body}
+                  />
                 ) : null}
                 {deliverableArtifacts.length > 0 ? (
                   <div>

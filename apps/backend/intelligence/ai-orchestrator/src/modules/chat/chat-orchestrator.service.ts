@@ -14,7 +14,9 @@ import { ReActEngineService } from '../react-engine/react-engine.service';
 import type { ChatRequestDTO } from './chat.dto';
 import { ChatExecutionStreamService } from './chat-execution-stream.service';
 import { DeterministicTaskExecutionService } from './deterministic-task-execution.service';
+import { ChatConversationService } from './chat-conversation.service';
 import { SkillCacheService } from '../planner/skill/skill-cache.service';
+import { NO_MATCHING_SKILL_MESSAGE } from '../planner/skill/skill-match-policy';
 import type { ChatUserContext, WaitingInputSemantic } from './chat.types';
 import { ChatWaitingInputService } from './chat-waiting-input.service';
 import type { DeterministicPlanNodeV1 } from '@ops/backend-deterministic-plan';
@@ -30,6 +32,7 @@ export class ChatOrchestratorService {
     private readonly promptDebugSettingsService: PromptDebugSettingsService,
     private readonly waitingInputService: ChatWaitingInputService,
     private readonly executionStreamService: ChatExecutionStreamService,
+    private readonly chatConversationService: ChatConversationService,
     private readonly deterministicTaskExecutionService?: DeterministicTaskExecutionService,
     private readonly skillCacheService?: SkillCacheService,
   ) {}
@@ -248,6 +251,7 @@ export class ChatOrchestratorService {
         context: {
           sessionId: body.sessionId,
           uploadedFiles: body.files,
+          system_collected: this.buildUploadedFileParams(body.files),
           history: context.history,
         },
       },
@@ -256,13 +260,21 @@ export class ChatOrchestratorService {
       traceId,
     };
 
-    if (this.deterministicTaskExecutionService?.shouldRouteToDeterministicPlan(body.message)) {
+    const planningRequest = this.buildPlanningRequest(body.message, body.files);
+    if (this.deterministicTaskExecutionService?.shouldRouteToDeterministicPlan(planningRequest)) {
       yield {
         type: StreamEventType.THOUGHT,
         content: '正在获取用户可用 Skill 列表并进行确定性多步骤任务拆分规划...',
       };
 
       const availableSkills = (await this.skillCacheService?.loadAvailableSkills(authToken, traceId)) || [];
+
+      // Session context: expose the most recent completed task output so a
+      // follow-up task can reuse it as an input candidate (e.g. "输出到md文件"
+      // binds its content parameter from the previous summary).
+      const latestResult = await this.chatConversationService.getLatestCompletedTaskResult(
+        body.sessionId,
+      );
 
       const result = await this.deterministicTaskExecutionService.executeDeterministicTask(
         body.message,
@@ -271,10 +283,43 @@ export class ChatOrchestratorService {
           authToken,
           user: { userId: context.userId, userRoles: context.userRoles },
           availableSkills,
+          systemInputs: {
+            ...this.buildUploadedFileParams(body.files),
+            ...(latestResult?.summaryText
+              ? {
+                  previousResultText: latestResult.summaryText,
+                  previousResultTitle: latestResult.resultTitle,
+                }
+              : {}),
+          },
+          planningRequest,
         },
       );
 
       if (result.success && result.executionId) {
+        const missingInputs = (result.planDraft?.requiredUserInputs || []).filter((i: any) => i.missing);
+        if (missingInputs.length > 0) {
+          yield {
+            type: StreamEventType.WAITING_INPUT,
+            content: this.waitingInputService.formatWaitingInputMessage({
+              executionId: result.executionId,
+              intro: `已规划好任务计划，但还需要补充 ${missingInputs.length} 项必要参数：`,
+              missingInputs,
+            }),
+            data: {
+              executionId: result.executionId,
+              status: 'waiting_input',
+              hasBusinessResult: false,
+              missingInputs,
+              plan: result.planDraft,
+              ...(this.canExposePromptDebug(context) && (result.planDraft as any)?.promptDebug
+                ? { promptDebug: (result.planDraft as any).promptDebug }
+                : {}),
+            },
+          };
+          return;
+        }
+
         yield {
           type: StreamEventType.THOUGHT,
           content: `已成功冻结 ${result.planDraft?.nodes?.length || 0} 步骤执行计划 (ID: ${result.executionId})，控制面已按拓扑顺序调度运行。`,
@@ -292,6 +337,9 @@ export class ChatOrchestratorService {
               nodes: result.planDraft?.nodes || [],
               finalOutputs: result.planDraft?.finalOutputs || [],
             },
+            ...(this.canExposePromptDebug(context) && (result.planDraft as any)?.promptDebug
+              ? { promptDebug: (result.planDraft as any).promptDebug }
+              : {}),
           },
         };
 
@@ -302,6 +350,18 @@ export class ChatOrchestratorService {
         );
         return;
       } else {
+        if (result.errorCode === 'CAPABILITY_NOT_FOUND') {
+          yield {
+            type: StreamEventType.RESULT,
+            content: NO_MATCHING_SKILL_MESSAGE,
+            data: {
+              code: 'CAPABILITY_NOT_FOUND',
+              status: 'not_started',
+              executed: false,
+            },
+          };
+          return;
+        }
         yield {
           type: StreamEventType.ERROR,
           content: `任务规划/创建失败 [${result.errorCode || 'UNKNOWN_ERROR'}]: ${result.errorMessage || '无法拆分该任务'}`,
@@ -316,6 +376,19 @@ export class ChatOrchestratorService {
     }
 
     const matchPhase = await this.plannerService.matchSkillPhase(plannerInput);
+
+    if (!matchPhase.matchedSkill) {
+      yield {
+        type: StreamEventType.RESULT,
+        content: NO_MATCHING_SKILL_MESSAGE,
+        data: {
+          code: 'CAPABILITY_NOT_FOUND',
+          status: 'not_started',
+          executed: false,
+        },
+      };
+      return;
+    }
 
     if (matchPhase.matchedSkill) {
       yield {
@@ -535,6 +608,30 @@ export class ChatOrchestratorService {
     }
   }
 
+  private buildUploadedFileParams(
+    files?: Array<{ fileName: string; mimeType: string; content?: string }>
+  ): Record<string, unknown> {
+    const file = files?.find(
+      (candidate) => candidate.mimeType === 'application/pdf' && Boolean(candidate.content)
+    );
+    if (!file?.content) {
+      return {};
+    }
+    return {
+      fileBase64: file.content,
+      fileName: file.fileName,
+    };
+  }
+
+  private buildPlanningRequest(
+    message: string,
+    files?: Array<{ mimeType: string }>
+  ): string {
+    return files?.some((file) => file.mimeType === 'application/pdf')
+      ? `${message}\n[系统上下文：用户已上传 PDF 附件，需要提取 PDF 内容]`
+      : message;
+  }
+
   private canExposePromptDebug(context: ExecutionContext): boolean {
     return (
       this.promptDebugSettingsService.isPromptDebugEnabled() &&
@@ -642,7 +739,13 @@ export class ChatOrchestratorService {
       systemPromptSectionKeys: promptDebug.systemPromptSectionKeys,
       userPromptSectionKeys: promptDebug.userPromptSectionKeys,
       modelId: promptDebug.modelId,
+      llmRequestMessages: Array.isArray(promptDebug.llmRequestMessages)
+        ? promptDebug.llmRequestMessages
+        : undefined,
+      llmResponseText:
+        typeof promptDebug.llmResponseText === 'string' ? promptDebug.llmResponseText : undefined,
       notes: promptDebug.notes,
+      llmCalls: Array.isArray(promptDebug.llmCalls) ? promptDebug.llmCalls : undefined,
     };
   }
 

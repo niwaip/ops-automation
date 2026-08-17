@@ -6,6 +6,11 @@ import { computeContractDigest as computeSharedContractDigest } from '@ops/backe
 import { getAiOrchestratorUrl } from '../../../config/service-endpoints';
 
 export interface ResolvedCapabilityContract {
+  capabilityRef?: {
+    id: string;
+    version: string;
+    digest: string;
+  };
   inputSchema: Record<string, unknown> | null;
   outputSchema: Record<string, unknown> | null;
   /**
@@ -18,8 +23,12 @@ export interface ResolvedCapabilityContract {
   /**
    * Which catalog source produced the contract — carried into the contract
    * digest envelope (fix ④) so the digest reflects the resolved origin.
+   *
+   * Migration stance (Phase 0): catalog boundary maps custom_skill → published_skill.
+   * Internal reads may still encounter 'custom_skill' in legacy data, but the
+   * contract envelope always normalizes to 'published_skill' (design doc §2.5).
    */
-  sourceType?: 'builtin_skill' | 'custom_skill' | 'llm_operation';
+  sourceType?: 'builtin_skill' | 'published_skill' | 'llm_operation';
 }
 
 /**
@@ -190,7 +199,7 @@ export class CapabilityContractCatalogService {
           return {
             inputSchema: this.paramsSchemaToJsonSchema(releasedParams ?? null),
             outputSchema: releasedOutput as Record<string, unknown>,
-            sourceType: 'custom_skill',
+            sourceType: 'published_skill',
           };
         }
 
@@ -199,49 +208,51 @@ export class CapabilityContractCatalogService {
           (await client.skillConfig.findFirst({ where: { name: capabilityKey } }).catch(() => null)) ||
           (await client.skillConfig.findFirst({ where: { id: capabilityKey } }).catch(() => null));
         if (skillConfig?.outputSchema && typeof skillConfig.outputSchema === 'object' && Object.keys(skillConfig.outputSchema).length > 0) {
-          const inputSchema = this.paramsSchemaToJsonSchema(skillConfig.paramsSchema);
-          return {
-            inputSchema,
-            outputSchema: skillConfig.outputSchema as Record<string, unknown>,
-            sourceType: 'custom_skill',
-          };
+const inputSchema = this.paramsSchemaToJsonSchema(skillConfig.paramsSchema);
+        return {
+          inputSchema,
+          outputSchema: skillConfig.outputSchema as Record<string, unknown>,
+          sourceType: 'published_skill',
+        };
         }
       }
     } else if (node.kind === 'llm_operation') {
-      // 3. LLM Operation Registry authoritative definition (§6.4).
-      //    Version-precise: the registry exposes a single current `version`;
-      //    when the node pins a promptTemplateVersion (or promptTemplateId)
-      //    that differs, the frozen plan would bind a stale contract → reject
-      //    (fail-closed) instead of silently re-binding to the newer template.
       const operationId = (node as any).operationId;
       const definition = await axios
-        .get(`${getAiOrchestratorUrl()}/ai/operations/${encodeURIComponent(operationId)}`, {
+        .get(`${getAiOrchestratorUrl()}/ai/internal/operations/catalog/${encodeURIComponent(operationId)}`, {
           timeout: 8000,
           headers: { 'X-Internal-Service': 'control-plane' },
         })
         .then((res) => res.data as {
+          capabilityRef?: {
+            id: string;
+            version: string;
+            digest?: string;
+          };
           inputSchema?: Record<string, unknown> | null;
           outputSchema?: Record<string, unknown> | null;
-          version?: string;
-          promptTemplateId?: string;
         });
-      const pinnedVersion = (node as any).promptTemplateVersion as string | undefined;
-      if (pinnedVersion && String(pinnedVersion) !== String(definition?.version)) {
+
+      const capabilityRef = definition?.capabilityRef;
+      if (
+        !capabilityRef ||
+        capabilityRef.id !== operationId ||
+        !capabilityRef.version ||
+        !capabilityRef.digest
+      ) {
         throw new Error(
-          `LLM operation '${operationId}' version mismatch: node pins promptTemplateVersion '${pinnedVersion}', ` +
-            `registry serves '${definition?.version ?? 'unknown'}' — frozen plan cannot bind a stale contract`
+          `LLM operation '${operationId}' catalog response has no authoritative capabilityRef`,
         );
       }
-      const pinnedTemplateId = (node as any).promptTemplateId as string | undefined;
-      if (pinnedTemplateId && String(pinnedTemplateId) !== String(definition?.promptTemplateId)) {
-        throw new Error(
-          `LLM operation '${operationId}' promptTemplateId mismatch: node pins '${pinnedTemplateId}', ` +
-            `registry serves '${definition?.promptTemplateId ?? 'unknown'}'`
-        );
-      }
+
       const input = definition?.inputSchema;
       const output = definition?.outputSchema;
       return {
+        capabilityRef: {
+          id: capabilityRef.id,
+          version: String(capabilityRef.version),
+          digest: capabilityRef.digest,
+        },
         inputSchema: input && typeof input === 'object' && Object.keys(input).length > 0 ? input : null,
         outputSchema: output && typeof output === 'object' && Object.keys(output).length > 0 ? output : null,
         sourceType: 'llm_operation',
@@ -515,6 +526,8 @@ export class CapabilityContractCatalogService {
     contract: Pick<ResolvedCapabilityContract, 'inputSchema' | 'outputSchema' | 'sourceType'>
   ): string {
     const isSkill = node.kind === 'skill';
+    const rawSourceType = (contract.sourceType ?? 'llm_operation') as string;
+    const normalizedSourceType = rawSourceType === 'custom_skill' ? 'published_skill' : rawSourceType;
     return computeSharedContractDigest({
       apiVersion: 'ops-automation/v2',
       kind: 'Capability',
@@ -522,8 +535,8 @@ export class CapabilityContractCatalogService {
         id: String(isSkill ? node.skillId || node.capabilityKey || '' : node.operationId || ''),
         version: isSkill
           ? String(node.skillVersion || 'v1')
-          : String(node.promptTemplateVersion || '1'),
-        sourceType: (contract.sourceType ?? 'llm_operation') as any,
+          : String(node.operationVersion || node.promptTemplateVersion || '1'),
+        sourceType: normalizedSourceType as any,
       },
       contracts: {
         input: { schema: contract.inputSchema ?? {} },

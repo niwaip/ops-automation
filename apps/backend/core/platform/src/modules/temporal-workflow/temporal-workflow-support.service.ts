@@ -141,8 +141,10 @@ export class TemporalWorkflowSupportService {
   }
 
   createCodegenSupport(): TemporalWorkflowCodegenSupport {
-    return createTemporalWorkflowCodegenSupport((workflowDsl, activityDsl) =>
-      this.buildDeterministicWorkflowCode(workflowDsl, activityDsl)
+    return createTemporalWorkflowCodegenSupport(
+      (workflowDsl, activityDsl) =>
+        this.buildDeterministicWorkflowCode(workflowDsl, activityDsl),
+      (workflowDsl, activityDsl) => this.diagnoseDeterministicMiss(workflowDsl, activityDsl)
     );
   }
 
@@ -265,6 +267,31 @@ export class TemporalWorkflowSupportService {
       workflowConfigService: this.workflowConfigService,
       workflowNormalizationService: this.workflowNormalizationService,
     });
+  }
+
+  private diagnoseDeterministicMiss(workflowDsl: WorkflowDsl, activityDsl: ActivityDsl) {
+    const missing = activityDsl.activities
+      .filter((activity) => !activity.generatedCode)
+      .map((activity) => activity.activityRef || activity.fn || activity.name);
+    if (missing.length > 0) {
+      return {
+        code: 'ACTIVITY_IMPLEMENTATION_MISSING',
+        message: `缺少固定 Activity 实现: ${missing.join(', ')}`,
+      };
+    }
+    if ((workflowDsl.conditionals || []).length > 0) {
+      return { code: 'CONDITIONAL_TOPOLOGY', message: '包含条件分支' };
+    }
+    if ((workflowDsl.signalHandlers || []).length > 0) {
+      return { code: 'SIGNAL_TOPOLOGY', message: '包含 Signal Handler' };
+    }
+    if (workflowDsl.errorHandling) {
+      return { code: 'ERROR_HANDLING_TOPOLOGY', message: '包含自定义错误处理拓扑' };
+    }
+    return {
+      code: 'DETERMINISTIC_SHAPE_UNSUPPORTED',
+      message: 'Activity 均有固定实现，但 DSL 参数形状尚未被骨架编译器覆盖',
+    };
   }
 
   private getBuiltinDocumentRenderActivity(): BuiltinActivityDefinition {

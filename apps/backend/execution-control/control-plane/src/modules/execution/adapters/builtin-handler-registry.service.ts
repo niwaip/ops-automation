@@ -29,6 +29,13 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
       return response.data as BuiltinSkillHandlerResult;
     });
 
+    // Deterministic document content extraction handlers. Format-specific
+    // parsing remains in document-domain; future extractors reuse this route.
+    this.registerDocumentDomainHandler(
+      'document.content-extractor.pdf',
+      '/internal/document/content-extractors/pdf/invoke'
+    );
+
     // 2. Platform Internal Notification Handler
     this.registerHandler('platform.notification.internal-message', async (req) => {
       const recipientId = String(req.input?.recipientId || 'system');
@@ -43,6 +50,21 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
           title,
         },
       };
+    });
+  }
+
+  private registerDocumentDomainHandler(handlerKey: string, endpoint: string): void {
+    this.registerHandler(handlerKey, async (req, idempotencyKey) => {
+      const domainUrl = process.env.CARBONE_SERVICE_URL || 'http://localhost:3009';
+      const response = await axios.post(`${domainUrl}${endpoint}`, {
+        executionId: req.executionId,
+        stepId: req.stepId,
+        capabilityKey: req.publishedSkillId || req.skillId,
+        definitionVersion: req.metadata?.definitionVersion || (req as any).skillVersion,
+        idempotencyKey,
+        input: req.input || {},
+      });
+      return response.data as BuiltinSkillHandlerResult;
     });
   }
 

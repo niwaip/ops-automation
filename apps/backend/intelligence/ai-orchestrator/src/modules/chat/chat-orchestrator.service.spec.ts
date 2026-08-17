@@ -41,6 +41,9 @@ describe('ChatOrchestratorService', () => {
       observeExecution: jest.fn(),
       buildLatestExecutionStateEvent: jest.fn(),
     };
+    const chatConversationService = {
+      getLatestCompletedTaskResult: jest.fn().mockResolvedValue(null),
+    };
 
     const service = new ChatOrchestratorService(
       controlPlaneClient as unknown as ControlPlaneClient,
@@ -48,7 +51,8 @@ describe('ChatOrchestratorService', () => {
       plannerService as any,
       promptDebugSettingsService as any,
       waitingInputService as any,
-      executionStreamService as any
+      executionStreamService as any,
+      chatConversationService as any
     );
 
     return {
@@ -59,6 +63,7 @@ describe('ChatOrchestratorService', () => {
       promptDebugSettingsService,
       waitingInputService,
       executionStreamService,
+      chatConversationService,
     };
   };
 
@@ -79,6 +84,7 @@ describe('ChatOrchestratorService', () => {
       base.promptDebugSettingsService as any,
       base.waitingInputService as any,
       base.executionStreamService as any,
+      base.chatConversationService as any,
       deterministicTaskExecutionService as any,
       skillCacheService as any
     );
@@ -321,6 +327,132 @@ describe('ChatOrchestratorService', () => {
         content: '请补充甲方名称',
       },
     ]);
+  });
+
+  it('does not recognize parameters or create an execution when no Skill matches', async () => {
+    const { service, plannerService, controlPlaneClient, reactEngineService } = createService();
+    plannerService.matchSkillPhase.mockResolvedValue({
+      objective: '查看今天的天气',
+      matchedSkill: null,
+      hasVisibleSkills: true,
+    });
+
+    const events: Array<{ type: StreamEventType; content: string; data?: unknown }> = [];
+    for await (const event of service.handleTaskMode(
+      {
+        message: '查看今天的天气',
+        sessionId: 'session-no-skill',
+      },
+      {
+        sessionId: 'session-no-skill',
+        userId: 'user-no-skill',
+        userRoles: ['employee'],
+        traceId: 'trace-no-skill',
+        history: [],
+      },
+      'Bearer token-no-skill'
+    )) {
+      events.push({ type: event.type, content: event.content, data: event.data });
+    }
+
+    expect(plannerService.completePlanFromMatchPhase).not.toHaveBeenCalled();
+    expect(controlPlaneClient.createExecution).not.toHaveBeenCalled();
+    expect(reactEngineService.execute).not.toHaveBeenCalled();
+    expect(events.at(-1)).toEqual({
+      type: StreamEventType.RESULT,
+      content: '当前没有可执行且与该请求充分匹配的 Skills，任务未执行。',
+      data: {
+        code: 'CAPABILITY_NOT_FOUND',
+        status: 'not_started',
+        executed: false,
+      },
+    });
+  });
+
+  it('returns no matching Skills for deterministic planning without creating execution', async () => {
+    const { service, deterministicTaskExecutionService, controlPlaneClient } =
+      createDeterministicService();
+    deterministicTaskExecutionService.executeDeterministicTask.mockResolvedValue({
+      success: false,
+      errorCode: 'CAPABILITY_NOT_FOUND',
+      errorMessage: '没有匹配的 Skill',
+    });
+
+    const events: Array<{ type: StreamEventType; content: string; data?: unknown }> = [];
+    for await (const event of service.handleTaskMode(
+      {
+        message: '搜索天气并总结，最后生成 MD 文件',
+        sessionId: 'session-det-no-skill',
+      },
+      {
+        sessionId: 'session-det-no-skill',
+        userId: 'user-det-no-skill',
+        userRoles: ['employee'],
+        traceId: 'trace-det-no-skill',
+        history: [],
+      },
+      'Bearer token-det-no-skill'
+    )) {
+      events.push({ type: event.type, content: event.content, data: event.data });
+    }
+
+    expect(controlPlaneClient.createExecution).not.toHaveBeenCalled();
+    expect(events.at(-1)).toEqual({
+      type: StreamEventType.RESULT,
+      content: '当前没有可执行且与该请求充分匹配的 Skills，任务未执行。',
+      data: {
+        code: 'CAPABILITY_NOT_FOUND',
+        status: 'not_started',
+        executed: false,
+      },
+    });
+  });
+
+  it('includes llmCalls in __promptDebug when creating execution if prompt debug enabled', async () => {
+    const { service, plannerService, controlPlaneClient, waitingInputService, promptDebugSettingsService } = createService();
+    promptDebugSettingsService.isPromptDebugEnabled.mockReturnValue(true);
+
+    const planDraft = {
+      plan_id: 'plan-debug-1',
+      planner_mode: 'skill',
+      objective: '生成合同',
+      summary: '需要输入',
+      skill_match: { skill_id: 'skill-contract', skill_name: '采购合同' },
+      required_inputs: [{ name: 'partyA', missing: true }],
+      steps: [],
+      metadata: {
+        debug: {
+          llmCalls: [
+            { stage: 'planner', label: 'Match Phase', modelId: 'gpt-4', responseText: 'ok' },
+          ],
+        },
+      },
+    };
+
+    plannerService.matchSkillPhase.mockResolvedValue({ matchedSkill: { skillId: 'skill-contract', skillName: '采购合同' } });
+    plannerService.completePlanFromMatchPhase.mockResolvedValue(planDraft);
+    controlPlaneClient.createExecution.mockResolvedValue({ id: 'exec-debug-1', status: 'waiting_input' });
+    waitingInputService.extractExecutionSemantic.mockReturnValue(undefined);
+    waitingInputService.formatWaitingInputMessage.mockReturnValue('请补充信息');
+
+    for await (const _ of service.handleTaskMode(
+      { message: '生成合同', sessionId: 's-debug-1' },
+      { sessionId: 's-debug-1', userId: 'admin-1', userRoles: ['admin'], traceId: 't-1', history: [] },
+      'Bearer token-1'
+    )) {}
+
+    expect(controlPlaneClient.createExecution).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          __promptDebug: expect.objectContaining({
+            llmCalls: [
+              { stage: 'planner', label: 'Match Phase', modelId: 'gpt-4', responseText: 'ok' },
+            ],
+          }),
+        }),
+      }),
+      expect.anything()
+    );
   });
 
   it('observes deterministic execution with auth token and user context', async () => {

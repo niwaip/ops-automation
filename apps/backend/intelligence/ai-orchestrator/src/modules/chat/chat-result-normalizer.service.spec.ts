@@ -123,4 +123,36 @@ describe('ChatResultNormalizerService', () => {
       '文档已生成。\n- 文件名：保密合同_202606151327.docx\n- 格式：DOCX\n- 可直接下载查看。'
     );
   });
+
+  it('presents contract business data before a completion-only workflow title', () => {
+    const normalized = service.normalize(
+      {
+        execution: { status: 'success' },
+        result: {
+          resultType: 'generic',
+          title: 'weather_query_workflow',
+          summary: null,
+          businessData: {
+            date: '2026-08-12',
+            morning: { tempC: '26' },
+            noon: { tempC: '28' },
+            evening: { tempC: '27' },
+          },
+        },
+        presentation: {
+          preferAiSummary: true,
+          chatSummary: null,
+        },
+      },
+      { executionId: 'exec-weather', status: 'success' }
+    );
+
+    expect(service.formatForChat(normalized, 'exec-weather')).toContain('"date": "2026-08-12"');
+    expect(service.formatForChat(normalized, 'exec-weather')).not.toBe(
+      'weather_query_workflow已完成。'
+    );
+    expect(service.toContract(normalized, { executionId: 'exec-weather' }).chatSummary).toContain(
+      '"morning"'
+    );
+  });
 });

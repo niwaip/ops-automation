@@ -1,5 +1,4 @@
 import { Controller, Get, Post, Body, Req, HttpCode, HttpStatus } from '@nestjs/common';
-import { Public } from '@ops/identity-access';
 import { Request } from 'express';
 import { IsString, IsOptional, IsArray, IsIn } from 'class-validator';
 import { BuiltinSkillCatalogProjectionService } from './catalog-projection/builtin-skill-catalog-projection.service';
@@ -49,7 +48,6 @@ export class BuiltinSkillController {
     return hasUser || reqSecret === internalSecret;
   }
 
-  @Public()
   @Get('catalog')
   async getUnifiedCatalog(@Req() req: Request) {
     const user = (req as any).user;
@@ -72,7 +70,6 @@ export class BuiltinSkillController {
     return { success: true, count: catalog.length, capabilities: catalog };
   }
 
-  @Public()
   @Post('resolve')
   @HttpCode(HttpStatus.OK)
   async resolveCapability(@Body() dto: ResolveRequestDto, @Req() req: Request) {

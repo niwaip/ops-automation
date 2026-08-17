@@ -298,17 +298,30 @@ export function buildUniversalLinearWorkflowCode(
     '',
     '    @staticmethod',
     '    def _resolve_ref(ref: str, base_input: Dict[str, Any], step_results: Dict[str, Any]) -> Any:',
-    '        parts = [part for part in ref.split(".") if part]',
+    '        clean_ref = str(ref or "").strip()',
+    '        if clean_ref.startswith("$."):',
+    '            clean_ref = clean_ref[2:]',
+    '        elif clean_ref.startswith("$"):',
+    '            clean_ref = clean_ref[1:]',
+    '        parts = [part for part in clean_ref.split(".") if part]',
     '        if not parts:',
     '            return None',
     '        first = parts[0]',
     '        if first in step_results:',
     '            current = step_results[first]',
     '            for part in parts[1:]:',
+    '                clean_part = part.lstrip("$")',
     '                if isinstance(current, dict):',
-    '                    current = current.get(part)',
-    '                elif isinstance(current, list) and part.isdigit():',
-    '                    index = int(part)',
+    '                    if part in current:',
+    '                        current = current[part]',
+    '                    elif clean_part in current:',
+    '                        current = current[clean_part]',
+    '                    elif clean_part in ("result", "data", "body") and not any(k in current for k in ("result", "data", "body")):',
+    '                        pass',
+    '                    else:',
+    '                        return None',
+    '                elif isinstance(current, list) and clean_part.isdigit():',
+    '                    index = int(clean_part)',
     '                    current = current[index] if 0 <= index < len(current) else None',
     '                else:',
     '                    return None',
@@ -318,7 +331,10 @@ export function buildUniversalLinearWorkflowCode(
     '        if len(parts) == 1:',
     '            if first in base_input:',
     '                return base_input[first]',
-    '            if first in ("content", "httpResult", "httpBody") and step_results:',
+    '            clean_first = first.lstrip("$")',
+    '            if clean_first in base_input:',
+    '                return base_input[clean_first]',
+    '            if clean_first in ("result", "content", "httpResult", "httpBody", "data", "body") and step_results:',
     '                return list(step_results.values())[-1]',
     '        return None',
     '',
@@ -542,7 +558,7 @@ export function buildDeterministicWorkflowCodeForWorkflow(
       (secondBuiltinKey === STRUCTURED_TRANSFORM_ACTIVITY_KEY ||
         secondBuiltinKey === AI_STRUCTURED_TRANSFORM_ACTIVITY_KEY)
     ) {
-      return buildFixedHttpRequestStructuredTransformWorkflowCodeHelper({
+      const specializedCode = buildFixedHttpRequestStructuredTransformWorkflowCodeHelper({
         workflowDsl,
         httpActivityDef: firstActivityDef,
         httpStep: firstStep,
@@ -563,6 +579,9 @@ export function buildDeterministicWorkflowCodeForWorkflow(
         buildExecuteActivityTimeoutLines,
         toPythonLiteral,
       });
+      if (specializedCode) {
+        return specializedCode;
+      }
     }
     // 非 HTTP+Transform 的 2 步链 → 交给通用线性构建器兜底
   }

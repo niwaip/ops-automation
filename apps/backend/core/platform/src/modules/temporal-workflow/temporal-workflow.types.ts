@@ -108,7 +108,8 @@ export type WorkflowInputParamSource =
   | 'inferred_from_reference_url'
   | 'merged';
 
-export type WorkflowInputParamType = 'string' | 'number' | 'boolean' | 'date';
+export type WorkflowInputParamType = 'string' | 'number' | 'integer' | 'boolean' | 'date';
+export type WorkflowInputParamFormat = 'date' | 'date-time' | 'unix-seconds' | 'unix-milliseconds';
 
 export type WorkflowLocalizedValueMap = Record<string, string | number | boolean>;
 
@@ -121,6 +122,7 @@ export interface WorkflowInputParamDefinition {
   localizedVariants?: string[];
   source?: WorkflowInputParamSource;
   type?: WorkflowInputParamType;
+  format?: WorkflowInputParamFormat;
   exampleValue?: string | number | boolean;
   displayName?: string;
   groupLabel?: string;
@@ -128,6 +130,44 @@ export interface WorkflowInputParamDefinition {
   arrayPath?: string;
   fieldName?: string;
   renderPath?: string | string[];
+}
+
+export interface WorkflowValidationScenario {
+  id: string;
+  label: string;
+  description?: string;
+  parameters: string[];
+  requiredParameters?: string[];
+}
+
+export type WorkflowValidationAssertionOperator =
+  | 'exists'
+  | 'nonEmpty'
+  | 'equals'
+  | 'notEquals'
+  | 'minItems'
+  | 'min'
+  | 'max';
+
+export interface WorkflowValidationAssertion {
+  /**
+   * Logical businessData field. AI-authored drafts should use this instead of
+   * depending on the runtime envelope nesting.
+   */
+  field?: string;
+  /** JSON path relative to `field`; defaults to `$`. */
+  fieldPath?: string;
+  /** Legacy absolute path, retained for persisted/manual workflows. */
+  path?: string;
+  operator: WorkflowValidationAssertionOperator;
+  value?: string | number | boolean;
+  message?: string;
+  scenarioIds?: string[];
+}
+
+export interface WorkflowValidationContract {
+  scenarios?: WorkflowValidationScenario[];
+  assertions?: WorkflowValidationAssertion[];
 }
 
 export type WorkflowParamRequiredMode = 'always' | 'conditional' | 'optional' | 'system_required';
@@ -174,6 +214,15 @@ export interface WorkflowDslV2Output {
   fields?: Record<string, WorkflowDslV2Field>;
 }
 
+export interface WorkflowOutputParamDefinition {
+  description?: string;
+  sourceStep?: string;
+  /** JSON path in the normalized source-step result. */
+  sourcePath?: string;
+  type?: string;
+  required?: boolean;
+}
+
 export interface WorkflowDsl {
   name: string;
   workflowClassName?: string;
@@ -183,7 +232,8 @@ export interface WorkflowDsl {
   sourceContext?: TemporalWorkflowSourceContext;
   inputParams?: Record<string, WorkflowInputParamDefinition>;
   inputPolicy?: WorkflowInputPolicy;
-  outputParams?: Record<string, { description?: string; sourceStep?: string }>;
+  validation?: WorkflowValidationContract;
+  outputParams?: Record<string, WorkflowOutputParamDefinition>;
   v2Output?: WorkflowDslV2Output;
   extraPrompt?: string;
   workflowExecutionTimeout?: string;
@@ -256,6 +306,7 @@ export interface CreateTemporalWorkflowDTO {
   workflowDsl: WorkflowDsl;
   activityDsl: ActivityDsl;
   generatedCode?: string;
+  isActive?: boolean;
 }
 
 export type TemporalWorkflowValidationStatus = 'draft' | 'generated' | 'validated' | 'failed';
@@ -315,6 +366,8 @@ export interface TemporalWorkflowSourceContext {
 export interface TemporalWorkflowDTO extends TemporalWorkflow {
   sourceTemplate?: TemporalWorkflowSourceTemplate | null;
   sourceContext?: TemporalWorkflowSourceContext | null;
+  /** Normalized alias of validationResultJson for API consumers. */
+  validationResult?: Record<string, unknown> | null;
 }
 
 export interface TemporalWorkflowArtifactDTO extends TemporalWorkflowArtifactRef {

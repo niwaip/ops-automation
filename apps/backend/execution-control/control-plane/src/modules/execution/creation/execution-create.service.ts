@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, Optional } from '@nestjs/common';
+import type { DeterministicPlanDraftV1 } from '@ops/backend-deterministic-plan';
 import { PrismaService } from '../../prisma/prisma.service';
 import { APPROVAL_STATUS } from '../contracts/approval-status';
 import { EXECUTION_EVENT_TYPE } from '../contracts/execution-event-type';
@@ -17,6 +18,8 @@ import { ExecutionPlanningService } from '../step-runner/planning/execution-plan
 import { buildPlannedExecutionSteps } from '../step-runner/planning/execution-plan-step.builder';
 import { DeterministicPlanFreezeService } from '../plan-runtime/deterministic-plan-freeze.service';
 import { DeterministicPlanSchedulerService } from '../plan-runtime/deterministic-plan-scheduler.service';
+import { SavedSkillResolverService } from '../../saved-skill/saved-skill-resolver.service';
+import { configureSavedSkillExecution } from '../../saved-skill/saved-skill-runtime-params';
 
 interface RuntimeDefaultResolution {
   input: Record<string, unknown>;
@@ -78,6 +81,7 @@ export class ExecutionCreateService {
     private readonly executionStepService: ExecutionStepService,
     private readonly planFreezeService?: DeterministicPlanFreezeService,
     private readonly planSchedulerService?: DeterministicPlanSchedulerService,
+    @Optional() private readonly savedSkillResolver?: SavedSkillResolverService,
   ) {}
 
   async create(
@@ -88,6 +92,42 @@ export class ExecutionCreateService {
   ): Promise<ExecutionDto> {
     if (dto.executionMode === 'deterministic_plan') {
       return this.createDeterministicExecution(userId, dto, hooks, options);
+    }
+
+    const requestedSkillId = dto.capabilityId || dto.skillId;
+    if (requestedSkillId && this.savedSkillResolver) {
+      const savedSkill = await this.savedSkillResolver.resolveForExecution(
+        userId,
+        requestedSkillId,
+        dto.capabilityVersion || dto.skillVersion
+      );
+      if (savedSkill) {
+        const configured = configureSavedSkillExecution(
+          savedSkill.planSnapshot as unknown as DeterministicPlanDraftV1,
+          savedSkill.fixedInput,
+          dto.input || {}
+        );
+        if (configured.unknownOverrideKeys.length > 0) {
+          throw new BadRequestException(
+            `Saved workflow contains unknown runtime parameters: ${configured.unknownOverrideKeys.join(', ')}`
+          );
+        }
+        return this.createDeterministicExecution(
+          userId,
+          {
+            ...dto,
+            skillId: savedSkill.skillId,
+            capabilityId: savedSkill.skillId,
+            skillVersion: savedSkill.version,
+            capabilityVersion: savedSkill.version,
+            executionMode: 'deterministic_plan',
+            deterministicPlan: configured.planSnapshot as unknown as Record<string, unknown>,
+            input: configured.executionInput,
+          },
+          hooks,
+          options
+        );
+      }
     }
 
     const resolvedSkillId = dto.capabilityId || dto.skillId;
@@ -418,11 +458,15 @@ export class ExecutionCreateService {
       const created = await tx.execution.create({
         data: {
           createdBy: userId,
+          skillId: dto.skillId || dto.capabilityId || null,
+          skillVersion: dto.skillVersion || dto.capabilityVersion || null,
           executionMode: 'deterministic_plan',
           status: EXECUTION_STATUS.QUEUED,
           runtimeType: 'plan',
           inputJson: (dto.input as any) || {},
           normalizedInputJson: (dto.input as any) || {},
+          triggerType: dto.triggerType,
+          scheduleId: dto.scheduleId,
         },
       });
 
@@ -435,6 +479,10 @@ export class ExecutionCreateService {
 
     await hooks.emitEvent(createdExecutionId, EXECUTION_EVENT_TYPE.EXECUTION_CREATED, {
       executionMode: 'deterministic_plan',
+      skillId: dto.skillId || dto.capabilityId || null,
+      skillVersion: dto.skillVersion || dto.capabilityVersion || null,
+      triggerType: dto.triggerType || null,
+      scheduleId: dto.scheduleId || null,
       planDraft,
     });
 

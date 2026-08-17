@@ -1,5 +1,6 @@
 process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://ops:ops_secret@localhost:5432/ops';
 
+import axios from 'axios';
 import { PrismaService } from '../src/modules/prisma/prisma.service';
 import { DeterministicPlanValidatorService } from '../src/modules/execution/plan-runtime/deterministic-plan-validator.service';
 import { DeterministicPlanFreezeService } from '../src/modules/execution/plan-runtime/deterministic-plan-freeze.service';
@@ -8,6 +9,9 @@ import { LegacyOutputAdapterService } from '../src/modules/execution/plan-runtim
 import { CapabilityContractCatalogService } from '../src/modules/execution/plan-runtime/capability-contract-catalog.service';
 import { OutputNormalizerService } from '../src/modules/execution/plan-runtime/output-normalizer.service';
 import { GracePolicyService } from '../src/modules/execution/plan-runtime/grace-policy.service';
+
+jest.mock('axios');
+const mockAxios = axios as jest.Mocked<typeof axios>;
 import { DeterministicNodeInputResolverService } from '../src/modules/execution/plan-runtime/deterministic-node-input-resolver.service';
 import { DeterministicFinalOutputService } from '../src/modules/execution/plan-runtime/deterministic-final-output.service';
 import { LlmOperationRuntimeAdapter } from '../src/modules/execution/adapters/llm-operation-runtime.adapter';
@@ -171,7 +175,39 @@ describe('Deterministic Plan Execution E2E Test', () => {
     prisma = new PrismaService();
     validator = new DeterministicPlanValidatorService();
     const catalog = new CapabilityContractCatalogService();
-    freezeService = new DeterministicPlanFreezeService(prisma, validator, catalog);
+    const attestationClient = {
+      hasValidAttestation: jest.fn().mockResolvedValue(true),
+      hasValidAttestationForVersion: jest.fn().mockResolvedValue(true),
+    };
+    freezeService = new DeterministicPlanFreezeService(prisma, validator, catalog, attestationClient as any);
+
+    // Mock axios for llm_operation catalog and attestation calls
+    mockAxios.get.mockImplementation(async (url: string) => {
+      if (url.includes('/operations/catalog/')) {
+        return {
+          data: {
+            capabilityRef: { id: 'summarize_list', version: 'v1', digest: 'test-digest' },
+            inputSchema: { type: 'object', properties: { items: { type: 'array' } } },
+            outputSchema: { type: 'object', properties: { summaryText: { type: 'string' } } },
+          },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {} as any,
+        } as any;
+      }
+      if (url.includes('/operations/attestations/')) {
+        return {
+          data: { valid: true },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {} as any,
+        } as any;
+      }
+      throw new Error(`Unexpected axios GET: ${url}`);
+    });
+
     await applyMigrations(prisma);
 
     // Seed a builtin_skill + builtin_skill_version row so the PINNED
@@ -567,6 +603,101 @@ describe('Deterministic Plan Execution E2E Test', () => {
     expect(stepStartedEvents.length).toBe(1);
   });
 
+  it('persists the __promptDebug snapshot into step outputJson for llm_operation steps', async () => {
+    // The global axios mock (beforeEach) serves the llm_operation catalog with
+    // capabilityRef { id: 'summarize_list', version: 'v1', digest: 'test-digest' }
+    // and outputSchema { summaryText: string } — pin the node to that authority.
+    const planDraft: any = {
+      schemaVersion: 'deterministic-plan/v1',
+      plannerVersion: 'v1',
+      catalogVersion: 'v1',
+      planType: 'sequential',
+      objective: 'Summarize list',
+      originalRequest: 'Summarize list',
+      status: 'draft',
+      nodes: [
+        {
+          nodeId: 'summarize_list_node',
+          sequence: 1,
+          title: '列表摘要',
+          kind: 'llm_operation',
+          operationId: 'summarize_list',
+          runtimeType: 'llm_operation',
+          dependsOn: [],
+          inputBindings: {
+            items: { source: 'literal', value: ['条目一', '条目二'] },
+          },
+          outputContract: { summaryText: 'string' },
+          failurePolicy: 'abort',
+        },
+      ],
+      finalOutputs: [
+        {
+          targetField: 'summaryText',
+          fromNodeId: 'summarize_list_node',
+          fromNodeOutput: 'summaryText',
+          expectedType: 'string',
+        },
+      ],
+    };
+
+    const execution = await prisma.execution.create({
+      data: {
+        executionMode: 'deterministic_plan',
+        status: 'queued',
+        createdBy: '5654953e-1b01-4094-bb29-b28f61d3f6a6',
+        inputJson: { prompt: '总结列表' },
+      },
+    });
+
+    await freezeService.freezeAndPersistPlan(execution.id, planDraft);
+
+    // Mock the LLM adapter: success output + promptDebug snapshot (B-2)
+    const promptSnapshot = {
+      systemPrompt: '你是一个专业的总结分析助手。',
+      userPrompt: '请对以下内容做结构化总结：\n\n[条目 1] 条目一',
+      modelId: 'model-1',
+      llmResponseText: '{"summaryText": "要点总结"}',
+    };
+    const mockLlmAdapter = {
+      executeOperation: jest.fn().mockResolvedValue({
+        success: true,
+        operationId: 'summarize_list',
+        templateVersion: 'v1',
+        output: { summaryText: '要点总结' },
+        promptDebug: promptSnapshot,
+      }),
+    };
+
+    const eventService = new ExecutionEventService(prisma);
+    const eventPublisher = new ExecutionStreamService(eventService);
+    const inputResolver = new DeterministicNodeInputResolverService(prisma);
+    const finalOutput = new DeterministicFinalOutputService(prisma);
+
+    const scheduler = new DeterministicPlanSchedulerService(
+      prisma,
+      inputResolver,
+      finalOutput,
+      mockLlmAdapter as any,
+      { executeStep: jest.fn() } as any,
+      eventPublisher,
+      new LegacyOutputAdapterService(),
+      new CapabilityContractCatalogService(),
+      new OutputNormalizerService(),
+      new GracePolicyService(),
+    );
+
+    await scheduler.advanceExecution(execution.id);
+
+    const steps = await prisma.executionStep.findMany({
+      where: { executionId: execution.id },
+    });
+    expect(steps.length).toBe(1);
+    expect(steps[0].status).toBe('succeeded');
+    expect((steps[0].outputJson as any)?.summaryText).toBe('要点总结');
+    expect((steps[0].outputJson as any)?.__promptDebug).toEqual(promptSnapshot);
+  });
+
   it('should propagate frozen metadata for builtin skills in scheduler request (P0-3)', async () => {
     const planDraft: any = {
       schemaVersion: 'deterministic-plan/v1',
@@ -743,6 +874,13 @@ describe('Deterministic Plan Execution E2E Test', () => {
       },
     });
     await freezeService.freezeAndPersistPlan(execution.id, planDraft);
+
+    // This test performs REAL HTTP calls (builtin handler → mock Document
+    // Domain server). The global jest.mock('axios') above is for the
+    // llm_operation catalog/attestation GETs; restore the real axios POST
+    // implementation for this test only.
+    const realAxios = jest.requireActual('axios');
+    (mockAxios.post as jest.Mock).mockImplementation(realAxios.default.post);
 
     // Start mock Document Domain HTTP server so the real handler makes an actual HTTP call
     const mockDomainServer = http.createServer((req, res) => {

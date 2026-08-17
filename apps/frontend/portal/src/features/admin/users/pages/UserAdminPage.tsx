@@ -12,6 +12,10 @@ import {
   Select,
   Alert,
   Typography,
+  Avatar,
+  Badge,
+  Tooltip,
+  Popconfirm,
 } from 'antd';
 import {
   SearchOutlined,
@@ -24,13 +28,15 @@ import {
   UserOutlined,
   SafetyCertificateOutlined,
   RobotOutlined,
+  MailOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { authApi, userApi, UserDto } from '@/api/auth';
 import type { ColumnsType } from 'antd/es/table';
 import {
-  PageTitleBlock,
   OverviewStatGrid,
   ListSectionHeader,
 } from '@/components/page/PageScaffold';
@@ -45,6 +51,7 @@ const UserAdminPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [roleFilter, setRoleFilter] = useState<string | undefined>();
+  const [statusFilter, setStatusFilter] = useState<boolean | undefined>();
   const [searchText, setSearchText] = useState('');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
@@ -141,31 +148,106 @@ const UserAdminPage: React.FC = () => {
     });
   };
 
+  const roleOptions = ['employee', 'admin', 'agent'];
+
+  const filteredUsers = (usersQuery.data?.users || []).filter((u) => {
+    const keyword = searchText.trim().toLowerCase();
+    const matchesSearch =
+      !keyword ||
+      u.username.toLowerCase().includes(keyword) ||
+      (u.email || '').toLowerCase().includes(keyword);
+
+    const matchesStatus = statusFilter === undefined || u.isActive === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const getAvatarColor = (name: string) => {
+    const colors = ['#1890ff', '#52c41a', '#722ed1', '#fa8c16', '#eb2f96', '#13c2c2'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
   const columns: ColumnsType<UserDto> = [
     {
       title: t('admin:userName'),
       dataIndex: 'username',
       key: 'username',
+      width: 220,
+      render: (text: string) => (
+        <Space size={10}>
+          <Avatar
+            style={{
+              backgroundColor: getAvatarColor(text),
+              verticalAlign: 'middle',
+              fontWeight: 600,
+            }}
+            size="small"
+          >
+            {text.charAt(0).toUpperCase()}
+          </Avatar>
+          <Text strong style={{ fontSize: 14 }}>
+            {text}
+          </Text>
+        </Space>
+      ),
     },
     {
       title: t('admin:userEmail'),
       dataIndex: 'email',
       key: 'email',
-      render: (email: string) => email || '-',
+      width: 240,
+      render: (email: string) =>
+        email ? (
+          <Space size={6}>
+            <MailOutlined style={{ color: 'var(--text-tertiary, #8c8c8c)' }} />
+            <Text type="secondary">{email}</Text>
+          </Space>
+        ) : (
+          <Text type="secondary" style={{ color: '#bfbfbf' }}>
+            -
+          </Text>
+        ),
     },
     {
       title: t('admin:userRole'),
       dataIndex: 'role',
       key: 'role',
+      width: 160,
       render: (role: string) => {
-        const colorMap: Record<string, string> = {
-          employee: 'blue',
-          admin: 'red',
-          agent: 'green',
+        const roleMeta: Record<
+          string,
+          { color: string; icon: React.ReactNode; label: string }
+        > = {
+          admin: {
+            color: 'magenta',
+            icon: <SafetyCertificateOutlined />,
+            label: t('auth:roleAdmin') || '管理员',
+          },
+          agent: {
+            color: 'purple',
+            icon: <RobotOutlined />,
+            label: t('auth:roleAgent') || '系统 Agent',
+          },
+          employee: {
+            color: 'blue',
+            icon: <UserOutlined />,
+            label: t('auth:roleEmployee') || '普通员工',
+          },
         };
+
+        const meta = roleMeta[role] || {
+          color: 'default',
+          icon: <UserOutlined />,
+          label: role,
+        };
+
         return (
-          <Tag color={colorMap[role]}>
-            {t(`auth:role${role.charAt(0).toUpperCase() + role.slice(1)}`)}
+          <Tag color={meta.color} icon={meta.icon} style={{ borderRadius: 6, padding: '2px 8px' }}>
+            {meta.label}
           </Tag>
         );
       },
@@ -174,42 +256,59 @@ const UserAdminPage: React.FC = () => {
       title: t('admin:userStatus'),
       dataIndex: 'isActive',
       key: 'isActive',
+      width: 140,
       render: (isActive: boolean) => (
-        <Tag color={isActive ? 'success' : 'error'}>
-          {isActive ? t('admin:userActive') : t('admin:userInactive')}
-        </Tag>
+        <Badge
+          status={isActive ? 'success' : 'error'}
+          text={
+            <Text style={{ fontSize: 13, color: isActive ? 'var(--success-color)' : 'var(--error-color)' }}>
+              {isActive ? t('admin:userActive') : t('admin:userInactive')}
+            </Text>
+          }
+        />
       ),
     },
     {
       title: t('common:createdAt'),
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (date: string) => new Date(date).toLocaleString(),
+      width: 200,
+      render: (date: string) => (
+        <Text type="secondary" style={{ fontSize: 13 }}>
+          {new Date(date).toLocaleString()}
+        </Text>
+      ),
     },
     {
       title: t('common:actions'),
       key: 'actions',
       width: 180,
+      fixed: 'right',
       render: (_, record) => (
-        <Space>
-          <Button
-            type="link"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleEditRoles(record)}
-          >
-            {t('admin:updateRoles')}
-          </Button>
-          {record.isActive ? (
+        <Space size={4}>
+          <Tooltip title={t('admin:updateRoles')}>
             <Button
               type="link"
               size="small"
-              danger
-              icon={<StopOutlined />}
-              onClick={() => handleDeactivate(record.id)}
+              icon={<EditOutlined />}
+              onClick={() => handleEditRoles(record)}
             >
-              {t('admin:deactivateUser')}
+              角色配置
             </Button>
+          </Tooltip>
+          {record.isActive ? (
+            <Popconfirm
+              title="确认禁用此用户？"
+              description="禁用后该用户将无法登录系统。"
+              onConfirm={() => handleDeactivate(record.id)}
+              okText="禁用"
+              cancelText="取消"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="link" size="small" danger icon={<StopOutlined />}>
+                {t('admin:deactivateUser')}
+              </Button>
+            </Popconfirm>
           ) : (
             <Button
               type="link"
@@ -225,136 +324,134 @@ const UserAdminPage: React.FC = () => {
     },
   ];
 
-  const roleOptions = ['employee', 'admin', 'agent'];
-  const filteredUsers = (usersQuery.data?.users || []).filter((u) => {
-    const keyword = searchText.trim().toLowerCase();
-    if (!keyword) return true;
-    return (
-      u.username.toLowerCase().includes(keyword) || (u.email || '').toLowerCase().includes(keyword)
-    );
-  });
-
   const statItems = useMemo(() => {
     const users = usersQuery.data?.users || [];
     const total = usersQuery.data?.total || 0;
-    const active = users.filter((u) => u.isActive).length;
+    const activeCount = users.filter((u) => u.isActive).length;
+    const inactiveCount = users.length - activeCount;
     const adminCount = users.filter((u) => u.role === 'admin').length;
     const agentCount = users.filter((u) => u.role === 'agent').length;
+    const activeRate = total > 0 ? Math.round((activeCount / users.length) * 100) : 100;
 
     return [
       {
         key: 'total',
         label: '总用户数',
         value: total,
-        icon: <TeamOutlined style={{ color: 'var(--text-secondary)' }} />,
-        color: 'var(--primary-color)',
+        icon: <TeamOutlined style={{ color: '#1890ff', fontSize: 20 }} />,
+        color: '#1890ff',
       },
       {
         key: 'active',
-        label: '活跃用户',
-        value: active,
-        icon: <UserOutlined style={{ color: 'var(--success-color)' }} />,
-        color: 'var(--success-color)',
+        label: '活跃账号',
+        value: `${activeCount} (${activeRate}%)`,
+        icon: <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 20 }} />,
+        color: '#52c41a',
+      },
+      {
+        key: 'inactive',
+        label: '已禁用账号',
+        value: inactiveCount,
+        icon: <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 20 }} />,
+        color: inactiveCount > 0 ? '#ff4d4f' : 'var(--text-tertiary)',
       },
       {
         key: 'admin',
-        label: '管理员',
-        value: adminCount,
-        icon: <SafetyCertificateOutlined style={{ color: 'var(--error-color)' }} />,
-        color: 'var(--error-color)',
-      },
-      {
-        key: 'agent',
-        label: '系统 Agent',
-        value: agentCount,
-        icon: <RobotOutlined style={{ color: 'var(--warning-color)' }} />,
-        color: 'var(--warning-color)',
+        label: '管理员 / Agent',
+        value: `${adminCount} 管理员 / ${agentCount} Agent`,
+        icon: <SafetyCertificateOutlined style={{ color: '#722ed1', fontSize: 20 }} />,
+        color: '#722ed1',
       },
     ];
   }, [usersQuery.data]);
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
-      <PageTitleBlock
+    <div style={{ width: '100%', padding: '0 4px' }}>
+      <ListSectionHeader
         title={t('admin:userManagement')}
         subtitle="统一管理系统中的所有用户账号、角色权限与登录状态"
+        extra={
+          <Space wrap size={12}>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => usersQuery.refetch()}
+              loading={usersQuery.isFetching}
+            >
+              {t('common:refresh')}
+            </Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setCreateModalVisible(true)}
+            >
+              创建用户
+            </Button>
+          </Space>
+        }
       />
 
       <OverviewStatGrid items={statItems} />
 
       <Card
-        styles={{ body: { padding: '20px 24px' } }}
+        styles={{ body: { padding: '16px 20px' } }}
         style={{
-          borderRadius: 16,
+          borderRadius: 14,
           border: '1px solid var(--bg-secondary)',
           background: 'var(--bg-card)',
-          boxShadow: 'var(--shadow-md)',
+          boxShadow: 'var(--shadow-sm)',
         }}
       >
-        <ListSectionHeader
-          title={
-            <Space wrap size={12}>
-              <Text strong style={{ fontSize: 16 }}>
-                用户列表
-              </Text>
-              <Input
-                size="large"
-                placeholder={t('common:search')}
-                prefix={<SearchOutlined style={{ color: 'var(--text-light)' }} />}
-                variant="borderless"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                allowClear
-                style={{
-                  width: 320,
-                  background: 'var(--bg-secondary)',
-                  borderRadius: 12,
-                }}
-              />
-              <Select
-                size="large"
-                placeholder={t('admin:userRole')}
-                variant="borderless"
-                value={roleFilter}
-                onChange={(value) => setRoleFilter(value)}
-                allowClear
-                style={{
-                  width: 160,
-                  background: 'var(--bg-secondary)',
-                  borderRadius: 12,
-                }}
-              >
-                {roleOptions.map((role) => (
-                  <Option key={role} value={role}>
-                    {t(`auth:role${role.charAt(0).toUpperCase() + role.slice(1)}`)}
-                  </Option>
-                ))}
-              </Select>
-            </Space>
-          }
-          extra={
-            <Space wrap size={12}>
-              <Text type="secondary">当前显示 {filteredUsers.length} 条</Text>
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <Space wrap size={12}>
+            <Input
+              placeholder="搜索用户名 / 邮箱..."
+              prefix={<SearchOutlined style={{ color: 'var(--text-light, #bfbfbf)' }} />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              allowClear
+              style={{ width: 280 }}
+            />
+            <Select
+              placeholder="角色筛选"
+              value={roleFilter}
+              onChange={(value) => setRoleFilter(value)}
+              allowClear
+              style={{ width: 150 }}
+            >
+              {roleOptions.map((role) => (
+                <Option key={role} value={role}>
+                  {t(`auth:role${role.charAt(0).toUpperCase() + role.slice(1)}`)}
+                </Option>
+              ))}
+            </Select>
+            <Select
+              placeholder="状态筛选"
+              value={statusFilter}
+              onChange={(value) => setStatusFilter(value)}
+              allowClear
+              style={{ width: 130 }}
+            >
+              <Option value={true}>已启用</Option>
+              <Option value={false}>已禁用</Option>
+            </Select>
+            {(searchText || roleFilter !== undefined || statusFilter !== undefined) && (
               <Button
-                size="large"
-                icon={<ReloadOutlined />}
-                onClick={() => usersQuery.refetch()}
-                className="btn-pill"
+                type="link"
+                size="small"
+                onClick={() => {
+                  setSearchText('');
+                  setRoleFilter(undefined);
+                  setStatusFilter(undefined);
+                }}
               >
-                {t('common:refresh')}
+                重置筛选
               </Button>
-              <Button
-                size="large"
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setCreateModalVisible(true)}
-                className="btn-pill"
-              >
-                创建用户
-              </Button>
-            </Space>
-          }
-        />
+            )}
+          </Space>
+          <Text type="secondary" style={{ fontSize: 13 }}>
+            共计 {filteredUsers.length} 位用户
+          </Text>
+        </div>
 
         {usersQuery.isError && (
           <Alert
@@ -372,7 +469,7 @@ const UserAdminPage: React.FC = () => {
           rowKey="id"
           loading={usersQuery.isLoading}
           locale={{
-            emptyText: searchText ? '未找到匹配的用户' : '暂无用户数据',
+            emptyText: searchText || roleFilter || statusFilter !== undefined ? '未找到匹配的用户' : '暂无用户数据',
           }}
           pagination={{
             current: page,
@@ -385,6 +482,7 @@ const UserAdminPage: React.FC = () => {
               setPageSize(newPageSize);
             },
           }}
+          scroll={{ x: 'max-content' }}
         />
       </Card>
 
@@ -394,14 +492,26 @@ const UserAdminPage: React.FC = () => {
         onOk={handleSaveRoles}
         onCancel={() => setEditModalVisible(false)}
         confirmLoading={updateRolesMutation.isLoading}
+        destroyOnClose
       >
-        <Form form={form} layout="vertical">
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+          {editingUser && (
+            <div style={{ marginBottom: 16, padding: '10px 14px', background: 'var(--bg-secondary, #fafafa)', borderRadius: 8 }}>
+              <Space>
+                <Avatar style={{ backgroundColor: getAvatarColor(editingUser.username) }} size="small">
+                  {editingUser.username.charAt(0).toUpperCase()}
+                </Avatar>
+                <Text strong>{editingUser.username}</Text>
+                {editingUser.email && <Text type="secondary">({editingUser.email})</Text>}
+              </Space>
+            </div>
+          )}
           <Form.Item
             name="roles"
             label={t('admin:userRole')}
-            rules={[{ required: true, message: 'Please select at least one role' }]}
+            rules={[{ required: true, message: '请至少选择一个角色' }]}
           >
-            <Select mode="multiple" placeholder="Select roles">
+            <Select mode="multiple" placeholder="选择角色">
               {roleOptions.map((role) => (
                 <Option key={role} value={role}>
                   {t(`auth:role${role.charAt(0).toUpperCase() + role.slice(1)}`)}
@@ -413,13 +523,14 @@ const UserAdminPage: React.FC = () => {
       </Modal>
 
       <Modal
-        title="创建用户"
+        title="创建新用户"
         open={createModalVisible}
         onOk={handleCreateUser}
         onCancel={() => setCreateModalVisible(false)}
         confirmLoading={createUserMutation.isLoading}
+        destroyOnClose
       >
-        <Form form={createForm} layout="vertical">
+        <Form form={createForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
             name="username"
             label="用户名"
@@ -428,7 +539,7 @@ const UserAdminPage: React.FC = () => {
               { min: 3, message: '用户名至少 3 位' },
             ]}
           >
-            <Input placeholder="请输入用户名" />
+            <Input placeholder="请输入用户名" prefix={<UserOutlined style={{ color: '#bfbfbf' }} />} />
           </Form.Item>
           <Form.Item
             name="password"
@@ -445,7 +556,7 @@ const UserAdminPage: React.FC = () => {
             label="邮箱"
             rules={[{ type: 'email', message: '请输入合法邮箱' }]}
           >
-            <Input placeholder="可选" />
+            <Input placeholder="user@example.com (可选)" prefix={<MailOutlined style={{ color: '#bfbfbf' }} />} />
           </Form.Item>
           <Form.Item
             name="role"
@@ -468,3 +579,4 @@ const UserAdminPage: React.FC = () => {
 };
 
 export default UserAdminPage;
+

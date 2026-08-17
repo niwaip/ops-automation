@@ -21,7 +21,11 @@ interface ExecutionCreateFormPanelProps {
   initialSkillId?: string;
   isSkillOptionsLoading: boolean;
   isEmptySkillOptions: boolean;
-  skillOptions: Array<{ skillId: string; skillName: string }>;
+  skillOptions: Array<{
+    skillId: string;
+    skillName: string;
+    sourceType: 'published' | 'saved-workflow';
+  }>;
   selectedSkillId?: string;
   schemaFields: SchemaField[];
   requiredFieldCount: number;
@@ -86,7 +90,7 @@ const ExecutionCreateFormPanel: React.FC<ExecutionCreateFormPanelProps> = ({
               lineHeight: 1,
             }}
           >
-            published
+            {skill.sourceType === 'saved-workflow' ? '我的工作流' : 'published'}
           </span>
         </Space>
       ),

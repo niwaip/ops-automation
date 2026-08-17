@@ -75,8 +75,28 @@ export class ParamValueService {
     return this.hasMeaningfulRequiredInputValue(value) ? 1 : 0;
   }
 
-  normalizeOptionalDefaultValue(value: unknown): unknown {
-    return this.normalizeMeaningfulInputValue(value);
+  normalizeOptionalDefaultValue(value: unknown, expectedType?: string): unknown {
+    const normalized = this.normalizeMeaningfulInputValue(value);
+    if (normalized === undefined || typeof expectedType !== 'string') {
+      return normalized;
+    }
+
+    const type = expectedType.toLowerCase();
+    if ((type === 'integer' || type === 'int') && typeof normalized === 'string') {
+      const numeric = Number(normalized);
+      return Number.isInteger(numeric) ? numeric : undefined;
+    }
+    if (type === 'number' && typeof normalized === 'string') {
+      const numeric = Number(normalized);
+      return Number.isFinite(numeric) ? numeric : undefined;
+    }
+    if (type === 'boolean' && typeof normalized === 'string') {
+      if (normalized.toLowerCase() === 'true') return true;
+      if (normalized.toLowerCase() === 'false') return false;
+      return undefined;
+    }
+
+    return normalized;
   }
 
   extractArrayGroupKey(name: string, type?: string): string | undefined {

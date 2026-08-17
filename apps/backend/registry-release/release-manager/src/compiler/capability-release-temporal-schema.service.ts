@@ -5,6 +5,11 @@ import {
   CapabilitySourceSnapshotDTO,
   CapabilityValidationDTO,
 } from '../interfaces';
+import {
+  normalizeTemporalJsonSchemaProperty,
+  projectTemporalTypeToJsonSchema,
+  TemporalSchemaValueType,
+} from './temporal-json-schema.mapper';
 
 const asRecord = (value: unknown): Record<string, unknown> | undefined => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -80,6 +85,14 @@ export class CapabilityReleaseTemporalSchemaService {
       rawSchema.properties && typeof rawSchema.properties === 'object'
         ? (rawSchema.properties as Record<string, unknown>)
         : {};
+    const normalizedRawProperties = Object.fromEntries(
+      Object.entries(rawProperties).map(([key, value]) => [
+        key,
+        value && typeof value === 'object' && !Array.isArray(value)
+          ? normalizeTemporalJsonSchemaProperty(value as Record<string, unknown>)
+          : value,
+      ])
+    );
     const inferredProperties =
       inferredSchema.properties && typeof inferredSchema.properties === 'object'
         ? (inferredSchema.properties as Record<string, unknown>)
@@ -97,23 +110,21 @@ export class CapabilityReleaseTemporalSchemaService {
 
     const mergedProperties = Object.entries(inferredProperties).reduce<Record<string, unknown>>(
       (acc, [key, inferredValue]) => {
-        const rawValue = rawProperties[key];
-        const isRequired = finalRequired.includes(key);
+        const rawValue = normalizedRawProperties[key];
         acc[key] =
           rawValue && typeof rawValue === 'object'
-            ? {
-                ...(inferredValue as Record<string, unknown>),
+            ? normalizeTemporalJsonSchemaProperty({
                 ...(rawValue as Record<string, unknown>),
+                ...(inferredValue as Record<string, unknown>),
                 ...((rawValue as Record<string, unknown>).default === undefined &&
                 (inferredValue as Record<string, unknown>).default !== undefined
                   ? { default: (inferredValue as Record<string, unknown>).default }
                   : {}),
-                required: isRequired,
-              }
+              })
             : inferredValue;
         return acc;
       },
-      { ...rawProperties }
+      { ...normalizedRawProperties }
     );
 
     return {
@@ -157,14 +168,19 @@ export class CapabilityReleaseTemporalSchemaService {
             : undefined;
       const defaultValue =
         policyDefaultValue !== undefined ? policyDefaultValue : definitionDefaultValue;
-      const normalizedDefaultValue = this.normalizeCapabilityDefaultValue(defaultValue);
+      const untypedDefaultValue = this.normalizeCapabilityDefaultValue(defaultValue);
       const inferredType =
-        this.normalizeDeclaredTemporalParamType(definition.type, key) ||
+        this.normalizeDeclaredTemporalParamType(definition.type) ||
         this.inferTemporalParamType(
-          normalizedDefaultValue !== undefined ? normalizedDefaultValue : definition.exampleValue,
+          untypedDefaultValue !== undefined ? untypedDefaultValue : definition.exampleValue,
           description,
           key
         );
+      const schemaType = projectTemporalTypeToJsonSchema(inferredType, definition.format);
+      const normalizedDefaultValue = this.normalizeCapabilityDefaultValue(
+        untypedDefaultValue,
+        schemaType.type
+      );
       const displayName = this.resolveTemporalParamDisplayName(key, definition, description);
       const renderPath = this.resolveTemporalWorkflowRenderPath(definition, workflowPolicy);
       const enumValues = this.normalizeTemporalParamEnum(definition.enum);
@@ -176,7 +192,7 @@ export class CapabilityReleaseTemporalSchemaService {
           : normalizedDefaultValue;
 
       properties[key] = {
-        type: inferredType,
+        ...schemaType,
         description,
         ...(enumValues ? { enum: enumValues } : {}),
         ...(displayName ? { displayName } : {}),
@@ -196,7 +212,6 @@ export class CapabilityReleaseTemporalSchemaService {
             }
           : {}),
         ...(renderPath ? { renderPath } : {}),
-        required: isRequired,
         ...(!isRequired && effectiveDefaultValue !== undefined
           ? { default: effectiveDefaultValue }
           : {}),
@@ -233,8 +248,9 @@ export class CapabilityReleaseTemporalSchemaService {
 
           properties[key] = {
             type:
-              this.normalizeDeclaredTemporalParamType(undefined, key) ||
-              this.inferTemporalParamType(value, description, key),
+              projectTemporalTypeToJsonSchema(
+                this.inferTemporalParamType(value, description, key)
+              ).type,
             description,
             ...(this.normalizeCapabilityDefaultValue(inferredFromActivities[key]?.default) !==
             undefined
@@ -371,7 +387,7 @@ export class CapabilityReleaseTemporalSchemaService {
         return acc;
       }
 
-      if (type === 'number') {
+      if (type === 'number' || type === 'integer') {
         acc[key] = 1;
       } else if (type === 'boolean') {
         acc[key] = true;
@@ -400,20 +416,35 @@ export class CapabilityReleaseTemporalSchemaService {
         : (this.parseJson(snapshot.sourcePayload.paramsSchema) as Record<string, unknown> | null) ||
           {};
 
-    const suggestedInput = this.buildSuggestedInputFromSchema(schema);
+    let suggestedInput = this.buildSuggestedInputFromSchema(schema);
     if (release.sourceType === 'temporal_workflow') {
       const workflowDsl =
         (this.parseJson(snapshot.sourcePayload.workflowDsl) as Record<string, unknown>) || {};
       const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
+      const validation = this.parseJson<Record<string, unknown>>(workflowDsl.validation) || {};
+      const scenarios = Array.isArray(validation.scenarios) ? validation.scenarios : [];
+      const defaultScenario = asRecord(scenarios[0]);
+      const scenarioParameters = Array.isArray(defaultScenario?.parameters)
+        ? defaultScenario.parameters.filter(
+            (item): item is string => typeof item === 'string' && item.trim().length > 0
+          )
+        : [];
+      if (scenarioParameters.length > 0) {
+        const allowed = new Set(scenarioParameters);
+        suggestedInput = Object.fromEntries(
+          Object.entries(suggestedInput).filter(([key]) => allowed.has(key))
+        );
+      }
       Object.entries(inputParams).forEach(([key, rawValue]) => {
+        if (scenarioParameters.length > 0 && !scenarioParameters.includes(key)) {
+          return;
+        }
         const definition =
           rawValue && typeof rawValue === 'object' ? (rawValue as Record<string, unknown>) : {};
         const candidateValue =
           definition.defaultValue !== undefined && definition.defaultValue !== ''
             ? definition.defaultValue
-            : definition.exampleValue !== undefined && definition.exampleValue !== ''
-              ? definition.exampleValue
-              : undefined;
+            : undefined;
 
         if (candidateValue === undefined) {
           return;
@@ -559,18 +590,45 @@ export class CapabilityReleaseTemporalSchemaService {
     });
   }
 
-  private normalizeCapabilityDefaultValue(value: unknown): unknown {
+  private normalizeCapabilityDefaultValue(value: unknown, declaredType?: string): unknown {
     if (value === undefined || value === null) {
       return undefined;
     }
     if (typeof value === 'string') {
-      return value.trim().length > 0 ? value : undefined;
+      const trimmed = value.trim();
+      if (!trimmed) return undefined;
+      if (declaredType === 'number' || declaredType === 'integer') {
+        const parsed = Number(trimmed);
+        return Number.isFinite(parsed) &&
+          (declaredType !== 'integer' || Number.isInteger(parsed))
+          ? parsed
+          : undefined;
+      }
+      if (declaredType === 'boolean') {
+        if (/^true$/i.test(trimmed)) return true;
+        if (/^false$/i.test(trimmed)) return false;
+        return undefined;
+      }
+      return trimmed;
     }
     if (Array.isArray(value)) {
       return value.length > 0 ? value : undefined;
     }
     if (typeof value === 'object') {
       return Object.keys(value as Record<string, unknown>).length > 0 ? value : undefined;
+    }
+    if (declaredType === 'string' || declaredType === 'date') {
+      return typeof value === 'number' || typeof value === 'boolean' ? String(value) : value;
+    }
+    if (declaredType === 'number' || declaredType === 'integer') {
+      return typeof value === 'number' &&
+        Number.isFinite(value) &&
+        (declaredType !== 'integer' || Number.isInteger(value))
+        ? value
+        : undefined;
+    }
+    if (declaredType === 'boolean') {
+      return typeof value === 'boolean' ? value : undefined;
     }
     return value;
   }
@@ -698,7 +756,7 @@ export class CapabilityReleaseTemporalSchemaService {
     defaultValue: unknown,
     description: string,
     fieldName = ''
-  ): 'string' | 'number' | 'date' | 'boolean' {
+  ): TemporalSchemaValueType {
     if (typeof defaultValue === 'boolean') {
       return 'boolean';
     }
@@ -741,9 +799,8 @@ export class CapabilityReleaseTemporalSchemaService {
   }
 
   private normalizeDeclaredTemporalParamType(
-    declaredType: unknown,
-    fieldName = ''
-  ): 'string' | 'number' | 'date' | 'boolean' | undefined {
+    declaredType: unknown
+  ): TemporalSchemaValueType | undefined {
     const normalized = String(declaredType || '')
       .trim()
       .toLowerCase();
@@ -751,18 +808,16 @@ export class CapabilityReleaseTemporalSchemaService {
       return undefined;
     }
 
-    const hint = this.buildSemanticHint(normalized, fieldName);
-    if (/\b(date|time|datetime|timestamp)\b/.test(hint)) {
+    if (/^(date|datetime|date-time|timestamp)$/.test(normalized)) {
       return 'date';
     }
-    if (/\b(bool|boolean)\b/.test(hint)) {
+    if (/^(bool|boolean)$/.test(normalized)) {
       return 'boolean';
     }
-    if (
-      /\b(number|int|integer|float|double|decimal|amount|price|count|qty|quantity|ratio|percent)\b/.test(
-        hint
-      )
-    ) {
+    if (/^(int|integer|int32|int64|long)$/.test(normalized)) {
+      return 'integer';
+    }
+    if (/^(number|float|double|decimal|amount|price|ratio|percent)$/.test(normalized)) {
       return 'number';
     }
     return 'string';

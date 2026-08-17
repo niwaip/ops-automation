@@ -33,6 +33,7 @@ import {
   FIXED_CONDITION_CHECK_ACTIVITY_CODE,
   FIXED_CONDITION_CHECK_ACTIVITY_FN,
 } from './fixed-activity-templates';
+import type { ActivityDeprecation } from './temporal-activity.types';
 
 export interface BuiltinActivityDefinition {
   key: string;
@@ -47,6 +48,7 @@ export interface BuiltinActivityDefinition {
   generatedCode: string;
   readonly: true;
   description?: string;
+  deprecation?: ActivityDeprecation;
 }
 
 export const BUILTIN_ACTIVITY_REF_PREFIX = 'builtin:';
@@ -182,7 +184,15 @@ export class BuiltinActivityRegistry {
       generatedCode: FIXED_AI_STRUCTURED_TRANSFORM_ACTIVITY_CODE,
       readonly: true,
       description:
-        '系统内置 AI 结构化转换 Activity，适用于无法用固定字段映射和文本模板表达的提取、归纳与格式化',
+        '遗留 AI 结构化转换 Activity，仅用于兼容已发布工作流；新任务的模型能力由控制面直接执行 LLM Operation',
+      deprecation: {
+        status: 'legacy',
+        migrateTo: 'llm_operation',
+        migrationPlan: 'three-capability-types-and-llm-operation-implementation-plan.md §10.3',
+        fallbackFlag: 'OPS_DISABLE_LEGACY_AI_STRUCTURED_TRANSFORM',
+        fallbackEventCode: 'LLM_OPERATION_LEGACY_ACTIVITY_FALLBACK',
+        canBeUsedInNewWorkflows: false,
+      },
     };
 
     const fileRead: BuiltinActivityDefinition = {

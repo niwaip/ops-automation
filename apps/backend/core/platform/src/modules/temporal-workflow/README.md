@@ -21,6 +21,31 @@
 - 它们必须先进入 release-manager，转换成可执行的 Release Manifest，
   再由 control-plane 与 runtime worker 消费。
 
+## 工作流包导入导出
+
+工作流资产可以通过版本化的 `.tar.gz` 包迁移：
+
+- `GET /temporal/:id/export`：导出完整工作流包。只有已经生成并保存主工作流代码的记录可以导出。
+- `POST /temporal/import`：以 `multipart/form-data` 上传字段 `file`，导入后创建新的、未启用的工作流草稿。
+- 导入不会沿用来源环境的 `validated` 或 `deployed` 状态，也不会覆盖同名记录。
+- 导入时执行 tar 路径/类型/大小、清单版本、逐文件 SHA-256、`contractDigest` 和 DSL/Activity 依赖校验。
+- 导入成功后必须调用 `POST /temporal/:id/validate-saved-artifact` 完成真实沙盒验证；只有当前 artifact hash 对应的工件处于 `validated` 状态时，release-manager 才能调用 deploy。
+
+包结构：
+
+```text
+manifest.json
+dsl/workflow.json
+dsl/activities.json
+code/workflow.py
+code/activities/<index>-<activity-fn>.py
+metadata/source.json
+```
+
+`manifest.json` 是唯一入口，记录格式版本、来源 artifact、契约摘要、依赖引用和全部内容文件摘要。`metadata/source.json` 仅用于审计；导入不会信任其中的部署状态。
+
+注意：当前 V1 包会原样包含 DSL/config 与生成代码。导出文件应按代码工件管理；如果配置中误写了明文密钥，密钥也可能进入包中。推荐只在 DSL 中保存 secret reference，不保存明文凭据。
+
 ## 当前逻辑分组
 
 - 对外稳定入口：优先通过 `src/workflow-registry/workflow-template/*` 具名协作者实现、`src/modules/temporal-workflow/temporal-workflow.service.ts` 与 `temporal-workflow.types.ts` 访问 `TemporalWorkflowModule`、`TemporalWorkflowService` 与类型出口

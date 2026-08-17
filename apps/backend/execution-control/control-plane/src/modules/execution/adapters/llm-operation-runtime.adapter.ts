@@ -5,11 +5,22 @@ import { getAiOrchestratorUrl } from '../../../config/service-endpoints';
 export interface LlmOperationInvokeParams {
   executionId: string;
   stepId: string;
+  planHash?: string;
   operationId: string;
-  promptTemplateId: string;
-  promptTemplateVersion: string;
-  modelPolicyId: string;
+  operationVersion: string;
+  operationDigest: string;
+  contractDigest: string;
+  environment?: string;
   input: Record<string, any>;
+  idempotencyKey?: string;
+}
+
+export interface LlmOperationPromptDebugSnapshot {
+  systemPrompt: string;
+  userPrompt: string;
+  modelId: string;
+  llmResponseText?: string;
+  repairAttempts?: number;
 }
 
 export interface LlmOperationInvokeResult {
@@ -23,14 +34,29 @@ export interface LlmOperationInvokeResult {
     totalTokens: number;
   };
   errorMessage?: string;
+  promptDebug?: LlmOperationPromptDebugSnapshot;
+}
+
+interface LlmOperationRuntimeV2Response {
+  success: boolean;
+  operationRef: { id: string; version: string; digest: string };
+  source: 'database' | 'legacy_registry';
+  data?: Record<string, any>;
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+  };
+  errorMessage?: string;
+  promptDebug?: LlmOperationPromptDebugSnapshot;
 }
 
 @Injectable()
 export class LlmOperationRuntimeAdapter {
   private readonly logger = new Logger(LlmOperationRuntimeAdapter.name);
-  private static readonly DEFAULT_TIMEOUT_MS = 180000;
+  private static readonly DEFAULT_TIMEOUT_MS = 300000;
   private static readonly MIN_TIMEOUT_MS = 60000;
-  private static readonly MAX_TIMEOUT_MS = 300000;
+  private static readonly MAX_TIMEOUT_MS = 600000;
 
   private getOrchestratorUrl(): string {
     return getAiOrchestratorUrl();
@@ -52,32 +78,72 @@ export class LlmOperationRuntimeAdapter {
   }
 
   public async executeOperation(params: LlmOperationInvokeParams): Promise<LlmOperationInvokeResult> {
-    const url = `${this.getOrchestratorUrl()}/ai/operations/execute`;
+    if (!params.operationVersion || !params.operationDigest || !params.contractDigest) {
+      throw new Error(
+        `Frozen plan must pin operationVersion, operationDigest, contractDigest for operation '${params.operationId}'`
+      );
+    }
+
+    const url = `${this.getOrchestratorUrl()}/ai/operations/v2/execute`;
     const timeoutMs = this.getRequestTimeoutMs();
+
     try {
       this.logger.log(
-        `Invoking LLM Operation '${params.operationId}' at ${url} with timeout ${timeoutMs}ms`,
+        `Invoking LLM Operation '${params.operationId}' v${params.operationVersion} at ${url} with timeout ${timeoutMs}ms`,
       );
-      const response = await axios.post<LlmOperationInvokeResult>(url, params, {
+
+      const request = {
+        executionId: params.executionId,
+        stepId: params.stepId,
+        planHash: params.planHash,
+        operationId: params.operationId,
+        operationVersion: params.operationVersion,
+        operationDigest: params.operationDigest,
+        contractDigest: params.contractDigest,
+        environment: params.environment ?? 'production',
+        input: params.input,
+        idempotencyKey: params.idempotencyKey ?? `${params.executionId}:${params.stepId}`,
+      };
+
+      const response = await axios.post<LlmOperationRuntimeV2Response>(url, request, {
         timeout: timeoutMs,
         headers: {
           'Content-Type': 'application/json',
           'X-Internal-Service': 'control-plane',
         },
       });
-      return response.data;
+      const runtimeResult = response.data;
+      return {
+        success: runtimeResult.success,
+        operationId: runtimeResult.operationRef?.id || params.operationId,
+        templateVersion: runtimeResult.operationRef?.version || params.operationVersion,
+        output: runtimeResult.data || {},
+        usage: runtimeResult.usage
+          ? {
+              promptTokens: runtimeResult.usage.inputTokens || 0,
+              completionTokens: runtimeResult.usage.outputTokens || 0,
+              totalTokens: runtimeResult.usage.totalTokens || 0,
+            }
+          : undefined,
+        errorMessage: runtimeResult.errorMessage,
+        promptDebug: runtimeResult.promptDebug,
+      };
     } catch (error: any) {
       const errMsg =
         error.code === 'ECONNABORTED'
           ? `LLM operation '${params.operationId}' exceeded timeout policy (${timeoutMs}ms)`
-          : error.response?.data?.message || error.message || 'LLM operation request failed';
+          : error.response?.data?.errorMessage ||
+            error.response?.data?.message ||
+            error.message ||
+            'LLM operation request failed';
       this.logger.error(`LLM operation execution failed for ${params.operationId}: ${errMsg}`);
       return {
         success: false,
         operationId: params.operationId,
-        templateVersion: params.promptTemplateVersion,
+        templateVersion: params.operationVersion,
         output: {},
         errorMessage: errMsg,
+        promptDebug: error.response?.data?.promptDebug,
       };
     }
   }

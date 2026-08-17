@@ -10,6 +10,7 @@
 
 ## 当前优先阅读
 
+- 产品化就绪度评估：[`productization-readiness-assessment.md`](file:///Users/chain/Documents/MyProject/ops-automation/docs/productization-readiness-assessment.md)
 - 设计总入口：[`design/README.md`](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/README.md)
 - 运维与验证手册：[`runbook/README.md`](file:///Users/chain/Documents/MyProject/ops-automation/docs/runbook/README.md)
 - 交付物与样例：[`artifacts/README.md`](file:///Users/chain/Documents/MyProject/ops-automation/docs/artifacts/README.md)

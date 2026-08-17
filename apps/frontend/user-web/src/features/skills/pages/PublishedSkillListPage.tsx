@@ -3,8 +3,9 @@ import { PublishedSkillSectionCard } from '@/features/skills/components/Publishe
 import { RequestAccessModal } from '@/features/skills/components/RequestAccessModal';
 import { SkillGrid } from '@/features/skills/components/SkillGrid';
 import { usePublishedSkillList } from '@/features/skills/hooks/usePublishedSkillList';
+import { SavedWorkflowList } from '@/features/skills/saved-workflows/SavedWorkflowList';
 
-export function PublishedSkillListPage() {
+function PublishedSkillsContent() {
   const {
     authorizedSkills,
     collapsedSections,
@@ -72,3 +73,30 @@ export function PublishedSkillListPage() {
     </div>
   );
 }
+
+export function PublishedSkillListPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') === 'my-workflows' ? 'my-workflows' : 'published';
+
+  return (
+    <Tabs
+      activeKey={activeTab}
+      onChange={(tab) => {
+        const next = new URLSearchParams(searchParams);
+        if (tab === 'published') {
+          next.delete('tab');
+          next.delete('skillId');
+        } else {
+          next.set('tab', 'my-workflows');
+        }
+        setSearchParams(next);
+      }}
+      items={[
+        { key: 'published', label: '已发布技能', children: <PublishedSkillsContent /> },
+        { key: 'my-workflows', label: '我的工作流', children: <SavedWorkflowList /> },
+      ]}
+    />
+  );
+}
+import { Tabs } from 'antd';
+import { useSearchParams } from 'react-router-dom';

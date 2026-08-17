@@ -41,10 +41,11 @@ export const extractNestedDownloadUrl = (value: unknown): string | undefined => 
     }
 
     const record = current as Record<string, unknown>;
+    // A generic `url` is business data (for example the final URL of an HTTP
+    // request), not evidence of a document artifact. Only explicit document
+    // attachment fields may be promoted to the top-level downloadUrl.
     const downloadUrl =
-      toExternalDownloadUrl(record.downloadUrl) ||
-      toExternalDownloadUrl(record.download_url) ||
-      toExternalDownloadUrl(record.url);
+      toExternalDownloadUrl(record.downloadUrl) || toExternalDownloadUrl(record.download_url);
 
     if (downloadUrl) {
       return downloadUrl;

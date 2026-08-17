@@ -75,9 +75,6 @@ export interface WorkflowAuxiliaryModalsProps {
   detailModalVisible: boolean;
   setDetailModalVisible: (visible: boolean) => void;
   selectedWorkflow: TemporalWorkflowDTO | null;
-  resolveWorkflowSourceSkillId: (wf?: TemporalWorkflowDTO | null) => string;
-  handleCreateExecutionFromWorkflow: () => void | Promise<void>;
-  creatingExecutionWorkflowId: string | null;
   getActivitySourceMeta: (step?: any) => any;
 }
 
@@ -147,9 +144,6 @@ export const WorkflowAuxiliaryModals: React.FC<WorkflowAuxiliaryModalsProps> = (
   detailModalVisible,
   setDetailModalVisible,
   selectedWorkflow,
-  resolveWorkflowSourceSkillId,
-  handleCreateExecutionFromWorkflow,
-  creatingExecutionWorkflowId,
   getActivitySourceMeta,
 }) => {
   return (
@@ -231,11 +225,6 @@ export const WorkflowAuxiliaryModals: React.FC<WorkflowAuxiliaryModalsProps> = (
         onCancel={() => setDetailModalVisible(false)}
         selectedWorkflow={selectedWorkflow}
         SECTION_CARD_STYLE={SECTION_CARD_STYLE}
-        resolveWorkflowSourceSkillId={resolveWorkflowSourceSkillId}
-        handleCreateExecutionFromWorkflow={() => {
-          void handleCreateExecutionFromWorkflow();
-        }}
-        creatingExecutionWorkflowId={creatingExecutionWorkflowId}
         getActivitySourceMeta={getActivitySourceMeta}
       />
     </>

@@ -1,5 +1,19 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Res, Request } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Res,
+  Request,
+  UploadedFile,
+  UseInterceptors,
+  StreamableFile,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { TemporalWorkflowValidationHttpService } from './temporal-workflow-validation-http.service';
 import {
@@ -22,13 +36,23 @@ import {
   TemporalWorkflowArtifactDTO,
 } from './temporal-workflow.service';
 import { TemporalWorkflow } from '../../prisma/client';
+import { TemporalWorkflowBundleService } from './temporal-workflow-bundle.service';
+import type { TemporalWorkflowBundleImportResult } from './temporal-workflow-bundle.types';
+
+type UploadedWorkflowBundle = {
+  buffer: Buffer;
+  originalname?: string;
+  mimetype?: string;
+  size?: number;
+};
 
 @ApiTags('Temporal Workflows')
 @Controller('temporal')
 export class TemporalWorkflowController {
   constructor(
     private readonly temporalWorkflowService: TemporalWorkflowService,
-    private readonly validationHttpService: TemporalWorkflowValidationHttpService
+    private readonly validationHttpService: TemporalWorkflowValidationHttpService,
+    private readonly workflowBundleService: TemporalWorkflowBundleService
   ) {}
 
   @Get()
@@ -146,6 +170,42 @@ export class TemporalWorkflowController {
   @ApiOperation({ summary: 'Get persisted workflow artifact metadata and generated code' })
   async getArtifact(@Param('id') id: string): Promise<TemporalWorkflowArtifactDTO> {
     return this.temporalWorkflowService.getArtifact(id);
+  }
+
+  @Get(':id/export')
+  @ApiOperation({ summary: 'Export a complete Temporal workflow as a .tar.gz bundle' })
+  async exportBundle(@Param('id') id: string): Promise<StreamableFile> {
+    const { archive, fileName } = await this.workflowBundleService.exportBundle(id);
+    return new StreamableFile(archive, {
+      type: 'application/gzip',
+      disposition: `attachment; filename="${fileName}"`,
+      length: archive.length,
+    });
+  }
+
+  @Post('import')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+    })
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        name: { type: 'string', description: 'Optional imported workflow name override' },
+      },
+    },
+  })
+  @ApiOperation({ summary: 'Import and statically validate a Temporal workflow bundle as a draft' })
+  async importBundle(
+    @UploadedFile() file: UploadedWorkflowBundle | undefined,
+    @Body() body: { name?: string }
+  ): Promise<TemporalWorkflowBundleImportResult> {
+    return this.workflowBundleService.importBundle(file?.buffer || Buffer.alloc(0), body?.name);
   }
 
   @Post('generate-code/stream')

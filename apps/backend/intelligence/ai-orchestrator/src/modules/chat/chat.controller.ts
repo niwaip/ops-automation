@@ -148,8 +148,12 @@ export class ChatController {
       const history = await this.chatConversationService.loadTaskHistory(
         body.sessionId || 'default'
       );
+      const taskBody: ChatRequestDTO = {
+        ...body,
+        files: this.chatMediaService.resolveUploadedFiles(body.files),
+      };
       const taskModeContext = await this.chatOrchestratorService.buildTaskModeContext(
-        body,
+        taskBody,
         req.headers.authorization,
         traceId,
         history
@@ -169,7 +173,7 @@ export class ChatController {
 
       let latestPersistableEvent: StreamEvent | null = null;
       for await (const event of this.chatOrchestratorService.handleTaskMode(
-        body,
+        taskBody,
         taskModeContext.context,
         req.headers.authorization
       )) {
@@ -227,8 +231,12 @@ export class ChatController {
       };
     }
 
+    const taskBody: ChatRequestDTO = {
+      ...body,
+      files: this.chatMediaService.resolveUploadedFiles(body.files),
+    };
     const taskModeContext = await this.chatOrchestratorService.buildTaskModeContext(
-      body,
+      taskBody,
       req.headers.authorization,
       traceId,
       []
@@ -261,7 +269,7 @@ export class ChatController {
 
     let seq = 0;
     for await (const event of this.chatOrchestratorService.handleTaskMode(
-      body,
+      taskBody,
       taskModeContext.context,
       req.headers.authorization
     )) {

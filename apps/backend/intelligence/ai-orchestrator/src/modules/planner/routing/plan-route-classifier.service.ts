@@ -4,6 +4,7 @@ export type PlanRouteType = 'single_skill' | 'deterministic_plan';
 
 const SEQUENTIAL_KEYWORDS = ['然后', '并且', '接着', '之后', '再', '最后', '以及', '并且对', '并'];
 const PROCESSING_KEYWORDS = ['总结', '提炼', '翻译', '提取', '改写', '归纳', '分析'];
+const DOCUMENT_SOURCE_KEYWORDS = ['pdf', '附件'];
 const ARTIFACT_KEYWORDS = [
   '输出 md',
   '输出md',
@@ -36,9 +37,16 @@ export class PlanRouteClassifierService {
     const hasSequentialKeyword = SEQUENTIAL_KEYWORDS.some((kw) => text.includes(kw));
     const hasProcessingKeyword = PROCESSING_KEYWORDS.some((kw) => text.includes(kw));
     const hasArtifactKeyword = ARTIFACT_KEYWORDS.some((kw) => text.includes(kw));
+    const hasDocumentSourceKeyword = DOCUMENT_SOURCE_KEYWORDS.some((kw) =>
+      text.toLowerCase().includes(kw)
+    );
 
-    if (hasArtifactKeyword || (hasSequentialKeyword && hasProcessingKeyword)) {
-      this.logger.log(`Classified request as 'deterministic_plan' (sequential=${hasSequentialKeyword}, processing=${hasProcessingKeyword}, artifact=${hasArtifactKeyword})`);
+    if (
+      hasArtifactKeyword ||
+      (hasSequentialKeyword && hasProcessingKeyword) ||
+      (hasProcessingKeyword && hasDocumentSourceKeyword)
+    ) {
+      this.logger.log(`Classified request as 'deterministic_plan' (sequential=${hasSequentialKeyword}, processing=${hasProcessingKeyword}, artifact=${hasArtifactKeyword}, documentSource=${hasDocumentSourceKeyword})`);
       return 'deterministic_plan';
     }
 

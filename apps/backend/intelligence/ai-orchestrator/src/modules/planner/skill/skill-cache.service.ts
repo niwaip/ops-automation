@@ -76,6 +76,15 @@ export class SkillCacheService {
             contractRef: cap.contractRef,
             contractDigest: cap.contractDigest,
             runtimeHints: cap.runtimeHints,
+            triggerKeywords: cap.runtimeHints?.triggerKeywords,
+            apiEndpoints: {
+              runtimeMetadata: {
+                sourceType: 'builtin_skill',
+                runtimeType: cap.runtimeType,
+                outputParams: cap.outputSchema,
+                ...(cap.runtimeHints || {}),
+              },
+            },
             // Carry release/deployment status from the catalog projection so the
             // candidate selector can verify published + deployed without a second
             // DB hop. Without this, the selector falls back to "unknown" and
@@ -178,6 +187,15 @@ export class SkillCacheService {
             contractRef: cap.contractRef,
             contractDigest: cap.contractDigest,
             runtimeHints: cap.runtimeHints,
+            triggerKeywords: cap.runtimeHints?.triggerKeywords,
+            apiEndpoints: {
+              runtimeMetadata: {
+                sourceType: 'builtin_skill',
+                runtimeType: cap.runtimeType,
+                outputParams: cap.outputSchema,
+                ...(cap.runtimeHints || {}),
+              },
+            },
             publishedReleaseStatus: cap.publishedReleaseStatus,
             publishedDeploymentStatus: cap.publishedDeploymentStatus,
           });
@@ -399,6 +417,8 @@ export class SkillCacheService {
       version: executableVersion,
       publishedVersion: executableVersion,
       isPublished: typeof item.isPublished === 'boolean' ? item.isPublished : true,
+      source: typeof item.source === 'string' ? item.source : undefined,
+      supportsArtifact: item.supportsArtifact === true,
       publishedReleaseId: typeof item.publishedReleaseId === 'string' ? item.publishedReleaseId : undefined,
       publishedReleaseVersion,
       publishedReleaseStatus: typeof item.publishedReleaseStatus === 'string' ? item.publishedReleaseStatus : undefined,
@@ -469,7 +489,12 @@ export class SkillCacheService {
     executionType?: string,
     sourceType?: string
   ): AvailableSkillDefinition['executionType'] {
-    if (executionType === 'document' || executionType === 'flow' || executionType === 'query') {
+    if (
+      executionType === 'document' ||
+      executionType === 'flow' ||
+      executionType === 'query' ||
+      executionType === 'artifact'
+    ) {
       return executionType;
     }
     if (sourceType === 'document' || sourceType === 'execution_flow_template') {

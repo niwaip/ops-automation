@@ -49,6 +49,7 @@ export interface SkillConfigDTO {
       expectedResult?: string;
       outputParams?: Record<string, unknown>;
       sourceType?: string;
+      runtimeType?: string;
       sourceTemplate?: {
         templateId?: string;
         skillId?: string;
@@ -72,6 +73,65 @@ export interface SkillConfigDTO {
   publishedReleaseStatus?: string | null;
   publishedDeploymentStatus?: string | null;
   publishedSourceType?: string | null;
+  builtinMetadata?: {
+    registryId: string;
+    capabilityKey: string;
+    aliases: string[];
+    owner: string;
+    category: string;
+    defaultAccess: string;
+    lifecycle: string;
+    activeVersion?: string;
+    definitionDigest?: string;
+    attestationId?: string;
+    versionCount: number;
+  };
+}
+
+export interface BuiltinSkillDeploymentDTO {
+  environment: string;
+  status: string;
+  smokeTestStatus?: string | null;
+  failureCode?: string | null;
+  deployedAt: string;
+}
+
+export interface BuiltinSkillInventoryDTO {
+  id: string;
+  capabilityKey: string;
+  aliases: string[];
+  displayName: string;
+  description?: string | null;
+  owner: string;
+  category: string;
+  defaultAccess: string;
+  lifecycle: string;
+  isEnabled: boolean;
+  activeVersionId?: string | null;
+  activeVersion?: {
+    id: string;
+    definitionVersion: string;
+    apiVersion: string;
+    definitionDigest: string;
+    runtimeBuild?: string | null;
+    attestationId?: string | null;
+    manifest: Record<string, unknown>;
+    deployments: BuiltinSkillDeploymentDTO[];
+    createdAt: string;
+  } | null;
+  versions: Array<{
+    id: string;
+    definitionVersion: string;
+    definitionDigest: string;
+    attestationId?: string | null;
+    createdAt: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BuiltinSkillInventoryResponse {
+  skills: BuiltinSkillInventoryDTO[];
 }
 
 export interface SkillPermissionDTO {
@@ -336,6 +396,11 @@ export const skillApi = {
       data
     );
   },
+};
+
+export const builtinSkillApi = {
+  listInventory: async (): Promise<BuiltinSkillInventoryResponse> =>
+    apiClient.get<BuiltinSkillInventoryResponse>('/skills/builtin-inventory'),
 };
 
 // Role API (from auth service)

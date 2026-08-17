@@ -43,6 +43,8 @@ export class PlannerPlanDraftService {
       template_id: matchedSkill.skillId,
       user_input: objective,
       modelId: input.modelId,
+      fallbackMode: 'none',
+      postProcessMode: isDocumentSkill ? 'semantic_augmentation' : 'schema_only',
       context: input.context,
       guide_context: buildDocumentGuideContext({
         enabled: isDocumentSkill,

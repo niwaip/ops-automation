@@ -168,12 +168,13 @@ export class AnthropicMessagesClient {
   private normalizeRequest(request: ChatMessage[] | LLMChatRequest): {
     body: Record<string, unknown>;
   } {
+    const maxOutputTokens = Array.isArray(request) ? 1200 : request.maxOutputTokens || 1200;
     if (Array.isArray(request) || request.messages) {
       const messages = Array.isArray(request) ? request : request.messages || [];
       return {
         body: {
           model: this.model,
-          max_tokens: 1200,
+          max_tokens: maxOutputTokens,
           messages: messages.map((message) => ({
             role: message.role === 'system' ? 'user' : message.role,
             content:
@@ -212,7 +213,7 @@ export class AnthropicMessagesClient {
     return {
       body: {
         model: this.model,
-        max_tokens: 1200,
+        max_tokens: maxOutputTokens,
         system: staticBlocks,
         messages: [
           {
