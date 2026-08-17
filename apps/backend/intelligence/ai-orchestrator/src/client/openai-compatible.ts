@@ -22,8 +22,10 @@ type AxiosLikeError = {
 
 type ChatCompletionResponse = {
   choices?: Array<{
+    finish_reason?: string;
     message?: {
-      content?: string;
+      content?: string | null;
+      reasoning_content?: string;
     };
   }>;
   usage?: LLMUsage;
@@ -89,6 +91,9 @@ export class OpenAICompatibleClient {
       if (normalized.promptCacheKey) {
         data.prompt_cache_key = normalized.promptCacheKey;
       }
+      if (normalized.maxOutputTokens) {
+        data.max_tokens = normalized.maxOutputTokens;
+      }
       if (
         normalized.promptCacheRetention &&
         ['in_memory', '24h'].includes(normalized.promptCacheRetention)
@@ -100,8 +105,11 @@ export class OpenAICompatibleClient {
       // Use /chat/completions since baseURL already includes /v1
       const response = await this.client.post<ChatCompletionResponse>('/chat/completions', data);
 
+      const choice = response.data?.choices?.[0];
       return {
-        content: response.data?.choices?.[0]?.message?.content || '',
+        content: choice?.message?.content || '',
+        finishReason: choice?.finish_reason,
+        reasoningContent: choice?.message?.reasoning_content,
         usage: response.data?.usage,
         rateLimit: this.extractRateLimit(response.headers),
       };
@@ -250,6 +258,15 @@ export class OpenAICompatibleClient {
       effort?: 'low' | 'medium' | 'high';
     }
   ): void {
+    if (reasoning?.enabled === false) {
+      if (this.isMiniMaxCompatibleEndpoint()) {
+        data.thinking = { type: 'disabled' };
+      } else if (this.isDashScopeCompatibleEndpoint()) {
+        data.enable_thinking = false;
+      }
+      return;
+    }
+
     if (!reasoning?.enabled) {
       return;
     }
@@ -270,6 +287,13 @@ export class OpenAICompatibleClient {
     }
 
     return /(^|\/\/)([^/]+\.)?(minimax\.chat|minimax\.io|minimaxi\.com)(\/|$)/i.test(this.baseURL);
+  }
+
+  private isDashScopeCompatibleEndpoint(): boolean {
+    return (
+      this.provider === 'alibaba-bailian' ||
+      /(^|\/\/)([^/]+\.)?dashscope\.aliyuncs\.com(\/|$)/i.test(this.baseURL)
+    );
   }
 
   /**
@@ -355,6 +379,7 @@ export class OpenAICompatibleClient {
     responseFormat?: 'json_object';
     promptCacheKey?: string;
     promptCacheRetention?: 'in_memory' | '24h' | '5m' | '1h';
+    maxOutputTokens?: number;
     reasoning?: {
       enabled?: boolean;
       effort?: 'low' | 'medium' | 'high';
@@ -372,6 +397,7 @@ export class OpenAICompatibleClient {
       return {
         messages: request.messages,
         responseFormat: request.responseFormat,
+        maxOutputTokens: request.maxOutputTokens,
         promptCacheKey: request.assembly?.promptCacheKey || this.promptCacheKey,
         promptCacheRetention: request.promptCaching?.retention || this.promptCacheRetention,
         reasoning: request.reasoning,
@@ -389,6 +415,7 @@ export class OpenAICompatibleClient {
           { role: 'user', content: request.assembly.dynamicUser },
         ],
         responseFormat: request.responseFormat,
+        maxOutputTokens: request.maxOutputTokens,
         promptCacheKey: request.assembly.promptCacheKey || this.promptCacheKey,
         promptCacheRetention: request.promptCaching?.retention || this.promptCacheRetention,
         reasoning: request.reasoning,

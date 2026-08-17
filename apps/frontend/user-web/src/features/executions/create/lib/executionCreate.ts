@@ -159,7 +159,7 @@ export const getInitialInputValues = (fields: SchemaField[]): Record<string, unk
       return acc;
     }
 
-    if (field.type === 'object' || field.type === 'json') {
+    if (field.type === 'object' || field.type === 'json' || field.type === 'array') {
       acc[field.name] =
         typeof field.defaultValue === 'string'
           ? field.defaultValue
@@ -186,7 +186,7 @@ export const normalizeInputValues = (
     const normalizedType = field.type.toLowerCase();
 
     if (
-      (normalizedType === 'object' || normalizedType === 'json') &&
+      (normalizedType === 'object' || normalizedType === 'json' || normalizedType === 'array') &&
       typeof rawValue === 'string'
     ) {
       acc[field.name] = JSON.parse(rawValue);
@@ -202,14 +202,17 @@ export const buildExecutionScheduleCreateRequest = ({
   values,
   schemaFields,
   selectedSkillDisplayName,
+  selectedSkillVersion,
 }: {
   values: ExecutionCreateFormValues;
   schemaFields: SchemaField[];
   selectedSkillDisplayName: string;
+  selectedSkillVersion?: string;
 }): CreateScheduleRequest => ({
   name: values.scheduleName?.trim() || getDefaultScheduleName(selectedSkillDisplayName),
   description: values.scheduleDescription?.trim() || undefined,
   skillId: values.skillId,
+  skillVersion: selectedSkillVersion,
   input: normalizeInputValues(values.input || {}, schemaFields),
   cronExpression: buildScheduleCronExpression(values),
   timezone: values.timezone?.trim() || 'Asia/Shanghai',

@@ -57,9 +57,10 @@ import { VersionRetentionService } from './plan-runtime/version-retention.servic
 import { LlmOperationAttestationClient } from './plan-runtime/llm-operation-attestation.client';
 import { BackfillModule } from './backfill/backfill.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { SavedSkillModule } from '../saved-skill/saved-skill.module';
 
 @Module({
-  imports: [PrismaModule, BackfillModule],
+  imports: [PrismaModule, BackfillModule, SavedSkillModule],
   controllers: [ExecutionController],
   providers: [
     BrowserPhaseRecoveryPlanner,

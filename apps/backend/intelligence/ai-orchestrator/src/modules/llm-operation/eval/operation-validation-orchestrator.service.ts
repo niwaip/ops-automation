@@ -74,7 +74,12 @@ export class OperationValidationOrchestratorService {
         errorContains: testCase.errorContains || undefined,
       })),
     };
-    const coverage = this.fixtureRunner.validateBundleCoverage(bundle);
+    const evalPolicy = (params.version.manifestJson as Record<string, unknown>)
+      ?.evalPolicy as Record<string, unknown> | undefined;
+    const exemptCategories = Array.isArray(evalPolicy?.exemptNegativeCategories)
+      ? (evalPolicy?.exemptNegativeCategories as string[])
+      : [];
+    const coverage = this.fixtureRunner.validateBundleCoverage(bundle, exemptCategories);
     if (!coverage.ok) {
       throw new LlmOperationError(
         LLM_OPERATION_ERROR_CODES.VALIDATION_FAILED,

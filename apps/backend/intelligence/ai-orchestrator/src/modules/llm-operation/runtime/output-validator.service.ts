@@ -47,8 +47,20 @@ export class OutputValidatorService {
     try {
       data = parseJsonFromText(rawContent);
     } catch (err: any) {
-      this.logger.warn(`Failed to parse JSON from model output: ${err.message}`);
-      throw new LlmOperationError(OUTPUT_PARSE_FAILED, `Failed to parse JSON from model output: ${err.message}`);
+      // Graceful degradation: when the schema declares exactly one string
+      // field (e.g. {summary: string} / {markdown_content: string}), a model
+      // that answered with bare markdown/text instead of the JSON envelope is
+      // still a valid business answer — wrap it instead of failing the step.
+      const fallback = this.buildSingleStringFieldFallback(rawContent, outputSchema);
+      if (fallback) {
+        this.logger.warn(
+          `Model output was not JSON; wrapping raw text into single string field ${Object.keys(fallback)[0]}`
+        );
+        data = fallback;
+      } else {
+        this.logger.warn(`Failed to parse JSON from model output: ${err.message}`);
+        throw new LlmOperationError(OUTPUT_PARSE_FAILED, `Failed to parse JSON from model output: ${err.message}`);
+      }
     }
 
     if (!outputSchema) {
@@ -74,7 +86,30 @@ export class OutputValidatorService {
   }
 
   public buildRepairPrompt(systemTemplate: string, previousRawOutput: string): string {
-    return `The previous output failed schema validation. Previous output:\n${previousRawOutput}\n\nPlease output strict JSON conforming to the schema.`;
+    return `The previous output failed schema validation. Respond with ONLY a valid JSON object that conforms to the schema — no markdown, no code fences, no explanatory text.\n\nPrevious output:\n${previousRawOutput}`;
+  }
+
+  /**
+   * When the schema declares exactly one string-typed top-level field, a
+   * non-JSON model answer (bare markdown/text) is wrapped into that field so
+   * string-output operations degrade gracefully instead of failing the step.
+   */
+  private buildSingleStringFieldFallback(
+    rawContent: string,
+    outputSchema: Record<string, unknown> | null,
+  ): Record<string, unknown> | null {
+    const props = (outputSchema as any)?.properties as Record<string, unknown> | undefined;
+    if (!props) return null;
+    const keys = Object.keys(props);
+    if (keys.length !== 1) return null;
+    const only = props[keys[0]] as Record<string, unknown> | undefined;
+    const declaredType = only?.type;
+    const isStringType =
+      declaredType === 'string' || (Array.isArray(declaredType) && declaredType.includes('string'));
+    if (!isStringType) return null;
+    const cleaned = (rawContent || '').trim();
+    if (!cleaned) return null;
+    return { [keys[0]]: cleaned };
   }
 
   /**

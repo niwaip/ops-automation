@@ -199,6 +199,42 @@ export class ChatConversationService {
     }));
   }
 
+  /**
+   * Returns the most recent COMPLETED task result in the session, so a
+   * follow-up task (e.g. "输出到md文件") can reuse the previous output as an
+   * input candidate. Failed / waiting / pending messages are skipped.
+   */
+  async getLatestCompletedTaskResult(
+    sessionId: string,
+    maxSummaryLength = 30000
+  ): Promise<{
+    summaryText?: string;
+    resultTitle?: string;
+    executionId?: string;
+    resultType?: string;
+    structuredData?: unknown;
+  } | null> {
+    const chatSession = await this.sessionService.getChatSession(sessionId);
+    const history = chatSession?.history || [];
+    for (let index = history.length - 1; index >= 0; index--) {
+      const message = history[index];
+      if (message.role !== 'assistant') continue;
+      const metadata = this.asRecord(message.metadata);
+      if (metadata?.taskStatus !== 'completed') continue;
+      const finalResult = this.asString(metadata.finalResult) || this.asString(metadata.finalSummary);
+      const structuredData = metadata.finalResultData;
+      if (!finalResult && structuredData === undefined) continue;
+      return {
+        summaryText: finalResult ? finalResult.slice(0, maxSummaryLength) : undefined,
+        resultTitle: this.asString(metadata.resultTitle),
+        executionId: this.asString(metadata.executionId),
+        resultType: this.asString(metadata.resultType),
+        structuredData,
+      };
+    }
+    return null;
+  }
+
   async listSessions(): Promise<ChatSessionListItem[]> {
     return this.sessionService.listChatSessions();
   }

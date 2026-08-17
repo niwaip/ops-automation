@@ -6,6 +6,7 @@ import { ToolExecutor } from './tool-executor';
 import { ModelService } from '../model/model.service';
 import { SessionService } from '../redis/session.service';
 import { ChatRequestDTO, ExecutionContext, StreamEventType } from './interfaces';
+import { PromptDebugSettingsService } from '../debug-settings/prompt-debug-settings.service';
 
 jest.mock('axios');
 
@@ -55,7 +56,8 @@ describe('ReActEngineService Retry E2E', () => {
       toolExecutor,
       sessionService,
       capabilityResolver,
-      modelRouterService
+      modelRouterService,
+      new PromptDebugSettingsService()
     );
 
     const request: ChatRequestDTO = {
@@ -207,7 +209,8 @@ describe('ReActEngineService Retry E2E', () => {
       toolExecutor,
       sessionService,
       capabilityResolver,
-      modelRouterService
+      modelRouterService,
+      new PromptDebugSettingsService()
     );
 
     const request: ChatRequestDTO = {
@@ -385,7 +388,8 @@ describe('ReActEngineService Retry E2E', () => {
       toolExecutor,
       sessionService,
       capabilityResolver,
-      modelRouterService
+      modelRouterService,
+      new PromptDebugSettingsService()
     );
 
     const request: ChatRequestDTO = {

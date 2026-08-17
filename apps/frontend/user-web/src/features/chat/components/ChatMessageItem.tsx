@@ -12,6 +12,7 @@ import { formatMessageTimestamp } from '../lib/messageDisplay';
 import {
   getMessageStatusLabel,
   getStatusTagColor,
+  resolveMessageExecutionId,
   resolveMessageTaskStatus,
 } from '../lib/taskStatus';
 import { toStructuredResultText } from '../lib/messageDisplay';
@@ -21,6 +22,7 @@ import {
   TaskOutcomeBlock,
   TaskProgressBlock,
 } from './TaskMessageBlocks';
+import { SaveWorkflowAction } from './workflow-save/SaveWorkflowAction';
 import styles from '../pages/ChatPage.module.css';
 
 interface ChatMessageItemProps {
@@ -53,6 +55,7 @@ export function ChatMessageItem({
     )
   );
   const taskParts = resolveTaskParts(message.contentParts);
+  const executionId = resolveMessageExecutionId(message);
   const structuredResult = toStructuredResultText(
     message.metadata?.normalizedResult?.structuredData ??
       message.metadata?.finalResultData ??
@@ -218,6 +221,9 @@ export function ChatMessageItem({
                 }}
                 extraContent={
                   <>
+                    {!message.isStreaming && resolvedTaskStatus === 'completed' && executionId ? (
+                      <SaveWorkflowAction executionId={executionId} />
+                    ) : null}
                     {rateLimit?.requests_remaining !== undefined ? (
                       <Typography.Text type="secondary" className={styles['user-chat-usage-text']}>
                         请求剩余: {rateLimit.requests_remaining}

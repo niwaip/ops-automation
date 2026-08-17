@@ -96,15 +96,22 @@ export class DeterministicContractAssemblerService {
         };
         nodes.push(planNode);
       } else {
+        if (!card?.executableVersion || !card.operationDigest || !card.contractDigest) {
+          const err = new Error(
+            `LLM Operation '${card?.id || node.capabilityKey}' is missing immutable version metadata`,
+          ) as Error & { code: string };
+          err.code = 'CAPABILITY_NOT_FOUND';
+          throw err;
+        }
         const planNode: LlmOperationPlanNodeV1 = {
           nodeId,
           sequence,
           title: card?.displayName || `Step ${sequence}`,
           kind: 'llm_operation',
           operationId: (card?.id || node.capabilityKey) as any,
-          operationVersion: '1.0.0',
-          operationDigest: 'legacy_digest',
-          contractDigest: 'legacy_digest',
+          operationVersion: card.executableVersion,
+          operationDigest: card.operationDigest,
+          contractDigest: card.contractDigest,
           dependsOn: dependsOnNodeIds,
           inputBindings,
           outputContract,

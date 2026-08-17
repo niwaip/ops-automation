@@ -25,8 +25,21 @@ export function buildSystemEvalFixtures(
   const validInput = buildObjectSample(inputSchema, 'input');
   const expectedOutput = buildObjectSample(outputSchema, 'output');
   const overBudgetInput = buildOverBudgetInput(inputSchema);
-  const cases: SystemEvalFixture[] = [
+
+  // Negative categories that intentionally do not apply to this operation
+  // (declared in the manifest's evalPolicy, derived from the operation shape:
+  // single-string-output fallback exempts 'invalid-json', oversize 'truncate'
+  // exempts 'over-budget').
+  const evalPolicy = (manifest.evalPolicy as Record<string, unknown> | undefined) ?? {};
+  const exempt = new Set(
+    Array.isArray(evalPolicy.exemptNegativeCategories)
+      ? (evalPolicy.exemptNegativeCategories as string[])
+      : [],
+  );
+
+  const allCases: Array<SystemEvalFixture & { category: string }> = [
     {
+      category: 'normal',
       name: `${operationId}-normal`,
       inputJson: validInput,
       expectedJson: expectedOutput,
@@ -34,6 +47,7 @@ export function buildSystemEvalFixtures(
       errorContains: null,
     },
     {
+      category: 'schema-fail',
       name: `${operationId}-schema-fail`,
       inputJson: {},
       expectedJson: null,
@@ -41,6 +55,7 @@ export function buildSystemEvalFixtures(
       errorContains: 'schema',
     },
     {
+      category: 'invalid-json',
       name: `${operationId}-invalid-json`,
       inputJson: validInput,
       expectedJson: null,
@@ -48,6 +63,7 @@ export function buildSystemEvalFixtures(
       errorContains: 'JSON',
     },
     {
+      category: 'tool-call',
       name: `${operationId}-tool-call`,
       inputJson: validInput,
       expectedJson: null,
@@ -55,6 +71,7 @@ export function buildSystemEvalFixtures(
       errorContains: 'tool',
     },
     {
+      category: 'over-budget',
       name: `${operationId}-over-budget`,
       inputJson: overBudgetInput,
       expectedJson: null,
@@ -62,6 +79,11 @@ export function buildSystemEvalFixtures(
       errorContains: 'budget',
     },
   ];
+
+  const cases = allCases
+    .filter((fixture) => !exempt.has(fixture.category))
+    .map(({ category: _category, ...rest }) => rest);
+
   const digest = createHash('sha256').update(JSON.stringify(cases)).digest('hex');
   return { digest: `sha256:${digest}`, cases };
 }

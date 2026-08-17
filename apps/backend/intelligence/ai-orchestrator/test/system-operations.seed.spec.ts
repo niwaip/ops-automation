@@ -85,6 +85,11 @@ describe('seedSystemLlmOperations', () => {
       type: 'object',
       additionalProperties: false,
     });
+    expect(manifest.maxInputTokens).toBe(8000);
+    expect(manifest.maxOutputTokens).toBe(4000);
+    expect((manifest.prompt as Record<string, string>).systemTemplate).toContain(
+      '800 个中文字符以内',
+    );
   });
 
   it('seeds candidate versions and fixtures without activating unattested operations', async () => {

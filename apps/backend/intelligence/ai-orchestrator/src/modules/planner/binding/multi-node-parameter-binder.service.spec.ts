@@ -194,4 +194,141 @@ describe('MultiNodeParameterBinderService', () => {
       transform: 'extract_unique_array',
     });
   });
+
+  const markdownWriterCard = {
+    id: 'md-writer',
+    kind: 'skill',
+    displayName: 'Markdown 文件生成',
+    summary: '把内容写为 Markdown 文件产物。',
+    goals: ['markdown_artifact'],
+    inputs: {
+      content: 'string',
+      fileName: 'string',
+    },
+    outputs: { artifact: 'artifact_ref' },
+    publishedSkillId: 'published-md-writer',
+    executableVersion: '1',
+    _rawInputSchema: {
+      required: ['content'],
+      defaults: { fileName: 'output.md' },
+      properties: {
+        content: { type: 'string', description: '要写入的 Markdown 内容' },
+        fileName: { type: 'string', description: '文件名' },
+      },
+    },
+  } as unknown as CompactCapabilityCardV1;
+
+  it('binds a content-type required param from the previous session result', async () => {
+    const recognizer = {
+      recognizeParams: jest.fn().mockResolvedValue({ params: {}, confidence: 1 }),
+    };
+    const binder = new MultiNodeParameterBinderService(
+      new NodeOutputBindingResolverService(),
+      recognizer as any,
+    );
+
+    const previousResultText = '# 上一次任务的总结\n\n这是上次输出全文。';
+    const result = await binder.bindParameters(
+      '输出到md文件',
+      [{ ref: 'n1', capabilityKey: 'md-writer', dependsOn: [] }],
+      new Map([['md-writer', markdownWriterCard]]),
+      undefined,
+      { previousResultText, previousResultTitle: '分析和总结内容' },
+    );
+
+    expect(result.planInputs.n1?.content).toBe(previousResultText);
+    expect(result.nodeBindings.n1?.content).toEqual({
+      source: 'literal',
+      value: previousResultText,
+    });
+    expect(result.requiredUserInputs).toHaveLength(0);
+    expect(result.notes).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("参数 'n1.content' 未在请求中提供，已自动使用会话中上一次任务的输出作为输入。"),
+      ]),
+    );
+  });
+
+  it('keeps the content param in requiredUserInputs when no previous result exists', async () => {
+    const recognizer = {
+      recognizeParams: jest.fn().mockResolvedValue({ params: {}, confidence: 1 }),
+    };
+    const binder = new MultiNodeParameterBinderService(
+      new NodeOutputBindingResolverService(),
+      recognizer as any,
+    );
+
+    const result = await binder.bindParameters(
+      '输出到md文件',
+      [{ ref: 'n1', capabilityKey: 'md-writer', dependsOn: [] }],
+      new Map([['md-writer', markdownWriterCard]]),
+      undefined,
+      {},
+    );
+
+    expect(result.planInputs.n1).not.toHaveProperty('content');
+    expect(result.requiredUserInputs).toHaveLength(1);
+    expect(result.requiredUserInputs[0].targetField).toBe('content');
+    expect(result.requiredUserInputs[0].missing).toBe(true);
+  });
+
+  it('does not bind non-content params from the previous session result', async () => {
+    const queryCard = {
+      ...searchCard,
+      id: 'search-2',
+      _rawInputSchema: {
+        required: ['query'],
+        defaults: {},
+        properties: {
+          query: { type: 'string', description: '搜索关键词' },
+        },
+      },
+      inputs: { query: 'string' },
+    } as unknown as CompactCapabilityCardV1;
+    const recognizer = {
+      recognizeParams: jest.fn().mockResolvedValue({ params: {}, confidence: 1 }),
+    };
+    const binder = new MultiNodeParameterBinderService(
+      new NodeOutputBindingResolverService(),
+      recognizer as any,
+    );
+
+    const result = await binder.bindParameters(
+      '搜索一下',
+      [{ ref: 'n1', capabilityKey: 'search-2', dependsOn: [] }],
+      new Map([['search-2', queryCard]]),
+      undefined,
+      { previousResultText: '上一次输出' },
+    );
+
+    expect(result.planInputs.n1).not.toHaveProperty('query');
+    expect(result.requiredUserInputs).toHaveLength(1);
+    expect(result.requiredUserInputs[0].targetField).toBe('query');
+  });
+
+  it('exposes the previous result text in the recognizer context', async () => {
+    const recognizer = {
+      recognizeParams: jest.fn().mockResolvedValue({ params: {}, confidence: 1 }),
+    };
+    const binder = new MultiNodeParameterBinderService(
+      new NodeOutputBindingResolverService(),
+      recognizer as any,
+    );
+
+    await binder.bindParameters(
+      '输出到md文件',
+      [{ ref: 'n1', capabilityKey: 'md-writer', dependsOn: [] }],
+      new Map([['md-writer', markdownWriterCard]]),
+      undefined,
+      { previousResultText: '# 上次输出' },
+    );
+
+    expect(recognizer.recognizeParams).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: expect.objectContaining({
+          previous_result_text: '# 上次输出',
+        }),
+      }),
+    );
+  });
 });

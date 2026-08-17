@@ -37,6 +37,7 @@ describe('OpenAICompatibleClient', () => {
         promptCacheKey: 'recognizer:test-cache-key',
       },
       responseFormat: 'json_object',
+      maxOutputTokens: 900,
       promptCaching: {
         enabled: true,
         mode: 'openai_auto',
@@ -50,6 +51,7 @@ describe('OpenAICompatibleClient', () => {
         prompt_cache_key: 'recognizer:test-cache-key',
         prompt_cache_retention: '24h',
         response_format: { type: 'json_object' },
+        max_tokens: 900,
         messages: [
           {
             role: 'system',
@@ -107,5 +109,87 @@ describe('OpenAICompatibleClient', () => {
       })
     );
     expect(postMock.mock.calls[0][1]).not.toHaveProperty('reasoning_effort');
+  });
+
+  it('disables DashScope thinking for structured output and preserves response metadata', async () => {
+    const client = new OpenAICompatibleClient({
+      baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      apiKey: 'test-key',
+      model: 'deepseek-v4-flash-0731',
+      provider: 'alibaba-bailian',
+    });
+    const postMock = jest.fn().mockResolvedValue({
+      data: {
+        choices: [
+          {
+            finish_reason: 'stop',
+            message: {
+              content: '{"markdown_content":"摘要"}',
+              reasoning_content: '',
+            },
+          },
+        ],
+        usage: {
+          prompt_tokens: 5000,
+          completion_tokens: 100,
+          total_tokens: 5100,
+        },
+      },
+      headers: {},
+    });
+    (client as any).client.post = postMock;
+
+    const result = await client.chatCompletion({
+      messages: [{ role: 'user', content: '请以 JSON 格式输出摘要' }],
+      responseFormat: 'json_object',
+      maxOutputTokens: 4000,
+      reasoning: { enabled: false },
+    });
+
+    expect(postMock).toHaveBeenCalledWith(
+      '/chat/completions',
+      expect.objectContaining({
+        enable_thinking: false,
+        response_format: { type: 'json_object' },
+        max_tokens: 4000,
+      }),
+    );
+    expect(result).toMatchObject({
+      content: '{"markdown_content":"摘要"}',
+      finishReason: 'stop',
+      reasoningContent: '',
+    });
+  });
+
+  it('retains length termination and reasoning-only response metadata', async () => {
+    const client = new OpenAICompatibleClient({
+      baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      apiKey: 'test-key',
+      model: 'deepseek-v4-flash-0731',
+    });
+    (client as any).client.post = jest.fn().mockResolvedValue({
+      data: {
+        choices: [
+          {
+            finish_reason: 'length',
+            message: { content: null, reasoning_content: 'reasoning only' },
+          },
+        ],
+        usage: {
+          prompt_tokens: 5012,
+          completion_tokens: 4000,
+          total_tokens: 9012,
+          completion_tokens_details: { reasoning_tokens: 4000 },
+        },
+      },
+      headers: {},
+    });
+
+    const result = await client.chatCompletion([{ role: 'user', content: '总结' }]);
+
+    expect(result.content).toBe('');
+    expect(result.finishReason).toBe('length');
+    expect(result.reasoningContent).toBe('reasoning only');
+    expect(result.usage?.completion_tokens_details?.reasoning_tokens).toBe(4000);
   });
 });

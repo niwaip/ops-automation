@@ -10,6 +10,8 @@ import { OutputValidatorService } from '../src/modules/llm-operation/runtime/out
 import { BudgetEnforcerService } from '../src/modules/llm-operation/runtime/budget-enforcer.service';
 import { LlmOperationAuditService } from '../src/modules/llm-operation/audit/llm-operation-audit.service';
 import { LlmOperationError, LLM_OPERATION_ERROR_CODES } from '../src/modules/llm-operation/registry/errors';
+import { PromptDebugSettingsService } from '../src/modules/debug-settings/prompt-debug-settings.service';
+import { LlmOperationModelCallerService } from '../src/modules/llm-operation/runtime/llm-operation-model-caller.service';
 
 describe('LlmOperationV2RuntimeService', () => {
   let service: LlmOperationV2RuntimeService;
@@ -20,6 +22,8 @@ describe('LlmOperationV2RuntimeService', () => {
   let outputValidator: jest.Mocked<OutputValidatorService>;
   let budgetEnforcer: jest.Mocked<BudgetEnforcerService>;
   let auditService: jest.Mocked<LlmOperationAuditService>;
+  let promptRenderer: jest.Mocked<PromptRendererService>;
+  let promptDebugEnabled = true;
 
   const mockDbVersion = {
     id: 'ver-uuid-1',
@@ -74,6 +78,7 @@ describe('LlmOperationV2RuntimeService', () => {
   };
 
   beforeEach(async () => {
+    promptDebugEnabled = true;
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LlmOperationV2RuntimeService,
@@ -91,6 +96,11 @@ describe('LlmOperationV2RuntimeService', () => {
             getPreferredDefaultModel: jest.fn(),
             callModel: jest.fn(),
           },
+        },
+        {
+          provide: LlmOperationModelCallerService,
+          useFactory: (models: jest.Mocked<ModelService>) => ({ call: models.callModel }),
+          inject: [ModelService],
         },
         {
           provide: PromptRendererService,
@@ -121,6 +131,7 @@ describe('LlmOperationV2RuntimeService', () => {
           provide: BudgetEnforcerService,
           useValue: {
             preflightInput: jest.fn(),
+            prepareInput: jest.fn((input: Record<string, unknown>) => input),
             assertOutputWithinBudget: jest.fn(),
             assertLatencyWithinBudget: jest.fn(),
           },
@@ -130,6 +141,13 @@ describe('LlmOperationV2RuntimeService', () => {
           useValue: {
             recordInvocation: jest.fn().mockResolvedValue(undefined),
             findCompletedByIdempotencyKey: jest.fn().mockResolvedValue(null),
+          },
+        },
+        {
+          provide: PromptDebugSettingsService,
+          useValue: {
+            isPromptDebugEnabled: () => promptDebugEnabled,
+            updateSettings: jest.fn(),
           },
         },
       ],
@@ -143,6 +161,7 @@ describe('LlmOperationV2RuntimeService', () => {
     outputValidator = module.get(OutputValidatorService);
     budgetEnforcer = module.get(BudgetEnforcerService);
     auditService = module.get(LlmOperationAuditService);
+    promptRenderer = module.get(PromptRendererService);
   });
 
   describe('execute', () => {
@@ -176,6 +195,11 @@ describe('LlmOperationV2RuntimeService', () => {
       expect(result.metadata.toolCallDetected).toBe(false);
       expect(inputValidator.validate).toHaveBeenCalled();
       expect(toolCallGuard.assertNoToolCall).toHaveBeenCalled();
+      expect(modelService.callModel).toHaveBeenCalledWith(
+        'model-1',
+        expect.any(String),
+        2000,
+      );
       expect(registry.resolveExactVersion).toHaveBeenCalledWith('summarize_list', '1.0.0');
       expect(auditService.recordInvocation).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -183,6 +207,150 @@ describe('LlmOperationV2RuntimeService', () => {
           resultJson: expect.objectContaining({ success: true }),
         }),
       );
+    });
+
+    it('includes promptDebug in success result when the debug switch is on', async () => {
+      registry.resolveExactVersion.mockResolvedValue(mockDbVersion);
+      modelService.getPreferredDefaultModel.mockReturnValue(mockActiveModel as any);
+      modelService.callModel.mockResolvedValue({
+        content: '{"markdown_content": "Test summary"}',
+        usage: { total_tokens: 100 },
+      });
+      outputValidator.parseAndValidate.mockReturnValue({
+        data: { markdown_content: 'Test summary' },
+        schemaValidated: true,
+      });
+
+      const result = await service.execute({
+        executionId: 'exec-1',
+        stepId: 'step-1',
+        operationId: 'summarize_list',
+        operationVersion: '1.0.0',
+        environment: 'production',
+        input: { text: 'Test input' },
+        idempotencyKey: 'key-pd-1',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.promptDebug).toBeDefined();
+      expect(result.promptDebug?.systemPrompt).toBe('You are a helpful assistant.');
+      expect(result.promptDebug?.userPrompt).toContain('Test input');
+      expect(result.promptDebug?.modelId).toBe('model-1');
+      expect(result.promptDebug?.llmResponseText).toBe('{"markdown_content": "Test summary"}');
+    });
+
+    it('omits promptDebug from success result when the debug switch is off', async () => {
+      promptDebugEnabled = false;
+      registry.resolveExactVersion.mockResolvedValue(mockDbVersion);
+      modelService.getPreferredDefaultModel.mockReturnValue(mockActiveModel as any);
+      modelService.callModel.mockResolvedValue({
+        content: '{"markdown_content": "Test summary"}',
+        usage: { total_tokens: 100 },
+      });
+      outputValidator.parseAndValidate.mockReturnValue({
+        data: { markdown_content: 'Test summary' },
+        schemaValidated: true,
+      });
+
+      const result = await service.execute({
+        executionId: 'exec-1',
+        stepId: 'step-1',
+        operationId: 'summarize_list',
+        operationVersion: '1.0.0',
+        environment: 'production',
+        input: { text: 'Test input' },
+        idempotencyKey: 'key-pd-2',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.promptDebug).toBeUndefined();
+    });
+
+    it('truncates oversized input instead of failing when the manifest policy is truncate', async () => {
+      const truncateManifestVersion = {
+        ...mockDbVersion,
+        manifestJson: {
+          ...mockDbVersion.manifestJson,
+          maxInputTokens: 250,
+          inputPolicy: { oversize: 'truncate' },
+        },
+      };
+      registry.resolveExactVersion.mockResolvedValue(truncateManifestVersion);
+      modelService.getPreferredDefaultModel.mockReturnValue(mockActiveModel as any);
+      modelService.callModel.mockResolvedValue({
+        content: '{"summary": "ok"}',
+        usage: { total_tokens: 100 },
+      });
+      outputValidator.parseAndValidate.mockReturnValue({
+        data: { summary: 'ok' },
+        schemaValidated: true,
+      });
+
+      // Real truncation logic; the mocked preflight stays a no-op.
+      const realBudgetEnforcer = new BudgetEnforcerService();
+      budgetEnforcer.prepareInput.mockImplementation((input, max, oversize) =>
+        realBudgetEnforcer.prepareInput(input, max, oversize),
+      );
+
+      const longText = 'x'.repeat(10_000);
+      const result = await service.execute({
+        executionId: 'exec-1',
+        stepId: 'step-1',
+        operationId: 'summarize_list',
+        operationVersion: '1.0.0',
+        environment: 'production',
+        input: { text: longText },
+        idempotencyKey: 'key-truncate-1',
+      });
+
+      expect(result.success).toBe(true);
+      const renderedInput = promptRenderer.renderManifestPrompt.mock.calls[0]?.[1];
+      expect(renderedInput.text).not.toBe(longText);
+      expect(String(renderedInput.text).length).toBeLessThan(longText.length);
+      expect(String(renderedInput.text)).toContain('已按模型预算截断');
+    });
+
+    it('includes promptDebug in MODEL_CALL_FAILED error result when the debug switch is on', async () => {
+      registry.resolveExactVersion.mockResolvedValue(mockDbVersion);
+      modelService.getPreferredDefaultModel.mockReturnValue(mockActiveModel as any);
+      modelService.callModel.mockRejectedValue(new Error('upstream timeout'));
+
+      const result = await service.execute({
+        executionId: 'exec-1',
+        stepId: 'step-1',
+        operationId: 'summarize_list',
+        operationVersion: '1.0.0',
+        environment: 'production',
+        input: { text: 'Test input' },
+        idempotencyKey: 'key-pd-3',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('MODEL_CALL_FAILED');
+      expect(result.promptDebug).toBeDefined();
+      expect(result.promptDebug?.systemPrompt).toBe('You are a helpful assistant.');
+      expect(result.promptDebug?.userPrompt).toContain('Test input');
+    });
+
+    it('omits promptDebug from MODEL_CALL_FAILED error result when the debug switch is off', async () => {
+      promptDebugEnabled = false;
+      registry.resolveExactVersion.mockResolvedValue(mockDbVersion);
+      modelService.getPreferredDefaultModel.mockReturnValue(mockActiveModel as any);
+      modelService.callModel.mockRejectedValue(new Error('upstream timeout'));
+
+      const result = await service.execute({
+        executionId: 'exec-1',
+        stepId: 'step-1',
+        operationId: 'summarize_list',
+        operationVersion: '1.0.0',
+        environment: 'production',
+        input: { text: 'Test input' },
+        idempotencyKey: 'key-pd-4',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('MODEL_CALL_FAILED');
+      expect(result.promptDebug).toBeUndefined();
     });
 
     it('replays a completed result without calling the model again', async () => {
@@ -259,6 +427,58 @@ describe('LlmOperationV2RuntimeService', () => {
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('TOOL_CALL_FORBIDDEN');
+    });
+
+    it('reports reasoning-only length termination without attempting JSON repair', async () => {
+      registry.resolveExactVersion.mockResolvedValue(mockDbVersion);
+      modelService.getPreferredDefaultModel.mockReturnValue(mockActiveModel as any);
+      modelService.callModel.mockResolvedValue({
+        content: '',
+        finishReason: 'length',
+        reasoningContent: 'reasoning only',
+        usage: {
+          prompt_tokens: 5012,
+          completion_tokens: 4000,
+          total_tokens: 9012,
+          completion_tokens_details: { reasoning_tokens: 4000 },
+        },
+      });
+
+      const result = await service.execute({
+        executionId: 'exec-1',
+        stepId: 'step-1',
+        operationId: 'summarize_list',
+        operationVersion: '1.0.0',
+        input: { text: 'Test' },
+        idempotencyKey: 'key-reasoning-length',
+      });
+
+      expect(result).toMatchObject({
+        success: false,
+        errorCode: 'OUTPUT_TRUNCATED',
+        usage: {
+          inputTokens: 5012,
+          outputTokens: 4000,
+          totalTokens: 9012,
+        },
+        metadata: {
+          finishReason: 'length',
+          repairAttempts: 0,
+        },
+      });
+      expect(outputValidator.parseAndValidate).not.toHaveBeenCalled();
+      expect(auditService.recordInvocation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          resolvedModel: mockActiveModel.name,
+          finishReason: 'length',
+          errorCode: 'OUTPUT_TRUNCATED',
+          tokenUsage: {
+            inputTokens: 5012,
+            outputTokens: 4000,
+            totalTokens: 9012,
+          },
+        }),
+      );
     });
 
     it('should throw DIGEST_MISMATCH on operationDigest mismatch', async () => {
@@ -394,6 +614,12 @@ const result = await service.execute({
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('BUDGET_EXCEEDED');
+      expect(auditService.recordInvocation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          validationResult: 'failed',
+          errorCode: 'BUDGET_EXCEEDED',
+        }),
+      );
     });
 
     it('should use legacy registry when DB not found', async () => {

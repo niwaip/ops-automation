@@ -27,6 +27,7 @@ describe('AnthropicMessagesClient', () => {
         dynamicUser: '甲方是ABC公司',
       },
       responseFormat: 'json_object',
+      maxOutputTokens: 900,
       promptCaching: {
         enabled: true,
         mode: 'anthropic_explicit',
@@ -37,6 +38,7 @@ describe('AnthropicMessagesClient', () => {
     expect(postMock).toHaveBeenCalledWith(
       '/messages',
       expect.objectContaining({
+        max_tokens: 900,
         system: [
           { type: 'text', text: '你是参数提取助手。' },
           {

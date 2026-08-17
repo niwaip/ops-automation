@@ -41,6 +41,9 @@ describe('ChatOrchestratorService', () => {
       observeExecution: jest.fn(),
       buildLatestExecutionStateEvent: jest.fn(),
     };
+    const chatConversationService = {
+      getLatestCompletedTaskResult: jest.fn().mockResolvedValue(null),
+    };
 
     const service = new ChatOrchestratorService(
       controlPlaneClient as unknown as ControlPlaneClient,
@@ -48,7 +51,8 @@ describe('ChatOrchestratorService', () => {
       plannerService as any,
       promptDebugSettingsService as any,
       waitingInputService as any,
-      executionStreamService as any
+      executionStreamService as any,
+      chatConversationService as any
     );
 
     return {
@@ -59,6 +63,7 @@ describe('ChatOrchestratorService', () => {
       promptDebugSettingsService,
       waitingInputService,
       executionStreamService,
+      chatConversationService,
     };
   };
 
@@ -79,6 +84,7 @@ describe('ChatOrchestratorService', () => {
       base.promptDebugSettingsService as any,
       base.waitingInputService as any,
       base.executionStreamService as any,
+      base.chatConversationService as any,
       deterministicTaskExecutionService as any,
       skillCacheService as any
     );

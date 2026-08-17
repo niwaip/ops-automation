@@ -104,7 +104,7 @@ describe('OutputValidatorService', () => {
       const repairPrompt = service.buildRepairPrompt(systemTemplate, previousOutput);
       expect(repairPrompt).toContain('schema validation');
       expect(repairPrompt).toContain(previousOutput);
-      expect(repairPrompt).toContain('strict JSON');
+      expect(repairPrompt).toContain('valid JSON object');
     });
   });
 });

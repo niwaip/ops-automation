@@ -18,12 +18,14 @@ interface UseExecutionCreateActionsOptions {
   form: FormInstance;
   schemaFields: SchemaField[];
   selectedSkillDisplayName: string;
+  selectedSkillVersion?: string;
 }
 
 export function useExecutionCreateActions({
   form,
   schemaFields,
   selectedSkillDisplayName,
+  selectedSkillVersion,
 }: UseExecutionCreateActionsOptions) {
   const { message } = App.useApp();
   const navigate = useNavigate();
@@ -33,6 +35,7 @@ export function useExecutionCreateActions({
     async (values: ExecutionCreateFormValues) => {
       return executionApi.create({
         skillId: values.skillId,
+        skillVersion: selectedSkillVersion,
         input: normalizeInputValues(values.input || {}, schemaFields),
       });
     },
@@ -61,6 +64,7 @@ export function useExecutionCreateActions({
           values,
           schemaFields,
           selectedSkillDisplayName,
+          selectedSkillVersion,
         })
       );
     },

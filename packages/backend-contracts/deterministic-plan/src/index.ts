@@ -292,6 +292,10 @@ export interface CompactCapabilityCardV1 {
   supportsArtifactOutput?: boolean;
   publishedSkillId?: string;
   executableVersion?: string;
+  /** Immutable LLM Operation manifest digest; required when kind is llm_operation. */
+  operationDigest?: string;
+  /** Immutable LLM Operation input/output contract digest; required when kind is llm_operation. */
+  contractDigest?: string;
 }
 
 /**

@@ -10,7 +10,7 @@ import type { LlmOperationIdV1 } from '@ops/backend-deterministic-plan';
 import type { Prisma } from '../../prisma/client';
 import { buildSystemEvalFixtures } from './system-operation-eval-fixtures';
 
-export const SYSTEM_OPERATION_VERSION = '1.0.4';
+export const SYSTEM_OPERATION_VERSION = '1.0.8';
 
 const OPERATION_METADATA = {
   summarize_list: {
@@ -166,9 +166,27 @@ export async function seedSystemLlmOperations(
         });
         logger.log(`Created system Eval Suite for: ${operationId}`);
       } else if (existingSuite.suiteDigest !== fixtureBundle.digest) {
-        throw new Error(
-          `Eval Suite digest mismatch for ${operationId}: existing=${existingSuite.suiteDigest}, expected=${fixtureBundle.digest}`,
-        );
+        // The baseline suite is derived data generated from the current
+        // templates — when the generation logic changes (e.g. an operation
+        // switched to oversize 'truncate' drops its over-budget case), the
+        // stored suite is reconciled to the new derivation instead of failing.
+        await prisma.llmOperationEvalSuite.update({
+          where: { id: existingSuite.id },
+          data: {
+            suiteDigest: fixtureBundle.digest,
+            cases: {
+              deleteMany: {},
+              create: fixtureBundle.cases.map((fixture) => ({
+                ...fixture,
+                inputJson: fixture.inputJson as Prisma.InputJsonValue,
+                expectedJson: fixture.expectedJson === null
+                  ? undefined
+                  : fixture.expectedJson as Prisma.InputJsonValue,
+              })),
+            },
+          },
+        });
+        logger.log(`Reconciled system Eval Suite for: ${operationId}`);
       }
 
       result.created.push(operationId);

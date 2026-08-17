@@ -11,6 +11,7 @@ describe('SchedulerService', () => {
       skillSchedule: {
         create: jest.fn(),
         findMany: jest.fn(),
+        findFirst: jest.fn(),
         findUnique: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
@@ -65,6 +66,48 @@ describe('SchedulerService', () => {
 
       await expect(service.create('user-123', dto)).rejects.toThrow('Invalid cron expression');
     });
+
+    it('stores per-schedule overrides for a saved workflow instead of replacing them', async () => {
+      const savedSkillResolver = {
+        resolveForExecution: jest.fn().mockResolvedValue({
+          skillId: 'saved-workflow',
+          version: '1',
+          fixedInput: {},
+          planSnapshot: {
+            nodes: [
+              {
+                nodeId: 'search',
+                sequence: 1,
+                title: '查询热点',
+                inputBindings: {
+                  query: { source: 'literal', value: 'bilibili热点' },
+                },
+              },
+            ],
+          },
+        }),
+      } as any;
+      service = new SchedulerService(prismaMock, executionServiceMock, savedSkillResolver);
+      prismaMock.skillSchedule.create.mockImplementation(({ data }: any) => ({
+        id: 'schedule-saved',
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+
+      await service.create('user-123', {
+        name: '微博热点',
+        skillId: 'saved-workflow',
+        skillVersion: '1',
+        input: { query: '微博热点' },
+        cronExpression: '0 9 * * *',
+        timezone: 'Asia/Shanghai',
+      });
+
+      expect(prismaMock.skillSchedule.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ inputJson: { query: '微博热点' } }),
+      });
+    });
   });
 
   describe('update', () => {
@@ -77,7 +120,7 @@ describe('SchedulerService', () => {
         isActive: true,
       };
 
-      prismaMock.skillSchedule.findUnique.mockResolvedValue(current);
+      prismaMock.skillSchedule.findFirst.mockResolvedValue(current);
       prismaMock.skillSchedule.update.mockImplementation(({ data }: any) => ({
         ...current,
         ...data,
@@ -89,7 +132,7 @@ describe('SchedulerService', () => {
         cronExpression: '*/5 * * * *', // every 5 minutes
       };
 
-      const result = await service.update('schedule-123', dto);
+      const result = await service.update('schedule-123', 'user-123', dto);
 
       expect(result.name).toBe('New Name');
       expect(result.cronExpression).toBe('*/5 * * * *');
@@ -152,12 +195,12 @@ describe('SchedulerService', () => {
         createdBy: 'user-123',
       };
 
-      prismaMock.skillSchedule.findUnique.mockResolvedValue(schedule);
+      prismaMock.skillSchedule.findFirst.mockResolvedValue(schedule);
 
-      const result = await service.triggerManually('schedule-123', 'user-456');
+      const result = await service.triggerManually('schedule-123', 'user-123');
 
       expect(result).toBe(true);
-      expect(executionServiceMock.create).toHaveBeenCalledWith('user-456', {
+      expect(executionServiceMock.create).toHaveBeenCalledWith('user-123', {
         skillId: 'skill-uuid',
         skillVersion: 'v1',
         input: { foo: 'bar' },

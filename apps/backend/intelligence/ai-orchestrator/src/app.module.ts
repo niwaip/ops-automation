@@ -13,6 +13,7 @@ import { DebugSettingsModule } from './modules/debug-settings/debug-settings.mod
 import { ChatModule } from './modules/chat/chat.module';
 import { OrchestrationModule } from './modules/orchestration/orchestration.module';
 import { LlmOperationModule } from './modules/llm-operation/llm-operation.module';
+import { UserWorkflowReviewModule } from './modules/user-workflow-review/user-workflow-review.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { LlmOperationModule } from './modules/llm-operation/llm-operation.module
     ChatModule,
     OrchestrationModule,
     LlmOperationModule,
+    UserWorkflowReviewModule,
   ],
 })
 export class AppModule {}

@@ -12,16 +12,16 @@ import type { ExecuteLlmOperationV2Request, LlmOperationV2Result } from './v2-ru
 import type { LlmOperationVersionRecord, LegacyLlmOperationVersion, LlmOperationRecord } from '../registry/types';
 import { LLM_OPERATION_TEMPLATES } from '../llm-operation.registry';
 import { PromptDebugSettingsService } from '../../debug-settings/prompt-debug-settings.service';
+import { LlmOperationModelCallerService } from './llm-operation-model-caller.service';
 import { createHash } from 'crypto';
+import type { LLMResponse } from '../../../interfaces';
 
 @Injectable()
 export class LlmOperationV2RuntimeService {
-  private readonly promptDebugSettingsService: PromptDebugSettingsService =
-    new PromptDebugSettingsService();
-
   constructor(
     private readonly registry: LlmOperationRegistryService,
     private readonly modelService: ModelService,
+    private readonly modelCaller: LlmOperationModelCallerService,
     private readonly promptRenderer: PromptRendererService,
     private readonly inputValidator: InputValidatorService,
     private readonly toolCallGuard: ToolCallGuardService,
@@ -29,6 +29,7 @@ export class LlmOperationV2RuntimeService {
     private readonly budgetEnforcer: BudgetEnforcerService,
     private readonly auditService: LlmOperationAuditService,
     private readonly logger: Logger,
+    private readonly promptDebugSettingsService: PromptDebugSettingsService,
   ) {}
 
   private computeDigest(data: unknown): string {
@@ -209,6 +210,19 @@ export class LlmOperationV2RuntimeService {
       });
     }
 
+    // Oversize policy: 'truncate' operations keep a budget-sized prefix (with
+    // a notice) instead of failing; 'reject' stays fail-closed via preflight.
+    const inputPolicy = (manifest.inputPolicy as Record<string, unknown>) ?? {};
+    const oversize =
+      resolved.source === 'database'
+        ? String(inputPolicy.oversize ?? 'reject') === 'truncate'
+          ? 'truncate'
+          : 'reject'
+        : LLM_OPERATION_TEMPLATES[
+            request.operationId as keyof typeof LLM_OPERATION_TEMPLATES
+          ]?.oversizeInput ?? 'reject';
+    request.input = this.budgetEnforcer.prepareInput(request.input, maxInputTokens, oversize);
+
     try {
       this.budgetEnforcer.preflightInput(request.input, maxInputTokens);
     } catch (err: any) {
@@ -251,7 +265,7 @@ export class LlmOperationV2RuntimeService {
     let lastResponse: any;
 
     try {
-      lastResponse = await this.modelService.callModel(activeModel.id, fullPrompt, 'reasoning');
+      lastResponse = await this.modelCaller.call(activeModel.id, fullPrompt, maxOutputTokens);
       lastRawContent = lastResponse.content;
     } catch (callErr: any) {
       const latencyMs = Date.now() - startTime;
@@ -264,6 +278,7 @@ export class LlmOperationV2RuntimeService {
         repairAttempts,
         latencyMs,
         activeModel,
+        { systemPrompt, userPrompt, llmResponseText: '' },
       );
     }
 
@@ -280,6 +295,27 @@ export class LlmOperationV2RuntimeService {
         repairAttempts,
         latencyMs,
         activeModel,
+        { systemPrompt, userPrompt, llmResponseText: lastRawContent },
+        lastResponse,
+      );
+    }
+
+    if (!lastRawContent.trim()) {
+      const truncated = lastResponse?.finishReason === 'length';
+      const latencyMs = Date.now() - startTime;
+      return this.buildErrorResult(
+        request,
+        resolved.source,
+        version,
+        truncated ? 'OUTPUT_TRUNCATED' : 'EMPTY_MODEL_RESPONSE',
+        truncated
+          ? 'Model exhausted its output budget before producing business content'
+          : 'Model returned an empty business-content channel',
+        repairAttempts,
+        latencyMs,
+        activeModel,
+        { systemPrompt, userPrompt, llmResponseText: lastRawContent },
+        lastResponse,
       );
     }
 
@@ -299,6 +335,8 @@ export class LlmOperationV2RuntimeService {
           repairAttempts,
           latencyMs,
           activeModel,
+          { systemPrompt, userPrompt, llmResponseText: lastRawContent },
+          lastResponse,
         );
       }
 
@@ -309,9 +347,32 @@ export class LlmOperationV2RuntimeService {
         this.logger.warn(`Repair attempt ${repairAttempts} for operation '${request.operationId}'`);
 
         try {
-          lastResponse = await this.modelService.callModel(activeModel.id, repairPrompt, 'reasoning');
+          lastResponse = await this.modelCaller.call(
+            activeModel.id,
+            repairPrompt,
+            maxOutputTokens,
+          );
           lastRawContent = lastResponse.content;
           this.toolCallGuard.assertNoToolCall(lastResponse);
+
+          if (!lastRawContent.trim()) {
+            const truncated = lastResponse?.finishReason === 'length';
+            const latencyMs = Date.now() - startTime;
+            return this.buildErrorResult(
+              request,
+              resolved.source,
+              version,
+              truncated ? 'OUTPUT_TRUNCATED' : 'EMPTY_MODEL_RESPONSE',
+              truncated
+                ? 'Model exhausted its output budget during schema repair'
+                : 'Model returned an empty business-content channel during schema repair',
+              repairAttempts,
+              latencyMs,
+              activeModel,
+              { systemPrompt, userPrompt, llmResponseText: lastRawContent },
+              lastResponse,
+            );
+          }
 
           parsed = this.outputValidator.parseAndValidate(lastRawContent, outputSchema);
           break;
@@ -327,6 +388,8 @@ export class LlmOperationV2RuntimeService {
               repairAttempts,
               latencyMs,
               activeModel,
+              { systemPrompt, userPrompt, llmResponseText: lastRawContent },
+              lastResponse,
             );
           }
         }
@@ -336,11 +399,26 @@ export class LlmOperationV2RuntimeService {
     const latencyMs = Date.now() - startTime;
     const usage = lastResponse?.usage || {};
 
-    this.budgetEnforcer.assertOutputWithinBudget(
-      { outputTokens: usage.output_tokens || usage.completion_tokens },
-      maxOutputTokens,
-    );
-    this.budgetEnforcer.assertLatencyWithinBudget(latencyMs, timeoutMs);
+    try {
+      this.budgetEnforcer.assertOutputWithinBudget(
+        { outputTokens: usage.output_tokens || usage.completion_tokens },
+        maxOutputTokens,
+      );
+      this.budgetEnforcer.assertLatencyWithinBudget(latencyMs, timeoutMs);
+    } catch (budgetError: any) {
+      return this.buildErrorResult(
+        request,
+        resolved.source,
+        version,
+        budgetError.code || 'BUDGET_EXCEEDED',
+        budgetError.message,
+        repairAttempts,
+        latencyMs,
+        activeModel,
+        { systemPrompt, userPrompt, llmResponseText: lastRawContent },
+        lastResponse,
+      );
+    }
 
     if (!parsed) {
       throw new Error('Parsed output is undefined - this should never happen');
@@ -364,7 +442,7 @@ export class LlmOperationV2RuntimeService {
         provider: activeModel.provider,
         requestedModel: activeModel.name,
         resolvedModel: activeModel.name,
-        finishReason: lastResponse?.finish_reason,
+        finishReason: lastResponse?.finishReason,
         repairAttempts,
         latencyMs,
         schemaValidated: parsed.schemaValidated,
@@ -400,7 +478,7 @@ export class LlmOperationV2RuntimeService {
         repairAttempts,
         parseAttempts: 1,
         validationResult: 'passed',
-        finishReason: lastResponse?.finish_reason,
+        finishReason: lastResponse?.finishReason,
         actor: request.actor ?? 'system',
         environment: request.environment ?? 'production',
         startedAt: new Date(startTime),
@@ -420,7 +498,15 @@ export class LlmOperationV2RuntimeService {
     repairAttempts: number,
     latencyMs: number,
     model: any,
+    promptSnapshot?: { systemPrompt: string; userPrompt: string; llmResponseText: string },
+    modelResponse?: LLMResponse,
   ): LlmOperationV2Result {
+    const usage = modelResponse?.usage;
+    const normalizedUsage = {
+      inputTokens: usage?.prompt_tokens,
+      outputTokens: usage?.completion_tokens,
+      totalTokens: usage?.total_tokens,
+    };
     const result: LlmOperationV2Result = {
       success: false,
       operationRef: {
@@ -429,10 +515,12 @@ export class LlmOperationV2RuntimeService {
         digest: version.operationDigest,
       },
       source,
-      usage: {},
+      usage: normalizedUsage,
       metadata: {
         provider: model?.provider || 'unknown',
         requestedModel: model?.name || 'unknown',
+        resolvedModel: model?.name || 'unknown',
+        finishReason: modelResponse?.finishReason,
         repairAttempts,
         latencyMs,
         schemaValidated: false,
@@ -440,6 +528,17 @@ export class LlmOperationV2RuntimeService {
       },
       errorCode,
       errorMessage,
+      ...(promptSnapshot && this.promptDebugSettingsService.isPromptDebugEnabled()
+        ? {
+            promptDebug: {
+              systemPrompt: promptSnapshot.systemPrompt,
+              userPrompt: promptSnapshot.userPrompt,
+              modelId: model?.id || model?.name || 'unknown',
+              llmResponseText: promptSnapshot.llmResponseText,
+              repairAttempts,
+            },
+          }
+        : {}),
     };
 
     this.auditService
@@ -449,9 +548,13 @@ export class LlmOperationV2RuntimeService {
         stepId: request.stepId,
         provider: model?.provider || 'unknown',
         requestedModel: model?.name || 'unknown',
+        resolvedModel: model?.name || 'unknown',
+        tokenUsage: normalizedUsage,
+        latencyMs,
         repairAttempts,
         parseAttempts: 1,
         validationResult: 'failed',
+        finishReason: modelResponse?.finishReason,
         errorCode,
         actor: request.actor ?? 'system',
         environment: request.environment ?? 'production',

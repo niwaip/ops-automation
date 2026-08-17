@@ -370,6 +370,11 @@ describe('CapabilityCandidateSelectorService', () => {
       expect(card!.displayName).toBe('Test Operation');
       expect(card!.summary).toBe('Summary for Test Operation');
       expect(card!.goals).toEqual(['goal_test_operation']);
+      expect(card).toMatchObject({
+        executableVersion: '1.0.0',
+        operationDigest: 'test-digest',
+        contractDigest: 'test-contract-digest',
+      });
     });
 
     it('should return empty array when projector throws error', async () => {

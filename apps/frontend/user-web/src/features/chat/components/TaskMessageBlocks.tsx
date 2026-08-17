@@ -10,6 +10,7 @@ import SharedTaskOutcomeCard from '@chat-web/components/TaskOutcomeCard';
 import SharedTaskProgressCard from '@chat-web/components/TaskProgressCard';
 import {
   getMessageStatusLabel,
+  resolveMessageExecutionId,
   resolveMessageTaskStatus,
   type ChatTaskStatus,
 } from '../lib/taskStatus';
@@ -30,7 +31,7 @@ export const hasTaskOutcomeContent = (message: ChatMessage): boolean => {
 
   const taskParts = resolveTaskParts(message.contentParts);
   const status = resolveMessageTaskStatus(message);
-  const executionId = message.metadata?.executionId || taskParts.executionId;
+  const executionId = resolveMessageExecutionId(message);
   const finalResult = message.metadata?.finalResult?.trim();
   const finalSummary = message.metadata?.finalSummary?.trim();
   const errorMessage = message.metadata?.errorMessage?.trim();
@@ -90,7 +91,7 @@ export function TaskOutcomeBlock({
 
   const taskParts = resolveTaskParts(message.contentParts);
   const status = resolveMessageTaskStatus(message);
-  const executionId = message.metadata?.executionId || taskParts.executionId;
+  const executionId = resolveMessageExecutionId(message);
   const finalResult = message.metadata?.finalResult?.trim();
   const finalSummary = message.metadata?.finalSummary?.trim();
   const errorMessage = message.metadata?.errorMessage?.trim();
@@ -250,7 +251,7 @@ interface TaskProgressBlockProps {
 }
 
 export function TaskProgressBlock({ message }: TaskProgressBlockProps) {
-  const progressLogs = (message.metadata?.progressLogs || []) as ChatProgressLog[];
+  const progressLogs: ChatProgressLog[] = message.metadata?.progressLogs || [];
   const status = resolveMessageTaskStatus(message);
   if (
     message.role !== 'assistant' ||

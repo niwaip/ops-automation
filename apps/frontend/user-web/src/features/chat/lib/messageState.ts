@@ -2,6 +2,7 @@ import type { ChatMessage } from '@ops/user-core';
 import { resolveTaskParts } from '@chat-web/lib/contentParts';
 import {
   hasTerminalTaskOutcome,
+  resolveMessageExecutionId,
   resolveMessageTaskStatus,
   terminalTaskStatuses,
 } from './taskStatus';
@@ -205,40 +206,50 @@ export const areMessagesEquivalent = (
     );
   }
 
-  // For assistant messages, generation and execution can take a long time.
-  // We use a larger time window to avoid duplicating messages that took > 15s to generate.
-  if (isEphemeralAssistantMessage(localMessage)) {
-    if (
-      Number.isFinite(localTime) &&
-      Number.isFinite(remoteTime) &&
-      Math.abs(localTime - remoteTime) > 300_000 // 5 minutes for ephemeral drafts
-    ) {
-      return false;
-    }
-    return true;
+  const localExecutionId = resolveMessageExecutionId(localMessage);
+  const remoteExecutionId = resolveMessageExecutionId(remoteMessage);
+
+  // An execution ID is the strongest identity signal. In particular, never
+  // merge adjacent task results just because they finished close together.
+  if (localExecutionId && remoteExecutionId) {
+    return localExecutionId === remoteExecutionId;
   }
+
+  // Streaming drafts can span longer than normal messages, but still need a
+  // content match. Treating every nearby draft as equivalent can attach a
+  // previous execution to the next task.
+  const comparisonWindow = isEphemeralAssistantMessage(localMessage) ? 300_000 : 120_000;
 
   if (
     Number.isFinite(localTime) &&
     Number.isFinite(remoteTime) &&
-    Math.abs(localTime - remoteTime) > 120_000 // 2 minutes for normal assistant messages
+    Math.abs(localTime - remoteTime) > comparisonWindow
   ) {
     return false;
   }
 
-  const localExecutionId =
-    localMessage.metadata?.executionId || resolveTaskParts(localMessage.contentParts).executionId;
-  const remoteExecutionId =
-    remoteMessage.metadata?.executionId || resolveTaskParts(remoteMessage.contentParts).executionId;
-  if (localExecutionId && remoteExecutionId && localExecutionId === remoteExecutionId) {
-    return true;
-  }
-
-  // If both are task messages and close in time (checked above), they are highly likely the same message.
-  // The ephemeral local message might have temporary text like "正在规划任务..." that the remote DB message discards.
-  // Since exact ID matches are handled before calling this, any unmatched local task message is the ephemeral one.
+  // Execution-less task results (for example a ReAct-only task) can still be
+  // reconciled, but only when their result text identifies the same outcome.
   if (localMessage.metadata?.mode === 'task' && remoteMessage.metadata?.mode === 'task') {
-    return true;
+    const taskComparableTexts = (message: ChatMessage): string[] =>
+      [
+        message.content,
+        message.metadata?.finalSummary,
+        message.metadata?.finalResult,
+        message.metadata?.resultTitle,
+        message.metadata?.normalizedResult?.title,
+        message.metadata?.normalizedResult?.summary,
+        message.metadata?.normalizedResult?.detailText,
+      ]
+        .filter((value): value is string => Boolean(value?.trim()))
+        .map(normalizeComparableMessageText)
+        .filter(Boolean);
+    const localTaskTexts = taskComparableTexts(localMessage);
+    const remoteTaskTexts = new Set(taskComparableTexts(remoteMessage));
+    if (localTaskTexts.some((text) => remoteTaskTexts.has(text))) {
+      return true;
+    }
+    return false;
   }
 
   const localText = normalizeComparableMessageText(localMessage.content);
@@ -276,11 +287,9 @@ export const mergeHistoryMessages = (
       merged.set(message.id, {
         ...exactMatch,
         ...message,
+        contentParts: mergeContentParts(exactMatch.contentParts, message.contentParts),
         isStreaming: false,
-        metadata: {
-          ...(exactMatch.metadata || {}),
-          ...(message.metadata || {}),
-        },
+        metadata: mergeDefinedMetadata(exactMatch.metadata, message.metadata),
       });
       matchedLocalIds.add(message.id);
       return;
@@ -296,10 +305,7 @@ export const mergeHistoryMessages = (
         ...(merged.get(message.id) || {}),
         ...message,
         isStreaming: false,
-        metadata: {
-          ...(merged.get(message.id)?.metadata || {}),
-          ...(message.metadata || {}),
-        },
+        metadata: mergeDefinedMetadata(merged.get(message.id)?.metadata, message.metadata),
       });
       return;
     }
@@ -318,11 +324,9 @@ export const mergeHistoryMessages = (
       ...message,
       id: localMatch.id,
       content: preserveLocalContent ? current.content : message.content,
+      contentParts: mergeContentParts(current.contentParts, message.contentParts),
       isStreaming: false,
-      metadata: {
-        ...(current.metadata || {}),
-        ...(message.metadata || {}),
-      },
+      metadata: mergeDefinedMetadata(current.metadata, message.metadata),
     });
   });
 

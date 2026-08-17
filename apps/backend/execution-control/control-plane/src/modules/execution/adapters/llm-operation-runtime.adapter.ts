@@ -13,9 +13,14 @@ export interface LlmOperationInvokeParams {
   environment?: string;
   input: Record<string, any>;
   idempotencyKey?: string;
-  promptTemplateId?: string;
-  promptTemplateVersion?: string;
-  modelPolicyId?: string;
+}
+
+export interface LlmOperationPromptDebugSnapshot {
+  systemPrompt: string;
+  userPrompt: string;
+  modelId: string;
+  llmResponseText?: string;
+  repairAttempts?: number;
 }
 
 export interface LlmOperationInvokeResult {
@@ -29,6 +34,7 @@ export interface LlmOperationInvokeResult {
     totalTokens: number;
   };
   errorMessage?: string;
+  promptDebug?: LlmOperationPromptDebugSnapshot;
 }
 
 interface LlmOperationRuntimeV2Response {
@@ -42,6 +48,7 @@ interface LlmOperationRuntimeV2Response {
     totalTokens?: number;
   };
   errorMessage?: string;
+  promptDebug?: LlmOperationPromptDebugSnapshot;
 }
 
 @Injectable()
@@ -119,12 +126,16 @@ export class LlmOperationRuntimeAdapter {
             }
           : undefined,
         errorMessage: runtimeResult.errorMessage,
+        promptDebug: runtimeResult.promptDebug,
       };
     } catch (error: any) {
       const errMsg =
         error.code === 'ECONNABORTED'
           ? `LLM operation '${params.operationId}' exceeded timeout policy (${timeoutMs}ms)`
-          : error.response?.data?.message || error.message || 'LLM operation request failed';
+          : error.response?.data?.errorMessage ||
+            error.response?.data?.message ||
+            error.message ||
+            'LLM operation request failed';
       this.logger.error(`LLM operation execution failed for ${params.operationId}: ${errMsg}`);
       return {
         success: false,
@@ -132,6 +143,7 @@ export class LlmOperationRuntimeAdapter {
         templateVersion: params.operationVersion,
         output: {},
         errorMessage: errMsg,
+        promptDebug: error.response?.data?.promptDebug,
       };
     }
   }

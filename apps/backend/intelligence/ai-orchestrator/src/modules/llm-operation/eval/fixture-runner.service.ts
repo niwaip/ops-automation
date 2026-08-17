@@ -63,8 +63,12 @@ export class FixtureRunnerService {
     };
   }
 
-  public validateBundleCoverage(bundle: FixtureBundle): { ok: boolean; missingCategories: string[] } {
+  public validateBundleCoverage(
+    bundle: FixtureBundle,
+    exemptCategories: string[] = [],
+  ): { ok: boolean; missingCategories: string[] } {
     const requiredCategories = ['normal', 'schema-fail', 'invalid-json', 'tool-call', 'over-budget'];
+    const exempted = new Set(exemptCategories);
     const foundCategories = new Set<string>();
 
     for (const fixtureCase of bundle.cases) {
@@ -82,7 +86,9 @@ export class FixtureRunnerService {
       }
     }
 
-    const missingCategories = requiredCategories.filter((cat) => !foundCategories.has(cat));
+    const missingCategories = requiredCategories.filter(
+      (cat) => !foundCategories.has(cat) && !exempted.has(cat),
+    );
     return {
       ok: missingCategories.length === 0,
       missingCategories,

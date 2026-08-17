@@ -51,17 +51,29 @@ interface TaskOutcomeCardProps {
   onResumeExecution?: () => void;
 }
 
-const getErrorPreview = (value?: string): string => {
+export const getErrorPreview = (value?: string): string => {
   if (!value) {
     return '任务执行失败，请展开查看具体错误信息。';
   }
 
-  const preview = value
+  const lines = value
     .split('\n')
     .map((line) => line.trim())
-    .find(Boolean);
+    .filter(Boolean);
 
-  return preview || '任务执行失败，请展开查看具体错误信息。';
+  const reasonLine = lines.find((line) => /^原因[:：]\s*\S/.test(line));
+  if (reasonLine) {
+    return reasonLine.replace(/^原因[:：]\s*/, '');
+  }
+
+  const preview = lines.find(
+    (line) =>
+      !/^(?:❌\s*)?任务执行失败[。！!]?$/.test(line) &&
+      !/^状态[:：]/.test(line) &&
+      !/^执行单\s*ID[:：]/i.test(line)
+  );
+
+  return preview || lines[0] || '任务执行失败，请展开查看具体错误信息。';
 };
 
 const getStructuredResultPreview = (value?: string | null): string | undefined => {

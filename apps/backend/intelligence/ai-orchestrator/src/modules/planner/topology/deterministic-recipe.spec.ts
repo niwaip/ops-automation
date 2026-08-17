@@ -101,6 +101,8 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
         summary: 'markdown_content',
       },
       executableVersion: '1.0.0',
+      operationDigest: 'sha256:summarize-list-operation',
+      contractDigest: 'sha256:summarize-list-contract',
     },
     {
       id: 'summarize_text',
@@ -115,6 +117,8 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
         summary: 'markdown_content',
       },
       executableVersion: '1.0.0',
+      operationDigest: 'sha256:summarize-text-operation',
+      contractDigest: 'sha256:summarize-text-contract',
     },
   ];
 

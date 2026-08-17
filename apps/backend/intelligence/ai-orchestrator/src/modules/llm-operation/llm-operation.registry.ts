@@ -9,6 +9,8 @@ export interface LlmOperationTemplate {
   temperature: number;
   maxInputTokens: number;
   maxOutputTokens: number;
+  /** Oversize input policy: 'reject' (fail-closed, default) or 'truncate' (keep the budget-sized prefix + notice). */
+  oversizeInput?: 'reject' | 'truncate';
   inputSchema?: Record<string, unknown>;
   outputSchema?: Record<string, unknown>;
   buildPrompt: (input: Record<string, any>) => { systemPrompt: string; userPrompt: string };
@@ -22,8 +24,8 @@ export const LLM_OPERATION_TEMPLATES: { [K in LlmOperationIdV1]: LlmOperationTem
     version: '1',
     modelPolicyId: 'task-default',
     temperature: 0,
-    maxInputTokens: 4000,
-    maxOutputTokens: 8000,
+    maxInputTokens: 8000,
+    maxOutputTokens: 4000,
     inputSchema: {
       type: 'object',
       required: ['items'],
@@ -62,7 +64,8 @@ export const LLM_OPERATION_TEMPLATES: { [K in LlmOperationIdV1]: LlmOperationTem
 输出要求：
 1. 语言简炼、结构规范，使用 Markdown 标题、列表或表格。
 2. 保持客观事实，禁止无中生有。
-3. 必须输出合法 JSON，格式为: {"markdown_content": "# 标题\\n\\n总结正文..."}`,
+3. 摘要正文控制在 800 个中文字符以内，合并重复信息，禁止复述大段原文。
+4. 必须输出合法 JSON，格式为: {"markdown_content": "# 标题\\n\\n总结正文..."}`,
         userPrompt: `请对以下内容做结构化总结：\n\n${textBlock}`,
       };
     },
@@ -132,8 +135,9 @@ export const LLM_OPERATION_TEMPLATES: { [K in LlmOperationIdV1]: LlmOperationTem
     version: '1',
     modelPolicyId: 'task-default',
     temperature: 0,
-    maxInputTokens: 16000,
+    maxInputTokens: 48000,
     maxOutputTokens: 2000,
+    oversizeInput: 'truncate',
     inputSchema: {
       type: 'object',
       required: ['text'],

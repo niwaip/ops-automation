@@ -55,6 +55,74 @@ describe('LlmOperationRuntimeAdapter', () => {
     expect(result.usage).toEqual({ promptTokens: 10, completionTokens: 20, totalTokens: 30 });
   });
 
+  it('forwards the promptDebug snapshot from the runtime response', async () => {
+    post.mockResolvedValue({
+      data: {
+        success: true,
+        operationRef: { id: 'summarize_text', version: '1.0.4', digest: 'sha256:operation' },
+        source: 'database',
+        data: { summary: 'ok' },
+        promptDebug: {
+          systemPrompt: 'You are a summarizer.',
+          userPrompt: '文本：hello',
+          modelId: 'model-1',
+          llmResponseText: '{"summary": "ok"}',
+        },
+      },
+    });
+
+    const result = await new LlmOperationRuntimeAdapter().executeOperation({
+      executionId: 'execution-1',
+      stepId: 'step-2',
+      operationId: 'summarize_text',
+      operationVersion: '1.0.4',
+      operationDigest: 'sha256:operation',
+      contractDigest: 'sha256:contract',
+      input: { text: 'hello' },
+      idempotencyKey: 'execution-1:step-2',
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.promptDebug).toEqual({
+      systemPrompt: 'You are a summarizer.',
+      userPrompt: '文本：hello',
+      modelId: 'model-1',
+      llmResponseText: '{"summary": "ok"}',
+    });
+  });
+
+  it('forwards the promptDebug snapshot from an error response body', async () => {
+    post.mockRejectedValue({
+      response: {
+        data: {
+          success: false,
+          errorMessage: 'REPAIR_EXHAUSTED',
+          promptDebug: {
+            systemPrompt: 'You are a summarizer.',
+            userPrompt: '文本：hello',
+            modelId: 'model-1',
+            llmResponseText: 'not json at all',
+          },
+        },
+      },
+    });
+
+    const result = await new LlmOperationRuntimeAdapter().executeOperation({
+      executionId: 'execution-1',
+      stepId: 'step-2',
+      operationId: 'summarize_text',
+      operationVersion: '1.0.4',
+      operationDigest: 'sha256:operation',
+      contractDigest: 'sha256:contract',
+      input: { text: 'hello' },
+      idempotencyKey: 'execution-1:step-2',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.errorMessage).toBe('REPAIR_EXHAUSTED');
+    expect(result.promptDebug?.llmResponseText).toBe('not json at all');
+  });
+
   it('rejects an unfrozen invocation before making a network request', async () => {
     await expect(
       new LlmOperationRuntimeAdapter().executeOperation({

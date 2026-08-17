@@ -150,7 +150,7 @@ export class DeterministicPlanGeneratorService {
 
     // Compatibility path for isolated/unit deployments that have not wired the
     // two-stage services yet. Production PlannerModule wires all of them.
-    const systemPrompt = this.buildSystemPrompt(skillCards, llmOperationCards);
+    const systemPrompt = this.buildSystemPrompt(skillCards, llmOperationCards, dto.systemInputs);
     const userPrompt = `用户请求: "${dto.userRequest}"`;
 
     const activeModel = this.modelService.getPreferredDefaultModel({ mode: 'task' });
@@ -217,7 +217,19 @@ export class DeterministicPlanGeneratorService {
   private buildSystemPrompt(
     skillCards: CompactCapabilityCardV1[],
     llmOperationCards: CompactCapabilityCardV1[],
+    systemInputs?: Record<string, unknown>,
   ): string {
+    const previousResultText =
+      typeof systemInputs?.previousResultText === 'string'
+        ? systemInputs.previousResultText.slice(0, 6000)
+        : undefined;
+    const sessionContextSection = previousResultText
+      ? `\n【会话上下文】用户本会话上一次任务的输出结果如下（节选）：
+${previousResultText}
+
+若本次任务的能力需要内容类参数（如 content、text、markdown、summary），可规划直接使用该输出作为输入（inputBindings 中声明 content 等参数并交由参数绑定阶段处理）；若该输出与本次任务无关，则忽略。\n`
+      : '';
+
     return `你是一个企业级 AI 系统的确定性任务拆分规划器 (Deterministic Task Decomposition Planner)。
 你的唯一职责是将用户复合请求分解为一个受约束的顺序执行计划 (DeterministicPlanDraftV1)。
 
@@ -238,7 +250,7 @@ export class DeterministicPlanGeneratorService {
    - "news_item_list"：搜索节点的列表类结果
    严禁使用 "text"、"string"、"content"、"data" 等非系统定义类型标签。
 10. llm_operation 节点只输出 operationId、依赖和 inputBindings；禁止输出 Prompt、模型参数、Version 或 Digest。这些权威字段由 Registry 和控制面冻结阶段补全。
-
+${sessionContextSection}
 【候选 Skill 能力卡片】:
 ${JSON.stringify(skillCards, null, 2)}
 

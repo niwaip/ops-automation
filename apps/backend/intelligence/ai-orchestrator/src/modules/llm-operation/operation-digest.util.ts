@@ -17,6 +17,8 @@ export interface OperationDigestInput {
   maxInputTokens: number;
   maxOutputTokens: number;
   repairPromptTemplate?: string;
+  inputPolicyOversize?: 'reject' | 'truncate';
+  evalPolicyExempt?: string[];
   executionPolicyTools?: 'disabled' | 'enabled';
 }
 
@@ -70,6 +72,8 @@ export function computeOperationDigest(input: OperationDigestInput): string {
     maxInputTokens: input.maxInputTokens,
     maxOutputTokens: input.maxOutputTokens,
     repairPromptTemplate: input.repairPromptTemplate,
+    inputPolicyOversize: input.inputPolicyOversize || 'reject',
+    evalPolicyExempt: [...(input.evalPolicyExempt || [])].sort(),
     executionPolicyTools: input.executionPolicyTools || 'disabled',
   });
 

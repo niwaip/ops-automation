@@ -73,6 +73,10 @@ export interface LLMRateLimit {
  */
 export interface LLMResponse {
   content: string;
+  /** Provider termination reason (for example: stop, length, tool_calls). */
+  finishReason?: string;
+  /** Provider-native reasoning channel, retained for diagnostics but never parsed as business output. */
+  reasoningContent?: string;
   usage?: LLMUsage;
   rateLimit?: LLMRateLimit;
 }
@@ -276,6 +280,24 @@ export interface PromptDebugLLMCall {
   }>;
   responseText?: string;
   note?: string;
+}
+
+export interface PromptDebugPayload {
+  systemPrompt: string;
+  userPrompt: string;
+  debugSource?: 'planner' | 'react-engine';
+  systemPromptSectionKeys?: string[];
+  systemPromptSectionSources?: string[];
+  userPromptSectionKeys?: string[];
+  userPromptSectionSources?: string[];
+  modelId?: string;
+  llmRequestMessages?: Array<{
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+  }>;
+  llmResponseText?: string;
+  llmCalls?: PromptDebugLLMCall[];
+  notes?: string[];
 }
 
 export interface RecognizeParamsResponseDTO {

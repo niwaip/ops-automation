@@ -14,6 +14,7 @@ import { ReActEngineService } from '../react-engine/react-engine.service';
 import type { ChatRequestDTO } from './chat.dto';
 import { ChatExecutionStreamService } from './chat-execution-stream.service';
 import { DeterministicTaskExecutionService } from './deterministic-task-execution.service';
+import { ChatConversationService } from './chat-conversation.service';
 import { SkillCacheService } from '../planner/skill/skill-cache.service';
 import { NO_MATCHING_SKILL_MESSAGE } from '../planner/skill/skill-match-policy';
 import type { ChatUserContext, WaitingInputSemantic } from './chat.types';
@@ -31,6 +32,7 @@ export class ChatOrchestratorService {
     private readonly promptDebugSettingsService: PromptDebugSettingsService,
     private readonly waitingInputService: ChatWaitingInputService,
     private readonly executionStreamService: ChatExecutionStreamService,
+    private readonly chatConversationService: ChatConversationService,
     private readonly deterministicTaskExecutionService?: DeterministicTaskExecutionService,
     private readonly skillCacheService?: SkillCacheService,
   ) {}
@@ -267,6 +269,13 @@ export class ChatOrchestratorService {
 
       const availableSkills = (await this.skillCacheService?.loadAvailableSkills(authToken, traceId)) || [];
 
+      // Session context: expose the most recent completed task output so a
+      // follow-up task can reuse it as an input candidate (e.g. "输出到md文件"
+      // binds its content parameter from the previous summary).
+      const latestResult = await this.chatConversationService.getLatestCompletedTaskResult(
+        body.sessionId,
+      );
+
       const result = await this.deterministicTaskExecutionService.executeDeterministicTask(
         body.message,
         context.userId,
@@ -274,7 +283,15 @@ export class ChatOrchestratorService {
           authToken,
           user: { userId: context.userId, userRoles: context.userRoles },
           availableSkills,
-          systemInputs: this.buildUploadedFileParams(body.files),
+          systemInputs: {
+            ...this.buildUploadedFileParams(body.files),
+            ...(latestResult?.summaryText
+              ? {
+                  previousResultText: latestResult.summaryText,
+                  previousResultTitle: latestResult.resultTitle,
+                }
+              : {}),
+          },
           planningRequest,
         },
       );
@@ -722,6 +739,11 @@ export class ChatOrchestratorService {
       systemPromptSectionKeys: promptDebug.systemPromptSectionKeys,
       userPromptSectionKeys: promptDebug.userPromptSectionKeys,
       modelId: promptDebug.modelId,
+      llmRequestMessages: Array.isArray(promptDebug.llmRequestMessages)
+        ? promptDebug.llmRequestMessages
+        : undefined,
+      llmResponseText:
+        typeof promptDebug.llmResponseText === 'string' ? promptDebug.llmResponseText : undefined,
       notes: promptDebug.notes,
       llmCalls: Array.isArray(promptDebug.llmCalls) ? promptDebug.llmCalls : undefined,
     };

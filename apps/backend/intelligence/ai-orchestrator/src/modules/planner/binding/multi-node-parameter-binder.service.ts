@@ -23,6 +23,24 @@ export interface ParameterBindingResult {
   notes?: string[];
 }
 
+/**
+ * Parameter names that semantically carry "content to process". When no other
+ * source resolves them and the session provides the previous task output, the
+ * output is bound as a literal instead of asking the user again.
+ */
+const CONTENT_PARAM_NAMES = new Set([
+  'content',
+  'text',
+  'markdown',
+  'markdown_content',
+  'summary',
+  'body',
+  'content_text',
+  'input_text',
+]);
+
+const PREVIOUS_RESULT_RECOGNIZER_CONTEXT_LIMIT = 4000;
+
 @Injectable()
 export class MultiNodeParameterBinderService {
   private readonly logger = new Logger(MultiNodeParameterBinderService.name);
@@ -95,6 +113,10 @@ export class MultiNodeParameterBinderService {
 
       if (Object.keys(recognizerProperties).length > 0) {
         if (this.recognizerService) {
+          const previousResultText =
+            typeof systemInputs?.previousResultText === 'string'
+              ? systemInputs.previousResultText.slice(0, PREVIOUS_RESULT_RECOGNIZER_CONTEXT_LIMIT)
+              : undefined;
           const recognized = await this.recognizerService.recognizeParams({
             template_id: card?.displayName || card?.id || node.capabilityKey,
             user_input: userRequest,
@@ -104,6 +126,7 @@ export class MultiNodeParameterBinderService {
               skill_name: card?.displayName || card?.id || node.capabilityKey,
               skill_description: card?.summary || '',
               node_ref: node.ref,
+              ...(previousResultText ? { previous_result_text: previousResultText } : {}),
             },
             params_schema: {
               properties: recognizerProperties as any,
@@ -154,6 +177,24 @@ export class MultiNodeParameterBinderService {
         }
 
         if (!requiredFields.has(paramName)) continue;
+
+        // Session context fallback: content-carrying parameters reuse the most
+        // recent completed task output instead of asking the user again.
+        const previousResultText =
+          typeof systemInputs?.previousResultText === 'string'
+            ? systemInputs.previousResultText.trim()
+            : '';
+        if (CONTENT_PARAM_NAMES.has(paramName) && previousResultText) {
+          nodeInputs[paramName] = previousResultText;
+          bindings[paramName] = {
+            source: 'literal',
+            value: previousResultText,
+          } as ValueBindingV1;
+          notes.push(
+            `参数 '${node.ref}.${paramName}' 未在请求中提供，已自动使用会话中上一次任务的输出作为输入。`,
+          );
+          continue;
+        }
 
         const inputPath = `planInputs.${node.ref}.${paramName}`;
         const nodeId = `${node.ref}_${card?.displayName || 'step'}`;

@@ -375,6 +375,9 @@ export const mapExecutionPhaseToDto = (phase: Record<string, unknown>): Executio
 };
 
 export const mapExecutionStepToDto = (step: Record<string, unknown>): ExecutionStepDto => {
+  const inputJson = (step.inputJson || step.input_json) as Record<string, unknown> | null;
+  const outputJson = (step.outputJson || step.output_json) as Record<string, unknown> | null;
+  const targetJson = (step.targetJson || step.target_json) as Record<string, unknown> | null;
   return {
     id: step.id as string,
     executionId: step.executionId as string,
@@ -383,8 +386,13 @@ export const mapExecutionStepToDto = (step: Record<string, unknown>): ExecutionS
     type: step.type as string,
     status: step.status as ExecutionStepStatus,
     action: step.action as string | null,
-    inputJson: (step.inputJson || step.input_json) as Record<string, unknown> | null,
-    outputJson: (step.outputJson || step.output_json) as Record<string, unknown> | null,
+    inputJson,
+    outputJson,
+    // Aliases declared by ExecutionStepDto (user-core) so consumers can read
+    // step.input / step.output / step.target without touching snake_case rows.
+    input: inputJson ?? undefined,
+    output: outputJson ?? undefined,
+    target: targetJson ?? undefined,
     errorCode: step.errorCode as string | null,
     errorMessage: step.errorMessage as string | null,
     snapshotId: step.snapshotId as string | null,

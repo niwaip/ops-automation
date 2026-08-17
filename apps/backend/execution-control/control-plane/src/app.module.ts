@@ -9,6 +9,7 @@ import { AuthMiddleware } from './modules/auth/auth.middleware';
 import { McpModule } from './modules/mcp/mcp.module';
 import { JwtSecretGuard } from './modules/auth/jwt-secret.guard';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
+import { SavedSkillModule } from './modules/saved-skill/saved-skill.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { SchedulerModule } from './modules/scheduler/scheduler.module';
     NotificationModule,
     McpModule,
     SchedulerModule,
+    SavedSkillModule,
   ],
   providers: [JwtSecretGuard],
 })

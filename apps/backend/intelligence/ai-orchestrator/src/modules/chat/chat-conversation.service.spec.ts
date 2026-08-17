@@ -487,4 +487,109 @@ describe('ChatConversationService', () => {
       expect.any(Object)
     );
   });
+
+  describe('getLatestCompletedTaskResult', () => {
+    it('returns the most recent completed task result, skipping failed and waiting messages', async () => {
+      const { service, sessionService } = createService();
+      sessionService.getChatSession.mockResolvedValue({
+        history: [
+          {
+            role: 'user',
+            content: '任务一',
+            metadata: { mode: 'task' },
+          },
+          {
+            role: 'assistant',
+            content: '任务一完成',
+            metadata: {
+              mode: 'task',
+              taskStatus: 'completed',
+              finalResult: '第一个结果',
+              executionId: 'exec-1',
+              resultTitle: '任务一',
+            },
+          },
+          {
+            role: 'user',
+            content: '任务二',
+            metadata: { mode: 'task' },
+          },
+          {
+            role: 'assistant',
+            content: '任务二失败',
+            metadata: { mode: 'task', taskStatus: 'failed', finalResult: '失败的输出' },
+          },
+          {
+            role: 'user',
+            content: '任务三',
+            metadata: { mode: 'task' },
+          },
+          {
+            role: 'assistant',
+            content: '任务三完成',
+            metadata: {
+              mode: 'task',
+              taskStatus: 'completed',
+              finalResult: '第三个结果',
+              executionId: 'exec-3',
+              resultTitle: '任务三',
+            },
+          },
+        ],
+      });
+
+      await expect(service.getLatestCompletedTaskResult('s1')).resolves.toEqual({
+        summaryText: '第三个结果',
+        resultTitle: '任务三',
+        executionId: 'exec-3',
+        resultType: undefined,
+        structuredData: undefined,
+      });
+    });
+
+    it('returns null when the session has no completed task', async () => {
+      const { service, sessionService } = createService();
+      sessionService.getChatSession.mockResolvedValue({
+        history: [
+          {
+            role: 'assistant',
+            content: '等待输入',
+            metadata: { mode: 'task', taskStatus: 'waiting_input' },
+          },
+          {
+            role: 'assistant',
+            content: '执行失败',
+            metadata: { mode: 'task', taskStatus: 'failed', finalResult: '失败' },
+          },
+        ],
+      });
+
+      await expect(service.getLatestCompletedTaskResult('s2')).resolves.toBeNull();
+    });
+
+    it('returns null when no session history exists', async () => {
+      const { service, sessionService } = createService();
+      sessionService.getChatSession.mockResolvedValue(null);
+
+      await expect(service.getLatestCompletedTaskResult('s3')).resolves.toBeNull();
+    });
+
+    it('truncates the summary text to the configured limit', async () => {
+      const { service, sessionService } = createService();
+      const longText = 'x'.repeat(5000);
+      sessionService.getChatSession.mockResolvedValue({
+        history: [
+          {
+            role: 'assistant',
+            content: longText,
+            metadata: { mode: 'task', taskStatus: 'completed', finalResult: longText },
+          },
+        ],
+      });
+
+      const result = await service.getLatestCompletedTaskResult('s4', 100);
+      expect(result?.summaryText).toHaveLength(100);
+      expect(result?.summaryText).toBe('x'.repeat(100));
+    });
+  });
 });

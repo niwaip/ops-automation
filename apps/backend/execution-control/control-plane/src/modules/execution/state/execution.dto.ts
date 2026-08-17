@@ -641,6 +641,18 @@ export class ExecutionStepDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
+  input?: Record<string, unknown>;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  output?: Record<string, unknown>;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  target?: Record<string, unknown>;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
   errorCode?: string | null;
 
   @ApiProperty({ required: false })

@@ -1,6 +1,6 @@
-import type { LLMUsage, LLMRateLimit, PromptDebugLLMCall } from '../../interfaces';
+import type { LLMUsage, LLMRateLimit, PromptDebugLLMCall, PromptDebugPayload } from '../../interfaces';
 
-export type { LLMUsage, LLMRateLimit, PromptDebugLLMCall };
+export type { LLMUsage, LLMRateLimit, PromptDebugLLMCall, PromptDebugPayload };
 
 /**
  * ReAct Engine Interfaces
@@ -78,24 +78,6 @@ export interface PromptAssemblyMeta {
   systemPromptSectionSources?: string[];
   userPromptSectionKeys?: string[];
   userPromptSectionSources?: string[];
-}
-
-export interface PromptDebugPayload {
-  systemPrompt: string;
-  userPrompt: string;
-  debugSource?: 'planner' | 'react-engine';
-  systemPromptSectionKeys?: string[];
-  systemPromptSectionSources?: string[];
-  userPromptSectionKeys?: string[];
-  userPromptSectionSources?: string[];
-  modelId?: string;
-  llmRequestMessages?: Array<{
-    role: 'system' | 'user' | 'assistant';
-    content: string;
-  }>;
-  llmResponseText?: string;
-  llmCalls?: PromptDebugLLMCall[];
-  notes?: string[];
 }
 
 export interface DecisionContext {

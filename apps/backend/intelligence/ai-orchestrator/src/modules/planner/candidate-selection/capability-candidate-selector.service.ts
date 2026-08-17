@@ -198,6 +198,9 @@ export class CapabilityCandidateSelectorService {
           inputs: this.extractSchemaSummary(projection.inputSchema),
           outputs: outputProjection.outputContract,
           primaryOutput: outputProjection.primaryOutput,
+          executableVersion: projection.capabilityRef.version,
+          operationDigest: projection.capabilityRef.digest,
+          contractDigest: projection.capabilityRef.contractDigest,
           _rawInputSchema: {
             required: Array.isArray((projection.inputSchema as any)?.required)
               ? (projection.inputSchema as any).required

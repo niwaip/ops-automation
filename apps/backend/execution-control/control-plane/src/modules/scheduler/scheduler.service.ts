@@ -1,8 +1,18 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+  Optional,
+} from '@nestjs/common';
+import type { DeterministicPlanDraftV1 } from '@ops/backend-deterministic-plan';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExecutionService } from '../execution/execution.service';
 import { CreateScheduleDto, UpdateScheduleDto, ScheduleDto } from './scheduler.dto';
 import * as parser from 'cron-parser';
+import { SavedSkillResolverService } from '../saved-skill/saved-skill-resolver.service';
+import { configureSavedSkillExecution } from '../saved-skill/saved-skill-runtime-params';
 
 @Injectable()
 export class SchedulerService implements OnModuleInit, OnModuleDestroy {
@@ -12,7 +22,8 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly executionService: ExecutionService
+    private readonly executionService: ExecutionService,
+    @Optional() private readonly savedSkillResolver?: SavedSkillResolverService
   ) {}
 
   onModuleInit() {
@@ -147,6 +158,16 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       throw new Error(`Invalid cron expression "${dto.cronExpression}": ${err}`);
     }
 
+    if (this.savedSkillResolver) {
+      const savedSkill = await this.savedSkillResolver.resolveForExecution(
+        userId,
+        dto.skillId,
+        dto.skillVersion
+      );
+      if (savedSkill) {
+        this.assertKnownSavedSkillOverrides(savedSkill, dto.input);
+      }
+    }
     const schedule = await this.prisma.skillSchedule.create({
       data: {
         name: dto.name,
@@ -164,28 +185,38 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
     return this.mapToDto(schedule);
   }
 
-  async list(userId?: string): Promise<ScheduleDto[]> {
+  async list(userId: string): Promise<ScheduleDto[]> {
     const schedules = await this.prisma.skillSchedule.findMany({
-      where: userId ? { createdBy: userId } : {},
+      where: { createdBy: userId },
       orderBy: { createdAt: 'desc' },
     });
     return schedules.map(s => this.mapToDto(s));
   }
 
-  async getById(id: string): Promise<ScheduleDto | null> {
-    const schedule = await this.prisma.skillSchedule.findUnique({
-      where: { id },
+  async getById(id: string, userId: string): Promise<ScheduleDto | null> {
+    const schedule = await this.prisma.skillSchedule.findFirst({
+      where: { id, createdBy: userId },
     });
     if (!schedule) return null;
     return this.mapToDto(schedule);
   }
 
-  async update(id: string, dto: UpdateScheduleDto): Promise<ScheduleDto> {
-    const current = await this.prisma.skillSchedule.findUnique({
-      where: { id },
+  async update(id: string, userId: string, dto: UpdateScheduleDto): Promise<ScheduleDto> {
+    const current = await this.prisma.skillSchedule.findFirst({
+      where: { id, createdBy: userId },
     });
     if (!current) {
       throw new Error(`Schedule with ID ${id} not found.`);
+    }
+    if (this.savedSkillResolver) {
+      const savedSkill = await this.savedSkillResolver.resolveForExecution(
+        userId,
+        current.skillId,
+        current.skillVersion || undefined
+      );
+      if (savedSkill && dto.input !== undefined) {
+        this.assertKnownSavedSkillOverrides(savedSkill, dto.input);
+      }
     }
 
     const updateData: any = {};
@@ -219,7 +250,14 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
     return this.mapToDto(updated);
   }
 
-  async delete(id: string): Promise<boolean> {
+  async delete(id: string, userId: string): Promise<boolean> {
+    const current = await this.prisma.skillSchedule.findFirst({
+      where: { id, createdBy: userId },
+      select: { id: true },
+    });
+    if (!current) {
+      throw new Error(`Schedule with ID ${id} not found.`);
+    }
     await this.prisma.skillSchedule.delete({
       where: { id },
     });
@@ -227,8 +265,8 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
   }
 
   async triggerManually(id: string, userId: string): Promise<boolean> {
-    const schedule = await this.prisma.skillSchedule.findUnique({
-      where: { id },
+    const schedule = await this.prisma.skillSchedule.findFirst({
+      where: { id, createdBy: userId },
     });
     if (!schedule) {
       throw new Error(`Schedule with ID ${id} not found.`);
@@ -244,6 +282,25 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
     } as any);
 
     return true;
+  }
+
+  private assertKnownSavedSkillOverrides(
+    savedSkill: {
+      planSnapshot: Record<string, unknown>;
+      fixedInput: Record<string, unknown>;
+    },
+    input: Record<string, unknown>
+  ): void {
+    const configured = configureSavedSkillExecution(
+      savedSkill.planSnapshot as unknown as DeterministicPlanDraftV1,
+      savedSkill.fixedInput,
+      input
+    );
+    if (configured.unknownOverrideKeys.length > 0) {
+      throw new BadRequestException(
+        `Saved workflow contains unknown runtime parameters: ${configured.unknownOverrideKeys.join(', ')}`
+      );
+    }
   }
 
   private mapToDto(s: any): ScheduleDto {

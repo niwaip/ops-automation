@@ -431,22 +431,37 @@ export class DeterministicPlanSchedulerService {
       environment: 'production',
       input: resolvedInput,
       idempotencyKey: step.idempotencyKey || `${execution.id}:${step.id}`,
-      promptTemplateId: contractMeta.promptTemplateId || step.capabilityId,
-      promptTemplateVersion: contractMeta.promptTemplateVersion || step.capabilityVersion || '1',
-      modelPolicyId: contractMeta.modelPolicyId || 'task-default',
     });
 
     if (!result.success) {
+      // Persist the prompt snapshot (when the orchestrator emitted one) so the
+      // debug console can inspect failed LLM steps too.
+      if (result.promptDebug) {
+        await this.prisma.executionStep.update({
+          where: { id: step.id },
+          data: {
+            outputJson: { __promptDebug: result.promptDebug } as any,
+          },
+        });
+      }
       throw new Error(result.errorMessage || `LLM Operation '${step.capabilityId}' returned failure`);
     }
 
     const normalizedOutput = this.validateOutputContract(step, result.output || {}, execution.id);
 
+    // The frozen output schema (additionalProperties: false) is the sole arbiter
+    // for business output; the prompt snapshot is merged AFTER validation so it
+    // never participates in contract checks. Downstream consumers read
+    // outputJson by declared keys only, so the extra key is inert.
+    const persistedOutput = result.promptDebug
+      ? { ...normalizedOutput, __promptDebug: result.promptDebug }
+      : normalizedOutput;
+
     await this.prisma.executionStep.update({
       where: { id: step.id },
       data: {
         status: 'succeeded',
-        outputJson: normalizedOutput as any,
+        outputJson: persistedOutput as any,
         endedAt: new Date(),
         leaseExpiresAt: null,
       },

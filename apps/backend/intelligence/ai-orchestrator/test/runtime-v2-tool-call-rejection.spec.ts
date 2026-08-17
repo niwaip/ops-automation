@@ -8,6 +8,7 @@ import { OutputValidatorService } from '../src/modules/llm-operation/runtime/out
 import { BudgetEnforcerService } from '../src/modules/llm-operation/runtime/budget-enforcer.service';
 import { LlmOperationAuditService } from '../src/modules/llm-operation/audit/llm-operation-audit.service';
 import { LlmOperationError, LLM_OPERATION_ERROR_CODES } from '../src/modules/llm-operation/registry/errors';
+import { PromptDebugSettingsService } from '../src/modules/debug-settings/prompt-debug-settings.service';
 
 /**
  * Phase 2-β — V2 Runtime Tool Call Rejection (fail-closed)
@@ -17,9 +18,20 @@ import { LlmOperationError, LLM_OPERATION_ERROR_CODES } from '../src/modules/llm
  * the runtime enforces this by throwing TOOL_CALL_FORBIDDEN.
  */
 describe('Runtime V2 Tool Call Rejection (P2-β)', () => {
+  function buildVersionRecord(manifestJson: Record<string, unknown>) {
+    return {
+      version: 'v1',
+      operationDigest: 'test-digest',
+      contractDigest: 'test-contract',
+      state: 'approved',
+      manifestJson,
+    };
+  }
+
   function createRuntime() {
     const registry = {
       resolveActiveVersion: jest.fn(),
+      resolveExactVersion: jest.fn(),
     };
     const modelService = {
       getPreferredDefaultModel: jest.fn(),
@@ -39,16 +51,19 @@ describe('Runtime V2 Tool Call Rejection (P2-β)', () => {
     };
     const budgetEnforcer = {
       preflightInput: jest.fn(),
+      prepareInput: jest.fn((input: Record<string, unknown>) => input),
       assertOutputWithinBudget: jest.fn(),
       assertLatencyWithinBudget: jest.fn(),
     };
     const auditService = {
       recordInvocation: jest.fn().mockResolvedValue(undefined),
+      findCompletedByIdempotencyKey: jest.fn().mockResolvedValue(null),
     };
 
     const runtime = new LlmOperationV2RuntimeService(
       registry as any,
       modelService as any,
+      { call: modelService.callModel } as any,
       promptRenderer as any,
       inputValidator as any,
       toolCallGuard,
@@ -56,6 +71,7 @@ describe('Runtime V2 Tool Call Rejection (P2-β)', () => {
       budgetEnforcer as any,
       auditService as any,
       new (require('@nestjs/common').Logger)(LlmOperationV2RuntimeService.name),
+      new PromptDebugSettingsService(),
     );
 
     return { runtime, registry, modelService, outputValidator };
@@ -65,19 +81,13 @@ describe('Runtime V2 Tool Call Rejection (P2-β)', () => {
     it('rejects OpenAI-style tool_calls', async () => {
       const { runtime, registry, modelService } = createRuntime();
 
-      registry.resolveActiveVersion.mockResolvedValue({
-        version: {
-          version: 'v1',
-          operationDigest: 'test-digest',
-          contractDigest: 'test-contract',
-          manifestJson: {
-            executionPolicy: { tools: 'disabled' },
-            inputSchema: { type: 'object', properties: { items: { type: 'array' } } },
-            outputSchema: { type: 'object', properties: { summary: { type: 'string' } } },
-          },
-        },
-        source: 'database',
-      });
+      registry.resolveExactVersion.mockResolvedValue(
+        buildVersionRecord({
+          executionPolicy: { tools: 'disabled' },
+          inputSchema: { type: 'object', properties: { items: { type: 'array' } } },
+          outputSchema: { type: 'object', properties: { summary: { type: 'string' } } },
+        }),
+      );
 
       modelService.getPreferredDefaultModel.mockReturnValue({
         id: 'model-1',
@@ -98,6 +108,7 @@ describe('Runtime V2 Tool Call Rejection (P2-β)', () => {
 
       const request = {
         operationId: 'summarize_list',
+        operationVersion: 'v1',
         input: { items: ['a', 'b'] },
       };
 
@@ -112,19 +123,13 @@ describe('Runtime V2 Tool Call Rejection (P2-β)', () => {
     it('rejects legacy function_call', async () => {
       const { runtime, registry, modelService } = createRuntime();
 
-      registry.resolveActiveVersion.mockResolvedValue({
-        version: {
-          version: 'v1',
-          operationDigest: 'test-digest',
-          contractDigest: 'test-contract',
-          manifestJson: {
-            executionPolicy: { tools: 'disabled' },
-            inputSchema: { type: 'object', properties: {} },
-            outputSchema: { type: 'object', properties: {} },
-          },
-        },
-        source: 'database',
-      });
+      registry.resolveExactVersion.mockResolvedValue(
+        buildVersionRecord({
+          executionPolicy: { tools: 'disabled' },
+          inputSchema: { type: 'object', properties: {} },
+          outputSchema: { type: 'object', properties: {} },
+        }),
+      );
 
       modelService.getPreferredDefaultModel.mockReturnValue({
         id: 'model-1',
@@ -139,6 +144,7 @@ describe('Runtime V2 Tool Call Rejection (P2-β)', () => {
 
       const request = {
         operationId: 'test_op',
+        operationVersion: 'v1',
         input: {},
       };
 
@@ -152,19 +158,13 @@ describe('Runtime V2 Tool Call Rejection (P2-β)', () => {
     it('rejects XML-style <tool_use> tags in content', async () => {
       const { runtime, registry, modelService } = createRuntime();
 
-      registry.resolveActiveVersion.mockResolvedValue({
-        version: {
-          version: 'v1',
-          operationDigest: 'test-digest',
-          contractDigest: 'test-contract',
-          manifestJson: {
-            executionPolicy: { tools: 'disabled' },
-            inputSchema: { type: 'object', properties: {} },
-            outputSchema: { type: 'object', properties: {} },
-          },
-        },
-        source: 'database',
-      });
+      registry.resolveExactVersion.mockResolvedValue(
+        buildVersionRecord({
+          executionPolicy: { tools: 'disabled' },
+          inputSchema: { type: 'object', properties: {} },
+          outputSchema: { type: 'object', properties: {} },
+        }),
+      );
 
       modelService.getPreferredDefaultModel.mockReturnValue({
         id: 'model-1',
@@ -178,6 +178,7 @@ describe('Runtime V2 Tool Call Rejection (P2-β)', () => {
 
       const request = {
         operationId: 'test_op',
+        operationVersion: 'v1',
         input: {},
       };
 
@@ -192,20 +193,14 @@ describe('Runtime V2 Tool Call Rejection (P2-β)', () => {
     it('never enters repair loop when tool_call detected', async () => {
       const { runtime, registry, modelService, outputValidator } = createRuntime();
 
-      registry.resolveActiveVersion.mockResolvedValue({
-        version: {
-          version: 'v1',
-          operationDigest: 'test-digest',
-          contractDigest: 'test-contract',
-          manifestJson: {
-            executionPolicy: { tools: 'disabled' },
-            repair: { maxAttempts: 3 },
-            inputSchema: { type: 'object', properties: {} },
-            outputSchema: { type: 'object', properties: {} },
-          },
-        },
-        source: 'database',
-      });
+      registry.resolveExactVersion.mockResolvedValue(
+        buildVersionRecord({
+          executionPolicy: { tools: 'disabled' },
+          repair: { maxAttempts: 3 },
+          inputSchema: { type: 'object', properties: {} },
+          outputSchema: { type: 'object', properties: {} },
+        }),
+      );
 
       modelService.getPreferredDefaultModel.mockReturnValue({
         id: 'model-1',
@@ -222,6 +217,7 @@ describe('Runtime V2 Tool Call Rejection (P2-β)', () => {
 
       const request = {
         operationId: 'test_op',
+        operationVersion: 'v1',
         input: {},
       };
 
