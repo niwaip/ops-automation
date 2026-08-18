@@ -14,7 +14,6 @@ Docker 体系负责整个仓库的基础设施、后端服务及测试环境的�
 - **`sql/`**: 数据库初始化及迁移脚本。
 - **`env/`**: 环境变量模板（`.env.example`）。
 - **`temporal/`**, **`browser-worker/`**, **`office-addin/`**, **`carbone-official/`**: 各特定服务的 Dockerfile 及私有配置。
-- **`configs/`**: 通用 Docker 引擎配置（如 `daemon.json`）。
 
 ## 核心入口
 
@@ -22,7 +21,7 @@ Docker 体系负责整个仓库的基础设施、后端服务及测试环境的�
 
 - **`docker/start-smart.sh`** (包装入口，转发至 `scripts/start-smart.sh`)
 
-该脚本能自动感知 VibeKanban worktree 环境，并正确挂载当前目录的代码。
+该脚本根据自身位置解析当前仓库根目录，并正确挂载代码。
 
 ## 配置文件说明 (`docker/compose/`)
 
@@ -42,7 +41,8 @@ Docker 体系负责整个仓库的基础设施、后端服务及测试环境的�
 - `docker-compose.planner.yml`
 - `docker-compose.runtime.yml`
 - `docker-compose.experience.yml`
-- `docker-compose.full.yml`
+
+旧的 `full` 模式保留为命令兼容别名，实际使用 `docker-compose.base.yml`，不再维护第二份全量配置。
 
 ## 环境配置
 
@@ -61,6 +61,8 @@ cp env/.env.example .env
 - `HOST_IP`: 对外访问主机 IP（用于容器间及外部访问）
 - `PROJECT_ROOT`: 代码挂载根路径（`start-smart.sh` 会自动设置）
 
+Compose 配置不再为 `PROJECT_ROOT` 提供相对路径回退；绕过统一入口时会直接失败，避免在 `docker/` 下静默创建错误挂载目录。
+
 ## 快速启动示例
 
 ```bash
@@ -73,6 +75,10 @@ cp env/.env.example .env
 # 启动独立 document-domain / carbone-engine
 ./docker/start-smart.sh docker-compose.carbone.yml up -d carbone-engine
 
+# 首次启动 Office Add-in 前生成本机开发证书
+./docker/office-addin/generate-certs.sh
+./docker/start-smart.sh addin up -d
+
 # 运行 document-domain 测试容器
 ./docker/start-smart.sh docker-compose.test.yml run --rm carbone-engine-test
 
@@ -81,6 +87,12 @@ cp env/.env.example .env
 ```
 
 ## 校验与冒烟测试
+
+静态校验不连接 Docker daemon，也不会创建网络：
+
+```bash
+bash ./docker/scripts/validate.sh
+```
 
 | 脚本路径                                 | 描述                                 |
 | ---------------------------------------- | ------------------------------------ |
@@ -96,15 +108,11 @@ _注：建议优先通过 `pnpm` 触发，如 `pnpm docker:v4:validate`。_
 
 ### browser-worker 源码变更后必须重建容器
 
-`docker-compose.full.yml` 里的 `browser-worker` 走的是 `corepack pnpm exec nest build && node dist/main.js` 路径，
-**未启用 `--watch`**。修改 `apps/backend/runtimes/browser-worker/src/**` 后需要手动重建容器：
+修改 `apps/backend/runtimes/browser-worker/src/**` 后，如果容器行为仍像旧版本，需要手动重建容器：
 
 ```bash
-./docker/start-smart.sh docker-compose.full.yml up -d --force-recreate --no-deps browser-worker
+./docker/start-smart.sh dev up -d --force-recreate --no-deps browser-worker
 ```
-
-_原因：`nest-cli.json` 的 `deleteOutDir: true` + `tsconfig.tsbuildinfo` 增量缓存会导致 watch 模式反复删除
-`dist/` 后找不到入口文件。_
 
 ## 服务端口参考
 

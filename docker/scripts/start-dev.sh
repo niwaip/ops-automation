@@ -147,7 +147,7 @@ start_docker() {
         exit 1
     fi
 
-    # Start infrastructure services through the worktree-aware entrypoint
+    # Start infrastructure services through the repository-aware entrypoint
     bash ./docker/start-smart.sh docker-compose.yml up -d
 
     # Wait for PostgreSQL

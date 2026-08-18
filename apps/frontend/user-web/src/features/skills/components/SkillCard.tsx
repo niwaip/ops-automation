@@ -71,9 +71,9 @@ export function SkillCard({
         borderColor: recentlyRequested && skill.accessStatus === 'requested' ? token.colorInfoBorder : undefined,
         background: recentlyRequested && skill.accessStatus === 'requested' ? token.colorInfoBg : undefined,
       }}
-      styles={{ body: { display: 'flex', flexDirection: 'column', gap: 16 } }}
+      styles={{ body: { display: 'flex', flexDirection: 'column', gap: 16, height: '100%', flex: 1 } }}
     >
-      <Space direction="vertical" size={10} style={{ width: '100%' }}>
+      <Space direction="vertical" size={10} style={{ width: '100%', flex: 1 }}>
         <Space style={{ width: '100%', justifyContent: 'space-between' }} align="start">
           <Typography.Title
             level={5}
@@ -87,19 +87,19 @@ export function SkillCard({
 
         {authorized ? (
           <>
-            <div style={resolvedSkillMetaSectionStyle}>
+            <div style={{ ...resolvedSkillMetaSectionStyle, flex: 1, minHeight: 110 }}>
               <Typography.Text type="secondary" style={skillMetaSectionTitleStyle}>
                 说明
               </Typography.Text>
               <Typography.Paragraph
                 type="secondary"
                 ellipsis={{ rows: 3 }}
-                style={{ ...descriptionStyle, minHeight: 'auto' }}
+                style={descriptionStyle}
               >
                 {skill.description || '暂无说明'}
               </Typography.Paragraph>
             </div>
-            <div style={resolvedSkillMetaSectionStyle}>
+            <div style={{ ...resolvedSkillMetaSectionStyle, minHeight: 90 }}>
               <Typography.Text type="secondary" style={skillMetaSectionTitleStyle}>
                 定期任务
               </Typography.Text>

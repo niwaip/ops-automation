@@ -2,9 +2,10 @@
 # 生成 Office Add-in 所需的 TLS 证书
 
 set -euo pipefail
+umask 077
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CERTS_DIR="$SCRIPT_DIR/certs"
+CERTS_DIR="$SCRIPT_DIR/runtime-certs"
 TMP_CONFIG="$(mktemp)"
 mkdir -p "$CERTS_DIR"
 
@@ -100,6 +101,9 @@ openssl req -x509 -newkey rsa:2048 \
     -nodes \
     -config "$TMP_CONFIG" \
     -extensions v3_req
+
+chmod 600 "$CERTS_DIR/server.key"
+chmod 644 "$CERTS_DIR/server.crt"
 
 echo "证书生成完成:"
 echo "  - $CERTS_DIR/server.crt"

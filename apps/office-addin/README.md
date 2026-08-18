@@ -39,7 +39,7 @@ npm run build
 
 ### 当前证书文件
 
-证书位于 `docker/office-addin/certs/` 目录：
+证书位于不会提交到 Git 的 `docker/office-addin/runtime-certs/` 目录：
 
 - `server.crt` - 当前服务实际使用的服务器证书
 - `server.key` - 服务器私钥
@@ -84,7 +84,7 @@ certutil -addstore -f "Root" docker\office-addin\certs\server.crt
 ### 安装当前自签名证书（macOS）
 
 ```bash
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain docker/office-addin/certs/server.crt
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain docker/office-addin/runtime-certs/server.crt
 ```
 
 ## Docker 启动

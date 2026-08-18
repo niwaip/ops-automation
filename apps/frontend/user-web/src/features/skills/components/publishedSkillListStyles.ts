@@ -6,13 +6,16 @@ export const sectionCardStyle: CSSProperties = {
 
 export const skillCardStyle: CSSProperties = {
   height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
   borderRadius: 16,
   boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)',
 };
 
 export const descriptionStyle: CSSProperties = {
-  minHeight: 44,
+  minHeight: 54,
   marginBottom: 0,
+  flex: 1,
 };
 
 export const statCardStyle: CSSProperties = {
@@ -73,6 +76,9 @@ export const statValueStyle: CSSProperties = {
 
 export const skillMetaSectionStyle: CSSProperties = {
   width: '100%',
+  minHeight: 104,
+  display: 'flex',
+  flexDirection: 'column',
   borderRadius: 12,
   border: '1px solid rgba(148, 163, 184, 0.14)',
   background: 'rgba(248, 250, 252, 0.72)',
@@ -99,7 +105,8 @@ export const skillMetaValueStyle: CSSProperties = {
 
 export const skillGridStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+  alignItems: 'stretch',
   gap: 16,
 };
 

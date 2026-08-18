@@ -5,7 +5,6 @@ import {
   Button,
   Form,
   Space,
-  Typography,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -27,8 +26,6 @@ import { useExecutionCreateSchedules } from '@/features/executions/create/hooks/
 import { useExecutionCreateSkillState } from '@/features/executions/create/hooks/useExecutionCreateSkillState';
 import type { ExecutionCreateFormValues } from '@/features/executions/create/lib/executionCreate';
 import styles from './ExecutionCreatePage.module.css';
-
-const { Title } = Typography;
 
 const ExecutionCreatePage: React.FC = () => {
   const navigate = useNavigate();
@@ -135,14 +132,11 @@ const ExecutionCreatePage: React.FC = () => {
   return (
     <div className={styles['execution-create-page']} style={executionCreateContainerStyle}>
       <div style={{ marginBottom: 16 }}>
-        <Space align="center" style={{ marginBottom: 8 }}>
+        <Space align="center">
           <Button size="small" icon={<ArrowLeftOutlined />} onClick={() => navigate('/executions')}>
             返回执行列表
           </Button>
         </Space>
-        <Title level={4} style={{ margin: 0 }}>
-          新建执行
-        </Title>
       </div>
 
       {statusNotices.map((notice) => (

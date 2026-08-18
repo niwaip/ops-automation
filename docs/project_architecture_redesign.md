@@ -778,7 +778,7 @@ packages:
 ### 2. Docker / Compose 使用建议
 
 - 所有 Docker 启动与测试统一通过 `./docker/start-smart.sh` 执行。
-- `PROJECT_ROOT` 必须始终绑定当前 worktree 根目录。
+- `PROJECT_ROOT` 必须始终绑定当前仓库根目录。
 - 迁移期间若服务路径发生变化，需要同步修正 compose 中的 service build/context 与 volume 映射。
 
 ### 3. 文件组织建议

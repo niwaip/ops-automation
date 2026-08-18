@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Ops Automation - Smart Docker Compose Launcher
-# Automatically detects worktree context and sets PROJECT_ROOT
+# Resolves the repository root and sets PROJECT_ROOT
 
 set -euo pipefail
 
@@ -10,8 +10,6 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 DOCKER_DIR="$(dirname "$SCRIPT_DIR")"
 REPO_ROOT="$(dirname "$DOCKER_DIR")"
 ENV_FILE="$DOCKER_DIR/.env"
-
-current_dir="$(pwd)"
 
 print_header() {
     echo "=========================================="
@@ -142,6 +140,32 @@ ensure_env_file() {
     fi
 }
 
+ensure_addin_certs() {
+    local compose_path
+    local has_addin_compose=false
+
+    for compose_path in "${compose_files[@]}"; do
+        if [ "$(basename "$compose_path")" = "docker-compose.addin.yml" ]; then
+            has_addin_compose=true
+            break
+        fi
+    done
+
+    if [ "$has_addin_compose" != true ]; then
+        return 0
+    fi
+
+    case "$compose_command" in
+        up|run|create)
+            if [ ! -s "$DOCKER_DIR/office-addin/runtime-certs/server.crt" ] || [ ! -s "$DOCKER_DIR/office-addin/runtime-certs/server.key" ]; then
+                echo "Office Add-in TLS certificate is missing." >&2
+                echo "Generate it first: ./docker/office-addin/generate-certs.sh" >&2
+                exit 1
+            fi
+            ;;
+    esac
+}
+
 resolve_target() {
     local requested="${1:-dev}"
 
@@ -165,8 +189,9 @@ resolve_target() {
         base)
             compose_files=("$(resolve_compose_file "compose/docker-compose.base.yml")")
             ;;
-        full)
-            compose_files=("$(resolve_compose_file "compose/docker-compose.full.yml")")
+        full|docker-compose.full.yml|compose/docker-compose.full.yml)
+            target_entry="full"
+            compose_files=("$(resolve_compose_file "compose/docker-compose.base.yml")")
             ;;
         core)
             compose_files=("$(resolve_compose_file "compose/docker-compose.core.yml")")
@@ -191,14 +216,10 @@ resolve_target() {
 
 print_header
 
-# Check if we're in .vibe-kanban/worktrees directory
-if echo "$current_dir" | grep -q ".vibe-kanban/worktrees"; then
-    worktree_id=$(echo "$current_dir" | sed 's/.*\.vibe-kanban\/worktrees\/\([a-z0-9-]*\)-.*/\1/')
-    echo "Detected Vibe Kanban worktree: $worktree_id"
-    project_root="$current_dir"
-else
-    project_root="$REPO_ROOT"
-fi
+# The resolved script path already points at the active repository checkout.
+# Using the caller's current directory here would make mounts depend on where
+# the command happened to be invoked from.
+project_root="$REPO_ROOT"
 
 ensure_env_file
 
@@ -232,13 +253,16 @@ compose_args=("$@")
 network_name="$(read_network_name)"
 
 maybe_warn_legacy_entry "$target_entry" "$compose_command"
+ensure_addin_certs
 
-if [ "$compose_command" != "down" ] && [ "$compose_command" != "rm" ]; then
-    if ! docker network inspect "$network_name" >/dev/null 2>&1; then
-        echo "Creating docker network: $network_name"
-        docker network create "$network_name" >/dev/null
-    fi
-fi
+case "$compose_command" in
+    up|run|create)
+        if ! docker network inspect "$network_name" >/dev/null 2>&1; then
+            echo "Creating docker network: $network_name"
+            docker network create "$network_name" >/dev/null
+        fi
+        ;;
+esac
 
 if [ "$compose_command" = "up" ]; then
     target_signature="$(IFS=,; printf '%s' "${compose_files[*]}")"

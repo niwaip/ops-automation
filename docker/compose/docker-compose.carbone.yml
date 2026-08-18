@@ -1,5 +1,5 @@
 # Carbone Engine - 独立模板编辑器服务
-# 必须从仓库根目录通过 start-smart.sh 启动，确保挂载当前 worktree
+# 必须从仓库根目录通过 start-smart.sh 启动，确保挂载当前仓库
 # 使用方法: ./docker/start-smart.sh docker-compose.carbone.yml up -d carbone-engine
 # 开发模式: ./docker/start-smart.sh docker-compose.carbone.yml --profile dev up -d carbone-engine-dev
 
@@ -28,9 +28,9 @@ services:
     ports:
       - "3009:3009"
     volumes:
-      - ${PROJECT_ROOT:-..}:/workspace
-      - ${PROJECT_ROOT:-..}/apps/backend/var/templates/document-engine:/workspace/apps/backend/var/templates/document-engine
-      - ${PROJECT_ROOT:-..}/apps/backend/var/outputs/document-engine:/workspace/apps/backend/var/outputs/document-engine
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/templates/document-engine:/workspace/apps/backend/var/templates/document-engine
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/outputs/document-engine:/workspace/apps/backend/var/outputs/document-engine
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3009/api"]
       interval: 30s
@@ -58,9 +58,9 @@ services:
     ports:
       - "3010:3009"
     volumes:
-      - ${PROJECT_ROOT:-..}:/workspace
-      - ${PROJECT_ROOT:-..}/apps/backend/var/templates/document-engine:/workspace/apps/backend/var/templates/document-engine
-      - ${PROJECT_ROOT:-..}/apps/backend/var/outputs/document-engine:/workspace/apps/backend/var/outputs/document-engine
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/templates/document-engine:/workspace/apps/backend/var/templates/document-engine
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/outputs/document-engine:/workspace/apps/backend/var/outputs/document-engine
     networks:
       - ops-network
     profiles:

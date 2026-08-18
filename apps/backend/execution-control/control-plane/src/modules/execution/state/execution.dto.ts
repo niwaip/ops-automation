@@ -825,3 +825,12 @@ export class CleanupExecutionsBeforeDateDto {
   @IsDateString()
   beforeDate: string;
 }
+
+export class UpdateExecutionResultSummaryDto {
+  @ApiProperty({
+    description: 'AI generated summary / markdown text for execution result',
+    example: '## Weather Report\nSunny 20C',
+  })
+  @IsString()
+  summary: string;
+}

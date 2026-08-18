@@ -1,0 +1,100 @@
+.execution-detail-page {
+  width: 100%;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+.execution-detail-header-card {
+  border-radius: 16px !important;
+  border: 1px solid var(--border-color) !important;
+  background:
+    radial-gradient(circle at top right, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+    var(--bg-card) !important;
+  box-shadow: var(--shadow-sm) !important;
+  margin-bottom: 16px;
+}
+
+.execution-detail-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.execution-detail-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.execution-detail-header-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 !important;
+}
+
+.execution-detail-header-id {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  font-family: var(--font-mono, monospace);
+}
+
+.execution-detail-content :global(.ant-card) {
+  border-radius: 16px !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: var(--shadow-sm) !important;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.execution-detail-content :global(.ant-card-head) {
+  background:
+    linear-gradient(180deg, rgba(99, 102, 241, 0.06), transparent),
+    var(--bg-card) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  font-weight: 700;
+}
+
+[data-theme='dark'] .execution-detail-content :global(.ant-card-head) {
+  background:
+    linear-gradient(180deg, rgba(129, 140, 248, 0.08), transparent),
+    var(--bg-card) !important;
+}
+
+.execution-detail-content :global(.ant-card-body) {
+  padding: 20px !important;
+}
+
+.execution-detail-content :global(.ant-descriptions-row) > th {
+  background: rgba(148, 163, 184, 0.08) !important;
+  width: 130px;
+  font-weight: 600;
+}
+
+[data-theme='dark'] .execution-detail-content :global(.ant-descriptions-row) > th {
+  background: rgba(51, 65, 85, 0.5) !important;
+}
+
+.execution-detail-content :global(.ant-descriptions) {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.execution-detail-content :global(.ant-descriptions-bordered) {
+  border: 1px solid var(--border-color) !important;
+}
+
+.execution-detail-content :global(.ant-descriptions-bordered) :global(.ant-descriptions-view) {
+  border-radius: 12px;
+  overflow: hidden;
+}

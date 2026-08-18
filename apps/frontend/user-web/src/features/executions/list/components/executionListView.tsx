@@ -99,43 +99,29 @@ export const buildExecutionListColumns = ({
   statusLabels,
 }: BuildExecutionListColumnsOptions): TableProps<ExecutionDto>['columns'] => [
   {
-    title: '技能名称',
-    key: 'execution',
-    width: 188,
-    render: (_: unknown, record: ExecutionDto) => (
-      <div className={styles['execution-list-skill-cell']}>
-        <Text
-          strong
-          ellipsis={{ tooltip: getSkillDisplayName(record.skillId) }}
-          className={styles['execution-list-skill-name']}
-        >
-          {getSkillDisplayName(record.skillId)}
-        </Text>
-      </div>
-    ),
-  },
-  {
     title: '开始时间',
     dataIndex: 'startedAt',
     key: 'startedAt',
-    width: 144,
+    width: 110,
+    align: 'center',
     defaultSortOrder: 'descend',
     sorter: (a: ExecutionDto, b: ExecutionDto) => getExecutionTime(a) - getExecutionTime(b),
     render: (_: string | undefined, record: ExecutionDto) => (
       <div className={styles['execution-list-time-cell']}>
-        <Text className={styles['execution-list-time-value']}>
+        <span className={styles['execution-list-time-value']}>
           {formatCompactExecutionTime(record.startedAt || record.createdAt)}
-        </Text>
-        <Text type="secondary" className={styles['execution-list-time-duration']}>
+        </span>
+        <span className={styles['execution-list-time-duration']}>
           {formatDuration(record)}
-        </Text>
+        </span>
       </div>
     ),
   },
   {
     title: '状态',
     key: 'status',
-    width: 76,
+    width: 90,
+    align: 'center',
     render: (_: unknown, record: ExecutionDto) => (
       <Tag color={statusColors[record.status]} style={executionStatusTagStyle}>
         {listStatusLabels[record.status as ExecutionStatus] ||
@@ -147,7 +133,8 @@ export const buildExecutionListColumns = ({
   {
     title: '用户输入',
     key: 'input',
-    width: 292,
+    width: 260,
+    align: 'left',
     ellipsis: true,
     render: (_: unknown, record: ExecutionDto) => (
       <div className={styles['execution-list-summary-cell']}>
@@ -158,11 +145,28 @@ export const buildExecutionListColumns = ({
   {
     title: '结果摘要',
     key: 'result',
-    width: 292,
+    align: 'left',
     ellipsis: true,
     render: (_: unknown, record: ExecutionDto) => (
       <div className={styles['execution-list-summary-cell is-result']}>
         <Text className={styles['execution-list-summary-text']}>{summarizeExecutionListResult(record)}</Text>
+      </div>
+    ),
+  },
+  {
+    title: '技能名称',
+    key: 'execution',
+    width: 160,
+    align: 'left',
+    render: (_: unknown, record: ExecutionDto) => (
+      <div className={styles['execution-list-skill-cell']}>
+        <Text
+          strong
+          ellipsis={{ tooltip: getSkillDisplayName(record.skillId) }}
+          className={styles['execution-list-skill-name']}
+        >
+          {getSkillDisplayName(record.skillId)}
+        </Text>
       </div>
     ),
   },

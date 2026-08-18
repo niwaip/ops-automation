@@ -5,6 +5,7 @@ import { Typography } from 'antd';
 import { JsonPreview } from '@/features/executions/shared/components/JsonPreview';
 import { tryParseJsonValue } from '@/features/executions/shared/lib/common';
 import { beautifyText } from '@/features/executions/detail/lib/detailView';
+import { normalizeTabSeparatedTable } from '@chat-web/lib/tableNormalizer';
 
 const { Text } = Typography;
 
@@ -17,10 +18,11 @@ interface ExecutionPayloadContentProps {
 const contentBlockStyle = {
   background: 'var(--bg-secondary)',
   color: 'var(--text-primary)',
-  border: '1px solid var(--bg-secondary)',
-  padding: 12,
-  borderRadius: 8,
-  lineHeight: '1.6',
+  border: '1px solid var(--border-color)',
+  padding: '16px 20px',
+  borderRadius: 12,
+  lineHeight: '1.7',
+  fontSize: 14,
 } as const;
 
 const MARKDOWN_FIELD_KEY = /^(markdown_content|markdown|content|body|summary|result|text|prompt|description|query|input|output|.*(?:Markdown|Content|Body|Summary|Result|Text))$/i;
@@ -28,6 +30,37 @@ const MARKDOWN_SYNTAX = /(^|\n)\s{0,3}(#{1,6}\s|[-*+]\s|\d+\.\s|>\s|```|\|.+\|)|
 
 const shouldRenderFieldAsMarkdown = (key: string, value: string): boolean =>
   MARKDOWN_FIELD_KEY.test(key) || MARKDOWN_SYNTAX.test(value);
+
+const renderMarkdownContent = (text: string) => {
+  const normalized = normalizeTabSeparatedTable(beautifyText(text));
+  return (
+    <div className="chat-message-markdown" style={contentBlockStyle}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          table: ({ children }: { children?: React.ReactNode }) => (
+            <div className="markdown-table-wrapper">
+              <table>{children}</table>
+            </div>
+          ),
+          img: ({ src, alt }: { src?: string; alt?: string }) => (
+            <img
+              src={src}
+              alt={alt || ''}
+              className="chat-outcome-inline-img"
+              loading="lazy"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ),
+        }}
+      >
+        {normalized}
+      </ReactMarkdown>
+    </div>
+  );
+};
 
 const ExecutionPayloadContent: React.FC<ExecutionPayloadContentProps> = ({
   value,
@@ -41,11 +74,7 @@ const ExecutionPayloadContent: React.FC<ExecutionPayloadContentProps> = ({
   }
 
   if (typeof parsedValue === 'string') {
-    return (
-      <div className="chat-message-markdown" style={contentBlockStyle}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{beautifyText(parsedValue)}</ReactMarkdown>
-      </div>
-    );
+    return renderMarkdownContent(parsedValue);
   }
 
   const resultRecord =
@@ -59,11 +88,7 @@ const ExecutionPayloadContent: React.FC<ExecutionPayloadContentProps> = ({
     : false;
 
   if (resultText && onlyHasResultField) {
-    return (
-      <div className="chat-message-markdown" style={contentBlockStyle}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{beautifyText(resultText)}</ReactMarkdown>
-      </div>
-    );
+    return renderMarkdownContent(resultText);
   }
 
   const markdownEntries = resultRecord
@@ -83,7 +108,7 @@ const ExecutionPayloadContent: React.FC<ExecutionPayloadContentProps> = ({
     const showLabels = markdownEntries.length > 1 || Object.keys(remainingValue).length > 0;
 
     return (
-      <div style={{ display: 'grid', gap: 10 }}>
+      <div style={{ display: 'grid', gap: 12 }}>
         {markdownEntries.map(([key, text]) => (
           <div key={key}>
             {showLabels ? (
@@ -91,9 +116,7 @@ const ExecutionPayloadContent: React.FC<ExecutionPayloadContentProps> = ({
                 {key}
               </Text>
             ) : null}
-            <div className="chat-message-markdown" style={contentBlockStyle}>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{beautifyText(text)}</ReactMarkdown>
-            </div>
+            {renderMarkdownContent(text)}
           </div>
         ))}
         {Object.keys(remainingValue).length > 0 ? <JsonPreview value={remainingValue} /> : null}

@@ -114,6 +114,7 @@ const ExecutionCreateFormPanel: React.FC<ExecutionCreateFormPanelProps> = ({
         <Form
           form={form}
           layout="vertical"
+          style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%' }}
           initialValues={{
             skillId: initialSkillId,
             executionMode: 'immediate',
@@ -153,7 +154,7 @@ const ExecutionCreateFormPanel: React.FC<ExecutionCreateFormPanelProps> = ({
             onResetDefaults={onResetDefaults}
           />
 
-          <Form.Item name="executionMode" label="执行方式">
+          <Form.Item name="executionMode" label="执行方式" style={{ marginTop: 'auto' }}>
             <div style={executionCreateModePanelStyle}>
               <div style={executionCreateModeRowStyle}>
                 <Space wrap size={12} style={{ flex: 1 }}>

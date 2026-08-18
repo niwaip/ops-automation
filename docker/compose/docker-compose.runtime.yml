@@ -22,7 +22,7 @@ services:
     ports:
       - "${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/runtimes/browser-worker:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/runtimes/browser-worker:/app
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - browser-chrome
@@ -63,9 +63,9 @@ services:
     ports:
       - "${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}"
     volumes:
-      - ${PROJECT_ROOT:-..}:/workspace
-      - ${PROJECT_ROOT:-..}/apps/backend/var/templates/document-engine:/workspace/apps/backend/var/templates/document-engine
-      - ${PROJECT_ROOT:-..}/apps/backend/var/outputs/document-engine:/workspace/apps/backend/var/outputs/document-engine
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/templates/document-engine:/workspace/apps/backend/var/templates/document-engine
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/outputs/document-engine:/workspace/apps/backend/var/outputs/document-engine
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${CARBONE_ENGINE_PORT:-3009}/api"]
       interval: 30s
@@ -156,7 +156,7 @@ services:
     ports:
       - "8090:8090"
     volumes:
-      - ${PROJECT_ROOT:-..}/${SANDBOX_WORKER_PROJECT_PATH:-apps/backend/runtimes/sandbox-worker}:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/${SANDBOX_WORKER_PROJECT_PATH:-apps/backend/runtimes/sandbox-worker}:/app
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - temporal

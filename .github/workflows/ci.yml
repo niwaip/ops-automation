@@ -64,10 +64,6 @@ jobs:
         run: pnpm typecheck || exit 0
         continue-on-error: true
 
-      - name: Validate backend plane shells
-        run: pnpm validate:backend-shells || exit 0
-        continue-on-error: true
-
       - name: Validate user-core boundaries
         run: pnpm validate:user-core || exit 0
         continue-on-error: true

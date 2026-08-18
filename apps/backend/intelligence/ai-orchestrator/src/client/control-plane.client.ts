@@ -143,4 +143,17 @@ export class ControlPlaneClient {
     );
     return response.data;
   }
+
+  async updateExecutionResultSummary<T = unknown>(
+    executionId: string,
+    summary: string,
+    options?: ControlPlaneRequestOptions
+  ): Promise<T> {
+    const response = await axios.post<T>(
+      `${this.getBaseUrl()}/executions/${executionId}/result-summary`,
+      { summary },
+      this.buildConfig(options)
+    );
+    return response.data;
+  }
 }

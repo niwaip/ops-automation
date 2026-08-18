@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Audit how the legacy full compose entry aligns with the V4 layered service set.
-# Fails if any V4-layered service is missing from docker-compose.full.yml.
+# Fails if any V4-layered service is missing from the canonical development compose.
 
 set -euo pipefail
 
@@ -38,28 +38,28 @@ subtract_lines() {
 }
 
 layered_services="$(run_services compose/docker-compose.core.yml -f compose/docker-compose.planner.yml -f compose/docker-compose.runtime.yml -f compose/docker-compose.experience.yml)"
-full_services="$(run_services compose/docker-compose.full.yml)"
+base_services="$(run_services compose/docker-compose.base.yml)"
 
-missing_from_full="$(subtract_lines "$layered_services" "$full_services")"
-legacy_only_in_full="$(subtract_lines "$full_services" "$layered_services")"
+missing_from_base="$(subtract_lines "$layered_services" "$base_services")"
+additional_in_base="$(subtract_lines "$base_services" "$layered_services")"
 
-echo "Auditing docker-compose.full.yml against V4 layered composition"
+echo "Auditing docker-compose.base.yml against V4 layered composition"
 echo ""
 
-if [ -n "$missing_from_full" ]; then
-  echo "[FAIL] docker-compose.full.yml is missing V4 services:"
-  printf '%s\n' "$missing_from_full"
+if [ -n "$missing_from_base" ]; then
+  echo "[FAIL] docker-compose.base.yml is missing V4 services:"
+  printf '%s\n' "$missing_from_base"
   exit 1
 fi
 
-echo "[OK] docker-compose.full.yml contains every V4 layered service"
+echo "[OK] docker-compose.base.yml contains every V4 layered service"
 
-if [ -n "$legacy_only_in_full" ]; then
+if [ -n "$additional_in_base" ]; then
   echo ""
-  echo "[INFO] Legacy-only services still present in docker-compose.full.yml:"
-  printf '%s\n' "$legacy_only_in_full"
+  echo "[INFO] Additional services present in docker-compose.base.yml:"
+  printf '%s\n' "$additional_in_base"
   echo ""
-  echo "These services are not part of the current V4 layered set, but remain available in the legacy full entry."
+  echo "These services are not part of the current V4 layered set, but remain available in the canonical development stack."
 fi
 
 echo ""

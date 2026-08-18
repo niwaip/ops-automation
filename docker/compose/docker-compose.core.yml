@@ -62,7 +62,7 @@ services:
     ports:
       - "${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/core/platform:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/core/platform:/app
       - auth_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -94,7 +94,7 @@ services:
     ports:
       - "${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/execution-control/control-plane:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/execution-control/control-plane:/app
       - control_plane_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -121,7 +121,7 @@ services:
     ports:
       - "${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/execution-control/session-broker:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/execution-control/session-broker:/app
       - session_broker_node_modules:/app/node_modules
     depends_on:
       postgres:

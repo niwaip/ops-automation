@@ -102,7 +102,7 @@ export class ExecutionService {
   private readonly executionServiceHooksFacade: ExecutionServiceHooksFacade;
 
   constructor(
-    prisma: PrismaService,
+    private readonly prisma: PrismaService,
     @Optional()
     @Inject(RuntimeExecutionOrchestrator)
     runtimeExecutionOrchestrator?: RuntimeExecutionOrchestrator | ExecutionEventService,
@@ -694,5 +694,39 @@ export class ExecutionService {
     requester?: RequestUserContext
   ): Promise<{ success: boolean; deletedCount: number; beforeDate: string }> {
     return this.executionLifecycleService.cleanupBeforeDate(beforeDate, userId, requester);
+  }
+
+  async updateResultSummary(id: string, summary: string): Promise<ExecutionDto> {
+    const execution = await this.prisma.execution.findUnique({ where: { id } });
+    if (!execution) {
+      throw new Error(`Execution ${id} not found`);
+    }
+
+    const currentResultJson =
+      execution.resultJson && typeof execution.resultJson === 'object' && !Array.isArray(execution.resultJson)
+        ? (execution.resultJson as Record<string, unknown>)
+        : {};
+
+    const updatedResultJson = {
+      ...currentResultJson,
+      chatSummary: summary,
+      detailText: summary,
+      presentation: {
+        ...((currentResultJson.presentation as Record<string, unknown>) || {}),
+        chatSummary: summary,
+        detailText: summary,
+        summaryFormat: 'markdown',
+        detailFormat: 'markdown',
+      },
+    };
+
+    await this.prisma.execution.update({
+      where: { id },
+      data: {
+        resultJson: updatedResultJson,
+      },
+    });
+
+    return this.executionQueryService.getById(id);
   }
 }

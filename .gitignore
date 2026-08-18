@@ -75,6 +75,8 @@ docker-compose.override.yml
 
 # Docker
 docker-compose.override.yml
+docker/office-addin/runtime-certs/*
+!docker/office-addin/runtime-certs/.gitkeep
 
 # Generated files
 *.generated.ts
@@ -139,4 +141,3 @@ packages/backend-contracts/**/*.d.ts.map
 
 # Rendered output files
 apps/backend/capabilities/document-domain/public/renders/*
-

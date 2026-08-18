@@ -244,11 +244,76 @@ export function useChatPageActions({
     }
   }, [selectedSession, syncRelatedQueries, toast, updateMessage]);
 
+  const handleRetry = useCallback(
+    (targetMessage: ChatMessage) => {
+      if (isStreaming || !selectedSession) return;
+
+      let userContent = '';
+      if (targetMessage.role === 'user') {
+        userContent = targetMessage.content;
+      } else {
+        const idx = activeMessages.findIndex((m) => m.id === targetMessage.id);
+        if (idx > 0 && activeMessages[idx - 1]?.role === 'user') {
+          userContent = activeMessages[idx - 1].content;
+        } else {
+          const lastUser = [...activeMessages].reverse().find((m) => m.role === 'user');
+          if (lastUser) userContent = lastUser.content;
+        }
+      }
+
+      if (!userContent.trim()) return;
+
+      const resolvedModelId =
+        selectedModel && selectedModel !== 'default' ? selectedModel : undefined;
+      const now = toChatTimestamp();
+      const assistantMessageId = buildMessageId();
+      const assistantMessage: ChatMessage = {
+        id: assistantMessageId,
+        sessionId: selectedSession.id,
+        role: 'assistant',
+        content: '',
+        timestamp: now,
+        isStreaming: true,
+        metadata: {
+          mode: chatMode,
+          showThinking: enableThinking,
+        },
+      };
+
+      updateSessionMessages(selectedSession.id, (current) => [...current, assistantMessage]);
+      clearError();
+
+      const request: ChatRequest = buildChatRequest({
+        message: userContent,
+        sessionId: selectedSession.id,
+        modelId: resolvedModelId,
+        mode: chatMode,
+        thinking: enableThinking,
+        reasoning: nativeReasoningEnabled,
+      });
+
+      void runAssistantRequest(selectedSession, request, assistantMessageId);
+    },
+    [
+      activeMessages,
+      chatMode,
+      clearError,
+      enableThinking,
+      isStreaming,
+      nativeReasoningEnabled,
+      runAssistantRequest,
+      selectedModel,
+      selectedSession,
+      updateSessionMessages,
+    ]
+  );
+
   return {
     actionLoadingByMessage,
     handleApprove,
     handleCreateSession,
     handleReject,
+    handleRetry,
     handleSend,
   };
 }

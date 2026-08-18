@@ -272,6 +272,11 @@
   letter-spacing: 0.02em;
   text-transform: uppercase;
   border-bottom: 1px solid var(--border-color) !important;
+  text-align: center !important;
+}
+
+.execution-list-table .ant-table-thead > tr > th .ant-table-column-sorters {
+  justify-content: center;
 }
 
 [data-theme='dark'] .execution-list-table .ant-table-thead > tr > th {

@@ -11,8 +11,8 @@ services:
       - "3100:3100"
       - "3443:3443"
     volumes:
-      - ../carbone-official/templates:/app/templates
-      - ../office-addin/certs:/app/certs:ro
+      - carbone_api_templates:/app/templates
+      - ../office-addin/runtime-certs:/app/certs:ro
     environment:
       - CARBONE_API_PORT=3100
       - CARBONE_API_HTTPS_PORT=3443
@@ -35,15 +35,15 @@ services:
 
   office-addin:
     build:
-      context: ${PROJECT_ROOT:-..}/apps/office-addin
+      context: ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/office-addin
       dockerfile: ../../docker/office-addin/Dockerfile.dev
     container_name: office-addin
     ports:
       - "3000:3000"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/office-addin:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/office-addin:/app
       - /app/node_modules
-      - ../office-addin/certs:/app/certs:ro
+      - ../office-addin/runtime-certs:/app/certs:ro
     environment:
       - VITE_ADDIN_BASE_URL=https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:${OFFICE_ADDIN_PORT:-3000}
       - VITE_API_URL=https://${CARBONE_API_PUBLIC_HOST:-localhost}:${CARBONE_API_HTTPS_PORT:-3443}
@@ -57,6 +57,9 @@ services:
     depends_on:
       - carbone-api
     restart: unless-stopped
+
+volumes:
+  carbone_api_templates:
 
 networks:
   ops-network:

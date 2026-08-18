@@ -1,5 +1,5 @@
 .user-shell {
-  --chat-widget-safe-space: calc(96px + env(safe-area-inset-bottom));
+  --chat-widget-safe-space: calc(20px + env(safe-area-inset-bottom));
   --chat-widget-safe-inline: 0px;
   min-height: 100vh;
 }
@@ -413,7 +413,7 @@
 
 @media (max-width: 960px) {
   .user-shell {
-    --chat-widget-safe-space: calc(84px + env(safe-area-inset-bottom));
+    --chat-widget-safe-space: calc(16px + env(safe-area-inset-bottom));
     --chat-widget-safe-inline: 0px;
   }
 

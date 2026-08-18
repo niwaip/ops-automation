@@ -35,7 +35,7 @@
   这个轻量 shell 承接，再转发到 `@ops/document-domain`，包括 `test:e2e` 与
   `migrate:sidecar-to-db` 这类历史入口。
 - `document-engine/carbone-engine` 的 Docker 启动入口必须统一从仓库根目录
-  通过 `./docker/start-smart.sh` 执行，保证当前 worktree 挂载正确。
+  通过 `./docker/start-smart.sh` 执行，保证当前仓库挂载正确。
 
 ## 该能力域负责
 

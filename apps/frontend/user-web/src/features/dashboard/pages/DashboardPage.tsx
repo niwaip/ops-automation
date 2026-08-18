@@ -155,6 +155,19 @@ export function DashboardPage() {
     void message.success('已标记为已处理');
   };
 
+  const handleIgnoreAllPriorityItems = () => {
+    if (priorityQueueDisplay.length === 0) return;
+    const handledAt = new Date().toISOString();
+    setHandledExecutions((current) => {
+      const next = { ...current };
+      for (const item of priorityQueueDisplay) {
+        next[item.id] = handledAt;
+      }
+      return next;
+    });
+    void message.success(`已全部无视（已处理 ${priorityQueueDisplay.length} 项）`);
+  };
+
   return (
     <div className={styles['workbench-page']}>
       <Card className={styles['workbench-hero']} styles={{ body: { padding: 24 } }}>
@@ -252,6 +265,7 @@ export function DashboardPage() {
               getExecutionDisplayTime={getExecutionDisplayTime}
               getSkillDisplayName={getSkillDisplayName}
               onIgnoreItem={handleIgnorePriorityItem}
+              onIgnoreAll={handleIgnoreAllPriorityItems}
               onOpenExecution={(executionId) => navigate(`/executions/${executionId}`)}
               onViewAll={() => navigate('/executions')}
             />

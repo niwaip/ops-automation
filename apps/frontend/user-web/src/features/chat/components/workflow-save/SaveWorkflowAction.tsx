@@ -1,5 +1,5 @@
-import { SaveOutlined } from '@ant-design/icons';
-import { Alert, App, Button, Descriptions, Drawer, Form, Input, Space, Typography } from 'antd';
+import { FolderAddOutlined, FolderOpenOutlined } from '@ant-design/icons';
+import { Alert, App, Button, Descriptions, Drawer, Form, Input, Space, Tooltip, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { useNavigate } from 'react-router-dom';
@@ -67,14 +67,16 @@ export function SaveWorkflowAction({ executionId }: SaveWorkflowActionProps) {
 
   if (eligibility.savedSkillId) {
     return (
-      <Button
-        type="link"
-        size="small"
-        icon={<SaveOutlined />}
-        onClick={() => navigate(`/published-skills?tab=my-workflows&skillId=${eligibility.savedSkillId}`)}
-      >
-        查看工作流
-      </Button>
+      <Tooltip title="查看已保存的个人工作流">
+        <Button
+          type="text"
+          size="small"
+          icon={<FolderOpenOutlined />}
+          onClick={() => navigate(`/published-skills?tab=my-workflows&skillId=${eligibility.savedSkillId}`)}
+          className="chat-action-btn chat-action-btn-icon chat-action-btn-saved"
+          aria-label="查看工作流"
+        />
+      </Tooltip>
     );
   }
 
@@ -83,9 +85,16 @@ export function SaveWorkflowAction({ executionId }: SaveWorkflowActionProps) {
 
   return (
     <>
-      <Button type="link" size="small" icon={<SaveOutlined />} onClick={() => setOpen(true)}>
-        保存工作流
-      </Button>
+      <Tooltip title="保存为我的工作流（固定多步计划）">
+        <Button
+          type="text"
+          size="small"
+          icon={<FolderAddOutlined />}
+          onClick={() => setOpen(true)}
+          className="chat-action-btn chat-action-btn-icon chat-action-btn-save"
+          aria-label="保存工作流"
+        />
+      </Tooltip>
       <Drawer
         destroyOnClose
         open={open}

@@ -1,5 +1,5 @@
 # AI识别测试环境
-# 必须从仓库根目录通过 start-smart.sh 启动，确保挂载当前 worktree
+# 必须从仓库根目录通过 start-smart.sh 启动，确保挂载当前仓库
 # 使用方法: ./docker/start-smart.sh docker-compose.test.yml up --abort-on-container-exit carbone-engine-test
 # 或者: ./docker/start-smart.sh docker-compose.test.yml run --rm carbone-engine-test
 
@@ -38,9 +38,6 @@ services:
     ports:
       - "13009:3009"
     volumes:
-      - ${PROJECT_ROOT:-..}:/workspace
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
       - mock-ai-server
-
-volumes:
-    driver: local

@@ -33,7 +33,7 @@ services:
       NODE_ENV: development
       DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
     volumes:
-      - ${PROJECT_ROOT:-..}:/workspace
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
       postgres:
         condition: service_healthy
@@ -113,7 +113,7 @@ services:
       # node_modules lives on the bind mount (not a named volume) so pnpm can
       # freely rmdir/mkdir it during full rebuilds. A mountpoint cannot be
       # rmdir'd, which previously caused `EBUSY: rmdir '/workspace/node_modules'`.
-      - ${PROJECT_ROOT:-..}:/workspace
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
       workspace-deps-init:
         condition: service_completed_successfully
@@ -134,8 +134,8 @@ services:
     ports:
       - "${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/execution-control/session-broker:/app
-      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/execution-control/session-broker:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/backend-contracts:/packages/backend-contracts
       - session_broker_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -169,9 +169,9 @@ services:
     ports:
       - "${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/execution-control/control-plane:/app
-      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
-      - ${PROJECT_ROOT:-..}/tsconfig.base.json:/tsconfig.base.json:ro
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/execution-control/control-plane:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/backend-contracts:/packages/backend-contracts
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/tsconfig.base.json:/tsconfig.base.json:ro
       - control_plane_node_modules:/app/node_modules
     depends_on:
       workspace-deps-init:
@@ -215,11 +215,11 @@ services:
     ports:
       - "${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/runtimes/browser-worker:/app
-      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/runtimes/browser-worker:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/backend-contracts:/packages/backend-contracts
       - browser_worker_node_modules:/app/node_modules
-      - ${PROJECT_ROOT:-..}/apps/backend/var/browser-profiles:/backend-var/browser-profiles
-      - ${PROJECT_ROOT:-..}/apps/backend/var/tmp/browser-worker:/backend-var/tmp/browser-worker
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/browser-profiles:/backend-var/browser-profiles
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/tmp/browser-worker:/backend-var/tmp/browser-worker
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - browser-chrome
@@ -247,7 +247,7 @@ services:
     ports:
       - "${BROWSER_TEMPLATE_PORT:-3005}:${BROWSER_TEMPLATE_PORT:-3005}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/capabilities/browser-domain/templates:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/capabilities/browser-domain/templates:/app
       - browser_template_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -297,7 +297,7 @@ services:
     ports:
       - "${BROWSER_SEMANTICS_PORT:-3006}:${BROWSER_SEMANTICS_PORT:-3006}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/capabilities/browser-domain/semantics:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/capabilities/browser-domain/semantics:/app
       - browser_semantics_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -337,11 +337,11 @@ services:
     ports:
       - "${AI_ORCHESTRATOR_PORT:-3007}:${AI_ORCHESTRATOR_PORT:-3007}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/intelligence/ai-orchestrator:/app
-      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
-      - ${PROJECT_ROOT:-..}/tsconfig.base.json:/tsconfig.base.json:ro
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/intelligence/ai-orchestrator:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/backend-contracts:/packages/backend-contracts
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/tsconfig.base.json:/tsconfig.base.json:ro
       - ai_orchestrator_node_modules:/app/node_modules
-      - ${PROJECT_ROOT:-..}/apps/backend/var/cache/ai-orchestrator:/app/data
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/cache/ai-orchestrator:/app/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -373,8 +373,8 @@ services:
     ports:
       - "${REPORT_PORT:-3008}:${REPORT_PORT:-3008}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/capabilities/document-domain/report:/app
-      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/capabilities/document-domain/report:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/backend-contracts:/packages/backend-contracts
       - report_runtime_node_modules:/app/node_modules
       - report_files:/app/files
     depends_on:
@@ -411,8 +411,8 @@ services:
     ports:
       - "${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/capabilities/document-domain:/app
-      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/capabilities/document-domain:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/backend-contracts:/packages/backend-contracts
       - carbone_engine_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -439,11 +439,11 @@ services:
     ports:
       - "${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/frontend/portal:/app
-      - ${PROJECT_ROOT:-..}/apps/frontend/shared:/shared
-      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
-      - ${PROJECT_ROOT:-..}/packages/user-core:/packages/user-core
-      - ${PROJECT_ROOT:-..}/tsconfig.base.json:/tsconfig.base.json:ro
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/frontend/portal:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/frontend/shared:/shared
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/backend-contracts:/packages/backend-contracts
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/user-core:/packages/user-core
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/tsconfig.base.json:/tsconfig.base.json:ro
       - portal_node_modules:/app/node_modules
     depends_on:
       - platform
@@ -465,11 +465,11 @@ services:
     ports:
       - "${USER_WEB_PORT:-5174}:${USER_WEB_PORT:-5174}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/frontend/user-web:/app
-      - ${PROJECT_ROOT:-..}/apps/frontend/shared:/shared
-      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
-      - ${PROJECT_ROOT:-..}/packages/user-core:/packages/user-core
-      - ${PROJECT_ROOT:-..}/tsconfig.base.json:/tsconfig.base.json:ro
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/frontend/user-web:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/frontend/shared:/shared
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/backend-contracts:/packages/backend-contracts
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/user-core:/packages/user-core
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/tsconfig.base.json:/tsconfig.base.json:ro
       - user_web_node_modules:/app/node_modules
     depends_on:
       - platform
@@ -568,7 +568,7 @@ services:
     ports:
       - "8090:8090"
     volumes:
-      - ${PROJECT_ROOT:-..}:/workspace
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - temporal

@@ -28,6 +28,7 @@ import {
   CleanupExecutionsBeforeDateDto,
   ReconcilePhaseTakeoverDto,
   UpdateWorkflowActivityProgressDto,
+  UpdateExecutionResultSummaryDto,
 } from './state/execution.dto';
 import { AuthenticatedRequest } from '../auth/auth.middleware';
 
@@ -124,6 +125,17 @@ export class ExecutionController {
   ): Promise<{ ok: true }> {
     await this.executionService.updateWorkflowActivityProgress(id, dto, req.user);
     return { ok: true };
+  }
+
+  @Post(':id/result-summary')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update AI summary for execution result' })
+  @ApiResponse({ status: 200, description: 'Summary updated successfully', type: ExecutionDto })
+  async updateResultSummary(
+    @Param('id') id: string,
+    @Body() dto: UpdateExecutionResultSummaryDto
+  ): Promise<ExecutionDto> {
+    return this.executionService.updateResultSummary(id, dto.summary);
   }
 
   @Post(':id/phases/:phaseKey/takeover')
