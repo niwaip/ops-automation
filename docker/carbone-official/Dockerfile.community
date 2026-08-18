@@ -1,7 +1,7 @@
 # Carbone Community Edition Docker
 # 使用官方 carbone npm 包，支持 HTTPS
 
-FROM node:18-alpine
+FROM node:20-bullseye-slim
 
 # 创建工作目录
 WORKDIR /app

@@ -1,7 +1,7 @@
 # Office Add-in Development Docker
 # 使用 Vite dev server，支持热更新
 
-FROM node:18-alpine
+FROM node:20-bullseye-slim
 
 WORKDIR /app
 
