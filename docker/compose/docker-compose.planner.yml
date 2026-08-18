@@ -34,12 +34,10 @@ services:
     ports:
       - "${AI_ORCHESTRATOR_PORT:-3007}:${AI_ORCHESTRATOR_PORT:-3007}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/intelligence/ai-orchestrator:/app
-      - ${PROJECT_ROOT:-..}/apps/backend/var/cache/ai-orchestrator:/app/data
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/intelligence/ai-orchestrator:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/cache/ai-orchestrator:/app/data
     networks:
       - ops-network
-
-volumes:
 
 networks:
   ops-network:

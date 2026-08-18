@@ -22,6 +22,7 @@ interface PriorityQueueCardProps {
   getExecutionDisplayTime: (execution: ExecutionDto) => string;
   getSkillDisplayName: (skillId?: string) => string;
   onIgnoreItem: (executionId: string) => void;
+  onIgnoreAll?: () => void;
   onOpenExecution: (executionId: string) => void;
   onViewAll: () => void;
 }
@@ -32,6 +33,7 @@ export function PriorityQueueCard({
   getExecutionDisplayTime,
   getSkillDisplayName,
   onIgnoreItem,
+  onIgnoreAll,
   onOpenExecution,
   onViewAll,
 }: PriorityQueueCardProps) {
@@ -46,9 +48,16 @@ export function PriorityQueueCard({
         </div>
       }
       extra={
-        <Button type="link" className={styles['workbench-action-button']} onClick={onViewAll}>
-          查看全部
-        </Button>
+        <Space size={4}>
+          {items.length > 0 && onIgnoreAll ? (
+            <Button type="link" className={styles['workbench-action-button']} onClick={onIgnoreAll}>
+              全部无视
+            </Button>
+          ) : null}
+          <Button type="link" className={styles['workbench-action-button']} onClick={onViewAll}>
+            查看全部
+          </Button>
+        </Space>
       }
     >
       {items.length === 0 ? (

@@ -7,23 +7,26 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
+  Alert,
   Button,
+  Card,
   Spin,
   Typography,
-  Alert,
   message,
 } from 'antd';
 import '../../chat/ChatMessage.css';
 import {
   ArrowLeftOutlined,
 } from '@ant-design/icons';
+import ExecutionStatusTag from '@/features/executions/shared/components/ExecutionStatusTag';
 import ExecutionDetailSections from '../detail/components/ExecutionDetailSections';
 import { useExecutionDetailActions } from '../detail/hooks/useExecutionDetailActions';
 import { useExecutionDetailData } from '../detail/hooks/useExecutionDetailData';
 import { useExecutionDetailText } from '../detail/lib/executionDetailText';
 import { usePreferencesStore } from '@/shared/store/preferencesStore';
+import styles from './ExecutionDetailPage.module.css';
 
-const { Title } = Typography;
+
 
 const ExecutionDetailPage: React.FC = () => {
   const runtimeSessionLookupEnabled = true;
@@ -147,26 +150,35 @@ const ExecutionDetailPage: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: 16 }}>
-      {/* Header */}
-      <div style={{ marginBottom: 12 }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            flexWrap: 'wrap',
-            gap: 12,
-          }}
-        >
-          <Title level={3} style={{ margin: 0 }}>
-            {text.details}
-          </Title>
-          <Button size="small" icon={<ArrowLeftOutlined />} onClick={() => navigate('/executions')}>
-            {text.backToExecutions}
-          </Button>
+    <div className={styles['execution-detail-page']}>
+      {/* Header Card */}
+      <Card className={styles['execution-detail-header-card']} styles={{ body: { padding: '14px 20px' } }}>
+        <div className={styles['execution-detail-header-row']}>
+          <div className={styles['execution-detail-header-left']}>
+            <Button
+              size="small"
+              icon={<ArrowLeftOutlined />}
+              onClick={() => navigate('/executions')}
+            >
+              {text.backToExecutions}
+            </Button>
+            <h1 className={styles['execution-detail-header-title']}>
+              {getSkillDisplayName(execution.skillId) || text.details}
+            </h1>
+            <ExecutionStatusTag color={getExecutionStatusColor(execution.status)}>
+              {getExecutionStatusLabel(execution.status)}
+            </ExecutionStatusTag>
+          </div>
+          <Typography.Text
+            copyable={{ text: execution.id }}
+            className={styles['execution-detail-header-id']}
+          >
+            ID: {execution.id}
+          </Typography.Text>
         </div>
-      </div>
+      </Card>
+
+      <div className={styles['execution-detail-content']}>
       <ExecutionDetailSections
         text={text}
         isEnglish={isEnglish}
@@ -223,6 +235,7 @@ const ExecutionDetailPage: React.FC = () => {
         steps={steps}
         currentStepIndex={currentStepIndex}
       />
+      </div>
     </div>
   );
 };

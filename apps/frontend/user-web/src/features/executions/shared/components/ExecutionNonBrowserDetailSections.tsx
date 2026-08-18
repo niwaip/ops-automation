@@ -1,9 +1,12 @@
 import React from 'react';
+import { Tabs } from 'antd';
 import type { ExecutionDetailSectionsProps } from '@/features/executions/detail/components/ExecutionDetailSections.types';
+import ExecutionDetailSectionCard from '@/features/executions/detail/components/ExecutionDetailSectionCard';
 import ExecutionNonBrowserActionCard from '@/features/executions/shared/components/ExecutionNonBrowserActionCard';
 import ExecutionNonBrowserInfoCard from '@/features/executions/shared/components/ExecutionNonBrowserInfoCard';
 import ExecutionNonBrowserResultCard from '@/features/executions/shared/components/ExecutionNonBrowserResultCard';
 import ExecutionNonBrowserReviewSection from '@/features/executions/shared/components/ExecutionNonBrowserReviewSection';
+import ExecutionPayloadContent from '@/features/executions/shared/components/ExecutionPayloadContent';
 import ExecutionReviewResultCard from '@/features/executions/shared/components/ExecutionReviewResultCard';
 import ExecutionTakeoverRecoveryCard from '@/features/executions/shared/components/ExecutionTakeoverRecoveryCard';
 import SemanticOverviewCard from '@/features/executions/shared/components/SemanticOverviewCard';
@@ -104,95 +107,129 @@ const ExecutionNonBrowserDetailSections: React.FC<ExecutionDetailSectionsProps> 
   ) : null;
 
   return (
-    <>
-      <ExecutionNonBrowserInfoCard
-        execution={execution}
-        statusLabel={statusLabels[execution.status]}
-        statusColor={statusColors[execution.status]}
-        temporalLink={executionInfoTemporalLink}
-        labels={{
-          status: text.status,
-          createdAt: text.createdAt,
-          startedAt: text.startedAt,
-          endedAt: text.endedAt,
-          failureReason: text.failureReason,
-          failureCode: text.failureCode,
-          temporalLink: isEnglish ? 'Temporal Link' : 'Temporal 链接',
-        }}
-      />
+    <Tabs
+      type="card"
+      size="large"
+      items={[
+        {
+          key: 'user-view',
+          label: isEnglish ? 'User View' : '💡 执行结果与交互',
+          children: (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
+              <ExecutionNonBrowserActionCard
+                execution={execution}
+                currentPhase={currentPhase}
+                currentPhaseDetailUrl={currentPhaseDetailUrl}
+                waitingInputStep={waitingInputStep}
+                waitingInputSummary={waitingInputSummary}
+                requiredInputs={requiredInputs}
+                requiredInputGroups={requiredInputGroups}
+                shouldShowCurrentPhaseInfo={shouldShowCurrentPhaseInfo}
+                approveAndContinueLoading={approveAndContinueLoading}
+                approveLoading={approveLoading}
+                rejectLoading={rejectLoading}
+                submitInputLoading={submitInputLoading}
+                confirmTagLabel={isEnglish ? 'Needs confirmation' : '待确认'}
+                labels={{
+                  manualReviewPending: text.manualReviewPending,
+                  takeoverDescDefault: text.takeoverDescDefault,
+                  currentPhase: text.currentPhase,
+                  currentPageLink: text.currentPageLink,
+                  takeoverApproveAndContinue: text.takeoverApproveAndContinue,
+                  openCurrentPage: text.openCurrentPage,
+                  approvalRequired: text.approvalRequired,
+                  approvalWaiting: text.approvalWaiting,
+                  approvalStatusPrefix: text.approvalStatusPrefix,
+                  approvalDescDefault: text.approvalDescDefault,
+                  approveAndContinue: text.approveAndContinue,
+                  rejectExecution: text.rejectExecution,
+                  missingInputRequired: text.missingInputRequired,
+                  submitAndResume: text.submitAndResume,
+                  reset: text.reset,
+                  provideField: text.provideField,
+                  source: text.source,
+                  enterJsonString: text.enterJsonString,
+                  enterField: text.enterField,
+                  invalidJson: text.invalidJson,
+                }}
+                onApproveAndContinue={onApproveAndContinue}
+                onApprove={onApprove}
+                onReject={onReject}
+                onSubmitInput={onSubmitInput}
+              />
 
-      <ExecutionNonBrowserActionCard
-        execution={execution}
-        currentPhase={currentPhase}
-        currentPhaseDetailUrl={currentPhaseDetailUrl}
-        waitingInputStep={waitingInputStep}
-        waitingInputSummary={waitingInputSummary}
-        requiredInputs={requiredInputs}
-        requiredInputGroups={requiredInputGroups}
-        shouldShowCurrentPhaseInfo={shouldShowCurrentPhaseInfo}
-        approveAndContinueLoading={approveAndContinueLoading}
-        approveLoading={approveLoading}
-        rejectLoading={rejectLoading}
-        submitInputLoading={submitInputLoading}
-        confirmTagLabel={isEnglish ? 'Needs confirmation' : '待确认'}
-        labels={{
-          manualReviewPending: text.manualReviewPending,
-          takeoverDescDefault: text.takeoverDescDefault,
-          currentPhase: text.currentPhase,
-          currentPageLink: text.currentPageLink,
-          takeoverApproveAndContinue: text.takeoverApproveAndContinue,
-          openCurrentPage: text.openCurrentPage,
-          approvalRequired: text.approvalRequired,
-          approvalWaiting: text.approvalWaiting,
-          approvalStatusPrefix: text.approvalStatusPrefix,
-          approvalDescDefault: text.approvalDescDefault,
-          approveAndContinue: text.approveAndContinue,
-          rejectExecution: text.rejectExecution,
-          missingInputRequired: text.missingInputRequired,
-          submitAndResume: text.submitAndResume,
-          reset: text.reset,
-          provideField: text.provideField,
-          source: text.source,
-          enterJsonString: text.enterJsonString,
-          enterField: text.enterField,
-          invalidJson: text.invalidJson,
-        }}
-        onApproveAndContinue={onApproveAndContinue}
-        onApprove={onApprove}
-        onReject={onReject}
-        onSubmitInput={onSubmitInput}
-      />
+              <ExecutionNonBrowserReviewSection
+                execution={execution}
+                currentPhase={currentPhase}
+                reviewResultCard={executionReviewResultCard}
+                takeoverRecoveryCard={takeoverRecoveryCard}
+              />
 
-      <ExecutionNonBrowserReviewSection
-        execution={execution}
-        currentPhase={currentPhase}
-        reviewResultCard={executionReviewResultCard}
-        takeoverRecoveryCard={takeoverRecoveryCard}
-      />
+              {React.isValidElement(semanticOverviewCard) ? semanticOverviewCard : null}
 
-      {React.isValidElement(semanticOverviewCard) ? semanticOverviewCard : null}
+              <ExecutionDetailSectionCard
+                title={isEnglish ? 'Task Request / Input' : '📌 任务需求与输入'}
+              >
+                <ExecutionPayloadContent
+                  value={executionInput}
+                  emptyText={isEnglish ? 'No input provided' : '暂无输入内容'}
+                />
+              </ExecutionDetailSectionCard>
 
-      <ExecutionNonBrowserResultCard
-        executionInput={executionInput}
-        normalizedResult={normalizedResult}
-        primaryResultText={primaryResultText}
-        shouldRenderPrimaryAsMarkdown={shouldRenderPrimaryAsMarkdown}
-        shouldShowStructuredResult={shouldShowStructuredResult}
-        resultPreviewValue={resultPreviewValue}
-        effectiveResultJson={effectiveResultJson}
-        labels={{
-          title: text.inputOutput,
-          input: text.input,
-          result: text.result,
-          resultArtifacts: isEnglish ? 'Result artifacts' : '结果文件',
-          sourceLinks: isEnglish ? 'Source links' : '来源链接',
-          temporalExecutionLink: isEnglish ? 'Open Temporal Execution' : '打开 Temporal 执行链路',
-          noInput: isEnglish ? 'No input' : '暂无输入内容',
-          noStructuredResult: isEnglish ? 'No structured result' : '暂无结构化结果',
-          noResultOutput: isEnglish ? 'No result output' : '暂无结果输出',
-        }}
-      />
-    </>
+              <ExecutionNonBrowserResultCard
+                executionInput={executionInput}
+                normalizedResult={normalizedResult}
+                primaryResultText={primaryResultText}
+                shouldRenderPrimaryAsMarkdown={shouldRenderPrimaryAsMarkdown}
+                shouldShowStructuredResult={shouldShowStructuredResult}
+                resultPreviewValue={resultPreviewValue}
+                effectiveResultJson={effectiveResultJson}
+                labels={{
+                  title: text.inputOutput,
+                  input: text.input,
+                  result: text.result,
+                  resultArtifacts: isEnglish ? 'Result artifacts' : '结果文件',
+                  sourceLinks: isEnglish ? 'Source links' : '来源链接',
+                  temporalExecutionLink: isEnglish ? 'Open Temporal Execution' : '打开 Temporal 执行链路',
+                  noInput: isEnglish ? 'No input' : '暂无输入内容',
+                  noStructuredResult: isEnglish ? 'No structured result' : '暂无结构化结果',
+                  noResultOutput: isEnglish ? 'No result output' : '暂无结果输出',
+                }}
+              />
+            </div>
+          ),
+        },
+        {
+          key: 'raw-data',
+          label: isEnglish ? 'Raw Data & Logs' : '⚙️ 原始数据与元信息',
+          children: (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
+              <ExecutionNonBrowserInfoCard
+                execution={execution}
+                statusLabel={statusLabels[execution.status]}
+                statusColor={statusColors[execution.status]}
+                temporalLink={executionInfoTemporalLink}
+                labels={{
+                  status: text.status,
+                  createdAt: text.createdAt,
+                  startedAt: text.startedAt,
+                  endedAt: text.endedAt,
+                  failureReason: text.failureReason,
+                  failureCode: text.failureCode,
+                  temporalLink: isEnglish ? 'Temporal Link' : 'Temporal 链接',
+                }}
+              />
+              <ExecutionDetailSectionCard title={isEnglish ? 'Input Payload (JSON)' : '输入参数 (JSON)'}>
+                <ExecutionPayloadContent value={executionInput} emptyText={isEnglish ? 'No input' : '暂无输入参数'} />
+              </ExecutionDetailSectionCard>
+              <ExecutionDetailSectionCard title={isEnglish ? 'Raw Result JSON' : '原始输出 (JSON)'}>
+                <ExecutionPayloadContent value={effectiveResultJson} emptyText={isEnglish ? 'No raw output' : '暂无原始输出'} />
+              </ExecutionDetailSectionCard>
+            </div>
+          ),
+        },
+      ]}
+    />
   );
 };
 

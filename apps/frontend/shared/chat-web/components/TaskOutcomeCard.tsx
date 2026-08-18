@@ -9,6 +9,7 @@ import {
 import { Button, Space } from 'antd';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { normalizeTabSeparatedTable } from '../lib/tableNormalizer';
 
 export interface SharedDisplayGroupItem {
   key: string;
@@ -293,8 +294,31 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             <div className="chat-outcome-overview-skill-pill">{normalizedSkillName}</div>
           </div>
         ) : null}
+
         <div className="chat-outcome-body">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{displaySuccessResult}</ReactMarkdown>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              table: ({ children }: { children?: React.ReactNode }) => (
+                <div className="markdown-table-wrapper">
+                  <table>{children}</table>
+                </div>
+              ),
+              img: ({ src, alt }: { src?: string; alt?: string }) => (
+                <img
+                  src={src}
+                  alt={alt || ''}
+                  className="chat-outcome-inline-img"
+                  loading="lazy"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              ),
+            }}
+          >
+            {normalizeTabSeparatedTable(displaySuccessResult || '')}
+          </ReactMarkdown>
         </div>
         {showDownloadButton ? renderResourceLinks({ showDetailAction: false }) : null}
         {shouldShowStructuredResult && structuredResultText ? (

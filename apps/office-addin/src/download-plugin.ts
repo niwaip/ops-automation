@@ -16,7 +16,7 @@ type MiddlewareNext = (err?: unknown) => void;
 const isDocker = fs.existsSync('/.dockerenv') || process.env.DOCKER === 'true';
 const certsPath = isDocker
   ? '/app/certs'
-  : path.resolve(process.cwd(), '../../docker/office-addin/certs');
+  : path.resolve(process.cwd(), '../../docker/office-addin/runtime-certs');
 const publicPath = path.resolve(process.cwd(), 'public');
 const manifestFiles = new Set([
   'manifest-word.xml',

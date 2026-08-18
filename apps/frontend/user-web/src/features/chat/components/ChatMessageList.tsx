@@ -12,6 +12,7 @@ interface ChatMessageListProps {
   messagesEndRef: MutableRefObject<HTMLDivElement | null>;
   onApproveExecution: (messageId: string, executionId: string) => void;
   onRejectExecution: (messageId: string, executionId: string) => void;
+  onRetry?: (message: ChatMessage) => void;
   onToggleThought: (messageId: string) => void;
 }
 
@@ -23,6 +24,7 @@ export function ChatMessageList({
   messagesEndRef,
   onApproveExecution,
   onRejectExecution,
+  onRetry,
   onToggleThought,
 }: ChatMessageListProps) {
   return (
@@ -54,6 +56,7 @@ export function ChatMessageList({
               onToggleThought={onToggleThought}
               onApproveExecution={onApproveExecution}
               onRejectExecution={onRejectExecution}
+              onRetry={onRetry}
             />
           )}
         />

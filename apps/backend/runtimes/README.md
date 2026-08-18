@@ -54,4 +54,4 @@ apps/backend/runtimes/
 - 新增 worker 默认进入 `apps/backend/runtimes/*`，不要再回写历史 `runtime/*` 路径。
 - `temporal-worker` 与 `sandbox-worker` 必须保持职责分离，避免再次混合“工作流执行”和“动态代码沙箱执行”。
 - 运行时之间共享协议时，优先通过 `packages/backend-contracts/*` 收口，不要继续扩散深层相对路径引用。
-- Docker / Compose 启动仍需统一通过仓库根目录的 `./docker/start-smart.sh`，并确保挂载当前 worktree。
+- Docker / Compose 启动仍需统一通过仓库根目录的 `./docker/start-smart.sh`，并确保挂载当前仓库。

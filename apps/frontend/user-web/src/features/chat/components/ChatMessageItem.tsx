@@ -32,6 +32,7 @@ interface ChatMessageItemProps {
   onToggleThought: (messageId: string) => void;
   onApproveExecution: (messageId: string, executionId: string) => void;
   onRejectExecution: (messageId: string, executionId: string) => void;
+  onRetry?: (message: ChatMessage) => void;
 }
 
 export function ChatMessageItem({
@@ -41,6 +42,7 @@ export function ChatMessageItem({
   onToggleThought,
   onApproveExecution,
   onRejectExecution,
+  onRetry,
 }: ChatMessageItemProps) {
   const { message: toast } = App.useApp();
   const resolvedTaskStatus = resolveMessageTaskStatus(message);
@@ -151,9 +153,13 @@ export function ChatMessageItem({
     }
   };
 
+  const isTaskMessage =
+    message.role === 'assistant' &&
+    (message.metadata?.mode === 'task' || hasTaskCard || hasProgressLogs);
+
   return (
     <List.Item key={message.id} className={`${styles['user-chat-message-row']} ${styles[`role-${message.role}`] || ''}`}>
-      <div className={`${styles['user-chat-message-stack']} ${styles[`role-${message.role}`] || ''}`}>
+      <div className={`${styles['user-chat-message-stack']} ${styles[`role-${message.role}`] || ''} ${isTaskMessage ? styles['has-task-block'] : ''}`}>
         <div className={`${styles['user-chat-message-bubble']} ${styles[`role-${message.role}`] || ''}`}>
           {shouldPinCollapsedThoughts || shouldPinFinishedTaskThoughts ? thoughtPanel : null}
           {hasTaskCard ? (
@@ -219,6 +225,7 @@ export function ChatMessageItem({
                 onCopy={() => {
                   void handleCopyMessage();
                 }}
+                onRetry={onRetry ? () => onRetry(message) : undefined}
                 extraContent={
                   <>
                     {!message.isStreaming && resolvedTaskStatus === 'completed' && executionId ? (

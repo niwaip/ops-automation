@@ -189,6 +189,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     handleApprove,
     handleCreateSession,
     handleReject,
+    handleRetry,
     handleSend,
   } = useChatPageActions({
     activeMessages,
@@ -346,6 +347,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             onRejectExecution={(messageId, executionId) => {
               void handleReject(messageId, executionId);
             }}
+            onRetry={handleRetry}
           />
 
           <UserChatComposer

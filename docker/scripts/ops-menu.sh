@@ -16,7 +16,6 @@ DOCKER_ENV_TEMPLATE="$DOCKER_DIR/env/.env.example"
 BASE_COMPOSE="docker-compose.base.yml"
 INFRA_COMPOSE="docker-compose.yml"
 LEGACY_COMPAT_COMPOSES=(
-  "docker-compose.full.yml"
   "docker-compose.core.yml"
   "docker-compose.planner.yml"
   "docker-compose.runtime.yml"

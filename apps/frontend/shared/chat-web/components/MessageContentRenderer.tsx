@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { normalizeTabSeparatedTable } from '../lib/tableNormalizer';
 
 interface MessageContentRendererProps {
   content: string;
@@ -45,7 +46,7 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
           ),
         }}
       >
-        {content}
+        {normalizeTabSeparatedTable(content)}
       </ReactMarkdown>
       {isStreaming ? <span className="streaming-indicator">...</span> : null}
     </div>

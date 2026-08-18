@@ -10,7 +10,7 @@ const isDocker = fs.existsSync('/.dockerenv') || process.env.DOCKER === 'true';
 // 根据环境选择证书路径
 const certsPath = isDocker
   ? '/app/certs' // Docker 容器内路径
-  : path.resolve(__dirname, '../../docker/office-addin/certs');
+  : path.resolve(__dirname, '../../docker/office-addin/runtime-certs');
 
 const addinPublicHost = process.env.VITE_HOST_IP || process.env.HOST_IP || 'localhost';
 const aiOrchestratorProxyTarget =

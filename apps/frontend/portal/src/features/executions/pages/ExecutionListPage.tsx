@@ -786,26 +786,11 @@ const ExecutionListPage: React.FC = () => {
 
   const columns = [
     {
-      title: '技能名称',
-      key: 'execution',
-      width: 220,
-      render: (_: unknown, record: ExecutionDto) => (
-        <Space direction="vertical" size={4}>
-          <Text
-            strong
-            ellipsis={{ tooltip: getSkillDisplayName(record.skillId) }}
-            style={{ display: 'block', maxWidth: 200, fontSize: 16 }}
-          >
-            {getSkillDisplayName(record.skillId)}
-          </Text>
-        </Space>
-      ),
-    },
-    {
       title: '开始时间',
       dataIndex: 'startedAt',
       key: 'startedAt',
       width: 140,
+      align: 'center' as const,
       defaultSortOrder: 'descend' as const,
       sorter: (a: ExecutionDto, b: ExecutionDto) => getExecutionTime(a) - getExecutionTime(b),
       render: (_: string | undefined, record: ExecutionDto) => (
@@ -821,6 +806,7 @@ const ExecutionListPage: React.FC = () => {
       title: '状态',
       key: 'status',
       width: 88,
+      align: 'center' as const,
       render: (_: unknown, record: ExecutionDto) => (
         <Tag
           color={statusColors[record.status]}
@@ -841,6 +827,7 @@ const ExecutionListPage: React.FC = () => {
       dataIndex: 'riskLevel',
       key: 'riskLevel',
       width: 64,
+      align: 'center' as const,
       render: (riskLevel?: string) =>
         riskLevel ? (
           <span
@@ -893,6 +880,22 @@ const ExecutionListPage: React.FC = () => {
         >
           {summarizeExecutionListResult(record)}
         </Text>
+      ),
+    },
+    {
+      title: '技能名称',
+      key: 'execution',
+      width: 200,
+      render: (_: unknown, record: ExecutionDto) => (
+        <Space direction="vertical" size={4}>
+          <Text
+            strong
+            ellipsis={{ tooltip: getSkillDisplayName(record.skillId) }}
+            style={{ display: 'block', maxWidth: 180, fontSize: 14 }}
+          >
+            {getSkillDisplayName(record.skillId)}
+          </Text>
+        </Space>
       ),
     },
   ];

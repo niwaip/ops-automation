@@ -11,10 +11,9 @@ RUN npm install carbone express multer jszip --registry=https://registry.npmmirr
 
 # 创建简单的 API 服务
 COPY carbone-server.js .
-COPY templates/ ./templates/
 
-# 创建证书目录 (证书通过 volume 挂载)
-RUN mkdir -p /app/certs
+# 模板使用命名卷持久化，证书通过只读 volume 挂载
+RUN mkdir -p /app/templates /app/certs
 
 # 暴露端口 (HTTP 和 HTTPS)
 EXPOSE 3100 3443

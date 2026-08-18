@@ -34,7 +34,7 @@
 执行规则：
 
 - 不要直接执行 `docker compose -f ...`，除非已明确确认 `PROJECT_ROOT` 和挂载路径正确。
-- 不要使用旧的 `docker/scripts/start-all.sh` 或 `docker/scripts/start-addin.sh`。
+- 不要恢复或使用已经移除的旧 Docker 启动脚本；统一入口只有 `./docker/start-smart.sh`。
 - 启动前先确认当前目录就是仓库根目录。
 - 如果修改涉及启动参数、构建产物、依赖注入、环境变量、Compose、数据库连接或跨服务链路，默认重启相关服务再验证。
 - 重启单个服务时，仍优先使用 `./docker/start-smart.sh`，例如 `./docker/start-smart.sh docker-compose.base.yml up -d platform`。

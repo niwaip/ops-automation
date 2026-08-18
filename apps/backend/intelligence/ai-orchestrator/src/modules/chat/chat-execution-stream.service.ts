@@ -346,6 +346,14 @@ export class ChatExecutionStreamService {
             if (aiResult?.summary) {
               chatContent = aiResult.summary;
               effectiveAiSummary = aiResult.summary;
+              try {
+                await this.controlPlaneClient.updateExecutionResultSummary(executionId, effectiveAiSummary, {
+                  authToken,
+                  user,
+                });
+              } catch (err) {
+                this.logger.warn(`Failed to persist AI summary to execution ${executionId}: ${(err as Error).message}`);
+              }
             } else if (aiResult?.warning) {
               chatContent = `${chatContent}\n\n---\n_⚠️ AI 自动总结未生成：${aiResult.warning}_`;
             }

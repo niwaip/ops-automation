@@ -1,35 +1,72 @@
 import React from 'react';
-import { Space, Typography } from 'antd';
-import ExecutionDetailSectionCard from '@/features/executions/detail/components/ExecutionDetailSectionCard';
-import ExecutionLinkButton from '@/features/executions/shared/components/ExecutionLinkButton';
-import ExecutionPayloadContent from '@/features/executions/shared/components/ExecutionPayloadContent';
-import ExecutionResultHeader from '@/features/executions/shared/components/ExecutionResultHeader';
-import {
-  selectExecutionDeliverableArtifacts,
-  selectExecutionReferenceArtifacts,
-} from '@ops/user-core';
-import { replaceLocalhostWithCurrentHost } from '@/shared/utils/publicUrl';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Typography } from 'antd';
+import { JsonPreview } from '@/features/executions/shared/components/JsonPreview';
+import { tryParseJsonValue } from '@/features/executions/shared/lib/common';
+import { beautifyText } from '@/features/executions/detail/lib/detailView';
+import { formatStructuredDataToMarkdown, normalizeTabSeparatedTable } from '@chat-web/lib/tableNormalizer';
 
 const { Text } = Typography;
 
-interface ResultArtifact {
-  type?: string;
-  artifactType?: string;
-  label?: string;
-  name?: string;
-  downloadUrl?: string;
-  url?: string;
-  path?: string;
-  mimeType?: string;
-}
+/** Fields tried in order to extract a human-readable result text from raw JSON */
+const TEXT_FIELD_CANDIDATES = [
+  'detailText',
+  'formatted_output',
+  'finalAnswer',
+  'chatSummary',
+  'summary',
+  'result',
+  'text',
+  'content',
+  'message',
+  'body',
+  'output',
+] as const;
 
-interface ExecutionNormalizedResultView {
-  hasBusinessResult?: boolean;
-  title?: string;
-  resultType?: string;
-  artifacts: ResultArtifact[];
-  temporalLink?: string;
-}
+const MARKDOWN_SYNTAX = /(^|\n)\s{0,3}(#{1,6}\s|[-*+]\s|\d+\.\s|>\s|```|\|.+\|)|\*\*[^*]+\*\*/m;
+
+const extractDisplayText = (value: unknown): string | undefined => {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const rec = value as Record<string, unknown>;
+    for (const field of TEXT_FIELD_CANDIDATES) {
+      if (typeof rec[field] === 'string' && (rec[field] as string).trim()) {
+        return (rec[field] as string).trim();
+      }
+    }
+  }
+  return undefined;
+};
+
+const MarkdownBody: React.FC<{ text: string }> = ({ text }) => {
+  const normalized = normalizeTabSeparatedTable(beautifyText(text));
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        table: ({ children }: { children?: React.ReactNode }) => (
+          <div className="markdown-table-wrapper">
+            <table>{children}</table>
+          </div>
+        ),
+        img: ({ src, alt }: { src?: string; alt?: string }) => (
+          <img
+            src={src}
+            alt={alt || ''}
+            className="chat-outcome-inline-img"
+            loading="lazy"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        ),
+      }}
+    >
+      {normalized}
+    </ReactMarkdown>
+  );
+};
 
 interface ExecutionNonBrowserResultCardLabels {
   title: string;
@@ -45,7 +82,13 @@ interface ExecutionNonBrowserResultCardLabels {
 
 interface ExecutionNonBrowserResultCardProps {
   executionInput?: unknown;
-  normalizedResult?: ExecutionNormalizedResultView;
+  normalizedResult?: {
+    hasBusinessResult?: boolean;
+    title?: string;
+    resultType?: string;
+    artifacts?: unknown[];
+    temporalLink?: string;
+  };
   primaryResultText?: string;
   shouldRenderPrimaryAsMarkdown?: boolean;
   shouldShowStructuredResult?: boolean;
@@ -55,110 +98,84 @@ interface ExecutionNonBrowserResultCardProps {
 }
 
 const ExecutionNonBrowserResultCard: React.FC<ExecutionNonBrowserResultCardProps> = ({
-  executionInput,
-  normalizedResult,
   primaryResultText,
-  shouldRenderPrimaryAsMarkdown,
-  shouldShowStructuredResult,
-  resultPreviewValue,
   effectiveResultJson,
   labels,
 }) => {
-  const deliverableArtifacts = selectExecutionDeliverableArtifacts(
-    normalizedResult?.artifacts || []
-  );
-  const referenceArtifacts = selectExecutionReferenceArtifacts(normalizedResult?.artifacts || []);
+  const parsedData = tryParseJsonValue(effectiveResultJson);
+  // 1. primaryResultText wins, then extractDisplayText, then auto-formatting structured data
+  const displayText =
+    primaryResultText ||
+    extractDisplayText(parsedData) ||
+    formatStructuredDataToMarkdown(parsedData);
+  const hasMarkdown = displayText ? MARKDOWN_SYNTAX.test(displayText) : false;
 
-  return (
-    <ExecutionDetailSectionCard title={labels.title} style={{ marginBottom: 16 }}>
-      <div style={{ marginBottom: 16 }}>
-        <Text strong>{`${labels.input}:`}</Text>
-        <div style={{ marginTop: 8 }}>
-          <ExecutionPayloadContent value={executionInput} emptyText={labels.noInput} />
+  if (displayText) {
+    return (
+      <div className="chat-outcome-card success">
+        <div className="chat-outcome-header">
+          <div className="chat-outcome-title">任务结果</div>
         </div>
-      </div>
-      <div>
-        <Text strong>{`${labels.result}:`}</Text>
-        <div style={{ marginTop: 8 }}>
-          {normalizedResult?.hasBusinessResult ? (
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              {normalizedResult.title ? (
-                <ExecutionResultHeader
-                  title={normalizedResult.title}
-                  typeLabel={normalizedResult.resultType}
-                />
-              ) : null}
-              {primaryResultText ? (
-                <ExecutionPayloadContent
-                  value={primaryResultText}
-                  emptyText={labels.noResultOutput}
-                  treatSingleResultFieldAsMarkdown={shouldRenderPrimaryAsMarkdown}
-                />
-              ) : null}
-              {deliverableArtifacts.length > 0 ? (
-                <div>
-                  <Text strong>{`${labels.resultArtifacts}:`}</Text>
-                  <Space wrap style={{ marginLeft: 8 }}>
-                    {deliverableArtifacts.map((artifact, index) => {
-                      const href = replaceLocalhostWithCurrentHost(
-                        artifact.downloadUrl || artifact.url
-                      );
-                      if (!href) {
-                        return null;
-                      }
-                      return (
-                        <ExecutionLinkButton key={`${href}-${index}`} href={href}>
-                          {artifact.label || artifact.name || `${labels.result} ${index + 1}`}
-                        </ExecutionLinkButton>
-                      );
-                    })}
-                  </Space>
-                </div>
-              ) : null}
-              {referenceArtifacts.length > 0 ? (
-                <div>
-                  <Text strong>{`${labels.sourceLinks}:`}</Text>
-                  <Space wrap style={{ marginLeft: 8 }}>
-                    {referenceArtifacts.map((artifact, index) => {
-                      const href = replaceLocalhostWithCurrentHost(artifact.url);
-                      if (!href) {
-                        return null;
-                      }
-                      return (
-                        <ExecutionLinkButton key={`${href}-${index}`} href={href}>
-                          {artifact.label || artifact.name || `${labels.sourceLinks} ${index + 1}`}
-                        </ExecutionLinkButton>
-                      );
-                    })}
-                  </Space>
-                </div>
-              ) : null}
-              {normalizedResult.temporalLink ? (() => {
-                const temporalHref = replaceLocalhostWithCurrentHost(normalizedResult.temporalLink);
-                return temporalHref ? (
-                  <ExecutionLinkButton href={temporalHref} fitContent>
-                    {labels.temporalExecutionLink}
-                  </ExecutionLinkButton>
-                ) : null;
-              })() : null}
-              {shouldShowStructuredResult ? (
-                <ExecutionPayloadContent
-                  value={resultPreviewValue}
-                  emptyText={labels.noStructuredResult}
-                />
-              ) : null}
-            </Space>
+        <div className="chat-outcome-body">
+          {hasMarkdown ? (
+            <MarkdownBody text={displayText} />
           ) : (
-            <ExecutionPayloadContent
-              value={effectiveResultJson}
-              emptyText={labels.noResultOutput}
-              treatSingleResultFieldAsMarkdown
-            />
+            <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{displayText}</Text>
           )}
         </div>
       </div>
-    </ExecutionDetailSectionCard>
-  );
+    );
+  }
+
+  // 2. No extractable text — render the raw JSON prettily in the same card style
+  const parsedFallback = tryParseJsonValue(effectiveResultJson);
+  if (parsedFallback !== undefined && parsedFallback !== null && parsedFallback !== '') {
+    // If fallback is purely finalOutputs/artifact payload, do not print raw JSON dump
+    const hasFinalOutputs =
+      typeof parsedFallback === 'object' &&
+      parsedFallback !== null &&
+      ('finalOutputs' in (parsedFallback as Record<string, unknown>) ||
+        'artifact' in (parsedFallback as Record<string, unknown>));
+
+    if (hasFinalOutputs) {
+      return (
+        <div className="chat-outcome-card success">
+          <div className="chat-outcome-header">
+            <div className="chat-outcome-title">任务结果</div>
+          </div>
+          <div className="chat-outcome-body">
+            <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+              任务已成功完成，已为您生成结果文档。您可以直接点击下方按钮进行查看与下载。
+            </Text>
+          </div>
+        </div>
+      );
+    }
+
+    // Try to render as formatted JSON inside the styled card
+    const jsonString =
+      typeof parsedFallback === 'string'
+        ? parsedFallback
+        : JSON.stringify(parsedFallback, null, 2);
+    return (
+      <div className="chat-outcome-card success">
+        <div className="chat-outcome-header">
+          <div className="chat-outcome-title">任务结果</div>
+        </div>
+        <div className="chat-outcome-body">
+          {typeof parsedFallback === 'object' ? (
+            <JsonPreview value={parsedFallback} />
+          ) : (
+            <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 13 }}>
+              {jsonString}
+            </pre>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return <Text type="secondary">{labels.noResultOutput}</Text>;
 };
 
 export default ExecutionNonBrowserResultCard;

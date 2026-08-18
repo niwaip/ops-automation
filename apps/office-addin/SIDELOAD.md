@@ -18,7 +18,7 @@ OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,your-lan-host-or-ip
 
 此命令会：
 
-1. 自动识别当前工作区 (Worktree) 并挂载代码
+1. 自动识别当前仓库根目录并挂载代码
 2. 启动全栈基础设施及 Office Add-in 服务
 3. 确保环境变量及网络配置正确
 
@@ -168,11 +168,11 @@ npm run sideload:word
 
 ```bash
 # 方法1: 命令行信任
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain docker/office-addin/certs/server.crt
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain docker/office-addin/runtime-certs/server.crt
 
 # 方法2: 钥匙串访问
 # 1. 打开"钥匙串访问"应用
-# 2. 文件 → 导入项目 → 选择 docker/office-addin/certs/server.crt
+# 2. 文件 → 导入项目 → 选择 docker/office-addin/runtime-certs/server.crt
 # 3. 双击证书 → 信任 → 设置为"始终信任"
 ```
 
@@ -236,7 +236,7 @@ export OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,your-lan-host-or-ip,addin.dev.
 **信任 SSL 证书 (MacOS)：**
 
 ```bash
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain docker/office-addin/certs/server.crt
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain docker/office-addin/runtime-certs/server.crt
 ```
 
 ### Q: 只看到 AppSource 加载项？

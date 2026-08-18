@@ -102,18 +102,87 @@ export const summarizeExecutionListInput = (record: ExecutionDto) => {
   );
 };
 
+const summarizeStructuredWeatherOrData = (data: unknown): string | undefined => {
+  if (!data || typeof data !== 'object') return undefined;
+  const rec = data as Record<string, unknown>;
+
+  // 1. Weather time-period data (morning, noon, evening)
+  if ('morning' in rec || 'noon' in rec || 'evening' in rec) {
+    const parts: string[] = [];
+    if (typeof rec.date === 'string') parts.push(rec.date);
+    const morning = rec.morning as Record<string, unknown> | undefined;
+    const noon = rec.noon as Record<string, unknown> | undefined;
+    const evening = rec.evening as Record<string, unknown> | undefined;
+
+    const formatDesc = (item?: Record<string, unknown>) => {
+      if (!item) return '';
+      const weather = Array.isArray(item.weatherDesc) && item.weatherDesc[0]?.value
+        ? String(item.weatherDesc[0].value)
+        : item.weather ? String(item.weather) : '';
+      const temp = item.tempC !== undefined ? `${item.tempC}°C` : '';
+      return [weather, temp].filter(Boolean).join(' ');
+    };
+
+    if (morning) parts.push(`早晨 ${formatDesc(morning)}`);
+    if (noon) parts.push(`中午 ${formatDesc(noon)}`);
+    if (evening) parts.push(`傍晚 ${formatDesc(evening)}`);
+    return parts.join(' | ');
+  }
+
+  // 2. FinalOutputs / artifact objects
+  if ('finalOutputs' in rec && Array.isArray(rec.finalOutputs) && rec.finalOutputs.length > 0) {
+    const firstOut = rec.finalOutputs[0] as Record<string, unknown> | undefined;
+    const valObj = (firstOut?.value || firstOut?.artifact) as Record<string, unknown> | undefined;
+    if (valObj && typeof valObj.name === 'string') {
+      return `📄 已生成文档: ${valObj.name}`;
+    }
+  }
+
+  // 3. Generic single-step skill key-value objects
+  const kvPairs: string[] = [];
+  for (const [key, value] of Object.entries(rec)) {
+    if (key.startsWith('_') || key === 'title' || key === 'resultType') continue;
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      kvPairs.push(`${key}: ${value}`);
+    }
+  }
+  if (kvPairs.length > 0) {
+    return kvPairs.slice(0, 4).join(' | ');
+  }
+
+  return undefined;
+};
+
 export const summarizeExecutionListResult = (record: ExecutionDto) => {
   const normalizedResult = resolveExecutionNormalizedResult(record);
-  const summary = summarizeText(
+  const titleToIgnore = normalizedResult?.title || record.skillId;
+  const rawSummaryCandidate =
     normalizedResult?.detailText ||
-      normalizedResult?.summary ||
-      normalizedResult?.body ||
-      normalizedResult?.title,
-    72
-  );
+    normalizedResult?.summary ||
+    normalizedResult?.body;
 
-  if (summary) {
-    return summary;
+  const isWorkflowTitle = (str?: string) => {
+    if (!str || typeof str !== 'string') return true;
+    const s = str.trim();
+    if (!s) return true;
+    if (s === titleToIgnore || s === record.skillId || s.endsWith('_workflow') || s.endsWith('_skill')) {
+      return true;
+    }
+    return false;
+  };
+
+  const validTextCandidate = !isWorkflowTitle(rawSummaryCandidate) ? rawSummaryCandidate : undefined;
+  const textSummary = validTextCandidate ? summarizeText(validTextCandidate, 96) : undefined;
+
+  if (textSummary) {
+    return textSummary;
+  }
+
+  const structuredSummary = summarizeStructuredWeatherOrData(
+    normalizedResult?.structuredData || record.resultJson || record.result
+  );
+  if (structuredSummary) {
+    return summarizeText(structuredSummary, 96);
   }
 
   if (normalizedResult?.artifacts.length) {

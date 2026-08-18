@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Full-stack smoke test for the V4 full development composition.
-# Verifies demo/e2e baseline on top of docker-compose.full.yml.
+# Verifies demo/e2e baseline on top of the canonical development compose.
 # Optional profiles such as `report` remain disabled in this smoke test.
 
 set -euo pipefail
@@ -329,7 +329,7 @@ main() {
 
   log "Starting full V4-compatible development stack (without optional report profile)"
   ensure_network
-  ./docker/start-smart.sh docker-compose.full.yml up -d
+  ./docker/start-smart.sh dev up -d
 
   retry "platform container running" 36 5 container_running "ops-platform" || fail "platform container not ready"
   retry "control-plane container running" 36 5 container_running "ops-control-plane" || fail "control-plane container not ready"
@@ -411,7 +411,7 @@ main() {
   log "Idempotent replay kept execution total at ${repeat_total}"
   log "Full smoke passed"
   log "Stop full stack with:"
-  log "  ./docker/start-smart.sh docker-compose.full.yml down"
+  log "  ./docker/start-smart.sh dev down"
 }
 
 main "$@"

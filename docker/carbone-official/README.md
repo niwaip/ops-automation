@@ -5,17 +5,15 @@
 ## 快速启动
 
 ```bash
-# 进入目录
-cd docker/carbone-official
-
-# 构建并启动
-docker-compose up -d
+# 从仓库根目录启动 Add-in 链路
+./docker/office-addin/generate-certs.sh
+./docker/start-smart.sh addin up -d
 
 # 查看日志
-docker-compose logs -f
+./docker/start-smart.sh addin logs -f carbone-api
 
 # 停止服务
-docker-compose down
+./docker/start-smart.sh addin down
 ```
 
 ## API 端点
@@ -77,7 +75,7 @@ Body: {
 
 ## 示例模板
 
-在 `templates/` 目录放置 `.docx` 模板文件，使用 Carbone 标记语法：
+模板由 `carbone_api_templates` 命名卷持久化，使用 Carbone 标记语法：
 
 ```
 {d.title}

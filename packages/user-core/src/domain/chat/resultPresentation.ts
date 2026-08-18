@@ -51,12 +51,32 @@ export const isCompletionOnlyResultText = (value?: string, title?: string): bool
   return Boolean(normalizedTitle && normalized === `${normalizedTitle}已完成`);
 };
 
+/**
+ * Returns true if the structured data is purely an internal artifact/file delivery
+ * payload (finalOutputs, artifact_ref) that should not be rendered as raw JSON to users.
+ */
+const isFinalOutputsOnlyData = (value: unknown): boolean => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const rec = value as Record<string, unknown>;
+  const keys = Object.keys(rec);
+  if (keys.length === 0) return false;
+  // A pure finalOutputs envelope has only finalOutputs (or artifact) at the top level
+  const isArtifactEnvelope =
+    keys.every((k) => ['finalOutputs', 'artifact', 'artifacts'].includes(k)) &&
+    ('finalOutputs' in rec || 'artifact' in rec);
+  return isArtifactEnvelope;
+};
+
 const stringifyStructuredData = (value: unknown): string | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }
   if (typeof value === 'string') {
     return nonEmpty(value);
+  }
+  // Do not serialize internal artifact delivery payloads — they are surfaced via download buttons
+  if (isFinalOutputsOnlyData(value)) {
+    return undefined;
   }
   try {
     return JSON.stringify(value, null, 2);
@@ -81,9 +101,14 @@ export const resolveChatOutcomePresentation = (
   const title = normalizedResult?.title;
   const envelope = asRecord(normalizedResult?.envelope);
   const presentation = asRecord(envelope?.presentation);
+  const isWorkflowName = (value?: string): boolean => {
+    if (!value) return false;
+    const s = value.trim();
+    return s === title || s.endsWith('_workflow') || s.endsWith('_skill');
+  };
   const textCandidates = [
     typeof presentation?.chatSummary === 'string' ? presentation.chatSummary : undefined,
-    normalizedResult?.summary,
+    !isWorkflowName(normalizedResult?.summary) ? normalizedResult?.summary : undefined,
     normalizedResult?.detailText,
     normalizedResult?.body,
     input.finalResult,

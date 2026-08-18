@@ -167,6 +167,29 @@ export class ChatResultNormalizerService {
       return documentSummary;
     }
 
+    // If structuredData is purely an internal artifact/finalOutputs payload, don't dump its JSON.
+    // Artifacts are already surfaced via download buttons; show a clean completion message instead.
+    const isFinalOutputsPayload =
+      result.structuredData !== undefined &&
+      result.structuredData !== null &&
+      typeof result.structuredData === 'object' &&
+      !Array.isArray(result.structuredData) &&
+      (() => {
+        const keys = Object.keys(result.structuredData as Record<string, unknown>);
+        return (
+          keys.length > 0 &&
+          keys.every((k) => ['finalOutputs', 'artifact', 'artifacts'].includes(k))
+        );
+      })();
+
+    if (isFinalOutputsPayload) {
+      const artifactName =
+        result.artifacts.length > 0 ? result.artifacts[0].name : undefined;
+      return artifactName
+        ? `任务已成功完成，已为您生成结果文档：${artifactName}。您可以直接点击下方按钮进行查看与下载。${executionId ? `\n\n执行单 ID: ${executionId}` : ''}`
+        : `任务已成功完成，已为您生成结果文档。您可以直接点击下方按钮进行查看与下载。${executionId ? `\n\n执行单 ID: ${executionId}` : ''}`;
+    }
+
     if (result.structuredData !== undefined && result.structuredData !== null) {
       return `任务已完成，返回结果如下：\n\n${this.safeJsonStringify(result.structuredData)}${
         executionId ? `\n\n执行单 ID: ${executionId}` : ''

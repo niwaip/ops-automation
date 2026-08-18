@@ -1,15 +1,9 @@
 import React from 'react';
 import { Space, Typography } from 'antd';
 import ExecutionDetailSectionCard from '@/features/executions/detail/components/ExecutionDetailSectionCard';
-import ExecutionLinkButton from '@/features/executions/shared/components/ExecutionLinkButton';
 import type { ExecutionDto } from '@/api/execution';
 import ExecutionPayloadContent from '@/features/executions/shared/components/ExecutionPayloadContent';
-import ExecutionResultHeader from '@/features/executions/shared/components/ExecutionResultHeader';
-import {
-  selectExecutionDeliverableArtifacts,
-  selectExecutionReferenceArtifacts,
-} from '@ops/user-core';
-import { replaceLocalhostWithCurrentHost } from '@/shared/utils/publicUrl';
+import ExecutionNonBrowserResultCard from '@/features/executions/shared/components/ExecutionNonBrowserResultCard';
 
 const { Text } = Typography;
 
@@ -53,12 +47,8 @@ const ExecutionInputOutputCard: React.FC<ExecutionInputOutputCardProps> = ({
     return null;
   }
 
-  const deliverableArtifacts = selectExecutionDeliverableArtifacts(
-    executionNormalizedResult?.artifacts || []
-  );
-  const referenceArtifacts = selectExecutionReferenceArtifacts(
-    executionNormalizedResult?.artifacts || []
-  );
+  const primaryResultText =
+    executionNormalizedResult?.summary || executionNormalizedResult?.body;
 
   return (
     <ExecutionDetailSectionCard title="输入与输出">
@@ -72,83 +62,23 @@ const ExecutionInputOutputCard: React.FC<ExecutionInputOutputCardProps> = ({
         <div>
           <Text strong>结果：</Text>
           <div style={{ marginTop: 8 }}>
-            {executionNormalizedResult?.hasBusinessResult ? (
-              <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                {executionNormalizedResult.title ? (
-                  <ExecutionResultHeader
-                    title={executionNormalizedResult.title}
-                    typeLabel={executionNormalizedResult.resultType}
-                  />
-                ) : null}
-                {executionNormalizedResult.summary || executionNormalizedResult.body ? (
-                  <ExecutionPayloadContent
-                    value={executionNormalizedResult.summary || executionNormalizedResult.body}
-                  />
-                ) : null}
-                {deliverableArtifacts.length > 0 ? (
-                  <div>
-                    <Text strong>结果文件：</Text>
-                    <Space wrap style={{ marginLeft: 8 }}>
-                      {deliverableArtifacts.map((artifact, index) => {
-                        const href = replaceLocalhostWithCurrentHost(
-                          artifact.downloadUrl || artifact.url
-                        );
-                        if (!href) {
-                          return null;
-                        }
-
-                        return (
-                          <ExecutionLinkButton key={`${href}-${index}`} href={href}>
-                            {artifact.label || artifact.name || `结果文件 ${index + 1}`}
-                          </ExecutionLinkButton>
-                        );
-                      })}
-                    </Space>
-                  </div>
-                ) : null}
-                {referenceArtifacts.length > 0 ? (
-                  <div>
-                    <Text strong>来源链接：</Text>
-                    <Space wrap style={{ marginLeft: 8 }}>
-                      {referenceArtifacts.map((artifact, index) => {
-                        const href = replaceLocalhostWithCurrentHost(artifact.url);
-                        if (!href) {
-                          return null;
-                        }
-
-                        return (
-                          <ExecutionLinkButton key={`${href}-${index}`} href={href}>
-                            {artifact.label || artifact.name || `来源 ${index + 1}`}
-                          </ExecutionLinkButton>
-                        );
-                      })}
-                    </Space>
-                  </div>
-                ) : null}
-                {executionNormalizedResult.temporalLink ? (() => {
-                  const temporalHref = replaceLocalhostWithCurrentHost(
-                    executionNormalizedResult.temporalLink
-                  );
-                  return temporalHref ? (
-                    <ExecutionLinkButton href={temporalHref} fitContent>
-                      打开 Temporal 执行链路
-                    </ExecutionLinkButton>
-                  ) : null;
-                })() : null}
-                <ExecutionPayloadContent
-                  value={
-                    executionNormalizedResult.structuredData ?? executionNormalizedResult.envelope
-                  }
-                  emptyText="该执行暂无结构化结果。"
-                />
-              </Space>
-            ) : (
-              <ExecutionPayloadContent
-                value={effectiveResultJson}
-                emptyText="该执行暂无结果输出。"
-                treatSingleResultFieldAsMarkdown
-              />
-            )}
+            <ExecutionNonBrowserResultCard
+              executionInput={executionInput}
+              normalizedResult={executionNormalizedResult}
+              primaryResultText={primaryResultText}
+              effectiveResultJson={effectiveResultJson}
+              labels={{
+                title: '结果',
+                input: '输入',
+                result: '结果',
+                resultArtifacts: '结果文件',
+                sourceLinks: '来源链接',
+                temporalExecutionLink: '打开 Temporal 执行链路',
+                noInput: '暂无输入内容',
+                noStructuredResult: '暂无结构化结果',
+                noResultOutput: '暂无结果输出',
+              }}
+            />
           </div>
         </div>
       </Space>

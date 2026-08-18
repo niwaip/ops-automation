@@ -39,7 +39,7 @@ main() {
 
   log "All V4 acceptance checks passed"
   log "Stop stacks with:"
-  log "  ./docker/start-smart.sh docker-compose.full.yml down"
+  log "  ./docker/start-smart.sh dev down"
 }
 
 main "$@"

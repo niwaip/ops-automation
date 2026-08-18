@@ -814,6 +814,15 @@
   min-width: 0;
 }
 
+.user-chat-message-stack.role-assistant.has-task-block {
+  width: min(86%, 760px) !important;
+  min-width: min(100%, 480px) !important;
+}
+
+.user-chat-message-stack.role-assistant.has-task-block .user-chat-message-bubble.role-assistant {
+  width: 100% !important;
+}
+
 .user-chat-message-bubble {
   width: 100%;
   border-radius: 20px;

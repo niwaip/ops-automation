@@ -10,6 +10,9 @@ export const executionCreateContainerStyle: CSSProperties = {
 };
 
 export const executionCreatePanelCardStyle: CSSProperties = {
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
   borderRadius: 18,
   border: '1px solid var(--border-color)',
   boxShadow: 'var(--shadow-sm)',
@@ -35,9 +38,14 @@ export const executionCreateContentGridStyle: CSSProperties = {
   gap: 20,
   minHeight: 0,
   flex: 1,
+  height: '100%',
+  alignItems: 'stretch',
 };
 
 export const executionCreateFormCardBodyStyle: CSSProperties = {
+  flex: 1,
+  display: 'flex',
+  flexDirection: 'column',
   maxHeight: '100%',
   overflowY: 'auto',
 };
