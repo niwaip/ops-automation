@@ -221,21 +221,29 @@ export function TaskOutcomeBlock({
           }
         }}
       />
+
+      {/* 结果/产物列表 — 默认收起 (Collapsible Div) */}
       {shouldShowArtifactActions && artifacts.length > 0 ? (
-        <Space wrap className={styles['user-chat-outcome-actions']}>
-          {artifacts.map((artifact, index) => {
-            const href = artifact.downloadUrl || artifact.url;
-            if (!href) {
-              return null;
-            }
-            return (
-              <Button key={`${href}-${index}`} size="small" href={href} target="_blank">
-                {artifact.label || artifact.name || `查看产物 ${index + 1}`}
-              </Button>
-            );
-          })}
-        </Space>
+        <details className={styles['user-chat-outcome-details']} style={{ marginTop: 8 }}>
+          <summary style={{ cursor: 'pointer', userSelect: 'none' }}>
+            {`查看相关结果与产物链接 (${artifacts.length} 项)`}
+          </summary>
+          <Space wrap className={styles['user-chat-outcome-actions']} style={{ marginTop: 8 }}>
+            {artifacts.map((artifact, index) => {
+              const href = artifact.downloadUrl || artifact.url;
+              if (!href) {
+                return null;
+              }
+              return (
+                <Button key={`${href}-${index}`} size="small" href={href} target="_blank">
+                  {artifact.label || artifact.name || `结果项 ${index + 1}`}
+                </Button>
+              );
+            })}
+          </Space>
+        </details>
       ) : null}
+
       {supplementalResult ? (
         <details className={styles['user-chat-outcome-details']}>
           <summary>查看补充说明</summary>

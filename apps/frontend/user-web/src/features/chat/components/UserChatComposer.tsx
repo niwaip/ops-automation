@@ -1,15 +1,16 @@
 import {
   AudioOutlined,
   MessageOutlined,
+  PaperClipOutlined,
   PlusOutlined,
   RobotOutlined,
   SendOutlined,
   StopOutlined,
 } from '@ant-design/icons';
-import { Button, Input, Select, Segmented, Switch, Typography, message as antdMessage } from 'antd';
+import { Button, Input, Select, Segmented, Switch, Tag, Upload, message as antdMessage } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
-import type { AIModel } from '@ops/user-core';
+import type { AIModel, UploadedFileDescriptor } from '@ops/user-core';
 import { apiClient, runtimeConfig } from '../../../api';
 import { authStore } from '../../../adapters/auth/authStore';
 import { supportsNativeReasoning } from '@/shared/lib/aiModelReasoning';
@@ -59,6 +60,35 @@ const mergeSpeechText = (baseText: string, speechText: string): string => {
   return `${baseText.replace(/\s+$/, '')}\n${normalizedSpeechText}`;
 };
 
+async function uploadChatFile(file: File): Promise<UploadedFileDescriptor> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const token = (await apiClient.ensureFreshAccessToken()) || authStore.getState().accessToken;
+  const response = await fetch(resolveAiPath('/chat/upload'), {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    throw new Error(`HTTP error: ${response.status} ${errText}`);
+  }
+
+  const payload = (await response.json()) as { fileId?: string };
+  if (!payload?.fileId) {
+    throw new Error('Invalid upload response');
+  }
+
+  return {
+    fileId: payload.fileId,
+    fileName: file.name,
+    mimeType: file.type,
+    size: file.size,
+  };
+}
+
 async function transcribeAudio(file: Blob | File, modelId: string): Promise<string> {
   const formData = new FormData();
   formData.append('file', file, 'audio.webm');
@@ -87,7 +117,7 @@ async function transcribeAudio(file: Blob | File, modelId: string): Promise<stri
 interface UserChatComposerProps {
   draft: string;
   onDraftChange: (value: string) => void;
-  onSend: () => void;
+  onSend: (files?: UploadedFileDescriptor[]) => void;
   onStop?: () => void;
   onNewSession: () => void;
   chatMode: 'chat' | 'task';
@@ -316,9 +346,52 @@ export function UserChatComposer(props: UserChatComposerProps) {
     }
   }, [draft, isListening, onDraftChange, speechLanguage, stopListening]);
 
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFileDescriptor[]>([]);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+
+  const handleFileUpload = useCallback(async (file: File) => {
+    setIsUploadingFile(true);
+    try {
+      const uploaded = await uploadChatFile(file);
+      setUploadedFiles((prev) => [...prev, uploaded]);
+      void antdMessage.success(`已添加附件: ${file.name}`);
+    } catch (err: unknown) {
+      console.error('File upload failed:', err);
+      void antdMessage.error(err instanceof Error ? err.message : '附件上传失败');
+    } finally {
+      setIsUploadingFile(false);
+    }
+    return false;
+  }, []);
+
+  const handleRemoveFile = useCallback((fileId?: string, fileName?: string) => {
+    setUploadedFiles((prev) => prev.filter((f) => f.fileId !== fileId || f.fileName !== fileName));
+  }, []);
+
+  const handleTriggerSend = useCallback(() => {
+    const filesToSend = [...uploadedFiles];
+    setUploadedFiles([]);
+    onSend(filesToSend);
+  }, [onSend, uploadedFiles]);
+
   return (
     <div className={styles['user-chat-input-container']}>
       <div className={styles['user-chat-input-shell']}>
+        {uploadedFiles.length > 0 && (
+          <div className={styles['user-chat-input-attachments-bar']}>
+            {uploadedFiles.map((file, idx) => (
+              <Tag
+                key={file.fileId || `${file.fileName}-${idx}`}
+                closable
+                onClose={() => handleRemoveFile(file.fileId, file.fileName)}
+                icon={<PaperClipOutlined />}
+                className={styles['user-chat-input-file-tag']}
+              >
+                {file.fileName}
+              </Tag>
+            ))}
+          </div>
+        )}
         <div className={styles['user-chat-input-editor']}>
           <TextArea
             ref={inputRef}
@@ -333,7 +406,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
             }}
             placeholder={placeholder}
             className={styles['user-chat-input-textarea']}
-            disabled={disabled || isTranscribing}
+            disabled={disabled || isTranscribing || isUploadingFile}
             onKeyDown={(e) => {
               // Arrow-key history navigation (no modifier keys)
               if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -343,7 +416,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
             onPressEnter={(event) => {
               if (!event.shiftKey) {
                 event.preventDefault();
-                onSend();
+                handleTriggerSend();
               }
             }}
           />
@@ -401,54 +474,73 @@ export function UserChatComposer(props: UserChatComposerProps) {
             ]}
           />
           <div className={styles['user-chat-input-toolbar-spacer']} />
-          <Typography.Text type="secondary" className={styles['user-chat-input-shortcut-hint']}>
-            Enter 发送，Shift + Enter 换行，↑↓ 切换历史
-          </Typography.Text>
-          <div className={styles['user-chat-input-voice-group']}>
-            <Select
-              size="small"
-              value={speechLanguage}
-              onChange={setSpeechLanguage}
-              style={{ width: 84 }}
-              options={SPEECH_LANGUAGE_OPTIONS}
-              disabled={disabled || isTranscribing || isListening || !speechSupported}
-              className={styles['user-chat-input-language-select']}
-            />
-            <Button
-              size="small"
-              icon={<AudioOutlined />}
-              onClick={() => {
-                void handleSpeechToggle();
+          <div className={styles['user-chat-input-actions-group']}>
+            <Upload
+              beforeUpload={(file) => {
+                void handleFileUpload(file as unknown as File);
+                return false;
               }}
-              disabled={disabled || (!speechSupported && !isTranscribing)}
-              loading={isTranscribing}
-              title={
-                speechSupported
-                  ? isListening
-                    ? '停止语音输入'
-                    : '开始语音输入'
-                  : '当前浏览器不支持语音输入'
-              }
-              className={`${styles['user-chat-input-voice-btn']}${isListening ? ` ${styles.active}` : ''}`}
+              showUploadList={false}
+              disabled={disabled || isTranscribing || isUploadingFile}
             >
-              {isListening ? '录音中' : isTranscribing ? '转写中' : '语音'}
+              <Button
+                size="small"
+                icon={<PaperClipOutlined />}
+                loading={isUploadingFile}
+                disabled={disabled || isTranscribing}
+                title="添加附件"
+                className={styles['user-chat-input-attach-btn']}
+              >
+                {isUploadingFile ? '上传中' : '附件'}
+              </Button>
+            </Upload>
+            <div className={styles['user-chat-input-voice-group']}>
+              <Select
+                size="small"
+                value={speechLanguage}
+                onChange={setSpeechLanguage}
+                style={{ width: 84 }}
+                options={SPEECH_LANGUAGE_OPTIONS}
+                disabled={disabled || isTranscribing || isListening || !speechSupported}
+                className={styles['user-chat-input-language-select']}
+              />
+              <Button
+                size="small"
+                icon={<AudioOutlined />}
+                onClick={() => {
+                  void handleSpeechToggle();
+                }}
+                disabled={disabled || (!speechSupported && !isTranscribing)}
+                loading={isTranscribing}
+                title={
+                  speechSupported
+                    ? isListening
+                      ? '停止语音输入'
+                      : '开始语音输入'
+                    : '开始语音输入'
+                }
+                className={`${styles['user-chat-input-voice-btn']}${isListening ? ` ${styles.active}` : ''}`}
+              >
+                {isListening ? '录音中' : isTranscribing ? '转写中' : '语音'}
+              </Button>
+            </div>
+            <Button
+              type="primary"
+              size="small"
+              icon={isStreaming ? <StopOutlined /> : <SendOutlined />}
+              onClick={() => {
+                if (isStreaming) {
+                  onStop?.();
+                  return;
+                }
+                handleTriggerSend();
+              }}
+              disabled={disabled || isTranscribing || isUploadingFile || (!isStreaming && !draft.trim() && uploadedFiles.length === 0)}
+              className={styles['user-chat-input-send-btn']}
+            >
+              {isStreaming ? '停止' : '发送'}
             </Button>
           </div>
-          <Button
-            type="primary"
-            size="small"
-            icon={isStreaming ? <StopOutlined /> : <SendOutlined />}
-            onClick={() => {
-              if (isStreaming) {
-                onStop?.();
-                return;
-              }
-              void onSend();
-            }}
-            disabled={disabled || isTranscribing || (!isStreaming && !draft.trim())}
-          >
-            {isStreaming ? '停止' : '发送'}
-          </Button>
         </div>
       </div>
     </div>

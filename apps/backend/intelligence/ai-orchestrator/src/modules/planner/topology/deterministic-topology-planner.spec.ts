@@ -170,4 +170,42 @@ describe('Phase 2 Topology Projector & Validator', () => {
     expect(result.valid).toBe(false);
     expect(result.errors).toContain('matchConfidence 0.5 is below minimum 0.8');
   });
+
+  it('rejects a structurally valid topology that omits an explicitly requested Skill', () => {
+    const barkCard: CompactCapabilityCardV1 = {
+      id: 'bark-push',
+      kind: 'skill',
+      displayName: 'Bark推送服务',
+      summary: '将内容推送到用户设备',
+      goals: ['push'],
+      inputs: { content: 'string' },
+      outputs: { code: 'number', message: 'string' },
+    };
+    const { aliasMap } = projector.projectCandidateCards(
+      [...mockSkillCards, barkCard],
+      mockLlmOpCards,
+    );
+    const result = validator.validateTopology(
+      {
+        schemaVersion: 'deterministic-topology/v1',
+        objective: '搜索并总结后通过 Bark 推送',
+        matchDecision: 'matched',
+        matchConfidence: 0.95,
+        matchReason: '搜索和总结能力可用',
+        nodes: [
+          { ref: 'n1', capabilityKey: 's0', dependsOn: [] },
+          { ref: 'n2', capabilityKey: 'o0', dependsOn: ['n1'] },
+        ],
+        finalNodeRef: 'n2',
+        finalOutputKind: 'value',
+      },
+      aliasMap,
+      [barkCard],
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain(
+      "Topology does not cover explicitly requested Skill 'Bark推送服务'",
+    );
+  });
 });

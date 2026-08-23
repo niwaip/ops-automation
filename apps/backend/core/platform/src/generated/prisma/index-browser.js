@@ -606,6 +606,37 @@ exports.Prisma.SkillScheduleScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.UserSavedSkillScalarFieldEnum = {
+  id: 'id',
+  ownerUserId: 'ownerUserId',
+  name: 'name',
+  description: 'description',
+  visibility: 'visibility',
+  status: 'status',
+  activeVersionId: 'activeVersionId',
+  latestVersion: 'latestVersion',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.UserSavedSkillVersionScalarFieldEnum = {
+  id: 'id',
+  skillId: 'skillId',
+  ownerUserId: 'ownerUserId',
+  version: 'version',
+  sourceExecutionId: 'sourceExecutionId',
+  schemaVersion: 'schemaVersion',
+  planSnapshotJson: 'planSnapshotJson',
+  planHash: 'planHash',
+  fixedInputJson: 'fixedInputJson',
+  inputHash: 'inputHash',
+  outputSchemaJson: 'outputSchemaJson',
+  sampleResultJson: 'sampleResultJson',
+  aiReviewJson: 'aiReviewJson',
+  reviewStatus: 'reviewStatus',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.BuiltinSkillScalarFieldEnum = {
   id: 'id',
   capabilityKey: 'capabilityKey',
@@ -913,6 +944,8 @@ exports.Prisma.ModelName = {
   Activity: 'Activity',
   TemporalWorkflow: 'TemporalWorkflow',
   SkillSchedule: 'SkillSchedule',
+  UserSavedSkill: 'UserSavedSkill',
+  UserSavedSkillVersion: 'UserSavedSkillVersion',
   BuiltinSkill: 'BuiltinSkill',
   BuiltinSkillVersion: 'BuiltinSkillVersion',
   BuiltinSkillDeployment: 'BuiltinSkillDeployment',

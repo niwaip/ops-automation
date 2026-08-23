@@ -8,7 +8,6 @@ import type {
   CompactCapabilityCardV1,
 } from '@ops/backend-deterministic-plan';
 import { projectOutputSchemaV1 } from '@ops/backend-deterministic-plan';
-
 import { MultiNodeParameterBinderService } from '../binding/multi-node-parameter-binder.service';
 import { DeterministicContractAssemblerService } from './deterministic-contract-assembler.service';
 import { RoutingCapabilityCardProjector } from '../candidate-selection/routing-capability-card.projector';
@@ -17,12 +16,8 @@ import { DeterministicTopologyValidatorService } from '../topology/deterministic
 import { isAcceptedSkillMatch } from '../skill/skill-match-policy';
 import { DeterministicRecipeMatcherService } from '../topology/deterministic-recipe-matcher.service';
 import { DeterministicRecipeTopologyBuilderService } from '../topology/deterministic-recipe-topology-builder.service';
-
-export interface GenerateDeterministicPlanRequestDto {
-  userRequest: string;
-  availableSkills?: any[];
-  systemInputs?: Record<string, unknown>;
-}
+import { ExplicitSkillIntentService } from '../topology/explicit-skill-intent.service';
+import type { GenerateDeterministicPlanRequestDto } from './deterministic-plan-generator.types';
 
 @Injectable()
 export class DeterministicPlanGeneratorService {
@@ -47,6 +42,8 @@ export class DeterministicPlanGeneratorService {
     private readonly recipeMatcher?: DeterministicRecipeMatcherService,
     @Optional()
     private readonly recipeTopologyBuilder?: DeterministicRecipeTopologyBuilderService,
+    @Optional()
+    private readonly explicitSkillIntent?: ExplicitSkillIntentService,
   ) {}
 
   public async generatePlan(dto: GenerateDeterministicPlanRequestDto): Promise<DeterministicPlanDraftV1> {
@@ -60,6 +57,9 @@ export class DeterministicPlanGeneratorService {
       err.code = 'CAPABILITY_NOT_FOUND';
       throw err;
     }
+
+    const explicitlyRequestedSkills =
+      this.explicitSkillIntent?.findExplicitlyRequestedSkills(dto.userRequest, skillCards) || [];
 
     // Stage 1: LLM intent recognition and minimal topology planning.
     if (
@@ -80,13 +80,32 @@ export class DeterministicPlanGeneratorService {
           skillCards,
           llmOperationCards,
         );
-        const recipeTopology = recipe
+        let recipeTopology = recipe
           ? this.recipeTopologyBuilder?.buildTopologyFromRecipe(
               recipe,
               skillCards,
               llmOperationCards,
             )
           : null;
+        const UNCOVERED_ACTION_KEYWORDS = ['推送', '通知', 'bark', '发给', '邮件', 'webhook'];
+        const hasUncoveredActionKeyword = UNCOVERED_ACTION_KEYWORDS.some((kw) =>
+          dto.userRequest.toLowerCase().includes(kw),
+        );
+
+        if (recipeTopology && (explicitlyRequestedSkills.length > 0 || hasUncoveredActionKeyword)) {
+          const recipeCoverage = this.topologyValidator.validateTopology(
+            recipeTopology,
+            aliasMap,
+            explicitlyRequestedSkills,
+          );
+          if (!recipeCoverage.valid || hasUncoveredActionKeyword) {
+            this.logger.log(
+              `Recipe '${recipe?.recipeName}' does not cover the complete request (uncovered action or explicitly requested skill); delegating to AI topology planner`,
+            );
+            recipeTopology = null;
+          }
+        }
+        const topologySource = recipeTopology ? 'recipe' : 'llm';
         const topologyDraft =
           recipeTopology ||
           (await this.topologyPlanner.planTopology(dto.userRequest, routingCards));
@@ -105,10 +124,13 @@ export class DeterministicPlanGeneratorService {
           const validation = this.topologyValidator.validateTopology(
             topologyDraft,
             aliasMap,
+            explicitlyRequestedSkills,
           );
 
           if (validation.valid) {
-            this.logger.log(`Two-Stage LLM Topology Planner succeeded for request: "${dto.userRequest}"`);
+            this.logger.log(
+              `Deterministic ${topologySource} topology succeeded for request: "${dto.userRequest}"`,
+            );
 
             const bindingResult = await this.parameterBinder.bindParameters(
               dto.userRequest,
@@ -126,12 +148,17 @@ export class DeterministicPlanGeneratorService {
 
             (planDraft as any).promptDebug = {
               debugSource: 'planner',
-              systemPrompt: `Two-Stage LLM Topology Planner`,
+              systemPrompt:
+                topologySource === 'recipe'
+                  ? `Deterministic Recipe Topology`
+                  : `Two-Stage LLM Topology Planner`,
               userPrompt: dto.userRequest,
               systemPromptSectionKeys: ['routing_cards', 'topology_dag'],
               userPromptSectionKeys: ['user_request'],
               notes: [
-                'Generated via LLM topology recognition followed by selected-capability parameter recognition.',
+                topologySource === 'recipe'
+                  ? `Generated via deterministic recipe '${topologyDraft.recipeName || 'unknown'}' followed by selected-capability parameter recognition.`
+                  : 'Generated via LLM topology recognition followed by selected-capability parameter recognition.',
                 ...(bindingResult.notes || []),
               ],
               llmCalls: bindingResult.llmCalls || [],
@@ -139,7 +166,13 @@ export class DeterministicPlanGeneratorService {
 
             return planDraft;
           }
-          throw new Error(`LLM topology validation failed: ${validation.errors.join('; ')}`);
+          const err: any = new Error(
+            `Topology validation failed: ${validation.errors.join('; ')}`,
+          );
+          if (validation.errors.some((error) => error.includes('explicitly requested Skill'))) {
+            err.code = 'CAPABILITY_NOT_FOUND';
+          }
+          throw err;
         }
         throw new Error('LLM topology planner returned no topology');
       } catch (twoStageErr: any) {

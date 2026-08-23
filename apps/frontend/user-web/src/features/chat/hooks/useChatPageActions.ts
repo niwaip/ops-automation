@@ -1,7 +1,7 @@
 import { useCallback, useState, type Dispatch, type SetStateAction } from 'react';
 import { useQueryClient } from 'react-query';
 import type { MessageInstance } from 'antd/es/message/interface';
-import type { ChatMessage, ChatRequest, ChatSession } from '@ops/user-core';
+import type { ChatMessage, ChatRequest, ChatSession, UploadedFileDescriptor } from '@ops/user-core';
 import { executionApi } from '../../../api';
 import {
   buildApprovedAssistantDraftMeta,
@@ -84,9 +84,10 @@ export function useChatPageActions({
     ]);
   }, [queryClient]);
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback((filesToSend?: UploadedFileDescriptor[]) => {
     const content = draft.trim();
-    if (!content || isStreaming) {
+    const hasFiles = (filesToSend || []).length > 0;
+    if ((!content && !hasFiles) || isStreaming) {
       return;
     }
 
@@ -102,6 +103,9 @@ export function useChatPageActions({
       role: 'user',
       content,
       timestamp: now,
+      metadata: {
+        files: filesToSend?.map((f) => f.fileName),
+      },
     };
     const assistantMessageId = buildMessageId();
     const assistantMessage: ChatMessage = {
@@ -119,7 +123,7 @@ export function useChatPageActions({
 
     updateSessionMessages(session.id, (current) => [...current, userMessage, assistantMessage]);
     updateSessionMeta(session.id, {
-      title: summarizeSessionTitle(content),
+      title: summarizeSessionTitle(content || filesToSend?.[0]?.fileName || '附件消息'),
       updatedAt: now,
       modelId: resolvedModelId,
     });
@@ -131,6 +135,7 @@ export function useChatPageActions({
       sessionId: session.id,
       executionId: continuedExecutionId || undefined,
       modelId: resolvedModelId,
+      files: filesToSend,
       mode: chatMode,
       thinking: enableThinking,
       reasoning: nativeReasoningEnabled,

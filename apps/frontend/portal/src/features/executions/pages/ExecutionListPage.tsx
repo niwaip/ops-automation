@@ -1316,7 +1316,231 @@ const ExecutionListPage: React.FC = () => {
               </Card>
             ) : null}
 
+            {/* 中间步骤结果 - 默认收起 */}
+            {!isSelectedBrowserExecution &&
+            selectedSteps &&
+            selectedSteps.length > 0 ? (
+              <Collapse
+                ghost
+                size="small"
+                style={{ marginTop: 0 }}
+                items={[
+                  {
+                    key: 'step-outputs',
+                    label: (
+                      <Text strong style={{ fontSize: 13 }}>
+                        {`中间步骤结果（${selectedSteps.length} 步）`}
+                      </Text>
+                    ),
+                    children: (
+                      <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                        {[...selectedSteps]
+                          .sort((a, b) => a.stepIndex - b.stepIndex)
+                          .map((step) => {
+                            const hasOutput =
+                              step.outputJson &&
+                              Object.keys(step.outputJson).length > 0;
+                            const presentation = (step.outputJson as any)
+                              ?.presentation;
+                            const detailText: string | undefined =
+                              typeof presentation?.detailText === 'string' &&
+                              presentation.detailText !== 'success'
+                                ? presentation.detailText
+                                : undefined;
+                            const resultPayload = (step.outputJson as any)
+                              ?.result;
+                            return (
+                              <Card
+                                key={step.id}
+                                size="small"
+                                style={{
+                                  borderRadius: 8,
+                                  border: '1px solid var(--bg-secondary)',
+                                  background: 'var(--bg-card)',
+                                }}
+                              >
+                                {/* 步骤头：序号 名称 状态 */}
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    flexWrap: 'wrap',
+                                    gap: 8,
+                                    marginBottom: 6,
+                                  }}
+                                >
+                                  <Space size={6} wrap>
+                                    <Text strong style={{ fontSize: 12 }}>
+                                      {`步骤 ${step.stepIndex + 1}`}
+                                    </Text>
+                                    <Text style={{ fontSize: 12 }}>
+                                      {step.name || step.action || step.type}
+                                    </Text>
+                                    {step.action && step.action !== step.name ? (
+                                      <Text
+                                        type="secondary"
+                                        style={{ fontSize: 11 }}
+                                      >
+                                        [{step.action}]
+                                      </Text>
+                                    ) : null}
+                                  </Space>
+                                  <Tag
+                                    color={getStepStatusColor(step.status)}
+                                    style={{ fontSize: 11, marginInlineEnd: 0 }}
+                                  >
+                                    {step.status}
+                                  </Tag>
+                                </div>
+
+                                {/* 时间 */}
+                                <Text
+                                  type="secondary"
+                                  style={{ fontSize: 11, display: 'block', marginBottom: hasOutput ? 8 : 0 }}
+                                >
+                                  {`${step.startedAt ? new Date(step.startedAt).toLocaleString() : '-'} → ${step.endedAt ? new Date(step.endedAt).toLocaleString() : '-'}`}
+                                </Text>
+
+                                {/* 错误 */}
+                                {step.errorMessage ? (
+                                  <Alert
+                                    type="error"
+                                    showIcon
+                                    message={step.errorMessage}
+                                    style={{ marginBottom: 8, fontSize: 12 }}
+                                  />
+                                ) : null}
+
+                                {/* 输出内容 */}
+                                {hasOutput ? (
+                                  <Collapse
+                                    ghost
+                                    size="small"
+                                    items={[
+                                      {
+                                        key: 'out',
+                                        label: (
+                                          <Text
+                                            type="secondary"
+                                            style={{ fontSize: 11 }}
+                                          >
+                                            {detailText
+                                              ? `输出摘要：${detailText.slice(0, 60)}${detailText.length > 60 ? '…' : ''}`
+                                              : `查看输出（${Object.keys(step.outputJson!).join('、')}）`}
+                                          </Text>
+                                        ),
+                                        children: (
+                                          <Space
+                                            direction="vertical"
+                                            size={8}
+                                            style={{ width: '100%' }}
+                                          >
+                                            {detailText ? (
+                                              <div>
+                                                <Text
+                                                  strong
+                                                  style={{ fontSize: 11 }}
+                                                >
+                                                  摘要
+                                                </Text>
+                                                <pre
+                                                  style={{
+                                                    marginTop: 4,
+                                                    padding: '6px 10px',
+                                                    background:
+                                                      'var(--bg-secondary)',
+                                                    borderRadius: 6,
+                                                    fontSize: 12,
+                                                    whiteSpace: 'pre-wrap',
+                                                    wordBreak: 'break-word',
+                                                    maxHeight: 300,
+                                                    overflow: 'auto',
+                                                  }}
+                                                >
+                                                  {detailText}
+                                                </pre>
+                                              </div>
+                                            ) : null}
+                                            {resultPayload !== undefined ? (
+                                              <div>
+                                                <Text
+                                                  strong
+                                                  style={{ fontSize: 11 }}
+                                                >
+                                                  result
+                                                </Text>
+                                                <pre
+                                                  style={{
+                                                    marginTop: 4,
+                                                    padding: '6px 10px',
+                                                    background:
+                                                      'var(--bg-secondary)',
+                                                    borderRadius: 6,
+                                                    fontSize: 12,
+                                                    whiteSpace: 'pre-wrap',
+                                                    wordBreak: 'break-word',
+                                                    maxHeight: 300,
+                                                    overflow: 'auto',
+                                                  }}
+                                                >
+                                                  {typeof resultPayload ===
+                                                  'string'
+                                                    ? resultPayload
+                                                    : JSON.stringify(
+                                                        resultPayload,
+                                                        null,
+                                                        2
+                                                      )}
+                                                </pre>
+                                              </div>
+                                            ) : null}
+                                            <div>
+                                              <Text
+                                                strong
+                                                style={{ fontSize: 11 }}
+                                              >
+                                                完整 outputJson
+                                              </Text>
+                                              <pre
+                                                style={{
+                                                  marginTop: 4,
+                                                  padding: '6px 10px',
+                                                  background:
+                                                    'var(--bg-secondary)',
+                                                  borderRadius: 6,
+                                                  fontSize: 12,
+                                                  whiteSpace: 'pre-wrap',
+                                                  wordBreak: 'break-word',
+                                                  maxHeight: 300,
+                                                  overflow: 'auto',
+                                                }}
+                                              >
+                                                {JSON.stringify(
+                                                  step.outputJson,
+                                                  null,
+                                                  2
+                                                )}
+                                              </pre>
+                                            </div>
+                                          </Space>
+                                        ),
+                                      },
+                                    ]}
+                                  />
+                                ) : null}
+                              </Card>
+                            );
+                          })}
+                      </Space>
+                    ),
+                  },
+                ]}
+              />
+            ) : null}
+
             {isSelectedBrowserExecution && displaySelectedPhases.length > 0 ? (
+
               <Card title="步骤进度">
                 {!shouldShowSelectedExecutionSummary ? (
                   <Space direction="vertical" size={16} style={{ width: '100%' }}>

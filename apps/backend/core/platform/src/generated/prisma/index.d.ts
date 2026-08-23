@@ -174,6 +174,16 @@ export type TemporalWorkflow = $Result.DefaultSelection<Prisma.$TemporalWorkflow
  */
 export type SkillSchedule = $Result.DefaultSelection<Prisma.$SkillSchedulePayload>
 /**
+ * Model UserSavedSkill
+ * 
+ */
+export type UserSavedSkill = $Result.DefaultSelection<Prisma.$UserSavedSkillPayload>
+/**
+ * Model UserSavedSkillVersion
+ * 
+ */
+export type UserSavedSkillVersion = $Result.DefaultSelection<Prisma.$UserSavedSkillVersionPayload>
+/**
  * Model BuiltinSkill
  * 
  */
@@ -744,6 +754,26 @@ export class PrismaClient<
     * ```
     */
   get skillSchedule(): Prisma.SkillScheduleDelegate<ExtArgs>;
+
+  /**
+   * `prisma.userSavedSkill`: Exposes CRUD operations for the **UserSavedSkill** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more UserSavedSkills
+    * const userSavedSkills = await prisma.userSavedSkill.findMany()
+    * ```
+    */
+  get userSavedSkill(): Prisma.UserSavedSkillDelegate<ExtArgs>;
+
+  /**
+   * `prisma.userSavedSkillVersion`: Exposes CRUD operations for the **UserSavedSkillVersion** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more UserSavedSkillVersions
+    * const userSavedSkillVersions = await prisma.userSavedSkillVersion.findMany()
+    * ```
+    */
+  get userSavedSkillVersion(): Prisma.UserSavedSkillVersionDelegate<ExtArgs>;
 
   /**
    * `prisma.builtinSkill`: Exposes CRUD operations for the **BuiltinSkill** model.
@@ -1357,6 +1387,8 @@ export namespace Prisma {
     Activity: 'Activity',
     TemporalWorkflow: 'TemporalWorkflow',
     SkillSchedule: 'SkillSchedule',
+    UserSavedSkill: 'UserSavedSkill',
+    UserSavedSkillVersion: 'UserSavedSkillVersion',
     BuiltinSkill: 'BuiltinSkill',
     BuiltinSkillVersion: 'BuiltinSkillVersion',
     BuiltinSkillDeployment: 'BuiltinSkillDeployment',
@@ -1386,7 +1418,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "user" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "builtinSkill" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent"
+      modelProps: "user" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "userSavedSkill" | "userSavedSkillVersion" | "builtinSkill" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -3630,6 +3662,146 @@ export namespace Prisma {
           }
         }
       }
+      UserSavedSkill: {
+        payload: Prisma.$UserSavedSkillPayload<ExtArgs>
+        fields: Prisma.UserSavedSkillFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.UserSavedSkillFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.UserSavedSkillFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillPayload>
+          }
+          findFirst: {
+            args: Prisma.UserSavedSkillFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.UserSavedSkillFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillPayload>
+          }
+          findMany: {
+            args: Prisma.UserSavedSkillFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillPayload>[]
+          }
+          create: {
+            args: Prisma.UserSavedSkillCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillPayload>
+          }
+          createMany: {
+            args: Prisma.UserSavedSkillCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.UserSavedSkillCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillPayload>[]
+          }
+          delete: {
+            args: Prisma.UserSavedSkillDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillPayload>
+          }
+          update: {
+            args: Prisma.UserSavedSkillUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillPayload>
+          }
+          deleteMany: {
+            args: Prisma.UserSavedSkillDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.UserSavedSkillUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.UserSavedSkillUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillPayload>
+          }
+          aggregate: {
+            args: Prisma.UserSavedSkillAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateUserSavedSkill>
+          }
+          groupBy: {
+            args: Prisma.UserSavedSkillGroupByArgs<ExtArgs>
+            result: $Utils.Optional<UserSavedSkillGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.UserSavedSkillCountArgs<ExtArgs>
+            result: $Utils.Optional<UserSavedSkillCountAggregateOutputType> | number
+          }
+        }
+      }
+      UserSavedSkillVersion: {
+        payload: Prisma.$UserSavedSkillVersionPayload<ExtArgs>
+        fields: Prisma.UserSavedSkillVersionFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.UserSavedSkillVersionFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillVersionPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.UserSavedSkillVersionFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillVersionPayload>
+          }
+          findFirst: {
+            args: Prisma.UserSavedSkillVersionFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillVersionPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.UserSavedSkillVersionFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillVersionPayload>
+          }
+          findMany: {
+            args: Prisma.UserSavedSkillVersionFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillVersionPayload>[]
+          }
+          create: {
+            args: Prisma.UserSavedSkillVersionCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillVersionPayload>
+          }
+          createMany: {
+            args: Prisma.UserSavedSkillVersionCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.UserSavedSkillVersionCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillVersionPayload>[]
+          }
+          delete: {
+            args: Prisma.UserSavedSkillVersionDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillVersionPayload>
+          }
+          update: {
+            args: Prisma.UserSavedSkillVersionUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillVersionPayload>
+          }
+          deleteMany: {
+            args: Prisma.UserSavedSkillVersionDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.UserSavedSkillVersionUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.UserSavedSkillVersionUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSavedSkillVersionPayload>
+          }
+          aggregate: {
+            args: Prisma.UserSavedSkillVersionAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateUserSavedSkillVersion>
+          }
+          groupBy: {
+            args: Prisma.UserSavedSkillVersionGroupByArgs<ExtArgs>
+            result: $Utils.Optional<UserSavedSkillVersionGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.UserSavedSkillVersionCountArgs<ExtArgs>
+            result: $Utils.Optional<UserSavedSkillVersionCountAggregateOutputType> | number
+          }
+        }
+      }
       BuiltinSkill: {
         payload: Prisma.$BuiltinSkillPayload<ExtArgs>
         fields: Prisma.BuiltinSkillFieldRefs
@@ -5298,6 +5470,37 @@ export namespace Prisma {
    */
   export type ExecutionPhaseCountOutputTypeCountStepsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: ExecutionPhaseStepWhereInput
+  }
+
+
+  /**
+   * Count Type UserSavedSkillCountOutputType
+   */
+
+  export type UserSavedSkillCountOutputType = {
+    versions: number
+  }
+
+  export type UserSavedSkillCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    versions?: boolean | UserSavedSkillCountOutputTypeCountVersionsArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * UserSavedSkillCountOutputType without action
+   */
+  export type UserSavedSkillCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkillCountOutputType
+     */
+    select?: UserSavedSkillCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * UserSavedSkillCountOutputType without action
+   */
+  export type UserSavedSkillCountOutputTypeCountVersionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: UserSavedSkillVersionWhereInput
   }
 
 
@@ -38729,6 +38932,2115 @@ export namespace Prisma {
 
 
   /**
+   * Model UserSavedSkill
+   */
+
+  export type AggregateUserSavedSkill = {
+    _count: UserSavedSkillCountAggregateOutputType | null
+    _avg: UserSavedSkillAvgAggregateOutputType | null
+    _sum: UserSavedSkillSumAggregateOutputType | null
+    _min: UserSavedSkillMinAggregateOutputType | null
+    _max: UserSavedSkillMaxAggregateOutputType | null
+  }
+
+  export type UserSavedSkillAvgAggregateOutputType = {
+    latestVersion: number | null
+  }
+
+  export type UserSavedSkillSumAggregateOutputType = {
+    latestVersion: number | null
+  }
+
+  export type UserSavedSkillMinAggregateOutputType = {
+    id: string | null
+    ownerUserId: string | null
+    name: string | null
+    description: string | null
+    visibility: string | null
+    status: string | null
+    activeVersionId: string | null
+    latestVersion: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type UserSavedSkillMaxAggregateOutputType = {
+    id: string | null
+    ownerUserId: string | null
+    name: string | null
+    description: string | null
+    visibility: string | null
+    status: string | null
+    activeVersionId: string | null
+    latestVersion: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type UserSavedSkillCountAggregateOutputType = {
+    id: number
+    ownerUserId: number
+    name: number
+    description: number
+    visibility: number
+    status: number
+    activeVersionId: number
+    latestVersion: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type UserSavedSkillAvgAggregateInputType = {
+    latestVersion?: true
+  }
+
+  export type UserSavedSkillSumAggregateInputType = {
+    latestVersion?: true
+  }
+
+  export type UserSavedSkillMinAggregateInputType = {
+    id?: true
+    ownerUserId?: true
+    name?: true
+    description?: true
+    visibility?: true
+    status?: true
+    activeVersionId?: true
+    latestVersion?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type UserSavedSkillMaxAggregateInputType = {
+    id?: true
+    ownerUserId?: true
+    name?: true
+    description?: true
+    visibility?: true
+    status?: true
+    activeVersionId?: true
+    latestVersion?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type UserSavedSkillCountAggregateInputType = {
+    id?: true
+    ownerUserId?: true
+    name?: true
+    description?: true
+    visibility?: true
+    status?: true
+    activeVersionId?: true
+    latestVersion?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type UserSavedSkillAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which UserSavedSkill to aggregate.
+     */
+    where?: UserSavedSkillWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserSavedSkills to fetch.
+     */
+    orderBy?: UserSavedSkillOrderByWithRelationInput | UserSavedSkillOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: UserSavedSkillWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserSavedSkills from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserSavedSkills.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned UserSavedSkills
+    **/
+    _count?: true | UserSavedSkillCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: UserSavedSkillAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: UserSavedSkillSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: UserSavedSkillMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: UserSavedSkillMaxAggregateInputType
+  }
+
+  export type GetUserSavedSkillAggregateType<T extends UserSavedSkillAggregateArgs> = {
+        [P in keyof T & keyof AggregateUserSavedSkill]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateUserSavedSkill[P]>
+      : GetScalarType<T[P], AggregateUserSavedSkill[P]>
+  }
+
+
+
+
+  export type UserSavedSkillGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: UserSavedSkillWhereInput
+    orderBy?: UserSavedSkillOrderByWithAggregationInput | UserSavedSkillOrderByWithAggregationInput[]
+    by: UserSavedSkillScalarFieldEnum[] | UserSavedSkillScalarFieldEnum
+    having?: UserSavedSkillScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: UserSavedSkillCountAggregateInputType | true
+    _avg?: UserSavedSkillAvgAggregateInputType
+    _sum?: UserSavedSkillSumAggregateInputType
+    _min?: UserSavedSkillMinAggregateInputType
+    _max?: UserSavedSkillMaxAggregateInputType
+  }
+
+  export type UserSavedSkillGroupByOutputType = {
+    id: string
+    ownerUserId: string
+    name: string
+    description: string | null
+    visibility: string
+    status: string
+    activeVersionId: string | null
+    latestVersion: number
+    createdAt: Date
+    updatedAt: Date
+    _count: UserSavedSkillCountAggregateOutputType | null
+    _avg: UserSavedSkillAvgAggregateOutputType | null
+    _sum: UserSavedSkillSumAggregateOutputType | null
+    _min: UserSavedSkillMinAggregateOutputType | null
+    _max: UserSavedSkillMaxAggregateOutputType | null
+  }
+
+  type GetUserSavedSkillGroupByPayload<T extends UserSavedSkillGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<UserSavedSkillGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof UserSavedSkillGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], UserSavedSkillGroupByOutputType[P]>
+            : GetScalarType<T[P], UserSavedSkillGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type UserSavedSkillSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    ownerUserId?: boolean
+    name?: boolean
+    description?: boolean
+    visibility?: boolean
+    status?: boolean
+    activeVersionId?: boolean
+    latestVersion?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    versions?: boolean | UserSavedSkill$versionsArgs<ExtArgs>
+    _count?: boolean | UserSavedSkillCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["userSavedSkill"]>
+
+  export type UserSavedSkillSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    ownerUserId?: boolean
+    name?: boolean
+    description?: boolean
+    visibility?: boolean
+    status?: boolean
+    activeVersionId?: boolean
+    latestVersion?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["userSavedSkill"]>
+
+  export type UserSavedSkillSelectScalar = {
+    id?: boolean
+    ownerUserId?: boolean
+    name?: boolean
+    description?: boolean
+    visibility?: boolean
+    status?: boolean
+    activeVersionId?: boolean
+    latestVersion?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type UserSavedSkillInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    versions?: boolean | UserSavedSkill$versionsArgs<ExtArgs>
+    _count?: boolean | UserSavedSkillCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type UserSavedSkillIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+
+  export type $UserSavedSkillPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "UserSavedSkill"
+    objects: {
+      versions: Prisma.$UserSavedSkillVersionPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      ownerUserId: string
+      name: string
+      description: string | null
+      visibility: string
+      status: string
+      activeVersionId: string | null
+      latestVersion: number
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["userSavedSkill"]>
+    composites: {}
+  }
+
+  type UserSavedSkillGetPayload<S extends boolean | null | undefined | UserSavedSkillDefaultArgs> = $Result.GetResult<Prisma.$UserSavedSkillPayload, S>
+
+  type UserSavedSkillCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<UserSavedSkillFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: UserSavedSkillCountAggregateInputType | true
+    }
+
+  export interface UserSavedSkillDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['UserSavedSkill'], meta: { name: 'UserSavedSkill' } }
+    /**
+     * Find zero or one UserSavedSkill that matches the filter.
+     * @param {UserSavedSkillFindUniqueArgs} args - Arguments to find a UserSavedSkill
+     * @example
+     * // Get one UserSavedSkill
+     * const userSavedSkill = await prisma.userSavedSkill.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends UserSavedSkillFindUniqueArgs>(args: SelectSubset<T, UserSavedSkillFindUniqueArgs<ExtArgs>>): Prisma__UserSavedSkillClient<$Result.GetResult<Prisma.$UserSavedSkillPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one UserSavedSkill that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {UserSavedSkillFindUniqueOrThrowArgs} args - Arguments to find a UserSavedSkill
+     * @example
+     * // Get one UserSavedSkill
+     * const userSavedSkill = await prisma.userSavedSkill.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends UserSavedSkillFindUniqueOrThrowArgs>(args: SelectSubset<T, UserSavedSkillFindUniqueOrThrowArgs<ExtArgs>>): Prisma__UserSavedSkillClient<$Result.GetResult<Prisma.$UserSavedSkillPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first UserSavedSkill that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSavedSkillFindFirstArgs} args - Arguments to find a UserSavedSkill
+     * @example
+     * // Get one UserSavedSkill
+     * const userSavedSkill = await prisma.userSavedSkill.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends UserSavedSkillFindFirstArgs>(args?: SelectSubset<T, UserSavedSkillFindFirstArgs<ExtArgs>>): Prisma__UserSavedSkillClient<$Result.GetResult<Prisma.$UserSavedSkillPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first UserSavedSkill that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSavedSkillFindFirstOrThrowArgs} args - Arguments to find a UserSavedSkill
+     * @example
+     * // Get one UserSavedSkill
+     * const userSavedSkill = await prisma.userSavedSkill.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends UserSavedSkillFindFirstOrThrowArgs>(args?: SelectSubset<T, UserSavedSkillFindFirstOrThrowArgs<ExtArgs>>): Prisma__UserSavedSkillClient<$Result.GetResult<Prisma.$UserSavedSkillPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more UserSavedSkills that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSavedSkillFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all UserSavedSkills
+     * const userSavedSkills = await prisma.userSavedSkill.findMany()
+     * 
+     * // Get first 10 UserSavedSkills
+     * const userSavedSkills = await prisma.userSavedSkill.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const userSavedSkillWithIdOnly = await prisma.userSavedSkill.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends UserSavedSkillFindManyArgs>(args?: SelectSubset<T, UserSavedSkillFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserSavedSkillPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a UserSavedSkill.
+     * @param {UserSavedSkillCreateArgs} args - Arguments to create a UserSavedSkill.
+     * @example
+     * // Create one UserSavedSkill
+     * const UserSavedSkill = await prisma.userSavedSkill.create({
+     *   data: {
+     *     // ... data to create a UserSavedSkill
+     *   }
+     * })
+     * 
+     */
+    create<T extends UserSavedSkillCreateArgs>(args: SelectSubset<T, UserSavedSkillCreateArgs<ExtArgs>>): Prisma__UserSavedSkillClient<$Result.GetResult<Prisma.$UserSavedSkillPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many UserSavedSkills.
+     * @param {UserSavedSkillCreateManyArgs} args - Arguments to create many UserSavedSkills.
+     * @example
+     * // Create many UserSavedSkills
+     * const userSavedSkill = await prisma.userSavedSkill.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends UserSavedSkillCreateManyArgs>(args?: SelectSubset<T, UserSavedSkillCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many UserSavedSkills and returns the data saved in the database.
+     * @param {UserSavedSkillCreateManyAndReturnArgs} args - Arguments to create many UserSavedSkills.
+     * @example
+     * // Create many UserSavedSkills
+     * const userSavedSkill = await prisma.userSavedSkill.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many UserSavedSkills and only return the `id`
+     * const userSavedSkillWithIdOnly = await prisma.userSavedSkill.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends UserSavedSkillCreateManyAndReturnArgs>(args?: SelectSubset<T, UserSavedSkillCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserSavedSkillPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a UserSavedSkill.
+     * @param {UserSavedSkillDeleteArgs} args - Arguments to delete one UserSavedSkill.
+     * @example
+     * // Delete one UserSavedSkill
+     * const UserSavedSkill = await prisma.userSavedSkill.delete({
+     *   where: {
+     *     // ... filter to delete one UserSavedSkill
+     *   }
+     * })
+     * 
+     */
+    delete<T extends UserSavedSkillDeleteArgs>(args: SelectSubset<T, UserSavedSkillDeleteArgs<ExtArgs>>): Prisma__UserSavedSkillClient<$Result.GetResult<Prisma.$UserSavedSkillPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one UserSavedSkill.
+     * @param {UserSavedSkillUpdateArgs} args - Arguments to update one UserSavedSkill.
+     * @example
+     * // Update one UserSavedSkill
+     * const userSavedSkill = await prisma.userSavedSkill.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends UserSavedSkillUpdateArgs>(args: SelectSubset<T, UserSavedSkillUpdateArgs<ExtArgs>>): Prisma__UserSavedSkillClient<$Result.GetResult<Prisma.$UserSavedSkillPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more UserSavedSkills.
+     * @param {UserSavedSkillDeleteManyArgs} args - Arguments to filter UserSavedSkills to delete.
+     * @example
+     * // Delete a few UserSavedSkills
+     * const { count } = await prisma.userSavedSkill.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends UserSavedSkillDeleteManyArgs>(args?: SelectSubset<T, UserSavedSkillDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more UserSavedSkills.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSavedSkillUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many UserSavedSkills
+     * const userSavedSkill = await prisma.userSavedSkill.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends UserSavedSkillUpdateManyArgs>(args: SelectSubset<T, UserSavedSkillUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one UserSavedSkill.
+     * @param {UserSavedSkillUpsertArgs} args - Arguments to update or create a UserSavedSkill.
+     * @example
+     * // Update or create a UserSavedSkill
+     * const userSavedSkill = await prisma.userSavedSkill.upsert({
+     *   create: {
+     *     // ... data to create a UserSavedSkill
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the UserSavedSkill we want to update
+     *   }
+     * })
+     */
+    upsert<T extends UserSavedSkillUpsertArgs>(args: SelectSubset<T, UserSavedSkillUpsertArgs<ExtArgs>>): Prisma__UserSavedSkillClient<$Result.GetResult<Prisma.$UserSavedSkillPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of UserSavedSkills.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSavedSkillCountArgs} args - Arguments to filter UserSavedSkills to count.
+     * @example
+     * // Count the number of UserSavedSkills
+     * const count = await prisma.userSavedSkill.count({
+     *   where: {
+     *     // ... the filter for the UserSavedSkills we want to count
+     *   }
+     * })
+    **/
+    count<T extends UserSavedSkillCountArgs>(
+      args?: Subset<T, UserSavedSkillCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], UserSavedSkillCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a UserSavedSkill.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSavedSkillAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends UserSavedSkillAggregateArgs>(args: Subset<T, UserSavedSkillAggregateArgs>): Prisma.PrismaPromise<GetUserSavedSkillAggregateType<T>>
+
+    /**
+     * Group by UserSavedSkill.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSavedSkillGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends UserSavedSkillGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: UserSavedSkillGroupByArgs['orderBy'] }
+        : { orderBy?: UserSavedSkillGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, UserSavedSkillGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetUserSavedSkillGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the UserSavedSkill model
+   */
+  readonly fields: UserSavedSkillFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for UserSavedSkill.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__UserSavedSkillClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    versions<T extends UserSavedSkill$versionsArgs<ExtArgs> = {}>(args?: Subset<T, UserSavedSkill$versionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserSavedSkillVersionPayload<ExtArgs>, T, "findMany"> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the UserSavedSkill model
+   */ 
+  interface UserSavedSkillFieldRefs {
+    readonly id: FieldRef<"UserSavedSkill", 'String'>
+    readonly ownerUserId: FieldRef<"UserSavedSkill", 'String'>
+    readonly name: FieldRef<"UserSavedSkill", 'String'>
+    readonly description: FieldRef<"UserSavedSkill", 'String'>
+    readonly visibility: FieldRef<"UserSavedSkill", 'String'>
+    readonly status: FieldRef<"UserSavedSkill", 'String'>
+    readonly activeVersionId: FieldRef<"UserSavedSkill", 'String'>
+    readonly latestVersion: FieldRef<"UserSavedSkill", 'Int'>
+    readonly createdAt: FieldRef<"UserSavedSkill", 'DateTime'>
+    readonly updatedAt: FieldRef<"UserSavedSkill", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * UserSavedSkill findUnique
+   */
+  export type UserSavedSkillFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkill
+     */
+    select?: UserSavedSkillSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillInclude<ExtArgs> | null
+    /**
+     * Filter, which UserSavedSkill to fetch.
+     */
+    where: UserSavedSkillWhereUniqueInput
+  }
+
+  /**
+   * UserSavedSkill findUniqueOrThrow
+   */
+  export type UserSavedSkillFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkill
+     */
+    select?: UserSavedSkillSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillInclude<ExtArgs> | null
+    /**
+     * Filter, which UserSavedSkill to fetch.
+     */
+    where: UserSavedSkillWhereUniqueInput
+  }
+
+  /**
+   * UserSavedSkill findFirst
+   */
+  export type UserSavedSkillFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkill
+     */
+    select?: UserSavedSkillSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillInclude<ExtArgs> | null
+    /**
+     * Filter, which UserSavedSkill to fetch.
+     */
+    where?: UserSavedSkillWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserSavedSkills to fetch.
+     */
+    orderBy?: UserSavedSkillOrderByWithRelationInput | UserSavedSkillOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for UserSavedSkills.
+     */
+    cursor?: UserSavedSkillWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserSavedSkills from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserSavedSkills.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of UserSavedSkills.
+     */
+    distinct?: UserSavedSkillScalarFieldEnum | UserSavedSkillScalarFieldEnum[]
+  }
+
+  /**
+   * UserSavedSkill findFirstOrThrow
+   */
+  export type UserSavedSkillFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkill
+     */
+    select?: UserSavedSkillSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillInclude<ExtArgs> | null
+    /**
+     * Filter, which UserSavedSkill to fetch.
+     */
+    where?: UserSavedSkillWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserSavedSkills to fetch.
+     */
+    orderBy?: UserSavedSkillOrderByWithRelationInput | UserSavedSkillOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for UserSavedSkills.
+     */
+    cursor?: UserSavedSkillWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserSavedSkills from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserSavedSkills.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of UserSavedSkills.
+     */
+    distinct?: UserSavedSkillScalarFieldEnum | UserSavedSkillScalarFieldEnum[]
+  }
+
+  /**
+   * UserSavedSkill findMany
+   */
+  export type UserSavedSkillFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkill
+     */
+    select?: UserSavedSkillSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillInclude<ExtArgs> | null
+    /**
+     * Filter, which UserSavedSkills to fetch.
+     */
+    where?: UserSavedSkillWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserSavedSkills to fetch.
+     */
+    orderBy?: UserSavedSkillOrderByWithRelationInput | UserSavedSkillOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing UserSavedSkills.
+     */
+    cursor?: UserSavedSkillWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserSavedSkills from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserSavedSkills.
+     */
+    skip?: number
+    distinct?: UserSavedSkillScalarFieldEnum | UserSavedSkillScalarFieldEnum[]
+  }
+
+  /**
+   * UserSavedSkill create
+   */
+  export type UserSavedSkillCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkill
+     */
+    select?: UserSavedSkillSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillInclude<ExtArgs> | null
+    /**
+     * The data needed to create a UserSavedSkill.
+     */
+    data: XOR<UserSavedSkillCreateInput, UserSavedSkillUncheckedCreateInput>
+  }
+
+  /**
+   * UserSavedSkill createMany
+   */
+  export type UserSavedSkillCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many UserSavedSkills.
+     */
+    data: UserSavedSkillCreateManyInput | UserSavedSkillCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * UserSavedSkill createManyAndReturn
+   */
+  export type UserSavedSkillCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkill
+     */
+    select?: UserSavedSkillSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many UserSavedSkills.
+     */
+    data: UserSavedSkillCreateManyInput | UserSavedSkillCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * UserSavedSkill update
+   */
+  export type UserSavedSkillUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkill
+     */
+    select?: UserSavedSkillSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillInclude<ExtArgs> | null
+    /**
+     * The data needed to update a UserSavedSkill.
+     */
+    data: XOR<UserSavedSkillUpdateInput, UserSavedSkillUncheckedUpdateInput>
+    /**
+     * Choose, which UserSavedSkill to update.
+     */
+    where: UserSavedSkillWhereUniqueInput
+  }
+
+  /**
+   * UserSavedSkill updateMany
+   */
+  export type UserSavedSkillUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update UserSavedSkills.
+     */
+    data: XOR<UserSavedSkillUpdateManyMutationInput, UserSavedSkillUncheckedUpdateManyInput>
+    /**
+     * Filter which UserSavedSkills to update
+     */
+    where?: UserSavedSkillWhereInput
+  }
+
+  /**
+   * UserSavedSkill upsert
+   */
+  export type UserSavedSkillUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkill
+     */
+    select?: UserSavedSkillSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillInclude<ExtArgs> | null
+    /**
+     * The filter to search for the UserSavedSkill to update in case it exists.
+     */
+    where: UserSavedSkillWhereUniqueInput
+    /**
+     * In case the UserSavedSkill found by the `where` argument doesn't exist, create a new UserSavedSkill with this data.
+     */
+    create: XOR<UserSavedSkillCreateInput, UserSavedSkillUncheckedCreateInput>
+    /**
+     * In case the UserSavedSkill was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<UserSavedSkillUpdateInput, UserSavedSkillUncheckedUpdateInput>
+  }
+
+  /**
+   * UserSavedSkill delete
+   */
+  export type UserSavedSkillDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkill
+     */
+    select?: UserSavedSkillSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillInclude<ExtArgs> | null
+    /**
+     * Filter which UserSavedSkill to delete.
+     */
+    where: UserSavedSkillWhereUniqueInput
+  }
+
+  /**
+   * UserSavedSkill deleteMany
+   */
+  export type UserSavedSkillDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which UserSavedSkills to delete
+     */
+    where?: UserSavedSkillWhereInput
+  }
+
+  /**
+   * UserSavedSkill.versions
+   */
+  export type UserSavedSkill$versionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkillVersion
+     */
+    select?: UserSavedSkillVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillVersionInclude<ExtArgs> | null
+    where?: UserSavedSkillVersionWhereInput
+    orderBy?: UserSavedSkillVersionOrderByWithRelationInput | UserSavedSkillVersionOrderByWithRelationInput[]
+    cursor?: UserSavedSkillVersionWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: UserSavedSkillVersionScalarFieldEnum | UserSavedSkillVersionScalarFieldEnum[]
+  }
+
+  /**
+   * UserSavedSkill without action
+   */
+  export type UserSavedSkillDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkill
+     */
+    select?: UserSavedSkillSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model UserSavedSkillVersion
+   */
+
+  export type AggregateUserSavedSkillVersion = {
+    _count: UserSavedSkillVersionCountAggregateOutputType | null
+    _avg: UserSavedSkillVersionAvgAggregateOutputType | null
+    _sum: UserSavedSkillVersionSumAggregateOutputType | null
+    _min: UserSavedSkillVersionMinAggregateOutputType | null
+    _max: UserSavedSkillVersionMaxAggregateOutputType | null
+  }
+
+  export type UserSavedSkillVersionAvgAggregateOutputType = {
+    version: number | null
+  }
+
+  export type UserSavedSkillVersionSumAggregateOutputType = {
+    version: number | null
+  }
+
+  export type UserSavedSkillVersionMinAggregateOutputType = {
+    id: string | null
+    skillId: string | null
+    ownerUserId: string | null
+    version: number | null
+    sourceExecutionId: string | null
+    schemaVersion: string | null
+    planHash: string | null
+    inputHash: string | null
+    reviewStatus: string | null
+    createdAt: Date | null
+  }
+
+  export type UserSavedSkillVersionMaxAggregateOutputType = {
+    id: string | null
+    skillId: string | null
+    ownerUserId: string | null
+    version: number | null
+    sourceExecutionId: string | null
+    schemaVersion: string | null
+    planHash: string | null
+    inputHash: string | null
+    reviewStatus: string | null
+    createdAt: Date | null
+  }
+
+  export type UserSavedSkillVersionCountAggregateOutputType = {
+    id: number
+    skillId: number
+    ownerUserId: number
+    version: number
+    sourceExecutionId: number
+    schemaVersion: number
+    planSnapshotJson: number
+    planHash: number
+    fixedInputJson: number
+    inputHash: number
+    outputSchemaJson: number
+    sampleResultJson: number
+    aiReviewJson: number
+    reviewStatus: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type UserSavedSkillVersionAvgAggregateInputType = {
+    version?: true
+  }
+
+  export type UserSavedSkillVersionSumAggregateInputType = {
+    version?: true
+  }
+
+  export type UserSavedSkillVersionMinAggregateInputType = {
+    id?: true
+    skillId?: true
+    ownerUserId?: true
+    version?: true
+    sourceExecutionId?: true
+    schemaVersion?: true
+    planHash?: true
+    inputHash?: true
+    reviewStatus?: true
+    createdAt?: true
+  }
+
+  export type UserSavedSkillVersionMaxAggregateInputType = {
+    id?: true
+    skillId?: true
+    ownerUserId?: true
+    version?: true
+    sourceExecutionId?: true
+    schemaVersion?: true
+    planHash?: true
+    inputHash?: true
+    reviewStatus?: true
+    createdAt?: true
+  }
+
+  export type UserSavedSkillVersionCountAggregateInputType = {
+    id?: true
+    skillId?: true
+    ownerUserId?: true
+    version?: true
+    sourceExecutionId?: true
+    schemaVersion?: true
+    planSnapshotJson?: true
+    planHash?: true
+    fixedInputJson?: true
+    inputHash?: true
+    outputSchemaJson?: true
+    sampleResultJson?: true
+    aiReviewJson?: true
+    reviewStatus?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type UserSavedSkillVersionAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which UserSavedSkillVersion to aggregate.
+     */
+    where?: UserSavedSkillVersionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserSavedSkillVersions to fetch.
+     */
+    orderBy?: UserSavedSkillVersionOrderByWithRelationInput | UserSavedSkillVersionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: UserSavedSkillVersionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserSavedSkillVersions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserSavedSkillVersions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned UserSavedSkillVersions
+    **/
+    _count?: true | UserSavedSkillVersionCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: UserSavedSkillVersionAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: UserSavedSkillVersionSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: UserSavedSkillVersionMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: UserSavedSkillVersionMaxAggregateInputType
+  }
+
+  export type GetUserSavedSkillVersionAggregateType<T extends UserSavedSkillVersionAggregateArgs> = {
+        [P in keyof T & keyof AggregateUserSavedSkillVersion]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateUserSavedSkillVersion[P]>
+      : GetScalarType<T[P], AggregateUserSavedSkillVersion[P]>
+  }
+
+
+
+
+  export type UserSavedSkillVersionGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: UserSavedSkillVersionWhereInput
+    orderBy?: UserSavedSkillVersionOrderByWithAggregationInput | UserSavedSkillVersionOrderByWithAggregationInput[]
+    by: UserSavedSkillVersionScalarFieldEnum[] | UserSavedSkillVersionScalarFieldEnum
+    having?: UserSavedSkillVersionScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: UserSavedSkillVersionCountAggregateInputType | true
+    _avg?: UserSavedSkillVersionAvgAggregateInputType
+    _sum?: UserSavedSkillVersionSumAggregateInputType
+    _min?: UserSavedSkillVersionMinAggregateInputType
+    _max?: UserSavedSkillVersionMaxAggregateInputType
+  }
+
+  export type UserSavedSkillVersionGroupByOutputType = {
+    id: string
+    skillId: string
+    ownerUserId: string
+    version: number
+    sourceExecutionId: string
+    schemaVersion: string
+    planSnapshotJson: JsonValue
+    planHash: string
+    fixedInputJson: JsonValue
+    inputHash: string
+    outputSchemaJson: JsonValue | null
+    sampleResultJson: JsonValue | null
+    aiReviewJson: JsonValue
+    reviewStatus: string
+    createdAt: Date
+    _count: UserSavedSkillVersionCountAggregateOutputType | null
+    _avg: UserSavedSkillVersionAvgAggregateOutputType | null
+    _sum: UserSavedSkillVersionSumAggregateOutputType | null
+    _min: UserSavedSkillVersionMinAggregateOutputType | null
+    _max: UserSavedSkillVersionMaxAggregateOutputType | null
+  }
+
+  type GetUserSavedSkillVersionGroupByPayload<T extends UserSavedSkillVersionGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<UserSavedSkillVersionGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof UserSavedSkillVersionGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], UserSavedSkillVersionGroupByOutputType[P]>
+            : GetScalarType<T[P], UserSavedSkillVersionGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type UserSavedSkillVersionSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    skillId?: boolean
+    ownerUserId?: boolean
+    version?: boolean
+    sourceExecutionId?: boolean
+    schemaVersion?: boolean
+    planSnapshotJson?: boolean
+    planHash?: boolean
+    fixedInputJson?: boolean
+    inputHash?: boolean
+    outputSchemaJson?: boolean
+    sampleResultJson?: boolean
+    aiReviewJson?: boolean
+    reviewStatus?: boolean
+    createdAt?: boolean
+    skill?: boolean | UserSavedSkillDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["userSavedSkillVersion"]>
+
+  export type UserSavedSkillVersionSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    skillId?: boolean
+    ownerUserId?: boolean
+    version?: boolean
+    sourceExecutionId?: boolean
+    schemaVersion?: boolean
+    planSnapshotJson?: boolean
+    planHash?: boolean
+    fixedInputJson?: boolean
+    inputHash?: boolean
+    outputSchemaJson?: boolean
+    sampleResultJson?: boolean
+    aiReviewJson?: boolean
+    reviewStatus?: boolean
+    createdAt?: boolean
+    skill?: boolean | UserSavedSkillDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["userSavedSkillVersion"]>
+
+  export type UserSavedSkillVersionSelectScalar = {
+    id?: boolean
+    skillId?: boolean
+    ownerUserId?: boolean
+    version?: boolean
+    sourceExecutionId?: boolean
+    schemaVersion?: boolean
+    planSnapshotJson?: boolean
+    planHash?: boolean
+    fixedInputJson?: boolean
+    inputHash?: boolean
+    outputSchemaJson?: boolean
+    sampleResultJson?: boolean
+    aiReviewJson?: boolean
+    reviewStatus?: boolean
+    createdAt?: boolean
+  }
+
+  export type UserSavedSkillVersionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    skill?: boolean | UserSavedSkillDefaultArgs<ExtArgs>
+  }
+  export type UserSavedSkillVersionIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    skill?: boolean | UserSavedSkillDefaultArgs<ExtArgs>
+  }
+
+  export type $UserSavedSkillVersionPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "UserSavedSkillVersion"
+    objects: {
+      skill: Prisma.$UserSavedSkillPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      skillId: string
+      ownerUserId: string
+      version: number
+      sourceExecutionId: string
+      schemaVersion: string
+      planSnapshotJson: Prisma.JsonValue
+      planHash: string
+      fixedInputJson: Prisma.JsonValue
+      inputHash: string
+      outputSchemaJson: Prisma.JsonValue | null
+      sampleResultJson: Prisma.JsonValue | null
+      aiReviewJson: Prisma.JsonValue
+      reviewStatus: string
+      createdAt: Date
+    }, ExtArgs["result"]["userSavedSkillVersion"]>
+    composites: {}
+  }
+
+  type UserSavedSkillVersionGetPayload<S extends boolean | null | undefined | UserSavedSkillVersionDefaultArgs> = $Result.GetResult<Prisma.$UserSavedSkillVersionPayload, S>
+
+  type UserSavedSkillVersionCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<UserSavedSkillVersionFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: UserSavedSkillVersionCountAggregateInputType | true
+    }
+
+  export interface UserSavedSkillVersionDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['UserSavedSkillVersion'], meta: { name: 'UserSavedSkillVersion' } }
+    /**
+     * Find zero or one UserSavedSkillVersion that matches the filter.
+     * @param {UserSavedSkillVersionFindUniqueArgs} args - Arguments to find a UserSavedSkillVersion
+     * @example
+     * // Get one UserSavedSkillVersion
+     * const userSavedSkillVersion = await prisma.userSavedSkillVersion.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends UserSavedSkillVersionFindUniqueArgs>(args: SelectSubset<T, UserSavedSkillVersionFindUniqueArgs<ExtArgs>>): Prisma__UserSavedSkillVersionClient<$Result.GetResult<Prisma.$UserSavedSkillVersionPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one UserSavedSkillVersion that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {UserSavedSkillVersionFindUniqueOrThrowArgs} args - Arguments to find a UserSavedSkillVersion
+     * @example
+     * // Get one UserSavedSkillVersion
+     * const userSavedSkillVersion = await prisma.userSavedSkillVersion.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends UserSavedSkillVersionFindUniqueOrThrowArgs>(args: SelectSubset<T, UserSavedSkillVersionFindUniqueOrThrowArgs<ExtArgs>>): Prisma__UserSavedSkillVersionClient<$Result.GetResult<Prisma.$UserSavedSkillVersionPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first UserSavedSkillVersion that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSavedSkillVersionFindFirstArgs} args - Arguments to find a UserSavedSkillVersion
+     * @example
+     * // Get one UserSavedSkillVersion
+     * const userSavedSkillVersion = await prisma.userSavedSkillVersion.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends UserSavedSkillVersionFindFirstArgs>(args?: SelectSubset<T, UserSavedSkillVersionFindFirstArgs<ExtArgs>>): Prisma__UserSavedSkillVersionClient<$Result.GetResult<Prisma.$UserSavedSkillVersionPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first UserSavedSkillVersion that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSavedSkillVersionFindFirstOrThrowArgs} args - Arguments to find a UserSavedSkillVersion
+     * @example
+     * // Get one UserSavedSkillVersion
+     * const userSavedSkillVersion = await prisma.userSavedSkillVersion.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends UserSavedSkillVersionFindFirstOrThrowArgs>(args?: SelectSubset<T, UserSavedSkillVersionFindFirstOrThrowArgs<ExtArgs>>): Prisma__UserSavedSkillVersionClient<$Result.GetResult<Prisma.$UserSavedSkillVersionPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more UserSavedSkillVersions that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSavedSkillVersionFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all UserSavedSkillVersions
+     * const userSavedSkillVersions = await prisma.userSavedSkillVersion.findMany()
+     * 
+     * // Get first 10 UserSavedSkillVersions
+     * const userSavedSkillVersions = await prisma.userSavedSkillVersion.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const userSavedSkillVersionWithIdOnly = await prisma.userSavedSkillVersion.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends UserSavedSkillVersionFindManyArgs>(args?: SelectSubset<T, UserSavedSkillVersionFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserSavedSkillVersionPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a UserSavedSkillVersion.
+     * @param {UserSavedSkillVersionCreateArgs} args - Arguments to create a UserSavedSkillVersion.
+     * @example
+     * // Create one UserSavedSkillVersion
+     * const UserSavedSkillVersion = await prisma.userSavedSkillVersion.create({
+     *   data: {
+     *     // ... data to create a UserSavedSkillVersion
+     *   }
+     * })
+     * 
+     */
+    create<T extends UserSavedSkillVersionCreateArgs>(args: SelectSubset<T, UserSavedSkillVersionCreateArgs<ExtArgs>>): Prisma__UserSavedSkillVersionClient<$Result.GetResult<Prisma.$UserSavedSkillVersionPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many UserSavedSkillVersions.
+     * @param {UserSavedSkillVersionCreateManyArgs} args - Arguments to create many UserSavedSkillVersions.
+     * @example
+     * // Create many UserSavedSkillVersions
+     * const userSavedSkillVersion = await prisma.userSavedSkillVersion.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends UserSavedSkillVersionCreateManyArgs>(args?: SelectSubset<T, UserSavedSkillVersionCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many UserSavedSkillVersions and returns the data saved in the database.
+     * @param {UserSavedSkillVersionCreateManyAndReturnArgs} args - Arguments to create many UserSavedSkillVersions.
+     * @example
+     * // Create many UserSavedSkillVersions
+     * const userSavedSkillVersion = await prisma.userSavedSkillVersion.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many UserSavedSkillVersions and only return the `id`
+     * const userSavedSkillVersionWithIdOnly = await prisma.userSavedSkillVersion.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends UserSavedSkillVersionCreateManyAndReturnArgs>(args?: SelectSubset<T, UserSavedSkillVersionCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserSavedSkillVersionPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a UserSavedSkillVersion.
+     * @param {UserSavedSkillVersionDeleteArgs} args - Arguments to delete one UserSavedSkillVersion.
+     * @example
+     * // Delete one UserSavedSkillVersion
+     * const UserSavedSkillVersion = await prisma.userSavedSkillVersion.delete({
+     *   where: {
+     *     // ... filter to delete one UserSavedSkillVersion
+     *   }
+     * })
+     * 
+     */
+    delete<T extends UserSavedSkillVersionDeleteArgs>(args: SelectSubset<T, UserSavedSkillVersionDeleteArgs<ExtArgs>>): Prisma__UserSavedSkillVersionClient<$Result.GetResult<Prisma.$UserSavedSkillVersionPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one UserSavedSkillVersion.
+     * @param {UserSavedSkillVersionUpdateArgs} args - Arguments to update one UserSavedSkillVersion.
+     * @example
+     * // Update one UserSavedSkillVersion
+     * const userSavedSkillVersion = await prisma.userSavedSkillVersion.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends UserSavedSkillVersionUpdateArgs>(args: SelectSubset<T, UserSavedSkillVersionUpdateArgs<ExtArgs>>): Prisma__UserSavedSkillVersionClient<$Result.GetResult<Prisma.$UserSavedSkillVersionPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more UserSavedSkillVersions.
+     * @param {UserSavedSkillVersionDeleteManyArgs} args - Arguments to filter UserSavedSkillVersions to delete.
+     * @example
+     * // Delete a few UserSavedSkillVersions
+     * const { count } = await prisma.userSavedSkillVersion.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends UserSavedSkillVersionDeleteManyArgs>(args?: SelectSubset<T, UserSavedSkillVersionDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more UserSavedSkillVersions.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSavedSkillVersionUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many UserSavedSkillVersions
+     * const userSavedSkillVersion = await prisma.userSavedSkillVersion.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends UserSavedSkillVersionUpdateManyArgs>(args: SelectSubset<T, UserSavedSkillVersionUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one UserSavedSkillVersion.
+     * @param {UserSavedSkillVersionUpsertArgs} args - Arguments to update or create a UserSavedSkillVersion.
+     * @example
+     * // Update or create a UserSavedSkillVersion
+     * const userSavedSkillVersion = await prisma.userSavedSkillVersion.upsert({
+     *   create: {
+     *     // ... data to create a UserSavedSkillVersion
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the UserSavedSkillVersion we want to update
+     *   }
+     * })
+     */
+    upsert<T extends UserSavedSkillVersionUpsertArgs>(args: SelectSubset<T, UserSavedSkillVersionUpsertArgs<ExtArgs>>): Prisma__UserSavedSkillVersionClient<$Result.GetResult<Prisma.$UserSavedSkillVersionPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of UserSavedSkillVersions.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSavedSkillVersionCountArgs} args - Arguments to filter UserSavedSkillVersions to count.
+     * @example
+     * // Count the number of UserSavedSkillVersions
+     * const count = await prisma.userSavedSkillVersion.count({
+     *   where: {
+     *     // ... the filter for the UserSavedSkillVersions we want to count
+     *   }
+     * })
+    **/
+    count<T extends UserSavedSkillVersionCountArgs>(
+      args?: Subset<T, UserSavedSkillVersionCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], UserSavedSkillVersionCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a UserSavedSkillVersion.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSavedSkillVersionAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends UserSavedSkillVersionAggregateArgs>(args: Subset<T, UserSavedSkillVersionAggregateArgs>): Prisma.PrismaPromise<GetUserSavedSkillVersionAggregateType<T>>
+
+    /**
+     * Group by UserSavedSkillVersion.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSavedSkillVersionGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends UserSavedSkillVersionGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: UserSavedSkillVersionGroupByArgs['orderBy'] }
+        : { orderBy?: UserSavedSkillVersionGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, UserSavedSkillVersionGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetUserSavedSkillVersionGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the UserSavedSkillVersion model
+   */
+  readonly fields: UserSavedSkillVersionFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for UserSavedSkillVersion.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__UserSavedSkillVersionClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    skill<T extends UserSavedSkillDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserSavedSkillDefaultArgs<ExtArgs>>): Prisma__UserSavedSkillClient<$Result.GetResult<Prisma.$UserSavedSkillPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the UserSavedSkillVersion model
+   */ 
+  interface UserSavedSkillVersionFieldRefs {
+    readonly id: FieldRef<"UserSavedSkillVersion", 'String'>
+    readonly skillId: FieldRef<"UserSavedSkillVersion", 'String'>
+    readonly ownerUserId: FieldRef<"UserSavedSkillVersion", 'String'>
+    readonly version: FieldRef<"UserSavedSkillVersion", 'Int'>
+    readonly sourceExecutionId: FieldRef<"UserSavedSkillVersion", 'String'>
+    readonly schemaVersion: FieldRef<"UserSavedSkillVersion", 'String'>
+    readonly planSnapshotJson: FieldRef<"UserSavedSkillVersion", 'Json'>
+    readonly planHash: FieldRef<"UserSavedSkillVersion", 'String'>
+    readonly fixedInputJson: FieldRef<"UserSavedSkillVersion", 'Json'>
+    readonly inputHash: FieldRef<"UserSavedSkillVersion", 'String'>
+    readonly outputSchemaJson: FieldRef<"UserSavedSkillVersion", 'Json'>
+    readonly sampleResultJson: FieldRef<"UserSavedSkillVersion", 'Json'>
+    readonly aiReviewJson: FieldRef<"UserSavedSkillVersion", 'Json'>
+    readonly reviewStatus: FieldRef<"UserSavedSkillVersion", 'String'>
+    readonly createdAt: FieldRef<"UserSavedSkillVersion", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * UserSavedSkillVersion findUnique
+   */
+  export type UserSavedSkillVersionFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkillVersion
+     */
+    select?: UserSavedSkillVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillVersionInclude<ExtArgs> | null
+    /**
+     * Filter, which UserSavedSkillVersion to fetch.
+     */
+    where: UserSavedSkillVersionWhereUniqueInput
+  }
+
+  /**
+   * UserSavedSkillVersion findUniqueOrThrow
+   */
+  export type UserSavedSkillVersionFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkillVersion
+     */
+    select?: UserSavedSkillVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillVersionInclude<ExtArgs> | null
+    /**
+     * Filter, which UserSavedSkillVersion to fetch.
+     */
+    where: UserSavedSkillVersionWhereUniqueInput
+  }
+
+  /**
+   * UserSavedSkillVersion findFirst
+   */
+  export type UserSavedSkillVersionFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkillVersion
+     */
+    select?: UserSavedSkillVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillVersionInclude<ExtArgs> | null
+    /**
+     * Filter, which UserSavedSkillVersion to fetch.
+     */
+    where?: UserSavedSkillVersionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserSavedSkillVersions to fetch.
+     */
+    orderBy?: UserSavedSkillVersionOrderByWithRelationInput | UserSavedSkillVersionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for UserSavedSkillVersions.
+     */
+    cursor?: UserSavedSkillVersionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserSavedSkillVersions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserSavedSkillVersions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of UserSavedSkillVersions.
+     */
+    distinct?: UserSavedSkillVersionScalarFieldEnum | UserSavedSkillVersionScalarFieldEnum[]
+  }
+
+  /**
+   * UserSavedSkillVersion findFirstOrThrow
+   */
+  export type UserSavedSkillVersionFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkillVersion
+     */
+    select?: UserSavedSkillVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillVersionInclude<ExtArgs> | null
+    /**
+     * Filter, which UserSavedSkillVersion to fetch.
+     */
+    where?: UserSavedSkillVersionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserSavedSkillVersions to fetch.
+     */
+    orderBy?: UserSavedSkillVersionOrderByWithRelationInput | UserSavedSkillVersionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for UserSavedSkillVersions.
+     */
+    cursor?: UserSavedSkillVersionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserSavedSkillVersions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserSavedSkillVersions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of UserSavedSkillVersions.
+     */
+    distinct?: UserSavedSkillVersionScalarFieldEnum | UserSavedSkillVersionScalarFieldEnum[]
+  }
+
+  /**
+   * UserSavedSkillVersion findMany
+   */
+  export type UserSavedSkillVersionFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkillVersion
+     */
+    select?: UserSavedSkillVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillVersionInclude<ExtArgs> | null
+    /**
+     * Filter, which UserSavedSkillVersions to fetch.
+     */
+    where?: UserSavedSkillVersionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserSavedSkillVersions to fetch.
+     */
+    orderBy?: UserSavedSkillVersionOrderByWithRelationInput | UserSavedSkillVersionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing UserSavedSkillVersions.
+     */
+    cursor?: UserSavedSkillVersionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserSavedSkillVersions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserSavedSkillVersions.
+     */
+    skip?: number
+    distinct?: UserSavedSkillVersionScalarFieldEnum | UserSavedSkillVersionScalarFieldEnum[]
+  }
+
+  /**
+   * UserSavedSkillVersion create
+   */
+  export type UserSavedSkillVersionCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkillVersion
+     */
+    select?: UserSavedSkillVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillVersionInclude<ExtArgs> | null
+    /**
+     * The data needed to create a UserSavedSkillVersion.
+     */
+    data: XOR<UserSavedSkillVersionCreateInput, UserSavedSkillVersionUncheckedCreateInput>
+  }
+
+  /**
+   * UserSavedSkillVersion createMany
+   */
+  export type UserSavedSkillVersionCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many UserSavedSkillVersions.
+     */
+    data: UserSavedSkillVersionCreateManyInput | UserSavedSkillVersionCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * UserSavedSkillVersion createManyAndReturn
+   */
+  export type UserSavedSkillVersionCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkillVersion
+     */
+    select?: UserSavedSkillVersionSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many UserSavedSkillVersions.
+     */
+    data: UserSavedSkillVersionCreateManyInput | UserSavedSkillVersionCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillVersionIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * UserSavedSkillVersion update
+   */
+  export type UserSavedSkillVersionUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkillVersion
+     */
+    select?: UserSavedSkillVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillVersionInclude<ExtArgs> | null
+    /**
+     * The data needed to update a UserSavedSkillVersion.
+     */
+    data: XOR<UserSavedSkillVersionUpdateInput, UserSavedSkillVersionUncheckedUpdateInput>
+    /**
+     * Choose, which UserSavedSkillVersion to update.
+     */
+    where: UserSavedSkillVersionWhereUniqueInput
+  }
+
+  /**
+   * UserSavedSkillVersion updateMany
+   */
+  export type UserSavedSkillVersionUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update UserSavedSkillVersions.
+     */
+    data: XOR<UserSavedSkillVersionUpdateManyMutationInput, UserSavedSkillVersionUncheckedUpdateManyInput>
+    /**
+     * Filter which UserSavedSkillVersions to update
+     */
+    where?: UserSavedSkillVersionWhereInput
+  }
+
+  /**
+   * UserSavedSkillVersion upsert
+   */
+  export type UserSavedSkillVersionUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkillVersion
+     */
+    select?: UserSavedSkillVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillVersionInclude<ExtArgs> | null
+    /**
+     * The filter to search for the UserSavedSkillVersion to update in case it exists.
+     */
+    where: UserSavedSkillVersionWhereUniqueInput
+    /**
+     * In case the UserSavedSkillVersion found by the `where` argument doesn't exist, create a new UserSavedSkillVersion with this data.
+     */
+    create: XOR<UserSavedSkillVersionCreateInput, UserSavedSkillVersionUncheckedCreateInput>
+    /**
+     * In case the UserSavedSkillVersion was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<UserSavedSkillVersionUpdateInput, UserSavedSkillVersionUncheckedUpdateInput>
+  }
+
+  /**
+   * UserSavedSkillVersion delete
+   */
+  export type UserSavedSkillVersionDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkillVersion
+     */
+    select?: UserSavedSkillVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillVersionInclude<ExtArgs> | null
+    /**
+     * Filter which UserSavedSkillVersion to delete.
+     */
+    where: UserSavedSkillVersionWhereUniqueInput
+  }
+
+  /**
+   * UserSavedSkillVersion deleteMany
+   */
+  export type UserSavedSkillVersionDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which UserSavedSkillVersions to delete
+     */
+    where?: UserSavedSkillVersionWhereInput
+  }
+
+  /**
+   * UserSavedSkillVersion without action
+   */
+  export type UserSavedSkillVersionDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSavedSkillVersion
+     */
+    select?: UserSavedSkillVersionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSavedSkillVersionInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Model BuiltinSkill
    */
 
@@ -53280,6 +55592,43 @@ export namespace Prisma {
   export type SkillScheduleScalarFieldEnum = (typeof SkillScheduleScalarFieldEnum)[keyof typeof SkillScheduleScalarFieldEnum]
 
 
+  export const UserSavedSkillScalarFieldEnum: {
+    id: 'id',
+    ownerUserId: 'ownerUserId',
+    name: 'name',
+    description: 'description',
+    visibility: 'visibility',
+    status: 'status',
+    activeVersionId: 'activeVersionId',
+    latestVersion: 'latestVersion',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type UserSavedSkillScalarFieldEnum = (typeof UserSavedSkillScalarFieldEnum)[keyof typeof UserSavedSkillScalarFieldEnum]
+
+
+  export const UserSavedSkillVersionScalarFieldEnum: {
+    id: 'id',
+    skillId: 'skillId',
+    ownerUserId: 'ownerUserId',
+    version: 'version',
+    sourceExecutionId: 'sourceExecutionId',
+    schemaVersion: 'schemaVersion',
+    planSnapshotJson: 'planSnapshotJson',
+    planHash: 'planHash',
+    fixedInputJson: 'fixedInputJson',
+    inputHash: 'inputHash',
+    outputSchemaJson: 'outputSchemaJson',
+    sampleResultJson: 'sampleResultJson',
+    aiReviewJson: 'aiReviewJson',
+    reviewStatus: 'reviewStatus',
+    createdAt: 'createdAt'
+  };
+
+  export type UserSavedSkillVersionScalarFieldEnum = (typeof UserSavedSkillVersionScalarFieldEnum)[keyof typeof UserSavedSkillVersionScalarFieldEnum]
+
+
   export const BuiltinSkillScalarFieldEnum: {
     id: 'id',
     capabilityKey: 'capabilityKey',
@@ -56782,6 +59131,197 @@ export namespace Prisma {
     createdBy?: UuidWithAggregatesFilter<"SkillSchedule"> | string
     createdAt?: DateTimeWithAggregatesFilter<"SkillSchedule"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"SkillSchedule"> | Date | string
+  }
+
+  export type UserSavedSkillWhereInput = {
+    AND?: UserSavedSkillWhereInput | UserSavedSkillWhereInput[]
+    OR?: UserSavedSkillWhereInput[]
+    NOT?: UserSavedSkillWhereInput | UserSavedSkillWhereInput[]
+    id?: UuidFilter<"UserSavedSkill"> | string
+    ownerUserId?: UuidFilter<"UserSavedSkill"> | string
+    name?: StringFilter<"UserSavedSkill"> | string
+    description?: StringNullableFilter<"UserSavedSkill"> | string | null
+    visibility?: StringFilter<"UserSavedSkill"> | string
+    status?: StringFilter<"UserSavedSkill"> | string
+    activeVersionId?: UuidNullableFilter<"UserSavedSkill"> | string | null
+    latestVersion?: IntFilter<"UserSavedSkill"> | number
+    createdAt?: DateTimeFilter<"UserSavedSkill"> | Date | string
+    updatedAt?: DateTimeFilter<"UserSavedSkill"> | Date | string
+    versions?: UserSavedSkillVersionListRelationFilter
+  }
+
+  export type UserSavedSkillOrderByWithRelationInput = {
+    id?: SortOrder
+    ownerUserId?: SortOrder
+    name?: SortOrder
+    description?: SortOrderInput | SortOrder
+    visibility?: SortOrder
+    status?: SortOrder
+    activeVersionId?: SortOrderInput | SortOrder
+    latestVersion?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    versions?: UserSavedSkillVersionOrderByRelationAggregateInput
+  }
+
+  export type UserSavedSkillWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: UserSavedSkillWhereInput | UserSavedSkillWhereInput[]
+    OR?: UserSavedSkillWhereInput[]
+    NOT?: UserSavedSkillWhereInput | UserSavedSkillWhereInput[]
+    ownerUserId?: UuidFilter<"UserSavedSkill"> | string
+    name?: StringFilter<"UserSavedSkill"> | string
+    description?: StringNullableFilter<"UserSavedSkill"> | string | null
+    visibility?: StringFilter<"UserSavedSkill"> | string
+    status?: StringFilter<"UserSavedSkill"> | string
+    activeVersionId?: UuidNullableFilter<"UserSavedSkill"> | string | null
+    latestVersion?: IntFilter<"UserSavedSkill"> | number
+    createdAt?: DateTimeFilter<"UserSavedSkill"> | Date | string
+    updatedAt?: DateTimeFilter<"UserSavedSkill"> | Date | string
+    versions?: UserSavedSkillVersionListRelationFilter
+  }, "id">
+
+  export type UserSavedSkillOrderByWithAggregationInput = {
+    id?: SortOrder
+    ownerUserId?: SortOrder
+    name?: SortOrder
+    description?: SortOrderInput | SortOrder
+    visibility?: SortOrder
+    status?: SortOrder
+    activeVersionId?: SortOrderInput | SortOrder
+    latestVersion?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: UserSavedSkillCountOrderByAggregateInput
+    _avg?: UserSavedSkillAvgOrderByAggregateInput
+    _max?: UserSavedSkillMaxOrderByAggregateInput
+    _min?: UserSavedSkillMinOrderByAggregateInput
+    _sum?: UserSavedSkillSumOrderByAggregateInput
+  }
+
+  export type UserSavedSkillScalarWhereWithAggregatesInput = {
+    AND?: UserSavedSkillScalarWhereWithAggregatesInput | UserSavedSkillScalarWhereWithAggregatesInput[]
+    OR?: UserSavedSkillScalarWhereWithAggregatesInput[]
+    NOT?: UserSavedSkillScalarWhereWithAggregatesInput | UserSavedSkillScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"UserSavedSkill"> | string
+    ownerUserId?: UuidWithAggregatesFilter<"UserSavedSkill"> | string
+    name?: StringWithAggregatesFilter<"UserSavedSkill"> | string
+    description?: StringNullableWithAggregatesFilter<"UserSavedSkill"> | string | null
+    visibility?: StringWithAggregatesFilter<"UserSavedSkill"> | string
+    status?: StringWithAggregatesFilter<"UserSavedSkill"> | string
+    activeVersionId?: UuidNullableWithAggregatesFilter<"UserSavedSkill"> | string | null
+    latestVersion?: IntWithAggregatesFilter<"UserSavedSkill"> | number
+    createdAt?: DateTimeWithAggregatesFilter<"UserSavedSkill"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"UserSavedSkill"> | Date | string
+  }
+
+  export type UserSavedSkillVersionWhereInput = {
+    AND?: UserSavedSkillVersionWhereInput | UserSavedSkillVersionWhereInput[]
+    OR?: UserSavedSkillVersionWhereInput[]
+    NOT?: UserSavedSkillVersionWhereInput | UserSavedSkillVersionWhereInput[]
+    id?: UuidFilter<"UserSavedSkillVersion"> | string
+    skillId?: UuidFilter<"UserSavedSkillVersion"> | string
+    ownerUserId?: UuidFilter<"UserSavedSkillVersion"> | string
+    version?: IntFilter<"UserSavedSkillVersion"> | number
+    sourceExecutionId?: UuidFilter<"UserSavedSkillVersion"> | string
+    schemaVersion?: StringFilter<"UserSavedSkillVersion"> | string
+    planSnapshotJson?: JsonFilter<"UserSavedSkillVersion">
+    planHash?: StringFilter<"UserSavedSkillVersion"> | string
+    fixedInputJson?: JsonFilter<"UserSavedSkillVersion">
+    inputHash?: StringFilter<"UserSavedSkillVersion"> | string
+    outputSchemaJson?: JsonNullableFilter<"UserSavedSkillVersion">
+    sampleResultJson?: JsonNullableFilter<"UserSavedSkillVersion">
+    aiReviewJson?: JsonFilter<"UserSavedSkillVersion">
+    reviewStatus?: StringFilter<"UserSavedSkillVersion"> | string
+    createdAt?: DateTimeFilter<"UserSavedSkillVersion"> | Date | string
+    skill?: XOR<UserSavedSkillRelationFilter, UserSavedSkillWhereInput>
+  }
+
+  export type UserSavedSkillVersionOrderByWithRelationInput = {
+    id?: SortOrder
+    skillId?: SortOrder
+    ownerUserId?: SortOrder
+    version?: SortOrder
+    sourceExecutionId?: SortOrder
+    schemaVersion?: SortOrder
+    planSnapshotJson?: SortOrder
+    planHash?: SortOrder
+    fixedInputJson?: SortOrder
+    inputHash?: SortOrder
+    outputSchemaJson?: SortOrderInput | SortOrder
+    sampleResultJson?: SortOrderInput | SortOrder
+    aiReviewJson?: SortOrder
+    reviewStatus?: SortOrder
+    createdAt?: SortOrder
+    skill?: UserSavedSkillOrderByWithRelationInput
+  }
+
+  export type UserSavedSkillVersionWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    skillId_version?: UserSavedSkillVersionSkillIdVersionCompoundUniqueInput
+    ownerUserId_sourceExecutionId_inputHash?: UserSavedSkillVersionOwnerUserIdSourceExecutionIdInputHashCompoundUniqueInput
+    AND?: UserSavedSkillVersionWhereInput | UserSavedSkillVersionWhereInput[]
+    OR?: UserSavedSkillVersionWhereInput[]
+    NOT?: UserSavedSkillVersionWhereInput | UserSavedSkillVersionWhereInput[]
+    skillId?: UuidFilter<"UserSavedSkillVersion"> | string
+    ownerUserId?: UuidFilter<"UserSavedSkillVersion"> | string
+    version?: IntFilter<"UserSavedSkillVersion"> | number
+    sourceExecutionId?: UuidFilter<"UserSavedSkillVersion"> | string
+    schemaVersion?: StringFilter<"UserSavedSkillVersion"> | string
+    planSnapshotJson?: JsonFilter<"UserSavedSkillVersion">
+    planHash?: StringFilter<"UserSavedSkillVersion"> | string
+    fixedInputJson?: JsonFilter<"UserSavedSkillVersion">
+    inputHash?: StringFilter<"UserSavedSkillVersion"> | string
+    outputSchemaJson?: JsonNullableFilter<"UserSavedSkillVersion">
+    sampleResultJson?: JsonNullableFilter<"UserSavedSkillVersion">
+    aiReviewJson?: JsonFilter<"UserSavedSkillVersion">
+    reviewStatus?: StringFilter<"UserSavedSkillVersion"> | string
+    createdAt?: DateTimeFilter<"UserSavedSkillVersion"> | Date | string
+    skill?: XOR<UserSavedSkillRelationFilter, UserSavedSkillWhereInput>
+  }, "id" | "skillId_version" | "ownerUserId_sourceExecutionId_inputHash">
+
+  export type UserSavedSkillVersionOrderByWithAggregationInput = {
+    id?: SortOrder
+    skillId?: SortOrder
+    ownerUserId?: SortOrder
+    version?: SortOrder
+    sourceExecutionId?: SortOrder
+    schemaVersion?: SortOrder
+    planSnapshotJson?: SortOrder
+    planHash?: SortOrder
+    fixedInputJson?: SortOrder
+    inputHash?: SortOrder
+    outputSchemaJson?: SortOrderInput | SortOrder
+    sampleResultJson?: SortOrderInput | SortOrder
+    aiReviewJson?: SortOrder
+    reviewStatus?: SortOrder
+    createdAt?: SortOrder
+    _count?: UserSavedSkillVersionCountOrderByAggregateInput
+    _avg?: UserSavedSkillVersionAvgOrderByAggregateInput
+    _max?: UserSavedSkillVersionMaxOrderByAggregateInput
+    _min?: UserSavedSkillVersionMinOrderByAggregateInput
+    _sum?: UserSavedSkillVersionSumOrderByAggregateInput
+  }
+
+  export type UserSavedSkillVersionScalarWhereWithAggregatesInput = {
+    AND?: UserSavedSkillVersionScalarWhereWithAggregatesInput | UserSavedSkillVersionScalarWhereWithAggregatesInput[]
+    OR?: UserSavedSkillVersionScalarWhereWithAggregatesInput[]
+    NOT?: UserSavedSkillVersionScalarWhereWithAggregatesInput | UserSavedSkillVersionScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"UserSavedSkillVersion"> | string
+    skillId?: UuidWithAggregatesFilter<"UserSavedSkillVersion"> | string
+    ownerUserId?: UuidWithAggregatesFilter<"UserSavedSkillVersion"> | string
+    version?: IntWithAggregatesFilter<"UserSavedSkillVersion"> | number
+    sourceExecutionId?: UuidWithAggregatesFilter<"UserSavedSkillVersion"> | string
+    schemaVersion?: StringWithAggregatesFilter<"UserSavedSkillVersion"> | string
+    planSnapshotJson?: JsonWithAggregatesFilter<"UserSavedSkillVersion">
+    planHash?: StringWithAggregatesFilter<"UserSavedSkillVersion"> | string
+    fixedInputJson?: JsonWithAggregatesFilter<"UserSavedSkillVersion">
+    inputHash?: StringWithAggregatesFilter<"UserSavedSkillVersion"> | string
+    outputSchemaJson?: JsonNullableWithAggregatesFilter<"UserSavedSkillVersion">
+    sampleResultJson?: JsonNullableWithAggregatesFilter<"UserSavedSkillVersion">
+    aiReviewJson?: JsonWithAggregatesFilter<"UserSavedSkillVersion">
+    reviewStatus?: StringWithAggregatesFilter<"UserSavedSkillVersion"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"UserSavedSkillVersion"> | Date | string
   }
 
   export type BuiltinSkillWhereInput = {
@@ -61581,6 +64121,226 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type UserSavedSkillCreateInput = {
+    id?: string
+    ownerUserId: string
+    name: string
+    description?: string | null
+    visibility?: string
+    status?: string
+    activeVersionId?: string | null
+    latestVersion?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    versions?: UserSavedSkillVersionCreateNestedManyWithoutSkillInput
+  }
+
+  export type UserSavedSkillUncheckedCreateInput = {
+    id?: string
+    ownerUserId: string
+    name: string
+    description?: string | null
+    visibility?: string
+    status?: string
+    activeVersionId?: string | null
+    latestVersion?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    versions?: UserSavedSkillVersionUncheckedCreateNestedManyWithoutSkillInput
+  }
+
+  export type UserSavedSkillUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    activeVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    latestVersion?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    versions?: UserSavedSkillVersionUpdateManyWithoutSkillNestedInput
+  }
+
+  export type UserSavedSkillUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    activeVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    latestVersion?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    versions?: UserSavedSkillVersionUncheckedUpdateManyWithoutSkillNestedInput
+  }
+
+  export type UserSavedSkillCreateManyInput = {
+    id?: string
+    ownerUserId: string
+    name: string
+    description?: string | null
+    visibility?: string
+    status?: string
+    activeVersionId?: string | null
+    latestVersion?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type UserSavedSkillUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    activeVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    latestVersion?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserSavedSkillUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    activeVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    latestVersion?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserSavedSkillVersionCreateInput = {
+    id?: string
+    ownerUserId: string
+    version: number
+    sourceExecutionId: string
+    schemaVersion: string
+    planSnapshotJson: JsonNullValueInput | InputJsonValue
+    planHash: string
+    fixedInputJson: JsonNullValueInput | InputJsonValue
+    inputHash: string
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    sampleResultJson?: NullableJsonNullValueInput | InputJsonValue
+    aiReviewJson: JsonNullValueInput | InputJsonValue
+    reviewStatus: string
+    createdAt?: Date | string
+    skill: UserSavedSkillCreateNestedOneWithoutVersionsInput
+  }
+
+  export type UserSavedSkillVersionUncheckedCreateInput = {
+    id?: string
+    skillId: string
+    ownerUserId: string
+    version: number
+    sourceExecutionId: string
+    schemaVersion: string
+    planSnapshotJson: JsonNullValueInput | InputJsonValue
+    planHash: string
+    fixedInputJson: JsonNullValueInput | InputJsonValue
+    inputHash: string
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    sampleResultJson?: NullableJsonNullValueInput | InputJsonValue
+    aiReviewJson: JsonNullValueInput | InputJsonValue
+    reviewStatus: string
+    createdAt?: Date | string
+  }
+
+  export type UserSavedSkillVersionUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    version?: IntFieldUpdateOperationsInput | number
+    sourceExecutionId?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    planSnapshotJson?: JsonNullValueInput | InputJsonValue
+    planHash?: StringFieldUpdateOperationsInput | string
+    fixedInputJson?: JsonNullValueInput | InputJsonValue
+    inputHash?: StringFieldUpdateOperationsInput | string
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    sampleResultJson?: NullableJsonNullValueInput | InputJsonValue
+    aiReviewJson?: JsonNullValueInput | InputJsonValue
+    reviewStatus?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    skill?: UserSavedSkillUpdateOneRequiredWithoutVersionsNestedInput
+  }
+
+  export type UserSavedSkillVersionUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    version?: IntFieldUpdateOperationsInput | number
+    sourceExecutionId?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    planSnapshotJson?: JsonNullValueInput | InputJsonValue
+    planHash?: StringFieldUpdateOperationsInput | string
+    fixedInputJson?: JsonNullValueInput | InputJsonValue
+    inputHash?: StringFieldUpdateOperationsInput | string
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    sampleResultJson?: NullableJsonNullValueInput | InputJsonValue
+    aiReviewJson?: JsonNullValueInput | InputJsonValue
+    reviewStatus?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserSavedSkillVersionCreateManyInput = {
+    id?: string
+    skillId: string
+    ownerUserId: string
+    version: number
+    sourceExecutionId: string
+    schemaVersion: string
+    planSnapshotJson: JsonNullValueInput | InputJsonValue
+    planHash: string
+    fixedInputJson: JsonNullValueInput | InputJsonValue
+    inputHash: string
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    sampleResultJson?: NullableJsonNullValueInput | InputJsonValue
+    aiReviewJson: JsonNullValueInput | InputJsonValue
+    reviewStatus: string
+    createdAt?: Date | string
+  }
+
+  export type UserSavedSkillVersionUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    version?: IntFieldUpdateOperationsInput | number
+    sourceExecutionId?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    planSnapshotJson?: JsonNullValueInput | InputJsonValue
+    planHash?: StringFieldUpdateOperationsInput | string
+    fixedInputJson?: JsonNullValueInput | InputJsonValue
+    inputHash?: StringFieldUpdateOperationsInput | string
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    sampleResultJson?: NullableJsonNullValueInput | InputJsonValue
+    aiReviewJson?: JsonNullValueInput | InputJsonValue
+    reviewStatus?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserSavedSkillVersionUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    version?: IntFieldUpdateOperationsInput | number
+    sourceExecutionId?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    planSnapshotJson?: JsonNullValueInput | InputJsonValue
+    planHash?: StringFieldUpdateOperationsInput | string
+    fixedInputJson?: JsonNullValueInput | InputJsonValue
+    inputHash?: StringFieldUpdateOperationsInput | string
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    sampleResultJson?: NullableJsonNullValueInput | InputJsonValue
+    aiReviewJson?: JsonNullValueInput | InputJsonValue
+    reviewStatus?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type BuiltinSkillCreateInput = {
     id?: string
     capabilityKey: string
@@ -65316,6 +68076,131 @@ export namespace Prisma {
     updatedAt?: SortOrder
   }
 
+  export type UserSavedSkillVersionListRelationFilter = {
+    every?: UserSavedSkillVersionWhereInput
+    some?: UserSavedSkillVersionWhereInput
+    none?: UserSavedSkillVersionWhereInput
+  }
+
+  export type UserSavedSkillVersionOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type UserSavedSkillCountOrderByAggregateInput = {
+    id?: SortOrder
+    ownerUserId?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    visibility?: SortOrder
+    status?: SortOrder
+    activeVersionId?: SortOrder
+    latestVersion?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type UserSavedSkillAvgOrderByAggregateInput = {
+    latestVersion?: SortOrder
+  }
+
+  export type UserSavedSkillMaxOrderByAggregateInput = {
+    id?: SortOrder
+    ownerUserId?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    visibility?: SortOrder
+    status?: SortOrder
+    activeVersionId?: SortOrder
+    latestVersion?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type UserSavedSkillMinOrderByAggregateInput = {
+    id?: SortOrder
+    ownerUserId?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    visibility?: SortOrder
+    status?: SortOrder
+    activeVersionId?: SortOrder
+    latestVersion?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type UserSavedSkillSumOrderByAggregateInput = {
+    latestVersion?: SortOrder
+  }
+
+  export type UserSavedSkillRelationFilter = {
+    is?: UserSavedSkillWhereInput
+    isNot?: UserSavedSkillWhereInput
+  }
+
+  export type UserSavedSkillVersionSkillIdVersionCompoundUniqueInput = {
+    skillId: string
+    version: number
+  }
+
+  export type UserSavedSkillVersionOwnerUserIdSourceExecutionIdInputHashCompoundUniqueInput = {
+    ownerUserId: string
+    sourceExecutionId: string
+    inputHash: string
+  }
+
+  export type UserSavedSkillVersionCountOrderByAggregateInput = {
+    id?: SortOrder
+    skillId?: SortOrder
+    ownerUserId?: SortOrder
+    version?: SortOrder
+    sourceExecutionId?: SortOrder
+    schemaVersion?: SortOrder
+    planSnapshotJson?: SortOrder
+    planHash?: SortOrder
+    fixedInputJson?: SortOrder
+    inputHash?: SortOrder
+    outputSchemaJson?: SortOrder
+    sampleResultJson?: SortOrder
+    aiReviewJson?: SortOrder
+    reviewStatus?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type UserSavedSkillVersionAvgOrderByAggregateInput = {
+    version?: SortOrder
+  }
+
+  export type UserSavedSkillVersionMaxOrderByAggregateInput = {
+    id?: SortOrder
+    skillId?: SortOrder
+    ownerUserId?: SortOrder
+    version?: SortOrder
+    sourceExecutionId?: SortOrder
+    schemaVersion?: SortOrder
+    planHash?: SortOrder
+    inputHash?: SortOrder
+    reviewStatus?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type UserSavedSkillVersionMinOrderByAggregateInput = {
+    id?: SortOrder
+    skillId?: SortOrder
+    ownerUserId?: SortOrder
+    version?: SortOrder
+    sourceExecutionId?: SortOrder
+    schemaVersion?: SortOrder
+    planHash?: SortOrder
+    inputHash?: SortOrder
+    reviewStatus?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type UserSavedSkillVersionSumOrderByAggregateInput = {
+    version?: SortOrder
+  }
+
   export type BuiltinSkillVersionListRelationFilter = {
     every?: BuiltinSkillVersionWhereInput
     some?: BuiltinSkillVersionWhereInput
@@ -68097,6 +70982,62 @@ export namespace Prisma {
     decrement?: number
     multiply?: number
     divide?: number
+  }
+
+  export type UserSavedSkillVersionCreateNestedManyWithoutSkillInput = {
+    create?: XOR<UserSavedSkillVersionCreateWithoutSkillInput, UserSavedSkillVersionUncheckedCreateWithoutSkillInput> | UserSavedSkillVersionCreateWithoutSkillInput[] | UserSavedSkillVersionUncheckedCreateWithoutSkillInput[]
+    connectOrCreate?: UserSavedSkillVersionCreateOrConnectWithoutSkillInput | UserSavedSkillVersionCreateOrConnectWithoutSkillInput[]
+    createMany?: UserSavedSkillVersionCreateManySkillInputEnvelope
+    connect?: UserSavedSkillVersionWhereUniqueInput | UserSavedSkillVersionWhereUniqueInput[]
+  }
+
+  export type UserSavedSkillVersionUncheckedCreateNestedManyWithoutSkillInput = {
+    create?: XOR<UserSavedSkillVersionCreateWithoutSkillInput, UserSavedSkillVersionUncheckedCreateWithoutSkillInput> | UserSavedSkillVersionCreateWithoutSkillInput[] | UserSavedSkillVersionUncheckedCreateWithoutSkillInput[]
+    connectOrCreate?: UserSavedSkillVersionCreateOrConnectWithoutSkillInput | UserSavedSkillVersionCreateOrConnectWithoutSkillInput[]
+    createMany?: UserSavedSkillVersionCreateManySkillInputEnvelope
+    connect?: UserSavedSkillVersionWhereUniqueInput | UserSavedSkillVersionWhereUniqueInput[]
+  }
+
+  export type UserSavedSkillVersionUpdateManyWithoutSkillNestedInput = {
+    create?: XOR<UserSavedSkillVersionCreateWithoutSkillInput, UserSavedSkillVersionUncheckedCreateWithoutSkillInput> | UserSavedSkillVersionCreateWithoutSkillInput[] | UserSavedSkillVersionUncheckedCreateWithoutSkillInput[]
+    connectOrCreate?: UserSavedSkillVersionCreateOrConnectWithoutSkillInput | UserSavedSkillVersionCreateOrConnectWithoutSkillInput[]
+    upsert?: UserSavedSkillVersionUpsertWithWhereUniqueWithoutSkillInput | UserSavedSkillVersionUpsertWithWhereUniqueWithoutSkillInput[]
+    createMany?: UserSavedSkillVersionCreateManySkillInputEnvelope
+    set?: UserSavedSkillVersionWhereUniqueInput | UserSavedSkillVersionWhereUniqueInput[]
+    disconnect?: UserSavedSkillVersionWhereUniqueInput | UserSavedSkillVersionWhereUniqueInput[]
+    delete?: UserSavedSkillVersionWhereUniqueInput | UserSavedSkillVersionWhereUniqueInput[]
+    connect?: UserSavedSkillVersionWhereUniqueInput | UserSavedSkillVersionWhereUniqueInput[]
+    update?: UserSavedSkillVersionUpdateWithWhereUniqueWithoutSkillInput | UserSavedSkillVersionUpdateWithWhereUniqueWithoutSkillInput[]
+    updateMany?: UserSavedSkillVersionUpdateManyWithWhereWithoutSkillInput | UserSavedSkillVersionUpdateManyWithWhereWithoutSkillInput[]
+    deleteMany?: UserSavedSkillVersionScalarWhereInput | UserSavedSkillVersionScalarWhereInput[]
+  }
+
+  export type UserSavedSkillVersionUncheckedUpdateManyWithoutSkillNestedInput = {
+    create?: XOR<UserSavedSkillVersionCreateWithoutSkillInput, UserSavedSkillVersionUncheckedCreateWithoutSkillInput> | UserSavedSkillVersionCreateWithoutSkillInput[] | UserSavedSkillVersionUncheckedCreateWithoutSkillInput[]
+    connectOrCreate?: UserSavedSkillVersionCreateOrConnectWithoutSkillInput | UserSavedSkillVersionCreateOrConnectWithoutSkillInput[]
+    upsert?: UserSavedSkillVersionUpsertWithWhereUniqueWithoutSkillInput | UserSavedSkillVersionUpsertWithWhereUniqueWithoutSkillInput[]
+    createMany?: UserSavedSkillVersionCreateManySkillInputEnvelope
+    set?: UserSavedSkillVersionWhereUniqueInput | UserSavedSkillVersionWhereUniqueInput[]
+    disconnect?: UserSavedSkillVersionWhereUniqueInput | UserSavedSkillVersionWhereUniqueInput[]
+    delete?: UserSavedSkillVersionWhereUniqueInput | UserSavedSkillVersionWhereUniqueInput[]
+    connect?: UserSavedSkillVersionWhereUniqueInput | UserSavedSkillVersionWhereUniqueInput[]
+    update?: UserSavedSkillVersionUpdateWithWhereUniqueWithoutSkillInput | UserSavedSkillVersionUpdateWithWhereUniqueWithoutSkillInput[]
+    updateMany?: UserSavedSkillVersionUpdateManyWithWhereWithoutSkillInput | UserSavedSkillVersionUpdateManyWithWhereWithoutSkillInput[]
+    deleteMany?: UserSavedSkillVersionScalarWhereInput | UserSavedSkillVersionScalarWhereInput[]
+  }
+
+  export type UserSavedSkillCreateNestedOneWithoutVersionsInput = {
+    create?: XOR<UserSavedSkillCreateWithoutVersionsInput, UserSavedSkillUncheckedCreateWithoutVersionsInput>
+    connectOrCreate?: UserSavedSkillCreateOrConnectWithoutVersionsInput
+    connect?: UserSavedSkillWhereUniqueInput
+  }
+
+  export type UserSavedSkillUpdateOneRequiredWithoutVersionsNestedInput = {
+    create?: XOR<UserSavedSkillCreateWithoutVersionsInput, UserSavedSkillUncheckedCreateWithoutVersionsInput>
+    connectOrCreate?: UserSavedSkillCreateOrConnectWithoutVersionsInput
+    upsert?: UserSavedSkillUpsertWithoutVersionsInput
+    connect?: UserSavedSkillWhereUniqueInput
+    update?: XOR<XOR<UserSavedSkillUpdateToOneWithWhereWithoutVersionsInput, UserSavedSkillUpdateWithoutVersionsInput>, UserSavedSkillUncheckedUpdateWithoutVersionsInput>
   }
 
   export type BuiltinSkillVersionCreateNestedManyWithoutBuiltinSkillInput = {
@@ -74624,6 +77565,155 @@ export namespace Prisma {
     takeovers?: ExecutionTakeoverUncheckedUpdateManyWithoutExecutionNestedInput
   }
 
+  export type UserSavedSkillVersionCreateWithoutSkillInput = {
+    id?: string
+    ownerUserId: string
+    version: number
+    sourceExecutionId: string
+    schemaVersion: string
+    planSnapshotJson: JsonNullValueInput | InputJsonValue
+    planHash: string
+    fixedInputJson: JsonNullValueInput | InputJsonValue
+    inputHash: string
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    sampleResultJson?: NullableJsonNullValueInput | InputJsonValue
+    aiReviewJson: JsonNullValueInput | InputJsonValue
+    reviewStatus: string
+    createdAt?: Date | string
+  }
+
+  export type UserSavedSkillVersionUncheckedCreateWithoutSkillInput = {
+    id?: string
+    ownerUserId: string
+    version: number
+    sourceExecutionId: string
+    schemaVersion: string
+    planSnapshotJson: JsonNullValueInput | InputJsonValue
+    planHash: string
+    fixedInputJson: JsonNullValueInput | InputJsonValue
+    inputHash: string
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    sampleResultJson?: NullableJsonNullValueInput | InputJsonValue
+    aiReviewJson: JsonNullValueInput | InputJsonValue
+    reviewStatus: string
+    createdAt?: Date | string
+  }
+
+  export type UserSavedSkillVersionCreateOrConnectWithoutSkillInput = {
+    where: UserSavedSkillVersionWhereUniqueInput
+    create: XOR<UserSavedSkillVersionCreateWithoutSkillInput, UserSavedSkillVersionUncheckedCreateWithoutSkillInput>
+  }
+
+  export type UserSavedSkillVersionCreateManySkillInputEnvelope = {
+    data: UserSavedSkillVersionCreateManySkillInput | UserSavedSkillVersionCreateManySkillInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type UserSavedSkillVersionUpsertWithWhereUniqueWithoutSkillInput = {
+    where: UserSavedSkillVersionWhereUniqueInput
+    update: XOR<UserSavedSkillVersionUpdateWithoutSkillInput, UserSavedSkillVersionUncheckedUpdateWithoutSkillInput>
+    create: XOR<UserSavedSkillVersionCreateWithoutSkillInput, UserSavedSkillVersionUncheckedCreateWithoutSkillInput>
+  }
+
+  export type UserSavedSkillVersionUpdateWithWhereUniqueWithoutSkillInput = {
+    where: UserSavedSkillVersionWhereUniqueInput
+    data: XOR<UserSavedSkillVersionUpdateWithoutSkillInput, UserSavedSkillVersionUncheckedUpdateWithoutSkillInput>
+  }
+
+  export type UserSavedSkillVersionUpdateManyWithWhereWithoutSkillInput = {
+    where: UserSavedSkillVersionScalarWhereInput
+    data: XOR<UserSavedSkillVersionUpdateManyMutationInput, UserSavedSkillVersionUncheckedUpdateManyWithoutSkillInput>
+  }
+
+  export type UserSavedSkillVersionScalarWhereInput = {
+    AND?: UserSavedSkillVersionScalarWhereInput | UserSavedSkillVersionScalarWhereInput[]
+    OR?: UserSavedSkillVersionScalarWhereInput[]
+    NOT?: UserSavedSkillVersionScalarWhereInput | UserSavedSkillVersionScalarWhereInput[]
+    id?: UuidFilter<"UserSavedSkillVersion"> | string
+    skillId?: UuidFilter<"UserSavedSkillVersion"> | string
+    ownerUserId?: UuidFilter<"UserSavedSkillVersion"> | string
+    version?: IntFilter<"UserSavedSkillVersion"> | number
+    sourceExecutionId?: UuidFilter<"UserSavedSkillVersion"> | string
+    schemaVersion?: StringFilter<"UserSavedSkillVersion"> | string
+    planSnapshotJson?: JsonFilter<"UserSavedSkillVersion">
+    planHash?: StringFilter<"UserSavedSkillVersion"> | string
+    fixedInputJson?: JsonFilter<"UserSavedSkillVersion">
+    inputHash?: StringFilter<"UserSavedSkillVersion"> | string
+    outputSchemaJson?: JsonNullableFilter<"UserSavedSkillVersion">
+    sampleResultJson?: JsonNullableFilter<"UserSavedSkillVersion">
+    aiReviewJson?: JsonFilter<"UserSavedSkillVersion">
+    reviewStatus?: StringFilter<"UserSavedSkillVersion"> | string
+    createdAt?: DateTimeFilter<"UserSavedSkillVersion"> | Date | string
+  }
+
+  export type UserSavedSkillCreateWithoutVersionsInput = {
+    id?: string
+    ownerUserId: string
+    name: string
+    description?: string | null
+    visibility?: string
+    status?: string
+    activeVersionId?: string | null
+    latestVersion?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type UserSavedSkillUncheckedCreateWithoutVersionsInput = {
+    id?: string
+    ownerUserId: string
+    name: string
+    description?: string | null
+    visibility?: string
+    status?: string
+    activeVersionId?: string | null
+    latestVersion?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type UserSavedSkillCreateOrConnectWithoutVersionsInput = {
+    where: UserSavedSkillWhereUniqueInput
+    create: XOR<UserSavedSkillCreateWithoutVersionsInput, UserSavedSkillUncheckedCreateWithoutVersionsInput>
+  }
+
+  export type UserSavedSkillUpsertWithoutVersionsInput = {
+    update: XOR<UserSavedSkillUpdateWithoutVersionsInput, UserSavedSkillUncheckedUpdateWithoutVersionsInput>
+    create: XOR<UserSavedSkillCreateWithoutVersionsInput, UserSavedSkillUncheckedCreateWithoutVersionsInput>
+    where?: UserSavedSkillWhereInput
+  }
+
+  export type UserSavedSkillUpdateToOneWithWhereWithoutVersionsInput = {
+    where?: UserSavedSkillWhereInput
+    data: XOR<UserSavedSkillUpdateWithoutVersionsInput, UserSavedSkillUncheckedUpdateWithoutVersionsInput>
+  }
+
+  export type UserSavedSkillUpdateWithoutVersionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    activeVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    latestVersion?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserSavedSkillUncheckedUpdateWithoutVersionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    activeVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    latestVersion?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type BuiltinSkillVersionCreateWithoutBuiltinSkillInput = {
     id?: string
     definitionVersion: string
@@ -76880,6 +79970,74 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type UserSavedSkillVersionCreateManySkillInput = {
+    id?: string
+    ownerUserId: string
+    version: number
+    sourceExecutionId: string
+    schemaVersion: string
+    planSnapshotJson: JsonNullValueInput | InputJsonValue
+    planHash: string
+    fixedInputJson: JsonNullValueInput | InputJsonValue
+    inputHash: string
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    sampleResultJson?: NullableJsonNullValueInput | InputJsonValue
+    aiReviewJson: JsonNullValueInput | InputJsonValue
+    reviewStatus: string
+    createdAt?: Date | string
+  }
+
+  export type UserSavedSkillVersionUpdateWithoutSkillInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    version?: IntFieldUpdateOperationsInput | number
+    sourceExecutionId?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    planSnapshotJson?: JsonNullValueInput | InputJsonValue
+    planHash?: StringFieldUpdateOperationsInput | string
+    fixedInputJson?: JsonNullValueInput | InputJsonValue
+    inputHash?: StringFieldUpdateOperationsInput | string
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    sampleResultJson?: NullableJsonNullValueInput | InputJsonValue
+    aiReviewJson?: JsonNullValueInput | InputJsonValue
+    reviewStatus?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserSavedSkillVersionUncheckedUpdateWithoutSkillInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    version?: IntFieldUpdateOperationsInput | number
+    sourceExecutionId?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    planSnapshotJson?: JsonNullValueInput | InputJsonValue
+    planHash?: StringFieldUpdateOperationsInput | string
+    fixedInputJson?: JsonNullValueInput | InputJsonValue
+    inputHash?: StringFieldUpdateOperationsInput | string
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    sampleResultJson?: NullableJsonNullValueInput | InputJsonValue
+    aiReviewJson?: JsonNullValueInput | InputJsonValue
+    reviewStatus?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserSavedSkillVersionUncheckedUpdateManyWithoutSkillInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    version?: IntFieldUpdateOperationsInput | number
+    sourceExecutionId?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    planSnapshotJson?: JsonNullValueInput | InputJsonValue
+    planHash?: StringFieldUpdateOperationsInput | string
+    fixedInputJson?: JsonNullValueInput | InputJsonValue
+    inputHash?: StringFieldUpdateOperationsInput | string
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    sampleResultJson?: NullableJsonNullValueInput | InputJsonValue
+    aiReviewJson?: JsonNullValueInput | InputJsonValue
+    reviewStatus?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type BuiltinSkillVersionCreateManyBuiltinSkillInput = {
     id?: string
     definitionVersion: string
@@ -77104,6 +80262,10 @@ export namespace Prisma {
      */
     export type ExecutionPhaseCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ExecutionPhaseCountOutputTypeDefaultArgs<ExtArgs>
     /**
+     * @deprecated Use UserSavedSkillCountOutputTypeDefaultArgs instead
+     */
+    export type UserSavedSkillCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = UserSavedSkillCountOutputTypeDefaultArgs<ExtArgs>
+    /**
      * @deprecated Use BuiltinSkillCountOutputTypeDefaultArgs instead
      */
     export type BuiltinSkillCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = BuiltinSkillCountOutputTypeDefaultArgs<ExtArgs>
@@ -77239,6 +80401,14 @@ export namespace Prisma {
      * @deprecated Use SkillScheduleDefaultArgs instead
      */
     export type SkillScheduleArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = SkillScheduleDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use UserSavedSkillDefaultArgs instead
+     */
+    export type UserSavedSkillArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = UserSavedSkillDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use UserSavedSkillVersionDefaultArgs instead
+     */
+    export type UserSavedSkillVersionArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = UserSavedSkillVersionDefaultArgs<ExtArgs>
     /**
      * @deprecated Use BuiltinSkillDefaultArgs instead
      */

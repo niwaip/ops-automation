@@ -29,6 +29,7 @@ import { DeterministicTopologyPlannerService } from './topology/deterministic-to
 import { DeterministicTopologyValidatorService } from './topology/deterministic-topology-validator.service';
 import { DeterministicRecipeMatcherService } from './topology/deterministic-recipe-matcher.service';
 import { DeterministicRecipeTopologyBuilderService } from './topology/deterministic-recipe-topology-builder.service';
+import { ExplicitSkillIntentService } from './topology/explicit-skill-intent.service';
 
 import { DeterministicPlanPresentationService } from './params/deterministic-plan-presentation.service';
 
@@ -58,6 +59,7 @@ import { DeterministicPlanPresentationService } from './params/deterministic-pla
     DeterministicTopologyValidatorService,
     DeterministicRecipeMatcherService,
     DeterministicRecipeTopologyBuilderService,
+    ExplicitSkillIntentService,
     NodeOutputBindingResolverService,
     MultiNodeParameterBinderService,
     DeterministicContractAssemblerService,

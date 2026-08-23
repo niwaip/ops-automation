@@ -288,7 +288,10 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
           ) : null}
         </div>
         {renderMeta()}
-        {normalizedSkillName ? (
+        {normalizedSkillName &&
+        !['result', 'results', 'generic', 'tool_execution', 'flow_execute', 'skill-match'].includes(
+          normalizedSkillName.toLowerCase()
+        ) ? (
           <div className="chat-outcome-overview-skill">
             <div className="chat-outcome-overview-label">技能</div>
             <div className="chat-outcome-overview-skill-pill">{normalizedSkillName}</div>

@@ -33,7 +33,9 @@ export class DeterministicTopologyPlannerService {
 7. 必须输出 matchDecision、matchConfidence 和 matchReason。只有存在明确支持用户目标的 Skill，且整体匹配置信度不低于 ${getSkillMatchMinConfidence()}，才能输出 matchDecision=matched。
 8. 如果没有相应 Skill 或置信度低于 ${getSkillMatchMinConfidence()}，必须输出 matchDecision=no_match、nodes=[]、finalNodeRef=null；不得因为某个能力最接近或是唯一候选就勉强规划。
 9. LLM Operation 只能处理 Skill 已产生的数据，不能替代缺失的外部业务 Skill，也不能单独构成可执行计划。
-10. 只输出符合 deterministic-topology/v1 Schema 的纯 JSON。严禁附带 Markdown 标记或解释。
+10. 用户显式指定“用/使用/通过/调用某个 Skill”时，该 Skill 必须出现在 nodes 中；不得省略终态推送、发送、保存或通知步骤后仍声明 matched。
+11. 当前置 Skill 产生多个结构化数据字段（如天气查询、复杂接口等），而下游 Skill (如 Bark 推送、消息通知) 需要单一汇总文本参数 (如 content / text / summary) 时，必须在两者之间插入 llm_operation 节点 (如 summarize_text 或 rewrite_to_markdown) 负责整理生成最终文案。
+12. 只输出符合 deterministic-topology/v1 Schema 的纯 JSON。严禁附带 Markdown 标记或解释。
 
 【输出 Schema】：
 {

@@ -15,6 +15,7 @@ export class DeterministicTopologyValidatorService {
   public validateTopology(
     topology: unknown,
     aliasMap: Map<string, CompactCapabilityCardV1>,
+    explicitlyRequestedSkills: CompactCapabilityCardV1[] = [],
   ): TopologyValidationResult {
     const errors: string[] = [];
 
@@ -101,6 +102,25 @@ export class DeterministicTopologyValidatorService {
     );
     if (!hasSkillNode) {
       errors.push('Matched topology must contain at least one Skill node');
+    }
+
+    const selectedSkillIds = new Set(
+      draft.nodes.flatMap((node) => {
+        const card = aliasMap.get(node.capabilityKey);
+        return card?.kind === 'skill'
+          ? [card.id, card.publishedSkillId].filter((id): id is string => Boolean(id))
+          : [];
+      }),
+    );
+    for (const requiredSkill of explicitlyRequestedSkills) {
+      const covered = [requiredSkill.id, requiredSkill.publishedSkillId]
+        .filter((id): id is string => Boolean(id))
+        .some((id) => selectedSkillIds.has(id));
+      if (!covered) {
+        errors.push(
+          `Topology does not cover explicitly requested Skill '${requiredSkill.displayName || requiredSkill.id}'`,
+        );
+      }
     }
 
     if (draft.finalOutputKind !== 'value' && draft.finalOutputKind !== 'artifact') {

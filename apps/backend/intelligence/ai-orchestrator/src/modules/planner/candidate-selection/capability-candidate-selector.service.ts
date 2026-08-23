@@ -6,6 +6,7 @@ import {
 } from '@ops/backend-deterministic-plan';
 import { resolveParamEnumValues } from '../params/param-enum-constraint';
 import { LlmOperationCatalogProjector } from '../../llm-operation/llm-operation-catalog.projector';
+import { selectIntentRankedCandidates } from './capability-intent-match.util';
 
 @Injectable()
 export class CapabilityCandidateSelectorService {
@@ -14,7 +15,7 @@ export class CapabilityCandidateSelectorService {
   constructor(@Optional() private readonly catalogProjector?: LlmOperationCatalogProjector) {}
 
   public async selectCandidates(
-    _userRequest: string,
+    userRequest: string,
     availableSkills: Array<{
       id: string;
       name?: string;
@@ -113,9 +114,24 @@ export class CapabilityCandidateSelectorService {
       validSkills.push(skill);
     }
 
-    // Intent matching belongs to the topology LLM. This layer only applies
-    // deterministic publication/deployment/contract gates and a stable token cap.
-    for (const skill of validSkills.slice(0, 12)) {
+    // Keep catalog order for small sets. When the token cap is active, rank first
+    // so an explicitly requested user capability cannot be dropped merely because
+    // built-ins or older entries appeared earlier in the merged catalog.
+    const cappedSkills = selectIntentRankedCandidates(
+      userRequest,
+      validSkills,
+      12,
+      (skill) => [
+        skill.skillName,
+        skill.name,
+        skill.skillId,
+        skill.id,
+        skill.description,
+        skill.triggerKeywords,
+        skill.goal,
+      ],
+    );
+    for (const skill of cappedSkills) {
       const skillId = skill.skillId || skill.id || skill.skillName || skill.name;
       const publishedSkillId = skill.publishedSkillId || skill.id || skillId;
       const executableVersion =

@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from 'react-query';
 import {
   type AIModel,
+  type UploadedFileDescriptor,
 } from '@ops/user-core';
 import { chatApi } from '../../../api';
 import { ChatMessageList } from '../components/ChatMessageList';
@@ -214,14 +215,14 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   });
 
   // Wrap handleSend to push draft into sent history before clearing it
-  const handleSendWithHistory = useCallback(() => {
+  const handleSendWithHistory = useCallback((files?: UploadedFileDescriptor[]) => {
     if (draft.trim()) {
       setSentHistory((prev) => {
         const next = [...prev, draft.trim()];
         return next.length > 50 ? next.slice(next.length - 50) : next;
       });
     }
-    handleSend();
+    handleSend(files);
   }, [draft, handleSend]);
 
   useEffect(() => {
