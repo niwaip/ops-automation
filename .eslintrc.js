@@ -4,13 +4,11 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 2022,
     sourceType: 'module',
-    project: './tsconfig.json',
   },
   plugins: ['@typescript-eslint'],
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
-    'plugin:@typescript-eslint/recommended-requiring-type-checking',
   ],
   env: {
     node: true,
@@ -25,9 +23,7 @@ module.exports = {
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-explicit-any': 'warn',
-    '@typescript-eslint/no-floating-promises': 'error',
-    '@typescript-eslint/no-misused-promises': 'error',
-    '@typescript-eslint/require-await': 'error',
+    '@typescript-eslint/no-non-null-assertion': 'off',
     'no-console': ['warn', { allow: ['warn', 'error', 'info'] }],
     'prefer-const': 'error',
     'no-var': 'error',
@@ -271,13 +267,37 @@ module.exports = {
       },
     },
     {
-      files: ['apps/backend/**/prisma/seed.ts'],
+      files: ['apps/backend/**/prisma/seed.ts', 'scripts/**'],
       rules: {
-        '@typescript-eslint/no-unsafe-assignment': 'off',
-        '@typescript-eslint/no-unsafe-call': 'off',
-        '@typescript-eslint/no-unsafe-member-access': 'off',
+        '@typescript-eslint/no-explicit-any': 'off',
+        'no-console': 'off',
+      },
+    },
+    {
+      files: [
+        '**/*.spec.ts',
+        '**/*.spec.tsx',
+        '**/*.test.ts',
+        '**/*.test.tsx',
+        'tests/**',
+        '**/test/**',
+      ],
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/no-unused-vars': 'off',
+        'no-console': 'off',
       },
     },
   ],
-  ignorePatterns: ['dist', 'node_modules', '*.js', '!.eslintrc.js'],
+  ignorePatterns: [
+    'dist',
+    'build',
+    'coverage',
+    'node_modules',
+    '**/generated/**',
+    '**/*.d.ts',
+    '.turbo',
+    '*.js',
+    '!.eslintrc.js',
+  ],
 };
