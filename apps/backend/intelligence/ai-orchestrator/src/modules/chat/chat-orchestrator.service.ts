@@ -238,6 +238,47 @@ export class ChatOrchestratorService {
       }
     }
 
+    if (!executionId && this.deterministicTaskExecutionService) {
+      const savedWorkflowResult =
+        await this.deterministicTaskExecutionService.executeMatchedSavedWorkflow(
+          body.message,
+          {
+            authToken,
+            user,
+          },
+        );
+      if (savedWorkflowResult.matched) {
+        if (!savedWorkflowResult.success || !savedWorkflowResult.executionId) {
+          yield {
+            type: StreamEventType.ERROR,
+            content: `已匹配保存的工作流，但创建执行失败 [${savedWorkflowResult.errorCode || 'SAVED_WORKFLOW_EXECUTION_FAILED'}]: ${savedWorkflowResult.errorMessage || '无法创建执行单'}`,
+          };
+          return;
+        }
+
+        yield {
+          type: StreamEventType.THOUGHT,
+          content: `已匹配你的固定工作流“${savedWorkflowResult.workflow?.name || '已保存工作流'}”，直接按已审查的冻结步骤执行，不再重新规划。执行单 ID: \`${savedWorkflowResult.executionId}\`。`,
+          data: {
+            executionId: savedWorkflowResult.executionId,
+            routeSource: 'saved_workflow',
+            savedWorkflowId: savedWorkflowResult.workflow?.id,
+            savedWorkflowVersion: savedWorkflowResult.workflow?.version,
+            matchScore: savedWorkflowResult.score,
+            matchMethod: savedWorkflowResult.matchMethod,
+            candidateCount: savedWorkflowResult.candidateCount,
+            plannerInvoked: false,
+          },
+        };
+        yield* this.executionStreamService.observeExecution(
+          savedWorkflowResult.executionId,
+          authToken,
+          user,
+        );
+        return;
+      }
+    }
+
     yield {
       type: StreamEventType.THOUGHT,
       content: '正在规划任务...',
@@ -261,20 +302,86 @@ export class ChatOrchestratorService {
     };
 
     const planningRequest = this.buildPlanningRequest(body.message, body.files);
-    if (this.deterministicTaskExecutionService?.shouldRouteToDeterministicPlan(planningRequest)) {
+    const latestResult = await this.chatConversationService.getLatestCompletedTaskResult(
+      body.sessionId || context.sessionId,
+    );
+    const hasPreviousResult = Boolean(
+      latestResult &&
+        (latestResult.structuredData !== undefined || latestResult.summaryText),
+    );
+    let continuationMatchPhase:
+      | Awaited<ReturnType<PlannerService['matchSkillPhase']>>
+      | undefined;
+    let continuationPlanDraft: PlanDraftDTO | undefined;
+
+    if (
+      this.deterministicTaskExecutionService?.shouldAttemptSingleSkillContinuation(
+        planningRequest,
+        { hasPreviousResult },
+      )
+    ) {
+      yield {
+        type: StreamEventType.THOUGHT,
+        content: '正在检查是否可将上一任务结果直接交给单个 Skill 执行...',
+      };
+      const candidateMatchPhase = await this.plannerService.matchSkillPhase(plannerInput);
+      if (candidateMatchPhase.matchedSkill) {
+        const candidatePlanDraft = await this.plannerService.completePlanFromMatchPhase({
+          ...plannerInput,
+          request: {
+            ...plannerInput.request,
+            context: {
+              ...plannerInput.request.context,
+              mode: 'single_step_continuation',
+              previous_result: {
+                executionId: latestResult?.executionId,
+                resultType: latestResult?.resultType,
+                resultTitle: latestResult?.resultTitle,
+                structuredData: latestResult?.structuredData,
+                detailText: latestResult?.summaryText,
+              },
+            },
+          },
+          matchPhase: candidateMatchPhase,
+        });
+        const continuationMetadata = candidatePlanDraft.metadata?.previous_result_continuation as
+          | { applied?: boolean; projectedFields?: unknown[] }
+          | undefined;
+        const hasMissingInputs = candidatePlanDraft.required_inputs.some((input) => input.missing);
+        if (
+          candidatePlanDraft.planner_mode === 'skill' &&
+          continuationMetadata?.applied === true &&
+          !hasMissingInputs
+        ) {
+          continuationMatchPhase = candidateMatchPhase;
+          continuationPlanDraft = candidatePlanDraft;
+          yield {
+            type: StreamEventType.THOUGHT,
+            content: `上一任务结果已按输入 Schema 绑定到 ${candidateMatchPhase.matchedSkill.skillName}，将直接执行单 Skill，不调用拓扑规划模型。`,
+            data: {
+              routeSource: 'single_skill_continuation',
+              sourceExecutionId: latestResult?.executionId,
+              projectedFields: continuationMetadata.projectedFields || [],
+              plannerInvoked: false,
+            },
+          };
+        }
+      }
+    }
+
+    if (
+      !continuationPlanDraft &&
+      this.deterministicTaskExecutionService?.shouldRouteToDeterministicPlan(
+        planningRequest,
+        { hasPreviousResult },
+      )
+    ) {
       yield {
         type: StreamEventType.THOUGHT,
         content: '正在获取用户可用 Skill 列表并进行确定性多步骤任务拆分规划...',
       };
 
       const availableSkills = (await this.skillCacheService?.loadAvailableSkills(authToken, traceId)) || [];
-
-      // Session context: expose the most recent completed task output so a
-      // follow-up task can reuse it as an input candidate (e.g. "输出到md文件"
-      // binds its content parameter from the previous summary).
-      const latestResult = await this.chatConversationService.getLatestCompletedTaskResult(
-        body.sessionId,
-      );
 
       const result = await this.deterministicTaskExecutionService.executeDeterministicTask(
         body.message,
@@ -285,10 +392,21 @@ export class ChatOrchestratorService {
           availableSkills,
           systemInputs: {
             ...this.buildUploadedFileParams(body.files),
+            ...(latestResult?.structuredData !== undefined
+              ? { previousResultData: latestResult.structuredData }
+              : {}),
             ...(latestResult?.summaryText
               ? {
                   previousResultText: latestResult.summaryText,
                   previousResultTitle: latestResult.resultTitle,
+                }
+              : {}),
+            ...(hasPreviousResult
+              ? {
+                  previousResultRef: {
+                    executionId: latestResult?.executionId,
+                    resultType: latestResult?.resultType,
+                  },
                 }
               : {}),
           },
@@ -312,8 +430,8 @@ export class ChatOrchestratorService {
               hasBusinessResult: false,
               missingInputs,
               plan: result.planDraft,
-              ...(this.canExposePromptDebug(context) && (result.planDraft as any)?.promptDebug
-                ? { promptDebug: (result.planDraft as any).promptDebug }
+              ...(this.canExposePromptDebug(context) && (result.planDraft)?.promptDebug
+                ? { promptDebug: (result.planDraft).promptDebug }
                 : {}),
             },
           };
@@ -337,8 +455,8 @@ export class ChatOrchestratorService {
               nodes: result.planDraft?.nodes || [],
               finalOutputs: result.planDraft?.finalOutputs || [],
             },
-            ...(this.canExposePromptDebug(context) && (result.planDraft as any)?.promptDebug
-              ? { promptDebug: (result.planDraft as any).promptDebug }
+            ...(this.canExposePromptDebug(context) && (result.planDraft)?.promptDebug
+              ? { promptDebug: (result.planDraft).promptDebug }
               : {}),
           },
         };
@@ -375,7 +493,8 @@ export class ChatOrchestratorService {
       }
     }
 
-    const matchPhase = await this.plannerService.matchSkillPhase(plannerInput);
+    const matchPhase =
+      continuationMatchPhase || (await this.plannerService.matchSkillPhase(plannerInput));
 
     if (!matchPhase.matchedSkill) {
       yield {
@@ -397,10 +516,12 @@ export class ChatOrchestratorService {
       };
     }
 
-    const planDraft = await this.plannerService.completePlanFromMatchPhase({
-      ...plannerInput,
-      matchPhase,
-    });
+    const planDraft =
+      continuationPlanDraft ||
+      (await this.plannerService.completePlanFromMatchPhase({
+        ...plannerInput,
+        matchPhase,
+      }));
 
     if (planDraft && planDraft.planner_mode === 'skill' && planDraft.skill_match) {
       const plannerPromptDebug = this.canExposePromptDebug(context)
@@ -645,7 +766,7 @@ export class ChatOrchestratorService {
   ): Record<string, unknown> {
     const metadata =
       planDraft.metadata && typeof planDraft.metadata === 'object'
-        ? (planDraft.metadata as Record<string, unknown>)
+        ? (planDraft.metadata)
         : undefined;
     const debug =
       metadata?.debug && typeof metadata.debug === 'object' && !Array.isArray(metadata.debug)
@@ -694,6 +815,7 @@ export class ChatOrchestratorService {
   }
 
   private buildExecutionPlanDraft(planDraft: PlanDraftDTO): Record<string, unknown> {
+    const previousResultContinuation = planDraft.metadata?.previous_result_continuation;
     return {
       plan_id: planDraft.plan_id,
       planner_mode: planDraft.planner_mode,
@@ -705,6 +827,13 @@ export class ChatOrchestratorService {
       risk_summary: planDraft.risk_summary,
       semantic: planDraft.semantic,
       usage: planDraft.usage,
+      ...(previousResultContinuation
+        ? {
+            metadata: {
+              previous_result_continuation: previousResultContinuation,
+            },
+          }
+        : {}),
     };
   }
 
@@ -749,7 +878,7 @@ export class ChatOrchestratorService {
     };
   }
 
-  private async resolveAuthenticatedUser(
+  public async resolveAuthenticatedUser(
     authorization?: string
   ): Promise<{ userId?: string; userRoles?: string[] }> {
     if (!authorization) {

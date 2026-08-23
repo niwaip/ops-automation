@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { applyReasoningRequestAdapter } from './reasoning-request-adapter';
 import {
   ChatMessage,
   OpenAICompatibleConfig,
@@ -51,6 +52,8 @@ export class OpenAICompatibleClient {
   private useJsonMode: boolean;
   private promptCacheKey?: string;
   private promptCacheRetention?: 'in_memory' | '24h' | '5m' | '1h';
+  /** Learned per-client capability: this model rejects an explicit off request. */
+  private reasoningOffRejected = false;
 
   constructor(config: OpenAICompatibleConfig, timeout: number = 300000) {
     this.baseURL = config.baseURL;
@@ -100,10 +103,14 @@ export class OpenAICompatibleClient {
       ) {
         data.prompt_cache_retention = normalized.promptCacheRetention;
       }
-      this.applyReasoningConfig(data, normalized.reasoning);
+      this.applyReasoningConfig(data, normalized.reasoning, normalized.maxOutputTokens);
 
       // Use /chat/completions since baseURL already includes /v1
-      const response = await this.client.post<ChatCompletionResponse>('/chat/completions', data);
+      const response = await this.postChatCompletionWithReasoningFallback(
+        data,
+        normalized.reasoning,
+        normalized.maxOutputTokens
+      );
 
       const choice = response.data?.choices?.[0];
       return {
@@ -256,44 +263,66 @@ export class OpenAICompatibleClient {
     reasoning?: {
       enabled?: boolean;
       effort?: 'low' | 'medium' | 'high';
-    }
+    },
+    maxOutputTokens?: number
   ): void {
-    if (reasoning?.enabled === false) {
-      if (this.isMiniMaxCompatibleEndpoint()) {
-        data.thinking = { type: 'disabled' };
-      } else if (this.isDashScopeCompatibleEndpoint()) {
-        data.enable_thinking = false;
-      }
-      return;
-    }
-
-    if (!reasoning?.enabled) {
-      return;
-    }
-
-    if (this.isMiniMaxCompatibleEndpoint()) {
-      data.thinking = {
-        type: 'adaptive',
-      };
-      return;
-    }
-
-    data.reasoning_effort = reasoning.effort || 'medium';
-  }
-
-  private isMiniMaxCompatibleEndpoint(): boolean {
-    if (this.provider === 'minimax') {
-      return true;
-    }
-
-    return /(^|\/\/)([^/]+\.)?(minimax\.chat|minimax\.io|minimaxi\.com)(\/|$)/i.test(this.baseURL);
-  }
-
-  private isDashScopeCompatibleEndpoint(): boolean {
-    return (
-      this.provider === 'alibaba-bailian' ||
-      /(^|\/\/)([^/]+\.)?dashscope\.aliyuncs\.com(\/|$)/i.test(this.baseURL)
+    const effectiveReasoning =
+      reasoning?.enabled === false && this.reasoningOffRejected
+        ? { enabled: true as const, effort: 'low' as const }
+        : reasoning;
+    applyReasoningRequestAdapter(
+      data,
+      {
+        provider: this.provider,
+        baseURL: this.baseURL,
+        model: this.model,
+        maxOutputTokens,
+      },
+      effectiveReasoning
     );
+  }
+
+  private async postChatCompletionWithReasoningFallback(
+    data: Record<string, any>,
+    reasoning?: {
+      enabled?: boolean;
+      effort?: 'low' | 'medium' | 'high';
+    },
+    maxOutputTokens?: number
+  ) {
+    try {
+      return await this.client.post<ChatCompletionResponse>('/chat/completions', data);
+    } catch (error: unknown) {
+      if (reasoning?.enabled !== false || !this.isReasoningMandatoryError(error)) {
+        throw error;
+      }
+
+      // A gateway can expose a common off option while an individual model is
+      // reasoning-only. Learn that constraint from its explicit API response,
+      // retry once at the lowest shared effort, and skip the invalid request
+      // for the lifetime of this model client.
+      this.reasoningOffRejected = true;
+      const retryData = { ...data };
+      this.clearReasoningFields(retryData);
+      this.applyReasoningConfig(retryData, { enabled: false }, maxOutputTokens);
+      return this.client.post<ChatCompletionResponse>('/chat/completions', retryData);
+    }
+  }
+
+  private isReasoningMandatoryError(error: unknown): boolean {
+    const axiosError = error as AxiosLikeError;
+    const message = axiosError.response?.data?.error?.message || axiosError.message || '';
+    return /reasoning.{0,40}(?:mandatory|required|cannot be disabled|can't be disabled)/i.test(
+      message
+    );
+  }
+
+  private clearReasoningFields(data: Record<string, any>): void {
+    delete data.reasoning;
+    delete data.reasoning_effort;
+    delete data.enable_thinking;
+    delete data.thinking;
+    delete data.thinking_budget;
   }
 
   /**
@@ -337,6 +366,7 @@ export class OpenAICompatibleClient {
     if (config.baseURL) {
       this.baseURL = config.baseURL;
       this.client.defaults.baseURL = this.baseURL;
+      this.reasoningOffRejected = false;
     }
     if (config.apiKey) {
       this.apiKey = config.apiKey;
@@ -344,9 +374,11 @@ export class OpenAICompatibleClient {
     }
     if (config.model) {
       this.model = config.model;
+      this.reasoningOffRejected = false;
     }
     if (config.provider !== undefined) {
       this.provider = config.provider;
+      this.reasoningOffRejected = false;
     }
     if (config.useJsonMode !== undefined) {
       this.useJsonMode = config.useJsonMode;

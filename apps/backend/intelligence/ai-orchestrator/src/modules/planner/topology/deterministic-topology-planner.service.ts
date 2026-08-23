@@ -13,6 +13,10 @@ export class DeterministicTopologyPlannerService {
   public async planTopology(
     userRequest: string,
     routingCards: RoutingCapabilityCardV1[],
+    context?: {
+      hasPreviousResult?: boolean;
+      previousResultType?: string;
+    },
   ): Promise<DeterministicTopologyDraftV1 | null> {
     const activeModel = this.modelService.getPreferredDefaultModel({ mode: 'task' });
     if (!activeModel) {
@@ -30,11 +34,13 @@ export class DeterministicTopologyPlannerService {
 4. 节点数量在 1～6 之间。
 5. 根据用户语义识别最终输出是普通值还是文件产物，分别输出 finalOutputKind=value 或 artifact。
 6. 意图判断必须综合 capability 的 name、description、goals 与输入输出语义，不得依赖单一关键词。
-7. 必须输出 matchDecision、matchConfidence 和 matchReason。只有存在明确支持用户目标的 Skill，且整体匹配置信度不低于 ${getSkillMatchMinConfidence()}，才能输出 matchDecision=matched。
-8. 如果没有相应 Skill 或置信度低于 ${getSkillMatchMinConfidence()}，必须输出 matchDecision=no_match、nodes=[]、finalNodeRef=null；不得因为某个能力最接近或是唯一候选就勉强规划。
-9. LLM Operation 只能处理 Skill 已产生的数据，不能替代缺失的外部业务 Skill，也不能单独构成可执行计划。
+7. 必须输出 matchDecision、matchConfidence 和 matchReason。只有存在明确支持用户目标的能力，且整体匹配置信度不低于 ${getSkillMatchMinConfidence()}，才能输出 matchDecision=matched。
+8. 如果没有相应能力或置信度低于 ${getSkillMatchMinConfidence()}，必须输出 matchDecision=no_match、nodes=[]、finalNodeRef=null；不得因为某个能力最接近或是唯一候选就勉强规划。
+9. LLM Operation 不能替代缺失的外部业务 Skill。对于纯总结、翻译、提取、改写等内容处理请求，允许规划单个 llm_operation：inputContext.hasPreviousResult=true 时，输入由后续参数冻结阶段从可信结果快照绑定；没有上一结果且用户也未提供待处理内容时，仍可规划该 Operation，由参数绑定阶段生成 requiredUserInputs。禁止为了补齐内容来源而虚构或额外增加搜索 Skill。
+9.1 如果用户目标还包含查询、获取外部数据、推送或发送等业务动作，仅有 llm_operation 不足以声明 matched，必须选择能完成相应外部动作的 Skill；不存在匹配 Skill 时输出 no_match。
 10. 用户显式指定“用/使用/通过/调用某个 Skill”时，该 Skill 必须出现在 nodes 中；不得省略终态推送、发送、保存或通知步骤后仍声明 matched。
-11. 当前置 Skill 产生多个结构化数据字段（如天气查询、复杂接口等），而下游 Skill (如 Bark 推送、消息通知) 需要单一汇总文本参数 (如 content / text / summary) 时，必须在两者之间插入 llm_operation 节点 (如 summarize_text 或 rewrite_to_markdown) 负责整理生成最终文案。
+11. 当前置 Skill 产生多个结构化数据字段，而下游通知、导出或写入 Skill 只接受单一文本参数 (如 content / text / summary) 时，必须在两者之间插入 llm_operation 节点 (如 summarize_text 或 transform_text) 负责整理生成最终文案。
+12. 对已有文本执行用户指定处理（包括分析指定段落、翻译、改写、润色、提取、合并和格式化）统一选择 transform_text，并把本轮用户原始处理要求绑定到 instruction。相邻且可由一次调用完成的文本处理必须合并成一个节点；只有中间结果需要被其他节点复用或验证时才拆分。单个拓扑最多包含 3 个 llm_operation 节点。
 12. 只输出符合 deterministic-topology/v1 Schema 的纯 JSON。严禁附带 Markdown 标记或解释。
 
 【输出 Schema】：
@@ -54,6 +60,10 @@ export class DeterministicTopologyPlannerService {
 
     const userPrompt = JSON.stringify({
       request: userRequest,
+      inputContext: {
+        hasPreviousResult: context?.hasPreviousResult === true,
+        previousResultType: context?.previousResultType,
+      },
       capabilities: routingCards.map((c) => ({
         key: c.key,
         kind: c.capabilityKind,

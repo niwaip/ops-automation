@@ -1,4 +1,4 @@
-export type LlmOperationIdV1 = 'summarize_text' | 'summarize_list' | 'extract_structured_fields' | 'rewrite_to_markdown' | 'classify_intent_label' | 'merge_multi_source_notes';
+export type LlmOperationIdV1 = 'summarize_text' | 'summarize_list' | 'transform_text' | 'extract_structured_fields' | 'rewrite_to_markdown' | 'classify_intent_label' | 'merge_multi_source_notes';
 export type ValueTypeV1 = 'string' | 'number' | 'boolean' | 'json' | 'text_list' | 'news_item_list' | 'markdown_content' | 'artifact_ref';
 export interface ProjectedOutputContractV1 {
     outputContract: Record<string, ValueTypeV1>;
@@ -80,6 +80,14 @@ export interface RequiredUserInputV1 {
     targetField: string;
     nodeId: string;
     prompt: string;
+    /** Stable submission key exposed to the chat/client input form. */
+    name?: string;
+    /** Path in execution.inputJson consumed by a user_input binding. */
+    inputPath?: string;
+    type?: string;
+    description?: string;
+    enum?: Array<string | number>;
+    missing?: boolean;
 }
 export interface PlanValidationErrorV1 {
     code: string;

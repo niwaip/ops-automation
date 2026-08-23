@@ -82,6 +82,22 @@ describe('ChatResultNormalizerService', () => {
     expect(service.formatForChat(normalized, 'exec-2')).toBe('同步完成，共处理 18 条记录。');
   });
 
+  it('uses detail text as the chat answer instead of a notification-only count', () => {
+    const normalized = service.normalize({
+      execution: { status: 'success' },
+      result: { businessData: { results: [{ title: 'DSH 安装方法' }] } },
+      presentation: {
+        chatSummary: '找到 1 条相关结果',
+        notificationSummary: '找到 1 条相关结果',
+        detailText: '1. DSH 安装方法\n   执行 npm install ...',
+      },
+    });
+
+    expect(service.formatForChat(normalized, 'exec-search')).toBe(
+      '1. DSH 安装方法\n   执行 npm install ...',
+    );
+  });
+
   it('treats string result field as user-readable summary instead of structured json', () => {
     const normalized = service.normalize(
       {

@@ -144,6 +144,10 @@ describe('MultiNodeParameterBinderService', () => {
     expect(result.requiredUserInputs).toEqual([
       expect.objectContaining({ targetField: 'query', missing: true }),
     ]);
+    expect(result.nodeBindings.n1?.query).toEqual({
+      source: 'user_input',
+      path: 'planInputs.n1.query',
+    });
     expect(result.notes?.[0]).toContain('no fixed-rule extraction');
   });
 
@@ -193,6 +197,156 @@ describe('MultiNodeParameterBinderService', () => {
       expectedType: 'news_item_list',
       transform: 'extract_unique_array',
     });
+  });
+
+  it('binds a root LLM Operation from the previous structured execution snapshot', async () => {
+    const summarizeCard = {
+      id: 'summarize_list',
+      kind: 'llm_operation',
+      displayName: '列表摘要',
+      summary: '总结列表',
+      goals: ['summarize'],
+      inputs: { items: 'array' },
+      outputs: { markdown_content: 'markdown_content' },
+      _rawInputSchema: {
+        required: ['items'],
+        properties: { items: { type: 'array' } },
+      },
+    } as unknown as CompactCapabilityCardV1;
+    const recognizer = { recognizeParams: jest.fn() };
+    const binder = new MultiNodeParameterBinderService(
+      new NodeOutputBindingResolverService(),
+      recognizer as any,
+    );
+
+    const result = await binder.bindParameters(
+      '进行总结',
+      [{ ref: 'n1', capabilityKey: 'summary', dependsOn: [] }],
+      new Map([['summary', summarizeCard]]),
+      undefined,
+      {
+        previousResultRef: { executionId: 'execution-search-1' },
+        previousResultData: {
+          searchResults: [
+            { title: '安装方法 A', content: '步骤一' },
+            { title: '安装方法 B', content: '步骤二' },
+          ],
+        },
+      },
+    );
+
+    expect(result.nodeBindings.n1?.items).toEqual({
+      source: 'literal',
+      value: [
+        { title: '安装方法 A', content: '步骤一' },
+        { title: '安装方法 B', content: '步骤二' },
+      ],
+    });
+    expect(result.requiredUserInputs).toHaveLength(0);
+    expect(recognizer.recognizeParams).not.toHaveBeenCalled();
+    expect(result.notes).toEqual([
+      expect.stringContaining('execution-search-1'),
+    ]);
+  });
+
+  it('keeps prior content, current instruction, and configuration parameters separated', async () => {
+    const transformCard = {
+      id: 'transform_text',
+      kind: 'llm_operation',
+      displayName: '文本处理',
+      summary: '翻译、改写和格式化文本',
+      goals: ['transform_text', 'translate'],
+      inputs: {
+        content: 'string',
+        instruction: 'string',
+      },
+      outputs: { content: 'string' },
+      _rawInputSchema: {
+        required: ['content', 'instruction'],
+        properties: {
+          content: { type: 'string', 'x-ops-input-role': 'content' },
+          instruction: { type: 'string', 'x-ops-input-role': 'instruction' },
+        },
+      },
+    } as unknown as CompactCapabilityCardV1;
+    const recognizer = {
+      recognizeParams: jest.fn(),
+    };
+    const binder = new MultiNodeParameterBinderService(
+      new NodeOutputBindingResolverService(),
+      recognizer as any,
+    );
+
+    const result = await binder.bindParameters(
+      '翻译成日语',
+      [{ ref: 'n1', capabilityKey: 'transform', dependsOn: [] }],
+      new Map([['transform', transformCard]]),
+      undefined,
+      {
+        previousResultRef: { executionId: 'execution-summary-1' },
+        previousResultData: { summary: '上一轮需要翻译的正文' },
+        previousResultText: '{"summary":"上一轮需要翻译的正文"}',
+      },
+    );
+
+    expect(result.planInputs.n1).toEqual({
+      content: '上一轮需要翻译的正文',
+      instruction: '翻译成日语',
+    });
+    expect(recognizer.recognizeParams).not.toHaveBeenCalled();
+    expect(result.requiredUserInputs).toHaveLength(0);
+  });
+
+  it('rejects an LLM-recognized configuration value that violates string length', async () => {
+    const transformCard = {
+      id: 'transform_text',
+      kind: 'llm_operation',
+      displayName: '文本处理',
+      summary: '翻译文本',
+      goals: ['translate'],
+      inputs: {
+        content: 'string',
+        instruction: 'string',
+        target_language: 'string',
+      },
+      outputs: { content: 'string' },
+      _rawInputSchema: {
+        required: ['content', 'instruction'],
+        properties: {
+          content: { type: 'string', 'x-ops-input-role': 'content' },
+          instruction: { type: 'string', 'x-ops-input-role': 'instruction' },
+          target_language: {
+            type: 'string',
+            maxLength: 80,
+            'x-ops-input-role': 'configuration',
+          },
+        },
+      },
+    } as unknown as CompactCapabilityCardV1;
+    const recognizer = {
+      recognizeParams: jest.fn().mockResolvedValue({
+        params: { target_language: '上一轮正文'.repeat(100) },
+        confidence: 0.2,
+      }),
+    };
+    const binder = new MultiNodeParameterBinderService(
+      new NodeOutputBindingResolverService(),
+      recognizer as any,
+    );
+
+    const result = await binder.bindParameters(
+      '翻译成日语',
+      [{ ref: 'n1', capabilityKey: 'transform', dependsOn: [] }],
+      new Map([['transform', transformCard]]),
+      undefined,
+      { previousResultText: '需要翻译的正文' },
+    );
+
+    expect(result.planInputs.n1).toEqual({
+      content: '需要翻译的正文',
+      instruction: '翻译成日语',
+    });
+    expect(result.requiredUserInputs).toHaveLength(0);
   });
 
   const markdownWriterCard = {
@@ -268,8 +422,12 @@ describe('MultiNodeParameterBinderService', () => {
 
     expect(result.planInputs.n1).not.toHaveProperty('content');
     expect(result.requiredUserInputs).toHaveLength(1);
-    expect(result.requiredUserInputs[0].targetField).toBe('content');
-    expect(result.requiredUserInputs[0].missing).toBe(true);
+    expect(result.requiredUserInputs[0]!.targetField).toBe('content');
+    expect(result.requiredUserInputs[0]!.missing).toBe(true);
+    expect(result.nodeBindings.n1?.content).toEqual({
+      source: 'user_input',
+      path: 'planInputs.n1.content',
+    });
   });
 
   it('does not bind non-content params from the previous session result', async () => {
@@ -303,7 +461,7 @@ describe('MultiNodeParameterBinderService', () => {
 
     expect(result.planInputs.n1).not.toHaveProperty('query');
     expect(result.requiredUserInputs).toHaveLength(1);
-    expect(result.requiredUserInputs[0].targetField).toBe('query');
+    expect(result.requiredUserInputs[0]!.targetField).toBe('query');
   });
 
   it('exposes the previous result text in the recognizer context', async () => {

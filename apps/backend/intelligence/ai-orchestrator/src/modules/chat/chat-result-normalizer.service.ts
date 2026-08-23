@@ -157,7 +157,10 @@ export class ChatResultNormalizerService {
   }
 
   formatForChat(result: NormalizedChatExecutionResult, executionId?: string): string {
-    const lead = this.firstNonEmptyString(result.summary, result.body);
+    // detailText is the chat deliverable; chatSummary may intentionally be a
+    // short notification such as “找到 5 条结果”. Keep notification copy out of
+    // the primary answer whenever a richer detail payload is available.
+    const lead = this.firstNonEmptyString(result.detailText, result.summary, result.body);
     if (lead) {
       return lead;
     }
@@ -184,7 +187,7 @@ export class ChatResultNormalizerService {
 
     if (isFinalOutputsPayload) {
       const artifactName =
-        result.artifacts.length > 0 ? result.artifacts[0].name : undefined;
+        result.artifacts.length > 0 ? result.artifacts[0]?.name : undefined;
       return artifactName
         ? `任务已成功完成，已为您生成结果文档：${artifactName}。您可以直接点击下方按钮进行查看与下载。${executionId ? `\n\n执行单 ID: ${executionId}` : ''}`
         : `任务已成功完成，已为您生成结果文档。您可以直接点击下方按钮进行查看与下载。${executionId ? `\n\n执行单 ID: ${executionId}` : ''}`;

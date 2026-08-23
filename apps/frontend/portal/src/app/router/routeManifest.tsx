@@ -30,6 +30,7 @@ const SkillAdminPage = lazy(() => import('@/features/admin/skills/pages/SkillAdm
 const BrowserSemanticRuleAdminPage = lazy(() => import('@/features/admin/browser-semantics/pages/BrowserSemanticRuleAdminPage'));
 const SystemToolAdminPage = lazy(() => import('@/features/admin/tools/pages/SystemToolAdminPage'));
 const PromptDebugPage = lazy(() => import('@/features/admin/prompt-debug/pages/PromptDebugPage'));
+const HabitLearningPage = lazy(() => import('@/features/admin/habit-learning/pages/HabitLearningPage'));
 const FlowsPage = lazy(() => import('@/features/admin/flows/pages/FlowsPage'));
 const TemporalPage = lazy(() => import('@/features/admin/temporal/pages/TemporalPage'));
 const ActivityPage = lazy(() => import('@/features/admin/activities/pages/ActivityPage'));
@@ -274,6 +275,12 @@ export const portalRouteEntries: PortalRouteEntry[] = [
           icon: <BugOutlined />,
           requiresAdmin: true,
         },
+        {
+          key: '/admin/habit-learning',
+          label: '习惯学习',
+          icon: <MessageOutlined />,
+          requiresAdmin: true,
+        },
       ],
     },
   },
@@ -306,6 +313,12 @@ export const portalRouteEntries: PortalRouteEntry[] = [
     element: <PromptDebugPage />,
     requiresAdmin: true,
     activeMenuKey: '/admin/prompt-debug',
+  },
+  {
+    path: '/admin/habit-learning',
+    element: <HabitLearningPage />,
+    requiresAdmin: true,
+    activeMenuKey: '/admin/habit-learning',
   },
   { path: '/report-templates', redirectTo: '/carbone-templates' },
   { path: '/report-templates/new', redirectTo: '/carbone-templates' },

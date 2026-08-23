@@ -3,6 +3,7 @@ import * as crypto from 'crypto';
 export type LlmOperationIdV1 =
   | 'summarize_text'
   | 'summarize_list'
+  | 'transform_text'
   | 'extract_structured_fields'
   | 'rewrite_to_markdown'
   | 'classify_intent_label'
@@ -246,6 +247,14 @@ export interface RequiredUserInputV1 {
   targetField: string;
   nodeId: string;
   prompt: string;
+  /** Stable submission key exposed to the chat/client input form. */
+  name?: string;
+  /** Path in execution.inputJson consumed by a user_input binding. */
+  inputPath?: string;
+  type?: string;
+  description?: string;
+  enum?: Array<string | number>;
+  missing?: boolean;
 }
 
 export interface PlanValidationErrorV1 {

@@ -1,20 +1,167 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { PlanRouteClassifierService } from '../planner/routing/plan-route-classifier.service';
 import { DeterministicPlanGeneratorService } from '../planner/deterministic/deterministic-plan-generator.service';
 import { ControlPlaneClient } from '../../client/control-plane.client';
+import { RoutingPolicyService } from '../planner/routing/routing-policy.service';
+import {
+  matchSavedWorkflow,
+  rankSavedWorkflows,
+  type SavedWorkflowCandidate,
+} from './saved-workflow-matcher';
 
 @Injectable()
 export class DeterministicTaskExecutionService {
   private readonly logger = new Logger(DeterministicTaskExecutionService.name);
+  private readonly routingPolicy: RoutingPolicyService;
 
   constructor(
     private readonly routeClassifier: PlanRouteClassifierService,
     private readonly planGenerator: DeterministicPlanGeneratorService,
     private readonly controlPlaneClient: ControlPlaneClient,
-  ) {}
+    @Optional() routingPolicy?: RoutingPolicyService,
+  ) {
+    this.routingPolicy = routingPolicy || new RoutingPolicyService();
+  }
 
-  public shouldRouteToDeterministicPlan(userRequest: string): boolean {
-    return this.routeClassifier.classifyRoute(userRequest) === 'deterministic_plan';
+  public shouldRouteToDeterministicPlan(
+    userRequest: string,
+    context?: { hasPreviousResult?: boolean },
+  ): boolean {
+    return this.routeClassifier.classifyRoute(userRequest, context) === 'deterministic_plan';
+  }
+
+  public shouldAttemptSingleSkillContinuation(
+    userRequest: string,
+    context?: { hasPreviousResult?: boolean },
+  ): boolean {
+    return this.routeClassifier.shouldAttemptSingleSkillContinuation(userRequest, context);
+  }
+
+  public async executeMatchedSavedWorkflow(
+    userRequest: string,
+    options?: {
+      authToken?: string;
+      user?: { userId: string; userRoles?: string[] };
+    },
+  ): Promise<{
+    matched: boolean;
+    success: boolean;
+    executionId?: string;
+    workflow?: SavedWorkflowCandidate;
+    score?: number;
+    matchMethod?: 'name' | 'alias' | 'habit' | 'lexical';
+    candidateCount?: number;
+    errorCode?: string;
+    errorMessage?: string;
+  }> {
+    let response: { skills?: SavedWorkflowCandidate[] };
+    try {
+      response = await this.controlPlaneClient.listSavedSkills(options);
+    } catch (error: any) {
+      this.logger.warn(`Unable to load saved workflows: ${error.message}`);
+      return { matched: false, success: false };
+    }
+
+    const candidates = response.skills || [];
+    const policy = this.routingPolicy.getSnapshot();
+    const ranking = rankSavedWorkflows(userRequest, candidates, 5, policy);
+    const match = matchSavedWorkflow(userRequest, candidates, policy);
+    if (!match) {
+      await this.recordRoutingObservation(userRequest, options, {
+        routeSource: 'full_planner',
+        candidateCount: ranking.eligibleCount,
+        plannerInvoked: true,
+        matchMethod: ranking.ambiguous ? 'ambiguous' : 'below_threshold',
+      });
+      return {
+        matched: false,
+        success: false,
+        candidateCount: ranking.eligibleCount,
+      };
+    }
+
+    try {
+      const execution = await this.controlPlaneClient.createExecution<{ id: string }>(
+        {
+          skillId: match.workflow.id,
+          capabilityId: match.workflow.id,
+          skillVersion: match.workflow.version,
+          capabilityVersion: match.workflow.version,
+          input: {},
+        },
+        options,
+      );
+      this.logger.log(
+        `Matched private saved workflow ${match.workflow.id} at score ${match.score.toFixed(3)} using routing policy ${policy.version}`,
+      );
+      await this.recordRoutingObservation(userRequest, options, {
+        routeSource: 'saved_workflow',
+        matchMethod: match.matchMethod,
+        selectedSourceId: match.workflow.id,
+        selectedVersion: match.workflow.version,
+        candidateCount: ranking.eligibleCount,
+        matchScore: match.score,
+        plannerInvoked: false,
+        contractStatus: 'accepted',
+      });
+      return {
+        matched: true,
+        success: true,
+        executionId: execution.id,
+        workflow: match.workflow,
+        score: match.score,
+        matchMethod: match.matchMethod,
+        candidateCount: ranking.eligibleCount,
+      };
+    } catch (error: any) {
+      const responseData = error.response?.data;
+      await this.recordRoutingObservation(userRequest, options, {
+        routeSource: 'saved_workflow',
+        matchMethod: match.matchMethod,
+        selectedSourceId: match.workflow.id,
+        selectedVersion: match.workflow.version,
+        candidateCount: ranking.eligibleCount,
+        matchScore: match.score,
+        plannerInvoked: false,
+        contractStatus: 'rejected',
+        errorCode: responseData?.code || 'SAVED_WORKFLOW_EXECUTION_FAILED',
+      });
+      return {
+        matched: true,
+        success: false,
+        workflow: match.workflow,
+        score: match.score,
+        matchMethod: match.matchMethod,
+        candidateCount: ranking.eligibleCount,
+        errorCode: responseData?.code || 'SAVED_WORKFLOW_EXECUTION_FAILED',
+        errorMessage: responseData?.message || error.message || 'Saved workflow execution failed',
+      };
+    }
+  }
+
+  private async recordRoutingObservation(
+    userRequest: string,
+    options: { authToken?: string; user?: { userId: string; userRoles?: string[] } } | undefined,
+    observation: Record<string, unknown>,
+  ): Promise<void> {
+    if (!options?.user?.userId) return;
+    try {
+      const policy = this.routingPolicy.getSnapshot();
+      await this.controlPlaneClient.recordRoutingObservation(
+        {
+          requestFingerprint: createHash('sha256')
+            .update(String(userRequest || '').normalize('NFKC').trim().toLowerCase())
+            .digest('hex'),
+          routingPolicyVersion: policy.version,
+          routingPolicyDigest: policy.digest,
+          ...observation,
+        },
+        options,
+      );
+    } catch (error: any) {
+      this.logger.warn(`Unable to persist routing observation: ${error.message}`);
+    }
   }
 
   public async executeDeterministicTask(
@@ -58,7 +205,7 @@ export class DeterministicTaskExecutionService {
     }
 
     try {
-      const promptDebug = (planDraft as any)?.promptDebug;
+      const promptDebug = (planDraft)?.promptDebug;
       const executionResult = await this.controlPlaneClient.createExecution(
         {
           executionMode: 'deterministic_plan',

@@ -71,7 +71,12 @@ describe('ChatOrchestratorService', () => {
     const base = createService();
     const deterministicTaskExecutionService = {
       shouldRouteToDeterministicPlan: jest.fn().mockReturnValue(true),
+      shouldAttemptSingleSkillContinuation: jest.fn().mockReturnValue(false),
       executeDeterministicTask: jest.fn(),
+      executeMatchedSavedWorkflow: jest.fn().mockResolvedValue({
+        matched: false,
+        success: false,
+      }),
     };
     const skillCacheService = {
       loadAvailableSkills: jest.fn().mockResolvedValue([]),
@@ -99,6 +104,219 @@ describe('ChatOrchestratorService', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  it('executes a confidently matched private saved workflow without replanning', async () => {
+    const {
+      service,
+      deterministicTaskExecutionService,
+      executionStreamService,
+      skillCacheService,
+    } = createDeterministicService();
+    deterministicTaskExecutionService.executeMatchedSavedWorkflow.mockResolvedValue({
+      matched: true,
+      success: true,
+      executionId: 'execution-saved-1',
+      score: 1,
+      workflow: {
+        id: 'saved-1',
+        name: '查询微博热点并进行总结，最后通过 Bark 推送',
+        version: '1',
+      },
+    });
+    executionStreamService.observeExecution.mockImplementation(
+      createAsyncGenerator([{ type: StreamEventType.RESULT, content: '完成' }]),
+    );
+
+    const events = [];
+    for await (const event of service.handleTaskMode(
+      {
+        message: '查看微博的热点，然后给出总结，用bark推送',
+        sessionId: 'session-saved-1',
+      },
+      {
+        sessionId: 'session-saved-1',
+        userId: 'user-1',
+        userRoles: ['employee'],
+        traceId: 'trace-1',
+        history: [],
+        uploadedFiles: [],
+      },
+      'Bearer token',
+    )) {
+      events.push(event);
+    }
+
+    expect(events[0]).toEqual(
+      expect.objectContaining({
+        type: StreamEventType.THOUGHT,
+        data: expect.objectContaining({
+          executionId: 'execution-saved-1',
+          routeSource: 'saved_workflow',
+        }),
+      }),
+    );
+    expect(executionStreamService.observeExecution).toHaveBeenCalledWith(
+      'execution-saved-1',
+      'Bearer token',
+      { userId: 'user-1', userRoles: ['employee'] },
+    );
+    expect(skillCacheService.loadAvailableSkills).not.toHaveBeenCalled();
+    expect(deterministicTaskExecutionService.executeDeterministicTask).not.toHaveBeenCalled();
+  });
+
+  it('routes a follow-up operation with the previous structured result and source reference', async () => {
+    const {
+      service,
+      chatConversationService,
+      deterministicTaskExecutionService,
+    } = createDeterministicService();
+    chatConversationService.getLatestCompletedTaskResult.mockResolvedValue({
+      summaryText: '1. 安装方法 A\n2. 安装方法 B',
+      structuredData: { searchResults: [{ title: 'A' }, { title: 'B' }] },
+      executionId: 'execution-search-1',
+      resultType: 'search_results',
+    });
+    deterministicTaskExecutionService.executeDeterministicTask.mockResolvedValue({
+      success: false,
+      errorCode: 'CAPABILITY_NOT_FOUND',
+    });
+
+    const events = [];
+    for await (const event of service.handleTaskMode(
+      { message: '进行总结', sessionId: 'session-follow-up' },
+      {
+        sessionId: 'session-follow-up',
+        userId: 'user-1',
+        userRoles: ['employee'],
+        traceId: 'trace-follow-up',
+        history: [],
+        uploadedFiles: [],
+      },
+      'Bearer token',
+    )) {
+      events.push(event);
+    }
+
+    expect(deterministicTaskExecutionService.shouldRouteToDeterministicPlan).toHaveBeenCalledWith(
+      '进行总结',
+      { hasPreviousResult: true },
+    );
+    expect(deterministicTaskExecutionService.executeDeterministicTask).toHaveBeenCalledWith(
+      '进行总结',
+      'user-1',
+      expect.objectContaining({
+        systemInputs: expect.objectContaining({
+          previousResultText: '1. 安装方法 A\n2. 安装方法 B',
+          previousResultData: { searchResults: [{ title: 'A' }, { title: 'B' }] },
+          previousResultRef: {
+            executionId: 'execution-search-1',
+            resultType: 'search_results',
+          },
+        }),
+      }),
+    );
+    expect(events.at(-1)).toEqual(
+      expect.objectContaining({
+        type: StreamEventType.RESULT,
+        data: expect.objectContaining({ status: 'not_started' }),
+      }),
+    );
+  });
+
+  it('executes a one-Skill continuation without invoking topology planning', async () => {
+    const {
+      service,
+      chatConversationService,
+      deterministicTaskExecutionService,
+      plannerService,
+      controlPlaneClient,
+      executionStreamService,
+    } = createDeterministicService();
+    chatConversationService.getLatestCompletedTaskResult.mockResolvedValue({
+      summaryText: '{"summary":"# 安装摘要"}',
+      structuredData: { summary: '# 安装摘要' },
+      executionId: 'execution-summary-1',
+      resultType: 'summary',
+    });
+    deterministicTaskExecutionService.shouldAttemptSingleSkillContinuation.mockReturnValue(true);
+    plannerService.matchSkillPhase.mockResolvedValue({
+      objective: 'bark推送',
+      hasVisibleSkills: true,
+      matchedSkill: {
+        skillId: 'skill-bark',
+        skillName: 'Bark推送服务',
+      },
+    });
+    plannerService.completePlanFromMatchPhase.mockResolvedValue({
+      plan_id: 'plan-bark-1',
+      planner_mode: 'skill',
+      objective: 'bark推送',
+      summary: '可以执行',
+      skill_match: {
+        skill_id: 'skill-bark',
+        skill_name: 'Bark推送服务',
+        confidence: 0.99,
+      },
+      required_inputs: [
+        {
+          name: 'content',
+          type: 'string',
+          required: true,
+          missing: false,
+          source: 'external',
+          value: '# 安装摘要',
+        },
+      ],
+      steps: [{ id: 'execute-skill', title: 'Execute skill', kind: 'skill', status: 'planned' }],
+      risk_summary: { level: 'low', requires_human_review: false, items: [] },
+      metadata: {
+        previous_result_continuation: {
+          applied: true,
+          sourceExecutionId: 'execution-summary-1',
+          projectedFields: ['content'],
+        },
+      },
+    });
+    controlPlaneClient.createExecution.mockResolvedValue({ id: 'execution-bark-1' });
+    executionStreamService.observeExecution.mockImplementation(
+      createAsyncGenerator([{ type: StreamEventType.RESULT, content: '推送完成' }]),
+    );
+
+    const events = [];
+    for await (const event of service.handleTaskMode(
+      { message: 'bark推送', sessionId: 'session-bark' },
+      {
+        sessionId: 'session-bark',
+        userId: 'user-1',
+        userRoles: ['employee'],
+        traceId: 'trace-bark',
+        history: [],
+        uploadedFiles: [],
+      },
+      'Bearer token',
+    )) {
+      events.push(event);
+    }
+
+    expect(deterministicTaskExecutionService.executeDeterministicTask).not.toHaveBeenCalled();
+    expect(deterministicTaskExecutionService.shouldRouteToDeterministicPlan).not.toHaveBeenCalled();
+    expect(controlPlaneClient.createExecution).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skillId: 'skill-bark',
+        input: expect.objectContaining({ content: '# 安装摘要' }),
+      }),
+      expect.any(Object),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: StreamEventType.THOUGHT,
+        data: expect.objectContaining({
+          routeSource: 'single_skill_continuation',
+          plannerInvoked: false,
+        }),
+      }),
+    );
   });
 
   it('returns auth error when task mode lacks authenticated user', async () => {

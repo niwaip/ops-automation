@@ -4,6 +4,7 @@ import type { SavedSkill } from '@/api/savedSkills';
 import type { ScheduleDto } from '@/api/schedules';
 import { formatLocalizedDateTime } from '@/shared/utils/dateText';
 import { summarizeCronExpression } from '@/shared/utils/scheduleText';
+import { SavedWorkflowAliasAction } from './SavedWorkflowAliasAction';
 
 interface SavedWorkflowCardProps {
   highlighted?: boolean;
@@ -87,7 +88,7 @@ export function SavedWorkflowCard({
         </Typography.Text>
       </Space>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 'auto' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 'auto' }}>
         <Button
           block
           type="primary"
@@ -100,6 +101,7 @@ export function SavedWorkflowCard({
         <Button block disabled={skill.status !== 'active'} onClick={() => onSchedule(skill)}>
           {schedules.length > 0 ? '管理定时' : '创建定时'}
         </Button>
+        <SavedWorkflowAliasAction skill={skill} />
       </div>
     </Card>
   );

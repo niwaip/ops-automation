@@ -35,6 +35,23 @@ describe('OperationManifestValidatorService', () => {
     });
   });
 
+  it('accepts text transport only with one required string primary output', () => {
+    expect(
+      service.validate({
+        ...validManifest,
+        modelOutputMode: 'text',
+        prompt: {
+          ...validManifest.prompt,
+          systemTemplate: 'Only return the Markdown business body.',
+        },
+        outputSchema: {
+          ...validManifest.outputSchema,
+          primaryOutput: 'markdown_content',
+        },
+      })
+    ).toMatchObject({ passed: true });
+  });
+
   it('rejects a Prompt placeholder not declared by the input contract', () => {
     expect(() =>
       service.validate({
@@ -44,7 +61,7 @@ describe('OperationManifestValidatorService', () => {
           userTemplate: 'Summarize: {{results}}',
           variables: ['results'],
         },
-      }),
+      })
     ).toThrow(/results.*inputSchema|items.*没有被 userTemplate/);
   });
 
@@ -54,7 +71,7 @@ describe('OperationManifestValidatorService', () => {
         ...validManifest,
         prompt: { ...validManifest.prompt, systemTemplate: 'Return JSON.' },
         outputSchema: { ...validManifest.outputSchema, additionalProperties: true },
-      }),
+      })
     ).toThrow(/additionalProperties.*false|markdown_content/);
   });
 
@@ -66,7 +83,7 @@ describe('OperationManifestValidatorService', () => {
           ...validManifest.prompt,
           systemTemplate: 'Summarize {{items}} and output markdown_content.',
         },
-      }),
+      })
     ).toThrow(/systemTemplate 不能包含动态变量/);
   });
 });

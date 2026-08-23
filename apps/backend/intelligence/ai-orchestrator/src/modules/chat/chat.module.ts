@@ -14,6 +14,7 @@ import { ChatOrchestratorService } from './chat-orchestrator.service';
 import { ChatResultNormalizerService } from './chat-result-normalizer.service';
 import { ChatWaitingInputService } from './chat-waiting-input.service';
 import { DeterministicTaskExecutionService } from './deterministic-task-execution.service';
+import { ChatFeedbackService } from './chat-feedback.service';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { DeterministicTaskExecutionService } from './deterministic-task-executio
     ChatConversationService,
     ChatMediaService,
     DeterministicTaskExecutionService,
+    ChatFeedbackService,
   ],
 })
 export class ChatModule {}

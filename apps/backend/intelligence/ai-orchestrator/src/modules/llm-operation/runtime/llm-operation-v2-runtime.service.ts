@@ -9,7 +9,11 @@ import { OutputValidatorService } from './output-validator.service';
 import { BudgetEnforcerService } from './budget-enforcer.service';
 import { LlmOperationAuditService } from '../audit/llm-operation-audit.service';
 import type { ExecuteLlmOperationV2Request, LlmOperationV2Result } from './v2-runtime-types';
-import type { LlmOperationVersionRecord, LegacyLlmOperationVersion, LlmOperationRecord } from '../registry/types';
+import type {
+  LlmOperationVersionRecord,
+  LegacyLlmOperationVersion,
+  LlmOperationRecord,
+} from '../registry/types';
 import { LLM_OPERATION_TEMPLATES } from '../llm-operation.registry';
 import { PromptDebugSettingsService } from '../../debug-settings/prompt-debug-settings.service';
 import { LlmOperationModelCallerService } from './llm-operation-model-caller.service';
@@ -29,7 +33,7 @@ export class LlmOperationV2RuntimeService {
     private readonly budgetEnforcer: BudgetEnforcerService,
     private readonly auditService: LlmOperationAuditService,
     private readonly logger: Logger,
-    private readonly promptDebugSettingsService: PromptDebugSettingsService,
+    private readonly promptDebugSettingsService: PromptDebugSettingsService
   ) {}
 
   private computeDigest(data: unknown): string {
@@ -75,7 +79,7 @@ export class LlmOperationV2RuntimeService {
 
   /** Executes an exact, non-active candidate version for the eval sandbox only. */
   public async executeForEvaluation(
-    request: ExecuteLlmOperationV2Request,
+    request: ExecuteLlmOperationV2Request
   ): Promise<LlmOperationV2Result> {
     const startTime = Date.now();
     return this.executeInternal(request, startTime, true);
@@ -84,7 +88,7 @@ export class LlmOperationV2RuntimeService {
   private async executeInternal(
     request: ExecuteLlmOperationV2Request,
     startTime: number,
-    allowUnapprovedExactVersion: boolean,
+    allowUnapprovedExactVersion: boolean
   ): Promise<LlmOperationV2Result> {
     const environment = request.environment ?? 'production';
 
@@ -97,7 +101,7 @@ export class LlmOperationV2RuntimeService {
     if (request.operationVersion) {
       const exactVersion = await this.registry.resolveExactVersion(
         request.operationId,
-        request.operationVersion,
+        request.operationVersion
       );
       if (!exactVersion) {
         throw new LlmOperationError(
@@ -117,7 +121,7 @@ export class LlmOperationV2RuntimeService {
             operationId: request.operationId,
             version: request.operationVersion,
             state: exactVersion.state,
-          },
+          }
         );
       }
       resolved = { source: 'database' as const, version: exactVersion, operation: null };
@@ -125,7 +129,7 @@ export class LlmOperationV2RuntimeService {
       if (environment === 'production') {
         throw new LlmOperationError(
           LLM_OPERATION_ERROR_CODES.VERSION_NOT_FOUND,
-          `Operation '${request.operationId}' must pin operationVersion in production — runtime dynamic resolution is forbidden`,
+          `Operation '${request.operationId}' must pin operationVersion in production — runtime dynamic resolution is forbidden`
         );
       }
       resolved = await this.registry.resolveActiveVersion(request.operationId, environment);
@@ -135,7 +139,7 @@ export class LlmOperationV2RuntimeService {
 
     if (resolved.source === 'legacy_registry') {
       this.logger.warn(
-        `LLM_OPERATION_LEGACY_REGISTRY_FALLBACK: ${request.operationId} not found in DB, falling back to legacy registry`,
+        `LLM_OPERATION_LEGACY_REGISTRY_FALLBACK: ${request.operationId} not found in DB, falling back to legacy registry`
       );
     }
 
@@ -147,7 +151,7 @@ export class LlmOperationV2RuntimeService {
           version: version.version,
           digest: version.operationDigest,
           source: resolved.source,
-        },
+        }
       );
     }
 
@@ -159,13 +163,13 @@ export class LlmOperationV2RuntimeService {
           version: version.version,
           digest: version.contractDigest,
           source: resolved.source,
-        },
+        }
       );
     }
 
     const completedInvocation = await this.auditService.findCompletedByIdempotencyKey(
       version.id,
-      request.idempotencyKey,
+      request.idempotencyKey
     );
     if (completedInvocation?.resultJson) {
       const replayed = completedInvocation.resultJson as unknown as LlmOperationV2Result;
@@ -175,7 +179,7 @@ export class LlmOperationV2RuntimeService {
       };
     }
 
-    const manifest = version.manifestJson as Record<string, unknown>;
+    const manifest = version.manifestJson;
     const executionPolicy = (manifest.executionPolicy as Record<string, unknown>) ?? {};
     const tools = executionPolicy.tools as string | undefined;
 
@@ -187,13 +191,13 @@ export class LlmOperationV2RuntimeService {
           version: version.version,
           digest: version.operationDigest,
           source: resolved.source,
-        },
+        }
       );
     }
 
     const inputSchema = (manifest.inputSchema as Record<string, unknown>) ?? null;
     const outputSchema = (manifest.outputSchema as Record<string, unknown>) ?? null;
-    const temperature = (manifest.temperature as number) ?? 0;
+    const modelOutputMode = manifest.modelOutputMode === 'text' ? 'text' : 'json';
     const maxInputTokens = (manifest.maxInputTokens as number) ?? 4000;
     const maxOutputTokens = (manifest.maxOutputTokens as number) ?? 2000;
     const timeoutMs = (manifest.timeoutMs as number) ?? 30000;
@@ -218,9 +222,8 @@ export class LlmOperationV2RuntimeService {
         ? String(inputPolicy.oversize ?? 'reject') === 'truncate'
           ? 'truncate'
           : 'reject'
-        : LLM_OPERATION_TEMPLATES[
-            request.operationId as keyof typeof LLM_OPERATION_TEMPLATES
-          ]?.oversizeInput ?? 'reject';
+        : (LLM_OPERATION_TEMPLATES[request.operationId as keyof typeof LLM_OPERATION_TEMPLATES]
+            ?.oversizeInput ?? 'reject');
     request.input = this.budgetEnforcer.prepareInput(request.input, maxInputTokens, oversize);
 
     try {
@@ -241,11 +244,13 @@ export class LlmOperationV2RuntimeService {
       systemPrompt = rendered.systemPrompt;
       userPrompt = rendered.userPrompt;
     } else {
-      const template = LLM_OPERATION_TEMPLATES[
-        request.operationId as keyof typeof LLM_OPERATION_TEMPLATES
-      ];
+      const template =
+        LLM_OPERATION_TEMPLATES[request.operationId as keyof typeof LLM_OPERATION_TEMPLATES];
       if (!template) {
-        throw new LlmOperationError(LLM_OPERATION_ERROR_CODES.NOT_FOUND, `Operation not found: ${request.operationId}`);
+        throw new LlmOperationError(
+          LLM_OPERATION_ERROR_CODES.NOT_FOUND,
+          `Operation not found: ${request.operationId}`
+        );
       }
       const built = template.buildPrompt(request.input);
       systemPrompt = built.systemPrompt;
@@ -258,14 +263,19 @@ export class LlmOperationV2RuntimeService {
     }
 
     const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
-    this.logger.log(`Executing V2 LLM operation '${request.operationId}' with model '${activeModel.name}'`);
+    this.logger.log(
+      `Executing V2 LLM operation '${request.operationId}' with model '${activeModel.name}'`
+    );
 
     let repairAttempts = 0;
     let lastRawContent = '';
     let lastResponse: any;
 
     try {
-      lastResponse = await this.modelCaller.call(activeModel.id, fullPrompt, maxOutputTokens);
+      lastResponse =
+        modelOutputMode === 'text'
+          ? await this.modelCaller.call(activeModel.id, fullPrompt, maxOutputTokens, 'text')
+          : await this.modelCaller.call(activeModel.id, fullPrompt, maxOutputTokens);
       lastRawContent = lastResponse.content;
     } catch (callErr: any) {
       const latencyMs = Date.now() - startTime;
@@ -278,7 +288,7 @@ export class LlmOperationV2RuntimeService {
         repairAttempts,
         latencyMs,
         activeModel,
-        { systemPrompt, userPrompt, llmResponseText: '' },
+        { systemPrompt, userPrompt, llmResponseText: '' }
       );
     }
 
@@ -296,7 +306,7 @@ export class LlmOperationV2RuntimeService {
         latencyMs,
         activeModel,
         { systemPrompt, userPrompt, llmResponseText: lastRawContent },
-        lastResponse,
+        lastResponse
       );
     }
 
@@ -315,14 +325,30 @@ export class LlmOperationV2RuntimeService {
         latencyMs,
         activeModel,
         { systemPrompt, userPrompt, llmResponseText: lastRawContent },
-        lastResponse,
+        lastResponse
+      );
+    }
+
+    if (lastResponse?.finishReason === 'length') {
+      const latencyMs = Date.now() - startTime;
+      return this.buildErrorResult(
+        request,
+        resolved.source,
+        version,
+        'OUTPUT_TRUNCATED',
+        'Model exhausted its output budget before completing business content',
+        repairAttempts,
+        latencyMs,
+        activeModel,
+        { systemPrompt, userPrompt, llmResponseText: lastRawContent },
+        lastResponse
       );
     }
 
     let parsed: { data: Record<string, unknown>; schemaValidated: boolean } | undefined;
 
     try {
-      parsed = this.outputValidator.parseAndValidate(lastRawContent, outputSchema);
+      parsed = this.outputValidator.parseAndValidate(lastRawContent, outputSchema, request.input);
     } catch (firstErr: any) {
       if (maxRepairAttempts <= 0) {
         const latencyMs = Date.now() - startTime;
@@ -336,22 +362,25 @@ export class LlmOperationV2RuntimeService {
           latencyMs,
           activeModel,
           { systemPrompt, userPrompt, llmResponseText: lastRawContent },
-          lastResponse,
+          lastResponse
         );
       }
 
-      const repairPrompt = this.outputValidator.buildRepairPrompt(systemPrompt, lastRawContent);
+      const repairPrompt = this.outputValidator.buildRepairPrompt(
+        systemPrompt,
+        lastRawContent,
+        modelOutputMode
+      );
 
       for (let attempt = 0; attempt < maxRepairAttempts; attempt++) {
         repairAttempts++;
         this.logger.warn(`Repair attempt ${repairAttempts} for operation '${request.operationId}'`);
 
         try {
-          lastResponse = await this.modelCaller.call(
-            activeModel.id,
-            repairPrompt,
-            maxOutputTokens,
-          );
+          lastResponse =
+            modelOutputMode === 'text'
+              ? await this.modelCaller.call(activeModel.id, repairPrompt, maxOutputTokens, 'text')
+              : await this.modelCaller.call(activeModel.id, repairPrompt, maxOutputTokens);
           lastRawContent = lastResponse.content;
           this.toolCallGuard.assertNoToolCall(lastResponse);
 
@@ -370,11 +399,31 @@ export class LlmOperationV2RuntimeService {
               latencyMs,
               activeModel,
               { systemPrompt, userPrompt, llmResponseText: lastRawContent },
-              lastResponse,
+              lastResponse
             );
           }
 
-          parsed = this.outputValidator.parseAndValidate(lastRawContent, outputSchema);
+          if (lastResponse?.finishReason === 'length') {
+            const latencyMs = Date.now() - startTime;
+            return this.buildErrorResult(
+              request,
+              resolved.source,
+              version,
+              'OUTPUT_TRUNCATED',
+              'Model exhausted its output budget during schema repair',
+              repairAttempts,
+              latencyMs,
+              activeModel,
+              { systemPrompt, userPrompt, llmResponseText: lastRawContent },
+              lastResponse
+            );
+          }
+
+          parsed = this.outputValidator.parseAndValidate(
+            lastRawContent,
+            outputSchema,
+            request.input
+          );
           break;
         } catch (repairErr: any) {
           if (attempt === maxRepairAttempts - 1) {
@@ -389,7 +438,7 @@ export class LlmOperationV2RuntimeService {
               latencyMs,
               activeModel,
               { systemPrompt, userPrompt, llmResponseText: lastRawContent },
-              lastResponse,
+              lastResponse
             );
           }
         }
@@ -402,7 +451,7 @@ export class LlmOperationV2RuntimeService {
     try {
       this.budgetEnforcer.assertOutputWithinBudget(
         { outputTokens: usage.output_tokens || usage.completion_tokens },
-        maxOutputTokens,
+        maxOutputTokens
       );
       this.budgetEnforcer.assertLatencyWithinBudget(latencyMs, timeoutMs);
     } catch (budgetError: any) {
@@ -416,7 +465,7 @@ export class LlmOperationV2RuntimeService {
         latencyMs,
         activeModel,
         { systemPrompt, userPrompt, llmResponseText: lastRawContent },
-        lastResponse,
+        lastResponse
       );
     }
 
@@ -499,7 +548,7 @@ export class LlmOperationV2RuntimeService {
     latencyMs: number,
     model: any,
     promptSnapshot?: { systemPrompt: string; userPrompt: string; llmResponseText: string },
-    modelResponse?: LLMResponse,
+    modelResponse?: LLMResponse
   ): LlmOperationV2Result {
     const usage = modelResponse?.usage;
     const normalizedUsage = {

@@ -152,13 +152,92 @@ describe('OpenAICompatibleClient', () => {
         enable_thinking: false,
         response_format: { type: 'json_object' },
         max_tokens: 4000,
-      }),
+      })
     );
     expect(result).toMatchObject({
       content: '{"markdown_content":"摘要"}',
       finishReason: 'stop',
       reasoningContent: '',
     });
+  });
+
+  it('disables OpenRouter reasoning through the unified reasoning contract', async () => {
+    const client = new OpenAICompatibleClient({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: 'test-key',
+      model: 'stealth/ox-alpha',
+      provider: 'openrouter',
+    });
+    const postMock = jest.fn().mockResolvedValue({
+      data: {
+        choices: [{ finish_reason: 'stop', message: { content: '# 摘要' } }],
+        usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 },
+      },
+      headers: {},
+    });
+    (client as any).client.post = postMock;
+
+    await client.chatCompletion({
+      messages: [{ role: 'user', content: '总结' }],
+      maxOutputTokens: 6000,
+      reasoning: { enabled: false },
+    });
+
+    expect(postMock).toHaveBeenCalledWith(
+      '/chat/completions',
+      expect.objectContaining({
+        reasoning: { effort: 'none' },
+        max_tokens: 6000,
+      })
+    );
+  });
+
+  it('learns a reasoning-only model and retries disabled requests at low effort', async () => {
+    const client = new OpenAICompatibleClient({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: 'test-key',
+      model: 'provider/reasoning-only-model',
+      provider: 'openrouter',
+    });
+    const postMock = jest
+      .fn()
+      .mockRejectedValueOnce({
+        message: 'Request failed with status code 400',
+        response: {
+          data: {
+            error: {
+              message: 'Reasoning is mandatory for this endpoint and cannot be disabled.',
+            },
+          },
+        },
+      })
+      .mockResolvedValue({
+        data: { choices: [{ message: { content: 'summary' }, finish_reason: 'stop' }] },
+        headers: {},
+      });
+    (client as any).client.post = postMock;
+
+    await client.chatCompletion({
+      messages: [{ role: 'user', content: 'summarize' }],
+      maxOutputTokens: 6000,
+      reasoning: { enabled: false },
+    });
+    await client.chatCompletion({
+      messages: [{ role: 'user', content: 'summarize again' }],
+      maxOutputTokens: 6000,
+      reasoning: { enabled: false },
+    });
+
+    expect(postMock).toHaveBeenCalledTimes(3);
+    expect(postMock.mock.calls[0][1]).toEqual(
+      expect.objectContaining({ reasoning: { effort: 'none' } })
+    );
+    expect(postMock.mock.calls[1][1]).toEqual(
+      expect.objectContaining({ reasoning: { effort: 'low' } })
+    );
+    expect(postMock.mock.calls[2][1]).toEqual(
+      expect.objectContaining({ reasoning: { effort: 'low' } })
+    );
   });
 
   it('retains length termination and reasoning-only response metadata', async () => {

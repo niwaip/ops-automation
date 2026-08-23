@@ -18,6 +18,7 @@ import { ExecutionPlanningService } from '../step-runner/planning/execution-plan
 import { buildPlannedExecutionSteps } from '../step-runner/planning/execution-plan-step.builder';
 import { DeterministicPlanFreezeService } from '../plan-runtime/deterministic-plan-freeze.service';
 import { DeterministicPlanSchedulerService } from '../plan-runtime/deterministic-plan-scheduler.service';
+import { getMissingDeterministicPlanInputs } from '../plan-runtime/deterministic-plan-required-input';
 import { SavedSkillResolverService } from '../../saved-skill/saved-skill-resolver.service';
 import { configureSavedSkillExecution } from '../../saved-skill/saved-skill-runtime-params';
 
@@ -405,7 +406,7 @@ export class ExecutionCreateService {
       throw new BadRequestException('deterministicPlan is required when executionMode is deterministic_plan');
     }
 
-    const planDraft = dto.deterministicPlan as any;
+    const planDraft = dto.deterministicPlan as unknown as DeterministicPlanDraftV1;
 
     // Check accessibility and exact version matching for all Skill nodes in the plan
     if (Array.isArray(planDraft.nodes)) {
@@ -444,13 +445,28 @@ export class ExecutionCreateService {
           }
 
           // Freeze metadata digest, handlerKey, and adapterRoute into node metadata
-          if (!node.metadata) node.metadata = {};
-          node.metadata.definitionDigest = skillDescriptor.definitionDigest;
-          node.metadata.handlerKey = skillDescriptor.handlerKey;
-          node.metadata.adapterRoute = skillDescriptor.adapterRoute;
+          const nodeMetadata = ((node as any).metadata ||= {});
+          nodeMetadata.definitionDigest = skillDescriptor.definitionDigest;
+          nodeMetadata.handlerKey = skillDescriptor.handlerKey;
+          nodeMetadata.adapterRoute = skillDescriptor.adapterRoute;
         }
       }
     }
+
+    const missingRequiredInputs = getMissingDeterministicPlanInputs(planDraft);
+    const waitsForInput = missingRequiredInputs.length > 0;
+    const normalizedInput = waitsForInput
+      ? {
+          ...((dto.input as Record<string, unknown>) || {}),
+          objective: planDraft.objective,
+          input: {},
+          requiredInputs: missingRequiredInputs,
+          paramResolution:
+            this.executionInputResolutionService.buildParamResolutionFromRequiredInputs(
+              missingRequiredInputs,
+            ),
+        }
+      : ((dto.input as Record<string, unknown>) || {});
 
     let createdExecutionId = '';
 
@@ -461,10 +477,10 @@ export class ExecutionCreateService {
           skillId: dto.skillId || dto.capabilityId || null,
           skillVersion: dto.skillVersion || dto.capabilityVersion || null,
           executionMode: 'deterministic_plan',
-          status: EXECUTION_STATUS.QUEUED,
+          status: waitsForInput ? EXECUTION_STATUS.WAITING_INPUT : EXECUTION_STATUS.QUEUED,
           runtimeType: 'plan',
           inputJson: (dto.input as any) || {},
-          normalizedInputJson: (dto.input as any) || {},
+          normalizedInputJson: normalizedInput as any,
           triggerType: dto.triggerType,
           scheduleId: dto.scheduleId,
         },
@@ -474,6 +490,24 @@ export class ExecutionCreateService {
 
       if (this.planFreezeService) {
         await this.planFreezeService.freezeAndPersistPlan(createdExecutionId, planDraft, tx);
+      }
+
+      if (waitsForInput) {
+        const waitingStep = await tx.executionStep.create({
+          data: {
+            executionId: createdExecutionId,
+            stepIndex: 0,
+            name: '补充计划参数',
+            type: 'input_collection',
+            status: EXECUTION_STATUS.WAITING_INPUT,
+            action: 'collect_plan_input',
+            inputJson: { requiredInputs: missingRequiredInputs } as any,
+          },
+        });
+        await tx.execution.update({
+          where: { id: createdExecutionId },
+          data: { currentStepId: waitingStep.id },
+        });
       }
     });
 
@@ -486,7 +520,7 @@ export class ExecutionCreateService {
       planDraft,
     });
 
-    if (this.planSchedulerService) {
+    if (!waitsForInput && this.planSchedulerService) {
       setTimeout(() => {
         this.planSchedulerService?.advanceExecution(createdExecutionId).catch((err) => {
           this.logger.error(`Error advancing deterministic execution ${createdExecutionId}:`, err);

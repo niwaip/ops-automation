@@ -15,6 +15,7 @@ export class LlmOperationModelCallerService {
     modelId: string,
     prompt: string,
     maxOutputTokens: number,
+    outputMode: 'json' | 'text' = 'json'
   ): Promise<LLMResponse> {
     const client = this.modelService.getClient(modelId);
     if (!client) {
@@ -24,7 +25,7 @@ export class LlmOperationModelCallerService {
     const boundedMaxOutputTokens = Math.max(1, Math.floor(maxOutputTokens));
     const response = await client.chatCompletion({
       messages: [{ role: 'user', content: prompt }],
-      responseFormat: 'json_object',
+      ...(outputMode === 'json' ? { responseFormat: 'json_object' as const } : {}),
       maxOutputTokens: boundedMaxOutputTokens,
       reasoning: { enabled: false },
     });

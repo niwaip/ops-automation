@@ -108,13 +108,13 @@ describe('ReActEngineService promptDebug (B-3)', () => {
 
     await runOneIteration(service, state, adminContext);
     expect(state.promptDebug?.llmCalls).toHaveLength(1);
-    expect(state.promptDebug?.llmCalls?.[0].label).toBe('ReAct 推理 #1');
+    expect(state.promptDebug?.llmCalls?.[0]?.label).toBe('ReAct 推理 #1');
 
     state.iteration = 1;
     await runOneIteration(service, state, adminContext);
     expect(state.promptDebug?.llmCalls).toHaveLength(2);
-    expect(state.promptDebug?.llmCalls?.[0].label).toBe('ReAct 推理 #1');
-    expect(state.promptDebug?.llmCalls?.[1].label).toBe('ReAct 推理 #2');
+    expect(state.promptDebug?.llmCalls?.[0]?.label).toBe('ReAct 推理 #1');
+    expect(state.promptDebug?.llmCalls?.[1]?.label).toBe('ReAct 推理 #2');
     // The top-level payload reflects the LATEST round, while llmCalls keeps history.
     expect(state.promptDebug?.llmRequestMessages).toHaveLength(2);
   });

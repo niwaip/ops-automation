@@ -9,7 +9,10 @@ import { ToolCallGuardService } from '../src/modules/llm-operation/runtime/tool-
 import { OutputValidatorService } from '../src/modules/llm-operation/runtime/output-validator.service';
 import { BudgetEnforcerService } from '../src/modules/llm-operation/runtime/budget-enforcer.service';
 import { LlmOperationAuditService } from '../src/modules/llm-operation/audit/llm-operation-audit.service';
-import { LlmOperationError, LLM_OPERATION_ERROR_CODES } from '../src/modules/llm-operation/registry/errors';
+import {
+  LlmOperationError,
+  LLM_OPERATION_ERROR_CODES,
+} from '../src/modules/llm-operation/registry/errors';
 import { PromptDebugSettingsService } from '../src/modules/debug-settings/prompt-debug-settings.service';
 import { LlmOperationModelCallerService } from '../src/modules/llm-operation/runtime/llm-operation-model-caller.service';
 
@@ -108,7 +111,10 @@ describe('LlmOperationV2RuntimeService', () => {
             renderUserTemplate: jest.fn((t, i) => t.replace(/{{(\w+)}}/g, (_, k) => i[k] || '')),
             renderManifestPrompt: jest.fn((m, i) => ({
               systemPrompt: (m.prompt as any).systemTemplate,
-              userPrompt: (m.prompt as any).userTemplate.replace(/{{(\w+)}}/g, (_, k) => i[k] || ''),
+              userPrompt: (m.prompt as any).userTemplate.replace(
+                /{{(\w+)}}/g,
+                (_, k) => i[k] || ''
+              ),
             })),
           },
         },
@@ -195,18 +201,78 @@ describe('LlmOperationV2RuntimeService', () => {
       expect(result.metadata.toolCallDetected).toBe(false);
       expect(inputValidator.validate).toHaveBeenCalled();
       expect(toolCallGuard.assertNoToolCall).toHaveBeenCalled();
-      expect(modelService.callModel).toHaveBeenCalledWith(
-        'model-1',
-        expect.any(String),
-        2000,
-      );
+      expect(modelService.callModel).toHaveBeenCalledWith('model-1', expect.any(String), 2000);
       expect(registry.resolveExactVersion).toHaveBeenCalledWith('summarize_list', '1.0.0');
       expect(auditService.recordInvocation).toHaveBeenCalledWith(
         expect.objectContaining({
           idempotencyKey: 'key-1',
           resultJson: expect.objectContaining({ success: true }),
-        }),
+        })
       );
+    });
+
+    it('requests plain model text when the manifest delegates protocol wrapping to runtime', async () => {
+      registry.resolveExactVersion.mockResolvedValue({
+        ...mockDbVersion,
+        manifestJson: {
+          ...mockDbVersion.manifestJson,
+          modelOutputMode: 'text',
+          outputSchema: {
+            type: 'object',
+            required: ['summary'],
+            primaryOutput: 'summary',
+            properties: { summary: { type: 'string' } },
+          },
+        },
+      });
+      modelService.getPreferredDefaultModel.mockReturnValue(mockActiveModel as any);
+      modelService.callModel.mockResolvedValue({ content: '# 摘要正文', finishReason: 'stop' });
+      outputValidator.parseAndValidate.mockReturnValue({
+        data: { summary: '# 摘要正文' },
+        schemaValidated: true,
+      });
+
+      const result = await service.execute({
+        executionId: 'exec-1',
+        stepId: 'step-1',
+        operationId: 'summarize_text',
+        operationVersion: '1.0.0',
+        input: { text: 'Test input' },
+        idempotencyKey: 'key-text-output',
+      });
+
+      expect(result.success).toBe(true);
+      expect(modelService.callModel).toHaveBeenCalledWith(
+        'model-1',
+        expect.any(String),
+        2000,
+        'text'
+      );
+    });
+
+    it('rejects partially generated business text when the model stops at its limit', async () => {
+      registry.resolveExactVersion.mockResolvedValue({
+        ...mockDbVersion,
+        manifestJson: { ...mockDbVersion.manifestJson, modelOutputMode: 'text' },
+      });
+      modelService.getPreferredDefaultModel.mockReturnValue(mockActiveModel as any);
+      modelService.callModel.mockResolvedValue({
+        content: '# 尚未完成的摘要',
+        finishReason: 'length',
+        usage: { completion_tokens: 2000 },
+      });
+
+      const result = await service.execute({
+        executionId: 'exec-1',
+        stepId: 'step-1',
+        operationId: 'summarize_text',
+        operationVersion: '1.0.0',
+        input: { text: 'Test input' },
+        idempotencyKey: 'key-partial-output',
+      });
+
+      expect(result).toMatchObject({ success: false, errorCode: 'OUTPUT_TRUNCATED' });
+      expect(outputValidator.parseAndValidate).not.toHaveBeenCalled();
     });
 
     it('includes promptDebug in success result when the debug switch is on', async () => {
@@ -289,7 +355,7 @@ describe('LlmOperationV2RuntimeService', () => {
       // Real truncation logic; the mocked preflight stays a no-op.
       const realBudgetEnforcer = new BudgetEnforcerService();
       budgetEnforcer.prepareInput.mockImplementation((input, max, oversize) =>
-        realBudgetEnforcer.prepareInput(input, max, oversize),
+        realBudgetEnforcer.prepareInput(input, max, oversize)
       );
 
       const longText = 'x'.repeat(10_000);
@@ -477,7 +543,7 @@ describe('LlmOperationV2RuntimeService', () => {
             outputTokens: 4000,
             totalTokens: 9012,
           },
-        }),
+        })
       );
     });
 
@@ -527,7 +593,7 @@ describe('LlmOperationV2RuntimeService', () => {
         throw new LlmOperationError('INPUT_SCHEMA_VIOLATION', 'Missing required field');
       });
 
-const result = await service.execute({
+      const result = await service.execute({
         executionId: 'exec-1',
         stepId: 'step-1',
         operationId: 'summarize_list',
@@ -545,7 +611,10 @@ const result = await service.execute({
       modelService.getPreferredDefaultModel.mockReturnValue(mockActiveModel as any);
       modelService.callModel
         .mockResolvedValueOnce({ content: '{"invalid": "output"}', usage: { total_tokens: 50 } })
-        .mockResolvedValueOnce({ content: '{"markdown_content": "Repaired"}', usage: { total_tokens: 80 } });
+        .mockResolvedValueOnce({
+          content: '{"markdown_content": "Repaired"}',
+          usage: { total_tokens: 80 },
+        });
       outputValidator.parseAndValidate
         .mockImplementationOnce(() => {
           throw new LlmOperationError('OUTPUT_SCHEMA_VIOLATION', 'Schema mismatch');
@@ -564,6 +633,60 @@ const result = await service.execute({
       expect(result.success).toBe(true);
       expect(result.metadata.repairAttempts).toBe(1);
       expect(modelService.callModel).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps text transport and rejects truncated content during repair', async () => {
+      registry.resolveExactVersion.mockResolvedValue({
+        ...mockDbVersion,
+        manifestJson: {
+          ...mockDbVersion.manifestJson,
+          modelOutputMode: 'text',
+          outputSchema: {
+            type: 'object',
+            required: ['summary'],
+            primaryOutput: 'summary',
+            properties: { summary: { type: 'string' } },
+          },
+        },
+      });
+      modelService.getPreferredDefaultModel.mockReturnValue(mockActiveModel as any);
+      modelService.callModel
+        .mockResolvedValueOnce({ content: 'invalid first answer' })
+        .mockResolvedValueOnce({
+          content: 'still incomplete',
+          finishReason: 'length',
+          usage: { completion_tokens: 2000 },
+        });
+      outputValidator.parseAndValidate.mockImplementation(() => {
+        throw new LlmOperationError('OUTPUT_SCHEMA_VIOLATION', 'invalid text');
+      });
+
+      const result = await service.execute({
+        executionId: 'exec-1',
+        stepId: 'step-1',
+        operationId: 'summarize_text',
+        operationVersion: '1.0.0',
+        input: { text: 'Test' },
+        idempotencyKey: 'key-text-repair-truncated',
+      });
+
+      expect(result).toMatchObject({
+        success: false,
+        errorCode: 'OUTPUT_TRUNCATED',
+        metadata: { repairAttempts: 1, finishReason: 'length' },
+      });
+      expect(outputValidator.buildRepairPrompt).toHaveBeenCalledWith(
+        expect.any(String),
+        'invalid first answer',
+        'text'
+      );
+      expect(modelService.callModel).toHaveBeenNthCalledWith(
+        2,
+        'model-1',
+        expect.any(String),
+        2000,
+        'text'
+      );
     });
 
     it('should throw REPAIR_EXHAUSTED after max attempts', async () => {
@@ -618,7 +741,7 @@ const result = await service.execute({
         expect.objectContaining({
           validationResult: 'failed',
           errorCode: 'BUDGET_EXCEEDED',
-        }),
+        })
       );
     });
 
@@ -707,7 +830,7 @@ const result = await service.execute({
           executionId: 'exec-1',
           stepId: 'step-1',
           validationResult: 'passed',
-        }),
+        })
       );
     });
 
@@ -785,7 +908,7 @@ const result = await service.execute({
         expect.objectContaining({
           executionId: 'exec-abc',
           stepId: 'step-xyz',
-        }),
+        })
       );
     });
   });

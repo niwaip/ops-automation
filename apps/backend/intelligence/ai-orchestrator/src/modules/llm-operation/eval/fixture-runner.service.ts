@@ -146,7 +146,11 @@ export class FixtureRunnerService {
 
       try {
         const rawText = this.constructMockText(mockResponse);
-        const parsed = this.outputValidator.parseAndValidate(rawText, outputSchema);
+        const parsed = this.outputValidator.parseAndValidate(
+          rawText,
+          outputSchema,
+          fixtureCase.input,
+        );
 
         if (fixtureCase.expectedOutput) {
           const matches = this.deepEqual(parsed.data, fixtureCase.expectedOutput);

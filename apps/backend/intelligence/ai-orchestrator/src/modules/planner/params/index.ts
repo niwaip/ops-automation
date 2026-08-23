@@ -6,3 +6,4 @@ export * from './param-recognizer.service';
 export * from './param-required-input-presentation.service';
 export * from './param-schema.service';
 export * from './param-value.service';
+export * from './previous-result-continuation';

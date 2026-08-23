@@ -8,6 +8,8 @@
 
 适用仓库：`ops-automation`
 
+> 2026-08-23 更新：用户可规划的系统 Operation 已收敛为 `summarize_text`、`summarize_list`、`transform_text`、`extract_structured_fields`。`classify_intent_label`、`rewrite_to_markdown`、`merge_multi_source_notes` 标记为 deprecated，只保留历史精确版本供冻结计划兼容。翻译、改写、润色、合并和 Markdown 格式化统一由 `transform_text` 承担；图片能力本期不实现。
+
 ## 1. 文档目的
 
 本文把“三类能力体系与 LLM Operation 可控治理设计”拆成可排期、可验证、可回滚的工程任务。实施目标不是新增一套孤立的 Prompt 管理功能，而是让下列链路使用同一事实源：
@@ -24,11 +26,11 @@
 
 三类能力最终在管理面清晰分栏：
 
-| 类型 | `capabilityKind` | 权威事实源 | 运行时 |
-|---|---|---|---|
-| 内置 Skill | `builtin_skill` | Built-in Skill Registry | 固定 Handler |
-| 编排型 Skill | `published_skill` | Capability Release Registry | Temporal Workflow |
-| LLM Operation | `llm_operation` | LLM Operation Registry | 受控模型 Runtime |
+| 类型          | `capabilityKind`  | 权威事实源                  | 运行时            |
+| ------------- | ----------------- | --------------------------- | ----------------- |
+| 内置 Skill    | `builtin_skill`   | Built-in Skill Registry     | 固定 Handler      |
+| 编排型 Skill  | `published_skill` | Capability Release Registry | Temporal Workflow |
+| LLM Operation | `llm_operation`   | LLM Operation Registry      | 受控模型 Runtime  |
 
 ## 2. 实施范围
 
@@ -56,13 +58,13 @@
 
 ### 3.1 AI Orchestrator
 
-| 当前文件 | 当前职责 | 差距 |
-|---|---|---|
+| 当前文件                                                                                        | 当前职责                                      | 差距                                        |
+| ----------------------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------------- |
 | `apps/backend/intelligence/ai-orchestrator/src/modules/llm-operation/llm-operation.registry.ts` | 六个 Operation 的 Prompt、Schema、Parser 常量 | Prompt 更新需发版；无持久化版本、审批和评测 |
-| `.../llm-operation.service.ts` | 查常量并执行模型调用 | 无精确 Digest 校验；无统一调用审计 |
-| `.../llm-operation.controller.ts` | 查询/执行接口 | 缺管理、版本、评测、激活和回滚 API |
-| `.../planner/candidate-selection/capability-candidate-selector.service.ts` | 手写四个 Operation 候选 | 与 Registry 六个 Operation 已漂移 |
-| `.../planner/deterministic/deterministic-plan-generator.service.ts` | 读取常量派生输出契约 | 仍依赖进程内常量；存在固定字段特判 |
+| `.../llm-operation.service.ts`                                                                  | 查常量并执行模型调用                          | 无精确 Digest 校验；无统一调用审计          |
+| `.../llm-operation.controller.ts`                                                               | 查询/执行接口                                 | 缺管理、版本、评测、激活和回滚 API          |
+| `.../planner/candidate-selection/capability-candidate-selector.service.ts`                      | 手写四个 Operation 候选                       | 与 Registry 六个 Operation 已漂移           |
+| `.../planner/deterministic/deterministic-plan-generator.service.ts`                             | 读取常量派生输出契约                          | 仍依赖进程内常量；存在固定字段特判          |
 
 当前 Registry 有六个 Operation：
 
@@ -222,42 +224,42 @@ LLM Operation 的权威数据存放在 AI Orchestrator 所属数据库 Schema。
 
 #### `llm_operations`
 
-| 字段 | 类型 | 约束 |
-|---|---|---|
-| `id` | UUID | 主键 |
-| `operation_key` | String | 唯一、不可变，如 `summarize_list` |
-| `display_name` | String | 非空 |
-| `description` | Text | 非空 |
-| `owner` | String | 非空 |
-| `status` | Enum | `active/deprecated/disabled` |
-| `source` | Enum | `system_seed/admin_created/imported` |
-| `created_at/updated_at` | DateTime | 审计时间 |
+| 字段                    | 类型     | 约束                                 |
+| ----------------------- | -------- | ------------------------------------ |
+| `id`                    | UUID     | 主键                                 |
+| `operation_key`         | String   | 唯一、不可变，如 `summarize_list`    |
+| `display_name`          | String   | 非空                                 |
+| `description`           | Text     | 非空                                 |
+| `owner`                 | String   | 非空                                 |
+| `status`                | Enum     | `active/deprecated/disabled`         |
+| `source`                | Enum     | `system_seed/admin_created/imported` |
+| `created_at/updated_at` | DateTime | 审计时间                             |
 
 #### `llm_operation_versions`
 
-| 字段 | 类型 | 约束 |
-|---|---|---|
-| `id` | UUID | 主键 |
-| `operation_id` | UUID | 外键 |
-| `version` | String | 与 `operation_id` 联合唯一 |
-| `state` | Enum | `draft/validating/candidate/approved/deprecated/retired/rejected` |
-| `manifest_json` | Json | 规范化完整 Manifest |
-| `operation_digest` | String | 联合唯一的一部分，发布后不可变 |
-| `change_summary` | Text | 必填 |
-| `created_by` | String | 必填 |
-| `approved_by` | String? | 激活生产前必填 |
-| `created_at/approved_at` | DateTime | 审计时间 |
+| 字段                     | 类型     | 约束                                                              |
+| ------------------------ | -------- | ----------------------------------------------------------------- |
+| `id`                     | UUID     | 主键                                                              |
+| `operation_id`           | UUID     | 外键                                                              |
+| `version`                | String   | 与 `operation_id` 联合唯一                                        |
+| `state`                  | Enum     | `draft/validating/candidate/approved/deprecated/retired/rejected` |
+| `manifest_json`          | Json     | 规范化完整 Manifest                                               |
+| `operation_digest`       | String   | 联合唯一的一部分，发布后不可变                                    |
+| `change_summary`         | Text     | 必填                                                              |
+| `created_by`             | String   | 必填                                                              |
+| `approved_by`            | String?  | 激活生产前必填                                                    |
+| `created_at/approved_at` | DateTime | 审计时间                                                          |
 
 #### `llm_operation_activations`
 
-| 字段 | 类型 | 约束 |
-|---|---|---|
-| `operation_id` | UUID | 外键 |
-| `environment` | String | 如 `dev/staging/prod` |
-| `version_id` | UUID | 精确版本 |
-| `activated_by` | String | 非空 |
-| `reason` | Text | 非空 |
-| `activated_at` | DateTime | 非空 |
+| 字段           | 类型     | 约束                  |
+| -------------- | -------- | --------------------- |
+| `operation_id` | UUID     | 外键                  |
+| `environment`  | String   | 如 `dev/staging/prod` |
+| `version_id`   | UUID     | 精确版本              |
+| `activated_by` | String   | 非空                  |
+| `reason`       | Text     | 非空                  |
+| `activated_at` | DateTime | 非空                  |
 
 `operation_id + environment` 唯一。回滚本质是新增 Activation History 并移动 Pointer，不修改旧版本。
 
@@ -327,22 +329,22 @@ Digest 输入必须进行确定性规范化：
 
 建议前缀：`/ai/admin/operations`。
 
-| 方法 | 路径 | 用途 | 权限 |
-|---|---|---|---|
-| GET | `/ai/admin/operations` | 列表、筛选、分页 | viewer |
-| POST | `/ai/admin/operations` | 创建 Operation 外壳 | editor |
-| GET | `/ai/admin/operations/:id` | 查看详情 | viewer |
-| GET | `/ai/admin/operations/:id/versions` | 版本历史 | viewer |
-| POST | `/ai/admin/operations/:id/versions` | 创建 Draft | editor |
-| PUT | `/ai/admin/operations/:id/versions/:version` | 修改 Draft | editor |
-| POST | `.../:version/validate` | 执行完整验证门禁，通过后自动进入 Candidate | evaluator |
-| POST | `.../:version/evaluations` | 单独启动评测/回归实验，不改变版本状态 | evaluator |
-| GET | `.../:version/evaluations` | 评测历史 | viewer |
-| POST | `.../:version/approve` | 审批版本 | approver |
-| POST | `.../:version/activate` | 激活环境 Pointer | releaser |
-| POST | `/ai/admin/operations/:id/rollback` | 回滚 Pointer | releaser |
-| GET | `.../:version/diff?base=` | 版本 Diff | viewer |
-| GET | `/ai/admin/operations/:id/audit` | 管理操作审计 | auditor |
+| 方法 | 路径                                         | 用途                                       | 权限      |
+| ---- | -------------------------------------------- | ------------------------------------------ | --------- |
+| GET  | `/ai/admin/operations`                       | 列表、筛选、分页                           | viewer    |
+| POST | `/ai/admin/operations`                       | 创建 Operation 外壳                        | editor    |
+| GET  | `/ai/admin/operations/:id`                   | 查看详情                                   | viewer    |
+| GET  | `/ai/admin/operations/:id/versions`          | 版本历史                                   | viewer    |
+| POST | `/ai/admin/operations/:id/versions`          | 创建 Draft                                 | editor    |
+| PUT  | `/ai/admin/operations/:id/versions/:version` | 修改 Draft                                 | editor    |
+| POST | `.../:version/validate`                      | 执行完整验证门禁，通过后自动进入 Candidate | evaluator |
+| POST | `.../:version/evaluations`                   | 单独启动评测/回归实验，不改变版本状态      | evaluator |
+| GET  | `.../:version/evaluations`                   | 评测历史                                   | viewer    |
+| POST | `.../:version/approve`                       | 审批版本                                   | approver  |
+| POST | `.../:version/activate`                      | 激活环境 Pointer                           | releaser  |
+| POST | `/ai/admin/operations/:id/rollback`          | 回滚 Pointer                               | releaser  |
+| GET  | `.../:version/diff?base=`                    | 版本 Diff                                  | viewer    |
+| GET  | `/ai/admin/operations/:id/audit`             | 管理操作审计                               | auditor   |
 
 所有写接口必须支持：
 
@@ -579,14 +581,14 @@ Deterministic Plan llm_operation Step
 
 ### 11.4 权限
 
-| 角色 | 能力 |
-|---|---|
-| Viewer | 查看非敏感定义和评测摘要 |
-| Editor | 创建/编辑 Draft、运行开发评测 |
-| Evaluator | 管理 Fixture 和提交评测结论 |
-| Approver | 审批，不得审批本人创建的生产版本 |
-| Releaser | 激活和回滚环境 Pointer |
-| Auditor | 查询完整审计索引和脱敏样本 |
+| 角色      | 能力                             |
+| --------- | -------------------------------- |
+| Viewer    | 查看非敏感定义和评测摘要         |
+| Editor    | 创建/编辑 Draft、运行开发评测    |
+| Evaluator | 管理 Fixture 和提交评测结论      |
+| Approver  | 审批，不得审批本人创建的生产版本 |
+| Releaser  | 激活和回滚环境 Pointer           |
+| Auditor   | 查询完整审计索引和脱敏样本       |
 
 ## 12. 评测和发布门禁
 
@@ -674,24 +676,24 @@ startedAt / completedAt
 
 至少实现：
 
-| 错误码 | 阶段 | 含义 |
-|---|---|---|
-| `LLM_OPERATION_NOT_FOUND` | Catalog/Runtime | Operation 不存在 |
-| `LLM_OPERATION_VERSION_NOT_FOUND` | Freeze/Runtime | 精确版本不存在 |
-| `LLM_OPERATION_DIGEST_MISMATCH` | Freeze/Runtime | 摘要不一致 |
-| `LLM_OPERATION_NOT_ACTIVE` | Freeze | 无可冻结激活版本 |
-| `LLM_OPERATION_ATTESTATION_INVALID` | Freeze | 评测凭证缺失或过期 |
-| `LLM_OPERATION_INPUT_SCHEMA_VIOLATION` | Runtime | 输入不满足 Schema |
-| `LLM_OPERATION_PROMPT_RENDER_FAILED` | Runtime | 模板变量缺失或渲染失败 |
-| `LLM_OPERATION_TOOL_CALL_FORBIDDEN` | Runtime | 模型返回了 Tool Call |
-| `LLM_OPERATION_OUTPUT_PARSE_FAILED` | Runtime | 输出无法解析 |
-| `LLM_OPERATION_OUTPUT_SCHEMA_VIOLATION` | Runtime | 输出不满足 Schema |
-| `LLM_OPERATION_REPAIR_EXHAUSTED` | Runtime | Repair 次数耗尽 |
-| `LLM_OPERATION_MODEL_POLICY_VIOLATION` | Runtime | Provider/Model 不在策略中 |
-| `LLM_OPERATION_EVALUATION_FAILED` | Release | 评测门禁失败 |
-| `LLM_OPERATION_APPROVAL_REQUIRED` | Release | 缺少审批 |
-| `LLM_OPERATION_LEGACY_REGISTRY_FALLBACK` | Compatibility | 使用代码 Registry 回退 |
-| `LLM_OPERATION_LEGACY_ACTIVITY_FALLBACK` | Compatibility | 使用旧 Activity 直连兼容链路 |
+| 错误码                                   | 阶段            | 含义                         |
+| ---------------------------------------- | --------------- | ---------------------------- |
+| `LLM_OPERATION_NOT_FOUND`                | Catalog/Runtime | Operation 不存在             |
+| `LLM_OPERATION_VERSION_NOT_FOUND`        | Freeze/Runtime  | 精确版本不存在               |
+| `LLM_OPERATION_DIGEST_MISMATCH`          | Freeze/Runtime  | 摘要不一致                   |
+| `LLM_OPERATION_NOT_ACTIVE`               | Freeze          | 无可冻结激活版本             |
+| `LLM_OPERATION_ATTESTATION_INVALID`      | Freeze          | 评测凭证缺失或过期           |
+| `LLM_OPERATION_INPUT_SCHEMA_VIOLATION`   | Runtime         | 输入不满足 Schema            |
+| `LLM_OPERATION_PROMPT_RENDER_FAILED`     | Runtime         | 模板变量缺失或渲染失败       |
+| `LLM_OPERATION_TOOL_CALL_FORBIDDEN`      | Runtime         | 模型返回了 Tool Call         |
+| `LLM_OPERATION_OUTPUT_PARSE_FAILED`      | Runtime         | 输出无法解析                 |
+| `LLM_OPERATION_OUTPUT_SCHEMA_VIOLATION`  | Runtime         | 输出不满足 Schema            |
+| `LLM_OPERATION_REPAIR_EXHAUSTED`         | Runtime         | Repair 次数耗尽              |
+| `LLM_OPERATION_MODEL_POLICY_VIOLATION`   | Runtime         | Provider/Model 不在策略中    |
+| `LLM_OPERATION_EVALUATION_FAILED`        | Release         | 评测门禁失败                 |
+| `LLM_OPERATION_APPROVAL_REQUIRED`        | Release         | 缺少审批                     |
+| `LLM_OPERATION_LEGACY_REGISTRY_FALLBACK` | Compatibility   | 使用代码 Registry 回退       |
+| `LLM_OPERATION_LEGACY_ACTIVITY_FALLBACK` | Compatibility   | 使用旧 Activity 直连兼容链路 |
 
 ## 15. 分阶段计划
 
@@ -912,17 +914,17 @@ Flag 必须按环境配置并进入配置审计，不得只存在某台容器的
 
 ## 18. 风险清单
 
-| 风险 | 影响 | 缓解 |
-|---|---|---|
-| Registry 成为单点 | Planner/运行不可用 | 本地只读缓存、版本快照、明确降级策略 |
-| Prompt 与 Parser 只回滚一半 | 行为不可恢复 | 版本整个 Manifest，统一 Digest |
-| 模型 Provider 漂移 | 同版本结果变化 | 记录 resolved model；评测、Canary、允许策略化切换 |
-| 真实评测波动 | 错误阻断或放行 | 固定数据集、多次采样、置信阈值、人工审批 |
-| UI 再次形成巨石 | 难维护 | 新 Tab 独立目录与组件边界 |
-| 历史 Workflow 破坏 | 重放失败 | 不改历史制品，版本化 Adapter/Worker |
-| 过度日志泄密 | 合规风险 | 摘要/引用优先、字段脱敏、Raw 权限与保留周期 |
-| AI 自动改 Prompt 失控 | 生产行为未经审查 | AI 只能创建 Draft，评测和人审后激活 |
-| 重启 Seed 覆盖数据 | 数据不一致 | 幂等 Seed、Digest 冲突即失败、启动不做自动修复 |
+| 风险                        | 影响               | 缓解                                              |
+| --------------------------- | ------------------ | ------------------------------------------------- |
+| Registry 成为单点           | Planner/运行不可用 | 本地只读缓存、版本快照、明确降级策略              |
+| Prompt 与 Parser 只回滚一半 | 行为不可恢复       | 版本整个 Manifest，统一 Digest                    |
+| 模型 Provider 漂移          | 同版本结果变化     | 记录 resolved model；评测、Canary、允许策略化切换 |
+| 真实评测波动                | 错误阻断或放行     | 固定数据集、多次采样、置信阈值、人工审批          |
+| UI 再次形成巨石             | 难维护             | 新 Tab 独立目录与组件边界                         |
+| 历史 Workflow 破坏          | 重放失败           | 不改历史制品，版本化 Adapter/Worker               |
+| 过度日志泄密                | 合规风险           | 摘要/引用优先、字段脱敏、Raw 权限与保留周期       |
+| AI 自动改 Prompt 失控       | 生产行为未经审查   | AI 只能创建 Draft，评测和人审后激活               |
+| 重启 Seed 覆盖数据          | 数据不一致         | 幂等 Seed、Digest 冲突即失败、启动不做自动修复    |
 
 ## 19. 工程任务清单
 
@@ -936,6 +938,7 @@ Flag 必须按环境配置并进入配置审计，不得只存在某台容器的
 - [x] 实现 Catalog Projector。
 - [x] 实现 Admin API 和独立 Runtime V2。
 - [x] 实现 Schema/Prompt/Parser/Repair/Model Policy 执行链。
+- [x] 文本型 Operation 使用纯文本模型传输、Runtime 协议封装；文本摘要输出预算提升至 6000，并按供应商适配关闭/低/中/高思考档位。
 - [x] 实现 Eval Gate、Attestation 和调用审计。
 - [x] 删除 Planner 的静态四项候选，改为 Registry 投影。
 - [x] 按不可变版本和幂等键保存成功结果，控制面重试可直接回放。
@@ -971,7 +974,7 @@ Flag 必须按环境配置并进入配置审计，不得只存在某台容器的
 
 ### QA/Operations
 
-- [x] 幂等 Seed 六个 Operation 的共享基线 Fixture Bundle，并对 Digest 冲突失败关闭。
+- [x] 幂等 Seed 四个 active Operation 的共享基线 Fixture Bundle；三个 deprecated Operation 仅保留历史精确版本，并对 Digest 冲突失败关闭。
 - [x] 建立三类能力冻结、权威契约和 Runtime Adapter E2E/集成测试。
 - [ ] 验证 Migration/Seed/重启幂等。
 - [ ] 建立 Canary 指标和告警。
@@ -983,7 +986,7 @@ Flag 必须按环境配置并进入配置审计，不得只存在某台容器的
 以下条件全部满足，才可宣告落地完成：
 
 1. 技能管理按内置、编排、LLM 三类展示，LLM 有独立管理 Tab。
-2. 六个现有 Operation 只由一个 Registry 投影到 Planner 和 UI。
+2. 四个 active Operation 只由一个 Registry 投影到 Planner 和 UI；三个 deprecated Operation 不进入候选目录。
 3. 代码中的 Prompt 常量不再是生产运行事实源。
 4. Production Version 不可变，并支持 Diff、审批、激活和回滚。
 5. 每个新生产版本有有效评测 Attestation。

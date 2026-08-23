@@ -104,6 +104,16 @@ export class ControlPlaneClient {
     return response.data;
   }
 
+  async listSavedSkills<T = { skills: unknown[] }>(
+    options?: ControlPlaneRequestOptions
+  ): Promise<T> {
+    const response = await axios.get<T>(
+      `${this.getBaseUrl()}/saved-skills`,
+      this.buildConfig(options)
+    );
+    return response.data;
+  }
+
   async submitExecutionInput<T = unknown>(
     executionId: string,
     body: Record<string, unknown>,
@@ -152,6 +162,42 @@ export class ControlPlaneClient {
     const response = await axios.post<T>(
       `${this.getBaseUrl()}/executions/${executionId}/result-summary`,
       { summary },
+      this.buildConfig(options)
+    );
+    return response.data;
+  }
+
+  async persistAssistantFeedback<T = unknown>(
+    body: Record<string, unknown>,
+    options?: ControlPlaneRequestOptions
+  ): Promise<T> {
+    const response = await axios.post<T>(
+      `${this.getBaseUrl()}/internal/assistant-feedback`,
+      body,
+      this.buildConfig(options)
+    );
+    return response.data;
+  }
+
+  async getAssistantFeedback<T = unknown>(
+    sessionId: string,
+    messageId: string,
+    options?: ControlPlaneRequestOptions
+  ): Promise<T> {
+    const response = await axios.get<T>(
+      `${this.getBaseUrl()}/internal/assistant-feedback/${encodeURIComponent(sessionId)}/${encodeURIComponent(messageId)}`,
+      this.buildConfig(options)
+    );
+    return response.data;
+  }
+
+  async recordRoutingObservation<T = unknown>(
+    body: Record<string, unknown>,
+    options?: ControlPlaneRequestOptions
+  ): Promise<T> {
+    const response = await axios.post<T>(
+      `${this.getBaseUrl()}/internal/routing-observations`,
+      body,
       this.buildConfig(options)
     );
     return response.data;

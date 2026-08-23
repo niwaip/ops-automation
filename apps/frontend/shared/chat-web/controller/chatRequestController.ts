@@ -1,5 +1,6 @@
 interface BuildChatRequestParams<TFile = unknown> {
   message: string;
+  clientMessageId?: string;
   sessionId?: string;
   executionId?: string;
   userId?: string;
@@ -14,6 +15,7 @@ interface BuildChatRequestParams<TFile = unknown> {
 
 export const buildChatRequest = <TFile = unknown>({
   message,
+  clientMessageId,
   sessionId,
   executionId,
   userId,
@@ -26,6 +28,7 @@ export const buildChatRequest = <TFile = unknown>({
   files,
 }: BuildChatRequestParams<TFile>) => ({
   message,
+  clientMessageId,
   sessionId,
   executionId,
   userId,

@@ -314,6 +314,7 @@ describe('ChatConversationService', () => {
       service.persistTaskConversation({
         sessionId: 'task-session-1',
         userContent: '帮我处理审批单',
+        clientMessageId: 'client-message-1',
         modelId: 'task-model',
         terminalEvent: {
           type: StreamEventType.WAITING_INPUT,
@@ -340,10 +341,12 @@ describe('ChatConversationService', () => {
       'task-session-1',
       [
         expect.objectContaining({
+          id: 'client-message-1',
           role: 'user',
           content: '帮我处理审批单',
           metadata: {
             mode: 'task',
+            clientMessageId: 'client-message-1',
           },
         }),
         expect.objectContaining({
@@ -572,6 +575,36 @@ describe('ChatConversationService', () => {
       sessionService.getChatSession.mockResolvedValue(null);
 
       await expect(service.getLatestCompletedTaskResult('s3')).resolves.toBeNull();
+    });
+
+    it('prefers normalized detail and structured data over notification text', async () => {
+      const { service, sessionService } = createService();
+      sessionService.getChatSession.mockResolvedValue({
+        history: [
+          {
+            role: 'assistant',
+            content: '找到 2 条相关结果',
+            metadata: {
+              mode: 'task',
+              taskStatus: 'completed',
+              executionId: 'exec-search',
+              finalResult: '找到 2 条相关结果',
+              normalizedResult: {
+                detailText: '1. 安装方法 A\n2. 安装方法 B',
+                structuredData: { searchResults: [{ title: 'A' }, { title: 'B' }] },
+              },
+            },
+          },
+        ],
+      });
+
+      await expect(service.getLatestCompletedTaskResult('s-search')).resolves.toEqual({
+        summaryText: '1. 安装方法 A\n2. 安装方法 B',
+        resultTitle: undefined,
+        executionId: 'exec-search',
+        resultType: undefined,
+        structuredData: { searchResults: [{ title: 'A' }, { title: 'B' }] },
+      });
     });
 
     it('truncates the summary text to the configured limit', async () => {

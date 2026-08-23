@@ -193,6 +193,11 @@ export const areMessagesEquivalent = (
   const remoteTime = new Date(remoteMessage.timestamp).getTime();
 
   if (localMessage.role === 'user') {
+    const localClientMessageId = localMessage.metadata?.clientMessageId;
+    const remoteClientMessageId = remoteMessage.metadata?.clientMessageId;
+    if (localClientMessageId && remoteClientMessageId) {
+      return localClientMessageId === remoteClientMessageId;
+    }
     if (
       Number.isFinite(localTime) &&
       Number.isFinite(remoteTime) &&
@@ -254,7 +259,7 @@ export const areMessagesEquivalent = (
 
   const localText = normalizeComparableMessageText(localMessage.content);
   const remoteText = normalizeComparableMessageText(remoteMessage.content);
-  
+
   if (!localText && !remoteText) {
     const localStatus = resolveMessageTaskStatus(localMessage);
     const remoteStatus = resolveMessageTaskStatus(remoteMessage);
@@ -322,7 +327,10 @@ export const mergeHistoryMessages = (
     merged.set(localMatch.id, {
       ...current,
       ...message,
-      id: localMatch.id,
+      // Once persisted history is available, use the server's canonical ID.
+      // Stream messages intentionally start with a client-only ID; retaining it
+      // makes later feedback requests target an ID that Redis never stored.
+      id: message.id,
       content: preserveLocalContent ? current.content : message.content,
       contentParts: mergeContentParts(current.contentParts, message.contentParts),
       isStreaming: false,

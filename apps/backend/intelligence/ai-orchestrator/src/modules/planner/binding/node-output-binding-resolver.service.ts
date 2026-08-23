@@ -5,6 +5,15 @@ import type { ValueBindingV1 } from '@ops/backend-deterministic-plan';
 export class NodeOutputBindingResolverService {
   private readonly logger = new Logger(NodeOutputBindingResolverService.name);
 
+  private readonly CONTENT_PARAM_NAMES = new Set(['content', 'text', 'input', 'body']);
+  private readonly STATUS_OUTPUT_NAMES = new Set([
+    'status',
+    'success',
+    'execution_status',
+    'business_status',
+    'code',
+  ]);
+
   /**
    * Alias mappings between upstream outputs and downstream inputs.
    */
@@ -55,30 +64,62 @@ export class NodeOutputBindingResolverService {
       }
     }
 
-    // 3. Fallback: binding generic content parameters to upstream output keys
-    const genericContentParams = ['items', 'content', 'text', 'input', 'body', 'data'];
-    if (genericContentParams.includes(downstreamParamName)) {
-      // Prioritize keys containing text, content, summary, result, or morning/noon/evening
-      const preferredKey =
-        upstreamKeys.find((k) => /content|text|summary|markdown|result/i.test(k)) ||
-        upstreamKeys[0]!;
-      const upstreamType = String(upstreamOutputs[preferredKey] || '').toLowerCase();
-      if (downstreamParamName === 'items' && upstreamType === 'json') {
-        return {
-          source: 'node_output',
-          nodeId: upstreamRef,
-          path: preferredKey,
-          expectedType: 'news_item_list',
-          transform: 'extract_unique_array',
-        };
-      }
-      return {
-        source: 'node_output',
-        nodeId: upstreamRef,
-        path: preferredKey,
-      };
+    // 3. Contract-compatible projection. Never bind an arbitrary first field:
+    // multi-field structured objects require an explicit adapter/LLM Operation.
+    if (downstreamParamName === 'items') {
+      return this.resolveListBinding(upstreamRef, upstreamOutputs);
+    }
+    if (this.CONTENT_PARAM_NAMES.has(downstreamParamName)) {
+      return this.resolveUniqueTextBinding(upstreamRef, upstreamOutputs);
     }
 
     return null;
+  }
+
+  private resolveListBinding(
+    upstreamRef: string,
+    upstreamOutputs: Record<string, unknown>,
+  ): ValueBindingV1 | null {
+    const listCandidates = Object.entries(upstreamOutputs).filter(([, type]) =>
+      /^(?:array|list|news_item_list)$|(?:_list|\[\])$/i.test(String(type || '')),
+    );
+    if (listCandidates.length === 1) {
+      return {
+        source: 'node_output',
+        nodeId: upstreamRef,
+        path: listCandidates[0]![0],
+      };
+    }
+
+    const entries = Object.entries(upstreamOutputs);
+    if (entries.length === 1 && /^json$/i.test(String(entries[0]![1] || ''))) {
+      return {
+        source: 'node_output',
+        nodeId: upstreamRef,
+        path: entries[0]![0],
+        expectedType: 'news_item_list',
+        transform: 'extract_unique_array',
+      };
+    }
+    return null;
+  }
+
+  private resolveUniqueTextBinding(
+    upstreamRef: string,
+    upstreamOutputs: Record<string, unknown>,
+  ): ValueBindingV1 | null {
+    const candidates = Object.entries(upstreamOutputs).filter(([key, type]) => {
+      if (this.STATUS_OUTPUT_NAMES.has(key.toLowerCase())) return false;
+      return (
+        /content|text|summary|markdown|message|body/i.test(key) ||
+        /^(?:string|text|markdown_content|summary)$/i.test(String(type || ''))
+      );
+    });
+    if (candidates.length !== 1) return null;
+    return {
+      source: 'node_output',
+      nodeId: upstreamRef,
+      path: candidates[0]![0],
+    };
   }
 }

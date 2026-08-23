@@ -23,6 +23,7 @@ import {
   TaskProgressBlock,
 } from './TaskMessageBlocks';
 import { SaveWorkflowAction } from './workflow-save/SaveWorkflowAction';
+import { MessageFeedbackActions } from './feedback/MessageFeedbackActions';
 import styles from '../pages/ChatPage.module.css';
 
 interface ChatMessageItemProps {
@@ -228,6 +229,14 @@ export function ChatMessageItem({
                 onRetry={onRetry ? () => onRetry(message) : undefined}
                 extraContent={
                   <>
+                    {!message.isStreaming ? (
+                      <MessageFeedbackActions
+                        sessionId={message.sessionId}
+                        messageId={message.id}
+                        executionId={executionId}
+                        enabled={Boolean(message.sessionId && message.id)}
+                      />
+                    ) : null}
                     {!message.isStreaming && resolvedTaskStatus === 'completed' && executionId ? (
                       <SaveWorkflowAction executionId={executionId} />
                     ) : null}

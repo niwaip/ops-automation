@@ -87,10 +87,11 @@ export function hasExplicitCapabilityInvocation(
       if (index < 0) continue;
 
       const prefix = normalizedRequest.slice(Math.max(0, index - 16), index);
+      const suffix = normalizedRequest.slice(index + alias.length).trim();
       if (
         /(?:最后|然后|并且|再)?\s*(?:用|使用|通过|调用|借助|using|use|via)\s*$/.test(prefix) ||
         /(?:最后|然后|并且|再)\s*$/.test(prefix) ||
-        ['bark', 'bark推送'].includes(alias)
+        (suffix.length === 0 && alias.length >= 4)
       ) {
         return true;
       }

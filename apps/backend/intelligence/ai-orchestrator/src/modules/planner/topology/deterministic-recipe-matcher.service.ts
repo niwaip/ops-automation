@@ -1,5 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import type { CompactCapabilityCardV1 } from '@ops/backend-deterministic-plan';
+import {
+  createBuiltinRoutingPolicySnapshot,
+  hasRoutingSignal,
+} from '../routing/routing-policy.matcher';
+import { RoutingPolicyService } from '../routing/routing-policy.service';
 
 export type RecipeType =
   | 'document_extract'
@@ -25,40 +30,21 @@ export interface MatchedRecipe {
 export class DeterministicRecipeMatcherService {
   private readonly logger = new Logger(DeterministicRecipeMatcherService.name);
 
+  constructor(@Optional() private readonly routingPolicy?: RoutingPolicyService) {}
+
   public matchRecipe(
     userRequest: string,
     skillCards: CompactCapabilityCardV1[],
     llmOperationCards: CompactCapabilityCardV1[],
   ): MatchedRecipe | null {
-    const req = userRequest.toLowerCase();
-    const hasSearch =
-      req.includes('搜索') ||
-      req.includes('search') ||
-      req.includes('查找') ||
-      req.includes('查一下') ||
-      req.includes('查询') ||
-      req.includes('查看') ||
-      req.includes('新闻') ||
-      req.includes('最新') ||
-      req.includes('查') ||
-      req.includes('news') ||
-      req.includes('latest') ||
-      req.includes('检索');
-    const hasSummarize =
-      req.includes('总结') ||
-      req.includes('摘要') ||
-      req.includes('归纳') ||
-      req.includes('概括') ||
-      req.includes('汇总') ||
-      req.includes('summarize') ||
-      req.includes('summary');
-    const hasMarkdown =
-      req.includes('markdown') ||
-      req.includes('md') ||
-      req.includes('文件') ||
-      req.includes('文档') ||
-      req.includes('报告');
-    const hasPdf = req.includes('pdf');
+    void skillCards;
+    void llmOperationCards;
+    const policy =
+      this.routingPolicy?.getSnapshot() || createBuiltinRoutingPolicySnapshot();
+    const hasSearch = hasRoutingSignal(userRequest, 'search', policy);
+    const hasSummarize = hasRoutingSignal(userRequest, 'summarize', policy);
+    const hasMarkdown = hasRoutingSignal(userRequest, 'markdown', policy);
+    const hasPdf = hasRoutingSignal(userRequest, 'documentSource', policy);
 
     // 模式 0：PDF/附件文本提取 + 摘要。提取与生成式处理保持为两个
     // 独立能力，其他文档提取器后续可复用同一编排形态。

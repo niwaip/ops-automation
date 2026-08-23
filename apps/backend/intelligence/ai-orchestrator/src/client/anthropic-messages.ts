@@ -7,6 +7,7 @@ import {
   OpenAICompatibleConfig,
 } from '../interfaces';
 import { LLMChatRequest } from './llm-client';
+import { applyAnthropicReasoningRequestAdapter } from './anthropic-reasoning-request-adapter';
 
 type AxiosLikeError = {
   code?: string;
@@ -48,6 +49,7 @@ export class AnthropicMessagesClient {
   private baseURL: string;
   private apiKey: string;
   private model: string;
+  private provider?: string;
   private timeout: number;
   private anthropicVersion: string;
 
@@ -55,6 +57,7 @@ export class AnthropicMessagesClient {
     this.baseURL = config.baseURL;
     this.apiKey = config.apiKey;
     this.model = config.model;
+    this.provider = config.provider;
     this.timeout = timeout;
     this.anthropicVersion = config.anthropicVersion || '2023-06-01';
 
@@ -110,7 +113,7 @@ export class AnthropicMessagesClient {
       effort?: 'low' | 'medium' | 'high';
     }
   ): Promise<LLMResponse> {
-    return this.chatCompletion(messages);
+    return this.chatCompletion(_reasoning ? { messages, reasoning: _reasoning } : messages);
   }
 
   async listModels(): Promise<string[]> {
@@ -149,6 +152,9 @@ export class AnthropicMessagesClient {
     if (config.model) {
       this.model = config.model;
     }
+    if (config.provider !== undefined) {
+      this.provider = config.provider;
+    }
     if (config.anthropicVersion) {
       this.anthropicVersion = config.anthropicVersion;
       this.client.defaults.headers.common['anthropic-version'] = this.anthropicVersion;
@@ -161,7 +167,7 @@ export class AnthropicMessagesClient {
       apiKey: this.apiKey,
       model: this.model,
       anthropicVersion: this.anthropicVersion,
-      provider: 'anthropic',
+      provider: this.provider || 'anthropic',
     };
   }
 
@@ -171,21 +177,27 @@ export class AnthropicMessagesClient {
     const maxOutputTokens = Array.isArray(request) ? 1200 : request.maxOutputTokens || 1200;
     if (Array.isArray(request) || request.messages) {
       const messages = Array.isArray(request) ? request : request.messages || [];
+      const body: Record<string, unknown> = {
+        model: this.model,
+        max_tokens: maxOutputTokens,
+        messages: messages.map((message) => ({
+          role: message.role === 'system' ? 'user' : message.role,
+          content:
+            typeof message.content === 'string'
+              ? [{ type: 'text', text: message.content }]
+              : (message.content || []).map((block) => ({
+                  type: 'text',
+                  text: block.text || '',
+                })),
+        })),
+      };
+      applyAnthropicReasoningRequestAdapter(
+        body,
+        { provider: this.provider, model: this.model, maxOutputTokens },
+        Array.isArray(request) ? undefined : request.reasoning
+      );
       return {
-        body: {
-          model: this.model,
-          max_tokens: maxOutputTokens,
-          messages: messages.map((message) => ({
-            role: message.role === 'system' ? 'user' : message.role,
-            content:
-              typeof message.content === 'string'
-                ? [{ type: 'text', text: message.content }]
-                : (message.content || []).map((block) => ({
-                    type: 'text',
-                    text: block.text || '',
-                  })),
-          })),
-        },
+        body,
       };
     }
 
@@ -210,25 +222,31 @@ export class AnthropicMessagesClient {
       });
     }
 
+    const body: Record<string, unknown> = {
+      model: this.model,
+      max_tokens: maxOutputTokens,
+      system: staticBlocks,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: request.assembly?.dynamicUser || '',
+            },
+          ],
+        },
+      ],
+      cache_control:
+        request.promptCaching?.mode === 'anthropic_auto' ? { type: 'ephemeral' } : undefined,
+    };
+    applyAnthropicReasoningRequestAdapter(
+      body,
+      { provider: this.provider, model: this.model, maxOutputTokens },
+      request.reasoning
+    );
     return {
-      body: {
-        model: this.model,
-        max_tokens: maxOutputTokens,
-        system: staticBlocks,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: request.assembly?.dynamicUser || '',
-              },
-            ],
-          },
-        ],
-        cache_control:
-          request.promptCaching?.mode === 'anthropic_auto' ? { type: 'ephemeral' } : undefined,
-      },
+      body,
     };
   }
 

@@ -12,7 +12,7 @@ describe('LlmOperationModelCallerService', () => {
     const modelService = {
       getClient: jest.fn().mockReturnValue(client),
       stripThinkingTags: jest.fn((content: string) =>
-        content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim(),
+        content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
       ),
     } as unknown as ModelService;
     const service = new LlmOperationModelCallerService(modelService);
@@ -26,5 +26,22 @@ describe('LlmOperationModelCallerService', () => {
       reasoning: { enabled: false },
     });
     expect(result.content).toBe('{"markdown_content":"摘要"}');
+  });
+
+  it('uses plain text transport while keeping the runtime output contract', async () => {
+    const chatCompletion = jest.fn().mockResolvedValue({ content: '# 摘要\n\n正文' });
+    const modelService = {
+      getClient: jest.fn().mockReturnValue({ chatCompletion }),
+      stripThinkingTags: jest.fn((content: string) => content),
+    } as unknown as ModelService;
+    const service = new LlmOperationModelCallerService(modelService);
+
+    await service.call('model-1', '总结内容', 6000, 'text');
+
+    expect(chatCompletion).toHaveBeenCalledWith({
+      messages: [{ role: 'user', content: '总结内容' }],
+      maxOutputTokens: 6000,
+      reasoning: { enabled: false },
+    });
   });
 });

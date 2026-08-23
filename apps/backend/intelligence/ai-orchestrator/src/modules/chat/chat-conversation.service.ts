@@ -48,7 +48,11 @@ export class ChatConversationService {
     private readonly chatMediaService: ChatMediaService
   ) {}
 
-  async streamChat(body: ChatRequestDTO, emit: (event: StreamEvent) => void): Promise<void> {
+  async streamChat(
+    body: ChatRequestDTO,
+    emit: (event: StreamEvent) => void,
+    ownerUserId?: string
+  ): Promise<void> {
     const modelId = this.resolvePreferredChatModelId(body);
     const sessionId = body.sessionId || 'default';
     const thinkingEnabled = this.isThinkingEnabled(body);
@@ -128,11 +132,13 @@ export class ChatConversationService {
       thinkingEnabled,
       usage: response.usage,
       rateLimit: response.rateLimit,
+      ownerUserId,
+      clientMessageId: body.clientMessageId,
     });
     emit(this.buildSessionPatchEvent(sessionId, session));
   }
 
-  async chat(body: ChatRequestDTO): Promise<ChatResponseDTO> {
+  async chat(body: ChatRequestDTO, ownerUserId?: string): Promise<ChatResponseDTO> {
     const modelId = this.resolvePreferredChatModelId(body);
     const sessionId = body.sessionId || 'default';
     const thinkingEnabled = this.isThinkingEnabled(body);
@@ -168,6 +174,8 @@ export class ChatConversationService {
       thinkingEnabled,
       usage: response.usage,
       rateLimit: response.rateLimit,
+      ownerUserId,
+      clientMessageId: body.clientMessageId,
     });
 
     return {
@@ -218,11 +226,21 @@ export class ChatConversationService {
     const history = chatSession?.history || [];
     for (let index = history.length - 1; index >= 0; index--) {
       const message = history[index];
+      if (!message) continue;
       if (message.role !== 'assistant') continue;
       const metadata = this.asRecord(message.metadata);
       if (metadata?.taskStatus !== 'completed') continue;
-      const finalResult = this.asString(metadata.finalResult) || this.asString(metadata.finalSummary);
-      const structuredData = metadata.finalResultData;
+      const normalizedResult = this.asRecord(metadata.normalizedResult);
+      const finalResult =
+        this.asString(normalizedResult?.detailText) ||
+        this.asString(normalizedResult?.body) ||
+        this.asString(normalizedResult?.summary) ||
+        this.asString(metadata.finalResult) ||
+        this.asString(metadata.finalSummary);
+      const structuredData =
+        normalizedResult?.structuredData !== undefined
+          ? normalizedResult.structuredData
+          : metadata.finalResultData;
       if (!finalResult && structuredData === undefined) continue;
       return {
         summaryText: finalResult ? finalResult.slice(0, maxSummaryLength) : undefined,
@@ -256,6 +274,8 @@ export class ChatConversationService {
     userContent: string;
     terminalEvent: StreamEvent;
     modelId?: string;
+    ownerUserId?: string;
+    clientMessageId?: string;
   }): Promise<StreamEvent | null> {
     const normalizedUserContent = params.userContent.trim();
     const assistantMessage = this.buildTaskAssistantHistoryMessage(params.terminalEvent);
@@ -267,11 +287,13 @@ export class ChatConversationService {
       params.sessionId,
       [
         {
+          ...(params.clientMessageId ? { id: params.clientMessageId } : {}),
           role: 'user',
           content: normalizedUserContent,
           timestamp: new Date().toISOString(),
           metadata: {
             mode: 'task',
+            ...(params.clientMessageId ? { clientMessageId: params.clientMessageId } : {}),
           },
         },
         assistantMessage,
@@ -279,6 +301,7 @@ export class ChatConversationService {
       {
         modelId: params.modelId && params.modelId !== 'default' ? params.modelId : undefined,
         title: this.buildSessionTitle(normalizedUserContent),
+        ...(params.ownerUserId ? { ownerUserId: params.ownerUserId } : {}),
       }
     );
 
@@ -312,6 +335,8 @@ export class ChatConversationService {
     thinkingEnabled: boolean;
     usage?: unknown;
     rateLimit?: unknown;
+    ownerUserId?: string;
+    clientMessageId?: string;
   }): Promise<NonNullable<ChatSessionData['session']> | undefined> {
     const assistantMetadata = this.buildChatAssistantMetadata({
       rawAssistantContent: params.rawAssistantContent,
@@ -321,11 +346,13 @@ export class ChatConversationService {
     });
     const nextSession = await this.sessionService.appendChatMessages(params.sessionId, [
       {
+        ...(params.clientMessageId ? { id: params.clientMessageId } : {}),
         role: 'user',
         content: params.userContent,
         timestamp: new Date().toISOString(),
         metadata: {
           mode: 'chat',
+          ...(params.clientMessageId ? { clientMessageId: params.clientMessageId } : {}),
         },
       },
       {
@@ -337,6 +364,7 @@ export class ChatConversationService {
     ], {
       modelId: params.modelId && params.modelId !== 'default' ? params.modelId : undefined,
       title: this.buildSessionTitle(params.userContent),
+      ...(params.ownerUserId ? { ownerUserId: params.ownerUserId } : {}),
     });
     return nextSession.session;
   }

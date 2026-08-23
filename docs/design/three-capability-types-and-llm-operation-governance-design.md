@@ -14,6 +14,8 @@
 - `references/pi-contract-validation-notes.md`
 - `three-capability-types-and-llm-operation-implementation-plan.md`
 
+> 2026-08-23 产品化更新：系统规划目录只暴露四个文本 Operation：`summarize_text`、`summarize_list`、`transform_text`、`extract_structured_fields`。意图分类回归路由器内部职责；旧 Markdown 格式化和多源合并退出规划目录但保留历史版本兼容。`transform_text` 接收用户转换指令，仍强制 `tools=disabled`、`externalAccess=denied`、`sideEffects=none`。图片处理暂不进入本期运行合同。
+
 ## 1. 结论
 
 平台能力应明确分为三类：
@@ -45,11 +47,11 @@ LLM Operation 不能继续作为代码中的 Prompt 常量存在，也不应伪�
 
 当前项目已经具备三类能力的雏形：
 
-| 类型 | 当前事实源 | 当前运行入口 | 主要问题 |
-|---|---|---|---|
-| 内置 Skill | `BuiltinSkill`、`BuiltinSkillVersion`、Manifest | Built-in Runtime Adapter / Domain Handler | 已开始独立，但 UI 仍与普通 Skill 混合 |
-| 编排型 Skill | `SkillConfig`、`CapabilityRelease`、Temporal Workflow | Release Runtime / Temporal | 生命周期较完整，但仍有 Legacy 兼容逻辑 |
-| LLM Operation | `LLM_OPERATION_TEMPLATES` 代码常量 | `/ai/operations/execute` | 无数据库版本、无管理 UI、Prompt 更新需发版 |
+| 类型          | 当前事实源                                            | 当前运行入口                              | 主要问题                                   |
+| ------------- | ----------------------------------------------------- | ----------------------------------------- | ------------------------------------------ |
+| 内置 Skill    | `BuiltinSkill`、`BuiltinSkillVersion`、Manifest       | Built-in Runtime Adapter / Domain Handler | 已开始独立，但 UI 仍与普通 Skill 混合      |
+| 编排型 Skill  | `SkillConfig`、`CapabilityRelease`、Temporal Workflow | Release Runtime / Temporal                | 生命周期较完整，但仍有 Legacy 兼容逻辑     |
+| LLM Operation | `LLM_OPERATION_TEMPLATES` 代码常量                    | `/ai/operations/execute`                  | 无数据库版本、无管理 UI、Prompt 更新需发版 |
 
 Capability Contract V2 已经允许：
 
@@ -242,11 +244,11 @@ Planner 只消费统一的 `ExecutableCapabilityView`，但 Catalog 是投影层
 
 权威来源：
 
-| 类型 | 权威来源 |
-|---|---|
-| 内置 Skill | Built-in Skill Registry |
-| 编排型 Skill | Published Release / Skill Registry |
-| LLM Operation | LLM Operation Registry |
+| 类型          | 权威来源                           |
+| ------------- | ---------------------------------- |
+| 内置 Skill    | Built-in Skill Registry            |
+| 编排型 Skill  | Published Release / Skill Registry |
+| LLM Operation | LLM Operation Registry             |
 
 ### 5.2 Prompt 负责实现，Schema 负责裁决
 
@@ -355,13 +357,13 @@ flowchart LR
 
 ### 6.1 服务职责
 
-| 服务 | 职责 |
-|---|---|
-| Platform | Built-in/Published Skill 管理、统一 Catalog、权限投影 |
+| 服务            | 职责                                                                  |
+| --------------- | --------------------------------------------------------------------- |
+| Platform        | Built-in/Published Skill 管理、统一 Catalog、权限投影                 |
 | AI Orchestrator | LLM Operation Registry、Prompt 渲染、模型策略解析、模型执行、评测执行 |
-| Control Plane | 计划冻结、契约摘要校验、步骤调度、版本精确调用、结果持久化 |
-| Temporal Worker | 只执行 Workflow 与工具型 Activity，不执行 LLM Operation |
-| Portal | 三类能力管理 UI、Prompt Diff、评测、审批、激活与审计查询 |
+| Control Plane   | 计划冻结、契约摘要校验、步骤调度、版本精确调用、结果持久化            |
+| Temporal Worker | 只执行 Workflow 与工具型 Activity，不执行 LLM Operation               |
+| Portal          | 三类能力管理 UI、Prompt Diff、评测、审批、激活与审计查询              |
 
 LLM Operation 的权威定义由 AI Orchestrator 持有；Platform 的统一 Catalog 只保存或实时获取其只读投影，不复制 Prompt 正文成为第二事实源。
 
@@ -464,7 +466,7 @@ spec:
   inference:
     temperature: 0
     maxInputTokens: 4000
-    maxOutputTokens: 2000
+    maxOutputTokens: 4000
     timeoutMs: 180000
 
   repair:
@@ -489,7 +491,15 @@ status:
   phase: candidate
 ```
 
-### 8.2 Operation Digest
+### 8.2 模型输出传输与思考档位
+
+- Manifest 使用 `modelOutputMode: text | json` 区分模型传输格式；业务 Output Schema 始终由 Runtime 负责封装和校验，不要求模型为纯文本任务生成 JSON 胶水。
+- `summarize_text` 的输出上限为 6000，思考默认关闭，预算优先留给完整业务正文；`finishReason=length` 仍按截断失败处理，不能把残缺正文当作成功。
+- 产品层只暴露 `关闭 / 低 / 中 / 高`。供应商适配层负责转换：OpenRouter/OpenAI 使用 effort，DashScope 使用 `enable_thinking + thinking_budget`，Anthropic 新模型使用 adaptive + effort、旧模型使用安全预算，MiniMax 仅支持自适应/关闭时明确降级为开关。
+- 若具体模型明确拒绝“关闭思考”，客户端只重试一次并降级到最低共享档位 `low`，同时缓存该模型能力；后续请求直接使用 `low`，不按模型名称维护硬编码名单。
+- 供应商不支持某档位时不得透传未知字段；降级必须可预测，并由适配器单测固定协议。
+
+### 8.3 Operation Digest
 
 规范摘要输入必须包含：
 
@@ -817,13 +827,13 @@ LLM Operation 管理页提供：
 
 建议角色：
 
-| 权限 | 能力 |
-|---|---|
-| Viewer | 查看元数据、契约和脱敏审计 |
-| Editor | 创建 Draft、编辑 Prompt、运行开发评测 |
-| Reviewer | 审阅 Diff、评测和风险变化 |
-| Approver | 批准 Candidate |
-| Operator | 激活、Canary、回滚、停用 |
+| 权限     | 能力                                  |
+| -------- | ------------------------------------- |
+| Viewer   | 查看元数据、契约和脱敏审计            |
+| Editor   | 创建 Draft、编辑 Prompt、运行开发评测 |
+| Reviewer | 审阅 Diff、评测和风险变化             |
+| Approver | 批准 Candidate                        |
+| Operator | 激活、Canary、回滚、停用              |
 
 生产激活至少要求“编辑者与批准者不是同一人”的四眼原则，可在 P2 启用。
 
@@ -925,31 +935,31 @@ Candidate 必须和当前 Production 版本在相同评测集、相同模型策�
 
 ### 16.3 数据分级
 
-| 等级 | 保存策略 |
-|---|---|
-| Public | 可保存正文 |
-| Internal | 保存脱敏正文和哈希 |
-| Confidential | 加密保存，限制角色读取 |
-| Restricted | 只保存哈希、长度和策略结果 |
+| 等级         | 保存策略                   |
+| ------------ | -------------------------- |
+| Public       | 可保存正文                 |
+| Internal     | 保存脱敏正文和哈希         |
+| Confidential | 加密保存，限制角色读取     |
+| Restricted   | 只保存哈希、长度和策略结果 |
 
 ## 17. 错误模型
 
 建议新增或固定：
 
-| 错误码 | 含义 |
-|---|---|
-| `LLM_OPERATION_NOT_FOUND` | Operation 不存在 |
-| `LLM_OPERATION_VERSION_NOT_FOUND` | 精确版本不存在 |
-| `LLM_OPERATION_DIGEST_MISMATCH` | 冻结摘要不一致 |
-| `LLM_OPERATION_NOT_ACTIVE` | 环境未激活 |
-| `LLM_OPERATION_EVAL_REQUIRED` | 缺少有效评测凭证 |
-| `LLM_OPERATION_INPUT_SCHEMA_VIOLATION` | 输入不符合 Schema |
-| `LLM_OPERATION_OUTPUT_SCHEMA_VIOLATION` | 输出不符合 Schema |
-| `LLM_OPERATION_TOOL_CALL_FORBIDDEN` | 模型返回 Tool Call |
-| `LLM_OPERATION_MODEL_POLICY_MISMATCH` | 模型策略版本不一致 |
-| `LLM_OPERATION_BUDGET_EXCEEDED` | Token、超时或成本超限 |
-| `LLM_OPERATION_REPAIR_EXHAUSTED` | Repair 后仍不合规 |
-| `LLM_OPERATION_SAFETY_BLOCKED` | Safety Policy 阻断 |
+| 错误码                                  | 含义                  |
+| --------------------------------------- | --------------------- |
+| `LLM_OPERATION_NOT_FOUND`               | Operation 不存在      |
+| `LLM_OPERATION_VERSION_NOT_FOUND`       | 精确版本不存在        |
+| `LLM_OPERATION_DIGEST_MISMATCH`         | 冻结摘要不一致        |
+| `LLM_OPERATION_NOT_ACTIVE`              | 环境未激活            |
+| `LLM_OPERATION_EVAL_REQUIRED`           | 缺少有效评测凭证      |
+| `LLM_OPERATION_INPUT_SCHEMA_VIOLATION`  | 输入不符合 Schema     |
+| `LLM_OPERATION_OUTPUT_SCHEMA_VIOLATION` | 输出不符合 Schema     |
+| `LLM_OPERATION_TOOL_CALL_FORBIDDEN`     | 模型返回 Tool Call    |
+| `LLM_OPERATION_MODEL_POLICY_MISMATCH`   | 模型策略版本不一致    |
+| `LLM_OPERATION_BUDGET_EXCEEDED`         | Token、超时或成本超限 |
+| `LLM_OPERATION_REPAIR_EXHAUSTED`        | Repair 后仍不合规     |
+| `LLM_OPERATION_SAFETY_BLOCKED`          | Safety Policy 阻断    |
 
 ## 18. 管理页面信息架构
 

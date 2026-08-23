@@ -48,6 +48,12 @@ const getProviderAccent = (provider: string) => {
         soft: 'rgba(236, 72, 153, 0.14)',
         gradient: 'linear-gradient(180deg, rgba(236, 72, 153, 0.12) 0%, var(--bg-card) 100%)',
       };
+    case 'openrouter':
+      return {
+        solid: '#6366f1',
+        soft: 'rgba(99, 102, 241, 0.14)',
+        gradient: 'linear-gradient(180deg, rgba(99, 102, 241, 0.12) 0%, var(--bg-card) 100%)',
+      };
     default:
       return {
         solid: '#6366f1',

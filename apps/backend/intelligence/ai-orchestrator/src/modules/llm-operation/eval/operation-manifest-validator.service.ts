@@ -17,24 +17,24 @@ export class OperationManifestValidatorService {
     const inputSchema = this.readClosedObjectSchema(
       manifest.inputSchema,
       'inputSchema',
-      violations,
+      violations
     );
     const outputSchema = this.readClosedObjectSchema(
       manifest.outputSchema,
       'outputSchema',
-      violations,
+      violations
     );
     const prompt = this.readObject(manifest.prompt, 'prompt', violations);
 
     const systemTemplate = this.readNonEmptyString(
       prompt.systemTemplate,
       'prompt.systemTemplate',
-      violations,
+      violations
     );
     const userTemplate = this.readNonEmptyString(
       prompt.userTemplate,
       'prompt.userTemplate',
-      violations,
+      violations
     );
     const declaredVariables = Array.isArray(prompt.variables)
       ? prompt.variables.filter((value): value is string => typeof value === 'string')
@@ -46,7 +46,7 @@ export class OperationManifestValidatorService {
     const systemVariables = this.extractVariables(systemTemplate);
     if (systemVariables.length > 0) {
       violations.push(
-        `prompt.systemTemplate 不能包含动态变量（当前 Runtime 只渲染 userTemplate）: ${systemVariables.join(', ')}`,
+        `prompt.systemTemplate 不能包含动态变量（当前 Runtime 只渲染 userTemplate）: ${systemVariables.join(', ')}`
       );
     }
     const templateVariables = this.extractVariables(userTemplate);
@@ -54,14 +54,24 @@ export class OperationManifestValidatorService {
     const uniqueTemplate = [...new Set(templateVariables)].sort();
     if (JSON.stringify(uniqueDeclared) !== JSON.stringify(uniqueTemplate)) {
       violations.push(
-        `prompt.variables 必须与 userTemplate 占位符完全一致: declared=[${uniqueDeclared.join(', ')}], template=[${uniqueTemplate.join(', ')}]`,
+        `prompt.variables 必须与 userTemplate 占位符完全一致: declared=[${uniqueDeclared.join(', ')}], template=[${uniqueTemplate.join(', ')}]`
       );
     }
 
     const inputProperties = this.readProperties(inputSchema);
     const outputProperties = this.readProperties(outputSchema);
-    const requiredInputs = this.readRequired(inputSchema, 'inputSchema', inputProperties, violations);
-    const requiredOutputs = this.readRequired(outputSchema, 'outputSchema', outputProperties, violations);
+    const requiredInputs = this.readRequired(
+      inputSchema,
+      'inputSchema',
+      inputProperties,
+      violations
+    );
+    const requiredOutputs = this.readRequired(
+      outputSchema,
+      'outputSchema',
+      outputProperties,
+      violations
+    );
 
     for (const variable of uniqueTemplate) {
       if (!(variable in inputProperties)) {
@@ -74,17 +84,38 @@ export class OperationManifestValidatorService {
       }
     }
 
+    const modelOutputMode = manifest.modelOutputMode ?? 'json';
+    if (modelOutputMode !== 'json' && modelOutputMode !== 'text') {
+      violations.push("modelOutputMode 必须为 'json' 或 'text'");
+    }
     const combinedPrompt = `${systemTemplate}\n${userTemplate}`;
-    for (const field of requiredOutputs) {
-      if (!combinedPrompt.includes(field)) {
-        violations.push(`Prompt 没有明确要求模型输出必填字段 '${field}'`);
+    if (modelOutputMode === 'json') {
+      for (const field of requiredOutputs) {
+        if (!combinedPrompt.includes(field)) {
+          violations.push(`Prompt 没有明确要求模型输出必填字段 '${field}'`);
+        }
+      }
+    } else {
+      const primaryOutput = outputSchema.primaryOutput;
+      const primaryProperty =
+        typeof primaryOutput === 'string'
+          ? (outputProperties[primaryOutput] as Record<string, unknown> | undefined)
+          : undefined;
+      if (
+        typeof primaryOutput !== 'string' ||
+        !requiredOutputs.includes(primaryOutput) ||
+        primaryProperty?.type !== 'string'
+      ) {
+        violations.push(
+          'text 模式必须声明 required 的字符串 outputSchema.primaryOutput，由运行时负责协议封装'
+        );
       }
     }
 
     const executionPolicy = this.readObject(
       manifest.executionPolicy,
       'executionPolicy',
-      violations,
+      violations
     );
     if (executionPolicy.tools !== 'disabled') {
       violations.push("executionPolicy.tools 必须为 'disabled'");
@@ -104,7 +135,7 @@ export class OperationManifestValidatorService {
       throw new LlmOperationError(
         LLM_OPERATION_ERROR_CODES.INVALID_OPERATION_CONFIG,
         `Operation Manifest validation failed: ${violations.join('; ')}`,
-        { violations },
+        { violations }
       );
     }
 
@@ -118,6 +149,7 @@ export class OperationManifestValidatorService {
         'prompt-variable-binding',
         'required-input-consumption',
         'required-output-instruction',
+        'model-output-transport',
         'tool-call-disabled',
         'budget-policy',
       ],
@@ -127,7 +159,7 @@ export class OperationManifestValidatorService {
   private readClosedObjectSchema(
     value: unknown,
     field: string,
-    violations: string[],
+    violations: string[]
   ): Record<string, unknown> {
     const schema = this.readObject(value, field, violations);
     if (schema.type !== 'object') violations.push(`${field}.type 必须为 'object'`);
@@ -148,11 +180,7 @@ export class OperationManifestValidatorService {
     return schema;
   }
 
-  private readObject(
-    value: unknown,
-    field: string,
-    violations: string[],
-  ): Record<string, unknown> {
+  private readObject(value: unknown, field: string, violations: string[]): Record<string, unknown> {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       violations.push(`${field} 必须是对象`);
       return {};
@@ -183,7 +211,7 @@ export class OperationManifestValidatorService {
     schema: Record<string, unknown>,
     field: string,
     properties: Record<string, unknown>,
-    violations: string[],
+    violations: string[]
   ): string[] {
     if (!Array.isArray(schema.required) || schema.required.length === 0) {
       violations.push(`${field}.required 必须至少声明一个字段`);

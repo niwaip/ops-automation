@@ -16,6 +16,7 @@ export interface OperationDigestInput {
   temperature: number;
   maxInputTokens: number;
   maxOutputTokens: number;
+  modelOutputMode?: 'text' | 'json';
   repairPromptTemplate?: string;
   inputPolicyOversize?: 'reject' | 'truncate';
   evalPolicyExempt?: string[];
@@ -71,6 +72,7 @@ export function computeOperationDigest(input: OperationDigestInput): string {
     temperature: input.temperature,
     maxInputTokens: input.maxInputTokens,
     maxOutputTokens: input.maxOutputTokens,
+    modelOutputMode: input.modelOutputMode || 'json',
     repairPromptTemplate: input.repairPromptTemplate,
     inputPolicyOversize: input.inputPolicyOversize || 'reject',
     evalPolicyExempt: [...(input.evalPolicyExempt || [])].sort(),

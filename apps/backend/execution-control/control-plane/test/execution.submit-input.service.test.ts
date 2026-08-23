@@ -58,15 +58,19 @@ describe('ExecutionSubmitInputService', () => {
       startExecution: jest.fn().mockResolvedValue(undefined),
       advanceExecutionFlow: jest.fn().mockResolvedValue(undefined),
     };
+    const planSchedulerService = {
+      advanceExecution: jest.fn().mockResolvedValue(undefined),
+    };
 
     const service = new ExecutionSubmitInputService(
       prisma as never,
       executionStepService as never,
       executionInputResolutionService,
-      executionPlanNormalizationService
+      executionPlanNormalizationService,
+      planSchedulerService as never,
     );
 
-    return { service, prisma, executionStepService, hooks };
+    return { service, prisma, executionStepService, hooks, planSchedulerService };
   };
 
   it('resumes execution and advances runtime flow when the missing input is fulfilled', async () => {
@@ -240,6 +244,78 @@ describe('ExecutionSubmitInputService', () => {
         hooks
       )
     ).rejects.toThrow('Invalid step ID for input submission');
+  });
+
+  it('writes submitted values to frozen plan paths and resumes the deterministic scheduler', async () => {
+    const { service, prisma, executionStepService, hooks, planSchedulerService } = createService();
+    const deterministicExecution = {
+      ...baseExecution,
+      executionMode: 'deterministic_plan',
+      inputJson: { prompt: '查询微博热点并总结，用 Bark 推送' },
+      normalizedInputJson: {
+        input: {},
+        requiredInputs: [
+          {
+            name: 'n1.type',
+            type: 'string',
+            required: true,
+            missing: true,
+            source: 'unresolved',
+          },
+        ],
+      },
+      plan: {
+        planJson: {
+          requiredUserInputs: [
+            {
+              name: 'n1.type',
+              targetField: 'type',
+              nodeId: 'n1_热榜查询',
+              inputPath: 'planInputs.n1.type',
+              prompt: '请输入热榜平台',
+              missing: true,
+            },
+          ],
+        },
+      },
+    };
+    prisma.execution.findUnique
+      .mockResolvedValueOnce(deterministicExecution)
+      .mockResolvedValueOnce({ executionMode: 'deterministic_plan' });
+    prisma.execution.update.mockResolvedValue(undefined);
+    prisma.executionStep.update.mockResolvedValue(undefined);
+    prisma.runtimeSession.findFirst.mockResolvedValue(null);
+    executionStepService.getById.mockResolvedValue(baseStep);
+    hooks.getExecutionDto.mockResolvedValue({
+      id: 'execution-1',
+      status: EXECUTION_STATUS.QUEUED,
+    });
+
+    await service.submitInputAndResume(
+      'execution-1',
+      'user-1',
+      {
+        stepId: 'step-1',
+        input: { 'n1.type': 'weibo' },
+      },
+      hooks,
+      { id: 'user-1' },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(prisma.execution.update).toHaveBeenCalledWith({
+      where: { id: 'execution-1' },
+      data: expect.objectContaining({
+        status: EXECUTION_STATUS.QUEUED,
+        inputJson: {
+          prompt: '查询微博热点并总结，用 Bark 推送',
+          planInputs: { n1: { type: 'weibo' } },
+        },
+      }),
+    });
+    expect(planSchedulerService.advanceExecution).toHaveBeenCalledWith('execution-1');
+    expect(hooks.startExecution).not.toHaveBeenCalled();
+    expect(hooks.advanceExecutionFlow).not.toHaveBeenCalled();
   });
 });
 

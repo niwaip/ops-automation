@@ -11,6 +11,7 @@ export interface SessionData {
 export interface ChatSessionData {
   session?: {
     id: string;
+    ownerUserId?: string;
     title?: string;
     modelId?: string;
     status: 'active' | 'archived';
@@ -56,6 +57,7 @@ export class SessionService {
     const now = new Date().toISOString();
     return {
       id: sessionId,
+      ownerUserId: existing?.ownerUserId,
       status: 'active',
       createdAt: existing?.createdAt || now,
       updatedAt: existing?.updatedAt || existing?.createdAt || now,

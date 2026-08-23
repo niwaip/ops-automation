@@ -1,0 +1,55 @@
+import type { RoutingPolicySnapshotV1 } from './routing-policy.types';
+
+/**
+ * Audited baseline policy. Product names live here rather than in planners,
+ * matchers, or topology code. Runtime policy patches may only add aliases.
+ */
+export const BUILTIN_ROUTING_POLICY: Omit<RoutingPolicySnapshotV1, 'digest'> = {
+  schemaVersion: 'routing-policy/v1',
+  version: 'builtin-2026-08-23',
+  source: 'builtin',
+  signals: {
+    sequential: ['然后', '并且', '接着', '之后', '再', '最后', '以及', '并且对', '并'],
+    processing: ['总结', '提炼', '翻译', '提取', '改写', '归纳', '分析', '推送', '通知', '发送', 'bark'],
+    documentSource: ['pdf', '附件'],
+    artifact: [
+      '输出 md',
+      '输出md',
+      '生成 md',
+      '生成md',
+      'md 文件',
+      'md文件',
+      'markdown 文件',
+      'markdown文件',
+      '输出文件',
+      '生成文件',
+      '保存为',
+      '导出',
+      '写到文件',
+      '输出为',
+    ],
+    search: ['搜索', 'search', '查找', '查一下', '查询', '查看', '新闻', '最新', '查', 'news', 'latest', '检索'],
+    summarize: ['总结', '摘要', '归纳', '概括', '汇总', 'summarize', 'summary'],
+    markdown: ['markdown', 'md', '文件', '文档', '报告'],
+    uncoveredAction: ['推送', '通知', 'bark', '发给', '邮件', 'webhook'],
+  },
+  terminalActions: {
+    bark: ['bark', 'bark推送'],
+    email: ['邮件', 'email', 'e-mail'],
+    sms: ['短信', 'sms'],
+    markdown: ['markdown', '.md', '写入文档', '保存文档'],
+    pdf: ['pdf', '导出pdf'],
+  },
+  capabilityRoles: {
+    search: ['search', '搜索'],
+    markdownWriter: ['markdown', '写'],
+    documentExtractor: ['content-extractor', 'pdf', '内容提取'],
+  },
+  intentNormalization: {
+    equivalences: [
+      { canonical: '查', aliases: ['查看', '查询', '获取'] },
+      { canonical: '总结', aliases: ['给出总结', '进行总结', '汇总'] },
+    ],
+    stopWords: ['最后', '然后', '并且', '通过', '使用', '一下', '当前', '并', '用', '的'],
+  },
+};

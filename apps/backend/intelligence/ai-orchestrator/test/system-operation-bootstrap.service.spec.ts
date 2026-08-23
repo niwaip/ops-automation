@@ -1,10 +1,10 @@
 import { Logger } from '@nestjs/common';
 import { SystemOperationBootstrapService } from '../src/modules/llm-operation/seed/system-operation-bootstrap.service';
-import { LLM_OPERATION_TEMPLATES } from '../src/modules/llm-operation/llm-operation.registry';
 import { SYSTEM_OPERATION_VERSION } from '../src/modules/llm-operation/seed/system-operations.seed';
+import { listActiveSystemOperationIds } from '../src/modules/llm-operation/system-operation-definitions';
 
 describe('SystemOperationBootstrapService', () => {
-  const operationIds = Object.keys(LLM_OPERATION_TEMPLATES).sort();
+  const operationIds = listActiveSystemOperationIds();
 
   function buildHarness(options: { attested?: boolean; activated?: boolean } = {}) {
     const attestedVersionIds = new Set<string>();

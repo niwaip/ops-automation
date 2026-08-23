@@ -834,9 +834,29 @@ model UserSavedSkill {
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   versions UserSavedSkillVersion[]
+  aliases  UserWorkflowAlias[]
 
   @@index([ownerUserId, status])
   @@map("user_saved_skills")
+}
+
+model UserWorkflowAlias {
+  id              String   @id @default(uuid()) @db.Uuid
+  ownerUserId     String   @map("owner_user_id") @db.Uuid
+  skillId         String   @map("skill_id") @db.Uuid
+  skillVersion    Int      @map("skill_version")
+  alias           String   @db.VarChar(255)
+  normalizedAlias String   @map("normalized_alias") @db.VarChar(255)
+  status          String   @default("active") @db.VarChar(32)
+  confirmedAt     DateTime @default(now()) @map("confirmed_at") @db.Timestamptz
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  skill UserSavedSkill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerUserId, normalizedAlias])
+  @@unique([skillId, skillVersion, normalizedAlias])
+  @@index([ownerUserId, status])
+  @@map("user_workflow_aliases")
 }
 
 model UserSavedSkillVersion {
@@ -863,6 +883,158 @@ model UserSavedSkillVersion {
   @@index([ownerUserId, createdAt(sort: Desc)])
   @@index([sourceExecutionId])
   @@map("user_saved_skill_versions")
+}
+
+// Append-only feedback facts and the current projection for assistant answers.
+// The tables intentionally keep message/session identifiers as opaque strings:
+// chat history is owned by the AI session store, while Control Plane owns the
+// durable feedback audit trail.
+model AssistantFeedbackEvent {
+  id                String   @id @default(uuid()) @db.Uuid
+  eventId           String   @unique @map("event_id") @db.VarChar(128)
+  ownerUserId       String   @map("owner_user_id") @db.Uuid
+  sessionId         String   @map("session_id") @db.VarChar(255)
+  messageId         String   @map("message_id") @db.VarChar(255)
+  executionId       String?  @map("execution_id") @db.Uuid
+  revision          Int
+  eventType         String   @map("event_type") @db.VarChar(16)
+  rating            String?  @db.VarChar(16)
+  reasonCode        String?  @map("reason_code") @db.VarChar(64)
+  sanitizedComment  String?  @map("sanitized_comment") @db.Text
+  occurredAt        DateTime @default(now()) @map("occurred_at") @db.Timestamptz
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([ownerUserId, sessionId, messageId, revision])
+  @@index([ownerUserId, createdAt(sort: Desc)])
+  @@index([sessionId, messageId])
+  @@map("assistant_feedback_events")
+}
+
+model AssistantFeedbackCurrent {
+  ownerUserId      String   @map("owner_user_id") @db.Uuid
+  sessionId        String   @map("session_id") @db.VarChar(255)
+  messageId        String   @map("message_id") @db.VarChar(255)
+  eventId          String   @map("event_id") @db.VarChar(128)
+  revision         Int
+  eventType        String   @map("event_type") @db.VarChar(16)
+  rating           String?  @db.VarChar(16)
+  reasonCode       String?  @map("reason_code") @db.VarChar(64)
+  sanitizedComment String?  @map("sanitized_comment") @db.Text
+  updatedAt        DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@id([ownerUserId, sessionId, messageId])
+  @@index([ownerUserId, updatedAt(sort: Desc)])
+  @@map("assistant_feedback_current")
+}
+
+model RoutingObservation {
+  id                 String   @id @default(uuid()) @db.Uuid
+  ownerUserId        String   @map("owner_user_id") @db.Uuid
+  requestFingerprint String   @map("request_fingerprint") @db.VarChar(64)
+  routeSource        String   @map("route_source") @db.VarChar(32)
+  matchMethod        String?  @map("match_method") @db.VarChar(32)
+  selectedSourceId   String?  @map("selected_source_id") @db.Uuid
+  selectedVersion    String?  @map("selected_version") @db.VarChar(50)
+  candidateCount     Int      @default(0) @map("candidate_count")
+  matchScore         Float?   @map("match_score")
+  plannerInvoked     Boolean  @default(false) @map("planner_invoked")
+  plannerInputTokens Int?     @map("planner_input_tokens")
+  contractStatus     String?  @map("contract_status") @db.VarChar(32)
+  businessStatus     String?  @map("business_status") @db.VarChar(32)
+  errorCode          String?  @map("error_code") @db.VarChar(100)
+  routingPolicyVersion String? @map("routing_policy_version") @db.VarChar(64)
+  routingPolicyDigest  String? @map("routing_policy_digest") @db.VarChar(64)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([ownerUserId, createdAt(sort: Desc)])
+  @@index([routeSource, createdAt(sort: Desc)])
+  @@map("routing_observations")
+}
+
+model HabitLearningRun {
+  id              String    @id @default(uuid()) @db.Uuid
+  idempotencyKey  String    @unique @map("idempotency_key") @db.VarChar(128)
+  policyVersion   String    @map("policy_version") @db.VarChar(50)
+  status          String    @db.VarChar(32)
+  windowStart     DateTime  @map("window_start") @db.Timestamptz
+  windowEnd       DateTime  @map("window_end") @db.Timestamptz
+  leaseOwner      String?   @map("lease_owner") @db.VarChar(128)
+  leaseExpiresAt  DateTime? @map("lease_expires_at") @db.Timestamptz
+  candidateCount  Int       @default(0) @map("candidate_count")
+  processedUsers  Int       @default(0) @map("processed_users")
+  errorSummary    String?   @map("error_summary") @db.Text
+  startedAt       DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz
+
+  @@index([status, startedAt(sort: Desc)])
+  @@map("habit_learning_runs")
+}
+
+model UserHabitCandidate {
+  id             String   @id @default(uuid()) @db.Uuid
+  idempotencyKey String   @unique @map("idempotency_key") @db.VarChar(128)
+  ownerUserId    String   @map("owner_user_id") @db.Uuid
+  kind           String   @db.VarChar(32)
+  status         String   @default("candidate") @db.VarChar(32)
+  riskLevel      String   @default("low") @map("risk_level") @db.VarChar(32)
+  intentKey      String   @map("intent_key") @db.VarChar(255)
+  savedSkillId   String?  @map("saved_skill_id") @db.Uuid
+  savedVersion   Int?     @map("saved_version")
+  evidenceJson   Json     @default("{}") @map("evidence_json")
+  reviewJson     Json?    @map("review_json")
+  shadowJson     Json?    @map("shadow_json")
+  sourceRunId    String   @map("source_run_id") @db.Uuid
+  policyVersion  String   @map("policy_version") @db.VarChar(50)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([ownerUserId, status])
+  @@index([sourceRunId, createdAt(sort: Desc)])
+  @@map("user_habit_candidates")
+}
+
+model UserHabit {
+  id                String    @id @default(uuid()) @db.Uuid
+  ownerUserId       String    @map("owner_user_id") @db.Uuid
+  kind              String    @db.VarChar(32)
+  status            String    @default("active") @db.VarChar(32)
+  intentKey         String    @map("intent_key") @db.VarChar(255)
+  savedSkillId      String?   @map("saved_skill_id") @db.Uuid
+  savedVersion      Int?      @map("saved_version")
+  valueJson         Json      @default("{}") @map("value_json")
+  sourceCandidateId String    @map("source_candidate_id") @db.Uuid
+  version           Int       @default(1)
+  contractDigest    String?   @map("contract_digest") @db.VarChar(128)
+  expiresAt         DateTime? @map("expires_at") @db.Timestamptz
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([ownerUserId, kind, intentKey])
+  @@index([ownerUserId, status])
+  @@map("user_habits")
+}
+
+model UserPersonalizationPreference {
+  ownerUserId          String   @id @map("owner_user_id") @db.Uuid
+  recommendationEnabled Boolean @default(false) @map("recommendation_enabled")
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("user_personalization_preferences")
+}
+
+model HabitGovernanceAudit {
+  id            String   @id @default(uuid()) @db.Uuid
+  actorUserId   String   @map("actor_user_id") @db.Uuid
+  targetType    String   @map("target_type") @db.VarChar(32)
+  targetId      String   @map("target_id") @db.Uuid
+  action        String   @db.VarChar(32)
+  reason        String?  @db.VarChar(1000)
+  beforeJson    Json?    @map("before_json")
+  afterJson     Json?    @map("after_json")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([targetType, targetId, createdAt(sort: Desc)])
+  @@map("habit_governance_audits")
 }
 
 // Built-in Skill Tables

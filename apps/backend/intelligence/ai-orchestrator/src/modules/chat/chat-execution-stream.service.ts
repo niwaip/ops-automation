@@ -135,15 +135,9 @@ export class ChatExecutionStreamService {
       }
     } catch (error: any) {
       this.logger.error(`Error observing execution ${executionId}`, error);
-      const latestEvent = await this.buildLatestExecutionStateEvent(
-        executionId,
-        authToken,
-        user
-      );
+      const latestEvent = await this.buildLatestExecutionStateEvent(executionId, authToken, user);
       if (latestEvent) {
-        this.logger.log(
-          `Recovered execution ${executionId} state after stream interruption`
-        );
+        this.logger.log(`Recovered execution ${executionId} state after stream interruption`);
         yield latestEvent;
         return;
       }
@@ -334,8 +328,9 @@ export class ChatExecutionStreamService {
           let effectiveAiSummary: string | undefined;
 
           const shouldGeneratePresentationSummary =
-            !alreadyHasPresentationText &&
-            (requestsAiSummary || hasSummarizationIntent || isSearchOrDataResult);
+            (!alreadyHasPresentationText &&
+              (requestsAiSummary || hasSummarizationIntent || isSearchOrDataResult)) ||
+            (requestsAiSummary && (hasSummarizationIntent || isSearchOrDataResult));
 
           if (shouldGeneratePresentationSummary) {
             const aiResult = await this.generateAiSummary(
@@ -347,12 +342,18 @@ export class ChatExecutionStreamService {
               chatContent = aiResult.summary;
               effectiveAiSummary = aiResult.summary;
               try {
-                await this.controlPlaneClient.updateExecutionResultSummary(executionId, effectiveAiSummary, {
-                  authToken,
-                  user,
-                });
+                await this.controlPlaneClient.updateExecutionResultSummary(
+                  executionId,
+                  effectiveAiSummary,
+                  {
+                    authToken,
+                    user,
+                  }
+                );
               } catch (err) {
-                this.logger.warn(`Failed to persist AI summary to execution ${executionId}: ${(err as Error).message}`);
+                this.logger.warn(
+                  `Failed to persist AI summary to execution ${executionId}: ${(err as Error).message}`
+                );
               }
             } else if (aiResult?.warning) {
               chatContent = `${chatContent}\n\n---\n_⚠️ AI 自动总结未生成：${aiResult.warning}_`;
@@ -368,6 +369,16 @@ export class ChatExecutionStreamService {
           const effectiveNormalizedResult = effectiveAiSummary
             ? {
                 ...normalizedResult,
+                envelope: {
+                  ...normalizedResult.envelope,
+                  presentation: {
+                    ...normalizedResult.envelope.presentation,
+                    chatSummary: effectiveAiSummary,
+                    detailText: effectiveAiSummary,
+                    summaryFormat: 'markdown' as const,
+                    detailFormat: 'markdown' as const,
+                  },
+                },
                 summary: effectiveAiSummary,
                 body: effectiveAiSummary,
                 detailText: effectiveAiSummary,
@@ -508,7 +519,6 @@ export class ChatExecutionStreamService {
       },
     };
   }
-
 
   private mapExecutionEventToStreamEvent(event: any): StreamEvent | null {
     const { eventType, payload } = event;
@@ -845,9 +855,7 @@ ${payloadStr.length > 10000 ? payloadStr.slice(0, 10000) + '\n... (输出已截�
       return { warning: 'AI 返回了空内容' };
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'unknown';
-      this.logger.warn(
-        `Failed to generate AI summary for execution ${executionId}: ${reason}`
-      );
+      this.logger.warn(`Failed to generate AI summary for execution ${executionId}: ${reason}`);
       reportChatExecutionStreamDebug(
         'H3',
         'apps/backend/intelligence/ai-orchestrator/src/modules/chat/chat-execution-stream.service.ts:generateAiSummary',

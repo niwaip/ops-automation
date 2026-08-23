@@ -18,6 +18,11 @@ import { DeterministicRecipeMatcherService } from '../topology/deterministic-rec
 import { DeterministicRecipeTopologyBuilderService } from '../topology/deterministic-recipe-topology-builder.service';
 import { ExplicitSkillIntentService } from '../topology/explicit-skill-intent.service';
 import type { GenerateDeterministicPlanRequestDto } from './deterministic-plan-generator.types';
+import {
+  createBuiltinRoutingPolicySnapshot,
+  hasRoutingSignal,
+} from '../routing/routing-policy.matcher';
+import { RoutingPolicyService } from '../routing/routing-policy.service';
 
 @Injectable()
 export class DeterministicPlanGeneratorService {
@@ -44,16 +49,23 @@ export class DeterministicPlanGeneratorService {
     private readonly recipeTopologyBuilder?: DeterministicRecipeTopologyBuilderService,
     @Optional()
     private readonly explicitSkillIntent?: ExplicitSkillIntentService,
+    @Optional()
+    private readonly routingPolicy?: RoutingPolicyService
   ) {}
 
-  public async generatePlan(dto: GenerateDeterministicPlanRequestDto): Promise<DeterministicPlanDraftV1> {
+  public async generatePlan(
+    dto: GenerateDeterministicPlanRequestDto
+  ): Promise<DeterministicPlanDraftV1> {
     const { skillCards, llmOperationCards } = await this.candidateSelector.selectCandidates(
       dto.userRequest,
-      dto.availableSkills || [],
+      dto.availableSkills || []
     );
 
-    if (!skillCards || skillCards.length === 0) {
-      const err: any = new Error('No published executable skills available for planning');
+    if (
+      (!skillCards || skillCards.length === 0) &&
+      (!llmOperationCards || llmOperationCards.length === 0)
+    ) {
+      const err: any = new Error('No published executable capabilities available for planning');
       err.code = 'CAPABILITY_NOT_FOUND';
       throw err;
     }
@@ -72,35 +84,37 @@ export class DeterministicPlanGeneratorService {
       try {
         const { routingCards, aliasMap } = this.cardProjector.projectCandidateCards(
           skillCards,
-          llmOperationCards,
+          llmOperationCards
         );
 
         const recipe = this.recipeMatcher?.matchRecipe(
           dto.userRequest,
           skillCards,
-          llmOperationCards,
+          llmOperationCards
         );
         let recipeTopology = recipe
           ? this.recipeTopologyBuilder?.buildTopologyFromRecipe(
               recipe,
               skillCards,
-              llmOperationCards,
+              llmOperationCards
             )
           : null;
-        const UNCOVERED_ACTION_KEYWORDS = ['推送', '通知', 'bark', '发给', '邮件', 'webhook'];
-        const hasUncoveredActionKeyword = UNCOVERED_ACTION_KEYWORDS.some((kw) =>
-          dto.userRequest.toLowerCase().includes(kw),
+        const policy = this.routingPolicy?.getSnapshot() || createBuiltinRoutingPolicySnapshot();
+        const hasUncoveredActionKeyword = hasRoutingSignal(
+          dto.userRequest,
+          'uncoveredAction',
+          policy
         );
 
         if (recipeTopology && (explicitlyRequestedSkills.length > 0 || hasUncoveredActionKeyword)) {
           const recipeCoverage = this.topologyValidator.validateTopology(
             recipeTopology,
             aliasMap,
-            explicitlyRequestedSkills,
+            explicitlyRequestedSkills
           );
           if (!recipeCoverage.valid || hasUncoveredActionKeyword) {
             this.logger.log(
-              `Recipe '${recipe?.recipeName}' does not cover the complete request (uncovered action or explicitly requested skill); delegating to AI topology planner`,
+              `Recipe '${recipe?.recipeName}' does not cover the complete request (uncovered action or explicitly requested skill); delegating to AI topology planner`
             );
             recipeTopology = null;
           }
@@ -108,7 +122,17 @@ export class DeterministicPlanGeneratorService {
         const topologySource = recipeTopology ? 'recipe' : 'llm';
         const topologyDraft =
           recipeTopology ||
-          (await this.topologyPlanner.planTopology(dto.userRequest, routingCards));
+          (await this.topologyPlanner.planTopology(dto.userRequest, routingCards, {
+            hasPreviousResult: Boolean(
+              dto.systemInputs?.previousResultRef &&
+              (dto.systemInputs?.previousResultData !== undefined ||
+                dto.systemInputs?.previousResultText)
+            ),
+            previousResultType:
+              typeof (dto.systemInputs?.previousResultRef as any)?.resultType === 'string'
+                ? (dto.systemInputs?.previousResultRef as any).resultType
+                : undefined,
+          }));
 
         if (topologyDraft) {
           if (
@@ -125,11 +149,14 @@ export class DeterministicPlanGeneratorService {
             topologyDraft,
             aliasMap,
             explicitlyRequestedSkills,
+            {
+              allowOperationOnly: true,
+            }
           );
 
           if (validation.valid) {
             this.logger.log(
-              `Deterministic ${topologySource} topology succeeded for request: "${dto.userRequest}"`,
+              `Deterministic ${topologySource} topology succeeded for request: "${dto.userRequest}"`
             );
 
             const bindingResult = await this.parameterBinder.bindParameters(
@@ -137,13 +164,13 @@ export class DeterministicPlanGeneratorService {
               topologyDraft.nodes,
               aliasMap,
               undefined,
-              dto.systemInputs,
+              dto.systemInputs
             );
 
             const planDraft = this.contractAssembler.assemblePlan(
               topologyDraft,
               bindingResult,
-              aliasMap,
+              aliasMap
             );
 
             (planDraft as any).promptDebug = {
@@ -166,9 +193,7 @@ export class DeterministicPlanGeneratorService {
 
             return planDraft;
           }
-          const err: any = new Error(
-            `Topology validation failed: ${validation.errors.join('; ')}`,
-          );
+          const err: any = new Error(`Topology validation failed: ${validation.errors.join('; ')}`);
           if (validation.errors.some((error) => error.includes('explicitly requested Skill'))) {
             err.code = 'CAPABILITY_NOT_FOUND';
           }
@@ -191,12 +216,14 @@ export class DeterministicPlanGeneratorService {
       throw new Error('No active AI model configured for planning');
     }
 
-    this.logger.log(`Generating deterministic plan using model '${activeModel.name}' for request: "${dto.userRequest}"`);
+    this.logger.log(
+      `Generating deterministic plan using model '${activeModel.name}' for request: "${dto.userRequest}"`
+    );
 
     let response = await this.modelService.callModel(
       activeModel.id,
       `${systemPrompt}\n\n${userPrompt}`,
-      'reasoning',
+      'reasoning'
     );
 
     let planDraft: DeterministicPlanDraftV1;
@@ -204,7 +231,7 @@ export class DeterministicPlanGeneratorService {
       planDraft = await this.parseAndValidatePlanJson(
         response.content,
         dto.userRequest,
-        skillCards,
+        skillCards
       );
     } catch (firstErr) {
       this.logger.warn(`Failed to parse initial plan JSON output, attempting format repair...`);
@@ -214,7 +241,7 @@ export class DeterministicPlanGeneratorService {
       planDraft = await this.parseAndValidatePlanJson(
         response.content,
         dto.userRequest,
-        skillCards,
+        skillCards
       );
     }
 
@@ -250,7 +277,7 @@ export class DeterministicPlanGeneratorService {
   private buildSystemPrompt(
     skillCards: CompactCapabilityCardV1[],
     llmOperationCards: CompactCapabilityCardV1[],
-    systemInputs?: Record<string, unknown>,
+    systemInputs?: Record<string, unknown>
   ): string {
     const previousResultText =
       typeof systemInputs?.previousResultText === 'string'
@@ -405,11 +432,14 @@ ${JSON.stringify(llmOperationCards, null, 2)}
   private async parseAndValidatePlanJson(
     rawText: string,
     originalRequest: string,
-    skillCards: CompactCapabilityCardV1[],
+    skillCards: CompactCapabilityCardV1[]
   ): Promise<DeterministicPlanDraftV1> {
     let cleaned = rawText.trim();
     if (cleaned.startsWith('```json')) {
-      cleaned = cleaned.replace(/^```json/i, '').replace(/```$/i, '').trim();
+      cleaned = cleaned
+        .replace(/^```json/i, '')
+        .replace(/```$/i, '')
+        .trim();
     } else if (cleaned.startsWith('```')) {
       cleaned = cleaned.replace(/^```/i, '').replace(/```$/i, '').trim();
     }
@@ -427,7 +457,9 @@ ${JSON.stringify(llmOperationCards, null, 2)}
     }
 
     if (parsed.schemaVersion !== 'deterministic-plan/v1') {
-      this.logger.warn(`Plan schemaVersion '${parsed.schemaVersion}' invalid, setting to 'deterministic-plan/v1'`);
+      this.logger.warn(
+        `Plan schemaVersion '${parsed.schemaVersion}' invalid, setting to 'deterministic-plan/v1'`
+      );
       parsed.schemaVersion = 'deterministic-plan/v1';
     }
     parsed.originalRequest = originalRequest;
@@ -436,23 +468,27 @@ ${JSON.stringify(llmOperationCards, null, 2)}
     if (Array.isArray(parsed.nodes)) {
       for (const node of parsed.nodes) {
         if (node.kind === 'skill') {
-          const declaredIdentifiers = [node.skillId, (node as any).capabilityKey].filter(
-            (value): value is string => typeof value === 'string' && value.trim().length > 0,
+          const declaredIdentifiers = [node.skillId, node.capabilityKey].filter(
+            (value): value is string => typeof value === 'string' && value.trim().length > 0
           );
           const card = skillCards.find((candidate) =>
             [candidate.publishedSkillId, candidate.id, candidate.displayName]
               .filter((value): value is string => typeof value === 'string' && value.length > 0)
-              .some((value) => declaredIdentifiers.includes(value)),
+              .some((value) => declaredIdentifiers.includes(value))
           );
 
           if (!card) {
-            const err: any = new Error(`Planner generated unknown skillId '${node.skillId}' not present in candidate skill cards`);
+            const err: any = new Error(
+              `Planner generated unknown skillId '${node.skillId}' not present in candidate skill cards`
+            );
             err.code = 'CAPABILITY_NOT_FOUND';
             throw err;
           }
 
           if (card.executableVersion && node.skillVersion !== card.executableVersion) {
-            this.logger.log(`Aligning skillVersion for '${node.skillId}' from '${node.skillVersion}' to published executableVersion '${card.executableVersion}'`);
+            this.logger.log(
+              `Aligning skillVersion for '${node.skillId}' from '${node.skillVersion}' to published executableVersion '${card.executableVersion}'`
+            );
             node.skillVersion = card.executableVersion;
           }
           if (card.publishedSkillId) {
@@ -461,16 +497,16 @@ ${JSON.stringify(llmOperationCards, null, 2)}
             node.skillId = card.id;
           }
           if (card.displayName) {
-            (node as any).capabilityKey = card.displayName;
+            node.capabilityKey = card.displayName;
           }
           if (card.category) {
             node.runtimeType = card.category;
           }
           if (card.executionRuntimeType) {
-            (node as any).executionRuntimeType = card.executionRuntimeType;
+            node.executionRuntimeType = card.executionRuntimeType;
           }
           if (card.supportsArtifactOutput) {
-            (node as any).supportsArtifact = true;
+            node.supportsArtifact = true;
           }
           this.normalizeSkillOutputContract(node, card);
           this.removeSensitiveInputBindings(node.inputBindings);
@@ -481,7 +517,7 @@ ${JSON.stringify(llmOperationCards, null, 2)}
           }
           const resolved = await this.llmOperationRegistry.resolveActiveVersion(
             node.operationId,
-            'production',
+            'production'
           );
 
           const manifest = resolved.version.manifestJson || {};
@@ -517,7 +553,7 @@ ${JSON.stringify(llmOperationCards, null, 2)}
     if (
       Array.isArray(parsed.finalOutputs) &&
       parsed.finalOutputs.some(
-        (output: any) => output?.isArtifact === true || output?.expectedType === 'artifact_ref',
+        (output: any) => output?.isArtifact === true || output?.expectedType === 'artifact_ref'
       )
     ) {
       this.assertPlanProducesArtifact(parsed, skillCards);
@@ -551,7 +587,7 @@ ${JSON.stringify(llmOperationCards, null, 2)}
         const err: any = new Error(
           `Planner generated outputContract ${JSON.stringify(node.outputContract)} for skill '${node.skillId || node.nodeId}' but the candidate card declares no outputs. ` +
             `Either the skill is missing outputSchema in the registry or the LLM hallucinated fields. ` +
-            `Refusing to freeze the plan so the runtime does not silently fail on a phantom contract.`,
+            `Refusing to freeze the plan so the runtime does not silently fail on a phantom contract.`
         );
         err.code = 'PLANNER_OUTPUT_INVALID';
         throw err;
@@ -613,25 +649,43 @@ ${JSON.stringify(llmOperationCards, null, 2)}
     for (const node of parsed.nodes) {
       if (!node.inputBindings || typeof node.inputBindings !== 'object') continue;
 
-      for (const [fieldName, binding] of Object.entries(node.inputBindings) as [string, any][]) {
+      for (const [fieldName, rawBinding] of Object.entries(
+        node.inputBindings as Record<string, unknown>
+      )) {
+        const binding = rawBinding as {
+          source?: unknown;
+          nodeId?: unknown;
+          fromNodeId?: unknown;
+          path?: unknown;
+          outputPath?: unknown;
+        };
         if (!binding || binding.source !== 'node_output') continue;
 
-        const upstreamId = binding.nodeId || binding.fromNodeId || '';
+        const upstreamId =
+          (typeof binding.nodeId === 'string' && binding.nodeId) ||
+          (typeof binding.fromNodeId === 'string' && binding.fromNodeId) ||
+          '';
         const upstreamNode = nodeById.get(upstreamId);
-        if (!upstreamNode?.outputContract || typeof upstreamNode.outputContract !== 'object') continue;
+        if (!upstreamNode?.outputContract || typeof upstreamNode.outputContract !== 'object')
+          continue;
 
-        const outPath: string = binding.path || binding.outputPath || '';
+        const outPath =
+          (typeof binding.path === 'string' && binding.path) ||
+          (typeof binding.outputPath === 'string' && binding.outputPath) ||
+          '';
         // Path is already correct — nothing to do.
         if (upstreamNode.outputContract[outPath] !== undefined) continue;
 
         // Path is a known search-result alias but the upstream contract uses a different one.
         if (SEARCH_ALIASES.has(outPath)) {
-          const realKey = Object.keys(upstreamNode.outputContract).find((k) => SEARCH_ALIASES.has(k));
+          const realKey = Object.keys(upstreamNode.outputContract).find((k) =>
+            SEARCH_ALIASES.has(k)
+          );
           if (realKey) {
             this.logger.warn(
               `Aligning inputBinding path '${outPath}' → '${realKey}' ` +
-              `for field '${fieldName}' in node '${node.nodeId}' ` +
-              `(upstream node '${upstreamId}' declares '${realKey}', not '${outPath}')`,
+                `for field '${fieldName}' in node '${node.nodeId}' ` +
+                `(upstream node '${upstreamId}' declares '${realKey}', not '${outPath}')`
             );
             binding.path = realKey;
           }
@@ -659,7 +713,7 @@ ${JSON.stringify(llmOperationCards, null, 2)}
       if (output.expectedType !== declaredType) {
         this.logger.warn(
           `finalOutput '${output.targetField}' expectedType '${output.expectedType}' ` +
-          `mismatches node '${output.fromNodeId}' declared type '${declaredType}' — auto-aligning`,
+            `mismatches node '${output.fromNodeId}' declared type '${declaredType}' — auto-aligning`
         );
         output.expectedType = declaredType;
       }
@@ -698,7 +752,7 @@ ${JSON.stringify(llmOperationCards, null, 2)}
    */
   private validateAndNormalizeInputBindingEnums(
     inputBindings: Record<string, any> | undefined,
-    card: CompactCapabilityCardV1,
+    card: CompactCapabilityCardV1
   ): void {
     if (!inputBindings || typeof inputBindings !== 'object') {
       return;
@@ -739,7 +793,7 @@ ${JSON.stringify(llmOperationCards, null, 2)}
       const defaultValue = decoded.defaultValue;
       if (defaultValue !== undefined && enumValues.includes(defaultValue)) {
         this.logger.warn(
-          `Plan inputBindings.${fieldName} literal '${rawValue}' not in enum [${enumValues.join(',')}], replaced with defaultValue '${defaultValue}' (skill ${card.id})`,
+          `Plan inputBindings.${fieldName} literal '${rawValue}' not in enum [${enumValues.join(',')}], replaced with defaultValue '${defaultValue}' (skill ${card.id})`
         );
         binding.value = defaultValue;
       } else {
@@ -755,16 +809,13 @@ ${JSON.stringify(llmOperationCards, null, 2)}
     }
   }
 
-  private assertPlanProducesArtifact(
-    parsed: any,
-    skillCards: CompactCapabilityCardV1[],
-  ): void {
+  private assertPlanProducesArtifact(parsed: any, skillCards: CompactCapabilityCardV1[]): void {
     const nodes = Array.isArray(parsed.nodes) ? parsed.nodes : [];
     const finalOutputs = Array.isArray(parsed.finalOutputs) ? parsed.finalOutputs : [];
     const nodeById = new Map(nodes.map((node: any) => [node.nodeId, node]));
 
     const artifactOutput = finalOutputs.find(
-      (output: any) => output?.isArtifact === true || output?.expectedType === 'artifact_ref',
+      (output: any) => output?.isArtifact === true || output?.expectedType === 'artifact_ref'
     );
 
     if (!artifactOutput) {
@@ -786,15 +837,9 @@ ${JSON.stringify(llmOperationCards, null, 2)}
         card.id === producerNode.skillId ||
         card.displayName === producerNode.capabilityKey ||
         card.displayName === producerNode.skillId ||
-        card.id === producerNode.capabilityKey,
+        card.id === producerNode.capabilityKey
     );
-    const isArtifactProducerNode =
-      producerCard?.supportsArtifactOutput ||
-      producerNode.capabilityKey === 'markdown_artifact_writer' ||
-      producerNode.skillId === 'markdown_artifact_writer' ||
-      producerNode.capabilityKey === 'platform.document.markdown-artifact-writer' ||
-      producerNode.skillId === 'platform.document.markdown-artifact-writer' ||
-      (typeof producerNode.skillId === 'string' && producerNode.skillId.startsWith('platform.'));
+    const isArtifactProducerNode = producerCard?.supportsArtifactOutput === true;
 
     if (!isArtifactProducerNode) {
       const err: any = new Error(`最终节点 '${producerNode.nodeId}' 不是可生成文件产物的 Skill`);

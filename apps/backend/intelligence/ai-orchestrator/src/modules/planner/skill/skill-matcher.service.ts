@@ -22,7 +22,9 @@ export class SkillMatcherService {
     context?: Record<string, unknown>;
   }): Promise<SkillMatchResult | null> {
     const targetSkillId =
-      typeof input.context?.target_skill_id === 'string' ? input.context.target_skill_id.trim() : '';
+      typeof input.context?.target_skill_id === 'string'
+        ? input.context.target_skill_id.trim()
+        : '';
     if (targetSkillId) {
       const targetedSkill = input.availableSkills.find((skill) => skill.skillId === targetSkillId);
       if (targetedSkill) {
@@ -53,6 +55,19 @@ export class SkillMatcherService {
           outputParams: targetedSkill.outputParams,
         };
       }
+    }
+
+    // Explicit capability names and distinctive aliases are deterministic
+    // routing signals. Resolve them before the platform LLM matcher so a
+    // direct continuation such as "用 Bark 推送" does not pay model latency.
+    const explicitMatch = this.matchExplicitSkillName(input.userInput, input.availableSkills);
+    if (explicitMatch) {
+      return this.buildMatchResult(
+        explicitMatch.skill,
+        explicitMatch.matchedKeywords,
+        0.99,
+        'deterministic_explicit_match'
+      );
     }
 
     if (input.userId) {
@@ -126,32 +141,92 @@ export class SkillMatcherService {
       return null;
     }
 
-    return {
-      skillId: bestSkill.skillId,
-      skillName: bestSkill.skillName,
-      matchedKeywords: bestSkill.triggerKeywords.filter(
+    return this.buildMatchResult(
+      bestSkill,
+      bestSkill.triggerKeywords.filter(
         (keyword) => keyword && normalizedInput.includes(keyword.toLowerCase())
       ),
-      confidence: Math.min(0.95, 0.8 + bestScore * 0.1),
+      Math.min(0.95, 0.8 + bestScore * 0.1),
+      'keyword_fallback_match'
+    );
+  }
+
+  private matchExplicitSkillName(
+    userInput: string,
+    availableSkills: AvailableSkillDefinition[]
+  ): { skill: AvailableSkillDefinition; matchedKeywords: string[] } | null {
+    const normalizedInput = this.normalizeRouteText(userInput);
+    if (!normalizedInput) return null;
+
+    const ranked = availableSkills
+      .map((skill) => {
+        const normalizedName = this.normalizeRouteText(skill.skillName);
+        const aliases = new Set([
+          normalizedName,
+          normalizedName.replace(/(?:工作流|服务|技能|workflow|skill)$/i, ''),
+        ]);
+        let score = 0;
+        for (const alias of aliases) {
+          if (!alias) continue;
+          if (normalizedInput === alias) score = Math.max(score, 220 + alias.length);
+          else if (alias.length >= 4 && normalizedInput.includes(alias)) {
+            score = Math.max(score, 160 + alias.length);
+          }
+        }
+        const matchedKeywords = skill.triggerKeywords.filter((keyword) => {
+          const normalizedKeyword = this.normalizeRouteText(keyword);
+          return normalizedKeyword.length >= 2 && normalizedInput.includes(normalizedKeyword);
+        });
+        for (const keyword of matchedKeywords) {
+          const normalizedKeyword = this.normalizeRouteText(keyword);
+          const distinctiveAscii =
+            /^[a-z0-9]+$/.test(normalizedKeyword) && normalizedKeyword.length >= 3;
+          if (distinctiveAscii) score = Math.max(score, 150 + normalizedKeyword.length);
+        }
+        return { skill, matchedKeywords, score };
+      })
+      .filter((candidate) => candidate.score >= 150)
+      .sort((left, right) => right.score - left.score);
+
+    const best = ranked[0];
+    if (!best || (ranked[1] && best.score === ranked[1].score)) return null;
+    return { skill: best.skill, matchedKeywords: best.matchedKeywords };
+  }
+
+  private normalizeRouteText(value: string): string {
+    return value.toLowerCase().replace(/[\s\p{P}\p{S}_]+/gu, '');
+  }
+
+  private buildMatchResult(
+    skill: AvailableSkillDefinition,
+    matchedKeywords: string[],
+    confidence: number,
+    matchReason: string
+  ): SkillMatchResult {
+    return {
+      skillId: skill.skillId,
+      skillName: skill.skillName,
+      matchedKeywords,
+      confidence,
       collectedParams: {},
-      missingParams: bestSkill.paramsSchema.required || [],
-      paramsSchema: bestSkill.paramsSchema,
-      templateId: bestSkill.templateId,
-      carboneSkillId: bestSkill.carboneSkillId,
-      carboneTemplateId: bestSkill.carboneTemplateId,
-      executionFlowTemplateId: bestSkill.executionFlowTemplateIds?.[0],
-      executionFlowTemplateIds: bestSkill.executionFlowTemplateIds,
-      executionType: bestSkill.executionType,
-      executionFlow: bestSkill.executionFlow?.length
-        ? bestSkill.executionFlow
-        : bestSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document'
+      missingParams: skill.paramsSchema.required || [],
+      paramsSchema: skill.paramsSchema,
+      templateId: skill.templateId,
+      carboneSkillId: skill.carboneSkillId,
+      carboneTemplateId: skill.carboneTemplateId,
+      executionFlowTemplateId: skill.executionFlowTemplateIds?.[0],
+      executionFlowTemplateIds: skill.executionFlowTemplateIds,
+      executionType: skill.executionType,
+      executionFlow: skill.executionFlow?.length
+        ? skill.executionFlow
+        : skill.apiEndpoints?.runtimeMetadata?.sourceType === 'document'
           ? ['document_render']
           : undefined,
-      apiEndpoints: bestSkill.apiEndpoints,
-      matchReason: 'keyword_fallback_match',
-      goal: bestSkill.goal,
-      expectedResult: bestSkill.expectedResult,
-      outputParams: bestSkill.outputParams,
+      apiEndpoints: skill.apiEndpoints,
+      matchReason,
+      goal: skill.goal,
+      expectedResult: skill.expectedResult,
+      outputParams: skill.outputParams,
     };
   }
 

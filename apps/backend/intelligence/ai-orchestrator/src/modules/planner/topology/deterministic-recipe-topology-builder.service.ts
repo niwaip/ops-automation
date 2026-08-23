@@ -1,11 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import type { CompactCapabilityCardV1 } from '@ops/backend-deterministic-plan';
 import type { MatchedRecipe } from './deterministic-recipe-matcher.service';
 import type { DeterministicTopologyDraftV1, TopologyNodeV1 } from './deterministic-topology.types';
+import {
+  createBuiltinRoutingPolicySnapshot,
+  matchesCapabilityRole,
+} from '../routing/routing-policy.matcher';
+import { RoutingPolicyService } from '../routing/routing-policy.service';
 
 @Injectable()
 export class DeterministicRecipeTopologyBuilderService {
   private readonly logger = new Logger(DeterministicRecipeTopologyBuilderService.name);
+
+  constructor(@Optional() private readonly routingPolicy?: RoutingPolicyService) {}
 
   public buildTopologyFromRecipe(
     recipe: MatchedRecipe,
@@ -13,30 +20,38 @@ export class DeterministicRecipeTopologyBuilderService {
     llmOperationCards: CompactCapabilityCardV1[],
   ): DeterministicTopologyDraftV1 | null {
     const nodes: TopologyNodeV1[] = [];
+    const policy =
+      this.routingPolicy?.getSnapshot() || createBuiltinRoutingPolicySnapshot();
 
     // Find candidates by role
     const searchSkill = skillCards.find(
       (c) =>
         c.kind === 'skill' &&
-        ((c.displayName || '').toLowerCase().includes('search') ||
-          (c.displayName || '').includes('搜索') ||
-          (c.id || '').toLowerCase().includes('search')),
-    ) || skillCards[0];
+        matchesCapabilityRole(
+          [c.displayName, c.id, c.summary, c.goals],
+          'search',
+          policy,
+        ),
+    );
 
     const markdownWriterSkill = skillCards.find(
       (c) =>
         c.kind === 'skill' &&
         (c.supportsArtifactOutput ||
-          (c.displayName || '').toLowerCase().includes('markdown') ||
-          (c.displayName || '').includes('写') ||
-          (c.id || '').toLowerCase().includes('markdown')),
+          matchesCapabilityRole(
+            [c.displayName, c.id, c.summary, c.goals],
+            'markdownWriter',
+            policy,
+          )),
     );
     const documentExtractorSkill = skillCards.find(
       (c) =>
         c.kind === 'skill' &&
-        ((c.id || '').toLowerCase().includes('content-extractor') ||
-          (c.id || '').toLowerCase().includes('pdf') ||
-          (c.displayName || '').includes('内容提取')),
+        matchesCapabilityRole(
+          [c.displayName, c.id, c.summary, c.goals],
+          'documentExtractor',
+          policy,
+        ),
     );
 
     for (const step of recipe.steps) {

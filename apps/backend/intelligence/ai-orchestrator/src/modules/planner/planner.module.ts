@@ -17,6 +17,7 @@ import {
 } from './params';
 import { SkillCacheService, SkillMatcherService } from './skill';
 import { PlanRouteClassifierService } from './routing/plan-route-classifier.service';
+import { RoutingPolicyService } from './routing/routing-policy.service';
 import { CapabilityCandidateSelectorService } from './candidate-selection/capability-candidate-selector.service';
 import { DeterministicPlanGeneratorService } from './deterministic/deterministic-plan-generator.service';
 import { DeterministicPlanController } from './deterministic/deterministic-plan.controller';
@@ -32,6 +33,10 @@ import { DeterministicRecipeTopologyBuilderService } from './topology/determinis
 import { ExplicitSkillIntentService } from './topology/explicit-skill-intent.service';
 
 import { DeterministicPlanPresentationService } from './params/deterministic-plan-presentation.service';
+import {
+  DisabledCandidateReranker,
+  DisabledSemanticCandidateRetriever,
+} from './candidate-selection/semantic-routing.port';
 
 @Module({
   imports: [RecognizerModule, ModelModule, LlmOperationModule],
@@ -51,6 +56,7 @@ import { DeterministicPlanPresentationService } from './params/deterministic-pla
     ParamValueService,
     ParamRequiredInputPresentationService,
     ParamRecognizerService,
+    RoutingPolicyService,
     PlanRouteClassifierService,
     CapabilityCandidateSelectorService,
     RoutingCapabilityCardProjector,
@@ -64,9 +70,12 @@ import { DeterministicPlanPresentationService } from './params/deterministic-pla
     MultiNodeParameterBinderService,
     DeterministicContractAssemblerService,
     DeterministicPlanPresentationService,
+    DisabledSemanticCandidateRetriever,
+    DisabledCandidateReranker,
   ],
   exports: [
     PlannerService,
+    RoutingPolicyService,
     PlanRouteClassifierService,
     CapabilityCandidateSelectorService,
     RoutingCapabilityCardProjector,
@@ -78,6 +87,8 @@ import { DeterministicPlanPresentationService } from './params/deterministic-pla
     DeterministicContractAssemblerService,
     DeterministicPlanPresentationService,
     SkillCacheService,
+    DisabledSemanticCandidateRetriever,
+    DisabledCandidateReranker,
   ],
 })
 export class PlannerModule {}

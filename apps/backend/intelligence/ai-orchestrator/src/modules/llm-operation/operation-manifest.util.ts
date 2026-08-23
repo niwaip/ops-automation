@@ -5,9 +5,10 @@ import { computeOperationDigest } from './operation-digest.util';
 
 const USER_PROMPT_TEMPLATES: Record<LlmOperationIdV1, string> = {
   summarize_list: '请对以下内容做结构化总结：\n\n{{items}}',
+  transform_text: '文本处理指令：{{instruction}}\n\n待处理内容：\n{{content}}',
   rewrite_to_markdown: '请重写并格式化以下内容：\n\n{{content}}',
   summarize_text: '请按系统要求对以下文本进行总结：\n\n{{text}}',
-  extract_structured_fields: '文本：\n\n{{text}}',
+  extract_structured_fields: '目标字段：{{target_fields}}\n\n文本：\n\n{{text}}',
   classify_intent_label: '文本：\n\n{{text}}',
   merge_multi_source_notes: '源数据：\n\n{{sources}}',
 };
@@ -15,7 +16,7 @@ const USER_PROMPT_TEMPLATES: Record<LlmOperationIdV1, string> = {
 export function buildOperationManifest(
   operationId: LlmOperationIdV1,
   template: LlmOperationTemplate,
-  version: string,
+  version: string
 ): Record<string, unknown> {
   const { systemPrompt } = template.buildPrompt({});
   const variables = Object.keys(template.inputSchema?.properties || {});
@@ -27,13 +28,23 @@ export function buildOperationManifest(
   // - 'over-budget': oversize 'truncate' operations degrade gracefully
   //   instead of throwing BUDGET_EXCEEDED.
   const exemptNegativeCategories: string[] = [];
-  const outputProps = (template.outputSchema as Record<string, unknown> | undefined)
-    ?.properties as Record<string, unknown> | undefined;
-  if (outputProps && Object.keys(outputProps).length === 1) {
-    const only = outputProps[Object.keys(outputProps)[0]] as
-      | Record<string, unknown>
-      | undefined;
-    const declaredType = only?.type;
+  const outputProps = (template.outputSchema)?.properties as
+    | Record<string, unknown>
+    | undefined;
+  if (outputProps) {
+    const declaredPrimaryOutput = (template.outputSchema)
+      ?.primaryOutput;
+    const outputKeys = Object.keys(outputProps);
+    const primaryOutput =
+      typeof declaredPrimaryOutput === 'string' && declaredPrimaryOutput in outputProps
+        ? declaredPrimaryOutput
+        : outputKeys.length === 1
+          ? outputKeys[0]
+          : undefined;
+    const primaryProperty = primaryOutput
+      ? (outputProps[primaryOutput] as Record<string, unknown> | undefined)
+      : undefined;
+    const declaredType = primaryProperty?.type;
     if (
       declaredType === 'string' ||
       (Array.isArray(declaredType) && declaredType.includes('string'))
@@ -60,6 +71,7 @@ export function buildOperationManifest(
     temperature: template.temperature,
     maxInputTokens: template.maxInputTokens,
     maxOutputTokens: template.maxOutputTokens,
+    modelOutputMode: template.modelOutputMode ?? 'json',
     timeoutMs: 180000,
     repair: {
       enabled: true,
@@ -81,7 +93,7 @@ export function buildOperationManifest(
 }
 
 function closeTopLevelObjectSchema(
-  schema: Record<string, unknown> | undefined,
+  schema: Record<string, unknown> | undefined
 ): Record<string, unknown> | null {
   if (!schema) return null;
   return {
@@ -92,7 +104,7 @@ function closeTopLevelObjectSchema(
 
 export function computeOperationDigestFromManifest(
   manifest: Record<string, unknown>,
-  version: string,
+  version: string
 ): string {
   const prompt = (manifest.prompt as Record<string, unknown>) || {};
   const repair = (manifest.repair as Record<string, unknown>) || {};
@@ -101,7 +113,7 @@ export function computeOperationDigestFromManifest(
   const evalPolicy = (manifest.evalPolicy as Record<string, unknown>) || {};
   const evalExempt = Array.isArray(evalPolicy.exemptNegativeCategories)
     ? (evalPolicy.exemptNegativeCategories as string[]).filter(
-        (item): item is string => typeof item === 'string',
+        (item): item is string => typeof item === 'string'
       )
     : [];
 
@@ -119,9 +131,10 @@ export function computeOperationDigestFromManifest(
     temperature: Number(manifest.temperature ?? 0),
     maxInputTokens: Number(manifest.maxInputTokens ?? 0),
     maxOutputTokens: Number(manifest.maxOutputTokens ?? 0),
+    modelOutputMode: manifest.modelOutputMode === 'text' ? 'text' : 'json',
     repairPromptTemplate:
       typeof repair.promptTemplate === 'string' ? repair.promptTemplate : undefined,
-    inputPolicyOversize: String(inputPolicy.oversize || 'reject'),
+    inputPolicyOversize: inputPolicy.oversize === 'truncate' ? 'truncate' : 'reject',
     evalPolicyExempt: [...evalExempt].sort(),
     executionPolicyTools: executionPolicy.tools === 'enabled' ? 'enabled' : 'disabled',
   });
@@ -130,7 +143,7 @@ export function computeOperationDigestFromManifest(
 export function computeOperationContractDigest(
   operationId: string,
   version: string,
-  manifest: Record<string, unknown>,
+  manifest: Record<string, unknown>
 ): string {
   return computeContractDigest({
     apiVersion: 'ops-automation/v2',

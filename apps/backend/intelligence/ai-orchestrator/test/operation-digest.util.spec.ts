@@ -1,4 +1,7 @@
-import { computeOperationDigest, canonicalizeJson } from '../src/modules/llm-operation/operation-digest.util';
+import {
+  computeOperationDigest,
+  canonicalizeJson,
+} from '../src/modules/llm-operation/operation-digest.util';
 
 describe('operation-digest.util', () => {
   describe('canonicalizeJson', () => {
@@ -104,6 +107,12 @@ describe('operation-digest.util', () => {
       const modifiedInput = { ...baseInput, modelPolicyId: 'task-strict' };
       const digest1 = computeOperationDigest(baseInput);
       const digest2 = computeOperationDigest(modifiedInput);
+      expect(digest1).not.toBe(digest2);
+    });
+
+    it('should produce different digest when model output transport changes', () => {
+      const digest1 = computeOperationDigest(baseInput);
+      const digest2 = computeOperationDigest({ ...baseInput, modelOutputMode: 'text' });
       expect(digest1).not.toBe(digest2);
     });
 

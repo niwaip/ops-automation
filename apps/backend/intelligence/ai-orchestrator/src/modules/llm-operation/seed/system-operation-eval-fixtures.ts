@@ -11,6 +11,7 @@ export interface SystemEvalFixture {
 
 interface JsonSchemaShape {
   type?: string;
+  enum?: unknown[];
   properties?: Record<string, JsonSchemaShape>;
   required?: string[];
   items?: JsonSchemaShape;
@@ -105,6 +106,9 @@ function buildObjectSample(schema: JsonSchemaShape, prefix: string): Record<stri
 }
 
 function buildValueSample(schema: JsonSchemaShape, label: string): unknown {
+  if (Array.isArray(schema.enum) && schema.enum.length > 0) {
+    return schema.enum[0];
+  }
   switch (schema.type) {
     case 'array':
       return [buildValueSample(schema.items || { type: 'string' }, `${label}-item`)];

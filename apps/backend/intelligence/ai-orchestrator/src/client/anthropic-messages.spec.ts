@@ -72,4 +72,55 @@ describe('AnthropicMessagesClient', () => {
       'Anthropic API Error: invalid request payload'
     );
   });
+
+  it('maps medium reasoning to adaptive Claude Messages fields', async () => {
+    const client = new AnthropicMessagesClient({
+      baseURL: 'https://api.anthropic.com/v1',
+      apiKey: 'test-key',
+      model: 'claude-sonnet-4-6',
+      provider: 'anthropic',
+    });
+    const postMock = jest.fn().mockResolvedValue({
+      data: { content: [{ type: 'text', text: 'done' }] },
+      headers: {},
+    });
+    (client as any).client.post = postMock;
+
+    await client.chatCompletion({
+      messages: [{ role: 'user', content: 'analyze' }],
+      maxOutputTokens: 6000,
+      reasoning: { enabled: true, effort: 'medium' },
+    });
+
+    expect(postMock).toHaveBeenCalledWith(
+      '/messages',
+      expect.objectContaining({
+        max_tokens: 6000,
+        thinking: { type: 'adaptive' },
+        output_config: { effort: 'medium' },
+      })
+    );
+  });
+
+  it('passes stream reasoning options through the non-streaming fallback', async () => {
+    const client = new AnthropicMessagesClient({
+      baseURL: 'https://api.minimax.io/anthropic',
+      apiKey: 'test-key',
+      model: 'MiniMax-M2.7',
+      provider: 'minimax',
+    });
+    const postMock = jest.fn().mockResolvedValue({
+      data: { content: [{ type: 'text', text: 'done' }] },
+      headers: {},
+    });
+    (client as any).client.post = postMock;
+
+    await client.chatCompletionStream([{ role: 'user', content: 'analyze' }], jest.fn(), {
+      enabled: false,
+    });
+
+    expect(postMock.mock.calls[0][1]).toEqual(
+      expect.objectContaining({ thinking: { type: 'disabled' } })
+    );
+  });
 });

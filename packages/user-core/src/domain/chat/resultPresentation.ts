@@ -107,10 +107,10 @@ export const resolveChatOutcomePresentation = (
     return s === title || s.endsWith('_workflow') || s.endsWith('_skill');
   };
   const textCandidates = [
-    typeof presentation?.chatSummary === 'string' ? presentation.chatSummary : undefined,
-    !isWorkflowName(normalizedResult?.summary) ? normalizedResult?.summary : undefined,
     normalizedResult?.detailText,
+    !isWorkflowName(normalizedResult?.summary) ? normalizedResult?.summary : undefined,
     normalizedResult?.body,
+    typeof presentation?.chatSummary === 'string' ? presentation.chatSummary : undefined,
     input.finalResult,
     input.finalSummary,
   ]

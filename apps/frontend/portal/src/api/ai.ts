@@ -11,7 +11,8 @@ export type ModelProvider =
   | 'deepseek'
   | 'minimax'
   | 'bigmodel'
-  | 'siliconflow';
+  | 'siliconflow'
+  | 'openrouter';
 
 export type ModelCapabilityTier = 'standard' | 'advanced';
 

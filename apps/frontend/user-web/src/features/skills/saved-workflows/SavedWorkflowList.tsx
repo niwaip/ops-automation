@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { savedSkillApi } from '@/api/savedSkills';
 import { scheduleApi } from '@/api/schedules';
 import { SavedWorkflowCard } from './SavedWorkflowCard';
+import { PersonalizationControlCard } from './PersonalizationControlCard';
 
 export function SavedWorkflowList() {
   const navigate = useNavigate();
@@ -47,6 +48,7 @@ export function SavedWorkflowList() {
         message="我的工作流只对当前账号可见"
         description="工作流保存成功执行的固定多步计划和固定参数；再次执行或定时触发时不会重新规划。"
       />
+      <PersonalizationControlCard />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
         <Card><Statistic title="我的工作流" value={skills.length} /></Card>
         <Card><Statistic title="可执行" value={skills.filter((skill) => skill.status === 'active').length} /></Card>

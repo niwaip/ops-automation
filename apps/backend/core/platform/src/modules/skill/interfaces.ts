@@ -299,7 +299,7 @@ export interface GrantSkillDTO {
  * AI 匹配响应
  */
 export interface AIMatchResponse {
-  matchedSkill: string;
+  matchedSkill: string | null;
   confidence: number;
   reason: string;
 }

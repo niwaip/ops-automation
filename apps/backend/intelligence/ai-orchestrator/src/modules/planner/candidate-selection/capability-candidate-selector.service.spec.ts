@@ -358,21 +358,19 @@ describe('CapabilityCandidateSelectorService', () => {
   });
 
   describe('LLM Operation Cards from Catalog Projector', () => {
-    it('should return 6 LLM Operation cards from projector', async () => {
+    it('should return the four active system LLM Operation cards from projector', async () => {
       const projections: LlmOperationCatalogProjection[] = [
-        createMockProjection('classify_intent_label', '意图标签分类'),
         createMockProjection('extract_structured_fields', '结构化字段提取'),
-        createMockProjection('merge_multi_source_notes', '多源笔记合并'),
-        createMockProjection('rewrite_to_markdown', 'Markdown 格式化'),
         createMockProjection('summarize_list', '列表摘要'),
         createMockProjection('summarize_text', '文本摘要'),
+        createMockProjection('transform_text', '文本处理'),
       ];
 
       mockProjector.projectAll.mockResolvedValue(projections);
 
       const result = await service.selectCandidates('test request', []);
 
-      expect(result.llmOperationCards).toHaveLength(6);
+      expect(result.llmOperationCards).toHaveLength(4);
       expect(result.skillCards).toHaveLength(0);
     });
 
@@ -456,6 +454,35 @@ describe('CapabilityCandidateSelectorService', () => {
       expect(card!.inputs).toHaveProperty('text');
       expect(card!.inputs).toHaveProperty('count');
       expect(card!.outputs).toHaveProperty('result');
+    });
+
+    it('preserves deterministic LLM input roles and schema constraints', async () => {
+      const projection = createMockProjection('transform_text', '文本处理');
+      projection.inputSchema = {
+        type: 'object',
+        required: ['content', 'instruction'],
+        properties: {
+          content: { type: 'string', 'x-ops-input-role': 'content' },
+          instruction: {
+            type: 'string',
+            maxLength: 2000,
+            'x-ops-input-role': 'instruction',
+          },
+        },
+      };
+      mockProjector.projectAll.mockResolvedValue([projection]);
+
+      const result = await service.selectCandidates('翻译成日语', []);
+      const rawSchema = (result.llmOperationCards[0] as any)?._rawInputSchema;
+
+      expect(rawSchema.properties).toEqual({
+        content: { type: 'string', 'x-ops-input-role': 'content' },
+        instruction: {
+          type: 'string',
+          maxLength: 2000,
+          'x-ops-input-role': 'instruction',
+        },
+      });
     });
 
     it('should handle null schemas gracefully', async () => {

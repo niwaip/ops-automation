@@ -103,6 +103,30 @@ describe('areMessagesEquivalent', () => {
     expect(areMessagesEquivalent(baseUserMsg, msg2)).toBe(false);
   });
 
+  it('uses the stable client message id beyond the time-based reconciliation window', () => {
+    const localMessage: ChatMessage = {
+      ...baseUserMsg,
+      metadata: { clientMessageId: 'client-message-1' },
+    };
+    const persistedMessage: ChatMessage = {
+      ...baseUserMsg,
+      id: 'persisted-message-1',
+      timestamp: '2026-07-20T12:20:00.000Z',
+      metadata: { clientMessageId: 'client-message-1' },
+    };
+
+    expect(areMessagesEquivalent(localMessage, persistedMessage)).toBe(true);
+  });
+
+  it('does not merge repeated user text when stable client message ids differ', () => {
+    expect(
+      areMessagesEquivalent(
+        { ...baseUserMsg, metadata: { clientMessageId: 'client-message-1' } },
+        { ...baseUserMsg, metadata: { clientMessageId: 'client-message-2' } },
+      ),
+    ).toBe(false);
+  });
+
   const baseAssistantMsg: ChatMessage = {
     id: 'a1',
     sessionId: 's1',
@@ -205,6 +229,7 @@ describe('areMessagesEquivalent', () => {
     };
 
     const [mergedMessage] = mergeHistoryMessages([remoteMessage], [localMessage]);
+    expect(mergedMessage.id).toBe('a2');
     expect(resolveMessageExecutionId(mergedMessage)).toBe('execution-weibo');
   });
 });

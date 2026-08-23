@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { LLMUsage, PlanDraftDTO } from '../../../interfaces';
+import { LLMUsage, PlanDraftDTO, RecognizeParamsResponseDTO } from '../../../interfaces';
 import { buildDocumentGuideContext } from '../../../common/document-guide';
 import type { SkillMatchResult } from '../../react-engine/interfaces';
 import { RecognizerService } from '../../recognizer/recognizer.service';
 import type { PlannerCompletePlanInput } from '../facade';
 import { PlanGeneratorService, PlanSemanticService } from '../plan';
 import { ParamRecognizerService } from '../params';
+import { projectPreviousResultIntoRecognition } from '../params/previous-result-continuation';
 
 @Injectable()
 export class PlannerPlanDraftService {
@@ -39,47 +40,73 @@ export class PlannerPlanDraftService {
   }): Promise<PlanDraftDTO> {
     const { objective, matchedSkill } = input;
     const isDocumentSkill = this.planSemanticService.isDocumentTask(matchedSkill);
-    const recognized = await this.recognizerService.recognizeParams({
-      template_id: matchedSkill.skillId,
-      user_input: objective,
-      modelId: input.modelId,
-      fallbackMode: 'none',
-      postProcessMode: isDocumentSkill ? 'semantic_augmentation' : 'schema_only',
-      context: input.context,
-      guide_context: buildDocumentGuideContext({
-        enabled: isDocumentSkill,
-        skillName: matchedSkill.skillName,
-        description: matchedSkill.matchReason || matchedSkill.skillName,
-        goal: matchedSkill.goal,
-        expectedResult: matchedSkill.expectedResult,
-        outputParams: matchedSkill.outputParams,
-        paramsSchema: matchedSkill.paramsSchema,
-        runtimeMetadata: matchedSkill.apiEndpoints?.runtimeMetadata,
-      }),
-      params_schema: this.paramRecognizerService.buildRecognizerParamsSchema(
-        matchedSkill.paramsSchema,
-        input.context
+    const recognizerContext = this.buildRecognizerContext(input.context);
+    const deterministicBase: RecognizeParamsResponseDTO = {
+      params: { ...(matchedSkill.collectedParams || {}) },
+      confidence: 1,
+      field_confidences: Object.fromEntries(
+        Object.keys(matchedSkill.collectedParams || {}).map((fieldName) => [fieldName, 1])
       ),
-    });
-    const mergedRecognized = this.paramRecognizerService.mergeRecognizedWithCollectedContext(
-      recognized,
+      uncertain_fields: [],
+      debug: { notes: ['planner 已先应用确定性参数来源'] },
+    };
+    const mergedBase = this.paramRecognizerService.mergeRecognizedWithCollectedContext(
+      deterministicBase,
       matchedSkill.paramsSchema,
       input.context
     );
-    const enrichedRecognized = await this.paramRecognizerService.applyBilingualCompletionToRecognized(
-      mergedRecognized,
-      matchedSkill.paramsSchema
+    const continuationProjection = projectPreviousResultIntoRecognition(
+      mergedBase,
+      matchedSkill.paramsSchema,
+      input.context
     );
+    const recognitionFields = this.resolveRecognitionFields(
+      objective,
+      matchedSkill,
+      continuationProjection.recognized,
+      input.context
+    );
+    const recognized =
+      recognitionFields.length > 0
+        ? await this.recognizeUnresolvedFields({
+            objective,
+            matchedSkill,
+            modelId: input.modelId,
+            isDocumentSkill,
+            recognizerContext,
+            recognitionFields,
+            deterministic: continuationProjection.recognized,
+          })
+        : {
+            ...continuationProjection.recognized,
+            debug: {
+              ...continuationProjection.recognized.debug,
+              notes: [
+                ...(continuationProjection.recognized.debug?.notes || []),
+                '所有执行参数已由上下文、上一执行结果或默认值确定，已跳过 LLM 参数识别',
+              ],
+            },
+          };
+    const enrichedRecognized =
+      await this.paramRecognizerService.applyBilingualCompletionToRecognized(
+        recognized,
+        matchedSkill.paramsSchema
+      );
     const totalUsage = this.sumUsage(matchedSkill.usage, enrichedRecognized.usage);
+    const continuationFieldSet = new Set(continuationProjection.projectedFields);
+    const requiredInputs = this.paramRecognizerService
+      .buildRequiredInputs(matchedSkill, enrichedRecognized)
+      .map((requiredInput) =>
+        continuationFieldSet.has(requiredInput.name)
+          ? { ...requiredInput, source: 'external' as const, confidence: 1 }
+          : requiredInput
+      );
     const semanticContext = this.planSemanticService.buildDocumentSemanticContext({
       matchedSkill,
-      requiredInputs: this.paramRecognizerService.buildRequiredInputs(
-        matchedSkill,
-        enrichedRecognized
-      ),
+      requiredInputs,
     });
 
-    return this.planGeneratorService.buildSkillPlan({
+    const planDraft = this.planGeneratorService.buildSkillPlan({
       objective,
       matchedSkill,
       requiredInputs: semanticContext.requiredInputs,
@@ -87,8 +114,115 @@ export class PlannerPlanDraftService {
       usage: totalUsage,
       semanticDebug: semanticContext.debug,
       llmCalls: [...(matchedSkill.debug?.llmCalls || []), ...(recognized.debug?.llmCalls || [])],
-      notes: [...(matchedSkill.debug?.notes || []), ...(mergedRecognized.debug?.notes || [])],
+      notes: [...(matchedSkill.debug?.notes || []), ...(recognized.debug?.notes || [])],
     });
+    if (continuationProjection.projectedFields.length === 0) {
+      return planDraft;
+    }
+
+    return {
+      ...planDraft,
+      metadata: {
+        ...(planDraft.metadata || {}),
+        previous_result_continuation: {
+          applied: true,
+          sourceExecutionId: continuationProjection.sourceExecutionId,
+          projectedFields: continuationProjection.projectedFields,
+        },
+      },
+    };
+  }
+
+  private resolveRecognitionFields(
+    objective: string,
+    matchedSkill: SkillMatchResult,
+    deterministic: RecognizeParamsResponseDTO,
+    context?: Record<string, unknown>
+  ): string[] {
+    if (context?.mode !== 'single_step_continuation') {
+      return Object.keys(matchedSkill.paramsSchema?.properties || {});
+    }
+
+    const requiredInputs = this.paramRecognizerService.buildRequiredInputs(
+      matchedSkill,
+      deterministic
+    );
+    const unresolved = requiredInputs
+      .filter((field) => field.missing || field.needs_confirmation)
+      .map((field) => field.name);
+    const normalizedObjective = objective.toLowerCase();
+    const explicitlyMentionedOptional = requiredInputs
+      .filter((field) => !field.required)
+      .filter((field) => {
+        const labels = [field.name, field.display_name]
+          .filter((value): value is string => typeof value === 'string' && value.trim().length >= 2)
+          .map((value) => value.toLowerCase());
+        return labels.some((label) => normalizedObjective.includes(label));
+      })
+      .map((field) => field.name);
+    return [...new Set([...unresolved, ...explicitlyMentionedOptional])];
+  }
+
+  private async recognizeUnresolvedFields(input: {
+    objective: string;
+    matchedSkill: SkillMatchResult;
+    modelId?: string;
+    isDocumentSkill: boolean;
+    recognizerContext?: Record<string, unknown>;
+    recognitionFields: string[];
+    deterministic: RecognizeParamsResponseDTO;
+  }): Promise<RecognizeParamsResponseDTO> {
+    const fieldSet = new Set(input.recognitionFields);
+    const narrowedProperties = Object.fromEntries(
+      Object.entries(input.matchedSkill.paramsSchema.properties || {}).filter(([name]) =>
+        fieldSet.has(name)
+      )
+    );
+    const aiRecognized = await this.recognizerService.recognizeParams({
+      template_id: input.matchedSkill.skillId,
+      user_input: input.objective,
+      modelId: input.modelId,
+      fallbackMode: 'none',
+      postProcessMode: input.isDocumentSkill ? 'semantic_augmentation' : 'schema_only',
+      context: input.recognizerContext,
+      guide_context: buildDocumentGuideContext({
+        enabled: input.isDocumentSkill,
+        skillName: input.matchedSkill.skillName,
+        description: input.matchedSkill.matchReason || input.matchedSkill.skillName,
+        goal: input.matchedSkill.goal,
+        expectedResult: input.matchedSkill.expectedResult,
+        outputParams: input.matchedSkill.outputParams,
+        paramsSchema: input.matchedSkill.paramsSchema,
+        runtimeMetadata: input.matchedSkill.apiEndpoints?.runtimeMetadata,
+      }),
+      params_schema: {
+        properties:
+          this.paramRecognizerService.buildRecognizerParamsSchemaProperties(narrowedProperties),
+        required: (input.matchedSkill.paramsSchema.required || []).filter((name) =>
+          fieldSet.has(name)
+        ),
+      },
+    });
+
+    return {
+      ...aiRecognized,
+      params: { ...(aiRecognized.params || {}), ...(input.deterministic.params || {}) },
+      field_confidences: {
+        ...(aiRecognized.field_confidences || {}),
+        ...(input.deterministic.field_confidences || {}),
+      },
+      uncertain_fields: (aiRecognized.uncertain_fields || []).filter(
+        (fieldName) => !Object.prototype.hasOwnProperty.call(input.deterministic.params, fieldName)
+      ),
+      debug: {
+        llmCalls: aiRecognized.debug?.llmCalls,
+        notes: [
+          ...(input.deterministic.debug?.notes || []),
+          ...(aiRecognized.debug?.notes || []),
+          `LLM 参数识别仅披露未解析字段: ${input.recognitionFields.join(', ')}`,
+        ],
+      },
+    };
   }
 
   private sumUsage(...usages: Array<LLMUsage | undefined>): LLMUsage | undefined {
@@ -118,5 +252,14 @@ export class PlannerPlanDraftService {
     }
 
     return result;
+  }
+
+  private buildRecognizerContext(
+    context?: Record<string, unknown>
+  ): Record<string, unknown> | undefined {
+    if (context?.mode !== 'single_step_continuation') return context;
+    return Object.fromEntries(
+      Object.entries(context).filter(([key]) => key !== 'previous_result' && key !== 'history')
+    );
   }
 }

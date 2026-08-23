@@ -34,3 +34,11 @@ export {
   SkillMatcherService,
 } from './skill';
 export { AgentService } from './delegation';
+export type {
+  CandidateReranker,
+  SemanticCandidateRetriever,
+} from './candidate-selection/semantic-routing.port';
+export {
+  DisabledCandidateReranker,
+  DisabledSemanticCandidateRetriever,
+} from './candidate-selection/semantic-routing.port';

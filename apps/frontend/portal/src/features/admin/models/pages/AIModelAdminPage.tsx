@@ -63,6 +63,7 @@ const PROVIDER_NAMES: Record<string, string> = {
   minimax: 'MiniMax',
   bigmodel: '智谱 BigModel',
   siliconflow: 'SiliconFlow',
+  openrouter: 'OpenRouter',
   local: '本地模型',
 };
 
@@ -75,6 +76,7 @@ const PRESET_ENDPOINTS: Record<string, string> = {
   minimax: 'https://api.minimax.chat/v1',
   bigmodel: 'https://open.bigmodel.cn/api/paas/v4',
   siliconflow: 'https://api.siliconflow.cn/v1',
+  openrouter: 'https://openrouter.ai/api/v1',
 };
 
 const DEFAULT_SCOPE_OPTIONS = [
@@ -848,6 +850,7 @@ const AIModelAdminPage: React.FC = () => {
     'minimax',
     'bigmodel',
     'siliconflow',
+    'openrouter',
     'local',
   ];
 

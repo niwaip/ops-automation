@@ -16,6 +16,7 @@ export class DeterministicTopologyValidatorService {
     topology: unknown,
     aliasMap: Map<string, CompactCapabilityCardV1>,
     explicitlyRequestedSkills: CompactCapabilityCardV1[] = [],
+    options?: { allowOperationOnly?: boolean },
   ): TopologyValidationResult {
     const errors: string[] = [];
 
@@ -100,8 +101,16 @@ export class DeterministicTopologyValidatorService {
     const hasSkillNode = draft.nodes.some(
       (node) => aliasMap.get(node.capabilityKey)?.kind === 'skill'
     );
-    if (!hasSkillNode) {
-      errors.push('Matched topology must contain at least one Skill node');
+    const llmOperationNodeCount = draft.nodes.filter(
+      (node) => aliasMap.get(node.capabilityKey)?.kind === 'llm_operation'
+    ).length;
+    if (llmOperationNodeCount > 3) {
+      errors.push(
+        `LLM operation node count exceeds maximum 3 (got ${llmOperationNodeCount})`
+      );
+    }
+    if (!hasSkillNode && options?.allowOperationOnly !== true) {
+      errors.push('Operation-only topology is not allowed in this planning context');
     }
 
     const selectedSkillIds = new Set(

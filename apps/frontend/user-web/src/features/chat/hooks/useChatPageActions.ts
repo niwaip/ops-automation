@@ -97,13 +97,15 @@ export function useChatPageActions({
       pendingExecutionId || getLatestWaitingInputExecutionId(activeMessages);
     const now = toChatTimestamp();
     const session = ensureSession(now);
+    const userMessageId = buildMessageId();
     const userMessage: ChatMessage = {
-      id: buildMessageId(),
+      id: userMessageId,
       sessionId: session.id,
       role: 'user',
       content,
       timestamp: now,
       metadata: {
+        clientMessageId: userMessageId,
         files: filesToSend?.map((f) => f.fileName),
       },
     };
@@ -132,6 +134,7 @@ export function useChatPageActions({
 
     const request: ChatRequest = buildChatRequest({
       message: content,
+      clientMessageId: userMessageId,
       sessionId: session.id,
       executionId: continuedExecutionId || undefined,
       modelId: resolvedModelId,

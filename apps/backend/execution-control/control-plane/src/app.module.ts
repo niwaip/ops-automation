@@ -10,6 +10,8 @@ import { McpModule } from './modules/mcp/mcp.module';
 import { JwtSecretGuard } from './modules/auth/jwt-secret.guard';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { SavedSkillModule } from './modules/saved-skill/saved-skill.module';
+import { AssistantFeedbackModule } from './modules/feedback/assistant-feedback.module';
+import { ExperienceLearningModule } from './modules/experience-learning/experience-learning.module';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { SavedSkillModule } from './modules/saved-skill/saved-skill.module';
     McpModule,
     SchedulerModule,
     SavedSkillModule,
+    AssistantFeedbackModule,
+    ExperienceLearningModule,
   ],
   providers: [JwtSecretGuard],
 })

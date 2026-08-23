@@ -1,7 +1,5 @@
 import { Inject, Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
-import type { LlmOperationIdV1 } from '@ops/backend-deterministic-plan';
 import { PrismaService } from '../../prisma/prisma.service';
-import { LLM_OPERATION_TEMPLATES } from '../llm-operation.registry';
 import { AttestationService } from '../eval/attestation.service';
 import { OperationValidationOrchestratorService } from '../eval/operation-validation-orchestrator.service';
 import { OperationActivationService } from '../registry/operation-activation.service';
@@ -13,6 +11,7 @@ import {
   seedSystemLlmOperations,
   SYSTEM_OPERATION_VERSION,
 } from './system-operations.seed';
+import { listActiveSystemOperationIds } from '../system-operation-definitions';
 
 export interface SystemOperationBootstrapResult {
   ready: string[];
@@ -80,7 +79,7 @@ export class SystemOperationBootstrapService implements OnApplicationBootstrap {
       skipped: [],
       failed: [],
     };
-    const operationIds = Object.keys(LLM_OPERATION_TEMPLATES).sort() as LlmOperationIdV1[];
+    const operationIds = listActiveSystemOperationIds();
 
     for (const operationId of operationIds) {
       try {

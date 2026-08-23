@@ -1,9 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
+  Put,
+  Query,
   Req,
   Res,
   UploadedFile,
@@ -23,6 +26,8 @@ import type {
   ChatSessionsResponseDTO,
   ChatUploadFileResponseDTO,
 } from './chat.dto';
+import { ChatFeedbackService } from './chat-feedback.service';
+import { SetAssistantFeedbackDto } from './assistant-feedback.dto';
 import { ChatConversationService } from './chat-conversation.service';
 import { ChatMediaService } from './chat-media.service';
 import { ChatOrchestratorService } from './chat-orchestrator.service';
@@ -41,7 +46,8 @@ export class ChatController {
   constructor(
     private readonly chatConversationService: ChatConversationService,
     private readonly chatMediaService: ChatMediaService,
-    private readonly chatOrchestratorService: ChatOrchestratorService
+    private readonly chatOrchestratorService: ChatOrchestratorService,
+    private readonly chatFeedbackService: ChatFeedbackService
   ) {}
 
   private writeSse(res: Response, payload: Record<string, unknown>): void {
@@ -103,6 +109,49 @@ export class ChatController {
     return { messages };
   }
 
+  @Put('chat/sessions/:sessionId/messages/:messageId/feedback')
+  @ApiOperation({ summary: 'Set feedback for an assistant answer' })
+  async setFeedback(
+    @Param('sessionId') sessionId: string,
+    @Param('messageId') messageId: string,
+    @Body() body: SetAssistantFeedbackDto,
+    @Req() req: Request
+  ) {
+    return this.chatFeedbackService.set(sessionId, messageId, body, req.headers.authorization);
+  }
+
+  @Get('chat/sessions/:sessionId/messages/:messageId/feedback')
+  @ApiOperation({ summary: 'Get feedback for an assistant answer' })
+  async getFeedback(
+    @Param('sessionId') sessionId: string,
+    @Param('messageId') messageId: string,
+    @Query('executionId') executionId: string | undefined,
+    @Req() req: Request
+  ) {
+    return this.chatFeedbackService.get(
+      sessionId,
+      messageId,
+      req.headers.authorization,
+      executionId
+    );
+  }
+
+  @Delete('chat/sessions/:sessionId/messages/:messageId/feedback')
+  @ApiOperation({ summary: 'Clear feedback for an assistant answer' })
+  async clearFeedback(
+    @Param('sessionId') sessionId: string,
+    @Param('messageId') messageId: string,
+    @Query('executionId') executionId: string | undefined,
+    @Req() req: Request
+  ) {
+    return this.chatFeedbackService.clear(
+      sessionId,
+      messageId,
+      req.headers.authorization,
+      executionId
+    );
+  }
+
   @Post('chat/stream')
   @ApiOperation({ summary: 'AI chat with ReAct engine or simple mode (SSE stream)' })
   async chatStream(
@@ -133,9 +182,16 @@ export class ChatController {
 
     try {
       if (mode === 'chat') {
-        await this.chatConversationService.streamChat(body, (event) => {
-          emit(event as unknown as SseEventPayload);
-        });
+        const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
+          req.headers.authorization
+        );
+        await this.chatConversationService.streamChat(
+          body,
+          (event) => {
+            emit(event as unknown as SseEventPayload);
+          },
+          resolvedUser.userId
+        );
 
         emit({
           type: 'done',
@@ -190,6 +246,8 @@ export class ChatController {
           userContent: body.message,
           terminalEvent: latestPersistableEvent,
           modelId: body.modelId,
+          ownerUserId: taskModeContext.context.userId,
+          clientMessageId: body.clientMessageId,
         });
         if (sessionPatchEvent) {
           emit(sessionPatchEvent as unknown as SseEventPayload);
@@ -218,15 +276,19 @@ export class ChatController {
     const mode: 'chat' | 'task' = body.config?.mode || 'task';
 
     if (mode === 'chat') {
-      const chatResponse = await this.chatConversationService.chat(body);
+      const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
+        req.headers.authorization
+      );
+      const chatResponse = await this.chatConversationService.chat(body, resolvedUser.userId);
       return {
         ...chatResponse,
-        events: chatResponse.events.map((event, index) =>
-          this.enrichStreamEvent(event as unknown as SseEventPayload, {
-            sessionId,
-            traceId,
-            seq: index + 1,
-          }) as unknown as StreamEvent
+        events: chatResponse.events.map(
+          (event, index) =>
+            this.enrichStreamEvent(event as unknown as SseEventPayload, {
+              sessionId,
+              traceId,
+              seq: index + 1,
+            }) as unknown as StreamEvent
         ),
       };
     }
@@ -292,6 +354,8 @@ export class ChatController {
         userContent: body.message,
         terminalEvent: latestPersistableEvent,
         modelId: body.modelId,
+        ownerUserId: taskModeContext.context.userId,
+        clientMessageId: body.clientMessageId,
       });
       if (sessionPatchEvent) {
         events.push(

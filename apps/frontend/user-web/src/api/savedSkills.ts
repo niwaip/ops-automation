@@ -31,6 +31,8 @@ export type SavedSkill = {
   version: string;
   sourceExecutionId: string;
   stepCount: number;
+  aliases: string[];
+  habitIntentKeys: string[];
   fixedInput: Record<string, unknown>;
   paramsSchema: Record<string, unknown>;
   planHash: string;
@@ -71,6 +73,8 @@ export const savedSkillApi = {
     data: { name: string; description?: string }
   ): Promise<SavedSkill> =>
     apiClient.post(resolveSavedSkillPath(`/executions/${executionId}/save-as-skill`), data),
+  updateAliases: (id: string, aliases: string[]): Promise<SavedSkill> =>
+    apiClient.put(resolveSavedSkillPath(`/saved-skills/${id}/aliases`), { aliases }),
 };
 
 export default savedSkillApi;

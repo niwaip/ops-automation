@@ -4,12 +4,18 @@ import {
   Get,
   Param,
   Post,
+  Put,
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthenticatedRequest } from '../auth/auth.middleware';
-import { SaveExecutionAsSkillDto, SavedSkillDto, WorkflowSaveEligibilityDto } from './saved-skill.dto';
+import {
+  SaveExecutionAsSkillDto,
+  SavedSkillDto,
+  UpdateSavedSkillAliasesDto,
+  WorkflowSaveEligibilityDto,
+} from './saved-skill.dto';
 import { SavedSkillService } from './saved-skill.service';
 
 @ApiTags('Saved Skills')
@@ -31,6 +37,20 @@ export class SavedSkillController {
     @Req() req: AuthenticatedRequest
   ): Promise<SavedSkillDto> {
     return this.savedSkillService.getById(this.requireUserId(req), id);
+  }
+
+  @Put(':id/aliases')
+  @ApiOperation({ summary: 'Replace current user confirmed aliases for a saved workflow' })
+  updateAliases(
+    @Param('id') id: string,
+    @Body() dto: UpdateSavedSkillAliasesDto,
+    @Req() req: AuthenticatedRequest
+  ): Promise<SavedSkillDto> {
+    return this.savedSkillService.replaceAliases(
+      this.requireUserId(req),
+      id,
+      dto.aliases
+    );
   }
 
   private requireUserId(req: AuthenticatedRequest): string {

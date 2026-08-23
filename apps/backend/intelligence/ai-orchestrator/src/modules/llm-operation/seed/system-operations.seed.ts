@@ -9,45 +9,13 @@ import {
 import type { LlmOperationIdV1 } from '@ops/backend-deterministic-plan';
 import type { Prisma } from '../../prisma/client';
 import { buildSystemEvalFixtures } from './system-operation-eval-fixtures';
+import { SYSTEM_OPERATION_DEFINITIONS } from '../system-operation-definitions';
 
-export const SYSTEM_OPERATION_VERSION = '1.0.8';
-
-const OPERATION_METADATA = {
-  summarize_list: {
-    displayName: '列表摘要',
-    description: '对列表文本、搜索结果或文章项集合做精炼要点总结',
-    owner: 'system',
-  },
-  rewrite_to_markdown: {
-    displayName: 'Markdown 格式化',
-    description: '将结构化或非结构化内容重写格式化为干净规范的 Markdown 文本',
-    owner: 'system',
-  },
-  summarize_text: {
-    displayName: '文本摘要',
-    description: '对长文本段落做关键摘要提取',
-    owner: 'system',
-  },
-  extract_structured_fields: {
-    displayName: '结构化字段提取',
-    description: '从非结构化文本中提取结构化 JSON 字段',
-    owner: 'system',
-  },
-  classify_intent_label: {
-    displayName: '意图标签分类',
-    description: '对短文本做意图分类标签,返回标签与置信度',
-    owner: 'system',
-  },
-  merge_multi_source_notes: {
-    displayName: '多源笔记合并',
-    description: '将多个来源的笔记内容合并为一份 Markdown 文档',
-    owner: 'system',
-  },
-};
+export const SYSTEM_OPERATION_VERSION = '1.0.17';
 
 export async function seedSystemLlmOperations(
   prisma: PrismaService,
-  logger: Logger,
+  logger: Logger
 ): Promise<{ created: string[]; skipped: string[]; failed: string[] }> {
   const result = {
     created: [] as string[],
@@ -60,7 +28,7 @@ export async function seedSystemLlmOperations(
   for (const operationId of operationIds) {
     try {
       const template = LLM_OPERATION_TEMPLATES[operationId];
-      const metadata = OPERATION_METADATA[operationId];
+      const metadata = SYSTEM_OPERATION_DEFINITIONS[operationId];
 
       if (!metadata) {
         logger.warn(`No metadata found for operation ${operationId}, skipping`);
@@ -78,14 +46,38 @@ export async function seedSystemLlmOperations(
             operationKey: operationId,
             displayName: metadata.displayName,
             description: metadata.description,
-            owner: metadata.owner,
-            status: 'active',
+            owner: 'system',
+            status: metadata.status,
             source: 'system_seed',
           },
         });
         logger.log(`Created operation: ${operationId}`);
       } else {
+        if (
+          operation.source === 'system_seed' &&
+          (operation.displayName !== metadata.displayName ||
+            operation.description !== metadata.description ||
+            operation.status !== metadata.status)
+        ) {
+          operation = await prisma.llmOperation.update({
+            where: { id: operation.id },
+            data: {
+              displayName: metadata.displayName,
+              description: metadata.description,
+              status: metadata.status,
+            },
+          });
+          logger.log(`Updated system operation metadata: ${operationId}`);
+        }
         logger.debug(`Operation already exists: ${operationId}`);
+      }
+
+      // Deprecated operations remain addressable by their historical exact
+      // versions so frozen plans keep working, but they receive no new system
+      // version and never return to the planning catalog.
+      if (metadata.status !== 'active') {
+        result.skipped.push(operationId);
+        continue;
       }
 
       const versionNumber = SYSTEM_OPERATION_VERSION;
@@ -94,7 +86,7 @@ export async function seedSystemLlmOperations(
       const contractDigest = computeOperationContractDigest(
         operationId,
         versionNumber,
-        manifestJson,
+        manifestJson
       );
 
       let version = await prisma.llmOperationVersion.findUnique({
@@ -119,7 +111,7 @@ export async function seedSystemLlmOperations(
             manifestJson: manifestJson as Prisma.InputJsonValue,
             operationDigest: operationDigest,
             contractDigest,
-            changeSummary: 'Initial system seed',
+            changeSummary: 'Separate plain business text generation from runtime protocol wrapping',
             source: 'system_seed',
             approvedBy: null,
             approvedAt: null,
@@ -157,9 +149,10 @@ export async function seedSystemLlmOperations(
               create: fixtureBundle.cases.map((fixture) => ({
                 ...fixture,
                 inputJson: fixture.inputJson as Prisma.InputJsonValue,
-                expectedJson: fixture.expectedJson === null
-                  ? undefined
-                  : fixture.expectedJson as Prisma.InputJsonValue,
+                expectedJson:
+                  fixture.expectedJson === null
+                    ? undefined
+                    : (fixture.expectedJson as Prisma.InputJsonValue),
               })),
             },
           },
@@ -179,9 +172,10 @@ export async function seedSystemLlmOperations(
               create: fixtureBundle.cases.map((fixture) => ({
                 ...fixture,
                 inputJson: fixture.inputJson as Prisma.InputJsonValue,
-                expectedJson: fixture.expectedJson === null
-                  ? undefined
-                  : fixture.expectedJson as Prisma.InputJsonValue,
+                expectedJson:
+                  fixture.expectedJson === null
+                    ? undefined
+                    : (fixture.expectedJson as Prisma.InputJsonValue),
               })),
             },
           },
@@ -191,7 +185,9 @@ export async function seedSystemLlmOperations(
 
       result.created.push(operationId);
     } catch (error) {
-      logger.error(`Failed to seed operation ${operationId}: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Failed to seed operation ${operationId}: ${error instanceof Error ? error.message : String(error)}`
+      );
       result.failed.push(operationId);
       throw error;
     }

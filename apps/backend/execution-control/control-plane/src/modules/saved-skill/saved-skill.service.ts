@@ -15,6 +15,7 @@ import {
 } from './saved-skill-fixed-input';
 import { buildSavedSkillRuntimeParamsSchema } from './saved-skill-runtime-params';
 import { SavedSkillReviewClient } from './saved-skill-review.client';
+import { normalizeWorkflowAlias } from './workflow-alias-normalizer';
 
 interface SavedSkillRow {
   id: string;
@@ -30,6 +31,8 @@ interface SavedSkillRow {
   planHash: string;
   inputHash: string;
   aiReviewJson: SavedSkillReviewDto;
+  aliases: unknown;
+  habitIntentKeys: unknown;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -252,6 +255,45 @@ export class SavedSkillService {
     return { skills: rows.map((row) => this.mapRow(row)) };
   }
 
+  async replaceAliases(
+    userId: string,
+    skillId: string,
+    aliases: string[]
+  ): Promise<SavedSkillDto> {
+    const savedSkill = await this.getById(userId, skillId);
+    const normalized = aliases
+      .map((alias) => ({ alias: alias.trim(), normalized: normalizeWorkflowAlias(alias) }))
+      .filter((item) => item.alias && item.normalized);
+    const unique = [...new Map(normalized.map((item) => [item.normalized, item])).values()];
+    const nameKey = normalizeWorkflowAlias(savedSkill.name);
+    if (unique.some((item) => item.normalized === nameKey)) {
+      throw new BadRequestException('Alias duplicates the saved workflow name');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(
+        `DELETE FROM user_workflow_aliases
+          WHERE owner_user_id = $1::uuid AND skill_id = $2::uuid`,
+        userId,
+        skillId
+      );
+      for (const item of unique) {
+        await tx.$executeRawUnsafe(
+          `INSERT INTO user_workflow_aliases
+            (id, owner_user_id, skill_id, skill_version, alias, normalized_alias, status)
+           VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, 'active')`,
+          randomUUID(),
+          userId,
+          skillId,
+          Number(savedSkill.version),
+          item.alias,
+          item.normalized
+        );
+      }
+    });
+    return this.getById(userId, skillId);
+  }
+
   async getById(userId: string, skillId: string): Promise<SavedSkillDto> {
     const rows = await this.queryRows(
       `WHERE s.id = $1::uuid AND s.owner_user_id = $2::uuid LIMIT 1`,
@@ -289,6 +331,29 @@ export class SavedSkillService {
               v.plan_hash AS "planHash",
               v.input_hash AS "inputHash",
               v.ai_review_json AS "aiReviewJson",
+              COALESCE(
+                (SELECT jsonb_agg(a.alias ORDER BY a.created_at)
+                   FROM user_workflow_aliases a
+                  WHERE a.owner_user_id = s.owner_user_id
+                    AND a.skill_id = s.id
+                    AND a.skill_version = v.version
+                    AND a.status = 'active'),
+                '[]'::jsonb
+              ) AS aliases,
+              COALESCE(
+                (SELECT jsonb_agg(h.intent_key ORDER BY h.updated_at DESC)
+                   FROM user_habits h
+                   JOIN user_personalization_preferences p
+                     ON p.owner_user_id = h.owner_user_id
+                    AND p.recommendation_enabled = true
+                  WHERE h.owner_user_id = s.owner_user_id
+                    AND h.saved_skill_id = s.id
+                    AND h.saved_version = v.version
+                    AND h.kind = 'workflow_reuse'
+                    AND h.status = 'active'
+                    AND (h.expires_at IS NULL OR h.expires_at > NOW())),
+                '[]'::jsonb
+              ) AS "habitIntentKeys",
               s.created_at AS "createdAt",
               s.updated_at AS "updatedAt"
          FROM user_saved_skills s
@@ -346,6 +411,12 @@ export class SavedSkillService {
       version: String(row.version),
       sourceExecutionId: row.sourceExecutionId,
       stepCount: this.getPlanNodes(plan).length,
+      aliases: Array.isArray(row.aliases)
+        ? row.aliases.filter((alias): alias is string => typeof alias === 'string')
+        : [],
+      habitIntentKeys: Array.isArray(row.habitIntentKeys)
+        ? row.habitIntentKeys.filter((key): key is string => typeof key === 'string')
+        : [],
       fixedInput,
       paramsSchema: plan
         ? buildSavedSkillRuntimeParamsSchema(plan, fixedInput)

@@ -490,6 +490,28 @@ export class CapabilityCandidateSelectorService {
         ? { extractionHints: source.extractionHints }
         : {}),
       ...(enumValues ? { enum: enumValues } : {}),
+      ...(typeof source['x-ops-input-role'] === 'string'
+        ? { 'x-ops-input-role': source['x-ops-input-role'] }
+        : {}),
+      ...this.pickSchemaConstraints(source),
     };
+  }
+
+  private pickSchemaConstraints(source: Record<string, unknown>): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+    for (const key of [
+      'minLength',
+      'maxLength',
+      'pattern',
+      'minItems',
+      'maxItems',
+      'minimum',
+      'maximum',
+    ]) {
+      if (Object.prototype.hasOwnProperty.call(source, key)) {
+        result[key] = source[key];
+      }
+    }
+    return result;
   }
 }

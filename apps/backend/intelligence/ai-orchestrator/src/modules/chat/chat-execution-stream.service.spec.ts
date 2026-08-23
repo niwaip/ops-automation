@@ -285,6 +285,68 @@ describe('ChatExecutionStreamService', () => {
     );
   });
 
+  it('honors preferAiSummary even when the workflow also provides raw detail text', async () => {
+    const controlPlaneClient = {
+      getExecution: jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'execution-search',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+        })
+        .mockResolvedValueOnce({
+          id: 'execution-search',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+          normalizedInput: { objective: '查看 dsh 的安装方法' },
+          resultJson: {
+            execution: { status: 'success' },
+            result: {
+              resultType: 'search_results',
+              businessData: { searchResults: [{ title: 'DSH', content: '安装步骤' }] },
+            },
+            presentation: {
+              preferAiSummary: true,
+              chatSummary: '找到 1 条相关结果',
+              notificationSummary: '找到 1 条相关结果',
+              detailText: '1. DSH 安装步骤',
+            },
+          },
+        }),
+      streamExecutionEvents: jest.fn(),
+      updateExecutionResultSummary: jest.fn(),
+    };
+    const waitingInputService = {
+      buildControlPlaneRequestOptions: jest.fn(() => ({})),
+      loadWaitingInputDetails: jest.fn(),
+      extractExecutionSemantic: jest.fn(),
+      formatWaitingInputMessage: jest.fn(),
+    };
+    const chatCompletion = jest.fn().mockResolvedValue({
+      content: '# DSH 安装方法\n\n执行安装命令。',
+    });
+    const modelService = {
+      getPreferredDefaultModel: jest.fn(() => ({ id: 'model-1', name: 'model-1' })),
+      getClient: jest.fn(() => ({ chatCompletion })),
+      stripThinkingTags: jest.fn((content: string) => content),
+    };
+    const service = new ChatExecutionStreamService(
+      controlPlaneClient as any,
+      waitingInputService as any,
+      new ChatResultNormalizerService(),
+      modelService as any
+    );
+
+    const event = await service.buildLatestExecutionStateEvent('execution-search');
+
+    expect(chatCompletion).toHaveBeenCalledTimes(1);
+    expect(event?.content).toBe('# DSH 安装方法\n\n执行安装命令。');
+    expect((event?.data as any)?.normalizedResult?.envelope?.presentation).toEqual(
+      expect.objectContaining({
+        chatSummary: '# DSH 安装方法\n\n执行安装命令。',
+        detailText: '# DSH 安装方法\n\n执行安装命令。',
+      })
+    );
+  });
+
   it('removes model reasoning blocks from contract presentation summaries', async () => {
     const controlPlaneClient = {
       getExecution: jest
@@ -340,5 +402,58 @@ describe('ChatExecutionStreamService', () => {
         normalizedResult: expect.objectContaining({ summary: '业务结果为 42。' }),
       })
     );
+  });
+
+  it('does not ask a model to summarize a terminal action with protocol presentation text', async () => {
+    const controlPlaneClient = {
+      getExecution: jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'execution-bark',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+        })
+        .mockResolvedValueOnce({
+          id: 'execution-bark',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+          normalizedInput: { objective: '用 bark 推送' },
+          resultJson: {
+            execution: { status: 'success' },
+            result: {
+              resultType: 'generic',
+              title: 'Bark推送服务',
+              businessData: { statusCode: 200 },
+            },
+            presentation: {
+              preferAiSummary: true,
+              chatSummary: 'Bark 推送已成功发送 ✅',
+              detailText: '**推送状态**：成功（状态码 200）',
+            },
+          },
+        }),
+      streamExecutionEvents: jest.fn(),
+    };
+    const waitingInputService = {
+      buildControlPlaneRequestOptions: jest.fn(() => ({})),
+      loadWaitingInputDetails: jest.fn(),
+      extractExecutionSemantic: jest.fn(),
+      formatWaitingInputMessage: jest.fn(),
+    };
+    const chatCompletion = jest.fn();
+    const modelService = {
+      getPreferredDefaultModel: jest.fn(() => ({ id: 'model-1', name: 'model-1' })),
+      getClient: jest.fn(() => ({ chatCompletion })),
+      stripThinkingTags: jest.fn((content: string) => content),
+    };
+    const service = new ChatExecutionStreamService(
+      controlPlaneClient as any,
+      waitingInputService as any,
+      new ChatResultNormalizerService(),
+      modelService as any
+    );
+
+    const event = await service.buildLatestExecutionStateEvent('execution-bark');
+
+    expect(chatCompletion).not.toHaveBeenCalled();
+    expect(event?.content).toContain('状态码 200');
   });
 });

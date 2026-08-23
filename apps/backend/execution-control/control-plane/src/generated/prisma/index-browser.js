@@ -619,6 +619,18 @@ exports.Prisma.UserSavedSkillScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.UserWorkflowAliasScalarFieldEnum = {
+  id: 'id',
+  ownerUserId: 'ownerUserId',
+  skillId: 'skillId',
+  skillVersion: 'skillVersion',
+  alias: 'alias',
+  normalizedAlias: 'normalizedAlias',
+  status: 'status',
+  confirmedAt: 'confirmedAt',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.UserSavedSkillVersionScalarFieldEnum = {
   id: 'id',
   skillId: 'skillId',
@@ -634,6 +646,125 @@ exports.Prisma.UserSavedSkillVersionScalarFieldEnum = {
   sampleResultJson: 'sampleResultJson',
   aiReviewJson: 'aiReviewJson',
   reviewStatus: 'reviewStatus',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.AssistantFeedbackEventScalarFieldEnum = {
+  id: 'id',
+  eventId: 'eventId',
+  ownerUserId: 'ownerUserId',
+  sessionId: 'sessionId',
+  messageId: 'messageId',
+  executionId: 'executionId',
+  revision: 'revision',
+  eventType: 'eventType',
+  rating: 'rating',
+  reasonCode: 'reasonCode',
+  sanitizedComment: 'sanitizedComment',
+  occurredAt: 'occurredAt',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.AssistantFeedbackCurrentScalarFieldEnum = {
+  ownerUserId: 'ownerUserId',
+  sessionId: 'sessionId',
+  messageId: 'messageId',
+  eventId: 'eventId',
+  revision: 'revision',
+  eventType: 'eventType',
+  rating: 'rating',
+  reasonCode: 'reasonCode',
+  sanitizedComment: 'sanitizedComment',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.RoutingObservationScalarFieldEnum = {
+  id: 'id',
+  ownerUserId: 'ownerUserId',
+  requestFingerprint: 'requestFingerprint',
+  routeSource: 'routeSource',
+  matchMethod: 'matchMethod',
+  selectedSourceId: 'selectedSourceId',
+  selectedVersion: 'selectedVersion',
+  candidateCount: 'candidateCount',
+  matchScore: 'matchScore',
+  plannerInvoked: 'plannerInvoked',
+  plannerInputTokens: 'plannerInputTokens',
+  contractStatus: 'contractStatus',
+  businessStatus: 'businessStatus',
+  errorCode: 'errorCode',
+  routingPolicyVersion: 'routingPolicyVersion',
+  routingPolicyDigest: 'routingPolicyDigest',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.HabitLearningRunScalarFieldEnum = {
+  id: 'id',
+  idempotencyKey: 'idempotencyKey',
+  policyVersion: 'policyVersion',
+  status: 'status',
+  windowStart: 'windowStart',
+  windowEnd: 'windowEnd',
+  leaseOwner: 'leaseOwner',
+  leaseExpiresAt: 'leaseExpiresAt',
+  candidateCount: 'candidateCount',
+  processedUsers: 'processedUsers',
+  errorSummary: 'errorSummary',
+  startedAt: 'startedAt',
+  completedAt: 'completedAt'
+};
+
+exports.Prisma.UserHabitCandidateScalarFieldEnum = {
+  id: 'id',
+  idempotencyKey: 'idempotencyKey',
+  ownerUserId: 'ownerUserId',
+  kind: 'kind',
+  status: 'status',
+  riskLevel: 'riskLevel',
+  intentKey: 'intentKey',
+  savedSkillId: 'savedSkillId',
+  savedVersion: 'savedVersion',
+  evidenceJson: 'evidenceJson',
+  reviewJson: 'reviewJson',
+  shadowJson: 'shadowJson',
+  sourceRunId: 'sourceRunId',
+  policyVersion: 'policyVersion',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.UserHabitScalarFieldEnum = {
+  id: 'id',
+  ownerUserId: 'ownerUserId',
+  kind: 'kind',
+  status: 'status',
+  intentKey: 'intentKey',
+  savedSkillId: 'savedSkillId',
+  savedVersion: 'savedVersion',
+  valueJson: 'valueJson',
+  sourceCandidateId: 'sourceCandidateId',
+  version: 'version',
+  contractDigest: 'contractDigest',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.UserPersonalizationPreferenceScalarFieldEnum = {
+  ownerUserId: 'ownerUserId',
+  recommendationEnabled: 'recommendationEnabled',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.HabitGovernanceAuditScalarFieldEnum = {
+  id: 'id',
+  actorUserId: 'actorUserId',
+  targetType: 'targetType',
+  targetId: 'targetId',
+  action: 'action',
+  reason: 'reason',
+  beforeJson: 'beforeJson',
+  afterJson: 'afterJson',
   createdAt: 'createdAt'
 };
 
@@ -945,7 +1076,16 @@ exports.Prisma.ModelName = {
   TemporalWorkflow: 'TemporalWorkflow',
   SkillSchedule: 'SkillSchedule',
   UserSavedSkill: 'UserSavedSkill',
+  UserWorkflowAlias: 'UserWorkflowAlias',
   UserSavedSkillVersion: 'UserSavedSkillVersion',
+  AssistantFeedbackEvent: 'AssistantFeedbackEvent',
+  AssistantFeedbackCurrent: 'AssistantFeedbackCurrent',
+  RoutingObservation: 'RoutingObservation',
+  HabitLearningRun: 'HabitLearningRun',
+  UserHabitCandidate: 'UserHabitCandidate',
+  UserHabit: 'UserHabit',
+  UserPersonalizationPreference: 'UserPersonalizationPreference',
+  HabitGovernanceAudit: 'HabitGovernanceAudit',
   BuiltinSkill: 'BuiltinSkill',
   BuiltinSkillVersion: 'BuiltinSkillVersion',
   BuiltinSkillDeployment: 'BuiltinSkillDeployment',

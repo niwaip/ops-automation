@@ -7,6 +7,9 @@ import { getSkillMatchMinConfidence, isAcceptedSkillMatch } from './skill-match-
 @Injectable()
 export class SkillMatcherService {
   private readonly logger = new Logger(SkillMatcherService.name);
+  private readonly candidateLimit = 5;
+  private readonly candidateSummaryLimit = 240;
+  private readonly modelTimeoutMs = this.readModelTimeoutMs();
 
   async matchSkill(
     userInput: string,
@@ -29,7 +32,22 @@ export class SkillMatcherService {
       return null;
     }
 
-    const skillsXml = this.buildSkillsPromptXml(availableSkills);
+    const explicitMatch = this.matchExplicitSkillName(userInput, availableSkills);
+    if (explicitMatch) {
+      return this.buildSkillMatchResult(
+        explicitMatch.skill,
+        userInput,
+        explicitMatch.matchedKeywords,
+        0.99,
+        'deterministic_explicit_match'
+      );
+    }
+
+    // Progressive disclosure: the model sees only short cards for the most
+    // relevant candidates. Full schemas and runtime metadata stay outside the
+    // prompt and are hydrated only after a candidate has been selected.
+    const candidateSkills = this.selectTopCandidates(userInput, availableSkills);
+    const skillsXml = this.buildSkillsPromptXml(candidateSkills);
     const prompt = `你是一个技能匹配助手。根据用户输入，从可用技能中选择最匹配的一个。
 
 可用技能：
@@ -57,37 +75,31 @@ ${skillsXml}
           requestMessages: Array<{ role: 'user'; content: string }>;
           responseText: string;
         };
-      }>(`${aiOrchestratorUrl}/ai/model/call`, {
-        modelId: 'default',
-        prompt,
-        includeDebug: true,
-      });
+      }>(
+        `${aiOrchestratorUrl}/ai/model/call`,
+        {
+          modelId: 'default',
+          prompt,
+          includeDebug: true,
+        },
+        { timeout: this.modelTimeoutMs }
+      );
 
-      const aiResponse = this.parseAiMatchResponse(response.data.result, availableSkills);
+      const aiResponse = this.parseAiMatchResponse(response.data.result, candidateSkills);
 
       if (aiResponse && isAcceptedSkillMatch(aiResponse.confidence)) {
-        const matchedSkill = availableSkills.find(
+        const matchedSkill = candidateSkills.find(
           (skill) => skill.name === aiResponse.matchedSkill
         );
         if (matchedSkill) {
-          const { collectedParams, missingParams } = this.extractParamsFromUserInput(
-            matchedSkill,
-            userInput
-          );
           return {
-            skillId: matchedSkill.id,
-            skillName: matchedSkill.name,
-            matchedKeywords: [],
-            confidence: aiResponse.confidence,
-            matchReason: aiResponse.reason,
-            collectedParams,
-            missingParams,
-            paramsSchema: matchedSkill.paramsSchema,
-            executionFlowTemplateIds: matchedSkill.executionFlowTemplateIds,
-            apiEndpoints: matchedSkill.apiEndpoints,
-            goal: matchedSkill.apiEndpoints?.runtimeMetadata?.goal,
-            expectedResult: matchedSkill.apiEndpoints?.runtimeMetadata?.expectedResult,
-            outputParams: matchedSkill.apiEndpoints?.runtimeMetadata?.outputParams,
+            ...this.buildSkillMatchResult(
+              matchedSkill,
+              userInput,
+              [],
+              aiResponse.confidence,
+              aiResponse.reason
+            ),
             usage: response.data.usage,
             debug: {
               llmCalls: response.data.debug
@@ -114,8 +126,9 @@ ${skillsXml}
       return null;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`AI match failed: ${errorMsg}`);
-      return null;
+      this.logger.warn(`AI match failed or exceeded ${this.modelTimeoutMs}ms: ${errorMsg}`);
+      const fallback = this.matchSkillFallback(userInput, candidateSkills);
+      return fallback && isAcceptedSkillMatch(fallback.confidence) ? fallback : null;
     }
   }
 
@@ -134,12 +147,136 @@ ${skillsXml}
     const lines = skills
       .map(
         (skill) => `  <skill>
-    <name>${skill.name}</name>
-    <description>${getMatchSummary(skill)}</description>
+    <name>${this.escapeXml(skill.name)}</name>
+    <description>${this.escapeXml(getMatchSummary(skill).slice(0, this.candidateSummaryLimit))}</description>
   </skill>`
       )
       .join('\n');
     return `<available_skills>\n${lines}\n</available_skills>`;
+  }
+
+  private selectTopCandidates(userInput: string, skills: SkillConfigDto[]): SkillConfigDto[] {
+    const normalizedInput = this.normalizeRouteText(userInput);
+    const inputBigrams = this.buildBigrams(normalizedInput);
+    return skills
+      .map((skill, index) => {
+        const runtimeMetadata = skill.apiEndpoints?.runtimeMetadata;
+        const searchable = this.normalizeRouteText(
+          [
+            skill.name,
+            skill.description,
+            runtimeMetadata?.matchSummary,
+            runtimeMetadata?.goal,
+            runtimeMetadata?.expectedResult,
+            ...skill.triggerKeywords,
+          ]
+            .filter((value): value is string => typeof value === 'string')
+            .join(' ')
+        );
+        let score = 0;
+        const normalizedName = this.normalizeRouteText(skill.name);
+        if (normalizedName && normalizedInput.includes(normalizedName)) score += 100;
+        for (const keyword of skill.triggerKeywords) {
+          const normalizedKeyword = this.normalizeRouteText(keyword);
+          if (normalizedKeyword && normalizedInput.includes(normalizedKeyword)) {
+            score += 20 + Math.min(normalizedKeyword.length, 12);
+          }
+        }
+        for (const bigram of inputBigrams) {
+          if (searchable.includes(bigram)) score += 1;
+        }
+        return { skill, score, index };
+      })
+      .sort((left, right) => right.score - left.score || left.index - right.index)
+      .slice(0, this.candidateLimit)
+      .map(({ skill }) => skill);
+  }
+
+  private matchExplicitSkillName(
+    userInput: string,
+    skills: SkillConfigDto[]
+  ): { skill: SkillConfigDto; matchedKeywords: string[] } | null {
+    const normalizedInput = this.normalizeRouteText(userInput);
+    const ranked = skills
+      .map((skill) => {
+        const normalizedName = this.normalizeRouteText(skill.name);
+        const aliases = new Set([
+          normalizedName,
+          normalizedName.replace(/(?:工作流|服务|技能|workflow|skill)$/i, ''),
+        ]);
+        let score = 0;
+        for (const alias of aliases) {
+          if (!alias) continue;
+          if (normalizedInput === alias) score = Math.max(score, 220 + alias.length);
+          else if (alias.length >= 4 && normalizedInput.includes(alias)) {
+            score = Math.max(score, 160 + alias.length);
+          }
+        }
+        const matchedKeywords = skill.triggerKeywords.filter((keyword) => {
+          const normalizedKeyword = this.normalizeRouteText(keyword);
+          return normalizedKeyword.length >= 2 && normalizedInput.includes(normalizedKeyword);
+        });
+        for (const keyword of matchedKeywords) {
+          const normalizedKeyword = this.normalizeRouteText(keyword);
+          if (/^[a-z0-9]+$/.test(normalizedKeyword) && normalizedKeyword.length >= 3) {
+            score = Math.max(score, 150 + normalizedKeyword.length);
+          }
+        }
+        return { skill, matchedKeywords, score };
+      })
+      .filter((candidate) => candidate.score >= 150)
+      .sort((left, right) => right.score - left.score);
+    const best = ranked[0];
+    if (!best || (ranked[1] && best.score === ranked[1].score)) return null;
+    return { skill: best.skill, matchedKeywords: best.matchedKeywords };
+  }
+
+  private buildSkillMatchResult(
+    skill: SkillConfigDto,
+    userInput: string,
+    matchedKeywords: string[],
+    confidence: number,
+    matchReason: string
+  ): SkillMatchResult {
+    const { collectedParams, missingParams } = this.extractParamsFromUserInput(skill, userInput);
+    return {
+      skillId: skill.id,
+      skillName: skill.name,
+      matchedKeywords,
+      confidence,
+      matchReason,
+      collectedParams,
+      missingParams,
+      paramsSchema: skill.paramsSchema,
+      executionFlowTemplateIds: skill.executionFlowTemplateIds,
+      apiEndpoints: skill.apiEndpoints,
+      goal: skill.apiEndpoints?.runtimeMetadata?.goal,
+      expectedResult: skill.apiEndpoints?.runtimeMetadata?.expectedResult,
+      outputParams: skill.apiEndpoints?.runtimeMetadata?.outputParams,
+    };
+  }
+
+  private normalizeRouteText(value: string): string {
+    return value.toLowerCase().replace(/[\s\p{P}\p{S}_]+/gu, '');
+  }
+
+  private buildBigrams(value: string): string[] {
+    if (value.length < 2) return value ? [value] : [];
+    return Array.from({ length: value.length - 1 }, (_, index) => value.slice(index, index + 2));
+  }
+
+  private escapeXml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  }
+
+  private readModelTimeoutMs(): number {
+    const configured = Number(process.env.SKILL_MATCH_MODEL_TIMEOUT_MS || 15000);
+    return Number.isFinite(configured) ? Math.min(Math.max(configured, 1000), 60000) : 15000;
   }
 
   private parseAiMatchResponse(
@@ -149,20 +286,30 @@ ${skillsXml}
     try {
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
+        if (!this.isRecord(parsed)) return null;
+        const matchedSkill =
+          parsed.matchedSkill === null || parsed.matchedSkill === 'null'
+            ? null
+            : typeof parsed.matchedSkill === 'string' && parsed.matchedSkill.trim()
+              ? parsed.matchedSkill.trim()
+              : null;
 
-        if (parsed.matchedSkill && parsed.matchedSkill !== 'null') {
-          const skillExists = availableSkills.some((skill) => skill.name === parsed.matchedSkill);
+        if (matchedSkill) {
+          const skillExists = availableSkills.some((skill) => skill.name === matchedSkill);
           if (!skillExists) {
-            this.logger.warn(`AI matched skill "${parsed.matchedSkill}" not in available list`);
+            this.logger.warn(`AI matched skill "${matchedSkill}" not in available list`);
             return null;
           }
         }
 
         return {
-          matchedSkill: parsed.matchedSkill === 'null' ? null : parsed.matchedSkill,
-          confidence: parsed.confidence || 0,
-          reason: parsed.reason || '',
+          matchedSkill,
+          confidence:
+            typeof parsed.confidence === 'number' && Number.isFinite(parsed.confidence)
+              ? parsed.confidence
+              : 0,
+          reason: typeof parsed.reason === 'string' ? parsed.reason : '',
         };
       }
     } catch {
@@ -170,6 +317,10 @@ ${skillsXml}
     }
 
     return null;
+  }
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
   private matchSkillFallback(

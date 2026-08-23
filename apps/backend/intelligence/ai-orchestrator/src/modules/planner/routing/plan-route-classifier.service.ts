@@ -1,56 +1,61 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { hasRoutingSignal } from './routing-policy.matcher';
+import { RoutingPolicyService } from './routing-policy.service';
 
 export type PlanRouteType = 'single_skill' | 'deterministic_plan';
-
-const SEQUENTIAL_KEYWORDS = ['然后', '并且', '接着', '之后', '再', '最后', '以及', '并且对', '并'];
-const PROCESSING_KEYWORDS = ['总结', '提炼', '翻译', '提取', '改写', '归纳', '分析', '推送', '通知', '发送', 'bark'];
-const DOCUMENT_SOURCE_KEYWORDS = ['pdf', '附件'];
-const ARTIFACT_KEYWORDS = [
-  '输出 md',
-  '输出md',
-  '生成 md',
-  '生成md',
-  'md 文件',
-  'md文件',
-  'markdown 文件',
-  'markdown文件',
-  '输出文件',
-  '生成文件',
-  '保存为',
-  '导出',
-  '写到文件',
-  '输出为',
-];
 
 @Injectable()
 export class PlanRouteClassifierService {
   private readonly logger = new Logger(PlanRouteClassifierService.name);
+  private readonly routingPolicy: RoutingPolicyService;
 
-  public classifyRoute(userRequest: string): PlanRouteType {
+  constructor(@Optional() routingPolicy?: RoutingPolicyService) {
+    this.routingPolicy = routingPolicy || new RoutingPolicyService();
+  }
+
+  public classifyRoute(
+    userRequest: string,
+    context?: { hasPreviousResult?: boolean },
+  ): PlanRouteType {
     if (!userRequest || typeof userRequest !== 'string') {
       return 'single_skill';
     }
 
     const text = userRequest.trim();
+    const policy = this.routingPolicy.getSnapshot();
 
     // Check for explicit multi-step compound signals
-    const hasSequentialKeyword = SEQUENTIAL_KEYWORDS.some((kw) => text.includes(kw));
-    const hasProcessingKeyword = PROCESSING_KEYWORDS.some((kw) => text.includes(kw));
-    const hasArtifactKeyword = ARTIFACT_KEYWORDS.some((kw) => text.includes(kw));
-    const hasDocumentSourceKeyword = DOCUMENT_SOURCE_KEYWORDS.some((kw) =>
-      text.toLowerCase().includes(kw)
-    );
+    const hasSequentialKeyword = hasRoutingSignal(text, 'sequential', policy);
+    const hasProcessingKeyword = hasRoutingSignal(text, 'processing', policy);
+    const hasArtifactKeyword = hasRoutingSignal(text, 'artifact', policy);
+    const hasDocumentSourceKeyword = hasRoutingSignal(text, 'documentSource', policy);
 
-    if (
-      hasArtifactKeyword ||
-      (hasSequentialKeyword && hasProcessingKeyword) ||
-      (hasProcessingKeyword && hasDocumentSourceKeyword)
-    ) {
-      this.logger.log(`Classified request as 'deterministic_plan' (sequential=${hasSequentialKeyword}, processing=${hasProcessingKeyword}, artifact=${hasArtifactKeyword}, documentSource=${hasDocumentSourceKeyword})`);
+    if (hasArtifactKeyword || hasProcessingKeyword) {
+      this.logger.log(`Classified request as 'deterministic_plan' (policy=${policy.version}, sequential=${hasSequentialKeyword}, processing=${hasProcessingKeyword}, artifact=${hasArtifactKeyword}, documentSource=${hasDocumentSourceKeyword}, previousResult=${context?.hasPreviousResult === true})`);
       return 'deterministic_plan';
     }
 
     this.logger.log(`Classified request as 'single_skill' (fast path)`);
     return 'single_skill';
+  }
+
+  public shouldAttemptSingleSkillContinuation(
+    userRequest: string,
+    context?: { hasPreviousResult?: boolean },
+  ): boolean {
+    if (context?.hasPreviousResult !== true || !userRequest?.trim()) return false;
+    const text = userRequest.trim();
+    const policy = this.routingPolicy.getSnapshot();
+    const hasProcessingIntent = hasRoutingSignal(text, 'processing', policy);
+    const hasSequentialIntent = hasRoutingSignal(text, 'sequential', policy);
+    const hasArtifactIntent = hasRoutingSignal(text, 'artifact', policy);
+    const hasDocumentSource = hasRoutingSignal(text, 'documentSource', policy);
+
+    return (
+      hasProcessingIntent &&
+      !hasSequentialIntent &&
+      !hasArtifactIntent &&
+      !hasDocumentSource
+    );
   }
 }

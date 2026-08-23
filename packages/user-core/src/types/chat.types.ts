@@ -113,6 +113,7 @@ export interface ChatMessage {
   fallbackText?: string;
   timestamp: string;
   metadata?: {
+    clientMessageId?: string;
     mode?: 'chat' | 'task';
     showThinking?: boolean;
     usage?: LLMUsage;
@@ -169,6 +170,7 @@ export interface UploadedFileDescriptor {
 
 export interface ChatRequest {
   message: string;
+  clientMessageId?: string;
   sessionId?: string;
   userId?: string;
   executionId?: string;

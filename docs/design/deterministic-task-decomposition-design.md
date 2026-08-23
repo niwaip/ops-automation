@@ -305,10 +305,20 @@ Skill 只允许来自以下企业内受控类别：
 
 - `summarize_text`
 - `summarize_list`
+- `transform_text`
 - `extract_structured_fields`
-- `rewrite_to_markdown`
-- `classify_intent_label`
-- `merge_multi_source_notes`
+
+其中 `transform_text` 是内部稳定标识，对用户展示为“文本处理”。它不限定翻译场景，而是将本轮用户提示词作为 `instruction`，统一承担对既有文本的分析、翻译、改写、润色、提取、合并和格式化。`rewrite_to_markdown`、`classify_intent_label`、`merge_multi_source_notes` 只保留历史版本兼容，不再进入 Planner 候选目录；图片能力暂不开放。
+
+LLM Operation 的输入 Schema 必须声明字段来源角色 `x-ops-input-role`：
+
+- `content`：允许绑定上游节点或上一执行的可信结果。
+- `instruction`：只绑定本轮用户请求，不能被上一结果覆盖。
+- `configuration`：只允许当前输入、参数识别或合同默认值，不能接受上游/上一结果的宽松字符串回退。
+
+该规则用于避免“正文同时被复制到 instruction、target_language、target_fields”等同类型污染。旧版本未声明角色时，只对 `content`、`text`、`items` 等内容字段名提供保守兼容。
+
+文本类 Operation 的语义处理与协议适配必须分层：用户当前命令原样作为 `instruction`，上游节点或上一执行的主输出作为 `content`；LLM 只负责文本语义任务并直接返回业务正文。运行时胶水根据 `primaryOutput`，兼容纯文本、JSON 字符串、`answer/content/text/result/response` 及常见嵌套消息结构，将唯一正文归一化为 `{ content }`，最后执行完整 Output Schema 校验。模型推理、usage、role 等元数据不得混入业务正文；存在多个同等可信且内容不同的候选时禁止猜测并进入失败/修复流程。确定性的字段名适配不得再次调用 LLM，以减少 Token 并避免二次语义漂移。
 
 每个能力都需要固定元数据：
 

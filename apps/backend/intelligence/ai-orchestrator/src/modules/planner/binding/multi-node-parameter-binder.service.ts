@@ -8,6 +8,10 @@ import type { PromptDebugLLMCall } from '../../../interfaces';
 import { RecognizerService } from '../../recognizer/recognizer.service';
 import { NodeOutputBindingResolverService } from './node-output-binding-resolver.service';
 import type { TopologyNodeV1 } from '../topology/deterministic-topology.types';
+import {
+  projectPreviousResultInput,
+  resolveLlmOperationInputRole,
+} from './previous-result-input-projector';
 
 interface RawInputSchemaSnapshot {
   required?: string[];
@@ -72,7 +76,7 @@ export class MultiNodeParameterBinderService {
         originalInputSchema?.[node.capabilityKey] ||
         ((card as any)?._rawInputSchema as RawInputSchemaSnapshot | undefined);
       const requiredFields = new Set(
-        Array.isArray(rawSchema?.required) ? rawSchema!.required : [],
+        Array.isArray(rawSchema?.required) ? rawSchema.required : [],
       );
 
       nodeBindings[node.ref] = bindings;
@@ -81,9 +85,12 @@ export class MultiNodeParameterBinderService {
       const unresolvedFields: string[] = [];
       for (const paramName of Object.keys(compressedInputs)) {
         if (this.isSensitiveFieldName(paramName)) continue;
+        const rawProperty = rawSchema?.properties?.[paramName] || { type: 'string' };
+        const llmInputRole = card?.kind === 'llm_operation'
+          ? resolveLlmOperationInputRole(paramName, rawProperty)
+          : undefined;
         if (systemInputs && Object.prototype.hasOwnProperty.call(systemInputs, paramName)) {
           const systemValue = systemInputs[paramName];
-          const rawProperty = rawSchema?.properties?.[paramName] || { type: 'string' };
           const normalized = this.normalizeBySchema(systemValue, rawProperty);
           if (normalized !== undefined) {
             nodeInputs[paramName] = normalized;
@@ -91,17 +98,47 @@ export class MultiNodeParameterBinderService {
             continue;
           }
         }
-        const upstreamBinding = this.resolveUpstreamBinding(
-          paramName,
-          node,
-          nodes,
-          capabilityMap,
-        );
+
+        if (llmInputRole === 'instruction' && userRequest.trim()) {
+          const instruction = userRequest.trim();
+          nodeInputs[paramName] = instruction;
+          bindings[paramName] = { source: 'literal', value: instruction } as ValueBindingV1;
+          continue;
+        }
+
+        const upstreamBinding = llmInputRole === 'instruction' || llmInputRole === 'configuration'
+          ? undefined
+          : this.resolveUpstreamBinding(
+              paramName,
+              node,
+              nodes,
+              capabilityMap,
+            );
         if (upstreamBinding) {
           bindings[paramName] = upstreamBinding;
-        } else {
-          unresolvedFields.push(paramName);
+          continue;
         }
+
+        // A root, pure LLM Operation may consume the immutable snapshot of the
+        // latest completed execution. Projection is based on the declared input
+        // schema, so this works for summaries, rewrites, extraction and future
+        // array/object/text operations without prompt-specific parameter rules.
+        if (card?.kind === 'llm_operation' && node.dependsOn.length === 0) {
+          const projected = projectPreviousResultInput(rawProperty, systemInputs, paramName);
+          if (projected) {
+            const normalized = this.normalizeBySchema(projected.value, rawProperty);
+            if (normalized !== undefined) {
+              nodeInputs[paramName] = normalized;
+              bindings[paramName] = { source: 'literal', value: normalized } as ValueBindingV1;
+              notes.push(
+                `参数 '${node.ref}.${paramName}' 已从上一次完成执行${projected.sourceExecutionId ? ` ${projected.sourceExecutionId}` : ''}的不可变结果快照中按 Schema 投影。`,
+              );
+              continue;
+            }
+          }
+        }
+
+        unresolvedFields.push(paramName);
       }
 
       const recognizerProperties = this.buildRecognizerProperties(
@@ -114,7 +151,7 @@ export class MultiNodeParameterBinderService {
       if (Object.keys(recognizerProperties).length > 0) {
         if (this.recognizerService) {
           const previousResultText =
-            typeof systemInputs?.previousResultText === 'string'
+            card?.kind !== 'llm_operation' && typeof systemInputs?.previousResultText === 'string'
               ? systemInputs.previousResultText.slice(0, PREVIOUS_RESULT_RECOGNIZER_CONTEXT_LIMIT)
               : undefined;
           const recognized = await this.recognizerService.recognizeParams({
@@ -198,6 +235,10 @@ export class MultiNodeParameterBinderService {
 
         const inputPath = `planInputs.${node.ref}.${paramName}`;
         const nodeId = `${node.ref}_${card?.displayName || 'step'}`;
+        bindings[paramName] = {
+          source: 'user_input',
+          path: inputPath,
+        } as ValueBindingV1;
         requiredUserInputs.push({
           targetField: paramName,
           nodeId,
@@ -210,7 +251,7 @@ export class MultiNodeParameterBinderService {
               ? property.description
               : `请输入 ${card?.displayName || node.ref} 的 ${paramName} 参数`,
           missing: true,
-        } as RequiredUserInputV1);
+        });
       }
     }
 
@@ -310,7 +351,37 @@ export class MultiNodeParameterBinderService {
     if (enumValues && enumValues.length > 0 && !enumValues.includes(normalized as never)) {
       return undefined;
     }
+    if (typeof normalized === 'string') {
+      const minLength = this.asFiniteNumber(property.minLength);
+      const maxLength = this.asFiniteNumber(property.maxLength);
+      if (minLength !== undefined && normalized.length < minLength) return undefined;
+      if (maxLength !== undefined && normalized.length > maxLength) return undefined;
+      if (typeof property.pattern === 'string') {
+        try {
+          if (!new RegExp(property.pattern).test(normalized)) return undefined;
+        } catch {
+          this.logger.warn(`Ignoring invalid schema pattern: ${property.pattern}`);
+          return undefined;
+        }
+      }
+    }
+    if (Array.isArray(normalized)) {
+      const minItems = this.asFiniteNumber(property.minItems);
+      const maxItems = this.asFiniteNumber(property.maxItems);
+      if (minItems !== undefined && normalized.length < minItems) return undefined;
+      if (maxItems !== undefined && normalized.length > maxItems) return undefined;
+    }
+    if (typeof normalized === 'number') {
+      const minimum = this.asFiniteNumber(property.minimum);
+      const maximum = this.asFiniteNumber(property.maximum);
+      if (minimum !== undefined && normalized < minimum) return undefined;
+      if (maximum !== undefined && normalized > maximum) return undefined;
+    }
     return normalized;
+  }
+
+  private asFiniteNumber(value: unknown): number | undefined {
+    return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
   }
 
   private parseJsonValue(

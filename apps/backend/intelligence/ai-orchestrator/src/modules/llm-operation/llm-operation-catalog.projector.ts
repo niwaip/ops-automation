@@ -4,6 +4,7 @@ import { computeOperationContractDigest } from './operation-manifest.util';
 import type { LlmOperationIdV1 } from '@ops/backend-deterministic-plan';
 import { AttestationService } from './eval/attestation.service';
 import type { OperationAttestation } from './eval/types';
+import { SYSTEM_OPERATION_DEFINITIONS } from './system-operation-definitions';
 
 type JsonSchema = Record<string, unknown>;
 
@@ -34,42 +35,6 @@ export interface LlmOperationCatalogProjection {
     approvedAt?: string;
   };
 }
-
-const OPERATION_METADATA: Record<
-  LlmOperationIdV1,
-  { displayName: string; summary: string; goals: string[] }
-> = {
-  summarize_list: {
-    displayName: '列表摘要',
-    summary: '对列表文本、搜索结果或文章项集合做精炼要点总结',
-    goals: ['summarize', 'news_summary', 'list_summary'],
-  },
-  rewrite_to_markdown: {
-    displayName: 'Markdown 格式化',
-    summary: '将结构化或非结构化内容重写格式化为干净规范的 Markdown 文本',
-    goals: ['format_markdown', 'rewrite'],
-  },
-  summarize_text: {
-    displayName: '文本摘要',
-    summary: '对长文本段落做关键摘要提取',
-    goals: ['summarize_text'],
-  },
-  extract_structured_fields: {
-    displayName: '结构化字段提取',
-    summary: '从非结构化文本中提取结构化 JSON 字段',
-    goals: ['extract_fields'],
-  },
-  classify_intent_label: {
-    displayName: '意图标签分类',
-    summary: '对短文本做意图分类标签,返回标签与置信度',
-    goals: ['classify_intent'],
-  },
-  merge_multi_source_notes: {
-    displayName: '多源笔记合并',
-    summary: '将多个来源的笔记内容合并为一份 Markdown 文档',
-    goals: ['merge_notes'],
-  },
-};
 
 @Injectable()
 export class LlmOperationCatalogProjector {
@@ -128,7 +93,12 @@ export class LlmOperationCatalogProjector {
     proof: OperationAttestation,
   ): LlmOperationCatalogProjection {
     const operationKey = op.operation.operationKey as string;
-    const metadata = OPERATION_METADATA[operationKey as LlmOperationIdV1] || {
+    const definition = SYSTEM_OPERATION_DEFINITIONS[operationKey as LlmOperationIdV1];
+    const metadata = definition ? {
+      displayName: definition.displayName,
+      summary: definition.description,
+      goals: definition.goals,
+    } : {
       displayName: op.operation.displayName || operationKey,
       summary: op.operation.description || operationKey,
       goals: [],
@@ -174,7 +144,12 @@ export class LlmOperationCatalogProjector {
     version: any,
     proof: OperationAttestation,
   ): LlmOperationCatalogProjection {
-    const metadata = OPERATION_METADATA[operationId as LlmOperationIdV1] || {
+    const definition = SYSTEM_OPERATION_DEFINITIONS[operationId as LlmOperationIdV1];
+    const metadata = definition ? {
+      displayName: definition.displayName,
+      summary: definition.description,
+      goals: definition.goals,
+    } : {
       displayName: operationId,
       summary: operationId,
       goals: [],

@@ -1,4 +1,10 @@
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export class SaveExecutionAsSkillDto {
   @IsString()
@@ -9,6 +15,13 @@ export class SaveExecutionAsSkillDto {
   @IsString()
   @MaxLength(1000)
   description?: string;
+}
+
+export class UpdateSavedSkillAliasesDto {
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  aliases!: string[];
 }
 
 export interface SavedSkillReviewIssueDto {
@@ -37,6 +50,9 @@ export interface SavedSkillDto {
   version: string;
   sourceExecutionId: string;
   stepCount: number;
+  aliases: string[];
+  /** Normalized active-habit keys, only returned when personalization is enabled. */
+  habitIntentKeys: string[];
   fixedInput: Record<string, unknown>;
   paramsSchema: Record<string, unknown>;
   planHash: string;

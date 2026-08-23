@@ -1,4 +1,11 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
+import type { DeterministicPlanDraftV1 } from '@ops/backend-deterministic-plan';
 import { Prisma } from '../../prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EXECUTION_EVENT_TYPE } from '../contracts/execution-event-type';
@@ -20,6 +27,8 @@ import {
 } from './execution-input-resolution.service';
 import { RequestUserContext } from '../lifecycle/execution-lifecycle.service';
 import { ensureExecutionPermission } from '../shared/execution-permission.util';
+import { DeterministicPlanSchedulerService } from '../plan-runtime/deterministic-plan-scheduler.service';
+import { materializeDeterministicPlanInput } from '../plan-runtime/deterministic-plan-required-input';
 
 interface SubmitInputContext {
   execution: Record<string, any>;
@@ -51,7 +60,8 @@ export class ExecutionSubmitInputService {
     private readonly prisma: PrismaService,
     private readonly executionStepService: ExecutionStepService,
     private readonly executionInputResolutionService: ExecutionInputResolutionService,
-    private readonly executionPlanNormalizationService: ExecutionPlanNormalizationService
+    private readonly executionPlanNormalizationService: ExecutionPlanNormalizationService,
+    @Optional() private readonly planSchedulerService?: DeterministicPlanSchedulerService,
   ) {}
 
   async submitInputAndResume(
@@ -81,7 +91,7 @@ export class ExecutionSubmitInputService {
       }
     );
 
-    await this.persistSubmitInputState(id, dto.stepId, resolution);
+    await this.persistSubmitInputState(context, dto.stepId, resolution);
 
     return this.finishSubmitInputAndResume(
       id,
@@ -101,6 +111,7 @@ export class ExecutionSubmitInputService {
   ): Promise<SubmitInputContext> {
     const execution = await this.prisma.execution.findUnique({
       where: { id },
+      include: { plan: true },
     });
 
     if (!execution) {
@@ -143,10 +154,23 @@ export class ExecutionSubmitInputService {
   }
 
   private async persistSubmitInputState(
-    executionId: string,
+    context: SubmitInputContext,
     stepId: string,
     resolution: SubmitInputResolutionResult
   ): Promise<void> {
+    const executionId = context.execution.id as string;
+    const deterministicPlan = context.execution.plan?.planJson as
+      | DeterministicPlanDraftV1
+      | undefined;
+    const updatedExecutionInput =
+      context.execution.executionMode === 'deterministic_plan'
+        ? materializeDeterministicPlanInput(
+            (context.execution.inputJson as Record<string, unknown>) || {},
+            deterministicPlan,
+            resolution.normalizedSubmittedInput,
+          )
+        : context.execution.inputJson;
+
     await this.prisma.$transaction([
       this.prisma.executionStep.update({
         where: { id: stepId },
@@ -165,6 +189,9 @@ export class ExecutionSubmitInputService {
         where: { id: executionId },
         data: {
           normalizedInputJson: resolution.updatedNormalized as Prisma.JsonObject,
+          ...(context.execution.executionMode === 'deterministic_plan'
+            ? { inputJson: updatedExecutionInput as Prisma.JsonObject }
+            : {}),
           status: resolution.canResumeExecution
             ? EXECUTION_STATUS.QUEUED
             : EXECUTION_STATUS.WAITING_INPUT,
@@ -201,6 +228,34 @@ export class ExecutionSubmitInputService {
     if (!resolution.canResumeExecution) {
       this.logger.log(
         `Partial input submitted for execution ${executionId}; remaining: ${resolution.remainingMissingInputs.length}`
+      );
+      return hooks.getExecutionDto(executionId, requester);
+    }
+
+    const execution = await this.prisma.execution.findUnique({
+      where: { id: executionId },
+      select: { executionMode: true },
+    });
+    if (execution?.executionMode === 'deterministic_plan' && this.planSchedulerService) {
+      await hooks.emitEvent(
+        executionId,
+        EXECUTION_EVENT_TYPE.EXECUTION_RESUMED,
+        {
+          userId,
+          reason: 'input_submitted',
+        },
+        { stepId },
+      );
+      setTimeout(() => {
+        this.planSchedulerService?.advanceExecution(executionId).catch((err) => {
+          const message = err instanceof Error ? err.message : String(err);
+          this.logger.error(
+            `Failed to advance deterministic execution ${executionId}: ${message}`,
+          );
+        });
+      }, 0);
+      this.logger.log(
+        `Input submitted for deterministic execution ${executionId}; frozen plan resumed`,
       );
       return hooks.getExecutionDto(executionId, requester);
     }
