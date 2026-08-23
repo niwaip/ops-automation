@@ -13,8 +13,7 @@ x-common-env: &common-env
 
 x-common-node-service: &common-node-service
   image: ${DOCKER_REGISTRY:-}node:20-bullseye
-  working_dir: /app
-  command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+  working_dir: /workspace
   networks:
     - ops-network
 
@@ -88,7 +87,6 @@ services:
   platform:
     <<: *common-node-service
     container_name: ops-platform
-    working_dir: /workspace
     environment:
       <<: *common-env
       DOCKER_ENV: true
@@ -100,8 +98,7 @@ services:
       ACTIVITY_VALIDATION_AGENT_URL: http://sandbox-worker:8090
       CARBONE_SERVICE_URL: http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}
     command: >
-      sh -c "bash /workspace/docker/scripts/bootstrap-workspace-deps.sh
-      && pnpm --filter @ops/platform run build
+      sh -c "corepack enable && pnpm --filter @ops/platform run build
       && rm -rf /workspace/apps/backend/core/platform/dist/generated /workspace/apps/backend/core/platform/dist/src/generated
       && mkdir -p /workspace/apps/backend/core/platform/dist/generated /workspace/apps/backend/core/platform/dist/src/generated
       && cp -R /workspace/apps/backend/core/platform/src/generated/prisma /workspace/apps/backend/core/platform/dist/generated/prisma
@@ -110,9 +107,6 @@ services:
     ports:
       - "${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}"
     volumes:
-      # node_modules lives on the bind mount (not a named volume) so pnpm can
-      # freely rmdir/mkdir it during full rebuilds. A mountpoint cannot be
-      # rmdir'd, which previously caused `EBUSY: rmdir '/workspace/node_modules'`.
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
       workspace-deps-init:
@@ -125,7 +119,12 @@ services:
   session-broker:
     <<: *common-node-service
     container_name: ops-session-broker
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && rm -f tsconfig.tsbuildinfo && npm run build && rm -rf /app/dist/generated && mkdir -p /app/dist/generated && cp -R /app/src/generated/prisma /app/dist/generated/prisma && node dist/main.js"
+    command: >
+      sh -c "corepack enable && pnpm --filter @ops/session-broker run build
+      && rm -rf /workspace/apps/backend/execution-control/session-broker/dist/generated
+      && mkdir -p /workspace/apps/backend/execution-control/session-broker/dist/generated
+      && cp -R /workspace/apps/backend/execution-control/session-broker/src/generated/prisma /workspace/apps/backend/execution-control/session-broker/dist/generated/prisma
+      && pnpm --filter @ops/session-broker run start"
     environment:
       <<: *common-env
       PORT: ${SESSION_BROKER_PORT:-3002}
@@ -134,10 +133,10 @@ services:
     ports:
       - "${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}"
     volumes:
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/execution-control/session-broker:/app
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/backend-contracts:/packages/backend-contracts
-      - session_broker_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
+      workspace-deps-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -146,7 +145,14 @@ services:
   control-plane:
     <<: *common-node-service
     container_name: ops-control-plane
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npx prisma generate && npm run build && mkdir -p /app/dist/generated /app/dist/app/src/generated && cp -R /app/src/generated/prisma /app/dist/generated/prisma && cp -R /app/src/generated/prisma /app/dist/app/src/generated/prisma && npm run start"
+    command: >
+      sh -c "corepack enable && pnpm --filter @ops/control-plane exec prisma generate
+      && pnpm --filter @ops/control-plane run build
+      && mkdir -p /workspace/apps/backend/execution-control/control-plane/dist/generated /workspace/apps/backend/execution-control/control-plane/dist/app/src/generated /workspace/apps/backend/execution-control/control-plane/dist/apps/backend/execution-control/control-plane/src/generated
+      && cp -R /workspace/apps/backend/execution-control/control-plane/src/generated/prisma /workspace/apps/backend/execution-control/control-plane/dist/generated/prisma
+      && cp -R /workspace/apps/backend/execution-control/control-plane/src/generated/prisma /workspace/apps/backend/execution-control/control-plane/dist/app/src/generated/prisma
+      && cp -R /workspace/apps/backend/execution-control/control-plane/src/generated/prisma /workspace/apps/backend/execution-control/control-plane/dist/apps/backend/execution-control/control-plane/src/generated/prisma
+      && pnpm --filter @ops/control-plane run start"
     environment:
       <<: *common-env
       DOCKER_ENV: true
@@ -169,10 +175,7 @@ services:
     ports:
       - "${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}"
     volumes:
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/execution-control/control-plane:/app
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/backend-contracts:/packages/backend-contracts
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/tsconfig.base.json:/tsconfig.base.json:ro
-      - control_plane_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
       workspace-deps-init:
         condition: service_completed_successfully
@@ -185,10 +188,7 @@ services:
     <<: *common-node-service
     container_name: ops-browser-worker
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com
-      && rm -rf /app/node_modules/* /app/node_modules/.[!.]* /app/node_modules/..?* 2>/dev/null || true
-      && npm install --legacy-peer-deps --include=dev --ignore-scripts
-      && if [ \"${BROWSER_WORKER_RUN_MODE:-prod}\" = \"dev\" ]; then npm run dev; else npm run build && node --enable-source-maps dist/main.js; fi"
+      sh -c "corepack enable && if [ \"${BROWSER_WORKER_RUN_MODE:-prod}\" = \"dev\" ]; then pnpm --filter @ops/browser-worker run dev; else pnpm --filter @ops/browser-worker run build && node --enable-source-maps /workspace/apps/backend/runtimes/browser-worker/dist/main.js; fi"
     environment:
       NODE_ENV: ${BROWSER_WORKER_NODE_ENV:-production}
       DOCKER_ENV: true
@@ -201,7 +201,7 @@ services:
       SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
       BROWSER_WORKER_ORPHAN_SWEEP_ENABLED: ${BROWSER_WORKER_ORPHAN_SWEEP_ENABLED:-true}
       BROWSER_WORKER_ORPHAN_SWEEP_INTERVAL_MS: ${BROWSER_WORKER_ORPHAN_SWEEP_INTERVAL_MS:-30000}
-      BROWSER_WORKER_ORPHAN_SWEEP_REQUEST_TIMEOUT_MS: ${BROWSER_WORKER_ORPHAN_SWEEP_REQUEST_TIMEOUT_MS:-3000}
+      BROWSER_WORKER_ORPHAN_SWEEP_REQUEST_TIMEOUT_MS: ${BROWSER_WORKER_ORPHAN_SWEEP_REQUEST_TIMEOUT_MS:-3003}
       BROWSER_WORKER_ORPHAN_SWEEP_MIN_IDLE_MS: ${BROWSER_WORKER_ORPHAN_SWEEP_MIN_IDLE_MS:-1800000}
       PLAYWRIGHT_CLI_ACTION_TIMEOUT_MS: ${PLAYWRIGHT_CLI_ACTION_TIMEOUT_MS:-60000}
       PLAYWRIGHT_CLI_NAVIGATION_TIMEOUT_MS: ${PLAYWRIGHT_CLI_NAVIGATION_TIMEOUT_MS:-60000}
@@ -215,25 +215,24 @@ services:
     ports:
       - "${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}"
     volumes:
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/runtimes/browser-worker:/app
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/backend-contracts:/packages/backend-contracts
-      - browser_worker_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/browser-profiles:/backend-var/browser-profiles
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/tmp/browser-worker:/backend-var/tmp/browser-worker
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
-      - browser-chrome
+      workspace-deps-init:
+        condition: service_completed_successfully
+      browser-chrome:
+        condition: service_started
 
   browser-template:
     <<: *common-node-service
     container_name: ops-browser-template
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com
-      && npm install --legacy-peer-deps --include=dev
-      && npx prisma generate
-      && npx prisma db push
-      && npm run build
-      && npm run start"
+      sh -c "corepack enable && pnpm --filter @ops/browser-template exec prisma generate
+      && pnpm --filter @ops/browser-template exec prisma db push
+      && pnpm --filter @ops/browser-template run build
+      && pnpm --filter @ops/browser-template run start"
     environment:
       <<: *common-env
       NODE_ENV: development
@@ -247,9 +246,10 @@ services:
     ports:
       - "${BROWSER_TEMPLATE_PORT:-3005}:${BROWSER_TEMPLATE_PORT:-3005}"
     volumes:
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/capabilities/browser-domain/templates:/app
-      - browser_template_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
+      workspace-deps-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
 
@@ -257,33 +257,14 @@ services:
     <<: *common-node-service
     container_name: ops-browser-semantics
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com
-      && npm config set fetch-retries 5
-      && npm config set fetch-retry-mintimeout 20000
-      && npm config set fetch-retry-maxtimeout 120000
-      && i=0
-      && until [ $$i -ge 5 ]; do
-        npm install --legacy-peer-deps --include=dev && break;
-        i=$$((i+1));
-        echo 'npm install failed, retrying in 10s...';
-        sleep 10;
-      done
-      && [ $$i -lt 5 ]
-      && j=0
-      && until [ $$j -ge 5 ]; do
-        npx prisma generate && break;
-        j=$$((j+1));
-        echo 'prisma generate failed, retrying in 10s...';
-        sleep 10;
-      done
-      && [ $$j -lt 5 ]
-      && npx prisma db push
-      && if [ \"${BROWSER_SEMANTICS_RUN_DEFAULT_SEED:-false}\" = \"true\" ]; then npm run seed:browser-recorder; fi
-      && npm run build
-      && rm -rf /app/dist/generated
-      && mkdir -p /app/dist/generated
-      && cp -R /app/generated/prisma /app/dist/generated/prisma
-      && npm run start"
+      sh -c "corepack enable && pnpm --filter @ops/browser-semantics exec prisma generate
+      && pnpm --filter @ops/browser-semantics exec prisma db push
+      && if [ \"${BROWSER_SEMANTICS_RUN_DEFAULT_SEED:-false}\" = \"true\" ]; then pnpm --filter @ops/browser-semantics run seed:browser-recorder; fi
+      && pnpm --filter @ops/browser-semantics run build
+      && rm -rf /workspace/apps/backend/capabilities/browser-domain/semantics/dist/generated
+      && mkdir -p /workspace/apps/backend/capabilities/browser-domain/semantics/dist/generated
+      && cp -R /workspace/apps/backend/capabilities/browser-domain/semantics/generated/prisma /workspace/apps/backend/capabilities/browser-domain/semantics/dist/generated/prisma
+      && pnpm --filter @ops/browser-semantics run start"
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?schema=browser_semantics&connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
@@ -297,9 +278,10 @@ services:
     ports:
       - "${BROWSER_SEMANTICS_PORT:-3006}:${BROWSER_SEMANTICS_PORT:-3006}"
     volumes:
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/capabilities/browser-domain/semantics:/app
-      - browser_semantics_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
+      workspace-deps-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
 
@@ -307,17 +289,11 @@ services:
     <<: *common-node-service
     container_name: ops-ai-orchestrator
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com
-      && npm install --legacy-peer-deps
-      && npx prisma@5.22.0 generate
-      && npm run dev"
+      sh -c "corepack enable && pnpm --filter @ops/ai-orchestrator exec prisma generate
+      && pnpm --filter @ops/ai-orchestrator run dev"
     environment:
       <<: *common-env
       DOCKER_ENV: true
-      # Workspace packages are bind-mounted under /packages. Their host pnpm
-      # symlinks cannot resolve inside this npm-based container, so make the
-      # service-local dependency tree available to Node's module resolver.
-      NODE_PATH: /app/node_modules
       PORT: ${AI_ORCHESTRATOR_PORT:-3007}
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       AUTH_SERVICE_URL: http://${PLATFORM_SERVICE_HOST:-platform}:${PLATFORM_PORT:-3001}
@@ -337,12 +313,11 @@ services:
     ports:
       - "${AI_ORCHESTRATOR_PORT:-3007}:${AI_ORCHESTRATOR_PORT:-3007}"
     volumes:
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/intelligence/ai-orchestrator:/app
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/backend-contracts:/packages/backend-contracts
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/tsconfig.base.json:/tsconfig.base.json:ro
-      - ai_orchestrator_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/cache/ai-orchestrator:/app/data
     depends_on:
+      workspace-deps-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -354,30 +329,28 @@ services:
     <<: *common-node-service
     container_name: ops-report
     command: >
-      sh -c "npm install -g pnpm@8.12.0 && pnpm config set registry https://registry.npmmirror.com && pnpm config set ignore-scripts true && pnpm install --no-frozen-lockfile
-      && pnpm add -D @types/express-serve-static-core
-      && pnpm exec prisma generate
-      && pnpm exec prisma db push
-      && npm run build
-      && rm -rf /app/dist/generated
-      && mkdir -p /app/dist/generated
-      && cp -R /app/generated/prisma /app/dist/generated/prisma
-      && npm run start"
+      sh -c "corepack enable && pnpm --filter @ops/report exec prisma generate
+      && pnpm --filter @ops/report exec prisma db push
+      && pnpm --filter @ops/report run build
+      && rm -rf /workspace/apps/backend/capabilities/document-domain/report/dist/generated
+      && mkdir -p /workspace/apps/backend/capabilities/document-domain/report/dist/generated
+      && cp -R /workspace/apps/backend/capabilities/document-domain/report/generated/prisma /workspace/apps/backend/capabilities/document-domain/report/dist/generated/prisma
+      && pnpm --filter @ops/report run start"
     environment:
       <<: *common-env
       DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?schema=reports&connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
       PORT: ${REPORT_PORT:-3008}
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
       SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
-      FILES_DIR: /app/files
+      FILES_DIR: /workspace/apps/backend/capabilities/document-domain/report/files
     ports:
       - "${REPORT_PORT:-3008}:${REPORT_PORT:-3008}"
     volumes:
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/capabilities/document-domain/report:/app
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/backend-contracts:/packages/backend-contracts
-      - report_runtime_node_modules:/app/node_modules
-      - report_files:/app/files
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
+      - report_files:/workspace/apps/backend/capabilities/document-domain/report/files
     depends_on:
+      workspace-deps-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -393,12 +366,9 @@ services:
   carbone-engine:
     <<: *common-node-service
     container_name: carbone-engine
-    working_dir: /app
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com
-      && npm install --legacy-peer-deps
-      && npx prisma db push --schema template/prisma/schema.prisma
-      && npm run dev"
+      sh -c "corepack enable && pnpm --filter carbone-engine exec prisma db push --schema ../template/prisma/schema.prisma
+      && pnpm --filter carbone-engine run dev"
     environment:
       <<: *common-env
       DOCKER_ENV: true
@@ -411,10 +381,10 @@ services:
     ports:
       - "${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}"
     volumes:
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/capabilities/document-domain:/app
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/backend-contracts:/packages/backend-contracts
-      - carbone_engine_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
+      workspace-deps-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
 
@@ -424,6 +394,7 @@ services:
   portal:
     <<: *common-node-service
     container_name: ops-portal
+    command: sh -c "corepack enable && pnpm --filter @ops/portal run dev --host 0.0.0.0 --port 5173"
     environment:
       NODE_ENV: development
       DOCKER_ENV: true
@@ -439,21 +410,23 @@ services:
     ports:
       - "${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}"
     volumes:
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/frontend/portal:/app
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/frontend/shared:/shared
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/backend-contracts:/packages/backend-contracts
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/user-core:/packages/user-core
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/tsconfig.base.json:/tsconfig.base.json:ro
-      - portal_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
-      - platform
-      - browser-worker
-      - browser-template
-      - carbone-engine
+      workspace-deps-init:
+        condition: service_completed_successfully
+      platform:
+        condition: service_started
+      browser-worker:
+        condition: service_started
+      browser-template:
+        condition: service_started
+      carbone-engine:
+        condition: service_started
 
   user-web:
     <<: *common-node-service
     container_name: ops-user-web
+    command: sh -c "corepack enable && pnpm --filter @ops/user-web run dev --host 0.0.0.0 --port 5174"
     environment:
       NODE_ENV: development
       DOCKER_ENV: true
@@ -465,16 +438,16 @@ services:
     ports:
       - "${USER_WEB_PORT:-5174}:${USER_WEB_PORT:-5174}"
     volumes:
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/frontend/user-web:/app
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/frontend/shared:/shared
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/backend-contracts:/packages/backend-contracts
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/packages/user-core:/packages/user-core
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/tsconfig.base.json:/tsconfig.base.json:ro
-      - user_web_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
-      - platform
-      - control-plane
-      - ai-orchestrator
+      workspace-deps-init:
+        condition: service_completed_successfully
+      platform:
+        condition: service_started
+      control-plane:
+        condition: service_started
+      ai-orchestrator:
+        condition: service_started
 
   # ============================================
   # Browser Chrome (noVNC + CDP + Codegen)
@@ -580,17 +553,7 @@ volumes:
     driver: local
   redis_data:
     driver: local
-  session_broker_node_modules:
-  control_plane_node_modules:
-  browser_worker_node_modules:
-  browser_template_node_modules:
-  browser_semantics_node_modules:
-  ai_orchestrator_node_modules:
-  portal_node_modules:
-  user_web_node_modules:
-  report_runtime_node_modules:
   report_files:
-  carbone_engine_node_modules:
   temporal_data:
 
 networks:

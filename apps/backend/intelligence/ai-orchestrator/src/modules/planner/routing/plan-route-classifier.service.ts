@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 export type PlanRouteType = 'single_skill' | 'deterministic_plan';
 
 const SEQUENTIAL_KEYWORDS = ['然后', '并且', '接着', '之后', '再', '最后', '以及', '并且对', '并'];
-const PROCESSING_KEYWORDS = ['总结', '提炼', '翻译', '提取', '改写', '归纳', '分析'];
+const PROCESSING_KEYWORDS = ['总结', '提炼', '翻译', '提取', '改写', '归纳', '分析', '推送', '通知', '发送', 'bark'];
 const DOCUMENT_SOURCE_KEYWORDS = ['pdf', '附件'];
 const ARTIFACT_KEYWORDS = [
   '输出 md',

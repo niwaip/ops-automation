@@ -138,7 +138,7 @@ export class DeterministicContractAssemblerService {
       requestedType,
     );
 
-    if (!primaryOutput) {
+    if (!primaryOutput && requestedType) {
       const err: any = new Error(
         `Cannot resolve a unique primary output for final capability '${finalCard?.id || finalNodeId}'` +
         `${requestedType ? ` with semantic type '${requestedType}'` : ''}. ` +
@@ -148,14 +148,29 @@ export class DeterministicContractAssemblerService {
       throw err;
     }
 
-    const expectedType = finalNode.outputContract[primaryOutput]!;
-    finalOutputs.push({
-      targetField: 'result',
-      fromNodeId: finalNodeId,
-      fromNodeOutput: primaryOutput,
-      expectedType,
-      isArtifact: expectedType === 'artifact_ref',
-    });
+    if (primaryOutput) {
+      const expectedType = finalNode.outputContract[primaryOutput]!;
+      finalOutputs.push({
+        targetField: 'result',
+        fromNodeId: finalNodeId,
+        fromNodeOutput: primaryOutput,
+        expectedType,
+        isArtifact: expectedType === 'artifact_ref',
+      });
+    } else {
+      // Value-producing terminal capabilities may legitimately expose a
+      // structured acknowledgement (for example { code, message }). Preserve
+      // every declared field instead of inventing an arbitrary primary output.
+      for (const [field, expectedType] of Object.entries(finalNode.outputContract)) {
+        finalOutputs.push({
+          targetField: field,
+          fromNodeId: finalNodeId,
+          fromNodeOutput: field,
+          expectedType,
+          isArtifact: expectedType === 'artifact_ref',
+        });
+      }
+    }
 
     const mappedRequiredUserInputs = bindingResult.requiredUserInputs.map((input) => {
       const nodeRef = input.nodeId?.split('_')[0] || input.nodeId;

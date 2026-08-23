@@ -55,16 +55,19 @@ export class NodeOutputBindingResolverService {
       }
     }
 
-    // 3. Fallback: single output field on upstream for generic content parameters
+    // 3. Fallback: binding generic content parameters to upstream output keys
     const genericContentParams = ['items', 'content', 'text', 'input', 'body', 'data'];
-    if (upstreamKeys.length === 1 && genericContentParams.includes(downstreamParamName)) {
-      const upstreamKey = upstreamKeys[0]!;
-      const upstreamType = String(upstreamOutputs[upstreamKey] || '').toLowerCase();
+    if (genericContentParams.includes(downstreamParamName)) {
+      // Prioritize keys containing text, content, summary, result, or morning/noon/evening
+      const preferredKey =
+        upstreamKeys.find((k) => /content|text|summary|markdown|result/i.test(k)) ||
+        upstreamKeys[0]!;
+      const upstreamType = String(upstreamOutputs[preferredKey] || '').toLowerCase();
       if (downstreamParamName === 'items' && upstreamType === 'json') {
         return {
           source: 'node_output',
           nodeId: upstreamRef,
-          path: upstreamKey,
+          path: preferredKey,
           expectedType: 'news_item_list',
           transform: 'extract_unique_array',
         };
@@ -72,7 +75,7 @@ export class NodeOutputBindingResolverService {
       return {
         source: 'node_output',
         nodeId: upstreamRef,
-        path: upstreamKey,
+        path: preferredKey,
       };
     }
 

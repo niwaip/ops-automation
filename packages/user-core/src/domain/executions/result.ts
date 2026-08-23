@@ -234,6 +234,9 @@ const normalizeArtifacts = (value: WorkflowResultArtifact[]): WorkflowResultArti
       return;
     }
 
+    const rawName = firstNonEmptyString(asString(record.name), asString(record.label), asString(record.fileName));
+    const rawLabel = firstNonEmptyString(asString(record.label), asString(record.name), asString(record.fileName));
+
     const artifact: WorkflowResultArtifact = {
       type:
         asString(record.type) ||
@@ -247,8 +250,8 @@ const normalizeArtifacts = (value: WorkflowResultArtifact[]): WorkflowResultArti
         asString(record.artifact_type),
         asString(record.type)
       ),
-      name: firstNonEmptyString(asString(record.name), asString(record.label)),
-      label: firstNonEmptyString(asString(record.label), asString(record.name)),
+      name: rawName,
+      label: rawLabel,
       downloadUrl: normalizeArtifactUrl(asString(record.downloadUrl)),
       url: normalizeArtifactUrl(asString(record.url)),
       path: asString(record.path),

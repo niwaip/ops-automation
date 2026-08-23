@@ -1,6 +1,6 @@
 import { Controller, Post, Body, HttpCode, HttpStatus, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DeterministicPlanGeneratorService } from './deterministic-plan-generator.service';
-import type { GenerateDeterministicPlanRequestDto } from './deterministic-plan-generator.service';
+import type { GenerateDeterministicPlanRequestDto } from './deterministic-plan-generator.types';
 
 @Controller('ai/plans/deterministic')
 export class DeterministicPlanController {

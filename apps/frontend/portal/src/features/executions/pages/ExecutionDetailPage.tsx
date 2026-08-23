@@ -1,17 +1,36 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Descriptions, Tag, Button, Spin, Alert, Typography } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  Collapse,
+  Descriptions,
+  Empty,
+  Spin,
+  Tag,
+  Timeline,
+  Typography,
+} from 'antd';
 import { useExecutionDetailQueries } from '../detail/hooks/useExecutionDetailQueries';
 import { ExecutionHeaderSection } from '../detail/components/ExecutionHeaderSection';
-import { EXECUTION_STATUS_COLORS, EXECUTION_STATUS_LABELS_ZH } from '@/shared/lib/executionStatusMeta';
+import {
+  EXECUTION_STATUS_COLORS,
+  EXECUTION_STATUS_LABELS_ZH,
+} from '@/shared/lib/executionStatusMeta';
 import InlineRecoveryPanel from '@/features/executions/shared/InlineRecoveryPanel';
+import { getStepStatusColor } from '@/features/executions/list/listView';
 
 const { Text } = Typography;
+
+const formatDateTime = (val?: string) =>
+  val ? new Date(val).toLocaleString() : '-';
 
 export const ExecutionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { execution, isLoading, refetch } = useExecutionDetailQueries(id);
+  const { execution, isLoading, refetch, steps, isStepsLoading } =
+    useExecutionDetailQueries(id);
 
   if (isLoading) {
     return (
@@ -37,6 +56,8 @@ export const ExecutionDetailPage: React.FC = () => {
       </div>
     );
   }
+
+  const sortedSteps = steps ? [...steps].sort((a, b) => a.stepIndex - b.stepIndex) : [];
 
   return (
     <div style={{ padding: 24 }}>
@@ -82,7 +103,195 @@ export const ExecutionDetailPage: React.FC = () => {
         currentStepId={execution.currentStepId}
       />
 
-      <Card title="输入与结果数据" style={{ marginBottom: 16 }}>
+      {/* 执行步骤详情 */}
+      <Card
+        title={`执行步骤 (${sortedSteps.length} 步)`}
+        style={{ marginBottom: 16 }}
+        extra={
+          isStepsLoading ? <Spin size="small" /> : null
+        }
+      >
+        {isStepsLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
+            <Spin tip="加载步骤数据..." />
+          </div>
+        ) : sortedSteps.length === 0 ? (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无步骤数据" />
+        ) : (
+          <Timeline
+            items={sortedSteps.map((step) => {
+              const hasOutput =
+                step.outputJson && Object.keys(step.outputJson).length > 0;
+              const hasError = Boolean(step.errorMessage);
+
+              // 提取 presentation 里的 detailText 作为摘要（如果有）
+              const presentation = (step.outputJson as any)?.presentation;
+              const detailText: string | undefined =
+                typeof presentation?.detailText === 'string' && presentation.detailText !== 'success'
+                  ? presentation.detailText
+                  : undefined;
+              // 提取 result 对象作为核心输出
+              const resultPayload = (step.outputJson as any)?.result;
+
+              return {
+                color: getStepStatusColor(step.status),
+                children: (
+                  <Card
+                    size="small"
+                    style={{
+                      borderRadius: 10,
+                      border: '1px solid var(--bg-secondary)',
+                      background: 'var(--bg-card)',
+                      marginBottom: 8,
+                    }}
+                  >
+                    {/* 步骤头部：序号、名称、状态 */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        flexWrap: 'wrap',
+                        gap: 8,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <Text strong>{`步骤 ${step.stepIndex + 1}`}</Text>
+                        <Text>{step.name || step.action || step.type || '-'}</Text>
+                        {step.action && step.action !== step.name && (
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            [{step.action}]
+                          </Text>
+                        )}
+                      </div>
+                      <Tag color={getStepStatusColor(step.status)}>{step.status}</Tag>
+                    </div>
+
+                    {/* 时间信息 */}
+                    <div style={{ marginBottom: hasOutput || hasError ? 8 : 0 }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        开始：{formatDateTime(step.startedAt)}
+                        {'　'}
+                        结束：{formatDateTime(step.endedAt)}
+                      </Text>
+                    </div>
+
+                    {/* 错误信息 */}
+                    {hasError && (
+                      <Alert
+                        type="error"
+                        showIcon
+                        message="步骤执行失败"
+                        description={step.errorMessage}
+                        style={{ marginBottom: 8 }}
+                      />
+                    )}
+
+                    {/* 步骤输出：优先展示 detailText 摘要，然后是 result，最后是完整 outputJson */}
+                    {hasOutput && (
+                      <Collapse
+                        size="small"
+                        ghost
+                        items={[
+                          {
+                            key: 'output',
+                            label: (
+                              <Text type="secondary" style={{ fontSize: 12 }}>
+                                {detailText
+                                  ? `输出摘要：${detailText.slice(0, 80)}${detailText.length > 80 ? '...' : ''}`
+                                  : `查看步骤输出 (${Object.keys(step.outputJson!).join('、')})`}
+                              </Text>
+                            ),
+                            children: (
+                              <div>
+                                {/* 如果有 detailText，优先用 pre 展示 */}
+                                {detailText && (
+                                  <div style={{ marginBottom: 12 }}>
+                                    <Text strong style={{ fontSize: 12 }}>
+                                      摘要内容
+                                    </Text>
+                                    <pre
+                                      style={{
+                                        marginTop: 4,
+                                        padding: '8px 12px',
+                                        background: 'var(--bg-secondary)',
+                                        borderRadius: 6,
+                                        fontSize: 12,
+                                        whiteSpace: 'pre-wrap',
+                                        wordBreak: 'break-word',
+                                        maxHeight: 400,
+                                        overflow: 'auto',
+                                      }}
+                                    >
+                                      {detailText}
+                                    </pre>
+                                  </div>
+                                )}
+
+                                {/* result 字段（结构化结果）*/}
+                                {resultPayload !== undefined && (
+                                  <div style={{ marginBottom: 12 }}>
+                                    <Text strong style={{ fontSize: 12 }}>
+                                      result
+                                    </Text>
+                                    <pre
+                                      style={{
+                                        marginTop: 4,
+                                        padding: '8px 12px',
+                                        background: 'var(--bg-secondary)',
+                                        borderRadius: 6,
+                                        fontSize: 12,
+                                        whiteSpace: 'pre-wrap',
+                                        wordBreak: 'break-word',
+                                        maxHeight: 400,
+                                        overflow: 'auto',
+                                      }}
+                                    >
+                                      {typeof resultPayload === 'string'
+                                        ? resultPayload
+                                        : JSON.stringify(resultPayload, null, 2)}
+                                    </pre>
+                                  </div>
+                                )}
+
+                                {/* 完整 outputJson */}
+                                <div>
+                                  <Text strong style={{ fontSize: 12 }}>
+                                    完整输出 (outputJson)
+                                  </Text>
+                                  <pre
+                                    style={{
+                                      marginTop: 4,
+                                      padding: '8px 12px',
+                                      background: 'var(--bg-secondary)',
+                                      borderRadius: 6,
+                                      fontSize: 12,
+                                      whiteSpace: 'pre-wrap',
+                                      wordBreak: 'break-word',
+                                      maxHeight: 400,
+                                      overflow: 'auto',
+                                    }}
+                                  >
+                                    {JSON.stringify(step.outputJson, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                            ),
+                          },
+                        ]}
+                      />
+                    )}
+                  </Card>
+                ),
+              };
+            })}
+          />
+        )}
+      </Card>
+
+      {/* 整体执行结果 */}
+      <Card title="输入与整体结果数据" style={{ marginBottom: 16 }}>
         <div style={{ marginBottom: 16 }}>
           <Text strong>输入参数 (Input):</Text>
           <pre style={{ background: 'var(--bg-secondary)', padding: 12, borderRadius: 6, fontSize: 12, marginTop: 8, maxHeight: 180, overflow: 'auto' }}>

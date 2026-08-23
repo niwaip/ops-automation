@@ -820,6 +820,51 @@ model SkillSchedule {
   @@map("skill_schedules")
 }
 
+// User-private deterministic workflow saved from a successful execution.
+model UserSavedSkill {
+  id              String   @id @default(uuid()) @db.Uuid
+  ownerUserId     String   @map("owner_user_id") @db.Uuid
+  name            String   @db.VarChar(255)
+  description     String?  @db.VarChar(1000)
+  visibility      String   @default("private") @db.VarChar(32)
+  status          String   @default("pending_review") @db.VarChar(32)
+  activeVersionId String?  @map("active_version_id") @db.Uuid
+  latestVersion   Int      @default(0) @map("latest_version")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  versions UserSavedSkillVersion[]
+
+  @@index([ownerUserId, status])
+  @@map("user_saved_skills")
+}
+
+model UserSavedSkillVersion {
+  id                String   @id @default(uuid()) @db.Uuid
+  skillId           String   @map("skill_id") @db.Uuid
+  ownerUserId       String   @map("owner_user_id") @db.Uuid
+  version           Int
+  sourceExecutionId String   @map("source_execution_id") @db.Uuid
+  schemaVersion     String   @map("schema_version") @db.VarChar(100)
+  planSnapshotJson  Json     @map("plan_snapshot_json")
+  planHash          String   @map("plan_hash") @db.VarChar(128)
+  fixedInputJson    Json     @map("fixed_input_json")
+  inputHash         String   @map("input_hash") @db.VarChar(128)
+  outputSchemaJson  Json?    @map("output_schema_json")
+  sampleResultJson  Json?    @map("sample_result_json")
+  aiReviewJson      Json     @map("ai_review_json")
+  reviewStatus      String   @map("review_status") @db.VarChar(32)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  skill UserSavedSkill @relation(fields: [skillId], references: [id], onDelete: Restrict)
+
+  @@unique([skillId, version])
+  @@unique([ownerUserId, sourceExecutionId, inputHash])
+  @@index([ownerUserId, createdAt(sort: Desc)])
+  @@index([sourceExecutionId])
+  @@map("user_saved_skill_versions")
+}
+
 // Built-in Skill Tables
 model BuiltinSkill {
   id              String   @id @default(uuid()) @db.Uuid

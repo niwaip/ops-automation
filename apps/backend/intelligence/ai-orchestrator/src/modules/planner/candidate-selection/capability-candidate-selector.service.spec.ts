@@ -88,6 +88,26 @@ describe('CapabilityCandidateSelectorService', () => {
     ]);
   });
 
+  it('keeps an explicitly requested user capability when the 12-card cap is active', async () => {
+    const skills = Array.from({ length: 13 }, (_, index) => ({
+      id: index === 12 ? 'bark-push' : `generic-${index}`,
+      name: index === 12 ? 'Bark推送服务' : `通用能力 ${index}`,
+      description: index === 12 ? '通过 Bark 将内容推送到设备' : '通用处理能力',
+      executionType: 'flow',
+      paramsSchema: { properties: { content: { type: 'string' } } },
+      outputSchema: { properties: { result: { type: 'string' } } },
+      isPublished: true,
+      publishedReleaseVersion: 1,
+      publishedReleaseStatus: 'published',
+      publishedDeploymentStatus: 'deployed',
+    }));
+
+    const result = await service.selectCandidates('总结后最后用 Bark 进行推送', skills);
+
+    expect(result.skillCards).toHaveLength(12);
+    expect(result.skillCards[0]?.id).toBe('bark-push');
+  });
+
   it('encodes enum and defaultValue into the inputs summary string for downstream enum validation', async () => {
     const result = await service.selectCandidates('搜索新闻', [
       {

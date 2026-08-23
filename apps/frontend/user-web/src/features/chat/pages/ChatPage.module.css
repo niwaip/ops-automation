@@ -400,6 +400,62 @@
   min-width: 8px;
 }
 
+.user-chat-input-attachments-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 4px;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.16);
+}
+
+.user-chat-input-file-tag {
+  border-radius: 999px !important;
+  padding: 3px 10px !important;
+  background: rgba(238, 242, 255, 0.92) !important;
+  border: 1px solid rgba(99, 102, 241, 0.22) !important;
+  color: #4f46e5 !important;
+  font-size: 12px !important;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+[data-theme="dark"] .user-chat-input-file-tag {
+  background: rgba(30, 41, 59, 0.9) !important;
+  border-color: rgba(129, 140, 248, 0.24) !important;
+  color: #c7d2fe !important;
+}
+
+.user-chat-input-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.user-chat-input-attach-btn {
+  border-radius: 999px !important;
+  color: #475569 !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .user-chat-input-attach-btn {
+  color: #cbd5e1 !important;
+  background: rgba(30, 41, 59, 0.84) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+}
+
+.user-chat-input-send-btn {
+  flex-shrink: 0;
+  font-weight: 600;
+  padding-inline: 14px !important;
+}
+
 .user-chat-input-toolbar > * {
   flex-shrink: 0;
 }
