@@ -51,13 +51,7 @@ export async function analyzeDocumentWithAI(
     };
   }
 
-  let response;
-
-  try {
-    response = await executor.analyze(requestPayload);
-  } catch (error) {
-    throw error;
-  }
+  const response = await executor.analyze(requestPayload);
 
   const remoteSuggestions = annotateSuggestionSource(
     response.rawSuggestions || response.suggestions,

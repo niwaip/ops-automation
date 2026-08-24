@@ -186,7 +186,7 @@ export class WordGenerator {
   private createTable(
     section: ReportSection,
     stepResults: StepResult[],
-    aiAnalysis: AIAnalysisResult[]
+    _aiAnalysis: AIAnalysisResult[]
   ): Table | null {
     const columns = section.format?.columns || ['Step', 'Action', 'Result', 'Status'];
     const filteredResults = this.filterStepResults(section, stepResults);

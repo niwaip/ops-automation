@@ -1243,18 +1243,6 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
     </Collapse>
   );
 
-  if (embedded) {
-    return (
-      <div style={{ padding: 24 }}>
-        {selectedSkill ? (
-          renderDetailContent(selectedSkill)
-        ) : (
-          <Empty description="未找到技能详情" />
-        )}
-      </div>
-    );
-  }
-
   const statItems = useMemo(() => {
     const total = allSkills.length;
     const builtin = builtinSkillsCount;
@@ -1292,6 +1280,18 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
       },
     ];
   }, [allSkills, builtinSkillsCount, customSkillsCount]);
+
+  if (embedded) {
+    return (
+      <div style={{ padding: 24 }}>
+        {selectedSkill ? (
+          renderDetailContent(selectedSkill)
+        ) : (
+          <Empty description="未找到技能详情" />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{ width: '100%', padding: '0 24px' }}>

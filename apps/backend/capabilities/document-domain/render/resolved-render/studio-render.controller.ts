@@ -18,7 +18,6 @@ import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import { PreviewDto } from '../preview/preview.dto';
 import { PreviewService } from '../preview/preview.service';
 import { type RenderResponse } from '../contracts';

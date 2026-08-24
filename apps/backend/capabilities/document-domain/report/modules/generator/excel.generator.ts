@@ -98,7 +98,7 @@ export class ExcelGenerator {
     sheet: ExcelJS.Worksheet,
     section: ReportSection,
     stepResults: StepResult[],
-    aiAnalysis: AIAnalysisResult[]
+    _aiAnalysis: AIAnalysisResult[]
   ): void {
     const columns = section.format?.columns || ['Step', 'Action', 'Result', 'Status'];
     const filteredResults = this.filterStepResults(section, stepResults);

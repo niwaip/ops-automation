@@ -929,7 +929,9 @@ const FlowsPage: React.FC = () => {
                           try {
                             const params = JSON.parse(e.target.value);
                             handleUpdateStep(index, 'tool', { ...step.tool, params });
-                          } catch {}
+                          } catch {
+                            // Allow user to edit text without throwing on intermediate invalid JSON
+                          }
                         }}
                         placeholder="参数JSON"
                         style={{ width: 200 }}
@@ -982,7 +984,9 @@ const FlowsPage: React.FC = () => {
                       try {
                         const mapping = e.target.value ? JSON.parse(e.target.value) : undefined;
                         handleUpdateStep(index, 'inputMapping', mapping);
-                      } catch {}
+                      } catch {
+                        // Allow user to edit text without throwing on intermediate invalid JSON
+                      }
                     }}
                     placeholder="输入映射JSON（可选，例如 city 映射到 flow_input.city）"
                     style={{ width: '100%' }}

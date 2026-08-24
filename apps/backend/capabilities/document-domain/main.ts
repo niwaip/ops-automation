@@ -1,21 +1,18 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { join } from 'path';
 import * as fs from 'fs';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { getPublicHost } from './config/service-endpoints';
 
 async function bootstrap() {
-  const app = await NestFactory.create<any>(AppModule);
-  const express = require('express') as {
-    json: (options: { limit: string }) => any;
-    urlencoded: (options: { extended: boolean; limit: string }) => any;
-    static: (root: string, options?: Record<string, unknown>) => any;
-  };
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Office add-in 会携带大体积 base64 文档与完整参数 JSON，需放宽 body 限制
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+  app.use(json({ limit: '50mb' }));
+  app.use(urlencoded({ extended: true, limit: '50mb' }));
 
   app.useStaticAssets(join(process.cwd(), 'public'));
 

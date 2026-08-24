@@ -137,7 +137,7 @@ export class PDFGenerator {
     doc: PDFKit.PDFDocument,
     section: ReportSection,
     stepResults: StepResult[],
-    aiAnalysis: AIAnalysisResult[]
+    _aiAnalysis: AIAnalysisResult[]
   ): void {
     const columns = section.format?.columns || ['Step', 'Action', 'Result', 'Status'];
     const filteredResults = this.filterStepResults(section, stepResults);
