@@ -556,6 +556,62 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
 }
 
+.chat-message-feedback-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chat-action-btn.chat-action-btn-liked {
+  color: #4f46e5 !important;
+  background: rgba(99, 102, 241, 0.12) !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+}
+
+.chat-action-btn.chat-action-btn-liked:hover {
+  color: #4338ca !important;
+  background: #ffffff !important;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.18) !important;
+}
+
+[data-theme='dark'] .chat-action-btn.chat-action-btn-liked {
+  color: #a5b4fc !important;
+  background: rgba(99, 102, 241, 0.25) !important;
+  border-color: rgba(165, 180, 252, 0.4) !important;
+}
+
+[data-theme='dark'] .chat-action-btn.chat-action-btn-liked:hover {
+  color: #c7d2fe !important;
+  background: #312e81 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+.chat-action-btn.chat-action-btn-disliked {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+.chat-action-btn.chat-action-btn-disliked:hover {
+  color: #dc2626 !important;
+  background: #ffffff !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.18) !important;
+}
+
+[data-theme='dark'] .chat-action-btn.chat-action-btn-disliked {
+  color: #fca5a5 !important;
+  background: rgba(239, 68, 68, 0.25) !important;
+  border-color: rgba(252, 165, 165, 0.4) !important;
+}
+
+[data-theme='dark'] .chat-action-btn.chat-action-btn-disliked:hover {
+  color: #fecaca !important;
+  background: #7f1d1d !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
 @keyframes chatSpin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }

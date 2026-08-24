@@ -1,8 +1,8 @@
-import { DislikeOutlined, LikeOutlined } from '@ant-design/icons';
+import { DislikeFilled, DislikeOutlined, LikeFilled, LikeOutlined } from '@ant-design/icons';
 import { App, Button, Input, Popover, Radio, Space, Tooltip } from 'antd';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { assistantFeedbackApi } from '../../../../api/assistantFeedback';
+import { assistantFeedbackApi } from '@/api/assistantFeedback';
 import { feedbackReasonOptions } from './feedbackReasonOptions';
 
 type AssistantFeedbackRating = 'positive' | 'negative';
@@ -93,7 +93,12 @@ export function MessageFeedbackActions({
   );
   const feedback = feedbackQuery.data?.feedback;
 
-  const mutation = useMutation<FeedbackResponse, Error, FeedbackInput>(
+  const mutation = useMutation<
+    FeedbackResponse,
+    Error,
+    FeedbackInput,
+    { previousFeedback?: FeedbackResponse }
+  >(
     (input: FeedbackInput) =>
       typedFeedbackApi.set(sessionId, messageId, {
         ...input,
@@ -101,6 +106,25 @@ export function MessageFeedbackActions({
         executionId,
       }),
     {
+      onMutate: async (newInput) => {
+        await queryClient.cancelQueries(queryKey);
+        const previousFeedback = queryClient.getQueryData<FeedbackResponse>(queryKey);
+        queryClient.setQueryData<FeedbackResponse>(queryKey, {
+          feedback: {
+            eventId: createEventId(),
+            sessionId,
+            messageId,
+            executionId,
+            revision: (previousFeedback?.feedback?.revision || 0) + 1,
+            eventType: 'set',
+            rating: newInput.rating,
+            reasonCode: newInput.reasonCode,
+            comment: newInput.comment,
+            occurredAt: new Date().toISOString(),
+          },
+        });
+        return { previousFeedback };
+      },
       onSuccess: (result) => {
         setNegativeOpen(false);
         setReasonCode(undefined);
@@ -108,19 +132,37 @@ export function MessageFeedbackActions({
         queryClient.setQueryData(queryKey, result);
         void message.success('评价已记录');
       },
-      onError: () => {
+      onError: (_err, _newInput, context) => {
+        if (context?.previousFeedback !== undefined) {
+          queryClient.setQueryData(queryKey, context.previousFeedback);
+        }
         void message.error('评价提交失败，请稍后重试');
       },
     }
   );
-  const clearMutation = useMutation<FeedbackResponse, Error, void>(
+
+  const clearMutation = useMutation<
+    FeedbackResponse,
+    Error,
+    void,
+    { previousFeedback?: FeedbackResponse }
+  >(
     () => typedFeedbackApi.clear(sessionId, messageId, executionId),
     {
+      onMutate: async () => {
+        await queryClient.cancelQueries(queryKey);
+        const previousFeedback = queryClient.getQueryData<FeedbackResponse>(queryKey);
+        queryClient.setQueryData<FeedbackResponse>(queryKey, { feedback: null });
+        return { previousFeedback };
+      },
       onSuccess: (result) => {
         queryClient.setQueryData(queryKey, result);
         void message.success('评价已取消');
       },
-      onError: () => {
+      onError: (_err, _vars, context) => {
+        if (context?.previousFeedback !== undefined) {
+          queryClient.setQueryData(queryKey, context.previousFeedback);
+        }
         void message.error('取消评价失败，请稍后重试');
       },
     }
@@ -173,22 +215,26 @@ export function MessageFeedbackActions({
   );
 
   const isBusy = mutation.isLoading || clearMutation.isLoading;
+  const isLiked = feedback?.rating === 'positive';
+  const isDisliked = feedback?.rating === 'negative';
+
   return (
     <div className="chat-message-feedback-actions" aria-label="评价回答">
-      <Tooltip title={feedback?.rating === 'positive' ? '取消赞' : '回答有帮助'}>
+      <Tooltip title={isLiked ? '取消赞' : '回答有帮助'}>
         <Button
-          type={feedback?.rating === 'positive' ? 'primary' : 'text'}
+          type="text"
           size="small"
-          icon={<LikeOutlined />}
+          icon={isLiked ? <LikeFilled /> : <LikeOutlined />}
+          className={`chat-action-btn chat-action-btn-icon ${isLiked ? 'chat-action-btn-liked' : ''}`}
           disabled={isBusy}
           onClick={() => {
-            if (feedback?.rating === 'positive') {
+            if (isLiked) {
               clearMutation.mutate();
             } else {
               mutation.mutate({ rating: 'positive' });
             }
           }}
-          aria-label="回答有帮助"
+          aria-label={isLiked ? '取消赞' : '回答有帮助'}
         />
       </Tooltip>
       <Popover
@@ -198,14 +244,14 @@ export function MessageFeedbackActions({
         title="告诉我们哪里需要改进"
         content={negativeContent}
       >
-        <Tooltip title={feedback?.rating === 'negative' ? '修改差评原因' : '回答需要改进'}>
+        <Tooltip title={isDisliked ? '修改差评原因' : '回答需要改进'}>
           <Button
-            type={feedback?.rating === 'negative' ? 'primary' : 'text'}
-            danger={feedback?.rating === 'negative'}
+            type="text"
             size="small"
-            icon={<DislikeOutlined />}
+            icon={isDisliked ? <DislikeFilled /> : <DislikeOutlined />}
+            className={`chat-action-btn chat-action-btn-icon ${isDisliked ? 'chat-action-btn-disliked' : ''}`}
             disabled={isBusy}
-            aria-label="回答需要改进"
+            aria-label={isDisliked ? '修改差评原因' : '回答需要改进'}
           />
         </Tooltip>
       </Popover>
