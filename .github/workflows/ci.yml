@@ -88,9 +88,9 @@ jobs:
         run: |
           ./docker/start-smart.sh docker-compose.addin.yml config --quiet
 
-      - name: Validate infrastructure dev overrides
+      - name: Validate base compose
         run: |
-          ./docker/start-smart.sh docker-compose.yml -f compose/docker-compose.dev.yml config --quiet
+          ./docker/start-smart.sh docker-compose.base.yml config --quiet
 
       - name: Validate V4 core compose
         run: |
