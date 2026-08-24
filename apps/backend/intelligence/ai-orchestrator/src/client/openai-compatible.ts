@@ -151,24 +151,58 @@ export class OpenAICompatibleClient {
       effort?: 'low' | 'medium' | 'high';
     }
   ): Promise<LLMResponse> {
+    const data: any = {
+      model: this.model,
+      messages,
+      stream: true,
+      stream_options: { include_usage: true }, // Request usage in the last chunk
+    };
+
+    if (this.useJsonMode) {
+      data.response_format = { type: 'json_object' };
+    }
+    this.applyReasoningConfig(data, reasoning);
+
+    let response: any;
     try {
-      const data: any = {
-        model: this.model,
-        messages,
-        stream: true,
-        stream_options: { include_usage: true }, // Request usage in the last chunk
-      };
-
-      if (this.useJsonMode) {
-        data.response_format = { type: 'json_object' };
-      }
-      this.applyReasoningConfig(data, reasoning);
-
       // Use /chat/completions since baseURL already includes /v1
-      const response = await this.client.post<NodeJS.ReadableStream>('/chat/completions', data, {
+      response = await this.client.post<NodeJS.ReadableStream>('/chat/completions', data, {
         responseType: 'stream',
       });
+    } catch (error: unknown) {
+      const errorMsg = await this.extractAxiosErrorMessage(error);
+      if (
+        data.stream_options &&
+        /stream_options|extra inputs are not permitted|unrecognized request argument/i.test(errorMsg)
+      ) {
+        delete data.stream_options;
+        try {
+          response = await this.client.post<NodeJS.ReadableStream>('/chat/completions', data, {
+            responseType: 'stream',
+          });
+        } catch (retryError: unknown) {
+          const retryErrorMsg = await this.extractAxiosErrorMessage(retryError);
+          throw new Error(`OpenAI API Stream Error: ${retryErrorMsg}`);
+        }
+      } else if (reasoning?.enabled === false && this.isReasoningMandatoryError(errorMsg)) {
+        this.reasoningOffRejected = true;
+        const retryData = { ...data };
+        this.clearReasoningFields(retryData);
+        this.applyReasoningConfig(retryData, { enabled: false });
+        try {
+          response = await this.client.post<NodeJS.ReadableStream>('/chat/completions', retryData, {
+            responseType: 'stream',
+          });
+        } catch (retryError: unknown) {
+          const retryErrorMsg = await this.extractAxiosErrorMessage(retryError);
+          throw new Error(`OpenAI API Stream Error: ${retryErrorMsg}`);
+        }
+      } else {
+        throw new Error(`OpenAI API Stream Error: ${errorMsg}`);
+      }
+    }
 
+    try {
       let fullContent = '';
       let finalUsage: LLMUsage | undefined;
       const rateLimit = this.extractRateLimit(response.headers);
@@ -212,14 +246,47 @@ export class OpenAICompatibleClient {
         stream.on('error', reject);
       });
     } catch (error: unknown) {
-      const axiosError = error as AxiosLikeError;
-      if (axiosError.message) {
-        throw new Error(
-          `OpenAI API Stream Error: ${axiosError.response?.data?.error?.message || axiosError.message}`
-        );
-      }
-      throw error;
+      const errorMsg = await this.extractAxiosErrorMessage(error);
+      throw new Error(`OpenAI API Stream Error: ${errorMsg}`);
     }
+  }
+
+  private async extractAxiosErrorMessage(error: unknown): Promise<string> {
+    const axiosError = error as any;
+    if (!axiosError) return 'Unknown error';
+
+    // If response data is a Stream (e.g. responseType: 'stream' in axios), buffer it to string
+    if (axiosError.response?.data && typeof axiosError.response.data.on === 'function') {
+      try {
+        const stream = axiosError.response.data as NodeJS.ReadableStream;
+        const text = await new Promise<string>((resolve) => {
+          let body = '';
+          stream.on('data', (chunk: Buffer) => {
+            body += chunk.toString();
+          });
+          stream.on('end', () => resolve(body));
+          stream.on('error', () => resolve(''));
+        });
+        if (text) {
+          try {
+            const parsed = JSON.parse(text);
+            return parsed?.error?.message || parsed?.message || text;
+          } catch {
+            return text;
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    if (axiosError.response?.data?.error?.message) {
+      return axiosError.response.data.error.message;
+    }
+    if (typeof axiosError.response?.data?.message === 'string') {
+      return axiosError.response.data.message;
+    }
+    return axiosError.message || 'Unknown error';
   }
 
   /**

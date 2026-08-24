@@ -19,7 +19,7 @@ describe('applyReasoningRequestAdapter', () => {
     expect(payload).toEqual(expected);
   });
 
-  it('maps OpenRouter off to effort none', () => {
+  it('omits reasoning for OpenRouter when disabled', () => {
     const payload: Record<string, unknown> = {};
     applyReasoningRequestAdapter(
       payload,
@@ -30,7 +30,7 @@ describe('applyReasoningRequestAdapter', () => {
       },
       { enabled: false }
     );
-    expect(payload).toEqual({ reasoning: { effort: 'none' } });
+    expect(payload).toEqual({});
   });
 
   it('maps DashScope effort to its thinking switch and token budget', () => {

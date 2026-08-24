@@ -76,7 +76,7 @@ function applyDisabledReasoning(
 ): void {
   switch (dialect) {
     case 'openrouter':
-      payload.reasoning = { effort: 'none' };
+      delete payload.reasoning;
       return;
     case 'dashscope':
       payload.enable_thinking = false;

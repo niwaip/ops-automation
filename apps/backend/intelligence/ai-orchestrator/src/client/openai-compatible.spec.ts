@@ -186,10 +186,10 @@ describe('OpenAICompatibleClient', () => {
     expect(postMock).toHaveBeenCalledWith(
       '/chat/completions',
       expect.objectContaining({
-        reasoning: { effort: 'none' },
         max_tokens: 6000,
       })
     );
+    expect(postMock.mock.calls[0][1].reasoning).toBeUndefined();
   });
 
   it('learns a reasoning-only model and retries disabled requests at low effort', async () => {
@@ -229,9 +229,7 @@ describe('OpenAICompatibleClient', () => {
     });
 
     expect(postMock).toHaveBeenCalledTimes(3);
-    expect(postMock.mock.calls[0][1]).toEqual(
-      expect.objectContaining({ reasoning: { effort: 'none' } })
-    );
+    expect(postMock.mock.calls[0][1].reasoning).toBeUndefined();
     expect(postMock.mock.calls[1][1]).toEqual(
       expect.objectContaining({ reasoning: { effort: 'low' } })
     );
