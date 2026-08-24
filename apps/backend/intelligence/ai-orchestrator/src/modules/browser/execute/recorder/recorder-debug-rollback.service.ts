@@ -3,7 +3,6 @@ import { createHash } from 'crypto';
 import type { BrowserCommand } from '../../intent';
 import type {
   RecorderDebugSession,
-  RecorderDebugTurn,
   RecorderLoopDraft,
 } from '../recorder-debug.types';
 import { RecorderStateStoreService } from './recorder-state-store.service';

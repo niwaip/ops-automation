@@ -1,13 +1,13 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from './client';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     // #region debug-point A:init-connect
     (() => {
-      const fs = require('fs') as typeof import('fs');
-      const path = require('path') as typeof import('path');
       const envPath = path.resolve(process.cwd(), '.dbg/ai-orchestrator-prisma-engine.env');
       let debugUrl = 'http://127.0.0.1:7777/event';
       let sessionId = 'ai-orchestrator-prisma-engine';
@@ -15,7 +15,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         const envContent = fs.readFileSync(envPath, 'utf8');
         debugUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim() || debugUrl;
         sessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim() || sessionId;
-      } catch {}
+      } catch {
+        // Debug configuration is optional.
+      }
       void fetch(debugUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,8 +52,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     } catch (error) {
       // #region debug-point B:connect-error
       (() => {
-        const fs = require('fs') as typeof import('fs');
-        const path = require('path') as typeof import('path');
         const envPath = path.resolve(process.cwd(), '.dbg/ai-orchestrator-prisma-engine.env');
         let debugUrl = 'http://127.0.0.1:7777/event';
         let sessionId = 'ai-orchestrator-prisma-engine';
@@ -59,7 +59,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
           const envContent = fs.readFileSync(envPath, 'utf8');
           debugUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim() || debugUrl;
           sessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim() || sessionId;
-        } catch {}
+        } catch {
+          // Debug configuration is optional.
+        }
         const err = error instanceof Error ? error : new Error(String(error));
         void fetch(debugUrl, {
           method: 'POST',

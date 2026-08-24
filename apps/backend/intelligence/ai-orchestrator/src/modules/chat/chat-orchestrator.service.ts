@@ -8,7 +8,7 @@ import { getAuthServiceUrl } from '../../config/service-endpoints';
 import { PlanDraftDTO } from '../../interfaces';
 import { PromptDebugSettingsService } from '../debug-settings/prompt-debug-settings.service';
 import { PlannerService } from '../planner';
-import type { ExecutionContext, LLMUsage, StreamEvent } from '../react-engine/interfaces';
+import type { ExecutionContext, StreamEvent } from '../react-engine/interfaces';
 import { StreamEventType } from '../react-engine/interfaces';
 import { ReActEngineService } from '../react-engine/react-engine.service';
 import type { ChatRequestDTO } from './chat.dto';
@@ -17,7 +17,7 @@ import { DeterministicTaskExecutionService } from './deterministic-task-executio
 import { ChatConversationService } from './chat-conversation.service';
 import { SkillCacheService } from '../planner/skill/skill-cache.service';
 import { NO_MATCHING_SKILL_MESSAGE } from '../planner/skill/skill-match-policy';
-import type { ChatUserContext, WaitingInputSemantic } from './chat.types';
+import type { WaitingInputSemantic } from './chat.types';
 import { ChatWaitingInputService } from './chat-waiting-input.service';
 import type { DeterministicPlanNodeV1 } from '@ops/backend-deterministic-plan';
 

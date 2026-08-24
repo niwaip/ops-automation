@@ -620,7 +620,7 @@ export class FlowExecuteTool extends BaseTool {
           stepResult = `[步骤 ${stepIndex + 1}/${steps.length}] ${currentStep.name}\n${currentStep.content || '无指导内容'}`;
           break;
 
-        case 'api':
+        case 'api': {
           if (!isToolAllowedInSkillScope('api_call', resolvedSelectedSkillId, context)) {
             return {
               success: false,
@@ -729,8 +729,9 @@ export class FlowExecuteTool extends BaseTool {
             };
           }
           break;
+        }
 
-        case 'tool':
+        case 'tool': {
           // 工具调用步骤 - 返回提示，让ReAct引擎调用对应工具
           if (!currentStep.tool?.name) {
             stepResult = `步骤"${currentStep.name}"缺少工具名称配置`;
@@ -817,6 +818,7 @@ export class FlowExecuteTool extends BaseTool {
               selectedTemplateId: templateId,
             },
           };
+        }
 
         case 'script':
           // 脚本执行步骤 - 目前只返回脚本内容（实际执行需要安全考虑）

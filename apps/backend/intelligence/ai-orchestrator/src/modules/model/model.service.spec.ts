@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires -- modules are reloaded after per-test env setup */
 import { Test, TestingModule } from '@nestjs/testing';
 import * as fs from 'fs';
 import * as os from 'os';

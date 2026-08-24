@@ -521,7 +521,7 @@ export class RecognizerService {
     for (const [key, schema] of Object.entries(properties)) {
       const escapedKey = this.escapeRegExp(key);
       switch (schema.type) {
-        case 'string':
+        case 'string': {
           // Look for quoted strings or common patterns
           const stringMatch = input.match(
             new RegExp(`${escapedKey}[\\s]*[=:][\\s]*["']?([^"'\n,]+)["']?`, 'i')
@@ -532,7 +532,8 @@ export class RecognizerService {
             matchCount++;
           }
           break;
-        case 'number':
+        }
+        case 'number': {
           const numberMatch = input.match(
             new RegExp(`${escapedKey}[\\s]*[=:][\\s]*(\\d+(\\.\\d+)?)`, 'i')
           );
@@ -542,7 +543,8 @@ export class RecognizerService {
             matchCount++;
           }
           break;
-        case 'boolean':
+        }
+        case 'boolean': {
           const boolMatch = input.match(
             new RegExp(`${escapedKey}[\\s]*[=:][\\s]*(true|false|yes|no)`, 'i')
           );
@@ -553,6 +555,7 @@ export class RecognizerService {
             matchCount++;
           }
           break;
+        }
       }
     }
 
@@ -1527,14 +1530,14 @@ export class RecognizerService {
   }
 
   private extractItemSequenceNumbers(input: string): number[] | undefined {
-    const values = this.extractAllMatches(input, /(?:^|[：:；;\n])\s*(\d+)\s*[\.、]/gm, 'number');
+    const values = this.extractAllMatches(input, /(?:^|[：:；;\n])\s*(\d+)\s*[.、]/gm, 'number');
     return values.length > 0 ? (values as number[]) : undefined;
   }
 
   private extractEnumeratedItemNames(input: string): string[] | undefined {
     const names = this.extractAllMatches(
       input,
-      /(?:^|[：:；;\n])\s*\d+\s*[\.、]\s*([^，。；;\n]+)/gm,
+      /(?:^|[：:；;\n])\s*\d+\s*[.、]\s*([^，。；;\n]+)/gm,
       'string'
     );
     return names.length > 0 ? (names as string[]) : undefined;
@@ -1559,7 +1562,7 @@ export class RecognizerService {
 
   private extractEnumeratedItemBlocks(input: string): string[] {
     const pattern =
-      /(?:^|[：:；;\n])\s*\d+\s*[\.、]\s*([\s\S]*?)(?=(?:^|[：:；;\n])\s*\d+\s*[\.、]\s*|$)/gm;
+      /(?:^|[：:；;\n])\s*\d+\s*[.、]\s*([\s\S]*?)(?=(?:^|[：:；;\n])\s*\d+\s*[.、]\s*|$)/gm;
     const blocks: string[] = [];
     for (const match of input.matchAll(pattern)) {
       const content = String(match[1] || '').trim();
@@ -1731,7 +1734,7 @@ export class RecognizerService {
   }
 
   private extractDateByKeywords(input: string, keywords: string[]): string | undefined {
-    const dateRegex = /\d{4}[\/-]\d{1,2}[\/-]\d{1,2}|\d{4}年\d{1,2}月\d{1,2}日?/g;
+    const dateRegex = /\d{4}[/-]\d{1,2}[/-]\d{1,2}|\d{4}年\d{1,2}月\d{1,2}日?/g;
     for (const match of input.matchAll(dateRegex)) {
       const rawDate = match[0];
       const index = match.index ?? 0;
@@ -1768,7 +1771,7 @@ export class RecognizerService {
 
   private normalizeDateValue(value: string): string | undefined {
     const normalized = value.trim();
-    const isoMatch = normalized.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+    const isoMatch = normalized.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
     if (isoMatch) {
       const [, year, month, day] = isoMatch;
       if (year && month && day) {

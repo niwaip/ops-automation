@@ -657,7 +657,9 @@ describe('ChatOrchestratorService', () => {
       { message: '生成合同', sessionId: 's-debug-1' },
       { sessionId: 's-debug-1', userId: 'admin-1', userRoles: ['admin'], traceId: 't-1', history: [] },
       'Bearer token-1'
-    )) {}
+    )) {
+      // Drain the async stream so orchestration side effects complete.
+    }
 
     expect(controlPlaneClient.createExecution).toHaveBeenCalledWith(
       expect.objectContaining({

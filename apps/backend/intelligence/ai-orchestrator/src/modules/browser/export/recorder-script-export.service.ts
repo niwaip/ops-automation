@@ -360,8 +360,6 @@ export class RecorderScriptExportService {
         return `page.getByTestId(${this.toJavaScriptLiteral(locator.value || '')})`;
       case 'text':
         return `page.getByText(${this.toJavaScriptLiteral(locator.value || '')}, { exact: ${locator.exact ? 'true' : 'false'} })`;
-      case 'label':
-        return `page.getByLabel(${this.toJavaScriptLiteral(locator.value || '')}, { exact: false })`;
       case 'ref':
         throw new UnresolvedRefLocatorError(
           `Unresolved transient ref locator strategy='ref', value=${JSON.stringify(

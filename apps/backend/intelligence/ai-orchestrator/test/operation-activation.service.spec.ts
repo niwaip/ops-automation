@@ -238,7 +238,7 @@ describe('OperationActivationService', () => {
       );
     });
 
-    it('should reject rollback when previous equals current', async () => {
+    it('should reject rollback when history has no distinct previous version', async () => {
       const previousEvent = {
         ...mockActivationEvent,
         previousVersionId: 'ver-uuid-1',
@@ -257,7 +257,7 @@ describe('OperationActivationService', () => {
         })
       ).rejects.toThrow(
         expect.objectContaining({
-          code: LLM_OPERATION_ERROR_CODES.INVALID_STATE_TRANSITION,
+          code: LLM_OPERATION_ERROR_CODES.NOT_FOUND,
         })
       );
     });

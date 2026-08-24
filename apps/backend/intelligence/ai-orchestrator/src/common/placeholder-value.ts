@@ -44,7 +44,7 @@ function normalizePlaceholderText(value: string): string {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, '')
-    .replace(/^[`"'“”‘’]+|[`"'“”‘’。．\.,，；;：:、!！?？]+$/g, '');
+    .replace(/^[`"'“”‘’]+|[`"'“”‘’。．.,，；;：:、!！?？]+$/g, '');
 }
 
 export function isPlaceholderTextValue(value: string): boolean {

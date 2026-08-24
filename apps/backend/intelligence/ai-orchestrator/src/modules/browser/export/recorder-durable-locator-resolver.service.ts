@@ -99,15 +99,13 @@ export class RecorderDurableLocatorResolver {
   private extractRef(command: BrowserCommandLike): string | undefined {
     const targetValue =
       typeof command.params?.target === 'string' ? command.params.target.trim() : '';
-    const refMatch = targetValue.match(REF_PATTERN);
-    if (refMatch?.groups?.ref) {
-      return refMatch.groups.ref;
+    if (REF_PATTERN.test(targetValue)) {
+      return targetValue;
     }
     const locatorValue =
       typeof command.locator?.value === 'string' ? command.locator.value.trim() : '';
-    const locatorRefMatch = locatorValue.match(REF_PATTERN);
-    if (locatorRefMatch?.groups?.ref) {
-      return locatorRefMatch.groups.ref;
+    if (REF_PATTERN.test(locatorValue)) {
+      return locatorValue;
     }
     return undefined;
   }

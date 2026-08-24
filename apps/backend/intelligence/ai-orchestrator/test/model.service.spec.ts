@@ -115,7 +115,7 @@ describe('ModelService', () => {
       });
 
       const result = await service.getModel(created.id);
-      expect(result).toEqual(created);
+      expect(result).toEqual({ ...created, hasApiKey: false });
     });
   });
 

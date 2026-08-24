@@ -163,7 +163,7 @@ export class LlmOperationService {
       }
     }
 
-    let rawContent = response.content;
+    const rawContent = response.content;
 
     const template = LLM_OPERATION_TEMPLATES[dto.operationId];
     try {

@@ -26,7 +26,7 @@ export function buildGenAiAttributes(params: {
   request: ExecuteLlmOperationV2Request;
   resolvedModel: string;
 }): GenAiAttributes {
-  const { result, request, resolvedModel } = params;
+  const { result, resolvedModel } = params;
 
   const attrs: GenAiAttributes = {
     'gen_ai.system': result.metadata.provider,

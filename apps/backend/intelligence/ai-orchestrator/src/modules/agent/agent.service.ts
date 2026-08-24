@@ -10,8 +10,9 @@ import { OpenAICompatibleClient } from '../../client/openai-compatible';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
+import { exec as execCallback } from 'child_process';
 
-const exec = promisify(require('child_process').exec);
+const exec = promisify(execCallback);
 
 /**
  * 验证函数名/任务队列名仅含合法字符（字母、数字、下划线、连字符、点）

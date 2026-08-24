@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { readFileSync } from 'fs';
 import { ModelService } from '../../model/model.service';
 import { BrowserCommand } from '../intent';
 import { buildBrowserRecordingExecutionPlan } from './browser-recording-execution-plan';
@@ -617,7 +618,6 @@ export class RecorderExportAssemblyService {
     data: Record<string, unknown>,
     runId = 'pre-fix'
   ): void {
-    const localFs = require('fs') as typeof import('fs');
     let serverUrl = 'http://host.docker.internal:7777/event';
     let sessionId = 'template-export-params';
     for (const envPath of [
@@ -625,7 +625,7 @@ export class RecorderExportAssemblyService {
       '/Users/chain/Documents/MyProject/ops-automation/.dbg/template-export-params.env',
     ]) {
       try {
-        const envContent = localFs.readFileSync(envPath, 'utf8');
+        const envContent = readFileSync(envPath, 'utf8');
         const resolvedUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim();
         const resolvedSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim();
         if (resolvedUrl) {
@@ -635,7 +635,9 @@ export class RecorderExportAssemblyService {
           sessionId = resolvedSessionId;
         }
         break;
-      } catch {}
+      } catch {
+        // Debug configuration is optional; try the next known location.
+      }
     }
     void fetch(serverUrl, {
       method: 'POST',

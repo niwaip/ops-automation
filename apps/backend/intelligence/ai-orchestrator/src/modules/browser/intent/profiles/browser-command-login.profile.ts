@@ -36,6 +36,7 @@ export function normalizeProfileTerm(term: unknown): string | null {
     return null;
   }
 
+  // eslint-disable-next-line no-control-regex -- reject ASCII control characters by design
   if (/[\u0000-\u001f\u007f]/.test(normalized)) {
     return null;
   }

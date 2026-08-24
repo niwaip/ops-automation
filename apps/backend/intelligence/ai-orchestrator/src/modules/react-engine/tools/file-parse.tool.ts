@@ -109,7 +109,7 @@ export class FileParseTool extends BaseTool {
   /**
    * 根据文件类型解析内容
    */
-  private async parseFile(file: UploadedFile, parseType: string): Promise<string> {
+  private async parseFile(file: UploadedFile, _parseType: string): Promise<string> {
     const mimeType = file.mimeType;
 
     // 文本文件直接返回

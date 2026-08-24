@@ -293,7 +293,7 @@ ${JSON.stringify(data, null, 2)}`;
     prop: ParamProperty
   ): Promise<unknown | null> {
     const patterns: Record<string, RegExp[]> = {
-      date: [/\d{4}[-\/年]\d{1,2}[-\/月]\d{1,2}[日]?/, /\d{4}-\d{2}-\d{2}/],
+      date: [/\d{4}[-/年]\d{1,2}[-/月]\d{1,2}[日]?/, /\d{4}-\d{2}-\d{2}/],
       number: [/[\d,]+\.?\d*/],
       amount: [/[\d,]+\.?\d*元/, /[\d,]+\.?\d*万/, /[\d,]+\.?\d*美元/],
     };
@@ -318,11 +318,12 @@ ${JSON.stringify(data, null, 2)}`;
         return value.replace(/[年月日]/g, '-').replace(/[^\d-]/g, '');
       case 'number':
         return parseFloat(value.replace(/,/g, ''));
-      case 'amount':
+      case 'amount': {
         const num = parseFloat(value.replace(/[,元万美元]/g, ''));
         if (value.includes('万')) return num * 10000;
         if (value.includes('美元')) return { value: num, currency: 'USD' };
         return { value: num, currency: 'CNY' };
+      }
       default:
         return value;
     }

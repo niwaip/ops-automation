@@ -70,7 +70,7 @@ describe('Runtime V2 Tool Call Rejection (P2-β)', () => {
       outputValidator as any,
       budgetEnforcer as any,
       auditService as any,
-      new (require('@nestjs/common').Logger)(LlmOperationV2RuntimeService.name),
+      new Logger(LlmOperationV2RuntimeService.name),
       new PromptDebugSettingsService(),
     );
 
@@ -231,3 +231,4 @@ describe('Runtime V2 Tool Call Rejection (P2-β)', () => {
     });
   });
 });
+import { Logger } from '@nestjs/common';

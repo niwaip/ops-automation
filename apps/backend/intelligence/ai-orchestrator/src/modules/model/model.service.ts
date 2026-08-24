@@ -1007,7 +1007,7 @@ export class ModelService implements OnModuleInit {
     const now = new Date();
 
     let apiKey: string | null = null;
-    let apiKeyRef: APIKeyReference = this.buildModelApiKeyRef(id, dto.config);
+    const apiKeyRef: APIKeyReference = this.buildModelApiKeyRef(id, dto.config);
 
     const existingProviderConfig = dto.providerConfigId
       ? this.providers.get(dto.providerConfigId)
@@ -1306,12 +1306,13 @@ export class ModelService implements OnModuleInit {
     }
 
     switch (ref.secret_type) {
-      case 'env':
+      case 'env': {
         if (ref.reference_id.includes('_')) {
           return process.env[ref.reference_id] || null;
         }
         const envKey = `AI_API_KEY_${ref.reference_id}`;
         return process.env[envKey] || null;
+      }
       default:
         return null;
     }

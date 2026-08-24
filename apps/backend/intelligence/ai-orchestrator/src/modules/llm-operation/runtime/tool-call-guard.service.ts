@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { LlmOperationError } from '../registry/errors';
 
 export const TOOL_CALL_FORBIDDEN = 'TOOL_CALL_FORBIDDEN';

@@ -151,7 +151,7 @@ export function buildSystemPromptSections(
     });
   }
 
-  let filteredSkills = capabilitySnapshot
+  const filteredSkills = capabilitySnapshot
     ? availableSkills.filter((item) =>
         capabilitySnapshot.visibleSkills.some(
           (visibleSkill) => visibleSkill.skillId === item.skillId
@@ -568,8 +568,8 @@ export function parseActionResponse(response: string): {
  */
 export function buildObservationPrompt(
   observation: string,
-  iteration: number,
-  maxIterations: number
+  _iteration: number,
+  _maxIterations: number
 ): string {
   return `Observation: ${observation}`;
 }

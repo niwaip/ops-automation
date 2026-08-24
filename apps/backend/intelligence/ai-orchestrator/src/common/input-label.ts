@@ -1,4 +1,4 @@
-const MACHINE_LIKE_LABEL_PATTERN = /^[A-Za-z0-9_.\[\]-]+$/;
+const MACHINE_LIKE_LABEL_PATTERN = /^[A-Za-z0-9_.[\]-]+$/;
 
 const PURPOSE_PREFIX_PATTERNS = [
   /^用于(?:渲染|规定|约定|配置|控制|生成|填写|展示|补充|说明|确定)?/u,

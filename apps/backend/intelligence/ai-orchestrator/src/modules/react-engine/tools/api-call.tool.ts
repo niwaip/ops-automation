@@ -79,7 +79,7 @@ export class ApiCallTool extends BaseTool {
     });
   }
 
-  async execute(params: Record<string, unknown>, context: ExecutionContext): Promise<ToolResult> {
+  async execute(params: Record<string, unknown>, _context: ExecutionContext): Promise<ToolResult> {
     const url = params.url as string;
     const method = (params.method as string)?.toUpperCase() || 'GET';
     const queryParams = params.params as Record<string, unknown> | undefined;

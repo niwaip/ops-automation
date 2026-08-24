@@ -54,7 +54,7 @@ describe('RecorderStateStoreService', () => {
         stateHandle: 'rw:rt-1:5',
         runtimeSessionId: 'rt-1',
         url: 'https://erp.example.com/list',
-        capturedAt: '2026-05-15T00:00:00.000Z',
+        capturedAt: '2026-07-03T10:00:00.000Z',
       } as any);
       expect(session.stateSnapshots?.[5]).toEqual(meta);
     });

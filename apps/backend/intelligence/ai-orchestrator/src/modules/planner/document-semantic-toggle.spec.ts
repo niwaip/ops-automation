@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires -- modules are reloaded around feature-toggle changes */
 describe('PlannerService document semantic bypass toggle', () => {
   const buildSkill = () => ({
     skillId: 'document-contract',

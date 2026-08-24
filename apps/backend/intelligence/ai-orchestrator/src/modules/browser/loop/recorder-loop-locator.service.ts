@@ -124,7 +124,7 @@ export class RecorderLoopLocatorService {
     }
     if (
       locatorValue.startsWith('text=') ||
-      /^[#.:\[]/.test(locatorValue.trim()) ||
+      /^(?:[#.:]|\[)/.test(locatorValue.trim()) ||
       /^[a-z][a-z0-9_-]*(\b|[#.[:>])/i.test(locatorValue.trim())
     ) {
       return `:nth-match(${locatorValue.trim()}, ${rowIndexExpr})`;

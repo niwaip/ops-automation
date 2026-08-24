@@ -592,7 +592,7 @@ describe('RecorderTemplateExportService', () => {
     );
   });
 
-  it('preserves grounding metadata on template step locator when falling back to selector branch', () => {
+  it('prefers a compatible grounded role locator and preserves its metadata', () => {
     const service = new RecorderTemplateExportService({} as any, new RecorderLoopService());
 
     const step = service.buildTemplateStepFromRecordedCommand(
@@ -615,8 +615,8 @@ describe('RecorderTemplateExportService', () => {
 
     expect(step?.locator).toEqual(
       expect.objectContaining({
-        type: 'css',
-        value: 'button.action-btn',
+        type: 'role',
+        value: 'button[name="action"]',
         ref: 'e99',
         role: 'button',
         name: 'action',

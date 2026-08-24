@@ -2,14 +2,15 @@ import { OpenAICompatibleClient, AzureOpenAIClient } from '../src/client/openai-
 
 // Mock axios for testing
 jest.mock('axios', () => ({
-  create: jest.fn(() => ({
+  __mockInstance: {
     post: jest.fn(),
     get: jest.fn(),
     defaults: {
-      headers: {},
+      headers: { common: {} },
       baseURL: '',
     },
-  })),
+  },
+  create: jest.fn(),
 }));
 
 describe('OpenAICompatibleClient', () => {
@@ -17,8 +18,14 @@ describe('OpenAICompatibleClient', () => {
   let mockAxiosInstance: any;
 
   beforeEach(() => {
+    jest.clearAllMocks();
+    // Both the test and the client must observe the same axios instance.
+    // Returning a fresh object per create() call makes the test configure a
+    // different instance from the one owned by OpenAICompatibleClient.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const axios = require('axios');
-    mockAxiosInstance = axios.create();
+    mockAxiosInstance = axios.__mockInstance;
+    axios.create.mockReturnValue(mockAxiosInstance);
 
     client = new OpenAICompatibleClient({
       baseURL: 'https://api.openai.com',

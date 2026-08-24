@@ -139,6 +139,13 @@ export class PlannerPlanDraftService {
     deterministic: RecognizeParamsResponseDTO,
     context?: Record<string, unknown>
   ): string[] {
+    if (context?.mode === 'waiting_input_resume') {
+      return this.paramRecognizerService.resolveRecognizerFieldNamesForContext(
+        matchedSkill.paramsSchema?.properties || {},
+        context
+      );
+    }
+
     if (context?.mode !== 'single_step_continuation') {
       return Object.keys(matchedSkill.paramsSchema?.properties || {});
     }
@@ -178,6 +185,13 @@ export class PlannerPlanDraftService {
         fieldSet.has(name)
       )
     );
+    const resumeSchema =
+      input.recognizerContext?.mode === 'waiting_input_resume'
+        ? this.paramRecognizerService.buildRecognizerParamsSchema(
+            input.matchedSkill.paramsSchema,
+            input.recognizerContext
+          )
+        : undefined;
     const aiRecognized = await this.recognizerService.recognizeParams({
       template_id: input.matchedSkill.skillId,
       user_input: input.objective,
@@ -197,10 +211,11 @@ export class PlannerPlanDraftService {
       }),
       params_schema: {
         properties:
+          resumeSchema?.properties ||
           this.paramRecognizerService.buildRecognizerParamsSchemaProperties(narrowedProperties),
-        required: (input.matchedSkill.paramsSchema.required || []).filter((name) =>
-          fieldSet.has(name)
-        ),
+        required:
+          resumeSchema?.required ||
+          (input.matchedSkill.paramsSchema.required || []).filter((name) => fieldSet.has(name)),
       },
     });
 

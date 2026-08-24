@@ -74,8 +74,6 @@ export class BrowserCommandAtomicService {
         direction = 'up';
       } else if (directionText.includes('底部') || directionText.includes('bottom')) {
         direction = 'bottom';
-      } else if (directionText.includes('顶部')) {
-        direction = 'top';
       }
 
       return {

@@ -214,9 +214,9 @@ export class BrowserCommandLoginService {
     );
     explanations.push(`填写${stepAwareFields.map((field) => field.selector).join('和')}`);
 
-    let status: LoginParseStatus = stepAwareFields.length < extractedFields.length ? 'partial' : 'success';
-    let reason: string | undefined = status === 'partial' ? 'login-partial-step' : undefined;
-    let nextStepHint: string | undefined =
+    const status: LoginParseStatus = stepAwareFields.length < extractedFields.length ? 'partial' : 'success';
+    const reason: string | undefined = status === 'partial' ? 'login-partial-step' : undefined;
+    const nextStepHint: string | undefined =
       status === 'partial' ? '当前页面疑似只展示部分登录步骤，请等待下一步页面后继续补全剩余字段' : undefined;
 
     const submitTarget =

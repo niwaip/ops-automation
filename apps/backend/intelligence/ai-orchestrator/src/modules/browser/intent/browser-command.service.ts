@@ -655,7 +655,7 @@ export class BrowserCommandService {
           explanation: `将打开 ${url}`,
         };
       }
-      case 'click':
+      case 'click': {
         const actionResult = this.browserCommandActionService.parseActionCommandDetailed(
           `点击 ${strippedInput}`,
           context,
@@ -691,6 +691,7 @@ export class BrowserCommandService {
           commands: [clickCommand],
           explanation: `将点击${strippedInput}`,
         };
+      }
       case 'search':
       case 'smart_search': {
         const searchResult = this.browserCommandSearchService.parseSearchCommandDetailed(
@@ -911,7 +912,7 @@ export class BrowserCommandService {
           params: {},
           description,
         };
-      case 'click':
+      case 'click': {
         if (typeof params.target === 'string') {
           if (this.isExplicitNonTextClickTarget(params.target)) {
             return { tool: 'click', params: { target: params.target }, description };
@@ -936,6 +937,7 @@ export class BrowserCommandService {
           return null;
         }
         return this.resolvePendingClickIntent(intent, context, description);
+      }
       case 'fill':
         if (typeof params.selector === 'string' && typeof params.value === 'string') {
           return {

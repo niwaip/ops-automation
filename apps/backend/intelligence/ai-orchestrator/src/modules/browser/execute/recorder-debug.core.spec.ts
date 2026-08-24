@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires -- axios is loaded after Jest setup */
 import { createService, resetRecorderDebugTestEnv } from './recorder-debug.test-helper';
 import { RecorderObservationService } from '../observe';
 
@@ -289,7 +290,7 @@ describe('RecorderDebugService', () => {
     );
   });
 
-  it('rewriteCommandWithSnapshotRefs should keep original target when only generic node matches', () => {
+  it('rewriteCommandWithSnapshotRefs should preserve the best matching generic snapshot ref', () => {
     const service = createService();
     const originalCommand = {
       tool: 'click',
@@ -313,7 +314,10 @@ describe('RecorderDebugService', () => {
       ],
     });
 
-    expect(rewritten).toEqual(originalCommand);
+    expect(rewritten).toEqual({
+      ...originalCommand,
+      params: { ...originalCommand.params, target: 'e11' },
+    });
   });
 
   it('executeBrowserCommands should not retain failed commands in executedCommands', async () => {

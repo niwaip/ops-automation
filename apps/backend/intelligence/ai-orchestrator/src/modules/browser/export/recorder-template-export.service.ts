@@ -10,8 +10,6 @@ import {
 } from '../loop';
 import {
   EPHEMERAL_REF_PATTERN,
-  INPUT_ROLES,
-  ACTION_ROLES,
   SNAPSHOT_ROLE_ALTERNATION,
   isRoleCompatibleWithTool,
 } from '../browser-domain.constants';
@@ -1084,7 +1082,7 @@ export class RecorderTemplateExportService {
       locator.type === 'text' &&
       !trimmedLocatorValue.startsWith('text=') &&
       !trimmedLocatorValue.startsWith(':nth-match(') &&
-      !/^[#.:\[]/.test(trimmedLocatorValue)
+      !/^(?:[#.:]|\[)/.test(trimmedLocatorValue)
     ) {
       return `text=${locator.value}`;
     }

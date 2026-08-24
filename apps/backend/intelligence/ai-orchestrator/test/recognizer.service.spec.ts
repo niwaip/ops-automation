@@ -10,6 +10,7 @@ describe('RecognizerService', () => {
     getClient: jest.Mock;
     getDefaultModel: jest.Mock;
     resolveModelId: jest.Mock;
+    getPromptCachingConfig: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -18,6 +19,7 @@ describe('RecognizerService', () => {
       getClient: jest.fn(),
       getDefaultModel: jest.fn(),
       resolveModelId: jest.fn(),
+      getPromptCachingConfig: jest.fn().mockReturnValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({

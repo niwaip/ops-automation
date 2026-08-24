@@ -53,7 +53,6 @@ export class CapabilityCandidateSelectorService {
 
     for (const skill of (availableSkills || []) as any[]) {
       const skillId = skill.skillId || skill.id || skill.skillName || skill.name;
-      const publishedSkillId = skill.publishedSkillId || skill.id || skillId;
       const executableVersion =
         skill.executableVersion ||
         skill.publishedVersion ||
@@ -235,7 +234,7 @@ export class CapabilityCandidateSelectorService {
 
   private mapExecutionTypeToRuntimeType(
     executionType?: string,
-    runtimeMetadata?: any,
+    _runtimeMetadata?: any,
   ): SkillPlanNodeV1['runtimeType'] {
     switch (executionType) {
       case 'flow':
