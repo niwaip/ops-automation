@@ -8,7 +8,7 @@ SMART_SCRIPT="$SCRIPT_DIR/start-smart.sh"
 DOCKER_ENV_FILE="$DOCKER_DIR/.env"
 
 BASE_COMPOSE="docker-compose.base.yml"
-CONTAINER_SCHEMA_SCRIPT="/workspace/docker/scripts/apply-latest-db-schema-in-container.sh"
+CONTAINER_SCHEMA_SCRIPT="/workspace/docker/scripts/apply-all-db-schema-in-container.sh"
 
 log() {
   printf '[apply-latest-db-schema] %s\n' "$1"
@@ -61,7 +61,7 @@ run_platform_job() {
 
 apply_latest_schema() {
   wait_for_postgres
-  log "Applying the canonical shared database migration flow..."
+  log "Applying all owned database migration histories..."
   run_platform_job "bash ${CONTAINER_SCHEMA_SCRIPT}"
 }
 

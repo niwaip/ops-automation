@@ -75,6 +75,7 @@ docker-compose.override.yml
 
 # Docker
 docker-compose.override.yml
+.docker-state/
 .docker-state/control-plane-runtime-build.*
 docker/office-addin/runtime-certs/*
 !docker/office-addin/runtime-certs/.gitkeep

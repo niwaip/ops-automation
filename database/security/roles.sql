@@ -43,7 +43,11 @@ TO ops_execution_writer;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE runtime_sessions TO ops_runtime_writer;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
-  chat_sessions, chat_messages
+  chat_sessions, chat_messages,
+  llm_operations, llm_operation_versions, llm_operation_activations,
+  llm_operation_activation_events, llm_operation_eval_suites,
+  llm_operation_eval_cases, llm_operation_eval_runs,
+  llm_operation_invocations, llm_operation_attestations
 TO ops_intelligence_writer;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE

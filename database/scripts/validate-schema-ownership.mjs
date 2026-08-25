@@ -8,7 +8,25 @@ const manifest = JSON.parse(
 );
 const sourcePath = path.join(root, manifest.schemaSource);
 const source = fs.readFileSync(sourcePath, 'utf8');
-const tables = [...source.matchAll(/@@map\("([^"]+)"\)/gu)].map((match) => match[1]).sort();
+const tableNames = (schema) =>
+  [...schema.matchAll(/@@map\("([^"]+)"\)/gu)].map((match) => match[1]);
+const sourceTables = tableNames(source);
+const supplementalTables = [];
+
+for (const supplemental of manifest.supplementalSources || []) {
+  const supplementalPath = path.join(root, supplemental.schema);
+  const declared = new Set(supplemental.includeTables || []);
+  const available = new Set(tableNames(fs.readFileSync(supplementalPath, 'utf8')));
+  const missingDeclared = [...declared].filter((table) => !available.has(table));
+  if (missingDeclared.length > 0) {
+    throw new Error(
+      `Supplemental schema ownership source has missing table(s): ${supplemental.schema} [${missingDeclared}]`
+    );
+  }
+  supplementalTables.push(...declared);
+}
+
+const tables = [...new Set([...sourceTables, ...supplementalTables])].sort();
 const declarations = new Map();
 
 for (const [owner, ownedTables] of Object.entries(manifest.owners)) {

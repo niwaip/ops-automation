@@ -86,6 +86,19 @@ jobs:
           pnpm --filter @ops/control-plane test -- --runInBand
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/task_orchestration
+      - name: Validate AI Registry migration history
+        run: |
+          pnpm --filter @ops/ai-orchestrator exec prisma migrate deploy --schema "$GITHUB_WORKSPACE/apps/backend/intelligence/ai-orchestrator/prisma/schema.prisma"
+          pnpm --filter @ops/ai-orchestrator exec prisma migrate status --schema "$GITHUB_WORKSPACE/apps/backend/intelligence/ai-orchestrator/prisma/schema.prisma"
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/task_orchestration
+      - name: Validate Release Job entrypoints
+        run: |
+          bash -n docker/scripts/apply-ai-orchestrator-db-schema-in-container.sh
+          bash -n docker/scripts/apply-all-db-schema-in-container.sh
+          bash -n docker/scripts/run-production-schema-migrations.sh
+          bash -n docker/scripts/run-production-release-job.sh
+          node --check docker/scripts/validate-production-compose-policy.mjs
       - name: Validate production delivery contract
         run: ./docker/scripts/validate-production-delivery.sh
         env:

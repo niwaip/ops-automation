@@ -1,6 +1,22 @@
 {
   "schemaSource": "apps/backend/core/platform/prisma/schema.prisma",
   "generatedMirrors": ["apps/backend/execution-control/control-plane/prisma/schema.prisma"],
+  "supplementalSources": [
+    {
+      "schema": "apps/backend/intelligence/ai-orchestrator/prisma/schema.prisma",
+      "includeTables": [
+        "llm_operation_activation_events",
+        "llm_operation_activations",
+        "llm_operation_attestations",
+        "llm_operation_eval_cases",
+        "llm_operation_eval_runs",
+        "llm_operation_eval_suites",
+        "llm_operation_invocations",
+        "llm_operation_versions",
+        "llm_operations"
+      ]
+    }
+  ],
   "owners": {
     "governance-platform": [
       "audit_logs",
@@ -54,7 +70,19 @@
       "temporal_workflows"
     ],
     "session-broker": ["runtime_sessions"],
-    "ai-orchestrator": ["chat_messages", "chat_sessions"],
+    "ai-orchestrator": [
+      "chat_messages",
+      "chat_sessions",
+      "llm_operation_activation_events",
+      "llm_operation_activations",
+      "llm_operation_attestations",
+      "llm_operation_eval_cases",
+      "llm_operation_eval_runs",
+      "llm_operation_eval_suites",
+      "llm_operation_invocations",
+      "llm_operation_versions",
+      "llm_operations"
+    ],
     "experience-learning": [
       "assistant_feedback_current",
       "assistant_feedback_events",

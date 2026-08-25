@@ -27,7 +27,7 @@ services:
     working_dir: /workspace
     command: >
       sh -c "bash /workspace/docker/scripts/bootstrap-workspace-deps.sh
-      && bash /workspace/docker/scripts/apply-latest-db-schema-in-container.sh"
+      && bash /workspace/docker/scripts/apply-all-db-schema-in-container.sh"
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
@@ -207,6 +207,7 @@ services:
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       AUTH_SERVICE_URL: http://${PLATFORM_SERVICE_HOST:-platform}:${PLATFORM_PORT:-3001}
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
+      CARBONE_SERVICE_URL: http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}
       SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
@@ -236,6 +237,7 @@ services:
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       AUTH_SERVICE_URL: http://${PLATFORM_SERVICE_HOST:-platform}:${PLATFORM_PORT:-3001}
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
+      CARBONE_SERVICE_URL: http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}
       SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace

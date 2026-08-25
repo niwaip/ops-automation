@@ -50,7 +50,7 @@ async function hasMembership(login, role) {
        JOIN pg_roles parent ON parent.oid = membership.roleid
        JOIN pg_roles member ON member.oid = membership.member
       WHERE parent.rolname = $1 AND member.rolname = $2`,
-    [role, login],
+    [role, login]
   );
   return result.rowCount === 1;
 }
@@ -66,7 +66,7 @@ async function hasPublicCreate() {
         WHERE namespace.nspname = 'public'
           AND permission.grantee = 0
           AND permission.privilege_type = 'CREATE'
-     ) AS granted`,
+     ) AS granted`
   );
   return result.rows[0].granted;
 }
@@ -74,7 +74,7 @@ async function hasPublicCreate() {
 async function hasTableWrite(login, table) {
   const result = await client.query(
     "SELECT has_table_privilege($1, $2, 'INSERT, UPDATE, DELETE') AS granted",
-    [login, table],
+    [login, table]
   );
   return result.rows[0].granted;
 }
@@ -97,9 +97,7 @@ try {
     const actual = await hasMembership(login, role);
     if (actual !== shouldExist) {
       failures.push(
-        shouldExist
-          ? `${login} must inherit ${role}`
-          : `${login} must not inherit ${role}`,
+        shouldExist ? `${login} must inherit ${role}` : `${login} must not inherit ${role}`
       );
     }
   }
@@ -112,6 +110,9 @@ try {
   const controlLogin = process.env.CONTROL_PLANE_DB_LOGIN;
   if ((await roleExists(aiLogin)) && (await hasTableWrite(aiLogin, 'public.executions'))) {
     failures.push(`${aiLogin} must not write public.executions`);
+  }
+  if ((await roleExists(aiLogin)) && !(await hasTableWrite(aiLogin, 'public.llm_operations'))) {
+    failures.push(`${aiLogin} must write public.llm_operations`);
   }
   if (
     (await roleExists(controlLogin)) &&

@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import axios from 'axios';
 import { BuiltinSkillHandlerResult } from '@ops/backend-builtin-skill-contract';
 import type { RuntimeStepInvokeRequest } from './runtime-adapter.interface';
+import { getCarboneServiceUrl } from '../../../config/service-endpoints';
 
 export type BuiltinHandlerFn = (request: RuntimeStepInvokeRequest, idempotencyKey: string) => Promise<BuiltinSkillHandlerResult>;
 
@@ -17,7 +18,7 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
   private registerDefaultHandlers(): void {
     // 1. Markdown Artifact Writer Handler
     this.registerHandler('document.markdown-artifact-writer', async (req, idempotencyKey) => {
-      const domainUrl = process.env.CARBONE_SERVICE_URL || 'http://localhost:3009';
+      const domainUrl = getCarboneServiceUrl();
       const response = await axios.post(`${domainUrl}/internal/document/markdown-artifacts/invoke`, {
         executionId: req.executionId,
         stepId: req.stepId,
@@ -55,7 +56,7 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
 
   private registerDocumentDomainHandler(handlerKey: string, endpoint: string): void {
     this.registerHandler(handlerKey, async (req, idempotencyKey) => {
-      const domainUrl = process.env.CARBONE_SERVICE_URL || 'http://localhost:3009';
+      const domainUrl = getCarboneServiceUrl();
       const response = await axios.post(`${domainUrl}${endpoint}`, {
         executionId: req.executionId,
         stepId: req.stepId,

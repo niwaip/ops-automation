@@ -118,6 +118,35 @@ services:
         limits: { cpus: '2.0', memory: 3G }
     networks: [control, runtime]
 
+  # Deliberately opt-in Release Job. It owns schema changes and receives only
+  # migration credentials; application services never execute Prisma migrate.
+  schema-migrator:
+    profiles: ['release']
+    image: ${CONTROL_PLANE_IMAGE:?set CONTROL_PLANE_IMAGE to an immutable image digest}
+    environment:
+      NODE_ENV: production
+      CONTROL_PLANE_MIGRATION_DATABASE_URL: ${CONTROL_PLANE_MIGRATION_DATABASE_URL:-}
+      AI_ORCHESTRATOR_MIGRATION_DATABASE_URL: ${AI_ORCHESTRATOR_MIGRATION_DATABASE_URL:-}
+    command: ['bash', './docker/scripts/run-production-schema-migrations.sh']
+    restart: 'no'
+    networks: [data]
+
+  # Run only after the DBA has applied database/security/roles.sql and the
+  # schema Release Job has completed. This verifies both positive grants and
+  # negative write permissions before application rollout.
+  database-role-verifier:
+    profiles: ['release']
+    image: ${CONTROL_PLANE_IMAGE:?set CONTROL_PLANE_IMAGE to an immutable image digest}
+    environment:
+      NODE_ENV: production
+      DATABASE_ADMIN_URL: ${DATABASE_ADMIN_URL:-}
+      CONTROL_PLANE_DB_LOGIN: ${CONTROL_PLANE_DB_LOGIN:-}
+      AI_ORCHESTRATOR_DB_LOGIN: ${AI_ORCHESTRATOR_DB_LOGIN:-}
+      RUNTIME_WORKER_DB_LOGIN: ${RUNTIME_WORKER_DB_LOGIN:-}
+    command: ['node', 'database/scripts/verify-application-roles.mjs']
+    restart: 'no'
+    networks: [data]
+
 networks:
   control:
     internal: true

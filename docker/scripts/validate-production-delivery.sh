@@ -9,6 +9,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 START_SMART="$REPO_ROOT/docker/start-smart.sh"
+COMPOSE_POLICY_VALIDATOR="$SCRIPT_DIR/validate-production-compose-policy.mjs"
+NODE_SERVICE_DOCKERFILE="$REPO_ROOT/docker/node-service/Dockerfile"
 
 usage() {
   cat <<'EOF'
@@ -72,11 +74,18 @@ if [[ ! -x "$START_SMART" ]]; then
   echo "Expected Docker launcher at $START_SMART" >&2
   exit 1
 fi
+if [[ ! -f "$COMPOSE_POLICY_VALIDATOR" || ! -f "$NODE_SERVICE_DOCKERFILE" ]]; then
+  echo "Production Compose policy validator or runtime Dockerfile is missing" >&2
+  exit 1
+fi
 
+rendered_compose_file="$(mktemp -t ops-production-compose.XXXXXX)"
+trap 'rm -f "$rendered_compose_file"' EXIT
 (
   cd "$REPO_ROOT"
-  "$START_SMART" docker-compose.production.yml config --quiet
+  "$START_SMART" docker-compose.production.yml --profile release config --format json > "$rendered_compose_file"
 )
+node "$COMPOSE_POLICY_VALIDATOR" "$rendered_compose_file" "$NODE_SERVICE_DOCKERFILE"
 
 if [[ "$verify_db_roles" == true ]]; then
   (
