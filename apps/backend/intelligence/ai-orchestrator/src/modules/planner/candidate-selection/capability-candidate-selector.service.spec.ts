@@ -6,7 +6,10 @@ describe('CapabilityCandidateSelectorService', () => {
   let service: CapabilityCandidateSelectorService;
   let mockProjector: jest.Mocked<LlmOperationCatalogProjector>;
 
-  const createMockProjection = (id: string, displayName: string): LlmOperationCatalogProjection => ({
+  const createMockProjection = (
+    id: string,
+    displayName: string
+  ): LlmOperationCatalogProjection => ({
     capabilityRef: {
       id,
       version: '1.0.0',
@@ -81,18 +84,14 @@ describe('CapabilityCandidateSelectorService', () => {
 
     const result = await service.selectCandidates('搜索新闻', skills);
 
-    expect(result.skillCards.map((card) => card.id)).toEqual([
-      'alpha',
-      'web-search',
-      'omega',
-    ]);
+    expect(result.skillCards.map((card) => card.id)).toEqual(['alpha', 'web-search', 'omega']);
   });
 
-  it('keeps an explicitly requested user capability when the 12-card cap is active', async () => {
-    const skills = Array.from({ length: 13 }, (_, index) => ({
-      id: index === 12 ? 'bark-push' : `generic-${index}`,
-      name: index === 12 ? 'Bark推送服务' : `通用能力 ${index}`,
-      description: index === 12 ? '通过 Bark 将内容推送到设备' : '通用处理能力',
+  it('keeps an explicitly requested user capability when the 3-6 card cap is active', async () => {
+    const skills = Array.from({ length: 7 }, (_, index) => ({
+      id: index === 6 ? 'bark-push' : `generic-${index}`,
+      name: index === 6 ? 'Bark推送服务' : `通用能力 ${index}`,
+      description: index === 6 ? '通过 Bark 将内容推送到设备' : '通用处理能力',
       executionType: 'flow',
       paramsSchema: { properties: { content: { type: 'string' } } },
       outputSchema: { properties: { result: { type: 'string' } } },
@@ -104,7 +103,7 @@ describe('CapabilityCandidateSelectorService', () => {
 
     const result = await service.selectCandidates('总结后最后用 Bark 进行推送', skills);
 
-    expect(result.skillCards).toHaveLength(12);
+    expect(result.skillCards).toHaveLength(6);
     expect(result.skillCards[0]?.id).toBe('bark-push');
   });
 
@@ -165,9 +164,7 @@ describe('CapabilityCandidateSelectorService', () => {
       },
     ]);
 
-    expect(result.skillCards[0]!.inputs.topic).toBe(
-      'string[enum=general,news,finance]'
-    );
+    expect(result.skillCards[0]!.inputs.topic).toBe('string[enum=general,news,finance]');
   });
 
   describe('decodeSchemaSummaryEnum', () => {

@@ -1,0 +1,6 @@
+{"id":"plan-001","locale":"zh-CN","request":"查询微博热点并总结后用 Bark 推送","hasPreviousResult":false,"expectedLegacyRoute":"deterministic_plan","expectedTargetClass":"recipe_plan","notes":"搜索、处理、外部推送"}
+{"id":"plan-002","locale":"zh-CN","request":"总结 PDF 并生成 Markdown 文件","hasPreviousResult":false,"expectedLegacyRoute":"deterministic_plan","expectedTargetClass":"recipe_plan","notes":"文档处理与产物"}
+{"id":"plan-003","locale":"zh-CN","request":"翻译成英文","hasPreviousResult":false,"expectedLegacyRoute":"deterministic_plan","expectedTargetClass":"generated_plan","notes":"当前策略将处理请求送入确定性规划"}
+{"id":"plan-004","locale":"zh-CN","request":"提取附件内容","hasPreviousResult":false,"expectedLegacyRoute":"deterministic_plan","expectedTargetClass":"single_capability","notes":"记录当前与目标分类差异"}
+{"id":"plan-005","locale":"en-US","request":"Summarize the attachment and export a markdown report","hasPreviousResult":false,"expectedLegacyRoute":"single_skill","expectedTargetClass":"recipe_plan","notes":"当前英文词表未覆盖，记录为后续 V2 必须修复的基线差异"}
+{"id":"plan-006","locale":"zh-CN","request":"把上一条结果进行总结","hasPreviousResult":true,"expectedLegacyRoute":"deterministic_plan","expectedTargetClass":"single_capability","notes":"上一结果单能力延续候选"}

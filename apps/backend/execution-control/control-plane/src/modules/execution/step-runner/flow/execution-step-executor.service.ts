@@ -299,7 +299,7 @@ export class ExecutionStepExecutorService {
       this.runtimeStepRequestFactory.resolveExecutionCapabilityVersion(execution);
     const input = this.runtimeStepRequestFactory.resolveExecutionInput(execution);
     this.logger.log(
-      `Calling auth runtime for capability ${capabilityId} (version: ${capabilityVersion || 'latest'}) with input: ${JSON.stringify(input)}`
+      `Calling auth runtime for capability ${capabilityId} (version: ${capabilityVersion || 'latest'}); input fields: ${Object.keys(input || {}).sort().join(', ') || '(none)'}`
     );
 
     await this.executionStepService.setCurrentStep(executionId, stepId);

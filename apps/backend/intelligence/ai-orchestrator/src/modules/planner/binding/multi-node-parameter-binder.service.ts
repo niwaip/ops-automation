@@ -12,6 +12,7 @@ import {
   projectPreviousResultInput,
   resolveLlmOperationInputRole,
 } from './previous-result-input-projector';
+import { DeterministicParamResolverService } from '../params/deterministic-param-resolver.service';
 
 interface RawInputSchemaSnapshot {
   required?: string[];
@@ -52,6 +53,7 @@ export class MultiNodeParameterBinderService {
   constructor(
     private readonly outputResolver: NodeOutputBindingResolverService,
     @Optional() private readonly recognizerService?: RecognizerService,
+    @Optional() private readonly deterministicParamResolver?: DeterministicParamResolverService
   ) {}
 
   public async bindParameters(
@@ -60,6 +62,7 @@ export class MultiNodeParameterBinderService {
     capabilityMap: Map<string, CompactCapabilityCardV1>,
     originalInputSchema?: Record<string, RawInputSchemaSnapshot>,
     systemInputs?: Record<string, unknown>,
+    modelId?: string
   ): Promise<ParameterBindingResult> {
     const nodeBindings: Record<string, Record<string, ValueBindingV1>> = {};
     const planInputs: Record<string, Record<string, unknown>> = {};
@@ -75,9 +78,7 @@ export class MultiNodeParameterBinderService {
       const rawSchema =
         originalInputSchema?.[node.capabilityKey] ||
         ((card as any)?._rawInputSchema as RawInputSchemaSnapshot | undefined);
-      const requiredFields = new Set(
-        Array.isArray(rawSchema?.required) ? rawSchema.required : [],
-      );
+      const requiredFields = new Set(Array.isArray(rawSchema?.required) ? rawSchema.required : []);
 
       nodeBindings[node.ref] = bindings;
       planInputs[node.ref] = nodeInputs;
@@ -86,9 +87,10 @@ export class MultiNodeParameterBinderService {
       for (const paramName of Object.keys(compressedInputs)) {
         if (this.isSensitiveFieldName(paramName)) continue;
         const rawProperty = rawSchema?.properties?.[paramName] || { type: 'string' };
-        const llmInputRole = card?.kind === 'llm_operation'
-          ? resolveLlmOperationInputRole(paramName, rawProperty)
-          : undefined;
+        const llmInputRole =
+          card?.kind === 'llm_operation'
+            ? resolveLlmOperationInputRole(paramName, rawProperty)
+            : undefined;
         if (systemInputs && Object.prototype.hasOwnProperty.call(systemInputs, paramName)) {
           const systemValue = systemInputs[paramName];
           const normalized = this.normalizeBySchema(systemValue, rawProperty);
@@ -106,14 +108,10 @@ export class MultiNodeParameterBinderService {
           continue;
         }
 
-        const upstreamBinding = llmInputRole === 'instruction' || llmInputRole === 'configuration'
-          ? undefined
-          : this.resolveUpstreamBinding(
-              paramName,
-              node,
-              nodes,
-              capabilityMap,
-            );
+        const upstreamBinding =
+          llmInputRole === 'instruction' || llmInputRole === 'configuration'
+            ? undefined
+            : this.resolveUpstreamBinding(paramName, node, nodes, capabilityMap);
         if (upstreamBinding) {
           bindings[paramName] = upstreamBinding;
           continue;
@@ -131,11 +129,24 @@ export class MultiNodeParameterBinderService {
               nodeInputs[paramName] = normalized;
               bindings[paramName] = { source: 'literal', value: normalized } as ValueBindingV1;
               notes.push(
-                `参数 '${node.ref}.${paramName}' 已从上一次完成执行${projected.sourceExecutionId ? ` ${projected.sourceExecutionId}` : ''}的不可变结果快照中按 Schema 投影。`,
+                `参数 '${node.ref}.${paramName}' 已从上一次完成执行${projected.sourceExecutionId ? ` ${projected.sourceExecutionId}` : ''}的不可变结果快照中按 Schema 投影。`
               );
               continue;
             }
           }
+        }
+
+        // Optional content on a standard generation Operation is contextual,
+        // not a value that should trigger another model call merely to infer
+        // whether it exists. Required content still follows normal recognition
+        // and waiting-input behavior.
+        if (
+          card?.kind === 'llm_operation' &&
+          llmInputRole === 'content' &&
+          rawSchema !== undefined &&
+          !requiredFields.has(paramName)
+        ) {
+          continue;
         }
 
         unresolvedFields.push(paramName);
@@ -144,11 +155,25 @@ export class MultiNodeParameterBinderService {
       const recognizerProperties = this.buildRecognizerProperties(
         unresolvedFields,
         compressedInputs,
-        rawSchema,
+        rawSchema
       );
-      let recognizedParams: Record<string, unknown> = {};
+      const deterministic = card
+        ? this.deterministicParamResolver?.resolveTextParams(
+            userRequest,
+            card,
+            recognizerProperties
+          )
+        : undefined;
+      let recognizedParams: Record<string, unknown> = deterministic?.params || {};
+      notes.push(...(deterministic?.notes || []));
 
-      if (Object.keys(recognizerProperties).length > 0) {
+      const modelRecognizerProperties = Object.fromEntries(
+        Object.entries(recognizerProperties).filter(
+          ([field]) => !Object.prototype.hasOwnProperty.call(recognizedParams, field)
+        )
+      );
+
+      if (Object.keys(modelRecognizerProperties).length > 0) {
         if (this.recognizerService) {
           const previousResultText =
             card?.kind !== 'llm_operation' && typeof systemInputs?.previousResultText === 'string'
@@ -159,6 +184,7 @@ export class MultiNodeParameterBinderService {
             user_input: userRequest,
             fallbackMode: 'none',
             postProcessMode: 'schema_only',
+            ...(modelId ? { model: modelId } : {}),
             context: {
               skill_name: card?.displayName || card?.id || node.capabilityKey,
               skill_description: card?.summary || '',
@@ -166,16 +192,20 @@ export class MultiNodeParameterBinderService {
               ...(previousResultText ? { previous_result_text: previousResultText } : {}),
             },
             params_schema: {
-              properties: recognizerProperties as any,
-              required: unresolvedFields.filter((field) => requiredFields.has(field)),
+              properties: modelRecognizerProperties as any,
+              required: unresolvedFields.filter(
+                (field) =>
+                  requiredFields.has(field) &&
+                  Object.prototype.hasOwnProperty.call(modelRecognizerProperties, field)
+              ),
             },
           });
-          recognizedParams = recognized.params || {};
+          recognizedParams = { ...recognizedParams, ...(recognized.params || {}) };
           llmCalls.push(...(recognized.debug?.llmCalls || []));
           notes.push(...(recognized.debug?.notes || []));
         } else {
           notes.push(
-            `Node '${node.ref}' parameter recognizer is unavailable; no fixed-rule extraction was attempted.`,
+            `Node '${node.ref}' parameter recognizer is unavailable; no fixed-rule extraction was attempted.`
           );
         }
       }
@@ -185,7 +215,7 @@ export class MultiNodeParameterBinderService {
         const schemaSummary = compressedInputs[paramName] || 'string';
         const recognizedHasValue = Object.prototype.hasOwnProperty.call(
           recognizedParams,
-          paramName,
+          paramName
         );
 
         if (recognizedHasValue) {
@@ -196,7 +226,7 @@ export class MultiNodeParameterBinderService {
             continue;
           }
           this.logger.warn(
-            `Ignoring LLM-recognized value for '${node.ref}.${paramName}' because it violates the selected Skill schema.`,
+            `Ignoring LLM-recognized value for '${node.ref}.${paramName}' because it violates the selected Skill schema.`
           );
         }
 
@@ -228,7 +258,7 @@ export class MultiNodeParameterBinderService {
             value: previousResultText,
           } as ValueBindingV1;
           notes.push(
-            `参数 '${node.ref}.${paramName}' 未在请求中提供，已自动使用会话中上一次任务的输出作为输入。`,
+            `参数 '${node.ref}.${paramName}' 未在请求中提供，已自动使用会话中上一次任务的输出作为输入。`
           );
           continue;
         }
@@ -268,7 +298,7 @@ export class MultiNodeParameterBinderService {
     paramName: string,
     node: TopologyNodeV1,
     nodes: TopologyNodeV1[],
-    capabilityMap: Map<string, CompactCapabilityCardV1>,
+    capabilityMap: Map<string, CompactCapabilityCardV1>
   ): ValueBindingV1 | undefined {
     for (const depRef of node.dependsOn) {
       const depNode = nodes.find((candidate) => candidate.ref === depRef);
@@ -276,11 +306,7 @@ export class MultiNodeParameterBinderService {
       const depOutputs = (depCard?.outputs as any)?.properties
         ? ((depCard?.outputs as any).properties as Record<string, unknown>)
         : (depCard?.outputs as Record<string, unknown>) || {};
-      const binding = this.outputResolver.resolveNodeOutputBinding(
-        depRef,
-        depOutputs,
-        paramName,
-      );
+      const binding = this.outputResolver.resolveNodeOutputBinding(depRef, depOutputs, paramName);
       if (binding) return binding;
     }
     return undefined;
@@ -289,7 +315,7 @@ export class MultiNodeParameterBinderService {
   private buildRecognizerProperties(
     unresolvedFields: string[],
     compressedInputs: Record<string, string>,
-    rawSchema?: RawInputSchemaSnapshot,
+    rawSchema?: RawInputSchemaSnapshot
   ): Record<string, Record<string, unknown>> {
     const properties: Record<string, Record<string, unknown>> = {};
     for (const field of unresolvedFields) {
@@ -307,10 +333,7 @@ export class MultiNodeParameterBinderService {
     return properties;
   }
 
-  private normalizeBySchema(
-    value: unknown,
-    property: Record<string, unknown>,
-  ): unknown {
+  private normalizeBySchema(value: unknown, property: Record<string, unknown>): unknown {
     if (value === undefined || value === null) return undefined;
     const type = String(property.type || 'string').toLowerCase();
     let normalized: unknown;
@@ -335,11 +358,11 @@ export class MultiNodeParameterBinderService {
       normalized =
         value && typeof value === 'object' && !Array.isArray(value)
           ? value
-          : this.parseJsonValue(
-              value,
-              (candidate) => Boolean(candidate && typeof candidate === 'object' && !Array.isArray(candidate)),
+          : this.parseJsonValue(value, (candidate) =>
+              Boolean(candidate && typeof candidate === 'object' && !Array.isArray(candidate))
             );
-      if (!normalized || typeof normalized !== 'object' || Array.isArray(normalized)) return undefined;
+      if (!normalized || typeof normalized !== 'object' || Array.isArray(normalized))
+        return undefined;
     } else {
       if (typeof value === 'string') normalized = value.trim();
       else if (typeof value === 'number' || typeof value === 'boolean') normalized = String(value);
@@ -384,10 +407,7 @@ export class MultiNodeParameterBinderService {
     return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
   }
 
-  private parseJsonValue(
-    value: unknown,
-    predicate: (candidate: unknown) => boolean,
-  ): unknown {
+  private parseJsonValue(value: unknown, predicate: (candidate: unknown) => boolean): unknown {
     if (typeof value !== 'string') return undefined;
     try {
       const parsed = JSON.parse(value);
@@ -414,10 +434,7 @@ export class MultiNodeParameterBinderService {
     return match?.[1]?.trim() || undefined;
   }
 
-  private resolveDeclaredType(
-    property: Record<string, unknown>,
-    summary: string,
-  ): string {
+  private resolveDeclaredType(property: Record<string, unknown>, summary: string): string {
     return String(property.type || summary.split('[')[0] || 'string');
   }
 

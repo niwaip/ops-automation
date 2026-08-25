@@ -1,0 +1,31 @@
+{
+  "name": "@ops/capability-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "Manifest, contract, runtime adapter and test helpers for enterprise capability packs",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "files": ["src", "*.js", "*.d.ts", "*.map", "README.md", "tsconfig.json"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "jest --runInBand"
+  },
+  "dependencies": {
+    "@ops/backend-runtime-capability-contract": "workspace:*",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.7.2"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testRegex": ".*\\.spec\\.ts$"
+  }
+}

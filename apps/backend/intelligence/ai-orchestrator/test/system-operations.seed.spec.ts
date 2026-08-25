@@ -63,7 +63,7 @@ describe('seedSystemLlmOperations', () => {
     const manifest = buildOperationManifest(
       'summarize_list',
       LLM_OPERATION_TEMPLATES.summarize_list,
-      SYSTEM_OPERATION_VERSION,
+      SYSTEM_OPERATION_VERSION
     );
     const renderer = new PromptRendererService();
     const rendered = renderer.renderManifestPrompt(manifest, {
@@ -79,7 +79,7 @@ describe('seedSystemLlmOperations', () => {
     const manifest = buildOperationManifest(
       'summarize_list',
       LLM_OPERATION_TEMPLATES.summarize_list,
-      SYSTEM_OPERATION_VERSION,
+      SYSTEM_OPERATION_VERSION
     );
 
     expect(manifest.inputSchema).toMatchObject({
@@ -93,7 +93,7 @@ describe('seedSystemLlmOperations', () => {
     expect(manifest.maxInputTokens).toBe(8000);
     expect(manifest.maxOutputTokens).toBe(4000);
     expect((manifest.prompt as Record<string, string>).systemTemplate).toContain(
-      '800 个中文字符以内',
+      '800 个中文字符以内'
     );
   });
 
@@ -101,9 +101,33 @@ describe('seedSystemLlmOperations', () => {
     const manifest = buildOperationManifest(
       'transform_text',
       LLM_OPERATION_TEMPLATES.transform_text,
-      SYSTEM_OPERATION_VERSION,
+      SYSTEM_OPERATION_VERSION
     );
 
+    expect(manifest.evalPolicy).toEqual({
+      exemptNegativeCategories: ['invalid-json', 'over-budget'],
+    });
+  });
+
+  it('publishes generate_text as a no-tool standard LLM contract with optional context', () => {
+    const manifest = buildOperationManifest(
+      'generate_text',
+      LLM_OPERATION_TEMPLATES.generate_text,
+      SYSTEM_OPERATION_VERSION
+    );
+
+    expect(manifest.inputSchema).toMatchObject({
+      required: ['instruction'],
+      properties: {
+        instruction: expect.objectContaining({ 'x-ops-input-role': 'instruction' }),
+        context: expect.objectContaining({ 'x-ops-input-role': 'content' }),
+      },
+    });
+    expect(manifest.executionPolicy).toEqual({
+      tools: 'disabled',
+      externalAccess: 'denied',
+      sideEffects: 'none',
+    });
     expect(manifest.evalPolicy).toEqual({
       exemptNegativeCategories: ['invalid-json', 'over-budget'],
     });
@@ -122,7 +146,7 @@ describe('seedSystemLlmOperations', () => {
         source: 'system_seed',
         createdAt: new Date(),
         updatedAt: new Date(),
-      }),
+      })
     );
 
     mockPrismaResponse.llmOperationVersion.findUnique.mockResolvedValue(null);
@@ -142,7 +166,7 @@ describe('seedSystemLlmOperations', () => {
         createdBy: 'system',
         createdAt: new Date(),
         updatedAt: new Date(),
-      }),
+      })
     );
 
     mockPrismaResponse.llmOperationActivation.findUnique.mockResolvedValue(null);
@@ -156,11 +180,11 @@ describe('seedSystemLlmOperations', () => {
         reason: 'Initial system seed',
         activated_at: new Date(),
         updated_at: new Date(),
-      }),
+      })
     );
     mockPrismaResponse.llmOperationEvalSuite.findFirst.mockResolvedValue(null);
     mockPrismaResponse.llmOperationEvalSuite.create.mockImplementation((args: any) =>
-      Promise.resolve({ id: 'suite-1', ...args.data }),
+      Promise.resolve({ id: 'suite-1', ...args.data })
     );
 
     const result = await seedSystemLlmOperations(prisma, logger);
@@ -174,10 +198,10 @@ describe('seedSystemLlmOperations', () => {
     expect(result.skipped).toEqual(deprecatedOperationIds);
     expect(result.failed).toHaveLength(0);
     expect(mockPrismaResponse.llmOperation.create).toHaveBeenCalledTimes(
-      Object.keys(SYSTEM_OPERATION_DEFINITIONS).length,
+      Object.keys(SYSTEM_OPERATION_DEFINITIONS).length
     );
     expect(mockPrismaResponse.llmOperationVersion.create).toHaveBeenCalledTimes(
-      activeOperationIds.length,
+      activeOperationIds.length
     );
     expect(mockPrismaResponse.llmOperationVersion.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -186,11 +210,11 @@ describe('seedSystemLlmOperations', () => {
           approvedBy: null,
           approvedAt: null,
         }),
-      }),
+      })
     );
     expect(mockPrismaResponse.llmOperationActivation.create).not.toHaveBeenCalled();
     expect(mockPrismaResponse.llmOperationEvalSuite.create).toHaveBeenCalledTimes(
-      activeOperationIds.length,
+      activeOperationIds.length
     );
   });
 
@@ -198,16 +222,16 @@ describe('seedSystemLlmOperations', () => {
     const manifestJson = buildOperationManifest(
       'summarize_list',
       LLM_OPERATION_TEMPLATES.summarize_list,
-      SYSTEM_OPERATION_VERSION,
+      SYSTEM_OPERATION_VERSION
     );
     const operationDigest = computeOperationDigestFromManifest(
       manifestJson,
-      SYSTEM_OPERATION_VERSION,
+      SYSTEM_OPERATION_VERSION
     );
     const contractDigest = computeOperationContractDigest(
       'summarize_list',
       SYSTEM_OPERATION_VERSION,
-      manifestJson,
+      manifestJson
     );
     const existingOperation = {
       id: 'op-existing',
@@ -243,14 +267,14 @@ describe('seedSystemLlmOperations', () => {
         ...existingOperation,
         id: `op-${args.where.operationKey}`,
         operationKey: args.where.operationKey,
-      }),
+      })
     );
     mockPrismaResponse.llmOperation.update.mockImplementation((args: any) =>
       Promise.resolve({
         ...existingOperation,
         id: args.where.id,
         ...args.data,
-      }),
+      })
     );
 
     mockPrismaResponse.llmOperationVersion.findUnique.mockImplementation((args: any) => {
@@ -259,7 +283,7 @@ describe('seedSystemLlmOperations', () => {
       const operationManifest = buildOperationManifest(
         operationKey,
         LLM_OPERATION_TEMPLATES[operationKey],
-        SYSTEM_OPERATION_VERSION,
+        SYSTEM_OPERATION_VERSION
       );
       return Promise.resolve({
         ...existingVersion,
@@ -268,12 +292,12 @@ describe('seedSystemLlmOperations', () => {
         manifestJson: operationManifest,
         operationDigest: computeOperationDigestFromManifest(
           operationManifest,
-          SYSTEM_OPERATION_VERSION,
+          SYSTEM_OPERATION_VERSION
         ),
         contractDigest: computeOperationContractDigest(
           operationKey,
           SYSTEM_OPERATION_VERSION,
-          operationManifest,
+          operationManifest
         ),
       });
     });
@@ -289,11 +313,14 @@ describe('seedSystemLlmOperations', () => {
       updated_at: new Date(),
     } as any);
     mockPrismaResponse.llmOperationEvalSuite.findFirst.mockImplementation((args: any) => {
-      const operationKey = String(args.where.operationId).replace(/^op-/, '') as keyof typeof LLM_OPERATION_TEMPLATES;
+      const operationKey = String(args.where.operationId).replace(
+        /^op-/,
+        ''
+      ) as keyof typeof LLM_OPERATION_TEMPLATES;
       const operationManifest = buildOperationManifest(
         operationKey,
         LLM_OPERATION_TEMPLATES[operationKey],
-        SYSTEM_OPERATION_VERSION,
+        SYSTEM_OPERATION_VERSION
       );
       return Promise.resolve({
         id: `suite-${operationKey}`,
@@ -342,10 +369,10 @@ describe('seedSystemLlmOperations', () => {
 
     mockPrismaResponse.llmOperation.findUnique.mockResolvedValue(existingOperation);
     mockPrismaResponse.llmOperation.update.mockImplementation((args: any) =>
-      Promise.resolve({ ...existingOperation, ...args.data }),
+      Promise.resolve({ ...existingOperation, ...args.data })
     );
     mockPrismaResponse.llmOperationVersion.findUnique.mockResolvedValue(
-      existingVersionWithDifferentDigest,
+      existingVersionWithDifferentDigest
     );
 
     await expect(seedSystemLlmOperations(prisma, logger)).rejects.toThrow(/Digest mismatch/);
@@ -366,11 +393,11 @@ describe('seedSystemLlmOperations', () => {
 
     mockPrismaResponse.llmOperation.findUnique.mockResolvedValue(existingOperation);
     mockPrismaResponse.llmOperation.update.mockImplementation((args: any) =>
-      Promise.resolve({ ...existingOperation, ...args.data }),
+      Promise.resolve({ ...existingOperation, ...args.data })
     );
     mockPrismaResponse.llmOperationVersion.findUnique.mockResolvedValue(null);
     mockPrismaResponse.llmOperationVersion.create.mockRejectedValue(
-      new Error('Unique constraint violation on operation_digest'),
+      new Error('Unique constraint violation on operation_digest')
     );
 
     await expect(seedSystemLlmOperations(prisma, logger)).rejects.toThrow();

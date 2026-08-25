@@ -13,6 +13,7 @@ describe('ExecutionFlowRunnerService', () => {
       setCurrentStep: jest.fn(),
       startStep: jest.fn(),
       finishControlStep: jest.fn(),
+      finishRuntimeStep: jest.fn(),
       listByExecutionId: jest.fn(),
       insertPlannedStepsAfterStep: jest.fn(),
     };
@@ -26,11 +27,49 @@ describe('ExecutionFlowRunnerService', () => {
     closeRuntimeSessionQuietly: jest.fn(),
     extractStepUrl: jest.fn(),
     skipSingleStep: jest.fn(),
+    failExecutionFromRuntimeStep: jest.fn(),
     executeBrowserGotoStep: jest.fn(),
     enterWaitingInput: jest.fn(),
     executeBrowserPhaseStep: jest.fn(),
     executeSystemSkillStep: jest.fn(),
     readBrowserTextBySelector: jest.fn(),
+  });
+
+  it('fails closed when a persisted step has an unsupported type', async () => {
+    const { service, prisma, executionStepService } = createService();
+    const runnerHooks = hooks();
+
+    prisma.execution.findUnique.mockResolvedValue({
+      id: 'execution-unsupported',
+      status: 'running',
+      normalizedInputJson: {},
+    });
+    executionStepService.findNextPendingStep.mockResolvedValue({
+      id: 'step-unsupported',
+      type: 'legacy_unknown',
+      action: 'execute_legacy',
+    });
+
+    await service.advanceExecutionFlow('execution-unsupported', 'runtime-unsupported', runnerHooks);
+
+    expect(executionStepService.setCurrentStep).toHaveBeenCalledWith(
+      'execution-unsupported',
+      'step-unsupported'
+    );
+    expect(executionStepService.startStep).toHaveBeenCalledWith('step-unsupported');
+    expect(executionStepService.finishRuntimeStep).toHaveBeenCalledWith('step-unsupported', {
+      success: false,
+      errorCode: 'UNSUPPORTED_EXECUTION_STEP',
+      errorMessage: 'Unsupported execution step type=legacy_unknown, action=execute_legacy',
+    });
+    expect(runnerHooks.failExecutionFromRuntimeStep).toHaveBeenCalledWith({
+      executionId: 'execution-unsupported',
+      stepId: 'step-unsupported',
+      failureReason: 'Unsupported execution step type=legacy_unknown, action=execute_legacy',
+      failureCode: 'UNSUPPORTED_EXECUTION_STEP',
+      runtimeSessionId: 'runtime-unsupported',
+    });
+    expect(runnerHooks.skipSingleStep).not.toHaveBeenCalled();
   });
 
   it('inserts the next iteration after loop_eval_after_iteration when stop condition is not met', async () => {

@@ -13,6 +13,8 @@ import { CreateScheduleDto, UpdateScheduleDto, ScheduleDto } from './scheduler.d
 import * as parser from 'cron-parser';
 import { SavedSkillResolverService } from '../saved-skill/saved-skill-resolver.service';
 import { configureSavedSkillExecution } from '../saved-skill/saved-skill-runtime-params';
+import { ScheduleFireService } from './schedule-fire.service';
+import { roleEnabled } from '../../config/control-plane-role';
 
 @Injectable()
 export class SchedulerService implements OnModuleInit, OnModuleDestroy {
@@ -23,10 +25,12 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly executionService: ExecutionService,
-    @Optional() private readonly savedSkillResolver?: SavedSkillResolverService
+    @Optional() private readonly savedSkillResolver?: SavedSkillResolverService,
+    @Optional() private readonly scheduleFireService?: ScheduleFireService
   ) {}
 
   onModuleInit() {
+    if (!roleEnabled('schedule')) return;
     this.logger.log('Scheduler Service initialized. Starting task check loop...');
     // Run task check every 30 seconds
     this.timer = setInterval(() => this.tick(), 30000);
@@ -54,11 +58,20 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       // Find active schedules that are due
       // Use raw query for "FOR UPDATE SKIP LOCKED" to support horizontal scaling safety (HA)
       const now = new Date();
+      const durableSchedulingEnabled =
+        process.env.EXECUTION_OUTBOX_ENABLED === 'true' &&
+        process.env.SCHEDULE_FIRE_V2_ENABLED === 'true' &&
+        Boolean(this.scheduleFireService);
       const dueSchedules = await this.prisma.$queryRawUnsafe<any[]>(
-        `SELECT * FROM skill_schedules 
-         WHERE is_active = true AND next_run_at <= $1 
-         FOR UPDATE SKIP LOCKED 
-         LIMIT 10`,
+        durableSchedulingEnabled
+          ? `SELECT * FROM skill_schedules
+              WHERE is_active = true AND next_run_at <= $1
+              ORDER BY next_run_at ASC
+              LIMIT 10`
+          : `SELECT * FROM skill_schedules
+              WHERE is_active = true AND next_run_at <= $1
+              FOR UPDATE SKIP LOCKED
+              LIMIT 10`,
         now
       );
 
@@ -77,6 +90,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
           cronExpression: rawSchedule.cron_expression,
           timezone: rawSchedule.timezone,
           createdBy: rawSchedule.created_by,
+          nextRunAt: rawSchedule.next_run_at,
         };
 
         try {
@@ -103,20 +117,46 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
     cronExpression: string;
     timezone: string;
     createdBy: string;
+    nextRunAt?: Date;
   }) {
-    this.logger.log(`Triggering schedule: ${schedule.name} (${schedule.id}) for skill ${schedule.skillId}`);
+    this.logger.log(
+      `Triggering schedule: ${schedule.name} (${schedule.id}) for skill ${schedule.skillId}`
+    );
 
     // 1. Calculate next execution time
-    const now = new Date();
+    const durableSchedulingEnabled =
+      process.env.EXECUTION_OUTBOX_ENABLED === 'true' &&
+      process.env.SCHEDULE_FIRE_V2_ENABLED === 'true' &&
+      Boolean(this.scheduleFireService);
+    const scheduledAt =
+      durableSchedulingEnabled && schedule.nextRunAt ? new Date(schedule.nextRunAt) : new Date();
     let nextRunAt: Date;
     try {
       const interval = parser.parseExpression(schedule.cronExpression, {
-        currentDate: now,
+        currentDate: scheduledAt,
         tz: schedule.timezone,
       });
       nextRunAt = interval.next().toDate();
     } catch (err) {
       throw new Error(`Invalid cron expression "${schedule.cronExpression}": ${err}`);
+    }
+
+    if (durableSchedulingEnabled && this.scheduleFireService) {
+      const result = await this.scheduleFireService.create({
+        scheduleId: schedule.id,
+        scheduledAt,
+        nextRunAt,
+        createdBy: schedule.createdBy,
+        skillId: schedule.skillId,
+        skillVersion: schedule.skillVersion,
+        input: schedule.inputJson || {},
+      });
+      if (result.created) {
+        this.logger.log(
+          `Created durable schedule fire ${result.fireId} for schedule ${schedule.id}`
+        );
+      }
+      return;
     }
 
     // 2. Perform DB update and Execution create in a transaction
@@ -125,7 +165,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       await tx.skillSchedule.update({
         where: { id: schedule.id },
         data: {
-          lastRunAt: now,
+          lastRunAt: scheduledAt,
           nextRunAt: nextRunAt,
         },
       });
@@ -140,7 +180,9 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       } as any); // cast to any temporarily until CreateExecutionDto is updated
     });
 
-    this.logger.log(`Successfully triggered schedule: ${schedule.id}. Next run set to: ${nextRunAt.toISOString()}`);
+    this.logger.log(
+      `Successfully triggered schedule: ${schedule.id}. Next run set to: ${nextRunAt.toISOString()}`
+    );
   }
 
   // --- CRUD API Methods ---
@@ -190,7 +232,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       where: { createdBy: userId },
       orderBy: { createdAt: 'desc' },
     });
-    return schedules.map(s => this.mapToDto(s));
+    return schedules.map((s) => this.mapToDto(s));
   }
 
   async getById(id: string, userId: string): Promise<ScheduleDto | null> {

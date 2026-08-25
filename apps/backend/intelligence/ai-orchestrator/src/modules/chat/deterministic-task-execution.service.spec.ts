@@ -1,6 +1,42 @@
 import { DeterministicTaskExecutionService } from './deterministic-task-execution.service';
 
 describe('DeterministicTaskExecutionService saved workflow routing', () => {
+  it('uses planner context for planning only and never persists it in execution input', async () => {
+    const routeClassifier = { classifyRoute: jest.fn() };
+    const planGenerator = {
+      generatePlan: jest.fn().mockResolvedValue({ nodes: [], required_inputs: [] }),
+    };
+    const controlPlaneClient = {
+      createExecution: jest.fn().mockResolvedValue({ id: 'execution-1' }),
+    };
+    const service = new DeterministicTaskExecutionService(
+      routeClassifier as never,
+      planGenerator as never,
+      controlPlaneClient as never
+    );
+
+    await expect(
+      service.executeDeterministicTask('生成周报', 'user-1', {
+        user: { userId: 'user-1' },
+        systemInputs: { reportDate: '2026-08-25' },
+        plannerContext: { scopedMemory: { value: { preferredFormat: 'table' } } },
+      })
+    ).resolves.toMatchObject({ success: true, executionId: 'execution-1' });
+
+    expect(planGenerator.generatePlan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        systemInputs: { reportDate: '2026-08-25' },
+        plannerContext: { scopedMemory: { value: { preferredFormat: 'table' } } },
+      })
+    );
+    expect(controlPlaneClient.createExecution).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: { prompt: '生成周报', reportDate: '2026-08-25' },
+      }),
+      expect.any(Object)
+    );
+  });
+
   it('creates the exact user-owned saved workflow version with no topology generation', async () => {
     const routeClassifier = { classifyRoute: jest.fn() };
     const planGenerator = { generatePlan: jest.fn() };

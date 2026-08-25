@@ -924,13 +924,13 @@ describe('Deterministic Plan Execution E2E Test', () => {
       handlerRegistry.onModuleInit(); // registers real document.markdown-artifact-writer handler
 
       const builtinAdapter = new BuiltinWorkflowRuntimeAdapter(handlerRegistry);
-      const registry = new RuntimeAdapterRegistry(
+      const registry = new RuntimeAdapterRegistry([
         new BrowserRuntimeAdapter(),
         new CapabilityRuntimeAdapter(new OutputNormalizerService()),
         new DocumentRuntimeAdapter(),
         new WorkflowRuntimeAdapter(),
         builtinAdapter,
-      );
+      ]);
       const realOrchestrator = new RuntimeExecutionOrchestrator(registry);
 
       const eventService = new ExecutionEventService(prisma);

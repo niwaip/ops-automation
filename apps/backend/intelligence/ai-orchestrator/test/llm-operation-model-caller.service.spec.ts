@@ -44,4 +44,35 @@ describe('LlmOperationModelCallerService', () => {
       reasoning: { enabled: false },
     });
   });
+
+  it('retries one transient provider failure on the same frozen model', async () => {
+    const chatCompletion = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('Provider returned error'))
+      .mockResolvedValueOnce({ content: '{"markdown_content":"摘要"}' });
+    const modelService = {
+      getClient: jest.fn().mockReturnValue({ chatCompletion }),
+      stripThinkingTags: jest.fn((content: string) => content),
+    } as unknown as ModelService;
+    const service = new LlmOperationModelCallerService(modelService);
+
+    await expect(service.call('selected-model', '总结内容', 1000)).resolves.toEqual(
+      expect.objectContaining({ content: '{"markdown_content":"摘要"}' }),
+    );
+    expect(modelService.getClient).toHaveBeenCalledWith('selected-model');
+    expect(chatCompletion).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry a non-retryable client error', async () => {
+    const error = Object.assign(new Error('bad request'), { status: 400 });
+    const chatCompletion = jest.fn().mockRejectedValue(error);
+    const modelService = {
+      getClient: jest.fn().mockReturnValue({ chatCompletion }),
+      stripThinkingTags: jest.fn((content: string) => content),
+    } as unknown as ModelService;
+    const service = new LlmOperationModelCallerService(modelService);
+
+    await expect(service.call('selected-model', '总结内容', 1000)).rejects.toBe(error);
+    expect(chatCompletion).toHaveBeenCalledTimes(1);
+  });
 });

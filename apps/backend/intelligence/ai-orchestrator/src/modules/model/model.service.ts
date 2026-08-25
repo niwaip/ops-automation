@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,6 +19,10 @@ import {
 import { OpenAICompatibleClient } from '../../client/openai-compatible';
 import { AnthropicMessagesClient } from '../../client/anthropic-messages';
 import { LLMClient, PromptCachingConfig } from '../../client/llm-client';
+import {
+  ModelInvocationTelemetryService,
+  type ModelInvocationContext,
+} from './model-invocation-telemetry.service';
 
 // Persistence file paths. Resolution order:
 //   1. AI_MODELS_DATA_DIR env var (explicit override, used by docker-compose.full.yml)
@@ -92,6 +96,8 @@ export class ModelService implements OnModuleInit {
   private apiKeys: Map<string, string> = new Map();
   private providerApiKeys: Map<string, string> = new Map();
   private clients: Map<string, LLMClient> = new Map();
+
+  constructor(@Optional() private readonly invocationTelemetry?: ModelInvocationTelemetryService) {}
 
   private normalizeModelConfig(config?: AIModelConfig): AIModelConfig {
     const normalized: AIModelConfig = {
@@ -245,6 +251,9 @@ export class ModelService implements OnModuleInit {
     const now = new Date();
 
     if (existing) {
+      if (dto.name !== undefined) {
+        existing.name = dto.name;
+      }
       if (dto.api_key) {
         this.providerApiKeys.set(existing.id, dto.api_key);
       }
@@ -260,6 +269,7 @@ export class ModelService implements OnModuleInit {
       }
       const updated = {
         ...existing,
+        name: dto.name !== undefined ? dto.name : existing.name,
         updated_at: now,
       };
       this.providers.set(existing.id, updated);
@@ -268,6 +278,7 @@ export class ModelService implements OnModuleInit {
 
     const providerConfig: AIProviderConfigDTO = {
       id: uuidv4(),
+      name: dto.name,
       provider: dto.provider,
       api_endpoint: dto.api_endpoint,
       created_at: now,
@@ -639,6 +650,7 @@ export class ModelService implements OnModuleInit {
     for (const providerConfig of this.providers.values()) {
       grouped.set(providerConfig.id, {
         id: providerConfig.id,
+        name: providerConfig.name,
         provider: providerConfig.provider,
         api_endpoint: providerConfig.api_endpoint,
         modelCount: 0,
@@ -683,7 +695,7 @@ export class ModelService implements OnModuleInit {
       if (left.modelCount !== right.modelCount) {
         return right.modelCount - left.modelCount;
       }
-      return left.provider.localeCompare(right.provider);
+      return (left.name || left.provider).localeCompare(right.name || right.provider);
     });
   }
 
@@ -724,6 +736,7 @@ export class ModelService implements OnModuleInit {
       return null;
     }
 
+    const nextName = updates.name !== undefined ? updates.name : existing.name;
     const nextProvider = updates.provider || existing.provider;
     const nextEndpoint = updates.api_endpoint || existing.api_endpoint;
     const duplicate = this.findProviderConfig(nextProvider, nextEndpoint);
@@ -745,6 +758,7 @@ export class ModelService implements OnModuleInit {
 
     const updatedProvider: AIProviderConfigDTO = {
       ...existing,
+      name: nextName,
       provider: nextProvider,
       api_endpoint: nextEndpoint,
       updated_at: new Date(),
@@ -1334,6 +1348,7 @@ export class ModelService implements OnModuleInit {
     _type: 'reasoning' | 'auxiliary' = 'reasoning',
     options?: {
       reasoning?: ModelReasoningConfig;
+      telemetry?: ModelInvocationContext;
     }
   ): Promise<LLMResponse> {
     const client = this.getClient(id);
@@ -1348,6 +1363,15 @@ export class ModelService implements OnModuleInit {
 
     // Strip thinking tags from MiniMax model response
     result.content = this.stripThinkingTags(result.content);
+
+    const model = this.resolveModelEntity(id);
+    await this.invocationTelemetry?.record({
+      modelId: model?.id || id,
+      provider: model?.provider || 'unknown',
+      prompt,
+      response: result,
+      context: options?.telemetry,
+    });
 
     return result;
   }
@@ -1394,6 +1418,7 @@ export class ModelService implements OnModuleInit {
     onChunk: (chunk: string) => void,
     options?: {
       reasoning?: ModelReasoningConfig;
+      telemetry?: ModelInvocationContext;
     }
   ): Promise<LLMResponse> {
     const client = this.getClient(id);
@@ -1403,6 +1428,15 @@ export class ModelService implements OnModuleInit {
 
     const result = await client.chatCompletionStream(messages, onChunk, options?.reasoning);
     result.content = this.stripThinkingTags(result.content);
+
+    const model = this.resolveModelEntity(id);
+    await this.invocationTelemetry?.record({
+      modelId: model?.id || id,
+      provider: model?.provider || 'unknown',
+      prompt: JSON.stringify(messages),
+      response: result,
+      context: options?.telemetry,
+    });
 
     return result;
   }

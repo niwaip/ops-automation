@@ -1,0 +1,4 @@
+{"id":"saved-001","locale":"zh-CN","request":"执行我的每日舆情简报","hasPreviousResult":false,"expectedLegacyRoute":"single_skill","expectedTargetClass":"saved_workflow","notes":"目标路由应先解析保存工作流引用"}
+{"id":"saved-002","locale":"zh-CN","request":"运行已保存工作流：月末对账","hasPreviousResult":false,"expectedLegacyRoute":"single_skill","expectedTargetClass":"saved_workflow","notes":"显式保存工作流引用"}
+{"id":"saved-003","locale":"en-US","request":"Run my saved workflow weekly-sales-report","hasPreviousResult":false,"expectedLegacyRoute":"single_skill","expectedTargetClass":"saved_workflow","notes":"英文保存工作流引用"}
+{"id":"saved-004","locale":"zh-CN","request":"重新运行执行单 8d5f4ef0","hasPreviousResult":false,"expectedLegacyRoute":"single_skill","expectedTargetClass":"saved_workflow","notes":"显式执行引用应优先解析"}

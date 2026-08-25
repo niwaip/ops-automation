@@ -9,10 +9,16 @@ export interface CreateExecutionEventOptions {
 }
 
 export interface ExecutionStreamEventPayload {
+  eventId: string;
   executionId: string;
   eventType: ExecutionEventType;
   payload: any;
   timestamp: string;
+}
+
+export interface ExecutionEventCursor {
+  timestamp: string;
+  eventId: string;
 }
 
 @Injectable()
@@ -25,9 +31,7 @@ export class ExecutionEventService {
     payload: any,
     options: CreateExecutionEventOptions = {}
   ): Promise<ExecutionStreamEventPayload> {
-    const timestamp = new Date().toISOString();
-
-    await this.prisma.executionEvent.create({
+    const event = await this.prisma.executionEvent.create({
       data: {
         executionId,
         runtimeSessionId: options.runtimeSessionId,
@@ -39,10 +43,44 @@ export class ExecutionEventService {
     });
 
     return {
+      // Prisma always returns the created row. The fallback keeps lightweight
+      // persistence adapters/test doubles compatible without weakening the
+      // durable replay path, which reads the authoritative database id.
+      eventId: event?.id || `${executionId}:${eventType}:${Date.now()}`,
       executionId,
       eventType,
       payload,
-      timestamp,
+      timestamp: event?.createdAt?.toISOString?.() || new Date().toISOString(),
     };
+  }
+
+  async listEventsAfter(
+    executionId: string,
+    cursor?: ExecutionEventCursor,
+    limit = 100,
+  ): Promise<ExecutionStreamEventPayload[]> {
+    const rows = await this.prisma.executionEvent.findMany({
+      where: {
+        executionId,
+        ...(cursor
+          ? {
+              OR: [
+                { createdAt: { gt: new Date(cursor.timestamp) } },
+                { createdAt: new Date(cursor.timestamp), id: { gt: cursor.eventId } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      take: Math.min(Math.max(Math.trunc(limit), 1), 500),
+    });
+
+    return rows.map((row) => ({
+      eventId: row.id,
+      executionId: row.executionId,
+      eventType: row.eventType as ExecutionEventType,
+      payload: row.payloadJson,
+      timestamp: row.createdAt.toISOString(),
+    }));
   }
 }

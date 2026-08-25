@@ -467,6 +467,17 @@ exports.Prisma.ExecutionArtifactScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.ExecutionResultRefScalarFieldEnum = {
+  id: 'id',
+  executionId: 'executionId',
+  producerStepId: 'producerStepId',
+  schemaDigest: 'schemaDigest',
+  payloadJson: 'payloadJson',
+  previewJson: 'previewJson',
+  sizeBytes: 'sizeBytes',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.ExecutionPhaseScalarFieldEnum = {
   id: 'id',
   executionId: 'executionId',
@@ -698,6 +709,82 @@ exports.Prisma.RoutingObservationScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.PlanningDecisionScalarFieldEnum = {
+  id: 'id',
+  ownerUserId: 'ownerUserId',
+  executionId: 'executionId',
+  requestFingerprint: 'requestFingerprint',
+  schemaVersion: 'schemaVersion',
+  routeClass: 'routeClass',
+  routeSource: 'routeSource',
+  decisionJson: 'decisionJson',
+  shadow: 'shadow',
+  routingPolicyVersion: 'routingPolicyVersion',
+  routingPolicyDigest: 'routingPolicyDigest',
+  catalogSnapshotDigest: 'catalogSnapshotDigest',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.PromptSnapshotScalarFieldEnum = {
+  id: 'id',
+  ownerUserId: 'ownerUserId',
+  executionId: 'executionId',
+  purpose: 'purpose',
+  promptTemplateVersion: 'promptTemplateVersion',
+  promptTemplateDigest: 'promptTemplateDigest',
+  systemPromptDigest: 'systemPromptDigest',
+  catalogSnapshotDigest: 'catalogSnapshotDigest',
+  modelPolicyDigest: 'modelPolicyDigest',
+  generationParamsJson: 'generationParamsJson',
+  inputRefsJson: 'inputRefsJson',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.LlmUsageLedgerScalarFieldEnum = {
+  id: 'id',
+  ownerUserId: 'ownerUserId',
+  executionId: 'executionId',
+  planningDecisionId: 'planningDecisionId',
+  stepId: 'stepId',
+  promptSnapshotId: 'promptSnapshotId',
+  traceId: 'traceId',
+  purpose: 'purpose',
+  provider: 'provider',
+  modelId: 'modelId',
+  inputTokens: 'inputTokens',
+  outputTokens: 'outputTokens',
+  cachedTokens: 'cachedTokens',
+  estimatedCost: 'estimatedCost',
+  currency: 'currency',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.ExecutionOutboxScalarFieldEnum = {
+  id: 'id',
+  aggregateType: 'aggregateType',
+  aggregateId: 'aggregateId',
+  eventType: 'eventType',
+  payloadJson: 'payloadJson',
+  availableAt: 'availableAt',
+  claimedBy: 'claimedBy',
+  leaseExpiresAt: 'leaseExpiresAt',
+  attempts: 'attempts',
+  publishedAt: 'publishedAt',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.ScheduleFireScalarFieldEnum = {
+  id: 'id',
+  scheduleId: 'scheduleId',
+  scheduledAt: 'scheduledAt',
+  status: 'status',
+  executionId: 'executionId',
+  claimedBy: 'claimedBy',
+  leaseExpiresAt: 'leaseExpiresAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.HabitLearningRunScalarFieldEnum = {
   id: 'id',
   idempotencyKey: 'idempotencyKey',
@@ -754,6 +841,49 @@ exports.Prisma.UserPersonalizationPreferenceScalarFieldEnum = {
   ownerUserId: 'ownerUserId',
   recommendationEnabled: 'recommendationEnabled',
   updatedAt: 'updatedAt'
+};
+
+exports.Prisma.ScopedMemoryScalarFieldEnum = {
+  id: 'id',
+  scopeType: 'scopeType',
+  scopeId: 'scopeId',
+  organizationId: 'organizationId',
+  kind: 'kind',
+  memoryKey: 'memoryKey',
+  valueJson: 'valueJson',
+  source: 'source',
+  version: 'version',
+  status: 'status',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.CandidateRecipeScalarFieldEnum = {
+  id: 'id',
+  scopeType: 'scopeType',
+  scopeId: 'scopeId',
+  intentFingerprint: 'intentFingerprint',
+  topologyDigest: 'topologyDigest',
+  recipeJson: 'recipeJson',
+  riskLevel: 'riskLevel',
+  status: 'status',
+  version: 'version',
+  shadowRuns: 'shadowRuns',
+  shadowPasses: 'shadowPasses',
+  approvedBy: 'approvedBy',
+  rollbackVersion: 'rollbackVersion',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.CandidateRecipeEvaluationScalarFieldEnum = {
+  id: 'id',
+  candidateRecipeId: 'candidateRecipeId',
+  fixtureId: 'fixtureId',
+  passed: 'passed',
+  comparisonJson: 'comparisonJson',
+  createdAt: 'createdAt'
 };
 
 exports.Prisma.HabitGovernanceAuditScalarFieldEnum = {
@@ -1066,6 +1196,7 @@ exports.Prisma.ModelName = {
   ExecutionStep: 'ExecutionStep',
   ExecutionPlan: 'ExecutionPlan',
   ExecutionArtifact: 'ExecutionArtifact',
+  ExecutionResultRef: 'ExecutionResultRef',
   ExecutionPhase: 'ExecutionPhase',
   ExecutionPhaseArtifact: 'ExecutionPhaseArtifact',
   ExecutionTakeover: 'ExecutionTakeover',
@@ -1081,10 +1212,18 @@ exports.Prisma.ModelName = {
   AssistantFeedbackEvent: 'AssistantFeedbackEvent',
   AssistantFeedbackCurrent: 'AssistantFeedbackCurrent',
   RoutingObservation: 'RoutingObservation',
+  PlanningDecision: 'PlanningDecision',
+  PromptSnapshot: 'PromptSnapshot',
+  LlmUsageLedger: 'LlmUsageLedger',
+  ExecutionOutbox: 'ExecutionOutbox',
+  ScheduleFire: 'ScheduleFire',
   HabitLearningRun: 'HabitLearningRun',
   UserHabitCandidate: 'UserHabitCandidate',
   UserHabit: 'UserHabit',
   UserPersonalizationPreference: 'UserPersonalizationPreference',
+  ScopedMemory: 'ScopedMemory',
+  CandidateRecipe: 'CandidateRecipe',
+  CandidateRecipeEvaluation: 'CandidateRecipeEvaluation',
   HabitGovernanceAudit: 'HabitGovernanceAudit',
   BuiltinSkill: 'BuiltinSkill',
   BuiltinSkillVersion: 'BuiltinSkillVersion',

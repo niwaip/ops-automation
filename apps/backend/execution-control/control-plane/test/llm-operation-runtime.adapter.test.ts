@@ -35,6 +35,7 @@ describe('LlmOperationRuntimeAdapter', () => {
       operationVersion: '2.0.0',
       operationDigest: 'sha256:operation',
       contractDigest: 'sha256:contract',
+      modelId: 'selected-model',
       input: { items: [{ title: 'Source' }] },
       idempotencyKey: 'execution-1:step-2',
     });
@@ -45,6 +46,7 @@ describe('LlmOperationRuntimeAdapter', () => {
         operationVersion: '2.0.0',
         operationDigest: 'sha256:operation',
         contractDigest: 'sha256:contract',
+        modelId: 'selected-model',
         input: { items: [{ title: 'Source' }] },
         idempotencyKey: 'execution-1:step-2',
       }),

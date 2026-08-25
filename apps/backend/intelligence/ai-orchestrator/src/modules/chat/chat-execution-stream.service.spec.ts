@@ -456,4 +456,74 @@ describe('ChatExecutionStreamService', () => {
     expect(chatCompletion).not.toHaveBeenCalled();
     expect(event?.content).toContain('状态码 200');
   });
+
+  it('prioritizes explicit modelId over default model for AI summary', async () => {
+    const controlPlaneClient = {
+      getExecution: jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'execution-custom-model',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+        })
+        .mockResolvedValueOnce({
+          id: 'execution-custom-model',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+          runtimeType: 'custom',
+          normalizedInput: { objective: '总结新闻' },
+          resultJson: {
+            execution: { status: 'success' },
+            result: {
+              resultType: 'generic',
+              title: 'search_workflow',
+              businessData: {
+                results: [{ title: 'News 1' }],
+              },
+            },
+          },
+        }),
+      streamExecutionEvents: jest.fn(),
+    };
+    const waitingInputService = {
+      buildControlPlaneRequestOptions: jest.fn(() => ({})),
+      loadWaitingInputDetails: jest.fn(),
+      extractExecutionSemantic: jest.fn(),
+      formatWaitingInputMessage: jest.fn(),
+    };
+    const customChatCompletion = jest.fn().mockResolvedValue({
+      content: '定制模型生成的新闻摘要。',
+    });
+    const modelService = {
+      getModel: jest.fn((id: string) => {
+        if (id === 'custom-fast-model') {
+          return { id: 'custom-fast-model', name: 'Fast Model', status: 'active' };
+        }
+        return null;
+      }),
+      getPreferredDefaultModel: jest.fn(() => ({ id: 'default-slow-model', name: 'Slow Model' })),
+      getClient: jest.fn((id: string) => {
+        if (id === 'custom-fast-model') {
+          return { chatCompletion: customChatCompletion };
+        }
+        return null;
+      }),
+      stripThinkingTags: jest.fn((content: string) => content),
+    };
+    const service = new ChatExecutionStreamService(
+      controlPlaneClient as any,
+      waitingInputService as any,
+      new ChatResultNormalizerService(),
+      modelService as any
+    );
+
+    const event = await service.buildLatestExecutionStateEvent(
+      'execution-custom-model',
+      undefined,
+      undefined,
+      'custom-fast-model'
+    );
+
+    expect(modelService.getModel).toHaveBeenCalledWith('custom-fast-model');
+    expect(customChatCompletion).toHaveBeenCalled();
+    expect(event?.content).toBe('定制模型生成的新闻摘要。');
+  });
 });

@@ -21,6 +21,13 @@ export interface AdvanceExecutionFlowHooks {
     execution: Record<string, unknown>
   ) => string | undefined;
   skipSingleStep: (stepId: string, executionId: string, reason: string) => Promise<void>;
+  failExecutionFromRuntimeStep: (input: {
+    executionId: string;
+    stepId: string;
+    failureReason: string;
+    failureCode: string;
+    runtimeSessionId?: string;
+  }) => Promise<void>;
   executeBrowserGotoStep: (
     execution: Record<string, unknown>,
     runtimeSessionId: string,
@@ -186,9 +193,23 @@ export class ExecutionFlowRunnerService {
         continue;
       }
 
-      const reason = `Planner step executor not implemented yet for type=${nextStep.type}, action=${nextStep.action || 'none'}`;
-      this.logger.warn(`${reason} for step ${nextStep.id}; skipping`);
-      await hooks.skipSingleStep(nextStep.id, executionId, reason);
+      const reason = `Unsupported execution step type=${nextStep.type}, action=${nextStep.action || 'none'}`;
+      this.logger.error(`${reason} for step ${nextStep.id}; failing closed`);
+      await this.executionStepService.setCurrentStep(executionId, nextStep.id);
+      await this.executionStepService.startStep(nextStep.id);
+      await this.executionStepService.finishRuntimeStep(nextStep.id, {
+        success: false,
+        errorCode: 'UNSUPPORTED_EXECUTION_STEP',
+        errorMessage: reason,
+      });
+      await hooks.failExecutionFromRuntimeStep({
+        executionId,
+        stepId: nextStep.id,
+        failureReason: reason,
+        failureCode: 'UNSUPPORTED_EXECUTION_STEP',
+        runtimeSessionId,
+      });
+      return;
     }
   }
 

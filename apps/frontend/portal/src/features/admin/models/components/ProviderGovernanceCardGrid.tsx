@@ -18,6 +18,19 @@ type ScopeTagMeta = Record<string, { label: string; color: string }>;
 
 const getProviderAccent = (provider: string) => {
   switch (provider) {
+    case 'bai':
+    case 'b.ai':
+      return {
+        solid: '#0284c7',
+        soft: 'rgba(2, 132, 199, 0.14)',
+        gradient: 'linear-gradient(180deg, rgba(2, 132, 199, 0.12) 0%, var(--bg-card) 100%)',
+      };
+    case 'local':
+      return {
+        solid: '#8b5cf6',
+        soft: 'rgba(139, 92, 246, 0.14)',
+        gradient: 'linear-gradient(180deg, rgba(139, 92, 246, 0.12) 0%, var(--bg-card) 100%)',
+      };
     case 'openai':
       return {
         solid: '#10b981',
@@ -47,6 +60,19 @@ const getProviderAccent = (provider: string) => {
         solid: '#ec4899',
         soft: 'rgba(236, 72, 153, 0.14)',
         gradient: 'linear-gradient(180deg, rgba(236, 72, 153, 0.12) 0%, var(--bg-card) 100%)',
+      };
+    case 'siliconflow':
+      return {
+        solid: '#06b6d4',
+        soft: 'rgba(6, 182, 212, 0.14)',
+        gradient: 'linear-gradient(180deg, rgba(6, 182, 212, 0.12) 0%, var(--bg-card) 100%)',
+      };
+    case 'alibaba-coding':
+    case 'alibaba-bailian':
+      return {
+        solid: '#f97316',
+        soft: 'rgba(249, 115, 22, 0.14)',
+        gradient: 'linear-gradient(180deg, rgba(249, 115, 22, 0.12) 0%, var(--bg-card) 100%)',
       };
     case 'openrouter':
       return {
@@ -154,8 +180,9 @@ const ProviderGovernanceCardGrid: React.FC<ProviderGovernanceCardGridProps> = ({
       {items.map(({ providerConfig, summary }) => {
         const rawProviderKey = providerConfig.provider || (providerConfig as any).type || (providerConfig as any).name || 'AI';
         const providerLabel = providerNames[rawProviderKey] || rawProviderKey;
+        const displayName = providerConfig.name || summary?.name || providerLabel;
         const accent = getProviderAccent(rawProviderKey);
-        const isSelected = selectedProvider === rawProviderKey;
+        const isSelected = selectedProvider === providerConfig.id || selectedProvider === rawProviderKey;
         const defaultScopes = summary?.defaultScopes || [];
         const metricBackground = token.colorFillAlter;
 
@@ -164,7 +191,7 @@ const ProviderGovernanceCardGrid: React.FC<ProviderGovernanceCardGridProps> = ({
             <Card
               loading={loading}
               hoverable
-              onClick={() => onSelectProvider(rawProviderKey)}
+              onClick={() => onSelectProvider(providerConfig.id)}
               styles={{ body: { padding: 16 } }}
               style={{
                 borderRadius: 20,
@@ -198,12 +225,12 @@ const ProviderGovernanceCardGrid: React.FC<ProviderGovernanceCardGridProps> = ({
                       flexShrink: 0,
                     }}
                   >
-                    {getProviderMonogram(providerLabel)}
+                    {getProviderMonogram(displayName)}
                   </div>
-                  <Space direction="vertical" size={4}>
+                  <Space direction="vertical" size={2}>
                     <Space size={8} wrap>
                       <Text strong style={{ fontSize: 16 }}>
-                        {providerLabel}
+                        {displayName}
                       </Text>
                       {isSelected && (
                         <Tag color="processing" icon={<CheckCircleFilled />}>
@@ -211,6 +238,11 @@ const ProviderGovernanceCardGrid: React.FC<ProviderGovernanceCardGridProps> = ({
                         </Tag>
                       )}
                     </Space>
+                    {providerConfig.name && (
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {providerLabel}
+                      </Text>
+                    )}
                   </Space>
                 </Space>
                 <Tag

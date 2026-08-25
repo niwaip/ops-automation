@@ -1,0 +1,178 @@
+name: Task Orchestration Delivery
+
+on:
+  pull_request:
+    paths:
+      - 'apps/backend/execution-control/control-plane/**'
+      - 'apps/backend/intelligence/ai-orchestrator/**'
+      - 'apps/backend/core/platform/prisma/**'
+      - 'packages/backend-contracts/planning-decision/**'
+      - 'packages/backend-contracts/result-ref/**'
+      - 'packages/capability-sdk/**'
+      - 'database/**'
+      - 'docker/**'
+      - '.github/workflows/task-orchestration-delivery.yml'
+      - 'pnpm-lock.yaml'
+      - 'package.json'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/backend/execution-control/control-plane/**'
+      - 'apps/backend/intelligence/ai-orchestrator/**'
+      - 'apps/backend/runtimes/browser-worker/**'
+      - 'apps/backend/core/platform/prisma/**'
+      - 'packages/backend-contracts/planning-decision/**'
+      - 'packages/backend-contracts/result-ref/**'
+      - 'packages/capability-sdk/**'
+      - 'database/**'
+      - 'docker/**'
+      - '.github/workflows/task-orchestration-delivery.yml'
+      - 'pnpm-lock.yaml'
+      - 'package.json'
+  workflow_dispatch:
+    inputs:
+      publish_images:
+        description: Push verified immutable images to GHCR
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Strict task orchestration verification
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: task_orchestration
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U test -d task_orchestration"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8.12.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate schema ownership
+        run: pnpm run validate:schema-ownership
+      - name: Validate versioned contracts and capability SDK
+        run: |
+          pnpm --filter @ops/backend-planning-decision test
+          pnpm --filter @ops/backend-result-ref test
+          pnpm --filter @ops/capability-sdk test
+      - name: Validate AI Orchestrator
+        run: |
+          pnpm --filter @ops/ai-orchestrator typecheck
+          pnpm --filter @ops/ai-orchestrator test -- --runInBand
+      - name: Validate Control Plane against PostgreSQL
+        run: |
+          pnpm --filter @ops/control-plane typecheck
+          pnpm --filter @ops/control-plane test -- --runInBand
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/task_orchestration
+      - name: Validate production delivery contract
+        run: ./docker/scripts/validate-production-delivery.sh
+        env:
+          CONTROL_PLANE_IMAGE: registry.example/control-plane@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          AI_ORCHESTRATOR_IMAGE: registry.example/ai-orchestrator@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          RUNTIME_WORKER_IMAGE: registry.example/runtime-worker@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+          CONTROL_PLANE_DATABASE_URL: postgresql://control:secret@db/control
+          AI_ORCHESTRATOR_DATABASE_URL: postgresql://ai:secret@db/ai
+          REDIS_HOST: redis
+          REDIS_PASSWORD: test-secret
+          SESSION_BROKER_URL: http://session-broker:3002
+
+  publish:
+    name: Build, scan, and publish immutable images
+    needs: verify
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish_images)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: control-plane
+            package_filter: '@ops/control-plane'
+          - image: ai-orchestrator
+            package_filter: '@ops/ai-orchestrator'
+          - image: runtime-worker
+            package_filter: '@ops/browser-worker'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Compute immutable image name
+        id: image
+        shell: bash
+        run: |
+          repository="${GITHUB_REPOSITORY,,}"
+          echo "ref=ghcr.io/${repository}/ops-${{ matrix.image }}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - name: Build image for vulnerability scan
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/node-service/Dockerfile
+          build-args: PACKAGE_FILTER=${{ matrix.package_filter }}
+          tags: ${{ steps.image.outputs.ref }}
+          load: true
+          push: false
+      - name: Scan image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.image.outputs.ref }}
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push scanned immutable image and record digest
+        id: push
+        shell: bash
+        run: |
+          output="$(docker push '${{ steps.image.outputs.ref }}')"
+          digest="$(printf '%s\n' "$output" | awk '/digest: sha256:/ {print $3; exit}')"
+          lockfile_digest="$(sha256sum pnpm-lock.yaml | awk '{print $1}')"
+          test -n "$digest"
+          printf '%s\n' "${{ steps.image.outputs.ref }}@$digest" > "${{ matrix.image }}-image.txt"
+          cat > "${{ matrix.image }}-provenance.json" <<EOF
+          {
+            "gitCommit": "${GITHUB_SHA}",
+            "lockfileSha256": "sha256:${lockfile_digest}",
+            "image": "${{ steps.image.outputs.ref }}@${digest}"
+          }
+          EOF
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+      - name: Upload immutable image reference and provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.image }}-delivery-provenance
+          path: |
+            ${{ matrix.image }}-image.txt
+            ${{ matrix.image }}-provenance.json
+          retention-days: 90

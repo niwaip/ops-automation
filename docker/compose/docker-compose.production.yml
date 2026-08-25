@@ -1,0 +1,127 @@
+# Immutable production application roles. Databases, migrations and secrets are provisioned separately.
+services:
+  control-plane-api:
+    image: ${CONTROL_PLANE_IMAGE:?set CONTROL_PLANE_IMAGE to an immutable image digest}
+    environment:
+      NODE_ENV: production
+      CONTROL_PLANE_ROLE: api
+      # The Control Plane login must receive only reader + execution/experience
+      # writer memberships. It must not inherit the registry writer role.
+      DATABASE_URL: ${CONTROL_PLANE_DATABASE_URL:?CONTROL_PLANE_DATABASE_URL is required}
+      REDIS_HOST: ${REDIS_HOST:?REDIS_HOST is required}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      EXECUTION_OUTBOX_ENABLED: ${EXECUTION_OUTBOX_ENABLED:-false}
+      PLAN_RISK_EVALUATOR_V2_ENABLED: ${PLAN_RISK_EVALUATOR_V2_ENABLED:-false}
+      RESULT_REF_ENABLED: ${RESULT_REF_ENABLED:-false}
+    expose: ['3003']
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(\"http://127.0.0.1:3003/health\").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 1G }
+    networks: [control, data]
+
+  execution-dispatcher:
+    image: ${CONTROL_PLANE_IMAGE:?set CONTROL_PLANE_IMAGE to an immutable image digest}
+    environment:
+      NODE_ENV: production
+      CONTROL_PLANE_ROLE: dispatcher
+      EXECUTION_OUTBOX_ENABLED: ${EXECUTION_OUTBOX_ENABLED:-false}
+      EXECUTION_DISPATCHER_V2_ENABLED: ${EXECUTION_DISPATCHER_V2_ENABLED:-false}
+      SAFE_READY_SET_PARALLEL_ENABLED: ${SAFE_READY_SET_PARALLEL_ENABLED:-false}
+      SAFE_READY_SET_MAX_CONCURRENCY: ${SAFE_READY_SET_MAX_CONCURRENCY:-4}
+      RESULT_REF_ENABLED: ${RESULT_REF_ENABLED:-false}
+      DATABASE_URL: ${CONTROL_PLANE_DATABASE_URL:?CONTROL_PLANE_DATABASE_URL is required}
+      REDIS_HOST: ${REDIS_HOST:?REDIS_HOST is required}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    command: ['pnpm', '--filter', '@ops/control-plane', 'run', 'start:worker']
+    stop_grace_period: 60s
+    deploy:
+      replicas: ${DISPATCHER_REPLICAS:-2}
+      resources:
+        limits: { cpus: '2.0', memory: 2G }
+    networks: [control, runtime, data]
+
+  schedule-trigger:
+    image: ${CONTROL_PLANE_IMAGE:?set CONTROL_PLANE_IMAGE to an immutable image digest}
+    environment:
+      NODE_ENV: production
+      CONTROL_PLANE_ROLE: schedule
+      SCHEDULE_FIRE_V2_ENABLED: ${SCHEDULE_FIRE_V2_ENABLED:-false}
+      DATABASE_URL: ${CONTROL_PLANE_DATABASE_URL:?CONTROL_PLANE_DATABASE_URL is required}
+      REDIS_HOST: ${REDIS_HOST:?REDIS_HOST is required}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    command: ['pnpm', '--filter', '@ops/control-plane', 'run', 'start:worker']
+    stop_grace_period: 30s
+    networks: [control, data]
+
+  ai-orchestrator:
+    image: ${AI_ORCHESTRATOR_IMAGE:?set AI_ORCHESTRATOR_IMAGE to an immutable image digest}
+    environment:
+      NODE_ENV: production
+      # The AI login must receive only reader + intelligence writer memberships.
+      # In particular it must not inherit execution or registry writer roles.
+      DATABASE_URL: ${AI_ORCHESTRATOR_DATABASE_URL:?AI_ORCHESTRATOR_DATABASE_URL is required}
+      CONTROL_PLANE_URL: http://control-plane-api:3003
+      PLANNING_DECISION_PERSIST_ENABLED: ${PLANNING_DECISION_PERSIST_ENABLED:-false}
+      MODEL_INVOCATION_LEDGER_ENABLED: ${MODEL_INVOCATION_LEDGER_ENABLED:-false}
+      SCOPED_MEMORY_PROMPT_ENABLED: ${SCOPED_MEMORY_PROMPT_ENABLED:-false}
+      SCOPED_MEMORY_PLANNER_KIND: ${SCOPED_MEMORY_PLANNER_KIND:-planner_context}
+      SCOPED_MEMORY_PLANNER_KEY: ${SCOPED_MEMORY_PLANNER_KEY:-default}
+      PRODUCTION_REACT_FALLBACK_ENABLED: ${PRODUCTION_REACT_FALLBACK_ENABLED:-false}
+    expose: ['3007']
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(\"http://127.0.0.1:3007/health\").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits: { cpus: '2.0', memory: 2G }
+    networks: [control, data]
+
+  runtime-worker:
+    image: ${RUNTIME_WORKER_IMAGE:?set RUNTIME_WORKER_IMAGE to an immutable image digest}
+    environment:
+      NODE_ENV: production
+      PORT: '3004'
+      SESSION_BROKER_URL: ${SESSION_BROKER_URL:?SESSION_BROKER_URL is required}
+      CONTROL_PLANE_URL: http://control-plane-api:3003
+      BROWSER_WORKER_ORPHAN_SWEEP_ENABLED: 'true'
+    expose: ['3004']
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(\"http://127.0.0.1:3004/health\").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    stop_grace_period: 60s
+    deploy:
+      replicas: ${RUNTIME_WORKER_REPLICAS:-2}
+      resources:
+        limits: { cpus: '2.0', memory: 3G }
+    networks: [control, runtime]
+
+networks:
+  control:
+    internal: true
+  runtime:
+    internal: true
+  data:
+    internal: true

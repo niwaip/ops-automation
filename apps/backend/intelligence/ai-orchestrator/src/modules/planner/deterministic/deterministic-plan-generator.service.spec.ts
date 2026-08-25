@@ -835,5 +835,101 @@ describe('DeterministicPlanGeneratorService', () => {
       const summarizeNode = plan.nodes.find((n: any) => n.nodeId === 'summarize_stock_info') as any;
       expect(summarizeNode.inputBindings.items.path).toBe('searchResults');
     });
+
+    it('binds requested custom modelId to llm_operation nodes when provided', async () => {
+      const customModelId = 'custom-model-abc';
+      const planJson = JSON.stringify({
+        schemaVersion: 'deterministic-plan/v1',
+        plannerVersion: 'v1',
+        catalogVersion: 'v1',
+        planType: 'multi',
+        objective: '查询新闻并总结',
+        originalRequest: '',
+        status: 'draft',
+        nodes: [
+          {
+            nodeId: 'summarize_1',
+            sequence: 1,
+            title: '总结',
+            kind: 'llm_operation',
+            operationId: 'summarize_list',
+            operationVersion: '1.0.0',
+            dependsOn: [],
+            inputBindings: {},
+            outputContract: { markdown_content: 'markdown_content' },
+            failurePolicy: 'abort',
+          },
+        ],
+        finalOutputs: [
+          {
+            targetField: 'markdown_content',
+            fromNodeId: 'summarize_1',
+            fromNodeOutput: 'markdown_content',
+            expectedType: 'markdown_content',
+          },
+        ],
+      });
+
+      const modelService = {
+        getPreferredDefaultModel: jest.fn().mockReturnValue({ id: 'model-1', name: 'test-model' }),
+        getModel: jest.fn().mockResolvedValue({ id: customModelId, name: 'Custom Model', status: 'active' }),
+        getClient: jest.fn().mockReturnValue({}),
+        callModel: jest.fn().mockResolvedValue({ content: planJson }),
+      };
+      const candidateSelector = {
+        selectCandidates: jest.fn().mockReturnValue({
+          skillCards: [],
+          llmOperationCards: [
+            {
+              id: 'summarize_list',
+              kind: 'llm_operation',
+              displayName: '总结',
+              summary: '总结列表',
+              goals: ['summarize'],
+              inputs: { items: 'array' },
+              outputs: { markdown_content: 'markdown_content' },
+            },
+          ],
+        }),
+      };
+      const llmOperationRegistry = {
+        resolveActiveVersion: jest.fn().mockResolvedValue({
+          source: 'database',
+          version: {
+            version: '1.0.0',
+            operationDigest: 'sha256:operation',
+            contractDigest: 'sha256:contract',
+            manifestJson: {
+              promptTemplateId: 'summarize-list',
+              modelPolicyId: 'task-default',
+              temperature: 0,
+              maxInputTokens: 4000,
+              maxOutputTokens: 2000,
+              outputSchema: {
+                type: 'object',
+                properties: { markdown_content: { type: 'string' } },
+                required: ['markdown_content'],
+              },
+            },
+          },
+        }),
+      };
+
+      const service = new DeterministicPlanGeneratorService(
+        modelService as any,
+        candidateSelector as any,
+        llmOperationRegistry as any,
+      );
+
+      const plan = await service.generatePlan({
+        userRequest: '查询 最新新闻 然后总结',
+        availableSkills: [],
+        modelId: customModelId,
+      });
+
+      const summarizeNode = plan.nodes.find((n: any) => n.kind === 'llm_operation') as any;
+      expect(summarizeNode).toBeDefined();
+      expect(summarizeNode.modelId).toBe(customModelId);
+    });
   });
 });

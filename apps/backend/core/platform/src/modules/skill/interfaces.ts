@@ -13,6 +13,7 @@ export interface ApiEndpoint {
 }
 
 export interface SkillRuntimeMetadata {
+  routingAliases?: string[];
   matchSummary?: string;
   paramCollectionGuidance?: string;
   validationRules?: string;
@@ -145,6 +146,9 @@ export interface ParamsSchema {
       previewBlocking?: boolean;
       /** @deprecated 过渡兼容字段；确认阈值应迁移到 workflowInputPolicy.params.confirmationThreshold */
       confirmationThreshold?: number;
+      enum?: Array<string | number>;
+      /** Canonical enum value -> locale/domain aliases used by deterministic recognition. */
+      'x-enum-aliases'?: Record<string, Array<string | number>>;
     }
   >;
   /** @deprecated 过渡兼容字段；模板级 required 列表应迁移到 workflowInputPolicy.params.requiredMode */

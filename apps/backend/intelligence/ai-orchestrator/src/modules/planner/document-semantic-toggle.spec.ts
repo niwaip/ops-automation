@@ -109,6 +109,7 @@ describe('PlannerService document semantic bypass toggle', () => {
     const { PlannerPlanDraftService } = require('./planning');
     const { PlanGeneratorService, PlanSemanticService } = require('./plan');
     const {
+      DeterministicParamResolverService,
       ParamBilingualService,
       ParamContextMergeService,
       ParamPolicyService,
@@ -142,12 +143,10 @@ describe('PlannerService document semantic bypass toggle', () => {
         paramPolicyService,
         paramValueService,
         paramRequiredInputPresentationService
-      )
+      ),
+      new DeterministicParamResolverService()
     );
-    const service = new PlannerService(
-      plannerMatchPhaseService,
-      plannerPlanDraftService
-    );
+    const service = new PlannerService(plannerMatchPhaseService, plannerPlanDraftService);
 
     const skill = buildSkill();
     const match = buildMatch(skill);

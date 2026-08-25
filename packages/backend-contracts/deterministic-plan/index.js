@@ -79,11 +79,11 @@ function projectOutputSchemaV1(schema) {
     ].find((value) => typeof value === 'string' && value.length > 0);
     const propertyPrimary = Object.entries(properties).find(([, property]) => {
         const record = asRecord(property);
-        return record.primary === true || record['x-primary-output'] === true || record.xPrimaryOutput === true;
+        return (record.primary === true ||
+            record['x-primary-output'] === true ||
+            record.xPrimaryOutput === true);
     })?.[0];
-    const primaryOutput = explicitPrimary && outputContract[explicitPrimary]
-        ? explicitPrimary
-        : propertyPrimary;
+    const primaryOutput = explicitPrimary && outputContract[explicitPrimary] ? explicitPrimary : propertyPrimary;
     return primaryOutput ? { outputContract, primaryOutput } : { outputContract };
 }
 /** Resolves a physical output field without guessing by object key order. */
@@ -164,8 +164,16 @@ function normalizeOutputProperties(value) {
     return asRecord(value);
 }
 function looksLikeJsonSchema(value) {
-    return ['$schema', '$id', 'type', 'required', 'additionalProperties', 'oneOf', 'anyOf', 'allOf']
-        .some((keyword) => Object.prototype.hasOwnProperty.call(value, keyword));
+    return [
+        '$schema',
+        '$id',
+        'type',
+        'required',
+        'additionalProperties',
+        'oneOf',
+        'anyOf',
+        'allOf',
+    ].some((keyword) => Object.prototype.hasOwnProperty.call(value, keyword));
 }
 function asRecord(value) {
     return value && typeof value === 'object' && !Array.isArray(value)
@@ -213,6 +221,8 @@ function canonicalizePlan(plan) {
                 canonicalNode.promptTemplateVersion = node.promptTemplateVersion;
             if (node.modelPolicyId)
                 canonicalNode.modelPolicyId = node.modelPolicyId;
+            if (node.modelId)
+                canonicalNode.modelId = node.modelId;
             if (node.temperature !== undefined)
                 canonicalNode.temperature = node.temperature;
             if (node.maxInputTokens !== undefined)

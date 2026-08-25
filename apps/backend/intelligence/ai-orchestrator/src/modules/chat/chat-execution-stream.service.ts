@@ -49,7 +49,8 @@ export class ChatExecutionStreamService {
   async *observeExecution(
     executionId: string,
     authToken?: string,
-    user?: ChatUserContext
+    user?: ChatUserContext,
+    options?: { modelId?: string }
   ): AsyncGenerator<StreamEvent> {
     this.logger.log(`Starting to observe execution ${executionId} via control-plane stream`);
 
@@ -57,7 +58,8 @@ export class ChatExecutionStreamService {
       const immediateStateEvent = await this.buildLatestExecutionStateEvent(
         executionId,
         authToken,
-        user
+        user,
+        options?.modelId
       );
       if (immediateStateEvent) {
         yield immediateStateEvent;
@@ -108,7 +110,8 @@ export class ChatExecutionStreamService {
                 executionId,
                 event.payload.newStatus,
                 authToken,
-                user
+                user,
+                options?.modelId
               );
               if (terminalEvent) {
                 yield terminalEvent;
@@ -129,13 +132,23 @@ export class ChatExecutionStreamService {
         }
       }
 
-      const latestEvent = await this.buildLatestExecutionStateEvent(executionId, authToken, user);
+      const latestEvent = await this.buildLatestExecutionStateEvent(
+        executionId,
+        authToken,
+        user,
+        options?.modelId
+      );
       if (latestEvent) {
         yield latestEvent;
       }
     } catch (error: any) {
       this.logger.error(`Error observing execution ${executionId}`, error);
-      const latestEvent = await this.buildLatestExecutionStateEvent(executionId, authToken, user);
+      const latestEvent = await this.buildLatestExecutionStateEvent(
+        executionId,
+        authToken,
+        user,
+        options?.modelId
+      );
       if (latestEvent) {
         this.logger.log(`Recovered execution ${executionId} state after stream interruption`);
         yield latestEvent;
@@ -151,7 +164,8 @@ export class ChatExecutionStreamService {
   async buildLatestExecutionStateEvent(
     executionId: string,
     authToken?: string,
-    user?: ChatUserContext
+    user?: ChatUserContext,
+    modelId?: string
   ): Promise<StreamEvent | null> {
     try {
       const execution = await this.controlPlaneClient.getExecution<{
@@ -176,7 +190,7 @@ export class ChatExecutionStreamService {
       const usage = execution.usage;
 
       if (isTerminalControlPlaneExecutionStatus(status)) {
-        return this.buildTerminalExecutionEvent(executionId, status, authToken, user);
+        return this.buildTerminalExecutionEvent(executionId, status, authToken, user, modelId);
       }
 
       if (status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT) {
@@ -253,7 +267,8 @@ export class ChatExecutionStreamService {
       | typeof CONTROL_PLANE_EXECUTION_STATUS.FAILED
       | typeof CONTROL_PLANE_EXECUTION_STATUS.CANCELLED,
     authToken?: string,
-    user?: ChatUserContext
+    user?: ChatUserContext,
+    modelId?: string
   ): Promise<StreamEvent | null> {
     try {
       const execution = await this.controlPlaneClient.getExecution<{
@@ -336,7 +351,8 @@ export class ChatExecutionStreamService {
             const aiResult = await this.generateAiSummary(
               objective || '对工具执行结果进行总结',
               normalizedResult.structuredData ?? rawResult,
-              executionId
+              executionId,
+              modelId
             );
             if (aiResult?.summary) {
               chatContent = aiResult.summary;
@@ -761,7 +777,8 @@ export class ChatExecutionStreamService {
   private async generateAiSummary(
     objective: string,
     rawResult: unknown,
-    executionId: string
+    executionId: string,
+    modelId?: string
   ): Promise<{ summary?: string; warning?: string }> {
     if (!this.modelService) {
       reportChatExecutionStreamDebug(
@@ -774,7 +791,15 @@ export class ChatExecutionStreamService {
     }
 
     try {
-      const preferredModel = this.modelService.getPreferredDefaultModel({ mode: 'chat' });
+      let preferredModel =
+        modelId && modelId !== 'default' ? await this.modelService.getModel(modelId) : null;
+      if (
+        !preferredModel ||
+        preferredModel.status !== 'active' ||
+        !this.modelService.getClient(preferredModel.id)
+      ) {
+        preferredModel = this.modelService.getPreferredDefaultModel({ mode: 'chat' });
+      }
       if (!preferredModel?.id) {
         reportChatExecutionStreamDebug(
           'H3',

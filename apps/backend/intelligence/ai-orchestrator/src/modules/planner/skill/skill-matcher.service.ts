@@ -1,10 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
+import { matchDeterministicRoutingCapability } from '@ops/backend-runtime-capability-contract';
 import { getAuthServiceUrl } from '../../../config/service-endpoints';
 import { TRACE_ID_HEADER } from '../../../common/trace.util';
 import { AvailableSkillDefinition, SkillMatchResult } from '../../react-engine/interfaces';
 import { SkillCacheService } from './skill-cache.service';
 import { getSkillMatchMinConfidence, isAcceptedSkillMatch } from './skill-match-policy';
+
+export type SkillMatchAttempt =
+  | { status: 'matched'; match: SkillMatchResult }
+  | { status: 'not_found'; match: null }
+  | {
+      status: 'unavailable';
+      match: null;
+      code: 'SKILL_MATCH_MODEL_UNAVAILABLE' | 'SKILL_MATCH_SERVICE_UNAVAILABLE';
+      retryable: true;
+      message: string;
+    };
 
 @Injectable()
 export class SkillMatcherService {
@@ -20,7 +32,21 @@ export class SkillMatcherService {
     traceId?: string;
     availableSkills: AvailableSkillDefinition[];
     context?: Record<string, unknown>;
+    modelId?: string;
   }): Promise<SkillMatchResult | null> {
+    const attempt = await this.matchSkillAttempt(input);
+    return attempt.match;
+  }
+
+  async matchSkillAttempt(input: {
+    userInput: string;
+    userId?: string;
+    authToken?: string;
+    traceId?: string;
+    availableSkills: AvailableSkillDefinition[];
+    context?: Record<string, unknown>;
+    modelId?: string;
+  }): Promise<SkillMatchAttempt> {
     const targetSkillId =
       typeof input.context?.target_skill_id === 'string'
         ? input.context.target_skill_id.trim()
@@ -29,45 +55,50 @@ export class SkillMatcherService {
       const targetedSkill = input.availableSkills.find((skill) => skill.skillId === targetSkillId);
       if (targetedSkill) {
         return {
-          skillId: targetedSkill.skillId,
-          skillName: targetedSkill.skillName,
-          matchedKeywords: targetedSkill.triggerKeywords.filter(
-            (keyword) => keyword && input.userInput.toLowerCase().includes(keyword.toLowerCase())
-          ),
-          confidence: 1,
-          collectedParams: {},
-          missingParams: targetedSkill.paramsSchema.required || [],
-          paramsSchema: targetedSkill.paramsSchema,
-          templateId: targetedSkill.templateId,
-          carboneSkillId: targetedSkill.carboneSkillId,
-          carboneTemplateId: targetedSkill.carboneTemplateId,
-          executionFlowTemplateId: targetedSkill.executionFlowTemplateIds?.[0],
-          executionFlowTemplateIds: targetedSkill.executionFlowTemplateIds,
-          executionFlow: targetedSkill.executionFlow?.length
-            ? targetedSkill.executionFlow
-            : targetedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document'
-              ? ['document_render']
-              : undefined,
-          apiEndpoints: targetedSkill.apiEndpoints,
-          matchReason: 'target_skill_context',
-          goal: targetedSkill.goal,
-          expectedResult: targetedSkill.expectedResult,
-          outputParams: targetedSkill.outputParams,
+          status: 'matched',
+          match: {
+            skillId: targetedSkill.skillId,
+            skillName: targetedSkill.skillName,
+            matchedKeywords: targetedSkill.triggerKeywords.filter(
+              (keyword) => keyword && input.userInput.toLowerCase().includes(keyword.toLowerCase())
+            ),
+            confidence: 1,
+            collectedParams: {},
+            missingParams: targetedSkill.paramsSchema.required || [],
+            paramsSchema: targetedSkill.paramsSchema,
+            templateId: targetedSkill.templateId,
+            carboneSkillId: targetedSkill.carboneSkillId,
+            carboneTemplateId: targetedSkill.carboneTemplateId,
+            executionFlowTemplateId: targetedSkill.executionFlowTemplateIds?.[0],
+            executionFlowTemplateIds: targetedSkill.executionFlowTemplateIds,
+            executionFlow: targetedSkill.executionFlow?.length
+              ? targetedSkill.executionFlow
+              : targetedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document'
+                ? ['document_render']
+                : undefined,
+            apiEndpoints: targetedSkill.apiEndpoints,
+            matchReason: 'target_skill_context',
+            goal: targetedSkill.goal,
+            expectedResult: targetedSkill.expectedResult,
+            outputParams: targetedSkill.outputParams,
+          },
         };
       }
     }
 
-    // Explicit capability names and distinctive aliases are deterministic
-    // routing signals. Resolve them before the platform LLM matcher so a
-    // direct continuation such as "用 Bark 推送" does not pay model latency.
+    // Contract-declared and safely-derived routing signals are resolved before
+    // model routing. This is the normal fast path for reproducible requests.
     const explicitMatch = this.matchExplicitSkillName(input.userInput, input.availableSkills);
     if (explicitMatch) {
-      return this.buildMatchResult(
-        explicitMatch.skill,
-        explicitMatch.matchedKeywords,
-        0.99,
-        'deterministic_explicit_match'
-      );
+      return {
+        status: 'matched',
+        match: this.buildMatchResult(
+          explicitMatch.skill,
+          explicitMatch.matchedKeywords,
+          0.99,
+          'deterministic_routing_signal'
+        ),
+      };
     }
 
     if (input.userId) {
@@ -78,6 +109,7 @@ export class SkillMatcherService {
             userInput: input.userInput,
             userId: input.userId,
             context: input.context,
+            modelId: input.modelId,
           },
           {
             headers: {
@@ -88,7 +120,9 @@ export class SkillMatcherService {
         );
 
         if (!response.data.match) {
-          return this.acceptFallbackMatch(input.userInput, input.availableSkills);
+          return this.toMatchAttempt(
+            this.acceptFallbackMatch(input.userInput, input.availableSkills)
+          );
         }
 
         const matchedSkill = this.hydrateMatchedSkill(response.data.match, input.availableSkills);
@@ -99,20 +133,35 @@ export class SkillMatcherService {
           ) {
             matchedSkill.executionFlow = ['document_render'];
           }
-          return matchedSkill;
+          return { status: 'matched', match: matchedSkill };
         }
         this.logger.log(
           `Rejected low-confidence skill match '${matchedSkill?.skillName || 'unknown'}' (${matchedSkill?.confidence ?? 'missing'}); minimum is ${getSkillMatchMinConfidence()}`
         );
-        return this.acceptFallbackMatch(input.userInput, input.availableSkills);
+        return this.toMatchAttempt(
+          this.acceptFallbackMatch(input.userInput, input.availableSkills)
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : 'unknown';
         this.logger.warn(`Planner skill match API failed: ${message}`);
-        return this.acceptFallbackMatch(input.userInput, input.availableSkills);
+        const deterministic = this.acceptFallbackMatch(input.userInput, input.availableSkills);
+        const unavailableCode = this.resolveUnavailableCode(error);
+        return deterministic
+          ? { status: 'matched', match: deterministic }
+          : {
+              status: 'unavailable',
+              match: null,
+              code: unavailableCode,
+              retryable: true,
+              message:
+                unavailableCode === 'SKILL_MATCH_MODEL_UNAVAILABLE'
+                  ? '能力匹配模型暂时不可用，请稍后重试。'
+                  : '能力匹配服务暂时不可用，请稍后重试。',
+            };
       }
     }
 
-    return null;
+    return { status: 'not_found', match: null };
   }
 
   fallbackSkillMatch(
@@ -155,46 +204,17 @@ export class SkillMatcherService {
     userInput: string,
     availableSkills: AvailableSkillDefinition[]
   ): { skill: AvailableSkillDefinition; matchedKeywords: string[] } | null {
-    const normalizedInput = this.normalizeRouteText(userInput);
-    if (!normalizedInput) return null;
-
-    const ranked = availableSkills
-      .map((skill) => {
-        const normalizedName = this.normalizeRouteText(skill.skillName);
-        const aliases = new Set([
-          normalizedName,
-          normalizedName.replace(/(?:工作流|服务|技能|workflow|skill)$/i, ''),
-        ]);
-        let score = 0;
-        for (const alias of aliases) {
-          if (!alias) continue;
-          if (normalizedInput === alias) score = Math.max(score, 220 + alias.length);
-          else if (alias.length >= 4 && normalizedInput.includes(alias)) {
-            score = Math.max(score, 160 + alias.length);
-          }
-        }
-        const matchedKeywords = skill.triggerKeywords.filter((keyword) => {
-          const normalizedKeyword = this.normalizeRouteText(keyword);
-          return normalizedKeyword.length >= 2 && normalizedInput.includes(normalizedKeyword);
-        });
-        for (const keyword of matchedKeywords) {
-          const normalizedKeyword = this.normalizeRouteText(keyword);
-          const distinctiveAscii =
-            /^[a-z0-9]+$/.test(normalizedKeyword) && normalizedKeyword.length >= 3;
-          if (distinctiveAscii) score = Math.max(score, 150 + normalizedKeyword.length);
-        }
-        return { skill, matchedKeywords, score };
-      })
-      .filter((candidate) => candidate.score >= 150)
-      .sort((left, right) => right.score - left.score);
-
-    const best = ranked[0];
-    if (!best || (ranked[1] && best.score === ranked[1].score)) return null;
-    return { skill: best.skill, matchedKeywords: best.matchedKeywords };
-  }
-
-  private normalizeRouteText(value: string): string {
-    return value.toLowerCase().replace(/[\s\p{P}\p{S}_]+/gu, '');
+    const match = matchDeterministicRoutingCapability(
+      userInput,
+      availableSkills.map((skill) => ({
+        id: skill.skillId,
+        name: skill.skillName,
+        aliases: skill.apiEndpoints?.runtimeMetadata?.routingAliases,
+        triggerKeywords: skill.triggerKeywords,
+        skill,
+      }))
+    );
+    return match ? { skill: match.capability.skill, matchedKeywords: match.matchedSignals } : null;
   }
 
   private buildMatchResult(
@@ -236,6 +256,23 @@ export class SkillMatcherService {
   ): SkillMatchResult | null {
     const fallback = this.fallbackSkillMatch(userInput, availableSkills);
     return fallback && isAcceptedSkillMatch(fallback.confidence) ? fallback : null;
+  }
+
+  private toMatchAttempt(match: SkillMatchResult | null): SkillMatchAttempt {
+    return match ? { status: 'matched', match } : { status: 'not_found', match: null };
+  }
+
+  private resolveUnavailableCode(
+    error: unknown
+  ): 'SKILL_MATCH_MODEL_UNAVAILABLE' | 'SKILL_MATCH_SERVICE_UNAVAILABLE' {
+    if (!axios.isAxiosError(error)) return 'SKILL_MATCH_SERVICE_UNAVAILABLE';
+    const data = error.response?.data;
+    return data &&
+      typeof data === 'object' &&
+      'code' in data &&
+      data.code === 'SKILL_MATCH_MODEL_UNAVAILABLE'
+      ? 'SKILL_MATCH_MODEL_UNAVAILABLE'
+      : 'SKILL_MATCH_SERVICE_UNAVAILABLE';
   }
 
   hydrateMatchedSkill(

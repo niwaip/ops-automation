@@ -54,9 +54,12 @@ export class SkillCacheService {
       let rawSkills: any[] = [];
       let catalogSkills: any[] = [];
       try {
-        const catalogRes = await axios.get(`${this.authServiceUrl}/internal/builtin-skills/catalog`, {
-          headers: this.buildRequestHeaders(authToken, traceId),
-        });
+        const catalogRes = await axios.get(
+          `${this.authServiceUrl}/internal/builtin-skills/catalog`,
+          {
+            headers: this.buildRequestHeaders(authToken, traceId),
+          }
+        );
         const catalogData = catalogRes.data as any;
         if (Array.isArray(catalogData?.capabilities)) {
           catalogSkills = catalogData.capabilities.map((cap: any) => ({
@@ -94,7 +97,9 @@ export class SkillCacheService {
           }));
         }
       } catch (err: any) {
-        this.logger.debug(`Unified catalog endpoint unavailable, falling back to /skills: ${err.message}`);
+        this.logger.debug(
+          `Unified catalog endpoint unavailable, falling back to /skills: ${err.message}`
+        );
       }
 
       // Fetch the legacy /skills endpoint unconditionally and merge with the catalog
@@ -161,12 +166,16 @@ export class SkillCacheService {
 
     try {
       if (trimmedSkillId.startsWith('platform.')) {
-        const resolveRes = await axios.post(`${this.authServiceUrl}/internal/builtin-skills/resolve`, {
-          capabilityKey: trimmedSkillId,
-          action: 'discover',
-        }, {
-          headers: this.buildRequestHeaders(authToken, traceId),
-        });
+        const resolveRes = await axios.post(
+          `${this.authServiceUrl}/internal/builtin-skills/resolve`,
+          {
+            capabilityKey: trimmedSkillId,
+            action: 'discover',
+          },
+          {
+            headers: this.buildRequestHeaders(authToken, traceId),
+          }
+        );
         const data = resolveRes.data as any;
         if (data?.found && data?.capabilityView) {
           const cap = data.capabilityView;
@@ -278,6 +287,11 @@ export class SkillCacheService {
             ...(Array.isArray(property.enum) && property.enum.length > 0
               ? { enum: property.enum }
               : {}),
+            ...(property['x-enum-aliases'] &&
+            typeof property['x-enum-aliases'] === 'object' &&
+            !Array.isArray(property['x-enum-aliases'])
+              ? { 'x-enum-aliases': property['x-enum-aliases'] }
+              : {}),
           },
         ];
       })
@@ -352,10 +366,7 @@ export class SkillCacheService {
     };
   }
 
-  normalizeExecutionFlow(
-    executionFlow: string[] | undefined,
-    sourceType?: string
-  ): string[] {
+  normalizeExecutionFlow(executionFlow: string[] | undefined, sourceType?: string): string[] {
     const normalized = (executionFlow || []).filter(
       (step) => step && !['document_intake', 'generate_parameters'].includes(step)
     );
@@ -419,15 +430,23 @@ export class SkillCacheService {
       isPublished: typeof item.isPublished === 'boolean' ? item.isPublished : true,
       source: typeof item.source === 'string' ? item.source : undefined,
       supportsArtifact: item.supportsArtifact === true,
-      publishedReleaseId: typeof item.publishedReleaseId === 'string' ? item.publishedReleaseId : undefined,
+      publishedReleaseId:
+        typeof item.publishedReleaseId === 'string' ? item.publishedReleaseId : undefined,
       publishedReleaseVersion,
-      publishedReleaseStatus: typeof item.publishedReleaseStatus === 'string' ? item.publishedReleaseStatus : undefined,
-      publishedDeploymentStatus: typeof item.publishedDeploymentStatus === 'string' ? item.publishedDeploymentStatus : undefined,
+      publishedReleaseStatus:
+        typeof item.publishedReleaseStatus === 'string' ? item.publishedReleaseStatus : undefined,
+      publishedDeploymentStatus:
+        typeof item.publishedDeploymentStatus === 'string'
+          ? item.publishedDeploymentStatus
+          : undefined,
       skillName: String(item.name || item.skillName || ''),
       description: typeof item.description === 'string' ? item.description : undefined,
       triggerKeywords: Array.isArray(item.triggerKeywords) ? item.triggerKeywords.map(String) : [],
       outputParams,
-      outputSchema: typeof item.outputSchema === 'object' && item.outputSchema ? (item.outputSchema as Record<string, unknown>) : undefined,
+      outputSchema:
+        typeof item.outputSchema === 'object' && item.outputSchema
+          ? (item.outputSchema as Record<string, unknown>)
+          : undefined,
       contractRef: typeof item.contractRef === 'string' ? item.contractRef : undefined,
       contractDigest: typeof item.contractDigest === 'string' ? item.contractDigest : undefined,
       publishedSourceType:
@@ -571,7 +590,9 @@ export class SkillCacheService {
   }
 
   private buildAuthCacheKey(authToken?: string): string {
-    return createHash('sha1').update(authToken || 'anonymous').digest('hex');
+    return createHash('sha1')
+      .update(authToken || 'anonymous')
+      .digest('hex');
   }
 
   private buildSkillCacheKey(authCacheKey: string, skillId: string): string {

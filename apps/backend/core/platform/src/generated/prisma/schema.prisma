@@ -622,6 +622,21 @@ model ExecutionArtifact {
   @@map("execution_artifacts")
 }
 
+model ExecutionResultRef {
+  id             String   @id @default(uuid()) @db.Uuid
+  executionId    String   @map("execution_id") @db.Uuid
+  producerStepId String?  @map("producer_step_id") @db.Uuid
+  schemaDigest   String   @map("schema_digest") @db.VarChar(64)
+  payloadJson    Json     @map("payload_json")
+  previewJson    Json?    @map("preview_json")
+  sizeBytes      Int      @map("size_bytes")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([executionId, createdAt(sort: Desc)])
+  @@index([producerStepId])
+  @@map("execution_result_refs")
+}
+
 model ExecutionPhase {
   id                   String    @id @default(uuid()) @db.Uuid
   executionId          String    @map("execution_id") @db.Uuid
@@ -951,6 +966,106 @@ model RoutingObservation {
   @@map("routing_observations")
 }
 
+model PlanningDecision {
+  id                    String   @id @default(uuid()) @db.Uuid
+  ownerUserId           String   @map("owner_user_id") @db.Uuid
+  executionId           String?  @map("execution_id") @db.Uuid
+  requestFingerprint    String   @map("request_fingerprint") @db.VarChar(64)
+  schemaVersion         String   @map("schema_version") @db.VarChar(64)
+  routeClass            String   @map("route_class") @db.VarChar(32)
+  routeSource           String   @map("route_source") @db.VarChar(32)
+  decisionJson          Json     @map("decision_json")
+  shadow                Boolean  @default(true)
+  routingPolicyVersion  String   @map("routing_policy_version") @db.VarChar(64)
+  routingPolicyDigest   String   @map("routing_policy_digest") @db.VarChar(64)
+  catalogSnapshotDigest String   @map("catalog_snapshot_digest") @db.VarChar(64)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([ownerUserId, createdAt(sort: Desc)])
+  @@index([executionId])
+  @@index([routeClass, createdAt(sort: Desc)])
+  @@map("planning_decisions")
+}
+
+model PromptSnapshot {
+  id                    String   @id @default(uuid()) @db.Uuid
+  ownerUserId           String   @map("owner_user_id") @db.Uuid
+  executionId           String?  @map("execution_id") @db.Uuid
+  purpose               String   @db.VarChar(64)
+  promptTemplateVersion String   @map("prompt_template_version") @db.VarChar(100)
+  promptTemplateDigest  String   @map("prompt_template_digest") @db.VarChar(64)
+  systemPromptDigest    String   @map("system_prompt_digest") @db.VarChar(64)
+  catalogSnapshotDigest String?  @map("catalog_snapshot_digest") @db.VarChar(64)
+  modelPolicyDigest     String?  @map("model_policy_digest") @db.VarChar(64)
+  generationParamsJson  Json     @default("{}") @map("generation_params_json")
+  inputRefsJson         Json     @default("[]") @map("input_refs_json")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([executionId, createdAt(sort: Desc)])
+  @@index([ownerUserId, createdAt(sort: Desc)])
+  @@map("prompt_snapshots")
+}
+
+model LlmUsageLedger {
+  id                 String   @id @default(uuid()) @db.Uuid
+  ownerUserId        String   @map("owner_user_id") @db.Uuid
+  executionId        String?  @map("execution_id") @db.Uuid
+  planningDecisionId String?  @map("planning_decision_id") @db.Uuid
+  stepId             String?  @map("step_id") @db.Uuid
+  promptSnapshotId   String   @map("prompt_snapshot_id") @db.Uuid
+  traceId            String?  @map("trace_id") @db.VarChar(128)
+  purpose            String   @db.VarChar(64)
+  provider           String   @db.VarChar(64)
+  modelId            String   @map("model_id") @db.VarChar(255)
+  inputTokens        Int      @default(0) @map("input_tokens")
+  outputTokens       Int      @default(0) @map("output_tokens")
+  cachedTokens       Int      @default(0) @map("cached_tokens")
+  estimatedCost      Decimal? @map("estimated_cost") @db.Decimal(18, 8)
+  currency           String?  @db.VarChar(8)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([executionId, createdAt(sort: Desc)])
+  @@index([planningDecisionId])
+  @@index([purpose, createdAt(sort: Desc)])
+  @@map("llm_usage_ledger")
+}
+
+model ExecutionOutbox {
+  id             String    @id @default(uuid()) @db.Uuid
+  aggregateType  String    @map("aggregate_type") @db.VarChar(64)
+  aggregateId    String    @map("aggregate_id") @db.Uuid
+  eventType      String    @map("event_type") @db.VarChar(100)
+  payloadJson    Json      @map("payload_json")
+  availableAt    DateTime  @default(now()) @map("available_at") @db.Timestamptz
+  claimedBy      String?   @map("claimed_by") @db.VarChar(255)
+  leaseExpiresAt DateTime? @map("lease_expires_at") @db.Timestamptz
+  attempts       Int       @default(0)
+  publishedAt    DateTime? @map("published_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([publishedAt, availableAt])
+  @@index([leaseExpiresAt])
+  @@index([aggregateType, aggregateId])
+  @@map("execution_outbox")
+}
+
+model ScheduleFire {
+  id             String    @id @default(uuid()) @db.Uuid
+  scheduleId     String    @map("schedule_id") @db.Uuid
+  scheduledAt    DateTime  @map("scheduled_at") @db.Timestamptz
+  status         String    @default("pending") @db.VarChar(32)
+  executionId    String?   @map("execution_id") @db.Uuid
+  claimedBy      String?   @map("claimed_by") @db.VarChar(255)
+  leaseExpiresAt DateTime? @map("lease_expires_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([scheduleId, scheduledAt])
+  @@index([status, leaseExpiresAt])
+  @@index([executionId])
+  @@map("schedule_fires")
+}
+
 model HabitLearningRun {
   id             String    @id @default(uuid()) @db.Uuid
   idempotencyKey String    @unique @map("idempotency_key") @db.VarChar(128)
@@ -1020,6 +1135,62 @@ model UserPersonalizationPreference {
   updatedAt             DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("user_personalization_preferences")
+}
+
+model ScopedMemory {
+  id             String    @id @default(uuid()) @db.Uuid
+  scopeType      String    @map("scope_type") @db.VarChar(32)
+  scopeId        String    @map("scope_id") @db.Uuid
+  organizationId String?   @map("organization_id") @db.Uuid
+  kind           String    @db.VarChar(64)
+  memoryKey      String    @map("memory_key") @db.VarChar(255)
+  valueJson      Json      @map("value_json")
+  source         String    @db.VarChar(64)
+  version        Int       @default(1)
+  status         String    @default("active") @db.VarChar(32)
+  expiresAt      DateTime? @map("expires_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([scopeType, scopeId, kind, memoryKey])
+  @@index([organizationId, kind, status])
+  @@index([scopeType, scopeId, status])
+  @@map("scoped_memories")
+}
+
+model CandidateRecipe {
+  id                String   @id @default(uuid()) @db.Uuid
+  scopeType         String   @map("scope_type") @db.VarChar(32)
+  scopeId           String   @map("scope_id") @db.Uuid
+  intentFingerprint String   @map("intent_fingerprint") @db.VarChar(64)
+  topologyDigest    String   @map("topology_digest") @db.VarChar(64)
+  recipeJson        Json     @map("recipe_json")
+  riskLevel         String   @default("L0") @map("risk_level") @db.VarChar(10)
+  status            String   @default("candidate") @db.VarChar(32)
+  version           Int      @default(1)
+  shadowRuns        Int      @default(0) @map("shadow_runs")
+  shadowPasses      Int      @default(0) @map("shadow_passes")
+  approvedBy        String?  @map("approved_by") @db.Uuid
+  rollbackVersion   Int?     @map("rollback_version")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([scopeType, scopeId, intentFingerprint, version])
+  @@index([status, updatedAt(sort: Desc)])
+  @@map("candidate_recipes")
+}
+
+model CandidateRecipeEvaluation {
+  id                String   @id @default(uuid()) @db.Uuid
+  candidateRecipeId String   @map("candidate_recipe_id") @db.Uuid
+  fixtureId         String   @map("fixture_id") @db.VarChar(255)
+  passed            Boolean
+  comparisonJson    Json     @map("comparison_json")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([candidateRecipeId, fixtureId])
+  @@index([candidateRecipeId, createdAt(sort: Desc)])
+  @@map("candidate_recipe_evaluations")
 }
 
 model HabitGovernanceAudit {

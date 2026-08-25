@@ -97,6 +97,77 @@ export const LLM_OPERATION_TEMPLATES: { [K in LlmOperationIdV1]: LlmOperationTem
     },
   },
 
+  generate_text: {
+    operationId: 'generate_text',
+    promptTemplateId: 'generate-text',
+    version: '1',
+    modelPolicyId: 'task-default',
+    temperature: 0,
+    maxInputTokens: 16000,
+    maxOutputTokens: 8000,
+    modelOutputMode: 'text',
+    oversizeInput: 'truncate',
+    inputSchema: {
+      type: 'object',
+      required: ['instruction'],
+      properties: {
+        instruction: {
+          type: 'string',
+          description: '本轮需要 LLM 完成的文本生成、解释、建议或撰写指令',
+          minLength: 1,
+          maxLength: 4000,
+          'x-ops-input-role': 'instruction',
+        },
+        context: {
+          type: 'string',
+          description: '可选的可信业务上下文；存在上一执行结果时由系统按 Schema 投影',
+          maxLength: 12000,
+          'x-ops-input-role': 'content',
+        },
+      },
+    },
+    outputSchema: {
+      type: 'object',
+      required: ['content'],
+      primaryOutput: 'content',
+      properties: {
+        content: { type: 'string' },
+      },
+    },
+    buildPrompt: (input: Record<string, any>) => {
+      const instruction = String(input.instruction || '').trim();
+      const context =
+        typeof input.context === 'string'
+          ? input.context.trim()
+          : JSON.stringify(input.context || '');
+      return {
+        systemPrompt: `你是企业工作流中的标准 LLM 文本生成器。严格执行用户指令，但不得调用工具、访问外部系统或产生副作用。
+约束：
+1. 如果提供了业务上下文，必须以该上下文为事实依据，不得篡改其中的数字、日期、专有名词和结论。
+2. 不得声称已经查询实时信息、访问内部数据、发送消息、写入文件或执行任何外部动作。
+3. 请求依赖实时、私有或外部事实而上下文未提供时，必须明确说明信息不足，不得虚构。
+4. 可以使用稳定的通用知识完成解释、建议、起草、对比和创作任务。
+5. 只输出最终正文，不要解释执行过程，不要添加协议包装或代码围栏。`,
+        userPrompt: `任务指令：${instruction}\n\n可用上下文：\n${context || '（未提供）'}`,
+      };
+    },
+    parseAndValidateOutput: (rawText: string) => {
+      const content = resolvePrimaryTextFromRaw(rawText, 'content');
+      if (!content) {
+        throw new Error('Missing mandatory generated text in LLM operation output');
+      }
+      const res = { content };
+      const val = jsonSchemaValidator.validate(
+        res,
+        LLM_OPERATION_TEMPLATES.generate_text.outputSchema!
+      );
+      if (!val.valid) {
+        throw new Error(`OUTPUT_SCHEMA_VIOLATION: ${val.errors?.map((e) => e.message).join(', ')}`);
+      }
+      return res;
+    },
+  },
+
   rewrite_to_markdown: {
     operationId: 'rewrite_to_markdown',
     promptTemplateId: 'rewrite-to-markdown',

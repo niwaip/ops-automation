@@ -1,0 +1,4 @@
+{"id":"none-001","locale":"zh-CN","request":"帮我处理一下","hasPreviousResult":false,"expectedLegacyRoute":"single_skill","expectedTargetClass":"no_match","notes":"缺少目标、对象和能力"}
+{"id":"none-002","locale":"zh-CN","request":"做得更好一点","hasPreviousResult":false,"expectedLegacyRoute":"single_skill","expectedTargetClass":"no_match","notes":"无法形成可验证合同"}
+{"id":"none-003","locale":"en-US","request":"Take care of it","hasPreviousResult":false,"expectedLegacyRoute":"single_skill","expectedTargetClass":"no_match","notes":"英文模糊请求"}
+{"id":"none-004","locale":"zh-CN","request":"执行未知能力 alpha-omega-999","hasPreviousResult":false,"expectedLegacyRoute":"single_skill","expectedTargetClass":"no_match","notes":"不存在的显式能力"}

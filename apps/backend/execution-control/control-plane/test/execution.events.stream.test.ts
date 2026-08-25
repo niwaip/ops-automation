@@ -14,12 +14,14 @@ describe('ExecutionStreamService', () => {
           eventType: string,
           payload: any
         ): Promise<ExecutionStreamEventPayload> => ({
+          eventId: `${executionId}-${eventType}`,
           executionId,
           eventType: eventType as any,
           payload,
           timestamp: new Date().toISOString(),
         })
       ),
+      listEventsAfter: jest.fn(),
     } as unknown as ExecutionEventService;
 
     const service = new ExecutionStreamService(mockedEventService);
@@ -42,5 +44,34 @@ describe('ExecutionStreamService', () => {
     expect(received[0].executionId).toBe('execution-1');
     expect(received[0].eventType).toBe(EXECUTION_EVENT_TYPE.EXECUTION_CREATED);
     expect(received[0].payload).toEqual({ ok: true });
+  });
+
+  it('delivers terminal events persisted by another process', async () => {
+    const terminalEvent: ExecutionStreamEventPayload = {
+      eventId: 'event-terminal',
+      executionId: 'execution-1',
+      eventType: EXECUTION_EVENT_TYPE.EXECUTION_STATUS_CHANGED,
+      payload: { newStatus: 'succeeded' },
+      timestamp: '2026-08-25T10:00:00.000Z',
+    };
+    const eventService = {
+      createEvent: jest.fn(),
+      listEventsAfter: jest.fn().mockResolvedValueOnce([terminalEvent]),
+    } as unknown as ExecutionEventService;
+    const service = new ExecutionStreamService(eventService);
+    const received: ExecutionStreamEventPayload[] = [];
+
+    const subscription = service.subscribeToDurableEvents(
+      'execution-1',
+      (event) => {
+        received.push(event);
+        return false;
+      },
+      1,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    subscription.unsubscribe();
+
+    expect(received).toEqual([terminalEvent]);
   });
 });

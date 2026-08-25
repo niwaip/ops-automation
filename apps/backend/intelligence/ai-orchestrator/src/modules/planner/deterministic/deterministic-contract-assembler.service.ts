@@ -23,6 +23,7 @@ export class DeterministicContractAssemblerService {
     topology: DeterministicTopologyDraftV1,
     bindingResult: ParameterBindingResult,
     capabilityMap: Map<string, CompactCapabilityCardV1>,
+    runtimeModelId?: string,
   ): DeterministicPlanDraftV1 {
     const nodes: DeterministicPlanNodeV1[] = [];
     const refToNodeId = new Map<string, string>();
@@ -112,6 +113,7 @@ export class DeterministicContractAssemblerService {
           operationVersion: card.executableVersion,
           operationDigest: card.operationDigest,
           contractDigest: card.contractDigest,
+          ...(runtimeModelId ? { modelId: runtimeModelId } : {}),
           dependsOn: dependsOnNodeIds,
           inputBindings,
           outputContract,

@@ -689,9 +689,16 @@ export class SkillService implements OnModuleInit {
     return this.skillToolBindingService.buildSkillToolValidation(payload);
   }
 
-  async matchSkillWithAI(userInput: string, userId: string): Promise<SkillMatchResult | null> {
-    return this.skillMatcherService.matchSkillWithAI(userInput, userId, (id) =>
-      this.listSkillsForUser(id)
+  async matchSkillWithAI(
+    userInput: string,
+    userId: string,
+    modelId?: string
+  ): Promise<SkillMatchResult | null> {
+    return this.skillMatcherService.matchSkillWithAI(
+      userInput,
+      userId,
+      (id) => this.listSkillsForUser(id),
+      modelId
     );
   }
 

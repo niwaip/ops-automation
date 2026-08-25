@@ -97,6 +97,7 @@ describe('LlmOperationV2RuntimeService', () => {
           provide: ModelService,
           useValue: {
             getPreferredDefaultModel: jest.fn(),
+            getModel: jest.fn(),
             callModel: jest.fn(),
           },
         },
@@ -208,6 +209,38 @@ describe('LlmOperationV2RuntimeService', () => {
           idempotencyKey: 'key-1',
           resultJson: expect.objectContaining({ success: true }),
         })
+      );
+    });
+
+    it('uses the exact model pinned by the frozen plan', async () => {
+      const selectedModel = { ...mockActiveModel, id: 'selected-model', name: 'selected' };
+      registry.resolveExactVersion.mockResolvedValue(mockDbVersion);
+      modelService.getModel.mockResolvedValue(selectedModel as any);
+      modelService.callModel.mockResolvedValue({
+        content: '{"markdown_content":"Pinned summary"}',
+      });
+      outputValidator.parseAndValidate.mockReturnValue({
+        data: { markdown_content: 'Pinned summary' },
+        schemaValidated: true,
+      });
+
+      const result = await service.execute({
+        executionId: 'exec-pinned',
+        stepId: 'step-pinned',
+        operationId: 'summarize_list',
+        operationVersion: '1.0.0',
+        modelId: 'selected-model',
+        input: { text: 'Test input' },
+        idempotencyKey: 'key-pinned',
+      });
+
+      expect(result.success).toBe(true);
+      expect(modelService.getModel).toHaveBeenCalledWith('selected-model');
+      expect(modelService.getPreferredDefaultModel).not.toHaveBeenCalled();
+      expect(modelService.callModel).toHaveBeenCalledWith(
+        'selected-model',
+        expect.any(String),
+        2000,
       );
     });
 

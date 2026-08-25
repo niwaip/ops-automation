@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import axios from 'axios';
+import { matchDeterministicRoutingCapability } from '@ops/backend-runtime-capability-contract';
 import { getAiOrchestratorUrl } from '../../config/service-endpoints';
 import { AIMatchResponse, LLMUsage, SkillConfigDto, SkillMatchResult } from './interfaces';
 import { getSkillMatchMinConfidence, isAcceptedSkillMatch } from './skill-match-policy';
@@ -23,7 +24,8 @@ export class SkillMatcherService {
   async matchSkillWithAI(
     userInput: string,
     userId: string,
-    loadAvailableSkills: (userId: string) => Promise<SkillConfigDto[]>
+    loadAvailableSkills: (userId: string) => Promise<SkillConfigDto[]>,
+    modelId?: string
   ): Promise<SkillMatchResult | null> {
     const availableSkills = await loadAvailableSkills(userId);
 
@@ -39,7 +41,7 @@ export class SkillMatcherService {
         userInput,
         explicitMatch.matchedKeywords,
         0.99,
-        'deterministic_explicit_match'
+        'deterministic_routing_signal'
       );
     }
 
@@ -78,7 +80,7 @@ ${skillsXml}
       }>(
         `${aiOrchestratorUrl}/ai/model/call`,
         {
-          modelId: 'default',
+          modelId: modelId || 'default',
           prompt,
           includeDebug: true,
         },
@@ -128,7 +130,12 @@ ${skillsXml}
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       this.logger.warn(`AI match failed or exceeded ${this.modelTimeoutMs}ms: ${errorMsg}`);
       const fallback = this.matchSkillFallback(userInput, candidateSkills);
-      return fallback && isAcceptedSkillMatch(fallback.confidence) ? fallback : null;
+      if (fallback && isAcceptedSkillMatch(fallback.confidence)) return fallback;
+      throw new ServiceUnavailableException({
+        code: 'SKILL_MATCH_MODEL_UNAVAILABLE',
+        message: 'Skill matching model is temporarily unavailable',
+        retryable: true,
+      });
     }
   }
 
@@ -196,39 +203,17 @@ ${skillsXml}
     userInput: string,
     skills: SkillConfigDto[]
   ): { skill: SkillConfigDto; matchedKeywords: string[] } | null {
-    const normalizedInput = this.normalizeRouteText(userInput);
-    const ranked = skills
-      .map((skill) => {
-        const normalizedName = this.normalizeRouteText(skill.name);
-        const aliases = new Set([
-          normalizedName,
-          normalizedName.replace(/(?:工作流|服务|技能|workflow|skill)$/i, ''),
-        ]);
-        let score = 0;
-        for (const alias of aliases) {
-          if (!alias) continue;
-          if (normalizedInput === alias) score = Math.max(score, 220 + alias.length);
-          else if (alias.length >= 4 && normalizedInput.includes(alias)) {
-            score = Math.max(score, 160 + alias.length);
-          }
-        }
-        const matchedKeywords = skill.triggerKeywords.filter((keyword) => {
-          const normalizedKeyword = this.normalizeRouteText(keyword);
-          return normalizedKeyword.length >= 2 && normalizedInput.includes(normalizedKeyword);
-        });
-        for (const keyword of matchedKeywords) {
-          const normalizedKeyword = this.normalizeRouteText(keyword);
-          if (/^[a-z0-9]+$/.test(normalizedKeyword) && normalizedKeyword.length >= 3) {
-            score = Math.max(score, 150 + normalizedKeyword.length);
-          }
-        }
-        return { skill, matchedKeywords, score };
-      })
-      .filter((candidate) => candidate.score >= 150)
-      .sort((left, right) => right.score - left.score);
-    const best = ranked[0];
-    if (!best || (ranked[1] && best.score === ranked[1].score)) return null;
-    return { skill: best.skill, matchedKeywords: best.matchedKeywords };
+    const match = matchDeterministicRoutingCapability(
+      userInput,
+      skills.map((skill) => ({
+        id: skill.id,
+        name: skill.name,
+        aliases: skill.apiEndpoints?.runtimeMetadata?.routingAliases,
+        triggerKeywords: skill.triggerKeywords,
+        skill,
+      }))
+    );
+    return match ? { skill: match.capability.skill, matchedKeywords: match.matchedSignals } : null;
   }
 
   private buildSkillMatchResult(
@@ -275,8 +260,8 @@ ${skillsXml}
   }
 
   private readModelTimeoutMs(): number {
-    const configured = Number(process.env.SKILL_MATCH_MODEL_TIMEOUT_MS || 15000);
-    return Number.isFinite(configured) ? Math.min(Math.max(configured, 1000), 60000) : 15000;
+    const configured = Number(process.env.SKILL_MATCH_MODEL_TIMEOUT_MS || 45000);
+    return Number.isFinite(configured) ? Math.min(Math.max(configured, 1000), 120000) : 45000;
   }
 
   private parseAiMatchResponse(

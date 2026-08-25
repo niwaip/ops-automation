@@ -7,6 +7,7 @@ export interface AuthenticatedRequest extends Request {
     id: string;
     username: string;
     role: string;
+    organizationId?: string;
   };
 }
 
@@ -27,6 +28,7 @@ export class AuthMiddleware implements NestMiddleware {
     const internalUserId = req.headers['x-user-id'];
     const internalUserRole = req.headers['x-user-role'];
     const internalUsername = req.headers['x-user-name'];
+    const internalOrganizationId = req.headers['x-organization-id'];
 
     if (
       internalSecret &&
@@ -50,6 +52,9 @@ export class AuthMiddleware implements NestMiddleware {
             ? internalUsername
             : internalUserId,
         role: safeRole,
+        ...(typeof internalOrganizationId === 'string' && isUuid(internalOrganizationId)
+          ? { organizationId: internalOrganizationId }
+          : {}),
       };
       next();
       return;
@@ -79,6 +84,9 @@ export class AuthMiddleware implements NestMiddleware {
         id: payload.sub,
         username: payload.username,
         role: payload.role,
+        ...(typeof payload.activeOrgId === 'string' && isUuid(payload.activeOrgId)
+          ? { organizationId: payload.activeOrgId }
+          : {}),
       };
 
       next();
@@ -86,4 +94,10 @@ export class AuthMiddleware implements NestMiddleware {
       throw new UnauthorizedException('Invalid or expired token');
     }
   }
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
 }

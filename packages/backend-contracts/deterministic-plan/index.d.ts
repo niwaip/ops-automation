@@ -1,4 +1,4 @@
-export type LlmOperationIdV1 = 'summarize_text' | 'summarize_list' | 'transform_text' | 'extract_structured_fields' | 'rewrite_to_markdown' | 'classify_intent_label' | 'merge_multi_source_notes';
+export type LlmOperationIdV1 = 'summarize_text' | 'summarize_list' | 'generate_text' | 'transform_text' | 'extract_structured_fields' | 'rewrite_to_markdown' | 'classify_intent_label' | 'merge_multi_source_notes';
 export type ValueTypeV1 = 'string' | 'number' | 'boolean' | 'json' | 'text_list' | 'news_item_list' | 'markdown_content' | 'artifact_ref';
 export interface ProjectedOutputContractV1 {
     outputContract: Record<string, ValueTypeV1>;
@@ -63,6 +63,8 @@ export interface LlmOperationPlanNodeV1 extends PlanNodeBaseV1 {
     promptTemplateId?: string;
     promptTemplateVersion?: string;
     modelPolicyId?: string;
+    /** Exact model selected when the plan is frozen. */
+    modelId?: string;
     temperature?: number;
     maxInputTokens?: number;
     maxOutputTokens?: number;

@@ -6,7 +6,7 @@
   "main": "dist/main.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "nest build",
+    "build": "rm -f tsconfig.tsbuildinfo && nest build",
     "dev": "prisma generate && nest start --watch",
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",

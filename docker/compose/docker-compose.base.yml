@@ -51,11 +51,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ops_secret}
       POSTGRES_DB: ${POSTGRES_DB:-ops}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ops} -d ${POSTGRES_DB:-ops}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-ops} -d ${POSTGRES_DB:-ops}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -69,11 +69,11 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secret}
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - '${REDIS_PORT:-6379}:6379'
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secret}", "ping"]
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-redis_secret}', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -105,7 +105,7 @@ services:
       && cp -R /workspace/apps/backend/core/platform/src/generated/prisma /workspace/apps/backend/core/platform/dist/src/generated/prisma
       && pnpm --filter @ops/platform run start"
     ports:
-      - "${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}"
+      - '${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -131,7 +131,7 @@ services:
       DOCKER_ENV: true
       BROWSER_WORKER_URL: http://${BROWSER_WORKER_HOST:-browser-worker}:${BROWSER_WORKER_PORT:-3004}
     ports:
-      - "${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}"
+      - '${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -146,17 +146,13 @@ services:
     <<: *common-node-service
     container_name: ops-control-plane
     command: >
-      sh -c "corepack enable && pnpm --filter @ops/control-plane exec prisma generate
-      && pnpm --filter @ops/control-plane run build
-      && mkdir -p /workspace/apps/backend/execution-control/control-plane/dist/generated /workspace/apps/backend/execution-control/control-plane/dist/app/src/generated /workspace/apps/backend/execution-control/control-plane/dist/apps/backend/execution-control/control-plane/src/generated
-      && cp -R /workspace/apps/backend/execution-control/control-plane/src/generated/prisma /workspace/apps/backend/execution-control/control-plane/dist/generated/prisma
-      && cp -R /workspace/apps/backend/execution-control/control-plane/src/generated/prisma /workspace/apps/backend/execution-control/control-plane/dist/app/src/generated/prisma
-      && cp -R /workspace/apps/backend/execution-control/control-plane/src/generated/prisma /workspace/apps/backend/execution-control/control-plane/dist/apps/backend/execution-control/control-plane/src/generated/prisma
-      && pnpm --filter @ops/control-plane run start"
+      sh -c "bash /workspace/docker/scripts/build-control-plane-runtime.sh
+      && node /workspace/docker/scripts/start-control-plane-runtime.cjs api"
     environment:
       <<: *common-env
       DOCKER_ENV: true
       PORT: ${CONTROL_PLANE_PORT:-3003}
+      CONTROL_PLANE_ROLE: ${CONTROL_PLANE_ROLE:-all}
       BROWSER_LOOP_WORKFLOW_ENABLED: ${BROWSER_LOOP_WORKFLOW_ENABLED:-false}
       JWT_SECRET: ${JWT_SECRET:-ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa}
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
@@ -166,6 +162,13 @@ services:
       LLM_OPERATION_TIMEOUT_MS: ${LLM_OPERATION_TIMEOUT_MS:-300000}
       HABIT_LEARNING_DAILY_JOB_ENABLED: ${HABIT_LEARNING_DAILY_JOB_ENABLED:-true}
       HABIT_LEARNING_ACTIVATION_ENABLED: ${HABIT_LEARNING_ACTIVATION_ENABLED:-true}
+      EXECUTION_OUTBOX_ENABLED: ${EXECUTION_OUTBOX_ENABLED:-false}
+      EXECUTION_DISPATCHER_V2_ENABLED: ${EXECUTION_DISPATCHER_V2_ENABLED:-false}
+      SAFE_READY_SET_PARALLEL_ENABLED: ${SAFE_READY_SET_PARALLEL_ENABLED:-false}
+      SAFE_READY_SET_MAX_CONCURRENCY: ${SAFE_READY_SET_MAX_CONCURRENCY:-4}
+      SCHEDULE_FIRE_V2_ENABLED: ${SCHEDULE_FIRE_V2_ENABLED:-false}
+      PLAN_RISK_EVALUATOR_V2_ENABLED: ${PLAN_RISK_EVALUATOR_V2_ENABLED:-false}
+      RESULT_REF_ENABLED: ${RESULT_REF_ENABLED:-false}
       SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
       PROXY_TIMEOUT_DEFAULT_MS: ${PROXY_TIMEOUT_DEFAULT_MS:-60000}
       PROXY_TIMEOUT_PLATFORM_MS: ${PROXY_TIMEOUT_PLATFORM_MS:-60000}
@@ -175,7 +178,65 @@ services:
       PROXY_TIMEOUT_AI_MS: ${PROXY_TIMEOUT_AI_MS:-60000}
       PROXY_TIMEOUT_WORKER_MS: ${PROXY_TIMEOUT_WORKER_MS:-60000}
     ports:
-      - "${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}"
+      - '${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}'
+    volumes:
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
+    depends_on:
+      workspace-deps-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  execution-dispatcher:
+    <<: *common-node-service
+    profiles: ['durable-dispatch']
+    command: >
+      sh -c "bash /workspace/docker/scripts/build-control-plane-runtime.sh
+      && node /workspace/docker/scripts/start-control-plane-runtime.cjs worker"
+    environment:
+      <<: *common-env
+      DOCKER_ENV: true
+      CONTROL_PLANE_ROLE: dispatcher
+      EXECUTION_OUTBOX_ENABLED: 'true'
+      EXECUTION_DISPATCHER_V2_ENABLED: 'true'
+      SCHEDULE_FIRE_V2_ENABLED: 'false'
+      PLAN_RISK_EVALUATOR_V2_ENABLED: ${PLAN_RISK_EVALUATOR_V2_ENABLED:-false}
+      JWT_SECRET: ${JWT_SECRET:-ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa}
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
+      AUTH_SERVICE_URL: http://${PLATFORM_SERVICE_HOST:-platform}:${PLATFORM_PORT:-3001}
+      AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
+      SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
+    volumes:
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
+    depends_on:
+      workspace-deps-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  schedule-trigger:
+    <<: *common-node-service
+    profiles: ['durable-dispatch']
+    command: >
+      sh -c "bash /workspace/docker/scripts/build-control-plane-runtime.sh
+      && node /workspace/docker/scripts/start-control-plane-runtime.cjs worker"
+    environment:
+      <<: *common-env
+      DOCKER_ENV: true
+      CONTROL_PLANE_ROLE: schedule
+      EXECUTION_OUTBOX_ENABLED: 'true'
+      EXECUTION_DISPATCHER_V2_ENABLED: 'false'
+      SCHEDULE_FIRE_V2_ENABLED: 'true'
+      PLAN_RISK_EVALUATOR_V2_ENABLED: ${PLAN_RISK_EVALUATOR_V2_ENABLED:-false}
+      JWT_SECRET: ${JWT_SECRET:-ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa}
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
+      AUTH_SERVICE_URL: http://${PLATFORM_SERVICE_HOST:-platform}:${PLATFORM_PORT:-3001}
+      AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
+      SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -215,7 +276,7 @@ services:
       NETWORK_NAME: ${NETWORK_NAME:-ops-network}
       EXTERNAL_HOST: ${HOST_IP:-localhost}
     ports:
-      - "${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}"
+      - '${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/browser-profiles:/backend-var/browser-profiles
@@ -246,7 +307,7 @@ services:
       DB_DATABASE: ${POSTGRES_DB:-ops}
       PORT: ${BROWSER_TEMPLATE_PORT:-3005}
     ports:
-      - "${BROWSER_TEMPLATE_PORT:-3005}:${BROWSER_TEMPLATE_PORT:-3005}"
+      - '${BROWSER_TEMPLATE_PORT:-3005}:${BROWSER_TEMPLATE_PORT:-3005}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -278,7 +339,7 @@ services:
       BROWSER_SEMANTICS_AUTO_SEED: ${BROWSER_SEMANTICS_AUTO_SEED:-true}
       BROWSER_SEMANTICS_RUN_DEFAULT_SEED: ${BROWSER_SEMANTICS_RUN_DEFAULT_SEED:-false}
     ports:
-      - "${BROWSER_SEMANTICS_PORT:-3006}:${BROWSER_SEMANTICS_PORT:-3006}"
+      - '${BROWSER_SEMANTICS_PORT:-3006}:${BROWSER_SEMANTICS_PORT:-3006}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -310,12 +371,19 @@ services:
       LLM_OPERATION_SYSTEM_BOOTSTRAP_ENABLED: ${LLM_OPERATION_SYSTEM_BOOTSTRAP_ENABLED:-true}
       ROUTING_POLICY_FILE: ${ROUTING_POLICY_FILE:-}
       ROUTING_POLICY_JSON: ${ROUTING_POLICY_JSON:-}
+      PLANNING_DECISION_PERSIST_ENABLED: ${PLANNING_DECISION_PERSIST_ENABLED:-false}
+      PLANNER_CAPABILITY_TOP_K: ${PLANNER_CAPABILITY_TOP_K:-6}
+      MODEL_INVOCATION_LEDGER_ENABLED: ${MODEL_INVOCATION_LEDGER_ENABLED:-false}
+      SCOPED_MEMORY_PROMPT_ENABLED: ${SCOPED_MEMORY_PROMPT_ENABLED:-false}
+      SCOPED_MEMORY_PLANNER_KIND: ${SCOPED_MEMORY_PLANNER_KIND:-planner_context}
+      SCOPED_MEMORY_PLANNER_KEY: ${SCOPED_MEMORY_PLANNER_KEY:-default}
+      PRODUCTION_REACT_FALLBACK_ENABLED: ${PRODUCTION_REACT_FALLBACK_ENABLED:-false}
       DOCUMENT_SEMANTIC_SUBAGENT_ENABLED: ${DOCUMENT_SEMANTIC_SUBAGENT_ENABLED:-true}
       DOCUMENT_SEMANTIC_PARAM_THRESHOLD: ${DOCUMENT_SEMANTIC_PARAM_THRESHOLD:-8}
       DOCUMENT_SEMANTIC_MISSING_THRESHOLD: ${DOCUMENT_SEMANTIC_MISSING_THRESHOLD:-4}
       DOCUMENT_SEMANTIC_ARRAY_GROUP_THRESHOLD: ${DOCUMENT_SEMANTIC_ARRAY_GROUP_THRESHOLD:-2}
     ports:
-      - "${AI_ORCHESTRATOR_PORT:-3007}:${AI_ORCHESTRATOR_PORT:-3007}"
+      - '${AI_ORCHESTRATOR_PORT:-3007}:${AI_ORCHESTRATOR_PORT:-3007}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/cache/ai-orchestrator:/app/data
@@ -348,7 +416,7 @@ services:
       SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
       FILES_DIR: /workspace/apps/backend/capabilities/document-domain/report/files
     ports:
-      - "${REPORT_PORT:-3008}:${REPORT_PORT:-3008}"
+      - '${REPORT_PORT:-3008}:${REPORT_PORT:-3008}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - report_files:/workspace/apps/backend/capabilities/document-domain/report/files
@@ -383,7 +451,7 @@ services:
       STORAGE_RENDER_DIR: /workspace/apps/backend/var/outputs/document-engine/renders
       CARBONE_EXTERNAL_URL: http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
     ports:
-      - "${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}"
+      - '${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -412,7 +480,7 @@ services:
       VITE_CARBONE_API_URL: http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
       VITE_NOVNC_URL: http://${HOST_IP:-localhost}:${NOVNC_PORT:-6080}/vnc.html
     ports:
-      - "${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}"
+      - '${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -440,7 +508,7 @@ services:
       VITE_AI_API_BASE_URL: /api/ai
       VITE_HOST_IP: ${HOST_IP:-localhost}
     ports:
-      - "${USER_WEB_PORT:-5174}:${USER_WEB_PORT:-5174}"
+      - '${USER_WEB_PORT:-5174}:${USER_WEB_PORT:-5174}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -463,17 +531,21 @@ services:
     image: ${SESSION_BROWSER_IMAGE:-ops-browser-chrome:local}
     container_name: ops-browser-chrome
     ports:
-      - "${NOVNC_PORT:-6080}:8080"
-      - "${CDP_PORT:-9222}:9222"
-      - "${VNC_PORT:-5900}:5900"
-      - "${CODEGEN_API_PORT:-3011}:${CODEGEN_API_PORT:-3011}"
+      - '${NOVNC_PORT:-6080}:8080'
+      - '${CDP_PORT:-9222}:9222'
+      - '${VNC_PORT:-5900}:5900'
+      - '${CODEGEN_API_PORT:-3011}:${CODEGEN_API_PORT:-3011}'
     environment:
       SCREEN_WIDTH: 1920
       SCREEN_HEIGHT: 1080
       CODEGEN_API_PORT: ${CODEGEN_API_PORT:-3011}
-    command: ["/start-recorder.sh"]
+    command: ['/start-recorder.sh']
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/vnc.html >/dev/null && curl -fsS http://localhost:${CODEGEN_API_PORT:-3011}/status >/dev/null"]
+      test:
+        [
+          'CMD-SHELL',
+          'curl -fsS http://localhost:8080/vnc.html >/dev/null && curl -fsS http://localhost:${CODEGEN_API_PORT:-3011}/status >/dev/null',
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -488,10 +560,10 @@ services:
     image: ${DOCKER_REGISTRY:-}temporalio/auto-setup:1.22.0
     container_name: ops-temporal
     ports:
-      - "7233:7233"
-      - "7234:7234"
-      - "7235:7235"
-      - "7236:7236"
+      - '7233:7233'
+      - '7234:7234'
+      - '7235:7235'
+      - '7236:7236'
     environment:
       - DB=postgresql
       - POSTGRES_SEEDS=postgres
@@ -514,7 +586,7 @@ services:
     image: ${DOCKER_REGISTRY:-}temporalio/ui:2.20.0
     container_name: ops-temporal-ui
     ports:
-      - "8088:8080"
+      - '8088:8080'
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CORS_ORIGINS=http://${HOST_IP:-localhost}:8088,http://${HOST_IP:-localhost}:${PORTAL_PORT:-5173}
@@ -543,7 +615,7 @@ services:
       - CARBONE_SERVICE_URL=http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}
       - CARBONE_EXTERNAL_URL=http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
     ports:
-      - "8090:8090"
+      - '8090:8090'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - /var/run/docker.sock:/var/run/docker.sock

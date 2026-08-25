@@ -125,7 +125,7 @@ describe('ChatOrchestratorService', () => {
       },
     });
     executionStreamService.observeExecution.mockImplementation(
-      createAsyncGenerator([{ type: StreamEventType.RESULT, content: '完成' }]),
+      createAsyncGenerator([{ type: StreamEventType.RESULT, content: '完成' }])
     );
 
     const events = [];
@@ -142,7 +142,7 @@ describe('ChatOrchestratorService', () => {
         history: [],
         uploadedFiles: [],
       },
-      'Bearer token',
+      'Bearer token'
     )) {
       events.push(event);
     }
@@ -154,23 +154,21 @@ describe('ChatOrchestratorService', () => {
           executionId: 'execution-saved-1',
           routeSource: 'saved_workflow',
         }),
-      }),
+      })
     );
     expect(executionStreamService.observeExecution).toHaveBeenCalledWith(
       'execution-saved-1',
       'Bearer token',
       { userId: 'user-1', userRoles: ['employee'] },
+      { modelId: undefined }
     );
     expect(skillCacheService.loadAvailableSkills).not.toHaveBeenCalled();
     expect(deterministicTaskExecutionService.executeDeterministicTask).not.toHaveBeenCalled();
   });
 
   it('routes a follow-up operation with the previous structured result and source reference', async () => {
-    const {
-      service,
-      chatConversationService,
-      deterministicTaskExecutionService,
-    } = createDeterministicService();
+    const { service, chatConversationService, deterministicTaskExecutionService } =
+      createDeterministicService();
     chatConversationService.getLatestCompletedTaskResult.mockResolvedValue({
       summaryText: '1. 安装方法 A\n2. 安装方法 B',
       structuredData: { searchResults: [{ title: 'A' }, { title: 'B' }] },
@@ -189,23 +187,29 @@ describe('ChatOrchestratorService', () => {
         sessionId: 'session-follow-up',
         userId: 'user-1',
         userRoles: ['employee'],
+        organizationId: '00000000-0000-4000-8000-000000000010',
         traceId: 'trace-follow-up',
         history: [],
         uploadedFiles: [],
       },
-      'Bearer token',
+      'Bearer token'
     )) {
       events.push(event);
     }
 
     expect(deterministicTaskExecutionService.shouldRouteToDeterministicPlan).toHaveBeenCalledWith(
       '进行总结',
-      { hasPreviousResult: true },
+      { hasPreviousResult: true }
     );
     expect(deterministicTaskExecutionService.executeDeterministicTask).toHaveBeenCalledWith(
       '进行总结',
       'user-1',
       expect.objectContaining({
+        user: {
+          userId: 'user-1',
+          userRoles: ['employee'],
+          organizationId: '00000000-0000-4000-8000-000000000010',
+        },
         systemInputs: expect.objectContaining({
           previousResultText: '1. 安装方法 A\n2. 安装方法 B',
           previousResultData: { searchResults: [{ title: 'A' }, { title: 'B' }] },
@@ -214,13 +218,13 @@ describe('ChatOrchestratorService', () => {
             resultType: 'search_results',
           },
         }),
-      }),
+      })
     );
     expect(events.at(-1)).toEqual(
       expect.objectContaining({
         type: StreamEventType.RESULT,
         data: expect.objectContaining({ status: 'not_started' }),
-      }),
+      })
     );
   });
 
@@ -280,7 +284,7 @@ describe('ChatOrchestratorService', () => {
     });
     controlPlaneClient.createExecution.mockResolvedValue({ id: 'execution-bark-1' });
     executionStreamService.observeExecution.mockImplementation(
-      createAsyncGenerator([{ type: StreamEventType.RESULT, content: '推送完成' }]),
+      createAsyncGenerator([{ type: StreamEventType.RESULT, content: '推送完成' }])
     );
 
     const events = [];
@@ -294,7 +298,7 @@ describe('ChatOrchestratorService', () => {
         history: [],
         uploadedFiles: [],
       },
-      'Bearer token',
+      'Bearer token'
     )) {
       events.push(event);
     }
@@ -306,7 +310,7 @@ describe('ChatOrchestratorService', () => {
         skillId: 'skill-bark',
         input: expect.objectContaining({ content: '# 安装摘要' }),
       }),
-      expect.any(Object),
+      expect.any(Object)
     );
     expect(events).toContainEqual(
       expect.objectContaining({
@@ -315,7 +319,7 @@ describe('ChatOrchestratorService', () => {
           routeSource: 'single_skill_continuation',
           plannerInvoked: false,
         }),
-      }),
+      })
     );
   });
 
@@ -346,6 +350,33 @@ describe('ChatOrchestratorService', () => {
         },
       },
     });
+  });
+
+  it('carries the identity service active organization into task context', async () => {
+    const { service } = createService();
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        user: { id: 'user-1', role: 'employee' },
+        roles: [{ name: 'employee' }],
+        activeOrgId: '00000000-0000-4000-8000-000000000010',
+      }),
+    } as unknown as Response);
+
+    await expect(
+      service.buildTaskModeContext(
+        { message: '生成周报', sessionId: 'session-org-1' },
+        'Bearer token-org-1',
+        'trace-org-1',
+        []
+      )
+    ).resolves.toMatchObject({
+      context: {
+        userId: 'user-1',
+        organizationId: '00000000-0000-4000-8000-000000000010',
+      },
+    });
+    expect(fetchSpy).toHaveBeenCalled();
   });
 
   it('submits waiting_input payload and resumes execution observation', async () => {
@@ -587,6 +618,90 @@ describe('ChatOrchestratorService', () => {
     });
   });
 
+  it('reports a retryable matcher outage instead of a false capability-not-found result', async () => {
+    const { service, plannerService, controlPlaneClient } = createService();
+    plannerService.matchSkillPhase.mockResolvedValue({
+      objective: '未知业务请求',
+      matchedSkill: null,
+      hasVisibleSkills: true,
+      failure: {
+        code: 'SKILL_MATCH_MODEL_UNAVAILABLE',
+        message: '能力匹配服务暂时不可用，请稍后重试。',
+        retryable: true,
+      },
+    });
+
+    const events: Array<{ type: StreamEventType; content: string; data?: unknown }> = [];
+    for await (const event of service.handleTaskMode(
+      { message: '未知业务请求', sessionId: 'session-match-outage' },
+      {
+        sessionId: 'session-match-outage',
+        userId: 'user-match-outage',
+        userRoles: ['employee'],
+        traceId: 'trace-match-outage',
+        history: [],
+      },
+      'Bearer token-match-outage'
+    )) {
+      events.push({ type: event.type, content: event.content, data: event.data });
+    }
+
+    expect(controlPlaneClient.createExecution).not.toHaveBeenCalled();
+    expect(events.at(-1)).toEqual({
+      type: StreamEventType.ERROR,
+      content: '能力匹配服务暂时不可用，请稍后重试。',
+      data: {
+        code: 'SKILL_MATCH_MODEL_UNAVAILABLE',
+        status: 'not_started',
+        executed: false,
+        retryable: true,
+      },
+    });
+  });
+
+  it('fails closed instead of entering ReAct when the planner cannot produce an executable Skill plan', async () => {
+    const { service, plannerService, controlPlaneClient, reactEngineService } = createService();
+    plannerService.matchSkillPhase.mockResolvedValue({
+      objective: '探索未知系统',
+      matchedSkill: { skillId: 'candidate-1', skillName: '候选能力' },
+      hasVisibleSkills: true,
+    });
+    plannerService.completePlanFromMatchPhase.mockResolvedValue({
+      planner_mode: 'fallback',
+      objective: '探索未知系统',
+      required_inputs: [],
+      steps: [],
+    });
+
+    const events: Array<{ type: StreamEventType; content: string; data?: unknown }> = [];
+    for await (const event of service.handleTaskMode(
+      { message: '探索未知系统', sessionId: 'session-exploratory' },
+      {
+        sessionId: 'session-exploratory',
+        userId: 'user-exploratory',
+        userRoles: ['employee'],
+        traceId: 'trace-exploratory',
+        history: [],
+      },
+      'Bearer token-exploratory'
+    )) {
+      events.push({ type: event.type, content: event.content, data: event.data });
+    }
+
+    expect(controlPlaneClient.createExecution).not.toHaveBeenCalled();
+    expect(reactEngineService.execute).not.toHaveBeenCalled();
+    expect(events.at(-1)).toEqual({
+      type: StreamEventType.RESULT,
+      content:
+        '当前请求无法形成可验证的生产执行计划；任务未执行。可切换到独立探索模式创建候选能力或工作流。',
+      data: {
+        code: 'EXPLORATORY_REQUIRED',
+        status: 'not_started',
+        executed: false,
+      },
+    });
+  });
+
   it('returns no matching Skills for deterministic planning without creating execution', async () => {
     const { service, deterministicTaskExecutionService, controlPlaneClient } =
       createDeterministicService();
@@ -627,7 +742,13 @@ describe('ChatOrchestratorService', () => {
   });
 
   it('includes llmCalls in __promptDebug when creating execution if prompt debug enabled', async () => {
-    const { service, plannerService, controlPlaneClient, waitingInputService, promptDebugSettingsService } = createService();
+    const {
+      service,
+      plannerService,
+      controlPlaneClient,
+      waitingInputService,
+      promptDebugSettingsService,
+    } = createService();
     promptDebugSettingsService.isPromptDebugEnabled.mockReturnValue(true);
 
     const planDraft = {
@@ -647,15 +768,26 @@ describe('ChatOrchestratorService', () => {
       },
     };
 
-    plannerService.matchSkillPhase.mockResolvedValue({ matchedSkill: { skillId: 'skill-contract', skillName: '采购合同' } });
+    plannerService.matchSkillPhase.mockResolvedValue({
+      matchedSkill: { skillId: 'skill-contract', skillName: '采购合同' },
+    });
     plannerService.completePlanFromMatchPhase.mockResolvedValue(planDraft);
-    controlPlaneClient.createExecution.mockResolvedValue({ id: 'exec-debug-1', status: 'waiting_input' });
+    controlPlaneClient.createExecution.mockResolvedValue({
+      id: 'exec-debug-1',
+      status: 'waiting_input',
+    });
     waitingInputService.extractExecutionSemantic.mockReturnValue(undefined);
     waitingInputService.formatWaitingInputMessage.mockReturnValue('请补充信息');
 
     for await (const _ of service.handleTaskMode(
       { message: '生成合同', sessionId: 's-debug-1' },
-      { sessionId: 's-debug-1', userId: 'admin-1', userRoles: ['admin'], traceId: 't-1', history: [] },
+      {
+        sessionId: 's-debug-1',
+        userId: 'admin-1',
+        userRoles: ['admin'],
+        traceId: 't-1',
+        history: [],
+      },
       'Bearer token-1'
     )) {
       // Drain the async stream so orchestration side effects complete.
@@ -676,11 +808,8 @@ describe('ChatOrchestratorService', () => {
   });
 
   it('observes deterministic execution with auth token and user context', async () => {
-    const {
-      service,
-      deterministicTaskExecutionService,
-      executionStreamService,
-    } = createDeterministicService();
+    const { service, deterministicTaskExecutionService, executionStreamService } =
+      createDeterministicService();
 
     deterministicTaskExecutionService.executeDeterministicTask.mockResolvedValue({
       success: true,
@@ -742,8 +871,14 @@ describe('ChatOrchestratorService', () => {
       {
         userId: 'user-det-1',
         userRoles: ['employee'],
-      }
+      },
+      { modelId: undefined }
     );
-    expect(events.some((event) => event.type === StreamEventType.THOUGHT && event.content.includes('Skill: skill-search@1'))).toBe(true);
+    expect(
+      events.some(
+        (event) =>
+          event.type === StreamEventType.THOUGHT && event.content.includes('Skill: skill-search@1')
+      )
+    ).toBe(true);
   });
 });

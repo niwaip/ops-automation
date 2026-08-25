@@ -5,6 +5,7 @@ import { computeOperationDigest } from './operation-digest.util';
 
 const USER_PROMPT_TEMPLATES: Record<LlmOperationIdV1, string> = {
   summarize_list: '请对以下内容做结构化总结：\n\n{{items}}',
+  generate_text: '任务指令：{{instruction}}\n\n可用上下文：\n{{context}}',
   transform_text: '文本处理指令：{{instruction}}\n\n待处理内容：\n{{content}}',
   rewrite_to_markdown: '请重写并格式化以下内容：\n\n{{content}}',
   summarize_text: '请按系统要求对以下文本进行总结：\n\n{{text}}',
@@ -28,12 +29,9 @@ export function buildOperationManifest(
   // - 'over-budget': oversize 'truncate' operations degrade gracefully
   //   instead of throwing BUDGET_EXCEEDED.
   const exemptNegativeCategories: string[] = [];
-  const outputProps = (template.outputSchema)?.properties as
-    | Record<string, unknown>
-    | undefined;
+  const outputProps = template.outputSchema?.properties as Record<string, unknown> | undefined;
   if (outputProps) {
-    const declaredPrimaryOutput = (template.outputSchema)
-      ?.primaryOutput;
+    const declaredPrimaryOutput = template.outputSchema?.primaryOutput;
     const outputKeys = Object.keys(outputProps);
     const primaryOutput =
       typeof declaredPrimaryOutput === 'string' && declaredPrimaryOutput in outputProps

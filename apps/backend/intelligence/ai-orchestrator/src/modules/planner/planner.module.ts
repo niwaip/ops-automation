@@ -7,6 +7,7 @@ import { PlannerMatchPhaseService } from './intent';
 import { PlanGeneratorService, PlanSemanticService } from './plan';
 import { PlannerPlanDraftService } from './planning';
 import {
+  DeterministicParamResolverService,
   ParamBilingualService,
   ParamContextMergeService,
   ParamPolicyService,
@@ -56,6 +57,7 @@ import {
     ParamValueService,
     ParamRequiredInputPresentationService,
     ParamRecognizerService,
+    DeterministicParamResolverService,
     RoutingPolicyService,
     PlanRouteClassifierService,
     CapabilityCandidateSelectorService,

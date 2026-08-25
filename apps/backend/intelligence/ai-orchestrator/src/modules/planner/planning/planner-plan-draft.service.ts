@@ -5,7 +5,7 @@ import type { SkillMatchResult } from '../../react-engine/interfaces';
 import { RecognizerService } from '../../recognizer/recognizer.service';
 import type { PlannerCompletePlanInput } from '../facade';
 import { PlanGeneratorService, PlanSemanticService } from '../plan';
-import { ParamRecognizerService } from '../params';
+import { DeterministicParamResolverService, ParamRecognizerService } from '../params';
 import { projectPreviousResultIntoRecognition } from '../params/previous-result-continuation';
 
 @Injectable()
@@ -14,7 +14,8 @@ export class PlannerPlanDraftService {
     private readonly recognizerService: RecognizerService,
     private readonly planSemanticService: PlanSemanticService,
     private readonly planGeneratorService: PlanGeneratorService,
-    private readonly paramRecognizerService: ParamRecognizerService
+    private readonly paramRecognizerService: ParamRecognizerService,
+    private readonly deterministicParamResolverService: DeterministicParamResolverService
   ) {}
 
   async completePlanFromMatchPhase(input: PlannerCompletePlanInput): Promise<PlanDraftDTO> {
@@ -41,14 +42,26 @@ export class PlannerPlanDraftService {
     const { objective, matchedSkill } = input;
     const isDocumentSkill = this.planSemanticService.isDocumentTask(matchedSkill);
     const recognizerContext = this.buildRecognizerContext(input.context);
+    const contractResolved = this.deterministicParamResolverService.resolve(
+      objective,
+      matchedSkill.paramsSchema
+    );
     const deterministicBase: RecognizeParamsResponseDTO = {
-      params: { ...(matchedSkill.collectedParams || {}) },
+      params: {
+        ...(contractResolved.params || {}),
+        ...(matchedSkill.collectedParams || {}),
+      },
       confidence: 1,
       field_confidences: Object.fromEntries(
-        Object.keys(matchedSkill.collectedParams || {}).map((fieldName) => [fieldName, 1])
+        Object.keys({
+          ...(contractResolved.params || {}),
+          ...(matchedSkill.collectedParams || {}),
+        }).map((fieldName) => [fieldName, 1])
       ),
       uncertain_fields: [],
-      debug: { notes: ['planner 已先应用确定性参数来源'] },
+      debug: {
+        notes: ['planner 已先应用确定性参数来源', ...(contractResolved.debug?.notes || [])],
+      },
     };
     const mergedBase = this.paramRecognizerService.mergeRecognizedWithCollectedContext(
       deterministicBase,
@@ -61,9 +74,9 @@ export class PlannerPlanDraftService {
       input.context
     );
     const recognitionFields = this.resolveRecognitionFields(
-      objective,
       matchedSkill,
-      continuationProjection.recognized,
+      Object.keys(contractResolved.params || {}),
+      continuationProjection.projectedFields,
       input.context
     );
     const recognized =
@@ -134,9 +147,9 @@ export class PlannerPlanDraftService {
   }
 
   private resolveRecognitionFields(
-    objective: string,
     matchedSkill: SkillMatchResult,
-    deterministic: RecognizeParamsResponseDTO,
+    contractResolvedFields: string[],
+    projectedPreviousResultFields: string[],
     context?: Record<string, unknown>
   ): string[] {
     if (context?.mode === 'waiting_input_resume') {
@@ -146,28 +159,19 @@ export class PlannerPlanDraftService {
       );
     }
 
-    if (context?.mode !== 'single_step_continuation') {
-      return Object.keys(matchedSkill.paramsSchema?.properties || {});
-    }
+    const schemaFields = Object.keys(matchedSkill.paramsSchema?.properties || {});
+    const authoritativeFieldSet = new Set([
+      ...contractResolvedFields,
+      ...projectedPreviousResultFields,
+    ]);
+    const fullyResolvedByAuthoritativeSources =
+      schemaFields.length > 0 &&
+      schemaFields.every((fieldName) => authoritativeFieldSet.has(fieldName));
 
-    const requiredInputs = this.paramRecognizerService.buildRequiredInputs(
-      matchedSkill,
-      deterministic
-    );
-    const unresolved = requiredInputs
-      .filter((field) => field.missing || field.needs_confirmation)
-      .map((field) => field.name);
-    const normalizedObjective = objective.toLowerCase();
-    const explicitlyMentionedOptional = requiredInputs
-      .filter((field) => !field.required)
-      .filter((field) => {
-        const labels = [field.name, field.display_name]
-          .filter((value): value is string => typeof value === 'string' && value.trim().length >= 2)
-          .map((value) => value.toLowerCase());
-        return labels.some((label) => normalizedObjective.includes(label));
-      })
-      .map((field) => field.name);
-    return [...new Set([...unresolved, ...explicitlyMentionedOptional])];
+    // Only declared contract aliases and explicit previous-result projections are
+    // authoritative enough to suppress semantic extraction. Collected/default
+    // values must not hide optional fields present in the current user request.
+    return fullyResolvedByAuthoritativeSources ? [] : schemaFields;
   }
 
   private async recognizeUnresolvedFields(input: {
