@@ -1,6 +1,7 @@
 import type { CompactCapabilityCardV1 } from '@ops/backend-deterministic-plan';
 import { NodeOutputBindingResolverService } from './node-output-binding-resolver.service';
 import { MultiNodeParameterBinderService } from './multi-node-parameter-binder.service';
+import { DeterministicParamResolverService } from '../params/deterministic-param-resolver.service';
 
 describe('MultiNodeParameterBinderService', () => {
   const searchCard = {
@@ -42,14 +43,14 @@ describe('MultiNodeParameterBinderService', () => {
     };
     const binder = new MultiNodeParameterBinderService(
       new NodeOutputBindingResolverService(),
-      recognizer as any,
+      recognizer as any
     );
     const capabilityMap = new Map([['s0', searchCard]]);
 
     const result = await binder.bindParameters(
       '查询 AI新闻，并且进行总结',
       [{ ref: 'n1', capabilityKey: 's0', dependsOn: [] }],
-      capabilityMap,
+      capabilityMap
     );
 
     expect(recognizer.recognizeParams).toHaveBeenCalledWith(
@@ -61,7 +62,7 @@ describe('MultiNodeParameterBinderService', () => {
           skill_name: 'WebSearchWorkflow',
           skill_description: searchCard.summary,
         }),
-      }),
+      })
     );
     expect(result.planInputs.n1).toEqual({
       query: 'AI新闻',
@@ -106,20 +107,20 @@ describe('MultiNodeParameterBinderService', () => {
     };
     const binder = new MultiNodeParameterBinderService(
       new NodeOutputBindingResolverService(),
-      recognizer as any,
+      recognizer as any
     );
 
     const result = await binder.bindParameters(
       '查询微博热点，并且进行总结',
       [{ ref: 'n1', capabilityKey: 'hotboard', dependsOn: [] }],
-      new Map([['hotboard', hotboardCard]]),
+      new Map([['hotboard', hotboardCard]])
     );
 
     expect(recognizer.recognizeParams).toHaveBeenCalledWith(
       expect.objectContaining({
         fallbackMode: 'none',
         postProcessMode: 'schema_only',
-      }),
+      })
     );
     expect(result.planInputs.n1).toEqual({ type: 'weibo', limit: 10 });
     expect(result.nodeBindings.n1).toEqual({
@@ -137,7 +138,7 @@ describe('MultiNodeParameterBinderService', () => {
     const result = await binder.bindParameters(
       '查询 AI新闻',
       [{ ref: 'n1', capabilityKey: 's0', dependsOn: [] }],
-      capabilityMap,
+      capabilityMap
     );
 
     expect(result.planInputs.n1).toEqual({ topic: 'general', maxResults: 5 });
@@ -149,6 +150,53 @@ describe('MultiNodeParameterBinderService', () => {
       path: 'planInputs.n1.query',
     });
     expect(result.notes?.[0]).toContain('no fixed-rule extraction');
+  });
+
+  it('resolves a declared search query deterministically before the recognizer', async () => {
+    const recognizer = { recognizeParams: jest.fn().mockResolvedValue({ params: {} }) };
+    const binder = new MultiNodeParameterBinderService(
+      new NodeOutputBindingResolverService(),
+      recognizer as any,
+      new DeterministicParamResolverService()
+    );
+
+    const result = await binder.bindParameters(
+      '搜索deepseek harness的新闻，然后进行总结',
+      [{ ref: 'n1', capabilityKey: 's0', dependsOn: [] }],
+      new Map([['s0', searchCard]])
+    );
+
+    expect(result.planInputs.n1).toEqual({
+      query: 'deepseek harness',
+      topic: 'general',
+      maxResults: 5,
+    });
+    expect(result.requiredUserInputs).toHaveLength(0);
+    expect(recognizer.recognizeParams).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params_schema: expect.objectContaining({
+          properties: expect.not.objectContaining({ query: expect.anything() }),
+        }),
+      })
+    );
+  });
+
+  it('keeps an empty generic search request as required user input', async () => {
+    const binder = new MultiNodeParameterBinderService(
+      new NodeOutputBindingResolverService(),
+      undefined,
+      new DeterministicParamResolverService()
+    );
+
+    const result = await binder.bindParameters(
+      '搜索一下，然后进行总结',
+      [{ ref: 'n1', capabilityKey: 's0', dependsOn: [] }],
+      new Map([['s0', searchCard]])
+    );
+
+    expect(result.requiredUserInputs).toEqual([
+      expect.objectContaining({ targetField: 'query', missing: true }),
+    ]);
   });
 
   it('declares a deterministic array adapter for a single generic JSON output', async () => {
@@ -174,9 +222,7 @@ describe('MultiNodeParameterBinderService', () => {
       inputs: {},
       outputs: { result: 'json' },
     } as unknown as CompactCapabilityCardV1;
-    const binder = new MultiNodeParameterBinderService(
-      new NodeOutputBindingResolverService(),
-    );
+    const binder = new MultiNodeParameterBinderService(new NodeOutputBindingResolverService());
 
     const result = await binder.bindParameters(
       '查询并总结',
@@ -187,7 +233,7 @@ describe('MultiNodeParameterBinderService', () => {
       new Map([
         ['query', genericJsonCard],
         ['summary', summarizeCard],
-      ]),
+      ])
     );
 
     expect(result.nodeBindings.n2?.items).toEqual({
@@ -216,7 +262,7 @@ describe('MultiNodeParameterBinderService', () => {
     const recognizer = { recognizeParams: jest.fn() };
     const binder = new MultiNodeParameterBinderService(
       new NodeOutputBindingResolverService(),
-      recognizer as any,
+      recognizer as any
     );
 
     const result = await binder.bindParameters(
@@ -232,7 +278,7 @@ describe('MultiNodeParameterBinderService', () => {
             { title: '安装方法 B', content: '步骤二' },
           ],
         },
-      },
+      }
     );
 
     expect(result.nodeBindings.n1?.items).toEqual({
@@ -244,9 +290,7 @@ describe('MultiNodeParameterBinderService', () => {
     });
     expect(result.requiredUserInputs).toHaveLength(0);
     expect(recognizer.recognizeParams).not.toHaveBeenCalled();
-    expect(result.notes).toEqual([
-      expect.stringContaining('execution-search-1'),
-    ]);
+    expect(result.notes).toEqual([expect.stringContaining('execution-search-1')]);
   });
 
   it('keeps prior content, current instruction, and configuration parameters separated', async () => {
@@ -274,7 +318,7 @@ describe('MultiNodeParameterBinderService', () => {
     };
     const binder = new MultiNodeParameterBinderService(
       new NodeOutputBindingResolverService(),
-      recognizer as any,
+      recognizer as any
     );
 
     const result = await binder.bindParameters(
@@ -286,7 +330,7 @@ describe('MultiNodeParameterBinderService', () => {
         previousResultRef: { executionId: 'execution-summary-1' },
         previousResultData: { summary: '上一轮需要翻译的正文' },
         previousResultText: '{"summary":"上一轮需要翻译的正文"}',
-      },
+      }
     );
 
     expect(result.planInputs.n1).toEqual({
@@ -295,6 +339,44 @@ describe('MultiNodeParameterBinderService', () => {
     });
     expect(recognizer.recognizeParams).not.toHaveBeenCalled();
     expect(result.requiredUserInputs).toHaveLength(0);
+  });
+
+  it('executes standard text generation with only the instruction when optional context is absent', async () => {
+    const generationCard = {
+      id: 'generate_text',
+      kind: 'llm_operation',
+      displayName: '标准 LLM 文本生成',
+      summary: '根据指令和可选上下文生成文本',
+      goals: ['generate_text', 'grounded_advice'],
+      inputs: { instruction: 'string', context: 'string' },
+      outputs: { content: 'string' },
+      _rawInputSchema: {
+        required: ['instruction'],
+        properties: {
+          instruction: { type: 'string', 'x-ops-input-role': 'instruction' },
+          context: { type: 'string', 'x-ops-input-role': 'content' },
+        },
+      },
+    } as unknown as CompactCapabilityCardV1;
+    const recognizer = { recognizeParams: jest.fn() };
+    const binder = new MultiNodeParameterBinderService(
+      new NodeOutputBindingResolverService(),
+      recognizer as any
+    );
+
+    const result = await binder.bindParameters(
+      '写一封项目复盘邮件',
+      [{ ref: 'n1', capabilityKey: 'generate', dependsOn: [] }],
+      new Map([['generate', generationCard]])
+    );
+
+    expect(result.planInputs.n1).toEqual({ instruction: '写一封项目复盘邮件' });
+    expect(result.nodeBindings.n1?.instruction).toEqual({
+      source: 'literal',
+      value: '写一封项目复盘邮件',
+    });
+    expect(result.requiredUserInputs).toHaveLength(0);
+    expect(recognizer.recognizeParams).not.toHaveBeenCalled();
   });
 
   it('rejects an LLM-recognized configuration value that violates string length', async () => {
@@ -331,7 +413,7 @@ describe('MultiNodeParameterBinderService', () => {
     };
     const binder = new MultiNodeParameterBinderService(
       new NodeOutputBindingResolverService(),
-      recognizer as any,
+      recognizer as any
     );
 
     const result = await binder.bindParameters(
@@ -339,7 +421,7 @@ describe('MultiNodeParameterBinderService', () => {
       [{ ref: 'n1', capabilityKey: 'transform', dependsOn: [] }],
       new Map([['transform', transformCard]]),
       undefined,
-      { previousResultText: '需要翻译的正文' },
+      { previousResultText: '需要翻译的正文' }
     );
 
     expect(result.planInputs.n1).toEqual({
@@ -378,7 +460,7 @@ describe('MultiNodeParameterBinderService', () => {
     };
     const binder = new MultiNodeParameterBinderService(
       new NodeOutputBindingResolverService(),
-      recognizer as any,
+      recognizer as any
     );
 
     const previousResultText = '# 上一次任务的总结\n\n这是上次输出全文。';
@@ -387,7 +469,7 @@ describe('MultiNodeParameterBinderService', () => {
       [{ ref: 'n1', capabilityKey: 'md-writer', dependsOn: [] }],
       new Map([['md-writer', markdownWriterCard]]),
       undefined,
-      { previousResultText, previousResultTitle: '分析和总结内容' },
+      { previousResultText, previousResultTitle: '分析和总结内容' }
     );
 
     expect(result.planInputs.n1?.content).toBe(previousResultText);
@@ -398,8 +480,10 @@ describe('MultiNodeParameterBinderService', () => {
     expect(result.requiredUserInputs).toHaveLength(0);
     expect(result.notes).toEqual(
       expect.arrayContaining([
-        expect.stringContaining("参数 'n1.content' 未在请求中提供，已自动使用会话中上一次任务的输出作为输入。"),
-      ]),
+        expect.stringContaining(
+          "参数 'n1.content' 未在请求中提供，已自动使用会话中上一次任务的输出作为输入。"
+        ),
+      ])
     );
   });
 
@@ -409,7 +493,7 @@ describe('MultiNodeParameterBinderService', () => {
     };
     const binder = new MultiNodeParameterBinderService(
       new NodeOutputBindingResolverService(),
-      recognizer as any,
+      recognizer as any
     );
 
     const result = await binder.bindParameters(
@@ -417,7 +501,7 @@ describe('MultiNodeParameterBinderService', () => {
       [{ ref: 'n1', capabilityKey: 'md-writer', dependsOn: [] }],
       new Map([['md-writer', markdownWriterCard]]),
       undefined,
-      {},
+      {}
     );
 
     expect(result.planInputs.n1).not.toHaveProperty('content');
@@ -448,7 +532,7 @@ describe('MultiNodeParameterBinderService', () => {
     };
     const binder = new MultiNodeParameterBinderService(
       new NodeOutputBindingResolverService(),
-      recognizer as any,
+      recognizer as any
     );
 
     const result = await binder.bindParameters(
@@ -456,7 +540,7 @@ describe('MultiNodeParameterBinderService', () => {
       [{ ref: 'n1', capabilityKey: 'search-2', dependsOn: [] }],
       new Map([['search-2', queryCard]]),
       undefined,
-      { previousResultText: '上一次输出' },
+      { previousResultText: '上一次输出' }
     );
 
     expect(result.planInputs.n1).not.toHaveProperty('query');
@@ -470,7 +554,7 @@ describe('MultiNodeParameterBinderService', () => {
     };
     const binder = new MultiNodeParameterBinderService(
       new NodeOutputBindingResolverService(),
-      recognizer as any,
+      recognizer as any
     );
 
     await binder.bindParameters(
@@ -478,7 +562,7 @@ describe('MultiNodeParameterBinderService', () => {
       [{ ref: 'n1', capabilityKey: 'md-writer', dependsOn: [] }],
       new Map([['md-writer', markdownWriterCard]]),
       undefined,
-      { previousResultText: '# 上次输出' },
+      { previousResultText: '# 上次输出' }
     );
 
     expect(recognizer.recognizeParams).toHaveBeenCalledWith(
@@ -486,7 +570,32 @@ describe('MultiNodeParameterBinderService', () => {
         context: expect.objectContaining({
           previous_result_text: '# 上次输出',
         }),
-      }),
+      })
+    );
+  });
+
+  it('forwards custom modelId to recognizerService when provided', async () => {
+    const recognizer = {
+      recognizeParams: jest.fn().mockResolvedValue({ params: {}, confidence: 1 }),
+    };
+    const binder = new MultiNodeParameterBinderService(
+      new NodeOutputBindingResolverService(),
+      recognizer as any
+    );
+
+    await binder.bindParameters(
+      '输出到md文件',
+      [{ ref: 'n1', capabilityKey: 'md-writer', dependsOn: [] }],
+      new Map([['md-writer', markdownWriterCard]]),
+      undefined,
+      undefined,
+      'custom-selected-model'
+    );
+
+    expect(recognizer.recognizeParams).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'custom-selected-model',
+      })
     );
   });
 });

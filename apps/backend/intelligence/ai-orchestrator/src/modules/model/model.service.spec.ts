@@ -301,4 +301,59 @@ describe('ModelService provider credential reuse', () => {
       retention: 'in_memory',
     });
   });
+
+  it('supports creating and renaming a B.AI provider with custom name', async () => {
+    const baiProvider = await service.createProviderConfig({
+      name: 'B.AI 主力服务',
+      provider: 'bai',
+      api_endpoint: 'https://api.b.ai/v1',
+      api_key: 'bai-secret-key',
+    });
+
+    expect(baiProvider).toMatchObject({
+      name: 'B.AI 主力服务',
+      provider: 'bai',
+      api_endpoint: 'https://api.b.ai/v1',
+      hasCredential: true,
+    });
+
+    const updated = await service.updateProviderConfig(baiProvider.id, {
+      name: 'B.AI 生产环境',
+    });
+
+    expect(updated).toMatchObject({
+      id: baiProvider.id,
+      name: 'B.AI 生产环境',
+      provider: 'bai',
+      api_endpoint: 'https://api.b.ai/v1',
+    });
+
+    const summaries = service.listProviderSummaries();
+    const baiSummary = summaries.find((s) => s.id === baiProvider.id);
+    expect(baiSummary).toMatchObject({
+      name: 'B.AI 生产环境',
+      provider: 'bai',
+      hasCredential: true,
+    });
+  });
+
+  it('supports multiple local providers with distinct names and ports', async () => {
+    const local1 = await service.createProviderConfig({
+      name: 'oMLX 27B Mini',
+      provider: 'local',
+      api_endpoint: 'http://192.168.100.143:12345/v1',
+    });
+
+    const local2 = await service.createProviderConfig({
+      name: 'LM Studio 本地',
+      provider: 'local',
+      api_endpoint: 'http://127.0.0.1:1234/v1',
+    });
+
+    const configs = await service.listProviderConfigs();
+    const matching = configs.filter((c) => c.provider === 'local');
+    expect(matching).toHaveLength(2);
+    expect(matching.find((c) => c.id === local1.id)?.name).toBe('oMLX 27B Mini');
+    expect(matching.find((c) => c.id === local2.id)?.name).toBe('LM Studio 本地');
+  });
 });

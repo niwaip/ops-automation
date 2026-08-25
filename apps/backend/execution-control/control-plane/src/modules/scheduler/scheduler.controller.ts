@@ -43,10 +43,7 @@ export class SchedulerController {
   @Get(':id')
   @ApiOperation({ summary: 'Get schedule by ID' })
   @ApiResponse({ status: 200, type: ScheduleDto })
-  async getById(
-    @Param('id') id: string,
-    @Req() req: AuthenticatedRequest
-  ): Promise<ScheduleDto> {
+  async getById(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<ScheduleDto> {
     const schedule = await this.schedulerService.getById(id, this.requireUserId(req));
     if (!schedule) {
       throw new NotFoundException(`Schedule with ID ${id} not found.`);

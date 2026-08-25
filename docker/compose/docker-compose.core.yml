@@ -12,11 +12,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ops_secret}
       POSTGRES_DB: ${POSTGRES_DB:-ops}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ops} -d ${POSTGRES_DB:-ops}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-ops} -d ${POSTGRES_DB:-ops}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,11 +30,11 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secret}
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - '${REDIS_PORT:-6379}:6379'
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secret}", "ping"]
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-redis_secret}', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -60,7 +60,7 @@ services:
       SANDBOX_WORKER_URL: http://sandbox-worker:8090
       ACTIVITY_VALIDATION_AGENT_URL: http://sandbox-worker:8090
     ports:
-      - "${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}"
+      - '${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/core/platform:/app
       - auth_node_modules:/app/node_modules
@@ -86,13 +86,17 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
       JWT_SECRET: ${JWT_SECRET:-ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa}
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
+      EXECUTION_OUTBOX_ENABLED: ${EXECUTION_OUTBOX_ENABLED:-false}
+      EXECUTION_DISPATCHER_V2_ENABLED: ${EXECUTION_DISPATCHER_V2_ENABLED:-false}
+      SCHEDULE_FIRE_V2_ENABLED: ${SCHEDULE_FIRE_V2_ENABLED:-false}
+      PLAN_RISK_EVALUATOR_V2_ENABLED: ${PLAN_RISK_EVALUATOR_V2_ENABLED:-false}
       PORT: ${CONTROL_PLANE_PORT:-3003}
       AUTH_SERVICE_URL: http://${PLATFORM_SERVICE_HOST:-platform}:${PLATFORM_PORT:-3001}
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
       SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
       EXTERNAL_HOST: ${HOST_IP:-localhost}
     ports:
-      - "${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}"
+      - '${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/execution-control/control-plane:/app
       - control_plane_node_modules:/app/node_modules
@@ -119,7 +123,7 @@ services:
       PORT: ${SESSION_BROKER_PORT:-3002}
       EXTERNAL_HOST: ${HOST_IP:-localhost}
     ports:
-      - "${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}"
+      - '${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/execution-control/session-broker:/app
       - session_broker_node_modules:/app/node_modules

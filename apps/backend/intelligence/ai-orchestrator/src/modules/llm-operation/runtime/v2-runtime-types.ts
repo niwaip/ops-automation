@@ -9,6 +9,8 @@ export interface ExecuteLlmOperationV2Request {
   operationVersion?: string;
   operationDigest?: string;
   contractDigest?: string;
+  /** Exact model pinned by the frozen deterministic plan. */
+  modelId?: string;
   environment?: Environment;
   input: Record<string, unknown>;
   idempotencyKey: string;

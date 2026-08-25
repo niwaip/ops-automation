@@ -8,6 +8,7 @@ import {
 import type { DeterministicPlanDraftV1 } from '@ops/backend-deterministic-plan';
 import { Prisma } from '../../prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { APPROVAL_STATUS } from '../contracts/approval-status';
 import { EXECUTION_EVENT_TYPE } from '../contracts/execution-event-type';
 import { EXECUTION_STATUS, ExecutionStatus } from '../contracts/execution-status';
 import { EXECUTION_STEP_STATUS } from '../contracts/execution-step-status';
@@ -29,6 +30,7 @@ import { RequestUserContext } from '../lifecycle/execution-lifecycle.service';
 import { ensureExecutionPermission } from '../shared/execution-permission.util';
 import { DeterministicPlanSchedulerService } from '../plan-runtime/deterministic-plan-scheduler.service';
 import { materializeDeterministicPlanInput } from '../plan-runtime/deterministic-plan-required-input';
+import { ExecutionOutboxService } from '../outbox/execution-outbox.service';
 
 interface SubmitInputContext {
   execution: Record<string, any>;
@@ -62,6 +64,7 @@ export class ExecutionSubmitInputService {
     private readonly executionInputResolutionService: ExecutionInputResolutionService,
     private readonly executionPlanNormalizationService: ExecutionPlanNormalizationService,
     @Optional() private readonly planSchedulerService?: DeterministicPlanSchedulerService,
+    @Optional() private readonly outbox?: ExecutionOutboxService
   ) {}
 
   async submitInputAndResume(
@@ -134,7 +137,8 @@ export class ExecutionSubmitInputService {
 
     const normalized = (execution.normalizedInputJson as Record<string, unknown>) || {};
     const requiredInputs = this.executionInputResolutionService.getRequiredInputs(execution);
-    const currentParamResolution = this.executionInputResolutionService.getParamResolution(execution);
+    const currentParamResolution =
+      this.executionInputResolutionService.getParamResolution(execution);
     const missingInputs = requiredInputs.filter((item) =>
       this.executionInputResolutionService.isBlockingRequiredInput(item)
     );
@@ -167,7 +171,7 @@ export class ExecutionSubmitInputService {
         ? materializeDeterministicPlanInput(
             (context.execution.inputJson as Record<string, unknown>) || {},
             deterministicPlan,
-            resolution.normalizedSubmittedInput,
+            resolution.normalizedSubmittedInput
           )
         : context.execution.inputJson;
 
@@ -234,9 +238,16 @@ export class ExecutionSubmitInputService {
 
     const execution = await this.prisma.execution.findUnique({
       where: { id: executionId },
-      select: { executionMode: true },
+      select: { executionMode: true, requiresApproval: true, approvalStatus: true },
     });
     if (execution?.executionMode === 'deterministic_plan' && this.planSchedulerService) {
+      if (execution.requiresApproval && execution.approvalStatus !== APPROVAL_STATUS.APPROVED) {
+        await hooks.updateStatus(executionId, EXECUTION_STATUS.PENDING_APPROVAL);
+        this.logger.log(
+          `Input submitted for deterministic execution ${executionId}; waiting for approval`
+        );
+        return hooks.getExecutionDto(executionId, requester);
+      }
       await hooks.emitEvent(
         executionId,
         EXECUTION_EVENT_TYPE.EXECUTION_RESUMED,
@@ -244,18 +255,27 @@ export class ExecutionSubmitInputService {
           userId,
           reason: 'input_submitted',
         },
-        { stepId },
+        { stepId }
       );
-      setTimeout(() => {
-        this.planSchedulerService?.advanceExecution(executionId).catch((err) => {
-          const message = err instanceof Error ? err.message : String(err);
-          this.logger.error(
-            `Failed to advance deterministic execution ${executionId}: ${message}`,
-          );
+      if (process.env.EXECUTION_OUTBOX_ENABLED === 'true' && this.outbox) {
+        await this.outbox.enqueue({
+          aggregateType: 'execution',
+          aggregateId: executionId,
+          eventType: 'execution.ready',
+          payload: { executionId, reason: 'input_submitted', dispatcherVersion: 'v2' },
         });
-      }, 0);
+      } else {
+        setTimeout(() => {
+          this.planSchedulerService?.advanceExecution(executionId).catch((err) => {
+            const message = err instanceof Error ? err.message : String(err);
+            this.logger.error(
+              `Failed to advance deterministic execution ${executionId}: ${message}`
+            );
+          });
+        }, 0);
+      }
       this.logger.log(
-        `Input submitted for deterministic execution ${executionId}; frozen plan resumed`,
+        `Input submitted for deterministic execution ${executionId}; frozen plan resumed`
       );
       return hooks.getExecutionDto(executionId, requester);
     }

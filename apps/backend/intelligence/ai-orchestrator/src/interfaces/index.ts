@@ -153,6 +153,7 @@ export interface AIModelDTO {
 
 export interface AIProviderSummaryDTO {
   id: string;
+  name?: string;
   provider: string;
   api_endpoint: string;
   modelCount: number;
@@ -164,6 +165,7 @@ export interface AIProviderSummaryDTO {
 
 export interface AIProviderConfigDTO {
   id: string;
+  name?: string;
   provider: string;
   api_endpoint: string;
   hasCredential?: boolean;
@@ -177,6 +179,7 @@ export interface AIProviderModelListDTO {
 }
 
 export interface CreateProviderConfigDTO {
+  name?: string;
   provider: string;
   api_endpoint: string;
   api_key?: string;
@@ -185,6 +188,7 @@ export interface CreateProviderConfigDTO {
 }
 
 export interface UpdateProviderConfigDTO {
+  name?: string;
   provider?: string;
   api_endpoint?: string;
   api_key?: string;

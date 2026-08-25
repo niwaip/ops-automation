@@ -21,6 +21,8 @@ import { DeterministicPlanSchedulerService } from '../plan-runtime/deterministic
 import { getMissingDeterministicPlanInputs } from '../plan-runtime/deterministic-plan-required-input';
 import { SavedSkillResolverService } from '../../saved-skill/saved-skill-resolver.service';
 import { configureSavedSkillExecution } from '../../saved-skill/saved-skill-runtime-params';
+import { ExecutionOutboxService } from '../outbox/execution-outbox.service';
+import { PlanRiskEvaluatorService } from '../risk/plan-risk-evaluator.service';
 
 interface RuntimeDefaultResolution {
   input: Record<string, unknown>;
@@ -83,6 +85,8 @@ export class ExecutionCreateService {
     private readonly planFreezeService?: DeterministicPlanFreezeService,
     private readonly planSchedulerService?: DeterministicPlanSchedulerService,
     @Optional() private readonly savedSkillResolver?: SavedSkillResolverService,
+    @Optional() private readonly executionOutboxService?: ExecutionOutboxService,
+    @Optional() private readonly planRiskEvaluator?: PlanRiskEvaluatorService
   ) {}
 
   async create(
@@ -138,10 +142,15 @@ export class ExecutionCreateService {
       throw new BadRequestException('skillId or capabilityId is required');
     }
 
-    await this.executionPlanningService.assertSkillAccessibleByUser(resolvedSkillId, resolvedSkillVersion, options?.authToken, {
-      id: userId,
-      role: 'employee',
-    });
+    await this.executionPlanningService.assertSkillAccessibleByUser(
+      resolvedSkillId,
+      resolvedSkillVersion,
+      options?.authToken,
+      {
+        id: userId,
+        role: 'employee',
+      }
+    );
 
     const resolvedDto: CreateExecutionDto = {
       ...dto,
@@ -165,11 +174,12 @@ export class ExecutionCreateService {
       }
     }
 
-    const runtimeDefaultResolution = (await this.executionPlanningService.fetchSkillDefaultResolution(
-      resolvedSkillId,
-      options?.authToken,
-      { id: userId, role: 'employee' }
-    )) as RuntimeDefaultResolution;
+    const runtimeDefaultResolution =
+      (await this.executionPlanningService.fetchSkillDefaultResolution(
+        resolvedSkillId,
+        options?.authToken,
+        { id: userId, role: 'employee' }
+      )) as RuntimeDefaultResolution;
     const runtimeDefaultInput = runtimeDefaultResolution.input;
 
     const providedPlanDraft =
@@ -218,12 +228,13 @@ export class ExecutionCreateService {
         runtimeDefaultInput,
         runtimeDefaultResolution.sources
       ) as unknown as PlannerPlanDraft | undefined;
-    const planDraft = await this.executionPlanningService.rewriteBrowserRecordingPlanDraftWithActivities(
-      defaultedPlanDraft,
-      resolvedSkillId,
-      resolvedDto.input,
-      runtimeDefaultInput
-    );
+    const planDraft =
+      await this.executionPlanningService.rewriteBrowserRecordingPlanDraftWithActivities(
+        defaultedPlanDraft,
+        resolvedSkillId,
+        resolvedDto.input,
+        runtimeDefaultInput
+      );
     const plannedCapabilityId = planDraft?.skill_match?.skill_id;
     const effectiveSkillId = plannedCapabilityId || resolvedSkillId;
     const effectiveSkillVersion = resolvedSkillVersion;
@@ -245,24 +256,26 @@ export class ExecutionCreateService {
       planDraft as any,
       normalizedInput
     );
+    const riskEvaluation = this.planRiskEvaluator?.evaluate(planDraft);
+    const enforceRiskV2 = process.env.PLAN_RISK_EVALUATOR_V2_ENABLED === 'true';
+    const requiresApproval = enforceRiskV2
+      ? riskEvaluation?.requiresApproval || false
+      : planDraft?.risk_summary.requires_human_review || false;
     const execution = await this.prisma.execution.create({
       data: {
         createdBy: userId,
         skillId: effectiveSkillId,
         skillVersion: effectiveSkillVersion,
-        status: planDraft?.risk_summary.requires_human_review
-          ? EXECUTION_STATUS.PENDING_APPROVAL
-          : EXECUTION_STATUS.QUEUED,
+        status: requiresApproval ? EXECUTION_STATUS.PENDING_APPROVAL : EXECUTION_STATUS.QUEUED,
         runtimeType: executionRuntimeType,
         inputJson: resolvedDto.input as never,
         normalizedInputJson: normalizedInput as never,
-        riskLevel: this.executionPlanNormalizationService.mapPlannerRiskLevel(
-          planDraft as any
-        ),
-        requiresApproval: planDraft?.risk_summary.requires_human_review || false,
-        approvalStatus: planDraft?.risk_summary.requires_human_review
-          ? APPROVAL_STATUS.PENDING
-          : APPROVAL_STATUS.NOT_REQUIRED,
+        riskLevel:
+          enforceRiskV2 && riskEvaluation
+            ? riskEvaluation.riskLevel
+            : this.executionPlanNormalizationService.mapPlannerRiskLevel(planDraft as any),
+        requiresApproval,
+        approvalStatus: requiresApproval ? APPROVAL_STATUS.PENDING : APPROVAL_STATUS.NOT_REQUIRED,
         takeoverRequired: false,
         triggerType: resolvedDto.triggerType,
         scheduleId: resolvedDto.scheduleId,
@@ -321,7 +334,10 @@ export class ExecutionCreateService {
         );
 
         if (waitingInputStep) {
-          await hooks.enterWaitingInput(execution as unknown as Record<string, unknown>, waitingInputStep.id);
+          await hooks.enterWaitingInput(
+            execution as unknown as Record<string, unknown>,
+            waitingInputStep.id
+          );
           return hooks.getExecutionDto(execution.id);
         }
       }
@@ -400,10 +416,12 @@ export class ExecutionCreateService {
     userId: string,
     dto: CreateExecutionDto,
     hooks: ExecutionCreateHooks,
-    options?: { authToken?: string },
+    options?: { authToken?: string }
   ): Promise<ExecutionDto> {
     if (!dto.deterministicPlan) {
-      throw new BadRequestException('deterministicPlan is required when executionMode is deterministic_plan');
+      throw new BadRequestException(
+        'deterministicPlan is required when executionMode is deterministic_plan'
+      );
     }
 
     const planDraft = dto.deterministicPlan as unknown as DeterministicPlanDraftV1;
@@ -413,34 +431,40 @@ export class ExecutionCreateService {
       for (const node of planDraft.nodes) {
         if (node.kind === 'skill' && node.skillId) {
           if (!node.skillVersion) {
-            throw new BadRequestException(`Skill node '${node.nodeId || node.skillId}' is missing mandatory skillVersion`);
+            throw new BadRequestException(
+              `Skill node '${node.nodeId || node.skillId}' is missing mandatory skillVersion`
+            );
           }
 
           const skillDescriptor = await this.executionPlanningService.assertSkillAccessibleByUser(
             node.skillId,
             node.skillVersion,
             options?.authToken,
-            { id: userId, role: 'employee' },
+            { id: userId, role: 'employee' }
           );
 
           if (
             skillDescriptor.publishedReleaseVersion &&
-            String(skillDescriptor.publishedReleaseVersion).trim() !== String(node.skillVersion).trim()
+            String(skillDescriptor.publishedReleaseVersion).trim() !==
+              String(node.skillVersion).trim()
           ) {
             throw new BadRequestException(
-              `Skill node '${node.nodeId || node.skillId}' version mismatch: submitted '${node.skillVersion}', but published executable version is '${skillDescriptor.publishedReleaseVersion}'`,
+              `Skill node '${node.nodeId || node.skillId}' version mismatch: submitted '${node.skillVersion}', but published executable version is '${skillDescriptor.publishedReleaseVersion}'`
             );
           }
 
           if (skillDescriptor.publishedReleaseStatus !== 'published') {
             throw new BadRequestException(
-              `Skill node '${node.nodeId || node.skillId}' is not published (status=${skillDescriptor.publishedReleaseStatus || 'null'})`,
+              `Skill node '${node.nodeId || node.skillId}' is not published (status=${skillDescriptor.publishedReleaseStatus || 'null'})`
             );
           }
 
-          if (skillDescriptor.publishedDeploymentStatus !== 'deployed' && skillDescriptor.publishedDeploymentStatus !== 'healthy') {
+          if (
+            skillDescriptor.publishedDeploymentStatus !== 'deployed' &&
+            skillDescriptor.publishedDeploymentStatus !== 'healthy'
+          ) {
             throw new BadRequestException(
-              `Skill node '${node.nodeId || node.skillId}' deployment is not active (status=${skillDescriptor.publishedDeploymentStatus || 'null'})`,
+              `Skill node '${node.nodeId || node.skillId}' deployment is not active (status=${skillDescriptor.publishedDeploymentStatus || 'null'})`
             );
           }
 
@@ -455,6 +479,11 @@ export class ExecutionCreateService {
 
     const missingRequiredInputs = getMissingDeterministicPlanInputs(planDraft);
     const waitsForInput = missingRequiredInputs.length > 0;
+    const riskEvaluation = this.planRiskEvaluator?.evaluate(planDraft, {
+      requireDeclaredSideEffects: true,
+    });
+    const enforceRiskV2 = process.env.PLAN_RISK_EVALUATOR_V2_ENABLED === 'true';
+    const requiresApproval = enforceRiskV2 && Boolean(riskEvaluation?.requiresApproval);
     const normalizedInput = waitsForInput
       ? {
           ...((dto.input as Record<string, unknown>) || {}),
@@ -463,10 +492,10 @@ export class ExecutionCreateService {
           requiredInputs: missingRequiredInputs,
           paramResolution:
             this.executionInputResolutionService.buildParamResolutionFromRequiredInputs(
-              missingRequiredInputs,
+              missingRequiredInputs
             ),
         }
-      : ((dto.input as Record<string, unknown>) || {});
+      : (dto.input as Record<string, unknown>) || {};
 
     let createdExecutionId = '';
 
@@ -477,10 +506,17 @@ export class ExecutionCreateService {
           skillId: dto.skillId || dto.capabilityId || null,
           skillVersion: dto.skillVersion || dto.capabilityVersion || null,
           executionMode: 'deterministic_plan',
-          status: waitsForInput ? EXECUTION_STATUS.WAITING_INPUT : EXECUTION_STATUS.QUEUED,
+          status: waitsForInput
+            ? EXECUTION_STATUS.WAITING_INPUT
+            : requiresApproval
+              ? EXECUTION_STATUS.PENDING_APPROVAL
+              : EXECUTION_STATUS.QUEUED,
           runtimeType: 'plan',
           inputJson: (dto.input as any) || {},
           normalizedInputJson: normalizedInput as any,
+          riskLevel: enforceRiskV2 && riskEvaluation ? riskEvaluation.riskLevel : 'L0',
+          requiresApproval,
+          approvalStatus: requiresApproval ? APPROVAL_STATUS.PENDING : APPROVAL_STATUS.NOT_REQUIRED,
           triggerType: dto.triggerType,
           scheduleId: dto.scheduleId,
         },
@@ -508,6 +544,23 @@ export class ExecutionCreateService {
           where: { id: createdExecutionId },
           data: { currentStepId: waitingStep.id },
         });
+      } else if (
+        !requiresApproval &&
+        process.env.EXECUTION_OUTBOX_ENABLED === 'true' &&
+        this.executionOutboxService
+      ) {
+        await this.executionOutboxService.enqueue(
+          {
+            aggregateType: 'execution',
+            aggregateId: createdExecutionId,
+            eventType: 'execution.ready',
+            payload: {
+              executionId: createdExecutionId,
+              dispatcherVersion: 'v2',
+            },
+          },
+          tx
+        );
       }
     });
 
@@ -520,7 +573,12 @@ export class ExecutionCreateService {
       planDraft,
     });
 
-    if (!waitsForInput && this.planSchedulerService) {
+    if (
+      !waitsForInput &&
+      !requiresApproval &&
+      process.env.EXECUTION_OUTBOX_ENABLED !== 'true' &&
+      this.planSchedulerService
+    ) {
       setTimeout(() => {
         this.planSchedulerService?.advanceExecution(createdExecutionId).catch((err) => {
           this.logger.error(`Error advancing deterministic execution ${createdExecutionId}:`, err);

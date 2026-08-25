@@ -54,6 +54,8 @@ const { Option } = Select;
 
 // Provider display names
 const PROVIDER_NAMES: Record<string, string> = {
+  bai: 'B.AI',
+  'b.ai': 'B.AI',
   'alibaba-coding': '阿里云 Coding',
   'alibaba-bailian': '阿里云百炼',
   openai: 'OpenAI',
@@ -69,6 +71,8 @@ const PROVIDER_NAMES: Record<string, string> = {
 
 // Recommended endpoints for common providers
 const PRESET_ENDPOINTS: Record<string, string> = {
+  bai: 'https://api.b.ai/v1',
+  'b.ai': 'https://api.b.ai/v1',
   'alibaba-coding': 'https://coding.dashscope.aliyuncs.com/v1',
   'alibaba-bailian': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
   openai: 'https://api.openai.com/v1',
@@ -167,7 +171,11 @@ function getProviderIdentity(provider: string, apiEndpoint: string) {
 }
 
 function getProviderConfigLabel(providerConfig: AIProviderConfig) {
-  return `${PROVIDER_NAMES[providerConfig.provider] || providerConfig.provider} · ${providerConfig.api_endpoint}`;
+  const providerLabel = PROVIDER_NAMES[providerConfig.provider] || providerConfig.provider;
+  if (providerConfig.name) {
+    return `${providerConfig.name} (${providerLabel}) · ${providerConfig.api_endpoint}`;
+  }
+  return `${providerLabel} · ${providerConfig.api_endpoint}`;
 }
 
 const AIModelAdminPage: React.FC = () => {
@@ -345,7 +353,7 @@ const AIModelAdminPage: React.FC = () => {
       data,
     }: {
       id: string;
-      data: { provider?: ModelProvider; api_endpoint?: string; api_key?: string };
+      data: { name?: string; provider?: ModelProvider; api_endpoint?: string; api_key?: string };
     }) => aiModelApi.updateProviderConfig(id, data),
     {
       onSuccess: () => {
@@ -507,6 +515,7 @@ const AIModelAdminPage: React.FC = () => {
     setEditingProvider(providerConfig);
     setProviderFormProvider(providerConfig.provider);
     providerForm.setFieldsValue({
+      name: providerConfig.name || '',
       provider: providerConfig.provider,
       api_endpoint: providerConfig.api_endpoint,
       apiKey: '',
@@ -533,6 +542,7 @@ const AIModelAdminPage: React.FC = () => {
   const handleSaveProviderConfig = () => {
     providerForm.validateFields().then((values) => {
       const payload = {
+        name: typeof values.name === 'string' && values.name.trim() ? values.name.trim() : undefined,
         provider: values.provider,
         api_endpoint: values.api_endpoint,
         api_key: values.apiKey,
@@ -614,7 +624,10 @@ const AIModelAdminPage: React.FC = () => {
 
   const filteredModels = (modelsQuery.data?.models || []).filter((model) => {
     const keyword = searchText.trim().toLowerCase();
-    const matchesProvider = !providerFilter || model.provider === providerFilter;
+    const matchesProvider =
+      !providerFilter ||
+      model.provider === providerFilter ||
+      model.providerConfigId === providerFilter;
     if (!matchesProvider) return false;
     if (!keyword) return true;
 
@@ -841,6 +854,7 @@ const AIModelAdminPage: React.FC = () => {
   ];
 
   const providerOptions: ModelProvider[] = [
+    'bai',
     'alibaba-coding',
     'alibaba-bailian',
     'openai',
@@ -853,6 +867,17 @@ const AIModelAdminPage: React.FC = () => {
     'openrouter',
     'local',
   ];
+
+  const getFilterLabel = (filterKey: string | null) => {
+    if (!filterKey) return '';
+    const matchedConfig = (providerConfigsQuery.data?.providers || []).find(
+      (p) => p.id === filterKey || p.provider === filterKey
+    );
+    if (matchedConfig?.name) {
+      return `${matchedConfig.name} (${PROVIDER_NAMES[matchedConfig.provider] || matchedConfig.provider})`;
+    }
+    return PROVIDER_NAMES[filterKey] || filterKey;
+  };
 
   return (
     <div>
@@ -876,7 +901,7 @@ const AIModelAdminPage: React.FC = () => {
             <Tag color="gold">{advancedModelCount} 个高级模型</Tag>
             {providerFilter && (
               <Tag closable color="processing" onClose={() => setProviderFilter(null)}>
-                当前筛选: {PROVIDER_NAMES[providerFilter] || providerFilter}
+                当前筛选: {getFilterLabel(providerFilter)}
               </Tag>
             )}
           </Space>
@@ -1033,7 +1058,7 @@ const AIModelAdminPage: React.FC = () => {
         {providerFilter && (
           <div style={{ marginBottom: 16 }}>
             <Tag closable color="processing" onClose={() => setProviderFilter(null)}>
-              当前 Provider: {PROVIDER_NAMES[providerFilter] || providerFilter}
+              当前 Provider: {getFilterLabel(providerFilter)}
             </Tag>
           </div>
         )}
@@ -1120,12 +1145,22 @@ const AIModelAdminPage: React.FC = () => {
           showIcon
           message={
             editingProvider
-              ? '修改 Provider 的 endpoint 或凭据后，关联模型会自动复用最新配置'
+              ? '修改 Provider 的名称、endpoint 或凭据后，关联模型会自动复用最新配置'
               : '建议先配置 Provider，再从 Provider 卡片中直接追加模型'
           }
           style={{ marginBottom: 24, borderRadius: 12, border: 'none', background: 'var(--bg-secondary)' }}
         />
         <Form form={providerForm} layout="vertical">
+          <Form.Item
+            name="name"
+            label="Provider 名称 / 别名"
+            extra="可选。当有多个本地模型或同类 Provider 时，设置自定义名称便于区分（例如：oMLX 27B 本地服务、B.AI 主力）"
+          >
+            <Input
+              className="execution-list-filter-control"
+              placeholder="例如：oMLX 27B 本地服务 / B.AI 主力"
+            />
+          </Form.Item>
           <Form.Item name="provider" label="提供商 (Provider)" rules={[{ required: true }]}>
             <Select
               className="execution-list-filter-control"

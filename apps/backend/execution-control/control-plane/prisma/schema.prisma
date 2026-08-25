@@ -39,34 +39,34 @@ enum IdentityProviderType {
 
 // Users Table
 model User {
-  id            String        @id @default(uuid()) @db.Uuid
-  username      String        @unique @db.VarChar(255)
-  passwordHash  String        @map("password_hash") @db.VarChar(255)
-  email         String?       @unique @db.VarChar(255)
-  role          UserRoleType  @default(employee)
+  id           String       @id @default(uuid()) @db.Uuid
+  username     String       @unique @db.VarChar(255)
+  passwordHash String       @map("password_hash") @db.VarChar(255)
+  email        String?      @unique @db.VarChar(255)
+  role         UserRoleType @default(employee)
 
   // LDAP/AD extension fields (reserved for future integration)
-  ldapDn        String?       @db.VarChar(255) @map("ldap_dn")
-  adSid         String?       @db.VarChar(255) @map("ad_sid")
-  externalId    String?       @map("external_id") @db.VarChar(255)
-  activeOrgId   String?       @map("active_org_id") @db.Uuid
+  ldapDn      String? @map("ldap_dn") @db.VarChar(255)
+  adSid       String? @map("ad_sid") @db.VarChar(255)
+  externalId  String? @map("external_id") @db.VarChar(255)
+  activeOrgId String? @map("active_org_id") @db.Uuid
 
   // Account status
-  isActive      Boolean       @default(true) @map("is_active")
-  lastLoginAt   DateTime?     @map("last_login_at") @db.Timestamptz
+  isActive    Boolean   @default(true) @map("is_active")
+  lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz
 
   // Timestamps
-  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  userRoles     UserRole[]
-  assignedRoles UserRole[]    @relation("AssignedBy")
-  orgMemberships OrgMembership[]
-  assignedOrgRoles OrgRoleBinding[] @relation("OrgRoleAssignedBy")
-  activeOrg     Organization? @relation("ActiveOrganization", fields: [activeOrgId], references: [id], onDelete: SetNull)
-  chatSessions  ChatSession[]
-  skillAccessRequests SkillAccessRequest[] @relation("SkillAccessRequester")
+  userRoles                    UserRole[]
+  assignedRoles                UserRole[]           @relation("AssignedBy")
+  orgMemberships               OrgMembership[]
+  assignedOrgRoles             OrgRoleBinding[]     @relation("OrgRoleAssignedBy")
+  activeOrg                    Organization?        @relation("ActiveOrganization", fields: [activeOrgId], references: [id], onDelete: SetNull)
+  chatSessions                 ChatSession[]
+  skillAccessRequests          SkillAccessRequest[] @relation("SkillAccessRequester")
   processedSkillAccessRequests SkillAccessRequest[] @relation("SkillAccessProcessor")
 
   @@index([username])
@@ -79,19 +79,19 @@ model User {
 
 // Roles Table
 model Role {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String    @unique @db.VarChar(255)
-  description String?   @db.VarChar(500)
-  permissions Json      @default("{}")
-  isSystem    Boolean   @default(false) @map("is_system")
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique @db.VarChar(255)
+  description String? @db.VarChar(500)
+  permissions Json    @default("{}")
+  isSystem    Boolean @default(false) @map("is_system")
 
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  userRoles   UserRole[]
+  userRoles        UserRole[]
   skillPermissions SkillPermission[] // Skills granted to this role
-  orgRoleBindings OrgRoleBinding[]
+  orgRoleBindings  OrgRoleBinding[]
 
   @@index([name])
   @@index([permissions])
@@ -105,9 +105,9 @@ model UserRole {
   assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz
   assignedBy String?  @map("assigned_by") @db.Uuid
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  assigner   User?    @relation("AssignedBy", fields: [assignedBy], references: [id])
+  user     User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     Role  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assigner User? @relation("AssignedBy", fields: [assignedBy], references: [id])
 
   @@id([userId, roleId])
   @@index([userId])
@@ -130,7 +130,7 @@ model Organization {
   memberships       OrgMembership[]
   roleBindings      OrgRoleBinding[]
   identityProviders IdentityProviderConfig[]
-  activeUsers       User[]              @relation("ActiveOrganization")
+  activeUsers       User[]                   @relation("ActiveOrganization")
 
   @@index([code])
   @@index([isActive])
@@ -138,21 +138,21 @@ model Organization {
 }
 
 model Department {
-  id            String         @id @default(uuid()) @db.Uuid
-  orgId         String         @map("org_id") @db.Uuid
-  parentId      String?        @map("parent_id") @db.Uuid
-  name          String         @db.VarChar(255)
-  code          String?        @db.VarChar(100)
-  managerUserId String?        @map("manager_user_id") @db.Uuid
-  isActive      Boolean        @default(true) @map("is_active")
-  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id            String   @id @default(uuid()) @db.Uuid
+  orgId         String   @map("org_id") @db.Uuid
+  parentId      String?  @map("parent_id") @db.Uuid
+  name          String   @db.VarChar(255)
+  code          String?  @db.VarChar(100)
+  managerUserId String?  @map("manager_user_id") @db.Uuid
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  organization  Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  parent        Department?    @relation("DepartmentTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children      Department[]   @relation("DepartmentTree")
-  teams         Team[]
-  memberships   OrgMembership[]
+  organization Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  parent       Department?     @relation("DepartmentTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Department[]    @relation("DepartmentTree")
+  teams        Team[]
+  memberships  OrgMembership[]
 
   @@unique([orgId, name])
   @@index([orgId])
@@ -161,19 +161,19 @@ model Department {
 }
 
 model Team {
-  id            String         @id @default(uuid()) @db.Uuid
-  orgId         String         @map("org_id") @db.Uuid
-  departmentId  String?        @map("department_id") @db.Uuid
-  name          String         @db.VarChar(255)
-  code          String?        @db.VarChar(100)
-  leadUserId    String?        @map("lead_user_id") @db.Uuid
-  isActive      Boolean        @default(true) @map("is_active")
-  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id           String   @id @default(uuid()) @db.Uuid
+  orgId        String   @map("org_id") @db.Uuid
+  departmentId String?  @map("department_id") @db.Uuid
+  name         String   @db.VarChar(255)
+  code         String?  @db.VarChar(100)
+  leadUserId   String?  @map("lead_user_id") @db.Uuid
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  organization  Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  department    Department?    @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  members       TeamMembership[]
+  organization Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  department   Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  members      TeamMembership[]
 
   @@unique([orgId, name])
   @@index([orgId])
@@ -182,21 +182,21 @@ model Team {
 }
 
 model OrgMembership {
-  id            String           @id @default(uuid()) @db.Uuid
-  userId        String           @map("user_id") @db.Uuid
-  orgId         String           @map("org_id") @db.Uuid
-  departmentId  String?          @map("department_id") @db.Uuid
-  title         String?          @db.VarChar(255)
-  status        MembershipStatus @default(active)
-  joinedAt      DateTime?        @map("joined_at") @db.Timestamptz
-  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id           String           @id @default(uuid()) @db.Uuid
+  userId       String           @map("user_id") @db.Uuid
+  orgId        String           @map("org_id") @db.Uuid
+  departmentId String?          @map("department_id") @db.Uuid
+  title        String?          @db.VarChar(255)
+  status       MembershipStatus @default(active)
+  joinedAt     DateTime?        @map("joined_at") @db.Timestamptz
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization  Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  department    Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization    Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  department      Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   teamMemberships TeamMembership[]
-  roleBindings  OrgRoleBinding[]
+  roleBindings    OrgRoleBinding[]
 
   @@unique([userId, orgId])
   @@index([orgId, status])
@@ -205,15 +205,15 @@ model OrgMembership {
 }
 
 model TeamMembership {
-  id              String        @id @default(uuid()) @db.Uuid
-  orgMembershipId String        @map("org_membership_id") @db.Uuid
-  teamId          String        @map("team_id") @db.Uuid
-  role            String?       @db.VarChar(100)
-  isPrimary       Boolean       @default(false) @map("is_primary")
-  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  id              String   @id @default(uuid()) @db.Uuid
+  orgMembershipId String   @map("org_membership_id") @db.Uuid
+  teamId          String   @map("team_id") @db.Uuid
+  role            String?  @db.VarChar(100)
+  isPrimary       Boolean  @default(false) @map("is_primary")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  orgMembership   OrgMembership @relation(fields: [orgMembershipId], references: [id], onDelete: Cascade)
-  team            Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  orgMembership OrgMembership @relation(fields: [orgMembershipId], references: [id], onDelete: Cascade)
+  team          Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@unique([orgMembershipId, teamId])
   @@index([teamId])
@@ -221,19 +221,19 @@ model TeamMembership {
 }
 
 model OrgRoleBinding {
-  id            String        @id @default(uuid()) @db.Uuid
-  orgId         String        @map("org_id") @db.Uuid
-  membershipId  String        @map("membership_id") @db.Uuid
-  roleId        String        @map("role_id") @db.Uuid
-  scopeType     String        @default("organization") @map("scope_type") @db.VarChar(50)
-  scopeRefId    String?       @map("scope_ref_id") @db.Uuid
-  assignedBy    String?       @map("assigned_by") @db.Uuid
-  assignedAt    DateTime      @default(now()) @map("assigned_at") @db.Timestamptz
+  id           String   @id @default(uuid()) @db.Uuid
+  orgId        String   @map("org_id") @db.Uuid
+  membershipId String   @map("membership_id") @db.Uuid
+  roleId       String   @map("role_id") @db.Uuid
+  scopeType    String   @default("organization") @map("scope_type") @db.VarChar(50)
+  scopeRefId   String?  @map("scope_ref_id") @db.Uuid
+  assignedBy   String?  @map("assigned_by") @db.Uuid
+  assignedAt   DateTime @default(now()) @map("assigned_at") @db.Timestamptz
 
-  organization  Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  membership    OrgMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
-  role          Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  assigner      User?         @relation("OrgRoleAssignedBy", fields: [assignedBy], references: [id], onDelete: SetNull)
+  organization Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  membership   OrgMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  role         Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assigner     User?         @relation("OrgRoleAssignedBy", fields: [assignedBy], references: [id], onDelete: SetNull)
 
   @@unique([membershipId, roleId, scopeType, scopeRefId])
   @@index([orgId, roleId])
@@ -259,7 +259,7 @@ model IdentityProviderConfig {
   createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  organization    Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
   @@unique([orgId, name])
   @@index([orgId, providerType, isEnabled])
@@ -269,37 +269,37 @@ model IdentityProviderConfig {
 // Execution Flow Template - Reusable workflow templates for Skills
 // Similar to Claude Code skills, provides step-by-step guidance for AI execution
 model ExecutionFlowTemplate {
-  id              String    @id @default(uuid()) @db.Uuid
-  name            String    @unique @db.VarChar(255)
-  description     String?   @db.VarChar(500)
-  goal            String?   @db.VarChar(1000)
-  expectedResult  String?   @map("expected_result") @db.VarChar(1000)
-  paramsSchema    Json      @default("{}") @map("params_schema")
-  category        String    @default("document") @db.VarChar(50) // document | analysis | automation | custom
+  id             String  @id @default(uuid()) @db.Uuid
+  name           String  @unique @db.VarChar(255)
+  description    String? @db.VarChar(500)
+  goal           String? @db.VarChar(1000)
+  expectedResult String? @map("expected_result") @db.VarChar(1000)
+  paramsSchema   Json    @default("{}") @map("params_schema")
+  category       String  @default("document") @db.VarChar(50) // document | analysis | automation | custom
 
   // Flow definition - array of steps with detailed configuration
   // Each step can be: text (instruction), script, tool, or api
   // Example: [{type: "text", content: "分析用户需求..."}, {type: "api", endpoint: "...", method: "POST"}]
-  steps           Json      @default("[]")
+  steps Json @default("[]")
 
   // Default execution flow keys (for quick selection in Skills)
   // Example: ["skill_match", "param_collect", "waiting_input", "document_render"]
-  executionFlowKeys Json   @default("[]") @map("execution_flow_keys")
+  executionFlowKeys Json @default("[]") @map("execution_flow_keys")
 
   // AI validation result (populated after validation)
   // {isValid: boolean, suggestions: string[], validatedAt: datetime}
-  validation      Json?     @map("validation")
+  validation Json? @map("validation")
 
   // Usage count for popularity tracking
-  usageCount      Int       @default(0) @map("usage_count")
+  usageCount Int @default(0) @map("usage_count")
 
   // Template metadata
-  isPublic        Boolean   @default(true) @map("is_public")
-  createdBy       String?   @map("created_by") @db.Uuid
+  isPublic  Boolean @default(true) @map("is_public")
+  createdBy String? @map("created_by") @db.Uuid
 
-  isActive        Boolean   @default(true) @map("is_active")
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@index([name])
   @@index([category])
@@ -311,31 +311,31 @@ model ExecutionFlowTemplate {
 
 // Skill Configuration Table
 model SkillConfig {
-  id                String   @id @default(uuid()) @db.Uuid
-  name              String   @unique @db.VarChar(255)
-  description       String?  @db.VarChar(500)
-  triggerKeywords   Json     @default("[]") @map("trigger_keywords")
-  paramsSchema      Json     @default("{}") @map("params_schema")
-  outputSchema      Json     @default("{}") @map("output_schema")
-  candidateSchemaJson Json?  @map("candidate_schema_json")
+  id                         String    @id @default(uuid()) @db.Uuid
+  name                       String    @unique @db.VarChar(255)
+  description                String?   @db.VarChar(500)
+  triggerKeywords            Json      @default("[]") @map("trigger_keywords")
+  paramsSchema               Json      @default("{}") @map("params_schema")
+  outputSchema               Json      @default("{}") @map("output_schema")
+  candidateSchemaJson        Json?     @map("candidate_schema_json")
   candidateSchemaGeneratedAt DateTime? @map("candidate_schema_generated_at") @db.Timestamptz
-  templateId        String?  @map("template_id") @db.VarChar(255)
-  carboneTemplateId String?  @map("carbone_template_id") @db.VarChar(255)
-  carboneSkillId    String?  @map("carbone_skill_id") @db.VarChar(255)
-  apiEndpoints      Json?    @map("api_endpoints")
-  executionFlow     Json     @default("[]") @map("execution_flow")
-  executionFlowTemplateIds Json @default("[]") @map("execution_flow_template_ids") // 支持关联多个流程模板ID
-  tools             Json     @default("[]")
-  configStatus      String   @default("draft") @map("config_status") @db.VarChar(32)
-  lastValidationSummary Json? @map("last_validation_summary")
-  isActive          Boolean  @default(true) @map("is_active")
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  templateId                 String?   @map("template_id") @db.VarChar(255)
+  carboneTemplateId          String?   @map("carbone_template_id") @db.VarChar(255)
+  carboneSkillId             String?   @map("carbone_skill_id") @db.VarChar(255)
+  apiEndpoints               Json?     @map("api_endpoints")
+  executionFlow              Json      @default("[]") @map("execution_flow")
+  executionFlowTemplateIds   Json      @default("[]") @map("execution_flow_template_ids") // 支持关联多个流程模板ID
+  tools                      Json      @default("[]")
+  configStatus               String    @default("draft") @map("config_status") @db.VarChar(32)
+  lastValidationSummary      Json?     @map("last_validation_summary")
+  isActive                   Boolean   @default(true) @map("is_active")
+  createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  permissions       SkillPermission[] // Roles granted access to this skill
-  toolBindings      SkillToolBinding[]
-  accessRequests    SkillAccessRequest[]
+  permissions    SkillPermission[] // Roles granted access to this skill
+  toolBindings   SkillToolBinding[]
+  accessRequests SkillAccessRequest[]
 
   @@index([name])
   @@index([isActive])
@@ -345,13 +345,13 @@ model SkillConfig {
 
 // Skill Permission Table - Controls which roles can use which skills
 model SkillPermission {
-  skillId    String   @map("skill_id") @db.Uuid
-  roleId     String   @map("role_id") @db.Uuid
-  grantedAt  DateTime @default(now()) @map("granted_at") @db.Timestamptz
-  grantedBy  String?  @map("granted_by") @db.Text
+  skillId   String   @map("skill_id") @db.Uuid
+  roleId    String   @map("role_id") @db.Uuid
+  grantedAt DateTime @default(now()) @map("granted_at") @db.Timestamptz
+  grantedBy String?  @map("granted_by") @db.Text
 
-  skill      SkillConfig @relation(fields: [skillId], references: [id], onDelete: Cascade)
-  role       Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  skill SkillConfig @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  role  Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@id([skillId, roleId])
   @@index([skillId])
@@ -360,20 +360,20 @@ model SkillPermission {
 }
 
 model SkillAccessRequest {
-  id              String   @id @default(uuid()) @db.Uuid
-  skillId         String   @map("skill_id") @db.Uuid
-  requesterUserId String   @map("requester_user_id") @db.Uuid
-  status          String   @default("pending") @db.VarChar(32)
-  reason          String?  @db.VarChar(500)
-  responseNote    String?  @map("response_note") @db.VarChar(500)
+  id              String    @id @default(uuid()) @db.Uuid
+  skillId         String    @map("skill_id") @db.Uuid
+  requesterUserId String    @map("requester_user_id") @db.Uuid
+  status          String    @default("pending") @db.VarChar(32)
+  reason          String?   @db.VarChar(500)
+  responseNote    String?   @map("response_note") @db.VarChar(500)
   processedAt     DateTime? @map("processed_at") @db.Timestamptz
-  processedBy     String?  @map("processed_by") @db.Uuid
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  processedBy     String?   @map("processed_by") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  skill           SkillConfig @relation(fields: [skillId], references: [id], onDelete: Cascade)
-  requester       User        @relation("SkillAccessRequester", fields: [requesterUserId], references: [id], onDelete: Cascade)
-  processor       User?       @relation("SkillAccessProcessor", fields: [processedBy], references: [id], onDelete: SetNull)
+  skill     SkillConfig @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  requester User        @relation("SkillAccessRequester", fields: [requesterUserId], references: [id], onDelete: Cascade)
+  processor User?       @relation("SkillAccessProcessor", fields: [processedBy], references: [id], onDelete: SetNull)
 
   @@index([skillId, status])
   @@index([requesterUserId, status])
@@ -382,21 +382,21 @@ model SkillAccessRequest {
 }
 
 model ToolCatalog {
-  id                         String   @id @default(uuid()) @db.Uuid
-  name                       String   @unique @db.VarChar(100)
-  displayName                String   @map("display_name") @db.VarChar(100)
-  description                String?  @db.VarChar(500)
-  category                   String?  @db.VarChar(50)
-  runtimeType                String?  @map("runtime_type") @db.VarChar(50)
-  status                     String   @default("active") @db.VarChar(20)
-  riskLevel                  String   @default("L0") @map("risk_level") @db.VarChar(10)
-  allowSkillBinding          Boolean  @default(true) @map("allow_skill_binding")
-  promptExposure             String   @default("prompt_and_runtime") @map("prompt_exposure") @db.VarChar(30)
-  defaultRequiresConfirmation Boolean @default(false) @map("default_requires_confirmation")
-  defaultRequiresApproval    Boolean  @default(false) @map("default_requires_approval")
-  metadataJson               Json     @default("{}") @map("metadata_json")
-  createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt                  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                          String   @id @default(uuid()) @db.Uuid
+  name                        String   @unique @db.VarChar(100)
+  displayName                 String   @map("display_name") @db.VarChar(100)
+  description                 String?  @db.VarChar(500)
+  category                    String?  @db.VarChar(50)
+  runtimeType                 String?  @map("runtime_type") @db.VarChar(50)
+  status                      String   @default("active") @db.VarChar(20)
+  riskLevel                   String   @default("L0") @map("risk_level") @db.VarChar(10)
+  allowSkillBinding           Boolean  @default(true) @map("allow_skill_binding")
+  promptExposure              String   @default("prompt_and_runtime") @map("prompt_exposure") @db.VarChar(30)
+  defaultRequiresConfirmation Boolean  @default(false) @map("default_requires_confirmation")
+  defaultRequiresApproval     Boolean  @default(false) @map("default_requires_approval")
+  metadataJson                Json     @default("{}") @map("metadata_json")
+  createdAt                   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@index([status])
   @@index([category, status])
@@ -421,16 +421,16 @@ model SkillToolBinding {
 
 // Chat Session Table
 model ChatSession {
-  id        String       @id @default(uuid()) @db.Uuid
-  userId    String       @map("user_id") @db.Uuid
-  title     String?      @db.VarChar(255)
-  modelId   String?      @map("model_id") @db.VarChar(255)
-  status    String       @default("active") @db.VarChar(50) // active | archived
-  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  title     String?  @db.VarChar(255)
+  modelId   String?  @map("model_id") @db.VarChar(255)
+  status    String   @default("active") @db.VarChar(50) // active | archived
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  messages  ChatMessage[]
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -439,14 +439,14 @@ model ChatSession {
 
 // Chat Message Table
 model ChatMessage {
-  id        String     @id @default(uuid()) @db.Uuid
-  sessionId String     @map("session_id") @db.Uuid
-  role      String     @db.VarChar(20) // user | assistant | system
-  content   String     @db.Text
-  metadata  Json?      @map("metadata")
-  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  id        String   @id @default(uuid()) @db.Uuid
+  sessionId String   @map("session_id") @db.Uuid
+  role      String   @db.VarChar(20) // user | assistant | system
+  content   String   @db.Text
+  metadata  Json?    @map("metadata")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId])
   @@index([role])
@@ -459,43 +459,43 @@ model ChatMessage {
 
 // Execution - Skill execution instance (business truth source)
 model Execution {
-  id                  String            @id @default(uuid()) @db.Uuid
-  orgId               String?           @map("org_id") @db.Uuid
-  createdBy           String            @map("created_by") @db.Uuid
-  skillId             String?           @map("skill_id") @db.Uuid
-  skillVersion        String?           @map("skill_version") @db.VarChar(50)
-  status              String            @default("queued") @db.VarChar(50)
-  runtimeType         String            @default("browser") @map("runtime_type") @db.VarChar(50)
-  riskLevel           String            @default("L0") @map("risk_level") @db.VarChar(10)
-  executionMode       String?           @default("single_skill") @map("execution_mode") @db.VarChar(50)
-  inputJson           Json?             @map("input_json")
-  normalizedInputJson Json?             @map("normalized_input_json")
-  resultJson          Json?             @map("result_json")
-  failureReason       String?           @map("failure_reason") @db.Text
-  failureCode         String?           @map("failure_code") @db.VarChar(50)
-  currentStepId       String?           @map("current_step_id") @db.Uuid
-  currentPhaseKey     String?           @map("current_phase_key") @db.VarChar(255)
-  currentPhaseStatus  String?           @map("current_phase_status") @db.VarChar(50)
-  requiresApproval    Boolean           @default(false) @map("requires_approval")
-  approvalStatus      String?           @map("approval_status") @db.VarChar(50)
-  takeoverRequired    Boolean           @default(false) @map("takeover_required")
-  takeoverStatus      String?           @map("takeover_status") @db.VarChar(50)
-  takeoverReason      String?           @map("takeover_reason") @db.Text
-  triggerType         String?           @map("trigger_type") @db.VarChar(50)
-  scheduleId          String?           @map("schedule_id") @db.Uuid
-  startedAt           DateTime?         @map("started_at") @db.Timestamptz
-  endedAt             DateTime?         @map("ended_at") @db.Timestamptz
-  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt           DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                  String    @id @default(uuid()) @db.Uuid
+  orgId               String?   @map("org_id") @db.Uuid
+  createdBy           String    @map("created_by") @db.Uuid
+  skillId             String?   @map("skill_id") @db.Uuid
+  skillVersion        String?   @map("skill_version") @db.VarChar(50)
+  status              String    @default("queued") @db.VarChar(50)
+  runtimeType         String    @default("browser") @map("runtime_type") @db.VarChar(50)
+  riskLevel           String    @default("L0") @map("risk_level") @db.VarChar(10)
+  executionMode       String?   @default("single_skill") @map("execution_mode") @db.VarChar(50)
+  inputJson           Json?     @map("input_json")
+  normalizedInputJson Json?     @map("normalized_input_json")
+  resultJson          Json?     @map("result_json")
+  failureReason       String?   @map("failure_reason") @db.Text
+  failureCode         String?   @map("failure_code") @db.VarChar(50)
+  currentStepId       String?   @map("current_step_id") @db.Uuid
+  currentPhaseKey     String?   @map("current_phase_key") @db.VarChar(255)
+  currentPhaseStatus  String?   @map("current_phase_status") @db.VarChar(50)
+  requiresApproval    Boolean   @default(false) @map("requires_approval")
+  approvalStatus      String?   @map("approval_status") @db.VarChar(50)
+  takeoverRequired    Boolean   @default(false) @map("takeover_required")
+  takeoverStatus      String?   @map("takeover_status") @db.VarChar(50)
+  takeoverReason      String?   @map("takeover_reason") @db.Text
+  triggerType         String?   @map("trigger_type") @db.VarChar(50)
+  scheduleId          String?   @map("schedule_id") @db.Uuid
+  startedAt           DateTime? @map("started_at") @db.Timestamptz
+  endedAt             DateTime? @map("ended_at") @db.Timestamptz
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  steps               ExecutionStep[]
-  runtimeSessions     RuntimeSession[]
-  events              ExecutionEvent[]
-  plan                ExecutionPlan?
-  artifacts           ExecutionArtifact[]
-  phases              ExecutionPhase[]
-  takeovers           ExecutionTakeover[]
+  steps           ExecutionStep[]
+  runtimeSessions RuntimeSession[]
+  events          ExecutionEvent[]
+  plan            ExecutionPlan?
+  artifacts       ExecutionArtifact[]
+  phases          ExecutionPhase[]
+  takeovers       ExecutionTakeover[]
 
   @@index([createdBy, createdAt(sort: Desc)])
   @@index([skillId, createdAt(sort: Desc)])
@@ -506,25 +506,25 @@ model Execution {
 
 // RuntimeSession - Runtime resource session (resource truth source)
 model RuntimeSession {
-  id                  String      @id @default(uuid()) @db.Uuid
-  executionId         String?     @map("execution_id") @db.Uuid
-  runtimeType         String      @default("browser") @map("runtime_type") @db.VarChar(50)
-  workerId            String?     @map("worker_id") @db.VarChar(255)
-  profileId           String?     @map("profile_id") @db.VarChar(255)
-  state               String      @db.VarChar(50) // allocating, ready, busy, frozen, closed, error
-  controlMode         String      @default("AGENT_RUNNING") @map("control_mode") @db.VarChar(50)
-  leaseExpiresAt      DateTime?   @map("lease_expires_at") @db.Timestamptz
-  connectionInfoJson  Json?       @map("connection_info_json")
-  capabilitiesJson    Json?       @default("[]") @map("capabilities_json")
-  healthStatus        String?     @map("health_status") @db.VarChar(50)
-  freezeReason        String?     @map("freeze_reason") @db.Text
-  lastActivityAt      DateTime?   @map("last_activity_at") @db.Timestamptz
-  createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt           DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-  closedAt            DateTime?   @map("closed_at") @db.Timestamptz
+  id                 String    @id @default(uuid()) @db.Uuid
+  executionId        String?   @map("execution_id") @db.Uuid
+  runtimeType        String    @default("browser") @map("runtime_type") @db.VarChar(50)
+  workerId           String?   @map("worker_id") @db.VarChar(255)
+  profileId          String?   @map("profile_id") @db.VarChar(255)
+  state              String    @db.VarChar(50) // allocating, ready, busy, frozen, closed, error
+  controlMode        String    @default("AGENT_RUNNING") @map("control_mode") @db.VarChar(50)
+  leaseExpiresAt     DateTime? @map("lease_expires_at") @db.Timestamptz
+  connectionInfoJson Json?     @map("connection_info_json")
+  capabilitiesJson   Json?     @default("[]") @map("capabilities_json")
+  healthStatus       String?   @map("health_status") @db.VarChar(50)
+  freezeReason       String?   @map("freeze_reason") @db.Text
+  lastActivityAt     DateTime? @map("last_activity_at") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  closedAt           DateTime? @map("closed_at") @db.Timestamptz
 
   // Relations
-  execution           Execution?  @relation(fields: [executionId], references: [id])
+  execution Execution? @relation(fields: [executionId], references: [id])
 
   @@index([executionId])
   @@index([state, updatedAt(sort: Desc)])
@@ -535,42 +535,42 @@ model RuntimeSession {
 
 // ExecutionStep - Minimum observable action in Execution
 model ExecutionStep {
-  id                  String      @id @default(uuid()) @db.Uuid
-  executionId         String      @map("execution_id") @db.Uuid
-  stepIndex           Int         @map("step_index")
-  name                String?     @db.VarChar(255)
-  type                String      @db.VarChar(50) // browser_action, assertion, input_collection, system
-  status              String      @db.VarChar(50) // pending, running, succeeded, failed, skipped
-  action              String?     @db.VarChar(100)
-  targetJson          Json?       @map("target_json")
-  inputJson           Json?       @map("input_json")
-  outputJson          Json?       @map("output_json")
-  assertionJson       Json?       @map("assertion_json")
-  errorMessage        String?     @map("error_message") @db.Text
-  errorCode           String?     @map("error_code") @db.VarChar(50)
-  retryCount          Int         @default(0) @map("retry_count")
-  snapshotId          String?     @map("snapshot_id") @db.VarChar(255)
-  takeoverTriggered   Boolean     @default(false) @map("takeover_triggered")
-  planNodeId          String?     @map("plan_node_id") @db.VarChar(255)
-  nodeKind            String?     @map("node_kind") @db.VarChar(50)
-  capabilityId        String?     @map("capability_id") @db.VarChar(255)
-  capabilityVersion   String?     @map("capability_version") @db.VarChar(100)
-  dependsOnJson       Json?       @map("depends_on_json")
-  inputBindingsJson   Json?       @map("input_bindings_json")
-  outputContractJson  Json?       @map("output_contract_json")
-  outputSchemaJson    Json?       @map("output_schema_json")
-  inputSchemaJson     Json?       @map("input_schema_json")
-  resolvedInputJson   Json?       @map("resolved_input_json")
-  idempotencyKey      String?     @map("idempotency_key") @db.VarChar(255)
-  leaseOwner          String?     @map("lease_owner") @db.VarChar(255)
-  leaseExpiresAt      DateTime?   @map("lease_expires_at") @db.Timestamptz
-  startedAt           DateTime?   @map("started_at") @db.Timestamptz
-  endedAt             DateTime?   @map("ended_at") @db.Timestamptz
-  createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt           DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                 String    @id @default(uuid()) @db.Uuid
+  executionId        String    @map("execution_id") @db.Uuid
+  stepIndex          Int       @map("step_index")
+  name               String?   @db.VarChar(255)
+  type               String    @db.VarChar(50) // browser_action, assertion, input_collection, system
+  status             String    @db.VarChar(50) // pending, running, succeeded, failed, skipped
+  action             String?   @db.VarChar(100)
+  targetJson         Json?     @map("target_json")
+  inputJson          Json?     @map("input_json")
+  outputJson         Json?     @map("output_json")
+  assertionJson      Json?     @map("assertion_json")
+  errorMessage       String?   @map("error_message") @db.Text
+  errorCode          String?   @map("error_code") @db.VarChar(50)
+  retryCount         Int       @default(0) @map("retry_count")
+  snapshotId         String?   @map("snapshot_id") @db.VarChar(255)
+  takeoverTriggered  Boolean   @default(false) @map("takeover_triggered")
+  planNodeId         String?   @map("plan_node_id") @db.VarChar(255)
+  nodeKind           String?   @map("node_kind") @db.VarChar(50)
+  capabilityId       String?   @map("capability_id") @db.VarChar(255)
+  capabilityVersion  String?   @map("capability_version") @db.VarChar(100)
+  dependsOnJson      Json?     @map("depends_on_json")
+  inputBindingsJson  Json?     @map("input_bindings_json")
+  outputContractJson Json?     @map("output_contract_json")
+  outputSchemaJson   Json?     @map("output_schema_json")
+  inputSchemaJson    Json?     @map("input_schema_json")
+  resolvedInputJson  Json?     @map("resolved_input_json")
+  idempotencyKey     String?   @map("idempotency_key") @db.VarChar(255)
+  leaseOwner         String?   @map("lease_owner") @db.VarChar(255)
+  leaseExpiresAt     DateTime? @map("lease_expires_at") @db.Timestamptz
+  startedAt          DateTime? @map("started_at") @db.Timestamptz
+  endedAt            DateTime? @map("ended_at") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  execution           Execution   @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  execution Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
 
   @@unique([executionId, stepIndex])
   @@unique([executionId, planNodeId])
@@ -594,7 +594,7 @@ model ExecutionPlan {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
   frozenAt       DateTime? @map("frozen_at") @db.Timestamptz
 
-  execution      Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  execution Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt(sort: Desc)])
   @@map("execution_plans")
@@ -615,11 +615,26 @@ model ExecutionArtifact {
   metadataJson       Json?    @map("metadata_json")
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  execution          Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  execution Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
 
   @@index([executionId, createdAt(sort: Desc)])
   @@index([producerStepId])
   @@map("execution_artifacts")
+}
+
+model ExecutionResultRef {
+  id             String   @id @default(uuid()) @db.Uuid
+  executionId    String   @map("execution_id") @db.Uuid
+  producerStepId String?  @map("producer_step_id") @db.Uuid
+  schemaDigest   String   @map("schema_digest") @db.VarChar(64)
+  payloadJson    Json     @map("payload_json")
+  previewJson    Json?    @map("preview_json")
+  sizeBytes      Int      @map("size_bytes")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([executionId, createdAt(sort: Desc)])
+  @@index([producerStepId])
+  @@map("execution_result_refs")
 }
 
 model ExecutionPhase {
@@ -643,10 +658,10 @@ model ExecutionPhase {
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  execution            Execution                @relation(fields: [executionId], references: [id], onDelete: Cascade)
-  artifacts            ExecutionPhaseArtifact[]
-  takeovers            ExecutionTakeover[]
-  steps                ExecutionPhaseStep[]
+  execution Execution                @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  artifacts ExecutionPhaseArtifact[]
+  takeovers ExecutionTakeover[]
+  steps     ExecutionPhaseStep[]
 
   @@unique([executionId, phaseKey])
   @@index([executionId, status])
@@ -664,7 +679,7 @@ model ExecutionPhaseArtifact {
   payloadJson     Json?    @map("payload_json")
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  phase           ExecutionPhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  phase ExecutionPhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
 
   @@index([phaseId, artifactType])
   @@map("execution_phase_artifacts")
@@ -683,8 +698,8 @@ model ExecutionTakeover {
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
   resolvedAt       DateTime? @map("resolved_at") @db.Timestamptz
 
-  execution        Execution      @relation(fields: [executionId], references: [id], onDelete: Cascade)
-  phase            ExecutionPhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  execution Execution      @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  phase     ExecutionPhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
 
   @@index([executionId, status])
   @@index([phaseId])
@@ -707,7 +722,7 @@ model ExecutionPhaseStep {
   endedAt      DateTime? @map("ended_at") @db.Timestamptz
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
-  phase        ExecutionPhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  phase ExecutionPhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
 
   @@index([phaseId])
   @@map("execution_phase_steps")
@@ -715,17 +730,17 @@ model ExecutionPhaseStep {
 
 // ExecutionEvent - Key state transition events
 model ExecutionEvent {
-  id                  String    @id @default(uuid()) @db.Uuid
-  executionId         String    @map("execution_id") @db.Uuid
-  runtimeSessionId    String?   @map("runtime_session_id") @db.Uuid
-  stepId              String?   @map("step_id") @db.Uuid
-  eventType           String    @map("event_type") @db.VarChar(100)
-  eventSource         String?   @map("event_source") @db.VarChar(50)
-  payloadJson         Json?     @map("payload_json")
-  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  id               String   @id @default(uuid()) @db.Uuid
+  executionId      String   @map("execution_id") @db.Uuid
+  runtimeSessionId String?  @map("runtime_session_id") @db.Uuid
+  stepId           String?  @map("step_id") @db.Uuid
+  eventType        String   @map("event_type") @db.VarChar(100)
+  eventSource      String?  @map("event_source") @db.VarChar(50)
+  payloadJson      Json?    @map("payload_json")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   // Relations
-  execution           Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  execution Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
 
   @@index([executionId, createdAt(sort: Desc)])
   @@map("execution_events")
@@ -733,16 +748,16 @@ model ExecutionEvent {
 
 // AuditLog - Persistent audit records
 model AuditLog {
-  id                  String    @id @default(uuid()) @db.Uuid
-  userId              String?   @map("user_id") @db.Uuid
-  action              String    @db.VarChar(255)
-  resource            String    @db.VarChar(255)
-  ipAddress           String?   @map("ip_address") @db.VarChar(50)
-  statusCode          Int?      @map("status_code")
-  durationMs          Int?      @map("duration_ms")
-  requestBody         Json?     @map("request_body")
-  responseBody        Json?     @map("response_body")
-  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String?  @map("user_id") @db.Uuid
+  action       String   @db.VarChar(255)
+  resource     String   @db.VarChar(255)
+  ipAddress    String?  @map("ip_address") @db.VarChar(50)
+  statusCode   Int?     @map("status_code")
+  durationMs   Int?     @map("duration_ms")
+  requestBody  Json?    @map("request_body")
+  responseBody Json?    @map("response_body")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([action, createdAt(sort: Desc)])
@@ -753,17 +768,17 @@ model AuditLog {
 // Temporal Activity - Reusable activity definitions for Temporal workflows
 // Activities are non-deterministic side effects that can be retried
 model Activity {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String    @unique @db.VarChar(255)
-  fn          String    @db.VarChar(255) // Function name reference
-  timeout     String    @default("30s") @db.VarChar(50)
-  retryPolicy Json?     @map("retry_policy")
-  handler     String    @db.VarChar(50) // api | carbone | browser | script
-  config      Json      @default("{}")
-  generatedCode String? @map("generated_code") @db.Text
-  isActive    Boolean   @default(true) @map("is_active")
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String   @unique @db.VarChar(255)
+  fn            String   @db.VarChar(255) // Function name reference
+  timeout       String   @default("30s") @db.VarChar(50)
+  retryPolicy   Json?    @map("retry_policy")
+  handler       String   @db.VarChar(50) // api | carbone | browser | script
+  config        Json     @default("{}")
+  generatedCode String?  @map("generated_code") @db.Text
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@index([name])
   @@index([handler])
@@ -773,23 +788,23 @@ model Activity {
 
 // Temporal Workflow - Workflow definitions with DSL
 model TemporalWorkflow {
-  id            String    @id @default(uuid()) @db.Uuid
-  name          String    @db.VarChar(255)
-  description   String?   @db.VarChar(500)
-  taskQueue     String    @db.VarChar(255)
-  workflowDsl   Json      @map("workflow_dsl")
-  activityDsl   Json      @map("activity_dsl")
-  generatedCode String?   @map("generated_code") @db.Text
-  artifactVersion Int     @default(0) @map("artifact_version")
-  artifactHash    String? @map("artifact_hash") @db.VarChar(128)
-  validationStatus String @default("draft") @map("validation_status") @db.VarChar(32)
-  validationScore  Int    @default(0) @map("validation_score")
-  validationResultJson Json? @map("validation_result_json")
-  validatedAt      DateTime? @map("validated_at") @db.Timestamptz
-  isActive      Boolean   @default(true) @map("is_active")
-  deployedAt    DateTime? @map("deployed_at") @db.Timestamptz
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                   String    @id @default(uuid()) @db.Uuid
+  name                 String    @db.VarChar(255)
+  description          String?   @db.VarChar(500)
+  taskQueue            String    @db.VarChar(255)
+  workflowDsl          Json      @map("workflow_dsl")
+  activityDsl          Json      @map("activity_dsl")
+  generatedCode        String?   @map("generated_code") @db.Text
+  artifactVersion      Int       @default(0) @map("artifact_version")
+  artifactHash         String?   @map("artifact_hash") @db.VarChar(128)
+  validationStatus     String    @default("draft") @map("validation_status") @db.VarChar(32)
+  validationScore      Int       @default(0) @map("validation_score")
+  validationResultJson Json?     @map("validation_result_json")
+  validatedAt          DateTime? @map("validated_at") @db.Timestamptz
+  isActive             Boolean   @default(true) @map("is_active")
+  deployedAt           DateTime? @map("deployed_at") @db.Timestamptz
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@index([name])
   @@index([taskQueue])
@@ -890,19 +905,19 @@ model UserSavedSkillVersion {
 // chat history is owned by the AI session store, while Control Plane owns the
 // durable feedback audit trail.
 model AssistantFeedbackEvent {
-  id                String   @id @default(uuid()) @db.Uuid
-  eventId           String   @unique @map("event_id") @db.VarChar(128)
-  ownerUserId       String   @map("owner_user_id") @db.Uuid
-  sessionId         String   @map("session_id") @db.VarChar(255)
-  messageId         String   @map("message_id") @db.VarChar(255)
-  executionId       String?  @map("execution_id") @db.Uuid
-  revision          Int
-  eventType         String   @map("event_type") @db.VarChar(16)
-  rating            String?  @db.VarChar(16)
-  reasonCode        String?  @map("reason_code") @db.VarChar(64)
-  sanitizedComment  String?  @map("sanitized_comment") @db.Text
-  occurredAt        DateTime @default(now()) @map("occurred_at") @db.Timestamptz
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id               String   @id @default(uuid()) @db.Uuid
+  eventId          String   @unique @map("event_id") @db.VarChar(128)
+  ownerUserId      String   @map("owner_user_id") @db.Uuid
+  sessionId        String   @map("session_id") @db.VarChar(255)
+  messageId        String   @map("message_id") @db.VarChar(255)
+  executionId      String?  @map("execution_id") @db.Uuid
+  revision         Int
+  eventType        String   @map("event_type") @db.VarChar(16)
+  rating           String?  @db.VarChar(16)
+  reasonCode       String?  @map("reason_code") @db.VarChar(64)
+  sanitizedComment String?  @map("sanitized_comment") @db.Text
+  occurredAt       DateTime @default(now()) @map("occurred_at") @db.Timestamptz
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([ownerUserId, sessionId, messageId, revision])
   @@index([ownerUserId, createdAt(sort: Desc)])
@@ -928,43 +943,143 @@ model AssistantFeedbackCurrent {
 }
 
 model RoutingObservation {
-  id                 String   @id @default(uuid()) @db.Uuid
-  ownerUserId        String   @map("owner_user_id") @db.Uuid
-  requestFingerprint String   @map("request_fingerprint") @db.VarChar(64)
-  routeSource        String   @map("route_source") @db.VarChar(32)
-  matchMethod        String?  @map("match_method") @db.VarChar(32)
-  selectedSourceId   String?  @map("selected_source_id") @db.Uuid
-  selectedVersion    String?  @map("selected_version") @db.VarChar(50)
-  candidateCount     Int      @default(0) @map("candidate_count")
-  matchScore         Float?   @map("match_score")
-  plannerInvoked     Boolean  @default(false) @map("planner_invoked")
-  plannerInputTokens Int?     @map("planner_input_tokens")
-  contractStatus     String?  @map("contract_status") @db.VarChar(32)
-  businessStatus     String?  @map("business_status") @db.VarChar(32)
-  errorCode          String?  @map("error_code") @db.VarChar(100)
-  routingPolicyVersion String? @map("routing_policy_version") @db.VarChar(64)
-  routingPolicyDigest  String? @map("routing_policy_digest") @db.VarChar(64)
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id                   String   @id @default(uuid()) @db.Uuid
+  ownerUserId          String   @map("owner_user_id") @db.Uuid
+  requestFingerprint   String   @map("request_fingerprint") @db.VarChar(64)
+  routeSource          String   @map("route_source") @db.VarChar(32)
+  matchMethod          String?  @map("match_method") @db.VarChar(32)
+  selectedSourceId     String?  @map("selected_source_id") @db.Uuid
+  selectedVersion      String?  @map("selected_version") @db.VarChar(50)
+  candidateCount       Int      @default(0) @map("candidate_count")
+  matchScore           Float?   @map("match_score")
+  plannerInvoked       Boolean  @default(false) @map("planner_invoked")
+  plannerInputTokens   Int?     @map("planner_input_tokens")
+  contractStatus       String?  @map("contract_status") @db.VarChar(32)
+  businessStatus       String?  @map("business_status") @db.VarChar(32)
+  errorCode            String?  @map("error_code") @db.VarChar(100)
+  routingPolicyVersion String?  @map("routing_policy_version") @db.VarChar(64)
+  routingPolicyDigest  String?  @map("routing_policy_digest") @db.VarChar(64)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([ownerUserId, createdAt(sort: Desc)])
   @@index([routeSource, createdAt(sort: Desc)])
   @@map("routing_observations")
 }
 
+model PlanningDecision {
+  id                    String   @id @default(uuid()) @db.Uuid
+  ownerUserId           String   @map("owner_user_id") @db.Uuid
+  executionId           String?  @map("execution_id") @db.Uuid
+  requestFingerprint    String   @map("request_fingerprint") @db.VarChar(64)
+  schemaVersion         String   @map("schema_version") @db.VarChar(64)
+  routeClass            String   @map("route_class") @db.VarChar(32)
+  routeSource           String   @map("route_source") @db.VarChar(32)
+  decisionJson          Json     @map("decision_json")
+  shadow                Boolean  @default(true)
+  routingPolicyVersion  String   @map("routing_policy_version") @db.VarChar(64)
+  routingPolicyDigest   String   @map("routing_policy_digest") @db.VarChar(64)
+  catalogSnapshotDigest String   @map("catalog_snapshot_digest") @db.VarChar(64)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([ownerUserId, createdAt(sort: Desc)])
+  @@index([executionId])
+  @@index([routeClass, createdAt(sort: Desc)])
+  @@map("planning_decisions")
+}
+
+model PromptSnapshot {
+  id                    String   @id @default(uuid()) @db.Uuid
+  ownerUserId           String   @map("owner_user_id") @db.Uuid
+  executionId           String?  @map("execution_id") @db.Uuid
+  purpose               String   @db.VarChar(64)
+  promptTemplateVersion String   @map("prompt_template_version") @db.VarChar(100)
+  promptTemplateDigest  String   @map("prompt_template_digest") @db.VarChar(64)
+  systemPromptDigest    String   @map("system_prompt_digest") @db.VarChar(64)
+  catalogSnapshotDigest String?  @map("catalog_snapshot_digest") @db.VarChar(64)
+  modelPolicyDigest     String?  @map("model_policy_digest") @db.VarChar(64)
+  generationParamsJson  Json     @default("{}") @map("generation_params_json")
+  inputRefsJson         Json     @default("[]") @map("input_refs_json")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([executionId, createdAt(sort: Desc)])
+  @@index([ownerUserId, createdAt(sort: Desc)])
+  @@map("prompt_snapshots")
+}
+
+model LlmUsageLedger {
+  id                 String   @id @default(uuid()) @db.Uuid
+  ownerUserId        String   @map("owner_user_id") @db.Uuid
+  executionId        String?  @map("execution_id") @db.Uuid
+  planningDecisionId String?  @map("planning_decision_id") @db.Uuid
+  stepId             String?  @map("step_id") @db.Uuid
+  promptSnapshotId   String   @map("prompt_snapshot_id") @db.Uuid
+  traceId            String?  @map("trace_id") @db.VarChar(128)
+  purpose            String   @db.VarChar(64)
+  provider           String   @db.VarChar(64)
+  modelId            String   @map("model_id") @db.VarChar(255)
+  inputTokens        Int      @default(0) @map("input_tokens")
+  outputTokens       Int      @default(0) @map("output_tokens")
+  cachedTokens       Int      @default(0) @map("cached_tokens")
+  estimatedCost      Decimal? @map("estimated_cost") @db.Decimal(18, 8)
+  currency           String?  @db.VarChar(8)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([executionId, createdAt(sort: Desc)])
+  @@index([planningDecisionId])
+  @@index([purpose, createdAt(sort: Desc)])
+  @@map("llm_usage_ledger")
+}
+
+model ExecutionOutbox {
+  id             String    @id @default(uuid()) @db.Uuid
+  aggregateType  String    @map("aggregate_type") @db.VarChar(64)
+  aggregateId    String    @map("aggregate_id") @db.Uuid
+  eventType      String    @map("event_type") @db.VarChar(100)
+  payloadJson    Json      @map("payload_json")
+  availableAt    DateTime  @default(now()) @map("available_at") @db.Timestamptz
+  claimedBy      String?   @map("claimed_by") @db.VarChar(255)
+  leaseExpiresAt DateTime? @map("lease_expires_at") @db.Timestamptz
+  attempts       Int       @default(0)
+  publishedAt    DateTime? @map("published_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([publishedAt, availableAt])
+  @@index([leaseExpiresAt])
+  @@index([aggregateType, aggregateId])
+  @@map("execution_outbox")
+}
+
+model ScheduleFire {
+  id             String    @id @default(uuid()) @db.Uuid
+  scheduleId     String    @map("schedule_id") @db.Uuid
+  scheduledAt    DateTime  @map("scheduled_at") @db.Timestamptz
+  status         String    @default("pending") @db.VarChar(32)
+  executionId    String?   @map("execution_id") @db.Uuid
+  claimedBy      String?   @map("claimed_by") @db.VarChar(255)
+  leaseExpiresAt DateTime? @map("lease_expires_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([scheduleId, scheduledAt])
+  @@index([status, leaseExpiresAt])
+  @@index([executionId])
+  @@map("schedule_fires")
+}
+
 model HabitLearningRun {
-  id              String    @id @default(uuid()) @db.Uuid
-  idempotencyKey  String    @unique @map("idempotency_key") @db.VarChar(128)
-  policyVersion   String    @map("policy_version") @db.VarChar(50)
-  status          String    @db.VarChar(32)
-  windowStart     DateTime  @map("window_start") @db.Timestamptz
-  windowEnd       DateTime  @map("window_end") @db.Timestamptz
-  leaseOwner      String?   @map("lease_owner") @db.VarChar(128)
-  leaseExpiresAt  DateTime? @map("lease_expires_at") @db.Timestamptz
-  candidateCount  Int       @default(0) @map("candidate_count")
-  processedUsers  Int       @default(0) @map("processed_users")
-  errorSummary    String?   @map("error_summary") @db.Text
-  startedAt       DateTime  @default(now()) @map("started_at") @db.Timestamptz
-  completedAt     DateTime? @map("completed_at") @db.Timestamptz
+  id             String    @id @default(uuid()) @db.Uuid
+  idempotencyKey String    @unique @map("idempotency_key") @db.VarChar(128)
+  policyVersion  String    @map("policy_version") @db.VarChar(50)
+  status         String    @db.VarChar(32)
+  windowStart    DateTime  @map("window_start") @db.Timestamptz
+  windowEnd      DateTime  @map("window_end") @db.Timestamptz
+  leaseOwner     String?   @map("lease_owner") @db.VarChar(128)
+  leaseExpiresAt DateTime? @map("lease_expires_at") @db.Timestamptz
+  candidateCount Int       @default(0) @map("candidate_count")
+  processedUsers Int       @default(0) @map("processed_users")
+  errorSummary   String?   @map("error_summary") @db.Text
+  startedAt      DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz
 
   @@index([status, startedAt(sort: Desc)])
   @@map("habit_learning_runs")
@@ -1015,23 +1130,79 @@ model UserHabit {
 }
 
 model UserPersonalizationPreference {
-  ownerUserId          String   @id @map("owner_user_id") @db.Uuid
-  recommendationEnabled Boolean @default(false) @map("recommendation_enabled")
-  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  ownerUserId           String   @id @map("owner_user_id") @db.Uuid
+  recommendationEnabled Boolean  @default(false) @map("recommendation_enabled")
+  updatedAt             DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("user_personalization_preferences")
 }
 
+model ScopedMemory {
+  id             String    @id @default(uuid()) @db.Uuid
+  scopeType      String    @map("scope_type") @db.VarChar(32)
+  scopeId        String    @map("scope_id") @db.Uuid
+  organizationId String?   @map("organization_id") @db.Uuid
+  kind           String    @db.VarChar(64)
+  memoryKey      String    @map("memory_key") @db.VarChar(255)
+  valueJson      Json      @map("value_json")
+  source         String    @db.VarChar(64)
+  version        Int       @default(1)
+  status         String    @default("active") @db.VarChar(32)
+  expiresAt      DateTime? @map("expires_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([scopeType, scopeId, kind, memoryKey])
+  @@index([organizationId, kind, status])
+  @@index([scopeType, scopeId, status])
+  @@map("scoped_memories")
+}
+
+model CandidateRecipe {
+  id                String   @id @default(uuid()) @db.Uuid
+  scopeType         String   @map("scope_type") @db.VarChar(32)
+  scopeId           String   @map("scope_id") @db.Uuid
+  intentFingerprint String   @map("intent_fingerprint") @db.VarChar(64)
+  topologyDigest    String   @map("topology_digest") @db.VarChar(64)
+  recipeJson        Json     @map("recipe_json")
+  riskLevel         String   @default("L0") @map("risk_level") @db.VarChar(10)
+  status            String   @default("candidate") @db.VarChar(32)
+  version           Int      @default(1)
+  shadowRuns        Int      @default(0) @map("shadow_runs")
+  shadowPasses      Int      @default(0) @map("shadow_passes")
+  approvedBy        String?  @map("approved_by") @db.Uuid
+  rollbackVersion   Int?     @map("rollback_version")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([scopeType, scopeId, intentFingerprint, version])
+  @@index([status, updatedAt(sort: Desc)])
+  @@map("candidate_recipes")
+}
+
+model CandidateRecipeEvaluation {
+  id                String   @id @default(uuid()) @db.Uuid
+  candidateRecipeId String   @map("candidate_recipe_id") @db.Uuid
+  fixtureId         String   @map("fixture_id") @db.VarChar(255)
+  passed            Boolean
+  comparisonJson    Json     @map("comparison_json")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([candidateRecipeId, fixtureId])
+  @@index([candidateRecipeId, createdAt(sort: Desc)])
+  @@map("candidate_recipe_evaluations")
+}
+
 model HabitGovernanceAudit {
-  id            String   @id @default(uuid()) @db.Uuid
-  actorUserId   String   @map("actor_user_id") @db.Uuid
-  targetType    String   @map("target_type") @db.VarChar(32)
-  targetId      String   @map("target_id") @db.Uuid
-  action        String   @db.VarChar(32)
-  reason        String?  @db.VarChar(1000)
-  beforeJson    Json?    @map("before_json")
-  afterJson     Json?    @map("after_json")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id          String   @id @default(uuid()) @db.Uuid
+  actorUserId String   @map("actor_user_id") @db.Uuid
+  targetType  String   @map("target_type") @db.VarChar(32)
+  targetId    String   @map("target_id") @db.Uuid
+  action      String   @db.VarChar(32)
+  reason      String?  @db.VarChar(1000)
+  beforeJson  Json?    @map("before_json")
+  afterJson   Json?    @map("after_json")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([targetType, targetId, createdAt(sort: Desc)])
   @@map("habit_governance_audits")
@@ -1039,22 +1210,22 @@ model HabitGovernanceAudit {
 
 // Built-in Skill Tables
 model BuiltinSkill {
-  id               String   @id @default(uuid()) @db.Uuid
-  capabilityKey    String   @unique @map("capability_key") @db.VarChar(255)
-  displayName      String   @map("display_name") @db.VarChar(255)
-  description      String?  @db.VarChar(1000)
-  owner            String   @db.VarChar(255)
-  category         String   @db.VarChar(100)
-  defaultAccess    String   @default("authenticated") @map("default_access") @db.VarChar(32)
-  lifecycle        String   @default("stable") @db.VarChar(32)
-  isEnabled        Boolean  @default(false) @map("is_enabled")
-  activeVersionId  String?  @map("active_version_id") @db.Uuid
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id              String   @id @default(uuid()) @db.Uuid
+  capabilityKey   String   @unique @map("capability_key") @db.VarChar(255)
+  displayName     String   @map("display_name") @db.VarChar(255)
+  description     String?  @db.VarChar(1000)
+  owner           String   @db.VarChar(255)
+  category        String   @db.VarChar(100)
+  defaultAccess   String   @default("authenticated") @map("default_access") @db.VarChar(32)
+  lifecycle       String   @default("stable") @db.VarChar(32)
+  isEnabled       Boolean  @default(false) @map("is_enabled")
+  activeVersionId String?  @map("active_version_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  versions             BuiltinSkillVersion[]
-  permissionOverrides  BuiltinSkillPermissionOverride[]
-  auditEvents          BuiltinSkillAuditEvent[]
+  versions            BuiltinSkillVersion[]
+  permissionOverrides BuiltinSkillPermissionOverride[]
+  auditEvents         BuiltinSkillAuditEvent[]
 
   @@index([isEnabled, category])
   @@map("builtin_skills")
@@ -1072,8 +1243,8 @@ model BuiltinSkillVersion {
   attestationId     String?  @map("attestation_id") @db.VarChar(36)
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  builtinSkill      BuiltinSkill @relation(fields: [builtinSkillId], references: [id], onDelete: Cascade)
-  deployments       BuiltinSkillDeployment[]
+  builtinSkill BuiltinSkill             @relation(fields: [builtinSkillId], references: [id], onDelete: Cascade)
+  deployments  BuiltinSkillDeployment[]
 
   @@unique([builtinSkillId, definitionVersion])
   @@unique([builtinSkillId, definitionDigest])
@@ -1081,17 +1252,17 @@ model BuiltinSkillVersion {
 }
 
 model BuiltinSkillDeployment {
-  id                    String    @id @default(uuid()) @db.Uuid
-  builtinSkillVersionId String    @map("builtin_skill_version_id") @db.Uuid
-  environment           String    @db.VarChar(64)
-  status                String    @db.VarChar(32)
-  runtimeBuild          String?   @map("runtime_build") @db.VarChar(255)
-  deployedAt            DateTime  @default(now()) @map("deployed_at") @db.Timestamptz
-  smokeTestStatus       String?   @map("smoke_test_status") @db.VarChar(32)
-  smokeTestDigest       String?   @map("smoke_test_digest") @db.VarChar(71)
-  failureCode           String?   @map("failure_code") @db.VarChar(64)
+  id                    String   @id @default(uuid()) @db.Uuid
+  builtinSkillVersionId String   @map("builtin_skill_version_id") @db.Uuid
+  environment           String   @db.VarChar(64)
+  status                String   @db.VarChar(32)
+  runtimeBuild          String?  @map("runtime_build") @db.VarChar(255)
+  deployedAt            DateTime @default(now()) @map("deployed_at") @db.Timestamptz
+  smokeTestStatus       String?  @map("smoke_test_status") @db.VarChar(32)
+  smokeTestDigest       String?  @map("smoke_test_digest") @db.VarChar(71)
+  failureCode           String?  @map("failure_code") @db.VarChar(64)
 
-  builtinSkillVersion   BuiltinSkillVersion @relation(fields: [builtinSkillVersionId], references: [id], onDelete: Cascade)
+  builtinSkillVersion BuiltinSkillVersion @relation(fields: [builtinSkillVersionId], references: [id], onDelete: Cascade)
 
   @@unique([builtinSkillVersionId, environment])
   @@map("builtin_skill_deployments")
@@ -1109,7 +1280,7 @@ model BuiltinSkillPermissionOverride {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
   expiresAt      DateTime? @map("expires_at") @db.Timestamptz
 
-  builtinSkill   BuiltinSkill @relation(fields: [builtinSkillId], references: [id], onDelete: Cascade)
+  builtinSkill BuiltinSkill @relation(fields: [builtinSkillId], references: [id], onDelete: Cascade)
 
   @@index([builtinSkillId, principalType, principalId])
   @@map("builtin_skill_permission_overrides")
@@ -1124,7 +1295,7 @@ model BuiltinSkillAuditEvent {
   payload        Json?    @map("payload")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  builtinSkill   BuiltinSkill @relation(fields: [builtinSkillId], references: [id], onDelete: Cascade)
+  builtinSkill BuiltinSkill @relation(fields: [builtinSkillId], references: [id], onDelete: Cascade)
 
   @@index([builtinSkillId, createdAt])
   @@map("builtin_skill_audit_events")
@@ -1132,28 +1303,28 @@ model BuiltinSkillAuditEvent {
 
 // Capability Release & Manager Models
 model CapabilityRelease {
-  id                            String    @id @default(uuid()) @db.Uuid
-  sourceType                    String    @map("source_type") @db.VarChar(64)
-  sourceId                      String?   @map("source_id") @db.Uuid
-  sourceName                    String?   @map("source_name") @db.VarChar(255)
-  sourceStatus                  String    @default("draft") @map("source_status") @db.VarChar(32)
-  releaseVersion                Int       @default(1) @map("release_version")
-  status                        String    @default("draft") @db.VarChar(32)
-  approvalStatus                String    @default("not_required") @map("approval_status") @db.VarChar(32)
-  deploymentStatus              String    @default("not_started") @map("deployment_status") @db.VarChar(32)
-  currentSourceSnapshotId       String?   @map("current_source_snapshot_id") @db.Uuid
-  currentBuildId                String?   @map("current_build_id") @db.Uuid
-  latestSuccessfulBuildId       String?   @map("latest_successful_build_id") @db.Uuid
-  latestValidationId            String?   @map("latest_validation_id") @db.Uuid
+  id                           String    @id @default(uuid()) @db.Uuid
+  sourceType                   String    @map("source_type") @db.VarChar(64)
+  sourceId                     String?   @map("source_id") @db.Uuid
+  sourceName                   String?   @map("source_name") @db.VarChar(255)
+  sourceStatus                 String    @default("draft") @map("source_status") @db.VarChar(32)
+  releaseVersion               Int       @default(1) @map("release_version")
+  status                       String    @default("draft") @db.VarChar(32)
+  approvalStatus               String    @default("not_required") @map("approval_status") @db.VarChar(32)
+  deploymentStatus             String    @default("not_started") @map("deployment_status") @db.VarChar(32)
+  currentSourceSnapshotId      String?   @map("current_source_snapshot_id") @db.Uuid
+  currentBuildId               String?   @map("current_build_id") @db.Uuid
+  latestSuccessfulBuildId      String?   @map("latest_successful_build_id") @db.Uuid
+  latestValidationId           String?   @map("latest_validation_id") @db.Uuid
   latestSuccessfulValidationId String?   @map("latest_successful_validation_id") @db.Uuid
-  currentSkillDraftId           String?   @map("current_skill_draft_id") @db.Uuid
-  publishedSkillId              String?   @map("published_skill_id") @db.Uuid
-  lastDeploymentId              String?   @map("last_deployment_id") @db.Uuid
-  rollbackOfReleaseId           String?   @map("rollback_of_release_id") @db.Uuid
-  createdBy                     String?   @map("created_by") @db.Uuid
-  createdAt                     DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt                     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-  archivedAt                    DateTime? @map("archived_at") @db.Timestamptz
+  currentSkillDraftId          String?   @map("current_skill_draft_id") @db.Uuid
+  publishedSkillId             String?   @map("published_skill_id") @db.Uuid
+  lastDeploymentId             String?   @map("last_deployment_id") @db.Uuid
+  rollbackOfReleaseId          String?   @map("rollback_of_release_id") @db.Uuid
+  createdBy                    String?   @map("created_by") @db.Uuid
+  createdAt                    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  archivedAt                   DateTime? @map("archived_at") @db.Timestamptz
 
   @@index([status, updatedAt(sort: Desc)])
   @@map("capability_releases")
@@ -1243,7 +1414,7 @@ model CapabilityAttestation {
   contractDigest      String   @map("contract_digest") @db.VarChar(128)
   generatedCodeDigest String   @map("generated_code_digest") @db.VarChar(128)
   fixtureDigest       String?  @map("fixture_digest") @db.VarChar(128)
-  validatorVersion     String   @map("validator_version") @db.VarChar(32)
+  validatorVersion    String   @map("validator_version") @db.VarChar(32)
   gateResultsJson     Json     @default("{}") @map("gate_results_json")
   createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
 

@@ -2,6 +2,8 @@ import { apiClient } from '@/shared/api/http/client';
 
 // AI Model types for admin page
 export type ModelProvider =
+  | 'bai'
+  | 'b.ai'
   | 'openai'
   | 'anthropic'
   | 'azure'
@@ -76,6 +78,7 @@ export interface PromptDebugSettings {
 
 export interface AIProviderSummary {
   id: string;
+  name?: string;
   provider: string;
   api_endpoint: string;
   modelCount: number;
@@ -91,6 +94,7 @@ export interface AIProviderSummaryResponse {
 
 export interface AIProviderConfig {
   id: string;
+  name?: string;
   provider: string;
   api_endpoint: string;
   hasCredential?: boolean;
@@ -108,6 +112,7 @@ export interface AIProviderModelListResponse {
 }
 
 export interface CreateAIProviderConfigRequest {
+  name?: string;
   provider: ModelProvider;
   api_endpoint: string;
   api_key?: string;
@@ -116,6 +121,7 @@ export interface CreateAIProviderConfigRequest {
 }
 
 export interface UpdateAIProviderConfigRequest {
+  name?: string;
   provider?: ModelProvider;
   api_endpoint?: string;
   api_key?: string;

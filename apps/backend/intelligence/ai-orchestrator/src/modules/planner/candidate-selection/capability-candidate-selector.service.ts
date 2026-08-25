@@ -11,8 +11,12 @@ import { selectIntentRankedCandidates } from './capability-intent-match.util';
 @Injectable()
 export class CapabilityCandidateSelectorService {
   private readonly logger = new Logger(CapabilityCandidateSelectorService.name);
+  private readonly candidateLimit: number;
 
-  constructor(@Optional() private readonly catalogProjector?: LlmOperationCatalogProjector) {}
+  constructor(@Optional() private readonly catalogProjector?: LlmOperationCatalogProjector) {
+    const configured = Number.parseInt(process.env.PLANNER_CAPABILITY_TOP_K || '6', 10);
+    this.candidateLimit = Number.isFinite(configured) ? Math.min(6, Math.max(3, configured)) : 6;
+  }
 
   public async selectCandidates(
     userRequest: string,
@@ -43,7 +47,7 @@ export class CapabilityCandidateSelectorService {
       outputParams?: any;
       runtimeHints?: { outputParams?: any };
       apiEndpoints?: { runtimeMetadata?: any };
-    }> = [],
+    }> = []
   ): Promise<{
     skillCards: CompactCapabilityCardV1[];
     llmOperationCards: CompactCapabilityCardV1[];
@@ -57,7 +61,9 @@ export class CapabilityCandidateSelectorService {
         skill.executableVersion ||
         skill.publishedVersion ||
         skill.version ||
-        (skill.publishedReleaseVersion != null ? String(skill.publishedReleaseVersion) : undefined) ||
+        (skill.publishedReleaseVersion != null
+          ? String(skill.publishedReleaseVersion)
+          : undefined) ||
         '1.0.0';
 
       const publishedReleaseStatus =
@@ -75,7 +81,9 @@ export class CapabilityCandidateSelectorService {
         (typeof skillId === 'string' && skillId.startsWith('platform.'));
 
       if (!skillId || !executableVersion) {
-        this.logger.warn(`Skipping skill ${skillId || 'unknown'} from candidate selection: missing published executable version.`);
+        this.logger.warn(
+          `Skipping skill ${skillId || 'unknown'} from candidate selection: missing published executable version.`
+        );
         continue;
       }
 
@@ -84,9 +92,12 @@ export class CapabilityCandidateSelectorService {
         continue;
       }
 
-      if (!isBuiltin && (publishedReleaseStatus !== 'published' || publishedDeploymentStatus !== 'deployed')) {
+      if (
+        !isBuiltin &&
+        (publishedReleaseStatus !== 'published' || publishedDeploymentStatus !== 'deployed')
+      ) {
         this.logger.warn(
-          `Skipping skill ${skillId}: published status=${publishedReleaseStatus || 'unknown'}, deployment status=${publishedDeploymentStatus || 'unknown'}.`,
+          `Skipping skill ${skillId}: published status=${publishedReleaseStatus || 'unknown'}, deployment status=${publishedDeploymentStatus || 'unknown'}.`
         );
         continue;
       }
@@ -104,7 +115,7 @@ export class CapabilityCandidateSelectorService {
           Object.keys(authoritativeOutput).length === 0
         ) {
           this.logger.warn(
-            `Skipping skill ${skillId}: no output schema declared — 无输出 Schema 不能进入确定性候选集 (P0).`,
+            `Skipping skill ${skillId}: no output schema declared — 无输出 Schema 不能进入确定性候选集 (P0).`
           );
           continue;
         }
@@ -119,7 +130,7 @@ export class CapabilityCandidateSelectorService {
     const cappedSkills = selectIntentRankedCandidates(
       userRequest,
       validSkills,
-      12,
+      this.candidateLimit,
       (skill) => [
         skill.skillName,
         skill.name,
@@ -128,7 +139,7 @@ export class CapabilityCandidateSelectorService {
         skill.description,
         skill.triggerKeywords,
         skill.goal,
-      ],
+      ]
     );
     for (const skill of cappedSkills) {
       const skillId = skill.skillId || skill.id || skill.skillName || skill.name;
@@ -137,7 +148,9 @@ export class CapabilityCandidateSelectorService {
         skill.executableVersion ||
         skill.publishedVersion ||
         skill.version ||
-        (skill.publishedReleaseVersion != null ? String(skill.publishedReleaseVersion) : undefined) ||
+        (skill.publishedReleaseVersion != null
+          ? String(skill.publishedReleaseVersion)
+          : undefined) ||
         '1.0.0';
 
       const summary = (skill.description || skill.skillName || skill.name || '').substring(0, 200);
@@ -151,14 +164,14 @@ export class CapabilityCandidateSelectorService {
 
       const runtimeType = this.mapExecutionTypeToRuntimeType(
         skill.executionType || skill.category,
-        runtimeMetadata,
+        runtimeMetadata
       );
       const executionRuntimeType = runtimeMetadata?.runtimeType || undefined;
       const outputProjection = projectOutputSchemaV1(outputSchema);
       const supportsArtifactOutput = this.detectArtifactSupport(
         outputProjection.outputContract,
         runtimeMetadata,
-        skill.supportsArtifact,
+        skill.supportsArtifact
       );
 
       const card: CompactCapabilityCardV1 = {
@@ -177,11 +190,13 @@ export class CapabilityCandidateSelectorService {
         executableVersion,
         // Store the original required[] array so the parameter binder can correctly
         // distinguish required vs optional fields without relying on compressed summary strings.
-        _rawInputSchema: inputSchema ? {
-          required: Array.isArray(inputSchema.required) ? inputSchema.required : [],
-          defaults: this.extractParamDefaults(inputSchema),
-          properties: this.extractRecognizerProperties(inputSchema),
-        } : undefined,
+        _rawInputSchema: inputSchema
+          ? {
+              required: Array.isArray(inputSchema.required) ? inputSchema.required : [],
+              defaults: this.extractParamDefaults(inputSchema),
+              properties: this.extractRecognizerProperties(inputSchema),
+            }
+          : undefined,
       } as any;
       skillCards.push(this.truncateCard(card));
     }
@@ -196,7 +211,9 @@ export class CapabilityCandidateSelectorService {
    */
   private async projectLlmOperationCards(): Promise<CompactCapabilityCardV1[]> {
     if (!this.catalogProjector) {
-      this.logger.warn('LlmOperationCatalogProjector not available, returning empty LLM Operation cards');
+      this.logger.warn(
+        'LlmOperationCatalogProjector not available, returning empty LLM Operation cards'
+      );
       return [];
     }
 
@@ -227,14 +244,16 @@ export class CapabilityCandidateSelectorService {
         return this.truncateCard(card);
       });
     } catch (error) {
-      this.logger.warn(`Failed to project LLM Operation cards: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Failed to project LLM Operation cards: ${error instanceof Error ? error.message : String(error)}`
+      );
       return [];
     }
   }
 
   private mapExecutionTypeToRuntimeType(
     executionType?: string,
-    _runtimeMetadata?: any,
+    _runtimeMetadata?: any
   ): SkillPlanNodeV1['runtimeType'] {
     switch (executionType) {
       case 'flow':
@@ -252,7 +271,7 @@ export class CapabilityCandidateSelectorService {
   private detectArtifactSupport(
     outputContract: Record<string, string>,
     runtimeMetadata?: any,
-    supportsArtifactFlag?: boolean,
+    supportsArtifactFlag?: boolean
   ): boolean {
     if (supportsArtifactFlag === true) return true;
     if (runtimeMetadata?.supportsArtifact || runtimeMetadata?.producesArtifact) return true;
@@ -275,10 +294,7 @@ export class CapabilityCandidateSelectorService {
         const k = param.name || param.fieldName || param.key;
         if (!k || typeof k !== 'string' || this.isSensitiveFieldName(k)) continue;
         const enumVals =
-          resolveParamEnumValues(param) ||
-          param.enum ||
-          param.enumValues ||
-          param.enum_values;
+          resolveParamEnumValues(param) || param.enum || param.enumValues || param.enum_values;
         res[k] = this.encodeSchemaSummaryValue(
           k,
           param.type || param.valueType || 'string',
@@ -327,7 +343,7 @@ export class CapabilityCandidateSelectorService {
     fieldName: string,
     declaredType: string,
     enumValues: unknown,
-    defaultValue: unknown,
+    defaultValue: unknown
   ): string {
     const type = this.normalizeOutputValueType(fieldName, declaredType);
     const parts: string[] = [type];
@@ -485,9 +501,7 @@ export class CapabilityCandidateSelectorService {
         ? { extractionPrompt: source.extractionPrompt }
         : {}),
       ...(typeof source.semanticRole === 'string' ? { semanticRole: source.semanticRole } : {}),
-      ...(Array.isArray(source.extractionHints)
-        ? { extractionHints: source.extractionHints }
-        : {}),
+      ...(Array.isArray(source.extractionHints) ? { extractionHints: source.extractionHints } : {}),
       ...(enumValues ? { enum: enumValues } : {}),
       ...(typeof source['x-ops-input-role'] === 'string'
         ? { 'x-ops-input-role': source['x-ops-input-role'] }

@@ -3,6 +3,7 @@ import * as crypto from 'crypto';
 export type LlmOperationIdV1 =
   | 'summarize_text'
   | 'summarize_list'
+  | 'generate_text'
   | 'transform_text'
   | 'extract_structured_fields'
   | 'rewrite_to_markdown'
@@ -69,11 +70,14 @@ export function projectOutputSchemaV1(schema: unknown): ProjectedOutputContractV
   ].find((value) => typeof value === 'string' && value.length > 0) as string | undefined;
   const propertyPrimary = Object.entries(properties).find(([, property]) => {
     const record = asRecord(property);
-    return record.primary === true || record['x-primary-output'] === true || record.xPrimaryOutput === true;
+    return (
+      record.primary === true ||
+      record['x-primary-output'] === true ||
+      record.xPrimaryOutput === true
+    );
   })?.[0];
-  const primaryOutput = explicitPrimary && outputContract[explicitPrimary]
-    ? explicitPrimary
-    : propertyPrimary;
+  const primaryOutput =
+    explicitPrimary && outputContract[explicitPrimary] ? explicitPrimary : propertyPrimary;
 
   return primaryOutput ? { outputContract, primaryOutput } : { outputContract };
 }
@@ -81,7 +85,7 @@ export function projectOutputSchemaV1(schema: unknown): ProjectedOutputContractV
 /** Resolves a physical output field without guessing by object key order. */
 export function resolvePrimaryOutputFieldV1(
   projection: ProjectedOutputContractV1,
-  expectedType?: ValueTypeV1,
+  expectedType?: ValueTypeV1
 ): string | undefined {
   const { outputContract, primaryOutput } = projection;
   if (
@@ -94,7 +98,7 @@ export function resolvePrimaryOutputFieldV1(
 
   if (expectedType) {
     const matches = Object.keys(outputContract).filter(
-      (fieldName) => outputContract[fieldName] === expectedType,
+      (fieldName) => outputContract[fieldName] === expectedType
     );
     if (matches.length === 1) return matches[0];
     return undefined;
@@ -120,7 +124,9 @@ function projectOutputValueTypeV1(fieldName: string, property: unknown): ValueTy
   // `type: string` does not mask field-level compatibility semantics below.
   if (
     typeof record.type === 'string' &&
-    ['text_list', 'news_item_list', 'markdown_content', 'artifact_ref', 'json'].includes(record.type)
+    ['text_list', 'news_item_list', 'markdown_content', 'artifact_ref', 'json'].includes(
+      record.type
+    )
   ) {
     return record.type as ValueTypeV1;
   }
@@ -170,13 +176,21 @@ function normalizeOutputProperties(value: unknown): Record<string, unknown> {
 }
 
 function looksLikeJsonSchema(value: Record<string, any>): boolean {
-  return ['$schema', '$id', 'type', 'required', 'additionalProperties', 'oneOf', 'anyOf', 'allOf']
-    .some((keyword) => Object.prototype.hasOwnProperty.call(value, keyword));
+  return [
+    '$schema',
+    '$id',
+    'type',
+    'required',
+    'additionalProperties',
+    'oneOf',
+    'anyOf',
+    'allOf',
+  ].some((keyword) => Object.prototype.hasOwnProperty.call(value, keyword));
 }
 
 function asRecord(value: unknown): Record<string, any> {
   return value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, any>
+    ? (value as Record<string, any>)
     : {};
 }
 
@@ -225,14 +239,14 @@ export interface LlmOperationPlanNodeV1 extends PlanNodeBaseV1 {
   promptTemplateId?: string;
   promptTemplateVersion?: string;
   modelPolicyId?: string;
+  /** Exact model selected when the plan is frozen. */
+  modelId?: string;
   temperature?: number;
   maxInputTokens?: number;
   maxOutputTokens?: number;
 }
 
-export type DeterministicPlanNodeV1 =
-  | SkillPlanNodeV1
-  | LlmOperationPlanNodeV1;
+export type DeterministicPlanNodeV1 = SkillPlanNodeV1 | LlmOperationPlanNodeV1;
 
 export interface FinalOutputRequirementV1 {
   targetField: string;
@@ -331,7 +345,8 @@ export function canonicalizePlan(plan: DeterministicPlanDraftV1): Record<string,
         canonicalNode.skillId = node.skillId;
         canonicalNode.skillVersion = node.skillVersion;
         canonicalNode.runtimeType = node.runtimeType;
-        if (node.executionRuntimeType) canonicalNode.executionRuntimeType = node.executionRuntimeType;
+        if (node.executionRuntimeType)
+          canonicalNode.executionRuntimeType = node.executionRuntimeType;
         if (node.retryPolicyId) canonicalNode.retryPolicyId = node.retryPolicyId;
       } else if (node.kind === 'llm_operation') {
         canonicalNode.operationId = node.operationId;
@@ -339,17 +354,22 @@ export function canonicalizePlan(plan: DeterministicPlanDraftV1): Record<string,
         canonicalNode.operationDigest = node.operationDigest;
         canonicalNode.contractDigest = node.contractDigest;
         if (node.promptTemplateId) canonicalNode.promptTemplateId = node.promptTemplateId;
-        if (node.promptTemplateVersion) canonicalNode.promptTemplateVersion = node.promptTemplateVersion;
+        if (node.promptTemplateVersion)
+          canonicalNode.promptTemplateVersion = node.promptTemplateVersion;
         if (node.modelPolicyId) canonicalNode.modelPolicyId = node.modelPolicyId;
+        if (node.modelId) canonicalNode.modelId = node.modelId;
         if (node.temperature !== undefined) canonicalNode.temperature = node.temperature;
         if (node.maxInputTokens !== undefined) canonicalNode.maxInputTokens = node.maxInputTokens;
-        if (node.maxOutputTokens !== undefined) canonicalNode.maxOutputTokens = node.maxOutputTokens;
+        if (node.maxOutputTokens !== undefined)
+          canonicalNode.maxOutputTokens = node.maxOutputTokens;
       }
       return canonicalNode;
     });
 
   const sortedFinalOutputs = [...plan.finalOutputs]
-    .sort((a, b) => `${a.fromNodeId}:${a.targetField}`.localeCompare(`${b.fromNodeId}:${b.targetField}`))
+    .sort((a, b) =>
+      `${a.fromNodeId}:${a.targetField}`.localeCompare(`${b.fromNodeId}:${b.targetField}`)
+    )
     .map((fo) => sortObjectKeys(fo));
 
   return {

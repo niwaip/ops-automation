@@ -23,6 +23,7 @@
     "@ops/backend-agent-profile": "file:../../../../packages/backend-contracts/agent-profile",
     "@ops/backend-deterministic-plan": "file:../../../../packages/backend-contracts/deterministic-plan",
     "@ops/backend-error-codes": "file:../../../../packages/backend-contracts/error-codes",
+    "@ops/backend-planning-decision": "file:../../../../packages/backend-contracts/planning-decision",
     "@ops/backend-runtime-capability-contract": "file:../../../../packages/backend-contracts/runtime-capability-contract",
     "@nestjs/common": "^10.0.0",
     "@nestjs/core": "^10.0.0",

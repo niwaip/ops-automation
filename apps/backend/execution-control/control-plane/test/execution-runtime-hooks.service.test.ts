@@ -261,6 +261,7 @@ describe('ExecutionRuntimeHooksService', () => {
       closeRuntimeSessionQuietly: jest.fn().mockResolvedValue(undefined),
       extractStepUrl: jest.fn().mockReturnValue('https://example.com'),
       skipSingleStep: jest.fn().mockResolvedValue(undefined),
+      failExecutionFromRuntimeStep: jest.fn().mockResolvedValue(undefined),
       executeBrowserGotoStep: jest.fn().mockResolvedValue(undefined),
       enterWaitingInput: jest.fn().mockResolvedValue(undefined),
       executeBrowserPhaseStep: jest.fn().mockResolvedValue(undefined),
@@ -278,6 +279,13 @@ describe('ExecutionRuntimeHooksService', () => {
     await hooks.closeRuntimeSessionQuietly('runtime-1', 'execution-1', 'done');
     expect(hooks.extractStepUrl({ id: 'step-1' }, { id: 'execution-1' })).toBe('https://example.com');
     await hooks.skipSingleStep('step-1', 'execution-1', 'missing-url');
+    await hooks.failExecutionFromRuntimeStep({
+      executionId: 'execution-1',
+      stepId: 'step-unsupported',
+      failureReason: 'unsupported',
+      failureCode: 'UNSUPPORTED_EXECUTION_STEP',
+      runtimeSessionId: 'runtime-1',
+    });
     await hooks.executeBrowserGotoStep(
       { id: 'execution-1' },
       'runtime-1',
@@ -298,6 +306,16 @@ describe('ExecutionRuntimeHooksService', () => {
       'runtime-1',
       'execution-1',
       'done'
+    );
+    expect(callbacks.failExecutionFromRuntimeStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        executionId: 'execution-1',
+        failureCode: 'UNSUPPORTED_EXECUTION_STEP',
+      }),
+      expect.objectContaining({
+        emitEvent: failureCallbacks.emitEvent,
+        updateStatus: failureCallbacks.updateStatus,
+      })
     );
     expect(callbacks.extractStepUrl).toHaveBeenCalledWith(
       { id: 'step-1' },

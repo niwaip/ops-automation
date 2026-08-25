@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { PlanGeneratorService, PlanSemanticService } from './plan';
 import {
+  DeterministicParamResolverService,
   ParamBilingualService,
   ParamContextMergeService,
   ParamPolicyService,
@@ -59,20 +60,15 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       paramValueService,
       paramRequiredInputPresentationService
     );
-    plannerMatchPhaseService = new PlannerMatchPhaseService(
-      skillCacheService,
-      skillMatcherService
-    );
+    plannerMatchPhaseService = new PlannerMatchPhaseService(skillCacheService, skillMatcherService);
     plannerPlanDraftService = new PlannerPlanDraftService(
       recognizerService as unknown as RecognizerService,
       planSemanticService,
       planGeneratorService,
-      paramRecognizerService
+      paramRecognizerService,
+      new DeterministicParamResolverService()
     );
-    service = new PlannerService(
-      plannerMatchPhaseService,
-      plannerPlanDraftService
-    );
+    service = new PlannerService(plannerMatchPhaseService, plannerPlanDraftService);
   });
 
   afterEach(() => {

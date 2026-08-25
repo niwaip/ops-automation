@@ -8,6 +8,11 @@
 
 - 系统描述：[Enterprise-Skill-Platform_Master_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Master_v4.0.md)
 - 项目描述：[Enterprise-Skill-Platform_Project-Description_v4.1.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Project-Description_v4.1.md)
+- 企业任务编排现状、调用流程与 Harness 对比：[task-orchestration/01-current-state-and-harness-comparison.md](task-orchestration/01-current-state-and-harness-comparison.md)
+- 企业任务编排目标架构：[task-orchestration/02-target-architecture.md](task-orchestration/02-target-architecture.md)
+- 企业任务编排设计与落地计划：[task-orchestration/03-design-and-implementation-plan.md](task-orchestration/03-design-and-implementation-plan.md)
+- Temporal 顶层执行权 ADR：[task-orchestration/04-temporal-authority-decision.md](task-orchestration/04-temporal-authority-decision.md)
+- 本地 Durable Dispatch 灰度运行手册：[task-orchestration/05-local-durable-dispatch-rollout.md](task-orchestration/05-local-durable-dispatch-rollout.md)
 - 浏览器录制模块概要：[browser-recorder-module-overview.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/browser-recorder-module-overview.md)
 - 浏览器模板生成与发布桥接概要：[browser-template-generation-and-release-bridge-overview.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/browser-template-generation-and-release-bridge-overview.md)
 - 确定性多步骤任务拆分方案：[deterministic-task-decomposition-design.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/deterministic-task-decomposition-design.md)

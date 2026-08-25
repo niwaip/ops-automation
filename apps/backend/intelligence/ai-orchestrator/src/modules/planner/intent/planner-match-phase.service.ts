@@ -3,6 +3,15 @@ import type { AvailableSkillDefinition, SkillMatchResult } from '../../react-eng
 import { SkillCacheService, SkillMatcherService } from '../skill';
 import type { PlannerGeneratePlanInput, PlannerMatchPhaseResult } from '../facade';
 
+type SkillMatchFailure = NonNullable<PlannerMatchPhaseResult['failure']>;
+
+class SkillMatchUnavailableError extends Error {
+  constructor(readonly failure: SkillMatchFailure) {
+    super(failure.message);
+    this.name = 'SkillMatchUnavailableError';
+  }
+}
+
 @Injectable()
 export class PlannerMatchPhaseService {
   constructor(
@@ -21,19 +30,30 @@ export class PlannerMatchPhaseService {
       input.traceId,
       targetSkillId || undefined
     );
-    const matchedSkill = await this.matchSkill(
-      objective,
-      input.userId || input.request.user_id,
-      input.authToken,
-      input.traceId,
-      availableSkills,
-      input.request.context
-    );
+    let matchedSkill: SkillMatchResult | null = null;
+    let failure: SkillMatchFailure | undefined;
+    try {
+      matchedSkill = await this.matchSkill(
+        objective,
+        input.userId || input.request.user_id,
+        input.authToken,
+        input.traceId,
+        availableSkills,
+        input.request.context,
+        input.request.modelId
+      );
+    } catch (error) {
+      if (!(error instanceof SkillMatchUnavailableError)) {
+        throw error;
+      }
+      failure = error.failure;
+    }
 
     return {
       objective,
       matchedSkill,
       hasVisibleSkills: availableSkills.length > 0,
+      ...(failure ? { failure } : {}),
     };
   }
 
@@ -51,15 +71,25 @@ export class PlannerMatchPhaseService {
     authToken: string | undefined,
     traceId: string | undefined,
     availableSkills: AvailableSkillDefinition[],
-    context?: Record<string, unknown>
+    context?: Record<string, unknown>,
+    modelId?: string
   ): Promise<SkillMatchResult | null> {
-    return this.skillMatcherService.matchSkill({
+    const attempt = await this.skillMatcherService.matchSkillAttempt({
       userInput,
       userId,
       authToken,
       traceId,
       availableSkills,
       context,
+      modelId,
     });
+    if (attempt.status === 'unavailable') {
+      throw new SkillMatchUnavailableError({
+        code: attempt.code,
+        message: attempt.message,
+        retryable: attempt.retryable,
+      });
+    }
+    return attempt.match;
   }
 }

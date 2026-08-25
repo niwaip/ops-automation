@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { DeterministicPlanSchedulerService } from './deterministic-plan-scheduler.service';
 import { GracePolicyService } from './grace-policy.service';
 import { ExecutionStreamService } from '../lifecycle/execution-stream.service';
+import { roleEnabled } from '../../../config/control-plane-role';
 
 @Injectable()
 export class DeterministicPlanRecoveryService implements OnModuleInit {
@@ -12,10 +13,11 @@ export class DeterministicPlanRecoveryService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly scheduler: DeterministicPlanSchedulerService,
     private readonly gracePolicy: GracePolicyService,
-    private readonly eventStream: ExecutionStreamService,
+    private readonly eventStream: ExecutionStreamService
   ) {}
 
   async onModuleInit(): Promise<void> {
+    if (!roleEnabled('dispatcher')) return;
     // Run async recovery on startup without blocking module initialization
     setTimeout(() => {
       this.recoverPendingPlans().catch((err) => {
@@ -32,10 +34,7 @@ export class DeterministicPlanRecoveryService implements OnModuleInit {
       where: {
         execution: { executionMode: 'deterministic_plan', status: { in: ['queued', 'running'] } },
         status: 'running',
-        OR: [
-          { leaseExpiresAt: { lt: now } },
-          { leaseExpiresAt: null },
-        ],
+        OR: [{ leaseExpiresAt: { lt: now } }, { leaseExpiresAt: null }],
       },
       data: {
         status: 'pending',
@@ -45,7 +44,9 @@ export class DeterministicPlanRecoveryService implements OnModuleInit {
     });
 
     if (resetCount.count > 0) {
-      this.logger.log(`Reset ${resetCount.count} expired/stuck step leases back to 'pending' for recovery.`);
+      this.logger.log(
+        `Reset ${resetCount.count} expired/stuck step leases back to 'pending' for recovery.`
+      );
     }
 
     const pendingExecutions = await this.prisma.execution.findMany({
@@ -65,7 +66,9 @@ export class DeterministicPlanRecoveryService implements OnModuleInit {
       return;
     }
 
-    this.logger.log(`Found ${pendingExecutions.length} pending deterministic execution plans. Recovering...`);
+    this.logger.log(
+      `Found ${pendingExecutions.length} pending deterministic execution plans. Recovering...`
+    );
 
     for (const exec of pendingExecutions) {
       // Legacy grace period gate (§17.1): never-started executions rejected by
@@ -75,7 +78,7 @@ export class DeterministicPlanRecoveryService implements OnModuleInit {
       // exempt from the migration deadline.
       if (this.isLegacyPlan(exec) && this.gracePolicy.shouldReject(exec.status)) {
         this.logger.warn(
-          `Execution ${exec.id} rejected by legacy grace policy (status=${exec.status}, grace expired)`,
+          `Execution ${exec.id} rejected by legacy grace policy (status=${exec.status}, grace expired)`
         );
         await this.prisma.execution.update({
           where: { id: exec.id },
@@ -86,22 +89,20 @@ export class DeterministicPlanRecoveryService implements OnModuleInit {
             endedAt: new Date(),
           },
         });
-        await this.eventStream.createEvent(
-          exec.id,
-          'execution.legacy_grace.rejected',
-          {
-            oldStatus: exec.status,
-            newStatus: 'failed',
-            failureCode: 'LEGACY_GRACE_EXPIRED',
-            failureReason: 'Legacy grace period expired — execution rejected before start',
-          },
-        );
+        await this.eventStream.createEvent(exec.id, 'execution.legacy_grace.rejected', {
+          oldStatus: exec.status,
+          newStatus: 'failed',
+          failureCode: 'LEGACY_GRACE_EXPIRED',
+          failureReason: 'Legacy grace period expired — execution rejected before start',
+        });
         continue;
       }
       try {
         await this.scheduler.advanceExecution(exec.id);
       } catch (err: any) {
-        this.logger.error(`Error recovering deterministic plan execution ${exec.id}: ${err.message}`);
+        this.logger.error(
+          `Error recovering deterministic plan execution ${exec.id}: ${err.message}`
+        );
       }
     }
   }

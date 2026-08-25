@@ -257,9 +257,24 @@ export class LlmOperationV2RuntimeService {
       userPrompt = built.userPrompt;
     }
 
-    const activeModel = this.modelService.getPreferredDefaultModel({ mode: 'task' });
+    const activeModel = request.modelId
+      ? await this.modelService.getModel(request.modelId)
+      : this.modelService.getPreferredDefaultModel({ mode: 'task' });
     if (!activeModel) {
-      throw new Error('No active AI model configured for task operations');
+      throw new LlmOperationError(
+        LLM_OPERATION_ERROR_CODES.MODEL_NOT_AVAILABLE,
+        request.modelId
+          ? `Frozen task model '${request.modelId}' is not available`
+          : 'No active AI model configured for task operations',
+        { requestedModel: request.modelId || 'default' },
+      );
+    }
+    if (request.modelId && activeModel.status !== 'active') {
+      throw new LlmOperationError(
+        LLM_OPERATION_ERROR_CODES.MODEL_NOT_AVAILABLE,
+        `Frozen task model '${activeModel.id}' is not active or configured`,
+        { requestedModel: activeModel.id, provider: activeModel.provider },
+      );
     }
 
     const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;

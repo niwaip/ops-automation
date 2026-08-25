@@ -6,6 +6,7 @@ import { getControlPlaneApiUrl } from '../config/service-endpoints';
 interface ControlPlaneUserContext {
   userId?: string;
   userRoles?: string[];
+  organizationId?: string;
 }
 
 interface ControlPlaneRequestOptions {
@@ -49,6 +50,9 @@ export class ControlPlaneClient {
       const primaryRole = this.selectPrimaryRole(options.user.userRoles);
       if (primaryRole) {
         headers['X-User-Role'] = primaryRole;
+      }
+      if (options.user.organizationId) {
+        headers['X-Organization-Id'] = options.user.organizationId;
       }
       return headers;
     }
@@ -197,6 +201,56 @@ export class ControlPlaneClient {
   ): Promise<T> {
     const response = await axios.post<T>(
       `${this.getBaseUrl()}/internal/routing-observations`,
+      body,
+      this.buildConfig(options)
+    );
+    return response.data;
+  }
+
+  async recordPlanningDecision<T = unknown>(
+    body: Record<string, unknown>,
+    options?: ControlPlaneRequestOptions
+  ): Promise<T> {
+    const response = await axios.post<T>(
+      `${this.getBaseUrl()}/internal/planning-decisions`,
+      body,
+      this.buildConfig(options)
+    );
+    return response.data;
+  }
+
+  async recordModelInvocation<T = unknown>(
+    body: Record<string, unknown>,
+    options?: ControlPlaneRequestOptions
+  ): Promise<T> {
+    const response = await axios.post<T>(
+      `${this.getBaseUrl()}/internal/model-invocations`,
+      body,
+      this.buildConfig(options)
+    );
+    return response.data;
+  }
+
+  async resolveScopedMemory<T = unknown>(
+    query: { kind: string; memoryKey: string },
+    options?: ControlPlaneRequestOptions
+  ): Promise<T> {
+    const response = await axios.get<T>(
+      `${this.getBaseUrl()}/internal/scoped-memories/resolve`,
+      {
+        ...this.buildConfig(options),
+        params: query,
+      }
+    );
+    return response.data;
+  }
+
+  async attachModelInvocations<T = unknown>(
+    body: { traceId: string; executionId: string },
+    options?: ControlPlaneRequestOptions
+  ): Promise<T> {
+    const response = await axios.post<T>(
+      `${this.getBaseUrl()}/internal/model-invocations/attach`,
       body,
       this.buildConfig(options)
     );

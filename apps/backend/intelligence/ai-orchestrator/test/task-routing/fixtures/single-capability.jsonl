@@ -1,0 +1,6 @@
+{"id":"single-001","locale":"zh-CN","request":"查询北京天气","hasPreviousResult":false,"expectedLegacyRoute":"single_skill","expectedTargetClass":"single_capability","notes":"无处理或产物信号的单能力查询"}
+{"id":"single-002","locale":"zh-CN","request":"打开公司门户首页","hasPreviousResult":false,"expectedLegacyRoute":"single_skill","expectedTargetClass":"single_capability","notes":"单一浏览器动作"}
+{"id":"single-003","locale":"en-US","request":"Check the current exchange rate","hasPreviousResult":false,"expectedLegacyRoute":"single_skill","expectedTargetClass":"single_capability","notes":"英文单能力查询"}
+{"id":"single-004","locale":"zh-CN","request":"读取订单 10001 的状态","hasPreviousResult":false,"expectedLegacyRoute":"single_skill","expectedTargetClass":"single_capability","notes":"企业实体精确读取"}
+{"id":"single-005","locale":"zh-CN","request":"查看库存预警","hasPreviousResult":false,"expectedLegacyRoute":"single_skill","expectedTargetClass":"single_capability","notes":"不含当前策略的处理词"}
+{"id":"single-006","locale":"zh-CN","request":"查询北京天气","hasPreviousResult":true,"expectedLegacyRoute":"single_skill","expectedTargetClass":"single_capability","notes":"上一结果不得污染无关请求"}

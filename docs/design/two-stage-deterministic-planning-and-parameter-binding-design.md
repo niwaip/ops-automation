@@ -49,7 +49,7 @@
 - `CapabilityCandidateSelectorService` 只保留发布、部署、版本和输出 Schema 硬门禁，不再根据“搜索/总结/Markdown”关键词打分。
 - Routing Card 已增加 `displayName` 和 `description`，Topology LLM 输出 `finalOutputKind`。
 - `MultiNodeParameterBinderService` 已改为复用 `RecognizerService`，仅向 LLM 发送已选能力未被上游绑定的非敏感字段。
-- 复合规划调用 Recognizer 时设置 `fallbackMode=none`；模型不可用或调用失败时不使用正则猜测参数，必填字段进入缺参结果。
+- 复合规划调用 Recognizer 时设置 `fallbackMode=none`；但在调用模型前，允许依据能力合同的 `semanticRole`/标准字段名与版本化 Routing Policy 解析唯一、无歧义的文本槽位。例如搜索能力的唯一 `query` 可从“搜索 X 的新闻，然后总结”确定性绑定为 `X`。这不是通用正则猜测；无法唯一解析时仍进入 Recognizer，模型不可用则必填字段进入缺参结果。
 - 默认值在 Binder 和 Temporal 发布 Schema 编译器中都会按声明类型归一化，`type=number, default="5"` 将变为数值 `5`。
 - 已增加“查询 AI 新闻并总结”两阶段回归测试，覆盖 LLM 拓扑、LLM 参数识别、`topic=news`、`maxResults=5(number)` 和上游绑定。
 
@@ -131,7 +131,7 @@ PlannerMatchPhaseService.matchSkillPhase
 `CapabilityCandidateSelectorService.selectCandidates()` 接收 `userRequest`，但当前核心逻辑仍是：
 
 ```ts
-availableSkills.slice(0, 12)
+availableSkills.slice(0, 12);
 ```
 
 这会导致：
@@ -234,16 +234,16 @@ flowchart TD
 
 核心组件职责：
 
-| 组件 | 职责 | 是否调用 LLM |
-|---|---|---|
-| Route Classifier | 判断单 Skill 快速路径或复合计划路径 | 默认否 |
-| Candidate Retriever | 从用户可见能力中召回 Top-K | 默认否，可选 embedding |
-| Topology Planner | 基于 Skill 名称、描述和合同语义选择能力并建立依赖 | 是，主路径必调 |
-| Topology Validator | 校验能力存在、节点数量、DAG 和基本可组合性 | 否 |
-| Contract Assembler | 从 Registry/Catalog 填充版本和权威合同 | 否 |
-| Parameter Binder | 对已选能力调用 LLM 识别用户值，再由代码处理上游输出、默认值与缺参 | 有未绑定字段时调用 |
-| Plan Assembler | 生成最终 `DeterministicPlanDraftV1` | 否 |
-| Control Plane | 二次校验、冻结、等待补参和执行 | 否 |
+| 组件                | 职责                                                              | 是否调用 LLM           |
+| ------------------- | ----------------------------------------------------------------- | ---------------------- |
+| Route Classifier    | 判断单 Skill 快速路径或复合计划路径                               | 默认否                 |
+| Candidate Retriever | 从用户可见能力中召回 Top-K                                        | 默认否，可选 embedding |
+| Topology Planner    | 基于 Skill 名称、描述和合同语义选择能力并建立依赖                 | 是，主路径必调         |
+| Topology Validator  | 校验能力存在、节点数量、DAG 和基本可组合性                        | 否                     |
+| Contract Assembler  | 从 Registry/Catalog 填充版本和权威合同                            | 否                     |
+| Parameter Binder    | 对已选能力调用 LLM 识别用户值，再由代码处理上游输出、默认值与缺参 | 有未绑定字段时调用     |
+| Plan Assembler      | 生成最终 `DeterministicPlanDraftV1`                               | 否                     |
+| Control Plane       | 二次校验、冻结、等待补参和执行                                    | 否                     |
 
 ## 7. 分层数据合同
 
@@ -253,7 +253,7 @@ flowchart TD
 
 ```ts
 export interface RoutingCapabilityCardV1 {
-  key: string;                 // 本次请求内短别名，例如 s0、o1
+  key: string; // 本次请求内短别名，例如 s0、o1
   capabilityKind: 'skill' | 'llm_operation';
   displayName: string;
   description: string;
@@ -280,16 +280,19 @@ export interface CandidateSnapshotV1 {
   snapshotId: string;
   catalogVersion: string;
   createdAt: string;
-  aliasMap: Record<string, {
-    capabilityKind: 'skill' | 'llm_operation';
-    capabilityId: string;
-    executableVersion: string;
-    inputSchema: Record<string, unknown>;
-    outputSchema: Record<string, unknown>;
-    runtimeType?: string;
-    supportsArtifactOutput?: boolean;
-    contractDigest?: string;
-  }>;
+  aliasMap: Record<
+    string,
+    {
+      capabilityKind: 'skill' | 'llm_operation';
+      capabilityId: string;
+      executableVersion: string;
+      inputSchema: Record<string, unknown>;
+      outputSchema: Record<string, unknown>;
+      runtimeType?: string;
+      supportsArtifactOutput?: boolean;
+      contractDigest?: string;
+    }
+  >;
 }
 ```
 
@@ -308,10 +311,10 @@ export interface DeterministicTopologyDraftV1 {
   schemaVersion: 'deterministic-topology/v1';
   objective: string;
   nodes: Array<{
-    ref: string;               // n1、n2，模型只负责本地引用
-    capabilityKey: string;     // s0、o1 等短别名
+    ref: string; // n1、n2，模型只负责本地引用
+    capabilityKey: string; // s0、o1 等短别名
     dependsOn: string[];
-  }>;  
+  }>;
   finalNodeRef: string;
   finalOutputKind: 'value' | 'artifact';
 }
@@ -337,10 +340,13 @@ export interface DeterministicTopologyDraftV1 {
 export interface DeterministicBindingDraftV1 {
   schemaVersion: 'deterministic-binding/v1';
   normalizedInput: Record<string, unknown>;
-  nodeBindings: Record<string, {
-    inputBindings: Record<string, ValueBindingV1>;
-    paramResolution: Record<string, DeterministicParamResolutionEntryV1>;
-  }>;
+  nodeBindings: Record<
+    string,
+    {
+      inputBindings: Record<string, ValueBindingV1>;
+      paramResolution: Record<string, DeterministicParamResolutionEntryV1>;
+    }
+  >;
   requiredUserInputs: DeterministicRequiredUserInputV1[];
 }
 
@@ -359,10 +365,10 @@ export interface DeterministicParamResolutionEntryV1 {
 }
 
 export interface DeterministicRequiredUserInputV1 {
-  key: string;                 // 例如 n1.query，补参接口使用的稳定键
+  key: string; // 例如 n1.query，补参接口使用的稳定键
   nodeRef: string;
   field: string;
-  inputPath: string;           // planInputs.n1.query
+  inputPath: string; // planInputs.n1.query
   prompt: string;
   type: string;
   enum?: unknown[];
@@ -487,11 +493,11 @@ score =
 
 默认建议：
 
-| 类型 | 默认上限 |
-|---|---:|
-| 普通/内置 Skill | 6 |
-| LLM Operation | 4 |
-| Artifact Skill | 额外保留 1 |
+| 类型            |                                    默认上限 |
+| --------------- | ------------------------------------------: |
+| 普通/内置 Skill |                                           6 |
+| LLM Operation   | 5（当前系统基线；新增能力后仍需按目标召回） |
+| Artifact Skill  |                                  额外保留 1 |
 
 不能继续以“可见列表前 12 个”为候选策略。
 
@@ -507,16 +513,19 @@ score =
 
 阶段一不识别 Skill 具体参数，不生成 output path，不处理缺参。
 
-### 9.2 LLM 意图识别为必经步骤
+### 9.2 受审计 Recipe 优先，未覆盖意图再进入 LLM 拓扑规划
 
-主路径不再调用 `DeterministicRecipeMatcherService`。请求中的“搜索”、“新闻”、“总结”或“文件”等词不能直接触发固定拓扑。Topology LLM 必须综合：
+经过版本化 Routing Policy、精确前置条件和合同验收的稳定模式，可以先由
+`DeterministicRecipeMatcherService` 生成最小拓扑。例如搜索后总结、文档提取后总结，以及“已有可信结果 + 单次文本变换”。Recipe 必须记录版本、命中原因和所选能力，并在能力缺失或存在未覆盖外部动作时失败关闭到 Topology LLM，而不是勉强执行。
+
+没有受审计 Recipe 覆盖的请求，Topology LLM 必须综合：
 
 - Skill/LLM Operation 的 `displayName` 和 `description`。
 - `goals`、可接受输入和可产生输出。
 - 是否支持 artifact 输出。
 - 用户原始目标及各子目标间的依赖。
 
-若保留 Recipe，只能作为 LLM 已识别拓扑后的稳定组装模板，不能再作为意图分类器。
+禁止在 Service 中散落场景正则。所有 Recipe 信号必须来自同一份版本化 Routing Policy；涉及实时数据、外部系统或副作用的请求不能仅由 LLM Operation Recipe 完成。
 
 ### 9.3 LLM Topology Planner Prompt
 
@@ -539,9 +548,15 @@ score =
 {
   "request": "搜索最新 AI 新闻，总结并输出 md",
   "capabilities": [
-    {"k":"s0","g":["web_search"],"in":["string"],"out":["news_item_list"]},
-    {"k":"o0","g":["summarize"],"in":["news_item_list"],"out":["markdown_content"]},
-    {"k":"s1","g":["write_markdown"],"in":["markdown_content"],"out":["artifact_ref"],"artifact":true}
+    { "k": "s0", "g": ["web_search"], "in": ["string"], "out": ["news_item_list"] },
+    { "k": "o0", "g": ["summarize"], "in": ["news_item_list"], "out": ["markdown_content"] },
+    {
+      "k": "s1",
+      "g": ["write_markdown"],
+      "in": ["markdown_content"],
+      "out": ["artifact_ref"],
+      "artifact": true
+    }
   ]
 }
 ```
@@ -550,14 +565,14 @@ score =
 
 ```json
 {
-  "schemaVersion":"deterministic-topology/v1",
-  "objective":"搜索最新 AI 新闻，总结并输出 Markdown 文件",
-  "nodes":[
-    {"ref":"n1","capabilityKey":"s0","dependsOn":[]},
-    {"ref":"n2","capabilityKey":"o0","dependsOn":["n1"]},
-    {"ref":"n3","capabilityKey":"s1","dependsOn":["n2"]}
+  "schemaVersion": "deterministic-topology/v1",
+  "objective": "搜索最新 AI 新闻，总结并输出 Markdown 文件",
+  "nodes": [
+    { "ref": "n1", "capabilityKey": "s0", "dependsOn": [] },
+    { "ref": "n2", "capabilityKey": "o0", "dependsOn": ["n1"] },
+    { "ref": "n3", "capabilityKey": "s1", "dependsOn": ["n2"] }
   ],
-  "finalNodeRef":"n3"
+  "finalNodeRef": "n3"
 }
 ```
 
@@ -733,9 +748,9 @@ interface BindPlanParametersInput {
 {
   "request": "搜索最新 AI 新闻，总结并输出 ai-news.md",
   "fields": {
-    "f0": {"type":"string","description":"搜索关键词","required":true},
-    "f1": {"type":"string","enum":["general","news","finance"],"default":"general"},
-    "f2": {"type":"string","description":"Markdown 文件名","required":true}
+    "f0": { "type": "string", "description": "搜索关键词", "required": true },
+    "f1": { "type": "string", "enum": ["general", "news", "finance"], "default": "general" },
+    "f2": { "type": "string", "description": "Markdown 文件名", "required": true }
   }
 }
 ```
@@ -745,8 +760,8 @@ interface BindPlanParametersInput {
 ```json
 {
   "values": {
-    "f0": {"value":"最新人工智能新闻","confidence":0.98},
-    "f2": {"value":"ai-news.md","confidence":0.99}
+    "f0": { "value": "最新人工智能新闻", "confidence": 0.98 },
+    "f2": { "value": "ai-news.md", "confidence": 0.99 }
   }
 }
 ```
@@ -795,20 +810,20 @@ apiKey token secret password credential authorization cookie privateKey
 
 ### 12.1 节点字段来源
 
-| 字段 | 权威来源 |
-|---|---|
-| `nodeId` | 代码生成 |
-| `sequence` | 稳定拓扑排序 |
-| `title` | 能力 displayName + 代码模板 |
-| `kind` | Candidate Snapshot |
-| `skillId/operationId` | Candidate Snapshot |
-| `skillVersion/operationVersion` | Registry/Catalog |
-| `runtimeType` | Registry/Catalog |
-| `dependsOn` | Topology Draft |
-| `inputBindings` | Parameter Binder |
-| `outputContract` | 权威 output schema |
-| `failurePolicy` | 固定策略 |
-| `finalOutputs` | finalNode + 权威 output schema |
+| 字段                            | 权威来源                       |
+| ------------------------------- | ------------------------------ |
+| `nodeId`                        | 代码生成                       |
+| `sequence`                      | 稳定拓扑排序                   |
+| `title`                         | 能力 displayName + 代码模板    |
+| `kind`                          | Candidate Snapshot             |
+| `skillId/operationId`           | Candidate Snapshot             |
+| `skillVersion/operationVersion` | Registry/Catalog               |
+| `runtimeType`                   | Registry/Catalog               |
+| `dependsOn`                     | Topology Draft                 |
+| `inputBindings`                 | Parameter Binder               |
+| `outputContract`                | 权威 output schema             |
+| `failurePolicy`                 | 固定策略                       |
+| `finalOutputs`                  | finalNode + 权威 output schema |
 
 ### 12.2 finalOutputs 生成
 
@@ -1006,19 +1021,19 @@ ParameterRecognitionFacade
 
 ### 15.2 优化措施
 
-| 措施 | 作用 |
-|---|---|
-| 拓扑内部合同 | 大幅减少阶段一输出字段 |
-| 短别名 | 避免反复输出 UUID 和长 Operation ID |
-| Top-K 召回 | 不发送无关能力 |
-| 路由卡片 | 阶段一不发送完整输入 Schema |
-| Structured Output | 删除两个完整 JSON 示例 |
-| 代码组装版本/合同 | 减少模型生成后被覆盖的内容 |
-| Schema 自动连边 | 不让模型猜 output path |
-| 批量参数识别 | 用户原文不按节点重复发送 |
-| Prompt Cache | 缓存静态参数识别规则 |
-| 增量补参 | 补参时只处理缺失字段 |
-| 拓扑卡片仅保留名称/描述/合同摘要 | 保持 LLM 意图识别的同时降低 token |
+| 措施                             | 作用                                |
+| -------------------------------- | ----------------------------------- |
+| 拓扑内部合同                     | 大幅减少阶段一输出字段              |
+| 短别名                           | 避免反复输出 UUID 和长 Operation ID |
+| Top-K 召回                       | 不发送无关能力                      |
+| 路由卡片                         | 阶段一不发送完整输入 Schema         |
+| Structured Output                | 删除两个完整 JSON 示例              |
+| 代码组装版本/合同                | 减少模型生成后被覆盖的内容          |
+| Schema 自动连边                  | 不让模型猜 output path              |
+| 批量参数识别                     | 用户原文不按节点重复发送            |
+| Prompt Cache                     | 缓存静态参数识别规则                |
+| 增量补参                         | 补参时只处理缺失字段                |
+| 拓扑卡片仅保留名称/描述/合同摘要 | 保持 LLM 意图识别的同时降低 token   |
 
 ### 15.3 Token 预算门禁
 
@@ -1036,13 +1051,13 @@ interface PlannerTokenBudgetV1 {
 
 建议初始值：
 
-| 项目 | 建议值 |
-|---|---:|
+| 项目                |                 建议值 |
+| ------------------- | ---------------------: |
 | Skill routing cards | 6 + 1 artifact reserve |
-| LLM Operation cards | 4 |
-| Topology repair | 最多 1 次 |
-| Parameter repair | 每组最多 1 次 |
-| 节点上限 | 6 |
+| LLM Operation cards |      5（当前系统基线） |
+| Topology repair     |              最多 1 次 |
+| Parameter repair    |          每组最多 1 次 |
+| 节点上限            |                      6 |
 
 具体 token 阈值应通过实际模型 tokenizer 和基线流量测量后确定，不在设计文档中硬编码模型相关数字。
 
@@ -1050,11 +1065,12 @@ interface PlannerTokenBudgetV1 {
 
 不能只看调用次数，要看总 token、延迟和成功率：
 
-| 场景 | Topology 调用 | Binding 调用 |
-|---|---:|---:|
-| 单 Skill | 0 | 0～1 |
-| 复合任务 | 1 | 按已选且存在未绑定字段的能力调用 |
-| 用户补参 | 0 | 0 或仅缺失字段 1 次 |
+| 场景                           | Topology 调用 |                     Binding 调用 |
+| ------------------------------ | ------------: | -------------------------------: |
+| 单 Skill                       |             0 |                             0～1 |
+| 已有结果 + 受审计单次 LLM 变换 |             0 |                                0 |
+| 复合任务                       |             1 | 按已选且存在未绑定字段的能力调用 |
+| 用户补参                       |             0 |              0 或仅缺失字段 1 次 |
 
 只有当所有字段都已由 `node_output` 绑定时，Binding 才不调用 LLM；不允许回退到正则或关键词参数猜测。
 
@@ -1206,19 +1222,19 @@ User Web：
 
 新增或明确错误码：
 
-| 错误码 | 含义 | 阶段 |
-|---|---|---|
-| `CAPABILITY_NOT_FOUND` | 没有可执行候选能力 | 召回 |
-| `TOPOLOGY_OUTPUT_INVALID` | 拓扑结构不合法 | 阶段一 |
-| `TOPOLOGY_CAPABILITY_UNKNOWN` | 使用了候选外能力 | 阶段一 |
-| `TOPOLOGY_EDGE_UNSATISFIED` | 依赖之间无可组合字段 | 拓扑校验 |
-| `PARAM_BINDING_AMBIGUOUS` | 多个 output→input 绑定无法确定 | 阶段二 |
-| `PARAM_REQUIRED_MISSING` | 存在阻塞缺参 | 阶段二，非失败状态 |
-| `INPUT_SCHEMA_VIOLATION` | 用户值违反权威 Schema | 补参/执行前 |
-| `INPUT_BINDING_MISSING` | binding path 无值 | 执行前 |
-| `CREDENTIAL_BINDING_UNAVAILABLE` | 无受控凭据来源 | 绑定 |
-| `FINAL_OUTPUT_UNSATISFIED` | 最终输出无法满足 | 组装/冻结 |
-| `PLANNER_TOKEN_BUDGET_EXCEEDED` | 超过规划预算 | 任一 LLM 阶段 |
+| 错误码                           | 含义                           | 阶段               |
+| -------------------------------- | ------------------------------ | ------------------ |
+| `CAPABILITY_NOT_FOUND`           | 没有可执行候选能力             | 召回               |
+| `TOPOLOGY_OUTPUT_INVALID`        | 拓扑结构不合法                 | 阶段一             |
+| `TOPOLOGY_CAPABILITY_UNKNOWN`    | 使用了候选外能力               | 阶段一             |
+| `TOPOLOGY_EDGE_UNSATISFIED`      | 依赖之间无可组合字段           | 拓扑校验           |
+| `PARAM_BINDING_AMBIGUOUS`        | 多个 output→input 绑定无法确定 | 阶段二             |
+| `PARAM_REQUIRED_MISSING`         | 存在阻塞缺参                   | 阶段二，非失败状态 |
+| `INPUT_SCHEMA_VIOLATION`         | 用户值违反权威 Schema          | 补参/执行前        |
+| `INPUT_BINDING_MISSING`          | binding path 无值              | 执行前             |
+| `CREDENTIAL_BINDING_UNAVAILABLE` | 无受控凭据来源                 | 绑定               |
+| `FINAL_OUTPUT_UNSATISFIED`       | 最终输出无法满足               | 组装/冻结          |
+| `PLANNER_TOKEN_BUDGET_EXCEEDED`  | 超过规划预算                   | 任一 LLM 阶段      |
 
 `PARAM_REQUIRED_MISSING` 不应转换为任务失败，而应转换为 `waiting_input`。
 

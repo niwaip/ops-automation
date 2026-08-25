@@ -243,6 +243,13 @@ export class ExecutionService {
     return this.executionStreamService.subscribeToEvents(executionId, callback);
   }
 
+  subscribeToDurableEvents(
+    executionId: string,
+    callback: (event: ExecutionStreamEventPayload) => void | false,
+  ) {
+    return this.executionStreamService.subscribeToDurableEvents(executionId, callback);
+  }
+
   async create(
     userId: string,
     dto: CreateExecutionDto,

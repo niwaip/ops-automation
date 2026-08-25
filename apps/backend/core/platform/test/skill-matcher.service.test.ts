@@ -33,10 +33,37 @@ describe('platform SkillMatcherService progressive disclosure', () => {
     expect(result).toEqual(
       expect.objectContaining({
         skillName: 'Bark推送服务',
-        matchReason: 'deterministic_explicit_match',
+        matchReason: 'deterministic_routing_signal',
       })
     );
     expect(axios.post).not.toHaveBeenCalled();
+  });
+
+  it('uses a generic derived routing signal without a model call', async () => {
+    const service = new SkillMatcherService();
+    const result = await service.matchSkillWithAI('上海的天气', 'user-1', async () => [
+      skill(1, { name: '天气查询', triggerKeywords: ['HTTP 请求'] }),
+      skill(2, { name: '报表查询', triggerKeywords: ['报表'] }),
+    ]);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        skillName: '天气查询',
+        matchReason: 'deterministic_routing_signal',
+      })
+    );
+    expect(axios.post).not.toHaveBeenCalled();
+  });
+
+  it('reports model unavailability instead of a false no-match result', async () => {
+    (axios.post as jest.Mock).mockRejectedValueOnce(new Error('provider unavailable'));
+    const service = new SkillMatcherService();
+
+    await expect(
+      service.matchSkillWithAI('无法确定的业务请求', 'user-1', async () => [skill(1)])
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'SKILL_MATCH_MODEL_UNAVAILABLE', retryable: true }),
+    });
   });
 
   it('discloses at most five short candidate cards to the matcher model', async () => {
@@ -56,7 +83,29 @@ describe('platform SkillMatcherService progressive disclosure', () => {
     expect((request.prompt.match(/<skill>/g) || []).length).toBe(5);
     expect(request.prompt).not.toContain('长描述'.repeat(150));
     expect((axios.post as jest.Mock).mock.calls[0][2]).toEqual(
-      expect.objectContaining({ timeout: 15000 })
+      expect.objectContaining({ timeout: 45000 })
+    );
+  });
+
+  it('forwards custom modelId to ai-orchestrator model call when provided', async () => {
+    (axios.post as jest.Mock).mockResolvedValueOnce({
+      data: { result: '{"matchedSkill":null,"confidence":0,"reason":"none"}' },
+    });
+    const service = new SkillMatcherService();
+
+    await service.matchSkillWithAI(
+      '查找一个没有显式名称的能力',
+      'user-1',
+      async () => [skill(1)],
+      'custom-model-deepseek'
+    );
+
+    expect(axios.post).toHaveBeenCalledWith(
+      expect.stringContaining('/ai/model/call'),
+      expect.objectContaining({
+        modelId: 'custom-model-deepseek',
+      }),
+      expect.objectContaining({ timeout: 45000 })
     );
   });
 });

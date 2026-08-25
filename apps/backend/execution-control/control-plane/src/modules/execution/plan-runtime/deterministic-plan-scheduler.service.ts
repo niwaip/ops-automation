@@ -5,7 +5,11 @@ import { DeterministicFinalOutputService } from './deterministic-final-output.se
 import { LlmOperationRuntimeAdapter } from '../adapters/llm-operation-runtime.adapter';
 import { ExecutionStreamService } from '../lifecycle/execution-stream.service';
 import { RuntimeExecutionOrchestrator } from '../step-runner/runtime/runtime-execution.orchestrator';
-import { DeterministicPlanDraftV1, ValueBindingV1, computePlanHash } from '@ops/backend-deterministic-plan';
+import {
+  DeterministicPlanDraftV1,
+  ValueBindingV1,
+  computePlanHash,
+} from '@ops/backend-deterministic-plan';
 import { jsonSchemaValidator } from '@ops/backend-runtime-capability-contract';
 import { ContractViolationError } from './contract-violation.error';
 import { LegacyOutputAdapterService } from './legacy-output-adapter.service';
@@ -14,6 +18,7 @@ import { OutputNormalizerService } from './output-normalizer.service';
 import { GracePolicyService } from './grace-policy.service';
 import { ERROR_CODES } from '@ops/backend-error-codes';
 import { buildDeterministicExecutionResult } from './deterministic-execution-result.builder';
+import { DeterministicReadySetService } from './deterministic-ready-set.service';
 
 @Injectable()
 export class DeterministicPlanSchedulerService {
@@ -30,6 +35,7 @@ export class DeterministicPlanSchedulerService {
     private readonly contractCatalog: CapabilityContractCatalogService,
     private readonly outputNormalizer: OutputNormalizerService,
     private readonly gracePolicy: GracePolicyService,
+    private readonly readySet: DeterministicReadySetService = new DeterministicReadySetService()
   ) {}
 
   /**
@@ -48,7 +54,11 @@ export class DeterministicPlanSchedulerService {
       return;
     }
 
-    if (execution.status === 'succeeded' || execution.status === 'failed' || execution.status === 'cancelled') {
+    if (
+      execution.status === 'succeeded' ||
+      execution.status === 'failed' ||
+      execution.status === 'cancelled'
+    ) {
       return;
     }
 
@@ -60,7 +70,7 @@ export class DeterministicPlanSchedulerService {
     // migration deadline can never reject an authoritative-contract execution.
     if (this.isLegacyPlan(execution) && this.gracePolicy.shouldReject(execution.status)) {
       this.logger.warn(
-        `Execution ${executionId} rejected by legacy grace policy (status=${execution.status}, grace expired)`,
+        `Execution ${executionId} rejected by legacy grace policy (status=${execution.status}, grace expired)`
       );
       await this.prisma.execution.update({
         where: { id: executionId },
@@ -71,16 +81,12 @@ export class DeterministicPlanSchedulerService {
           endedAt: new Date(),
         },
       });
-      await this.eventPublisher.createEvent(
-        executionId,
-        'execution.legacy_grace.rejected',
-        {
-          oldStatus: execution.status,
-          newStatus: 'failed',
-          failureCode: 'LEGACY_GRACE_EXPIRED',
-          failureReason: 'Legacy grace period expired — execution rejected before start',
-        },
-      );
+      await this.eventPublisher.createEvent(executionId, 'execution.legacy_grace.rejected', {
+        oldStatus: execution.status,
+        newStatus: 'failed',
+        failureCode: 'LEGACY_GRACE_EXPIRED',
+        failureReason: 'Legacy grace period expired — execution rejected before start',
+      });
       return;
     }
 
@@ -89,7 +95,7 @@ export class DeterministicPlanSchedulerService {
       const computedHash = computePlanHash(execution.plan.planJson as any);
       if (computedHash !== execution.plan.planHash) {
         this.logger.error(
-          `Execution ${executionId} planHash mismatch! Stored: ${execution.plan.planHash}, Computed: ${computedHash}`,
+          `Execution ${executionId} planHash mismatch! Stored: ${execution.plan.planHash}, Computed: ${computedHash}`
         );
         await this.prisma.execution.update({
           where: { id: executionId },
@@ -100,16 +106,12 @@ export class DeterministicPlanSchedulerService {
             endedAt: new Date(),
           },
         });
-        await this.eventPublisher.createEvent(
-          executionId,
-          'execution.status_changed',
-          {
-            oldStatus: execution.status,
-            newStatus: 'failed',
-            failureCode: 'FROZEN_PLAN_TAMPERED',
-            failureReason: 'Execution plan hash verification failed (frozen plan tampered)',
-          },
-        );
+        await this.eventPublisher.createEvent(executionId, 'execution.status_changed', {
+          oldStatus: execution.status,
+          newStatus: 'failed',
+          failureCode: 'FROZEN_PLAN_TAMPERED',
+          failureReason: 'Execution plan hash verification failed (frozen plan tampered)',
+        });
         return;
       }
     }
@@ -125,29 +127,48 @@ export class DeterministicPlanSchedulerService {
     // Check for any currently running steps under valid active lease
     const now = new Date();
     const runningStep = execution.steps.find(
-      (s: any) => s.status === 'running' && s.leaseExpiresAt && new Date(s.leaseExpiresAt) > now,
+      (s: any) => s.status === 'running' && s.leaseExpiresAt && new Date(s.leaseExpiresAt) > now
     );
     if (runningStep) {
-      this.logger.debug(`Execution ${executionId} has running step ${runningStep.planNodeId || runningStep.id} under active lease, waiting for completion.`);
+      this.logger.debug(
+        `Execution ${executionId} has running step ${runningStep.planNodeId || runningStep.id} under active lease, waiting for completion.`
+      );
       return;
     }
 
-    // Find the next pending step (or step with expired lease)
-    const nextPendingStep = execution.steps.find(
-      (s: any) => s.status === 'pending' || (s.status === 'running' && (!s.leaseExpiresAt || new Date(s.leaseExpiresAt) <= now)),
+    const ready = this.readySet.compute(execution.steps, execution.plan?.planJson, now);
+    const hasClaimableStep = execution.steps.some(
+      (step: any) =>
+        step.status === 'pending' ||
+        (step.status === 'running' &&
+          (!step.leaseExpiresAt || new Date(step.leaseExpiresAt) <= now))
     );
 
-    // If no pending step remains, evaluate final outputs & complete parent execution
-    if (!nextPendingStep) {
+    if (ready.length === 0 && !hasClaimableStep) {
       await this.completeExecutionIfSatisfied(execution);
       return;
     }
+    if (ready.length === 0) {
+      this.logger.debug(
+        `Execution ${executionId} has pending nodes whose dependencies are not ready`
+      );
+      return;
+    }
 
-    // Execute next pending step
-    await this.executeStep(execution, nextPendingStep);
+    if (process.env.SAFE_READY_SET_PARALLEL_ENABLED === 'true') {
+      const batch = this.readySet.selectSafeParallelBatch(
+        ready,
+        execution.plan?.planJson,
+        Number(process.env.SAFE_READY_SET_MAX_CONCURRENCY || 4)
+      );
+      await Promise.all(batch.map((step) => this.executeStep(execution, step, false)));
+      await this.advanceExecution(execution.id);
+      return;
+    }
+    await this.executeStep(execution, ready[0]);
   }
 
-  private async executeStep(execution: any, step: any): Promise<void> {
+  private async executeStep(execution: any, step: any, autoAdvance = true): Promise<void> {
     const stepId = step.id;
     const planNodeId = step.planNodeId || step.name || `step_${step.stepIndex}`;
 
@@ -172,7 +193,9 @@ export class DeterministicPlanSchedulerService {
     });
 
     if (updateResult.count === 0) {
-      this.logger.warn(`Failed to acquire atomic lease for step ${stepId} in execution ${execution.id}`);
+      this.logger.warn(
+        `Failed to acquire atomic lease for step ${stepId} in execution ${execution.id}`
+      );
       return;
     }
 
@@ -185,7 +208,7 @@ export class DeterministicPlanSchedulerService {
         capabilityId: step.capabilityId,
         capabilityVersion: step.capabilityVersion,
       },
-      { stepId },
+      { stepId }
     );
     await this.eventPublisher.createEvent(
       execution.id,
@@ -199,7 +222,7 @@ export class DeterministicPlanSchedulerService {
         capabilityId: step.capabilityId,
         capabilityVersion: step.capabilityVersion,
       },
-      { stepId },
+      { stepId }
     );
 
     // Resolve inputs
@@ -208,7 +231,7 @@ export class DeterministicPlanSchedulerService {
       execution.id,
       inputBindings,
       (execution.inputJson as Record<string, any>) || {},
-      step.capabilityId,
+      step.capabilityId
     );
 
     if (!resolvedInput.apiKey) {
@@ -237,7 +260,7 @@ export class DeterministicPlanSchedulerService {
       }
 
       // After successful step execution, schedule the next step
-      await this.advanceExecution(execution.id);
+      if (autoAdvance) await this.advanceExecution(execution.id);
     } catch (error: any) {
       const errMsg = error instanceof Error ? error.message : 'Node execution failed';
       // Structured contract-violation context (design doc §12.1) flows into events
@@ -272,7 +295,7 @@ export class DeterministicPlanSchedulerService {
         execution.id,
         'execution.node.failed' as any,
         { planNodeId, errorMessage: errMsg, errorCode: error.code, errorContext: errContext },
-        { stepId },
+        { stepId }
       );
       await this.eventPublisher.createEvent(
         execution.id,
@@ -286,7 +309,7 @@ export class DeterministicPlanSchedulerService {
           errorContext: errContext,
           phaseStatus: 'failed',
         },
-        { stepId },
+        { stepId }
       );
       await this.eventPublisher.createEvent(
         execution.id,
@@ -297,7 +320,7 @@ export class DeterministicPlanSchedulerService {
           failureCode: error.code || 'NODE_EXECUTION_FAILED',
           failureReason,
         },
-        { stepId },
+        { stepId }
       );
     }
   }
@@ -310,7 +333,7 @@ export class DeterministicPlanSchedulerService {
    * rejects the start because the capability contract changed after freeze.
    */
   private async verifyFrozenContractDigest(execution: any, step: any): Promise<void> {
-    const frozenMeta = (step.outputContractJson?._frozenMetadata) || {};
+    const frozenMeta = step.outputContractJson?._frozenMetadata || {};
     const frozenDigest = frozenMeta.contractDigest;
     if (!frozenDigest) {
       return;
@@ -339,7 +362,7 @@ export class DeterministicPlanSchedulerService {
       // an unverifiable contract. (Steps frozen before digest support never
       // reach this point — they return above without a frozenDigest.)
       this.logger.error(
-        `Contract re-resolution unavailable for node '${step.planNodeId}' despite frozen digest ${frozenDigest} — refusing to start the step`,
+        `Contract re-resolution unavailable for node '${step.planNodeId}' despite frozen digest ${frozenDigest} — refusing to start the step`
       );
       throw new ContractViolationError(
         ERROR_CODES.CAPABILITY_CONTRACT_NOT_FOUND,
@@ -351,7 +374,7 @@ export class DeterministicPlanSchedulerService {
           capabilityVersion: step.capabilityVersion,
           contractDigest: frozenDigest,
           contractCheckMode: 'schema',
-        },
+        }
       );
     }
     // Same shared contract-envelope semantics as the freeze-time digest (fix
@@ -360,7 +383,7 @@ export class DeterministicPlanSchedulerService {
     const currentDigest = this.contractCatalog.computeContractDigest(node, contract);
     if (currentDigest !== frozenDigest) {
       this.logger.error(
-        `Frozen contract digest mismatch for node '${step.planNodeId}': frozen ${frozenDigest} vs catalog ${currentDigest}`,
+        `Frozen contract digest mismatch for node '${step.planNodeId}': frozen ${frozenDigest} vs catalog ${currentDigest}`
       );
       throw new ContractViolationError(
         ERROR_CODES.CAPABILITY_CONTRACT_DIGEST_MISMATCH,
@@ -372,7 +395,7 @@ export class DeterministicPlanSchedulerService {
           capabilityVersion: step.capabilityVersion,
           contractDigest: frozenDigest,
           contractCheckMode: 'schema',
-        },
+        }
       );
     }
   }
@@ -408,12 +431,16 @@ export class DeterministicPlanSchedulerService {
           contractCheckMode: 'schema',
           instancePath: firstError?.path,
           keyword: firstError?.keyword,
-        },
+        }
       );
     }
   }
 
-  private async runLlmStep(execution: any, step: any, resolvedInput: Record<string, any>): Promise<void> {
+  private async runLlmStep(
+    execution: any,
+    step: any,
+    resolvedInput: Record<string, any>
+  ): Promise<void> {
     this.validateInputContract(step, resolvedInput, execution.id);
     const contractMeta = step.outputContractJson || {};
     const planJson = (execution.plan?.planJson || {}) as any;
@@ -425,9 +452,14 @@ export class DeterministicPlanSchedulerService {
       stepId: step.id,
       planHash: execution.plan?.planHash,
       operationId: step.capabilityId,
-      operationVersion: contractMeta.operationVersion || planNode?.operationVersion || step.capabilityVersion || '1',
+      operationVersion:
+        contractMeta.operationVersion ||
+        planNode?.operationVersion ||
+        step.capabilityVersion ||
+        '1',
       operationDigest: contractMeta.operationDigest || planNode?.operationDigest || '',
       contractDigest: contractMeta.contractDigest || planNode?.contractDigest || '',
+      modelId: contractMeta.modelId || planNode?.modelId,
       environment: 'production',
       input: resolvedInput,
       idempotencyKey: step.idempotencyKey || `${execution.id}:${step.id}`,
@@ -444,7 +476,9 @@ export class DeterministicPlanSchedulerService {
           },
         });
       }
-      throw new Error(result.errorMessage || `LLM Operation '${step.capabilityId}' returned failure`);
+      throw new Error(
+        result.errorMessage || `LLM Operation '${step.capabilityId}' returned failure`
+      );
     }
 
     const normalizedOutput = this.validateOutputContract(step, result.output || {}, execution.id);
@@ -474,7 +508,7 @@ export class DeterministicPlanSchedulerService {
         planNodeId: step.planNodeId,
         output: normalizedOutput,
       },
-      { stepId: step.id },
+      { stepId: step.id }
     );
     await this.eventPublisher.createEvent(
       execution.id,
@@ -484,12 +518,12 @@ export class DeterministicPlanSchedulerService {
         planNodeId: step.planNodeId,
         result: normalizedOutput,
       },
-      { stepId: step.id },
+      { stepId: step.id }
     );
   }
 
   private mapPlanRuntimeTypeToExecutionRuntime(
-    runtimeType?: string,
+    runtimeType?: string
   ): 'api' | 'workflow' | 'browser' | 'document' | 'custom' {
     const normalized = typeof runtimeType === 'string' ? runtimeType.trim().toLowerCase() : '';
 
@@ -509,12 +543,17 @@ export class DeterministicPlanSchedulerService {
     }
   }
 
-  private async runSkillStep(execution: any, step: any, resolvedInput: Record<string, any>): Promise<void> {
+  private async runSkillStep(
+    execution: any,
+    step: any,
+    resolvedInput: Record<string, any>
+  ): Promise<void> {
     this.validateInputContract(step, resolvedInput, execution.id);
     const capabilityId = step.capabilityId;
     const capabilityVersion = step.capabilityVersion;
 
-    const stepIdempotencyKey = step.idempotencyKey || `${execution.id}:${step.id}:${step.planNodeId || step.capabilityId}`;
+    const stepIdempotencyKey =
+      step.idempotencyKey || `${execution.id}:${step.id}:${step.planNodeId || step.capabilityId}`;
     const inputWithIdempotency = {
       ...resolvedInput,
       idempotencyKey: resolvedInput?.idempotencyKey || stepIdempotencyKey,
@@ -547,7 +586,7 @@ export class DeterministicPlanSchedulerService {
       executionId: execution.id,
       stepId: step.id,
       runtimeType: this.mapPlanRuntimeTypeToExecutionRuntime(
-        step.action || step.outputContractJson?.runtimeType,
+        step.action || step.outputContractJson?.runtimeType
       ),
       runtimeSessionId: '',
       skillId: capabilityId,
@@ -572,7 +611,7 @@ export class DeterministicPlanSchedulerService {
     const outputJson = this.validateOutputContract(
       step,
       (result.output || {}) as Record<string, any>,
-      execution.id,
+      execution.id
     );
 
     await this.prisma.executionStep.update({
@@ -586,7 +625,10 @@ export class DeterministicPlanSchedulerService {
     });
 
     // Save artifacts if generated by skill step
-    const rawArtifacts = result.artifacts || outputJson?.artifacts || (outputJson?.artifact ? [outputJson.artifact] : undefined);
+    const rawArtifacts =
+      result.artifacts ||
+      outputJson?.artifacts ||
+      (outputJson?.artifact ? [outputJson.artifact] : undefined);
     if (Array.isArray(rawArtifacts)) {
       for (const art of rawArtifacts) {
         const artifactUrl = art.url || art.storageUri;
@@ -615,7 +657,7 @@ export class DeterministicPlanSchedulerService {
               url: createdArtifact.url,
               mimeType: createdArtifact.mimeType,
             },
-            { stepId: step.id },
+            { stepId: step.id }
           );
         }
       }
@@ -628,7 +670,7 @@ export class DeterministicPlanSchedulerService {
         planNodeId: step.planNodeId,
         output: outputJson,
       },
-      { stepId: step.id },
+      { stepId: step.id }
     );
     await this.eventPublisher.createEvent(
       execution.id,
@@ -638,7 +680,7 @@ export class DeterministicPlanSchedulerService {
         planNodeId: step.planNodeId,
         result: outputJson,
       },
-      { stepId: step.id },
+      { stepId: step.id }
     );
   }
 
@@ -650,21 +692,19 @@ export class DeterministicPlanSchedulerService {
         where: { id: execution.id },
         data: { status: 'succeeded', endedAt: new Date() },
       });
-      await this.eventPublisher.createEvent(
-        execution.id,
-        'execution.status_changed',
-        {
-          oldStatus: execution.status,
-          newStatus: 'succeeded',
-        },
-      );
+      await this.eventPublisher.createEvent(execution.id, 'execution.status_changed', {
+        oldStatus: execution.status,
+        newStatus: 'succeeded',
+      });
       return;
     }
 
     const checkResult = await this.finalOutputService.assertSatisfied(execution.id, planDraft);
 
     if (!checkResult.satisfied) {
-      this.logger.error(`Execution ${execution.id} final output check failed: ${checkResult.errorMessage}`);
+      this.logger.error(
+        `Execution ${execution.id} final output check failed: ${checkResult.errorMessage}`
+      );
       await this.prisma.execution.update({
         where: { id: execution.id },
         data: {
@@ -674,16 +714,12 @@ export class DeterministicPlanSchedulerService {
           endedAt: new Date(),
         },
       });
-      await this.eventPublisher.createEvent(
-        execution.id,
-        'execution.status_changed',
-        {
-          oldStatus: execution.status,
-          newStatus: 'failed',
-          failureCode: checkResult.errorCode || 'FINAL_OUTPUT_MISSING',
-          failureReason: checkResult.errorMessage || 'Final outputs unsatisfied',
-        },
-      );
+      await this.eventPublisher.createEvent(execution.id, 'execution.status_changed', {
+        oldStatus: execution.status,
+        newStatus: 'failed',
+        failureCode: checkResult.errorCode || 'FINAL_OUTPUT_MISSING',
+        failureReason: checkResult.errorMessage || 'Final outputs unsatisfied',
+      });
       return;
     }
 
@@ -695,7 +731,7 @@ export class DeterministicPlanSchedulerService {
     const finalOutputs = await this.resolveFinalOutputs(
       execution.id,
       planDraft,
-      checkResult.artifacts || [],
+      checkResult.artifacts || []
     );
 
     const endedAt = new Date();
@@ -715,22 +751,20 @@ export class DeterministicPlanSchedulerService {
         resultJson: resultJson as any,
       },
     });
-    await this.eventPublisher.createEvent(
-      execution.id,
-      'execution.status_changed',
-      {
-        oldStatus: execution.status,
-        newStatus: 'succeeded',
-      },
-    );
+    await this.eventPublisher.createEvent(execution.id, 'execution.status_changed', {
+      oldStatus: execution.status,
+      newStatus: 'succeeded',
+    });
 
-    this.logger.log(`Execution ${execution.id} successfully completed all deterministic plan steps.`);
+    this.logger.log(
+      `Execution ${execution.id} successfully completed all deterministic plan steps.`
+    );
   }
 
   private async resolveFinalOutputs(
     executionId: string,
     planDraft: DeterministicPlanDraftV1,
-    artifacts: any[],
+    artifacts: any[]
   ): Promise<Array<Record<string, any>>> {
     const outputs: Array<Record<string, any>> = [];
     if (!Array.isArray(planDraft.finalOutputs) || planDraft.finalOutputs.length === 0) {
@@ -752,7 +786,7 @@ export class DeterministicPlanSchedulerService {
       const value = outputData[req.fromNodeOutput];
 
       const matchedArtifact = artifacts.find(
-        (art: any) => art.producerNodeId === req.fromNodeId || art.producerStepId === step.id,
+        (art: any) => art.producerNodeId === req.fromNodeId || art.producerStepId === step.id
       );
 
       outputs.push({
@@ -770,13 +804,18 @@ export class DeterministicPlanSchedulerService {
     return outputs;
   }
 
-  private validateOutputContract(step: any, output: Record<string, any>, executionId: string): Record<string, any> {
+  private validateOutputContract(
+    step: any,
+    output: Record<string, any>,
+    executionId: string
+  ): Record<string, any> {
     const contract = step.outputContractJson;
     // Authoritative schema is frozen at plan freeze time only (design doc §6.3/§9.3).
     // Planner self-reported schemas are never trusted at runtime.
     const outputSchema = step.outputSchemaJson;
     const dataPath = step.dataPath || contract?.dataPath;
-    const frozenMeta = (contract && typeof contract === 'object' ? contract._frozenMetadata : null) || {};
+    const frozenMeta =
+      (contract && typeof contract === 'object' ? contract._frozenMetadata : null) || {};
     const nodeId = step.planNodeId || step.id;
 
     // Unified output normalization (§15.3 item 6): searchResults synthesis +
@@ -803,7 +842,10 @@ export class DeterministicPlanSchedulerService {
       // would trip `additionalProperties: false` on flat outputs.
       // falsy-safe：extractDataByPath 仅在路径缺失时返回 undefined，合法的
       // falsy 业务值（0 / false / '' / []）必须原样保留，不能整体回退到 raw output。
-      const extractedData = jsonSchemaValidator.extractDataByPath(output, dataPath || '$.result.businessData');
+      const extractedData = jsonSchemaValidator.extractDataByPath(
+        output,
+        dataPath || '$.result.businessData'
+      );
       const schemaTarget = extractedData === undefined ? output : extractedData;
       const schemaValidation = jsonSchemaValidator.validate(schemaTarget, outputSchema);
       if (!schemaValidation.valid) {
@@ -823,7 +865,7 @@ export class DeterministicPlanSchedulerService {
             contractCheckMode: 'schema',
             instancePath: firstError?.path,
             keyword: firstError?.keyword,
-          },
+          }
         );
       }
       // Persist the normalized output for downstream node_output resolution.

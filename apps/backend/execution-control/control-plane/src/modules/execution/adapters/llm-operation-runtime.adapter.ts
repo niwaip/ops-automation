@@ -10,6 +10,7 @@ export interface LlmOperationInvokeParams {
   operationVersion: string;
   operationDigest: string;
   contractDigest: string;
+  modelId?: string;
   environment?: string;
   input: Record<string, any>;
   idempotencyKey?: string;
@@ -100,6 +101,7 @@ export class LlmOperationRuntimeAdapter {
         operationVersion: params.operationVersion,
         operationDigest: params.operationDigest,
         contractDigest: params.contractDigest,
+        ...(params.modelId ? { modelId: params.modelId } : {}),
         environment: params.environment ?? 'production',
         input: params.input,
         idempotencyKey: params.idempotencyKey ?? `${params.executionId}:${params.stepId}`,

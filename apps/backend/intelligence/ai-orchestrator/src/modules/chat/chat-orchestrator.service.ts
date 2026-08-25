@@ -19,11 +19,17 @@ import { SkillCacheService } from '../planner/skill/skill-cache.service';
 import { NO_MATCHING_SKILL_MESSAGE } from '../planner/skill/skill-match-policy';
 import type { WaitingInputSemantic } from './chat.types';
 import { ChatWaitingInputService } from './chat-waiting-input.service';
-import type { DeterministicPlanNodeV1 } from '@ops/backend-deterministic-plan';
+import { PlanningDecisionShadowService } from './planning-decision-shadow.service';
+import { TaskFallbackPolicyService } from './task-fallback-policy.service';
+import { ChatTaskResumeService } from './chat-task-resume.service';
+import { ChatPlanningPresentationService } from './chat-planning-presentation.service';
+import { ScopedPlannerMemoryService } from './scoped-planner-memory.service';
 
 @Injectable()
 export class ChatOrchestratorService {
   private readonly logger = new Logger(ChatOrchestratorService.name);
+  private readonly taskResumeService: ChatTaskResumeService;
+  private readonly planningPresentation: ChatPlanningPresentationService;
 
   constructor(
     private readonly controlPlaneClient: ControlPlaneClient,
@@ -35,7 +41,18 @@ export class ChatOrchestratorService {
     private readonly chatConversationService: ChatConversationService,
     private readonly deterministicTaskExecutionService?: DeterministicTaskExecutionService,
     private readonly skillCacheService?: SkillCacheService,
-  ) {}
+    private readonly planningDecisionShadowService?: PlanningDecisionShadowService,
+    private readonly taskFallbackPolicyService?: TaskFallbackPolicyService,
+    taskResumeService?: ChatTaskResumeService,
+    planningPresentation?: ChatPlanningPresentationService,
+    private readonly scopedPlannerMemoryService?: ScopedPlannerMemoryService
+  ) {
+    this.taskResumeService =
+      taskResumeService ||
+      new ChatTaskResumeService(controlPlaneClient, waitingInputService, executionStreamService);
+    this.planningPresentation =
+      planningPresentation || new ChatPlanningPresentationService(promptDebugSettingsService);
+  }
 
   async buildTaskModeContext(
     body: ChatRequestDTO,
@@ -59,6 +76,7 @@ export class ChatOrchestratorService {
         sessionId: body.sessionId || 'default',
         userId: resolvedUser.userId,
         userRoles: resolvedUser.userRoles?.length ? resolvedUser.userRoles : body.userRoles,
+        organizationId: resolvedUser.organizationId,
         authToken: authorization,
         traceId,
         history,
@@ -77,176 +95,31 @@ export class ChatOrchestratorService {
     const user = {
       userId: context.userId,
       userRoles: context.userRoles,
+      organizationId: context.organizationId,
     };
+    const resolvedModelId =
+      (body.modelId && body.modelId !== 'default' ? body.modelId : undefined) ||
+      (body.config as any)?.modelId ||
+      (body.config as any)?.model;
 
-    if (executionId) {
-      try {
-        const execution = await this.controlPlaneClient.getExecution<{
-          skillId?: string;
-          status: string;
-          semantic?: WaitingInputSemantic;
-          normalizedInput?: {
-            objective?: string;
-            semantic?: WaitingInputSemantic;
-          };
-        }>(executionId, this.waitingInputService.buildControlPlaneRequestOptions(authToken, user));
-
-        if (execution.status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT && body.message) {
-          yield {
-            type: StreamEventType.THOUGHT,
-            content: '正在提交您补充的信息...',
-          };
-
-          const waitingInputDetails = await this.waitingInputService.loadWaitingInputDetails(
-            executionId,
-            authToken,
-            user
-          );
-          if (waitingInputDetails.waitingStepId) {
-            try {
-              const waitingInputPayload = await this.waitingInputService.buildWaitingInputPayload(
-                body.message,
-                waitingInputDetails.missingInputs,
-                waitingInputDetails.allRequiredInputs,
-                this.waitingInputService.extractExecutionSemantic(execution),
-                execution.skillId,
-                authToken,
-                typeof execution.normalizedInput?.objective === 'string'
-                  ? execution.normalizedInput.objective
-                  : undefined,
-                context.userId,
-                body.modelId
-              );
-
-              await this.controlPlaneClient.submitExecutionInput(
-                executionId,
-                {
-                  stepId: waitingInputDetails.waitingStepId,
-                  input: waitingInputPayload.input,
-                  usage: waitingInputPayload.usage,
-                },
-                this.waitingInputService.buildControlPlaneRequestOptions(authToken, user)
-              );
-
-              const latestStateEvent =
-                await this.executionStreamService.buildLatestExecutionStateEvent(
-                  executionId,
-                  authToken,
-                  user
-                );
-
-              if (latestStateEvent?.type === StreamEventType.WAITING_INPUT) {
-                const waitingPayload =
-                  latestStateEvent.data &&
-                  typeof latestStateEvent.data === 'object' &&
-                  !Array.isArray(latestStateEvent.data)
-                    ? (latestStateEvent.data as {
-                        missingInputs?: Array<{
-                          name: string;
-                          group_label?: string;
-                          display_name?: string;
-                          needs_confirmation?: boolean;
-                        }>;
-                        semantic?: WaitingInputSemantic;
-                      })
-                    : {};
-                const remainingMissingInputs = Array.isArray(waitingPayload.missingInputs)
-                  ? waitingPayload.missingInputs
-                  : [];
-                const semantic = waitingPayload.semantic;
-
-                yield {
-                  type: StreamEventType.THOUGHT,
-                  content: this.waitingInputService.buildWaitingInputSubmissionFeedback({
-                    executionId,
-                    resolvedFieldNames: Object.keys(waitingInputPayload.input || {}),
-                    remainingMissingInputs,
-                    semantic,
-                  }),
-                };
-
-                yield latestStateEvent;
-                return;
-              }
-
-              yield {
-                type: StreamEventType.THOUGHT,
-                content: '信息已提交，任务继续执行。',
-              };
-
-              for await (const event of this.executionStreamService.observeExecution(
-                executionId,
-                authToken,
-                user
-              )) {
-                yield event;
-              }
-              return;
-            } catch (err: any) {
-              yield {
-                type: StreamEventType.ERROR,
-                content: `提交信息失败: ${err.response?.data?.message || err.message}`,
-              };
-              return;
-            }
-          }
-        }
-
-        if (
-          execution.status === CONTROL_PLANE_EXECUTION_STATUS.QUEUED ||
-          execution.status === CONTROL_PLANE_EXECUTION_STATUS.RUNNING ||
-          execution.status === CONTROL_PLANE_EXECUTION_STATUS.PENDING_APPROVAL ||
-          execution.status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT
-        ) {
-          yield {
-            type: StreamEventType.THOUGHT,
-            content: `任务正在执行中 (状态: ${execution.status})，正在为您实时观察进度...`,
-          };
-
-          for await (const event of this.executionStreamService.observeExecution(
-            executionId,
-            authToken,
-            user
-          )) {
-            yield event;
-          }
-          return;
-        }
-      } catch (error: any) {
-        const isAuthError = error.response?.status === 401 || error.response?.status === 403;
-        const isNotFoundError = error.response?.status === 404;
-
-        if (isAuthError) {
-          this.logger.error(`Authentication failed for execution ${executionId}: ${error.message}`);
-          yield {
-            type: StreamEventType.ERROR,
-            content: '您的登录会话已过期或无效，请重新登录后再试。',
-          };
-          return;
-        }
-
-        if (!isNotFoundError) {
-          this.logger.error(`Failed to fetch execution ${executionId}: ${error.message}`);
-          yield {
-            type: StreamEventType.ERROR,
-            content: `无法恢复执行进度: ${error.response?.data?.message || error.message}`,
-          };
-          return;
-        }
-
-        this.logger.warn(`Execution ${executionId} not found, falling back to new plan.`);
-      }
+    const resume = await this.taskResumeService.prepare({
+      executionId,
+      message: body.message,
+      modelId: resolvedModelId,
+      authToken,
+      user,
+    });
+    if (resume.handled) {
+      yield* resume.events;
+      return;
     }
 
     if (!executionId && this.deterministicTaskExecutionService) {
       const savedWorkflowResult =
-        await this.deterministicTaskExecutionService.executeMatchedSavedWorkflow(
-          body.message,
-          {
-            authToken,
-            user,
-          },
-        );
+        await this.deterministicTaskExecutionService.executeMatchedSavedWorkflow(body.message, {
+          authToken,
+          user,
+        });
       if (savedWorkflowResult.matched) {
         if (!savedWorkflowResult.success || !savedWorkflowResult.executionId) {
           yield {
@@ -255,6 +128,20 @@ export class ChatOrchestratorService {
           };
           return;
         }
+
+        await this.planningDecisionShadowService?.record(body.message, {
+          authToken,
+          user,
+          executionId: savedWorkflowResult.executionId,
+          routeClass: 'replay_workflow',
+          routeSource: 'saved_workflow',
+          confidence: savedWorkflowResult.score ?? 1,
+          reasonCodes: [`saved_workflow:${savedWorkflowResult.matchMethod || 'unknown'}`],
+          candidateIds: savedWorkflowResult.workflow?.id ? [savedWorkflowResult.workflow.id] : [],
+          selectedCapabilityIds: savedWorkflowResult.workflow?.id
+            ? [savedWorkflowResult.workflow.id]
+            : [],
+        });
 
         yield {
           type: StreamEventType.THOUGHT,
@@ -274,6 +161,7 @@ export class ChatOrchestratorService {
           savedWorkflowResult.executionId,
           authToken,
           user,
+          { modelId: resolvedModelId }
         );
         return;
       }
@@ -288,11 +176,11 @@ export class ChatOrchestratorService {
       request: {
         user_input: body.message,
         user_id: context.userId,
-        modelId: body.modelId,
+        modelId: resolvedModelId,
         context: {
           sessionId: body.sessionId,
           uploadedFiles: body.files,
-          system_collected: this.buildUploadedFileParams(body.files),
+          system_collected: this.planningPresentation.buildUploadedFileParams(body.files),
           history: context.history,
         },
       },
@@ -301,23 +189,28 @@ export class ChatOrchestratorService {
       traceId,
     };
 
-    const planningRequest = this.buildPlanningRequest(body.message, body.files);
+    const planningRequest = this.planningPresentation.buildPlanningRequest(
+      body.message,
+      body.files
+    );
     const latestResult = await this.chatConversationService.getLatestCompletedTaskResult(
-      body.sessionId || context.sessionId,
+      body.sessionId || context.sessionId
     );
     const hasPreviousResult = Boolean(
-      latestResult &&
-        (latestResult.structuredData !== undefined || latestResult.summaryText),
+      latestResult && (latestResult.structuredData !== undefined || latestResult.summaryText)
     );
-    let continuationMatchPhase:
-      | Awaited<ReturnType<PlannerService['matchSkillPhase']>>
-      | undefined;
+    await this.planningDecisionShadowService?.recordLegacyRoute(
+      body.message,
+      { hasPreviousResult },
+      { authToken, user }
+    );
+    let continuationMatchPhase: Awaited<ReturnType<PlannerService['matchSkillPhase']>> | undefined;
     let continuationPlanDraft: PlanDraftDTO | undefined;
 
     if (
       this.deterministicTaskExecutionService?.shouldAttemptSingleSkillContinuation(
         planningRequest,
-        { hasPreviousResult },
+        { hasPreviousResult }
       )
     ) {
       yield {
@@ -371,27 +264,31 @@ export class ChatOrchestratorService {
 
     if (
       !continuationPlanDraft &&
-      this.deterministicTaskExecutionService?.shouldRouteToDeterministicPlan(
-        planningRequest,
-        { hasPreviousResult },
-      )
+      this.deterministicTaskExecutionService?.shouldRouteToDeterministicPlan(planningRequest, {
+        hasPreviousResult,
+      })
     ) {
       yield {
         type: StreamEventType.THOUGHT,
         content: '正在获取用户可用 Skill 列表并进行确定性多步骤任务拆分规划...',
       };
 
-      const availableSkills = (await this.skillCacheService?.loadAvailableSkills(authToken, traceId)) || [];
+      const availableSkills =
+        (await this.skillCacheService?.loadAvailableSkills(authToken, traceId)) || [];
+      const scopedMemory = await this.scopedPlannerMemoryService?.resolveForPlanning({
+        authToken,
+        user,
+      });
 
       const result = await this.deterministicTaskExecutionService.executeDeterministicTask(
         body.message,
         context.userId,
         {
           authToken,
-          user: { userId: context.userId, userRoles: context.userRoles },
+          user,
           availableSkills,
           systemInputs: {
-            ...this.buildUploadedFileParams(body.files),
+            ...this.planningPresentation.buildUploadedFileParams(body.files),
             ...(latestResult?.structuredData !== undefined
               ? { previousResultData: latestResult.structuredData }
               : {}),
@@ -410,12 +307,29 @@ export class ChatOrchestratorService {
                 }
               : {}),
           },
+          ...(scopedMemory ? { plannerContext: { scopedMemory } } : {}),
           planningRequest,
-        },
+          traceId,
+          modelId: resolvedModelId,
+        }
       );
 
       if (result.success && result.executionId) {
-        const missingInputs = (result.planDraft?.requiredUserInputs || []).filter((i: any) => i.missing);
+        const planningRoute = result.planDraft?.planningRoute;
+        await this.planningDecisionShadowService?.record(body.message, {
+          authToken,
+          user,
+          executionId: result.executionId,
+          routeClass: planningRoute?.routeClass || 'generated_plan',
+          routeSource: planningRoute?.routeSource || 'llm_topology',
+          confidence: planningRoute?.confidence ?? 1,
+          reasonCodes: planningRoute?.reasonCodes || ['deterministic_plan_frozen'],
+          candidateIds: planningRoute?.candidateIds || [],
+          selectedCapabilityIds: planningRoute?.selectedCapabilityIds || [],
+        });
+        const missingInputs = (result.planDraft?.requiredUserInputs || []).filter(
+          (i: any) => i.missing
+        );
         if (missingInputs.length > 0) {
           yield {
             type: StreamEventType.WAITING_INPUT,
@@ -430,8 +344,9 @@ export class ChatOrchestratorService {
               hasBusinessResult: false,
               missingInputs,
               plan: result.planDraft,
-              ...(this.canExposePromptDebug(context) && (result.planDraft)?.promptDebug
-                ? { promptDebug: (result.planDraft).promptDebug }
+              ...(this.planningPresentation.canExposePromptDebug(context) &&
+              result.planDraft?.promptDebug
+                ? { promptDebug: result.planDraft.promptDebug }
                 : {}),
             },
           };
@@ -443,7 +358,9 @@ export class ChatOrchestratorService {
           content: `已成功冻结 ${result.planDraft?.nodes?.length || 0} 步骤执行计划 (ID: ${result.executionId})，控制面已按拓扑顺序调度运行。`,
         };
 
-        const nodeTitles = this.formatDeterministicPlanNodes(result.planDraft?.nodes || []);
+        const nodeTitles = this.planningPresentation.formatDeterministicPlanNodes(
+          result.planDraft?.nodes || []
+        );
         yield {
           type: StreamEventType.THOUGHT,
           content: `已为你生成静态任务计划：\n\n${nodeTitles}\n\n执行单 ID: \`${result.executionId}\`。正在跟踪流程执行状态...\n`,
@@ -455,8 +372,9 @@ export class ChatOrchestratorService {
               nodes: result.planDraft?.nodes || [],
               finalOutputs: result.planDraft?.finalOutputs || [],
             },
-            ...(this.canExposePromptDebug(context) && (result.planDraft)?.promptDebug
-              ? { promptDebug: (result.planDraft).promptDebug }
+            ...(this.planningPresentation.canExposePromptDebug(context) &&
+            result.planDraft?.promptDebug
+              ? { promptDebug: result.planDraft.promptDebug }
               : {}),
           },
         };
@@ -465,6 +383,7 @@ export class ChatOrchestratorService {
           result.executionId,
           authToken,
           user,
+          { modelId: resolvedModelId }
         );
         return;
       } else {
@@ -497,6 +416,29 @@ export class ChatOrchestratorService {
       continuationMatchPhase || (await this.plannerService.matchSkillPhase(plannerInput));
 
     if (!matchPhase.matchedSkill) {
+      if (matchPhase.failure) {
+        yield {
+          type: StreamEventType.ERROR,
+          content: matchPhase.failure.message,
+          data: {
+            code: matchPhase.failure.code,
+            status: 'not_started',
+            executed: false,
+            retryable: matchPhase.failure.retryable,
+          },
+        };
+        return;
+      }
+      await this.planningDecisionShadowService?.record(body.message, {
+        authToken,
+        user,
+        routeClass: 'exploratory_agent',
+        routeSource: 'exploratory',
+        confidence: 0,
+        reasonCodes: [
+          matchPhase.hasVisibleSkills ? 'no_candidate_above_threshold' : 'no_visible_capability',
+        ],
+      });
       yield {
         type: StreamEventType.RESULT,
         content: NO_MATCHING_SKILL_MESSAGE,
@@ -524,11 +466,12 @@ export class ChatOrchestratorService {
       }));
 
     if (planDraft && planDraft.planner_mode === 'skill' && planDraft.skill_match) {
-      const plannerPromptDebug = this.canExposePromptDebug(context)
-        ? this.buildPlannerPromptDebug(body.message, planDraft)
+      const plannerPromptDebug = this.planningPresentation.canExposePromptDebug(context)
+        ? this.planningPresentation.buildPlannerPromptDebug(body.message, planDraft)
         : undefined;
-      const executionPromptDebug = this.buildExecutionPromptDebug(plannerPromptDebug);
-      const executionPlanDraft = this.buildExecutionPlanDraft(planDraft);
+      const executionPromptDebug =
+        this.planningPresentation.buildExecutionPromptDebug(plannerPromptDebug);
+      const executionPlanDraft = this.planningPresentation.buildExecutionPlanDraft(planDraft);
       const missingInputs = planDraft.required_inputs.filter((input) => input.missing);
 
       if (missingInputs.length > 0) {
@@ -565,6 +508,16 @@ export class ChatOrchestratorService {
             this.waitingInputService.buildControlPlaneRequestOptions(authToken, user)
           );
           const executionStatus = execution.status || CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT;
+          await this.planningDecisionShadowService?.record(body.message, {
+            authToken,
+            user,
+            executionId: execution.id,
+            routeClass: 'single_capability',
+            routeSource: 'deterministic_match',
+            confidence: planDraft.skill_match.confidence ?? 1,
+            reasonCodes: ['single_capability_match'],
+            selectedCapabilityIds: [planDraft.skill_match.skill_id],
+          });
 
           if (executionStatus === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT) {
             yield {
@@ -633,7 +586,8 @@ export class ChatOrchestratorService {
           for await (const event of this.executionStreamService.observeExecution(
             execution.id,
             authToken,
-            user
+            user,
+            { modelId: resolvedModelId }
           )) {
             yield event;
           }
@@ -690,6 +644,17 @@ export class ChatOrchestratorService {
           this.waitingInputService.buildControlPlaneRequestOptions(authToken, user)
         );
 
+        await this.planningDecisionShadowService?.record(body.message, {
+          authToken,
+          user,
+          executionId: execution.id,
+          routeClass: 'single_capability',
+          routeSource: 'deterministic_match',
+          confidence: planDraft.skill_match.confidence ?? 1,
+          reasonCodes: ['single_capability_match'],
+          selectedCapabilityIds: [planDraft.skill_match.skill_id],
+        });
+
         yield {
           type: StreamEventType.RESULT,
           content: `任务已启动。执行单 ID: ${execution.id}\n\n${planDraft.summary}`,
@@ -706,7 +671,8 @@ export class ChatOrchestratorService {
         for await (const event of this.executionStreamService.observeExecution(
           execution.id,
           authToken,
-          user
+          user,
+          { modelId: resolvedModelId }
         )) {
           yield event;
         }
@@ -717,11 +683,28 @@ export class ChatOrchestratorService {
           type: StreamEventType.ERROR,
           content: `创建执行单失败: ${errorMsg}`,
         };
+        if (!this.taskFallbackPolicyService?.isImplicitReactFallbackEnabled()) {
+          return;
+        }
         yield {
           type: StreamEventType.THOUGHT,
-          content: '创建执行单失败，尝试使用 ReAct 引擎直接处理...',
+          content: '已显式启用兼容回退，尝试使用 ReAct 引擎处理...',
         };
       }
+    }
+
+    if (!this.taskFallbackPolicyService?.isImplicitReactFallbackEnabled()) {
+      yield {
+        type: StreamEventType.RESULT,
+        content:
+          '当前请求无法形成可验证的生产执行计划；任务未执行。可切换到独立探索模式创建候选能力或工作流。',
+        data: {
+          code: 'EXPLORATORY_REQUIRED',
+          status: 'not_started',
+          executed: false,
+        },
+      };
+      return;
     }
 
     for await (const event of this.reactEngineService.execute({ ...body, traceId }, context)) {
@@ -729,158 +712,9 @@ export class ChatOrchestratorService {
     }
   }
 
-  private buildUploadedFileParams(
-    files?: Array<{ fileName: string; mimeType: string; content?: string }>
-  ): Record<string, unknown> {
-    const file = files?.find(
-      (candidate) => candidate.mimeType === 'application/pdf' && Boolean(candidate.content)
-    );
-    if (!file?.content) {
-      return {};
-    }
-    return {
-      fileBase64: file.content,
-      fileName: file.fileName,
-    };
-  }
-
-  private buildPlanningRequest(
-    message: string,
-    files?: Array<{ mimeType: string }>
-  ): string {
-    return files?.some((file) => file.mimeType === 'application/pdf')
-      ? `${message}\n[系统上下文：用户已上传 PDF 附件，需要提取 PDF 内容]`
-      : message;
-  }
-
-  private canExposePromptDebug(context: ExecutionContext): boolean {
-    return (
-      this.promptDebugSettingsService.isPromptDebugEnabled() &&
-      Boolean(context.userRoles?.includes('admin'))
-    );
-  }
-
-  private buildPlannerPromptDebug(
-    message: string,
-    planDraft: PlanDraftDTO
-  ): Record<string, unknown> {
-    const metadata =
-      planDraft.metadata && typeof planDraft.metadata === 'object'
-        ? (planDraft.metadata)
-        : undefined;
-    const debug =
-      metadata?.debug && typeof metadata.debug === 'object' && !Array.isArray(metadata.debug)
-        ? (metadata.debug as Record<string, unknown>)
-        : undefined;
-    const llmCalls = Array.isArray(debug?.llmCalls)
-      ? debug.llmCalls.filter((item) => item && typeof item === 'object')
-      : [];
-    const latestLlmCall =
-      llmCalls.length > 0 ? (llmCalls[llmCalls.length - 1] as Record<string, unknown>) : undefined;
-    const notes = Array.isArray(debug?.notes)
-      ? debug.notes.filter(
-          (item): item is string => typeof item === 'string' && item.trim().length > 0
-        )
-      : [];
-    const systemLines = [
-      'Planner Debug Snapshot',
-      `planner_mode: ${planDraft.planner_mode}`,
-      `summary: ${planDraft.summary}`,
-      `objective: ${planDraft.objective}`,
-      `matched_skill: ${planDraft.skill_match?.skill_name || 'none'}`,
-      `required_inputs: ${planDraft.required_inputs.map((item) => `${item.name}:${item.missing ? 'missing' : 'ready'}`).join(', ') || 'none'}`,
-      `steps: ${planDraft.steps.map((step) => `${step.kind}:${step.title}`).join(' | ') || 'none'}`,
-    ];
-
-    return {
-      debugSource: 'planner',
-      systemPrompt: systemLines.join('\n'),
-      userPrompt: message,
-      systemPromptSectionKeys: [
-        'planner_mode',
-        'planner_summary',
-        'planner_objective',
-        'planner_steps',
-      ],
-      userPromptSectionKeys: ['user_message'],
-      modelId: typeof latestLlmCall?.modelId === 'string' ? latestLlmCall.modelId : undefined,
-      llmRequestMessages: Array.isArray(latestLlmCall?.requestMessages)
-        ? latestLlmCall.requestMessages
-        : undefined,
-      llmResponseText:
-        typeof latestLlmCall?.responseText === 'string' ? latestLlmCall.responseText : undefined,
-      llmCalls,
-      notes,
-    };
-  }
-
-  private buildExecutionPlanDraft(planDraft: PlanDraftDTO): Record<string, unknown> {
-    const previousResultContinuation = planDraft.metadata?.previous_result_continuation;
-    return {
-      plan_id: planDraft.plan_id,
-      planner_mode: planDraft.planner_mode,
-      objective: planDraft.objective,
-      summary: planDraft.summary,
-      skill_match: planDraft.skill_match,
-      steps: planDraft.steps,
-      required_inputs: planDraft.required_inputs,
-      risk_summary: planDraft.risk_summary,
-      semantic: planDraft.semantic,
-      usage: planDraft.usage,
-      ...(previousResultContinuation
-        ? {
-            metadata: {
-              previous_result_continuation: previousResultContinuation,
-            },
-          }
-        : {}),
-    };
-  }
-
-  private formatDeterministicPlanNodes(nodes: DeterministicPlanNodeV1[]): string {
-    if (!Array.isArray(nodes) || nodes.length === 0) {
-      return '暂无计划节点详情';
-    }
-
-    return nodes
-      .sort((a, b) => a.sequence - b.sequence)
-      .map((node) => {
-        if (node.kind === 'skill') {
-          return `${node.sequence}. ${node.title} - Skill: ${node.skillId}@${node.skillVersion} (${node.runtimeType})`;
-        }
-
-        return `${node.sequence}. ${node.title} - LLM: ${node.operationId}, template: ${node.promptTemplateId}@${node.promptTemplateVersion}`;
-      })
-      .join('\n');
-  }
-
-  private buildExecutionPromptDebug(
-    promptDebug?: Record<string, unknown>
-  ): Record<string, unknown> | undefined {
-    if (!promptDebug) {
-      return undefined;
-    }
-
-    return {
-      debugSource: promptDebug.debugSource,
-      systemPrompt: promptDebug.systemPrompt,
-      userPrompt: promptDebug.userPrompt,
-      systemPromptSectionKeys: promptDebug.systemPromptSectionKeys,
-      userPromptSectionKeys: promptDebug.userPromptSectionKeys,
-      modelId: promptDebug.modelId,
-      llmRequestMessages: Array.isArray(promptDebug.llmRequestMessages)
-        ? promptDebug.llmRequestMessages
-        : undefined,
-      llmResponseText:
-        typeof promptDebug.llmResponseText === 'string' ? promptDebug.llmResponseText : undefined,
-      notes: promptDebug.notes,
-      llmCalls: Array.isArray(promptDebug.llmCalls) ? promptDebug.llmCalls : undefined,
-    };
-  }
-
   public async resolveAuthenticatedUser(
     authorization?: string
-  ): Promise<{ userId?: string; userRoles?: string[] }> {
+  ): Promise<{ userId?: string; userRoles?: string[]; organizationId?: string }> {
     if (!authorization) {
       return {};
     }
@@ -899,6 +733,7 @@ export class ChatOrchestratorService {
       const payload = (await response.json()) as {
         user?: { id?: string; role?: string };
         roles?: Array<{ name?: string }>;
+        activeOrgId?: string | null;
       };
 
       const roleSet = new Set<string>();
@@ -914,6 +749,7 @@ export class ChatOrchestratorService {
       return {
         userId: payload.user?.id,
         userRoles: Array.from(roleSet),
+        ...(typeof payload.activeOrgId === 'string' ? { organizationId: payload.activeOrgId } : {}),
       };
     } catch {
       return {};

@@ -1,10 +1,4 @@
-export type RuntimeType =
-  | 'browser'
-  | 'document'
-  | 'workflow'
-  | 'api'
-  | 'code'
-  | 'custom';
+export type RuntimeType = 'browser' | 'document' | 'workflow' | 'api' | 'code' | 'custom';
 
 export interface PolicyContext {
   riskLevel?: 'L0' | 'L1' | 'L2' | 'L3';
@@ -75,12 +69,7 @@ export interface RuntimeStepInvokeRequest {
 
 export interface RuntimeStepInvokeResult {
   success: boolean;
-  status:
-    | 'completed'
-    | 'failed'
-    | 'blocked'
-    | 'waiting'
-    | 'takeover_required';
+  status: 'completed' | 'failed' | 'blocked' | 'waiting' | 'takeover_required';
   output?: Record<string, unknown>;
   errorCode?: string;
   errorMessage?: string;
@@ -105,12 +94,7 @@ export interface RuntimePhaseInvokeRequest {
 
 export interface RuntimePhaseInvokeResult {
   success: boolean;
-  status:
-    | 'completed'
-    | 'failed'
-    | 'blocked'
-    | 'waiting'
-    | 'takeover_required';
+  status: 'completed' | 'failed' | 'blocked' | 'waiting' | 'takeover_required';
   stepResults: RuntimeStepInvokeResult[];
   failedStepId?: string;
   failedAction?: string;
@@ -128,4 +112,4 @@ export interface RuntimePhaseInvokeResult {
 
 export * from './capability-contract-v2';
 export * from './json-schema-validator';
-
+export * from './planning-contract';

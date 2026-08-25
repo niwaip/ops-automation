@@ -7,7 +7,11 @@ export class CreateScheduleDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ description: 'Description', example: 'Generates report daily at 9am', required: false })
+  @ApiProperty({
+    description: 'Description',
+    example: 'Generates report daily at 9am',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   description?: string;
@@ -31,7 +35,12 @@ export class CreateScheduleDto {
   @IsNotEmpty()
   cronExpression: string;
 
-  @ApiProperty({ description: 'Timezone', example: 'Asia/Shanghai', default: 'UTC', required: false })
+  @ApiProperty({
+    description: 'Timezone',
+    example: 'Asia/Shanghai',
+    default: 'UTC',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   timezone?: string;

@@ -204,6 +204,7 @@ export class DeterministicPlanFreezeService {
                   operationDigest: (node as any).operationDigest,
                   contractDigest: node.contractDigest,
                   modelPolicyId: (node as any).modelPolicyId,
+                  modelId: (node as any).modelId,
                   temperature: (node as any).temperature,
                   maxInputTokens: (node as any).maxInputTokens,
                   maxOutputTokens: (node as any).maxOutputTokens,

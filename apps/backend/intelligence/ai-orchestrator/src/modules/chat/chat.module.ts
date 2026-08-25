@@ -15,6 +15,11 @@ import { ChatResultNormalizerService } from './chat-result-normalizer.service';
 import { ChatWaitingInputService } from './chat-waiting-input.service';
 import { DeterministicTaskExecutionService } from './deterministic-task-execution.service';
 import { ChatFeedbackService } from './chat-feedback.service';
+import { PlanningDecisionShadowService } from './planning-decision-shadow.service';
+import { TaskFallbackPolicyService } from './task-fallback-policy.service';
+import { ChatTaskResumeService } from './chat-task-resume.service';
+import { ChatPlanningPresentationService } from './chat-planning-presentation.service';
+import { ScopedPlannerMemoryService } from './scoped-planner-memory.service';
 
 @Module({
   imports: [
@@ -36,6 +41,11 @@ import { ChatFeedbackService } from './chat-feedback.service';
     ChatMediaService,
     DeterministicTaskExecutionService,
     ChatFeedbackService,
+    PlanningDecisionShadowService,
+    TaskFallbackPolicyService,
+    ChatTaskResumeService,
+    ChatPlanningPresentationService,
+    ScopedPlannerMemoryService,
   ],
 })
 export class ChatModule {}

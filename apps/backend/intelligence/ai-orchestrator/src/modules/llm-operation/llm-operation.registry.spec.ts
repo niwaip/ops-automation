@@ -5,9 +5,10 @@ import {
 } from './system-operation-definitions';
 
 describe('system LLM operation catalog', () => {
-  it('exposes only the consolidated four-operation text catalog', () => {
+  it('exposes the consolidated standard LLM operation catalog', () => {
     expect(listActiveSystemOperationIds()).toEqual([
       'extract_structured_fields',
+      'generate_text',
       'summarize_list',
       'summarize_text',
       'transform_text',
@@ -15,6 +16,25 @@ describe('system LLM operation catalog', () => {
     expect(SYSTEM_OPERATION_DEFINITIONS.classify_intent_label.status).toBe('deprecated');
     expect(SYSTEM_OPERATION_DEFINITIONS.rewrite_to_markdown.status).toBe('deprecated');
     expect(SYSTEM_OPERATION_DEFINITIONS.merge_multi_source_notes.status).toBe('deprecated');
+  });
+
+  it('keeps standard generation tool-free and allows optional trusted context', () => {
+    const operation = LLM_OPERATION_TEMPLATES.generate_text;
+    const prompt = operation.buildPrompt({
+      instruction: '给出穿衣建议',
+      context: '上海 31°C，体感 36°C，局部阵雨',
+    });
+
+    expect(prompt.systemPrompt).toContain('不得调用工具、访问外部系统或产生副作用');
+    expect(prompt.userPrompt).toContain('给出穿衣建议');
+    expect(prompt.userPrompt).toContain('上海 31°C');
+    expect(operation.inputSchema).toMatchObject({
+      required: ['instruction'],
+      properties: {
+        instruction: { 'x-ops-input-role': 'instruction' },
+        context: { 'x-ops-input-role': 'content' },
+      },
+    });
   });
 
   it('builds a tool-free generic text transformation prompt and stable output', () => {

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { Prisma } from '../../../prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { EXECUTION_STEP_STATUS } from '../../contracts/execution-step-status';
@@ -12,10 +12,14 @@ import {
   MarkStepWaitingInput,
   StartStepInput,
 } from './execution-step.types';
+import { ResultRefService } from '../../result-ref/result-ref.service';
 
 @Injectable()
 export class ExecutionStepWriterService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly resultRefs?: ResultRefService
+  ) {}
 
   async createManyPlannedSteps(steps: Array<Record<string, unknown>>): Promise<void> {
     if (steps.length === 0) {
@@ -94,7 +98,7 @@ export class ExecutionStepWriterService {
   }
 
   async finishRuntimeStep(stepId: string, input: FinishRuntimeStepInput): Promise<void> {
-    await this.prisma.executionStep.update({
+    const step = await this.prisma.executionStep.update({
       where: { id: stepId },
       data: {
         status: input.success ? EXECUTION_STEP_STATUS.SUCCEEDED : EXECUTION_STEP_STATUS.FAILED,
@@ -106,6 +110,23 @@ export class ExecutionStepWriterService {
         endedAt: new Date(),
       },
     });
+    if (input.success && input.outputJson !== undefined && this.resultRefs?.enabled) {
+      const ref = await this.resultRefs.create({
+        executionId: step.executionId,
+        producerStepId: step.id,
+        payload: input.outputJson,
+        outputSchema: step.outputSchemaJson,
+      });
+      await this.prisma.executionStep.update({
+        where: { id: stepId },
+        data: {
+          outputJson: this.asJsonValue({
+            inline: input.outputJson,
+            resultRef: ref,
+          }),
+        },
+      });
+    }
   }
 
   async finishControlStep(

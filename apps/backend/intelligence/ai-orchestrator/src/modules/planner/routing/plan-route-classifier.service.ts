@@ -15,7 +15,7 @@ export class PlanRouteClassifierService {
 
   public classifyRoute(
     userRequest: string,
-    context?: { hasPreviousResult?: boolean },
+    context?: { hasPreviousResult?: boolean }
   ): PlanRouteType {
     if (!userRequest || typeof userRequest !== 'string') {
       return 'single_skill';
@@ -27,11 +27,14 @@ export class PlanRouteClassifierService {
     // Check for explicit multi-step compound signals
     const hasSequentialKeyword = hasRoutingSignal(text, 'sequential', policy);
     const hasProcessingKeyword = hasRoutingSignal(text, 'processing', policy);
+    const hasGenerationKeyword = hasRoutingSignal(text, 'generation', policy);
     const hasArtifactKeyword = hasRoutingSignal(text, 'artifact', policy);
     const hasDocumentSourceKeyword = hasRoutingSignal(text, 'documentSource', policy);
 
-    if (hasArtifactKeyword || hasProcessingKeyword) {
-      this.logger.log(`Classified request as 'deterministic_plan' (policy=${policy.version}, sequential=${hasSequentialKeyword}, processing=${hasProcessingKeyword}, artifact=${hasArtifactKeyword}, documentSource=${hasDocumentSourceKeyword}, previousResult=${context?.hasPreviousResult === true})`);
+    if (hasArtifactKeyword || hasProcessingKeyword || hasGenerationKeyword) {
+      this.logger.log(
+        `Classified request as 'deterministic_plan' (policy=${policy.version}, sequential=${hasSequentialKeyword}, processing=${hasProcessingKeyword}, generation=${hasGenerationKeyword}, artifact=${hasArtifactKeyword}, documentSource=${hasDocumentSourceKeyword}, previousResult=${context?.hasPreviousResult === true})`
+      );
       return 'deterministic_plan';
     }
 
@@ -41,7 +44,7 @@ export class PlanRouteClassifierService {
 
   public shouldAttemptSingleSkillContinuation(
     userRequest: string,
-    context?: { hasPreviousResult?: boolean },
+    context?: { hasPreviousResult?: boolean }
   ): boolean {
     if (context?.hasPreviousResult !== true || !userRequest?.trim()) return false;
     const text = userRequest.trim();
@@ -51,11 +54,6 @@ export class PlanRouteClassifierService {
     const hasArtifactIntent = hasRoutingSignal(text, 'artifact', policy);
     const hasDocumentSource = hasRoutingSignal(text, 'documentSource', policy);
 
-    return (
-      hasProcessingIntent &&
-      !hasSequentialIntent &&
-      !hasArtifactIntent &&
-      !hasDocumentSource
-    );
+    return hasProcessingIntent && !hasSequentialIntent && !hasArtifactIntent && !hasDocumentSource;
   }
 }

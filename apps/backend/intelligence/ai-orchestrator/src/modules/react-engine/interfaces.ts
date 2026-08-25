@@ -1,4 +1,9 @@
-import type { LLMUsage, LLMRateLimit, PromptDebugLLMCall, PromptDebugPayload } from '../../interfaces';
+import type {
+  LLMUsage,
+  LLMRateLimit,
+  PromptDebugLLMCall,
+  PromptDebugPayload,
+} from '../../interfaces';
 
 export type { LLMUsage, LLMRateLimit, PromptDebugLLMCall, PromptDebugPayload };
 
@@ -261,6 +266,7 @@ export interface ExecutionContext {
   traceId?: string; // Request trace id for observability
   executionId?: string; // Execution ID for step tracking
   userRoles?: string[]; // 新增：当前用户的角色
+  organizationId?: string; // 由认证身份服务验证的当前组织
   authToken?: string; // 新增：当前用户的认证令牌 (Bearer token)
   capabilitySnapshot?: CapabilitySnapshot;
   originalUserInput?: string; // 初始用户输入，供工具缺省参数兜底
@@ -313,6 +319,7 @@ export interface ApiEndpoint {
 }
 
 export interface SkillRuntimeMetadata {
+  routingAliases?: string[];
   matchSummary?: string;
   paramCollectionGuidance?: string;
   validationRules?: string;
@@ -455,6 +462,8 @@ export interface ParamProperty {
   required: boolean;
   default?: unknown;
   enum?: Array<string | number>;
+  /** Canonical enum value -> locale/domain aliases used by deterministic recognition. */
+  'x-enum-aliases'?: Record<string, Array<string | number>>;
   extractionPrompt?: string;
   semanticRole?: string;
   extractionHints?: string[];
@@ -464,7 +473,6 @@ export interface ParamProperty {
   previewBlocking?: boolean;
   confirmationThreshold?: number;
 }
-
 
 /**
  * 上传文件信息

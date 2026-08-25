@@ -1,6 +1,7 @@
 export const ROUTING_SIGNAL_GROUPS = [
   'sequential',
   'processing',
+  'generation',
   'documentSource',
   'artifact',
   'search',
@@ -11,11 +12,7 @@ export const ROUTING_SIGNAL_GROUPS = [
 
 export type RoutingSignalGroup = (typeof ROUTING_SIGNAL_GROUPS)[number];
 
-export const ROUTING_CAPABILITY_ROLES = [
-  'search',
-  'markdownWriter',
-  'documentExtractor',
-] as const;
+export const ROUTING_CAPABILITY_ROLES = ['search', 'markdownWriter', 'documentExtractor'] as const;
 
 export type RoutingCapabilityRole = (typeof ROUTING_CAPABILITY_ROLES)[number];
 

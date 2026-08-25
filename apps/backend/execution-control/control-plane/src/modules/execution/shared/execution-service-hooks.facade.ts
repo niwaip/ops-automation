@@ -319,6 +319,8 @@ export class ExecutionServiceHooksFacade {
           reason,
           targetFailureHooks
         ),
+      failExecutionFromRuntimeStep: (failure, targetFailureHooks) =>
+        this.deps.executionFailureService.failExecutionFromRuntimeStep(failure, targetFailureHooks),
       executeBrowserGotoStep: (execution, targetRuntimeSessionId, stepId, url) =>
         this.deps.executionStepExecutorService.executeBrowserGotoStep(
           execution,

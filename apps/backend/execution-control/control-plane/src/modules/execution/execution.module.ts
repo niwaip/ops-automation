@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { DiscoveryModule } from '@nestjs/core';
 import { BrowserPhaseRecoveryPlanner } from './recovery/browser-phase-recovery.planner';
 import { BrowserPhaseExecutor } from './step-runner/browser/browser-phase.executor';
 import { BrowserRuntimeAdapter } from './adapters/browser-runtime.adapter';
@@ -58,10 +59,16 @@ import { LlmOperationAttestationClient } from './plan-runtime/llm-operation-atte
 import { BackfillModule } from './backfill/backfill.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { SavedSkillModule } from '../saved-skill/saved-skill.module';
+import { ExecutionOutboxService } from './outbox/execution-outbox.service';
+import { ExecutionDispatcherService } from './dispatcher/execution-dispatcher.service';
+import { PlanRiskEvaluatorService } from './risk/plan-risk-evaluator.service';
+import { ResultRefController } from './result-ref/result-ref.controller';
+import { ResultRefService } from './result-ref/result-ref.service';
+import { DeterministicReadySetService } from './plan-runtime/deterministic-ready-set.service';
 
 @Module({
-  imports: [PrismaModule, BackfillModule, SavedSkillModule],
-  controllers: [ExecutionController],
+  imports: [DiscoveryModule, PrismaModule, BackfillModule, SavedSkillModule],
+  controllers: [ExecutionController, ResultRefController],
   providers: [
     BrowserPhaseRecoveryPlanner,
     BrowserRuntimeAdapter,
@@ -77,6 +84,7 @@ import { SavedSkillModule } from '../saved-skill/saved-skill.module';
     DeterministicNodeInputResolverService,
     DeterministicFinalOutputService,
     DeterministicPlanSchedulerService,
+    DeterministicReadySetService,
     DeterministicPlanRecoveryService,
     LegacyOutputAdapterService,
     CapabilityContractCatalogService,
@@ -118,6 +126,10 @@ import { SavedSkillModule } from '../saved-skill/saved-skill.module';
     RuntimeExecutionOrchestrator,
     RuntimeResultInterpreter,
     RuntimeStepRequestFactory,
+    ExecutionOutboxService,
+    ExecutionDispatcherService,
+    PlanRiskEvaluatorService,
+    ResultRefService,
   ],
   exports: [
     ExecutionService,
@@ -125,6 +137,7 @@ import { SavedSkillModule } from '../saved-skill/saved-skill.module';
     DeterministicPlanValidatorService,
     DeterministicPlanFreezeService,
     DeterministicPlanSchedulerService,
+    ExecutionOutboxService,
   ],
 })
 export class ExecutionModule {}

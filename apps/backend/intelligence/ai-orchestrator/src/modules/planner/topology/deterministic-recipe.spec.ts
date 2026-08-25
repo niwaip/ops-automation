@@ -11,16 +11,31 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
   const outputResolver = new NodeOutputBindingResolverService();
   const recognizer = {
     recognizeParams: jest.fn(async ({ template_id }: { template_id: string }) => ({
-      params: template_id === 'Web Search'
-        ? { query: '最新 AI 新闻', topic: 'news' }
-        : template_id === 'Markdown Writer'
-          ? { fileName: 'ai-news.md' }
-          : {},
+      params:
+        template_id === 'Web Search'
+          ? { query: '最新 AI 新闻', topic: 'news' }
+          : template_id === 'Markdown Writer'
+            ? { fileName: 'ai-news.md' }
+            : {},
       confidence: 0.95,
     })),
   } as any;
   const binder = new MultiNodeParameterBinderService(outputResolver, recognizer);
   const contractAssembler = new DeterministicContractAssemblerService();
+
+  beforeEach(() => {
+    recognizer.recognizeParams
+      .mockReset()
+      .mockImplementation(async ({ template_id }: { template_id: string }) => ({
+        params:
+          template_id === 'Web Search'
+            ? { query: '最新 AI 新闻', topic: 'news' }
+            : template_id === 'Markdown Writer'
+              ? { fileName: 'ai-news.md' }
+              : {},
+        confidence: 0.95,
+      }));
+  });
 
   const mockSkillCards: CompactCapabilityCardV1[] = [
     {
@@ -120,6 +135,30 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
       operationDigest: 'sha256:summarize-text-operation',
       contractDigest: 'sha256:summarize-text-contract',
     },
+    {
+      id: 'transform_text',
+      kind: 'llm_operation',
+      displayName: '标准 LLM 文本变换',
+      summary: '基于给定内容执行建议、分析、翻译或改写',
+      goals: ['transform_text', 'grounded_advice'],
+      inputs: {
+        content: 'string',
+        instruction: 'string',
+      },
+      outputs: {
+        content: 'string',
+      },
+      executableVersion: '1.0.17',
+      operationDigest: 'sha256:transform-text-operation',
+      contractDigest: 'sha256:transform-text-contract',
+      _rawInputSchema: {
+        required: ['content', 'instruction'],
+        properties: {
+          content: { type: 'string', 'x-ops-input-role': 'content' },
+          instruction: { type: 'string', 'x-ops-input-role': 'instruction' },
+        },
+      },
+    } as any,
   ];
 
   const capabilityMap = new Map<string, CompactCapabilityCardV1>();
@@ -135,7 +174,11 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
     expect(matched).not.toBeNull();
     expect(matched?.recipeName).toBe('search_summarize_write_markdown');
 
-    const topology = topologyBuilder.buildTopologyFromRecipe(matched!, mockSkillCards, mockLlmOpCards);
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
+      mockSkillCards,
+      mockLlmOpCards
+    );
     expect(topology).not.toBeNull();
     expect(topology?.nodes).toHaveLength(3);
     expect(topology?.finalNodeRef).toBe('n3');
@@ -162,6 +205,41 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
     expect(planDraft.planType).toBe('sequential');
     expect(planDraft.finalOutputs[0]?.isArtifact).toBe(true);
     expect(planDraft.finalOutputs[0]?.expectedType).toBe('artifact_ref');
+  });
+
+  it('uses a deterministic transform recipe for advice grounded in the previous result', async () => {
+    const userRequest = '给出穿衣建议';
+    const matched = matcher.matchRecipe(userRequest, mockSkillCards, mockLlmOpCards, {
+      hasPreviousResult: true,
+    });
+
+    expect(matched?.recipeName).toBe('grounded_text_transform');
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
+      mockSkillCards,
+      mockLlmOpCards
+    );
+    expect(topology?.nodes).toEqual([
+      { ref: 'n1', capabilityKey: 'transform_text', dependsOn: [] },
+    ]);
+
+    const bindingResult = await binder.bindParameters(
+      userRequest,
+      topology!.nodes,
+      capabilityMap,
+      undefined,
+      {
+        previousResultRef: { executionId: 'weather-execution-1' },
+        previousResultData: { summary: '上海 31°C，体感 36°C，局部阵雨' },
+      }
+    );
+
+    expect(bindingResult.planInputs.n1).toEqual({
+      content: '上海 31°C，体感 36°C，局部阵雨',
+      instruction: '给出穿衣建议',
+    });
+    expect(bindingResult.requiredUserInputs).toHaveLength(0);
+    expect(recognizer.recognizeParams).not.toHaveBeenCalled();
   });
 
   it('builds PDF extraction followed by text summarization with system-provided bytes', async () => {
@@ -208,9 +286,7 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
 
     expect(matched?.recipeName).toBe('document_extract');
     expect(topology?.nodes).toHaveLength(1);
-    expect(topology?.nodes[0]?.capabilityKey).toBe(
-      'platform.document.pdf-content-extractor'
-    );
+    expect(topology?.nodes[0]?.capabilityKey).toBe('platform.document.pdf-content-extractor');
   });
 
   it('generates requiredUserInputs when search query is missing', async () => {
@@ -219,7 +295,11 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
 
     expect(matched?.recipeName).toBe('summarize_then_write_markdown');
 
-    const topology = topologyBuilder.buildTopologyFromRecipe(matched!, mockSkillCards, mockLlmOpCards);
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
+      mockSkillCards,
+      mockLlmOpCards
+    );
     recognizer.recognizeParams.mockImplementationOnce(async () => ({
       params: {},
       confidence: 0.2,

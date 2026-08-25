@@ -19,21 +19,21 @@ export class DeterministicTaskExecutionService {
     private readonly routeClassifier: PlanRouteClassifierService,
     private readonly planGenerator: DeterministicPlanGeneratorService,
     private readonly controlPlaneClient: ControlPlaneClient,
-    @Optional() routingPolicy?: RoutingPolicyService,
+    @Optional() routingPolicy?: RoutingPolicyService
   ) {
     this.routingPolicy = routingPolicy || new RoutingPolicyService();
   }
 
   public shouldRouteToDeterministicPlan(
     userRequest: string,
-    context?: { hasPreviousResult?: boolean },
+    context?: { hasPreviousResult?: boolean }
   ): boolean {
     return this.routeClassifier.classifyRoute(userRequest, context) === 'deterministic_plan';
   }
 
   public shouldAttemptSingleSkillContinuation(
     userRequest: string,
-    context?: { hasPreviousResult?: boolean },
+    context?: { hasPreviousResult?: boolean }
   ): boolean {
     return this.routeClassifier.shouldAttemptSingleSkillContinuation(userRequest, context);
   }
@@ -42,8 +42,8 @@ export class DeterministicTaskExecutionService {
     userRequest: string,
     options?: {
       authToken?: string;
-      user?: { userId: string; userRoles?: string[] };
-    },
+      user?: { userId: string; userRoles?: string[]; organizationId?: string };
+    }
   ): Promise<{
     matched: boolean;
     success: boolean;
@@ -90,10 +90,10 @@ export class DeterministicTaskExecutionService {
           capabilityVersion: match.workflow.version,
           input: {},
         },
-        options,
+        options
       );
       this.logger.log(
-        `Matched private saved workflow ${match.workflow.id} at score ${match.score.toFixed(3)} using routing policy ${policy.version}`,
+        `Matched private saved workflow ${match.workflow.id} at score ${match.score.toFixed(3)} using routing policy ${policy.version}`
       );
       await this.recordRoutingObservation(userRequest, options, {
         routeSource: 'saved_workflow',
@@ -143,7 +143,7 @@ export class DeterministicTaskExecutionService {
   private async recordRoutingObservation(
     userRequest: string,
     options: { authToken?: string; user?: { userId: string; userRoles?: string[] } } | undefined,
-    observation: Record<string, unknown>,
+    observation: Record<string, unknown>
   ): Promise<void> {
     if (!options?.user?.userId) return;
     try {
@@ -151,13 +151,18 @@ export class DeterministicTaskExecutionService {
       await this.controlPlaneClient.recordRoutingObservation(
         {
           requestFingerprint: createHash('sha256')
-            .update(String(userRequest || '').normalize('NFKC').trim().toLowerCase())
+            .update(
+              String(userRequest || '')
+                .normalize('NFKC')
+                .trim()
+                .toLowerCase()
+            )
             .digest('hex'),
           routingPolicyVersion: policy.version,
           routingPolicyDigest: policy.digest,
           ...observation,
         },
-        options,
+        options
       );
     } catch (error: any) {
       this.logger.warn(`Unable to persist routing observation: ${error.message}`);
@@ -172,8 +177,11 @@ export class DeterministicTaskExecutionService {
       user?: { userId: string; userRoles?: string[] };
       availableSkills?: any[];
       systemInputs?: Record<string, unknown>;
+      plannerContext?: { scopedMemory?: unknown };
       planningRequest?: string;
-    },
+      traceId?: string;
+      modelId?: string;
+    }
   ): Promise<{
     success: boolean;
     executionId?: string;
@@ -187,8 +195,19 @@ export class DeterministicTaskExecutionService {
     try {
       planDraft = await this.planGenerator.generatePlan({
         userRequest: options?.planningRequest || userRequest,
+        modelId: options?.modelId && options.modelId !== 'default' ? options.modelId : undefined,
         availableSkills: options?.availableSkills || [],
         systemInputs: options?.systemInputs,
+        plannerContext: options?.plannerContext,
+        ...(options?.user
+          ? {
+              telemetry: {
+                traceId: options.traceId,
+                authToken: options.authToken,
+                user: options.user,
+              },
+            }
+          : {}),
       });
       if (options?.planningRequest && options.planningRequest !== userRequest) {
         planDraft.objective = userRequest;
@@ -205,7 +224,7 @@ export class DeterministicTaskExecutionService {
     }
 
     try {
-      const promptDebug = (planDraft)?.promptDebug;
+      const promptDebug = planDraft?.promptDebug;
       const executionResult = await this.controlPlaneClient.createExecution(
         {
           executionMode: 'deterministic_plan',
@@ -219,8 +238,24 @@ export class DeterministicTaskExecutionService {
         {
           authToken: options?.authToken,
           user: options?.user,
-        },
+        }
       );
+      if (
+        process.env.MODEL_INVOCATION_LEDGER_ENABLED === 'true' &&
+        options?.traceId &&
+        options.user
+      ) {
+        try {
+          await this.controlPlaneClient.attachModelInvocations(
+            { traceId: options.traceId, executionId: (executionResult as any).id },
+            { authToken: options.authToken, user: options.user }
+          );
+        } catch (error) {
+          this.logger.warn(
+            `Unable to attach model usage to execution ${(executionResult as any).id}: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      }
 
       return {
         success: true,
@@ -230,7 +265,8 @@ export class DeterministicTaskExecutionService {
     } catch (createErr: any) {
       const responseData = createErr.response?.data;
       const errorCode = responseData?.code || 'EXECUTION_CREATION_FAILED';
-      const errorMessage = responseData?.message || createErr.message || 'Execution creation failed';
+      const errorMessage =
+        responseData?.message || createErr.message || 'Execution creation failed';
 
       this.logger.error(`Control plane execution creation failed: ${errorCode} - ${errorMessage}`);
 

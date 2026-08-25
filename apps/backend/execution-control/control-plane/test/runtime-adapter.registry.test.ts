@@ -43,12 +43,13 @@ describe('RuntimeAdapterRegistry', () => {
       invokeStep: jest.fn(),
     };
 
-    const registry = new RuntimeAdapterRegistry(
-      browserAdapter as never,
-      capabilityAdapter as never,
-      documentAdapter as never,
-      workflowAdapter as never
-    );
+    const registry = new RuntimeAdapterRegistry();
+    registry.registerAdapters([
+      browserAdapter,
+      capabilityAdapter,
+      documentAdapter,
+      workflowAdapter,
+    ]);
 
     const resolved = registry.resolve(baseRequest);
 
@@ -82,12 +83,13 @@ describe('RuntimeAdapterRegistry', () => {
       invokeStep: jest.fn(),
     };
 
-    const registry = new RuntimeAdapterRegistry(
-      browserAdapter as never,
-      capabilityAdapter as never,
-      documentAdapter as never,
-      workflowAdapter as never
-    );
+    const registry = new RuntimeAdapterRegistry();
+    registry.registerAdapters([
+      browserAdapter,
+      capabilityAdapter,
+      documentAdapter,
+      workflowAdapter,
+    ]);
 
     const resolved = registry.resolve(baseRequest);
 
@@ -121,12 +123,13 @@ describe('RuntimeAdapterRegistry', () => {
       invokeStep: jest.fn(),
     };
 
-    const registry = new RuntimeAdapterRegistry(
-      browserAdapter as never,
-      capabilityAdapter as never,
-      documentAdapter as never,
-      workflowAdapter as never
-    );
+    const registry = new RuntimeAdapterRegistry();
+    registry.registerAdapters([
+      browserAdapter,
+      capabilityAdapter,
+      documentAdapter,
+      workflowAdapter,
+    ]);
 
     try {
       registry.resolve(baseRequest);
@@ -172,12 +175,13 @@ describe('RuntimeAdapterRegistry', () => {
       invokeStep: jest.fn(),
     };
 
-    const registry = new RuntimeAdapterRegistry(
-      browserAdapter as never,
-      capabilityAdapter as never,
-      documentAdapter as never,
-      workflowAdapter as never
-    );
+    const registry = new RuntimeAdapterRegistry();
+    registry.registerAdapters([
+      browserAdapter,
+      capabilityAdapter,
+      documentAdapter,
+      workflowAdapter,
+    ]);
 
     const request: RuntimeStepInvokeRequest = {
       ...baseRequest,
@@ -188,5 +192,39 @@ describe('RuntimeAdapterRegistry', () => {
     const resolved = registry.resolve(request);
     expect(resolved).toBe(workflowAdapter);
     expect(workflowAdapter.supports).not.toHaveBeenCalled();
+  });
+
+  it('fails fast when two adapters declare the same route key', () => {
+    const routeKey = buildRuntimeAdapterRouteKey('custom', 'duplicate.route');
+    const first: RuntimeAdapter = {
+      runtimeType: 'custom',
+      routeKeys: [routeKey],
+      supports: jest.fn().mockReturnValue(false),
+      invokeStep: jest.fn(),
+    };
+    const second: RuntimeAdapter = {
+      runtimeType: 'custom',
+      routeKeys: [routeKey],
+      supports: jest.fn().mockReturnValue(false),
+      invokeStep: jest.fn(),
+    };
+    const registry = new RuntimeAdapterRegistry();
+    expect(() => registry.registerAdapters([first, second])).toThrow(
+      "Duplicate runtime adapter route 'custom:duplicate.route'"
+    );
+  });
+
+  it('discovers adapters from Nest providers during module initialization', () => {
+    const adapter: RuntimeAdapter = {
+      runtimeType: 'custom',
+      routeKeys: [buildRuntimeAdapterRouteKey('custom', 'discovered.route')],
+      supports: jest.fn().mockReturnValue(false),
+      invokeStep: jest.fn(),
+    };
+    const registry = new RuntimeAdapterRegistry({
+      getProviders: () => [{ instance: adapter }, { instance: {} }],
+    } as any);
+    registry.onModuleInit();
+    expect(registry.listRouteKeys()).toEqual(['custom:discovered.route']);
   });
 });

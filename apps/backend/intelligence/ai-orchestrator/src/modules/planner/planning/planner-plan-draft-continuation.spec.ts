@@ -1,4 +1,5 @@
 import { PlanGeneratorService } from '../plan/plan-generator.service';
+import { DeterministicParamResolverService } from '../params';
 import { PlannerPlanDraftService } from './planner-plan-draft.service';
 
 describe('PlannerPlanDraftService single-Skill continuation', () => {
@@ -36,7 +37,8 @@ describe('PlannerPlanDraftService single-Skill continuation', () => {
       recognizerService as any,
       planSemanticService as any,
       new PlanGeneratorService(),
-      paramRecognizerService as any
+      paramRecognizerService as any,
+      new DeterministicParamResolverService()
     );
 
     const result = await service.completePlanFromMatchPhase({

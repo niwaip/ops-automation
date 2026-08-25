@@ -9,10 +9,7 @@ export interface SystemOperationDefinition {
 }
 
 /** Single metadata source for seeding, catalog projection, and lifecycle. */
-export const SYSTEM_OPERATION_DEFINITIONS: Record<
-  LlmOperationIdV1,
-  SystemOperationDefinition
-> = {
+export const SYSTEM_OPERATION_DEFINITIONS: Record<LlmOperationIdV1, SystemOperationDefinition> = {
   summarize_list: {
     displayName: '列表摘要',
     description: '对列表文本、搜索结果或文章项集合做精炼要点总结',
@@ -25,13 +22,31 @@ export const SYSTEM_OPERATION_DEFINITIONS: Record<
     goals: ['summarize_text', 'summarize'],
     status: 'active',
   },
+  generate_text: {
+    displayName: '标准 LLM 文本生成',
+    description: '在禁用工具、外部访问和副作用的契约内，根据用户指令及可选可信上下文生成文本',
+    goals: [
+      'generate_text',
+      'general_response',
+      'grounded_advice',
+      'recommendation',
+      'explain',
+      'draft',
+      'compose',
+      'reasoning',
+    ],
+    status: 'active',
+  },
   transform_text: {
-    displayName: '文本处理',
-    description: '将用户提示词作为指令，对给定文本进行分析、翻译、改写、润色、提取、合并或格式化',
+    displayName: '标准 LLM 文本变换',
+    description:
+      '在禁用工具和外部访问的契约内，将用户提示词作为指令，对给定文本或上一执行结果进行分析、建议、翻译、改写、润色、提取、合并或格式化',
     goals: [
       'text_processing',
       'transform_text',
       'analyze_text',
+      'grounded_advice',
+      'recommendation',
       'translate',
       'rewrite',
       'format_markdown',

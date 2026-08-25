@@ -228,7 +228,8 @@ export class ExecutionController {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
 
-    const subscription = this.executionService.subscribeToEvents(id, (event) => {
+    const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), 15000);
+    const subscription = this.executionService.subscribeToDurableEvents(id, (event) => {
       const frame = `data: ${JSON.stringify(event)}\n\n`;
       const newStatus =
         event.eventType === 'execution.status_changed' &&
@@ -242,14 +243,16 @@ export class ExecutionController {
         newStatus === 'cancelled' ||
         newStatus === 'rolled_back'
       ) {
+        clearInterval(heartbeat);
         res.end(frame);
-        return;
+        return false;
       }
 
       res.write(frame);
     });
 
     res.on('close', () => {
+      clearInterval(heartbeat);
       subscription.unsubscribe();
     });
   }

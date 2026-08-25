@@ -248,7 +248,7 @@ export class SkillController {
   @Public()
   @Post('match')
   async matchSkill(
-    @Body() body: { userInput: string; userId?: string },
+    @Body() body: { userInput: string; userId?: string; modelId?: string },
     @Request() req: any
   ): Promise<{ match: SkillMatchResult | null }> {
     // 优先使用 body.userId（内部服务调用），否则使用 JWT 认证的 userId
@@ -257,7 +257,7 @@ export class SkillController {
       return { match: null };
     }
     // 使用 AI 语义匹配（自动过滤用户无权限的 Skills）
-    const match = await this.skillService.matchSkillWithAI(body.userInput, userId);
+    const match = await this.skillService.matchSkillWithAI(body.userInput, userId, body.modelId);
     return { match };
   }
 

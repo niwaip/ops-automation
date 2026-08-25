@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { APPROVAL_STATUS } from '../contracts/approval-status';
 import { EXECUTION_EVENT_TYPE } from '../contracts/execution-event-type';
@@ -6,6 +12,7 @@ import { EXECUTION_STATUS, ExecutionStatus } from '../contracts/execution-status
 import { CreateExecutionEventOptions } from '../state/execution-event.service';
 import { ApprovalDecisionDto, ExecutionDto } from '../state/execution.dto';
 import { ensureExecutionPermission } from '../shared/execution-permission.util';
+import { ExecutionOutboxService } from '../outbox/execution-outbox.service';
 
 interface RequestUserContext {
   id: string;
@@ -28,7 +35,10 @@ export interface ExecutionApprovalHooks {
 export class ExecutionApprovalService {
   private readonly logger = new Logger(ExecutionApprovalService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly outbox?: ExecutionOutboxService
+  ) {}
 
   async approve(
     id: string,
@@ -66,10 +76,19 @@ export class ExecutionApprovalService {
       comment: dto.comment,
     });
 
-    hooks.startExecution(id).catch((err) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Failed to start approved execution ${id}: ${msg}`);
-    });
+    if (process.env.EXECUTION_OUTBOX_ENABLED === 'true' && this.outbox) {
+      await this.outbox.enqueue({
+        aggregateType: 'execution',
+        aggregateId: id,
+        eventType: 'execution.ready',
+        payload: { executionId: id, reason: 'approval_granted', dispatcherVersion: 'v2' },
+      });
+    } else {
+      hooks.startExecution(id).catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Failed to start approved execution ${id}: ${msg}`);
+      });
+    }
 
     this.logger.log(`Execution ${id} approved`);
     return hooks.getExecutionDto(id, requester || { id: userId });

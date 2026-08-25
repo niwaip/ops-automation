@@ -60,14 +60,12 @@ export class RuntimeStepRequestFactory {
     const includeExecutionStepMetadata = this.shouldIncludeExecutionStepMetadata(input.execution);
     const isBuiltin = capabilityId.startsWith('platform.');
 
-    const frozenMeta = (
-      (stepObj?.inputBindingsJson as any)?._frozenMetadata ||
+    const frozenMeta = ((stepObj?.inputBindingsJson as any)?._frozenMetadata ||
       (stepObj?.input_bindings_json as any)?._frozenMetadata ||
       (stepObj?.outputContractJson as any)?._frozenMetadata ||
       (stepObj?.output_contract_json as any)?._frozenMetadata ||
       stepObj?.metadata ||
-      {}
-    ) as Record<string, unknown>;
+      {}) as Record<string, unknown>;
 
     const capabilityVersion = this.resolveExecutionCapabilityVersion(input.execution, stepObj);
 
@@ -84,7 +82,7 @@ export class RuntimeStepRequestFactory {
       input: this.resolveExecutionInput(input.execution),
       policyContext: this.buildPolicyContext(input.execution),
       metadata: {
-        capabilityVersion,
+        ...(capabilityVersion ? { capabilityVersion } : {}),
         ...(isBuiltin ? { builtinSkill: true, definitionVersion: capabilityVersion } : {}),
         ...(frozenMeta.handlerKey
           ? { handlerKey: frozenMeta.handlerKey as string }
@@ -98,26 +96,25 @@ export class RuntimeStepRequestFactory {
                       : undefined,
               }
             : {}),
-        ...(frozenMeta.definitionDigest ? { definitionDigest: frozenMeta.definitionDigest as string } : {}),
-        ...(frozenMeta.adapterRoute ? { adapterRoute: frozenMeta.adapterRoute as string } : {}),
-        ...(includeExecutionStepMetadata
-          ? {
-              executionStepName:
-                typeof input.step?.name === 'string' && input.step.name.trim()
-                  ? input.step.name.trim()
-                  : undefined,
-              executionStepAction:
-                typeof input.step?.action === 'string' && input.step.action.trim()
-                  ? input.step.action.trim()
-                  : undefined,
-              executionStepIndex:
-                typeof input.step?.stepIndex === 'number'
-                  ? input.step.stepIndex
-                  : typeof input.step?.step_index === 'number'
-                    ? input.step.step_index
-                    : undefined,
-            }
+        ...(frozenMeta.definitionDigest
+          ? { definitionDigest: frozenMeta.definitionDigest as string }
           : {}),
+        ...(frozenMeta.adapterRoute ? { adapterRoute: frozenMeta.adapterRoute as string } : {}),
+        ...(includeExecutionStepMetadata &&
+        typeof input.step?.name === 'string' &&
+        input.step.name.trim()
+          ? { executionStepName: input.step.name.trim() }
+          : {}),
+        ...(includeExecutionStepMetadata &&
+        typeof input.step?.action === 'string' &&
+        input.step.action.trim()
+          ? { executionStepAction: input.step.action.trim() }
+          : {}),
+        ...(includeExecutionStepMetadata && typeof input.step?.stepIndex === 'number'
+          ? { executionStepIndex: input.step.stepIndex }
+          : includeExecutionStepMetadata && typeof input.step?.step_index === 'number'
+            ? { executionStepIndex: input.step.step_index }
+            : {}),
         ...(input.phaseMetadata || {}),
       },
     };
@@ -129,7 +126,7 @@ export class RuntimeStepRequestFactory {
 
   resolveExecutionCapabilityId(
     execution: Record<string, unknown>,
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ): string | undefined {
     if (typeof step?.capabilityId === 'string' && step.capabilityId.trim()) {
       return step.capabilityId.trim();
@@ -159,7 +156,7 @@ export class RuntimeStepRequestFactory {
 
   resolveExecutionCapabilityVersion(
     execution: Record<string, unknown>,
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ): string | undefined {
     if (typeof step?.capabilityVersion === 'string' && step.capabilityVersion.trim()) {
       return step.capabilityVersion.trim();
@@ -248,7 +245,12 @@ export class RuntimeStepRequestFactory {
 
     for (const [name, entry] of Object.entries(rawParamResolution || {})) {
       const normalizedEntry = this.normalizeDocumentParamResolutionEntry(entry);
-      if (!normalizedEntry || normalizedEntry.final !== true || normalizedEntry.value === undefined || normalizedEntry.value === null) {
+      if (
+        !normalizedEntry ||
+        normalizedEntry.final !== true ||
+        normalizedEntry.value === undefined ||
+        normalizedEntry.value === null
+      ) {
         continue;
       }
       const bindingPaths = this.resolveDocumentBindingPaths(normalizedEntry);
@@ -256,13 +258,22 @@ export class RuntimeStepRequestFactory {
         continue;
       }
       for (const bindingPath of bindingPaths) {
-        this.setValueByPath(dataPayload, bindingPath, normalizedEntry.value);
+        this.setValueByPath(
+          dataPayload,
+          bindingPath,
+          this.resolveDocumentBindingValue(normalizedEntry.value, bindingPath, bindingPaths)
+        );
         hasBindingMappings = true;
       }
+      delete result[name];
     }
 
     if (hasBindingMappings) {
       result.data = dataPayload;
+    } else if (Object.keys(rawParamResolution || {}).length > 0) {
+      this.logger.warn(
+        `Document runtime payload resolved zero mapped fields for execution ${executionId || 'unknown'}`
+      );
     }
     return result;
   }
@@ -278,14 +289,21 @@ export class RuntimeStepRequestFactory {
     }
 
     const rec = entry as Record<string, unknown>;
-    const bindingPaths = Array.isArray(rec.bindingPaths)
-      ? rec.bindingPaths.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    const rawPaths = rec.bindingPaths ?? rec.render_path;
+    const bindingPaths = Array.isArray(rawPaths)
+      ? rawPaths.filter(
+          (item): item is string => typeof item === 'string' && item.trim().length > 0
+        )
       : undefined;
+    const rawBindingPath = rec.bindingPath ?? rec.template_binding ?? rec.render_path;
 
     return {
       final: Boolean(rec.final),
       value: rec.value,
-      bindingPath: typeof rec.bindingPath === 'string' && rec.bindingPath.trim() ? rec.bindingPath.trim() : undefined,
+      bindingPath:
+        typeof rawBindingPath === 'string' && rawBindingPath.trim()
+          ? rawBindingPath.trim()
+          : undefined,
       bindingPaths: bindingPaths && bindingPaths.length > 0 ? bindingPaths : undefined,
     };
   }
@@ -307,8 +325,17 @@ export class RuntimeStepRequestFactory {
   }
 
   private setValueByPath(target: Record<string, unknown>, pathStr: string, value: unknown): void {
-    const parts = pathStr.split('.').map((p) => p.trim()).filter(Boolean);
+    const parts = pathStr
+      .split('.')
+      .map((p) => p.trim())
+      .filter(Boolean);
     if (parts.length === 0) {
+      return;
+    }
+
+    const arrayIndex = parts.findIndex((part) => part.endsWith('[]'));
+    if (arrayIndex >= 0) {
+      this.setArrayValueByPath(target, parts, arrayIndex, value);
       return;
     }
 
@@ -323,6 +350,37 @@ export class RuntimeStepRequestFactory {
     }
 
     cursor[parts[parts.length - 1]] = value;
+  }
+
+  private setArrayValueByPath(
+    target: Record<string, unknown>,
+    parts: string[],
+    arrayIndex: number,
+    value: unknown
+  ): void {
+    const arrayKey = parts[arrayIndex].slice(0, -2);
+    if (!arrayKey || arrayIndex !== 0 || parts.length < 2) return;
+    const values = Array.isArray(value) ? value : [value];
+    const rows = Array.isArray(target[arrayKey]) ? (target[arrayKey] as unknown[]) : [];
+    values.forEach((item, index) => {
+      const row = this.asRecord(rows[index]) || {};
+      rows[index] = row;
+      this.setValueByPath(row, parts.slice(arrayIndex + 1).join('.'), item);
+    });
+    target[arrayKey] = rows;
+  }
+
+  private resolveDocumentBindingValue(
+    value: unknown,
+    bindingPath: string,
+    bindingPaths: string[]
+  ): unknown {
+    const localized = this.asRecord(value);
+    if (!localized) return value;
+    const localeMatch = bindingPath.match(/_(cn|jp|en)$/u);
+    if (localeMatch && localized[localeMatch[1]] !== undefined) return localized[localeMatch[1]];
+    const pathIndex = bindingPaths.indexOf(bindingPath);
+    return Object.values(localized)[pathIndex] ?? Object.values(localized)[0];
   }
 
   private asRecord(value: unknown): Record<string, unknown> | null {

@@ -184,6 +184,16 @@ interface CreateFlowRunnerHooksInput {
     reason: string,
     hooks: ExecutionFailureHooks
   ) => Promise<void>;
+  failExecutionFromRuntimeStep: (
+    input: {
+      executionId: string;
+      stepId: string;
+      failureReason: string;
+      failureCode: string;
+      runtimeSessionId?: string;
+    },
+    hooks: ExecutionFailureHooks
+  ) => Promise<void>;
   executeBrowserGotoStep: (
     execution: Record<string, unknown>,
     runtimeSessionId: string,
@@ -289,6 +299,8 @@ export class ExecutionRuntimeHooksService {
       extractStepUrl: input.extractStepUrl,
       skipSingleStep: (stepId, executionId, reason) =>
         input.skipSingleStep(stepId, executionId, reason, failureHooks),
+      failExecutionFromRuntimeStep: (failure) =>
+        input.failExecutionFromRuntimeStep(failure, failureHooks),
       executeBrowserGotoStep: input.executeBrowserGotoStep,
       enterWaitingInput: input.enterWaitingInput,
       executeBrowserPhaseStep: input.executeBrowserPhaseStep,

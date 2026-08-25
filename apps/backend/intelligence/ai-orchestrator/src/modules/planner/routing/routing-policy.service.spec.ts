@@ -33,11 +33,11 @@ describe('RoutingPolicyService', () => {
     expect(snapshot.version).toBe('admin-approved-7');
     expect(snapshot.source).toBe('environment');
     expect(snapshot.signals.processing).toEqual(
-      expect.arrayContaining(['总结', 'bark', '飞书推送']),
+      expect.arrayContaining(['总结', 'bark', '飞书推送'])
     );
     expect(extractTerminalActions('最后飞书推送', snapshot)).toEqual(['feishu']);
     expect(new PlanRouteClassifierService(service).classifyRoute('飞书推送')).toBe(
-      'deterministic_plan',
+      'deterministic_plan'
     );
   });
 
@@ -50,6 +50,6 @@ describe('RoutingPolicyService', () => {
 
     const snapshot = new RoutingPolicyService().getSnapshot();
     expect(snapshot.source).toBe('builtin');
-    expect(snapshot.version).toBe('builtin-2026-08-23');
+    expect(snapshot.version).toBe('builtin-2026-08-25');
   });
 });
