@@ -11,6 +11,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 START_SMART="$REPO_ROOT/docker/start-smart.sh"
 COMPOSE_POLICY_VALIDATOR="$SCRIPT_DIR/validate-production-compose-policy.mjs"
 NODE_SERVICE_DOCKERFILE="$REPO_ROOT/docker/node-service/Dockerfile"
+APPLICATION_TARGET_VALIDATOR="$REPO_ROOT/database/scripts/validate-application-database-targets.mjs"
 
 usage() {
   cat <<'EOF'
@@ -74,10 +75,12 @@ if [[ ! -x "$START_SMART" ]]; then
   echo "Expected Docker launcher at $START_SMART" >&2
   exit 1
 fi
-if [[ ! -f "$COMPOSE_POLICY_VALIDATOR" || ! -f "$NODE_SERVICE_DOCKERFILE" ]]; then
-  echo "Production Compose policy validator or runtime Dockerfile is missing" >&2
+if [[ ! -f "$COMPOSE_POLICY_VALIDATOR" || ! -f "$NODE_SERVICE_DOCKERFILE" || ! -f "$APPLICATION_TARGET_VALIDATOR" ]]; then
+  echo "Production validation dependency is missing" >&2
   exit 1
 fi
+
+node "$APPLICATION_TARGET_VALIDATOR"
 
 rendered_compose_file="$(mktemp -t ops-production-compose.XXXXXX)"
 trap 'rm -f "$rendered_compose_file"' EXIT

@@ -6,6 +6,9 @@ const root = process.cwd();
 const manifest = JSON.parse(
   fs.readFileSync(path.join(root, 'database/schema-ownership.json'), 'utf8')
 );
+const accessPolicy = JSON.parse(
+  fs.readFileSync(path.join(root, 'database/security/access-policy.json'), 'utf8')
+);
 const sourcePath = path.join(root, manifest.schemaSource);
 const source = fs.readFileSync(sourcePath, 'utf8');
 const tableNames = (schema) =>
@@ -50,6 +53,23 @@ for (const mirror of manifest.generatedMirrors) {
     throw new Error(
       `Generated Prisma mirror drifted: ${mirror}. Run database/scripts/sync-prisma-schema.sh`
     );
+  }
+}
+
+const owners = Object.keys(manifest.owners).sort();
+const policyOwners = Object.keys(accessPolicy.writerGroupByOwner || {}).sort();
+if (owners.join(',') !== policyOwners.join(',')) {
+  throw new Error(
+    `Database access policy owner mismatch. schema=[${owners}] policy=[${policyOwners}]`
+  );
+}
+
+const policyLogins = accessPolicy.applicationLogins || {};
+for (const [loginEnv, loginOwners] of Object.entries(policyLogins)) {
+  for (const owner of loginOwners) {
+    if (!manifest.owners[owner]) {
+      throw new Error(`Database access policy ${loginEnv} references unknown owner: ${owner}`);
+    }
   }
 }
 

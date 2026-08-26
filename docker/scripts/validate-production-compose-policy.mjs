@@ -130,7 +130,12 @@ if (!/^\s*USER\s+ops\s*$/im.test(runtimeStage)) {
 if (/^\s*VOLUME\b/im.test(runtimeStage)) {
   failures.push('Runtime Dockerfile stage must not declare writable host-mounted volumes');
 }
-for (const requiredCopy of ['docker/scripts', 'docker/sql', 'database/scripts']) {
+for (const requiredCopy of [
+  'docker/scripts',
+  'docker/sql',
+  'database/scripts',
+  'database/security',
+]) {
   const copyPattern = new RegExp(`^\\s*COPY\\s+${escapeRegExp(requiredCopy)}\\s+`, 'im');
   if (!copyPattern.test(dockerfile)) {
     failures.push(`Runtime release image build must include ${requiredCopy}`);

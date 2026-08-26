@@ -6,8 +6,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PLATFORM_MIGRATOR="$SCRIPT_DIR/apply-latest-db-schema-in-container.sh"
 AI_MIGRATOR="$SCRIPT_DIR/apply-ai-orchestrator-db-schema-in-container.sh"
+MIGRATION_TARGET_VALIDATOR="$REPO_ROOT/database/scripts/validate-migration-targets.mjs"
 
 log() {
   printf '[production-schema-migrator] %s\n' "$1"
@@ -25,15 +27,18 @@ for variable in CONTROL_PLANE_MIGRATION_DATABASE_URL AI_ORCHESTRATOR_MIGRATION_D
   require_env "$variable"
 done
 
-if [[ ! -f "$PLATFORM_MIGRATOR" || ! -f "$AI_MIGRATOR" ]]; then
+if [[ ! -f "$PLATFORM_MIGRATOR" || ! -f "$AI_MIGRATOR" || ! -f "$MIGRATION_TARGET_VALIDATOR" ]]; then
   log 'Required migration script is missing from the release image.'
   exit 1
 fi
 
-log 'Applying canonical shared Platform migrations with the release-only credential...'
+node "$REPO_ROOT/database/scripts/validate-migration-authority.mjs"
+node "$MIGRATION_TARGET_VALIDATOR"
+
+log 'Applying the single canonical migration history with the release-only credential...'
 DATABASE_URL="$CONTROL_PLANE_MIGRATION_DATABASE_URL" bash "$PLATFORM_MIGRATOR"
 
-log 'Applying AI Orchestrator-owned migrations with the release-only credential...'
+log 'Validating AI Orchestrator schema against the canonical migration history...'
 DATABASE_URL="$AI_ORCHESTRATOR_MIGRATION_DATABASE_URL" bash "$AI_MIGRATOR"
 
-log 'All production migration histories are current.'
+log 'The canonical production migration history is current.'

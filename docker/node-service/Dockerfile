@@ -13,6 +13,7 @@ COPY apps/backend ./apps/backend
 COPY docker/scripts ./docker/scripts
 COPY docker/sql ./docker/sql
 COPY database/scripts ./database/scripts
+COPY database/security ./database/security
 ARG PACKAGE_FILTER
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter "${PACKAGE_FILTER}" run build

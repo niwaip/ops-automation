@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# Applies only the AI Orchestrator-owned Prisma migration history.  This is
-# intentionally a separate history from the shared Platform schema: the LLM
-# Operation Registry is owned and evolved by AI Orchestrator.
+# Validates the AI Orchestrator Prisma schema.  Its historical LLM Registry SQL
+# is byte-for-byte adopted by the canonical Platform migration authority so all
+# services share one _prisma_migrations history.
 
 set -euo pipefail
 
@@ -31,7 +31,4 @@ fi
 log 'Validating the AI Orchestrator Prisma schema...'
 run_ai_prisma validate --schema "$AI_SCHEMA"
 
-log 'Applying the AI Orchestrator-owned migration sequence...'
-run_ai_prisma migrate deploy --schema "$AI_SCHEMA"
-
-log 'Latest AI Orchestrator database schema is applied.'
+log 'AI Orchestrator Prisma schema is valid; migrations are applied by the canonical Platform authority.'

@@ -70,7 +70,9 @@ jobs:
       - name: Install frozen dependencies
         run: pnpm install --frozen-lockfile
       - name: Validate schema ownership
-        run: pnpm run validate:schema-ownership
+        run: |
+          pnpm run validate:schema-ownership
+          pnpm run validate:migration-authority
       - name: Validate versioned contracts and capability SDK
         run: |
           pnpm --filter @ops/backend-planning-decision test
@@ -86,12 +88,28 @@ jobs:
           pnpm --filter @ops/control-plane test -- --runInBand
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/task_orchestration
-      - name: Validate AI Registry migration history
-        run: |
-          pnpm --filter @ops/ai-orchestrator exec prisma migrate deploy --schema "$GITHUB_WORKSPACE/apps/backend/intelligence/ai-orchestrator/prisma/schema.prisma"
-          pnpm --filter @ops/ai-orchestrator exec prisma migrate status --schema "$GITHUB_WORKSPACE/apps/backend/intelligence/ai-orchestrator/prisma/schema.prisma"
+      - name: Create isolated database for migration and access-policy verification
+        run: node database/test/create-isolated-access-policy-database.mjs
         env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/task_orchestration
+          DATABASE_ADMIN_URL: postgresql://test:test@localhost:5432/task_orchestration
+          ROLE_POLICY_FIXTURE_CONFIRM: ci-only
+      - name: Validate production migration histories on an empty database
+        run: |
+          pnpm --filter @ops/platform exec prisma migrate deploy --schema "$GITHUB_WORKSPACE/apps/backend/core/platform/prisma/schema.prisma"
+          pnpm --filter @ops/platform exec prisma migrate status --schema "$GITHUB_WORKSPACE/apps/backend/core/platform/prisma/schema.prisma"
+          pnpm --filter @ops/ai-orchestrator exec prisma validate --schema "$GITHUB_WORKSPACE/apps/backend/intelligence/ai-orchestrator/prisma/schema.prisma"
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/task_orchestration_access_policy
+      - name: Validate database access policy against PostgreSQL
+        run: |
+          node database/test/provision-access-policy-fixture.mjs
+          node database/scripts/verify-application-roles.mjs
+        env:
+          DATABASE_ADMIN_URL: postgresql://test:test@localhost:5432/task_orchestration_access_policy
+          ROLE_POLICY_FIXTURE_CONFIRM: ci-only
+          CONTROL_PLANE_DB_LOGIN: control_plane_access_policy_fixture
+          AI_ORCHESTRATOR_DB_LOGIN: ai_orchestrator_access_policy_fixture
+          RUNTIME_WORKER_DB_LOGIN: runtime_worker_access_policy_fixture
       - name: Validate Release Job entrypoints
         run: |
           bash -n docker/scripts/apply-ai-orchestrator-db-schema-in-container.sh
@@ -105,8 +123,8 @@ jobs:
           CONTROL_PLANE_IMAGE: registry.example/control-plane@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
           AI_ORCHESTRATOR_IMAGE: registry.example/ai-orchestrator@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
           RUNTIME_WORKER_IMAGE: registry.example/runtime-worker@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-          CONTROL_PLANE_DATABASE_URL: postgresql://control:secret@db/control
-          AI_ORCHESTRATOR_DATABASE_URL: postgresql://ai:secret@db/ai
+          CONTROL_PLANE_DATABASE_URL: postgresql://control:secret@db/ops
+          AI_ORCHESTRATOR_DATABASE_URL: postgresql://ai:secret@db/ops
           REDIS_HOST: redis
           REDIS_PASSWORD: test-secret
           SESSION_BROKER_URL: http://session-broker:3002
