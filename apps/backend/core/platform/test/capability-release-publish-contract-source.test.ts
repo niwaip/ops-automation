@@ -113,4 +113,32 @@ describe('Capability publish contract authority', () => {
       })
     );
   });
+
+  it('allows temporal workflow publication with workflow-scoped parameters and defaults', async () => {
+    const { service, prisma } = createService();
+    const draft = {
+      name: '查询全网热榜',
+      tools: [],
+      executionFlowTemplateIds: [],
+      draftPayload: {
+        name: '查询全网热榜',
+        tools: [],
+        outputSchema: oldSchema,
+      },
+    } as any;
+    const credentialSnapshot = {
+      sourcePayload: {
+        ...snapshot.sourcePayload,
+        paramsSchema: {
+          properties: {
+            apiKey: { default: 'user-workflow-key', description: 'Tavily API key' },
+          },
+        },
+      },
+    } as any;
+
+    const result = await service.validatePublishDraft(release, draft, credentialSnapshot);
+
+    expect(result.blocker).toBeUndefined();
+  });
 });

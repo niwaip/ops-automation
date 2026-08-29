@@ -21,6 +21,7 @@ import {
   ExecuteCapabilityRuntimeResultDTO,
 } from '../interfaces';
 import { RELEASE_MANAGER_ACTIVITY_EXECUTION } from '../platform-runtime.tokens';
+import { resolveTemporalRuntimeCredentials } from './temporal-runtime-credential.resolver';
 
 export { CapabilityPublishedSkillRuntimeContext };
 
@@ -167,9 +168,21 @@ export class CapabilityReleaseRuntimeService {
         userId
       );
       const runtimeSessionId = options?.runtimeSessionId || `capability-runtime-${randomUUID()}`;
-      const normalizedInput: Record<string, any> = {
-        ...((input as Record<string, any>) || {}),
-      };
+      const credentialResolution = resolveTemporalRuntimeCredentials(
+        input,
+        snapshot.sourcePayload
+      );
+      if (credentialResolution.missing.length > 0) {
+        const missingFields = credentialResolution.missing
+          .map(({ field, envKeys }) =>
+            envKeys.length > 0 ? `${field}（配置 ${envKeys.join(' 或 ')}）` : field
+          )
+          .join('、');
+        throw new BadRequestException(
+          `工作流运行凭证未配置: ${missingFields}。已禁止使用发布快照中的明文默认凭证，请配置运行时环境变量后重试。`
+        );
+      }
+      const normalizedInput: Record<string, any> = credentialResolution.input;
       if (!normalizedInput.runtimeSessionId) {
         normalizedInput.runtimeSessionId = runtimeSessionId;
       }

@@ -133,11 +133,13 @@ describe('ExecutionPlanNormalizationService', () => {
               properties: {
                 username: { type: 'string', default: 'template-user' },
                 password: { type: 'string', default: 'schema-secret' },
+                apiKey: { type: 'string', default: 'snapshot-api-key' },
               },
             },
             inputPolicy: {
               params: {
                 password: { defaultValue: 'policy-secret' },
+                apiKey: { defaultValue: 'policy-api-key' },
               },
             },
           },

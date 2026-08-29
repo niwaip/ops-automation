@@ -149,6 +149,11 @@ function rankCapability<T extends DeterministicRoutingCapability>(
 function deriveRoutingSignals(value: string): string[] {
   const normalized = normalizePlanningText(value);
   const signals = new Set<string>();
+  value
+    .split(/[\s,，。；;:：/|]+/u)
+    .map(normalizePlanningText)
+    .filter(isDistinctiveSignal)
+    .forEach((segment) => signals.add(segment));
   let current = stripSuffixes(normalized, ROUTING_CONTAINER_SUFFIXES);
   if (current && current !== normalized) signals.add(current);
   const withoutAction = stripSuffixes(current, ROUTING_ACTION_SUFFIXES);

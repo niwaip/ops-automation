@@ -2,6 +2,7 @@ import {
   BridgeRecorderExportDTO,
   RecorderBridgePublishPayloadDTO,
 } from '../interfaces';
+import { Injectable } from '@nestjs/common';
 import { BrowserRecordingFlowNormalizerService } from './browser-recording-flow-normalizer.service';
 
 type NormalizedRecorderPublishPayload = {
@@ -9,6 +10,7 @@ type NormalizedRecorderPublishPayload = {
   description: string;
   triggerKeywords: string[];
   paramsSchema: Record<string, unknown>;
+  outputSchema?: Record<string, unknown>;
   executionFlowTemplateIds: string[];
   executionFlow: Array<Record<string, unknown>>;
   tools: string[];
@@ -24,6 +26,7 @@ type CompiledRecorderBridgePayload = {
   sourceName: string;
 };
 
+@Injectable()
 export class CapabilityReleaseRecorderBridgeCompilerService {
   constructor(
     private readonly browserRecordingFlowNormalizerService: BrowserRecordingFlowNormalizerService
@@ -90,6 +93,12 @@ export class CapabilityReleaseRecorderBridgeCompilerService {
       !Array.isArray(input.paramsSchema)
         ? input.paramsSchema
         : { properties: {}, required: [] };
+    const outputSchema =
+      input.outputSchema &&
+      typeof input.outputSchema === 'object' &&
+      !Array.isArray(input.outputSchema)
+        ? input.outputSchema
+        : undefined;
     const executionFlowTemplateIds = Array.isArray(input.executionFlowTemplateIds)
       ? input.executionFlowTemplateIds.filter(
           (item): item is string => typeof item === 'string' && item.trim().length > 0
@@ -120,6 +129,7 @@ export class CapabilityReleaseRecorderBridgeCompilerService {
       description,
       triggerKeywords: triggerKeywords.length > 0 ? triggerKeywords : [name],
       paramsSchema,
+      ...(outputSchema ? { outputSchema } : {}),
       executionFlowTemplateIds,
       executionFlow,
       tools,
@@ -133,6 +143,7 @@ export class CapabilityReleaseRecorderBridgeCompilerService {
     normalizedPayload: {
       description: string;
       paramsSchema: Record<string, unknown>;
+      outputSchema?: Record<string, unknown>;
       executionFlow: Array<Record<string, unknown>>;
       tools: string[];
       apiEndpoints: Record<string, unknown> | null;
@@ -142,6 +153,7 @@ export class CapabilityReleaseRecorderBridgeCompilerService {
       goal: dto.userGoal || normalizedPayload.description,
       description: normalizedPayload.description,
       paramsSchema: normalizedPayload.paramsSchema,
+      ...(normalizedPayload.outputSchema ? { outputSchema: normalizedPayload.outputSchema } : {}),
       executionFlow: normalizedPayload.executionFlow,
       tools: normalizedPayload.tools,
       runtimeMetadata: normalizedPayload.apiEndpoints?.runtimeMetadata || {},

@@ -91,9 +91,18 @@ export class BrowserExecutionControllerService {
       effectiveParsed = preflightRecoveryParsed;
     }
 
-    const initialExecution = await input.executeBrowserCommands(input.session, effectiveParsed.commands, {
+    let initialExecution = await input.executeBrowserCommands(input.session, effectiveParsed.commands, {
       appendDefaultWait: true,
     });
+    let nextObservation = await input.observePageSafely(
+      input.session,
+      input.mergeObservationWithExecution(input.observation, initialExecution)
+    );
+    initialExecution = this.reconcileNavigationExecution(
+      initialExecution,
+      effectiveParsed.commands,
+      nextObservation
+    );
     await this.reportExecutionFailure({
       stage: 'initial-execution',
       session: input.session,
@@ -105,18 +114,9 @@ export class BrowserExecutionControllerService {
     let effectiveExecution = initialExecution;
 
     const retryDecision = this.buildRetryDecision(initialExecution);
-    let nextObservation = initialExecution.success
-      ? await input.observePageSafely(
-          input.session,
-          input.mergeObservationWithExecution(input.observation, initialExecution)
-        )
-      : input.observation;
 
     if (!initialExecution.success && retryDecision && input.parseRecoveryCommand) {
-      const failureObservation = await input.observePageSafely(
-        input.session,
-        input.mergeObservationWithExecution(input.observation, initialExecution)
-      );
+      const failureObservation = nextObservation;
       const recoveryParsed = await input.parseRecoveryCommand({
         input: input.effectiveMessage,
         observation: failureObservation,
@@ -128,12 +128,21 @@ export class BrowserExecutionControllerService {
         recoveryParsed.commands.length > 0 &&
         !this.areCommandsEquivalent(recoveryParsed.commands, input.parsed.commands)
       ) {
-        const recoveryExecution = await input.executeBrowserCommands(
+        let recoveryExecution = await input.executeBrowserCommands(
           input.session,
           recoveryParsed.commands,
           {
             appendDefaultWait: true,
           }
+        );
+        nextObservation = await input.observePageSafely(
+          input.session,
+          input.mergeObservationWithExecution(failureObservation, recoveryExecution)
+        );
+        recoveryExecution = this.reconcileNavigationExecution(
+          recoveryExecution,
+          recoveryParsed.commands,
+          nextObservation
         );
         await this.reportExecutionFailure({
           stage: 'recovery-execution',
@@ -145,19 +154,14 @@ export class BrowserExecutionControllerService {
         });
         effectiveParsed = recoveryParsed;
         effectiveExecution = this.mergeExecutionResponses(initialExecution, recoveryExecution);
-        nextObservation = recoveryExecution.success
-          ? await input.observePageSafely(
-              input.session,
-              input.mergeObservationWithExecution(failureObservation, recoveryExecution)
-            )
-          : failureObservation;
       } else {
         nextObservation = failureObservation;
       }
     }
 
-    input.session.lastObservation = nextObservation;
-    input.session.currentPageUrl = nextObservation.currentPageUrl || input.session.currentPageUrl;
+    const finalObservation = nextObservation || input.observation;
+    input.session.lastObservation = finalObservation;
+    input.session.currentPageUrl = finalObservation?.currentPageUrl || input.session.currentPageUrl;
     input.session.executedCommands.push(
       ...(effectiveExecution.executedCommands || effectiveParsed.commands)
     );
@@ -166,7 +170,7 @@ export class BrowserExecutionControllerService {
     const ambiguityReply = this.recorderDebugChatSupportService.buildAmbiguityReply(
       effectiveParsed.commands,
       effectiveExecution,
-      nextObservation
+      finalObservation
     );
     if (ambiguityReply) {
       input.session.pendingDisambiguation = ambiguityReply.pending;
@@ -432,6 +436,7 @@ export class BrowserExecutionControllerService {
     const recoverySucceeded = recoveryExecution.success;
     return {
       success: recoveryExecution.success,
+      ...(recoveryExecution.recovered ? { recovered: true, recovery: recoveryExecution.recovery } : {}),
       message: recoverySucceeded
         ? recoveryExecution.message || 'Recovered after retry'
         : recoveryExecution.message || initialExecution.message,
@@ -446,7 +451,44 @@ export class BrowserExecutionControllerService {
     };
   }
 
+  private reconcileNavigationExecution(
+    execution: BrowserExecuteResponse,
+    commands: BrowserCommand[],
+    observation: RecorderDebugObservation
+  ): BrowserExecuteResponse {
+    if (process.env.BROWSER_POST_STATE_RECONCILIATION_ENABLED !== 'true') return execution;
+    if (execution.success || commands.length !== 1) return execution;
+    const command = commands[0];
+    if (!command || (command.tool !== 'navigate' && command.tool !== 'goto')) return execution;
+    const expectedUrl =
+      (typeof command.params?.url === 'string' && command.params.url.trim()) ||
+      (typeof command.params?.target === 'string' && command.params.target.trim());
+    const observedUrl = observation.currentPageUrl?.trim();
+    if (!expectedUrl || !observedUrl || !urlsMatch(expectedUrl, observedUrl)) return execution;
+    return {
+      ...execution,
+      success: true,
+      recovered: true,
+      recovery: {
+        code: 'NAVIGATION_TIMEOUT_RECOVERED',
+        expectedUrl,
+        observedUrl,
+      },
+      message: '导航动作返回异常，但页面状态校准确认已到达目标地址。',
+    };
+  }
+
   private areCommandsEquivalent(a: BrowserCommand[], b: BrowserCommand[]): boolean {
     return JSON.stringify(a) === JSON.stringify(b);
+  }
+}
+
+function urlsMatch(expected: string, actual: string): boolean {
+  try {
+    const left = new URL(expected);
+    const right = new URL(actual);
+    return left.protocol === right.protocol && left.hostname === right.hostname && left.port === right.port && left.pathname === right.pathname && left.search === right.search && left.hash === right.hash;
+  } catch {
+    return expected === actual;
   }
 }

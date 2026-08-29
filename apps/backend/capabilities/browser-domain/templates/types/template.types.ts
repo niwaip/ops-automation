@@ -92,6 +92,30 @@ export interface TemplateStep {
   branch?: BranchConfig;
   description?: string;
   execution_policy?: StepExecutionPolicy;
+  capture_profile?: {
+    schemaVersion: 'capture-profile/v1';
+    profile: 'article' | 'application' | 'audit' | 'raw';
+    capture: {
+      screenshot: boolean;
+      html: boolean;
+      snapshot: boolean;
+      mainContent: boolean;
+    };
+    limits: { htmlBytes: number; contentChars: number; tableCells: number };
+    readiness?: {
+      waitUntil?: 'domcontentloaded' | 'networkidle';
+      timeoutMs?: number;
+      stableMs?: number;
+      selector?: string;
+      minCount?: number;
+      maxAttempts?: number;
+      retryDelayMs?: number;
+    };
+    quality?: {
+      minChars?: number;
+      minConfidence?: number;
+    };
+  };
 }
 
 export interface ParamSchema {

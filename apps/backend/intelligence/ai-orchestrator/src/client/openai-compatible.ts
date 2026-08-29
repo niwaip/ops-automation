@@ -378,9 +378,17 @@ export class OpenAICompatibleClient {
 
   private isReasoningMandatoryError(error: unknown): boolean {
     const axiosError = error as AxiosLikeError;
-    const message = axiosError.response?.data?.error?.message || axiosError.message || '';
-    return /reasoning.{0,40}(?:mandatory|required|cannot be disabled|can't be disabled)/i.test(
-      message
+    const message = (
+      axiosError.response?.data?.error?.message ||
+      (axiosError.response?.data as any)?.message ||
+      axiosError.message ||
+      ''
+    ).toLowerCase();
+    return (
+      /reasoning.{0,40}(?:mandatory|required|cannot be disabled|can't be disabled)/i.test(message) ||
+      /(?:unrecognized|unknown|extra|invalid|unsupported).*(?:reasoning|thinking|enable_thinking)/i.test(
+        message
+      )
     );
   }
 

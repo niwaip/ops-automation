@@ -197,6 +197,8 @@ function canonicalizePlan(plan) {
             outputContract: sortObjectKeys(node.outputContract),
             failurePolicy: node.failurePolicy,
         };
+        if (node.runWhen)
+            canonicalNode.runWhen = node.runWhen;
         if (node.contractRef)
             canonicalNode.contractRef = node.contractRef;
         if (node.contractDigest)

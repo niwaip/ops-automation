@@ -204,7 +204,7 @@ export type ValueBindingV1 =
       path?: string;
       outputPath?: string;
       expectedType?: ValueTypeV1;
-      transform?: 'extract_unique_array';
+      transform?: 'extract_unique_array' | 'resolve_text_content' | 'project_ops_report';
     }
   | { source: 'runtime_default'; key: string };
 
@@ -217,7 +217,12 @@ export interface PlanNodeBaseV1 {
   outputContract: Record<string, ValueTypeV1>;
   contractRef?: string;
   contractDigest?: string;
-  failurePolicy: 'abort';
+  /** `continue` is reserved for a browser terminal result that still carries
+   * a valid BrowserRunOutputV2 for an explicitly configured report step. */
+  failurePolicy: 'abort' | 'continue';
+  /** Governs explicit post-processing; omitted means all dependencies must
+   * have a successful transport result. */
+  runWhen?: 'browser_succeeded' | 'browser_terminal';
 }
 
 export interface SkillPlanNodeV1 extends PlanNodeBaseV1 {
@@ -288,7 +293,7 @@ export interface DeterministicPlanDraftV1 {
   schemaVersion: 'deterministic-plan/v1';
   plannerVersion: string;
   catalogVersion: string;
-  planType: 'single' | 'sequential';
+  planType: 'single' | 'sequential' | 'dag';
   objective: string;
   originalRequest: string;
   status: 'draft' | 'validated' | 'frozen' | 'rejected';
@@ -338,6 +343,7 @@ export function canonicalizePlan(plan: DeterministicPlanDraftV1): Record<string,
         outputContract: sortObjectKeys(node.outputContract),
         failurePolicy: node.failurePolicy,
       };
+      if (node.runWhen) canonicalNode.runWhen = node.runWhen;
       if (node.contractRef) canonicalNode.contractRef = node.contractRef;
       if (node.contractDigest) canonicalNode.contractDigest = node.contractDigest;
 

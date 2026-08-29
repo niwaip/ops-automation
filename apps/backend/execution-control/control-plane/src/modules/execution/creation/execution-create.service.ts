@@ -23,6 +23,7 @@ import { SavedSkillResolverService } from '../../saved-skill/saved-skill-resolve
 import { configureSavedSkillExecution } from '../../saved-skill/saved-skill-runtime-params';
 import { ExecutionOutboxService } from '../outbox/execution-outbox.service';
 import { PlanRiskEvaluatorService } from '../risk/plan-risk-evaluator.service';
+import { RecorderCompositePlanCompilerService } from '../plan-runtime/recorder-composite-plan-compiler.service';
 
 interface RuntimeDefaultResolution {
   input: Record<string, unknown>;
@@ -86,7 +87,8 @@ export class ExecutionCreateService {
     private readonly planSchedulerService?: DeterministicPlanSchedulerService,
     @Optional() private readonly savedSkillResolver?: SavedSkillResolverService,
     @Optional() private readonly executionOutboxService?: ExecutionOutboxService,
-    @Optional() private readonly planRiskEvaluator?: PlanRiskEvaluatorService
+    @Optional() private readonly planRiskEvaluator?: PlanRiskEvaluatorService,
+    @Optional() private readonly recorderCompositePlanCompiler?: RecorderCompositePlanCompilerService,
   ) {}
 
   async create(
@@ -96,6 +98,28 @@ export class ExecutionCreateService {
     options?: { authToken?: string }
   ): Promise<ExecutionDto> {
     if (dto.executionMode === 'deterministic_plan') {
+      if (!dto.deterministicPlan && dto.recorderComposition) {
+        if (process.env.COMPOSITE_BROWSER_PLAN_ENABLED !== 'true') {
+          throw new BadRequestException('COMPOSITE_BROWSER_PLAN_DISABLED');
+        }
+        if (!this.recorderCompositePlanCompiler) {
+          throw new BadRequestException('RECORDER_COMPOSITION_COMPILER_UNAVAILABLE');
+        }
+        dto = {
+          ...dto,
+          deterministicPlan: (await this.recorderCompositePlanCompiler.compile(
+            dto.recorderComposition,
+          )) as unknown as Record<string, unknown>,
+        };
+      }
+      if (dto.deterministicPlan && !dto.recorderComposition) {
+        dto = {
+          ...dto,
+          deterministicPlan: (await this.expandSinglePublishedRecorderComposition(
+            dto.deterministicPlan,
+          )) as unknown as Record<string, unknown>,
+        };
+      }
       return this.createDeterministicExecution(userId, dto, hooks, options);
     }
 
@@ -142,7 +166,7 @@ export class ExecutionCreateService {
       throw new BadRequestException('skillId or capabilityId is required');
     }
 
-    await this.executionPlanningService.assertSkillAccessibleByUser(
+    const skillDescriptor = await this.executionPlanningService.assertSkillAccessibleByUser(
       resolvedSkillId,
       resolvedSkillVersion,
       options?.authToken,
@@ -160,6 +184,37 @@ export class ExecutionCreateService {
       capabilityVersion: dto.capabilityVersion || resolvedSkillVersion,
       idempotencyKey: this.normalizeIdempotencyKey(dto.idempotencyKey),
     };
+
+    if (
+      process.env.COMPOSITE_BROWSER_PLAN_ENABLED === 'true' &&
+      this.recorderCompositePlanCompiler
+    ) {
+      const publishedComposition = await this.executionPlanningService.loadPublishedRecorderComposition(
+        resolvedSkillId,
+        resolvedSkillVersion || skillDescriptor.publishedReleaseVersion,
+      );
+      if (publishedComposition) {
+        const deterministicPlan = await this.recorderCompositePlanCompiler.compile({
+          browser: {
+            skillId: resolvedSkillId,
+            skillVersion: publishedComposition.skillVersion,
+            outputNames: publishedComposition.outputNames,
+          },
+          objective: typeof resolvedDto.input?.objective === 'string' ? resolvedDto.input.objective : undefined,
+          composition: publishedComposition.composition,
+        });
+        return this.createDeterministicExecution(
+          userId,
+          {
+            ...resolvedDto,
+            executionMode: 'deterministic_plan',
+            deterministicPlan: deterministicPlan as unknown as Record<string, unknown>,
+          },
+          hooks,
+          options,
+        );
+      }
+    }
 
     if (resolvedDto.idempotencyKey) {
       const existingExecutionId = await this.findExistingExecutionIdByIdempotencyKey(
@@ -358,6 +413,56 @@ export class ExecutionCreateService {
 
     const normalized = idempotencyKey.trim();
     return normalized.length > 0 ? normalized : undefined;
+  }
+
+  private async expandSinglePublishedRecorderComposition(
+    value: Record<string, unknown>,
+  ): Promise<DeterministicPlanDraftV1> {
+    const plan = value as unknown as DeterministicPlanDraftV1;
+    if (
+      process.env.COMPOSITE_BROWSER_PLAN_ENABLED !== 'true' ||
+      !this.recorderCompositePlanCompiler ||
+      !Array.isArray(plan.nodes) ||
+      plan.nodes.length !== 1
+    ) {
+      return plan;
+    }
+
+    const browserNode = plan.nodes[0];
+    if (browserNode.kind !== 'skill' || !browserNode.skillId) {
+      return plan;
+    }
+
+    const publishedComposition =
+      await this.executionPlanningService.loadPublishedRecorderComposition(
+        browserNode.skillId,
+        browserNode.skillVersion,
+      );
+    if (!publishedComposition) {
+      return plan;
+    }
+
+    const compiled = await this.recorderCompositePlanCompiler.compile({
+      browser: {
+        skillId: browserNode.skillId,
+        skillVersion: publishedComposition.skillVersion,
+        outputNames: publishedComposition.outputNames,
+      },
+      objective: plan.objective,
+      composition: publishedComposition.composition,
+    });
+    const compiledBrowserNode = compiled.nodes[0];
+    if (compiledBrowserNode?.kind === 'skill') {
+      compiledBrowserNode.inputBindings = browserNode.inputBindings;
+      compiledBrowserNode.title = browserNode.title;
+    }
+    compiled.originalRequest = plan.originalRequest;
+    compiled.requiredUserInputs = plan.requiredUserInputs;
+    delete compiled.planHash;
+    this.logger.log(
+      `Expanded published browser composition '${browserNode.skillId}@${publishedComposition.skillVersion}' into ${compiled.nodes.length} deterministic nodes`,
+    );
+    return compiled;
   }
 
   private async findExistingExecutionIdByIdempotencyKey(

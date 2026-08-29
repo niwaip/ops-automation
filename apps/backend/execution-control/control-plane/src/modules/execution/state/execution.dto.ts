@@ -239,6 +239,14 @@ export class CreateExecutionDto {
   @IsObject()
   deterministicPlan?: Record<string, unknown>;
 
+  @ApiProperty({
+    description: 'Explicit recorder composition compiled into a deterministic plan at execution time',
+    required: false,
+  })
+  @IsOptional()
+  @IsObject()
+  recorderComposition?: Record<string, unknown>;
+
   @ApiProperty({ description: 'Idempotency key for deduplication', required: false })
   @IsOptional()
   @IsString()

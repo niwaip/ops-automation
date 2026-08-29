@@ -11,6 +11,7 @@ import {
 } from '@/api/temporal';
 import { carboneAPI, CarboneTemplate } from '@/api/carbone';
 import { templateApi, Template } from '@/api/template';
+import { readTemplateWorkflowComposition } from '@/features/browser-templates/lib/templateWorkflowComposition';
 import { resolveApiErrorMessage } from '../utils/workflowEditHelpers';
 
 export type TemplateModalMode = 'document' | 'browser';
@@ -72,7 +73,9 @@ export const useWorkflowDraftTemplates = ({
   const [browserTemplates, setBrowserTemplates] = useState<Template[]>([]);
   const [browserTemplatesLoading, setBrowserTemplatesLoading] = useState(false);
   const [browserTemplateSearch, setBrowserTemplateSearch] = useState('');
-  const [generatingBrowserTemplateId, setGeneratingBrowserTemplateId] = useState<string | null>(null);
+  const [generatingBrowserTemplateId, setGeneratingBrowserTemplateId] = useState<string | null>(
+    null
+  );
 
   const syncAiDraftSessionState = (session: AiWorkflowDraftSession) => {
     setAiDraftSessionId(session.sessionId);
@@ -194,7 +197,6 @@ export const useWorkflowDraftTemplates = ({
     setSkillFileName(undefined);
   };
 
-
   const handleRefineAiDraft = () => {
     if (!aiDraftInput.trim() || !aiDraftSessionId) {
       return;
@@ -308,6 +310,7 @@ export const useWorkflowDraftTemplates = ({
             })
           : undefined;
       const executionPlan = templateConfig?.executionPlan;
+      const workflowComposition = readTemplateWorkflowComposition(detail.config || {});
       const executionPlanCommands = Array.isArray(executionPlan?.commands)
         ? executionPlan.commands.filter((command): command is BrowserDraftCommandInput =>
             Boolean(command && typeof command === 'object')
@@ -328,6 +331,7 @@ export const useWorkflowDraftTemplates = ({
         name: detail.name,
         description: detail.description,
         templateSteps: templateSteps.length > 0 ? templateSteps : undefined,
+        workflowComposition,
         loopDraft,
         paramsSchema: detail.params_schema,
         commands: executionPlanCommands.length > 0 ? executionPlanCommands : undefined,
@@ -342,10 +346,10 @@ export const useWorkflowDraftTemplates = ({
       await applyDraftToEditor(
         draft,
         templateSteps.length > 0
-          ? `已基于模版步骤生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`
+          ? `已基于模版生成组合工作流草稿（浏览器 ${draft.browserTemplate.browserStepCount} 个，后处理 ${draft.browserTemplate.postProcessingStepCount} 个，共 ${draft.browserTemplate.totalStepCount} 个流程节点）`
           : executionPlanCommands.length > 0
-            ? `已基于 executionPlan.commands 生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`
-            : `已生成浏览器工作流草稿（${draft.browserTemplate.commandCount} 个步骤）`
+            ? `已基于 executionPlan.commands 生成浏览器工作流草稿（${draft.browserTemplate.totalStepCount} 个流程节点）`
+            : `已生成浏览器工作流草稿（${draft.browserTemplate.totalStepCount} 个流程节点）`
       );
       setTemplateModalVisible(false);
     } catch (error: unknown) {

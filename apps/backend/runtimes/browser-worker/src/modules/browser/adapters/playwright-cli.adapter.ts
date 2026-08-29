@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { execFile } from 'child_process';
 import { createHash } from 'crypto';
 import { lookup } from 'dns/promises';
-import * as fsSync from 'fs';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import sharp from 'sharp';
@@ -24,6 +23,11 @@ import {
   MCPCommand,
 } from './browser-execution.adapter';
 import { WorkerService } from '../../worker/worker.service';
+import { BrowserContentExtractionService } from '../content/browser-content-extraction.service';
+import {
+  BrowserPageReadinessResult,
+  BrowserPageReadinessService,
+} from '../application/browser-page-readiness.service';
 
 // ---------------------------------------------------------------------------
 // Locator / error pattern constants
@@ -98,7 +102,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   private readonly screenshotMaxDimension = 1600;
   private readonly screenshotJpegQuality = 70;
   private readonly maxHtmlChars = parseInt(
-    process.env.PLAYWRIGHT_CLI_MAX_HTML_CHARS || '120000',
+    process.env.PLAYWRIGHT_CLI_MAX_HTML_CHARS || '1000000',
     10
   );
   private readonly cliAutoArtifactTimeoutMs = this.readTimeoutMs(
@@ -126,9 +130,13 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   private readonly chromeRemoteDebuggingPort = Number(
     process.env.CHROME_REMOTE_DEBUGGING_PORT || '9222'
   );
+  private readonly contentExtraction = new BrowserContentExtractionService();
   private cliBinaryPromise?: Promise<CliBinary>;
 
-  constructor(private readonly workerService: WorkerService) {}
+  constructor(
+    private readonly workerService: WorkerService,
+    private readonly pageReadiness: BrowserPageReadinessService = new BrowserPageReadinessService()
+  ) {}
 
   async onModuleDestroy() {
     const sessionIds = [...this.sessions.keys()];
@@ -271,7 +279,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     const sessionId = dto.runtimeSessionId || 'default';
 
     try {
-      const result = await this.runCliAction(
+      const rawResult = await this.runCliAction(
         dto.action,
         {
           target: dto.target,
@@ -279,6 +287,14 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         },
         sessionId
       );
+      const readiness = await this.waitForStandardPageReadiness(dto, sessionId);
+      // Content extraction needs the same post-action HTML acquisition as P0
+      // evidence collection, but must be independently rollout-safe.
+      const result =
+        this.normalizedArtifactsEnabled() ||
+        (process.env.BROWSER_CONTENT_EXTRACTION_ENABLED !== 'false' && Boolean(dto.captureProfile))
+          ? await this.enrichResultArtifacts(sessionId, rawResult).catch(() => rawResult)
+          : rawResult;
       const pageState = await this.inspectPageState(sessionId).catch(
         () =>
           ({
@@ -288,11 +304,13 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
           }) as BrowserPageStateDto
       );
 
+      const requiredReadinessFailed = !readiness.ready && readiness.required;
       return {
-        success: true,
+        success: !requiredReadinessFailed,
         snapshotId: result.snapshot?.id,
         output: {
           ...(result as unknown as Record<string, unknown>),
+          readiness,
           pageUrl: pageState.pageUrl,
           pageTitle: pageState.pageTitle,
           pageFingerprint: pageState.pageFingerprint,
@@ -325,18 +343,87 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
           : undefined,
         pageState,
         shouldTakeover: false,
+        ...(!readiness.ready && readiness.required
+          ? {
+              executionState: 'failed' as const,
+              errorCode: 'PAGE_NOT_READY',
+              errorMessage: '页面未达到模板声明的就绪条件',
+              warningCodes: ['PAGE_READINESS_TIMEOUT'],
+            }
+          : !readiness.ready
+            ? { warningCodes: ['PAGE_READINESS_TIMEOUT'] }
+            : {}),
       };
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`CLI step execution failed: ${errorMessage}`);
+      const failedResult = this.normalizedArtifactsEnabled()
+        ? await this.enrichResultArtifacts(sessionId, {
+            status: 'success',
+            command: dto.action,
+            stderr: errorMessage,
+          }).catch(() => undefined)
+        : undefined;
+      const pageState = await this.inspectPageState(sessionId).catch(
+        () =>
+          ({
+            runtimeSessionId: sessionId,
+            pageUrl: this.getOrCreateSession(sessionId).lastUrl,
+            observedAt: new Date().toISOString(),
+          }) as BrowserPageStateDto
+      );
 
       return {
         success: false,
+        ...(failedResult
+          ? {
+              output: {
+                ...(failedResult as unknown as Record<string, unknown>),
+                pageUrl: pageState.pageUrl,
+                pageTitle: pageState.pageTitle,
+                pageFingerprint: pageState.pageFingerprint,
+              },
+              snapshotId: failedResult.snapshot?.id,
+              snapshot: failedResult.snapshot?.id
+                ? {
+                    id: failedResult.snapshot.id,
+                    type: 'browser',
+                    url: pageState.pageUrl,
+                    createdAt: pageState.observedAt,
+                    metadata: failedResult.snapshot.path
+                      ? { path: failedResult.snapshot.path }
+                      : undefined,
+                  }
+                : undefined,
+            }
+          : {}),
+        pageState,
         errorCode: 'STEP_EXECUTION_ERROR',
         errorMessage,
         shouldTakeover: false,
       };
     }
+  }
+
+  private async waitForStandardPageReadiness(
+    dto: ExecuteStepDto,
+    sessionId: string
+  ): Promise<BrowserPageReadinessResult> {
+    return this.pageReadiness
+      .wait({
+        action: dto.action,
+        captureProfile: dto.captureProfile,
+        execute: async (script) => {
+          const result = await this.execCli(sessionId, ['run-code', script]);
+          this.assertNoCliError(result, 'Page readiness wait failed');
+          return this.normalizeEvalStringOutput(result.stdout);
+        },
+      })
+      .catch(() => ({
+        ready: false,
+        required: false,
+        reason: 'dom_not_stable',
+      }));
   }
 
   async inspectState(dto: InspectBrowserStateDto): Promise<BrowserPageStateDto> {
@@ -427,19 +514,13 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       throw new Error('Capture state failed: CLI did not return storageState payload');
     }
     const capturedAt = new Date().toISOString();
-    const stateFile = await this.writeStateFile(
-      sessionId,
+    const stateFile = await this.writeStateFile(sessionId, executionIndex, {
       executionIndex,
-      {
-        executionIndex,
-        capturedAt,
-        url: payload.url,
-        storageState: payload.storageState,
-      }
-    );
-    this.logger.debug(
-      `Captured recorder state for ${sessionId}#${executionIndex} -> ${stateFile}`
-    );
+      capturedAt,
+      url: payload.url,
+      storageState: payload.storageState,
+    });
+    this.logger.debug(`Captured recorder state for ${sessionId}#${executionIndex} -> ${stateFile}`);
     return {
       stateHandle: this.buildStateHandle(sessionId, executionIndex),
       url: payload.url,
@@ -853,32 +934,114 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     }
   }
 
+  private normalizedArtifactsEnabled(): boolean {
+    return process.env.BROWSER_NORMALIZED_ARTIFACTS_ENABLED !== 'false';
+  }
+
   private async handleNavigate(sessionId: string, url: string): Promise<CliActionResult> {
     const session = this.getOrCreateSession(sessionId);
 
-    let result: CliExecResult;
     if (!session.initialized) {
-      result = await this.openSession(sessionId, url);
-    } else {
-      // Use run-code to ensure page is brought to front after navigation
-      const script = `async page => {
-        await page.goto(${JSON.stringify(url)});
-        await page.bringToFront().catch(() => {});
-        return JSON.stringify({ url: page.url(), status: "navigated" });
-      }`;
-      result = await this.execCli(sessionId, ['run-code', script]);
-      session.lastUrl = url;
+      await this.openSession(sessionId, url);
     }
+    const script = `async page => {
+        const activePage = (page.context().pages().find(p => p.url() && !p.url().startsWith('about:')) || page.context().pages()[page.context().pages().length - 1] || page);
+        const currentUrl = activePage.url();
+        const normalize = u => (typeof u === 'string' && u.endsWith('/') ? u.slice(0, -1) : (u || ''));
+        if (normalize(currentUrl) !== normalize(${JSON.stringify(url)})) {
+          await activePage.goto(${JSON.stringify(url)}).catch(() => {});
+        }
+        await activePage.waitForLoadState('domcontentloaded').catch(() => {});
+        await Promise.race([
+          activePage.waitForLoadState('networkidle'),
+          activePage.waitForTimeout(2000)
+        ]).catch(() => {});
+
+        // Wait up to 8s for SPA data hydration (article elements to appear)
+        const spaStart = Date.now();
+        let articles = 0;
+        while (Date.now() - spaStart < 8000) {
+          articles = await activePage.evaluate(() => document.querySelectorAll('article').length).catch(() => 0);
+          if (articles > 0) break;
+          await activePage.waitForTimeout(500).catch(() => {});
+        }
+
+        // Self-heal: if articles still 0 and transient error visible, click retry button
+        if (articles === 0) {
+          const isError = await activePage.evaluate(() => {
+            const text = document.body ? document.body.innerText || '' : '';
+            return text.includes('列表加载失败') || text.includes('加载失败，请重试') || text.includes('加载失败');
+          }).catch(() => false);
+
+          if (isError) {
+            await activePage.evaluate(() => {
+              const b = document.querySelector('[data-slot=empty-content] button') ||
+                        Array.from(document.querySelectorAll('button')).find(el => (el.innerText || el.textContent || '').includes('重试') || (el.innerText || el.textContent || '').toLowerCase().includes('retry'));
+              if (b) {
+                b.scrollIntoView();
+                b.focus();
+                ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(type => {
+                  b.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+                });
+                b.click();
+              }
+            }).catch(() => {});
+
+            const retryStart = Date.now();
+            while (Date.now() - retryStart < 10000) {
+              articles = await activePage.evaluate(() => document.querySelectorAll('article').length).catch(() => 0);
+              if (articles > 0) break;
+              await activePage.waitForTimeout(500).catch(() => {});
+            }
+
+            // Last resort: full page reload
+            if (articles === 0) {
+              await activePage.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
+              const reloadStart = Date.now();
+              while (Date.now() - reloadStart < 10000) {
+                articles = await activePage.evaluate(() => document.querySelectorAll('article').length).catch(() => 0);
+                if (articles > 0) break;
+                await activePage.waitForTimeout(500).catch(() => {});
+              }
+            }
+          }
+        }
+
+        await activePage.bringToFront().catch(() => {});
+        // Return only minimal JSON (not HTML) to avoid stdout size/parsing issues.
+        // HTML is fetched separately by readCurrentPageHtml which also waits for SPA hydration.
+      return JSON.stringify({ url: activePage.url(), status: 'navigated', articles });
+    }`;
+    const result = await this.execCli(sessionId, ['run-code', script]);
+    session.lastUrl = url;
     this.assertNoCliError(result, 'Navigation failed');
+
+    // Extract the html directly from the navigate result so enrichResultArtifacts
+    // uses the already-hydrated DOM instead of re-fetching a stale page snapshot.
+    // playwright-cli returns stdout in "### Result\n\"<escaped json>\"\n### Ran..." format.
+    let navigateHtml: string | undefined;
+    let navigateArticles: number | undefined;
+    const parsed = this.parseJsonStdout<Record<string, unknown>>(result.stdout);
+    if (parsed?.html) {
+      navigateHtml = parsed.html as string;
+    }
+    if (parsed?.articles !== undefined && typeof parsed.articles === 'number') {
+      navigateArticles = parsed.articles;
+    }
 
     return {
       status: 'success',
       command: 'navigate',
       stdout: result.stdout,
       stderr: result.stderr,
-      data: { url },
+      html: navigateHtml,
+      data: {
+        pageUrl: session.lastUrl || url,
+        ...(navigateArticles !== undefined ? { articles: navigateArticles } : {}),
+      },
     };
   }
+
 
   private async handleClick(
     sessionId: string,
@@ -981,7 +1144,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     params: Record<string, unknown>
   ): Promise<CliActionResult> {
     const selector = this.requireStringParam(params, ['target', 'selector']);
-    const value    = this.requireStringParam(params, ['value', 'text']);
+    const value = this.requireStringParam(params, ['value', 'text']);
 
     // ── Primary path: standard playwright fill ──
     try {
@@ -1050,9 +1213,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       };
     } catch (pageErr: unknown) {
       // Try each iframe via the standard iframe fallback
-      const iframeResult = await this.executeIframeFallback(sessionId, 'fill', [selector, value]).catch(
-        () => undefined
-      );
+      const iframeResult = await this.executeIframeFallback(sessionId, 'fill', [
+        selector,
+        value,
+      ]).catch(() => undefined);
       if (iframeResult) {
         return {
           status: 'success',
@@ -1132,10 +1296,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
             );
             if (!result) throw error;
           }
-        } else if (
-          ELEMENT_NOT_FOUND_PATTERN.test(errorMessage) ||
-          /failed/i.test(errorMessage)
-        ) {
+        } else if (ELEMENT_NOT_FOUND_PATTERN.test(errorMessage) || /failed/i.test(errorMessage)) {
           result = await this.executeIframeFallback(sessionId, command, normalizedArgs).catch(
             () => undefined
           );
@@ -1290,10 +1451,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     } catch (error: unknown) {
       if (target) {
         const errorMessage = error instanceof Error ? error.message : String(error || '');
-        if (
-          ELEMENT_NOT_FOUND_PATTERN.test(errorMessage) ||
-          /failed/i.test(errorMessage)
-        ) {
+        if (ELEMENT_NOT_FOUND_PATTERN.test(errorMessage) || /failed/i.test(errorMessage)) {
           try {
             result = await this.captureIframeScreenshotFallback(sessionId, screenshotPath, target);
             this.assertNoCliError(result, 'Iframe screenshot failed');
@@ -1678,6 +1836,162 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
               if (method === 'textContent') {
                 return String(body.textContent || '').slice(0, maxLength);
               }
+
+              try {
+                const NOISE_BUTTONS = new Set([
+                  '登录', '注册', '登出', '退出', '搜索', '全站搜索', '打开菜单', '关闭', '展开', '收起',
+                  '切换到看板', '设置', '换一换', '添加表情反应', '请作者喝奶茶', '反馈建议', '热榜会员',
+                  '公众号', '分享', '点赞', '收藏', '关注', '订阅', '举报', '广告', 'app 内打开',
+                  '下载 app', '客户端下载', '更多', '刷新', '返回', '确定', '取消'
+                ]);
+
+                const rootEl = document.querySelector('main') || document.querySelector('[role="main"]') || body;
+                const clone = rootEl.cloneNode(true);
+                try {
+                  const suspenseDivs = clone.querySelectorAll('div[id^="S:"], div[id^="P:"], div[id^="rc_"], div[data-rsc-chunk]');
+                  suspenseDivs.forEach(div => {
+                    const id = div.id;
+                    const key = id.includes(':') ? id.split(':')[1] : id;
+                    const template = clone.querySelector('#B\\\\:' + key + ', #T\\\\:' + key + ', #P\\\\:' + key + ', #rc_' + key);
+                    div.removeAttribute('hidden');
+                    if (template && template.parentNode) {
+                      template.parentNode.insertBefore(div, template);
+                      template.remove();
+                    }
+                  });
+                } catch {}
+                const selectorsToRemove = [
+                  'script', 'style', 'template', 'noscript', 'iframe', 'object', 'embed', 'svg', 'canvas', 'dialog', 'select', 'option',
+                  'header', 'footer', 'nav', 'aside',
+                  '[hidden]', '[aria-hidden="true"]', '[inert]', '.sr-only',
+                  '[role="banner"]', '[role="navigation"]', '[role="contentinfo"]', '[role="search"]',
+                  '[data-site-header]', '[data-site-header-spacer]',
+                  '.ad-container', '.advertisement', '.cookie-banner', '.popup-overlay', '.share-buttons', '.social-links',
+                  '[data-testid*="reaction"]', '[data-testid*="search"]', '[data-testid*="header"]',
+                  '[data-slot="skeleton"]', '.skeleton', '[data-testid*="fallback"]',
+                  'input[type="hidden"]'
+                ];
+
+                for (const sel of selectorsToRemove) {
+                  try {
+                    const els = clone.querySelectorAll(sel);
+                    els.forEach(el => {
+                      if (
+                        sel === '[hidden]' &&
+                        (el.querySelector('article, main, [role="main"], [data-latest-list-item-key], .item-card, .card, h1, h2, h3, p') ||
+                          el.id?.startsWith('S:') ||
+                          el.id?.startsWith('P:') ||
+                          el.id?.startsWith('rc_'))
+                      ) {
+                        el.removeAttribute('hidden');
+                        return;
+                      }
+                      el.remove();
+                    });
+                  } catch {}
+                }
+
+                const lines = [];
+                function extractArticle(articleEl) {
+                  const rankEl = articleEl.querySelector('[data-testid*="rank"]') || articleEl.querySelector('.rank');
+                  const rank = (rankEl && rankEl.textContent ? rankEl.textContent.trim() : '');
+                  const titleEl =
+                    articleEl.querySelector('h1, h2, h3, h4, h5, h6') ||
+                    articleEl.querySelector('a[data-item-title-link="true"]') ||
+                    articleEl.querySelector('a[data-item-primary-link="true"]') ||
+                    articleEl.querySelector('.title, a');
+                  const title = (titleEl && titleEl.textContent ? titleEl.textContent.replace(/\\s+/g, ' ').trim() : '');
+                  const href =
+                    (titleEl && titleEl.getAttribute ? titleEl.getAttribute('href') : '') ||
+                    (articleEl.querySelector('a') ? articleEl.querySelector('a').getAttribute('href') : '') ||
+                    '';
+                  const excerptEl =
+                    articleEl.querySelector('[data-testid*="body"] a:not([data-item-title-link="true"])') ||
+                    articleEl.querySelector('p, .summary, .excerpt, .description');
+                  let excerpt = (excerptEl && excerptEl.textContent ? excerptEl.textContent.replace(/\\s+/g, ' ').trim() : '');
+                  if (excerpt === title || excerpt.startsWith('[')) {
+                    excerpt = (excerptEl && excerptEl.textContent ? excerptEl.textContent.replace(/^\\[.*?\\]\\s*/, '').replace(/\\s+/g, ' ').trim() : '');
+                  }
+                  const metaEl =
+                    articleEl.querySelector('[data-testid*="meta"]') ||
+                    articleEl.querySelector('.meta, .footer, .extra');
+                  const metaText = (metaEl && metaEl.textContent ? metaEl.textContent.replace(/\\s+/g, ' ').trim() : '');
+
+                  const parts = [];
+                  if (rank && title) parts.push(rank + '. ' + title);
+                  else if (title) parts.push('- ' + title);
+                  if (excerpt && excerpt !== title) parts.push('   摘要: ' + excerpt);
+                  if (metaText) parts.push('   信息: ' + metaText);
+                  if (href && !href.startsWith('javascript:')) parts.push('   链接: ' + href);
+                  return parts.join('\\n');
+                }
+
+                function isNoise(el) {
+                  const tag = el.tagName.toLowerCase();
+                  if (tag === 'button' || el.getAttribute('role') === 'button') {
+                    const t = (el.textContent || '').trim().toLowerCase();
+                    if (!t || NOISE_BUTTONS.has(t) || (t.length <= 6 && NOISE_BUTTONS.has(t))) return true;
+                  }
+                  return false;
+                }
+
+                function walk(node) {
+                  if (!node) return;
+                  if (node.nodeType === 3) {
+                    const t = (node.textContent || '').replace(/[ \\t]+/g, ' ').trim();
+                    if (t) lines.push(t);
+                    return;
+                  }
+                  if (node.nodeType === 1) {
+                    const el = node;
+                    if (isNoise(el)) return;
+                    const tag = el.tagName.toLowerCase();
+                    if (/^h[1-6]$/.test(tag)) {
+                      const ht = (el.textContent || '').replace(/\\s+/g, ' ').trim();
+                      if (ht && !NOISE_BUTTONS.has(ht.toLowerCase())) {
+                        const level = parseInt(tag.charAt(1), 10) || 1;
+                        lines.push('\\n' + '#'.repeat(level) + ' ' + ht + '\\n');
+                      }
+                      return;
+                    }
+                    if (tag === 'article' || el.getAttribute('data-latest-list-item-key') || el.classList.contains('item-card') || el.classList.contains('card')) {
+                      const artText = extractArticle(el);
+                      if (artText) {
+                        lines.push('\\n' + artText + '\\n');
+                        return;
+                      }
+                    }
+                    if (tag === 'table') {
+                      const rows = Array.from(el.querySelectorAll('tr'));
+                      for (const row of rows) {
+                        const cells = Array.from(row.querySelectorAll('th, td')).map(c => (c.textContent || '').replace(/\\s+/g, ' ').trim()).filter(Boolean);
+                        if (cells.length) lines.push(cells.join(' | '));
+                      }
+                      return;
+                    }
+                    if (tag === 'li') {
+                      const lt = (el.textContent || '').replace(/\\s+/g, ' ').trim();
+                      if (lt) lines.push('- ' + lt);
+                      return;
+                    }
+                    if (tag === 'p' || tag === 'blockquote') {
+                      const pt = (el.textContent || '').replace(/[ \\t]+/g, ' ').trim();
+                      if (pt) lines.push('\\n' + pt + '\\n');
+                      return;
+                    }
+                    for (const child of Array.from(el.childNodes)) {
+                      walk(child);
+                    }
+                  }
+                }
+
+                walk(clone);
+                const structured = lines.join('\\n').replace(/\\n{3,}/g, '\\n\\n').trim();
+                if (structured.length > 50) {
+                  return structured.slice(0, maxLength);
+                }
+              } catch {}
+
               return String(body.innerText || '').slice(0, maxLength);
             },
             {
@@ -1686,42 +2000,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
               attributeName: ${JSON.stringify(attributeName || '')},
             }
           );
-          if (!text || text.length < 100) {
-            for (const frame of activePage.frames()) {
-              if (frame === activePage.mainFrame()) continue;
-              const frameText = await frame
-                .evaluate(
-                  ({ maxLength, method, attributeName }) => {
-                    const body = document.body;
-                    if (!body) return '';
-                    if (method === 'visible') {
-                      return 'true';
-                    }
-                    if (method === 'attribute') {
-                      if (!attributeName) return '';
-                      return String(body.getAttribute(attributeName) || '').slice(0, maxLength);
-                    }
-                    if (method === 'value') {
-                      return String(body.getAttribute('value') || '').slice(0, maxLength);
-                    }
-                    if (method === 'textContent') {
-                      return String(body.textContent || '').slice(0, maxLength);
-                    }
-                    return String(body.innerText || '').slice(0, maxLength);
-                  },
-                  {
-                    maxLength: ${maxLength},
-                    method: ${JSON.stringify(method)},
-                    attributeName: ${JSON.stringify(attributeName || '')},
-                  }
-                )
-                .catch(() => '');
-              if (frameText && frameText.length > text.length) {
-                text = frameText;
-              }
-            }
-          }
-          return text;
+          return text || '';
         }`;
 
     const result = await this.execCli(sessionId, ['run-code', script]);
@@ -1771,7 +2050,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
     let fillResult: CliExecResult;
     try {
-      fillResult = await this.execCli(sessionId, ['run-code', this.buildSearchScript(sessionId, query, true)]);
+      fillResult = await this.execCli(sessionId, [
+        'run-code',
+        this.buildSearchScript(sessionId, query, true),
+      ]);
       this.assertNoCliError(fillResult, 'Smart search input detection failed');
     } catch (error: unknown) {
       const message =
@@ -2473,7 +2755,12 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     }`;
   }
 
-  private async handleClickTableRow(sessionId: string, index: number, scope?: string, regionIdHint?: string): Promise<CliActionResult> {
+  private async handleClickTableRow(
+    sessionId: string,
+    index: number,
+    scope?: string,
+    regionIdHint?: string
+  ): Promise<CliActionResult> {
     await this.ensureSessionReady(sessionId);
     const session = this.getOrCreateSession(sessionId);
     const activePageExpr = session.preferLatestTab
@@ -2911,10 +3198,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     return undefined;
   }
 
-  private buildLabelFallbackArgsList(
-    command: string,
-    args: string[]
-  ): string[][] {
+  private buildLabelFallbackArgsList(command: string, args: string[]): string[][] {
     if (command !== 'fill' || args.length < 2) {
       return [];
     }
@@ -2963,18 +3247,88 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
    * as roles — they are CSS selectors and must be passed through unchanged.
    */
   private static readonly PLAYWRIGHT_ARIA_ROLES = new Set([
-    'alert', 'alertdialog', 'application', 'article', 'banner', 'blockquote',
-    'button', 'caption', 'cell', 'checkbox', 'code', 'columnheader', 'combobox',
-    'complementary', 'contentinfo', 'definition', 'deletion', 'dialog', 'directory',
-    'document', 'emphasis', 'feed', 'figure', 'form', 'generic', 'grid', 'gridcell',
-    'group', 'heading', 'img', 'insertion', 'link', 'list', 'listbox', 'listitem',
-    'log', 'main', 'marquee', 'math', 'meter', 'menu', 'menubar', 'menuitem',
-    'menuitemcheckbox', 'menuitemradio', 'navigation', 'none', 'note', 'option',
-    'paragraph', 'presentation', 'progressbar', 'radio', 'radiogroup', 'region',
-    'row', 'rowgroup', 'rowheader', 'scrollbar', 'search', 'searchbox', 'separator',
-    'slider', 'spinbutton', 'status', 'strong', 'subscript', 'superscript',
-    'switch', 'tab', 'table', 'tablist', 'tabpanel', 'term', 'textbox', 'time',
-    'timer', 'toolbar', 'tooltip', 'tree', 'treegrid', 'treeitem',
+    'alert',
+    'alertdialog',
+    'application',
+    'article',
+    'banner',
+    'blockquote',
+    'button',
+    'caption',
+    'cell',
+    'checkbox',
+    'code',
+    'columnheader',
+    'combobox',
+    'complementary',
+    'contentinfo',
+    'definition',
+    'deletion',
+    'dialog',
+    'directory',
+    'document',
+    'emphasis',
+    'feed',
+    'figure',
+    'form',
+    'generic',
+    'grid',
+    'gridcell',
+    'group',
+    'heading',
+    'img',
+    'insertion',
+    'link',
+    'list',
+    'listbox',
+    'listitem',
+    'log',
+    'main',
+    'marquee',
+    'math',
+    'meter',
+    'menu',
+    'menubar',
+    'menuitem',
+    'menuitemcheckbox',
+    'menuitemradio',
+    'navigation',
+    'none',
+    'note',
+    'option',
+    'paragraph',
+    'presentation',
+    'progressbar',
+    'radio',
+    'radiogroup',
+    'region',
+    'row',
+    'rowgroup',
+    'rowheader',
+    'scrollbar',
+    'search',
+    'searchbox',
+    'separator',
+    'slider',
+    'spinbutton',
+    'status',
+    'strong',
+    'subscript',
+    'superscript',
+    'switch',
+    'tab',
+    'table',
+    'tablist',
+    'tabpanel',
+    'term',
+    'textbox',
+    'time',
+    'timer',
+    'toolbar',
+    'tooltip',
+    'tree',
+    'treegrid',
+    'treeitem',
   ]);
 
   private normalizeSemanticRoleSelector(target: string): string {
@@ -3011,9 +3365,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     return `role=${role}[name="${name}"]`;
   }
 
-  private parseNthMatchSelector(
-    target: string
-  ): {
+  private parseNthMatchSelector(target: string): {
     selector: string;
     index: number;
   } | null {
@@ -3051,9 +3403,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       : 'page';
     const locatorExpr = `scope.locator(${JSON.stringify(positionalSelector.selector)}).nth(${positionalSelector.index})`;
     const actionCode =
-      action === 'click'
-        ? `await locator.click({ force: true, timeout: 5000 });`
-        : 'return null;';
+      action === 'click' ? `await locator.click({ force: true, timeout: 5000 });` : 'return null;';
     const settleTimeout = this.cliPageSettleTimeoutMs;
     const script = `async page => {
       const activePage = ${activePageExpr};
@@ -3196,6 +3546,27 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       enriched.html = await this.readCurrentPageHtml(sessionId).catch(() => undefined);
     }
 
+    if (
+      enriched.html &&
+      !enriched.text &&
+      !enriched.data?.text &&
+      (enriched.command === 'read_page' ||
+        enriched.command === 'get_text' ||
+        enriched.command === 'read_value' ||
+        enriched.command === 'navigate' ||
+        enriched.command === 'click' ||
+        enriched.command === 'press_key')
+    ) {
+      const extractedText = this.extractMainTextFromHtml(enriched.html);
+      if (extractedText) {
+        enriched.text = extractedText;
+        enriched.data = {
+          ...(enriched.data || {}),
+          text: extractedText,
+        };
+      }
+    }
+
     if (!enriched.screenshot && enriched.command !== 'screenshot') {
       const screenshot = await this.captureInlineScreenshot(sessionId).catch(() => undefined);
       if (screenshot?.base64) {
@@ -3216,18 +3587,111 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     return enriched;
   }
 
+  private extractMainTextFromHtml(html: string): string | undefined {
+    if (!html || !html.trim()) return undefined;
+    try {
+      const extracted = this.contentExtraction.extract(html, {
+        schemaVersion: 'capture-profile/v1',
+        profile: 'article',
+        capture: { screenshot: true, html: true, snapshot: false, mainContent: true },
+        limits: { htmlBytes: 1_000_000, contentChars: 30_000, tableCells: 500 },
+        content: {
+          preserveHeadings: true,
+          preserveLinks: true,
+          preserveTables: true,
+          preserveCodeBlocks: true,
+        },
+      });
+      return extracted.text && extracted.text.trim().length > 0 ? extracted.text : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   private async readCurrentPageHtml(sessionId: string): Promise<string> {
     await this.ensureSessionReady(sessionId);
-    const session = this.getOrCreateSession(sessionId);
     const script = `async page => {
-      const activePage = ${
-        session.preferLatestTab
-          ? `(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)`
-          : 'page'
-      };
-      return await activePage.evaluate((maxChars) => (
-        document.documentElement ? document.documentElement.outerHTML.slice(0, maxChars) : ''
-      ), ${this.maxHtmlChars});
+      const activePage = (page.context().pages().find(p => p.url() && !p.url().startsWith('about:')) || page.context().pages()[page.context().pages().length - 1] || page);
+      await activePage.bringToFront().catch(() => {});
+      await activePage.waitForLoadState('domcontentloaded').catch(() => {});
+
+      // Wait briefly for SPA hydration before capturing HTML
+      let articles = await activePage.evaluate(() => document.querySelectorAll('article').length).catch(() => 0);
+      if (articles === 0) {
+        const waitStart = Date.now();
+        while (Date.now() - waitStart < 4000) {
+          articles = await activePage.evaluate(() => document.querySelectorAll('article').length).catch(() => 0);
+          if (articles > 0) break;
+          await activePage.waitForTimeout(500).catch(() => {});
+        }
+      }
+
+      // Self-heal: if articles still 0 and transient error visible (e.g. 列表加载失败), click retry button
+      if (articles === 0) {
+        const isError = await activePage.evaluate(() => {
+          const text = document.body ? document.body.innerText || '' : '';
+          return text.includes('列表加载失败') || text.includes('加载失败，请重试') || text.includes('加载失败');
+        }).catch(() => false);
+
+        if (isError) {
+          await activePage.evaluate(() => {
+            const b = document.querySelector('[data-slot=empty-content] button') ||
+                      Array.from(document.querySelectorAll('button')).find(el => (el.innerText || el.textContent || '').includes('重试') || (el.innerText || el.textContent || '').toLowerCase().includes('retry'));
+            if (b) {
+              b.scrollIntoView();
+              b.focus();
+              ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(type => {
+                b.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+              });
+              b.click();
+            }
+          }).catch(() => {});
+
+          const retryStart = Date.now();
+          while (Date.now() - retryStart < 8000) {
+            articles = await activePage.evaluate(() => document.querySelectorAll('article').length).catch(() => 0);
+            if (articles > 0) break;
+            await activePage.waitForTimeout(500).catch(() => {});
+          }
+
+          if (articles === 0) {
+            await activePage.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
+            const reloadStart = Date.now();
+            while (Date.now() - reloadStart < 8000) {
+              articles = await activePage.evaluate(() => document.querySelectorAll('article').length).catch(() => 0);
+              if (articles > 0) break;
+              await activePage.waitForTimeout(500).catch(() => {});
+            }
+          }
+        }
+      }
+
+      return await activePage.evaluate((maxChars) => {
+        if (!document.documentElement) return '';
+        try {
+          const clone = document.documentElement.cloneNode(true);
+          if (clone && typeof clone.querySelectorAll === 'function') {
+            try {
+              const suspenseDivs = clone.querySelectorAll('div[id^="S:"], div[id^="P:"], div[id^="rc_"], div[data-rsc-chunk]');
+              suspenseDivs.forEach(div => {
+                const id = div.id;
+                const key = id.includes(':') ? id.split(':')[1] : id;
+                const template = clone.querySelector('[id="B:' + key + '"], [id="T:' + key + '"], [id="P:' + key + '"], [id="rc_' + key + '"]');
+                div.removeAttribute('hidden');
+                if (template && template.parentNode) {
+                  template.parentNode.insertBefore(div, template);
+                  template.remove();
+                }
+              });
+            } catch {}
+            clone.querySelectorAll('style, script, noscript, template, iframe, svg, canvas').forEach(el => el.remove());
+            clone.querySelectorAll('textarea[style*="display: none"], textarea[style*="display:none"], textarea[id*="css"], [id*="_css"]').forEach(el => el.remove());
+            clone.querySelectorAll('input[type="hidden"]').forEach(el => el.remove());
+            return clone.outerHTML.slice(0, maxChars);
+          }
+        } catch {}
+        return document.documentElement.outerHTML.slice(0, maxChars);
+      }, ${this.maxHtmlChars});
     }`;
     const result = await this.execCli(sessionId, ['run-code', script]);
     this.assertNoCliError(result, 'Read page HTML failed');
@@ -3364,16 +3828,40 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   }
 
   private normalizeEvalStringOutput(output: string): string {
+    if (!output || !output.trim()) {
+      return '';
+    }
+
     const trimmed = output.trim();
-    if (!trimmed) {
+    const resultBlockMatch = trimmed.match(
+      /### Result\s*\n?([\s\S]*?)(?:\n### Ran Playwright code|\n### |\n```|$)/
+    );
+    const candidate =
+      resultBlockMatch && typeof resultBlockMatch[1] === 'string'
+        ? resultBlockMatch[1].trim()
+        : trimmed;
+
+    if (!candidate) {
       return '';
     }
 
     try {
-      const parsed = JSON.parse(trimmed);
-      return typeof parsed === 'string' ? parsed : trimmed;
+      const parsed = JSON.parse(candidate);
+      if (typeof parsed === 'string') {
+        return parsed;
+      }
+      if (typeof parsed === 'number' || typeof parsed === 'boolean') {
+        return String(parsed);
+      }
+      return candidate;
     } catch {
-      return trimmed;
+      if (
+        (candidate.startsWith('"') && candidate.endsWith('"')) ||
+        (candidate.startsWith("'") && candidate.endsWith("'"))
+      ) {
+        return candidate.slice(1, -1);
+      }
+      return candidate;
     }
   }
 
@@ -3406,6 +3894,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     session.lastUrl = initialUrl;
     session.controlMode = 'AGENT_RUNNING';
     session.frozenReason = undefined;
+
     // #region debug-point C:open-session-success
     this.reportDebugEvent(
       'C',
@@ -3564,7 +4053,8 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     if (initialUrl && initialUrl !== 'about:blank') {
       // Use run-code for initial navigation to ensure page visibility
       const script = `async page => {
-        await page.goto(${JSON.stringify(initialUrl)});
+        await page.goto(${JSON.stringify(initialUrl)}).catch(() => {});
+        await page.waitForLoadState("domcontentloaded").catch(() => {});
         await page.bringToFront().catch(() => {});
         return "initial-navigated";
       }`;
@@ -3644,20 +4134,15 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     const fullArgs = [...binary.baseArgs, `-s=${sessionId}`, ...args];
     this.logger.debug(`Running CLI command: ${binary.command} ${fullArgs.join(' ')}`);
     // #region debug-point A:exec-cli-start
-    this.reportDebugEvent(
-      'A',
-      'playwright-cli.adapter.ts:execCli:start',
-      '[DEBUG] execCli start',
-      {
-        sessionId,
-        command: binary.command,
-        args: this.summarizeCliArgs(fullArgs),
-        processTimeoutMs: this.cliProcessTimeoutMs,
-        actionTimeoutMs: this.cliActionTimeoutMs,
-        navigationTimeoutMs: this.cliNavigationTimeoutMs,
-        pageSettleTimeoutMs: this.cliPageSettleTimeoutMs,
-      }
-    );
+    this.reportDebugEvent('A', 'playwright-cli.adapter.ts:execCli:start', '[DEBUG] execCli start', {
+      sessionId,
+      command: binary.command,
+      args: this.summarizeCliArgs(fullArgs),
+      processTimeoutMs: this.cliProcessTimeoutMs,
+      actionTimeoutMs: this.cliActionTimeoutMs,
+      navigationTimeoutMs: this.cliNavigationTimeoutMs,
+      pageSettleTimeoutMs: this.cliPageSettleTimeoutMs,
+    });
     // #endregion
     return this.execFileAsync(binary.command, fullArgs);
   }
@@ -3889,34 +4374,17 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     msg: string,
     data: Record<string, unknown>
   ): void {
-    const envPath = path.join(process.cwd(), '.dbg', 'playwright-cli-timeout.env');
-    const isContainerRuntime =
-      process.env.DOCKER_ENV === 'true' ||
-      process.env.CHROME_REMOTE_DEBUGGING_HOST === 'browser-chrome' ||
-      fsSync.existsSync('/.dockerenv');
-    let debugServerUrl =
-      process.env.DEBUG_SERVER_URL?.trim() ||
-      (isContainerRuntime
-        ? 'http://host.docker.internal:7777/event'
-        : 'http://127.0.0.1:7777/event');
-    let debugSessionId = process.env.DEBUG_SESSION_ID?.trim() || 'playwright-cli-timeout';
-
-    try {
-      const envContent = fsSync.readFileSync(envPath, 'utf8');
-      debugServerUrl =
-        envContent.match(/^DEBUG_SERVER_URL=(.+)$/m)?.[1]?.trim() || debugServerUrl;
-      debugSessionId =
-        envContent.match(/^DEBUG_SESSION_ID=(.+)$/m)?.[1]?.trim() || debugSessionId;
-    } catch {
-      // Ignore missing debug env file; fall back to defaults.
+    const debugServerUrl = process.env.BROWSER_WORKER_DEBUG_ENDPOINT?.trim();
+    if (!debugServerUrl) {
+      return;
     }
 
     void fetch(debugServerUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        sessionId: debugSessionId,
-        runId: 'pre-fix',
+        sessionId: process.env.BROWSER_WORKER_DEBUG_SESSION_ID || 'browser-worker',
+        runId: process.env.BROWSER_WORKER_DEBUG_RUN_ID || 'runtime',
         hypothesisId,
         location,
         msg,

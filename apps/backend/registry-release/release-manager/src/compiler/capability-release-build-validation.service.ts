@@ -455,6 +455,15 @@ export class CapabilityReleaseBuildValidationService {
           ...result.warnings.map((item: string) => `[Warning] ${item}`),
         ];
         errorSummary = result.errors[0] || null;
+      } else if (release.sourceType === 'browser_recording') {
+        const result = this.capabilityReleaseBrowserRecordingService.validateSnapshot(snapshot, {
+          input: dto.input,
+        });
+        success = result.success;
+        score = result.score;
+        resultSnapshot = result.resultSnapshot;
+        logs = result.logs;
+        errorSummary = result.errorSummary;
       } else {
         const result = this.validateExecutionFlowPayload(snapshot.sourcePayload);
         success = result.isValid;

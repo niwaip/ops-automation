@@ -83,6 +83,7 @@ interface TemplateStepLike {
     value: string;
   };
   params?: Record<string, string | number>;
+  target?: string;
   output_var?: string;
   branch?: {
     condition_fn: string;
@@ -171,16 +172,23 @@ export class RecorderExportAssemblyService {
     private readonly durableLocatorResolver: RecorderDurableLocatorResolver
   ) {}
 
-  async buildExportArtifacts(session: SessionLike, userGoal: string): Promise<ExportArtifactsLike> {
+  async buildExportArtifacts(
+    session: SessionLike,
+    userGoal: string,
+  ): Promise<ExportArtifactsLike> {
     const exportArtifactId = randomUUID();
     const enrichedCommands = this.enrichCommandsWithGrounding(
       session.executedCommands,
       session
     );
-    session.executedCommands = enrichedCommands;
     const sanitizedCommands = this.recorderTemplateExportService.sanitizeRecordedCommandsForExport(
       enrichedCommands
     );
+    // Commands and templateSteps must be two representations of the same
+    // canonical recording. Build both from this single sequence so export does
+    // not silently keep a navigation in one artifact while dropping it in the
+    // other.
+    session.executedCommands = sanitizedCommands;
     const rawTemplateSteps = (await this.recorderTemplateExportService.buildTemplateStepsForExport(
       session,
       userGoal
@@ -500,6 +508,23 @@ export class RecorderExportAssemblyService {
     let changed = false;
 
     parameters.forEach((parameter) => {
+      const placeholder = `\${${parameter.name}}`;
+      if (parameter.name === 'startUrl') {
+        const navStep = clonedSteps.find(
+          (item) => item.action === 'navigate' || item.action === 'goto'
+        );
+        if (navStep) {
+          if (navStep.params && typeof navStep.params.url === 'string' && navStep.params.url !== placeholder) {
+            navStep.params.url = placeholder;
+            changed = true;
+          }
+          if (navStep.target && typeof navStep.target === 'string' && navStep.target !== placeholder && /^https?:\/\//.test(navStep.target)) {
+            navStep.target = placeholder;
+            changed = true;
+          }
+        }
+      }
+
       const source = parameter.source?.trim();
       if (!source?.startsWith('template.')) {
         return;
@@ -514,12 +539,22 @@ export class RecorderExportAssemblyService {
         return;
       }
 
-      const placeholder = `\${${parameter.name}}`;
       if (relativePath === 'params.value') {
         if (step.params?.value !== placeholder) {
           step.params = {
             ...(step.params || {}),
             value: placeholder,
+          };
+          changed = true;
+        }
+        return;
+      }
+
+      if (relativePath === 'params.url') {
+        if (step.params?.url !== placeholder) {
+          step.params = {
+            ...(step.params || {}),
+            url: placeholder,
           };
           changed = true;
         }

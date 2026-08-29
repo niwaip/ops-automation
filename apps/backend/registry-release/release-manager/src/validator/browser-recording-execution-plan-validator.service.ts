@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { BROWSER_RUN_OUTPUT_V2_SCHEMA_DIGEST } from '@ops/backend-browser-execution-contract';
 
 const BROWSER_RECORDING_EXECUTION_PLAN_VERSION = 'browser-recording-ir/v1';
 
@@ -25,6 +26,9 @@ type BrowserRecordingExecutionPlanValidationResult = {
   degradedMode: boolean;
   degradeReason: string | null;
   trace: Record<string, unknown>;
+  outputNames: string[];
+  browserRunOutputV2: boolean;
+  composition?: Record<string, unknown>;
 };
 
 @Injectable()
@@ -120,11 +124,17 @@ export class BrowserRecordingExecutionPlanValidatorService {
       : payload;
     const issues: BrowserRecordingExecutionPlanIssue[] = [];
     const runtimeMetadata = this.resolveRuntimeMetadata(normalizedPayload);
+    const composition = asRecord(runtimeMetadata?.composition);
     const executionPlan = asRecord(runtimeMetadata?.executionPlan);
     const templateSteps = this.resolveTemplateSteps(runtimeMetadata, executionPlan);
     const loopDraft = asRecord(executionPlan?.loopDraft) || asRecord(runtimeMetadata?.loopDraft);
     const outputs = this.resolveOutputs(runtimeMetadata, executionPlan);
     const executionLimits = asRecord(executionPlan?.executionLimits);
+    const browserRunOutputV2 =
+      runtimeMetadata?.browserRunOutputContract === 'browser-run-output/v2';
+    const browserRunOutputDigest = this.pickFirstNonEmptyString(
+      runtimeMetadata?.browserRunOutputContractDigest
+    );
     const trace = asRecord(executionPlan?.trace) || asRecord(runtimeMetadata?.trace) || {};
     const executionPlanVersion =
       this.pickFirstNonEmptyString(
@@ -213,6 +223,41 @@ export class BrowserRecordingExecutionPlanValidatorService {
         message: 'executionPlan.outputs 为空，发布后结果可读性较弱',
       });
     }
+    const outputNames = outputs
+      .map((output) => this.pickFirstNonEmptyString(output.name))
+      .filter((name): name is string => Boolean(name));
+    const invalidOutputNames = outputNames.filter((name) => !/^[A-Za-z][A-Za-z0-9_]*$/.test(name));
+    if (invalidOutputNames.length > 0) {
+      issues.push({
+        severity: 'error',
+        code: 'invalid_output_name',
+        message: `输出名称必须是字母开头的字母数字下划线: ${[...new Set(invalidOutputNames)].join(', ')}`,
+      });
+    }
+    const duplicateOutputNames = outputNames.filter(
+      (name, index) => outputNames.indexOf(name) !== index
+    );
+    if (duplicateOutputNames.length > 0) {
+      issues.push({
+        severity: 'error',
+        code: 'duplicate_output_name',
+        message: `存在重复输出名称: ${[...new Set(duplicateOutputNames)].join(', ')}`,
+      });
+    }
+    if (browserRunOutputV2 && !outputNames.includes('browserRunOutput')) {
+      issues.push({
+        severity: 'error',
+        code: 'browser_run_output_not_declared',
+        message: 'browserRunOutputContract=v2 时必须声明 browserRunOutput 输出',
+      });
+    }
+    if (browserRunOutputV2 && browserRunOutputDigest !== BROWSER_RUN_OUTPUT_V2_SCHEMA_DIGEST) {
+      issues.push({
+        severity: 'error',
+        code: 'browser_run_output_digest_invalid',
+        message: 'browserRunOutputContractDigest 缺失或与 browser-run-output/v2 公共契约不一致',
+      });
+    }
 
     if (!executionLimits || Object.keys(executionLimits).length === 0) {
       issues.push({
@@ -250,6 +295,9 @@ export class BrowserRecordingExecutionPlanValidatorService {
       degradedMode: Boolean(degradeCandidate),
       degradeReason: degradeCandidate?.code || null,
       trace,
+      outputNames,
+      browserRunOutputV2,
+      ...(composition ? { composition } : {}),
     };
   }
 

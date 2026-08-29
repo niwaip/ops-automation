@@ -108,6 +108,11 @@ function rankCapability(normalizedInput, capability) {
 function deriveRoutingSignals(value) {
     const normalized = normalizePlanningText(value);
     const signals = new Set();
+    value
+        .split(/[\s,，。；;:：/|]+/u)
+        .map(normalizePlanningText)
+        .filter(isDistinctiveSignal)
+        .forEach((segment) => signals.add(segment));
     let current = stripSuffixes(normalized, ROUTING_CONTAINER_SUFFIXES);
     if (current && current !== normalized)
         signals.add(current);

@@ -735,11 +735,26 @@ export const extractBrowserTemplateRuntimeMetadata = (
         })()
       : {};
 
+  const skillDraft = asRecord(config.skillDraft);
+  const publishPayload = asRecord(skillDraft?.publishPayload);
+  const apiEndpoints = asRecord(publishPayload?.apiEndpoints);
+  const publishRuntimeMetadata = asRecord(apiEndpoints?.runtimeMetadata);
+  const rawComposition =
+    asRecord(config.workflowComposition) ||
+    asRecord(publishRuntimeMetadata?.composition);
+  const composition =
+    rawComposition &&
+    Array.isArray(rawComposition.postProcessingSteps) &&
+    rawComposition.postProcessingSteps.length > 0
+      ? rawComposition
+      : undefined;
+
   return {
     ...(Object.keys(executionPlan).length > 0 ? { executionPlan } : {}),
     ...(configTemplateSteps.length > 0 ? { templateSteps: configTemplateSteps } : {}),
     ...(configLoopDraft ? { loopDraft: configLoopDraft } : {}),
     ...(configLoopPlanPreview.length > 0 ? { loopPlanPreview: configLoopPlanPreview } : {}),
+    ...(composition ? { composition, compositionSource: 'template_step_editor' } : {}),
   };
 };
 
@@ -870,6 +885,17 @@ export const buildBrowserRecordingSourcePayload = async (
         sourceType: 'browser_recording',
         backend: 'cli',
         goal: workflowGoal,
+        ...(() => {
+          const sourceContext = asRecord(workflow.workflowDsl?.sourceContext);
+          const rawComposition =
+            asRecord(sourceContext?.browserWorkflowComposition) ||
+            asRecord(sourceContext?.workflowComposition);
+          return rawComposition &&
+            Array.isArray(rawComposition.postProcessingSteps) &&
+            rawComposition.postProcessingSteps.length > 0
+            ? { composition: rawComposition, compositionSource: 'template_step_editor' }
+            : {};
+        })(),
       },
     },
   };

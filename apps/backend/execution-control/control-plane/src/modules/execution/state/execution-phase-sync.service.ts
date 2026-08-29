@@ -786,7 +786,11 @@ export class ExecutionPhaseSyncService {
     const topLevelStepResults =
       this.readRecordArray(result.output?.stepResults).length > 0
         ? this.readRecordArray(result.output?.stepResults)
-        : this.readRecordArray(result.rawResult?.output, 'stepResults');
+        : this.readRecordArray(result.rawResult?.output, 'stepResults').length > 0
+          ? this.readRecordArray(result.rawResult?.output, 'stepResults')
+          : this.readRecordArray((result.output?.browserRunOutput as any)?.steps).length > 0
+            ? this.readRecordArray((result.output?.browserRunOutput as any)?.steps)
+            : this.readRecordArray((result.rawResult?.output as any)?.browserRunOutput?.steps);
     if (topLevelStepResults.length > 0) {
       return topLevelStepResults.map((stepResult, index) =>
         this.mapRuntimePhaseStepRecord(stepResult, index + 1, {

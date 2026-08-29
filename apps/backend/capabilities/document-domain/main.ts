@@ -3,6 +3,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { join } from 'path';
 import * as fs from 'fs';
+import * as express from 'express';
 import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { getPublicHost } from './config/service-endpoints';

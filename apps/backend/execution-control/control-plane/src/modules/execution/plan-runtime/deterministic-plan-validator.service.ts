@@ -121,6 +121,20 @@ export class DeterministicPlanValidatorService {
 
     // 4. DAG & Dependency check + Max depth calculation
     for (const node of plan.nodes) {
+      if (node.failurePolicy !== 'abort' && node.failurePolicy !== 'continue') {
+        errors.push({
+          code: ERROR_CODES.PLAN_SCHEMA_INVALID,
+          message: `Node '${node.nodeId}' has unsupported failure policy '${(node as any).failurePolicy}'`,
+          nodeId: node.nodeId,
+        });
+      }
+      if (node.runWhen && node.runWhen !== 'browser_succeeded' && node.runWhen !== 'browser_terminal') {
+        errors.push({
+          code: ERROR_CODES.PLAN_SCHEMA_INVALID,
+          message: `Node '${node.nodeId}' has unsupported runWhen '${node.runWhen}'`,
+          nodeId: node.nodeId,
+        });
+      }
       for (const depId of node.dependsOn || []) {
         const depNode = nodeMap.get(depId);
         if (!depNode) {

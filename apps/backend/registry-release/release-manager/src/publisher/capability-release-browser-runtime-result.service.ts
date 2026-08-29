@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { CapabilityReleaseDTO, ExecuteCapabilityRuntimeResultDTO } from '../interfaces';
 import type {
   CapabilityReleaseRuntimeAccessors,
@@ -8,25 +9,66 @@ import {
   BrowserRuntimeMutableState,
   BrowserRuntimePlanValidation,
 } from './capability-release-browser-runtime.types';
+import { BrowserLegacyOutputAdapter } from './browser-runtime-result/browser-legacy-output.adapter';
+import { BrowserRunOutputMaterializerService } from './browser-runtime-result/browser-run-output-materializer.service';
 
+@Injectable()
 export class CapabilityReleaseBrowserRuntimeResultService {
+  constructor(
+    private readonly browserRunOutputMaterializerService: BrowserRunOutputMaterializerService,
+    private readonly browserLegacyOutputAdapter: BrowserLegacyOutputAdapter
+  ) {}
+
   buildRuntimePayload(input: {
     runtimeSessionId: string;
+    runtimeExecutionId: string;
     backend: string;
     planValidation: BrowserRuntimePlanValidation;
     runtimeTrace: Record<string, unknown>;
     state: BrowserRuntimeMutableState;
   }): Record<string, unknown> {
+    const legacy = this.browserLegacyOutputAdapter.build(input);
+    const compositionRecord = input.planValidation.composition as Record<string, any> | undefined;
+    const hasComposition = Boolean(
+      (Array.isArray(compositionRecord?.postProcessingSteps) && compositionRecord.postProcessingSteps.length > 0) ||
+      (Array.isArray(compositionRecord?.outputDeclarations) && compositionRecord.outputDeclarations.length > 0)
+    );
+    if (
+      process.env.BROWSER_RUN_OUTPUT_V2_ENABLED !== 'true' ||
+      (!input.planValidation.browserRunOutputV2 && !hasComposition)
+    ) {
+      return legacy;
+    }
+    const browserRunOutput = this.browserRunOutputMaterializerService.materialize({
+        executionId: input.runtimeExecutionId,
+        runtimeSessionId: input.runtimeSessionId,
+        backend: input.backend,
+        state: input.state,
+        outputNames: input.planValidation.outputNames.filter((name) => name !== 'browserRunOutput'),
+      });
+    const declaredOutputs = Object.fromEntries(
+      Object.entries(browserRunOutput.outputs).map(([name, output]) => [name, output.value])
+    );
+    const contentCandidates = this.attachDeclaredContentOutputs(
+      input.state.contentCandidates || [],
+      input.planValidation.composition,
+    );
+    const declaredContentOutputs = Object.fromEntries(
+      contentCandidates
+        .filter((candidate) => typeof candidate.outputName === 'string')
+        .map((candidate) => [
+          candidate.outputName as string,
+          candidate,
+        ]),
+    );
     return {
-      runtimeSessionId: input.runtimeSessionId,
-      backend: input.backend,
-      stepResults: input.state.stepResults,
-      variables: input.state.variables,
-      executionPlanVersion: input.planValidation.executionPlanVersion || 'legacy/unknown',
-      degradedMode: input.planValidation.degradedMode,
-      degradeReason: input.planValidation.degradeReason,
-      trace: input.runtimeTrace,
-      runtimeEvidence: input.state.runtimeEvidence,
+      browserRunOutput,
+      ...declaredOutputs,
+      ...declaredContentOutputs,
+      ...(process.env.BROWSER_CONTENT_REF_ENABLED === 'true' && input.state.contentCandidates?.length
+        ? { contentCandidates }
+        : {}),
+      ...(process.env.BROWSER_RUN_OUTPUT_V2_DUAL_WRITE !== 'false' ? legacy : {}),
     };
   }
 
@@ -175,4 +217,46 @@ export class CapabilityReleaseBrowserRuntimeResultService {
     }
     return error instanceof Error ? error.message : 'Browser recording runtime execution failed';
   }
+
+  private attachDeclaredContentOutputs(
+    candidates: Array<Record<string, unknown>>,
+    composition?: Record<string, unknown>,
+  ): Array<Record<string, unknown>> {
+    const aliases = Array.isArray(composition?.pageAliases) ? composition.pageAliases : [];
+    const declarations = Array.isArray(composition?.outputDeclarations)
+      ? composition.outputDeclarations
+      : [];
+    return candidates.map((candidate) => {
+      const alias = aliases.find((item) => this.pageMatches(item, candidate));
+      const declaration = alias && declarations.find((item) =>
+        isRecord(item) && item.kind === 'content' && item.sourcePageAlias === alias.alias,
+      );
+      return isRecord(declaration) && typeof declaration.name === 'string'
+        ? { ...candidate, outputName: declaration.name }
+        : candidate;
+    });
+  }
+
+  private pageMatches(alias: unknown, candidate: Record<string, unknown>): boolean {
+    if (!isRecord(alias)) return false;
+    if (
+      typeof alias.sourceStepId === 'string' &&
+      alias.sourceStepId !== candidate.sourceStepId
+    ) {
+      return false;
+    }
+    const match = isRecord(alias.match) ? alias.match : {};
+    return this.matchesPattern(match.urlPattern, candidate.finalUrl || candidate.sourceUrl)
+      && this.matchesPattern(match.titlePattern, candidate.title);
+  }
+
+  private matchesPattern(pattern: unknown, value: unknown): boolean {
+    if (typeof pattern !== 'string' || !pattern) return true;
+    if (typeof value !== 'string') return false;
+    try { return new RegExp(pattern, 'u').test(value); } catch { return false; }
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }

@@ -45,6 +45,15 @@ export const getBrowserWorkerUrl = (): string => {
   return isContainerRuntime() ? 'http://ops-browser-worker:3004' : 'http://localhost:3004';
 };
 
+export const getSessionBrokerUrl = (): string => {
+  const configured = readConfiguredUrl(process.env.SESSION_BROKER_URL);
+  if (configured) {
+    return configured;
+  }
+
+  return isContainerRuntime() ? 'http://session-broker:3002' : 'http://localhost:3002';
+};
+
 export const getCarboneExternalUrl = (): string => {
   const configured = readConfiguredUrl(process.env.CARBONE_EXTERNAL_URL);
   if (configured) {

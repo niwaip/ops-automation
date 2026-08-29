@@ -114,7 +114,10 @@ export class CapabilityReleaseController {
   @Public()
   async executeCapabilityRuntime(@Body() body: ExecuteCapabilityRuntimeDTO, @Request() req: any) {
     try {
-      return await this.capabilityReleaseService.executeCapabilityRuntime(body, req.user?.id);
+      return await this.capabilityReleaseService.executeCapabilityRuntime(
+        body,
+        this.resolveTrustedRuntimeUserId(req)
+      );
     } catch (err: any) {
       if (err instanceof BadRequestException) throw err;
       const message = err?.message || 'Unknown error executing capability runtime';
@@ -125,6 +128,21 @@ export class CapabilityReleaseController {
         capabilityId: body.capabilityId || body.publishedSkillId,
       });
     }
+  }
+
+  private resolveTrustedRuntimeUserId(req: any): string | undefined {
+    if (typeof req?.user?.id === 'string' && req.user.id.trim()) return req.user.id;
+
+    const internalSecret =
+      process.env.INTERNAL_API_SHARED_SECRET || process.env.INTERNAL_API_SECRET;
+    const providedSecret = req?.headers?.['x-internal-auth'];
+    const providedUserId = req?.headers?.['x-user-id'];
+    return internalSecret &&
+      providedSecret === internalSecret &&
+      typeof providedUserId === 'string' &&
+      providedUserId.trim()
+      ? providedUserId
+      : undefined;
   }
 
   @Get('runtime/skills/:skillId/context')

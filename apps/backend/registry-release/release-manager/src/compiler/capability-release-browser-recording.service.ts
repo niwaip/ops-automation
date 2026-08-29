@@ -53,16 +53,31 @@ export class CapabilityReleaseBrowserRecordingService {
     const payload = (snapshot.sourcePayload as Record<string, unknown>) || {};
     const steps = Array.isArray(payload.steps) ? payload.steps : [];
     const executionFlow = this.normalizeExecutionFlow(payload.executionFlow);
+    const runtimeMetadata =
+      payload.runtimeMetadata && typeof payload.runtimeMetadata === 'object'
+        ? (payload.runtimeMetadata as Record<string, unknown>)
+        : payload.apiEndpoints && typeof payload.apiEndpoints === 'object'
+          ? ((payload.apiEndpoints as Record<string, unknown>).runtimeMetadata as Record<string, unknown> | undefined)
+          : undefined;
+    const executionPlan =
+      runtimeMetadata?.executionPlan && typeof runtimeMetadata.executionPlan === 'object'
+        ? (runtimeMetadata.executionPlan as Record<string, unknown>)
+        : undefined;
+    const templateSteps = Array.isArray(executionPlan?.templateSteps)
+      ? executionPlan.templateSteps
+      : Array.isArray(runtimeMetadata?.templateSteps)
+        ? runtimeMetadata.templateSteps
+        : [];
     const testCases = Array.isArray(options?.testCases) ? options.testCases.filter(Boolean) : [];
 
-    if (steps.length === 0 && executionFlow.length === 0) {
-      throw new Error('浏览器录制快照缺少执行步骤或执行流');
+    if (steps.length === 0 && executionFlow.length === 0 && templateSteps.length === 0) {
+      throw new Error('浏览器录制快照缺少执行步骤、执行流或 executionPlan.templateSteps');
     }
 
     const logs = [
       '开始执行浏览器录制快照静态验证...',
       '当前浏览器录制 Sandbox 校验采用静态快照验证，尚未接入静默回放。',
-      `快照验证通过: 包含 ${steps.length} 个录制步骤, ${executionFlow.length} 个执行节点`,
+      `快照验证通过: 包含 ${steps.length} 个录制步骤, ${executionFlow.length} 个执行节点, ${templateSteps.length} 个模板步骤`,
     ];
     if (testCases.length > 0) {
       logs.push(`收到 ${testCases.length} 条自然语言测试用例，将记录到校验结果中`);
@@ -81,6 +96,7 @@ export class CapabilityReleaseBrowserRecordingService {
         deploymentId: options?.deploymentId || null,
         stepCount: steps.length,
         flowNodeCount: executionFlow.length,
+        templateStepCount: templateSteps.length,
         testCases,
         input: options?.input || null,
       },

@@ -1,9 +1,13 @@
-import React from 'react';
-import { Card, Alert, Space, Tag, Typography, Form, Input } from 'antd';
+import React, { useState } from 'react';
+import { Card, Alert, Space, Tag, Typography, Form, Input, Button, FormInstance } from 'antd';
+import { ThunderboltOutlined, ExperimentOutlined } from '@ant-design/icons';
+import { WorkflowDescriptionOptimizerModal } from './WorkflowDescriptionOptimizerModal';
+import { WorkflowPlannerTestModal } from './WorkflowPlannerTestModal';
 
 const { Text } = Typography;
 
 export interface BasicInfoSectionProps {
+  form?: FormInstance;
   isGeneratedCodeStale: boolean;
   currentSourceContext: any;
   currentSourceTemplate: any;
@@ -15,6 +19,7 @@ export interface BasicInfoSectionProps {
 }
 
 export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
+  form,
   isGeneratedCodeStale,
   currentSourceContext,
   currentSourceTemplate,
@@ -23,6 +28,12 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
   SECTION_CARD_STYLE,
   SECTION_CARD_BODY_STYLE,
 }) => {
+  const [optimizerModalVisible, setOptimizerModalVisible] = useState(false);
+  const [plannerTestModalVisible, setPlannerTestModalVisible] = useState(false);
+
+  const getWorkflowName = () => form?.getFieldValue('name') || workflowDsl.workflowClassName || '';
+  const getCurrentDescription = () => form?.getFieldValue('description') || '';
+
   return (
     <Card
       title="基础信息"
@@ -136,9 +147,70 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
           </Form.Item>
         </div>
       </div>
-      <Form.Item name="description" label="描述" style={{ marginBottom: 0 }}>
-        <Input.TextArea rows={2} placeholder="工作流描述" />
+
+      <Form.Item
+        name="description"
+        label={
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              gap: 12,
+            }}
+          >
+            <span>描述</span>
+            <Space size={8}>
+              <Button
+                type="link"
+                size="small"
+                icon={<ThunderboltOutlined />}
+                onClick={() => setOptimizerModalVisible(true)}
+                style={{ padding: 0, height: 'auto', fontSize: 13 }}
+              >
+                AI 优化描述
+              </Button>
+              <Button
+                type="link"
+                size="small"
+                icon={<ExperimentOutlined />}
+                onClick={() => setPlannerTestModalVisible(true)}
+                style={{ padding: 0, height: 'auto', fontSize: 13, color: '#52c41a' }}
+              >
+                测试规划器匹配
+              </Button>
+            </Space>
+          </div>
+        }
+        style={{ marginBottom: 0 }}
+      >
+        <Input.TextArea rows={2} placeholder="工作流描述（例如：从指定网页提取正文并输出结构化文章列表）" />
       </Form.Item>
+
+      <WorkflowDescriptionOptimizerModal
+        visible={optimizerModalVisible}
+        onClose={() => setOptimizerModalVisible(false)}
+        workflowName={getWorkflowName()}
+        currentDescription={getCurrentDescription()}
+        inputParams={workflowDsl.inputParams}
+        outputParams={workflowDsl.outputParams}
+        steps={workflowDsl.steps}
+        onApply={(optimized) => {
+          if (form) {
+            form.setFieldsValue({ description: optimized });
+          }
+        }}
+      />
+
+      <WorkflowPlannerTestModal
+        visible={plannerTestModalVisible}
+        onClose={() => setPlannerTestModalVisible(false)}
+        workflowName={getWorkflowName()}
+        description={getCurrentDescription()}
+        inputParams={workflowDsl.inputParams}
+        outputParams={workflowDsl.outputParams}
+      />
     </Card>
   );
 };

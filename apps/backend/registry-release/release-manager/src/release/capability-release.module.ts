@@ -47,6 +47,11 @@ import { CapabilityReleaseBrowserRuntimeResultService } from '../publisher/capab
 import { CapabilityReleaseBrowserRuntimeService } from '../publisher/capability-release-browser-runtime.service';
 import { CapabilityReleaseBrowserRuntimeStepExecutorService } from '../publisher/capability-release-browser-runtime-step-executor.service';
 import { CapabilityReleaseBrowserRuntimeSupportService } from '../publisher/capability-release-browser-runtime-support.service';
+import { CapabilityReleaseBrowserSessionBrokerService } from '../publisher/capability-release-browser-session-broker.service';
+import { BrowserLegacyOutputAdapter } from '../publisher/browser-runtime-result/browser-legacy-output.adapter';
+import { BrowserPostStateReconcilerService } from '../publisher/browser-runtime-result/browser-post-state-reconciler.service';
+import { BrowserRunOutputMaterializerService } from '../publisher/browser-runtime-result/browser-run-output-materializer.service';
+import { BrowserRuntimeStepResultStateService } from '../publisher/browser-runtime-result/browser-runtime-step-result-state.service';
 import { CapabilityReleaseDeploymentSmokeService } from '../publisher/capability-release-deployment-smoke.service';
 import { CapabilityReleaseDeploymentService } from '../publisher/capability-release-deployment.service';
 import { CapabilityReleaseDocumentRuntimeService } from '../publisher/capability-release-document-runtime.service';
@@ -115,6 +120,11 @@ import { CapabilityReleaseService } from './capability-release.service';
     CapabilityReleaseDeploymentSmokeService,
     CapabilityReleaseDeploymentService,
     CapabilityReleaseBrowserRuntimeSupportService,
+    CapabilityReleaseBrowserSessionBrokerService,
+    BrowserPostStateReconcilerService,
+    BrowserRunOutputMaterializerService,
+    BrowserRuntimeStepResultStateService,
+    BrowserLegacyOutputAdapter,
     CapabilityReleaseBrowserRuntimeStepExecutorService,
     CapabilityReleaseBrowserRuntimeLoopExecutorService,
     CapabilityReleaseBrowserRuntimeExecutorService,

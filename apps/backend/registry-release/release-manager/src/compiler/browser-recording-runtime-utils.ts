@@ -16,11 +16,30 @@ export const resolveRuntimeValue = (
   if (typeof value === 'string') {
     const exactMatch = value.match(/^\$\{([^}]+)\}$/);
     if (exactMatch) {
-      const directValue = runtimeInput[exactMatch[1] as string];
+      const varName = exactMatch[1] as string;
+      const directValue = runtimeInput[varName];
+      if (directValue !== undefined && directValue !== null && directValue !== '') {
+        return directValue;
+      }
+      if (varName === 'startUrl' && runtimeInput.url) {
+        return runtimeInput.url;
+      }
+      if (varName === 'url' && runtimeInput.startUrl) {
+        return runtimeInput.startUrl;
+      }
       return directValue !== undefined ? directValue : value;
     }
     return value.replace(/\$\{([^}]+)\}/g, (_match, key: string) => {
       const resolved = runtimeInput[key];
+      if (resolved !== undefined && resolved !== null && String(resolved).trim()) {
+        return String(resolved);
+      }
+      if (key === 'startUrl' && runtimeInput.url) {
+        return String(runtimeInput.url);
+      }
+      if (key === 'url' && runtimeInput.startUrl) {
+        return String(runtimeInput.startUrl);
+      }
       return resolved === undefined || resolved === null ? '' : String(resolved);
     });
   }

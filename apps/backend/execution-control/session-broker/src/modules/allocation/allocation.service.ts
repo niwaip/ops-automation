@@ -19,23 +19,6 @@ export class AllocationService implements OnModuleInit {
    */
   async allocateWorker(sessionId: string, userId: string = 'system'): Promise<WorkerInfo | null> {
     try {
-      // #region debug-point A:allocate-worker
-      (() => {
-        fetch('http://192.168.100.143:7777/event', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: 'approval-test-no-approve',
-            runId: 'pre-fix',
-            hypothesisId: 'A',
-            location: 'allocation.service.ts:22',
-            msg: '[DEBUG] allocateWorker start',
-            data: { sessionId, userId },
-            ts: Date.now(),
-          }),
-        }).catch(() => {});
-      })();
-      // #endregion
       const created = await this.postJson<{
         worker_id: string;
         endpoints?: WorkerEndpoints;
@@ -53,23 +36,6 @@ export class AllocationService implements OnModuleInit {
         : undefined;
 
       this.logger.log(`Worker allocated: worker=${created.worker_id}, session=${sessionId}`);
-      // #region debug-point A:allocate-worker-result
-      (() => {
-        fetch('http://192.168.100.143:7777/event', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: 'approval-test-no-approve',
-            runId: 'pre-fix',
-            hypothesisId: 'A',
-            location: 'allocation.service.ts:39',
-            msg: '[DEBUG] allocateWorker success',
-            data: { sessionId, workerId: created.worker_id, hasEndpoints: Boolean(endpoints) },
-            ts: Date.now(),
-          }),
-        }).catch(() => {});
-      })();
-      // #endregion
 
       return {
         worker_id: created.worker_id,
@@ -89,62 +55,11 @@ export class AllocationService implements OnModuleInit {
    */
   async releaseWorker(workerRef: string): Promise<boolean> {
     try {
-      // #region debug-point B:release-worker
-      (() => {
-        fetch('http://192.168.100.143:7777/event', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: 'approval-test-no-approve',
-            runId: 'pre-fix',
-            hypothesisId: 'B',
-            location: 'allocation.service.ts:59',
-            msg: '[DEBUG] releaseWorker start',
-            data: { workerRef },
-            ts: Date.now(),
-          }),
-        }).catch(() => {});
-      })();
-      // #endregion
       await this.deleteJson(`/workers/${workerRef}`);
       this.logger.log(`Worker released: worker=${workerRef}`);
-      // #region debug-point B:release-worker-result
-      (() => {
-        fetch('http://192.168.100.143:7777/event', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: 'approval-test-no-approve',
-            runId: 'pre-fix',
-            hypothesisId: 'B',
-            location: 'allocation.service.ts:62',
-            msg: '[DEBUG] releaseWorker success',
-            data: { workerRef },
-            ts: Date.now(),
-          }),
-        }).catch(() => {});
-      })();
-      // #endregion
       return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      // #region debug-point B:release-worker-error
-      (() => {
-        fetch('http://192.168.100.143:7777/event', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: 'approval-test-no-approve',
-            runId: 'pre-fix',
-            hypothesisId: 'B',
-            location: 'allocation.service.ts:66',
-            msg: '[DEBUG] releaseWorker error',
-            data: { workerRef, errorMessage },
-            ts: Date.now(),
-          }),
-        }).catch(() => {});
-      })();
-      // #endregion
       this.logger.warn(`Failed to release worker ${workerRef}: ${errorMessage}`);
       return false;
     }

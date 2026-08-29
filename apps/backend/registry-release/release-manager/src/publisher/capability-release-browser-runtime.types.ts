@@ -22,14 +22,22 @@ export type BrowserRuntimePlanValidation = {
   degradeReason: string | null;
   executionPlanVersion: string | null;
   trace: Record<string, unknown>;
+  outputNames: string[];
+  browserRunOutputV2: boolean;
+  composition?: Record<string, unknown>;
 };
 
 export type BrowserRuntimeMutableState = {
   preserveRuntimeSession: boolean;
+  startedAt: string;
   currentPageUrl?: string;
+  captureOrdinal: number;
+  attemptByStepId: Record<string, number>;
   stepResults: Array<Record<string, unknown>>;
   variables: Record<string, unknown>;
   runtimeEvidence: Record<string, unknown>;
+  warnings: Array<{ code: string; message: string; stepId?: string }>;
+  contentCandidates?: Array<Record<string, unknown>>;
   logs: string[];
 };
 

@@ -55,6 +55,24 @@ describe('platform SkillMatcherService progressive disclosure', () => {
     expect(axios.post).not.toHaveBeenCalled();
   });
 
+  it('routes a legacy compound browser skill name by a distinctive phrase without a model call', async () => {
+    const service = new SkillMatcherService();
+    const result = await service.matchSkillWithAI('打开网页', 'user-1', async () => [
+      skill(1, {
+        name: '打开网页 总结信息',
+        triggerKeywords: ['打开网页 总结信息'],
+      }),
+    ]);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        skillName: '打开网页 总结信息',
+        matchReason: 'deterministic_routing_signal',
+      })
+    );
+    expect(axios.post).not.toHaveBeenCalled();
+  });
+
   it('reports model unavailability instead of a false no-match result', async () => {
     (axios.post as jest.Mock).mockRejectedValueOnce(new Error('provider unavailable'));
     const service = new SkillMatcherService();

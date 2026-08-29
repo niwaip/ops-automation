@@ -12,6 +12,7 @@ import {
   Select,
   Space,
   Table,
+  Tag,
   Typography,
 } from 'antd';
 import {
@@ -28,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { templateApi, type Template, type TemplateStatus } from '@/api/template';
 import { sessionApi } from '@/api/session';
+import { readTemplateWorkflowComposition } from '../lib/templateWorkflowComposition';
 
 const { Option } = Select;
 const { Text, Title } = Typography;
@@ -115,9 +117,14 @@ const TemplateListPage: React.FC = () => {
 
   const stepItems = useMemo(() => {
     const steps = selectedTemplate?.steps || [];
-    return steps.map((step, index) => ({
+    const browserItems = steps.map((step, index) => ({
       key: `${step.step_id || index}`,
-      label: `${index + 1}. ${step.action}`,
+      label: (
+        <Space>
+          <Tag color="blue">浏览器</Tag>
+          <Text>{`${index + 1}. ${step.action}`}</Text>
+        </Space>
+      ),
       children: (
         <Space direction="vertical" size={4} style={{ width: '100%' }}>
           {step.locator ? (
@@ -129,6 +136,36 @@ const TemplateListPage: React.FC = () => {
         </Space>
       ),
     }));
+    const composition = readTemplateWorkflowComposition(selectedTemplate?.config || {});
+    const processingItems = (composition?.postProcessingSteps || []).map((step, index) => ({
+      key: `post:${step.id || index}`,
+      label: (
+        <Space>
+          <Tag color={step.type === 'llm_operation' ? 'purple' : 'cyan'}>
+            {step.type === 'llm_operation' ? 'LLM 后处理' : '工作流后处理'}
+          </Tag>
+          <Text>{`${browserItems.length + index + 1}. ${
+            step.type === 'llm_operation'
+              ? step.processingMode === 'summary'
+                ? '内容总结'
+                : step.operationId || step.id
+              : step.skillId || step.id
+          }`}</Text>
+        </Space>
+      ),
+      children: (
+        <Space direction="vertical" size={4} style={{ width: '100%' }}>
+          <Text type="secondary">步骤 ID: {step.id}</Text>
+          {step.sourceStepId ? (
+            <Text type="secondary">来源浏览器步骤: {step.sourceStepId}</Text>
+          ) : null}
+          <Text type="secondary">
+            执行位置: {step.type === 'llm_operation' ? '控制面 LLM Operation' : '控制面工作流'}
+          </Text>
+        </Space>
+      ),
+    }));
+    return [...browserItems, ...processingItems];
   }, [selectedTemplate]);
 
   const columns: ColumnsType<TemplateRow> = [
@@ -144,6 +181,21 @@ const TemplateListPage: React.FC = () => {
       key: 'description',
       ellipsis: true,
       render: (desc: string) => desc || '-',
+    },
+    {
+      title: '流程节点',
+      key: 'logicalStepCount',
+      width: 92,
+      render: (_, record) => {
+        const processingCount =
+          readTemplateWorkflowComposition(record.config || {})?.postProcessingSteps?.length || 0;
+        return (
+          <Space size={4}>
+            <Tag color="blue">{record.steps?.length || 0}</Tag>
+            {processingCount > 0 ? <Tag color="purple">+{processingCount}</Tag> : null}
+          </Space>
+        );
+      },
     },
     {
       title: t('template:createdBy'),
@@ -291,6 +343,16 @@ const TemplateListPage: React.FC = () => {
               <Descriptions.Item label="描述">
                 {selectedTemplate.description || '-'}
               </Descriptions.Item>
+              <Descriptions.Item label="模版编辑状态">
+                <Space>
+                  <Tag color={selectedTemplate.status === 'DRAFT' ? 'gold' : 'green'}>
+                    {selectedTemplate.status}
+                  </Tag>
+                  {selectedTemplate.status === 'DRAFT' ? (
+                    <Text type="secondary">当前可编辑版本；不等同于能力 Release 发布状态</Text>
+                  ) : null}
+                </Space>
+              </Descriptions.Item>
               <Descriptions.Item label="创建者">
                 {selectedTemplate.created_by_username || '-'}
               </Descriptions.Item>
@@ -305,8 +367,8 @@ const TemplateListPage: React.FC = () => {
                   : '-'}
               </Descriptions.Item>
             </Descriptions>
-            <Card title="步骤详情" size="small">
-              {(selectedTemplate.steps || []).length > 0 ? (
+            <Card title={`流程节点（${stepItems.length}）`} size="small">
+              {stepItems.length > 0 ? (
                 <Collapse items={stepItems} defaultActiveKey={[]} />
               ) : (
                 <Text type="secondary">暂无步骤</Text>

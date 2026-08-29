@@ -227,6 +227,9 @@ class MockRequests:
 
     def get(self, url, headers=None, timeout=None, **kwargs):
         url = self._append_params(url, kwargs.get('params'))
+        req_headers = dict(headers or {})
+        if not any(k.lower() == 'user-agent' for k in req_headers.keys()):
+            req_headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         parsed = urllib.parse.urlsplit(url)
         normalized_url = urllib.parse.urlunsplit((
             parsed.scheme,
@@ -237,7 +240,7 @@ class MockRequests:
         ))
         for attempt in range(3):
             try:
-                req = urllib.request.Request(normalized_url, headers=headers or {})
+                req = urllib.request.Request(normalized_url, headers=req_headers)
                 with urllib.request.urlopen(req, timeout=timeout or 30, context=_ssl_context) as r:
                     return MockResponse(r.status, r.read(), dict(r.headers), url=normalized_url, exceptions_source=self)
             except urllib.error.HTTPError as e:
@@ -252,6 +255,8 @@ class MockRequests:
     def post(self, url, data=None, json_data=None, headers=None, timeout=None, **kwargs):
         request_json = json_data if json_data is not None else kwargs.get('json')
         request_headers = dict(headers or {})
+        if not any(k.lower() == 'user-agent' for k in request_headers.keys()):
+            request_headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         url = self._append_params(url, kwargs.get('params'))
         if request_json is not None:
             body = json.dumps(request_json).encode('utf-8')

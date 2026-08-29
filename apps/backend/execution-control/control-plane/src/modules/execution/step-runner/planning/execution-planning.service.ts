@@ -225,6 +225,66 @@ export class ExecutionPlanningService {
     }
   }
 
+  /**
+   * Reads only the immutable published recorder snapshot.  A composition is
+   * opt-in metadata authored by the recorder, never inferred from a skill
+   * name or a browser result at runtime.
+   */
+  async loadPublishedRecorderComposition(
+    skillId: string,
+    skillVersion?: string,
+  ): Promise<{ composition: Record<string, unknown>; outputNames: string[]; skillVersion: string } | undefined> {
+    if (typeof this.prisma.$queryRawUnsafe !== 'function') return undefined;
+    try {
+      const rows = await this.prisma.$queryRawUnsafe<Array<{
+        source_type?: string;
+        release_version?: string | number;
+        source_payload_json?: unknown;
+      }>>(
+        `
+          SELECT cr.source_type, cr.release_version, COALESCE(css.source_payload_json, sd.draft_payload_json) AS source_payload_json
+          FROM capability_releases cr
+          LEFT JOIN capability_source_snapshots css ON css.id = cr.current_source_snapshot_id
+          LEFT JOIN skill_drafts sd ON sd.id = cr.current_skill_draft_id
+          WHERE cr.published_skill_id::text = $1
+            AND ($2::text IS NULL OR cr.release_version::text = $2::text)
+            AND cr.status = 'published'
+          ORDER BY cr.release_version DESC
+          LIMIT 1
+        `,
+        skillId,
+        skillVersion || null,
+      );
+      const row = rows[0];
+      if (!row || this.readNonEmptyString(row.source_type) !== 'browser_recording') return undefined;
+      const sourcePayload = this.parseJsonRecord(row.source_payload_json);
+      const apiEndpoints = this.parseJsonRecord(sourcePayload?.apiEndpoints);
+      // Browser recorder bridge stores runtime metadata on the immutable source
+      // payload.  The apiEndpoints location is retained for snapshots created by
+      // earlier exporters, but must never be the only lookup location.
+      const runtimeMetadata =
+        this.parseJsonRecord(sourcePayload?.runtimeMetadata) ||
+        this.parseJsonRecord(apiEndpoints?.runtimeMetadata);
+      const composition =
+        this.parseJsonRecord(runtimeMetadata?.composition) ||
+        this.parseJsonRecord(sourcePayload?.workflowComposition) ||
+        this.parseJsonRecord(sourcePayload?.composition);
+      if (!composition || !Array.isArray(composition.postProcessingSteps) || composition.postProcessingSteps.length === 0) {
+        return undefined;
+      }
+      const executionPlan = this.parseJsonRecord(runtimeMetadata?.executionPlan);
+      const outputNames = this.readRecordArray(executionPlan?.outputs)
+        .map((output) => this.readNonEmptyString(output.name))
+        .filter((name): name is string => Boolean(name));
+      const version = this.normalizePublishedVersion(row.release_version);
+      if (!version) return undefined;
+      return { composition, outputNames, skillVersion: version };
+    } catch (error) {
+      this.logger.warn(`Failed to load recorder composition for '${skillId}': ${error instanceof Error ? error.message : String(error)}`);
+      return undefined;
+    }
+  }
+
   async generatePlanDraft(
     userId: string,
     dto: CreateExecutionDto,

@@ -65,6 +65,10 @@ import { PlanRiskEvaluatorService } from './risk/plan-risk-evaluator.service';
 import { ResultRefController } from './result-ref/result-ref.controller';
 import { ResultRefService } from './result-ref/result-ref.service';
 import { DeterministicReadySetService } from './plan-runtime/deterministic-ready-set.service';
+import { ContentRefResolverService } from './content/content-ref-resolver.service';
+import { OpsReportProjectionService } from './plan-runtime/ops-report-projection.service';
+import { RecorderCompositePlanCompilerService } from './plan-runtime/recorder-composite-plan-compiler.service';
+import { DeterministicRuntimeSessionCoordinatorService } from './plan-runtime/deterministic-runtime-session-coordinator.service';
 
 @Module({
   imports: [DiscoveryModule, PrismaModule, BackfillModule, SavedSkillModule],
@@ -84,6 +88,7 @@ import { DeterministicReadySetService } from './plan-runtime/deterministic-ready
     DeterministicNodeInputResolverService,
     DeterministicFinalOutputService,
     DeterministicPlanSchedulerService,
+    DeterministicRuntimeSessionCoordinatorService,
     DeterministicReadySetService,
     DeterministicPlanRecoveryService,
     LegacyOutputAdapterService,
@@ -130,6 +135,9 @@ import { DeterministicReadySetService } from './plan-runtime/deterministic-ready
     ExecutionDispatcherService,
     PlanRiskEvaluatorService,
     ResultRefService,
+    ContentRefResolverService,
+    OpsReportProjectionService,
+    RecorderCompositePlanCompilerService,
   ],
   exports: [
     ExecutionService,

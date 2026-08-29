@@ -82,7 +82,7 @@ describe('CdpExecutor execution policy', () => {
   it('continues normal browser execution for auto steps', async () => {
     postJsonSpy.mockResolvedValueOnce({ success: true }).mockResolvedValueOnce({
       success: true,
-      results: [{ command: 'click', status: 'ok', message: 'clicked' }],
+      output: { command: 'click', status: 'success', message: 'clicked' },
     });
 
     const step: TemplateStep = {
@@ -104,21 +104,23 @@ describe('CdpExecutor execution policy', () => {
     );
     expect(postJsonSpy).toHaveBeenNthCalledWith(
       2,
-      '/browser/execute',
+      '/browser/execute-step',
       expect.objectContaining({
+        executionId: 'template-test:template-test-default',
+        runtimeSessionId: 'template-test-default',
         backend: 'cli',
-        commands: [{ tool: 'click', params: { selector: '#submit' } }],
+        stepId: 'step_4',
+        action: 'click',
+        args: { selector: '#submit' },
       })
     );
   });
 
   it('forwards attribute-based read_value params to browser worker', async () => {
-    postJsonSpy
-      .mockResolvedValueOnce({ success: true })
-      .mockResolvedValueOnce({
-        success: true,
-        results: [{ command: 'get_text', status: 'ok', data: { text: 'mfa' } }],
-      });
+    postJsonSpy.mockResolvedValueOnce({ success: true }).mockResolvedValueOnce({
+      success: true,
+      results: [{ command: 'get_text', status: 'ok', data: { text: 'mfa' } }],
+    });
 
     const result = await executor.executeStep({
       step_id: 'step_5',
@@ -160,12 +162,61 @@ describe('CdpExecutor execution policy', () => {
     );
   });
 
+  it('uses the standardized step endpoint and propagates content readiness failures', async () => {
+    postJsonSpy.mockResolvedValueOnce({ success: true }).mockResolvedValueOnce({
+      success: false,
+      errorCode: 'CONTENT_NOT_READY',
+      errorMessage: '页面正文未达到步骤的内容质量契约',
+      output: {
+        command: 'navigate',
+        html: '<html><body><main>Request failed.</main></body></html>',
+        text: 'Request failed.',
+      },
+    });
+
+    const result = await executor.executeStep(
+      {
+        step_id: 'step_content',
+        action: 'navigate',
+        params: { url: 'https://example.com' },
+        capture_profile: {
+          schemaVersion: 'capture-profile/v1',
+          profile: 'article',
+          capture: { screenshot: true, html: true, snapshot: false, mainContent: true },
+          limits: { htmlBytes: 1_000_000, contentChars: 30_000, tableCells: 500 },
+        },
+      },
+      'session-content'
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        success: false,
+        step_id: 'step_content',
+        action: 'navigate',
+        error: '页面正文未达到步骤的内容质量契约',
+        html: expect.stringContaining('Request failed.'),
+      })
+    );
+    expect(postJsonSpy).toHaveBeenNthCalledWith(
+      2,
+      '/browser/execute-step',
+      expect.objectContaining({
+        executionId: 'template-test:session-content',
+        runtimeSessionId: 'session-content',
+        action: 'navigate',
+        args: { url: 'https://example.com' },
+        captureProfile: expect.objectContaining({ profile: 'article' }),
+      })
+    );
+  });
+
   it('stops subsequent automation with takeover when branch condition mismatches', async () => {
     postJsonSpy
       .mockResolvedValueOnce({ success: true })
       .mockResolvedValueOnce({
         success: true,
-        results: [{ command: 'click', status: 'ok', message: 'opened detail' }],
+        output: { command: 'click', status: 'success', message: 'opened detail' },
       })
       .mockResolvedValueOnce({
         success: true,
@@ -244,7 +295,7 @@ describe('CdpExecutor execution policy', () => {
       })
       .mockResolvedValueOnce({
         success: true,
-        results: [{ command: 'click', status: 'ok', message: 'approved' }],
+        output: { command: 'click', status: 'success', message: 'approved' },
       });
 
     const results = await executor.executeSteps(
@@ -311,7 +362,7 @@ describe('CdpExecutor execution policy', () => {
       .mockResolvedValueOnce({ success: true })
       .mockResolvedValueOnce({
         success: true,
-        results: [{ command: 'goto', status: 'ok', message: 'opened' }],
+        output: { command: 'goto', status: 'success', message: 'opened' },
       })
       .mockResolvedValueOnce({
         success: true,
@@ -319,7 +370,7 @@ describe('CdpExecutor execution policy', () => {
       })
       .mockResolvedValueOnce({
         success: true,
-        results: [{ command: 'click', status: 'ok', message: 'processed 1' }],
+        output: { command: 'click', status: 'success', message: 'processed 1' },
       })
       .mockResolvedValueOnce({
         success: true,
@@ -331,7 +382,7 @@ describe('CdpExecutor execution policy', () => {
       })
       .mockResolvedValueOnce({
         success: true,
-        results: [{ command: 'click', status: 'ok', message: 'processed 2' }],
+        output: { command: 'click', status: 'success', message: 'processed 2' },
       })
       .mockResolvedValueOnce({
         success: true,
@@ -374,9 +425,9 @@ describe('CdpExecutor execution policy', () => {
       'loop_stop_read',
     ]);
     expect(results.filter((item) => item.action === 'click')).toHaveLength(2);
-    expect(results.filter((item) => item.action === 'loop_stop_read').map((item) => item.text)).toEqual(
-      ['2', '1', '1', '0']
-    );
+    expect(
+      results.filter((item) => item.action === 'loop_stop_read').map((item) => item.text)
+    ).toEqual(['2', '1', '1', '0']);
   });
 
   it('blocks the loop with takeover when no progress is detected', async () => {
@@ -388,7 +439,7 @@ describe('CdpExecutor execution policy', () => {
       })
       .mockResolvedValueOnce({
         success: true,
-        results: [{ command: 'click', status: 'ok', message: 'processed 1' }],
+        output: { command: 'click', status: 'success', message: 'processed 1' },
       })
       .mockResolvedValueOnce({
         success: true,

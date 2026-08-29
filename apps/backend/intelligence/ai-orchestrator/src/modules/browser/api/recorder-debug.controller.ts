@@ -4,6 +4,7 @@ import { RecorderDebugService } from '../execute/recorder';
 import type {
   RecorderDebugChatRequest,
   RecorderDebugChatResponse,
+  RecorderDebugExportRequest,
   RecorderLoopDraftRequest,
 } from '../execute';
 import type {
@@ -24,7 +25,7 @@ export class RecorderDebugController {
 
   @Post('export')
   @ApiOperation({ summary: 'Export CLI script and internal skill draft' })
-  async export(@Body() body: Omit<RecorderDebugChatRequest, 'message'> & { userGoal?: string }) {
+  async export(@Body() body: RecorderDebugExportRequest) {
     return this.service.exportArtifacts(body);
   }
 

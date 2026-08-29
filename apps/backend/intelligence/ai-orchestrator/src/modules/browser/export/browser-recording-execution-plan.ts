@@ -16,6 +16,7 @@ type BrowserRecordingOutputLike = {
   name: string;
   description: string;
   location: string;
+  type?: 'string' | 'number' | 'boolean' | 'array' | 'object';
 };
 
 type BrowserRecordingTraceLike = {

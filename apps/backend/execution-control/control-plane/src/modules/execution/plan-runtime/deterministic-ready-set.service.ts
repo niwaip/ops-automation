@@ -12,9 +12,14 @@ interface ReadySetStep {
 @Injectable()
 export class DeterministicReadySetService {
   compute(steps: ReadySetStep[], planJson?: unknown, now = new Date()): ReadySetStep[] {
+    const nodes = Array.isArray((planJson as any)?.nodes) ? (planJson as any).nodes : [];
+    const nodeById = new Map<string, any>(nodes.map((node: any) => [node.nodeId, node]));
     const completed = new Set(
       steps
-        .filter((step) => step.status === 'succeeded')
+        .filter((step) =>
+          step.status === 'succeeded' ||
+          (step.status === 'failed' && nodeById.get(step.planNodeId || '')?.failurePolicy === 'continue'),
+        )
         .map((step) => step.planNodeId)
         .filter((value): value is string => Boolean(value))
     );

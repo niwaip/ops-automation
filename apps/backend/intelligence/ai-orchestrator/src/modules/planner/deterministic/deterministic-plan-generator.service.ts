@@ -794,6 +794,19 @@ ${JSON.stringify(llmOperationCards, null, 2)}
             );
             binding.path = realKey;
           }
+        } else if (['text', 'content', 'body', 'summary', 'markdown_content'].includes(outPath)) {
+          const textAliases = ['text', 'content', 'summary', 'markdown_content', 'body'];
+          const realKey = Object.keys(upstreamNode.outputContract).find((k) =>
+            textAliases.includes(k)
+          );
+          if (realKey) {
+            this.logger.warn(
+              `Aligning inputBinding text path '${outPath}' → '${realKey}' ` +
+                `for field '${fieldName}' in node '${node.nodeId}' ` +
+                `(upstream node '${upstreamId}' declares '${realKey}', not '${outPath}')`
+            );
+            binding.path = realKey;
+          }
         }
       }
     }

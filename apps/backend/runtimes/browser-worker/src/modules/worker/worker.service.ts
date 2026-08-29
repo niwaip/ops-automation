@@ -204,7 +204,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
     const profilePath =
       request.profile_path || path.join(this.browserProfileRoot, profileOwner, workerId);
     const mode = request.mode || this.defaultSessionMode;
-    const headless = request.headless ?? (mode === 'agent' ? true : this.defaultHeadless);
+    const headless = request.headless ?? this.defaultHeadless;
     const enableCodegen = request.enable_codegen ?? this.defaultEnableCodegen;
     const effectiveEnableCodegen = headless ? false : enableCodegen;
     this.logger.log(`Creating browser worker ${workerId} for user ${request.user_id}`);

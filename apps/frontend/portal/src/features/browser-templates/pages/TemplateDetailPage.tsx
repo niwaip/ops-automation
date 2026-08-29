@@ -5,16 +5,33 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { sessionApi } from '@/api/session';
-import { templateApi, type TemplateStep } from '@/api/template';
+import { templateApi, type TemplateParamsSchema, type TemplateStep } from '@/api/template';
 import TemplateConfigTab from '@/features/browser-templates/components/TemplateConfigTab';
 import TemplateDetailSummaryCard from '@/features/browser-templates/components/TemplateDetailSummaryCard';
 import TemplateParameterModal from '@/features/browser-templates/components/TemplateParameterModal';
+import TemplateParamsTab from '@/features/browser-templates/components/TemplateParamsTab';
 import TemplateStepsTab from '@/features/browser-templates/components/TemplateStepsTab';
 import {
   getTemplateParamProperties,
   getTemplateRequiredParams,
   normalizeTemplateSteps,
 } from '@/features/browser-templates/lib/templateDetail';
+import {
+  applyTemplateWorkflowComposition,
+  buildStepCaptureProfile,
+  buildTemplateWorkflowComposition,
+  DEFAULT_STEP_CAPTURE_OPTIONS,
+  DEFAULT_TEMPLATE_WORKFLOW_COMPOSITION_EDITOR,
+  getStepCaptureOptions,
+  hydrateTemplateStepCaptureProfiles,
+  toTemplateWorkflowCompositionEditorState,
+  updateStepCaptureOptions,
+  validateTemplateWorkflowCompositionEditor,
+  type TemplateProcessingStepEditor,
+  type TemplateProcessingStepType,
+  type TemplateStepCaptureOption,
+  type TemplateWorkflowCompositionEditorState,
+} from '@/features/browser-templates/lib/templateWorkflowComposition';
 import { useAuthStore } from '@/shared/store/authStore';
 
 const TemplateDetailPage: React.FC = () => {
@@ -33,6 +50,15 @@ const TemplateDetailPage: React.FC = () => {
   const [draftName, setDraftName] = useState('');
   const [draftDescription, setDraftDescription] = useState('');
   const [draftSteps, setDraftSteps] = useState<TemplateStep[]>([]);
+  const [draftParamsSchema, setDraftParamsSchema] = useState<TemplateParamsSchema>({
+    type: 'object',
+    properties: {},
+    required: [],
+  });
+  const [draftWorkflowComposition, setDraftWorkflowComposition] =
+    useState<TemplateWorkflowCompositionEditorState>({
+      ...DEFAULT_TEMPLATE_WORKFLOW_COMPOSITION_EDITOR,
+    });
   const [form] = Form.useForm();
 
   const templateQuery = useQuery(['template', id], () => templateApi.getById(id!), {
@@ -51,7 +77,13 @@ const TemplateDetailPage: React.FC = () => {
   const updateMutation = useMutation(
     (payload: {
       id: string;
-      data: { name?: string; description?: string; steps?: TemplateStep[] };
+      data: {
+        name?: string;
+        description?: string;
+        params_schema?: TemplateParamsSchema;
+        steps?: TemplateStep[];
+        config?: Record<string, unknown>;
+      };
     }) => templateApi.update(payload.id, payload.data),
     {
       onSuccess: () => {
@@ -150,7 +182,13 @@ const TemplateDetailPage: React.FC = () => {
     }
     setDraftName(template.name || '');
     setDraftDescription(template.description || '');
-    setDraftSteps((template.steps || []).map((step) => ({ ...step })));
+    setDraftSteps(hydrateTemplateStepCaptureProfiles(template.steps || [], template.config || {}));
+    setDraftParamsSchema(
+      (template.params_schema || { type: 'object', properties: {}, required: [] }) as TemplateParamsSchema
+    );
+    setDraftWorkflowComposition(
+      toTemplateWorkflowCompositionEditorState(template.config || {})
+    );
   }, [template]);
 
   const paramProperties = useMemo(() => getTemplateParamProperties(template), [template]);
@@ -194,9 +232,18 @@ const TemplateDetailPage: React.FC = () => {
     key: 'action' | 'step_id' | 'execution_policy',
     value: string
   ) => {
+    const previousStepId = draftSteps[index]?.step_id;
     setDraftSteps((prev) =>
       prev.map((step, idx) => (idx === index ? { ...step, [key]: value } : step))
     );
+    if (key === 'step_id' && previousStepId) {
+      setDraftWorkflowComposition((prev) => ({
+        ...prev,
+        processingSteps: prev.processingSteps.map((post) =>
+          post.sourceStepId === previousStepId ? { ...post, sourceStepId: value } : post
+        ),
+      }));
+    }
   };
 
   const handleDeleteDraftStep = (index: number) => {
@@ -210,20 +257,126 @@ const TemplateDetailPage: React.FC = () => {
         step_id: `step_${prev.length + 1}`,
         action: 'click',
         execution_policy: 'auto_execute',
+        capture_profile: buildStepCaptureProfile(DEFAULT_STEP_CAPTURE_OPTIONS),
       },
     ]);
+  };
+
+  const handleUpdateStepCapture = (
+    index: number,
+    options: TemplateStepCaptureOption[]
+  ) => {
+    setDraftSteps((prev) =>
+      prev.map((step, stepIndex) =>
+        stepIndex === index ? updateStepCaptureOptions(step, options) : step
+      )
+    );
+  };
+
+  const handleAddProcessingStep = (type: TemplateProcessingStepType) => {
+    const preferredSources = draftSteps.filter((step) => step.capture_profile?.capture.mainContent);
+    const sourceStepIds = preferredSources.length > 0
+      ? preferredSources.map((s) => s.step_id)
+      : draftSteps.length > 0
+        ? [draftSteps[draftSteps.length - 1].step_id]
+        : [];
+
+    // Automatically ensure all selected steps have mainContent enabled in capture_profile
+    if (sourceStepIds.length > 0) {
+      setDraftSteps((prev) =>
+        prev.map((step) => {
+          if (sourceStepIds.includes(step.step_id) && !step.capture_profile?.capture.mainContent) {
+            const currentOptions = getStepCaptureOptions(step);
+            return updateStepCaptureOptions(
+              step,
+              currentOptions.includes('mainContent') ? currentOptions : [...currentOptions, 'mainContent']
+            );
+          }
+          return step;
+        })
+      );
+    }
+
+    setDraftWorkflowComposition((prev) => ({
+      ...prev,
+      processingSteps: [
+        ...prev.processingSteps,
+        {
+          id: `post_process_${prev.processingSteps.length + 1}`,
+          type,
+          sourceStepId: sourceStepIds[0] || '',
+          sourceStepIds,
+          processingMode: 'custom',
+          customPrompt: '请分析并提取以上网页正文的核心内容，输出清晰结构化的 Markdown 报告。',
+          targetId: type === 'workflow_skill' ? '' : 'transform_text',
+          targetVersion: type === 'workflow_skill' ? '' : '1',
+          runWhen: type === 'workflow_skill' ? 'browser_terminal' : 'browser_succeeded',
+        },
+      ],
+    }));
+  };
+
+  const handleUpdateProcessingStep = (
+    index: number,
+    patch: Partial<TemplateProcessingStepEditor>
+  ) => {
+    if (patch.sourceStepIds || patch.sourceStepId) {
+      const stepIds = patch.sourceStepIds || (patch.sourceStepId ? [patch.sourceStepId] : []);
+      if (stepIds.length > 0) {
+        setDraftSteps((prev) =>
+          prev.map((step) => {
+            if (stepIds.includes(step.step_id) && !step.capture_profile?.capture.mainContent) {
+              const currentOptions = getStepCaptureOptions(step);
+              return updateStepCaptureOptions(
+                step,
+                currentOptions.includes('mainContent') ? currentOptions : [...currentOptions, 'mainContent']
+              );
+            }
+            return step;
+          })
+        );
+      }
+    }
+
+    setDraftWorkflowComposition((prev) => ({
+      ...prev,
+      processingSteps: prev.processingSteps.map((post, postIndex) =>
+        postIndex === index ? { ...post, ...patch } : post
+      ),
+    }));
+  };
+
+  const handleDeleteProcessingStep = (index: number) => {
+    setDraftWorkflowComposition((prev) => ({
+      ...prev,
+      processingSteps: prev.processingSteps.filter((_, postIndex) => postIndex !== index),
+    }));
   };
 
   const handleSaveTemplateDraft = () => {
     if (!template) {
       return;
     }
+    const compositionErrors = validateTemplateWorkflowCompositionEditor(
+      draftSteps,
+      draftWorkflowComposition
+    );
+    if (compositionErrors.length > 0) {
+      void message.error(compositionErrors[0]);
+      return;
+    }
+    const workflowComposition = buildTemplateWorkflowComposition(
+      draftSteps,
+      draftWorkflowComposition
+    );
     updateMutation.mutate({
       id: template.id,
       data: {
         name: draftName.trim() || template.name,
         description: draftDescription,
+        params_schema: draftParamsSchema,
         steps: normalizeTemplateSteps(draftSteps),
+        config: applyTemplateWorkflowComposition(template.config || {}, workflowComposition),
       },
     });
   };
@@ -292,7 +445,20 @@ const TemplateDetailPage: React.FC = () => {
         onDraftNameChange={setDraftName}
         onDraftDescriptionChange={setDraftDescription}
         onToggleEditMode={() => setIsEditMode(true)}
-        onCancelEdit={() => setIsEditMode(false)}
+        onCancelEdit={() => {
+          setDraftName(template.name || '');
+          setDraftDescription(template.description || '');
+          setDraftSteps(
+            hydrateTemplateStepCaptureProfiles(template.steps || [], template.config || {})
+          );
+          setDraftParamsSchema(
+            (template.params_schema || { type: 'object', properties: {}, required: [] }) as TemplateParamsSchema
+          );
+          setDraftWorkflowComposition(
+            toTemplateWorkflowCompositionEditorState(template.config || {})
+          );
+          setIsEditMode(false);
+        }}
         onSave={handleSaveTemplateDraft}
         onTest={handleTestClick}
         updateLoading={updateMutation.isLoading}
@@ -303,17 +469,44 @@ const TemplateDetailPage: React.FC = () => {
         <Tabs defaultActiveKey="steps">
           <Tabs.TabPane tab={t('template:templateSteps')} key="steps">
             <TemplateStepsTab
-              steps={isEditMode ? draftSteps : template.steps || []}
+              steps={
+                isEditMode
+                  ? draftSteps
+                  : hydrateTemplateStepCaptureProfiles(template.steps || [], template.config || {})
+              }
+              processingSteps={
+                isEditMode
+                  ? draftWorkflowComposition.processingSteps
+                  : toTemplateWorkflowCompositionEditorState(template.config || {}).processingSteps
+              }
               isEditMode={isEditMode}
               jsonBlockStyle={jsonBlockStyle}
-              onAddStep={handleAddDraftStep}
+              onAddBrowserStep={handleAddDraftStep}
+              onAddProcessingStep={handleAddProcessingStep}
               onDeleteStep={handleDeleteDraftStep}
+              onDeleteProcessingStep={handleDeleteProcessingStep}
               onUpdateStepField={updateDraftStepField}
+              onUpdateStepCapture={handleUpdateStepCapture}
+              onUpdateProcessingStep={handleUpdateProcessingStep}
             />
           </Tabs.TabPane>
 
           <Tabs.TabPane tab={t('template:templateParams')} key="params">
-            <pre style={jsonBlockStyle}>{JSON.stringify(template.params_schema, null, 2)}</pre>
+            <TemplateParamsTab
+              paramsSchema={
+                isEditMode
+                  ? draftParamsSchema
+                  : ((template.params_schema || {
+                      type: 'object',
+                      properties: {},
+                      required: [],
+                    }) as TemplateParamsSchema)
+              }
+              steps={isEditMode ? draftSteps : (template.steps || [])}
+              isEditMode={isEditMode}
+              jsonBlockStyle={jsonBlockStyle}
+              onChange={setDraftParamsSchema}
+            />
           </Tabs.TabPane>
 
           <Tabs.TabPane tab={t('template:templateGuards')} key="guards">

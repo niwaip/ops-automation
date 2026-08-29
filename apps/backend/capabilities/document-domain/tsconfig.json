@@ -18,6 +18,7 @@
     "esModuleInterop": true,
     "moduleResolution": "node",
     "paths": {
+      "@ops/backend-builtin-skill-contract": ["../../../../packages/backend-contracts/builtin-skill-contract/index.d.ts"],
       "@ops/backend-runtime-capability-contract": ["./node_modules/@ops/backend-runtime-capability-contract"],
       "@nestjs/common": ["./node_modules/@nestjs/common"],
       "@nestjs/swagger": ["./node_modules/@nestjs/swagger"],

@@ -21,11 +21,14 @@ export class ResultRefService {
     producerStepId?: string;
     payload: unknown;
     outputSchema?: unknown;
+    schemaDigest?: string;
   }): Promise<ResultRefV1> {
     const serialized = JSON.stringify(input.payload ?? null);
-    const schemaDigest = createHash('sha256')
-      .update(JSON.stringify(input.outputSchema || inferShape(input.payload)))
-      .digest('hex');
+    const schemaDigest =
+      input.schemaDigest ||
+      createHash('sha256')
+        .update(JSON.stringify(input.outputSchema || inferShape(input.payload)))
+        .digest('hex');
     const row = await this.prisma.executionResultRef.create({
       data: {
         executionId: input.executionId,
@@ -79,7 +82,49 @@ export class ResultRefService {
 }
 
 function buildPreview(value: unknown): unknown {
+  const browserPreview = buildBrowserRunOutputPreview(value);
+  if (browserPreview) return browserPreview;
   return sanitizePreview(value, 0);
+}
+
+function buildBrowserRunOutputPreview(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const browserRunOutput = (value as Record<string, unknown>).browserRunOutput;
+  if (!browserRunOutput || typeof browserRunOutput !== 'object' || Array.isArray(browserRunOutput)) {
+    return undefined;
+  }
+  const output = browserRunOutput as Record<string, unknown>;
+  if (output.schemaVersion !== 'browser-run-output/v2') return undefined;
+  const run = output.run && typeof output.run === 'object' && !Array.isArray(output.run)
+    ? output.run as Record<string, unknown>
+    : {};
+  const summary = output.summary && typeof output.summary === 'object' && !Array.isArray(output.summary)
+    ? output.summary as Record<string, unknown>
+    : {};
+  const warnings = Array.isArray(output.warnings)
+    ? output.warnings.slice(0, 8).map((warning) => {
+        const record = warning && typeof warning === 'object' && !Array.isArray(warning)
+          ? warning as Record<string, unknown>
+          : {};
+        return { code: record.code, stepId: record.stepId };
+      })
+    : [];
+  return {
+    browserRunOutput: {
+      schemaVersion: output.schemaVersion,
+      run: {
+        status: run.status,
+        finalPageId: run.finalPageId,
+        contractDigest: run.contractDigest,
+      },
+      summary,
+      outputNames:
+        output.outputs && typeof output.outputs === 'object' && !Array.isArray(output.outputs)
+          ? Object.keys(output.outputs as Record<string, unknown>)
+          : [],
+      warningCodes: warnings,
+    },
+  };
 }
 
 const SENSITIVE_PREVIEW_KEY = /(?:authorization|cookie|credential|password|secret|token)/iu;

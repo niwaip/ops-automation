@@ -325,8 +325,10 @@ async def httpRequest(input_data: Dict[str, Any]) -> Dict[str, Any]:
     if data_body is not None and not isinstance(data_body, (dict, list, str, int, float, bool)):
         raise ApplicationError("data 参数类型不受支持", non_retryable=True)
 
-    normalized_headers = {str(key): str(value) for key, value in headers.items()}
-    normalized_headers.setdefault("User-Agent", "ops-automation-httpRequest/1.0")
+    normalized_headers.setdefault(
+        "User-Agent",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    )
     normalized_headers.setdefault("Accept", "application/json, text/plain, */*")
 
     # #region debug-point A:debug-report

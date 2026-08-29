@@ -116,6 +116,7 @@ export class ExecutionStepWriterService {
         producerStepId: step.id,
         payload: input.outputJson,
         outputSchema: step.outputSchemaJson,
+        schemaDigest: resolveBrowserRunOutputSchemaDigest(input.outputJson),
       });
       await this.prisma.executionStep.update({
         where: { id: stepId },
@@ -291,4 +292,14 @@ export class ExecutionStepWriterService {
   private asJsonValue(value: unknown): Prisma.JsonValue {
     return value as Prisma.JsonValue;
   }
+}
+
+function resolveBrowserRunOutputSchemaDigest(value: unknown): string | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const browserRunOutput = (value as Record<string, unknown>).browserRunOutput;
+  if (!browserRunOutput || typeof browserRunOutput !== 'object' || Array.isArray(browserRunOutput)) return undefined;
+  const run = (browserRunOutput as Record<string, unknown>).run;
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return undefined;
+  const digest = (run as Record<string, unknown>).contractDigest;
+  return typeof digest === 'string' && /^[a-f0-9]{64}$/iu.test(digest) ? digest : undefined;
 }

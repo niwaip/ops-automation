@@ -18,17 +18,35 @@ export function calculateCapabilityIntentScore(
   userRequest: string,
   candidateTexts: unknown[],
 ): number {
+  if (!userRequest) return 0;
   const request = normalizeText(userRequest);
   const compactRequest = compactText(userRequest);
   let score = 0;
 
-  for (const text of candidateTexts.flatMap(flattenTextValues)) {
-    const normalized = normalizeText(text);
-    const compact = compactText(text);
+  const hasUrlInRequest = /https?:\/\/[^\s]+/i.test(userRequest);
+
+  for (const rawText of candidateTexts.flatMap(flattenTextValues)) {
+    if (!rawText) continue;
+    const cleanText = String(rawText).replace(/-[0-9a-f]{8}$/i, '');
+    const normalized = normalizeText(cleanText);
+    const compact = compactText(cleanText);
     if (!normalized || isUuid(normalized) || GENERIC_ASCII_TOKENS.has(normalized)) continue;
 
     if (compact.length >= 4 && compactRequest.includes(compact)) {
       score = Math.max(score, 100 + Math.min(compact.length, 30));
+    } else if (compact.length >= 2 && compact.length < 8 && compactRequest.includes(compact)) {
+      score += 20 * compact.length;
+    }
+
+    if (compact.length >= 4 && compact.length <= 40) {
+      for (let len = Math.min(compactRequest.length, 10); len >= 4; len--) {
+        for (let start = 0; start <= compactRequest.length - len; start++) {
+          const sub = compactRequest.slice(start, start + len);
+          if (compact.includes(sub)) {
+            score = Math.max(score, 80 + len * 5);
+          }
+        }
+      }
     }
 
     for (const token of extractDistinctiveAsciiTokens(normalized)) {
@@ -36,8 +54,27 @@ export function calculateCapabilityIntentScore(
     }
 
     const chineseAlias = stripGenericSuffix(compact);
-    if (/^[\u3400-\u9fff]{2,}$/.test(chineseAlias) && compactRequest.includes(chineseAlias)) {
-      score += 40;
+    if (/^[\u3400-\u9fff]{2,}$/.test(chineseAlias)) {
+      if (compactRequest.includes(chineseAlias)) {
+        score += 40;
+      }
+    }
+
+    if (
+      (hasUrlInRequest ||
+        compactRequest.includes('网页') ||
+        compactRequest.includes('网站') ||
+        compactRequest.includes('页面') ||
+        compactRequest.includes('url')) &&
+      (normalized.includes('url') ||
+        compact.includes('网页') ||
+        compact.includes('页面') ||
+        compact.includes('抓取') ||
+        compact.includes('链接') ||
+        compact.includes('正文') ||
+        compact.includes('网站'))
+    ) {
+      score += 60;
     }
   }
 

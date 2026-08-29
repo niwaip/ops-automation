@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { buildBrowserCapabilityOutputSchema } from '@ops/backend-browser-execution-contract';
 
 export type ContractCompatibilityMode = 'backward' | 'none';
 
@@ -153,6 +154,13 @@ export class SchemaCompatibilityService {
         type: 'object',
         properties,
       };
+    }
+    if (payload.executionPlan || payload.browserRecording || payload.executionFlow || payload.steps) {
+      return buildBrowserCapabilityOutputSchema({
+        runtimeMetadata: payload.runtimeMetadata,
+        executionPlan: payload.executionPlan,
+        composition: payload.workflowComposition || payload.composition,
+      });
     }
     return null;
   }

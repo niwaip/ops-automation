@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { BROWSER_RUN_OUTPUT_V2_SCHEMA_DIGEST } from '@ops/backend-browser-execution-contract';
 import { BrowserCommand } from '../intent';
 import {
   BROWSER_RECORDING_EXECUTION_PLAN_VERSION,
@@ -20,6 +21,7 @@ interface ExportOutputLike {
   name: string;
   description: string;
   location: string;
+  type?: 'string' | 'number' | 'boolean' | 'array' | 'object';
 }
 
 interface ExportMetadataLike {
@@ -43,15 +45,23 @@ export class RecorderExportService {
       : '浏览器当前页面';
 
     if (commands.length > 0) {
+      outputs.set('browserRunOutput', {
+        name: 'browserRunOutput',
+        description: '标准化浏览器执行结果，包含步骤、页面状态、产物、警告和声明输出',
+        location: 'browser-run-output/v2',
+        type: 'object',
+      });
       outputs.set('pageState', {
         name: 'pageState',
         description: '执行完成后的页面状态、页面标题和可见内容',
         location: currentPageLocation,
+        type: 'object',
       });
       outputs.set('executionResult', {
         name: 'executionResult',
         description: '每一步浏览器命令的执行结果与错误信息',
         location: '脚本标准输出 JSON 和 OUTPUT_FILE 文件',
+        type: 'object',
       });
     }
 
@@ -60,6 +70,7 @@ export class RecorderExportService {
         name: 'snapshotArtifact',
         description: '页面快照或截图产物',
         location: 'browser worker 返回结果中的 path/snapshot 字段',
+        type: 'object',
       });
     }
 
@@ -68,6 +79,7 @@ export class RecorderExportService {
         name: 'pageText',
         description: '页面文本读取结果',
         location: 'browser worker execute 返回的 results[*].data.text',
+        type: 'string',
       });
     }
 
@@ -141,6 +153,7 @@ export class RecorderExportService {
     metadata: ExportMetadataLike;
     exportArtifactId?: string;
   }): Record<string, unknown> {
+    const outputs = input.outputs;
     const paramsSchema = {
       properties: Object.fromEntries(
         input.parameters.map((param) => {
@@ -152,7 +165,7 @@ export class RecorderExportService {
               description: param.description,
               required: param.required,
               ...(param.exampleValue
-                ? { default: this.coerceSchemaDefault(param.exampleValue, inferredType) }
+                ? { examples: [this.coerceSchemaDefault(param.exampleValue, inferredType)] }
                 : {}),
               ...(param.source
                 ? {
@@ -173,18 +186,34 @@ export class RecorderExportService {
       templateSteps: input.templateSteps as unknown as Array<Record<string, unknown>> | undefined,
       loopDraft: input.loopDraft as unknown as Record<string, unknown> | undefined,
       parameters: input.parameters,
-      outputs: input.outputs,
+      outputs,
       trace: {
         recorderSessionId: input.runtimeSessionId,
         exportArtifactId: input.exportArtifactId,
       },
     });
-
+    const outputSchema = {
+      type: 'object',
+      properties: Object.fromEntries(
+        outputs.map((output) => [
+          output.name,
+          {
+            type: output.type || 'object',
+            description: output.description,
+          },
+        ])
+      ),
+      // The V2 result is authoritative and self-validated by its fixed digest.
+      // Keep legacy fields during the migration window without invalidating a
+      // recording that was published before callers switched to V2.
+      additionalProperties: true,
+    };
     return {
       name: input.metadata.name,
       description: input.metadata.description,
       triggerKeywords: this.buildTriggerKeywords(input.userGoal, input.commands),
       paramsSchema,
+      outputSchema,
       executionFlowTemplateIds: [],
       executionFlow: [
         {
@@ -212,11 +241,12 @@ export class RecorderExportService {
           goal: input.userGoal,
           expectedResult: '按录制脚本完成浏览器任务，并返回页面状态与执行结果',
           outputParams: Object.fromEntries(
-            input.outputs.map((output) => [
+            outputs.map((output) => [
               output.name,
               {
                 description: output.description,
                 location: output.location,
+                type: output.type || 'object',
               },
             ])
           ),
@@ -227,6 +257,8 @@ export class RecorderExportService {
               : '该技能无需额外参数，可直接调用。',
           validationRules: '聊天窗口只允许解析参数，不允许改写 executionPlan 中的固定浏览器步骤。',
           executionPlanVersion: BROWSER_RECORDING_EXECUTION_PLAN_VERSION,
+          browserRunOutputContract: 'browser-run-output/v2',
+          browserRunOutputContractDigest: BROWSER_RUN_OUTPUT_V2_SCHEMA_DIGEST,
           executionPlan,
           trace: executionPlan.trace,
           ...(input.templateSteps ? { templateSteps: input.templateSteps } : {}),

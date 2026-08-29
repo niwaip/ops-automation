@@ -64,6 +64,8 @@
 - 浏览器语义规则的独立发布中心
 - `browser-worker` 内部的原子 Playwright 执行实现
 - `release-manager` 的统一发布审批与门禁
+- LLM Operation、报告工作流等后处理配置；这些配置只属于 Browser Template 编辑器
+- 把截图或 HTML 采集伪装为额外录制动作；它们属于浏览器执行结果 Artifact
 
 ## 4. 当前代码落点
 

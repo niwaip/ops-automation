@@ -1,5 +1,7 @@
+import { Injectable, Optional } from '@nestjs/common';
 import axios from 'axios';
 import { BrowserRecordingRuntimeStep } from '../compiler/browser-recording-runtime.types';
+import { CapabilityReleaseBrowserSessionBrokerService } from './capability-release-browser-session-broker.service';
 
 type BrowserBranchEvaluationResult = {
   outcome: 'continue' | 'stop' | 'takeover';
@@ -9,7 +11,13 @@ type BrowserBranchEvaluationResult = {
   takeoverReason?: string;
 };
 
+@Injectable()
 export class CapabilityReleaseBrowserRuntimeSupportService {
+  constructor(
+    @Optional()
+    private readonly browserSessionBroker?: CapabilityReleaseBrowserSessionBrokerService
+  ) {}
+
   reportApproveThresholdDebug(
     hypothesisId: 'A' | 'B' | 'C' | 'D' | 'E',
     msg: string,
@@ -180,6 +188,15 @@ export class CapabilityReleaseBrowserRuntimeSupportService {
     backend: string,
     reason: string
   ): Promise<void> {
+    if (this.browserSessionBroker) {
+      try {
+        await this.browserSessionBroker.freeze(runtimeSessionId, reason);
+        return;
+      } catch {
+        // Compatibility fallback for legacy sessions created before the
+        // session-broker invariant was introduced.
+      }
+    }
     await axios
       .post(
         `${browserWorkerUrl}/browser/freeze`,

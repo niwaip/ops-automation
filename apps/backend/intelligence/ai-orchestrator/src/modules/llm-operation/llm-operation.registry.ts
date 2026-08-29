@@ -294,7 +294,7 @@ ${content}`,
     modelPolicyId: 'task-default',
     temperature: 0,
     maxInputTokens: 48000,
-    maxOutputTokens: 6000,
+    maxOutputTokens: 16000,
     modelOutputMode: 'text',
     oversizeInput: 'truncate',
     inputSchema: {

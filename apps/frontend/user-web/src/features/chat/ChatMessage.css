@@ -822,6 +822,10 @@
   line-height: 1.48;
   color: inherit;
   white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .chat-message-markdown > :first-child {
@@ -891,6 +895,8 @@
 .chat-message-markdown a {
   color: #4f46e5;
   text-decoration: none;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .chat-message-markdown a:hover {

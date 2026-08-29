@@ -57,6 +57,12 @@ function routeVerifier(
   if (kind !== 'action') {
     return { verifier: 'observation-answer', routeReason: 'fallback' };
   }
+  if (
+    commands.some((command) => ['search', 'smart_search'].includes(command.tool)) &&
+    commands.some((command) => command.tool === 'click_result')
+  ) {
+    return { verifier: 'search-result-open', routeReason: 'goal-pattern' };
+  }
   if (intent.actionType === 'navigate') {
     return { verifier: 'navigate', routeReason: 'actionType' };
   }
@@ -136,14 +142,58 @@ function buildChecks(
   }
 
   if (verifier === 'navigate') {
+    const expectedUrl = input.commands.find((command) => command.tool === 'navigate')?.params.url;
+    const observedUrl = input.observation?.currentPageUrl;
+    const reachedExpectedUrl = urlsRepresentSamePage(expectedUrl, observedUrl);
     checks.push({
       code: 'url_changed',
       level: 'page',
-      passed: Boolean(input.diff?.urlChanged || input.diff?.titleChanged),
-      message: input.diff?.urlChanged ? '页面 URL 已变化。' : '页面 URL 未变化或变化不明确。',
+      passed: Boolean(input.diff?.urlChanged || input.diff?.titleChanged || reachedExpectedUrl),
+      message:
+        input.diff?.urlChanged || input.diff?.titleChanged
+          ? '页面 URL 或标题已变化。'
+          : reachedExpectedUrl
+            ? '当前页面已到达导航目标。'
+            : '页面 URL 未变化，且未确认到达导航目标。',
       required: true,
       weight: 3,
       evidencePath: 'evidence.diff.urlChanged',
+    });
+    return checks;
+  }
+
+  if (verifier === 'search-result-open') {
+    const hasSearchCommand = input.commands.some((command) =>
+      ['search', 'smart_search'].includes(command.tool)
+    );
+    const initialUrl = input.commands.find((command) => command.tool === 'navigate')?.params.url;
+    const observedUrl = input.observation?.currentPageUrl;
+    const openedResult = Boolean(
+      input.diff?.urlChanged ||
+        input.diff?.titleChanged ||
+        (typeof observedUrl === 'string' &&
+          observedUrl.trim() &&
+          !urlsRepresentSamePage(initialUrl, observedUrl))
+    );
+    checks.push({
+      code: 'search_submitted',
+      level: 'page',
+      passed: hasSearchCommand && Boolean(input.execution?.success),
+      message: hasSearchCommand ? '搜索动作已成功执行。' : '未找到可验证的搜索动作。',
+      required: true,
+      weight: 2,
+      evidencePath: 'evidence.toolExecution.commands',
+    });
+    checks.push({
+      code: 'result_opened',
+      level: 'goal',
+      passed: openedResult ? true : input.execution?.success ? 'unknown' : false,
+      message: openedResult
+        ? '已观察到搜索结果页面或目标详情页。'
+        : '搜索执行成功，但尚未取得足够页面证据确认结果已打开。',
+      required: false,
+      weight: 3,
+      evidencePath: 'evidence.after.currentPageUrl',
     });
     return checks;
   }
@@ -342,6 +392,24 @@ function buildChecks(
     evidencePath: 'evidence.after',
   });
   return checks;
+}
+
+function urlsRepresentSamePage(expected: unknown, actual: unknown): boolean {
+  if (typeof expected !== 'string' || typeof actual !== 'string') return false;
+  const expectedValue = expected.trim();
+  const actualValue = actual.trim();
+  if (!expectedValue || !actualValue) return false;
+  try {
+    const left = new URL(expectedValue);
+    const right = new URL(actualValue);
+    const normalizePath = (path: string) => path.replace(/\/+$/, '') || '/';
+    return (
+      left.hostname.toLowerCase() === right.hostname.toLowerCase() &&
+      normalizePath(left.pathname) === normalizePath(right.pathname)
+    );
+  } catch {
+    return expectedValue.replace(/\/+$/, '') === actualValue.replace(/\/+$/, '');
+  }
 }
 
 function resolveVerificationSuccess(

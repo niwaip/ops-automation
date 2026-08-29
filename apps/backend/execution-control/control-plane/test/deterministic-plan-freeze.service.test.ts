@@ -102,6 +102,26 @@ function defaultCompatMap(): CompatMap {
 }
 
 describe('DeterministicPlanFreezeService — composition validation (§10.4)', () => {
+  it('overrides planner workflow routing with authoritative browser release runtime metadata', () => {
+    const { service } = createService();
+    const node = buildPlan().nodes[0] as any;
+    node.outputContract = { text: 'string', summary: 'string' };
+
+    (service as any).applyAuthoritativeContract(node, {
+      inputSchema: null,
+      outputSchema: {
+        type: 'object',
+        properties: { text: { type: 'string' } },
+      },
+      sourceType: 'published_skill',
+      runtimeType: 'browser_template',
+    });
+
+    expect(node.runtimeType).toBe('browser_template');
+    expect(node.executionRuntimeType).toBe('browser');
+    expect(node.outputContract).toEqual({ text: 'string' });
+  });
+
   describe('authoritative output contract projection', () => {
     it('projects ArtifactRef semantics while preserving the physical field name', () => {
       const { service } = createService();

@@ -18,8 +18,10 @@ import {
   ExportOptions,
 } from './application/browser-script-export.service';
 import { BrowserSchemaService } from './application/browser-schema.service';
+import { BrowserStepResultEnricherService } from './application/browser-step-result-enricher.service';
 import { BrowserActionStep } from './domain/browser-step.types';
 import { BrowserSessionPreferences } from './domain/browser.types';
+import { BrowserStepRecoveryService } from './application/browser-step-recovery.service';
 
 @Injectable()
 export class BrowserService implements OnModuleDestroy {
@@ -27,7 +29,9 @@ export class BrowserService implements OnModuleDestroy {
     private readonly browserSessionService: BrowserSessionService,
     private readonly browserCommandService: BrowserCommandService,
     private readonly browserScriptExportService: BrowserScriptExportService,
-    private readonly browserSchemaService: BrowserSchemaService
+    private readonly browserSchemaService: BrowserSchemaService,
+    private readonly browserStepResultEnricherService: BrowserStepResultEnricherService,
+    private readonly browserStepRecoveryService: BrowserStepRecoveryService
   ) {}
 
   async onModuleDestroy() {
@@ -73,7 +77,36 @@ export class BrowserService implements OnModuleDestroy {
   }
 
   async executeStep(dto: ExecuteStepDto): Promise<ExecuteStepResultDto> {
-    return this.browserCommandService.executeStep(dto);
+    const maxAttempts = this.browserStepRecoveryService.resolveMaxAttempts(dto);
+    let attempt = 0;
+    let currentResult!: ExecuteStepResultDto;
+
+    while (attempt < maxAttempts) {
+      attempt += 1;
+      const attemptDto = { ...dto, attempt: (dto.attempt || 1) + attempt - 1 };
+      const rawResult = await this.browserCommandService.executeStep(attemptDto);
+      // Content extraction is intentionally independent from P0 artifact
+      // normalization. A recorder may opt into a capture profile without
+      // changing the legacy artifact presentation during the rollout.
+      currentResult =
+        process.env.BROWSER_NORMALIZED_ARTIFACTS_ENABLED === 'false' &&
+        process.env.BROWSER_CONTENT_EXTRACTION_ENABLED === 'false'
+          ? rawResult
+          : await this.browserStepResultEnricherService.enrich({
+              dto: attemptDto,
+              result: rawResult,
+              inspect: () =>
+                this.browserCommandService.inspectState({
+                  runtimeSessionId: dto.runtimeSessionId,
+                  backend: dto.backend,
+                }),
+            });
+
+      if (!this.browserStepRecoveryService.shouldRetry(dto, currentResult, attempt)) break;
+      await this.browserStepRecoveryService.waitBeforeRetry(dto);
+    }
+
+    return this.browserStepRecoveryService.withRecoveryEvidence(currentResult, attempt);
   }
 
   async inspectState(dto: InspectBrowserStateDto): Promise<BrowserPageStateDto> {
@@ -102,10 +135,7 @@ export class BrowserService implements OnModuleDestroy {
     return this.browserSessionService.captureState(options);
   }
 
-  async restoreState(options: {
-    runtimeSessionId: string;
-    stateHandle: string;
-  }): Promise<{
+  async restoreState(options: { runtimeSessionId: string; stateHandle: string }): Promise<{
     restored: boolean;
     partial?: boolean;
     reason?: string;

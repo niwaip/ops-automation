@@ -16,6 +16,7 @@ interface BuildExecutionDetailCollapseItemOptions {
   summary?: string;
   children: ReactNode;
   style?: CSSProperties;
+  extra?: ReactNode;
 }
 
 export function buildExecutionDetailCollapseItem({
@@ -24,6 +25,7 @@ export function buildExecutionDetailCollapseItem({
   summary,
   children,
   style,
+  extra,
 }: BuildExecutionDetailCollapseItemOptions): NonNullable<CollapseProps['items']>[number] {
   return {
     key,
@@ -32,6 +34,7 @@ export function buildExecutionDetailCollapseItem({
       ...executionDetailPanelStyle,
       ...style,
     },
+    extra,
     children,
   };
 }

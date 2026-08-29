@@ -22,10 +22,17 @@ export class BrowserRecordingRuntimeStepBuilderService {
     runtimeInput: Record<string, unknown>
   ): BrowserRecordingRuntimeStep[] {
     const templateSteps = this.extractTemplateSteps(payload);
+    const stepSpecificProfiles = this.extractStepSpecificCaptureProfiles(payload);
+    const genericProfiles = this.extractCompositionCaptureProfiles(payload);
+
     if (templateSteps.length > 0) {
-      return templateSteps.map((step, index) =>
-        this.buildRuntimeStepFromTemplate(step, runtimeInput, index)
-      );
+      return templateSteps.map((step, index) => {
+        const stepId =
+          pickFirstNonEmptyString(step.step_id, step.id, `step_${index + 1}`) ||
+          `step_${index + 1}`;
+        const boundProfile = stepSpecificProfiles.get(stepId) || genericProfiles;
+        return this.buildRuntimeStepFromTemplate(step, runtimeInput, index, boundProfile);
+      });
     }
 
     const executionFlow = this.browserRecordingFlowNormalizerService.normalizeExecutionFlow(
@@ -49,17 +56,33 @@ export class BrowserRecordingRuntimeStepBuilderService {
       if (!action) {
         throw new Error(`浏览器录制步骤缺少 action: ${step.id || `step_${index + 1}`}`);
       }
+      const userTargetUrl = pickFirstNonEmptyString(
+        runtimeInput.url,
+        runtimeInput.startUrl,
+        runtimeInput.targetUrl
+      );
+      if ((action === 'goto' || action === 'navigate') && userTargetUrl && index === 0) {
+        resolvedParams.url = userTargetUrl;
+        resolvedPayload.url = userTargetUrl;
+      }
       const target = resolveRuntimeTarget(action, resolvedPayload, resolvedParams);
       const args = buildRuntimeArgs(action, resolvedPayload, resolvedParams);
+      const stepId =
+        pickFirstNonEmptyString(step.id, resolvedPayload.id, `step_${index + 1}`) ||
+        `step_${index + 1}`;
+      const boundProfile = stepSpecificProfiles.get(stepId) || genericProfiles;
+      const captureProfile =
+        asRecord(resolvedPayload.captureProfile) ||
+        asRecord(resolvedPayload.capture_profile) ||
+        boundProfile;
 
       return {
-        id:
-          pickFirstNonEmptyString(step.id, resolvedPayload.id, `step_${index + 1}`) ||
-          `step_${index + 1}`,
+        id: stepId,
         name: pickFirstNonEmptyString(step.name, `Step ${index + 1}`) || `Step ${index + 1}`,
         action,
         ...(target ? { target } : {}),
         ...(Object.keys(args).length > 0 ? { args } : {}),
+        ...(captureProfile ? { captureProfile } : {}),
       };
     });
   }
@@ -83,7 +106,8 @@ export class BrowserRecordingRuntimeStepBuilderService {
   private buildRuntimeStepFromTemplate(
     step: Record<string, unknown>,
     runtimeInput: Record<string, unknown>,
-    index: number
+    index: number,
+    compositionCaptureProfiles?: Record<string, unknown>,
   ): BrowserRecordingRuntimeStep {
     const resolvedStep = asRecord(resolveRuntimeValue(step, runtimeInput)) || {};
     const stepId =
@@ -95,6 +119,14 @@ export class BrowserRecordingRuntimeStepBuilderService {
     }
 
     const params = asRecord(resolvedStep.params) || {};
+    const userTargetUrl = pickFirstNonEmptyString(
+      runtimeInput.url,
+      runtimeInput.startUrl,
+      runtimeInput.targetUrl
+    );
+    if ((action === 'goto' || action === 'navigate') && userTargetUrl && index === 0) {
+      params.url = userTargetUrl;
+    }
     const locator = asRecord(resolvedStep.locator) || undefined;
     const target = resolveRuntimeTarget(action, resolvedStep, {
       ...params,
@@ -118,6 +150,9 @@ export class BrowserRecordingRuntimeStepBuilderService {
         : {}),
       ...(typeof resolvedStep.description === 'string' && resolvedStep.description.trim()
         ? { description: resolvedStep.description.trim() }
+        : {}),
+      ...(asRecord(resolvedStep.captureProfile) || asRecord(resolvedStep.capture_profile) || compositionCaptureProfiles
+        ? { captureProfile: (asRecord(resolvedStep.captureProfile) || asRecord(resolvedStep.capture_profile) || compositionCaptureProfiles)! }
         : {}),
     };
 
@@ -150,6 +185,44 @@ export class BrowserRecordingRuntimeStepBuilderService {
     }
 
     return runtimeStep;
+  }
+
+  private extractStepSpecificCaptureProfiles(
+    payload: Record<string, unknown>
+  ): Map<string, Record<string, unknown>> {
+    const apiEndpoints = asRecord(payload.apiEndpoints);
+    const runtimeMetadata =
+      asRecord(payload.runtimeMetadata) || asRecord(apiEndpoints?.runtimeMetadata);
+    const composition =
+      asRecord(runtimeMetadata?.composition) ||
+      asRecord(payload.workflowComposition) ||
+      asRecord(payload.composition);
+    const pageAliases = Array.isArray(composition?.pageAliases) ? composition.pageAliases : [];
+    const profiles = new Map<string, Record<string, unknown>>();
+    for (const item of pageAliases) {
+      const rec = asRecord(item);
+      const stepId = typeof rec?.sourceStepId === 'string' ? rec.sourceStepId.trim() : undefined;
+      const profile = asRecord(rec?.captureProfile);
+      if (stepId && profile) {
+        profiles.set(stepId, profile);
+      }
+    }
+    return profiles;
+  }
+
+  private extractCompositionCaptureProfiles(payload: Record<string, unknown>): Record<string, unknown> | undefined {
+    const apiEndpoints = asRecord(payload.apiEndpoints);
+    const runtimeMetadata = asRecord(payload.runtimeMetadata) || asRecord(apiEndpoints?.runtimeMetadata);
+    const composition = asRecord(runtimeMetadata?.composition);
+    const pageAliases = Array.isArray(composition?.pageAliases) ? composition.pageAliases : [];
+    if (pageAliases.length === 0) return undefined;
+    // New template editor declarations are bound to a concrete browser step.
+    // Those profiles travel on that step and must not leak onto unrelated steps
+    // through the legacy page-pattern fallback.
+    if (pageAliases.some((item) => typeof asRecord(item)?.sourceStepId === 'string')) {
+      return undefined;
+    }
+    return { profiles: pageAliases };
   }
 
   private rewriteLegacyThresholdBranch(

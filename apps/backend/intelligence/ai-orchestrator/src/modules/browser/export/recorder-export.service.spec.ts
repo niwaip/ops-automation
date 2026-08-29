@@ -68,4 +68,55 @@ describe('RecorderExportService', () => {
       exportArtifactId: 'artifact-1',
     });
   });
+
+  it('exports a pure browser payload without recorder-owned composition', () => {
+    const service = new RecorderExportService();
+    const payload = service.buildSkillPublishPayload({
+      userGoal: '打开报告页',
+      backend: 'cli',
+      runtimeSessionId: 'recorder-session-1',
+      commands: [] as any,
+      templateSteps: [
+        { step_id: 'step_1', action: 'goto', params: { url: 'https://example.com/report' } },
+      ],
+      parameters: [],
+      outputs: [
+        {
+          name: 'browserRunOutput',
+          description: '浏览器结果',
+          location: 'browser-run-output/v2',
+          type: 'object',
+        },
+      ],
+      metadata: { name: '报告页', description: '报告页' },
+    });
+    const metadata = (payload.apiEndpoints as any).runtimeMetadata;
+    expect(metadata.composition).toBeUndefined();
+    expect(metadata.compositePlan).toBeUndefined();
+  });
+
+  it('keeps required parameter examples separate from executable defaults', () => {
+    const service = new RecorderExportService();
+    const payload = service.buildSkillPublishPayload({
+      userGoal: '打开指定网页',
+      backend: 'cli',
+      runtimeSessionId: 'recorder-session-params',
+      commands: [] as any,
+      parameters: [
+        {
+          name: 'url',
+          description: '目标网页地址',
+          required: true,
+          exampleValue: 'https://example.dev/article',
+        },
+      ],
+      outputs: [],
+      metadata: { name: '打开网页', description: '打开用户指定的网页' },
+    });
+
+    const property = (payload.paramsSchema as any).properties.url;
+    expect(property.examples).toEqual(['https://example.dev/article']);
+    expect(property.default).toBeUndefined();
+    expect((payload.paramsSchema as any).required).toContain('url');
+  });
 });

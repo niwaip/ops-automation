@@ -32,6 +32,7 @@ type EngineSearchMatch = {
   engineLabel: '百度' | '谷歌' | '必应';
   query: string;
   triggerTerm: string;
+  followUpClickResult?: ClickResultMatch;
 };
 
 @Injectable()
@@ -48,7 +49,7 @@ export class BrowserCommandSearchService {
 
     const profile = buildSearchProfile(options?.runtimeRules || []);
 
-    const engineSearchMatch = this.parseExplicitEngineSearch(normalizedInput);
+    const engineSearchMatch = this.parseExplicitEngineSearch(normalizedInput, profile);
     if (engineSearchMatch) {
       return {
         status: 'success',
@@ -165,29 +166,46 @@ export class BrowserCommandSearchService {
   }
 
   private buildEngineSearchResponse(input: EngineSearchMatch) {
-    const searchUrls: Record<EngineSearchMatch['engine'], string> = {
-      baidu: 'https://www.baidu.com/s?wd=',
-      google: 'https://www.google.com/search?q=',
-      bing: 'https://www.bing.com/search?q=',
+    const homeUrls: Record<EngineSearchMatch['engine'], string> = {
+      baidu: 'https://www.baidu.com',
+      google: 'https://www.google.com',
+      bing: 'https://www.bing.com',
     };
-    const baseUrl = searchUrls[input.engine];
+    const commands: BrowserCommand[] = [
+      {
+        tool: 'navigate',
+        params: { url: homeUrls[input.engine] },
+        description: `打开${input.engineLabel}`,
+      },
+      {
+        tool: 'smart_search',
+        params: { query: input.query },
+        description: `在${input.engineLabel}搜索 ${input.query}`,
+      },
+    ];
+    if (input.followUpClickResult) {
+      commands.push({
+        tool: 'click_result',
+        params: { index: input.followUpClickResult.resultIndex },
+        description: `点击第${input.followUpClickResult.resultIndex}个结果`,
+      });
+    }
 
     return {
       success: true,
-      commands: [
-        {
-          tool: 'navigate',
-          params: { url: `${baseUrl}${encodeURIComponent(input.query)}` },
-          description: `在${input.engineLabel}搜索 ${input.query}`,
-        },
-      ],
-      explanation: `将在${input.engineLabel}搜索 ${input.query}`,
+      commands,
+      explanation: input.followUpClickResult
+        ? `将依次打开${input.engineLabel}，搜索 ${input.query}，点击第${input.followUpClickResult.resultIndex}个结果`
+        : `将依次打开${input.engineLabel}，搜索 ${input.query}`,
       parserMetadata: {
         search: {
           status: 'success',
-          reason: 'search-default-engine',
+          reason: input.followUpClickResult
+            ? 'search-default-engine-sequential'
+            : 'search-default-engine',
           intentType: 'engine_search',
           query: input.query,
+          resultIndex: input.followUpClickResult?.resultIndex,
           triggerTerm: input.triggerTerm,
           engine: input.engine,
           usedRuntimeProfile: false,
@@ -257,7 +275,10 @@ export class BrowserCommandSearchService {
     };
   }
 
-  private parseExplicitEngineSearch(input: string): EngineSearchMatch | null {
+  private parseExplicitEngineSearch(
+    input: string,
+    profile: SearchProfile
+  ): EngineSearchMatch | null {
     const patterns: Array<{
       pattern: RegExp;
       resolve: (match: RegExpMatchArray) => EngineSearchMatch | null;
@@ -328,7 +349,21 @@ export class BrowserCommandSearchService {
       }
       const parsed = resolve(match);
       if (parsed?.query) {
-        return parsed;
+        const split = this.extractQueryAndRemaining(parsed.query);
+        if (!split?.query) {
+          return null;
+        }
+        const followUpClickResult = split.remaining
+          ? this.parseClickResult(split.remaining, profile)
+          : null;
+        if (split.remaining && !followUpClickResult) {
+          return null;
+        }
+        return {
+          ...parsed,
+          query: split.query,
+          ...(followUpClickResult ? { followUpClickResult } : {}),
+        };
       }
     }
 

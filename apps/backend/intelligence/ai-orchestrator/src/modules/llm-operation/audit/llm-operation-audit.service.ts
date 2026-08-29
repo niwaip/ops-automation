@@ -82,8 +82,9 @@ export class LlmOperationAuditService {
   /** 返回同一不可变版本下已经完整落盘的成功结果。 */
   public async findCompletedByIdempotencyKey(
     versionId: string,
-    idempotencyKey: string,
+    idempotencyKey?: string,
   ): Promise<LlmOperationInvocationRecord | null> {
+    if (!idempotencyKey) return null;
     const invocation = await this.repository.findInvocationByVersionAndIdempotencyKey(
       versionId,
       idempotencyKey,

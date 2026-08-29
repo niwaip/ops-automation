@@ -33,15 +33,31 @@ export class RoutingCapabilityCardProjector {
       aliasMap.set(card.id, card);
       if (card.publishedSkillId) aliasMap.set(card.publishedSkillId, card);
 
-      const accepts = Object.keys(card.inputs || {});
+      const cleanName = (card.displayName || card.id).replace(/-[0-9a-f]{8}$/i, '');
+      const rawProps = (card as any)._rawInputSchema?.properties || {};
+      const rawDefaults = (card as any)._rawInputSchema?.defaults || {};
+      const rawRequired = (card as any)._rawInputSchema?.required || [];
+
+      const accepts = Object.keys(card.inputs || {}).map((paramName) => {
+        const prop = rawProps[paramName];
+        const def = rawDefaults[paramName];
+        const isReq = rawRequired.includes(paramName);
+        const desc = prop?.description || prop?.displayName;
+        const details: string[] = [];
+        if (desc) details.push(desc);
+        if (def !== undefined) details.push(`默认值: ${JSON.stringify(def)}`);
+        else if (!isReq) details.push('可选');
+        return details.length > 0 ? `${paramName} (${details.join(', ')})` : paramName;
+      });
+
       const produces = Object.keys(card.outputs || {});
 
       routingCards.push({
         key,
         capabilityKind: 'skill',
-        displayName: card.displayName || card.id,
-        description: card.summary || card.displayName || card.id,
-        goals: card.goals || [card.displayName || card.id],
+        displayName: cleanName,
+        description: card.summary || cleanName,
+        goals: (card.goals || [cleanName]).map((g) => g.replace(/-[0-9a-f]{8}$/i, '')),
         accepts,
         produces,
         supportsArtifactOutput: Boolean(card.supportsArtifactOutput),
@@ -54,7 +70,12 @@ export class RoutingCapabilityCardProjector {
       aliasMap.set(key, card);
       aliasMap.set(card.id, card);
 
-      const accepts = Object.keys(card.inputs || {});
+      const rawProps = (card as any)._rawInputSchema?.properties || {};
+      const accepts = Object.keys(card.inputs || {}).map((paramName) => {
+        const prop = rawProps[paramName];
+        const desc = prop?.description || prop?.displayName;
+        return desc ? `${paramName} (${desc})` : paramName;
+      });
       const produces = Object.keys(card.outputs || {});
 
       routingCards.push({

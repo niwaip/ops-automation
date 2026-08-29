@@ -2,6 +2,7 @@ jest.mock(
   '@nestjs/common',
   () => ({
     Injectable: () => () => undefined,
+    Optional: () => () => undefined,
   }),
   { virtual: true }
 );
@@ -10,6 +11,65 @@ import { RecorderLoopService } from '../loop';
 import { RecorderTemplateExportService } from './recorder-template-export.service';
 
 describe('RecorderTemplateExportService', () => {
+  it('exports Baidu open, search, and result click in the recorded order', async () => {
+    const service = new RecorderTemplateExportService({} as any, new RecorderLoopService());
+    const steps = await service.buildTemplateStepsForExport(
+      {
+        runtimeSessionId: 'runtime-baidu-search',
+        currentPageUrl: 'https://example.com/result',
+        lastObservation: {
+          currentPageUrl: 'https://example.com/result',
+          title: '指定结果',
+          text: '目标页面正文',
+          inputs: [],
+          buttons: [],
+          headings: ['目标页面'],
+          links: [],
+        },
+        history: [],
+        executedCommands: [
+          {
+            tool: 'navigate',
+            params: { url: 'https://www.baidu.com' },
+            description: '打开百度',
+          },
+          {
+            tool: 'smart_search',
+            params: { query: '浏览器自动化' },
+            description: '在百度搜索 浏览器自动化',
+          },
+          {
+            tool: 'click_result',
+            params: { index: 1 },
+            description: '点击第1个结果',
+          },
+        ],
+      } as any,
+      '查看百度搜索并打开指定结果'
+    );
+
+    expect(steps).toEqual([
+      {
+        step_id: 'step_1',
+        action: 'navigate',
+        params: { url: 'https://www.baidu.com' },
+        description: '打开百度',
+      },
+      {
+        step_id: 'step_2',
+        action: 'smart_search',
+        params: { query: '浏览器自动化' },
+        description: '在百度搜索 浏览器自动化',
+      },
+      {
+        step_id: 'step_3',
+        action: 'click_result',
+        params: { index: 1 },
+        description: '点击第1个结果',
+      },
+    ]);
+  });
+
   it('parameterizes role-based detail buttons into loop row locators', () => {
     const service = new RecorderTemplateExportService({} as any, new RecorderLoopService());
 

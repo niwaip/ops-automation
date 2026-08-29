@@ -176,4 +176,117 @@ describe('DeterministicPlanSchedulerService', () => {
       );
     });
   });
+
+  it('keeps the standard browser session open through an appended LLM node and closes it only at plan completion', async () => {
+    const prisma = {
+      executionStep: {
+        update: jest.fn().mockResolvedValue({}),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'llm-step',
+            planNodeId: 'summarize',
+            outputJson: { summaryText: 'summary' },
+          },
+        ]),
+      },
+      executionArtifact: {
+        findFirst: jest.fn(),
+        create: jest.fn(),
+      },
+      execution: { update: jest.fn().mockResolvedValue({}) },
+    };
+    const orchestrator = {
+      executeStep: jest.fn().mockResolvedValue({
+        success: true,
+        output: { pageText: 'loaded page content' },
+      }),
+    };
+    const llmAdapter = {
+      executeOperation: jest.fn().mockResolvedValue({
+        success: true,
+        output: { summaryText: 'summary' },
+      }),
+    };
+    const events = { createEvent: jest.fn().mockResolvedValue(undefined) };
+    const runtimeSessionCoordinator = {
+      ensureBrowserSession: jest.fn().mockResolvedValue('session-standard'),
+      closeForTerminalExecution: jest.fn().mockResolvedValue(undefined),
+    };
+    const finalOutput = {
+      assertSatisfied: jest.fn().mockResolvedValue({ satisfied: true, artifacts: [] }),
+    };
+    const service = new DeterministicPlanSchedulerService(
+      prisma as any,
+      {} as any,
+      finalOutput as any,
+      llmAdapter as any,
+      orchestrator as any,
+      events as any,
+      { validateV1Contract: jest.fn() } as any,
+      {} as any,
+      { normalize: (output: any) => output } as any,
+      {} as any,
+      undefined,
+      undefined,
+      runtimeSessionCoordinator as any
+    ) as any;
+    const plan = {
+      planJson: {
+        nodes: [
+          { nodeId: 'browser_recording', runtimeType: 'browser_template' },
+          { nodeId: 'summarize', kind: 'llm_operation', dependsOn: ['browser_recording'] },
+        ],
+        finalOutputs: [
+          {
+            targetField: 'summaryText',
+            fromNodeId: 'summarize',
+            fromNodeOutput: 'summaryText',
+            expectedType: 'string',
+          },
+        ],
+      },
+    };
+    const execution = {
+      id: 'execution-1',
+      createdBy: 'user-1',
+      status: 'running',
+      plan,
+    };
+    const browserStep = {
+      id: 'browser-step',
+      planNodeId: 'browser_recording',
+      nodeKind: 'skill',
+      action: 'browser_template',
+      capabilityId: 'published-browser-template',
+      capabilityVersion: '1',
+      outputContractJson: {},
+    };
+    const llmStep = {
+      id: 'llm-step',
+      planNodeId: 'summarize',
+      nodeKind: 'llm_operation',
+      capabilityId: 'summarize_page',
+      capabilityVersion: '1',
+      outputContractJson: {},
+    };
+
+    await service.runSkillStep(execution, browserStep, {});
+    expect(orchestrator.executeStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeType: 'browser',
+        runtimeSessionId: 'session-standard',
+      })
+    );
+    expect(runtimeSessionCoordinator.closeForTerminalExecution).not.toHaveBeenCalled();
+
+    await service.runLlmStep(execution, llmStep, { pageText: 'loaded page content' });
+    expect(llmAdapter.executeOperation).toHaveBeenCalled();
+    expect(runtimeSessionCoordinator.closeForTerminalExecution).not.toHaveBeenCalled();
+
+    await service.completeExecutionIfSatisfied(execution);
+    expect(runtimeSessionCoordinator.closeForTerminalExecution).toHaveBeenCalledWith(
+      'execution-1',
+      'deterministic_execution_succeeded'
+    );
+  });
 });

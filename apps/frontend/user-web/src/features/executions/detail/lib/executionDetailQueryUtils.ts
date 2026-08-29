@@ -47,7 +47,15 @@ export const getPhaseTakeovers = (phase?: ExecutionPhaseDto) =>
   (Array.isArray(phase?.takeovers) ? phase.takeovers : []) as ExecutionTakeoverRecordDto[];
 
 export const isBrowserWorkflowActivity = (phase: ExecutionPhaseDto): boolean => {
-  if (phase.phaseType !== 'workflow_activity') {
+  const phaseType = typeof phase.phaseType === 'string' ? phase.phaseType.trim().toLowerCase() : '';
+  if (
+    phaseType === 'browser' ||
+    phaseType === 'browser_recording' ||
+    phaseType === 'browser_step'
+  ) {
+    return true;
+  }
+  if (phaseType !== 'workflow_activity') {
     return false;
   }
 

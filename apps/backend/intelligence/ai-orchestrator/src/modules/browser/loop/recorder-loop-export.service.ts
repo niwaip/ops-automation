@@ -28,7 +28,10 @@ export class RecorderLoopExportService {
         typeof command.params.url === 'string' &&
         command.params.url.trim() === startUrl
     );
-    const exportStartIndex = navigateIndex >= 0 ? navigateIndex + 1 : 0;
+    // Preserve the first recorded navigation as an explicit template action.
+    // The template exporter may synthesize a navigation only when the session
+    // has no recorded navigate command at all.
+    const exportStartIndex = navigateIndex >= 0 ? navigateIndex : 0;
     const loopRange = this.getLoopCapturedCommandRange(session.loopDraft);
     if (loopRange) {
       return {

@@ -59,6 +59,8 @@ services:
       EXTERNAL_HOST: ${HOST_IP:-localhost}
       SANDBOX_WORKER_URL: http://sandbox-worker:8090
       ACTIVITY_VALIDATION_AGENT_URL: http://sandbox-worker:8090
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      SEARCH_API_KEY: ${SEARCH_API_KEY:-}
     ports:
       - '${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}'
     volumes:

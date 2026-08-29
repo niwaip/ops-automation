@@ -12,6 +12,7 @@ export type BrowserRecordingRuntimeStep = {
   target?: string;
   args?: Record<string, unknown>;
   outputVar?: string;
+  captureProfile?: Record<string, unknown>;
   branch?: {
     conditionFn: string;
     onMatch: 'continue' | 'stop';

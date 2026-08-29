@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { buildBrowserCapabilityOutputSchema } from '@ops/backend-browser-execution-contract';
 import { CapabilityReleaseBrowserRecordingService } from './compiler/capability-release-browser-recording.service';
 import { CapabilityReleaseTemporalSchemaService } from './compiler/capability-release-temporal-schema.service';
 import {
@@ -21,6 +22,18 @@ const isExecutionFlowDocumentRenderEndpoint = (value: unknown): boolean => {
 
   const normalized = value.trim();
   return normalized.includes('/api/carbone/render-resolved');
+};
+
+const collectDistinctStrings = (...sources: unknown[]): string[] => {
+  const values = sources.flatMap((source) => (Array.isArray(source) ? source : [source]));
+  return Array.from(
+    new Set(
+      values
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter(Boolean)
+    )
+  );
 };
 
 @Injectable()
@@ -65,6 +78,11 @@ export class CapabilityReleaseSkillDraftService {
     const executionFlowKeys = Array.isArray(payload.executionFlowKeys)
       ? payload.executionFlowKeys.filter((item): item is string => typeof item === 'string')
       : [];
+    const triggerKeywords = collectDistinctStrings(
+      payload.triggerKeywords,
+      executionFlowKeys,
+      baseName
+    );
     const description =
       release.sourceType === 'temporal_workflow'
         ? this.buildTemporalSkillDescription(payload, baseName)
@@ -82,7 +100,7 @@ export class CapabilityReleaseSkillDraftService {
 
     const finalDescription =
       description.length > 500 ? description.slice(0, 497) + '...' : description;
-    const outputSchema = this.extractOutputSchema(payload, validation);
+    const outputSchema = this.extractOutputSchema(payload, validation, release);
 
     if (release.sourceType === 'browser_recording') {
       const browserExecutionFlow =
@@ -91,26 +109,48 @@ export class CapabilityReleaseSkillDraftService {
         payload.tools,
         browserExecutionFlow
       );
+      const preservedComposition =
+        asRecord(preservedRuntimeMetadata.composition) ||
+        asRecord(payload.workflowComposition) ||
+        asRecord(asRecord(payload.workflowDsl)?.sourceContext)?.browserWorkflowComposition;
+      const routingAliases = collectDistinctStrings(
+        asRecord(payload.apiEndpoints)?.runtimeMetadata &&
+          asRecord(asRecord(payload.apiEndpoints)?.runtimeMetadata)?.routingAliases,
+        preservedRuntimeMetadata.routingAliases,
+        triggerKeywords
+      );
+
       const apiEndpoints =
         payload.apiEndpoints &&
         typeof payload.apiEndpoints === 'object' &&
         !Array.isArray(payload.apiEndpoints)
-          ? (payload.apiEndpoints as Record<string, unknown>)
+          ? {
+              ...(payload.apiEndpoints as Record<string, unknown>),
+              runtimeMetadata: {
+                ...(asRecord((payload.apiEndpoints as Record<string, unknown>).runtimeMetadata) ||
+                  {}),
+                routingAliases,
+                ...(preservedComposition ? { composition: preservedComposition } : {}),
+              },
+            }
           : {
               runtimeMetadata: {
+                ...preservedRuntimeMetadata,
                 sourceType: 'browser_recording',
                 matchSummary,
                 paramCollectionGuidance,
                 validationRules,
+                routingAliases,
                 goal: typeof payload.goal === 'string' ? payload.goal : undefined,
                 expectedResult,
+                ...(preservedComposition ? { composition: preservedComposition } : {}),
               },
             };
 
       return {
         name: baseName,
         description: finalDescription,
-        triggerKeywords: executionFlowKeys.length > 0 ? executionFlowKeys : [baseName],
+        triggerKeywords,
         paramsSchema: paramsSchema || { properties: {}, required: [] },
         executionFlowTemplateIds: [],
         executionFlow: browserExecutionFlow,
@@ -126,7 +166,7 @@ export class CapabilityReleaseSkillDraftService {
       return {
         name: baseName.replace(/流程$/, ''),
         description: finalDescription,
-        triggerKeywords: executionFlowKeys.length > 0 ? executionFlowKeys : [baseName],
+        triggerKeywords,
         paramsSchema: paramsSchema || { properties: {}, required: [] },
         executionFlowTemplateIds: release.sourceId ? [release.sourceId] : [],
         tools: ['skill_match', 'flow_execute'],
@@ -166,7 +206,7 @@ export class CapabilityReleaseSkillDraftService {
     return {
       name: baseName.replace(/工作流$/, ''),
       description: finalDescription,
-      triggerKeywords: executionFlowKeys.length > 0 ? executionFlowKeys : [baseName],
+      triggerKeywords,
       paramsSchema: paramsSchema || { properties: {}, required: [] },
       executionFlowTemplateIds: release.sourceId ? [release.sourceId] : [],
       tools: ['skill_match', 'flow_execute'],
@@ -493,7 +533,12 @@ export class CapabilityReleaseSkillDraftService {
   private extractRuntimeMetadataFromDraftPayload(
     payload: Record<string, unknown>
   ): Record<string, unknown> {
-    return asRecord(asRecord(payload.apiEndpoints)?.runtimeMetadata) || {};
+    const apiEndpointsMetadata = asRecord(asRecord(payload.apiEndpoints)?.runtimeMetadata);
+    const directMetadata = asRecord(payload.runtimeMetadata);
+    return {
+      ...(directMetadata || {}),
+      ...(apiEndpointsMetadata || {}),
+    };
   }
 
   private extractSourceName(payload: Record<string, unknown>): string | null {
@@ -510,8 +555,24 @@ export class CapabilityReleaseSkillDraftService {
    */
   private extractOutputSchema(
     payload: Record<string, unknown>,
-    validation: CapabilityValidationDTO
+    validation: CapabilityValidationDTO,
+    release?: CapabilityReleaseDTO
   ): Record<string, unknown> | undefined {
+    if (release?.sourceType === 'browser_recording') {
+      const runtimeMetadata =
+        asRecord(asRecord(payload.apiEndpoints)?.runtimeMetadata) ||
+        asRecord(payload.runtimeMetadata);
+      return buildBrowserCapabilityOutputSchema({
+        declaredOutputSchema: payload.outputSchema,
+        runtimeMetadata,
+        executionPlan: payload.executionPlan,
+        composition:
+          runtimeMetadata?.composition ||
+          payload.workflowComposition ||
+          payload.composition,
+      });
+    }
+
     const contracts =
       (payload.contracts as Record<string, unknown>) ||
       (payload.manifest as any)?.spec?.contracts ||
@@ -520,7 +581,12 @@ export class CapabilityReleaseSkillDraftService {
       (contracts?.output as Record<string, unknown>) ||
       (payload.outputSchema as Record<string, unknown>);
     const schema = (output as any)?.schema ?? output;
-    if (schema && typeof schema === 'object' && !Array.isArray(schema) && Object.keys(schema).length > 0) {
+    if (
+      schema &&
+      typeof schema === 'object' &&
+      !Array.isArray(schema) &&
+      Object.keys(schema).length > 0
+    ) {
       return schema as Record<string, unknown>;
     }
 
@@ -536,9 +602,7 @@ export class CapabilityReleaseSkillDraftService {
         const paramDef =
           typeof val === 'object' && val !== null ? (val as Record<string, unknown>) : {};
         const description =
-          typeof paramDef.description === 'string'
-            ? paramDef.description
-            : `Output field ${key}`;
+          typeof paramDef.description === 'string' ? paramDef.description : `Output field ${key}`;
         properties[key] = {
           ...this.inferOutputPropertySchema(observedBusinessData?.[key], key, description),
           ...(typeof paramDef.type === 'string' ? { type: paramDef.type } : {}),
@@ -551,6 +615,25 @@ export class CapabilityReleaseSkillDraftService {
         required: Object.keys(properties),
         additionalProperties: false,
       };
+    }
+
+    if (
+      payload.executionFlow ||
+      payload.executionPlan ||
+      payload.browserRecording ||
+      payload.steps
+    ) {
+      const runtimeMetadata =
+        asRecord(asRecord(payload.apiEndpoints)?.runtimeMetadata) ||
+        asRecord(payload.runtimeMetadata);
+      return buildBrowserCapabilityOutputSchema({
+        runtimeMetadata,
+        executionPlan: payload.executionPlan,
+        composition:
+          runtimeMetadata?.composition ||
+          payload.workflowComposition ||
+          payload.composition,
+      });
     }
 
     return undefined;

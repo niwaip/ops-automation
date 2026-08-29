@@ -11,11 +11,7 @@ import { LockService } from '../lock/lock.service';
 import { AllocationService } from '../allocation/allocation.service';
 import { FreezeService } from '../freeze/freeze.service';
 import { TemplateClient, TemplateParamsSchema } from '../template/template.client';
-import {
-  CdpExecutor,
-  type TemplateLoopDraft,
-  type TemplateStep,
-} from '../execution/cdp.executor';
+import { CdpExecutor, type TemplateLoopDraft, type TemplateStep } from '../execution/cdp.executor';
 import {
   Session,
   SessionState,
@@ -184,14 +180,30 @@ export class SessionService {
     return `${value.slice(0, maxLength)}\n${suffix}`;
   }
 
+  private sanitizeStepMessage(message?: string, action?: string): string | undefined {
+    if (!message || !message.trim()) {
+      return message;
+    }
+    const trimmed = message.trim();
+    if (trimmed.includes('### Result') || trimmed.includes('### Ran Playwright code')) {
+      return action ? `${action} 执行成功` : '执行成功';
+    }
+    return trimmed;
+  }
+
   private compactHtml(html?: string): string | undefined {
-    if (!html) {
-      return html;
+    if (!html || !html.trim()) {
+      return undefined;
+    }
+    const trimmed = html.trim();
+    if (!/<[a-z!/][\s\S]*>/i.test(trimmed)) {
+      return undefined;
     }
 
-    const sanitized = html
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    const sanitized = trimmed
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, '')
       .replace(
         /data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g,
         'data:image/omitted;base64,[truncated]'
@@ -205,9 +217,10 @@ export class SessionService {
   }
 
   private compactStepResult(step: StepResult): StepResult {
+    const cleanMessage = this.sanitizeStepMessage(step.message, step.action);
     return {
       ...step,
-      message: this.truncateField(step.message, STEP_MESSAGE_MAX_LENGTH, '[message truncated]'),
+      message: this.truncateField(cleanMessage, STEP_MESSAGE_MAX_LENGTH, '[message truncated]'),
       text: this.truncateField(step.text, STEP_TEXT_MAX_LENGTH, '[text truncated]'),
       html: this.compactHtml(step.html),
     };
@@ -220,9 +233,11 @@ export class SessionService {
     return value as Record<string, unknown>;
   }
 
-  private extractTemplateExecutionPlan(template?: {
-    config?: Record<string, unknown>;
-  } | null): TemplateExecutionPlan | undefined {
+  private extractTemplateExecutionPlan(
+    template?: {
+      config?: Record<string, unknown>;
+    } | null
+  ): TemplateExecutionPlan | undefined {
     const executionPlan = this.asRecord(template?.config?.executionPlan);
     if (!executionPlan) {
       return undefined;
@@ -393,42 +408,6 @@ export class SessionService {
       (typeof template?.config?.backend === 'string' ? template.config.backend : 'cli');
     const executionBackend = rawExecutionBackend === 'legacy' ? 'cli' : rawExecutionBackend;
 
-    // #region debug-point A:start-session-input
-    (() => {
-      const fs = require('fs');
-      const envPath = '.dbg/session-loop-stall.env';
-      let debugUrl = `http://${process.env.EXTERNAL_HOST || 'host.docker.internal'}:7777/event`;
-      let debugSessionId = 'session-loop-stall';
-      try {
-        const envContent = fs.readFileSync(envPath, 'utf8');
-        debugUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || debugUrl;
-        debugSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || debugSessionId;
-      } catch {}
-      fetch(debugUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: debugSessionId,
-          runId: 'pre-fix',
-          hypothesisId: 'A',
-          location: 'session.service.ts:startSession:input',
-          msg: '[DEBUG] startSession loaded template and execution plan',
-          data: {
-            sessionId,
-            requestTemplateId: request.template_id,
-            templateExists: Boolean(template),
-            templateStepCount: template?.steps?.length || 0,
-            executionPlanStepCount: executionPlan?.templateSteps?.length || 0,
-            sourceStepCount: sourceSteps.length,
-            hasLoopDraft: Boolean(executionPlan?.loopDraft),
-            executionBackend,
-          },
-          ts: Date.now(),
-        }),
-      }).catch(() => {});
-    })();
-    // #endregion
-
     if (template && sourceSteps.length > 0) {
       const normalizedSteps = this.normalizeTemplateSteps(
         sourceSteps as TemplateStep[],
@@ -441,38 +420,6 @@ export class SessionService {
         `Executing ${normalizedSteps.length} steps for session ${sessionId} with params: ${JSON.stringify(request.params)}`
       );
 
-      // #region debug-point B:before-execute-steps
-      (() => {
-        const fs = require('fs');
-        const envPath = '.dbg/session-loop-stall.env';
-        let debugUrl = `http://${process.env.EXTERNAL_HOST || 'host.docker.internal'}:7777/event`;
-        let debugSessionId = 'session-loop-stall';
-        try {
-          const envContent = fs.readFileSync(envPath, 'utf8');
-          debugUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || debugUrl;
-          debugSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || debugSessionId;
-        } catch {}
-        fetch(debugUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: debugSessionId,
-            runId: 'pre-fix',
-            hypothesisId: 'B',
-            location: 'session.service.ts:startSession:beforeExecuteSteps',
-            msg: '[DEBUG] startSession invoking cdpExecutor.executeSteps',
-            data: {
-              sessionId,
-              normalizedStepIds: normalizedSteps.map((step) => step.step_id),
-              hasLoopDraft: Boolean(executionPlan?.loopDraft),
-              loopStepIds: executionPlan?.loopDraft?.eachIteration?.stepIds || [],
-            },
-            ts: Date.now(),
-          }),
-        }).catch(() => {});
-      })();
-      // #endregion
-
       const results = await this.cdpExecutor.executeSteps(
         normalizedSteps,
         sessionId,
@@ -483,74 +430,13 @@ export class SessionService {
         }
       );
 
-      // #region debug-point B:after-execute-steps
-      (() => {
-        const fs = require('fs');
-        const envPath = '.dbg/session-loop-stall.env';
-        let debugUrl = `http://${process.env.EXTERNAL_HOST || 'host.docker.internal'}:7777/event`;
-        let debugSessionId = 'session-loop-stall';
-        try {
-          const envContent = fs.readFileSync(envPath, 'utf8');
-          debugUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || debugUrl;
-          debugSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || debugSessionId;
-        } catch {}
-        fetch(debugUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: debugSessionId,
-            runId: 'pre-fix',
-            hypothesisId: 'B',
-            location: 'session.service.ts:startSession:afterExecuteSteps',
-            msg: '[DEBUG] startSession received executeSteps results',
-            data: {
-              sessionId,
-              resultCount: results.length,
-              failedCount: results.filter((item) => !item.success).length,
-              firstResult: results[0] || null,
-              lastResult: results[results.length - 1] || null,
-            },
-            ts: Date.now(),
-          }),
-        }).catch(() => {});
-      })();
-      // #endregion
-      // #region debug-point E:template-execution-results
-      (() => {
-        const branchResult = results.find((item) => item?.action === 'branch');
-        const approveResult = results.find(
-          (item) =>
-            item?.step_id === 'step_5' ||
-            (typeof item?.message === 'string' && item.message.includes('承認する'))
-        );
-        fetch('http://192.168.100.143:7777/event', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: 'approval-test-no-approve',
-            runId: 'pre-fix',
-            hypothesisId: 'E',
-            location: 'session.service.ts:326',
-            msg: '[DEBUG] template execution results ready',
-            data: {
-              sessionId,
-              templateId: request.template_id,
-              totalResults: results.length,
-              branchSuccess: branchResult?.success,
-              branchMessage: branchResult?.message,
-              approveStepId: approveResult?.step_id,
-              approveSuccess: approveResult?.success,
-              approveError: approveResult?.error,
-            },
-            ts: Date.now(),
-          }),
-        }).catch(() => {});
-      })();
-      // #endregion
-
+      const extractedPageResult = [...results]
+        .reverse()
+        .find((result) => Boolean(result.text || result.html));
       const finalStateResult = await this.cdpExecutor.captureFinalState(
         sessionId,
-        executionBackend
+        executionBackend,
+        extractedPageResult
       );
       if (
         finalStateResult.success ||
@@ -585,39 +471,6 @@ export class SessionService {
         }))
         .map((step) => this.compactStepResult(step));
       await this.redisService.set(stepsKey, JSON.stringify(stepResults), SESSION_TTL_SECONDS);
-
-      // #region debug-point D:step-results-stored
-      (() => {
-        const fs = require('fs');
-        const envPath = '.dbg/session-loop-stall.env';
-        let debugUrl = `http://${process.env.EXTERNAL_HOST || 'host.docker.internal'}:7777/event`;
-        let debugSessionId = 'session-loop-stall';
-        try {
-          const envContent = fs.readFileSync(envPath, 'utf8');
-          debugUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || debugUrl;
-          debugSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || debugSessionId;
-        } catch {}
-        fetch(debugUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: debugSessionId,
-            runId: 'pre-fix',
-            hypothesisId: 'D',
-            location: 'session.service.ts:startSession:afterRedisSet',
-            msg: '[DEBUG] startSession stored step results to redis',
-            data: {
-              sessionId,
-              stepsKey,
-              storedStepCount: stepResults.length,
-              firstStoredStep: stepResults[0] || null,
-              lastStoredStep: stepResults[stepResults.length - 1] || null,
-            },
-            ts: Date.now(),
-          }),
-        }).catch(() => {});
-      })();
-      // #endregion
 
       const confirmationSteps = results.filter((r) => !r.success && r.confirmation_required);
       const takeoverSteps = results.filter((r) => !r.success && r.takeover);
@@ -673,11 +526,11 @@ export class SessionService {
         const lastStepIndex = results.lastIndexOf(lastFailedStep);
         const forbiddenStep =
           forbiddenSteps.length > 0 ? forbiddenSteps[forbiddenSteps.length - 1] : undefined;
-        const blockingMode: SessionBlockingMode | undefined = forbiddenStep ? 'forbidden' : undefined;
+        const blockingMode: SessionBlockingMode | undefined = forbiddenStep
+          ? 'forbidden'
+          : undefined;
         const blockingReason =
-          forbiddenStep?.replay_forbidden_reason ||
-          forbiddenStep?.error ||
-          lastFailedStep.error;
+          forbiddenStep?.replay_forbidden_reason || forbiddenStep?.error || lastFailedStep.error;
 
         await this.redisService.hmset(sessionKey, {
           state: 'ERROR',
@@ -698,30 +551,6 @@ export class SessionService {
         }
       } else {
         this.logger.log(`All ${results.length} steps completed successfully`);
-        // #region debug-point E:template-execution-complete
-        (() => {
-          fetch('http://192.168.100.143:7777/event', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sessionId: 'approval-test-no-approve',
-              runId: 'pre-fix',
-              hypothesisId: 'E',
-              location: 'session.service.ts:395',
-              msg: '[DEBUG] template session completed',
-              data: {
-                sessionId,
-                templateId: request.template_id,
-                workerRef: currentSession.worker_ref,
-                totalResults: results.length,
-                finalStateStep: finalStateResult.step_id,
-                finalStateSuccess: finalStateResult.success,
-              },
-              ts: Date.now(),
-            }),
-          }).catch(() => {});
-        })();
-        // #endregion
         // Update session state to CLOSED after all steps completed
         await this.redisService.hmset(sessionKey, {
           state: 'CLOSED',

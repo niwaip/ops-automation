@@ -2879,7 +2879,9 @@ const AIControls: React.FC<AIControlsProps> = ({
       }
     );
 
-    return appendTemplateScreenshotSteps(coreSteps);
+    // Recorder export is sequence-preserving. Screenshots and HTML are browser
+    // execution artifacts, not synthetic actions inserted by the Portal.
+    return coreSteps;
   };
 
   const inferTemplateLocatorFromCommand = (
@@ -3026,7 +3028,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               .filter((entry) => entry.type === 'user')
               .map((entry) => entry.content)
               .slice(-3)
-              .join(' / ') || '录制浏览器任务',
+            .join(' / ') || '录制浏览器任务',
         }
       );
 
@@ -4006,20 +4008,22 @@ const AIControls: React.FC<AIControlsProps> = ({
                   {isListening ? '录音中' : isTranscribing ? '转写中' : '语音'}
                 </Button>
                 {isReactChatMode ? (
-                  <Button
-                    size="middle"
-                    icon={<SaveOutlined />}
-                    onClick={() => {
-                      void handleExportTemplateFromRecorder();
-                    }}
-                    loading={exportTemplateLoading}
-                    style={{
-                      ...secondaryActionButtonStyle,
-                      ...(!canExport ? mutedActionButtonStyle : {}),
-                    }}
-                  >
-                    导出
-                  </Button>
+                  <>
+                    <Button
+                      size="middle"
+                      icon={<SaveOutlined />}
+                      onClick={() => {
+                        void handleExportTemplateFromRecorder();
+                      }}
+                      loading={exportTemplateLoading}
+                      style={{
+                        ...secondaryActionButtonStyle,
+                        ...(!canExport ? mutedActionButtonStyle : {}),
+                      }}
+                    >
+                      导出
+                    </Button>
+                  </>
                 ) : (
                   <Checkbox
                     checked={isReplaceable}

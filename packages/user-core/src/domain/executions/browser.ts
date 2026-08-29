@@ -230,28 +230,48 @@ export const hasBrowserExecutionEvidence = (input: {
   runtimeType?: string;
   runtimeSessionId?: string;
   browserExecutionResult?: BrowserExecutionResultViewModel | null;
-  phases?: Array<Pick<ExecutionPhaseDto, 'runtimeSessionId' | 'output'>>;
+  phases?: Array<Pick<ExecutionPhaseDto, 'runtimeSessionId' | 'output' | 'phaseType' | 'steps'>>;
 }): boolean => {
   if (input.browserExecutionResult) {
     return true;
   }
 
+  if (
+    (input.phases || []).some((phase: any) => {
+      const phaseType = typeof phase.phaseType === 'string' ? phase.phaseType.trim().toLowerCase() : '';
+      if (
+        phaseType === 'browser' ||
+        phaseType === 'browser_recording' ||
+        phaseType === 'browser_step'
+      ) {
+        return true;
+      }
+      if (typeof phase.runtimeSessionId === 'string' && phase.runtimeSessionId.trim().length > 0) {
+        return true;
+      }
+      if (Boolean(extractBrowserExecutionResult(phase.output))) {
+        return true;
+      }
+      if (Array.isArray(phase.steps) && phase.steps.length > 0) {
+        return true;
+      }
+      return false;
+    })
+  ) {
+    return true;
+  }
+
   const normalizedRuntimeType =
     typeof input.runtimeType === 'string' ? input.runtimeType.trim().toLowerCase() : '';
-  if (normalizedRuntimeType !== 'browser') {
-    return false;
+  if (normalizedRuntimeType === 'browser') {
+    return true;
   }
 
   if (typeof input.runtimeSessionId === 'string' && input.runtimeSessionId.trim().length > 0) {
     return true;
   }
 
-  return (input.phases || []).some((phase) => {
-    if (typeof phase.runtimeSessionId === 'string' && phase.runtimeSessionId.trim().length > 0) {
-      return true;
-    }
-    return Boolean(extractBrowserExecutionResult(phase.output));
-  });
+  return false;
 };
 
 export const sanitizeBrowserOutputForDisplay = (value: unknown): unknown => {

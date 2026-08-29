@@ -549,7 +549,7 @@ describe('Deterministic Plan Execution E2E Test', () => {
     // Build scheduler with real deps + mock orchestrator
     const eventService = new ExecutionEventService(prisma);
     const eventPublisher = new ExecutionStreamService(eventService);
-    const inputResolver = new DeterministicNodeInputResolverService(prisma);
+    const inputResolver = new DeterministicNodeInputResolverService(prisma, {} as any, {} as any);
     const finalOutput = new DeterministicFinalOutputService(prisma);
     const llmAdapter = new LlmOperationRuntimeAdapter();
 
@@ -671,7 +671,7 @@ describe('Deterministic Plan Execution E2E Test', () => {
 
     const eventService = new ExecutionEventService(prisma);
     const eventPublisher = new ExecutionStreamService(eventService);
-    const inputResolver = new DeterministicNodeInputResolverService(prisma);
+    const inputResolver = new DeterministicNodeInputResolverService(prisma, {} as any, {} as any);
     const finalOutput = new DeterministicFinalOutputService(prisma);
 
     const scheduler = new DeterministicPlanSchedulerService(
@@ -755,7 +755,7 @@ describe('Deterministic Plan Execution E2E Test', () => {
     // Build scheduler with real deps + mock orchestrator
     const eventService = new ExecutionEventService(prisma);
     const eventPublisher = new ExecutionStreamService(eventService);
-    const inputResolver = new DeterministicNodeInputResolverService(prisma);
+    const inputResolver = new DeterministicNodeInputResolverService(prisma, {} as any, {} as any);
     const finalOutput = new DeterministicFinalOutputService(prisma);
     const llmAdapter = new LlmOperationRuntimeAdapter();
 
@@ -935,7 +935,7 @@ describe('Deterministic Plan Execution E2E Test', () => {
 
       const eventService = new ExecutionEventService(prisma);
       const eventPublisher = new ExecutionStreamService(eventService);
-      const inputResolver = new DeterministicNodeInputResolverService(prisma);
+      const inputResolver = new DeterministicNodeInputResolverService(prisma, {} as any, {} as any);
       const finalOutput = new DeterministicFinalOutputService(prisma);
       const llmAdapter = new LlmOperationRuntimeAdapter();
 
@@ -1039,7 +1039,7 @@ describe('Deterministic Plan Execution E2E Test', () => {
 
     const eventService = new ExecutionEventService(prisma);
     const eventPublisher = new ExecutionStreamService(eventService);
-    const inputResolver = new DeterministicNodeInputResolverService(prisma);
+    const inputResolver = new DeterministicNodeInputResolverService(prisma, {} as any, {} as any);
     const finalOutput = new DeterministicFinalOutputService(prisma);
     const llmAdapter = new LlmOperationRuntimeAdapter();
     const mockOrchestrator = {

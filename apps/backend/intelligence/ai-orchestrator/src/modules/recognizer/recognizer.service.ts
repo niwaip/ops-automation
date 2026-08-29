@@ -9,6 +9,7 @@ import { ModelService } from '../model/model.service';
 import { inferValueBySemanticSignal, normalizeSemanticRole } from './semantic-role.registry';
 import { LLMClient } from '../../client/llm-client';
 import { buildPromptAssembly } from './prompt-assembly';
+import { extractUrlFromInput } from './recognizer-url-extractor';
 
 /**
  * Template schema interface for parameter recognition
@@ -34,7 +35,6 @@ interface ParamSchemaProperty {
   extractionHints?: string[];
   displayName?: string;
 }
-
 
 /**
  * Param Recognizer Service
@@ -628,7 +628,6 @@ export class RecognizerService {
     return true;
   }
 
-
   private postProcessRecognizedParams(
     params: Record<string, unknown>,
     properties: Record<string, ParamSchemaProperty>,
@@ -1127,6 +1126,31 @@ export class RecognizerService {
       }
     }
 
+    if (
+      this.hasAliasKeyword(aliases, [
+        'url',
+        'target_url',
+        'targeturl',
+        'page_url',
+        'pageurl',
+        'link',
+        'link_url',
+        'address',
+        'web_url',
+        'website',
+        '网址',
+        '链接',
+        '页面地址',
+        '目标地址',
+        '网站',
+      ])
+    ) {
+      const urlCandidate = extractUrlFromInput(userInput);
+      if (urlCandidate) {
+        return urlCandidate;
+      }
+    }
+
     if (expectedType === 'number') {
       const explicitNumber = this.extractFirstLabeledValue(userInput, aliases, 'number');
       if (explicitNumber !== undefined) {
@@ -1143,8 +1167,6 @@ export class RecognizerService {
 
     return this.extractFirstLabeledValue(userInput, aliases, 'string');
   }
-
-
 
   private isDeliveryScopedArrayField(
     key: string,
@@ -1712,7 +1734,6 @@ export class RecognizerService {
 
     return undefined;
   }
-
 
   private extractAcceptanceTypeValue(input: string): string | undefined {
     const normalized = input.replace(/\s+/g, '');

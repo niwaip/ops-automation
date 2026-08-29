@@ -6,7 +6,7 @@
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
   "scripts": {
-    "build": "prisma generate && nest build",
+    "build": "prisma generate && nest build && node -e \"const fs=require('fs'); const path=require('path'); const src='src/generated/prisma'; ['dist/generated/prisma','dist/app/src/generated/prisma','dist/apps/backend/execution-control/control-plane/src/generated/prisma'].forEach(t=>{fs.mkdirSync(path.dirname(t),{recursive:true}); fs.cpSync(src,t,{recursive:true});});\"",
     "dev": "prisma generate && nest start --watch",
     "start": "node -e \"const fs=require('fs'); const main=['dist/main.js','dist/src/main.js','dist/apps/backend/execution-control/control-plane/src/main.js','dist/app/src/main.js'].find(f=>fs.existsSync(f)); if(!main){console.error('No main.js found in dist');process.exit(1);} require('./'+main);\"",
     "start:prod": "node -e \"const fs=require('fs'); const main=['dist/main.js','dist/src/main.js','dist/apps/backend/execution-control/control-plane/src/main.js','dist/app/src/main.js'].find(f=>fs.existsSync(f)); if(!main){console.error('No main.js found in dist');process.exit(1);} require('./'+main);\"",
@@ -25,6 +25,7 @@
     "@ops/backend-result-ref": "file:../../../../packages/backend-contracts/result-ref",
     "@ops/backend-runtime-capability-contract": "file:../../../../packages/backend-contracts/runtime-capability-contract",
     "@ops/backend-builtin-skill-contract": "file:../../../../packages/backend-contracts/builtin-skill-contract",
+    "@ops/backend-browser-execution-contract": "file:../../../../packages/backend-contracts/browser-execution-contract",
     "@nestjs/common": "^10.3.0",
     "@nestjs/core": "^10.3.0",
     "@nestjs/jwt": "^10.2.0",

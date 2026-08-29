@@ -290,8 +290,9 @@ export class PrismaLlmOperationRepository implements LlmOperationRepository {
 
   async findInvocationByVersionAndIdempotencyKey(
     versionId: string,
-    idempotencyKey: string,
+    idempotencyKey?: string,
   ): Promise<LlmOperationInvocationRecord | null> {
+    if (!idempotencyKey) return null;
     const row = await this.prisma.llmOperationInvocation.findUnique({
       where: {
         versionId_idempotencyKey: { versionId, idempotencyKey },

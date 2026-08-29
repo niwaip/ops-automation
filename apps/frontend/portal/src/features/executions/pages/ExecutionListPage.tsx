@@ -41,6 +41,7 @@ import {
   RobotOutlined,
   InfoCircleOutlined,
   DeleteOutlined,
+  CopyOutlined,
 } from '@ant-design/icons';
 import '@/features/chat/ChatMessage.css';
 import { resolveExecutionNormalizedResult } from '@ops/user-core';
@@ -65,6 +66,8 @@ import {
   extractBrowserExecutionResult,
   hasBrowserExecutionEvidence,
 } from '@/features/executions/shared/browser';
+import { StepOutputViewer } from '@/features/executions/shared/StepOutputViewer';
+import { ExpandableMarkdownContent } from '@/features/executions/shared/components/ExpandableMarkdownContent';
 import {
   extractPhaseStepImageSources,
   extractPhaseStepUrl,
@@ -171,6 +174,14 @@ const BROWSER_ACTIVITY_ACTIONS = new Set([
 ]);
 
 const isBrowserWorkflowActivity = (phase: ExecutionPhaseDto): boolean => {
+  const phaseType = typeof phase.phaseType === 'string' ? phase.phaseType.trim().toLowerCase() : '';
+  if (
+    phaseType === 'browser' ||
+    phaseType === 'browser_recording' ||
+    phaseType === 'browser_step'
+  ) {
+    return true;
+  }
   if (phase.phaseType !== 'workflow_activity') {
     return false;
   }
@@ -289,22 +300,39 @@ const renderExecutionPayloadContent = (
   }
 
   return (
-    <pre
-      style={{
-        background: 'var(--bg-secondary)',
-        color: 'var(--text-primary)',
-        border: '1px solid var(--bg-secondary)',
-        padding: 12,
-        borderRadius: 8,
-        overflow: 'auto',
-        margin: 0,
-        lineHeight: '1.6',
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-word',
-      }}
-    >
-      {renderJsonValue(parsedValue)}
-    </pre>
+    <Collapse
+      ghost
+      size="small"
+      defaultActiveKey={[]}
+      items={[
+        {
+          key: 'raw-payload',
+          label: (
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              查看原始数据 / 上游输入
+            </Text>
+          ),
+          children: (
+            <pre
+              style={{
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--bg-secondary)',
+                padding: 12,
+                borderRadius: 8,
+                overflow: 'auto',
+                margin: 0,
+                lineHeight: '1.6',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
+              {renderJsonValue(parsedValue)}
+            </pre>
+          ),
+        },
+      ]}
+    />
   );
 };
 
@@ -1100,7 +1128,7 @@ const ExecutionListPage: React.FC = () => {
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Collapse
               ghost
-              defaultActiveKey={['summary']}
+              defaultActiveKey={[]}
               expandIconPosition="end"
               items={[
                 {
@@ -1109,10 +1137,39 @@ const ExecutionListPage: React.FC = () => {
                     '基本信息',
                     `${getSkillDisplayName(selectedExecution.skillId)} / ${statusLabels[selectedExecution.status]}`
                   ),
+                  extra: (
+                    <Tooltip title="复制调试信息 (执行 ID & 状态)">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CopyOutlined />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const debugData = {
+                            id: selectedExecution.id,
+                            status: selectedExecution.status,
+                            riskLevel: selectedExecution.riskLevel,
+                            skillId: selectedExecution.skillId,
+                            skillName: getSkillDisplayName(selectedExecution.skillId),
+                            startedAt: selectedExecution.startedAt || selectedExecution.createdAt,
+                            endedAt: selectedExecution.endedAt,
+                            failureReason: selectedExecution.failureReason,
+                          };
+                          navigator.clipboard.writeText(JSON.stringify(debugData, null, 2));
+                          message.success('已复制执行调试信息 (JSON)');
+                        }}
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        复制
+                      </Button>
+                    </Tooltip>
+                  ),
                   style: detailPanelStyle,
                   children: (
                     <Descriptions column={1} size="small" bordered>
-                      <Descriptions.Item label="ID">{selectedExecution.id}</Descriptions.Item>
+                      <Descriptions.Item label="ID">
+                        <Text copyable={{ text: selectedExecution.id }}>{selectedExecution.id}</Text>
+                      </Descriptions.Item>
                       <Descriptions.Item label="状态">
                         <Tag color={statusColors[selectedExecution.status]}>
                           {statusLabels[selectedExecution.status]}
@@ -1252,10 +1309,15 @@ const ExecutionListPage: React.FC = () => {
                           ) : null}
                           {selectedExecutionNormalizedResult.summary ||
                           selectedExecutionNormalizedResult.body ? (
-                            <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
-                              {selectedExecutionNormalizedResult.summary ||
-                                selectedExecutionNormalizedResult.body}
-                            </Text>
+                            <div style={{ marginTop: 4 }}>
+                              <ExpandableMarkdownContent
+                                text={
+                                  selectedExecutionNormalizedResult.summary ||
+                                  selectedExecutionNormalizedResult.body ||
+                                  ''
+                                }
+                              />
+                            </div>
                           ) : null}
                           {selectedExecutionNormalizedResult.artifacts.length > 0 ? (
                             <Space wrap>
@@ -1340,15 +1402,6 @@ const ExecutionListPage: React.FC = () => {
                             const hasOutput =
                               step.outputJson &&
                               Object.keys(step.outputJson).length > 0;
-                            const presentation = (step.outputJson as any)
-                              ?.presentation;
-                            const detailText: string | undefined =
-                              typeof presentation?.detailText === 'string' &&
-                              presentation.detailText !== 'success'
-                                ? presentation.detailText
-                                : undefined;
-                            const resultPayload = (step.outputJson as any)
-                              ?.result;
                             return (
                               <Card
                                 key={step.id}
@@ -1412,121 +1465,12 @@ const ExecutionListPage: React.FC = () => {
                                   />
                                 ) : null}
 
-                                {/* 输出内容 */}
+                                {/* 步骤输出：优先展示截图、正文与动作 */}
                                 {hasOutput ? (
-                                  <Collapse
-                                    ghost
-                                    size="small"
-                                    items={[
-                                      {
-                                        key: 'out',
-                                        label: (
-                                          <Text
-                                            type="secondary"
-                                            style={{ fontSize: 11 }}
-                                          >
-                                            {detailText
-                                              ? `输出摘要：${detailText.slice(0, 60)}${detailText.length > 60 ? '…' : ''}`
-                                              : `查看输出（${Object.keys(step.outputJson!).join('、')}）`}
-                                          </Text>
-                                        ),
-                                        children: (
-                                          <Space
-                                            direction="vertical"
-                                            size={8}
-                                            style={{ width: '100%' }}
-                                          >
-                                            {detailText ? (
-                                              <div>
-                                                <Text
-                                                  strong
-                                                  style={{ fontSize: 11 }}
-                                                >
-                                                  摘要
-                                                </Text>
-                                                <pre
-                                                  style={{
-                                                    marginTop: 4,
-                                                    padding: '6px 10px',
-                                                    background:
-                                                      'var(--bg-secondary)',
-                                                    borderRadius: 6,
-                                                    fontSize: 12,
-                                                    whiteSpace: 'pre-wrap',
-                                                    wordBreak: 'break-word',
-                                                    maxHeight: 300,
-                                                    overflow: 'auto',
-                                                  }}
-                                                >
-                                                  {detailText}
-                                                </pre>
-                                              </div>
-                                            ) : null}
-                                            {resultPayload !== undefined ? (
-                                              <div>
-                                                <Text
-                                                  strong
-                                                  style={{ fontSize: 11 }}
-                                                >
-                                                  result
-                                                </Text>
-                                                <pre
-                                                  style={{
-                                                    marginTop: 4,
-                                                    padding: '6px 10px',
-                                                    background:
-                                                      'var(--bg-secondary)',
-                                                    borderRadius: 6,
-                                                    fontSize: 12,
-                                                    whiteSpace: 'pre-wrap',
-                                                    wordBreak: 'break-word',
-                                                    maxHeight: 300,
-                                                    overflow: 'auto',
-                                                  }}
-                                                >
-                                                  {typeof resultPayload ===
-                                                  'string'
-                                                    ? resultPayload
-                                                    : JSON.stringify(
-                                                        resultPayload,
-                                                        null,
-                                                        2
-                                                      )}
-                                                </pre>
-                                              </div>
-                                            ) : null}
-                                            <div>
-                                              <Text
-                                                strong
-                                                style={{ fontSize: 11 }}
-                                              >
-                                                完整 outputJson
-                                              </Text>
-                                              <pre
-                                                style={{
-                                                  marginTop: 4,
-                                                  padding: '6px 10px',
-                                                  background:
-                                                    'var(--bg-secondary)',
-                                                  borderRadius: 6,
-                                                  fontSize: 12,
-                                                  whiteSpace: 'pre-wrap',
-                                                  wordBreak: 'break-word',
-                                                  maxHeight: 300,
-                                                  overflow: 'auto',
-                                                }}
-                                              >
-                                                {JSON.stringify(
-                                                  step.outputJson,
-                                                  null,
-                                                  2
-                                                )}
-                                              </pre>
-                                            </div>
-                                          </Space>
-                                        ),
-                                      },
-                                    ]}
+                                  <StepOutputViewer
+                                    outputJson={step.outputJson}
+                                    stepName={step.name}
+                                    stepAction={step.action}
                                   />
                                 ) : null}
                               </Card>
@@ -1633,27 +1577,30 @@ const ExecutionListPage: React.FC = () => {
                         <Tag color="green">{`已完成: ${selectedCompletedPhaseCount}`}</Tag>
                         {selectedLoopCount > 0 ? <Tag>{`轮次: ${selectedLoopCount}`}</Tag> : null}
                       </Space>
-                      <Alert
-                        type={
-                          selectedExecution.status === 'succeeded'
-                            ? 'success'
-                            : selectedExecution.status === 'failed'
-                              ? 'error'
-                              : 'warning'
-                        }
-                        showIcon
-                        message={selectedSummaryHeadline}
-                        description={
-                          <Space wrap size={[12, 8]}>
+                      {selectedSummaryHeadline ? (
+                        <div
+                          style={{
+                            background: 'var(--bg-secondary, #fafafa)',
+                            borderRadius: 8,
+                            padding: '12px 14px',
+                            border: '1px solid var(--border-color, #f0f0f0)',
+                          }}
+                        >
+                          <ExpandableMarkdownContent text={selectedSummaryHeadline} />
+                          <div style={{ marginTop: 8, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                             {selectedExecution.endedAt ? (
-                              <Text type="secondary">{`结束时间: ${formatDateTime(selectedExecution.endedAt)}`}</Text>
+                              <Text type="secondary" style={{ fontSize: 12 }}>
+                                {`结束时间: ${formatDateTime(selectedExecution.endedAt)}`}
+                              </Text>
                             ) : null}
                             {selectedExecution.failureReason ? (
-                              <Text type="danger">{selectedExecution.failureReason}</Text>
+                              <Text type="danger" style={{ fontSize: 12 }}>
+                                {selectedExecution.failureReason}
+                              </Text>
                             ) : null}
-                          </Space>
-                        }
-                      />
+                          </div>
+                        </div>
+                      ) : null}
                       {selectedLoopSummary ? (
                         <Descriptions column={2} size="small">
                           <Descriptions.Item label="处理条数">
@@ -1923,6 +1870,13 @@ const ExecutionListPage: React.FC = () => {
                                   const phaseSteps = getPhaseSteps(phase);
                                   const phaseArtifacts = getPhaseArtifacts(phase);
                                   const isBrowserActivityPhase = isBrowserWorkflowActivity(phase);
+                                  const phaseOutput = tryParseJsonValue(phase.output);
+                                  const phaseOutputRecord =
+                                    phaseOutput &&
+                                    typeof phaseOutput === 'object' &&
+                                    !Array.isArray(phaseOutput)
+                                      ? (phaseOutput as Record<string, unknown>)
+                                      : undefined;
 
                                   return {
                                     key: phase.id,
@@ -1974,193 +1928,57 @@ const ExecutionListPage: React.FC = () => {
                                               description={phase.errorMessage}
                                             />
                                           ) : null}
-                                          {phase.phaseType === 'workflow_activity' ? (
-                                            isBrowserActivityPhase ? (
-                                              <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                                                <Card
-                                                  size="small"
-                                                  title="Activity 结果"
-                                                  styles={{ body: { padding: 12 } }}
-                                                >
-                                                  <Space
-                                                    direction="vertical"
-                                                    size={10}
-                                                    style={{ width: '100%' }}
-                                                  >
-                                                    <Space wrap size={[12, 4]}>
-                                                      <Text type="secondary">{`步骤数: ${phaseSteps.length}`}</Text>
-                                                      <Text type="secondary">{`截图: ${extractWorkflowActivitySnapshotSources(phase).length}`}</Text>
-                                                    </Space>
-                                                    {extractWorkflowActivitySnapshotSources(phase)
-                                                      .length > 0 ? (
-                                                      <Image.PreviewGroup>
-                                                        <Space wrap size={12}>
-                                                          {extractWorkflowActivitySnapshotSources(
-                                                            phase
-                                                          ).map((src, index) => (
-                                                            <Image
-                                                              key={`${phase.id}-snapshot-${index + 1}`}
-                                                              src={src}
-                                                              alt={`${phase.phaseName || phase.phaseKey}-snapshot-${index + 1}`}
-                                                              style={{
-                                                                width: 320,
-                                                                maxWidth: '100%',
-                                                                maxHeight: 320,
-                                                                objectFit: 'contain',
-                                                                background: 'var(--bg-secondary)',
-                                                                borderRadius: 8,
-                                                                border:
-                                                                  '1px solid var(--bg-secondary)',
-                                                                padding: 6,
-                                                              }}
-                                                            />
-                                                          ))}
-                                                        </Space>
-                                                      </Image.PreviewGroup>
-                                                    ) : (
-                                                      <Text type="secondary">
-                                                        该 Activity 暂无可展示截图。
-                                                      </Text>
-                                                    )}
-                                                  </Space>
-                                                </Card>
-                                                {phaseSteps.length > 0 ? (
-                                                  <Timeline
-                                                    items={phaseSteps.map((step) => {
-                                                      const stepUrl = extractPhaseStepUrl(step);
-                                                      const stepImageSources =
-                                                        extractPhaseStepImageSources(step, phaseArtifacts);
-                                                      const isWaitStep = step.action === 'wait';
-                                                      const isNavigateStep = step.action === 'navigate';
-                                                      const isScreenshotStep =
-                                                        step.action === 'screenshot';
-
-                                                      return {
-                                                        color: getPhaseStatusColor(step.status),
-                                                        children: isWaitStep ? (
-                                                          <Space
-                                                            wrap
-                                                            style={{
-                                                              width: '100%',
-                                                              justifyContent: 'space-between',
-                                                            }}
-                                                          >
-                                                            <Space wrap>
-                                                              <Text strong>等待</Text>
-                                                              <Tag color={getPhaseStatusColor(step.status)}>
-                                                                {step.status}
-                                                              </Tag>
-                                                            </Space>
-                                                            <Text type="secondary">
-                                                              {formatDateTime(
-                                                                step.startedAt || step.createdAt
-                                                              )}
-                                                            </Text>
-                                                          </Space>
-                                                        ) : (
-                                                          <Card size="small">
-                                                            <Space
-                                                              direction="vertical"
-                                                              size={10}
-                                                              style={{ width: '100%' }}
-                                                            >
-                                                              <Space
-                                                                wrap
-                                                                style={{
-                                                                  width: '100%',
-                                                                  justifyContent: 'space-between',
-                                                                }}
-                                                              >
-                                                                <Space wrap>
-                                                                  <Text strong>
-                                                                    {isNavigateStep
-                                                                      ? '打开页面'
-                                                                      : isScreenshotStep
-                                                                        ? '截图'
-                                                                        : step.action ||
-                                                                          `步骤 ${step.stepIndex + 1}`}
-                                                                  </Text>
-                                                                  <Tag
-                                                                    color={getPhaseStatusColor(
-                                                                      step.status
-                                                                    )}
-                                                                  >
-                                                                    {step.status}
-                                                                  </Tag>
-                                                                </Space>
-                                                                <Text type="secondary">
-                                                                  {formatDateTime(
-                                                                    step.startedAt || step.createdAt
-                                                                  )}
-                                                                </Text>
-                                                              </Space>
-                                                              {isNavigateStep ? (
-                                                                <Text
-                                                                  copyable={
-                                                                    stepUrl
-                                                                      ? { text: stepUrl }
-                                                                      : undefined
-                                                                  }
-                                                                >
-                                                                  {stepUrl || '-'}
-                                                                </Text>
-                                                              ) : null}
-                                                              {step.errorMessage ? (
-                                                                <Alert
-                                                                  type="error"
-                                                                  showIcon
-                                                                  message="步骤执行失败"
-                                                                  description={step.errorMessage}
-                                                                />
-                                                              ) : null}
-                                                              {stepImageSources.length > 0 ? (
-                                                                <Image.PreviewGroup>
-                                                                  <Space wrap size={12}>
-                                                                    {stepImageSources.map(
-                                                                      (src, index) => (
-                                                                        <Image
-                                                                          key={`${src}-${index}`}
-                                                                          src={src}
-                                                                          alt={`${phase.phaseName || phase.phaseKey}-step-${index + 1}`}
-                                                                          style={{
-                                                                            width: 320,
-                                                                            maxWidth: '100%',
-                                                                            maxHeight: 320,
-                                                                            objectFit: 'contain',
-                                                                            background:
-                                                                              'var(--bg-secondary)',
-                                                                            borderRadius: 8,
-                                                                            border:
-                                                                              '1px solid var(--bg-secondary)',
-                                                                            padding: 6,
-                                                                          }}
-                                                                        />
-                                                                      )
-                                                                    )}
-                                                                  </Space>
-                                                                </Image.PreviewGroup>
-                                                              ) : null}
-                                                            </Space>
-                                                          </Card>
-                                                        ),
-                                                      };
-                                                    })}
-                                                  />
-                                                ) : null}
-                                              </Space>
-                                            ) : (
-                                              <Card
-                                                size="small"
-                                                title="Activity 输出"
-                                                styles={{ body: { padding: 12 } }}
+                                          {phaseOutputRecord ? (
+                                            <StepOutputViewer
+                                              outputJson={phaseOutputRecord}
+                                              defaultExpanded
+                                              showVisualEvidence={false}
+                                            />
+                                          ) : null}
+                                          {extractWorkflowActivitySnapshotSources(phase).length > 0 ? (
+                                            <Card
+                                              size="small"
+                                              title="截图画面"
+                                              styles={{ body: { padding: 12 } }}
+                                            >
+                                              <Space
+                                                direction="vertical"
+                                                size={10}
+                                                style={{ width: '100%' }}
                                               >
-                                                {renderExecutionPayloadContent(phase.output, {
-                                                  emptyText: '该 Activity 暂无输出内容。',
-                                                  treatSingleResultFieldAsMarkdown: true,
-                                                })}
-                                              </Card>
-                                            )
-                                          ) : phaseSteps.length > 0 ? (
+                                                <Space wrap size={[12, 4]}>
+                                                  <Text type="secondary">{`步骤数: ${phaseSteps.length}`}</Text>
+                                                  <Text type="secondary">{`截图: ${extractWorkflowActivitySnapshotSources(phase).length}`}</Text>
+                                                </Space>
+                                                <Image.PreviewGroup>
+                                                  <Space wrap size={12}>
+                                                    {extractWorkflowActivitySnapshotSources(
+                                                      phase
+                                                    ).map((src, index) => (
+                                                      <Image
+                                                        key={`${phase.id}-snapshot-${index + 1}`}
+                                                        src={src}
+                                                        alt={`${phase.phaseName || phase.phaseKey}-snapshot-${index + 1}`}
+                                                        style={{
+                                                          width: 320,
+                                                          maxWidth: '100%',
+                                                          maxHeight: 320,
+                                                          objectFit: 'contain',
+                                                          background: 'var(--bg-secondary)',
+                                                          borderRadius: 8,
+                                                          border:
+                                                            '1px solid var(--bg-secondary)',
+                                                          padding: 6,
+                                                        }}
+                                                      />
+                                                    ))}
+                                                  </Space>
+                                                </Image.PreviewGroup>
+                                              </Space>
+                                            </Card>
+                                          ) : null}
+
+                                          {phaseSteps.length > 0 ? (
                                             <Timeline
                                               items={phaseSteps.map((step) => {
                                                 const stepUrl = extractPhaseStepUrl(step);
@@ -2183,9 +2001,7 @@ const ExecutionListPage: React.FC = () => {
                                                     >
                                                       <Space wrap>
                                                         <Text strong>等待</Text>
-                                                        <Tag
-                                                          color={getPhaseStatusColor(step.status)}
-                                                        >
+                                                        <Tag color={getPhaseStatusColor(step.status)}>
                                                           {step.status}
                                                         </Tag>
                                                       </Space>

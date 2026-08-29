@@ -100,7 +100,7 @@ describe('Three Capability E2E (P2-δ)', () => {
 
     const eventService = new ExecutionEventService(mockPrisma);
     const eventPublisher = new ExecutionStreamService(eventService);
-    const inputResolver = new DeterministicNodeInputResolverService(mockPrisma);
+    const inputResolver = new DeterministicNodeInputResolverService(mockPrisma, {} as any, {} as any);
     const finalOutput = new DeterministicFinalOutputService(mockPrisma);
 
     schedulerService = new DeterministicPlanSchedulerService(

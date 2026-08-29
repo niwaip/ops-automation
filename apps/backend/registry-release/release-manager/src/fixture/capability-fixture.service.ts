@@ -337,8 +337,24 @@ export class CapabilityFixtureService {
       if (!record) return null;
       const businessData = this.asRecord(record.businessData);
       if (businessData) return businessData;
+      const output = this.asRecord(record.output);
+      if (output) return output;
+      const postProcessing = this.asRecord(record.postProcessing);
+      if (postProcessing) return postProcessing;
       const data = this.asRecord(record.data);
       if (data) return data;
+      if (Array.isArray(record.results) && record.results.length > 0) {
+        const lastResult = record.results[record.results.length - 1];
+        const lastRecord = this.asRecord(lastResult);
+        if (lastRecord) {
+          const lastOutput =
+            this.asRecord(lastRecord.output) ||
+            this.asRecord(lastRecord.data) ||
+            this.asRecord(lastRecord.businessData) ||
+            lastRecord;
+          return lastOutput;
+        }
+      }
       if (record.result === undefined) return record;
       current = record.result;
     }

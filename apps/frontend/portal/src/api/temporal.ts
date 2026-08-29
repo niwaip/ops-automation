@@ -1,7 +1,7 @@
 import apiClient, { ensureFreshAccessToken } from '@/shared/api/http/client';
 import { useAuthStore } from '@/shared/store/authStore';
 import { postSseStream } from './streaming';
-import type { TemplateParamsSchema, TemplateStep } from './template';
+import type { TemplateParamsSchema, TemplateStep, TemplateWorkflowComposition } from './template';
 
 const AI_DRAFT_REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -188,6 +188,27 @@ export interface TemporalWorkflowSourceContext {
   userDescription?: string;
   generatedAt?: string;
   warnings?: string[];
+  browserWorkflowComposition?: TemplateWorkflowComposition;
+  browserLogicalPlan?: {
+    schemaVersion: 'browser-template-logical-plan/v1';
+    browserStepCount: number;
+    postProcessingStepCount: number;
+    totalStepCount: number;
+    steps: Array<{
+      id: string;
+      name: string;
+      type: 'browser_activity' | 'llm_operation' | 'workflow_skill';
+      dependsOn: string[];
+      workflowStepId?: string;
+      sourceStepId?: string;
+      sourceStepIds?: string[];
+      operationId?: string;
+      operationVersion?: string;
+      skillId?: string;
+      releaseId?: string;
+      runWhen?: 'browser_succeeded' | 'browser_terminal';
+    }>;
+  };
   sourceTemplate?: TemporalWorkflowSourceTemplate | null;
   templateAssetSummary?: {
     // 新增：资产摘要
@@ -377,6 +398,9 @@ export interface BrowserWorkflowDraft {
     commandCount: number;
     placeholderCount: number;
     placeholders: string[];
+    browserStepCount: number;
+    postProcessingStepCount: number;
+    totalStepCount: number;
   };
 }
 
@@ -397,6 +421,7 @@ export interface GenerateBrowserDraftDTO {
   commands?: BrowserDraftCommandInput[];
   templateId?: string;
   templateSteps?: TemplateStep[];
+  workflowComposition?: TemplateWorkflowComposition;
   loopDraft?: Record<string, unknown>;
   paramsSchema?: TemplateParamsSchema;
   name?: string;

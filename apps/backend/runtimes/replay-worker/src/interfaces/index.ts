@@ -13,7 +13,7 @@ export type StepAction =
   | 'screenshot'
   | 'assert';
 
-export type LocatorType = 'role' | 'text' | 'test-id' | 'css' | 'xpath';
+export type LocatorType = 'role' | 'text' | 'label' | 'test-id' | 'css' | 'xpath';
 
 export type WaitType = 'timeout' | 'visible' | 'hidden' | 'text';
 

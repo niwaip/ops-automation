@@ -30,6 +30,24 @@ describe('CapabilityReleaseBrowserRecordingService', () => {
     delete process.env.BROWSER_RUNTIME_HEADLESS;
   });
 
+  it('accepts an immutable recorder snapshot whose only executable steps are executionPlan.templateSteps', () => {
+    const result = createService().validateSnapshot({
+      sourcePayload: {
+        runtimeMetadata: {
+          executionPlan: {
+            templateSteps: [{ step_id: 'open', action: 'goto', params: { url: 'https://example.com' } }],
+          },
+        },
+      },
+    } as any);
+
+    expect(result).toEqual(expect.objectContaining({
+      success: true,
+      score: 100,
+      resultSnapshot: expect.objectContaining({ templateStepCount: 1 }),
+    }));
+  });
+
   it('prefers templateSteps from apiEndpoints runtime metadata executionPlan', () => {
     const service = createService();
 

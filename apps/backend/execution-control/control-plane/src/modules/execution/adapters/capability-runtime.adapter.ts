@@ -68,6 +68,34 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
   async invokeStep(request: RuntimeStepInvokeRequest): Promise<RuntimeStepInvokeResult> {
     let response;
     try {
+      const internalSecret =
+        process.env.INTERNAL_API_SHARED_SECRET || process.env.INTERNAL_API_SECRET;
+      const tracedUserId = request.traceContext?.userId;
+      const requestConfig = {
+        timeout: 300_000,
+        ...(internalSecret && tracedUserId
+          ? {
+              headers: {
+                'x-internal-auth': internalSecret,
+                'x-user-id': tracedUserId,
+              },
+            }
+          : {}),
+      };
+      const captureProfile =
+        (request.input?.captureProfile as Record<string, unknown>) ||
+        (request.input?.capture_profile as Record<string, unknown>) ||
+        (request.metadata?.captureProfile as Record<string, unknown>) ||
+        (request.metadata?.capture_profile as Record<string, unknown>) ||
+        {
+          schemaVersion: 'capture-profile/v1',
+          profile: 'article',
+          capture: { screenshot: true, html: true, mainContent: true },
+        };
+      const metadata = {
+        ...(request.metadata || {}),
+        captureProfile,
+      };
       response = await axios.post<CapabilityRuntimeExecuteResult>(
         `${this.authServiceUrl}/capabilities/runtime/execute`,
         {
@@ -82,12 +110,17 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
           phaseKey:
             typeof request.metadata?.phaseKey === 'string' ? request.metadata.phaseKey : undefined,
           input: request.input,
-          metadata: request.metadata,
+          metadata,
         },
-        { timeout: 300_000 }
+        requestConfig
       );
     } catch (err: any) {
-      const errMsg = err?.response?.data?.error || err?.message || 'Capability runtime call failed';
+      const errMsg =
+        err?.response?.data?.message ||
+        err?.response?.data?.errorMessage ||
+        err?.response?.data?.error ||
+        err?.message ||
+        'Capability runtime call failed';
       const status = err?.response?.status;
       this.logger.error(`Capability runtime call failed (status=${status}): ${errMsg}`);
       return {
@@ -145,11 +178,19 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
 
     const artifacts: ArtifactRef[] = [];
 
-    const directArtifacts = Array.isArray((output as Record<string, unknown>).artifacts)
-      ? ((output as Record<string, unknown>).artifacts as ArtifactRef[])
-      : (output as Record<string, unknown>).artifact
-        ? [((output as Record<string, unknown>).artifact as ArtifactRef)]
-        : [];
+    const outputRecord = output as Record<string, unknown>;
+    const browserRunOutput = outputRecord.browserRunOutput;
+    const browserArtifacts =
+      browserRunOutput && typeof browserRunOutput === 'object' && !Array.isArray(browserRunOutput)
+        ? (browserRunOutput as Record<string, unknown>).artifacts
+        : undefined;
+    const directArtifacts = Array.isArray(outputRecord.artifacts)
+      ? (outputRecord.artifacts as ArtifactRef[])
+      : Array.isArray(browserArtifacts)
+        ? (browserArtifacts as ArtifactRef[])
+        : outputRecord.artifact
+          ? [outputRecord.artifact as ArtifactRef]
+          : [];
 
     for (const art of directArtifacts) {
       if (art && (art.url || art.id)) {
