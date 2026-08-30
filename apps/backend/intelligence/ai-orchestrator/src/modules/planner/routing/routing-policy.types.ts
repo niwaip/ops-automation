@@ -3,6 +3,7 @@ export const ROUTING_SIGNAL_GROUPS = [
   'processing',
   'generation',
   'documentSource',
+  'webSource',
   'artifact',
   'search',
   'summarize',
@@ -12,7 +13,12 @@ export const ROUTING_SIGNAL_GROUPS = [
 
 export type RoutingSignalGroup = (typeof ROUTING_SIGNAL_GROUPS)[number];
 
-export const ROUTING_CAPABILITY_ROLES = ['search', 'markdownWriter', 'documentExtractor'] as const;
+export const ROUTING_CAPABILITY_ROLES = [
+  'search',
+  'markdownWriter',
+  'documentExtractor',
+  'webExtractor',
+] as const;
 
 export type RoutingCapabilityRole = (typeof ROUTING_CAPABILITY_ROLES)[number];
 

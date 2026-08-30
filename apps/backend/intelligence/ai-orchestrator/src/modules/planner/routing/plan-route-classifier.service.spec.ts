@@ -25,6 +25,14 @@ describe('PlanRouteClassifierService document routing', () => {
     expect(service.classifyRoute('翻译成英文')).toBe('deterministic_plan');
   });
 
+  it.each([
+    '打开网页 如何总结',
+    '打开网页，总结内容',
+    '浏览这个网站然后帮我归纳',
+  ])('routes web extraction plus summarization as a multi-step plan: %s', (request) => {
+    expect(service.classifyRoute(request)).toBe('deterministic_plan');
+  });
+
   it('routes advice and drafting through standard LLM planning instead of Skill matching', () => {
     expect(service.classifyRoute('给出穿衣建议', { hasPreviousResult: true })).toBe(
       'deterministic_plan'

@@ -65,6 +65,24 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
       },
     } as any,
     {
+      id: 'platform.web.extract',
+      kind: 'skill',
+      displayName: '打开网页获取正文',
+      summary: '打开网页并提取网页正文内容',
+      goals: ['web extract', '网页正文'],
+      inputs: {
+        startUrl: 'string',
+      },
+      outputs: {
+        text: 'string',
+      },
+      primaryOutput: 'text',
+      category: 'workflow',
+      supportsArtifactOutput: false,
+      publishedSkillId: 'platform.web.extract',
+      executableVersion: '1.0.0',
+    } as any,
+    {
       id: 'platform.web_search',
       kind: 'skill',
       displayName: 'Web Search',
@@ -270,6 +288,32 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
       path: 'text',
     });
     expect(bindingResult.requiredUserInputs).toHaveLength(0);
+  });
+
+  it.each([
+    '打开网页 如何总结',
+    '打开网页，总结内容',
+    '浏览这个网站然后帮我归纳',
+  ])('builds a fixed web extraction then summarization recipe: %s', (userRequest) => {
+    const matched = matcher.matchRecipe(userRequest);
+    expect(matched?.recipeName).toBe('web_extract_then_summarize');
+
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
+      mockSkillCards,
+      mockLlmOpCards
+    );
+
+    expect(topology?.nodes).toEqual([
+      expect.objectContaining({ ref: 'n1', capabilityKey: 'platform.web.extract' }),
+      expect.objectContaining({
+        ref: 'n2',
+        capabilityKey: 'summarize_text',
+        dependsOn: ['n1'],
+      }),
+    ]);
+    expect(topology?.finalNodeRef).toBe('n2');
+    expect(topology?.recipeName).toBe('web_extract_then_summarize');
   });
 
   it('treats an uploaded PDF filename as a request to extract its content', () => {

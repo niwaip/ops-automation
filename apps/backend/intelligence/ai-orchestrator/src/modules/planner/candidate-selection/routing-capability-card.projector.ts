@@ -22,12 +22,16 @@ export class RoutingCapabilityCardProjector {
   public projectCandidateCards(
     skillCards: CompactCapabilityCardV1[],
     llmOperationCards: CompactCapabilityCardV1[],
+    options?: { maxSkillCards?: number }
   ): ProjectedCandidateSet {
     const routingCards: RoutingCapabilityCardV1[] = [];
     const aliasMap = new Map<string, CompactCapabilityCardV1>();
 
+    const maxSkills = options?.maxSkillCards ?? 6;
+    const topSkillCards = skillCards.slice(0, maxSkills);
+
     let skillIndex = 0;
-    for (const card of skillCards) {
+    for (const card of topSkillCards) {
       const key = `s${skillIndex++}`;
       aliasMap.set(key, card);
       aliasMap.set(card.id, card);
@@ -62,6 +66,11 @@ export class RoutingCapabilityCardProjector {
         produces,
         supportsArtifactOutput: Boolean(card.supportsArtifactOutput),
       });
+    }
+
+    for (const card of skillCards.slice(maxSkills)) {
+      aliasMap.set(card.id, card);
+      if (card.publishedSkillId) aliasMap.set(card.publishedSkillId, card);
     }
 
     let opIndex = 0;

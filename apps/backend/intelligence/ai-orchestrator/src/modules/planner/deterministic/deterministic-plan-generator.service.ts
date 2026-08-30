@@ -28,6 +28,8 @@ import type {
   TopologyNodeV1,
 } from '../topology/deterministic-topology.types';
 
+import { UserHabitRouterService } from '../habit/user-habit-router.service';
+
 @Injectable()
 export class DeterministicPlanGeneratorService {
   private readonly logger = new Logger(DeterministicPlanGeneratorService.name);
@@ -54,7 +56,9 @@ export class DeterministicPlanGeneratorService {
     @Optional()
     private readonly explicitSkillIntent?: ExplicitSkillIntentService,
     @Optional()
-    private readonly routingPolicy?: RoutingPolicyService
+    private readonly routingPolicy?: RoutingPolicyService,
+    @Optional()
+    private readonly userHabitRouter?: UserHabitRouterService
   ) {}
 
   public async generatePlan(
@@ -96,7 +100,23 @@ export class DeterministicPlanGeneratorService {
           (dto.systemInputs?.previousResultData !== undefined ||
             dto.systemInputs?.previousResultText)
         );
-        const recipe = this.recipeMatcher?.matchRecipe(dto.userRequest, { hasPreviousResult });
+        // Layer 1: Check User Habit Fast-Gate (0-Token)
+        const userId = dto.telemetry?.user?.userId;
+        let habitTopology: DeterministicTopologyDraftV1 | null = null;
+        let habitExemplar: string | undefined;
+
+        if (this.userHabitRouter && userId) {
+          const habitDecision = await this.userHabitRouter.evaluateHabit(userId, dto.userRequest);
+          if (habitDecision.type === 'exact_topology' && habitDecision.topology) {
+            habitTopology = habitDecision.topology;
+          } else if (habitDecision.type === 'exemplar') {
+            habitExemplar = habitDecision.exemplarPrompt;
+          }
+        }
+
+        const recipe = habitTopology
+          ? null
+          : this.recipeMatcher?.matchRecipe(dto.userRequest, { hasPreviousResult });
         let recipeTopology = recipe
           ? this.recipeTopologyBuilder?.buildTopologyFromRecipe(
               recipe,
@@ -124,8 +144,13 @@ export class DeterministicPlanGeneratorService {
             recipeTopology = null;
           }
         }
-        const topologySource = recipeTopology ? 'recipe' : 'llm';
+        const topologySource = habitTopology
+          ? 'habit_fast_gate'
+          : recipeTopology
+            ? 'recipe'
+            : 'llm';
         const topologyDraft =
+          habitTopology ||
           recipeTopology ||
           (await this.topologyPlanner.planTopology(dto.userRequest, routingCards, {
             hasPreviousResult,
@@ -134,6 +159,7 @@ export class DeterministicPlanGeneratorService {
                 ? (dto.systemInputs?.previousResultRef as any).resultType
                 : undefined,
             scopedMemory: dto.plannerContext?.scopedMemory,
+            exemplar: habitExemplar,
             telemetry: dto.telemetry,
           }));
 
@@ -196,8 +222,18 @@ export class DeterministicPlanGeneratorService {
             );
 
             (planDraft as any).planningRoute = {
-              routeClass: topologySource === 'recipe' ? 'recipe_plan' : 'generated_plan',
-              routeSource: topologySource === 'recipe' ? 'recipe' : 'llm_topology',
+              routeClass:
+                topologySource === 'habit_fast_gate'
+                  ? 'habit_fast_gate'
+                  : topologySource === 'recipe'
+                    ? 'recipe_plan'
+                    : 'generated_plan',
+              routeSource:
+                topologySource === 'habit_fast_gate'
+                  ? 'habit_fast_gate'
+                  : topologySource === 'recipe'
+                    ? 'recipe'
+                    : 'llm_topology',
               confidence: topologyDraft.matchConfidence,
               reasonCodes: [
                 `topology_source:${topologySource}`,

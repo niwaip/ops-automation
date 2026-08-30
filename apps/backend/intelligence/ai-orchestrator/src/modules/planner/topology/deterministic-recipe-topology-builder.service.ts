@@ -25,6 +25,7 @@ export class DeterministicRecipeTopologyBuilderService {
     const searchSkill = this.selectSkillForRole(skillCards, 'search', policy);
     const markdownWriterSkill = this.selectSkillForRole(skillCards, 'markdown_writer', policy);
     const documentExtractorSkill = this.selectSkillForRole(skillCards, 'document_extract', policy);
+    const webExtractorSkill = this.selectSkillForRole(skillCards, 'web_extract', policy);
 
     for (const step of recipe.steps) {
       let capabilityKey: string | undefined;
@@ -36,6 +37,8 @@ export class DeterministicRecipeTopologyBuilderService {
           capabilityKey = markdownWriterSkill?.id || markdownWriterSkill?.publishedSkillId;
         } else if (step.role === 'document_extract') {
           capabilityKey = documentExtractorSkill?.id || documentExtractorSkill?.publishedSkillId;
+        } else if (step.role === 'web_extract') {
+          capabilityKey = webExtractorSkill?.id || webExtractorSkill?.publishedSkillId;
         }
       } else if (step.kind === 'llm_operation') {
         capabilityKey = this.selectOperationForStep(step, llmOperationCards)?.id;
@@ -74,7 +77,7 @@ export class DeterministicRecipeTopologyBuilderService {
 
   private selectSkillForRole(
     skillCards: CompactCapabilityCardV1[],
-    role: 'search' | 'markdown_writer' | 'document_extract',
+    role: 'search' | 'markdown_writer' | 'document_extract' | 'web_extract',
     policy: ReturnType<typeof createBuiltinRoutingPolicySnapshot>
   ): CompactCapabilityCardV1 | undefined {
     const policyRole =
@@ -82,6 +85,8 @@ export class DeterministicRecipeTopologyBuilderService {
         ? 'markdownWriter'
         : role === 'document_extract'
           ? 'documentExtractor'
+          : role === 'web_extract'
+            ? 'webExtractor'
           : 'search';
     const candidates = skillCards.filter((card) => {
       if (card.kind !== 'skill') return false;
@@ -101,7 +106,7 @@ export class DeterministicRecipeTopologyBuilderService {
 
   private scoreSkillContract(
     card: CompactCapabilityCardV1,
-    role: 'search' | 'markdown_writer' | 'document_extract'
+    role: 'search' | 'markdown_writer' | 'document_extract' | 'web_extract'
   ): number {
     const inputs = Object.entries(card.inputs || {});
     const outputs = Object.entries(card.outputs || {});
@@ -118,6 +123,14 @@ export class DeterministicRecipeTopologyBuilderService {
       )
         ? 100
         : 0;
+    }
+    if (role === 'web_extract') {
+      const hasUrlInput = inputs.some(([name]) => /url|website|page|start/i.test(name));
+      const hasTextOutput = outputs.some(
+        ([name, type]) =>
+          /content|text|body|markdown/i.test(name) || /string|markdown_content/i.test(type)
+      );
+      return (hasUrlInput ? 50 : 0) + (hasTextOutput ? 50 : 0);
     }
     return (
       (inputs.some(([name]) => /query|keyword|search/i.test(name)) ? 40 : 0) +

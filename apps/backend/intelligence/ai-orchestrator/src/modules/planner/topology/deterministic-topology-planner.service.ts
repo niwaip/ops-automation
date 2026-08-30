@@ -17,6 +17,7 @@ export class DeterministicTopologyPlannerService {
       hasPreviousResult?: boolean;
       previousResultType?: string;
       scopedMemory?: unknown;
+      exemplar?: string;
       telemetry?: {
         traceId?: string;
         authToken?: string;
@@ -89,7 +90,10 @@ export class DeterministicTopologyPlannerService {
       })),
     });
 
-    const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+    const exemplarSection = context?.exemplar
+      ? `\n\n【用户历史习惯参考范例 (Few-Shot Exemplar)】：\n${context.exemplar}`
+      : '';
+    const fullPrompt = `${systemPrompt}${exemplarSection}\n\n${userPrompt}`;
 
     this.logger.log(
       `Planning multi-step topology using model '${activeModel.name}' for request: "${userRequest}" (${routingCards.length} cards): ${routingCards.map((c) => `${c.key}:${c.displayName}`).join(', ')}`

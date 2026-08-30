@@ -51,6 +51,7 @@ export const BUILTIN_ROUTING_POLICY: Omit<RoutingPolicySnapshotV1, 'digest'> = {
       'brainstorm',
     ],
     documentSource: ['pdf', '附件'],
+    webSource: ['网页', '网站', 'url', 'http'],
     artifact: [
       '输出 md',
       '输出md',
@@ -106,6 +107,7 @@ export const BUILTIN_ROUTING_POLICY: Omit<RoutingPolicySnapshotV1, 'digest'> = {
     search: ['search', '搜索'],
     markdownWriter: ['markdown', '写'],
     documentExtractor: ['content-extractor', 'pdf', '内容提取'],
+    webExtractor: ['打开网页', '网页正文', '网页内容', 'web extract', 'browser extract'],
   },
   intentNormalization: {
     equivalences: [

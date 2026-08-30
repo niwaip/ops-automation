@@ -931,5 +931,92 @@ describe('DeterministicPlanGeneratorService', () => {
       expect(summarizeNode).toBeDefined();
       expect(summarizeNode.modelId).toBe(customModelId);
     });
+
+    it('reuses learned user habit topology directly via habit fast-gate (0-token path)', async () => {
+      const candidateSelector = {
+        selectCandidates: jest.fn().mockResolvedValue({
+          skillCards: [{ id: 'skill-web', displayName: '打开网页', kind: 'skill', outputs: { text: 'string' } }],
+          llmOperationCards: [{ id: 'summarize_text', displayName: '文本摘要', kind: 'llm_operation', outputs: { summary: 'string' } }],
+        }),
+      };
+      const modelService = {
+        callModel: jest.fn(),
+        getPreferredDefaultModel: jest.fn().mockReturnValue({ id: 'm1', name: 'model-1' }),
+      };
+      const userHabitRouter = {
+        evaluateHabit: jest.fn().mockResolvedValue({
+          type: 'exact_topology',
+          confidence: 0.99,
+          topology: {
+            schemaVersion: 'deterministic-topology/v1',
+            objective: '打开网页查正文总结',
+            matchDecision: 'matched',
+            matchConfidence: 0.99,
+            matchReason: 'Matched learned user habit (0-Token Fast-Gate)',
+            nodes: [
+              { ref: 'n1', capabilityKey: 'skill-web', dependsOn: [] },
+              { ref: 'n2', capabilityKey: 'summarize_text', dependsOn: ['n1'] },
+            ],
+            finalNodeRef: 'n2',
+            finalOutputKind: 'value',
+          },
+        }),
+      };
+      const cardProjector = {
+        projectCandidateCards: jest.fn().mockReturnValue({
+          routingCards: [],
+          aliasMap: new Map([
+            ['skill-web', { id: 'skill-web', displayName: '打开网页', kind: 'skill', outputs: { text: 'string' } }],
+            ['summarize_text', { id: 'summarize_text', displayName: '文本摘要', kind: 'llm_operation', outputs: { summary: 'string' } }],
+          ]),
+        }),
+      };
+      const topologyPlanner = {
+        planTopology: jest.fn(),
+      };
+      const topologyValidator = {
+        validateTopology: jest.fn().mockReturnValue({ valid: true }),
+      };
+      const parameterBinder = {
+        bindParameters: jest.fn().mockResolvedValue([
+          { nodeId: 'n1', skillId: 'skill-web', kind: 'skill', sequence: 1, dependsOn: [], inputBindings: {} },
+          { nodeId: 'n2', operationId: 'summarize_text', kind: 'llm_operation', sequence: 2, dependsOn: ['n1'], inputBindings: {} },
+        ]),
+      };
+      const contractAssembler = {
+        assemblePlan: jest.fn().mockReturnValue({
+          schemaVersion: 'deterministic-plan/v1',
+          nodes: [{ nodeId: 'n1' }, { nodeId: 'n2' }],
+          planningRoute: { routeSource: 'habit_fast_gate' },
+        }),
+      };
+
+      const service = new DeterministicPlanGeneratorService(
+        modelService as any,
+        candidateSelector as any,
+        undefined,
+        parameterBinder as any,
+        contractAssembler as any,
+        cardProjector as any,
+        topologyPlanner as any,
+        topologyValidator as any,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        userHabitRouter as any
+      );
+
+      const plan = await service.generatePlan({
+        userRequest: '打开网页查正文总结',
+        availableSkills: [{ id: 'skill-web' }],
+        telemetry: { user: { userId: 'user-1' } },
+      });
+
+      expect(userHabitRouter.evaluateHabit).toHaveBeenCalledWith('user-1', '打开网页查正文总结');
+      // LLM planner was skipped (0 Token!)
+      expect(topologyPlanner.planTopology).not.toHaveBeenCalled();
+      expect((plan as any).planningRoute.routeSource).toBe('habit_fast_gate');
+    });
   });
 });

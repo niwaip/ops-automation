@@ -11,7 +11,8 @@ export type RecipeType =
   | 'search_then_summarize'
   | 'search_summarize_write_markdown'
   | 'summarize_then_write_markdown'
-  | 'document_extract_then_summarize';
+  | 'document_extract_then_summarize'
+  | 'web_extract_then_summarize';
 
 export interface MatchedRecipe {
   recipeName: RecipeType;
@@ -19,7 +20,13 @@ export interface MatchedRecipe {
   steps: Array<{
     ref: string;
     kind: 'skill' | 'llm_operation';
-    role: 'search' | 'summarize' | 'transform' | 'markdown_writer' | 'document_extract';
+    role:
+      | 'search'
+      | 'summarize'
+      | 'transform'
+      | 'markdown_writer'
+      | 'document_extract'
+      | 'web_extract';
     inputShape?: 'list' | 'text';
     dependsOn: string[];
   }>;
@@ -48,7 +55,7 @@ export class DeterministicRecipeMatcherService {
       /生成\s*pdf|输出\s*pdf|导出\s*pdf|create\s*pdf|制作\s*pdf/i.test(userRequest);
     const hasPdfSplit = /拆分|拆页|分割|抽页|split/i.test(userRequest);
     const hasPdfMerge = /合并|拼接|merge/i.test(userRequest);
-    const hasWeb = /网页|网站|url|http|打开|浏览/i.test(userRequest);
+    const hasWeb = hasRoutingSignal(userRequest, 'webSource', policy);
     const hasPdf =
       !hasPdfExport &&
       !hasPdfSplit &&
@@ -56,6 +63,30 @@ export class DeterministicRecipeMatcherService {
       !hasWeb &&
       hasRoutingSignal(userRequest, 'documentSource', policy);
     const hasUncoveredAction = hasRoutingSignal(userRequest, 'uncoveredAction', policy);
+
+    // 网页获取 + 总结是高频且拓扑稳定的组合：使用固定 Recipe
+    // 保留 Skill 执行的稳定性，同时避免单 Skill 只覆盖“打开”就宣告整体完成。
+    if (hasWeb && hasSummarize) {
+      this.logger.log(
+        `Matched Recipe: web_extract_then_summarize for request: "${userRequest}"`
+      );
+      return {
+        recipeName: 'web_extract_then_summarize',
+        objective: userRequest,
+        steps: [
+          { ref: 'n1', kind: 'skill', role: 'web_extract', dependsOn: [] },
+          {
+            ref: 'n2',
+            kind: 'llm_operation',
+            role: 'summarize',
+            inputShape: 'text',
+            dependsOn: ['n1'],
+          },
+        ],
+        finalNodeRef: 'n2',
+        requiresExternalData: true,
+      };
+    }
 
     // 模式 0：在已有可信结果之上做单次 LLM 变换。该 Recipe 跳过
     // Skill 匹配模型和拓扑模型，并由参数绑定器把不可变结果快照绑定到 content。
