@@ -49,7 +49,15 @@ export class DeterministicRecipeMatcherService {
     const hasSummarize = hasRoutingSignal(userRequest, 'summarize', policy);
     const hasProcessing = hasRoutingSignal(userRequest, 'processing', policy);
     const hasGeneration = hasRoutingSignal(userRequest, 'generation', policy);
-    const hasMarkdown = hasRoutingSignal(userRequest, 'markdown', policy);
+    const isExplicitFileExport =
+      /(?:生成|输出|导出|保存|写入|创建)\s*(?:为|成)?\s*(?:markdown|md|文档|文件|.*\.md)|\b(?:markdown|md)\s*(?:文件|交付件|文档)|\.md\b/i.test(
+        userRequest
+      );
+    const isJustFormatConstraint =
+      /(?:用|以|按|按照)?\s*markdown\s*格式(?:总结|回复|输出|回答|提炼|概括)?/i.test(userRequest) &&
+      !/(?:生成|导出|保存|写入)\s*(?:为|成)?\s*.*\.md|\.md\b/i.test(userRequest);
+    const hasMarkdownFile = isExplicitFileExport && !isJustFormatConstraint;
+    const hasMarkdown = hasMarkdownFile;
     const hasPdfExport =
       (hasRoutingSignal(userRequest, 'artifact', policy) || /pdf/i.test(userRequest)) &&
       /生成\s*pdf|输出\s*pdf|导出\s*pdf|create\s*pdf|制作\s*pdf/i.test(userRequest);
@@ -88,14 +96,13 @@ export class DeterministicRecipeMatcherService {
       };
     }
 
-    // 模式 0：在已有可信结果之上做单次 LLM 变换。该 Recipe 跳过
+    // 模式 0：在已有可信结果之上做单次 LLM 变换或摘要。该 Recipe 跳过
     // Skill 匹配模型和拓扑模型，并由参数绑定器把不可变结果快照绑定到 content。
     if (
       context?.hasPreviousResult === true &&
-      (hasGeneration || hasProcessing) &&
-      !hasSummarize &&
+      (hasGeneration || hasProcessing || hasSummarize) &&
       !hasSearch &&
-      !hasMarkdown &&
+      !hasMarkdownFile &&
       !hasPdf &&
       !hasPdfSplit &&
       !hasPdfMerge &&
@@ -110,7 +117,7 @@ export class DeterministicRecipeMatcherService {
           {
             ref: 'n1',
             kind: 'llm_operation',
-            role: 'transform',
+            role: hasSummarize ? 'summarize' : 'transform',
             inputShape: 'text',
             dependsOn: [],
           },
@@ -201,7 +208,7 @@ export class DeterministicRecipeMatcherService {
     }
 
     // 模式 3：总结 + 输出 Markdown 文件
-    if (hasSummarize && hasMarkdown && !hasSearch) {
+    if (hasSummarize && hasMarkdownFile && !hasSearch) {
       this.logger.log(
         `Matched Recipe: summarize_then_write_markdown for request: "${userRequest}"`
       );

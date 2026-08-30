@@ -135,7 +135,10 @@ export class DeterministicPlanGeneratorService {
           const recipeCoverage = this.topologyValidator.validateTopology(
             recipeTopology,
             aliasMap,
-            explicitlyRequestedSkills
+            explicitlyRequestedSkills,
+            {
+              allowOperationOnly: true,
+            }
           );
           if (!recipeCoverage.valid || hasUncoveredActionKeyword) {
             this.logger.log(

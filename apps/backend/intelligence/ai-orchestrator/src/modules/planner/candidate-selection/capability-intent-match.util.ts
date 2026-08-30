@@ -159,6 +159,16 @@ export function hasExplicitCapabilityInvocation(
 
       const prefix = normalizedRequest.slice(Math.max(0, index - 16), index);
       const suffix = normalizedRequest.slice(index + alias.length).trim();
+
+      // Format modifiers like 'markdown 格式' / 'json 格式' are LLM style instructions, not skill invocations
+      if (
+        (alias === 'markdown' || alias === 'md' || alias === 'json' || alias.includes('markdown')) &&
+        (suffix.startsWith('格式') || suffix.startsWith('样式') || suffix.startsWith('排版') || suffix.startsWith('语法')) &&
+        !/(?:文件|文档|写入|导出|保存|生成文件)/i.test(normalizedRequest)
+      ) {
+        continue;
+      }
+
       if (
         /(?:最后|然后|并且|再)?\s*(?:用|使用|通过|调用|借助|using|use|via)\s*$/.test(prefix) ||
         /(?:最后|然后|并且|再)\s*$/.test(prefix) ||
