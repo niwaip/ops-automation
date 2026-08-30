@@ -38,18 +38,16 @@ export function calculateCapabilityIntentScore(
       score += 20 * compact.length;
     }
 
-    if (compact.length >= 4 && compact.length <= 40) {
-      for (let len = Math.min(compactRequest.length, 10); len >= 4; len--) {
-        for (let start = 0; start <= compactRequest.length - len; start++) {
-          const sub = compactRequest.slice(start, start + len);
-          if (compact.includes(sub)) {
-            score = Math.max(score, 80 + len * 5);
-          }
+    for (let len = Math.min(compactRequest.length, 10); len >= 2; len--) {
+      for (let start = 0; start <= compactRequest.length - len; start++) {
+        const sub = compactRequest.slice(start, start + len);
+        if (compact.includes(sub)) {
+          score = Math.max(score, len >= 4 ? 80 + len * 5 : 25 + len * 15);
         }
       }
     }
 
-    for (const token of extractDistinctiveAsciiTokens(normalized)) {
+    for (const token of extractDistinctiveAsciiTokens(cleanText)) {
       if (request.includes(token)) score += 25;
     }
 
@@ -145,7 +143,8 @@ function flattenTextValues(value: unknown): string[] {
 }
 
 function extractDistinctiveAsciiTokens(text: string): string[] {
-  return Array.from(text.matchAll(/[a-z][a-z0-9_-]{2,}/g), (match) => match[0])
+  const expanded = text.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+  return Array.from(expanded.matchAll(/[a-z][a-z0-9_-]{2,}/g), (match) => match[0])
     .filter((token) => !GENERIC_ASCII_TOKENS.has(token) && !isUuid(token));
 }
 
