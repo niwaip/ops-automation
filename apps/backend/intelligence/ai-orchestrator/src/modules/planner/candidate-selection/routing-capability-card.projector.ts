@@ -27,7 +27,7 @@ export class RoutingCapabilityCardProjector {
     const routingCards: RoutingCapabilityCardV1[] = [];
     const aliasMap = new Map<string, CompactCapabilityCardV1>();
 
-    const maxSkills = options?.maxSkillCards ?? 6;
+    const maxSkills = options?.maxSkillCards ?? 12;
     const topSkillCards = skillCards.slice(0, maxSkills);
 
     let skillIndex = 0;

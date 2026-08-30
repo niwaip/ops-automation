@@ -175,7 +175,7 @@ class MockResponse:
     def raise_for_status(self):
         if self.status >= 400:
             body_preview = (self.text or '').strip().replace('\n', ' ')[:300]
-            reason = self.reason or f"HTTP {self.status} for {self.url}. body={body_preview}"
+            reason = f"{self.reason or f'HTTP {self.status}'} (body: {body_preview})" if body_preview else (self.reason or f"HTTP {self.status}")
             if self.exceptions_source:
                 raise self.exceptions_source.HTTPError(reason)
             raise urllib.error.HTTPError(self.url, self.status, reason, self.headers, None)

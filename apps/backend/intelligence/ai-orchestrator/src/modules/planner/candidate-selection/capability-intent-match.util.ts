@@ -14,6 +14,35 @@ const GENERIC_ASCII_TOKENS = new Set([
 
 const GENERIC_NAME_SUFFIXES = ['工作流', '服务', '能力', '技能'];
 
+const PLANNER_STOP_WORDS = new Set([
+  '然后',
+  '进行',
+  '如何',
+  '最后',
+  '并且',
+  '通过',
+  '使用',
+  '一下',
+  '当前',
+  '可以',
+  '以及',
+  '根据',
+  '基于',
+  '为了',
+  '如果',
+  '或者',
+  '用于',
+  '一个',
+  '给出',
+  '完成',
+  '帮我',
+  '请帮',
+  '麻烦',
+  '怎样',
+  '怎么',
+  '给我',
+]);
+
 export function calculateCapabilityIntentScore(
   userRequest: string,
   candidateTexts: unknown[],
@@ -34,15 +63,22 @@ export function calculateCapabilityIntentScore(
 
     if (compact.length >= 4 && compactRequest.includes(compact)) {
       score = Math.max(score, 100 + Math.min(compact.length, 30));
-    } else if (compact.length >= 2 && compact.length < 8 && compactRequest.includes(compact)) {
+    } else if (
+      compact.length >= 2 &&
+      compact.length < 8 &&
+      !PLANNER_STOP_WORDS.has(compact) &&
+      compactRequest.includes(compact)
+    ) {
       score += 20 * compact.length;
     }
 
     for (let len = Math.min(compactRequest.length, 10); len >= 2; len--) {
       for (let start = 0; start <= compactRequest.length - len; start++) {
         const sub = compactRequest.slice(start, start + len);
+        if (PLANNER_STOP_WORDS.has(sub)) continue;
+        if (/^[a-z0-9_-]+$/.test(sub) && len < 4) continue;
         if (compact.includes(sub)) {
-          score = Math.max(score, len >= 4 ? 80 + len * 5 : 25 + len * 15);
+          score = Math.max(score, len >= 4 ? 80 + len * 5 : 35 + len * 15);
         }
       }
     }
@@ -52,7 +88,7 @@ export function calculateCapabilityIntentScore(
     }
 
     const chineseAlias = stripGenericSuffix(compact);
-    if (/^[\u3400-\u9fff]{2,}$/.test(chineseAlias)) {
+    if (/^[\u3400-\u9fff]{2,}$/.test(chineseAlias) && !PLANNER_STOP_WORDS.has(chineseAlias)) {
       if (compactRequest.includes(chineseAlias)) {
         score += 40;
       }

@@ -132,15 +132,31 @@ export class DeterministicRecipeTopologyBuilderService {
       );
       return (hasUrlInput ? 50 : 0) + (hasTextOutput ? 50 : 0);
     }
-    return (
-      (inputs.some(([name]) => /query|keyword|search/i.test(name)) ? 40 : 0) +
-      (outputs.some(
+    if (role === 'search') {
+      const hasDirectQuery = inputs.some(([name]) => /^query$/i.test(name));
+      const hasKeyword = inputs.some(([name]) => /keyword|search/i.test(name));
+      const isGeneralSearch = /websearch|search|检索|tavily|google|bing/i.test(
+        [card.displayName, card.id, card.summary, ...(card.goals || [])].join(' ')
+      );
+      const isHotboard = /热榜|热搜|hotboard|榜单/i.test(
+        [card.displayName, card.id, card.summary, ...(card.goals || [])].join(' ')
+      );
+      const hasResultsOutput = outputs.some(
         ([name, type]) =>
           /result|item|list/i.test(name) || /news_item_list|text_list|json/i.test(type)
-      )
-        ? 60
-        : 0)
-    );
+      );
+
+      let score = 0;
+      if (hasDirectQuery) score += 50;
+      else if (hasKeyword) score += 30;
+
+      if (hasResultsOutput) score += 50;
+      if (isGeneralSearch) score += 40;
+      if (isHotboard) score -= 30;
+
+      return Math.max(0, score);
+    }
+    return 0;
   }
 
   private selectOperationForStep(
