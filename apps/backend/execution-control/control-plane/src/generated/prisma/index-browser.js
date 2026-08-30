@@ -744,6 +744,90 @@ exports.Prisma.PlanningDecisionScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.TaskPolicySetScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  scopeType: 'scopeType',
+  scopeId: 'scopeId',
+  status: 'status',
+  version: 'version',
+  schemaVersion: 'schemaVersion',
+  policyJson: 'policyJson',
+  digest: 'digest',
+  createdBy: 'createdBy',
+  publishedAt: 'publishedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.TaskCommandAliasScalarFieldEnum = {
+  id: 'id',
+  policySetId: 'policySetId',
+  canonicalCommand: 'canonicalCommand',
+  alias: 'alias',
+  matchType: 'matchType',
+  weight: 'weight',
+  source: 'source',
+  status: 'status',
+  evidenceCount: 'evidenceCount',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.TaskRecipeScalarFieldEnum = {
+  id: 'id',
+  policySetId: 'policySetId',
+  recipeKey: 'recipeKey',
+  version: 'version',
+  name: 'name',
+  requiredCommandsJson: 'requiredCommandsJson',
+  optionalCommandsJson: 'optionalCommandsJson',
+  triggerJson: 'triggerJson',
+  stepsJson: 'stepsJson',
+  bindingsJson: 'bindingsJson',
+  completionClaimsJson: 'completionClaimsJson',
+  riskLevel: 'riskLevel',
+  status: 'status',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.TaskCapabilityBindingScalarFieldEnum = {
+  id: 'id',
+  policySetId: 'policySetId',
+  capabilityRole: 'capabilityRole',
+  capabilityId: 'capabilityId',
+  capabilityVersion: 'capabilityVersion',
+  priority: 'priority',
+  inputMappingJson: 'inputMappingJson',
+  outputMappingJson: 'outputMappingJson',
+  status: 'status',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.TaskPolicyProposalScalarFieldEnum = {
+  id: 'id',
+  policySetId: 'policySetId',
+  proposalType: 'proposalType',
+  scopeType: 'scopeType',
+  scopeId: 'scopeId',
+  status: 'status',
+  patchJson: 'patchJson',
+  evidenceJson: 'evidenceJson',
+  confidence: 'confidence',
+  proposedBy: 'proposedBy',
+  reviewedBy: 'reviewedBy',
+  reviewedAt: 'reviewedAt',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.TaskPolicyAuditLogScalarFieldEnum = {
+  id: 'id',
+  policySetId: 'policySetId',
+  actorUserId: 'actorUserId',
+  action: 'action',
+  detailJson: 'detailJson',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.PromptSnapshotScalarFieldEnum = {
   id: 'id',
   ownerUserId: 'ownerUserId',
@@ -1253,6 +1337,12 @@ exports.Prisma.ModelName = {
   AssistantFeedbackCurrent: 'AssistantFeedbackCurrent',
   RoutingObservation: 'RoutingObservation',
   PlanningDecision: 'PlanningDecision',
+  TaskPolicySet: 'TaskPolicySet',
+  TaskCommandAlias: 'TaskCommandAlias',
+  TaskRecipe: 'TaskRecipe',
+  TaskCapabilityBinding: 'TaskCapabilityBinding',
+  TaskPolicyProposal: 'TaskPolicyProposal',
+  TaskPolicyAuditLog: 'TaskPolicyAuditLog',
   PromptSnapshot: 'PromptSnapshot',
   LlmUsageLedger: 'LlmUsageLedger',
   ExecutionOutbox: 'ExecutionOutbox',

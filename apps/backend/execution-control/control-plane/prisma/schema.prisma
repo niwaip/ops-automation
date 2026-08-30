@@ -61,14 +61,14 @@ model User {
 
   // Relations
   userRoles                    UserRole[]
-  assignedRoles                UserRole[]           @relation("AssignedBy")
+  assignedRoles                UserRole[]            @relation("AssignedBy")
   orgMemberships               OrgMembership[]
-  assignedOrgRoles             OrgRoleBinding[]     @relation("OrgRoleAssignedBy")
-  activeOrg                    Organization?        @relation("ActiveOrganization", fields: [activeOrgId], references: [id], onDelete: SetNull)
+  assignedOrgRoles             OrgRoleBinding[]      @relation("OrgRoleAssignedBy")
+  activeOrg                    Organization?         @relation("ActiveOrganization", fields: [activeOrgId], references: [id], onDelete: SetNull)
   chatSessions                 ChatSession[]
   imChannelConnections         ImChannelConnection[]
-  skillAccessRequests          SkillAccessRequest[] @relation("SkillAccessRequester")
-  processedSkillAccessRequests SkillAccessRequest[] @relation("SkillAccessProcessor")
+  skillAccessRequests          SkillAccessRequest[]  @relation("SkillAccessRequester")
+  processedSkillAccessRequests SkillAccessRequest[]  @relation("SkillAccessProcessor")
 
   @@index([username])
   @@index([role])
@@ -104,18 +104,18 @@ model ImChannelConnection {
   channel             ImChannelType      @default(wechat)
   enabled             Boolean            @default(false)
   status              ImConnectionStatus @default(unconfigured)
-  interactionMode     ImInteractionMode   @default(auto) @map("interaction_mode")
+  interactionMode     ImInteractionMode  @default(auto) @map("interaction_mode")
   providerAccountId   String?            @map("provider_account_id") @db.VarChar(255)
   providerOwnerUserId String?            @map("provider_owner_user_id") @db.VarChar(255)
   providerBaseUrl     String?            @map("provider_base_url") @db.VarChar(500)
   encryptedCredential String?            @map("encrypted_credential") @db.Text
   updateCursor        String?            @map("update_cursor") @db.Text
-  lastConnectedAt     DateTime?           @map("last_connected_at") @db.Timestamptz
-  lastMessageAt       DateTime?           @map("last_message_at") @db.Timestamptz
+  lastConnectedAt     DateTime?          @map("last_connected_at") @db.Timestamptz
+  lastMessageAt       DateTime?          @map("last_message_at") @db.Timestamptz
   lastError           String?            @map("last_error") @db.VarChar(1000)
-  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt           DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, channel])
   @@index([enabled, status])
@@ -1030,6 +1030,125 @@ model PlanningDecision {
   @@index([executionId])
   @@index([routeClass, createdAt(sort: Desc)])
   @@map("planning_decisions")
+}
+
+model TaskPolicySet {
+  id            String                  @id @default(uuid()) @db.Uuid
+  name          String                  @db.VarChar(128)
+  scopeType     String                  @map("scope_type") @db.VarChar(32)
+  scopeId       String                  @map("scope_id") @db.VarChar(128)
+  status        String                  @db.VarChar(16)
+  version       String                  @db.VarChar(64)
+  schemaVersion String                  @map("schema_version") @db.VarChar(64)
+  policyJson    Json                    @default("{}") @map("policy_json")
+  digest        String                  @db.VarChar(64)
+  createdBy     String?                 @map("created_by") @db.Uuid
+  publishedAt   DateTime?               @map("published_at") @db.Timestamptz
+  createdAt     DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime                @updatedAt @map("updated_at") @db.Timestamptz
+  aliases       TaskCommandAlias[]
+  recipes       TaskRecipe[]
+  bindings      TaskCapabilityBinding[]
+  proposals     TaskPolicyProposal[]
+  auditLogs     TaskPolicyAuditLog[]
+
+  @@unique([scopeType, scopeId, version])
+  @@index([scopeType, scopeId, status])
+  @@index([status, publishedAt(sort: Desc)])
+  @@map("task_policy_sets")
+}
+
+model TaskCommandAlias {
+  id               String        @id @default(uuid()) @db.Uuid
+  policySetId      String        @map("policy_set_id") @db.Uuid
+  canonicalCommand String        @map("canonical_command") @db.VarChar(64)
+  alias            String        @db.VarChar(120)
+  matchType        String        @default("phrase") @map("match_type") @db.VarChar(16)
+  weight           Float         @default(1)
+  source           String        @default("admin") @db.VarChar(32)
+  status           String        @default("active") @db.VarChar(16)
+  evidenceCount    Int           @default(0) @map("evidence_count")
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  policySet        TaskPolicySet @relation(fields: [policySetId], references: [id], onDelete: Cascade)
+
+  @@unique([policySetId, canonicalCommand, alias])
+  @@index([canonicalCommand, status])
+  @@map("task_command_aliases")
+}
+
+model TaskRecipe {
+  id                   String        @id @default(uuid()) @db.Uuid
+  policySetId          String        @map("policy_set_id") @db.Uuid
+  recipeKey            String        @map("recipe_key") @db.VarChar(100)
+  version              String        @db.VarChar(64)
+  name                 String        @db.VarChar(128)
+  requiredCommandsJson Json          @default("[]") @map("required_commands_json")
+  optionalCommandsJson Json          @default("[]") @map("optional_commands_json")
+  triggerJson          Json          @default("{}") @map("trigger_json")
+  stepsJson            Json          @default("[]") @map("steps_json")
+  bindingsJson         Json          @default("[]") @map("bindings_json")
+  completionClaimsJson Json          @default("[]") @map("completion_claims_json")
+  riskLevel            String        @default("L0") @map("risk_level") @db.VarChar(8)
+  status               String        @default("active") @db.VarChar(16)
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  policySet            TaskPolicySet @relation(fields: [policySetId], references: [id], onDelete: Cascade)
+
+  @@unique([policySetId, recipeKey, version])
+  @@index([recipeKey, status])
+  @@map("task_recipes")
+}
+
+model TaskCapabilityBinding {
+  id                String        @id @default(uuid()) @db.Uuid
+  policySetId       String        @map("policy_set_id") @db.Uuid
+  capabilityRole    String        @map("capability_role") @db.VarChar(64)
+  capabilityId      String        @map("capability_id") @db.VarChar(255)
+  capabilityVersion String?       @map("capability_version") @db.VarChar(100)
+  priority          Int           @default(100)
+  inputMappingJson  Json          @default("{}") @map("input_mapping_json")
+  outputMappingJson Json          @default("{}") @map("output_mapping_json")
+  status            String        @default("active") @db.VarChar(16)
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  policySet         TaskPolicySet @relation(fields: [policySetId], references: [id], onDelete: Cascade)
+
+  @@unique([policySetId, capabilityRole, capabilityId, capabilityVersion])
+  @@index([capabilityRole, status, priority])
+  @@map("task_capability_bindings")
+}
+
+model TaskPolicyProposal {
+  id           String         @id @default(uuid()) @db.Uuid
+  policySetId  String?        @map("policy_set_id") @db.Uuid
+  proposalType String         @map("proposal_type") @db.VarChar(32)
+  scopeType    String         @map("scope_type") @db.VarChar(32)
+  scopeId      String         @map("scope_id") @db.VarChar(128)
+  status       String         @default("candidate") @db.VarChar(16)
+  patchJson    Json           @map("patch_json")
+  evidenceJson Json           @default("[]") @map("evidence_json")
+  confidence   Float
+  proposedBy   String         @default("llm") @map("proposed_by") @db.VarChar(32)
+  reviewedBy   String?        @map("reviewed_by") @db.Uuid
+  reviewedAt   DateTime?      @map("reviewed_at") @db.Timestamptz
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  policySet    TaskPolicySet? @relation(fields: [policySetId], references: [id], onDelete: SetNull)
+
+  @@index([scopeType, scopeId, status])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("task_policy_proposals")
+}
+
+model TaskPolicyAuditLog {
+  id          String         @id @default(uuid()) @db.Uuid
+  policySetId String?        @map("policy_set_id") @db.Uuid
+  actorUserId String?        @map("actor_user_id") @db.Uuid
+  action      String         @db.VarChar(64)
+  detailJson  Json           @default("{}") @map("detail_json")
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  policySet   TaskPolicySet? @relation(fields: [policySetId], references: [id], onDelete: SetNull)
+
+  @@index([policySetId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@map("task_policy_audit_logs")
 }
 
 model PromptSnapshot {
