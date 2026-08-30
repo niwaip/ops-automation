@@ -53,7 +53,13 @@ export class PlanRouteClassifierService {
     const hasSequentialIntent = hasRoutingSignal(text, 'sequential', policy);
     const hasArtifactIntent = hasRoutingSignal(text, 'artifact', policy);
     const hasDocumentSource = hasRoutingSignal(text, 'documentSource', policy);
+    const hasSearchIntent = hasRoutingSignal(text, 'search', policy);
 
-    return hasProcessingIntent && !hasSequentialIntent && !hasArtifactIntent && !hasDocumentSource;
+    return (
+      (hasProcessingIntent || hasArtifactIntent) &&
+      !hasSequentialIntent &&
+      !hasDocumentSource &&
+      !hasSearchIntent
+    );
   }
 }

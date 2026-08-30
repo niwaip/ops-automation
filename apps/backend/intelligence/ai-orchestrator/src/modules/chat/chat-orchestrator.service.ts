@@ -460,6 +460,24 @@ export class ChatOrchestratorService {
       continuationPlanDraft ||
       (await this.plannerService.completePlanFromMatchPhase({
         ...plannerInput,
+        request: {
+          ...plannerInput.request,
+          context: {
+            ...plannerInput.request.context,
+            ...(hasPreviousResult
+              ? {
+                  mode: 'single_step_continuation',
+                  previous_result: {
+                    executionId: latestResult?.executionId,
+                    resultType: latestResult?.resultType,
+                    resultTitle: latestResult?.resultTitle,
+                    structuredData: latestResult?.structuredData,
+                    detailText: latestResult?.summaryText,
+                  },
+                }
+              : {}),
+          },
+        },
         matchPhase,
       }));
 
