@@ -88,7 +88,11 @@ function resolveDeterministicEnumParams(userInput, properties) {
     return result;
 }
 function rankCapability(normalizedInput, capability) {
-    const explicitSignals = [capability.name, ...(capability.aliases || [])];
+    // Capability IDs are stable, user-visible invocation handles. Treat an exact
+    // ID mention as an explicit routing signal alongside display names/aliases so
+    // prompts such as "use platform.document.pdf-create" never depend on an LLM
+    // guessing the intended capability.
+    const explicitSignals = [capability.id, capability.name, ...(capability.aliases || [])];
     const derivedSignals = explicitSignals.flatMap(deriveRoutingSignals);
     const triggerSignals = capability.triggerKeywords || [];
     let score = 0;

@@ -58,6 +58,7 @@ export class SkillMatcherService {
           status: 'matched',
           match: {
             skillId: targetedSkill.skillId,
+            skillVersion: targetedSkill.executableVersion,
             skillName: targetedSkill.skillName,
             matchedKeywords: targetedSkill.triggerKeywords.filter(
               (keyword) => keyword && input.userInput.toLowerCase().includes(keyword.toLowerCase())
@@ -103,12 +104,40 @@ export class SkillMatcherService {
 
     if (input.userId) {
       try {
+        const sanitizedContext = input.context ? { ...input.context } : undefined;
+        if (sanitizedContext) {
+          if (Array.isArray(sanitizedContext.files)) {
+            sanitizedContext.files = (sanitizedContext.files as any[]).map((f) => {
+              if (f && typeof f === 'object') {
+                const { content: _content, fileBase64: _fileBase64, ...meta } = f;
+                return meta;
+              }
+              return f;
+            });
+          }
+          delete (sanitizedContext as any).fileBase64;
+        }
+
+        const rawFiles = Array.isArray(sanitizedContext?.files)
+          ? sanitizedContext!.files
+          : Array.isArray(sanitizedContext?.uploadedFiles)
+            ? sanitizedContext!.uploadedFiles
+            : [];
+        const fileNames = (rawFiles as Array<{ fileName?: string; mimeType?: string }>)
+          .map((f) => f?.fileName)
+          .filter(Boolean)
+          .join(', ');
+        const effectiveUserInput =
+          fileNames && !input.userInput.includes(fileNames)
+            ? `${input.userInput} (附件: ${fileNames})`
+            : input.userInput;
+
         const response = await axios.post<{ match: SkillMatchResult | null }>(
           `${this.authServiceUrl}/skills/match`,
           {
-            userInput: input.userInput,
+            userInput: effectiveUserInput,
             userId: input.userId,
-            context: input.context,
+            context: sanitizedContext,
             modelId: input.modelId,
           },
           {
@@ -121,7 +150,7 @@ export class SkillMatcherService {
 
         if (!response.data.match) {
           return this.toMatchAttempt(
-            this.acceptFallbackMatch(input.userInput, input.availableSkills)
+            this.acceptFallbackMatch(effectiveUserInput, input.availableSkills)
           );
         }
 
@@ -225,6 +254,7 @@ export class SkillMatcherService {
   ): SkillMatchResult {
     return {
       skillId: skill.skillId,
+      skillVersion: skill.executableVersion,
       skillName: skill.skillName,
       matchedKeywords,
       confidence,
@@ -296,6 +326,7 @@ export class SkillMatcherService {
 
     return {
       ...matchedSkill,
+      skillVersion: matchedSkill.skillVersion || sourceSkill.executableVersion,
       paramsSchema: this.skillCacheService.hydrateParamsSchemaRenderPaths(
         normalizedParamsSchema,
         (resolvedApiEndpoints?.runtimeMetadata || {}) as Record<string, unknown>

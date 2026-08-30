@@ -1,0 +1,11 @@
+{
+  "capabilityKey": "platform.document.pdf-merge",
+  "definitionVersion": "1.0.0",
+  "definitionDigest": "sha256:7fe8f32756ae81f47d932792aebd735bd75b1e6f3ca7ccaccc9c0fccfe02d480",
+  "fileHashes": {
+    "manifest.yaml": "sha256:39e18dba05716bcb8c3052976c7b2ad65a582be121709a1c14370f01031aa14f",
+    "workflow.json": "sha256:5afee0ce36f70753309d7ab187a6eb11bd1f01fea6510847df3656ce49c5f926",
+    "fixtures/smoke-input.json": "sha256:560ebca5c3f1b8044be0080ecf1a30e5242641909cb5c1feae197f6d5511699e"
+  },
+  "createdAt": "2026-08-29T20:00:00.000+08:00"
+}

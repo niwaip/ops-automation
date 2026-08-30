@@ -22,6 +22,7 @@
   "browserTemplates": "Browser Templates",
   "browserSemanticRules": "Rule Management (AI Review)",
   "systemTools": "System Tools",
+  "backup": "Backup & Restore",
   "promptDebug": "Prompt Debug",
   "logout": "Logout",
   "profile": "Profile",

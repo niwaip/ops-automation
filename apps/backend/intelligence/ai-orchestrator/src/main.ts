@@ -7,9 +7,9 @@ import { TraceInterceptor } from './common/trace.interceptor';
 import { getPublicHost } from './config/service-endpoints';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // Enable validation globally
   app.useGlobalPipes(

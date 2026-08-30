@@ -1,11 +1,19 @@
 import * as crypto from 'crypto';
 
+/**
+ * Reserved root node ID for recorder-composite browser plans.  This is a
+ * protocol identifier shared by the compiler, validator, and scheduler rather
+ * than an implementation-local naming convention.
+ */
+export const BROWSER_RECORDING_ROOT_NODE_ID = 'browser_recording' as const;
+
 export type LlmOperationIdV1 =
   | 'summarize_text'
   | 'summarize_list'
   | 'generate_text'
   | 'transform_text'
   | 'extract_structured_fields'
+  | 'format_document_blocks'
   | 'rewrite_to_markdown'
   | 'classify_intent_label'
   | 'merge_multi_source_notes';
@@ -299,6 +307,10 @@ export interface DeterministicPlanDraftV1 {
   status: 'draft' | 'validated' | 'frozen' | 'rejected';
   nodes: DeterministicPlanNodeV1[];
   finalOutputs: FinalOutputRequirementV1[];
+  /** Explicit planner decision used by the execution-side provenance gate. */
+  requirements?: {
+    externalData: boolean;
+  };
   requiredUserInputs?: RequiredUserInputV1[];
   validationResult?: PlanValidationResultV1;
   planHash?: string;
@@ -384,6 +396,9 @@ export function canonicalizePlan(plan: DeterministicPlanDraftV1): Record<string,
     objective: plan.objective.trim(),
     nodes: sortedNodes,
     finalOutputs: sortedFinalOutputs,
+    ...(plan.requirements
+      ? { requirements: sortObjectKeys(plan.requirements as Record<string, unknown>) }
+      : {}),
   };
 }
 

@@ -171,4 +171,41 @@ describe('ChatResultNormalizerService', () => {
       '"morning"'
     );
   });
+
+  it('formats multi-artifact split result cleanly as markdown list with links', () => {
+    const normalized = service.normalize(
+      {
+        artifact: {
+          id: 'art-1',
+          name: 'part1.pdf',
+          url: 'https://example.com/part1.pdf',
+          sizeBytes: 102400,
+        },
+        artifacts: [
+          {
+            id: 'art-1',
+            name: 'part1.pdf',
+            url: 'https://example.com/part1.pdf',
+            sizeBytes: 102400,
+          },
+          {
+            id: 'art-2',
+            name: 'part2.pdf',
+            url: 'https://example.com/part2.pdf',
+            sizeBytes: 204800,
+          },
+        ],
+        operation: 'split',
+        pageCount: 2,
+        selectedPages: [1, 2],
+      },
+      { executionId: 'exec-split', status: 'success' }
+    );
+
+    const formatted = service.formatForChat(normalized, 'exec-split');
+    expect(formatted).toContain('已为您生成 2 个文档产物：');
+    expect(formatted).toContain('[part1.pdf](https://example.com/part1.pdf) (100 KB)');
+    expect(formatted).toContain('[part2.pdf](https://example.com/part2.pdf) (200 KB)');
+    expect(formatted).toContain('执行单 ID: exec-split');
+  });
 });

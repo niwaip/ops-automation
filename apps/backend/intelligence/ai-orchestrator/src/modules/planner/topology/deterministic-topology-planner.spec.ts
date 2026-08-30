@@ -49,12 +49,15 @@ describe('Phase 2 Topology Projector & Validator', () => {
   ];
 
   it('projects compact capability cards into routing cards with short keys (s0, o0)', () => {
-    const { routingCards, aliasMap } = projector.projectCandidateCards(mockSkillCards, mockLlmOpCards);
+    const { routingCards, aliasMap } = projector.projectCandidateCards(
+      mockSkillCards,
+      mockLlmOpCards
+    );
 
     expect(routingCards).toHaveLength(3);
     expect(routingCards[0]?.key).toBe('s0');
     expect(routingCards[0]?.displayName).toBe('Web Search');
-    expect(routingCards[0]?.accepts).toEqual(['query']);
+    expect(routingCards[0]?.accepts).toEqual(['query (可选)']);
     expect(routingCards[0]?.produces).toEqual(['searchResults']);
 
     expect(routingCards[2]?.key).toBe('o0');
@@ -183,7 +186,7 @@ describe('Phase 2 Topology Projector & Validator', () => {
     };
     const { aliasMap } = projector.projectCandidateCards(
       [...mockSkillCards, barkCard],
-      mockLlmOpCards,
+      mockLlmOpCards
     );
     const result = validator.validateTopology(
       {
@@ -200,12 +203,12 @@ describe('Phase 2 Topology Projector & Validator', () => {
         finalOutputKind: 'value',
       },
       aliasMap,
-      [barkCard],
+      [barkCard]
     );
 
     expect(result.valid).toBe(false);
     expect(result.errors).toContain(
-      "Topology does not cover explicitly requested Skill 'Bark推送服务'",
+      "Topology does not cover explicitly requested Skill 'Bark推送服务'"
     );
   });
 });

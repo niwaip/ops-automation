@@ -54,7 +54,7 @@ install_workspace_deps() {
   local attempt=0
 
   pushd "$WORKSPACE_ROOT" > /dev/null
-  until pnpm install --no-frozen-lockfile --shamefully-hoist; do
+  until CI=true pnpm install --no-frozen-lockfile --shamefully-hoist --force; do
     attempt=$((attempt + 1))
     if [ "$attempt" -ge "$max_retries" ]; then
       log "ERROR: pnpm install failed after $max_retries attempts"

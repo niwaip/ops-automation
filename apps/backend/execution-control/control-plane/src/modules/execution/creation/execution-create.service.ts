@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger, Optional } from '@nestjs/common';
 import type { DeterministicPlanDraftV1 } from '@ops/backend-deterministic-plan';
+import { validate as isUuid } from 'uuid';
 import { PrismaService } from '../../prisma/prisma.service';
 import { APPROVAL_STATUS } from '../contracts/approval-status';
 import { EXECUTION_EVENT_TYPE } from '../contracts/execution-event-type';
@@ -319,7 +320,11 @@ export class ExecutionCreateService {
     const execution = await this.prisma.execution.create({
       data: {
         createdBy: userId,
-        skillId: effectiveSkillId,
+        // executions.skill_id is a legacy FK-shaped UUID column. Built-in
+        // capabilities use stable string keys (for example
+        // platform.document.pdf-create), which remain authoritative in the
+        // plan, steps and events but must not be written into this UUID column.
+        skillId: isUuid(effectiveSkillId) ? effectiveSkillId : null,
         skillVersion: effectiveSkillVersion,
         status: requiresApproval ? EXECUTION_STATUS.PENDING_APPROVAL : EXECUTION_STATUS.QUEUED,
         runtimeType: executionRuntimeType,
@@ -608,7 +613,9 @@ export class ExecutionCreateService {
       const created = await tx.execution.create({
         data: {
           createdBy: userId,
-          skillId: dto.skillId || dto.capabilityId || null,
+          skillId: isUuid(dto.skillId || dto.capabilityId || '')
+            ? dto.skillId || dto.capabilityId
+            : null,
           skillVersion: dto.skillVersion || dto.capabilityVersion || null,
           executionMode: 'deterministic_plan',
           status: waitsForInput

@@ -1,5 +1,4 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import type { CompactCapabilityCardV1 } from '@ops/backend-deterministic-plan';
 import {
   createBuiltinRoutingPolicySnapshot,
   hasRoutingSignal,
@@ -21,10 +20,11 @@ export interface MatchedRecipe {
     ref: string;
     kind: 'skill' | 'llm_operation';
     role: 'search' | 'summarize' | 'transform' | 'markdown_writer' | 'document_extract';
-    operationId?: string;
+    inputShape?: 'list' | 'text';
     dependsOn: string[];
   }>;
   finalNodeRef: string;
+  requiresExternalData: boolean;
 }
 
 @Injectable()
@@ -35,19 +35,26 @@ export class DeterministicRecipeMatcherService {
 
   public matchRecipe(
     userRequest: string,
-    skillCards: CompactCapabilityCardV1[],
-    llmOperationCards: CompactCapabilityCardV1[],
     context?: { hasPreviousResult?: boolean }
   ): MatchedRecipe | null {
-    void skillCards;
-    void llmOperationCards;
     const policy = this.routingPolicy?.getSnapshot() || createBuiltinRoutingPolicySnapshot();
     const hasSearch = hasRoutingSignal(userRequest, 'search', policy);
     const hasSummarize = hasRoutingSignal(userRequest, 'summarize', policy);
     const hasProcessing = hasRoutingSignal(userRequest, 'processing', policy);
     const hasGeneration = hasRoutingSignal(userRequest, 'generation', policy);
     const hasMarkdown = hasRoutingSignal(userRequest, 'markdown', policy);
-    const hasPdf = hasRoutingSignal(userRequest, 'documentSource', policy);
+    const hasPdfExport =
+      (hasRoutingSignal(userRequest, 'artifact', policy) || /pdf/i.test(userRequest)) &&
+      /生成\s*pdf|输出\s*pdf|导出\s*pdf|create\s*pdf|制作\s*pdf/i.test(userRequest);
+    const hasPdfSplit = /拆分|拆页|分割|抽页|split/i.test(userRequest);
+    const hasPdfMerge = /合并|拼接|merge/i.test(userRequest);
+    const hasWeb = /网页|网站|url|http|打开|浏览/i.test(userRequest);
+    const hasPdf =
+      !hasPdfExport &&
+      !hasPdfSplit &&
+      !hasPdfMerge &&
+      !hasWeb &&
+      hasRoutingSignal(userRequest, 'documentSource', policy);
     const hasUncoveredAction = hasRoutingSignal(userRequest, 'uncoveredAction', policy);
 
     // 模式 0：在已有可信结果之上做单次 LLM 变换。该 Recipe 跳过
@@ -59,6 +66,9 @@ export class DeterministicRecipeMatcherService {
       !hasSearch &&
       !hasMarkdown &&
       !hasPdf &&
+      !hasPdfSplit &&
+      !hasPdfMerge &&
+      !hasPdfExport &&
       !hasUncoveredAction
     ) {
       this.logger.log(`Matched Recipe: grounded_text_transform for request: "${userRequest}"`);
@@ -70,11 +80,12 @@ export class DeterministicRecipeMatcherService {
             ref: 'n1',
             kind: 'llm_operation',
             role: 'transform',
-            operationId: 'transform_text',
+            inputShape: 'text',
             dependsOn: [],
           },
         ],
         finalNodeRef: 'n1',
+        requiresExternalData: false,
       };
     }
 
@@ -93,11 +104,12 @@ export class DeterministicRecipeMatcherService {
             ref: 'n2',
             kind: 'llm_operation',
             role: 'summarize',
-            operationId: 'summarize_text',
+            inputShape: 'text',
             dependsOn: ['n1'],
           },
         ],
         finalNodeRef: 'n2',
+        requiresExternalData: true,
       };
     }
 
@@ -108,6 +120,7 @@ export class DeterministicRecipeMatcherService {
         objective: userRequest,
         steps: [{ ref: 'n1', kind: 'skill', role: 'document_extract', dependsOn: [] }],
         finalNodeRef: 'n1',
+        requiresExternalData: true,
       };
     }
 
@@ -125,12 +138,13 @@ export class DeterministicRecipeMatcherService {
             ref: 'n2',
             kind: 'llm_operation',
             role: 'summarize',
-            operationId: 'summarize_list',
+            inputShape: 'list',
             dependsOn: ['n1'],
           },
           { ref: 'n3', kind: 'skill', role: 'markdown_writer', dependsOn: ['n2'] },
         ],
         finalNodeRef: 'n3',
+        requiresExternalData: true,
       };
     }
 
@@ -146,11 +160,12 @@ export class DeterministicRecipeMatcherService {
             ref: 'n2',
             kind: 'llm_operation',
             role: 'summarize',
-            operationId: 'summarize_list',
+            inputShape: 'list',
             dependsOn: ['n1'],
           },
         ],
         finalNodeRef: 'n2',
+        requiresExternalData: true,
       };
     }
 
@@ -167,12 +182,13 @@ export class DeterministicRecipeMatcherService {
             ref: 'n1',
             kind: 'llm_operation',
             role: 'summarize',
-            operationId: 'summarize_text',
+            inputShape: 'text',
             dependsOn: [],
           },
           { ref: 'n2', kind: 'skill', role: 'markdown_writer', dependsOn: ['n1'] },
         ],
         finalNodeRef: 'n2',
+        requiresExternalData: false,
       };
     }
 

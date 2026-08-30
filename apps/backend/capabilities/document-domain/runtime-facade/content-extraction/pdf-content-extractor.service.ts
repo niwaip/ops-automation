@@ -7,6 +7,8 @@ import type {
 } from './document-content-extraction.types';
 import { ensurePdfJsTextRuntime } from './pdfjs-text-runtime.compat';
 
+import * as mammoth from 'mammoth';
+
 const PDF_SIGNATURE = '%PDF-';
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const MAX_PDF_BASE64_LENGTH = Math.ceil(MAX_PDF_BYTES / 3) * 4;
@@ -53,7 +55,7 @@ const importEsm = new Function('specifier', 'return import(specifier)') as (
 @Injectable()
 export class PdfContentExtractorService {
   async extract(input: PdfContentExtractionInput): Promise<DocumentContentExtractionResult> {
-    const bytes = this.decodePdf(input.fileBase64);
+    const bytes = this.decodeBytes(input.fileBase64);
     const maxPages = this.boundedInteger(
       input.maxPages,
       DEFAULT_MAX_PAGES,
@@ -69,6 +71,29 @@ export class PdfContentExtractorService {
       'maxCharacters'
     );
     const includePages = input.includePages !== false;
+
+    // 1. DOCX format (PK\x03\x04 signature or docx filename)
+    if (
+      (bytes.length >= 4 &&
+        bytes[0] === 0x50 &&
+        bytes[1] === 0x4b &&
+        bytes[2] === 0x03 &&
+        bytes[3] === 0x04) ||
+      input.fileName?.toLowerCase().endsWith('.docx')
+    ) {
+      return await this.extractDocx(bytes, maxCharacters, includePages);
+    }
+
+    // 2. Markdown / Text / Code file formats (when specified by filename)
+    if (input.fileName?.match(/\.(md|markdown|txt|text|json|csv|yaml|yml|xml|html|log|ts|js|py|sh|sql)$/i)) {
+      return this.extractPlainText(bytes, maxCharacters, includePages, input.fileName);
+    }
+
+    // 3. PDF format
+    if (bytes.toString('ascii', 0, PDF_SIGNATURE.length) !== PDF_SIGNATURE) {
+      throw new BadRequestException('输入内容不是支持的文档格式（支持 PDF、DOCX、Markdown、TXT 等文档）');
+    }
+
     ensurePdfJsTextRuntime();
     const pdfjs = await importEsm('pdfjs-dist/legacy/build/pdf.mjs');
     const loadingTask = pdfjs.getDocument({
@@ -98,6 +123,67 @@ export class PdfContentExtractorService {
         await loadingTask.destroy().catch(() => undefined);
       }
     }
+  }
+
+  private async extractDocx(
+    bytes: Buffer,
+    maxCharacters: number,
+    includePages: boolean
+  ): Promise<DocumentContentExtractionResult> {
+    try {
+      const result = await mammoth.extractRawText({ buffer: bytes });
+      const rawText = (result.value || '').trim();
+      const characterCount = rawText.length;
+      const truncated = characterCount > maxCharacters;
+      const text = truncated ? rawText.slice(0, maxCharacters) : rawText;
+      return {
+        text,
+        pages: includePages ? [{ pageNumber: 1, text, characterCount: text.length }] : [],
+        pageCount: 1,
+        extractedPageCount: 1,
+        characterCount: text.length,
+        truncated,
+        warnings: result.messages.map((m) => m.message),
+        metadata: { format: 'docx' },
+        extraction: {
+          format: 'docx',
+          method: 'embedded_text',
+          ocrUsed: false,
+        },
+      };
+    } catch (err) {
+      throw new BadRequestException(
+        `DOCX 文档解析失败: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+
+  private extractPlainText(
+    bytes: Buffer,
+    maxCharacters: number,
+    includePages: boolean,
+    fileName?: string
+  ): DocumentContentExtractionResult {
+    const rawText = bytes.toString('utf8').trim();
+    const characterCount = rawText.length;
+    const truncated = characterCount > maxCharacters;
+    const text = truncated ? rawText.slice(0, maxCharacters) : rawText;
+    const ext = fileName ? fileName.split('.').pop()?.toLowerCase() || 'text' : 'text';
+    return {
+      text,
+      pages: includePages ? [{ pageNumber: 1, text, characterCount: text.length }] : [],
+      pageCount: 1,
+      extractedPageCount: 1,
+      characterCount: text.length,
+      truncated,
+      warnings: [],
+      metadata: { format: ext },
+      extraction: {
+        format: 'text',
+        method: 'embedded_text',
+        ocrUsed: false,
+      },
+    };
   }
 
   private async extractDocument(
@@ -164,23 +250,23 @@ export class PdfContentExtractorService {
     };
   }
 
-  private decodePdf(value: unknown): Buffer {
-    if (typeof value !== 'string' || !value.trim()) {
+  private decodeBytes(value?: string): Buffer {
+    if (!value || typeof value !== 'string') {
       throw new BadRequestException('fileBase64 不能为空');
     }
-    const normalized = value.trim().replace(/^data:application\/pdf;base64,/i, '');
+    const normalized = value.trim().replace(/^data:[^;]+;base64,/i, '');
     if (normalized.length > MAX_PDF_BASE64_LENGTH) {
-      throw new PayloadTooLargeException(`PDF 文件不能超过 ${MAX_PDF_BYTES / 1024 / 1024}MB`);
+      throw new PayloadTooLargeException(`文档不能超过 ${MAX_PDF_BYTES / 1024 / 1024}MB`);
     }
     if (!/^[A-Za-z0-9+/]*={0,2}$/.test(normalized) || normalized.length % 4 === 1) {
       throw new BadRequestException('fileBase64 不是有效的 Base64 内容');
     }
     const bytes = Buffer.from(normalized, 'base64');
-    if (bytes.length === 0 || bytes.toString('ascii', 0, PDF_SIGNATURE.length) !== PDF_SIGNATURE) {
-      throw new BadRequestException('输入内容不是有效的 PDF 文件');
+    if (bytes.length === 0) {
+      throw new BadRequestException('输入内容为空');
     }
     if (bytes.length > MAX_PDF_BYTES) {
-      throw new PayloadTooLargeException(`PDF 文件不能超过 ${MAX_PDF_BYTES / 1024 / 1024}MB`);
+      throw new PayloadTooLargeException(`文档不能超过 ${MAX_PDF_BYTES / 1024 / 1024}MB`);
     }
     return bytes;
   }

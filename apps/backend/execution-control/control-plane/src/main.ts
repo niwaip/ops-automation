@@ -64,10 +64,10 @@ async function bootstrap() {
     pid: process.pid,
   });
   try {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, { bodyParser: false });
     debugReport('A', 'nest-create-ok');
-    app.use(express.json({ limit: '10mb' }));
-    app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+    app.use(express.json({ limit: '50mb' }));
+    app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
     // Enable CORS
     const corsOrigin = process.env.CORS_ORIGIN;

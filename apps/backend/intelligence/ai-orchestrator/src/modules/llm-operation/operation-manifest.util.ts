@@ -10,6 +10,7 @@ const USER_PROMPT_TEMPLATES: Record<LlmOperationIdV1, string> = {
   rewrite_to_markdown: '请重写并格式化以下内容：\n\n{{content}}',
   summarize_text: '请按系统要求对以下文本进行总结：\n\n{{text}}',
   extract_structured_fields: '目标字段：{{target_fields}}\n\n文本：\n\n{{text}}',
+  format_document_blocks: '标题：{{title}}\n主题风格：{{theme}}\n排版指令：{{instructions}}\n\n待排版文本：\n\n{{text}}',
   classify_intent_label: '文本：\n\n{{text}}',
   merge_multi_source_notes: '源数据：\n\n{{sources}}',
 };

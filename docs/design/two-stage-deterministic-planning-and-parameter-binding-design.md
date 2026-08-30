@@ -431,6 +431,7 @@ export interface DeterministicPlanDraftV1 {
   status: 'draft' | 'validated' | 'frozen' | 'rejected';
   nodes: DeterministicPlanNodeV1[];
   finalOutputs: FinalOutputRequirementV1[];
+  requirements?: { externalData: boolean };
   requiredUserInputs?: RequiredUserInputV1[];
 }
 ```
@@ -647,6 +648,8 @@ interface AssembledTopologyNodeV1 {
 - Skill version 使用候选快照精确版本。
 - LLM Operation version/digest 在 Registry 中解析。
 - outputContract 从权威 output schema 派生。
+- 权威输出 Schema 为空时拒绝组装，不允许虚构 `result:string` 等物理字段。
+- `requirements.externalData` 由 Planner 根据统一 Routing Policy 和拓扑数据来源显式写入；Control Plane 不再根据 objective 关键词二次推断。
 - failurePolicy 第一期固定为 `abort`。
 - runtimeType 从 Registry/Catalog 填充。
 

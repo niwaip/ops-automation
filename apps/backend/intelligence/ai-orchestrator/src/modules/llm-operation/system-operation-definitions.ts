@@ -60,6 +60,12 @@ export const SYSTEM_OPERATION_DEFINITIONS: Record<LlmOperationIdV1, SystemOperat
     goals: ['extract_fields', 'structured_extraction'],
     status: 'active',
   },
+  format_document_blocks: {
+    displayName: '文档块排版与格式化',
+    description: '将非结构化文本或总结排版为包含标题、段落、列表、表格和主题风格的结构化文档块',
+    goals: ['format_document_blocks', 'format_pdf_blocks', 'format_blocks', 'adapt_document_structure'],
+    status: 'active',
+  },
   rewrite_to_markdown: {
     displayName: 'Markdown 格式化（兼容）',
     description: '旧版 Markdown 格式化；新规划使用 transform_text',

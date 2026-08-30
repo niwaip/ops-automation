@@ -492,6 +492,7 @@ export class ChatOrchestratorService {
           }>(
             {
               skillId: planDraft.skill_match.skill_id,
+              skillVersion: planDraft.skill_match.skill_version,
               ...(body.idempotencyKey ? { idempotencyKey: body.idempotencyKey } : {}),
               input: {
                 prompt: body.message,
@@ -629,6 +630,7 @@ export class ChatOrchestratorService {
         const execution = await this.controlPlaneClient.createExecution<{ id: string }>(
           {
             skillId: planDraft.skill_match.skill_id,
+            skillVersion: planDraft.skill_match.skill_version,
             ...(body.idempotencyKey ? { idempotencyKey: body.idempotencyKey } : {}),
             input: {
               prompt: body.message,

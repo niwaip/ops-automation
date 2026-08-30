@@ -105,7 +105,7 @@ export class SkillAccessService {
     });
 
     if (user?.role === 'admin') {
-      return this.listAllActiveSkills();
+      return (await this.listAllActiveSkills()).filter((skill) => skill.isPublished);
     }
 
     const userRoles = await this.prisma.userRole.findMany({
@@ -123,7 +123,7 @@ export class SkillAccessService {
     );
 
     if (isAdmin) {
-      return this.listAllActiveSkills();
+      return (await this.listAllActiveSkills()).filter((skill) => skill.isPublished);
     }
 
     if (user?.role && !roleNames.has(user.role)) {
@@ -139,7 +139,7 @@ export class SkillAccessService {
     }
 
     if (roleNames.has('admin')) {
-      return this.listAllActiveSkills();
+      return (await this.listAllActiveSkills()).filter((skill) => skill.isPublished);
     }
 
     if (roleIds.length === 0) {

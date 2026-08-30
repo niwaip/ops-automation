@@ -19,4 +19,6 @@ export interface DeterministicTopologyDraftV1 {
   nodes: TopologyNodeV1[];
   finalNodeRef: string | null;
   finalOutputKind: 'value' | 'artifact';
+  /** Planner-owned decision; execution validation must not infer this from text. */
+  requiresExternalData?: boolean;
 }

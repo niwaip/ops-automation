@@ -69,7 +69,11 @@ describe('DeterministicPlanValidatorService', () => {
         runtimeType: 'artifact',
         dependsOn: ['summarize_news'],
         inputBindings: {
-          content: { source: 'node_output', nodeId: 'summarize_news', outputPath: 'markdown_content' },
+          content: {
+            source: 'node_output',
+            nodeId: 'summarize_news',
+            outputPath: 'markdown_content',
+          },
           fileName: { source: 'literal', value: 'ai_news_summary.md' },
         },
         outputContract: {
@@ -122,12 +126,14 @@ describe('DeterministicPlanValidatorService', () => {
     const result = validator.validatePlan(invalidPlan);
 
     expect(result.valid).toBe(false);
-    expect(result.errors).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        code: ERROR_CODES.FINAL_OUTPUT_UNSATISFIED,
-        message: expect.stringContaining('artifact-producing Skill node'),
-      }),
-    ]));
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: ERROR_CODES.FINAL_OUTPUT_UNSATISFIED,
+          message: expect.stringContaining('artifact-producing Skill node'),
+        }),
+      ])
+    );
   });
 
   it('should fail validation if schema version is unsupported', () => {
@@ -217,6 +223,122 @@ describe('DeterministicPlanValidatorService', () => {
     const result = validator.validatePlan(invalidPlan);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.code === ERROR_CODES.FINAL_OUTPUT_UNSATISFIED)).toBe(true);
+  });
+
+  it('accepts the reserved browser root continue policy with a terminal consumer', () => {
+    const plan: DeterministicPlanDraftV1 = {
+      ...valid3NodePlan,
+      planType: 'sequential',
+      requirements: { externalData: true },
+      nodes: [
+        {
+          nodeId: 'browser_recording',
+          sequence: 1,
+          title: 'Browser recording',
+          kind: 'skill',
+          skillId: 'browser-template',
+          skillVersion: '1.0.0',
+          runtimeType: 'browser_template',
+          dependsOn: [],
+          inputBindings: {},
+          outputContract: { browserRunOutput: 'json' },
+          failurePolicy: 'continue',
+        },
+        {
+          nodeId: 'terminal_report',
+          sequence: 2,
+          title: 'Terminal report',
+          kind: 'llm_operation',
+          operationId: 'summarize_text',
+          operationVersion: '1',
+          operationDigest: 'operation-digest',
+          contractDigest: 'contract-digest',
+          dependsOn: ['browser_recording'],
+          inputBindings: {
+            content: {
+              source: 'node_output',
+              nodeId: 'browser_recording',
+              path: 'browserRunOutput',
+              expectedType: 'json',
+            },
+          },
+          outputContract: { summary: 'string' },
+          failurePolicy: 'abort',
+          runWhen: 'browser_terminal',
+        },
+      ],
+      finalOutputs: [
+        {
+          targetField: 'result',
+          fromNodeId: 'terminal_report',
+          fromNodeOutput: 'summary',
+          expectedType: 'string',
+        },
+      ],
+    };
+
+    expect(validator.validatePlan(plan)).toEqual({ valid: true, errors: [] });
+  });
+
+  it('rejects continue policy on a non-browser node', () => {
+    const plan: DeterministicPlanDraftV1 = JSON.parse(JSON.stringify(valid3NodePlan));
+    plan.nodes[0].failurePolicy = 'continue';
+
+    const result = validator.validatePlan(plan);
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: ERROR_CODES.PLAN_SCHEMA_INVALID,
+          nodeId: 'search_ai_news',
+        }),
+      ])
+    );
+  });
+
+  it('rejects runWhen when the reserved browser root is not an ancestor', () => {
+    const plan: DeterministicPlanDraftV1 = JSON.parse(JSON.stringify(valid3NodePlan));
+    plan.nodes[1].runWhen = 'browser_succeeded';
+
+    const result = validator.validatePlan(plan);
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: ERROR_CODES.PLAN_DEPENDENCY_INVALID,
+          nodeId: 'summarize_news',
+        }),
+      ])
+    );
+  });
+
+  it('uses explicit external-data requirements instead of objective keywords', () => {
+    const localPlan: DeterministicPlanDraftV1 = JSON.parse(JSON.stringify(valid3NodePlan));
+    localPlan.objective = '现在总结这段已有文本';
+    localPlan.nodes = [localPlan.nodes[1]];
+    localPlan.nodes[0].nodeId = 'summarize_news';
+    localPlan.nodes[0].sequence = 1;
+    localPlan.nodes[0].dependsOn = [];
+    localPlan.nodes[0].inputBindings = { text: { source: 'literal', value: '已有文本' } };
+    localPlan.finalOutputs = [
+      {
+        targetField: 'result',
+        fromNodeId: 'summarize_news',
+        fromNodeOutput: 'markdown_content',
+        expectedType: 'markdown_content',
+      },
+    ];
+
+    expect(validator.validatePlan(localPlan).valid).toBe(true);
+
+    localPlan.requirements = { externalData: true };
+    const externalResult = validator.validatePlan(localPlan);
+    expect(externalResult.valid).toBe(false);
+    expect(
+      externalResult.errors.some((error) => error.code === ERROR_CODES.PLAN_NODE_CAPABILITY_MISSING)
+    ).toBe(true);
   });
 
   describe('edge type compatibility (§15.3 item 4)', () => {

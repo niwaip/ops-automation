@@ -223,15 +223,49 @@ export class PlannerPlanDraftService {
       },
     });
 
+    // During waiting_input resume, the user's latest answer is authoritative for
+    // the fields the previous turn explicitly asked them to supply. Without this
+    // final overlay, stale `already_collected` values win below and can downgrade
+    // newly recognized arrays/objects back to the lossy strings captured by the
+    // earlier fallback extractor.
+    const preferredRecognizedFields = new Set(
+      Array.isArray(input.recognizerContext?.missing_inputs)
+        ? input.recognizerContext.missing_inputs.filter(
+            (fieldName): fieldName is string => typeof fieldName === 'string'
+          )
+        : []
+    );
+    const preferredRecognizedParams = Object.fromEntries(
+      [...preferredRecognizedFields]
+        .filter((fieldName) =>
+          Object.prototype.hasOwnProperty.call(aiRecognized.params || {}, fieldName)
+        )
+        .map((fieldName) => [fieldName, aiRecognized.params?.[fieldName]])
+    );
+    const preferredFieldConfidences = Object.fromEntries(
+      [...preferredRecognizedFields]
+        .filter((fieldName) =>
+          Object.prototype.hasOwnProperty.call(aiRecognized.field_confidences || {}, fieldName)
+        )
+        .map((fieldName) => [fieldName, aiRecognized.field_confidences?.[fieldName] as number])
+    );
+
     return {
       ...aiRecognized,
-      params: { ...(aiRecognized.params || {}), ...(input.deterministic.params || {}) },
+      params: {
+        ...(aiRecognized.params || {}),
+        ...(input.deterministic.params || {}),
+        ...preferredRecognizedParams,
+      },
       field_confidences: {
         ...(aiRecognized.field_confidences || {}),
         ...(input.deterministic.field_confidences || {}),
+        ...preferredFieldConfidences,
       },
       uncertain_fields: (aiRecognized.uncertain_fields || []).filter(
-        (fieldName) => !Object.prototype.hasOwnProperty.call(input.deterministic.params, fieldName)
+        (fieldName) =>
+          preferredRecognizedFields.has(fieldName) ||
+          !Object.prototype.hasOwnProperty.call(input.deterministic.params, fieldName)
       ),
       debug: {
         llmCalls: aiRecognized.debug?.llmCalls,
@@ -239,6 +273,11 @@ export class PlannerPlanDraftService {
           ...(input.deterministic.debug?.notes || []),
           ...(aiRecognized.debug?.notes || []),
           `LLM 参数识别仅披露未解析字段: ${input.recognitionFields.join(', ')}`,
+          ...(Object.keys(preferredRecognizedParams).length > 0
+            ? [
+                `waiting_input 最新回答已覆盖待补充字段: ${Object.keys(preferredRecognizedParams).join(', ')}`,
+              ]
+            : []),
         ],
       },
     };

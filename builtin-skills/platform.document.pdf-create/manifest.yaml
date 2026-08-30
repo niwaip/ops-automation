@@ -1,0 +1,122 @@
+apiVersion: platform.ops/v1alpha1
+kind: BuiltinWorkflowSkill
+metadata:
+  key: platform.document.pdf-create
+  displayName: 内置 PDF 简单生成
+  description: 从标题、段落、列表、表格和代码块生成带 CJK 字体与页码的基础 PDF
+  owner: platform-document
+  labels:
+    category: artifact
+    domain: document
+    format: pdf
+    operation: create
+spec:
+  definitionVersion: 1.0.0
+  lifecycle: stable
+  defaultAccess:
+    mode: authenticated
+  planner:
+    enabled: true
+    triggerKeywords:
+      - 生成PDF
+      - 输出PDF
+      - 创建PDF报告
+      - 导出PDF
+      - create pdf
+    matchSummary: 将结构化内容块生成一个可下载的基础 PDF 文件
+    runtimeType: artifact
+    supportsArtifact: true
+  contracts:
+    input:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        required: [content]
+        properties:
+          fileName:
+            type: string
+            maxLength: 120
+            default: document.pdf
+          title:
+            type: string
+            maxLength: 500
+          pageNumbers:
+            type: boolean
+            default: true
+          content:
+            oneOf:
+              - type: array
+                minItems: 1
+                maxItems: 200
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [type]
+                  properties:
+                    type:
+                      type: string
+                      enum: [heading, h2, h3, paragraph, table, list, code]
+                    text:
+                      type: string
+                    headers:
+                      type: array
+                      maxItems: 20
+                      items: { type: string }
+                    rows:
+                      type: array
+                      maxItems: 500
+                      items:
+                        type: array
+                        maxItems: 20
+                    items:
+                      type: array
+                      items: { type: string }
+                    ordered:
+                      type: boolean
+              - type: string
+    output:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        x-primary-output: artifact
+        required: [operation, artifact, artifacts, pageCount]
+        properties:
+          operation: { type: string, const: create }
+          artifact:
+            type: object
+            x-value-type: artifact_ref
+            required: [type, name, url, mimeType, metadata]
+            properties:
+              type: { type: string }
+              id: { type: string }
+              name: { type: string }
+              url: { type: string }
+              mimeType: { type: string, const: application/pdf }
+              sizeBytes: { type: number }
+              metadata: { type: object }
+          artifacts:
+            type: array
+            minItems: 1
+          pageCount: { type: integer, minimum: 1 }
+  workflow:
+    engine: domain-handler
+    definitionRef: workflow.json
+  runtime:
+    adapterRoute: builtin:workflow
+    handlerKey: document.pdf.create
+    idempotency: required
+    timeoutSeconds: 30
+    retryPolicy:
+      maximumAttempts: 2
+  migration:
+    minimumPlatformVersion: 4.0.0
+    contractCompatibility: backward
+  smokeTest:
+    inputRef: fixtures/smoke-input.json
+    assertions:
+      - output.operation equals create
+      - output.pageCount greaterThan 0
+      - output.artifact.mimeType equals application/pdf
+      - output.artifact.metadata.sha256 exists

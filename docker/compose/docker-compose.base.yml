@@ -372,8 +372,8 @@ services:
     <<: *common-node-service
     container_name: ops-ai-orchestrator
     command: >
-      sh -c "corepack enable && pnpm --filter @ops/ai-orchestrator exec prisma generate
-      && pnpm --filter @ops/ai-orchestrator run dev"
+      sh -c "corepack enable && pnpm --filter @ops/ai-orchestrator run build
+      && pnpm --filter @ops/ai-orchestrator run start"
     environment:
       <<: *common-env
       COMPOSITE_BROWSER_PLAN_ENABLED: ${COMPOSITE_BROWSER_PLAN_ENABLED:-true}
@@ -460,6 +460,10 @@ services:
   # ============================================
   carbone-engine:
     <<: *common-node-service
+    build:
+      context: ${PROJECT_ROOT:?PROJECT_ROOT must be set}
+      dockerfile: docker/carbone-engine/Dockerfile
+    image: ops-carbone-engine:dev
     container_name: carbone-engine
     command: >
       sh -c "corepack enable && pnpm --filter carbone-engine exec prisma db push --schema ../template/prisma/schema.prisma

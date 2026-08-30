@@ -421,6 +421,163 @@ ${content}`,
     },
   },
 
+  format_document_blocks: {
+    operationId: 'format_document_blocks',
+    promptTemplateId: 'format-document-blocks',
+    version: '1',
+    modelPolicyId: 'task-default',
+    temperature: 0,
+    maxInputTokens: 48000,
+    maxOutputTokens: 16000,
+    oversizeInput: 'truncate',
+    inputSchema: {
+      type: 'object',
+      required: ['text'],
+      properties: {
+        text: {
+          type: 'string',
+          description: '需要排版并转换为结构化文档块的内容',
+          'x-ops-input-role': 'content',
+        },
+        title: {
+          type: 'string',
+          description: '文档标题，若未提供则根据内容自动提炼',
+          'x-ops-input-role': 'configuration',
+        },
+        theme: {
+          type: 'string',
+          enum: ['business_report', 'clean_article', 'tech_spec', 'general'],
+          description:
+            '排版与视觉风格：business_report (商务简报), clean_article (极简文章), tech_spec (技术文档), general (通用)',
+          'x-ops-input-role': 'configuration',
+        },
+        instructions: {
+          type: 'string',
+          description: '额外排版指令',
+          'x-ops-input-role': 'instruction',
+        },
+      },
+    },
+    outputSchema: {
+      type: 'object',
+      required: ['content'],
+      properties: {
+        title: { type: 'string' },
+        theme: { type: 'string' },
+        pageNumbers: { type: 'boolean' },
+        content: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['type'],
+            properties: {
+              type: {
+                type: 'string',
+                enum: ['heading', 'h2', 'h3', 'paragraph', 'table', 'list', 'code'],
+              },
+              text: { type: 'string' },
+              items: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+              ordered: { type: 'boolean' },
+              headers: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+              rows: {
+                type: 'array',
+                items: {
+                  type: 'array',
+                  items: { type: 'string' },
+                },
+              },
+              language: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    buildPrompt: (input: Record<string, any>) => {
+      const text = String(input.text || '');
+      const title = input.title ? String(input.title).trim() : '';
+      const theme = input.theme ? String(input.theme).trim() : '';
+      const instructions = input.instructions ? String(input.instructions).trim() : '';
+
+      return {
+        systemPrompt: `你是一个专业的文档排版与结构化适配器。你的职责是将输入的非结构化文本、Markdown 或总结提炼并组织为结构化文档块（Content Blocks），用于直接生成排版优美的 PDF/Word 报告。
+
+## 排版规则：
+1. 块类型 (type)：
+   - "heading": 文档大标题（若已在顶层指定 title，正文从 h2 开始）
+   - "h2": 核心模块/大段落标题
+   - "h3": 子小节标题
+   - "paragraph": 正文段落（text 字段包含文本）
+   - "list": 要点清单（必须包含 items: string[]，可选 ordered: boolean）
+   - "table": 数据表格（必须包含 headers: string[], rows: string[][]）
+   - "code": 代码/引用块（包含 text: string，可选 language: string）
+2. 主题自适应 (theme)：
+   - 资讯汇总/热点简报/日报 -> "business_report"
+   - 长文总结/深度阅读/笔记 -> "clean_article"
+   - 架构说明/技术规范/API -> "tech_spec"
+   - 其他 -> "general"
+3. 输出纯 JSON 对象，格式示例：
+{
+  "title": "文档主标题",
+  "theme": "business_report",
+  "pageNumbers": true,
+  "content": [
+    { "type": "h2", "text": "一、要点总览" },
+    { "type": "paragraph", "text": "本报告汇总如下核心事项..." },
+    { "type": "list", "items": ["要点 1", "要点 2"] }
+  ]
+}`,
+        userPrompt: `${title ? `文档指定标题：${title}\n` : ''}${theme ? `指定主题风格：${theme}\n` : ''}${instructions ? `排版要求：${instructions}\n` : ''}
+待排版内容：
+${text}`,
+      };
+    },
+    parseAndValidateOutput: (rawText: string) => {
+      const json = parseJsonFromText(rawText);
+      let content = json.content;
+      if (typeof content === 'string') {
+        content = [{ type: 'paragraph', text: content }];
+      } else if (!Array.isArray(content)) {
+        if (json.blocks && Array.isArray(json.blocks)) {
+          content = json.blocks;
+        } else {
+          content = [{ type: 'paragraph', text: rawText.slice(0, 1000) }];
+        }
+      }
+
+      // Ensure block structures are valid
+      const normalizedContent = (content as any[]).map((block) => {
+        if (typeof block === 'string') return { type: 'paragraph', text: block };
+        if (block && typeof block === 'object') {
+          const type = block.type || 'paragraph';
+          return { ...block, type };
+        }
+        return { type: 'paragraph', text: String(block) };
+      });
+
+      const res: Record<string, any> = {
+        content: normalizedContent,
+        pageNumbers: json.pageNumbers !== false,
+      };
+      if (json.title) res.title = String(json.title);
+      if (json.theme) res.theme = String(json.theme);
+
+      const val = jsonSchemaValidator.validate(
+        res,
+        LLM_OPERATION_TEMPLATES.format_document_blocks.outputSchema!
+      );
+      if (!val.valid) {
+        throw new Error(`OUTPUT_SCHEMA_VIOLATION: ${val.errors?.map((e) => e.message).join(', ')}`);
+      }
+      return res;
+    },
+  },
+
   classify_intent_label: {
     operationId: 'classify_intent_label',
     promptTemplateId: 'classify-intent-label',

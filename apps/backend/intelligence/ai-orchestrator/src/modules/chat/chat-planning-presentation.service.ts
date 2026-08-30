@@ -11,16 +11,28 @@ export class ChatPlanningPresentationService {
   buildUploadedFileParams(
     files?: Array<{ fileName: string; mimeType: string; content?: string }>
   ): Record<string, unknown> {
-    const file = files?.find(
-      (candidate) => candidate.mimeType === 'application/pdf' && Boolean(candidate.content)
-    );
+    const file = files?.find((candidate) => Boolean(candidate.content));
     return file?.content ? { fileBase64: file.content, fileName: file.fileName } : {};
   }
 
-  buildPlanningRequest(message: string, files?: Array<{ mimeType: string }>): string {
-    return files?.some((file) => file.mimeType === 'application/pdf')
-      ? `${message}\n[系统上下文：用户已上传 PDF 附件，需要提取 PDF 内容]`
-      : message;
+  buildPlanningRequest(
+    message: string,
+    files?: Array<{ fileName?: string; mimeType: string }>
+  ): string {
+    if (!files || files.length === 0) return message;
+    const pdfFiles = files.filter(
+      (file) => file.mimeType === 'application/pdf' || file.fileName?.toLowerCase().endsWith('.pdf')
+    );
+    if (pdfFiles.length > 0) {
+      const names = pdfFiles.map((f) => f.fileName).filter(Boolean).join(', ');
+      return names
+        ? `${message}\n[系统上下文：用户已上传 PDF 附件 (${names})]`
+        : `${message}\n[系统上下文：用户已上传 PDF 附件]`;
+    }
+    const names = files.map((f) => f.fileName).filter(Boolean).join(', ');
+    return names
+      ? `${message}\n[系统上下文：用户已上传附件 (${names})]`
+      : `${message}\n[系统上下文：用户已上传附件]`;
   }
 
   canExposePromptDebug(context: ExecutionContext): boolean {

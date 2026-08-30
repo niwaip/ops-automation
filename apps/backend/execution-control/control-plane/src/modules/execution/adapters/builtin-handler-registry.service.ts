@@ -34,7 +34,19 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
     // parsing remains in document-domain; future extractors reuse this route.
     this.registerDocumentDomainHandler(
       'document.content-extractor.pdf',
-      '/internal/document/content-extractors/pdf/invoke'
+      '/internal/document/content-extractors/pdf/invoke',
+      ['platform.document.pdf-content-extractor']
+    );
+    this.registerDocumentDomainHandler('document.pdf.merge', '/internal/document/pdf/merge/invoke', [
+      'platform.document.pdf-merge',
+    ]);
+    this.registerDocumentDomainHandler('document.pdf.split', '/internal/document/pdf/split/invoke', [
+      'platform.document.pdf-split',
+    ]);
+    this.registerDocumentDomainHandler(
+      'document.pdf.create',
+      '/internal/document/pdf/create/invoke',
+      ['platform.document.pdf-create']
     );
 
     // 2. Platform Internal Notification Handler
@@ -54,8 +66,12 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
     });
   }
 
-  private registerDocumentDomainHandler(handlerKey: string, endpoint: string): void {
-    this.registerHandler(handlerKey, async (req, idempotencyKey) => {
+  private registerDocumentDomainHandler(
+    handlerKey: string,
+    endpoint: string,
+    capabilityAliases: string[] = []
+  ): void {
+    const handler: BuiltinHandlerFn = async (req, idempotencyKey) => {
       const domainUrl = getCarboneServiceUrl();
       const response = await axios.post(`${domainUrl}${endpoint}`, {
         executionId: req.executionId,
@@ -66,7 +82,9 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
         input: req.input || {},
       });
       return response.data as BuiltinSkillHandlerResult;
-    });
+    };
+    this.registerHandler(handlerKey, handler);
+    capabilityAliases.forEach((capabilityKey) => this.registerHandler(capabilityKey, handler));
   }
 
   registerHandler(handlerKey: string, handlerFn: BuiltinHandlerFn): void {

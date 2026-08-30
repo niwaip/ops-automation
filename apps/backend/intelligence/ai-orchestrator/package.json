@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "prisma generate && nest build",
+    "build": "prisma generate && (nest build -b swc || (tsc -p tsconfig.json --incremental false && mkdir -p dist/generated && cp -R src/generated/prisma dist/generated/))",
     "dev": "nest start --watch -b swc",
     "start": "node dist/main.js",
     "start:prod": "node dist/main",

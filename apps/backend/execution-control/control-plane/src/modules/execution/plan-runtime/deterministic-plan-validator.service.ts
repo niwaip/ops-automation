@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
+  BROWSER_RECORDING_ROOT_NODE_ID,
   DeterministicPlanDraftV1,
   PlanValidationResultV1,
   PlanValidationErrorV1,
@@ -128,7 +129,11 @@ export class DeterministicPlanValidatorService {
           nodeId: node.nodeId,
         });
       }
-      if (node.runWhen && node.runWhen !== 'browser_succeeded' && node.runWhen !== 'browser_terminal') {
+      if (
+        node.runWhen &&
+        node.runWhen !== 'browser_succeeded' &&
+        node.runWhen !== 'browser_terminal'
+      ) {
         errors.push({
           code: ERROR_CODES.PLAN_SCHEMA_INVALID,
           message: `Node '${node.nodeId}' has unsupported runWhen '${node.runWhen}'`,
@@ -153,6 +158,8 @@ export class DeterministicPlanValidatorService {
       }
     }
 
+    this.validateBrowserControlFlow(plan.nodes, nodeMap, errors);
+
     const depth = this.calculateMaxDepth(plan.nodes, nodeMap);
     if (depth > PLAN_LIMITS.MAX_DEPTH) {
       errors.push({
@@ -172,12 +179,8 @@ export class DeterministicPlanValidatorService {
     // 7. Sensitive data scanning
     this.scanSensitiveData(plan, errors);
 
-    // 8. Freshness gate: when the user request asks for live/external data, the
-    // plan MUST include at least one upstream node that produces results from
-    // outside the LLM (i.e. a skill with non-empty node_output bindings feeding
-    // the summarizer, never a literal-only outline). This prevents the failure
-    // mode where an LLM is asked to summarize from a planner-authored outline
-    // and hallucinates content presented as if it came from a real fetch.
+    // 8. External-data provenance is an explicit planner decision. Execution
+    // validation must not reclassify natural language using another keyword set.
     this.validateExternalDataSources(plan, errors);
 
     return {
@@ -189,12 +192,9 @@ export class DeterministicPlanValidatorService {
 
   private validateExternalDataSources(
     plan: DeterministicPlanDraftV1,
-    errors: PlanValidationErrorV1[],
+    errors: PlanValidationErrorV1[]
   ): void {
-    const freshnessPattern =
-      /查询|搜索|最新|新闻|实时|行情|股价|股票|天气|温度|今天|此刻|现在|当前|fetch|search|news|stock|price|weather|today|now|latest|current/i;
-    const objective = plan.objective || plan.originalRequest || '';
-    if (!freshnessPattern.test(objective)) {
+    if (plan.requirements?.externalData !== true) {
       return;
     }
 
@@ -210,16 +210,17 @@ export class DeterministicPlanValidatorService {
     for (const llm of llmNodes) {
       const bindings = llm.inputBindings || {};
       const bindingEntries = Object.entries(bindings);
-      if (bindingEntries.length === 0) continue;
+      if (bindingEntries.length === 0) {
+        offends.push(llm.nodeId);
+        continue;
+      }
 
       const hasUpstreamData = bindingEntries.some(([, binding]) => {
         if (!binding || typeof binding !== 'object') return false;
         const b = binding as { source?: string; nodeId?: string; fromNodeId?: string };
         if (b.source !== 'node_output') return false;
         const upstreamId = b.nodeId || b.fromNodeId || '';
-        const upstream = nodeMap.get(upstreamId);
-        if (!upstream) return false;
-        return upstream.kind === 'skill' && skillNodes.some((s) => s.nodeId === upstream.nodeId);
+        return this.hasSkillDataProvenance(upstreamId, nodeMap);
       });
 
       if (!hasUpstreamData) {
@@ -233,23 +234,106 @@ export class DeterministicPlanValidatorService {
 
     const offendingList = offends.join(', ');
     const skillCount = skillNodes.length;
-    const hint = skillCount === 0
-      ? 'Plan must include at least one skill node that fetches external data (e.g. web search).'
-      : `Plan must feed '${offendingList}' from an upstream skill output rather than literal-only inputs.`;
+    const hint =
+      skillCount === 0
+        ? 'Plan must include at least one skill node that fetches external data (e.g. web search).'
+        : `Plan must feed '${offendingList}' from an upstream skill output rather than literal-only inputs.`;
 
     errors.push({
       code: ERROR_CODES.PLAN_NODE_CAPABILITY_MISSING,
       message:
-        `Freshness-required request detected in objective "${objective}". ` +
+        `Plan explicitly requires external data. ` +
         `LLM operation(s) [${offendingList}] have no upstream skill node feeding them. ` +
         hint,
       nodeId: offendingList,
     });
   }
 
-  private calculateMaxDepth(
+  private hasSkillDataProvenance(
+    nodeId: string,
+    nodeMap: Map<string, DeterministicPlanNodeV1>,
+    visited = new Set<string>()
+  ): boolean {
+    if (!nodeId || visited.has(nodeId)) return false;
+    visited.add(nodeId);
+    const node = nodeMap.get(nodeId);
+    if (!node) return false;
+    if (node.kind === 'skill') return true;
+    return Object.values(node.inputBindings || {}).some((binding) => {
+      if (!binding || binding.source !== 'node_output') return false;
+      return this.hasSkillDataProvenance(
+        binding.nodeId || binding.fromNodeId || '',
+        nodeMap,
+        visited
+      );
+    });
+  }
+
+  private validateBrowserControlFlow(
     nodes: DeterministicPlanNodeV1[],
     nodeMap: Map<string, DeterministicPlanNodeV1>,
+    errors: PlanValidationErrorV1[]
+  ): void {
+    const browserRoot = nodeMap.get(BROWSER_RECORDING_ROOT_NODE_ID);
+    const terminalConsumers = nodes.filter((node) => node.runWhen === 'browser_terminal');
+
+    for (const node of nodes) {
+      if (node.failurePolicy === 'continue') {
+        const isReservedBrowserRoot =
+          node.nodeId === BROWSER_RECORDING_ROOT_NODE_ID &&
+          node.kind === 'skill' &&
+          node.runtimeType === 'browser_template';
+        const hasTerminalConsumer = terminalConsumers.some((consumer) =>
+          this.hasAncestor(consumer, node.nodeId, nodeMap)
+        );
+        if (!isReservedBrowserRoot || !hasTerminalConsumer) {
+          errors.push({
+            code: ERROR_CODES.PLAN_SCHEMA_INVALID,
+            message:
+              `Node '${node.nodeId}' uses failurePolicy='continue', but that policy is reserved for ` +
+              `the '${BROWSER_RECORDING_ROOT_NODE_ID}' browser root with an explicit browser_terminal consumer`,
+            nodeId: node.nodeId,
+          });
+        }
+      }
+
+      if (!node.runWhen) continue;
+      const hasValidBrowserRoot =
+        browserRoot?.kind === 'skill' && browserRoot.runtimeType === 'browser_template';
+      if (
+        !hasValidBrowserRoot ||
+        !this.hasAncestor(node, BROWSER_RECORDING_ROOT_NODE_ID, nodeMap)
+      ) {
+        errors.push({
+          code: ERROR_CODES.PLAN_DEPENDENCY_INVALID,
+          message:
+            `Node '${node.nodeId}' uses runWhen='${node.runWhen}' without the reserved browser root ` +
+            `'${BROWSER_RECORDING_ROOT_NODE_ID}' as an upstream dependency`,
+          nodeId: node.nodeId,
+        });
+      }
+    }
+  }
+
+  private hasAncestor(
+    node: DeterministicPlanNodeV1,
+    ancestorId: string,
+    nodeMap: Map<string, DeterministicPlanNodeV1>,
+    visited = new Set<string>()
+  ): boolean {
+    for (const dependencyId of node.dependsOn || []) {
+      if (dependencyId === ancestorId) return true;
+      if (visited.has(dependencyId)) continue;
+      visited.add(dependencyId);
+      const dependency = nodeMap.get(dependencyId);
+      if (dependency && this.hasAncestor(dependency, ancestorId, nodeMap, visited)) return true;
+    }
+    return false;
+  }
+
+  private calculateMaxDepth(
+    nodes: DeterministicPlanNodeV1[],
+    nodeMap: Map<string, DeterministicPlanNodeV1>
   ): number {
     const depthMemo = new Map<string, number>();
     const visiting = new Set<string>();
@@ -286,7 +370,7 @@ export class DeterministicPlanValidatorService {
     node: DeterministicPlanNodeV1,
     nodeMap: Map<string, DeterministicPlanNodeV1>,
     errors: PlanValidationErrorV1[],
-    warnings: string[],
+    warnings: string[]
   ): void {
     if (!node.inputBindings) return;
 
@@ -333,7 +417,7 @@ export class DeterministicPlanValidatorService {
             // compatibility is then unenforced at planner level (the freeze
             // service's catalog-level pass may still assert it from schemas).
             warnings.push(
-              `Node '${node.nodeId}' field '${fieldName}' binds upstream output '${outPath}' without expectedType — edge type compatibility is not enforced`,
+              `Node '${node.nodeId}' field '${fieldName}' binds upstream output '${outPath}' without expectedType — edge type compatibility is not enforced`
             );
           } else if (!this.isTypeCompatible(upstreamOutputType, binding.expectedType)) {
             errors.push({
@@ -369,7 +453,7 @@ export class DeterministicPlanValidatorService {
   private validateFinalOutputs(
     plan: DeterministicPlanDraftV1,
     nodeMap: Map<string, DeterministicPlanNodeV1>,
-    errors: PlanValidationErrorV1[],
+    errors: PlanValidationErrorV1[]
   ): void {
     if (!Array.isArray(plan.finalOutputs)) {
       errors.push({
@@ -422,10 +506,7 @@ export class DeterministicPlanValidatorService {
     }
   }
 
-  private scanSensitiveData(
-    plan: DeterministicPlanDraftV1,
-    errors: PlanValidationErrorV1[],
-  ): void {
+  private scanSensitiveData(plan: DeterministicPlanDraftV1, errors: PlanValidationErrorV1[]): void {
     const rawJson = JSON.stringify(plan);
     for (const pattern of SENSITIVE_PATTERNS) {
       if (pattern.test(rawJson)) {

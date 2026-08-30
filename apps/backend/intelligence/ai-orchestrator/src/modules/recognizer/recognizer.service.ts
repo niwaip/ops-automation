@@ -328,15 +328,37 @@ export class RecognizerService {
       return {};
     }
 
+    const directContainerValues = Object.entries(value as Record<string, unknown>).reduce<
+      Record<string, unknown>
+    >((acc, [key, rawValue]) => {
+      const expectedType = String(properties[key]?.type || '').toLowerCase();
+      if (expectedType === 'array' && Array.isArray(rawValue)) {
+        acc[key] = rawValue;
+      } else if (
+        expectedType === 'object' &&
+        this.isPlainRecord(rawValue)
+      ) {
+        acc[key] = rawValue;
+      }
+      return acc;
+    }, {});
     const flattened = this.flattenNestedResponse(value);
-    return Object.entries(flattened).reduce<Record<string, unknown>>((acc, [key, rawValue]) => {
+    const flattenedValues = Object.entries(flattened).reduce<Record<string, unknown>>(
+      (acc, [key, rawValue]) => {
       const resolvedKey = this.resolveSchemaPathKey(key, properties);
       if (!resolvedKey) {
         return acc;
       }
       acc[resolvedKey] = rawValue;
       return acc;
-    }, {});
+      },
+      {}
+    );
+
+    // A schema may intentionally expose one array/object parameter (for example
+    // PDF content blocks). Preserve that container verbatim; flattening is only
+    // for schemas that expose dotted or `[]` leaf fields.
+    return { ...flattenedValues, ...directContainerValues };
   }
 
   private flattenNestedResponse(
@@ -796,6 +818,9 @@ export class RecognizerService {
   ): string {
     if (expectedType !== 'array') {
       return expectedType;
+    }
+    if (!key.includes('[]')) {
+      return 'array';
     }
 
     const signalText = this.buildSignalText(key, schema).toLowerCase();

@@ -8,6 +8,7 @@ describe('system LLM operation catalog', () => {
   it('exposes the consolidated standard LLM operation catalog', () => {
     expect(listActiveSystemOperationIds()).toEqual([
       'extract_structured_fields',
+      'format_document_blocks',
       'generate_text',
       'summarize_list',
       'summarize_text',
@@ -70,6 +71,43 @@ describe('system LLM operation catalog', () => {
       properties: {
         target_fields: { type: 'array', minItems: 1, maxItems: 50 },
       },
+    });
+  });
+
+  it('builds document blocks formatting prompt and validates structured JSON blocks', () => {
+    const op = LLM_OPERATION_TEMPLATES.format_document_blocks;
+    const prompt = op.buildPrompt({
+      text: '这是待排版正文',
+      title: '周报',
+      theme: 'business_report',
+      instructions: '突出核心要点',
+    });
+
+    expect(prompt.systemPrompt).toContain('文档排版与结构化适配器');
+    expect(prompt.userPrompt).toContain('周报');
+    expect(prompt.userPrompt).toContain('business_report');
+
+    const validOutput = op.parseAndValidateOutput(
+      JSON.stringify({
+        title: '周报',
+        theme: 'business_report',
+        pageNumbers: true,
+        content: [
+          { type: 'h2', text: '一、本周要点' },
+          { type: 'paragraph', text: '完成了核心功能的开发' },
+          { type: 'list', items: ['任务A', '任务B'] },
+        ],
+      })
+    );
+    expect(validOutput).toMatchObject({
+      title: '周报',
+      theme: 'business_report',
+      pageNumbers: true,
+      content: [
+        { type: 'h2', text: '一、本周要点' },
+        { type: 'paragraph', text: '完成了核心功能的开发' },
+        { type: 'list', items: ['任务A', '任务B'] },
+      ],
     });
   });
 });

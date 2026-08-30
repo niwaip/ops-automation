@@ -1,0 +1,17 @@
+{
+  "workflowVersion": "v1",
+  "engine": "domain-handler",
+  "handlerKey": "document.pdf.create",
+  "steps": [
+    {
+      "stepId": "create_pdf",
+      "action": "create",
+      "inputMapping": {
+        "fileName": "$.input.fileName",
+        "title": "$.input.title",
+        "pageNumbers": "$.input.pageNumbers",
+        "content": "$.input.content"
+      }
+    }
+  ]
+}

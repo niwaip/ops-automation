@@ -395,6 +395,7 @@ export interface GeneratePlanDTO {
 
 export interface PlanSkillMatchDTO {
   skill_id: string;
+  skill_version?: string;
   skill_name: string;
   confidence: number;
   match_reason?: string;
