@@ -202,13 +202,15 @@ export class DeterministicRecipeTopologyBuilderService {
     if (!hasSummarizeIntent) return 0;
     const acceptsList = inputs.some(
       ([name, type]) =>
-        /items|list|results/i.test(name) || /news_item_list|text_list|array|list/i.test(type)
+        (/items|list|results/i.test(name) || /news_item_list|text_list|array|list/i.test(type)) &&
+        !/instruction|request|prompt/i.test(name)
     );
     const acceptsText = inputs.some(
       ([name, type]) =>
-        /content|text|body|input/i.test(name) || /string|markdown_content/i.test(type)
+        (/content|text|body|input/i.test(name) || /string|markdown_content/i.test(type)) &&
+        !/instruction|request|prompt|items|list/i.test(name)
     );
-    if (step.inputShape === 'list') return acceptsList ? 120 : 0;
-    return acceptsText ? 100 : 0;
+    if (step.inputShape === 'list') return acceptsList ? 120 : acceptsText ? 50 : 0;
+    return acceptsText && !acceptsList ? 120 : acceptsText ? 80 : 0;
   }
 }

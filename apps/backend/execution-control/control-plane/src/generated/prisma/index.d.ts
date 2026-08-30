@@ -19,6 +19,11 @@ export type PrismaPromise<T> = $Public.PrismaPromise<T>
  */
 export type User = $Result.DefaultSelection<Prisma.$UserPayload>
 /**
+ * Model ImChannelConnection
+ * 
+ */
+export type ImChannelConnection = $Result.DefaultSelection<Prisma.$ImChannelConnectionPayload>
+/**
  * Model Role
  * 
  */
@@ -357,6 +362,35 @@ export namespace $Enums {
 export type UserRoleType = (typeof UserRoleType)[keyof typeof UserRoleType]
 
 
+export const ImChannelType: {
+  wechat: 'wechat'
+};
+
+export type ImChannelType = (typeof ImChannelType)[keyof typeof ImChannelType]
+
+
+export const ImConnectionStatus: {
+  unconfigured: 'unconfigured',
+  provisioning: 'provisioning',
+  disabled: 'disabled',
+  connecting: 'connecting',
+  online: 'online',
+  reauth_required: 'reauth_required',
+  error: 'error'
+};
+
+export type ImConnectionStatus = (typeof ImConnectionStatus)[keyof typeof ImConnectionStatus]
+
+
+export const ImInteractionMode: {
+  auto: 'auto',
+  chat: 'chat',
+  task: 'task'
+};
+
+export type ImInteractionMode = (typeof ImInteractionMode)[keyof typeof ImInteractionMode]
+
+
 export const OrganizationType: {
   enterprise: 'enterprise',
   subsidiary: 'subsidiary',
@@ -389,6 +423,18 @@ export type IdentityProviderType = (typeof IdentityProviderType)[keyof typeof Id
 export type UserRoleType = $Enums.UserRoleType
 
 export const UserRoleType: typeof $Enums.UserRoleType
+
+export type ImChannelType = $Enums.ImChannelType
+
+export const ImChannelType: typeof $Enums.ImChannelType
+
+export type ImConnectionStatus = $Enums.ImConnectionStatus
+
+export const ImConnectionStatus: typeof $Enums.ImConnectionStatus
+
+export type ImInteractionMode = $Enums.ImInteractionMode
+
+export const ImInteractionMode: typeof $Enums.ImInteractionMode
 
 export type OrganizationType = $Enums.OrganizationType
 
@@ -534,6 +580,16 @@ export class PrismaClient<
     * ```
     */
   get user(): Prisma.UserDelegate<ExtArgs>;
+
+  /**
+   * `prisma.imChannelConnection`: Exposes CRUD operations for the **ImChannelConnection** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more ImChannelConnections
+    * const imChannelConnections = await prisma.imChannelConnection.findMany()
+    * ```
+    */
+  get imChannelConnection(): Prisma.ImChannelConnectionDelegate<ExtArgs>;
 
   /**
    * `prisma.role`: Exposes CRUD operations for the **Role** model.
@@ -1626,6 +1682,7 @@ export namespace Prisma {
 
   export const ModelName: {
     User: 'User',
+    ImChannelConnection: 'ImChannelConnection',
     Role: 'Role',
     UserRole: 'UserRole',
     Organization: 'Organization',
@@ -1706,7 +1763,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "user" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionResultRef" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "userSavedSkill" | "userWorkflowAlias" | "userSavedSkillVersion" | "assistantFeedbackEvent" | "assistantFeedbackCurrent" | "routingObservation" | "planningDecision" | "promptSnapshot" | "llmUsageLedger" | "executionOutbox" | "scheduleFire" | "habitLearningRun" | "userHabitCandidate" | "userHabit" | "userPersonalizationPreference" | "scopedMemory" | "candidateRecipe" | "candidateRecipeEvaluation" | "habitGovernanceAudit" | "builtinSkill" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent"
+      modelProps: "user" | "imChannelConnection" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionResultRef" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "userSavedSkill" | "userWorkflowAlias" | "userSavedSkillVersion" | "assistantFeedbackEvent" | "assistantFeedbackCurrent" | "routingObservation" | "planningDecision" | "promptSnapshot" | "llmUsageLedger" | "executionOutbox" | "scheduleFire" | "habitLearningRun" | "userHabitCandidate" | "userHabit" | "userPersonalizationPreference" | "scopedMemory" | "candidateRecipe" | "candidateRecipeEvaluation" | "habitGovernanceAudit" | "builtinSkill" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1777,6 +1834,76 @@ export namespace Prisma {
           count: {
             args: Prisma.UserCountArgs<ExtArgs>
             result: $Utils.Optional<UserCountAggregateOutputType> | number
+          }
+        }
+      }
+      ImChannelConnection: {
+        payload: Prisma.$ImChannelConnectionPayload<ExtArgs>
+        fields: Prisma.ImChannelConnectionFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.ImChannelConnectionFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.ImChannelConnectionFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload>
+          }
+          findFirst: {
+            args: Prisma.ImChannelConnectionFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.ImChannelConnectionFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload>
+          }
+          findMany: {
+            args: Prisma.ImChannelConnectionFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload>[]
+          }
+          create: {
+            args: Prisma.ImChannelConnectionCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload>
+          }
+          createMany: {
+            args: Prisma.ImChannelConnectionCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.ImChannelConnectionCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload>[]
+          }
+          delete: {
+            args: Prisma.ImChannelConnectionDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload>
+          }
+          update: {
+            args: Prisma.ImChannelConnectionUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload>
+          }
+          deleteMany: {
+            args: Prisma.ImChannelConnectionDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.ImChannelConnectionUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.ImChannelConnectionUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload>
+          }
+          aggregate: {
+            args: Prisma.ImChannelConnectionAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateImChannelConnection>
+          }
+          groupBy: {
+            args: Prisma.ImChannelConnectionGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ImChannelConnectionGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.ImChannelConnectionCountArgs<ExtArgs>
+            result: $Utils.Optional<ImChannelConnectionCountAggregateOutputType> | number
           }
         }
       }
@@ -6496,6 +6623,7 @@ export namespace Prisma {
     orgMemberships: number
     assignedOrgRoles: number
     chatSessions: number
+    imChannelConnections: number
     skillAccessRequests: number
     processedSkillAccessRequests: number
   }
@@ -6506,6 +6634,7 @@ export namespace Prisma {
     orgMemberships?: boolean | UserCountOutputTypeCountOrgMembershipsArgs
     assignedOrgRoles?: boolean | UserCountOutputTypeCountAssignedOrgRolesArgs
     chatSessions?: boolean | UserCountOutputTypeCountChatSessionsArgs
+    imChannelConnections?: boolean | UserCountOutputTypeCountImChannelConnectionsArgs
     skillAccessRequests?: boolean | UserCountOutputTypeCountSkillAccessRequestsArgs
     processedSkillAccessRequests?: boolean | UserCountOutputTypeCountProcessedSkillAccessRequestsArgs
   }
@@ -6554,6 +6683,13 @@ export namespace Prisma {
    */
   export type UserCountOutputTypeCountChatSessionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: ChatSessionWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountImChannelConnectionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ImChannelConnectionWhereInput
   }
 
   /**
@@ -7379,6 +7515,7 @@ export namespace Prisma {
     assignedOrgRoles?: boolean | User$assignedOrgRolesArgs<ExtArgs>
     activeOrg?: boolean | User$activeOrgArgs<ExtArgs>
     chatSessions?: boolean | User$chatSessionsArgs<ExtArgs>
+    imChannelConnections?: boolean | User$imChannelConnectionsArgs<ExtArgs>
     skillAccessRequests?: boolean | User$skillAccessRequestsArgs<ExtArgs>
     processedSkillAccessRequests?: boolean | User$processedSkillAccessRequestsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
@@ -7424,6 +7561,7 @@ export namespace Prisma {
     assignedOrgRoles?: boolean | User$assignedOrgRolesArgs<ExtArgs>
     activeOrg?: boolean | User$activeOrgArgs<ExtArgs>
     chatSessions?: boolean | User$chatSessionsArgs<ExtArgs>
+    imChannelConnections?: boolean | User$imChannelConnectionsArgs<ExtArgs>
     skillAccessRequests?: boolean | User$skillAccessRequestsArgs<ExtArgs>
     processedSkillAccessRequests?: boolean | User$processedSkillAccessRequestsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
@@ -7441,6 +7579,7 @@ export namespace Prisma {
       assignedOrgRoles: Prisma.$OrgRoleBindingPayload<ExtArgs>[]
       activeOrg: Prisma.$OrganizationPayload<ExtArgs> | null
       chatSessions: Prisma.$ChatSessionPayload<ExtArgs>[]
+      imChannelConnections: Prisma.$ImChannelConnectionPayload<ExtArgs>[]
       skillAccessRequests: Prisma.$SkillAccessRequestPayload<ExtArgs>[]
       processedSkillAccessRequests: Prisma.$SkillAccessRequestPayload<ExtArgs>[]
     }
@@ -7828,6 +7967,7 @@ export namespace Prisma {
     assignedOrgRoles<T extends User$assignedOrgRolesArgs<ExtArgs> = {}>(args?: Subset<T, User$assignedOrgRolesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$OrgRoleBindingPayload<ExtArgs>, T, "findMany"> | Null>
     activeOrg<T extends User$activeOrgArgs<ExtArgs> = {}>(args?: Subset<T, User$activeOrgArgs<ExtArgs>>): Prisma__OrganizationClient<$Result.GetResult<Prisma.$OrganizationPayload<ExtArgs>, T, "findUniqueOrThrow"> | null, null, ExtArgs>
     chatSessions<T extends User$chatSessionsArgs<ExtArgs> = {}>(args?: Subset<T, User$chatSessionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ChatSessionPayload<ExtArgs>, T, "findMany"> | Null>
+    imChannelConnections<T extends User$imChannelConnectionsArgs<ExtArgs> = {}>(args?: Subset<T, User$imChannelConnectionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "findMany"> | Null>
     skillAccessRequests<T extends User$skillAccessRequestsArgs<ExtArgs> = {}>(args?: Subset<T, User$skillAccessRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "findMany"> | Null>
     processedSkillAccessRequests<T extends User$processedSkillAccessRequestsArgs<ExtArgs> = {}>(args?: Subset<T, User$processedSkillAccessRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "findMany"> | Null>
     /**
@@ -8305,6 +8445,26 @@ export namespace Prisma {
   }
 
   /**
+   * User.imChannelConnections
+   */
+  export type User$imChannelConnectionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    where?: ImChannelConnectionWhereInput
+    orderBy?: ImChannelConnectionOrderByWithRelationInput | ImChannelConnectionOrderByWithRelationInput[]
+    cursor?: ImChannelConnectionWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: ImChannelConnectionScalarFieldEnum | ImChannelConnectionScalarFieldEnum[]
+  }
+
+  /**
    * User.skillAccessRequests
    */
   export type User$skillAccessRequestsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -8356,6 +8516,1071 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: UserInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model ImChannelConnection
+   */
+
+  export type AggregateImChannelConnection = {
+    _count: ImChannelConnectionCountAggregateOutputType | null
+    _min: ImChannelConnectionMinAggregateOutputType | null
+    _max: ImChannelConnectionMaxAggregateOutputType | null
+  }
+
+  export type ImChannelConnectionMinAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    channel: $Enums.ImChannelType | null
+    enabled: boolean | null
+    status: $Enums.ImConnectionStatus | null
+    interactionMode: $Enums.ImInteractionMode | null
+    providerAccountId: string | null
+    providerOwnerUserId: string | null
+    providerBaseUrl: string | null
+    encryptedCredential: string | null
+    updateCursor: string | null
+    lastConnectedAt: Date | null
+    lastMessageAt: Date | null
+    lastError: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ImChannelConnectionMaxAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    channel: $Enums.ImChannelType | null
+    enabled: boolean | null
+    status: $Enums.ImConnectionStatus | null
+    interactionMode: $Enums.ImInteractionMode | null
+    providerAccountId: string | null
+    providerOwnerUserId: string | null
+    providerBaseUrl: string | null
+    encryptedCredential: string | null
+    updateCursor: string | null
+    lastConnectedAt: Date | null
+    lastMessageAt: Date | null
+    lastError: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ImChannelConnectionCountAggregateOutputType = {
+    id: number
+    userId: number
+    channel: number
+    enabled: number
+    status: number
+    interactionMode: number
+    providerAccountId: number
+    providerOwnerUserId: number
+    providerBaseUrl: number
+    encryptedCredential: number
+    updateCursor: number
+    lastConnectedAt: number
+    lastMessageAt: number
+    lastError: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type ImChannelConnectionMinAggregateInputType = {
+    id?: true
+    userId?: true
+    channel?: true
+    enabled?: true
+    status?: true
+    interactionMode?: true
+    providerAccountId?: true
+    providerOwnerUserId?: true
+    providerBaseUrl?: true
+    encryptedCredential?: true
+    updateCursor?: true
+    lastConnectedAt?: true
+    lastMessageAt?: true
+    lastError?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ImChannelConnectionMaxAggregateInputType = {
+    id?: true
+    userId?: true
+    channel?: true
+    enabled?: true
+    status?: true
+    interactionMode?: true
+    providerAccountId?: true
+    providerOwnerUserId?: true
+    providerBaseUrl?: true
+    encryptedCredential?: true
+    updateCursor?: true
+    lastConnectedAt?: true
+    lastMessageAt?: true
+    lastError?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ImChannelConnectionCountAggregateInputType = {
+    id?: true
+    userId?: true
+    channel?: true
+    enabled?: true
+    status?: true
+    interactionMode?: true
+    providerAccountId?: true
+    providerOwnerUserId?: true
+    providerBaseUrl?: true
+    encryptedCredential?: true
+    updateCursor?: true
+    lastConnectedAt?: true
+    lastMessageAt?: true
+    lastError?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type ImChannelConnectionAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ImChannelConnection to aggregate.
+     */
+    where?: ImChannelConnectionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ImChannelConnections to fetch.
+     */
+    orderBy?: ImChannelConnectionOrderByWithRelationInput | ImChannelConnectionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: ImChannelConnectionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ImChannelConnections from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ImChannelConnections.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned ImChannelConnections
+    **/
+    _count?: true | ImChannelConnectionCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: ImChannelConnectionMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: ImChannelConnectionMaxAggregateInputType
+  }
+
+  export type GetImChannelConnectionAggregateType<T extends ImChannelConnectionAggregateArgs> = {
+        [P in keyof T & keyof AggregateImChannelConnection]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateImChannelConnection[P]>
+      : GetScalarType<T[P], AggregateImChannelConnection[P]>
+  }
+
+
+
+
+  export type ImChannelConnectionGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ImChannelConnectionWhereInput
+    orderBy?: ImChannelConnectionOrderByWithAggregationInput | ImChannelConnectionOrderByWithAggregationInput[]
+    by: ImChannelConnectionScalarFieldEnum[] | ImChannelConnectionScalarFieldEnum
+    having?: ImChannelConnectionScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: ImChannelConnectionCountAggregateInputType | true
+    _min?: ImChannelConnectionMinAggregateInputType
+    _max?: ImChannelConnectionMaxAggregateInputType
+  }
+
+  export type ImChannelConnectionGroupByOutputType = {
+    id: string
+    userId: string
+    channel: $Enums.ImChannelType
+    enabled: boolean
+    status: $Enums.ImConnectionStatus
+    interactionMode: $Enums.ImInteractionMode
+    providerAccountId: string | null
+    providerOwnerUserId: string | null
+    providerBaseUrl: string | null
+    encryptedCredential: string | null
+    updateCursor: string | null
+    lastConnectedAt: Date | null
+    lastMessageAt: Date | null
+    lastError: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: ImChannelConnectionCountAggregateOutputType | null
+    _min: ImChannelConnectionMinAggregateOutputType | null
+    _max: ImChannelConnectionMaxAggregateOutputType | null
+  }
+
+  type GetImChannelConnectionGroupByPayload<T extends ImChannelConnectionGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<ImChannelConnectionGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof ImChannelConnectionGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], ImChannelConnectionGroupByOutputType[P]>
+            : GetScalarType<T[P], ImChannelConnectionGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type ImChannelConnectionSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    channel?: boolean
+    enabled?: boolean
+    status?: boolean
+    interactionMode?: boolean
+    providerAccountId?: boolean
+    providerOwnerUserId?: boolean
+    providerBaseUrl?: boolean
+    encryptedCredential?: boolean
+    updateCursor?: boolean
+    lastConnectedAt?: boolean
+    lastMessageAt?: boolean
+    lastError?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["imChannelConnection"]>
+
+  export type ImChannelConnectionSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    channel?: boolean
+    enabled?: boolean
+    status?: boolean
+    interactionMode?: boolean
+    providerAccountId?: boolean
+    providerOwnerUserId?: boolean
+    providerBaseUrl?: boolean
+    encryptedCredential?: boolean
+    updateCursor?: boolean
+    lastConnectedAt?: boolean
+    lastMessageAt?: boolean
+    lastError?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["imChannelConnection"]>
+
+  export type ImChannelConnectionSelectScalar = {
+    id?: boolean
+    userId?: boolean
+    channel?: boolean
+    enabled?: boolean
+    status?: boolean
+    interactionMode?: boolean
+    providerAccountId?: boolean
+    providerOwnerUserId?: boolean
+    providerBaseUrl?: boolean
+    encryptedCredential?: boolean
+    updateCursor?: boolean
+    lastConnectedAt?: boolean
+    lastMessageAt?: boolean
+    lastError?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type ImChannelConnectionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type ImChannelConnectionIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $ImChannelConnectionPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "ImChannelConnection"
+    objects: {
+      user: Prisma.$UserPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userId: string
+      channel: $Enums.ImChannelType
+      enabled: boolean
+      status: $Enums.ImConnectionStatus
+      interactionMode: $Enums.ImInteractionMode
+      providerAccountId: string | null
+      providerOwnerUserId: string | null
+      providerBaseUrl: string | null
+      encryptedCredential: string | null
+      updateCursor: string | null
+      lastConnectedAt: Date | null
+      lastMessageAt: Date | null
+      lastError: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["imChannelConnection"]>
+    composites: {}
+  }
+
+  type ImChannelConnectionGetPayload<S extends boolean | null | undefined | ImChannelConnectionDefaultArgs> = $Result.GetResult<Prisma.$ImChannelConnectionPayload, S>
+
+  type ImChannelConnectionCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<ImChannelConnectionFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: ImChannelConnectionCountAggregateInputType | true
+    }
+
+  export interface ImChannelConnectionDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['ImChannelConnection'], meta: { name: 'ImChannelConnection' } }
+    /**
+     * Find zero or one ImChannelConnection that matches the filter.
+     * @param {ImChannelConnectionFindUniqueArgs} args - Arguments to find a ImChannelConnection
+     * @example
+     * // Get one ImChannelConnection
+     * const imChannelConnection = await prisma.imChannelConnection.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends ImChannelConnectionFindUniqueArgs>(args: SelectSubset<T, ImChannelConnectionFindUniqueArgs<ExtArgs>>): Prisma__ImChannelConnectionClient<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one ImChannelConnection that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {ImChannelConnectionFindUniqueOrThrowArgs} args - Arguments to find a ImChannelConnection
+     * @example
+     * // Get one ImChannelConnection
+     * const imChannelConnection = await prisma.imChannelConnection.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends ImChannelConnectionFindUniqueOrThrowArgs>(args: SelectSubset<T, ImChannelConnectionFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ImChannelConnectionClient<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first ImChannelConnection that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImChannelConnectionFindFirstArgs} args - Arguments to find a ImChannelConnection
+     * @example
+     * // Get one ImChannelConnection
+     * const imChannelConnection = await prisma.imChannelConnection.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends ImChannelConnectionFindFirstArgs>(args?: SelectSubset<T, ImChannelConnectionFindFirstArgs<ExtArgs>>): Prisma__ImChannelConnectionClient<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first ImChannelConnection that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImChannelConnectionFindFirstOrThrowArgs} args - Arguments to find a ImChannelConnection
+     * @example
+     * // Get one ImChannelConnection
+     * const imChannelConnection = await prisma.imChannelConnection.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends ImChannelConnectionFindFirstOrThrowArgs>(args?: SelectSubset<T, ImChannelConnectionFindFirstOrThrowArgs<ExtArgs>>): Prisma__ImChannelConnectionClient<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more ImChannelConnections that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImChannelConnectionFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all ImChannelConnections
+     * const imChannelConnections = await prisma.imChannelConnection.findMany()
+     * 
+     * // Get first 10 ImChannelConnections
+     * const imChannelConnections = await prisma.imChannelConnection.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const imChannelConnectionWithIdOnly = await prisma.imChannelConnection.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends ImChannelConnectionFindManyArgs>(args?: SelectSubset<T, ImChannelConnectionFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a ImChannelConnection.
+     * @param {ImChannelConnectionCreateArgs} args - Arguments to create a ImChannelConnection.
+     * @example
+     * // Create one ImChannelConnection
+     * const ImChannelConnection = await prisma.imChannelConnection.create({
+     *   data: {
+     *     // ... data to create a ImChannelConnection
+     *   }
+     * })
+     * 
+     */
+    create<T extends ImChannelConnectionCreateArgs>(args: SelectSubset<T, ImChannelConnectionCreateArgs<ExtArgs>>): Prisma__ImChannelConnectionClient<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many ImChannelConnections.
+     * @param {ImChannelConnectionCreateManyArgs} args - Arguments to create many ImChannelConnections.
+     * @example
+     * // Create many ImChannelConnections
+     * const imChannelConnection = await prisma.imChannelConnection.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends ImChannelConnectionCreateManyArgs>(args?: SelectSubset<T, ImChannelConnectionCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many ImChannelConnections and returns the data saved in the database.
+     * @param {ImChannelConnectionCreateManyAndReturnArgs} args - Arguments to create many ImChannelConnections.
+     * @example
+     * // Create many ImChannelConnections
+     * const imChannelConnection = await prisma.imChannelConnection.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many ImChannelConnections and only return the `id`
+     * const imChannelConnectionWithIdOnly = await prisma.imChannelConnection.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends ImChannelConnectionCreateManyAndReturnArgs>(args?: SelectSubset<T, ImChannelConnectionCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a ImChannelConnection.
+     * @param {ImChannelConnectionDeleteArgs} args - Arguments to delete one ImChannelConnection.
+     * @example
+     * // Delete one ImChannelConnection
+     * const ImChannelConnection = await prisma.imChannelConnection.delete({
+     *   where: {
+     *     // ... filter to delete one ImChannelConnection
+     *   }
+     * })
+     * 
+     */
+    delete<T extends ImChannelConnectionDeleteArgs>(args: SelectSubset<T, ImChannelConnectionDeleteArgs<ExtArgs>>): Prisma__ImChannelConnectionClient<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one ImChannelConnection.
+     * @param {ImChannelConnectionUpdateArgs} args - Arguments to update one ImChannelConnection.
+     * @example
+     * // Update one ImChannelConnection
+     * const imChannelConnection = await prisma.imChannelConnection.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends ImChannelConnectionUpdateArgs>(args: SelectSubset<T, ImChannelConnectionUpdateArgs<ExtArgs>>): Prisma__ImChannelConnectionClient<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more ImChannelConnections.
+     * @param {ImChannelConnectionDeleteManyArgs} args - Arguments to filter ImChannelConnections to delete.
+     * @example
+     * // Delete a few ImChannelConnections
+     * const { count } = await prisma.imChannelConnection.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends ImChannelConnectionDeleteManyArgs>(args?: SelectSubset<T, ImChannelConnectionDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ImChannelConnections.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImChannelConnectionUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many ImChannelConnections
+     * const imChannelConnection = await prisma.imChannelConnection.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends ImChannelConnectionUpdateManyArgs>(args: SelectSubset<T, ImChannelConnectionUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one ImChannelConnection.
+     * @param {ImChannelConnectionUpsertArgs} args - Arguments to update or create a ImChannelConnection.
+     * @example
+     * // Update or create a ImChannelConnection
+     * const imChannelConnection = await prisma.imChannelConnection.upsert({
+     *   create: {
+     *     // ... data to create a ImChannelConnection
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the ImChannelConnection we want to update
+     *   }
+     * })
+     */
+    upsert<T extends ImChannelConnectionUpsertArgs>(args: SelectSubset<T, ImChannelConnectionUpsertArgs<ExtArgs>>): Prisma__ImChannelConnectionClient<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of ImChannelConnections.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImChannelConnectionCountArgs} args - Arguments to filter ImChannelConnections to count.
+     * @example
+     * // Count the number of ImChannelConnections
+     * const count = await prisma.imChannelConnection.count({
+     *   where: {
+     *     // ... the filter for the ImChannelConnections we want to count
+     *   }
+     * })
+    **/
+    count<T extends ImChannelConnectionCountArgs>(
+      args?: Subset<T, ImChannelConnectionCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], ImChannelConnectionCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a ImChannelConnection.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImChannelConnectionAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends ImChannelConnectionAggregateArgs>(args: Subset<T, ImChannelConnectionAggregateArgs>): Prisma.PrismaPromise<GetImChannelConnectionAggregateType<T>>
+
+    /**
+     * Group by ImChannelConnection.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImChannelConnectionGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends ImChannelConnectionGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: ImChannelConnectionGroupByArgs['orderBy'] }
+        : { orderBy?: ImChannelConnectionGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, ImChannelConnectionGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetImChannelConnectionGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the ImChannelConnection model
+   */
+  readonly fields: ImChannelConnectionFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for ImChannelConnection.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__ImChannelConnectionClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the ImChannelConnection model
+   */ 
+  interface ImChannelConnectionFieldRefs {
+    readonly id: FieldRef<"ImChannelConnection", 'String'>
+    readonly userId: FieldRef<"ImChannelConnection", 'String'>
+    readonly channel: FieldRef<"ImChannelConnection", 'ImChannelType'>
+    readonly enabled: FieldRef<"ImChannelConnection", 'Boolean'>
+    readonly status: FieldRef<"ImChannelConnection", 'ImConnectionStatus'>
+    readonly interactionMode: FieldRef<"ImChannelConnection", 'ImInteractionMode'>
+    readonly providerAccountId: FieldRef<"ImChannelConnection", 'String'>
+    readonly providerOwnerUserId: FieldRef<"ImChannelConnection", 'String'>
+    readonly providerBaseUrl: FieldRef<"ImChannelConnection", 'String'>
+    readonly encryptedCredential: FieldRef<"ImChannelConnection", 'String'>
+    readonly updateCursor: FieldRef<"ImChannelConnection", 'String'>
+    readonly lastConnectedAt: FieldRef<"ImChannelConnection", 'DateTime'>
+    readonly lastMessageAt: FieldRef<"ImChannelConnection", 'DateTime'>
+    readonly lastError: FieldRef<"ImChannelConnection", 'String'>
+    readonly createdAt: FieldRef<"ImChannelConnection", 'DateTime'>
+    readonly updatedAt: FieldRef<"ImChannelConnection", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * ImChannelConnection findUnique
+   */
+  export type ImChannelConnectionFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * Filter, which ImChannelConnection to fetch.
+     */
+    where: ImChannelConnectionWhereUniqueInput
+  }
+
+  /**
+   * ImChannelConnection findUniqueOrThrow
+   */
+  export type ImChannelConnectionFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * Filter, which ImChannelConnection to fetch.
+     */
+    where: ImChannelConnectionWhereUniqueInput
+  }
+
+  /**
+   * ImChannelConnection findFirst
+   */
+  export type ImChannelConnectionFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * Filter, which ImChannelConnection to fetch.
+     */
+    where?: ImChannelConnectionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ImChannelConnections to fetch.
+     */
+    orderBy?: ImChannelConnectionOrderByWithRelationInput | ImChannelConnectionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ImChannelConnections.
+     */
+    cursor?: ImChannelConnectionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ImChannelConnections from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ImChannelConnections.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ImChannelConnections.
+     */
+    distinct?: ImChannelConnectionScalarFieldEnum | ImChannelConnectionScalarFieldEnum[]
+  }
+
+  /**
+   * ImChannelConnection findFirstOrThrow
+   */
+  export type ImChannelConnectionFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * Filter, which ImChannelConnection to fetch.
+     */
+    where?: ImChannelConnectionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ImChannelConnections to fetch.
+     */
+    orderBy?: ImChannelConnectionOrderByWithRelationInput | ImChannelConnectionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ImChannelConnections.
+     */
+    cursor?: ImChannelConnectionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ImChannelConnections from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ImChannelConnections.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ImChannelConnections.
+     */
+    distinct?: ImChannelConnectionScalarFieldEnum | ImChannelConnectionScalarFieldEnum[]
+  }
+
+  /**
+   * ImChannelConnection findMany
+   */
+  export type ImChannelConnectionFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * Filter, which ImChannelConnections to fetch.
+     */
+    where?: ImChannelConnectionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ImChannelConnections to fetch.
+     */
+    orderBy?: ImChannelConnectionOrderByWithRelationInput | ImChannelConnectionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing ImChannelConnections.
+     */
+    cursor?: ImChannelConnectionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ImChannelConnections from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ImChannelConnections.
+     */
+    skip?: number
+    distinct?: ImChannelConnectionScalarFieldEnum | ImChannelConnectionScalarFieldEnum[]
+  }
+
+  /**
+   * ImChannelConnection create
+   */
+  export type ImChannelConnectionCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * The data needed to create a ImChannelConnection.
+     */
+    data: XOR<ImChannelConnectionCreateInput, ImChannelConnectionUncheckedCreateInput>
+  }
+
+  /**
+   * ImChannelConnection createMany
+   */
+  export type ImChannelConnectionCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many ImChannelConnections.
+     */
+    data: ImChannelConnectionCreateManyInput | ImChannelConnectionCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ImChannelConnection createManyAndReturn
+   */
+  export type ImChannelConnectionCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many ImChannelConnections.
+     */
+    data: ImChannelConnectionCreateManyInput | ImChannelConnectionCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * ImChannelConnection update
+   */
+  export type ImChannelConnectionUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * The data needed to update a ImChannelConnection.
+     */
+    data: XOR<ImChannelConnectionUpdateInput, ImChannelConnectionUncheckedUpdateInput>
+    /**
+     * Choose, which ImChannelConnection to update.
+     */
+    where: ImChannelConnectionWhereUniqueInput
+  }
+
+  /**
+   * ImChannelConnection updateMany
+   */
+  export type ImChannelConnectionUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update ImChannelConnections.
+     */
+    data: XOR<ImChannelConnectionUpdateManyMutationInput, ImChannelConnectionUncheckedUpdateManyInput>
+    /**
+     * Filter which ImChannelConnections to update
+     */
+    where?: ImChannelConnectionWhereInput
+  }
+
+  /**
+   * ImChannelConnection upsert
+   */
+  export type ImChannelConnectionUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * The filter to search for the ImChannelConnection to update in case it exists.
+     */
+    where: ImChannelConnectionWhereUniqueInput
+    /**
+     * In case the ImChannelConnection found by the `where` argument doesn't exist, create a new ImChannelConnection with this data.
+     */
+    create: XOR<ImChannelConnectionCreateInput, ImChannelConnectionUncheckedCreateInput>
+    /**
+     * In case the ImChannelConnection was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<ImChannelConnectionUpdateInput, ImChannelConnectionUncheckedUpdateInput>
+  }
+
+  /**
+   * ImChannelConnection delete
+   */
+  export type ImChannelConnectionDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * Filter which ImChannelConnection to delete.
+     */
+    where: ImChannelConnectionWhereUniqueInput
+  }
+
+  /**
+   * ImChannelConnection deleteMany
+   */
+  export type ImChannelConnectionDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ImChannelConnections to delete
+     */
+    where?: ImChannelConnectionWhereInput
+  }
+
+  /**
+   * ImChannelConnection without action
+   */
+  export type ImChannelConnectionDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
   }
 
 
@@ -74263,6 +75488,28 @@ export namespace Prisma {
   export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
 
 
+  export const ImChannelConnectionScalarFieldEnum: {
+    id: 'id',
+    userId: 'userId',
+    channel: 'channel',
+    enabled: 'enabled',
+    status: 'status',
+    interactionMode: 'interactionMode',
+    providerAccountId: 'providerAccountId',
+    providerOwnerUserId: 'providerOwnerUserId',
+    providerBaseUrl: 'providerBaseUrl',
+    encryptedCredential: 'encryptedCredential',
+    updateCursor: 'updateCursor',
+    lastConnectedAt: 'lastConnectedAt',
+    lastMessageAt: 'lastMessageAt',
+    lastError: 'lastError',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type ImChannelConnectionScalarFieldEnum = (typeof ImChannelConnectionScalarFieldEnum)[keyof typeof ImChannelConnectionScalarFieldEnum]
+
+
   export const RoleScalarFieldEnum: {
     id: 'id',
     name: 'name',
@@ -75541,6 +76788,48 @@ export namespace Prisma {
 
 
   /**
+   * Reference to a field of type 'ImChannelType'
+   */
+  export type EnumImChannelTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ImChannelType'>
+    
+
+
+  /**
+   * Reference to a field of type 'ImChannelType[]'
+   */
+  export type ListEnumImChannelTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ImChannelType[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'ImConnectionStatus'
+   */
+  export type EnumImConnectionStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ImConnectionStatus'>
+    
+
+
+  /**
+   * Reference to a field of type 'ImConnectionStatus[]'
+   */
+  export type ListEnumImConnectionStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ImConnectionStatus[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'ImInteractionMode'
+   */
+  export type EnumImInteractionModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ImInteractionMode'>
+    
+
+
+  /**
+   * Reference to a field of type 'ImInteractionMode[]'
+   */
+  export type ListEnumImInteractionModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ImInteractionMode[]'>
+    
+
+
+  /**
    * Reference to a field of type 'Json'
    */
   export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
@@ -75671,6 +76960,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingListRelationFilter
     activeOrg?: XOR<OrganizationNullableRelationFilter, OrganizationWhereInput> | null
     chatSessions?: ChatSessionListRelationFilter
+    imChannelConnections?: ImChannelConnectionListRelationFilter
     skillAccessRequests?: SkillAccessRequestListRelationFilter
     processedSkillAccessRequests?: SkillAccessRequestListRelationFilter
   }
@@ -75695,6 +76985,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingOrderByRelationAggregateInput
     activeOrg?: OrganizationOrderByWithRelationInput
     chatSessions?: ChatSessionOrderByRelationAggregateInput
+    imChannelConnections?: ImChannelConnectionOrderByRelationAggregateInput
     skillAccessRequests?: SkillAccessRequestOrderByRelationAggregateInput
     processedSkillAccessRequests?: SkillAccessRequestOrderByRelationAggregateInput
   }
@@ -75722,6 +77013,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingListRelationFilter
     activeOrg?: XOR<OrganizationNullableRelationFilter, OrganizationWhereInput> | null
     chatSessions?: ChatSessionListRelationFilter
+    imChannelConnections?: ImChannelConnectionListRelationFilter
     skillAccessRequests?: SkillAccessRequestListRelationFilter
     processedSkillAccessRequests?: SkillAccessRequestListRelationFilter
   }, "id" | "username" | "email">
@@ -75762,6 +77054,117 @@ export namespace Prisma {
     lastLoginAt?: DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
     createdAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
+  }
+
+  export type ImChannelConnectionWhereInput = {
+    AND?: ImChannelConnectionWhereInput | ImChannelConnectionWhereInput[]
+    OR?: ImChannelConnectionWhereInput[]
+    NOT?: ImChannelConnectionWhereInput | ImChannelConnectionWhereInput[]
+    id?: UuidFilter<"ImChannelConnection"> | string
+    userId?: UuidFilter<"ImChannelConnection"> | string
+    channel?: EnumImChannelTypeFilter<"ImChannelConnection"> | $Enums.ImChannelType
+    enabled?: BoolFilter<"ImChannelConnection"> | boolean
+    status?: EnumImConnectionStatusFilter<"ImChannelConnection"> | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFilter<"ImChannelConnection"> | $Enums.ImInteractionMode
+    providerAccountId?: StringNullableFilter<"ImChannelConnection"> | string | null
+    providerOwnerUserId?: StringNullableFilter<"ImChannelConnection"> | string | null
+    providerBaseUrl?: StringNullableFilter<"ImChannelConnection"> | string | null
+    encryptedCredential?: StringNullableFilter<"ImChannelConnection"> | string | null
+    updateCursor?: StringNullableFilter<"ImChannelConnection"> | string | null
+    lastConnectedAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
+    lastMessageAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
+    lastError?: StringNullableFilter<"ImChannelConnection"> | string | null
+    createdAt?: DateTimeFilter<"ImChannelConnection"> | Date | string
+    updatedAt?: DateTimeFilter<"ImChannelConnection"> | Date | string
+    user?: XOR<UserRelationFilter, UserWhereInput>
+  }
+
+  export type ImChannelConnectionOrderByWithRelationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    channel?: SortOrder
+    enabled?: SortOrder
+    status?: SortOrder
+    interactionMode?: SortOrder
+    providerAccountId?: SortOrderInput | SortOrder
+    providerOwnerUserId?: SortOrderInput | SortOrder
+    providerBaseUrl?: SortOrderInput | SortOrder
+    encryptedCredential?: SortOrderInput | SortOrder
+    updateCursor?: SortOrderInput | SortOrder
+    lastConnectedAt?: SortOrderInput | SortOrder
+    lastMessageAt?: SortOrderInput | SortOrder
+    lastError?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    user?: UserOrderByWithRelationInput
+  }
+
+  export type ImChannelConnectionWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    userId_channel?: ImChannelConnectionUserIdChannelCompoundUniqueInput
+    AND?: ImChannelConnectionWhereInput | ImChannelConnectionWhereInput[]
+    OR?: ImChannelConnectionWhereInput[]
+    NOT?: ImChannelConnectionWhereInput | ImChannelConnectionWhereInput[]
+    userId?: UuidFilter<"ImChannelConnection"> | string
+    channel?: EnumImChannelTypeFilter<"ImChannelConnection"> | $Enums.ImChannelType
+    enabled?: BoolFilter<"ImChannelConnection"> | boolean
+    status?: EnumImConnectionStatusFilter<"ImChannelConnection"> | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFilter<"ImChannelConnection"> | $Enums.ImInteractionMode
+    providerAccountId?: StringNullableFilter<"ImChannelConnection"> | string | null
+    providerOwnerUserId?: StringNullableFilter<"ImChannelConnection"> | string | null
+    providerBaseUrl?: StringNullableFilter<"ImChannelConnection"> | string | null
+    encryptedCredential?: StringNullableFilter<"ImChannelConnection"> | string | null
+    updateCursor?: StringNullableFilter<"ImChannelConnection"> | string | null
+    lastConnectedAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
+    lastMessageAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
+    lastError?: StringNullableFilter<"ImChannelConnection"> | string | null
+    createdAt?: DateTimeFilter<"ImChannelConnection"> | Date | string
+    updatedAt?: DateTimeFilter<"ImChannelConnection"> | Date | string
+    user?: XOR<UserRelationFilter, UserWhereInput>
+  }, "id" | "userId_channel">
+
+  export type ImChannelConnectionOrderByWithAggregationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    channel?: SortOrder
+    enabled?: SortOrder
+    status?: SortOrder
+    interactionMode?: SortOrder
+    providerAccountId?: SortOrderInput | SortOrder
+    providerOwnerUserId?: SortOrderInput | SortOrder
+    providerBaseUrl?: SortOrderInput | SortOrder
+    encryptedCredential?: SortOrderInput | SortOrder
+    updateCursor?: SortOrderInput | SortOrder
+    lastConnectedAt?: SortOrderInput | SortOrder
+    lastMessageAt?: SortOrderInput | SortOrder
+    lastError?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: ImChannelConnectionCountOrderByAggregateInput
+    _max?: ImChannelConnectionMaxOrderByAggregateInput
+    _min?: ImChannelConnectionMinOrderByAggregateInput
+  }
+
+  export type ImChannelConnectionScalarWhereWithAggregatesInput = {
+    AND?: ImChannelConnectionScalarWhereWithAggregatesInput | ImChannelConnectionScalarWhereWithAggregatesInput[]
+    OR?: ImChannelConnectionScalarWhereWithAggregatesInput[]
+    NOT?: ImChannelConnectionScalarWhereWithAggregatesInput | ImChannelConnectionScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"ImChannelConnection"> | string
+    userId?: UuidWithAggregatesFilter<"ImChannelConnection"> | string
+    channel?: EnumImChannelTypeWithAggregatesFilter<"ImChannelConnection"> | $Enums.ImChannelType
+    enabled?: BoolWithAggregatesFilter<"ImChannelConnection"> | boolean
+    status?: EnumImConnectionStatusWithAggregatesFilter<"ImChannelConnection"> | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeWithAggregatesFilter<"ImChannelConnection"> | $Enums.ImInteractionMode
+    providerAccountId?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
+    providerOwnerUserId?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
+    providerBaseUrl?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
+    encryptedCredential?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
+    updateCursor?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
+    lastConnectedAt?: DateTimeNullableWithAggregatesFilter<"ImChannelConnection"> | Date | string | null
+    lastMessageAt?: DateTimeNullableWithAggregatesFilter<"ImChannelConnection"> | Date | string | null
+    lastError?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"ImChannelConnection"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"ImChannelConnection"> | Date | string
   }
 
   export type RoleWhereInput = {
@@ -81765,6 +83168,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
@@ -81788,6 +83192,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
@@ -81811,6 +83216,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
@@ -81834,6 +83240,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
@@ -81881,6 +83288,138 @@ export namespace Prisma {
     activeOrgId?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
     lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ImChannelConnectionCreateInput = {
+    id?: string
+    channel?: $Enums.ImChannelType
+    enabled?: boolean
+    status?: $Enums.ImConnectionStatus
+    interactionMode?: $Enums.ImInteractionMode
+    providerAccountId?: string | null
+    providerOwnerUserId?: string | null
+    providerBaseUrl?: string | null
+    encryptedCredential?: string | null
+    updateCursor?: string | null
+    lastConnectedAt?: Date | string | null
+    lastMessageAt?: Date | string | null
+    lastError?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutImChannelConnectionsInput
+  }
+
+  export type ImChannelConnectionUncheckedCreateInput = {
+    id?: string
+    userId: string
+    channel?: $Enums.ImChannelType
+    enabled?: boolean
+    status?: $Enums.ImConnectionStatus
+    interactionMode?: $Enums.ImInteractionMode
+    providerAccountId?: string | null
+    providerOwnerUserId?: string | null
+    providerBaseUrl?: string | null
+    encryptedCredential?: string | null
+    updateCursor?: string | null
+    lastConnectedAt?: Date | string | null
+    lastMessageAt?: Date | string | null
+    lastError?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ImChannelConnectionUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    channel?: EnumImChannelTypeFieldUpdateOperationsInput | $Enums.ImChannelType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumImConnectionStatusFieldUpdateOperationsInput | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFieldUpdateOperationsInput | $Enums.ImInteractionMode
+    providerAccountId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
+    lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutImChannelConnectionsNestedInput
+  }
+
+  export type ImChannelConnectionUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    channel?: EnumImChannelTypeFieldUpdateOperationsInput | $Enums.ImChannelType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumImConnectionStatusFieldUpdateOperationsInput | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFieldUpdateOperationsInput | $Enums.ImInteractionMode
+    providerAccountId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
+    lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ImChannelConnectionCreateManyInput = {
+    id?: string
+    userId: string
+    channel?: $Enums.ImChannelType
+    enabled?: boolean
+    status?: $Enums.ImConnectionStatus
+    interactionMode?: $Enums.ImInteractionMode
+    providerAccountId?: string | null
+    providerOwnerUserId?: string | null
+    providerBaseUrl?: string | null
+    encryptedCredential?: string | null
+    updateCursor?: string | null
+    lastConnectedAt?: Date | string | null
+    lastMessageAt?: Date | string | null
+    lastError?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ImChannelConnectionUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    channel?: EnumImChannelTypeFieldUpdateOperationsInput | $Enums.ImChannelType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumImConnectionStatusFieldUpdateOperationsInput | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFieldUpdateOperationsInput | $Enums.ImInteractionMode
+    providerAccountId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
+    lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ImChannelConnectionUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    channel?: EnumImChannelTypeFieldUpdateOperationsInput | $Enums.ImChannelType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumImConnectionStatusFieldUpdateOperationsInput | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFieldUpdateOperationsInput | $Enums.ImInteractionMode
+    providerAccountId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
+    lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastError?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -88961,6 +90500,12 @@ export namespace Prisma {
     none?: ChatSessionWhereInput
   }
 
+  export type ImChannelConnectionListRelationFilter = {
+    every?: ImChannelConnectionWhereInput
+    some?: ImChannelConnectionWhereInput
+    none?: ImChannelConnectionWhereInput
+  }
+
   export type SkillAccessRequestListRelationFilter = {
     every?: SkillAccessRequestWhereInput
     some?: SkillAccessRequestWhereInput
@@ -88985,6 +90530,10 @@ export namespace Prisma {
   }
 
   export type ChatSessionOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type ImChannelConnectionOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -89151,6 +90700,124 @@ export namespace Prisma {
     _min?: NestedDateTimeFilter<$PrismaModel>
     _max?: NestedDateTimeFilter<$PrismaModel>
   }
+
+  export type EnumImChannelTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImChannelType | EnumImChannelTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.ImChannelType[] | ListEnumImChannelTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImChannelType[] | ListEnumImChannelTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumImChannelTypeFilter<$PrismaModel> | $Enums.ImChannelType
+  }
+
+  export type EnumImConnectionStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImConnectionStatus | EnumImConnectionStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.ImConnectionStatus[] | ListEnumImConnectionStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImConnectionStatus[] | ListEnumImConnectionStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumImConnectionStatusFilter<$PrismaModel> | $Enums.ImConnectionStatus
+  }
+
+  export type EnumImInteractionModeFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImInteractionMode | EnumImInteractionModeFieldRefInput<$PrismaModel>
+    in?: $Enums.ImInteractionMode[] | ListEnumImInteractionModeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImInteractionMode[] | ListEnumImInteractionModeFieldRefInput<$PrismaModel>
+    not?: NestedEnumImInteractionModeFilter<$PrismaModel> | $Enums.ImInteractionMode
+  }
+
+  export type UserRelationFilter = {
+    is?: UserWhereInput
+    isNot?: UserWhereInput
+  }
+
+  export type ImChannelConnectionUserIdChannelCompoundUniqueInput = {
+    userId: string
+    channel: $Enums.ImChannelType
+  }
+
+  export type ImChannelConnectionCountOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    channel?: SortOrder
+    enabled?: SortOrder
+    status?: SortOrder
+    interactionMode?: SortOrder
+    providerAccountId?: SortOrder
+    providerOwnerUserId?: SortOrder
+    providerBaseUrl?: SortOrder
+    encryptedCredential?: SortOrder
+    updateCursor?: SortOrder
+    lastConnectedAt?: SortOrder
+    lastMessageAt?: SortOrder
+    lastError?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ImChannelConnectionMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    channel?: SortOrder
+    enabled?: SortOrder
+    status?: SortOrder
+    interactionMode?: SortOrder
+    providerAccountId?: SortOrder
+    providerOwnerUserId?: SortOrder
+    providerBaseUrl?: SortOrder
+    encryptedCredential?: SortOrder
+    updateCursor?: SortOrder
+    lastConnectedAt?: SortOrder
+    lastMessageAt?: SortOrder
+    lastError?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ImChannelConnectionMinOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    channel?: SortOrder
+    enabled?: SortOrder
+    status?: SortOrder
+    interactionMode?: SortOrder
+    providerAccountId?: SortOrder
+    providerOwnerUserId?: SortOrder
+    providerBaseUrl?: SortOrder
+    encryptedCredential?: SortOrder
+    updateCursor?: SortOrder
+    lastConnectedAt?: SortOrder
+    lastMessageAt?: SortOrder
+    lastError?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EnumImChannelTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImChannelType | EnumImChannelTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.ImChannelType[] | ListEnumImChannelTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImChannelType[] | ListEnumImChannelTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumImChannelTypeWithAggregatesFilter<$PrismaModel> | $Enums.ImChannelType
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumImChannelTypeFilter<$PrismaModel>
+    _max?: NestedEnumImChannelTypeFilter<$PrismaModel>
+  }
+
+  export type EnumImConnectionStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImConnectionStatus | EnumImConnectionStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.ImConnectionStatus[] | ListEnumImConnectionStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImConnectionStatus[] | ListEnumImConnectionStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumImConnectionStatusWithAggregatesFilter<$PrismaModel> | $Enums.ImConnectionStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumImConnectionStatusFilter<$PrismaModel>
+    _max?: NestedEnumImConnectionStatusFilter<$PrismaModel>
+  }
+
+  export type EnumImInteractionModeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImInteractionMode | EnumImInteractionModeFieldRefInput<$PrismaModel>
+    in?: $Enums.ImInteractionMode[] | ListEnumImInteractionModeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImInteractionMode[] | ListEnumImInteractionModeFieldRefInput<$PrismaModel>
+    not?: NestedEnumImInteractionModeWithAggregatesFilter<$PrismaModel> | $Enums.ImInteractionMode
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumImInteractionModeFilter<$PrismaModel>
+    _max?: NestedEnumImInteractionModeFilter<$PrismaModel>
+  }
   export type JsonFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<JsonFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonFilterBase<$PrismaModel>>, 'path'>>,
@@ -89235,11 +90902,6 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedJsonFilter<$PrismaModel>
     _max?: NestedJsonFilter<$PrismaModel>
-  }
-
-  export type UserRelationFilter = {
-    is?: UserWhereInput
-    isNot?: UserWhereInput
   }
 
   export type RoleRelationFilter = {
@@ -92881,6 +94543,13 @@ export namespace Prisma {
     connect?: ChatSessionWhereUniqueInput | ChatSessionWhereUniqueInput[]
   }
 
+  export type ImChannelConnectionCreateNestedManyWithoutUserInput = {
+    create?: XOR<ImChannelConnectionCreateWithoutUserInput, ImChannelConnectionUncheckedCreateWithoutUserInput> | ImChannelConnectionCreateWithoutUserInput[] | ImChannelConnectionUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: ImChannelConnectionCreateOrConnectWithoutUserInput | ImChannelConnectionCreateOrConnectWithoutUserInput[]
+    createMany?: ImChannelConnectionCreateManyUserInputEnvelope
+    connect?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+  }
+
   export type SkillAccessRequestCreateNestedManyWithoutRequesterInput = {
     create?: XOR<SkillAccessRequestCreateWithoutRequesterInput, SkillAccessRequestUncheckedCreateWithoutRequesterInput> | SkillAccessRequestCreateWithoutRequesterInput[] | SkillAccessRequestUncheckedCreateWithoutRequesterInput[]
     connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutRequesterInput | SkillAccessRequestCreateOrConnectWithoutRequesterInput[]
@@ -92928,6 +94597,13 @@ export namespace Prisma {
     connectOrCreate?: ChatSessionCreateOrConnectWithoutUserInput | ChatSessionCreateOrConnectWithoutUserInput[]
     createMany?: ChatSessionCreateManyUserInputEnvelope
     connect?: ChatSessionWhereUniqueInput | ChatSessionWhereUniqueInput[]
+  }
+
+  export type ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<ImChannelConnectionCreateWithoutUserInput, ImChannelConnectionUncheckedCreateWithoutUserInput> | ImChannelConnectionCreateWithoutUserInput[] | ImChannelConnectionUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: ImChannelConnectionCreateOrConnectWithoutUserInput | ImChannelConnectionCreateOrConnectWithoutUserInput[]
+    createMany?: ImChannelConnectionCreateManyUserInputEnvelope
+    connect?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
   }
 
   export type SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput = {
@@ -93048,6 +94724,20 @@ export namespace Prisma {
     deleteMany?: ChatSessionScalarWhereInput | ChatSessionScalarWhereInput[]
   }
 
+  export type ImChannelConnectionUpdateManyWithoutUserNestedInput = {
+    create?: XOR<ImChannelConnectionCreateWithoutUserInput, ImChannelConnectionUncheckedCreateWithoutUserInput> | ImChannelConnectionCreateWithoutUserInput[] | ImChannelConnectionUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: ImChannelConnectionCreateOrConnectWithoutUserInput | ImChannelConnectionCreateOrConnectWithoutUserInput[]
+    upsert?: ImChannelConnectionUpsertWithWhereUniqueWithoutUserInput | ImChannelConnectionUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: ImChannelConnectionCreateManyUserInputEnvelope
+    set?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+    disconnect?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+    delete?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+    connect?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+    update?: ImChannelConnectionUpdateWithWhereUniqueWithoutUserInput | ImChannelConnectionUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: ImChannelConnectionUpdateManyWithWhereWithoutUserInput | ImChannelConnectionUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: ImChannelConnectionScalarWhereInput | ImChannelConnectionScalarWhereInput[]
+  }
+
   export type SkillAccessRequestUpdateManyWithoutRequesterNestedInput = {
     create?: XOR<SkillAccessRequestCreateWithoutRequesterInput, SkillAccessRequestUncheckedCreateWithoutRequesterInput> | SkillAccessRequestCreateWithoutRequesterInput[] | SkillAccessRequestUncheckedCreateWithoutRequesterInput[]
     connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutRequesterInput | SkillAccessRequestCreateOrConnectWithoutRequesterInput[]
@@ -93146,6 +94836,20 @@ export namespace Prisma {
     deleteMany?: ChatSessionScalarWhereInput | ChatSessionScalarWhereInput[]
   }
 
+  export type ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<ImChannelConnectionCreateWithoutUserInput, ImChannelConnectionUncheckedCreateWithoutUserInput> | ImChannelConnectionCreateWithoutUserInput[] | ImChannelConnectionUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: ImChannelConnectionCreateOrConnectWithoutUserInput | ImChannelConnectionCreateOrConnectWithoutUserInput[]
+    upsert?: ImChannelConnectionUpsertWithWhereUniqueWithoutUserInput | ImChannelConnectionUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: ImChannelConnectionCreateManyUserInputEnvelope
+    set?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+    disconnect?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+    delete?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+    connect?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+    update?: ImChannelConnectionUpdateWithWhereUniqueWithoutUserInput | ImChannelConnectionUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: ImChannelConnectionUpdateManyWithWhereWithoutUserInput | ImChannelConnectionUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: ImChannelConnectionScalarWhereInput | ImChannelConnectionScalarWhereInput[]
+  }
+
   export type SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput = {
     create?: XOR<SkillAccessRequestCreateWithoutRequesterInput, SkillAccessRequestUncheckedCreateWithoutRequesterInput> | SkillAccessRequestCreateWithoutRequesterInput[] | SkillAccessRequestUncheckedCreateWithoutRequesterInput[]
     connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutRequesterInput | SkillAccessRequestCreateOrConnectWithoutRequesterInput[]
@@ -93172,6 +94876,32 @@ export namespace Prisma {
     update?: SkillAccessRequestUpdateWithWhereUniqueWithoutProcessorInput | SkillAccessRequestUpdateWithWhereUniqueWithoutProcessorInput[]
     updateMany?: SkillAccessRequestUpdateManyWithWhereWithoutProcessorInput | SkillAccessRequestUpdateManyWithWhereWithoutProcessorInput[]
     deleteMany?: SkillAccessRequestScalarWhereInput | SkillAccessRequestScalarWhereInput[]
+  }
+
+  export type UserCreateNestedOneWithoutImChannelConnectionsInput = {
+    create?: XOR<UserCreateWithoutImChannelConnectionsInput, UserUncheckedCreateWithoutImChannelConnectionsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutImChannelConnectionsInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type EnumImChannelTypeFieldUpdateOperationsInput = {
+    set?: $Enums.ImChannelType
+  }
+
+  export type EnumImConnectionStatusFieldUpdateOperationsInput = {
+    set?: $Enums.ImConnectionStatus
+  }
+
+  export type EnumImInteractionModeFieldUpdateOperationsInput = {
+    set?: $Enums.ImInteractionMode
+  }
+
+  export type UserUpdateOneRequiredWithoutImChannelConnectionsNestedInput = {
+    create?: XOR<UserCreateWithoutImChannelConnectionsInput, UserUncheckedCreateWithoutImChannelConnectionsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutImChannelConnectionsInput
+    upsert?: UserUpsertWithoutImChannelConnectionsInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutImChannelConnectionsInput, UserUpdateWithoutImChannelConnectionsInput>, UserUncheckedUpdateWithoutImChannelConnectionsInput>
   }
 
   export type UserRoleCreateNestedManyWithoutRoleInput = {
@@ -95487,6 +97217,57 @@ export namespace Prisma {
     _min?: NestedDateTimeFilter<$PrismaModel>
     _max?: NestedDateTimeFilter<$PrismaModel>
   }
+
+  export type NestedEnumImChannelTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImChannelType | EnumImChannelTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.ImChannelType[] | ListEnumImChannelTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImChannelType[] | ListEnumImChannelTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumImChannelTypeFilter<$PrismaModel> | $Enums.ImChannelType
+  }
+
+  export type NestedEnumImConnectionStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImConnectionStatus | EnumImConnectionStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.ImConnectionStatus[] | ListEnumImConnectionStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImConnectionStatus[] | ListEnumImConnectionStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumImConnectionStatusFilter<$PrismaModel> | $Enums.ImConnectionStatus
+  }
+
+  export type NestedEnumImInteractionModeFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImInteractionMode | EnumImInteractionModeFieldRefInput<$PrismaModel>
+    in?: $Enums.ImInteractionMode[] | ListEnumImInteractionModeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImInteractionMode[] | ListEnumImInteractionModeFieldRefInput<$PrismaModel>
+    not?: NestedEnumImInteractionModeFilter<$PrismaModel> | $Enums.ImInteractionMode
+  }
+
+  export type NestedEnumImChannelTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImChannelType | EnumImChannelTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.ImChannelType[] | ListEnumImChannelTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImChannelType[] | ListEnumImChannelTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumImChannelTypeWithAggregatesFilter<$PrismaModel> | $Enums.ImChannelType
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumImChannelTypeFilter<$PrismaModel>
+    _max?: NestedEnumImChannelTypeFilter<$PrismaModel>
+  }
+
+  export type NestedEnumImConnectionStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImConnectionStatus | EnumImConnectionStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.ImConnectionStatus[] | ListEnumImConnectionStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImConnectionStatus[] | ListEnumImConnectionStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumImConnectionStatusWithAggregatesFilter<$PrismaModel> | $Enums.ImConnectionStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumImConnectionStatusFilter<$PrismaModel>
+    _max?: NestedEnumImConnectionStatusFilter<$PrismaModel>
+  }
+
+  export type NestedEnumImInteractionModeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImInteractionMode | EnumImInteractionModeFieldRefInput<$PrismaModel>
+    in?: $Enums.ImInteractionMode[] | ListEnumImInteractionModeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImInteractionMode[] | ListEnumImInteractionModeFieldRefInput<$PrismaModel>
+    not?: NestedEnumImInteractionModeWithAggregatesFilter<$PrismaModel> | $Enums.ImInteractionMode
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumImInteractionModeFilter<$PrismaModel>
+    _max?: NestedEnumImInteractionModeFilter<$PrismaModel>
+  }
   export type NestedJsonFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<NestedJsonFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonFilterBase<$PrismaModel>>, 'path'>>,
@@ -95884,6 +97665,52 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type ImChannelConnectionCreateWithoutUserInput = {
+    id?: string
+    channel?: $Enums.ImChannelType
+    enabled?: boolean
+    status?: $Enums.ImConnectionStatus
+    interactionMode?: $Enums.ImInteractionMode
+    providerAccountId?: string | null
+    providerOwnerUserId?: string | null
+    providerBaseUrl?: string | null
+    encryptedCredential?: string | null
+    updateCursor?: string | null
+    lastConnectedAt?: Date | string | null
+    lastMessageAt?: Date | string | null
+    lastError?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ImChannelConnectionUncheckedCreateWithoutUserInput = {
+    id?: string
+    channel?: $Enums.ImChannelType
+    enabled?: boolean
+    status?: $Enums.ImConnectionStatus
+    interactionMode?: $Enums.ImInteractionMode
+    providerAccountId?: string | null
+    providerOwnerUserId?: string | null
+    providerBaseUrl?: string | null
+    encryptedCredential?: string | null
+    updateCursor?: string | null
+    lastConnectedAt?: Date | string | null
+    lastMessageAt?: Date | string | null
+    lastError?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ImChannelConnectionCreateOrConnectWithoutUserInput = {
+    where: ImChannelConnectionWhereUniqueInput
+    create: XOR<ImChannelConnectionCreateWithoutUserInput, ImChannelConnectionUncheckedCreateWithoutUserInput>
+  }
+
+  export type ImChannelConnectionCreateManyUserInputEnvelope = {
+    data: ImChannelConnectionCreateManyUserInput | ImChannelConnectionCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
   export type SkillAccessRequestCreateWithoutRequesterInput = {
     id?: string
     status?: string
@@ -96127,6 +97954,44 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"ChatSession"> | Date | string
   }
 
+  export type ImChannelConnectionUpsertWithWhereUniqueWithoutUserInput = {
+    where: ImChannelConnectionWhereUniqueInput
+    update: XOR<ImChannelConnectionUpdateWithoutUserInput, ImChannelConnectionUncheckedUpdateWithoutUserInput>
+    create: XOR<ImChannelConnectionCreateWithoutUserInput, ImChannelConnectionUncheckedCreateWithoutUserInput>
+  }
+
+  export type ImChannelConnectionUpdateWithWhereUniqueWithoutUserInput = {
+    where: ImChannelConnectionWhereUniqueInput
+    data: XOR<ImChannelConnectionUpdateWithoutUserInput, ImChannelConnectionUncheckedUpdateWithoutUserInput>
+  }
+
+  export type ImChannelConnectionUpdateManyWithWhereWithoutUserInput = {
+    where: ImChannelConnectionScalarWhereInput
+    data: XOR<ImChannelConnectionUpdateManyMutationInput, ImChannelConnectionUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type ImChannelConnectionScalarWhereInput = {
+    AND?: ImChannelConnectionScalarWhereInput | ImChannelConnectionScalarWhereInput[]
+    OR?: ImChannelConnectionScalarWhereInput[]
+    NOT?: ImChannelConnectionScalarWhereInput | ImChannelConnectionScalarWhereInput[]
+    id?: UuidFilter<"ImChannelConnection"> | string
+    userId?: UuidFilter<"ImChannelConnection"> | string
+    channel?: EnumImChannelTypeFilter<"ImChannelConnection"> | $Enums.ImChannelType
+    enabled?: BoolFilter<"ImChannelConnection"> | boolean
+    status?: EnumImConnectionStatusFilter<"ImChannelConnection"> | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFilter<"ImChannelConnection"> | $Enums.ImInteractionMode
+    providerAccountId?: StringNullableFilter<"ImChannelConnection"> | string | null
+    providerOwnerUserId?: StringNullableFilter<"ImChannelConnection"> | string | null
+    providerBaseUrl?: StringNullableFilter<"ImChannelConnection"> | string | null
+    encryptedCredential?: StringNullableFilter<"ImChannelConnection"> | string | null
+    updateCursor?: StringNullableFilter<"ImChannelConnection"> | string | null
+    lastConnectedAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
+    lastMessageAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
+    lastError?: StringNullableFilter<"ImChannelConnection"> | string | null
+    createdAt?: DateTimeFilter<"ImChannelConnection"> | Date | string
+    updatedAt?: DateTimeFilter<"ImChannelConnection"> | Date | string
+  }
+
   export type SkillAccessRequestUpsertWithWhereUniqueWithoutRequesterInput = {
     where: SkillAccessRequestWhereUniqueInput
     update: XOR<SkillAccessRequestUpdateWithoutRequesterInput, SkillAccessRequestUncheckedUpdateWithoutRequesterInput>
@@ -96173,6 +98038,114 @@ export namespace Prisma {
   export type SkillAccessRequestUpdateManyWithWhereWithoutProcessorInput = {
     where: SkillAccessRequestScalarWhereInput
     data: XOR<SkillAccessRequestUpdateManyMutationInput, SkillAccessRequestUncheckedUpdateManyWithoutProcessorInput>
+  }
+
+  export type UserCreateWithoutImChannelConnectionsInput = {
+    id?: string
+    username: string
+    passwordHash: string
+    email?: string | null
+    role?: $Enums.UserRoleType
+    ldapDn?: string | null
+    adSid?: string | null
+    externalId?: string | null
+    isActive?: boolean
+    lastLoginAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    userRoles?: UserRoleCreateNestedManyWithoutUserInput
+    assignedRoles?: UserRoleCreateNestedManyWithoutAssignerInput
+    orgMemberships?: OrgMembershipCreateNestedManyWithoutUserInput
+    assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
+    activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
+    chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
+  }
+
+  export type UserUncheckedCreateWithoutImChannelConnectionsInput = {
+    id?: string
+    username: string
+    passwordHash: string
+    email?: string | null
+    role?: $Enums.UserRoleType
+    ldapDn?: string | null
+    adSid?: string | null
+    externalId?: string | null
+    activeOrgId?: string | null
+    isActive?: boolean
+    lastLoginAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    userRoles?: UserRoleUncheckedCreateNestedManyWithoutUserInput
+    assignedRoles?: UserRoleUncheckedCreateNestedManyWithoutAssignerInput
+    orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
+    assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
+    chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
+  }
+
+  export type UserCreateOrConnectWithoutImChannelConnectionsInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutImChannelConnectionsInput, UserUncheckedCreateWithoutImChannelConnectionsInput>
+  }
+
+  export type UserUpsertWithoutImChannelConnectionsInput = {
+    update: XOR<UserUpdateWithoutImChannelConnectionsInput, UserUncheckedUpdateWithoutImChannelConnectionsInput>
+    create: XOR<UserCreateWithoutImChannelConnectionsInput, UserUncheckedCreateWithoutImChannelConnectionsInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutImChannelConnectionsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutImChannelConnectionsInput, UserUncheckedUpdateWithoutImChannelConnectionsInput>
+  }
+
+  export type UserUpdateWithoutImChannelConnectionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    username?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: EnumUserRoleTypeFieldUpdateOperationsInput | $Enums.UserRoleType
+    ldapDn?: NullableStringFieldUpdateOperationsInput | string | null
+    adSid?: NullableStringFieldUpdateOperationsInput | string | null
+    externalId?: NullableStringFieldUpdateOperationsInput | string | null
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userRoles?: UserRoleUpdateManyWithoutUserNestedInput
+    assignedRoles?: UserRoleUpdateManyWithoutAssignerNestedInput
+    orgMemberships?: OrgMembershipUpdateManyWithoutUserNestedInput
+    assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
+    activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
+    chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutImChannelConnectionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    username?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: EnumUserRoleTypeFieldUpdateOperationsInput | $Enums.UserRoleType
+    ldapDn?: NullableStringFieldUpdateOperationsInput | string | null
+    adSid?: NullableStringFieldUpdateOperationsInput | string | null
+    externalId?: NullableStringFieldUpdateOperationsInput | string | null
+    activeOrgId?: NullableStringFieldUpdateOperationsInput | string | null
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userRoles?: UserRoleUncheckedUpdateManyWithoutUserNestedInput
+    assignedRoles?: UserRoleUncheckedUpdateManyWithoutAssignerNestedInput
+    orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
+    assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
+    chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
 
   export type UserRoleCreateWithoutRoleInput = {
@@ -96325,6 +98298,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
@@ -96347,6 +98321,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
@@ -96403,6 +98378,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
@@ -96425,6 +98401,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
@@ -96463,6 +98440,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
@@ -96485,6 +98463,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
@@ -96553,6 +98532,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
@@ -96575,6 +98555,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
@@ -96781,6 +98762,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
@@ -96803,6 +98785,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
@@ -97516,6 +99499,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
@@ -97538,6 +99522,7 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedCreateNestedManyWithoutAssignerInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
@@ -97702,6 +99687,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
@@ -97724,6 +99710,7 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedUpdateManyWithoutAssignerNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
@@ -98089,6 +100076,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipCreateNestedManyWithoutUserInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
@@ -98111,6 +100099,7 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedCreateNestedManyWithoutAssignerInput
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
@@ -98264,6 +100253,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUpdateManyWithoutUserNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
@@ -98286,6 +100276,7 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedUpdateManyWithoutAssignerNestedInput
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
@@ -98766,6 +100757,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
 
@@ -98788,6 +100780,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
 
@@ -98815,6 +100808,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
   }
 
@@ -98837,6 +100831,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
   }
 
@@ -98936,6 +100931,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
 
@@ -98958,6 +100954,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
 
@@ -98991,6 +100988,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
   }
 
@@ -99013,6 +101011,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
   }
 
@@ -99176,6 +101175,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
@@ -99198,6 +101198,7 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedCreateNestedManyWithoutAssignerInput
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
@@ -99264,6 +101265,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
@@ -99286,6 +101288,7 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedUpdateManyWithoutAssignerNestedInput
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
@@ -102522,6 +104525,24 @@ export namespace Prisma {
     updatedAt?: Date | string
   }
 
+  export type ImChannelConnectionCreateManyUserInput = {
+    id?: string
+    channel?: $Enums.ImChannelType
+    enabled?: boolean
+    status?: $Enums.ImConnectionStatus
+    interactionMode?: $Enums.ImInteractionMode
+    providerAccountId?: string | null
+    providerOwnerUserId?: string | null
+    providerBaseUrl?: string | null
+    encryptedCredential?: string | null
+    updateCursor?: string | null
+    lastConnectedAt?: Date | string | null
+    lastMessageAt?: Date | string | null
+    lastError?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
   export type SkillAccessRequestCreateManyRequesterInput = {
     id?: string
     skillId: string
@@ -102674,6 +104695,60 @@ export namespace Prisma {
     title?: NullableStringFieldUpdateOperationsInput | string | null
     modelId?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ImChannelConnectionUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    channel?: EnumImChannelTypeFieldUpdateOperationsInput | $Enums.ImChannelType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumImConnectionStatusFieldUpdateOperationsInput | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFieldUpdateOperationsInput | $Enums.ImInteractionMode
+    providerAccountId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
+    lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ImChannelConnectionUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    channel?: EnumImChannelTypeFieldUpdateOperationsInput | $Enums.ImChannelType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumImConnectionStatusFieldUpdateOperationsInput | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFieldUpdateOperationsInput | $Enums.ImInteractionMode
+    providerAccountId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
+    lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ImChannelConnectionUncheckedUpdateManyWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    channel?: EnumImChannelTypeFieldUpdateOperationsInput | $Enums.ImChannelType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumImConnectionStatusFieldUpdateOperationsInput | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFieldUpdateOperationsInput | $Enums.ImInteractionMode
+    providerAccountId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
+    lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastError?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -103127,6 +105202,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
@@ -103149,6 +105225,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
@@ -104513,6 +106590,10 @@ export namespace Prisma {
      * @deprecated Use UserDefaultArgs instead
      */
     export type UserArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = UserDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use ImChannelConnectionDefaultArgs instead
+     */
+    export type ImChannelConnectionArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ImChannelConnectionDefaultArgs<ExtArgs>
     /**
      * @deprecated Use RoleDefaultArgs instead
      */

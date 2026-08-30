@@ -39,6 +39,11 @@ export const LLM_OPERATION_TEMPLATES: { [K in LlmOperationIdV1]: LlmOperationTem
           description: '需要总结的列表、搜索结果或条目集合',
           'x-ops-input-role': 'content',
         },
+        instruction: {
+          type: 'string',
+          description: '用户提出的总结与排版要求，例如字数限制、重点方向或格式要求',
+          'x-ops-input-role': 'instruction',
+        },
       },
     },
     outputSchema: {
@@ -51,6 +56,15 @@ export const LLM_OPERATION_TEMPLATES: { [K in LlmOperationIdV1]: LlmOperationTem
     },
     buildPrompt: (input: Record<string, any>) => {
       const items = Array.isArray(input.items) ? input.items : [input.items || ''];
+      const instruction = String(input.instruction || '').trim();
+      const lengthMatch = instruction.match(
+        /([0-9一二两三四五六七八九十百千]+)\s*(?:字|词|chars?|words?)(?:以内|左右|以下|内)?/i
+      );
+      const limitNum = lengthMatch ? parseInt(lengthMatch[1], 10) || 500 : null;
+      const targetLen = limitNum ? Math.max(100, Math.floor(limitNum * 0.6)) : 300;
+      const lengthNotice = lengthMatch
+        ? `\n【硬性字数限制（最高优先级）】：用户明确要求【${lengthMatch[0]}】！全文总字数（含标题、标点和符号）必须严格少于 ${limitNum} 字！请将总结目标长度控制在 ${targetLen} 字以内，只保留 1 个简短总括和 3~4 条精炼要点，绝对不可展开长文！`
+        : '';
       const textBlock = items
         .slice(0, 10)
         .map((item: any, idx: number) => {
@@ -72,12 +86,15 @@ export const LLM_OPERATION_TEMPLATES: { [K in LlmOperationIdV1]: LlmOperationTem
 
       return {
         systemPrompt: `你是一个专业的总结分析助手。请对传入的列表条目进行客观、严谨、要点清晰的 Markdown 结构化总结。
-输出要求：
-1. 语言简炼、结构规范，使用 Markdown 标题、列表或表格。
+
+## 核心原则（最高优先级）
+${instruction ? `1. 【硬性用户要求】：${instruction}${lengthNotice}` : '1. 摘要正文控制在 800 个中文字符以内，合并重复信息。'}
 2. 保持客观事实，禁止无中生有。
-3. 摘要正文控制在 800 个中文字符以内，合并重复信息，禁止复述大段原文。
-4. 只输出 Markdown 总结正文，不要输出 JSON、字段名、代码围栏或任务过程；运行时会将正文封装到 markdown_content 协议字段。`,
-        userPrompt: `请对以下内容做结构化总结：\n\n${textBlock}`,
+3. 使用 Markdown 标题或列表清晰呈现。
+
+## 输出格式
+只输出 Markdown 总结正文，不要输出 JSON、字段名、代码围栏或任务过程；运行时会将正文封装到 markdown_content 协议字段。`,
+        userPrompt: `${instruction ? `【用户要求】：${instruction}\n\n` : ''}请对以下内容做结构化总结：\n\n${textBlock}`,
       };
     },
     parseAndValidateOutput: (rawText: string) => {
@@ -306,6 +323,11 @@ ${content}`,
           description: '需要总结的原始文本',
           'x-ops-input-role': 'content',
         },
+        instruction: {
+          type: 'string',
+          description: '用户提出的总结要求与约束（如字数限制、重点关注方向、排版格式要求等）',
+          'x-ops-input-role': 'instruction',
+        },
       },
     },
     outputSchema: {
@@ -318,29 +340,26 @@ ${content}`,
     },
     buildPrompt: (input: Record<string, any>) => {
       const text = String(input.text || '');
+      const instruction = String(input.instruction || '').trim();
+      const lengthMatch = instruction.match(
+        /([0-9一二两三四五六七八九十百千]+)\s*(?:字|词|chars?|words?)(?:以内|左右|以下|内)?/i
+      );
+      const limitNum = lengthMatch ? parseInt(lengthMatch[1], 10) || 500 : null;
+      const lengthNotice = lengthMatch
+        ? `\n【极其严格的字数硬约束（最高优先级）】：用户明确要求【${lengthMatch[0]}】！全文中文字符数（含标题和标点）必须严格少于 ${limitNum} 字！请直接采用「1 句总括 + 3~4 条精炼要点（- ）」的简短形式，禁止保留多层小标题或冗长步骤，确保总字数控制在 ${Math.min(limitNum - 100, 300)} 字左右，绝对不可超长！`
+        : '';
       return {
         systemPrompt: `你是一位专业的内容总结助手。请对输入的文本做高质量总结。
 
-## 内容要求
-1. 忠实原文：只使用原文中明确存在的信息，不猜测、不补造、不添加观点或评论。
-2. 覆盖核心：先梳理原文的主题结构，再逐主题提炼要点；核心主题不可遗漏，次要细节可省略。
-3. 事实保真：保留原文中的数值、单位、日期、人名、机构名、专有名词等关键事实，不得改写或近似。
-4. 核心观点与结论：原文中若有作者的核心观点、判断或结论性表述，必须提炼并忠实呈现，不得曲解立场；原文没有明确观点或结论时，不要强行添加。
-5. 简洁：去掉寒暄、重复、冗余和铺垫性表述，直接呈现结论与要点。
-6. 语言：使用简体中文；原文为其他语言时翻译为中文，关键专有名词可保留原文。
-
-## 格式要求
-1. 必须使用 Markdown 结构化呈现，禁止把多个要点用分号（；）串联成一大段连续文字。
-2. 单一主题：输出一段简洁总结。
-3. 多个要点：使用 Markdown 列表（- ），每个要点独占一行。
-4. 多个主题或章节：使用 ## 小标题分段，段内要点用列表呈现。
-5. 适合对比的数据：使用 Markdown 表格。
-6. 总结以一句总括开头（说明文档/文本的性质与主题），再展开要点。
-7. 提炼出的核心观点与结论，用「核心观点与结论」小节单独呈现，放于要点之后。
+## 核心原则（最高优先级）
+${instruction ? `1. 【硬性要求】：${instruction}${lengthNotice}` : '1. 简洁精炼：去掉寒暄与铺垫，直接呈现结论与要点。'}
+2. 忠实原文：只使用原文中明确存在的信息，不猜测、不补造事实。
+3. 事实保真：保留原文中的数值、单位、日期、人名、专有名词等关键事实。
+4. 语言规范：使用简体中文。
 
 ## 输出格式
-只输出 Markdown 总结正文，不要输出 JSON、summary 字段名、代码围栏或任务过程；运行时会将正文封装到 summary 协议字段。`,
-        userPrompt: `文本：\n\n${text}`,
+只输出 Markdown 总结正文，不要输出 JSON、summary 字段名、代码围栏或解释过程；运行时会将正文封装到 summary 协议字段。`,
+        userPrompt: `${instruction ? `【用户要求与字数限制】：${instruction}（请严格控制在 ${limitNum || 500} 字以内，采用极简要点输出）\n\n` : ''}待总结文本：\n\n${text}`,
       };
     },
     parseAndValidateOutput: (rawText: string) => {

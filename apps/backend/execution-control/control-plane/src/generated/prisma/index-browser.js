@@ -138,6 +138,25 @@ exports.Prisma.UserScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.ImChannelConnectionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  channel: 'channel',
+  enabled: 'enabled',
+  status: 'status',
+  interactionMode: 'interactionMode',
+  providerAccountId: 'providerAccountId',
+  providerOwnerUserId: 'providerOwnerUserId',
+  providerBaseUrl: 'providerBaseUrl',
+  encryptedCredential: 'encryptedCredential',
+  updateCursor: 'updateCursor',
+  lastConnectedAt: 'lastConnectedAt',
+  lastMessageAt: 'lastMessageAt',
+  lastError: 'lastError',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.RoleScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -1153,6 +1172,26 @@ exports.UserRoleType = exports.$Enums.UserRoleType = {
   agent: 'agent'
 };
 
+exports.ImChannelType = exports.$Enums.ImChannelType = {
+  wechat: 'wechat'
+};
+
+exports.ImConnectionStatus = exports.$Enums.ImConnectionStatus = {
+  unconfigured: 'unconfigured',
+  provisioning: 'provisioning',
+  disabled: 'disabled',
+  connecting: 'connecting',
+  online: 'online',
+  reauth_required: 'reauth_required',
+  error: 'error'
+};
+
+exports.ImInteractionMode = exports.$Enums.ImInteractionMode = {
+  auto: 'auto',
+  chat: 'chat',
+  task: 'task'
+};
+
 exports.OrganizationType = exports.$Enums.OrganizationType = {
   enterprise: 'enterprise',
   subsidiary: 'subsidiary',
@@ -1174,6 +1213,7 @@ exports.IdentityProviderType = exports.$Enums.IdentityProviderType = {
 
 exports.Prisma.ModelName = {
   User: 'User',
+  ImChannelConnection: 'ImChannelConnection',
   Role: 'Role',
   UserRole: 'UserRole',
   Organization: 'Organization',
