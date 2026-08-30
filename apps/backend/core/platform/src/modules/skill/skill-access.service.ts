@@ -96,6 +96,10 @@ export class SkillAccessService {
   }
 
   async listSkillsForUser(userId: string): Promise<SkillConfigDto[]> {
+    if (userId === 'system') {
+      return (await this.listAllActiveSkills()).filter((skill) => skill.isPublished);
+    }
+
     if (!isValidUUID(userId)) {
       return [];
     }

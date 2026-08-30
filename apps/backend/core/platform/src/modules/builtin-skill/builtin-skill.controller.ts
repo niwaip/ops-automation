@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Req, HttpCode, HttpStatus } from '@nestjs/common';
 import { Request } from 'express';
 import { IsString, IsOptional, IsArray, IsIn } from 'class-validator';
+import { Public } from '@ops/identity-access';
 import { BuiltinSkillCatalogProjectionService } from './catalog-projection/builtin-skill-catalog-projection.service';
 import { BuiltinSkillRegistryService } from './registry/builtin-skill-registry.service';
 
@@ -30,6 +31,7 @@ export class ResolveRequestDto {
   action?: 'discover' | 'execute' | 'manage';
 }
 
+@Public()
 @Controller('internal/builtin-skills')
 export class BuiltinSkillController {
   constructor(
