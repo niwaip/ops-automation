@@ -197,7 +197,10 @@ export class SessionService {
         const firstHistoryMessage = cleanedData.history[0];
         cleanedData.session = {
           ...cleanedData.session!,
-          createdAt: cleanedData.session?.createdAt || firstHistoryMessage?.timestamp || new Date().toISOString(),
+          createdAt:
+            cleanedData.session?.createdAt ||
+            firstHistoryMessage?.timestamp ||
+            new Date().toISOString(),
           updatedAt:
             cleanedData.history[cleanedData.history.length - 1]?.timestamp ||
             cleanedData.session!.updatedAt,
@@ -215,7 +218,11 @@ export class SessionService {
     messages: ChatSessionData['history'],
     sessionPatch?: Partial<NonNullable<ChatSessionData['session']>>
   ): Promise<ChatSessionData> {
-    const existing = await this.getChatSession(sessionId);
+    const loaded = await this.getChatSession(sessionId);
+    const existing =
+      sessionPatch?.ownerUserId && loaded?.session?.ownerUserId !== sessionPatch.ownerUserId
+        ? null
+        : loaded;
     const normalizedMessages = messages.map((message, index) => ({
       ...message,
       id:
@@ -229,7 +236,8 @@ export class SessionService {
       session: {
         ...baseSession,
         ...sessionPatch,
-        createdAt: existing?.session?.createdAt || cleanedHistory[0]?.timestamp || baseSession.createdAt,
+        createdAt:
+          existing?.session?.createdAt || cleanedHistory[0]?.timestamp || baseSession.createdAt,
         updatedAt:
           cleanedHistory[cleanedHistory.length - 1]?.timestamp ||
           sessionPatch?.updatedAt ||
@@ -245,7 +253,9 @@ export class SessionService {
     return next;
   }
 
-  async listChatSessions(): Promise<Array<NonNullable<ChatSessionData['session']>>> {
+  async listChatSessions(
+    ownerUserId?: string
+  ): Promise<Array<NonNullable<ChatSessionData['session']>>> {
     try {
       const keys = await this.redisService.keys(this.getChatSessionKey('*'));
       const sessions = await Promise.all(
@@ -257,9 +267,9 @@ export class SessionService {
       );
       return sessions
         .filter((item): item is NonNullable<ChatSessionData['session']> => Boolean(item))
+        .filter((item) => !ownerUserId || item.ownerUserId === ownerUserId)
         .sort(
-          (left, right) =>
-            new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
+          (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
         );
     } catch (error) {
       this.logger.error('Failed to list chat sessions:', error);

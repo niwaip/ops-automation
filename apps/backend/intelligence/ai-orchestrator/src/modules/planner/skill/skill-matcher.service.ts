@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 import { matchDeterministicRoutingCapability } from '@ops/backend-runtime-capability-contract';
 import { getAuthServiceUrl } from '../../../config/service-endpoints';
 import { TRACE_ID_HEADER } from '../../../common/trace.util';
@@ -295,8 +295,8 @@ export class SkillMatcherService {
   private resolveUnavailableCode(
     error: unknown
   ): 'SKILL_MATCH_MODEL_UNAVAILABLE' | 'SKILL_MATCH_SERVICE_UNAVAILABLE' {
-    if (!axios.isAxiosError(error)) return 'SKILL_MATCH_SERVICE_UNAVAILABLE';
-    const data = error.response?.data;
+    if (!isAxiosError(error)) return 'SKILL_MATCH_SERVICE_UNAVAILABLE';
+    const data = error.response?.data as { code?: string } | undefined;
     return data &&
       typeof data === 'object' &&
       'code' in data &&

@@ -25,6 +25,7 @@
     "dashboard": "Dashboard",
     "chat": "AI Chat",
     "executions": "Executions",
-    "published_skills": "Published Skills"
+    "published_skills": "Published Skills",
+    "im_channels": "IM Channels"
   }
 }

@@ -19,6 +19,39 @@ export const chatApi = createChatApi(apiClient, runtimeConfig);
 export const executionApi = createExecutionApi(apiClient, runtimeConfig);
 export const notificationApi = createNotificationApi(apiClient);
 export const reportApi = createReportApi(apiClient);
+
+export interface WechatChannelStatus {
+  channel: 'wechat';
+  configured: boolean;
+  enabled: boolean;
+  interactionMode: 'auto' | 'chat' | 'task';
+  status:
+    | 'unconfigured'
+    | 'provisioning'
+    | 'disabled'
+    | 'connecting'
+    | 'online'
+    | 'reauth_required'
+    | 'error';
+  providerAccountId?: string;
+  lastConnectedAt?: string;
+  lastMessageAt?: string;
+  lastError?: string;
+  provisioning?: { qrcodeUrl: string; expiresAt: string };
+}
+
+export const imChannelApi = {
+  getWechat: (): Promise<WechatChannelStatus> => apiClient.get('/im-channels/wechat'),
+  beginWechatProvisioning: (): Promise<WechatChannelStatus> =>
+    apiClient.post('/im-channels/wechat/provisioning'),
+  setWechatEnabled: (enabled: boolean): Promise<WechatChannelStatus> =>
+    apiClient.put('/im-channels/wechat/enabled', { enabled }),
+  setWechatInteractionMode: (
+    interactionMode: 'auto' | 'chat' | 'task'
+  ): Promise<WechatChannelStatus> =>
+    apiClient.put('/im-channels/wechat/interaction-mode', { interactionMode }),
+  removeWechat: (): Promise<{ success: boolean }> => apiClient.delete('/im-channels/wechat'),
+};
 const baseSkillApi = createSkillApi(apiClient);
 export const skillApi = {
   ...baseSkillApi,
@@ -27,7 +60,8 @@ export const skillApi = {
   requestAccess: async (
     id: string,
     data?: { reason?: string }
-  ): Promise<{ request: SkillAccessRequest }> => apiClient.post(`/skills/${id}/access-requests`, data),
+  ): Promise<{ request: SkillAccessRequest }> =>
+    apiClient.post(`/skills/${id}/access-requests`, data),
 };
 
 export interface CreateScheduleRequest {
@@ -67,7 +101,8 @@ export interface ScheduleDto {
 }
 
 export const scheduleApi = {
-  create: async (data: CreateScheduleRequest): Promise<ScheduleDto> => apiClient.post('/schedules', data),
+  create: async (data: CreateScheduleRequest): Promise<ScheduleDto> =>
+    apiClient.post('/schedules', data),
   list: async (): Promise<ScheduleDto[]> => {
     const response = await apiClient.get<ScheduleDto[] | { data?: ScheduleDto[] }>('/schedules');
     if (Array.isArray(response)) {
@@ -82,7 +117,8 @@ export const scheduleApi = {
   update: async (id: string, data: UpdateScheduleRequest): Promise<ScheduleDto> =>
     apiClient.put(`/schedules/${id}`, data),
   delete: async (id: string): Promise<{ success: boolean }> => apiClient.delete(`/schedules/${id}`),
-  trigger: async (id: string): Promise<{ success: boolean }> => apiClient.post(`/schedules/${id}/trigger`),
+  trigger: async (id: string): Promise<{ success: boolean }> =>
+    apiClient.post(`/schedules/${id}/trigger`),
 };
 
 export const resolveApiUrl = (path: string): string => {

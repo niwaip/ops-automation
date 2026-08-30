@@ -58,9 +58,10 @@ export class ChatOrchestratorService {
     body: ChatRequestDTO,
     authorization: string | undefined,
     traceId: string,
-    history: ExecutionContext['history']
+    history: ExecutionContext['history'],
+    trustedIdentity?: { userId: string; userRoles?: string[]; organizationId?: string }
   ): Promise<{ context?: ExecutionContext; authError?: StreamEvent }> {
-    const resolvedUser = await this.resolveAuthenticatedUser(authorization);
+    const resolvedUser = trustedIdentity || (await this.resolveAuthenticatedUser(authorization));
 
     if (!resolvedUser.userId) {
       this.logger.warn(
@@ -379,12 +380,9 @@ export class ChatOrchestratorService {
           },
         };
 
-        yield* this.executionStreamService.observeExecution(
-          result.executionId,
-          authToken,
-          user,
-          { modelId: resolvedModelId }
-        );
+        yield* this.executionStreamService.observeExecution(result.executionId, authToken, user, {
+          modelId: resolvedModelId,
+        });
         return;
       } else {
         if (result.errorCode === 'CAPABILITY_NOT_FOUND') {

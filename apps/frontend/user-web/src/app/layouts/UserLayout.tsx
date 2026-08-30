@@ -34,13 +34,15 @@ export function UserLayout() {
     ? '/executions'
     : location.pathname.startsWith('/published-skills')
       ? '/published-skills'
-      : location.pathname.startsWith('/notifications')
-        ? '/notifications'
-        : location.pathname.startsWith('/chat')
-          ? '/chat'
-          : location.pathname.startsWith('/reports')
-            ? '/reports'
-            : location.pathname;
+      : location.pathname.startsWith('/im-channels')
+        ? '/im-channels'
+        : location.pathname.startsWith('/notifications')
+          ? '/notifications'
+          : location.pathname.startsWith('/chat')
+            ? '/chat'
+            : location.pathname.startsWith('/reports')
+              ? '/reports'
+              : location.pathname;
 
   return (
     <Layout className={styles['user-shell']}>
@@ -53,7 +55,9 @@ export function UserLayout() {
         }}
       >
         <UserHeader language={language} selectedMenuKey={selectedMenuKey} />
-        <Content className={`${styles['user-shell-content']}${isChatRoute ? ` ${styles['user-shell-content-chat']}` : ''}`}>
+        <Content
+          className={`${styles['user-shell-content']}${isChatRoute ? ` ${styles['user-shell-content-chat']}` : ''}`}
+        >
           <Outlet />
         </Content>
         {isChatRoute ? null : <UserChatWidget />}

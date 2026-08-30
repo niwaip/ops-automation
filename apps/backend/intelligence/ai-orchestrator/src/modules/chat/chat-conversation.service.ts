@@ -80,7 +80,12 @@ export class ChatConversationService {
       thinkingEnabled,
       Boolean(body.files && body.files.length > 0)
     );
-    const messages = await this.buildConversationMessages(sessionId, systemMessage, messageContent);
+    const messages = await this.buildConversationMessages(
+      sessionId,
+      systemMessage,
+      messageContent,
+      ownerUserId
+    );
 
     const userMessageForHistory = this.normalizeContentToText(messageContent);
     let fullContent = '';
@@ -156,7 +161,8 @@ export class ChatConversationService {
     const messages = await this.buildConversationMessages(
       sessionId,
       this.buildChatSystemMessage(thinkingEnabled, Boolean(body.files?.length)),
-      userContent
+      userContent,
+      ownerUserId
     );
     const response = await client.chatCompletion({
       messages,
@@ -253,12 +259,13 @@ export class ChatConversationService {
     return null;
   }
 
-  async listSessions(): Promise<ChatSessionListItem[]> {
-    return this.sessionService.listChatSessions();
+  async listSessions(ownerUserId?: string): Promise<ChatSessionListItem[]> {
+    return this.sessionService.listChatSessions(ownerUserId);
   }
 
-  async getChatHistory(sessionId: string): Promise<ChatHistoryItem[]> {
+  async getChatHistory(sessionId: string, ownerUserId?: string): Promise<ChatHistoryItem[]> {
     const chatSession = await this.sessionService.getChatSession(sessionId);
+    if (ownerUserId && chatSession?.session?.ownerUserId !== ownerUserId) return [];
     return (chatSession?.history || []).map((message, index) => ({
       id: message.id || `${sessionId}-${index}`,
       sessionId,
@@ -311,10 +318,15 @@ export class ChatConversationService {
   private async buildConversationMessages(
     sessionId: string,
     systemMessage: string,
-    userContent: string | ContentBlock[]
+    userContent: string | ContentBlock[],
+    ownerUserId?: string
   ): Promise<MultimodalChatMessage[]> {
     const chatSession = await this.sessionService.getChatSession(sessionId);
-    const historyMessages: MultimodalChatMessage[] = (chatSession?.history || []).map((msg) => ({
+    const ownedHistory =
+      ownerUserId && chatSession?.session?.ownerUserId !== ownerUserId
+        ? []
+        : chatSession?.history || [];
+    const historyMessages: MultimodalChatMessage[] = ownedHistory.map((msg) => ({
       role: msg.role,
       content: msg.content,
     }));
@@ -344,28 +356,32 @@ export class ChatConversationService {
       usage: params.usage,
       rateLimit: params.rateLimit,
     });
-    const nextSession = await this.sessionService.appendChatMessages(params.sessionId, [
-      {
-        ...(params.clientMessageId ? { id: params.clientMessageId } : {}),
-        role: 'user',
-        content: params.userContent,
-        timestamp: new Date().toISOString(),
-        metadata: {
-          mode: 'chat',
-          ...(params.clientMessageId ? { clientMessageId: params.clientMessageId } : {}),
+    const nextSession = await this.sessionService.appendChatMessages(
+      params.sessionId,
+      [
+        {
+          ...(params.clientMessageId ? { id: params.clientMessageId } : {}),
+          role: 'user',
+          content: params.userContent,
+          timestamp: new Date().toISOString(),
+          metadata: {
+            mode: 'chat',
+            ...(params.clientMessageId ? { clientMessageId: params.clientMessageId } : {}),
+          },
         },
-      },
+        {
+          role: 'assistant',
+          content: params.assistantContent,
+          timestamp: new Date().toISOString(),
+          metadata: assistantMetadata,
+        },
+      ],
       {
-        role: 'assistant',
-        content: params.assistantContent,
-        timestamp: new Date().toISOString(),
-        metadata: assistantMetadata,
-      },
-    ], {
-      modelId: params.modelId && params.modelId !== 'default' ? params.modelId : undefined,
-      title: this.buildSessionTitle(params.userContent),
-      ...(params.ownerUserId ? { ownerUserId: params.ownerUserId } : {}),
-    });
+        modelId: params.modelId && params.modelId !== 'default' ? params.modelId : undefined,
+        title: this.buildSessionTitle(params.userContent),
+        ...(params.ownerUserId ? { ownerUserId: params.ownerUserId } : {}),
+      }
+    );
     return nextSession.session;
   }
 
@@ -465,7 +481,9 @@ export class ChatConversationService {
     const executionId = this.asString(data?.executionId);
     const executionStatus = this.asString(data?.status) || taskStatus;
     const hasBusinessResult =
-      typeof data?.hasBusinessResult === 'boolean' ? data.hasBusinessResult : taskStatus === 'completed';
+      typeof data?.hasBusinessResult === 'boolean'
+        ? data.hasBusinessResult
+        : taskStatus === 'completed';
     const metadata: Record<string, unknown> = {
       mode: 'task',
       showThinking: false,
@@ -616,8 +634,7 @@ export class ChatConversationService {
       typeof config.reasoning === 'object' && config.reasoning ? config.reasoning : null;
     const explicitSupport =
       config.supports_reasoning === true ||
-      (reasoningConfig &&
-        (reasoningConfig as Record<string, unknown>).supported === true);
+      (reasoningConfig && (reasoningConfig as Record<string, unknown>).supported === true);
     const inferredSupport =
       /^(o1|o3|o4|qwq)/i.test(model.name) ||
       /(reasoner|reasoning|deepseek-r1)/i.test(model.name) ||
@@ -625,8 +642,7 @@ export class ChatConversationService {
     const enabled = explicitSupport || inferredSupport;
     const effortValue =
       (typeof config.reasoning_effort === 'string' ? config.reasoning_effort : undefined) ||
-      (reasoningConfig &&
-      typeof (reasoningConfig as Record<string, unknown>).effort === 'string'
+      (reasoningConfig && typeof (reasoningConfig as Record<string, unknown>).effort === 'string'
         ? (reasoningConfig as Record<string, unknown>).effort
         : undefined);
 

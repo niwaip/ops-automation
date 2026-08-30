@@ -70,6 +70,7 @@
       "temporal_workflows"
     ],
     "session-broker": ["runtime_sessions"],
+    "im-gateway": ["im_channel_connections"],
     "ai-orchestrator": [
       "chat_messages",
       "chat_sessions",

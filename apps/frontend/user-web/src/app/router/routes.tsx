@@ -17,8 +17,12 @@ const ChatPage = lazy(() =>
   import('../../features/chat/pages/ChatPage').then((module) => ({ default: module.ChatPage }))
 );
 const ExecutionListPage = lazy(() => import('../../features/executions/pages/ExecutionListPage'));
-const ExecutionCreatePage = lazy(() => import('../../features/executions/pages/ExecutionCreatePage'));
-const ExecutionDetailPage = lazy(() => import('../../features/executions/pages/ExecutionDetailPage'));
+const ExecutionCreatePage = lazy(
+  () => import('../../features/executions/pages/ExecutionCreatePage')
+);
+const ExecutionDetailPage = lazy(
+  () => import('../../features/executions/pages/ExecutionDetailPage')
+);
 const NotificationsPage = lazy(() =>
   import('../../features/notifications/pages/NotificationsPage').then((module) => ({
     default: module.NotificationsPage,
@@ -39,6 +43,7 @@ const PublishedSkillListPage = lazy(() =>
     default: module.PublishedSkillListPage,
   }))
 );
+const ImChannelsPage = lazy(() => import('../../features/im-channels/pages/ImChannelsPage'));
 
 interface PrivateRouteProps {
   children: ReactNode;
@@ -87,6 +92,7 @@ export function AppRoutes() {
               <Route path="/executions/new" element={<ExecutionCreatePage />} />
               <Route path="/executions/:id" element={<ExecutionDetailPage />} />
               <Route path="/published-skills" element={<PublishedSkillListPage />} />
+              <Route path="/im-channels" element={<ImChannelsPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/reports" element={<ReportListPage />} />
               <Route path="/reports/:id" element={<ReportDetailPage />} />

@@ -66,6 +66,7 @@ model User {
   assignedOrgRoles             OrgRoleBinding[]     @relation("OrgRoleAssignedBy")
   activeOrg                    Organization?        @relation("ActiveOrganization", fields: [activeOrgId], references: [id], onDelete: SetNull)
   chatSessions                 ChatSession[]
+  imChannelConnections         ImChannelConnection[]
   skillAccessRequests          SkillAccessRequest[] @relation("SkillAccessRequester")
   processedSkillAccessRequests SkillAccessRequest[] @relation("SkillAccessProcessor")
 
@@ -75,6 +76,50 @@ model User {
   @@index([isActive])
   @@index([activeOrgId])
   @@map("users")
+}
+
+enum ImChannelType {
+  wechat
+}
+
+enum ImConnectionStatus {
+  unconfigured
+  provisioning
+  disabled
+  connecting
+  online
+  reauth_required
+  error
+}
+
+enum ImInteractionMode {
+  auto
+  chat
+  task
+}
+
+model ImChannelConnection {
+  id                  String             @id @default(uuid()) @db.Uuid
+  userId              String             @map("user_id") @db.Uuid
+  channel             ImChannelType      @default(wechat)
+  enabled             Boolean            @default(false)
+  status              ImConnectionStatus @default(unconfigured)
+  interactionMode     ImInteractionMode   @default(auto) @map("interaction_mode")
+  providerAccountId   String?            @map("provider_account_id") @db.VarChar(255)
+  providerOwnerUserId String?            @map("provider_owner_user_id") @db.VarChar(255)
+  providerBaseUrl     String?            @map("provider_base_url") @db.VarChar(500)
+  encryptedCredential String?            @map("encrypted_credential") @db.Text
+  updateCursor        String?            @map("update_cursor") @db.Text
+  lastConnectedAt     DateTime?           @map("last_connected_at") @db.Timestamptz
+  lastMessageAt       DateTime?           @map("last_message_at") @db.Timestamptz
+  lastError           String?            @map("last_error") @db.VarChar(1000)
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channel])
+  @@index([enabled, status])
+  @@map("im_channel_connections")
 }
 
 // Roles Table

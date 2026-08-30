@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 import { SkillMatcherService } from './skill-matcher.service';
 
 jest.mock('axios');
@@ -73,7 +73,7 @@ describe('SkillMatcherService deterministic explicit routing', () => {
 
   it('preserves provider unavailability as a retryable match outcome', async () => {
     const service = new SkillMatcherService({} as any);
-    (axios.isAxiosError as unknown as jest.Mock).mockReturnValueOnce(true);
+    (isAxiosError as unknown as jest.Mock).mockReturnValueOnce(true);
     (axios.post as jest.Mock).mockRejectedValueOnce({
       isAxiosError: true,
       response: {

@@ -4,6 +4,7 @@
     "registry-release": "ops_registry_writer",
     "control-plane": "ops_execution_writer",
     "session-broker": "ops_runtime_writer",
+    "im-gateway": "ops_governance_writer",
     "ai-orchestrator": "ops_intelligence_writer",
     "experience-learning": "ops_experience_writer",
     "browser-semantics": "ops_browser_semantics_writer"

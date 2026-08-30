@@ -25,6 +25,7 @@
     "dashboard": "工作台",
     "chat": "AI 对话",
     "executions": "执行列表",
-    "published_skills": "已发布技能"
+    "published_skills": "已发布技能",
+    "im_channels": "IM 渠道"
   }
 }
