@@ -37,6 +37,7 @@ import { TemporalWorkflowValidationContractService } from '../src/workflow-regis
 import { TemporalWorkflowDslValidationService } from '../src/workflow-registry/validation/temporal-workflow-dsl-validation.service';
 import { TemporalWorkflowCodegenOrchestrationService } from '../src/workflow-registry/codegen/temporal-workflow-codegen-orchestration.service';
 import { BuiltinActivityRegistry } from '../src/modules/temporal-workflow/builtin-activity.registry';
+import { extractSourceContext } from '../src/modules/temporal-workflow/temporal-workflow-dto.helpers';
 
 jest.mock('axios');
 
@@ -165,6 +166,57 @@ describe('TemporalWorkflowBrowserDraftService', () => {
       workflowSupportService,
     };
   };
+
+  it('keeps workflow and activity identities stable when regenerating the same template', async () => {
+    const { service } = createService();
+    const input = {
+      templateId: 'template-stable-identity',
+      name: '打开网页',
+      templateSteps: [
+        {
+          step_id: 'step_1',
+          action: 'navigate',
+          params: { url: 'https://example.dev/article' },
+        },
+      ],
+    };
+
+    const first = await service.generateBrowserWorkflowDraft(input);
+    const second = await service.generateBrowserWorkflowDraft(input);
+
+    expect(first.workflowDsl.workflowClassName).toBe(second.workflowDsl.workflowClassName);
+    expect(first.workflowDsl.steps.map((step) => step.activityRef)).toEqual(
+      second.workflowDsl.steps.map((step) => step.activityRef)
+    );
+    expect(first.activityDsl.activities.map((activity) => activity.activityRef)).toEqual(
+      second.activityDsl.activities.map((activity) => activity.activityRef)
+    );
+  });
+
+  it('uses different workflow identities for different browser templates', async () => {
+    const { service } = createService();
+    const source = {
+      name: '打开网页',
+      templateSteps: [
+        {
+          step_id: 'step_1',
+          action: 'navigate',
+          params: { url: 'https://example.dev/article' },
+        },
+      ],
+    };
+
+    const first = await service.generateBrowserWorkflowDraft({
+      ...source,
+      templateId: 'template-a',
+    });
+    const second = await service.generateBrowserWorkflowDraft({
+      ...source,
+      templateId: 'template-b',
+    });
+
+    expect(first.workflowDsl.workflowClassName).not.toBe(second.workflowDsl.workflowClassName);
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -396,6 +448,86 @@ describe('TemporalWorkflowBrowserDraftService', () => {
     ]);
   });
 
+  it('preserves template post-processing as control-plane logical steps', async () => {
+    const { service } = createService();
+
+    const draft = await service.generateBrowserWorkflowDraft({
+      templateId: 'tpl-browser-composite-001',
+      name: '浏览器加总结工作流',
+      templateSteps: [
+        {
+          step_id: 'step_1',
+          action: 'goto',
+          params: { url: 'https://example.com/article' },
+        },
+      ],
+      workflowComposition: {
+        schemaVersion: 'browser-template-workflow-composition/v1',
+        outputDeclarations: [
+          {
+            name: 'step_1_clean_content',
+            sourceStepId: 'step_1',
+            kind: 'content',
+          },
+        ],
+        postProcessingSteps: [
+          {
+            id: 'post_process_1',
+            type: 'llm_operation',
+            sourceStepId: 'step_1',
+            operationId: 'summarize_text',
+            operationVersion: '1',
+            processingMode: 'summary',
+            runWhen: 'browser_succeeded',
+            inputBindings: {
+              text: {
+                source: 'node_output',
+                path: 'step_1_clean_content',
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    // The LLM node is intentionally not emitted as an invalid Temporal Activity.
+    expect(draft.workflowDsl.steps).toHaveLength(1);
+    expect(draft.activityDsl.activities).toHaveLength(1);
+    expect(draft.browserTemplate).toEqual(
+      expect.objectContaining({
+        browserStepCount: 1,
+        postProcessingStepCount: 1,
+        totalStepCount: 2,
+      })
+    );
+    expect(draft.workflowDsl.sourceContext).toEqual(
+      expect.objectContaining({
+        browserWorkflowComposition: expect.objectContaining({
+          postProcessingSteps: [expect.objectContaining({ id: 'post_process_1' })],
+        }),
+        browserLogicalPlan: expect.objectContaining({
+          totalStepCount: 2,
+          steps: [
+            expect.objectContaining({ id: 'step_1', type: 'browser_activity' }),
+            expect.objectContaining({
+              id: 'post_process_1',
+              type: 'llm_operation',
+              dependsOn: ['step_1'],
+            }),
+          ],
+        }),
+      })
+    );
+    expect(extractSourceContext(draft.workflowDsl, draft.activityDsl)).toEqual(
+      expect.objectContaining({
+        browserLogicalPlan: expect.objectContaining({ totalStepCount: 2 }),
+        browserWorkflowComposition: expect.objectContaining({
+          postProcessingSteps: [expect.objectContaining({ id: 'post_process_1' })],
+        }),
+      })
+    );
+  });
+
   it('preserves loop draft metadata and marks browser phases with loop segments', async () => {
     const { service } = createService();
 
@@ -464,9 +596,9 @@ describe('TemporalWorkflowBrowserDraftService', () => {
         }),
       })
     );
-    expect(draft.activityDsl.activities.map((activity) => (activity.config as any).loopSegment)).toEqual(
-      expect.arrayContaining(['pre_loop', 'iteration'])
-    );
+    expect(
+      draft.activityDsl.activities.map((activity) => (activity.config as any).loopSegment)
+    ).toEqual(expect.arrayContaining(['pre_loop', 'iteration']));
     const activitySteps = draft.activityDsl.activities.flatMap(
       (activity) => ((activity.config as any).steps || []) as Array<Record<string, any>>
     );

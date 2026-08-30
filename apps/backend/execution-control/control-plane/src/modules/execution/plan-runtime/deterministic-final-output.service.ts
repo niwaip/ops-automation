@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DeterministicPlanDraftV1 } from '@ops/backend-deterministic-plan';
+import { unwrapStoredStepOutput } from './stored-step-output';
 
 export interface FinalOutputCheckResult {
   satisfied: boolean;
@@ -51,7 +52,7 @@ export class DeterministicFinalOutputService {
         };
       }
 
-      const outputData = step.outputJson as Record<string, any>;
+      const outputData = unwrapStoredStepOutput(step.outputJson);
       if (!outputData || outputData[req.fromNodeOutput] === undefined) {
         return {
           satisfied: false,

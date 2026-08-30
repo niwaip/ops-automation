@@ -100,6 +100,14 @@ export class ChatResultNormalizerService {
       envelope.result?.title,
       this.readStringField(rawResult, ['title', 'name'])
     );
+    const rawRecord = this.asRecord(rawResult);
+    const textCandidate = this.firstNonEmptyString(
+      this.readStringField(rawResult, ['text', 'content', 'mainContent', 'extractedText']),
+      this.readStringField(rawRecord?.output, ['text', 'mainContent', 'content', 'summary', 'extractedText']),
+      this.readStringField(rawRecord?.data, ['text', 'mainContent', 'content', 'summary']),
+      this.readStringField(rawRecord?.postProcessing, ['summary', 'text', 'result']),
+      this.readStringField(rawRecord?.result, ['text', 'summary', 'content'])
+    );
     const summary = this.firstNonEmptyString(
       envelope.presentation?.chatSummary,
       envelope.result?.summary,
@@ -109,12 +117,15 @@ export class ChatResultNormalizerService {
         'formatted_output',
         'summary',
         'message',
-        'result',
-      ])
+      ]),
+      textCandidate,
+      this.readStringField(rawResult, ['result'])
     );
     const body = this.firstNonEmptyString(
+      envelope.presentation?.detailText,
       envelope.presentation?.chatSummary,
       envelope.result?.summary,
+      textCandidate,
       this.readStringField(rawResult, ['result', 'text', 'content']),
       typeof rawResult === 'string' ? rawResult : undefined
     );
@@ -170,6 +181,11 @@ export class ChatResultNormalizerService {
       return documentSummary;
     }
 
+    const browserSummary = this.summarizeBrowserResult(result, executionId);
+    if (browserSummary) {
+      return browserSummary;
+    }
+
     // If structuredData is purely an internal artifact/finalOutputs payload, don't dump its JSON.
     // Artifacts are already surfaced via download buttons; show a clean completion message instead.
     const isFinalOutputsPayload =
@@ -212,6 +228,61 @@ export class ChatResultNormalizerService {
     }
 
     return `任务已完成。${executionId ? `\n\n执行单 ID: ${executionId}` : ''}`;
+  }
+
+  private summarizeBrowserResult(
+    result: NormalizedChatExecutionResult,
+    executionId?: string
+  ): string | undefined {
+    const record = this.asRecord(result.structuredData);
+    if (!record) return undefined;
+    const isBrowserStep = Boolean(
+      record.command ||
+      record.pageUrl ||
+      record.pageFingerprint ||
+      (typeof record.stdout === 'string' && record.stdout.includes('Playwright'))
+    );
+    if (!isBrowserStep) return undefined;
+
+    const outputRecord = this.asRecord(record.output);
+    const dataRecord = this.asRecord(record.data);
+    const stepResults = Array.isArray(record.stepResults) ? (record.stepResults as Array<Record<string, unknown>>) : [];
+    const lastStep = stepResults.length > 0 ? this.asRecord(stepResults[stepResults.length - 1]) : undefined;
+    const lastStepOutput = this.asRecord(lastStep?.output);
+    const text = this.firstNonEmptyString(
+      this.asString(record.text),
+      this.asString(record.mainContent),
+      this.asString(record.content),
+      this.asString(record.summary),
+      this.asString(outputRecord?.text),
+      this.asString(outputRecord?.mainContent),
+      this.asString(dataRecord?.text),
+      this.asString(lastStepOutput?.text),
+      this.asString(lastStepOutput?.mainContent)
+    );
+    const pageTitle =
+      this.asString(record.pageTitle) ||
+      this.asString(record.title) ||
+      this.asString(outputRecord?.pageTitle) ||
+      this.asString(lastStepOutput?.pageTitle);
+    const pageUrl =
+      this.asString(record.pageUrl) ||
+      this.asString(record.url) ||
+      this.asString(dataRecord?.url) ||
+      this.asString(outputRecord?.pageUrl) ||
+      this.asString(lastStepOutput?.pageUrl);
+
+    if (text) {
+      const header = pageTitle ? `### ${pageTitle}\n\n` : '';
+      return `${header}${text}${executionId ? `\n\n执行单 ID: ${executionId}` : ''}`;
+    }
+
+    if (pageUrl) {
+      const titleDisplay = pageTitle ? `【${pageTitle}】` : '';
+      return `已成功打开并访问网页 ${titleDisplay}(${pageUrl})。${executionId ? `\n\n执行单 ID: ${executionId}` : ''}`;
+    }
+
+    return `网页操作执行完成。${executionId ? `\n\n执行单 ID: ${executionId}` : ''}`;
   }
 
   private summarizeDocumentResult(result: NormalizedChatExecutionResult): string | undefined {

@@ -1,10 +1,11 @@
 import React from 'react';
-import { Collapse, Empty, Space, Tag, Timeline, Typography } from 'antd';
+import { Collapse, Space, Tag, Timeline, Typography } from 'antd';
 import type { ExecutionPhaseArtifactDto, ExecutionPhaseDto, ExecutionStatus } from '@/api/execution';
 import ExecutionErrorAlert from '@/features/executions/shared/components/ExecutionErrorAlert';
 import ExecutionImageGallery from '@/features/executions/shared/components/ExecutionImageGallery';
 import ExecutionSecondaryTextList from '@/features/executions/shared/components/ExecutionSecondaryTextList';
 import ExecutionDetailSectionCard from '@/features/executions/detail/components/ExecutionDetailSectionCard';
+import ExecutionPayloadContent from '@/features/executions/shared/components/ExecutionPayloadContent';
 import ExecutionStatusTag from '@/features/executions/shared/components/ExecutionStatusTag';
 import {
   extractPhaseStepImageSources,
@@ -179,9 +180,24 @@ const ExecutionPhaseTimelineCard: React.FC<ExecutionPhaseTimelineCardProps> = ({
                                   };
                                 })}
                               />
-                            ) : (
-                              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={labels.phaseNoData} />
-                            )}
+                            ) : null}
+
+                            {phase.output ? (
+                              <ExecutionDetailSectionCard title={isEnglish ? 'Phase Output' : '阶段输出 / 提取正文'}>
+                                <ExecutionPayloadContent
+                                  value={
+                                    phase.output &&
+                                    typeof phase.output === 'object' &&
+                                    'output' in phase.output &&
+                                    (phase.output as any).output !== null
+                                      ? (phase.output as any).output
+                                      : phase.output
+                                  }
+                                  emptyText={labels.phaseNoData}
+                                  treatSingleResultFieldAsMarkdown
+                                />
+                              </ExecutionDetailSectionCard>
+                            ) : null}
                           </Space>
                         </ExecutionDetailSectionCard>
                       ),

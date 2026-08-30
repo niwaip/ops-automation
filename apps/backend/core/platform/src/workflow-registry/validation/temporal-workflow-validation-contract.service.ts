@@ -72,6 +72,13 @@ export class TemporalWorkflowValidationContractService {
       }
       const rawValue = source[key];
       if (this.isEmptyValue(rawValue)) {
+        const fallbackDefault =
+          (definition as any).defaultValue ??
+          (definition as any).default ??
+          (definition as any).exampleValue;
+        if (!this.isEmptyValue(fallbackDefault)) {
+          normalized[key] = this.normalizeValue(key, fallbackDefault, definition);
+        }
         continue;
       }
       normalized[key] = this.normalizeValue(key, rawValue, definition);

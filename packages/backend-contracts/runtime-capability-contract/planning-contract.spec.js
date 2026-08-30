@@ -18,6 +18,17 @@ describe('planning capability contract', () => {
             { id: 'two', name: '能力二', aliases: ['查询'] },
         ])).toBeNull();
     });
+    it('uses a distinctive phrase segment from a legacy compound capability name', () => {
+        const match = (0, planning_contract_1.matchDeterministicRoutingCapability)('打开网页', [
+            {
+                id: 'browser-summary',
+                name: '打开网页 总结信息',
+                triggerKeywords: ['打开网页 总结信息'],
+            },
+        ]);
+        expect(match?.capability.id).toBe('browser-summary');
+        expect(match?.reason).toBe('deterministic_routing_signal');
+    });
     it('canonicalizes localized enum aliases without domain-specific code', () => {
         expect((0, planning_contract_1.resolveDeterministicEnumParams)('上海的天气', {
             location: {

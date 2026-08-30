@@ -33,6 +33,8 @@ export interface TemplateStep {
     takeover_reason?: string;
     description?: string;
   };
+  capture_profile?: Record<string, any>;
+  captureProfile?: Record<string, any>;
 }
 
 export interface ExecutionResult {
@@ -195,19 +197,22 @@ export class CdpExecutor implements OnModuleDestroy {
     );
   }
 
-  /**
-   * Replace ${param_name} placeholders with actual values
-   */
   private replaceParams(value: unknown, params: Record<string, unknown>): unknown {
     if (typeof value === 'string') {
-      // Replace ${param_name} patterns
-      return value.replace(/\$\{(\w+)\}/g, (match, paramName) => {
-        if (params[paramName] !== undefined) {
-          return String(params[paramName]);
-        }
-        // Return original placeholder if param not found
-        return match;
-      });
+      // Replace ${param_name} and {{param_name}} patterns
+      return value
+        .replace(/\$\{([a-zA-Z0-9_]+)\}/g, (match, paramName) => {
+          if (params[paramName] !== undefined) {
+            return String(params[paramName]);
+          }
+          return match;
+        })
+        .replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (match, paramName) => {
+          if (params[paramName] !== undefined) {
+            return String(params[paramName]);
+          }
+          return match;
+        });
     }
     return value;
   }
@@ -246,6 +251,15 @@ export class CdpExecutor implements OnModuleDestroy {
         commandParams.duration = step.wait.timeout;
       }
     }
+    const stepCaptureProfile = step.capture_profile || step.captureProfile;
+    if (stepCaptureProfile) {
+      if (commandParams.captureProfile === undefined) {
+        commandParams.captureProfile = stepCaptureProfile;
+      }
+      if (commandParams.capture_profile === undefined) {
+        commandParams.capture_profile = stepCaptureProfile;
+      }
+    }
 
     for (const key of Object.keys(commandParams)) {
       commandParams[key] = this.replaceParams(commandParams[key], params);
@@ -266,8 +280,7 @@ export class CdpExecutor implements OnModuleDestroy {
    */
   private buildSelector(locator: { type: string; value: string }): string {
     // Normalise legacy spellings of the test-id type before switching.
-    const type =
-      locator.type === 'testId' || locator.type === 'testid' ? 'test-id' : locator.type;
+    const type = locator.type === 'testId' || locator.type === 'testid' ? 'test-id' : locator.type;
 
     switch (type) {
       case 'css':
@@ -338,16 +351,20 @@ export class CdpExecutor implements OnModuleDestroy {
       };
       const loopPlan = this.buildLoopPlan(steps, options.loopDraft);
 
-      this.emitDebugEvent('cdp.executor.ts:executeSteps:plan', '[DEBUG] cdpExecutor initialized execution plan', {
-        sessionId,
-        backend,
-        stepIds: steps.map((step) => step.step_id),
-        hasLoopDraft: Boolean(options.loopDraft),
-        hasLoopPlan: Boolean(loopPlan),
-        preLoopCount: loopPlan?.preLoopSteps.length || 0,
-        iterationCount: loopPlan?.iterationSteps.length || 0,
-        postLoopCount: loopPlan?.postLoopSteps.length || 0,
-      });
+      this.emitDebugEvent(
+        'cdp.executor.ts:executeSteps:plan',
+        '[DEBUG] cdpExecutor initialized execution plan',
+        {
+          sessionId,
+          backend,
+          stepIds: steps.map((step) => step.step_id),
+          hasLoopDraft: Boolean(options.loopDraft),
+          hasLoopPlan: Boolean(loopPlan),
+          preLoopCount: loopPlan?.preLoopSteps.length || 0,
+          iterationCount: loopPlan?.iterationSteps.length || 0,
+          postLoopCount: loopPlan?.postLoopSteps.length || 0,
+        }
+      );
       if (loopPlan) {
         const preLoopFailure = await executeSequence(loopPlan.preLoopSteps);
         if (preLoopFailure) {
@@ -441,22 +458,30 @@ export class CdpExecutor implements OnModuleDestroy {
         }
       }
 
-      this.emitDebugEvent('cdp.executor.ts:executeSteps:results', '[DEBUG] cdpExecutor finished execution', {
-        sessionId,
-        resultCount: results.length,
-        failedCount: results.filter((item) => !item.success).length,
-        lastResult: results[results.length - 1] || null,
-      });
+      this.emitDebugEvent(
+        'cdp.executor.ts:executeSteps:results',
+        '[DEBUG] cdpExecutor finished execution',
+        {
+          sessionId,
+          resultCount: results.length,
+          failedCount: results.filter((item) => !item.success).length,
+          lastResult: results[results.length - 1] || null,
+        }
+      );
       return results;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Execution failed: ${errorMsg}`);
 
-      this.emitDebugEvent('cdp.executor.ts:executeSteps:error', '[DEBUG] cdpExecutor execution failed', {
-        sessionId,
-        backend,
-        error: errorMsg,
-      });
+      this.emitDebugEvent(
+        'cdp.executor.ts:executeSteps:error',
+        '[DEBUG] cdpExecutor execution failed',
+        {
+          sessionId,
+          backend,
+          error: errorMsg,
+        }
+      );
 
       return [
         {
@@ -539,42 +564,190 @@ export class CdpExecutor implements OnModuleDestroy {
       };
     }
 
+    const command = this.mapStepToCommand(substitutedStep, params);
+    const captureProfile = substitutedStep.capture_profile || substitutedStep.captureProfile;
+    const commandArgs = { ...command.params };
+    delete commandArgs.captureProfile;
+    delete commandArgs.capture_profile;
+    const runtimeSessionId = sessionId || 'template-test-default';
     const result = await this.postJson<{
       success: boolean;
-      results: Array<Record<string, unknown>>;
-      message?: string;
-    }>('/browser/execute', {
-      runtimeSessionId: sessionId,
+      output?: Record<string, any>;
+      errorCode?: string;
+      errorMessage?: string;
+      warningCodes?: string[];
+    }>('/browser/execute-step', {
+      executionId: `template-test:${runtimeSessionId}`,
+      runtimeSessionId,
       backend,
-      commands: [this.mapStepToCommand(substitutedStep, params)],
+      stepId: substitutedStep.step_id,
+      action: command.tool,
+      args: commandArgs,
+      ...(captureProfile ? { captureProfile } : {}),
     });
 
-    const stepResult = (
-      Array.isArray(result.results) && result.results.length > 0 ? result.results[0] || {} : {}
-    ) as Record<string, any>;
-    const success = stepResult.status !== 'error' && result.success !== false;
+    const stepResult = (result.output || {}) as Record<string, any>;
+    const success = result.success === true;
+    const cleanHtml = this.extractHtmlResult(stepResult.html);
+    const rawText =
+      typeof stepResult?.data?.text === 'string'
+        ? stepResult.data.text
+        : typeof stepResult.text === 'string'
+          ? stepResult.text
+          : undefined;
+
+    const shouldExtract = this.shouldExtractMainContent(substitutedStep);
+    const extractedText = shouldExtract
+      ? (rawText && !this.isRawCliOutput(rawText) ? rawText.trim() : undefined) ||
+        (cleanHtml ? this.extractMainTextFromHtml(cleanHtml) : undefined)
+      : undefined;
+
     return {
       success,
       step_id: substitutedStep.step_id,
       action: String(stepResult.command || substitutedStep.action),
       error: success
         ? undefined
-        : String(stepResult.message || result.message || 'Step execution failed'),
-      message: String(stepResult.message || result.message || stepResult.stdout || ''),
+        : String(result.errorMessage || stepResult.message || 'Step execution failed'),
+      message: success
+        ? this.extractCleanMessage(stepResult, {}, substitutedStep)
+        : String(result.errorMessage || substitutedStep.description || 'Step execution failed'),
       screenshot: typeof stepResult.screenshot === 'string' ? stepResult.screenshot : undefined,
-      text:
-        typeof stepResult?.data?.text === 'string'
-          ? stepResult.data.text
-          : typeof stepResult.text === 'string'
-            ? stepResult.text
-            : undefined,
-      html:
-        typeof stepResult.html === 'string'
-          ? stepResult.html
-          : typeof stepResult.stdout === 'string'
-            ? stepResult.stdout
-            : undefined,
+      text: extractedText,
+      html: cleanHtml,
     };
+  }
+
+  private isRawCliOutput(value?: string): boolean {
+    if (!value) return false;
+    const trimmed = value.trim();
+    return (
+      trimmed.includes('### Result') ||
+      trimmed.includes('### Ran Playwright code') ||
+      trimmed.startsWith('- Page URL:')
+    );
+  }
+
+  private shouldExtractMainContent(step: TemplateStep): boolean {
+    if (step.action === 'read_page' || step.action === 'get_text' || step.action === 'read_value') {
+      return true;
+    }
+    const captureProfile =
+      step.capture_profile ||
+      step.captureProfile ||
+      (step.params?.captureProfile as any) ||
+      (step.params?.capture_profile as any);
+    if (!captureProfile) return false;
+    const capture = captureProfile.capture;
+    if (capture && typeof capture === 'object') {
+      return capture.mainContent === true;
+    }
+    return captureProfile.profile === 'article';
+  }
+
+  private extractMainTextFromHtml(html: string): string | undefined {
+    if (!html || !html.trim()) return undefined;
+    const sanitized = html
+      .replace(/<!--([\s\S]*?)-->/gu, '')
+      .replace(
+        /<(script|style|template|noscript|iframe|object|embed|svg|canvas)\b[^>]*>[\s\S]*?<\/\1\s*>/giu,
+        ''
+      )
+      .replace(/<(nav|footer|aside|dialog|select|option)\b[^>]*>[\s\S]*?<\/\1\s*>/giu, '')
+      .replace(
+        /<[a-z0-9]+\b[^>]*\brole\s*=\s*["']?(?:navigation|banner|contentinfo|complementary|dialog|alertdialog)["']?[^>]*>[\s\S]*?<\/[a-z0-9]+>/giu,
+        ''
+      )
+      .replace(
+        /<[a-z0-9]+\b[^>]*(?:class|id)\s*=\s*["'][^"']*\b(?:navbar|nav-menu|sidebar|footer|ad-container|advertisement|cookie-banner|share-buttons|social-links|comments-section|popup-overlay)\b[^"']*["'][^>]*>[\s\S]*?<\/[a-z0-9]+>/giu,
+        ''
+      )
+      .replace(
+        /<input\b[^>]*(?:type\s*=\s*["']?hidden|name\s*=\s*["']?(?:token|password|cookie|authorization))[^>]*>/giu,
+        ''
+      )
+      .replace(/\s(?:on\w+|style)\s*=\s*(["']).*?\1/giu, '')
+      .replace(/\s(?:hidden|aria-hidden\s*=\s*["']?true["']?)(?:\s|=|>)/giu, ' ');
+
+    const candidate =
+      sanitized.match(/<article\b[^>]*>([\s\S]*?)<\/article>/iu)?.[1] ||
+      sanitized.match(/<main\b[^>]*>([\s\S]*?)<\/main>/iu)?.[1] ||
+      sanitized.match(
+        /<([a-z0-9]+)\b[^>]*\brole\s*=\s*["']?main["']?[^>]*>([\s\S]*?)<\/\1>/iu
+      )?.[2] ||
+      sanitized.match(/<body\b[^>]*>([\s\S]*?)<\/body>/iu)?.[1] ||
+      sanitized;
+
+    const text = candidate
+      .replace(/<h1\b[^>]*>([\s\S]*?)<\/h1>/giu, '\n\n# $1\n\n')
+      .replace(/<h2\b[^>]*>([\s\S]*?)<\/h2>/giu, '\n\n## $1\n\n')
+      .replace(/<h3\b[^>]*>([\s\S]*?)<\/h3>/giu, '\n\n### $1\n\n')
+      .replace(/<h[4-6]\b[^>]*>([\s\S]*?)<\/h[4-6]>/giu, '\n\n#### $1\n\n')
+      .replace(/<li\b[^>]*>([\s\S]*?)<\/li>/giu, '\n- $1')
+      .replace(/<(?:br|\/p|\/div|\/li|\/tr|\/pre|\/blockquote)>/giu, '\n')
+      .replace(/<[^>]+>/gu, ' ')
+      .replace(/&nbsp;/giu, ' ')
+      .replace(/&amp;/giu, '&')
+      .replace(/&lt;/giu, '<')
+      .replace(/&gt;/giu, '>')
+      .replace(/&quot;/giu, '"')
+      .replace(/&#39;/giu, "'")
+      .replace(/&#x([0-9a-f]+);/giu, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/&#([0-9]+);/giu, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+      .replace(/\r/g, '')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n[ \t]+/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    return text.length > 0 ? text : undefined;
+  }
+
+  private extractCleanMessage(
+    stepResult: Record<string, any>,
+    result: { message?: string },
+    substitutedStep: TemplateStep
+  ): string {
+    const raw =
+      typeof stepResult.message === 'string' && stepResult.message.trim()
+        ? stepResult.message.trim()
+        : typeof result.message === 'string' && result.message.trim()
+          ? result.message.trim()
+          : '';
+    if (raw && !raw.includes('### Result') && !raw.includes('### Ran Playwright code')) {
+      return raw;
+    }
+    return substitutedStep.description || `${substitutedStep.action} 执行成功`;
+  }
+
+  private extractHtmlResult(rawHtml?: unknown): string | undefined {
+    if (typeof rawHtml !== 'string' || !rawHtml.trim()) {
+      return undefined;
+    }
+    const trimmed = rawHtml.trim();
+    if (trimmed.includes('### Result')) {
+      const match = trimmed.match(
+        /### Result\s*\n?([\s\S]*?)(?:\n### Ran Playwright code|\n### |\n```|$)/
+      );
+      const candidate = match && typeof match[1] === 'string' ? match[1].trim() : trimmed;
+      try {
+        const parsed = JSON.parse(candidate);
+        if (typeof parsed === 'string' && /<[a-z!/][\s\S]*>/i.test(parsed.trim())) {
+          return parsed.trim();
+        }
+      } catch {
+        const unquoted =
+          (candidate.startsWith('"') && candidate.endsWith('"')) ||
+          (candidate.startsWith("'") && candidate.endsWith("'"))
+            ? candidate.slice(1, -1).trim()
+            : candidate;
+        if (/<[a-z!/][\s\S]*>/i.test(unquoted)) {
+          return unquoted;
+        }
+      }
+      return undefined;
+    }
+    return /<[a-z!/][\s\S]*>/i.test(trimmed) ? trimmed : undefined;
   }
 
   private async executeReadValueStep(
@@ -723,7 +896,9 @@ export class CdpExecutor implements OnModuleDestroy {
 
     const stepIds = Array.isArray(loopDraft.eachIteration?.stepIds)
       ? loopDraft.eachIteration.stepIds
-          .filter((stepId): stepId is string => typeof stepId === 'string' && stepId.trim().length > 0)
+          .filter(
+            (stepId): stepId is string => typeof stepId === 'string' && stepId.trim().length > 0
+          )
           .map((stepId) => stepId.trim())
       : [];
     if (stepIds.length === 0) {
@@ -746,8 +921,10 @@ export class CdpExecutor implements OnModuleDestroy {
 
     const stopWhen = loopDraft.stopWhen;
     const stopRead = stopWhen?.read;
-    const conditionFn = typeof stopWhen?.conditionFn === 'string' ? stopWhen.conditionFn.trim() : '';
-    const description = typeof stopWhen?.description === 'string' ? stopWhen.description.trim() : '';
+    const conditionFn =
+      typeof stopWhen?.conditionFn === 'string' ? stopWhen.conditionFn.trim() : '';
+    const description =
+      typeof stopWhen?.description === 'string' ? stopWhen.description.trim() : '';
     if (!stopRead || !conditionFn || !description) {
       return null;
     }
@@ -912,12 +1089,7 @@ export class CdpExecutor implements OnModuleDestroy {
             : typeof raw.text === 'string'
               ? raw.text
               : undefined,
-        html:
-          typeof raw.html === 'string'
-            ? raw.html
-            : typeof raw.stdout === 'string'
-              ? raw.stdout
-              : undefined,
+        html: this.extractHtmlResult(raw.html),
       },
       rawOutput,
     };
@@ -1019,8 +1191,19 @@ export class CdpExecutor implements OnModuleDestroy {
     };
   }
 
-  async captureFinalState(sessionId?: string, backend: string = 'cli'): Promise<ExecutionResult> {
+  async captureFinalState(
+    sessionId?: string,
+    backend: string = 'cli',
+    extractedPage?: Pick<ExecutionResult, 'text' | 'html'>
+  ): Promise<ExecutionResult> {
     try {
+      const reuseExtractedPage = Boolean(extractedPage?.text || extractedPage?.html);
+      const commands = reuseExtractedPage
+        ? [{ tool: 'screenshot', params: {} }]
+        : [
+            { tool: 'read_page', params: { max_length: 30000 } },
+            { tool: 'screenshot', params: {} },
+          ];
       const result = await this.postJson<{
         success: boolean;
         results: Array<Record<string, unknown>>;
@@ -1028,22 +1211,13 @@ export class CdpExecutor implements OnModuleDestroy {
       }>('/browser/execute', {
         runtimeSessionId: sessionId,
         backend,
-        commands: [
-          {
-            tool: 'read_page',
-            params: { max_length: 4000 },
-          },
-          {
-            tool: 'screenshot',
-            params: {},
-          },
-        ],
+        commands,
       });
 
-      const rawPage: any = result.results?.[0] || {};
+      const rawPage: any = reuseExtractedPage ? {} : result.results?.[0] || {};
       const rawPageData: any = rawPage.data || {};
-      const rawScreenshot: any = result.results?.[1] || {};
-      const pageSuccess = rawPage.status !== 'error';
+      const rawScreenshot: any = result.results?.[reuseExtractedPage ? 0 : 1] || {};
+      const pageSuccess = reuseExtractedPage || rawPage.status !== 'error';
       const screenshotSuccess = !rawScreenshot?.status || rawScreenshot.status !== 'error';
       return {
         success: pageSuccess,
@@ -1057,7 +1231,16 @@ export class CdpExecutor implements OnModuleDestroy {
                 result.message ||
                 'Final state capture failed'
             ),
-        message: String(rawPage.message || rawPage.stdout || result.message || ''),
+        message:
+          typeof rawPage.message === 'string' &&
+          rawPage.message &&
+          !rawPage.message.includes('### Result')
+            ? rawPage.message
+            : typeof result.message === 'string' &&
+                result.message &&
+                !result.message.includes('### Result')
+              ? result.message
+              : '最终状态捕获成功',
         screenshot:
           screenshotSuccess && typeof rawScreenshot.screenshot === 'string'
             ? rawScreenshot.screenshot
@@ -1065,17 +1248,17 @@ export class CdpExecutor implements OnModuleDestroy {
               ? rawPage.screenshot
               : undefined,
         text:
-          typeof rawPageData.text === 'string'
+          typeof extractedPage?.text === 'string'
+            ? extractedPage.text
+            : typeof rawPageData.text === 'string'
             ? rawPageData.text
             : typeof rawPage.text === 'string'
               ? rawPage.text
               : undefined,
         html:
-          typeof rawPage.html === 'string'
-            ? rawPage.html
-            : typeof rawPage.stdout === 'string'
-              ? rawPage.stdout
-              : undefined,
+          typeof extractedPage?.html === 'string'
+            ? extractedPage.html
+            : this.extractHtmlResult(rawPage.html),
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -1113,25 +1296,16 @@ export class CdpExecutor implements OnModuleDestroy {
    */
   private emitDebugEvent(location: string, msg: string, data: Record<string, unknown>): void {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const fs = require('fs') as typeof import('fs');
-      const envPath = '.dbg/session-loop-stall.env';
-      let debugUrl = `http://${process.env.EXTERNAL_HOST || 'host.docker.internal'}:7777/event`;
-      let debugSessionId = 'session-loop-stall';
-      try {
-        const envContent = fs.readFileSync(envPath, 'utf8');
-        debugUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1] ?? debugUrl;
-        debugSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1] ?? debugSessionId;
-      } catch {
-        // env file absent — use defaults
+      const debugUrl = process.env.SESSION_EXECUTION_DEBUG_ENDPOINT?.trim();
+      if (!debugUrl) {
+        return;
       }
       fetch(debugUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sessionId: debugSessionId,
-          runId: 'pre-fix',
-          hypothesisId: 'E',
+          sessionId: process.env.SESSION_EXECUTION_DEBUG_SESSION_ID || 'session-execution',
+          runId: process.env.SESSION_EXECUTION_DEBUG_RUN_ID || 'runtime',
           location,
           msg,
           data,

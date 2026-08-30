@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button, Collapse, Drawer, Empty, Space, Spin } from 'antd';
-import { RobotOutlined } from '@ant-design/icons';
+import { Button, Collapse, Drawer, Empty, Space, Spin, Tooltip, message } from 'antd';
+import { CopyOutlined, RobotOutlined } from '@ant-design/icons';
 import {
   buildExecutionDetailCollapseItem,
   executionDetailPanelStyle,
@@ -80,13 +80,41 @@ const ExecutionListDetailDrawer: React.FC<ExecutionListDetailDrawerProps> = ({
           <Collapse
             className={styles['execution-detail-sections']}
             ghost
-            defaultActiveKey={['summary']}
+            defaultActiveKey={[]}
             expandIconPosition="end"
             items={[
               buildExecutionDetailCollapseItem({
                 key: 'summary',
                 title: '基本信息',
                 summary: `${getSkillDisplayName(selectedExecution.skillId)} / ${EXECUTION_STATUS_LABELS_ZH[selectedExecution.status]}`,
+                extra: (
+                  <Tooltip title="复制调试信息 (执行 ID & 状态)">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<CopyOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const debugData = {
+                          id: selectedExecution.id,
+                          status: selectedExecution.status,
+                          riskLevel: selectedExecution.riskLevel,
+                          skillId: selectedExecution.skillId,
+                          skillName: getSkillDisplayName(selectedExecution.skillId),
+                          startedAt: selectedExecution.startedAt || selectedExecution.createdAt,
+                          endedAt: selectedExecution.endedAt,
+                          runtimeSessionId: selectedExecutionRuntimeSessionId,
+                          failureReason: selectedExecution.failureReason,
+                        };
+                        navigator.clipboard.writeText(JSON.stringify(debugData, null, 2));
+                        message.success('已复制执行调试信息 (JSON)');
+                      }}
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      复制
+                    </Button>
+                  </Tooltip>
+                ),
                 children: (
                   <ExecutionBasicInfoSection
                     execution={selectedExecution}
@@ -113,14 +141,12 @@ const ExecutionListDetailDrawer: React.FC<ExecutionListDetailDrawerProps> = ({
             </div>
           ) : null}
 
-          {!isSelectedBrowserExecution ? (
-            <ExecutionInputOutputCard
-              execution={selectedExecution}
-              executionInput={selectedExecutionInput}
-              executionNormalizedResult={selectedExecutionNormalizedResult}
-              effectiveResultJson={effectiveSelectedResultJson}
-            />
-          ) : null}
+          <ExecutionInputOutputCard
+            execution={selectedExecution}
+            executionInput={selectedExecutionInput}
+            executionNormalizedResult={selectedExecutionNormalizedResult}
+            effectiveResultJson={effectiveSelectedResultJson}
+          />
 
           {isSelectedBrowserExecution && displaySelectedPhases.length > 0 ? (
             <ExecutionBrowserProgressCard
@@ -146,7 +172,8 @@ const ExecutionListDetailDrawer: React.FC<ExecutionListDetailDrawerProps> = ({
           />
 
           {(selectedExecution.status === 'waiting_input' && waitingInputStep) ||
-          isSelectedBrowserExecution ? (
+          isSelectedBrowserExecution ||
+          displaySelectedPhases.length > 0 ? (
             <Collapse
               ghost
               expandIconPosition="end"
@@ -186,7 +213,7 @@ const ExecutionListDetailDrawer: React.FC<ExecutionListDetailDrawerProps> = ({
                       }),
                     ]
                   : []),
-                ...(isSelectedBrowserExecution
+                ...(isSelectedBrowserExecution || displaySelectedPhases.length > 0
                   ? [
                       buildExecutionDetailCollapseItem({
                         key: 'phases',

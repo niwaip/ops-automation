@@ -11,6 +11,7 @@ import {
 } from '@ops/backend-builtin-skill-contract';
 import { BuiltinSkillRegistryService } from '../registry/builtin-skill-registry.service';
 import { BuiltinSkillAuditService } from '../audit/builtin-skill-audit.service';
+import { getCarboneServiceUrl } from '../../../config/service-endpoints';
 
 @Injectable()
 export class BuiltinSkillProvisioningService {
@@ -194,7 +195,7 @@ export class BuiltinSkillProvisioningService {
           // back to CARBONE_SERVICE_URL so the smoke test reaches the actual
           // carbone-engine container regardless of how artifact.url was built.
           try {
-            const baseUrl = process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
+            const baseUrl = getCarboneServiceUrl();
             let downloadUrl = artifact.url;
             if (
               !/^https?:\/\//i.test(downloadUrl) ||
@@ -333,7 +334,7 @@ export class BuiltinSkillProvisioningService {
     idempotencyKeyOverride?: string
   ): Promise<any> {
     if (handlerKey === 'document.markdown-artifact-writer') {
-      const domainUrl = process.env.CARBONE_SERVICE_URL || 'http://localhost:3009';
+      const domainUrl = getCarboneServiceUrl();
       const smokeExecutionId = idempotencyKeyOverride || 'smoke-' + Date.now();
       const response = await axios.post(
         `${domainUrl}/internal/document/markdown-artifacts/invoke`,
@@ -359,7 +360,7 @@ export class BuiltinSkillProvisioningService {
       };
     const extractor = documentExtractorEndpoints[handlerKey];
     if (extractor) {
-      const domainUrl = process.env.CARBONE_SERVICE_URL || 'http://localhost:3009';
+      const domainUrl = getCarboneServiceUrl();
       const smokeExecutionId = idempotencyKeyOverride || 'smoke-' + Date.now();
       const response = await axios.post(
         `${domainUrl}${extractor.endpoint}`,

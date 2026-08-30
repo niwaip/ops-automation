@@ -21,6 +21,8 @@ export interface TemplateStep {
     takeover_reason?: string;
     description?: string;
   };
+  capture_profile?: Record<string, any>;
+  captureProfile?: Record<string, any>;
 }
 
 export interface TemplateParamSchemaProperty {

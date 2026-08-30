@@ -86,9 +86,7 @@ export class TemplateValidator {
           const method = step.params?.method;
           if (
             method !== undefined &&
-            !['innerText', 'textContent', 'value', 'attribute', 'visible'].includes(
-              String(method)
-            )
+            !['innerText', 'textContent', 'value', 'attribute', 'visible'].includes(String(method))
           ) {
             errors.push(
               `Step "${step.step_id}" with action "read_value" has invalid params.method "${String(method)}"`
@@ -156,6 +154,85 @@ export class TemplateValidator {
           );
         }
 
+        if (step.capture_profile) {
+          const profile = step.capture_profile;
+          const capture = profile.capture;
+          if (profile.schemaVersion !== 'capture-profile/v1') {
+            errors.push(`Step "${step.step_id}" capture profile has an unsupported schemaVersion`);
+          }
+          if (!['article', 'application', 'audit', 'raw'].includes(String(profile.profile))) {
+            errors.push(`Step "${step.step_id}" capture profile has an invalid profile`);
+          }
+          if (
+            !capture ||
+            !['screenshot', 'html', 'snapshot', 'mainContent'].every(
+              (key) => typeof capture[key as keyof typeof capture] === 'boolean'
+            )
+          ) {
+            errors.push(`Step "${step.step_id}" capture profile is incomplete`);
+          } else {
+            if (!Object.values(capture).some(Boolean)) {
+              errors.push(`Step "${step.step_id}" capture profile must enable at least one result`);
+            }
+            if (capture.mainContent && !capture.html) {
+              errors.push(`Step "${step.step_id}" mainContent capture requires HTML capture`);
+            }
+            if (profile.profile === 'raw' && capture.mainContent) {
+              errors.push(`Step "${step.step_id}" raw capture cannot enable mainContent`);
+            }
+          }
+          const readiness = profile.readiness;
+          if (readiness) {
+            if (
+              readiness.waitUntil !== undefined &&
+              !['domcontentloaded', 'networkidle'].includes(readiness.waitUntil)
+            ) {
+              errors.push(`Step "${step.step_id}" readiness waitUntil is invalid`);
+            }
+            for (const [key, value] of [
+              ['timeoutMs', readiness.timeoutMs],
+              ['stableMs', readiness.stableMs],
+              ['minCount', readiness.minCount],
+              ['retryDelayMs', readiness.retryDelayMs],
+            ] as const) {
+              if (value !== undefined && (!Number.isInteger(value) || value < 0)) {
+                errors.push(`Step "${step.step_id}" readiness ${key} is invalid`);
+              }
+            }
+            if (
+              readiness.maxAttempts !== undefined &&
+              (!Number.isInteger(readiness.maxAttempts) ||
+                readiness.maxAttempts < 1 ||
+                readiness.maxAttempts > 3)
+            ) {
+              errors.push(`Step "${step.step_id}" readiness maxAttempts is invalid`);
+            }
+            if (
+              readiness.selector !== undefined &&
+              (typeof readiness.selector !== 'string' || !readiness.selector.trim())
+            ) {
+              errors.push(`Step "${step.step_id}" readiness selector is invalid`);
+            }
+          }
+          const quality = profile.quality;
+          if (quality) {
+            if (
+              quality.minChars !== undefined &&
+              (!Number.isInteger(quality.minChars) || quality.minChars < 0)
+            ) {
+              errors.push(`Step "${step.step_id}" quality minChars is invalid`);
+            }
+            if (
+              quality.minConfidence !== undefined &&
+              (!Number.isFinite(quality.minConfidence) ||
+                quality.minConfidence < 0 ||
+                quality.minConfidence > 1)
+            ) {
+              errors.push(`Step "${step.step_id}" quality minConfidence is invalid`);
+            }
+          }
+        }
+
         // Validate locators
         const locatorResult = this.locatorValidator.validateStepLocators(step);
         errors.push(...locatorResult.errors);
@@ -208,11 +285,247 @@ export class TemplateValidator {
       }
     }
 
+    this.validateWorkflowComposition(template.config, template.steps || [], errors);
+
     return {
       valid: errors.length === 0,
       errors,
       warnings,
     };
+  }
+
+  private validateWorkflowComposition(
+    config: Record<string, unknown> | undefined,
+    templateSteps: TemplateJSON['steps'],
+    errors: string[]
+  ): void {
+    const raw = config?.workflowComposition;
+    if (raw === undefined) return;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      errors.push('config.workflowComposition must be an object');
+      return;
+    }
+    const composition = raw as Record<string, unknown>;
+    if (composition.schemaVersion !== 'browser-template-workflow-composition/v1') {
+      errors.push('config.workflowComposition has an unsupported schemaVersion');
+    }
+    const pages = Array.isArray(composition.pageAliases) ? composition.pageAliases : [];
+    const outputs = Array.isArray(composition.outputDeclarations)
+      ? composition.outputDeclarations
+      : [];
+    const posts = Array.isArray(composition.postProcessingSteps)
+      ? composition.postProcessingSteps
+      : undefined;
+    if (pages.length === 0) errors.push('config.workflowComposition requires pageAliases');
+    if (!posts) errors.push('config.workflowComposition.postProcessingSteps must be an array');
+    if ((posts?.length || 0) > 0 && outputs.length === 0) {
+      errors.push('config.workflowComposition post-processing requires outputDeclarations');
+    }
+
+    const aliasNames = pages
+      .map((item) => this.readRecordString(item, 'alias'))
+      .filter((item): item is string => Boolean(item));
+    if (aliasNames.length !== pages.length) {
+      errors.push('config.workflowComposition page aliases must be non-empty');
+    }
+    if (new Set(aliasNames).size !== aliasNames.length) {
+      errors.push('config.workflowComposition page aliases must be unique');
+    }
+    const pagesByAlias = new Map<string, Record<string, unknown>>();
+    const browserStepIds = new Set(templateSteps.map((step) => step.step_id));
+    pages.forEach((item) => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) return;
+      const page = item as Record<string, unknown>;
+      const alias = this.readRecordString(page, 'alias');
+      const sourceStepId = this.readRecordString(page, 'sourceStepId');
+      const captureProfile = this.asRecord(page.captureProfile);
+      const capture = this.asRecord(captureProfile?.capture);
+      if (alias) pagesByAlias.set(alias, page);
+      if (sourceStepId && !browserStepIds.has(sourceStepId)) {
+        errors.push('config.workflowComposition page alias references an unknown browser step');
+      }
+      if (captureProfile?.schemaVersion !== 'capture-profile/v1') {
+        errors.push('config.workflowComposition capture profile has an unsupported schemaVersion');
+      }
+      if (!['article', 'application', 'audit', 'raw'].includes(String(captureProfile?.profile))) {
+        errors.push('config.workflowComposition capture profile has an invalid profile');
+      }
+      if (!capture || !Object.values(capture).some((value) => value === true)) {
+        errors.push('config.workflowComposition capture profile must enable at least one result');
+      }
+    });
+
+    const outputNames = outputs
+      .map((item) => this.readRecordString(item, 'name'))
+      .filter((item): item is string => Boolean(item));
+    if (outputNames.length !== outputs.length) {
+      errors.push('config.workflowComposition output names must be non-empty');
+    }
+    if (new Set(outputNames).size !== outputNames.length) {
+      errors.push('config.workflowComposition output names must be unique');
+    }
+    outputs.forEach((item) => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) return;
+      const output = item as Record<string, unknown>;
+      const sourceAlias = this.readRecordString(output, 'sourcePageAlias');
+      const sourceStepId = this.readRecordString(output, 'sourceStepId');
+      if (!sourceAlias || !aliasNames.includes(sourceAlias)) {
+        errors.push('config.workflowComposition output references an unknown page alias');
+      }
+      if (sourceStepId && !browserStepIds.has(sourceStepId)) {
+        errors.push('config.workflowComposition output references an unknown browser step');
+      }
+      if (output.kind === 'content' && sourceAlias) {
+        const page = pagesByAlias.get(sourceAlias);
+        const captureProfile = this.asRecord(page?.captureProfile);
+        const capture = this.asRecord(captureProfile?.capture);
+        if (capture?.mainContent !== true) {
+          errors.push('config.workflowComposition content output requires mainContent capture');
+        }
+      }
+    });
+
+    const postIds = (posts || [])
+      .map((item) => this.readRecordString(item, 'id'))
+      .filter((item): item is string => Boolean(item));
+    const seenNodeIds = new Set<string>(['browser_recording']);
+    const dependedOnNodeIds = new Set<string>();
+    (posts || []).forEach((item) => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) {
+        errors.push('config.workflowComposition post-processing step must be an object');
+        return;
+      }
+      const post = item as Record<string, unknown>;
+      const type = this.readRecordString(post, 'type');
+      const postId = this.readRecordString(post, 'id');
+      const sourceStepId = this.readRecordString(post, 'sourceStepId');
+      if (!postId) {
+        errors.push('config.workflowComposition post-processing step requires id');
+      }
+      const explicitDependsOn = Array.isArray(post.dependsOn)
+        ? (post.dependsOn as unknown[])
+            .map((dependency) => String(dependency || '').trim())
+            .filter(Boolean)
+        : [];
+      const dependsOn = explicitDependsOn.length > 0
+        ? Array.from(new Set(explicitDependsOn))
+        : ['browser_recording'];
+      for (const dependency of dependsOn) {
+        dependedOnNodeIds.add(dependency);
+        if (!seenNodeIds.has(dependency)) {
+          errors.push(
+            `config.workflowComposition post-processing step references an unknown or forward dependency: ${dependency}`
+          );
+        }
+      }
+      if (!['browser_succeeded', 'browser_terminal'].includes(String(post.runWhen))) {
+        errors.push('config.workflowComposition post-processing step has invalid runWhen');
+      }
+      const sourceStepIds = Array.isArray(post.sourceStepIds)
+        ? (post.sourceStepIds as string[]).filter(Boolean)
+        : sourceStepId
+          ? [sourceStepId]
+          : [];
+      if (sourceStepIds.length > 0) {
+        for (const stepId of sourceStepIds) {
+          if (!browserStepIds.has(stepId)) {
+            errors.push(
+              `config.workflowComposition post-processing step references an unknown browser step: ${stepId}`
+            );
+          }
+        }
+      }
+      if (type === 'llm_operation') {
+        if (
+          !this.readRecordString(post, 'operationId') ||
+          !this.readRecordString(post, 'operationVersion')
+        ) {
+          errors.push(
+            'config.workflowComposition LLM step requires operationId and operationVersion'
+          );
+        }
+        const bindings = this.asRecord(post.inputBindings);
+        Object.values(bindings || {}).forEach((value) => {
+          const binding = this.asRecord(value);
+          const sourceNodeId =
+            this.readRecordString(binding, 'fromNodeId') ||
+            this.readRecordString(binding, 'nodeId') ||
+            'browser_recording';
+          const rawPath = this.readRecordString(binding, 'path');
+          const paths = Array.isArray(binding?.paths)
+            ? (binding.paths as string[]).filter(Boolean)
+            : rawPath?.includes(',')
+              ? rawPath
+                  .split(',')
+                  .map((p) => p.trim())
+                  .filter(Boolean)
+              : rawPath
+                ? [rawPath]
+                : [];
+          if (
+            binding?.source === 'node_output' &&
+            !dependsOn.includes(sourceNodeId)
+          ) {
+            errors.push('config.workflowComposition binding source must be a direct dependency');
+          }
+          if (
+            binding?.source === 'node_output' &&
+            sourceNodeId === 'browser_recording' &&
+            (paths.length === 0 || paths.some((p) => !outputNames.includes(p)))
+          ) {
+            errors.push('config.workflowComposition LLM binding references an unknown output');
+          }
+          if (
+            binding?.source === 'node_output' &&
+            sourceNodeId === 'browser_recording' &&
+            binding.transform !== 'resolve_text_content'
+          ) {
+            errors.push('config.workflowComposition content binding must use resolve_text_content');
+          }
+          if (
+            binding?.source === 'node_output' &&
+            sourceNodeId !== 'browser_recording' &&
+            paths.length === 0
+          ) {
+            errors.push('config.workflowComposition chained binding requires an output path');
+          }
+        });
+      } else if (type === 'workflow_skill') {
+        if (!this.readRecordString(post, 'skillId') || !this.readRecordString(post, 'releaseId')) {
+          errors.push('config.workflowComposition workflow step requires skillId and releaseId');
+        }
+      } else {
+        errors.push(
+          `config.workflowComposition has invalid post-processing type "${String(type)}"`
+        );
+      }
+      if (postId) seenNodeIds.add(postId);
+    });
+    if (new Set(postIds).size !== postIds.length) {
+      errors.push('config.workflowComposition post-processing step IDs must be unique');
+    }
+    if (postIds.includes('browser_recording')) {
+      errors.push('config.workflowComposition post-processing step ID browser_recording is reserved');
+    }
+    const sinks = postIds.filter((postId) => !dependedOnNodeIds.has(postId));
+    const finalNodeId = this.readRecordString(composition, 'finalNodeId');
+    if (finalNodeId && !sinks.includes(finalNodeId)) {
+      errors.push('config.workflowComposition finalNodeId must reference a DAG sink');
+    } else if (!finalNodeId && sinks.length > 1) {
+      errors.push('config.workflowComposition with multiple DAG sinks requires finalNodeId');
+    }
+  }
+
+  private readRecordString(value: unknown, key: string): string | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const candidate = (value as Record<string, unknown>)[key];
+    return typeof candidate === 'string' && candidate.trim() ? candidate.trim() : undefined;
+  }
+
+  private asRecord(value: unknown): Record<string, unknown> | undefined {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : undefined;
   }
 
   /**

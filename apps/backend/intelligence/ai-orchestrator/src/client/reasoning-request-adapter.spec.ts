@@ -68,7 +68,7 @@ describe('applyReasoningRequestAdapter', () => {
   it('uses reasoning_effort for generic compatible endpoints only when enabled', () => {
     const enabledPayload: Record<string, unknown> = {};
     const disabledPayload: Record<string, unknown> = {};
-    const context = { provider: 'local', baseURL: 'http://model/v1', model: 'qwen' };
+    const context = { provider: 'local', baseURL: 'http://model/v1', model: 'generic-model' };
     applyReasoningRequestAdapter(enabledPayload, context, {
       enabled: true,
       effort: 'medium',

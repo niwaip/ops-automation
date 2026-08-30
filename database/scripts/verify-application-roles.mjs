@@ -1,5 +1,17 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 import { Client } from 'pg';
+
+const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
+const repositoryRoot = path.resolve(scriptDirectory, '../..');
+const ownership = JSON.parse(
+  readFileSync(path.join(repositoryRoot, 'database/schema-ownership.json'), 'utf8')
+);
+const accessPolicy = JSON.parse(
+  readFileSync(path.join(repositoryRoot, 'database/security/access-policy.json'), 'utf8')
+);
 
 const required = [
   'DATABASE_ADMIN_URL',
@@ -16,27 +28,15 @@ if (missing.length > 0) {
 
 const client = new Client({ connectionString: process.env.DATABASE_ADMIN_URL });
 
-const expectedRoles = [
-  'ops_application_reader',
-  'ops_execution_writer',
-  'ops_experience_writer',
-  'ops_intelligence_writer',
-  'ops_registry_writer',
-  'ops_runtime_writer',
-];
-
-const memberships = [
-  ['CONTROL_PLANE_DB_LOGIN', 'ops_application_reader', true],
-  ['CONTROL_PLANE_DB_LOGIN', 'ops_execution_writer', true],
-  ['CONTROL_PLANE_DB_LOGIN', 'ops_experience_writer', true],
-  ['CONTROL_PLANE_DB_LOGIN', 'ops_registry_writer', false],
-  ['AI_ORCHESTRATOR_DB_LOGIN', 'ops_application_reader', true],
-  ['AI_ORCHESTRATOR_DB_LOGIN', 'ops_intelligence_writer', true],
-  ['AI_ORCHESTRATOR_DB_LOGIN', 'ops_execution_writer', false],
-  ['AI_ORCHESTRATOR_DB_LOGIN', 'ops_registry_writer', false],
-  ['RUNTIME_WORKER_DB_LOGIN', 'ops_application_reader', true],
-  ['RUNTIME_WORKER_DB_LOGIN', 'ops_runtime_writer', true],
-];
+const writerGroupByOwner = accessPolicy.writerGroupByOwner;
+const applicationLogins = accessPolicy.applicationLogins;
+const expectedRoles = ['ops_application_reader', ...Object.values(writerGroupByOwner)];
+const ownershipByTable = new Map(
+  Object.entries(ownership.owners).flatMap(([owner, tables]) =>
+    tables.map((table) => [table, owner])
+  )
+);
+const knownRoles = new Set();
 
 async function roleExists(name) {
   const result = await client.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [name]);
@@ -50,7 +50,7 @@ async function hasMembership(login, role) {
        JOIN pg_roles parent ON parent.oid = membership.roleid
        JOIN pg_roles member ON member.oid = membership.member
       WHERE parent.rolname = $1 AND member.rolname = $2`,
-    [role, login],
+    [role, login]
   );
   return result.rowCount === 1;
 }
@@ -66,17 +66,74 @@ async function hasPublicCreate() {
         WHERE namespace.nspname = 'public'
           AND permission.grantee = 0
           AND permission.privilege_type = 'CREATE'
-     ) AS granted`,
+     ) AS granted`
   );
   return result.rows[0].granted;
 }
 
 async function hasTableWrite(login, table) {
   const result = await client.query(
-    "SELECT has_table_privilege($1, $2, 'INSERT, UPDATE, DELETE') AS granted",
-    [login, table],
+    `SELECT has_table_privilege($1, $2, 'INSERT')
+        AND has_table_privilege($1, $2, 'UPDATE')
+        AND has_table_privilege($1, $2, 'DELETE') AS granted`,
+    [login, table]
   );
   return result.rows[0].granted;
+}
+
+async function verifyWriterGroups() {
+  for (const [table, owner] of ownershipByTable) {
+    for (const [candidateOwner, groupRole] of Object.entries(writerGroupByOwner)) {
+      if (!knownRoles.has(groupRole)) continue;
+      const shouldWrite = owner === candidateOwner;
+      const canWrite = await hasTableWrite(groupRole, `public.${table}`);
+      if (canWrite !== shouldWrite) {
+        failures.push(
+          shouldWrite
+            ? `${groupRole} must write public.${table} (owner: ${owner})`
+            : `${groupRole} must not write public.${table} (owner: ${owner})`
+        );
+      }
+    }
+  }
+}
+
+async function verifyApplicationLogins() {
+  for (const [loginEnv, allowedOwners] of Object.entries(applicationLogins)) {
+    const login = process.env[loginEnv];
+    if (!knownRoles.has(login)) continue;
+
+    const allowedGroups = new Set(allowedOwners.map((owner) => writerGroupByOwner[owner]));
+    for (const groupRole of Object.values(writerGroupByOwner)) {
+      if (!knownRoles.has(groupRole)) continue;
+      const shouldInherit = allowedGroups.has(groupRole);
+      const inherits = await hasMembership(login, groupRole);
+      if (inherits !== shouldInherit) {
+        failures.push(
+          shouldInherit
+            ? `${login} must inherit ${groupRole}`
+            : `${login} must not inherit ${groupRole}`
+        );
+      }
+    }
+
+    if (!(await hasMembership(login, 'ops_application_reader'))) {
+      failures.push(`${login} must inherit ops_application_reader`);
+    }
+
+    const allowedOwnerSet = new Set(allowedOwners);
+    for (const [table, owner] of ownershipByTable) {
+      const shouldWrite = allowedOwnerSet.has(owner);
+      const canWrite = await hasTableWrite(login, `public.${table}`);
+      if (canWrite !== shouldWrite) {
+        failures.push(
+          shouldWrite
+            ? `${login} must write public.${table} (allowed owner: ${owner})`
+            : `${login} must not write public.${table} (owner: ${owner})`
+        );
+      }
+    }
+  }
 }
 
 const failures = [];
@@ -84,23 +141,20 @@ const failures = [];
 try {
   await client.connect();
 
-  for (const role of expectedRoles) {
-    if (!(await roleExists(role))) failures.push(`Required group role is missing: ${role}`);
+  for (const role of [...new Set(expectedRoles)]) {
+    if (await roleExists(role)) {
+      knownRoles.add(role);
+    } else {
+      failures.push(`Required group role is missing: ${role}`);
+    }
   }
 
-  for (const [loginEnv, role, shouldExist] of memberships) {
+  for (const loginEnv of Object.keys(applicationLogins)) {
     const login = process.env[loginEnv];
-    if (!(await roleExists(login))) {
+    if (await roleExists(login)) {
+      knownRoles.add(login);
+    } else {
       failures.push(`Application login is missing: ${login}`);
-      continue;
-    }
-    const actual = await hasMembership(login, role);
-    if (actual !== shouldExist) {
-      failures.push(
-        shouldExist
-          ? `${login} must inherit ${role}`
-          : `${login} must not inherit ${role}`,
-      );
     }
   }
 
@@ -108,17 +162,8 @@ try {
     failures.push('PUBLIC still has CREATE on schema public');
   }
 
-  const aiLogin = process.env.AI_ORCHESTRATOR_DB_LOGIN;
-  const controlLogin = process.env.CONTROL_PLANE_DB_LOGIN;
-  if ((await roleExists(aiLogin)) && (await hasTableWrite(aiLogin, 'public.executions'))) {
-    failures.push(`${aiLogin} must not write public.executions`);
-  }
-  if (
-    (await roleExists(controlLogin)) &&
-    (await hasTableWrite(controlLogin, 'public.builtin_skills'))
-  ) {
-    failures.push(`${controlLogin} must not write public.builtin_skills`);
-  }
+  await verifyWriterGroups();
+  await verifyApplicationLogins();
 } finally {
   await client.end();
 }

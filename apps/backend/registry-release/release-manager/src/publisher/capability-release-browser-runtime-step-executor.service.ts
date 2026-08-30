@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { BrowserRecordingRuntimeStep } from '../compiler/browser-recording-runtime.types';
 import { BrowserRecordingActionPolicyService } from '../validator/browser-recording-action-policy.service';
@@ -7,11 +8,16 @@ import {
   BrowserRuntimeExecutionContext,
   BrowserRuntimeMutableState,
 } from './capability-release-browser-runtime.types';
+import { BrowserPostStateReconcilerService } from './browser-runtime-result/browser-post-state-reconciler.service';
+import { BrowserRuntimeStepResultStateService } from './browser-runtime-result/browser-runtime-step-result-state.service';
 
+@Injectable()
 export class CapabilityReleaseBrowserRuntimeStepExecutorService {
   constructor(
     private readonly browserRecordingActionPolicyService: BrowserRecordingActionPolicyService,
-    private readonly capabilityReleaseBrowserRuntimeSupportService: CapabilityReleaseBrowserRuntimeSupportService
+    private readonly capabilityReleaseBrowserRuntimeSupportService: CapabilityReleaseBrowserRuntimeSupportService,
+    private readonly browserPostStateReconcilerService: BrowserPostStateReconcilerService,
+    private readonly browserRuntimeStepResultStateService: BrowserRuntimeStepResultStateService
   ) {}
 
   async executeSequence(
@@ -163,6 +169,16 @@ export class CapabilityReleaseBrowserRuntimeStepExecutorService {
         continue;
       }
 
+      const attempt = this.browserRuntimeStepResultStateService.nextAttempt(state, step.id);
+      const captureProfile =
+        step.captureProfile ||
+        (context.options?.metadata?.captureProfile as Record<string, unknown> | undefined) ||
+        (context.options?.metadata?.capture_profile as Record<string, unknown> | undefined) ||
+        {
+          schemaVersion: 'capture-profile/v1',
+          profile: 'article',
+          capture: { screenshot: true, html: true, mainContent: true },
+        };
       const response = await axios.post<{
         success: boolean;
         snapshotId?: string;
@@ -171,6 +187,13 @@ export class CapabilityReleaseBrowserRuntimeStepExecutorService {
         errorMessage?: string;
         shouldTakeover?: boolean;
         takeoverReason?: string;
+        executionState?: 'completed' | 'failed' | 'ambiguous';
+        pageState?: Record<string, unknown>;
+        artifacts?: Array<Record<string, unknown>>;
+        attemptedAt?: string;
+        observedAt?: string;
+        warningCodes?: string[];
+        postCheck?: Record<string, unknown>;
       }>(
         `${context.browserWorkerUrl}/browser/execute-step`,
         {
@@ -178,15 +201,43 @@ export class CapabilityReleaseBrowserRuntimeStepExecutorService {
           runtimeSessionId: context.runtimeSessionId,
           backend: context.backend,
           stepId: `${context.options?.stepId || context.release.id}:${step.id}`,
+          attempt,
           action: step.action,
           ...(step.target ? { target: step.target } : {}),
           ...(step.args && Object.keys(step.args).length > 0 ? { args: step.args } : {}),
+          ...(captureProfile ? { captureProfile } : {}),
         },
         { timeout: 120000 }
       );
 
       const result = response.data;
       if (!result.success) {
+        const reconciliation = process.env.BROWSER_POST_STATE_RECONCILIATION_ENABLED === 'true'
+          ? this.browserPostStateReconcilerService.reconcile({
+              action: step.action,
+              result: result as Record<string, unknown>,
+            })
+          : { recovered: false, verification: { success: false, confidence: 0, checks: [] } };
+        this.browserRuntimeStepResultStateService.recordWorkerResult({
+          state,
+          step,
+          attempt,
+          result: result as Record<string, unknown>,
+          recovered: reconciliation.recovered,
+          metadata: {
+            ...(reconciliation.recovered ? { reconciliation: reconciliation.verification } : {}),
+            ...(state.runtimeEvidence.currentLoopIteration ? { iteration: state.runtimeEvidence.currentLoopIteration } : {}),
+          },
+        });
+        if (reconciliation.recovered) {
+          state.warnings.push({
+            code: reconciliation.warningCode || 'NAVIGATION_TIMEOUT_RECOVERED',
+            message: '浏览器动作超时，但 post-state 对账确认页面已到达目标状态',
+            stepId: step.id,
+          });
+          state.logs.push(`[BrowserRuntime][Recovered] ${step.id} post-state reconciliation succeeded`);
+          continue;
+        }
         const message = result.errorMessage || `浏览器步骤执行失败: ${step.action}`;
         if (result.shouldTakeover) {
           state.preserveRuntimeSession = true;
@@ -215,15 +266,16 @@ export class CapabilityReleaseBrowserRuntimeStepExecutorService {
         }
       }
 
-      state.stepResults.push({
-        stepId: step.id,
-        name: step.name,
-        action: step.action,
-        target: step.target || null,
-        snapshotId: result.snapshotId || null,
-        output: result.output || null,
-        riskLevel: actionAssessment.riskLevel,
-        riskReason: actionAssessment.reason,
+      this.browserRuntimeStepResultStateService.recordWorkerResult({
+        state,
+        step,
+        attempt,
+        result: result as Record<string, unknown>,
+        metadata: {
+          riskLevel: actionAssessment.riskLevel,
+          riskReason: actionAssessment.reason,
+          ...(state.runtimeEvidence.currentLoopIteration ? { iteration: state.runtimeEvidence.currentLoopIteration } : {}),
+        },
       });
     }
 
@@ -238,12 +290,18 @@ export class CapabilityReleaseBrowserRuntimeStepExecutorService {
     state: BrowserRuntimeMutableState
   ): Promise<{ failure: ExecuteCapabilityRuntimeResultDTO | null }> {
     const readAction = step.target ? 'get_text' : 'read_page';
+    const attempt = this.browserRuntimeStepResultStateService.nextAttempt(state, step.id);
     const response = await axios.post<{
       success: boolean;
       snapshotId?: string;
       output?: Record<string, unknown>;
       errorCode?: string;
       errorMessage?: string;
+      pageState?: Record<string, unknown>;
+      artifacts?: Array<Record<string, unknown>>;
+      attemptedAt?: string;
+      observedAt?: string;
+      warningCodes?: string[];
     }>(
       `${context.browserWorkerUrl}/browser/execute-step`,
       {
@@ -251,6 +309,7 @@ export class CapabilityReleaseBrowserRuntimeStepExecutorService {
         runtimeSessionId: context.runtimeSessionId,
         backend: context.backend,
         stepId: `${context.options?.stepId || context.release.id}:${step.id}`,
+        attempt,
         action: readAction,
         ...(step.target ? { target: step.target } : {}),
         ...(step.args && Object.keys(step.args).length > 0 ? { args: step.args } : {}),
@@ -259,6 +318,13 @@ export class CapabilityReleaseBrowserRuntimeStepExecutorService {
     );
     const result = response.data;
     if (!result.success) {
+      this.browserRuntimeStepResultStateService.recordWorkerResult({
+        state,
+        step,
+        attempt,
+        result: result as Record<string, unknown>,
+        metadata: { riskLevel, riskReason },
+      });
       const message = result.errorMessage || `浏览器步骤执行失败: ${step.action}`;
       state.logs.push(`[BrowserRuntime][Error] ${message}`);
       return {
@@ -299,17 +365,12 @@ export class CapabilityReleaseBrowserRuntimeStepExecutorService {
       var: step.outputVar || null,
       value: textValue,
     };
-    state.stepResults.push({
-      stepId: step.id,
-      name: step.name,
-      action: step.action,
-      target: step.target || null,
-      snapshotId: result.snapshotId || null,
-      output: result.output || null,
-      text: textValue,
-      outputVar: step.outputVar || null,
-      riskLevel,
-      riskReason,
+    this.browserRuntimeStepResultStateService.recordWorkerResult({
+      state,
+      step,
+      attempt,
+      result: result as Record<string, unknown>,
+      metadata: { riskLevel, riskReason, text: textValue },
     });
     return { failure: null };
   }

@@ -88,27 +88,6 @@ export class RuntimeSessionService {
   }
 
   async getById(id: string): Promise<RuntimeSessionDto> {
-    // #region debug-point D:runtime-session-get-by-id
-    (() => {
-      fetch('http://192.168.100.143:7777/event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: 'approval-test-no-approve',
-          runId: 'pre-fix',
-          hypothesisId: 'D',
-          location: 'runtime-session.service.ts:89',
-          msg: '[DEBUG] runtimeSession getById called',
-          data: {
-            id,
-            isUuid:
-              /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id),
-          },
-          ts: Date.now(),
-        }),
-      }).catch(() => {});
-    })();
-    // #endregion
     if (!this.uuidPattern.test(id)) {
       throw new NotFoundException(`RuntimeSession ${id} not found`);
     }

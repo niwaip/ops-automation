@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@ops/backend-agent-profile": "file:../../../../packages/backend-contracts/agent-profile",
+    "@ops/backend-browser-execution-contract": "file:../../../../packages/backend-contracts/browser-execution-contract",
     "@ops/backend-deterministic-plan": "file:../../../../packages/backend-contracts/deterministic-plan",
     "@ops/backend-error-codes": "file:../../../../packages/backend-contracts/error-codes",
     "@ops/backend-planning-decision": "file:../../../../packages/backend-contracts/planning-decision",

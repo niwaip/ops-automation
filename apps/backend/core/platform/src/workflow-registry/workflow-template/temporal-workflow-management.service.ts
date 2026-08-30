@@ -108,8 +108,9 @@ export class TemporalWorkflowManagementService {
         data.taskQueue !== undefined
           ? data.taskQueue
           : parseJson<WorkflowDsl>(existing.workflowDsl)?.taskQueue || existing.taskQueue;
-      const existingActivityDsl =
-        parseJson<ActivityDsl>(existing.activityDsl) || { activities: [] };
+      const existingActivityDsl = parseJson<ActivityDsl>(existing.activityDsl) || {
+        activities: [],
+      };
       const normalizedExistingActivityDsl =
         this.workflowNormalizationService.normalizeActivityDsl(existingActivityDsl);
       const normalizedActivityDsl = data.activityDsl
@@ -131,28 +132,29 @@ export class TemporalWorkflowManagementService {
             normalizedExistingActivityDsl
           )
         : undefined;
-      const omitValidationContract = (dsl: WorkflowDsl | undefined): WorkflowDsl | undefined => {
+      const omitExecutionNeutralMetadata = (
+        dsl: WorkflowDsl | undefined
+      ): WorkflowDsl | undefined => {
         if (!dsl) return undefined;
-        const { validation: _validation, ...executableDsl } = dsl;
+        const { validation: _validation, sourceContext: _sourceContext, ...executableDsl } = dsl;
         return executableDsl as WorkflowDsl;
       };
       const isValidationContractChanged = Boolean(
         normalizedWorkflowDsl &&
-          !isDeepStrictEqual(
-            normalizedWorkflowDsl.validation,
-            normalizedExistingWorkflowDsl?.validation
-          )
+        !isDeepStrictEqual(
+          normalizedWorkflowDsl.validation,
+          normalizedExistingWorkflowDsl?.validation
+        )
       );
       const isWorkflowDslChanged = Boolean(
         normalizedWorkflowDsl &&
-          !isDeepStrictEqual(
-            omitValidationContract(normalizedWorkflowDsl),
-            omitValidationContract(normalizedExistingWorkflowDsl)
-          )
+        !isDeepStrictEqual(
+          omitExecutionNeutralMetadata(normalizedWorkflowDsl),
+          omitExecutionNeutralMetadata(normalizedExistingWorkflowDsl)
+        )
       );
       const isActivityDslChanged = Boolean(
-        data.activityDsl &&
-          !isDeepStrictEqual(normalizedActivityDsl, normalizedExistingActivityDsl)
+        data.activityDsl && !isDeepStrictEqual(normalizedActivityDsl, normalizedExistingActivityDsl)
       );
       const isDefinitionChanged = isWorkflowDslChanged || isActivityDslChanged;
       const isCodeChanged =
@@ -230,9 +232,8 @@ export class TemporalWorkflowManagementService {
     if (!current) {
       throw new NotFoundException(`Temporal Workflow 不存在: ${id}`);
     }
-    const existing = await this.workflowArtifactService.repairWorkflowArtifactMetadataIfNeeded(
-      current
-    );
+    const existing =
+      await this.workflowArtifactService.repairWorkflowArtifactMetadataIfNeeded(current);
 
     if (!existing.generatedCode?.trim()) {
       throw new BadRequestException('当前 Workflow 尚未生成并保存代码，不能发布');

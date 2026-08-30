@@ -111,16 +111,22 @@ export class RecorderTemplateExportService {
     );
     const { preLoopCommands, iterationCommands } =
       this.recorderLoopService.splitRecordedCommandsForExport(session, startUrl);
-    const templateSteps: TemplateStepArtifactLike[] = [
-      {
-        step_id: 'step_1',
-        action: 'navigate',
-        params: {
-          url: startUrl,
-        },
-        description: '打开起始页面',
-      },
-    ];
+    const hasRecordedStartNavigate = session.executedCommands.some(
+      (command) =>
+        command.tool === 'navigate' &&
+        typeof command.params.url === 'string' &&
+        command.params.url.trim() === startUrl
+    );
+    const templateSteps: TemplateStepArtifactLike[] = hasRecordedStartNavigate
+      ? []
+      : [
+          {
+            step_id: 'step_1',
+            action: 'navigate',
+            params: { url: startUrl },
+            description: '打开起始页面',
+          },
+        ];
     const nextStepId = () => `step_${templateSteps.length + 1}`;
     const consumedManualInterventionIds = new Set<string>();
     this.appendInitialOptionalManualInterventionPrechecks(templateSteps, session, nextStepId);
@@ -358,7 +364,7 @@ export class RecorderTemplateExportService {
         typeof command.params.url === 'string' &&
         command.params.url.trim() === startUrl
     );
-    return navigateIndex >= 0 ? navigateIndex + 1 : 0;
+    return navigateIndex >= 0 ? navigateIndex : 0;
   }
 
   buildBranchGenerationIntentContext(

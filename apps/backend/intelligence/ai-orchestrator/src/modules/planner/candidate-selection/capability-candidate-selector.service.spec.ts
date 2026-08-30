@@ -68,6 +68,43 @@ describe('CapabilityCandidateSelectorService', () => {
     expect(JSON.stringify(result.skillCards[0])).not.toContain('must-not-leak');
   });
 
+  it('projects browser recording outputs from runtime metadata without inventing summary', async () => {
+    mockProjector.projectAll.mockResolvedValue([]);
+    const result = await service.selectCandidates('打开网页并总结', [
+      {
+        id: 'browser-skill',
+        name: '打开网页',
+        description: '打开录制页面',
+        executionType: 'flow',
+        outputSchema: {
+          properties: {
+            text: { type: 'string' },
+            summary: { type: 'string' },
+          },
+        },
+        apiEndpoints: {
+          runtimeMetadata: {
+            sourceType: 'browser_recording',
+            executionPlan: {
+              outputs: [{ name: 'pageState', type: 'object' }],
+            },
+          },
+        },
+        isPublished: true,
+        publishedReleaseVersion: 1,
+        publishedReleaseStatus: 'published',
+        publishedDeploymentStatus: 'deployed',
+      },
+    ]);
+
+    expect(result.skillCards[0]).toMatchObject({
+      category: 'browser_template',
+      primaryOutput: 'text',
+      outputs: expect.objectContaining({ text: 'string', pageState: 'json' }),
+    });
+    expect(result.skillCards[0]?.outputs).not.toHaveProperty('summary');
+  });
+
   it('keeps valid candidates in catalog order instead of applying keyword intent rules', async () => {
     const skills = ['alpha', 'web-search', 'omega'].map((id) => ({
       id,

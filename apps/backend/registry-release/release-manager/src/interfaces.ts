@@ -117,6 +117,10 @@ export class RecorderBridgePublishPayloadDTO {
   paramsSchema?: Record<string, unknown>;
 
   @IsOptional()
+  @IsObject()
+  outputSchema?: Record<string, unknown>;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   executionFlowTemplateIds?: string[];

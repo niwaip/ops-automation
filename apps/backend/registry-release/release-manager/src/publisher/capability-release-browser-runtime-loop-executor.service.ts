@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { ExecuteCapabilityRuntimeResultDTO } from '../interfaces';
 import { CapabilityReleaseBrowserRuntimeSupportService } from './capability-release-browser-runtime-support.service';
@@ -6,11 +7,14 @@ import {
   BrowserRuntimeExecutionContext,
   BrowserRuntimeMutableState,
 } from './capability-release-browser-runtime.types';
+import { BrowserRuntimeStepResultStateService } from './browser-runtime-result/browser-runtime-step-result-state.service';
 
+@Injectable()
 export class CapabilityReleaseBrowserRuntimeLoopExecutorService {
   constructor(
     private readonly capabilityReleaseBrowserRuntimeStepExecutorService: CapabilityReleaseBrowserRuntimeStepExecutorService,
-    private readonly capabilityReleaseBrowserRuntimeSupportService: CapabilityReleaseBrowserRuntimeSupportService
+    private readonly capabilityReleaseBrowserRuntimeSupportService: CapabilityReleaseBrowserRuntimeSupportService,
+    private readonly browserRuntimeStepResultStateService: BrowserRuntimeStepResultStateService
   ) {}
 
   async executeLoopPlan(
@@ -155,11 +159,18 @@ export class CapabilityReleaseBrowserRuntimeLoopExecutorService {
     const stopStep = loopPlan.stopWhen.read.step;
     const action = stopStep.action === 'read_page' ? 'read_page' : 'get_text';
     state.logs.push(`[BrowserRuntime][Loop ${iteration}][${phase}] 读取终止条件`);
+    const stateStepId = `${stopStep.id}:${phase}:${iteration}`;
+    const attempt = this.browserRuntimeStepResultStateService.nextAttempt(state, stateStepId);
     const response = await axios.post<{
       success: boolean;
       snapshotId?: string;
       output?: Record<string, unknown>;
       errorMessage?: string;
+      pageState?: Record<string, unknown>;
+      artifacts?: Array<Record<string, unknown>>;
+      attemptedAt?: string;
+      observedAt?: string;
+      warningCodes?: string[];
     }>(
       `${context.browserWorkerUrl}/browser/execute-step`,
       {
@@ -167,6 +178,7 @@ export class CapabilityReleaseBrowserRuntimeLoopExecutorService {
         runtimeSessionId: context.runtimeSessionId,
         backend: context.backend,
         stepId: `${context.options?.stepId || context.release.id}:${stopStep.id}:${phase}:${iteration}`,
+        attempt,
         action,
         ...(stopStep.target ? { target: stopStep.target } : {}),
         ...(stopStep.args && Object.keys(stopStep.args).length > 0 ? { args: stopStep.args } : {}),
@@ -175,6 +187,13 @@ export class CapabilityReleaseBrowserRuntimeLoopExecutorService {
     );
     const result = response.data;
     if (!result.success) {
+      this.browserRuntimeStepResultStateService.recordWorkerResult({
+        state,
+        step: { ...stopStep, id: stateStepId },
+        attempt,
+        result: result as Record<string, unknown>,
+        metadata: { phase, iteration, stopReadType: loopPlan.stopWhen.read.type },
+      });
       const message = result.errorMessage || '读取循环终止条件失败';
       state.logs.push(`[BrowserRuntime][Error] ${message}`);
       return {
@@ -203,18 +222,17 @@ export class CapabilityReleaseBrowserRuntimeLoopExecutorService {
         : this.capabilityReleaseBrowserRuntimeSupportService.extractBrowserStepText(result.output);
     const normalizedValue =
       typeof rawValue === 'string' ? rawValue : JSON.stringify(rawValue ?? null);
-    state.stepResults.push({
-      stepId: `${stopStep.id}:${phase}:${iteration}`,
-      name: `${stopStep.name} (${phase})`,
-      action: 'loop_stop_read',
-      target: stopStep.target || null,
-      output: result.output || null,
-      text: normalizedValue,
-      meta: {
+    this.browserRuntimeStepResultStateService.recordWorkerResult({
+      state,
+      step: { ...stopStep, id: stateStepId, name: `${stopStep.name} (${phase})` },
+      attempt,
+      result: result as Record<string, unknown>,
+      metadata: {
         phase,
         iteration,
         stopReadType: loopPlan.stopWhen.read.type,
         description: loopPlan.stopWhen.description,
+        text: normalizedValue,
       },
     });
     return { failure: null, rawValue, normalizedValue };

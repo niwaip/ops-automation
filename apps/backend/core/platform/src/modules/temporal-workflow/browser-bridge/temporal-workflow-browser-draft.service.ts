@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { createHash } from 'crypto';
 import {
   browserActionLabel,
   buildBrowserActivityStepsFromDraftCommands,
@@ -14,8 +15,11 @@ import { normalizeWorkflowInputRenderPath } from '../temporal-workflow-template.
 import {
   DEFAULT_TEMPLATE_WORKFLOW_DSL,
   type BrowserLoopDraftLike,
+  type BrowserPostProcessingStepLike,
   type BrowserWorkflowActivityStep,
+  type BrowserWorkflowCompositionLike,
   type BrowserWorkflowDraft,
+  type BrowserWorkflowLogicalPlan,
   type GenerateBrowserWorkflowDraftDTO,
   type WorkflowInputParamDefinition,
 } from '../temporal-workflow.types';
@@ -27,6 +31,42 @@ export interface TemporalWorkflowBrowserDraftSupport {
   collectTemplateVariables(value: unknown, target?: Set<string>): Set<string>;
   buildWorkflowSemanticHint(...values: unknown[]): string;
 }
+
+const canonicalizeWorkflowIdentitySource = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((item) => canonicalizeWorkflowIdentitySource(item));
+  }
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => [key, canonicalizeWorkflowIdentitySource(item)])
+  );
+};
+
+const buildStableBrowserWorkflowSuffix = (input: {
+  templateId?: string;
+  name?: string;
+  script?: string;
+  templateSteps: unknown[];
+  commands: unknown[];
+}): string => {
+  const identitySource = input.templateId
+    ? { sourceType: 'browser_template', templateId: input.templateId }
+    : {
+        sourceType: 'browser_draft',
+        name: input.name || '',
+        script: input.script || '',
+        templateSteps: input.templateSteps,
+        commands: input.commands,
+      };
+  return createHash('sha256')
+    .update(JSON.stringify(canonicalizeWorkflowIdentitySource(identitySource)))
+    .digest('hex')
+    .slice(0, 12);
+};
 
 @Injectable()
 export class TemporalWorkflowBrowserDraftService {
@@ -55,6 +95,7 @@ export class TemporalWorkflowBrowserDraftService {
       !Array.isArray(data.paramsSchema)
         ? data.paramsSchema
         : undefined;
+    const workflowComposition = this.normalizeWorkflowComposition(data?.workflowComposition);
 
     let activitySteps: BrowserWorkflowActivityStep[] = [];
     let commandCount = 0;
@@ -133,7 +174,13 @@ export class TemporalWorkflowBrowserDraftService {
       generatedScript = script;
     }
 
-    const short = String(Date.now()).slice(-6);
+    const short = buildStableBrowserWorkflowSuffix({
+      templateId,
+      name: typeof data?.name === 'string' ? data.name.trim() : undefined,
+      script,
+      templateSteps,
+      commands: structuredCommands,
+    });
     const workflowName = support.normalizeName(
       String(data?.name || '').trim() || `浏览器模板-${short}-工作流`
     );
@@ -218,6 +265,16 @@ export class TemporalWorkflowBrowserDraftService {
         },
       };
     });
+    const browserLogicalPlan = this.buildBrowserLogicalPlan({
+      workflowSteps,
+      browserPhases,
+      workflowComposition,
+    });
+    if (browserLogicalPlan.postProcessingStepCount > 0) {
+      generationWarning +=
+        ` 已保留 ${browserLogicalPlan.postProcessingStepCount} 个模板后处理节点；` +
+        '它们由控制面执行，不会伪装成 Temporal Activity。';
+    }
 
     return {
       name: workflowName,
@@ -234,6 +291,8 @@ export class TemporalWorkflowBrowserDraftService {
           generatedAt: new Date().toISOString(),
           userDescription: workflowDescription,
           ...(loopDraft ? { browserLoopDraft: loopDraft } : {}),
+          ...(workflowComposition ? { browserWorkflowComposition: workflowComposition } : {}),
+          browserLogicalPlan,
           ...(templateId
             ? {
                 sourceTemplate: {
@@ -266,7 +325,133 @@ export class TemporalWorkflowBrowserDraftService {
         commandCount,
         placeholderCount: placeholders.length,
         placeholders,
+        browserStepCount: browserLogicalPlan.browserStepCount,
+        postProcessingStepCount: browserLogicalPlan.postProcessingStepCount,
+        totalStepCount: browserLogicalPlan.totalStepCount,
       },
+    };
+  }
+
+  private normalizeWorkflowComposition(
+    value: GenerateBrowserWorkflowDraftDTO['workflowComposition']
+  ): BrowserWorkflowCompositionLike | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const posts = Array.isArray(value.postProcessingSteps) ? value.postProcessingSteps : [];
+    const normalizedPosts = posts.map((post, index) => {
+      if (!post || typeof post !== 'object' || Array.isArray(post)) {
+        throw new BadRequestException(`浏览器模板后处理步骤 ${index + 1} 格式无效`);
+      }
+      const id = String(post.id || '').trim();
+      const type = post.type;
+      if (!id || (type !== 'llm_operation' && type !== 'workflow_skill')) {
+        throw new BadRequestException(`浏览器模板后处理步骤 ${index + 1} 缺少合法的 id/type`);
+      }
+      if (type === 'llm_operation' && (!post.operationId || !post.operationVersion)) {
+        throw new BadRequestException(`浏览器模板 LLM 后处理步骤“${id}”缺少 operationId/version`);
+      }
+      if (type === 'workflow_skill' && (!post.skillId || !post.releaseId)) {
+        throw new BadRequestException(`浏览器模板工作流后处理步骤“${id}”缺少 skillId/releaseId`);
+      }
+      return {
+        ...post,
+        id,
+        dependsOn: Array.isArray(post.dependsOn)
+          ? post.dependsOn.map((item) => String(item || '').trim()).filter(Boolean)
+          : undefined,
+        sourceStepId: String(post.sourceStepId || '').trim() || undefined,
+        sourceStepIds: Array.isArray(post.sourceStepIds)
+          ? post.sourceStepIds.map((item) => String(item || '').trim()).filter(Boolean)
+          : undefined,
+      } as BrowserPostProcessingStepLike;
+    });
+    return {
+      ...value,
+      postProcessingSteps: normalizedPosts,
+    };
+  }
+
+  private buildBrowserLogicalPlan(input: {
+    workflowSteps: Array<{ id: string; name: string }>;
+    browserPhases: Array<{ steps: BrowserWorkflowActivityStep[] }>;
+    workflowComposition?: BrowserWorkflowCompositionLike;
+  }): BrowserWorkflowLogicalPlan {
+    const sourceStepToWorkflowStep = new Map<string, string>();
+    input.browserPhases.forEach((phase, phaseIndex) => {
+      const workflowStepId = input.workflowSteps[phaseIndex]?.id;
+      if (!workflowStepId) return;
+      phase.steps.forEach((step) => {
+        const sourceStepId = String(step.config?.templateStepId || '').trim();
+        if (sourceStepId) sourceStepToWorkflowStep.set(sourceStepId, workflowStepId);
+      });
+    });
+    const browserSteps = input.workflowSteps.map((step) => ({
+      id: step.id,
+      name: step.name,
+      type: 'browser_activity' as const,
+      dependsOn: [],
+      workflowStepId: step.id,
+    }));
+    const fallbackDependency = browserSteps[browserSteps.length - 1]?.id;
+    const processingSteps = (input.workflowComposition?.postProcessingSteps || []).map(
+      (post, index) => {
+        const sourceStepIds = Array.from(
+          new Set(
+            [...(Array.isArray(post.sourceStepIds) ? post.sourceStepIds : []), post.sourceStepId]
+              .map((item) => String(item || '').trim())
+              .filter(Boolean)
+          )
+        );
+        const explicitDependencies = Array.isArray(post.dependsOn)
+          ? post.dependsOn
+              .map((dependency) => dependency === 'browser_recording' ? fallbackDependency : dependency)
+              .filter((item): item is string => Boolean(item))
+          : [];
+        const dependsOn = explicitDependencies.length > 0
+          ? Array.from(new Set(explicitDependencies))
+          : Array.from(
+              new Set(
+                sourceStepIds
+                  .map((sourceStepId) => sourceStepToWorkflowStep.get(sourceStepId))
+                  .filter((item): item is string => Boolean(item))
+              )
+            );
+        if (dependsOn.length === 0 && fallbackDependency) dependsOn.push(fallbackDependency);
+        if (
+          post.type === 'workflow_skill' &&
+          !post.inputBindings &&
+          fallbackDependency &&
+          !dependsOn.includes(fallbackDependency)
+        ) {
+          dependsOn.push(fallbackDependency);
+        }
+        const id = String(post.id || `post_process_${index + 1}`);
+        return {
+          id,
+          name:
+            post.type === 'workflow_skill'
+              ? `工作流后处理：${post.skillId || id}`
+              : post.processingMode === 'summary'
+                ? 'LLM 总结'
+                : `LLM 处理：${post.operationId || id}`,
+          type: post.type || 'llm_operation',
+          dependsOn,
+          sourceStepId: sourceStepIds[0],
+          sourceStepIds,
+          operationId: post.operationId,
+          operationVersion: post.operationVersion,
+          skillId: post.skillId,
+          releaseId: post.releaseId,
+          runWhen: post.runWhen,
+        };
+      }
+    );
+    const steps = [...browserSteps, ...processingSteps];
+    return {
+      schemaVersion: 'browser-template-logical-plan/v1',
+      browserStepCount: browserSteps.length,
+      postProcessingStepCount: processingSteps.length,
+      totalStepCount: steps.length,
+      steps,
     };
   }
 

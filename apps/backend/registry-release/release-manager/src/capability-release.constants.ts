@@ -15,6 +15,7 @@ export const CAPABILITY_RELEASE_ERROR_CODE = {
   ROLLBACK_TARGET_RELEASE_NOT_FOUND: 'rollback_target_release_not_found',
   SCHEMA_BREAKING_CHANGE: 'schema_breaking_change',
   CONTRACT_LINT_FAILED: 'contract_lint_failed',
+  SENSITIVE_DEFAULT_FORBIDDEN: 'sensitive_default_forbidden',
   FIXTURE_VALIDATION_FAILED: 'fixture_validation_failed',
   ATTESTATION_FAILED: 'attestation_failed',
 } as const;

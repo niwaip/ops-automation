@@ -97,7 +97,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
   }
 
   async invokeStep(request: RuntimeStepInvokeRequest): Promise<RuntimeStepInvokeResult> {
-    const payload: LegacyBrowserExecuteStepRequest = {
+    const payload: LegacyBrowserExecuteStepRequest & { captureProfile?: Record<string, unknown> } = {
       executionId: request.executionId,
       runtimeSessionId: request.runtimeSessionId || '',
       stepId: request.stepId,
@@ -107,6 +107,16 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
         request.input.args && typeof request.input.args === 'object'
           ? (request.input.args as Record<string, unknown>)
           : undefined,
+      captureProfile:
+        (request.input.captureProfile as Record<string, unknown>) ||
+        (request.input.capture_profile as Record<string, unknown>) ||
+        (request.metadata?.captureProfile as Record<string, unknown>) ||
+        (request.metadata?.capture_profile as Record<string, unknown>) ||
+        {
+          schemaVersion: 'capture-profile/v1',
+          profile: 'article',
+          capture: { screenshot: true, html: true, mainContent: true },
+        },
     };
 
     const response = await axios.post<LegacyBrowserExecuteStepResult>(
@@ -118,6 +128,12 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     const requiresTakeover = Boolean(legacyResult.shouldTakeover);
     const artifacts = this.extractArtifacts(legacyResult);
     const snapshot = this.extractSnapshot(legacyResult, artifacts);
+    const outputData = (legacyResult.output?.data as Record<string, unknown>) || {};
+    const text =
+      (legacyResult.output?.text as string) ||
+      (outputData?.text as string) ||
+      (legacyResult as any).text ||
+      null;
 
     return {
       success: legacyResult.success,
@@ -128,6 +144,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
           : 'failed',
       output: {
         ...(legacyResult.output || {}),
+        ...(text ? { text } : {}),
         pageUrl: legacyResult.pageState?.pageUrl || legacyResult.output?.pageUrl || null,
         pageTitle: legacyResult.pageState?.pageTitle || legacyResult.output?.pageTitle || null,
         pageFingerprint:

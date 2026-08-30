@@ -305,7 +305,7 @@ export class RecorderDebugService {
   }
 
   async exportArtifacts(
-    request: Omit<RecorderDebugChatRequest, 'message'> & { userGoal?: string }
+    request: import('./recorder-debug.types').RecorderDebugExportRequest
   ): Promise<{
     sessionId: string;
     runtimeSessionId: string;
@@ -317,7 +317,7 @@ export class RecorderDebugService {
     const exportArtifacts =
       (await this.recorderExportAssemblyService.buildExportArtifacts(
         session,
-        request.userGoal || '浏览器调试任务'
+        request.userGoal || '浏览器调试任务',
       )) as unknown as RecorderDebugExportArtifacts;
     this.recorderDebugResponseService.pushAssistantTurn(session, {
       status: 'completed',

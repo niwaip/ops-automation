@@ -41,7 +41,9 @@ export class BrowserRecordingRuntimePlannerService {
         : runtimeSteps;
     const initialUrl = pickFirstNonEmptyString(
       runtimeInput.url,
-      runtimeSteps.find((step) => step.action === 'goto')?.target
+      runtimeInput.startUrl,
+      runtimeSteps.find((step) => step.action === 'goto' || step.action === 'navigate')?.target,
+      (runtimeSteps.find((step) => step.action === 'goto' || step.action === 'navigate')?.args as any)?.url
     );
 
     return {

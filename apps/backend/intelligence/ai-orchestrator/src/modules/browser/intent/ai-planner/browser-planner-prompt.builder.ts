@@ -77,7 +77,7 @@ IMPORTANT for RETRY / FAILURE RECOVERY:
 Examples:
 - "打开微博" -> {"commands":[{"tool":"navigate","params":{"url":"https://weibo.com"},"description":"打开微博"}],"explanation":"导航到微博"}
 - "打开百度" -> {"commands":[{"tool":"navigate","params":{"url":"https://www.baidu.com"},"description":"打开百度"}],"explanation":"导航到百度首页"}
-- "在百度搜索产品公告" -> {"commands":[{"tool":"navigate","params":{"url":"https://www.baidu.com/s?wd=产品公告"},"description":"搜索产品公告"}],"explanation":"在百度搜索产品公告"}
+- "在百度搜索产品公告" -> {"commands":[{"tool":"navigate","params":{"url":"https://www.baidu.com"},"description":"打开百度"},{"tool":"smart_search","params":{"query":"产品公告"},"description":"在百度搜索产品公告"}],"explanation":"依次打开百度并搜索产品公告"}
 - "搜索 MCP 协议" -> {"commands":[{"tool":"search","params":{"query":"MCP 协议"},"description":"搜索MCP协议"}],"explanation":"在当前页面搜索MCP协议"}
 - "智搜 MCP 协议" -> {"commands":[{"tool":"smart_search","params":{"query":"MCP 协议"},"description":"智搜MCP协议"}],"explanation":"将智能查找搜索入口并搜索MCP协议"}
 - "点击登录按钮" -> {"commands":[{"tool":"click","params":{"rawTarget":"登录","roleHint":"button","semanticHint":"submit"},"description":"点击登录"}],"explanation":"点击登录按钮"}

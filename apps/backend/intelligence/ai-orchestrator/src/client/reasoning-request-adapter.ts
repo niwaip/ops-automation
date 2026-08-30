@@ -28,7 +28,7 @@ export function applyReasoningRequestAdapter(
   const dialect = resolveDialect(context);
 
   if (option.enabled === false) {
-    applyDisabledReasoning(payload, dialect, context.model);
+    applyDisabledReasoning(payload, dialect, context.model, context.provider);
     return;
   }
 
@@ -72,8 +72,12 @@ function applyDashScopeThinkingBudget(
 function applyDisabledReasoning(
   payload: Record<string, unknown>,
   dialect: ReasoningDialect,
-  model: string
+  model: string,
+  provider?: string
 ): void {
+  const normModel = (model || '').toLowerCase();
+  const normProvider = (provider || '').toLowerCase();
+
   switch (dialect) {
     case 'openrouter':
       delete payload.reasoning;
@@ -91,6 +95,9 @@ function applyDisabledReasoning(
       if (supportsOpenAiReasoningOff(model)) payload.reasoning_effort = 'none';
       return;
     case 'generic':
+      if (normModel.includes('deepseek') || normModel.includes('qwen') || normProvider === 'bai') {
+        payload.enable_thinking = false;
+      }
       return;
   }
 }

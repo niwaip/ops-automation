@@ -9,6 +9,7 @@ import {
   Typography,
   theme as antdTheme,
 } from 'antd';
+import { BrowserRunOutputCard } from './BrowserRunOutputCard';
 
 const { Text, Paragraph } = Typography;
 
@@ -44,10 +45,17 @@ interface MCPCommand {
 
 interface BrowserExecuteResponse {
   success?: boolean;
+  recovered?: boolean;
+  recovery?: {
+    code?: string;
+    expectedUrl?: string;
+    observedUrl?: string;
+  };
   message?: string;
   results?: Array<Record<string, unknown>>;
   steps?: Array<Record<string, unknown>>;
   executedCommands?: MCPCommand[];
+  browserRunOutput?: Record<string, unknown>;
 }
 
 interface RecorderVerificationCheck {
@@ -267,6 +275,9 @@ const RecorderOutcomeDetailCard: React.FC<RecorderOutcomeDetailCardProps> = ({
               </Tag>
               <Tag>{outcomeKindLabelMap[outcome.kind]}</Tag>
               <Tag color={verificationMeta.color}>{verificationMeta.label}</Tag>
+              {outcome.evidence?.toolExecution?.recovered === true ? (
+                <Tag color="gold">已恢复（页面状态校准）</Tag>
+              ) : null}
               <Tag color="blue">置信度 {formatConfidence(outcome.verification?.confidence)}</Tag>
               <Tag>Verifier: {outcome.verification?.verifier || '-'}</Tag>
             </Space>
@@ -336,6 +347,10 @@ const RecorderOutcomeDetailCard: React.FC<RecorderOutcomeDetailCardProps> = ({
             />
           </Space>
         </Card>
+
+        <BrowserRunOutputCard
+          value={raw?.execution?.browserRunOutput || outcome.evidence?.toolExecution}
+        />
 
         <Card size="small" title="Checks 面板">
           <Space direction="vertical" size="small" style={{ width: '100%' }}>

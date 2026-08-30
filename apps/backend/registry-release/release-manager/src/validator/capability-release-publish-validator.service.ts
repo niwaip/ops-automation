@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { buildBrowserCapabilityOutputSchema } from '@ops/backend-browser-execution-contract';
 import { BrowserRecordingExecutionPlanValidatorService } from '../validator/browser-recording-execution-plan-validator.service';
 import { BrowserRecordingFlowNormalizerService } from '../compiler/browser-recording-flow-normalizer.service';
 import { CAPABILITY_RELEASE_ERROR_CODE } from '../capability-release.constants';
@@ -12,6 +13,7 @@ import {
   CapabilitySourceSnapshotDTO,
   SkillDraftDTO,
 } from '../interfaces';
+import { findTemporalCredentialDefaults } from '../publisher/temporal-runtime-credential.resolver';
 
 type ToolValidationResult = Awaited<
   ReturnType<ReleaseManagerSkillServicePort['validateSkillToolsPayload']>
@@ -20,6 +22,11 @@ type BrowserRecordingExecutionPlanCompatibilityValidator =
   BrowserRecordingExecutionPlanValidatorService & {
     normalizePayloadForCompatibility(payload: Record<string, unknown>): Record<string, unknown>;
   };
+
+const asRecord = (value: unknown): Record<string, unknown> | undefined =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
 
 export type CapabilityReleasePublishBlocker = {
   code: string;
@@ -64,6 +71,28 @@ export class CapabilityReleasePublishValidatorService {
       draft,
       normalizedDraftTools
     );
+
+    if (release.sourceType === 'temporal_workflow') {
+      const credentialDefaultFields = Array.from(
+        new Set([
+          ...findTemporalCredentialDefaults(normalizedDraftPayload),
+          ...findTemporalCredentialDefaults(snapshot?.sourcePayload || {}),
+        ])
+      );
+      if (credentialDefaultFields.length > 0) {
+        return {
+          normalizedDraftTools,
+          normalizedDraftPayload,
+          blocker: {
+            code: CAPABILITY_RELEASE_ERROR_CODE.SENSITIVE_DEFAULT_FORBIDDEN,
+            message: '运行凭证不能作为参数默认值发布，请改用 credentialEnvKey 环境变量绑定',
+            auditEventType: 'skill_publish_blocked_by_sensitive_default',
+            auditSummary: '发布前阻断：参数 Schema 包含明文运行凭证默认值',
+            details: { fields: credentialDefaultFields },
+          },
+        };
+      }
+    }
 
     // Gate 0 — Contract Lint (§10.1): static schema/subset/ref checks. Failure
     // blocks the publish BEFORE any code generation happens. A payload with NO
@@ -227,8 +256,9 @@ export class CapabilityReleasePublishValidatorService {
     }
 
     const outputSchema =
-      this.extractOutputSchemaFromPayload(snapshotPayload) ||
-      this.extractOutputSchemaFromPayload(draftPayload);
+      this.extractOutputSchemaFromPayload(snapshotPayload, release) ||
+      this.extractOutputSchemaFromPayload(draftPayload, release) ||
+      this.extractOutputSchemaFromPayload(normalizedDraftPayload, release);
     if (outputSchema) {
       return {
         ...draftPayload,
@@ -248,9 +278,30 @@ export class CapabilityReleasePublishValidatorService {
   }
 
   private extractOutputSchemaFromPayload(
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
+    release?: CapabilityReleaseDTO
   ): Record<string, unknown> | undefined {
-    if (!payload || typeof payload !== 'object') return undefined;
+    if (!payload || typeof payload !== 'object') {
+      if (release?.sourceType === 'browser_recording') {
+        return buildBrowserCapabilityOutputSchema({});
+      }
+      return undefined;
+    }
+
+    if (release?.sourceType === 'browser_recording') {
+      const apiEndpoints = asRecord(payload.apiEndpoints);
+      const runtimeMetadata =
+        asRecord(apiEndpoints?.runtimeMetadata) || asRecord(payload.runtimeMetadata);
+      return buildBrowserCapabilityOutputSchema({
+        declaredOutputSchema: payload.outputSchema,
+        runtimeMetadata,
+        executionPlan: payload.executionPlan,
+        composition:
+          runtimeMetadata?.composition ||
+          payload.workflowComposition ||
+          payload.composition,
+      });
+    }
 
     const contracts =
       (payload.contracts as Record<string, unknown>) ||
@@ -300,6 +351,25 @@ export class CapabilityReleasePublishValidatorService {
         required: Object.keys(properties),
         additionalProperties: false,
       };
+    }
+
+    if (
+      payload.executionPlan ||
+      payload.browserRecording ||
+      payload.executionFlow ||
+      payload.steps
+    ) {
+      const apiEndpoints = asRecord(payload.apiEndpoints);
+      const runtimeMetadata =
+        asRecord(apiEndpoints?.runtimeMetadata) || asRecord(payload.runtimeMetadata);
+      return buildBrowserCapabilityOutputSchema({
+        runtimeMetadata,
+        executionPlan: payload.executionPlan,
+        composition:
+          runtimeMetadata?.composition ||
+          payload.workflowComposition ||
+          payload.composition,
+      });
     }
 
     return undefined;

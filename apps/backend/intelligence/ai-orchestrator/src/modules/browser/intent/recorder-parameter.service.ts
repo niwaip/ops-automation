@@ -19,6 +19,7 @@ interface TemplateStepLike {
     value?: string;
   };
   params?: Record<string, unknown>;
+  target?: string;
   description?: string;
   branch?: {
     condition_fn?: string;
@@ -85,14 +86,15 @@ export class RecorderParameterService {
     for (const [index, command] of commands.entries()) {
       if (
         (options?.includeStartUrl ?? true) &&
-        command.tool === 'navigate' &&
-        typeof command.params.url === 'string'
+        (command.tool === 'navigate' || command.tool === 'goto') &&
+        typeof command.params.url === 'string' &&
+        command.params.url.trim()
       ) {
         registerParameter({
           name: 'startUrl',
           description: '起始页面地址，默认使用当前录制时的地址',
           required: false,
-          exampleValue: command.params.url,
+          exampleValue: command.params.url.trim(),
           source: `command.${index}.url`,
         });
       }
@@ -140,6 +142,24 @@ export class RecorderParameterService {
     }
 
     for (const [index, step] of (options?.templateSteps || []).entries()) {
+      if (
+        (options?.includeStartUrl ?? true) &&
+        (step.action === 'navigate' || step.action === 'goto')
+      ) {
+        const stepUrl =
+          (typeof step.params?.url === 'string' && step.params.url.trim()) ||
+          (typeof step.target === 'string' && step.target.trim()) ||
+          undefined;
+        if (stepUrl && !stepUrl.includes('${')) {
+          registerParameter({
+            name: 'startUrl',
+            description: '起始页面地址，默认使用当前录制时的地址',
+            required: false,
+            exampleValue: stepUrl,
+            source: `template.${step.step_id}.params.url`,
+          });
+        }
+      }
       if (step.action === 'fill' && typeof step.params?.value === 'string') {
         registerParameter(this.inferTemplateFillParameter(step, index));
       }
@@ -171,21 +191,19 @@ export class RecorderParameterService {
     commands: BrowserCommand[],
     templateSteps?: TemplateStepLike[]
   ): boolean {
-    if (!templateSteps?.length) {
-      return true;
-    }
-
-    const navigateCommands = commands.filter(
+    const hasNavigateCommand = commands.some(
       (command) =>
-        command.tool === 'navigate' &&
-        typeof command.params.url === 'string' &&
-        command.params.url.trim()
+        (command.tool === 'navigate' || command.tool === 'goto') &&
+        typeof command.params?.url === 'string' &&
+        command.params.url.trim().length > 0
     );
-    if (navigateCommands.length !== 1) {
-      return true;
-    }
-
-    return false;
+    const hasNavigateStep = (templateSteps || []).some(
+      (step) =>
+        (step.action === 'navigate' || step.action === 'goto') &&
+        ((typeof step.params?.url === 'string' && step.params.url.trim().length > 0) ||
+          (typeof step.target === 'string' && step.target.trim().length > 0))
+    );
+    return hasNavigateCommand || hasNavigateStep || !templateSteps?.length;
   }
 
   templateStepsContainPlaceholder(steps: TemplateStepLike[], placeholderName: string): boolean {

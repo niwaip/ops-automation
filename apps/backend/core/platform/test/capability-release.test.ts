@@ -53,6 +53,10 @@ import {
 import {
   CapabilityReleaseBrowserRuntimeSupportService,
 } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-support.service';
+import { BrowserPostStateReconcilerService } from '../../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-post-state-reconciler.service';
+import { BrowserRuntimeStepResultStateService } from '../../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-runtime-step-result-state.service';
+import { BrowserRunOutputMaterializerService } from '../../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-run-output-materializer.service';
+import { BrowserLegacyOutputAdapter } from '../../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-legacy-output.adapter';
 import {
   CapabilityReleaseDeploymentSmokeService,
 } from '../../../registry-release/release-manager/src/publisher/capability-release-deployment-smoke.service';
@@ -245,18 +249,25 @@ describe('CapabilityReleaseService', () => {
     );
     const capabilityReleaseBrowserRuntimeSupportService =
       new CapabilityReleaseBrowserRuntimeSupportService();
+    const browserRuntimeStepResultStateService = new BrowserRuntimeStepResultStateService();
     const capabilityReleaseBrowserRuntimeStepExecutorService =
       new CapabilityReleaseBrowserRuntimeStepExecutorService(
         browserRecordingActionPolicyService,
-        capabilityReleaseBrowserRuntimeSupportService
+        capabilityReleaseBrowserRuntimeSupportService,
+        new BrowserPostStateReconcilerService(),
+        browserRuntimeStepResultStateService
       );
     const capabilityReleaseBrowserRuntimeLoopExecutorService =
       new CapabilityReleaseBrowserRuntimeLoopExecutorService(
         capabilityReleaseBrowserRuntimeStepExecutorService,
-        capabilityReleaseBrowserRuntimeSupportService
+        capabilityReleaseBrowserRuntimeSupportService,
+        browserRuntimeStepResultStateService
       );
     const capabilityReleaseBrowserRuntimeResultService =
-      new CapabilityReleaseBrowserRuntimeResultService();
+      new CapabilityReleaseBrowserRuntimeResultService(
+        new BrowserRunOutputMaterializerService(),
+        new BrowserLegacyOutputAdapter()
+      );
     const capabilityReleaseBrowserRuntimeExecutorService =
       new CapabilityReleaseBrowserRuntimeExecutorService(
         capabilityReleaseBrowserRuntimeStepExecutorService,
@@ -267,7 +278,15 @@ describe('CapabilityReleaseService', () => {
       browserRecordingService,
       capabilityReleaseBrowserRuntimeExecutorService,
       capabilityReleaseBrowserRuntimeResultService,
-      capabilityReleaseBrowserRuntimeSupportService
+      capabilityReleaseBrowserRuntimeSupportService,
+      {
+        acquire: jest.fn().mockImplementation(async (input: { runtimeSessionId?: string }) => ({
+          runtimeSessionId:
+            input.runtimeSessionId || '11111111-1111-4111-8111-111111111111',
+          ownedByRuntime: !input.runtimeSessionId,
+        })),
+        closeOwnedQuietly: jest.fn().mockResolvedValue(undefined),
+      } as any
     );
     const runtimeService = new CapabilityReleaseRuntimeService(
       activityService as any,
@@ -2790,7 +2809,6 @@ describe('CapabilityReleaseService', () => {
       expect.objectContaining({
         backend: 'cli',
         runtimeSessionId: 'runtime-browser-1',
-        initialUrl: 'https://www.bing.com',
       }),
       { timeout: 60000 }
     );

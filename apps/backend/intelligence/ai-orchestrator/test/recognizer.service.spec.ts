@@ -91,6 +91,26 @@ describe('RecognizerService', () => {
       expect(result.confidence).toBeGreaterThan(0);
     });
 
+    it('should extract url parameter from user input', async () => {
+      service.registerTemplate({
+        template_id: 'zhihu-template',
+        name: '打开知乎',
+        params_schema: {
+          properties: {
+            url: { type: 'string', description: '目标URL' },
+          },
+          required: ['url'],
+        },
+      });
+
+      const result = await service.recognizeParams({
+        template_id: 'zhihu-template',
+        user_input: '打开 https://zhuanlan.zhihu.com/p/207269807287912524',
+      });
+
+      expect(result.params.url).toBe('https://zhuanlan.zhihu.com/p/207269807287912524');
+    });
+
     it('should handle context parameter', async () => {
       service.registerTemplate({
         template_id: 'test-template',

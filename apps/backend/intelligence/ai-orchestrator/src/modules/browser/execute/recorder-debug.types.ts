@@ -10,6 +10,12 @@ import type {
 
 export interface BrowserExecuteResponse {
   success: boolean;
+  recovered?: boolean;
+  recovery?: {
+    code: 'NAVIGATION_TIMEOUT_RECOVERED';
+    expectedUrl: string;
+    observedUrl: string;
+  };
   results: Array<Record<string, any>>;
   message?: string;
   steps?: Array<Record<string, any>>;
@@ -185,6 +191,8 @@ export interface RecorderIntent {
 
 export interface RecorderBrowserExecutionSummary {
   success: boolean;
+  recovered?: boolean;
+  recovery?: BrowserExecuteResponse['recovery'];
   message?: string;
   commandCount: number;
   executedCommandCount: number;
@@ -203,6 +211,7 @@ export type RecorderVerifierType =
   | 'click'
   | 'fill'
   | 'navigate'
+  | 'search-result-open'
   | 'select'
   | 'detail-open'
   | 'form-submit'
@@ -212,6 +221,8 @@ export interface RecorderVerificationCheck {
   code:
     | 'tool_command_succeeded'
     | 'url_changed'
+    | 'search_submitted'
+    | 'result_opened'
     | 'node_state_changed'
     | 'target_visible'
     | 'target_selected'
@@ -482,6 +493,10 @@ export interface RecorderDebugChatRequest {
   backend?: 'cli' | 'chrome-devtools' | 'mcp';
   modelId?: string;
   userRoles?: string[];
+}
+
+export interface RecorderDebugExportRequest extends Omit<RecorderDebugChatRequest, 'message'> {
+  userGoal?: string;
 }
 
 export interface RecorderDebugChatResponse {

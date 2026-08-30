@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DeterministicNodeInputResolverService } from './deterministic-node-input-resolver.service';
 import { DeterministicFinalOutputService } from './deterministic-final-output.service';
@@ -19,6 +19,11 @@ import { GracePolicyService } from './grace-policy.service';
 import { ERROR_CODES } from '@ops/backend-error-codes';
 import { buildDeterministicExecutionResult } from './deterministic-execution-result.builder';
 import { DeterministicReadySetService } from './deterministic-ready-set.service';
+import { ResultRefService } from '../result-ref/result-ref.service';
+import { unwrapStoredStepOutput } from './stored-step-output';
+import { createHash } from 'crypto';
+import { DeterministicRuntimeSessionCoordinatorService } from './deterministic-runtime-session-coordinator.service';
+import { ExecutionPhaseSyncService } from '../state/execution-phase-sync.service';
 
 @Injectable()
 export class DeterministicPlanSchedulerService {
@@ -35,7 +40,12 @@ export class DeterministicPlanSchedulerService {
     private readonly contractCatalog: CapabilityContractCatalogService,
     private readonly outputNormalizer: OutputNormalizerService,
     private readonly gracePolicy: GracePolicyService,
-    private readonly readySet: DeterministicReadySetService = new DeterministicReadySetService()
+    private readonly readySet: DeterministicReadySetService = new DeterministicReadySetService(),
+    @Optional() private readonly resultRefs?: ResultRefService,
+    @Optional()
+    private readonly runtimeSessionCoordinator?: DeterministicRuntimeSessionCoordinatorService,
+    @Optional()
+    private readonly executionPhaseSyncService?: ExecutionPhaseSyncService
   ) {}
 
   /**
@@ -87,6 +97,7 @@ export class DeterministicPlanSchedulerService {
         failureCode: 'LEGACY_GRACE_EXPIRED',
         failureReason: 'Legacy grace period expired — execution rejected before start',
       });
+      await this.closeRuntimeSessions(executionId, 'deterministic_legacy_grace_rejected');
       return;
     }
 
@@ -112,6 +123,7 @@ export class DeterministicPlanSchedulerService {
           failureCode: 'FROZEN_PLAN_TAMPERED',
           failureReason: 'Execution plan hash verification failed (frozen plan tampered)',
         });
+        await this.closeRuntimeSessions(executionId, 'deterministic_plan_tampered');
         return;
       }
     }
@@ -171,6 +183,10 @@ export class DeterministicPlanSchedulerService {
   private async executeStep(execution: any, step: any, autoAdvance = true): Promise<void> {
     const stepId = step.id;
     const planNodeId = step.planNodeId || step.name || `step_${step.stepIndex}`;
+    const planNodes = Array.isArray((execution.plan?.planJson as any)?.nodes)
+      ? (execution.plan?.planJson as any).nodes
+      : [];
+    const planNode = planNodes.find((node: any) => node.nodeId === planNodeId);
 
     // Acquire DB Lease Lock atomically
     const leaseExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minute lease
@@ -196,6 +212,27 @@ export class DeterministicPlanSchedulerService {
       this.logger.warn(
         `Failed to acquire atomic lease for step ${stepId} in execution ${execution.id}`
       );
+      return;
+    }
+
+    if (this.shouldSkipForRunWhen(execution, planNode)) {
+      await this.prisma.executionStep.update({
+        where: { id: stepId },
+        data: { status: 'skipped', endedAt: new Date(), leaseExpiresAt: null },
+      });
+      await this.eventPublisher.createEvent(
+        execution.id,
+        'execution.node.skipped' as any,
+        { planNodeId, reason: 'browser_not_succeeded', runWhen: 'browser_succeeded' },
+        { stepId },
+      );
+      await this.eventPublisher.createEvent(
+        execution.id,
+        'step.skipped',
+        { stepId, planNodeId, reason: 'browser_not_succeeded' },
+        { stepId },
+      );
+      if (autoAdvance) await this.advanceExecution(execution.id);
       return;
     }
 
@@ -231,17 +268,9 @@ export class DeterministicPlanSchedulerService {
       execution.id,
       inputBindings,
       (execution.inputJson as Record<string, any>) || {},
-      step.capabilityId
+      step.capabilityId,
+      step.nodeKind
     );
-
-    if (!resolvedInput.apiKey) {
-      // Fall back to env only; the workflow artifact's own default key is
-      // applied at runtime by the workflow when no apiKey binding is present.
-      const defaultApiKey = process.env.TAVILY_API_KEY || process.env.SEARCH_API_KEY;
-      if (defaultApiKey) {
-        resolvedInput.apiKey = defaultApiKey;
-      }
-    }
 
     await this.prisma.executionStep.update({
       where: { id: stepId },
@@ -279,17 +308,23 @@ export class DeterministicPlanSchedulerService {
         },
       });
 
-      // Mark parent execution as failed
+      const continueAfterFailure = planNode?.failurePolicy === 'continue';
+
+      // Most failures abort the execution.  A recorder browser node can
+      // explicitly opt into terminal handling: dependent report nodes are
+      // then allowed to consume whatever terminal BrowserRunOutput exists.
       const failureReason = `Node '${planNodeId}' failed: ${errMsg}`;
-      await this.prisma.execution.update({
-        where: { id: execution.id },
-        data: {
-          status: 'failed',
-          failureReason,
-          failureCode: error.code || 'NODE_EXECUTION_FAILED',
-          endedAt: new Date(),
-        },
-      });
+      if (!continueAfterFailure) {
+        await this.prisma.execution.update({
+          where: { id: execution.id },
+          data: {
+            status: 'failed',
+            failureReason,
+            failureCode: error.code || 'NODE_EXECUTION_FAILED',
+            endedAt: new Date(),
+          },
+        });
+      }
 
       await this.eventPublisher.createEvent(
         execution.id,
@@ -311,18 +346,43 @@ export class DeterministicPlanSchedulerService {
         },
         { stepId }
       );
-      await this.eventPublisher.createEvent(
-        execution.id,
-        'execution.status_changed',
-        {
-          oldStatus: 'running',
-          newStatus: 'failed',
-          failureCode: error.code || 'NODE_EXECUTION_FAILED',
-          failureReason,
-        },
-        { stepId }
-      );
+      if (!continueAfterFailure) {
+        await this.eventPublisher.createEvent(
+          execution.id,
+          'execution.status_changed',
+          {
+            oldStatus: 'running',
+            newStatus: 'failed',
+            failureCode: error.code || 'NODE_EXECUTION_FAILED',
+            failureReason,
+          },
+          { stepId }
+        );
+        await this.closeRuntimeSessions(execution.id, 'deterministic_step_failed');
+      } else {
+        await this.eventPublisher.createEvent(
+          execution.id,
+          'execution.browser_terminal.continued' as any,
+          { planNodeId, errorMessage: errMsg, errorCode: error.code || 'NODE_EXECUTION_FAILED' },
+          { stepId },
+        );
+        if (autoAdvance) await this.advanceExecution(execution.id);
+      }
     }
+  }
+
+  private shouldSkipForRunWhen(execution: any, planNode: any): boolean {
+    if (planNode?.runWhen !== 'browser_succeeded') return false;
+    const browserStep = (execution.steps || []).find((candidate: any) => candidate.planNodeId === 'browser_recording');
+    if (!browserStep) return false;
+    if (['failed', 'cancelled', 'skipped'].includes(browserStep.status)) return true;
+    const output = unwrapStoredStepOutput(browserStep.outputJson);
+    const browser = output && typeof output === 'object' ? (output as any).browserRunOutput : undefined;
+    const status = browser?.run?.status || browser?.status || output?.status;
+    if (status) {
+      return !['completed', 'completed_with_warnings', 'success', 'succeeded'].includes(status);
+    }
+    return !['completed', 'succeeded'].includes(browserStep.status);
   }
 
   /**
@@ -447,6 +507,22 @@ export class DeterministicPlanSchedulerService {
     const planNodes = planJson.nodes || [];
     const planNode = planNodes.find((n: any) => n.nodeId === step.planNodeId);
 
+    const phaseKey =
+      (typeof planNode?.phaseKey === 'string' && planNode.phaseKey) ||
+      `phase_${String(step.stepIndex || 1).padStart(2, '0')}_${step.planNodeId || step.id}`;
+    const phaseName =
+      (typeof planNode?.name === 'string' && planNode.name) ||
+      step.planNodeId ||
+      `Step ${step.stepIndex || 1}`;
+    const phaseMetadata = { phaseKey, phaseName, phaseType: 'llm_operation' };
+
+    await this.executionPhaseSyncService?.markPhaseRunningForStep(
+      execution.id,
+      '',
+      phaseMetadata,
+      step
+    );
+
     const result = await this.llmAdapter.executeOperation({
       executionId: execution.id,
       stepId: step.id,
@@ -464,6 +540,20 @@ export class DeterministicPlanSchedulerService {
       input: resolvedInput,
       idempotencyKey: step.idempotencyKey || `${execution.id}:${step.id}`,
     });
+
+    await this.executionPhaseSyncService?.syncPhaseAfterStepResult(
+      execution.id,
+      '',
+      {
+        success: result.success,
+        status: result.success ? 'completed' : 'failed',
+        output: result.output || null,
+        errorMessage: result.errorMessage || undefined,
+        errorCode: result.success ? undefined : 'LLM_OPERATION_FAILED',
+      },
+      phaseMetadata,
+      step
+    );
 
     if (!result.success) {
       // Persist the prompt snapshot (when the orchestrator emitted one) so the
@@ -573,6 +663,15 @@ export class DeterministicPlanSchedulerService {
       definitionVersion,
       idempotencyKey: stepIdempotencyKey,
     };
+    const captureProfile =
+      frozenMeta.captureProfile ||
+      frozenMeta.capture_profile ||
+      planNode?.captureProfile ||
+      planNode?.capture_profile ||
+      step.captureProfile;
+    if (captureProfile) {
+      metadata.captureProfile = captureProfile;
+    }
     if (isBuiltin) {
       metadata.builtinSkill = true;
       if (frozenMeta.handlerKey) metadata.handlerKey = frozenMeta.handlerKey;
@@ -581,14 +680,20 @@ export class DeterministicPlanSchedulerService {
       if (frozenMeta.skillVersion) metadata.skillVersion = frozenMeta.skillVersion;
     }
 
+    const runtimeType = this.mapPlanRuntimeTypeToExecutionRuntime(
+      step.action || step.outputContractJson?.runtimeType
+    );
+    const runtimeSessionId =
+      runtimeType === 'browser'
+        ? await this.ensureStandardBrowserSession(execution, step)
+        : '';
+
     const request = {
       requestId: `${execution.id}:${step.id}`,
       executionId: execution.id,
       stepId: step.id,
-      runtimeType: this.mapPlanRuntimeTypeToExecutionRuntime(
-        step.action || step.outputContractJson?.runtimeType
-      ),
-      runtimeSessionId: '',
+      runtimeType,
+      runtimeSessionId,
       skillId: capabilityId,
       publishedSkillId: capabilityId,
       capabilityType,
@@ -599,18 +704,56 @@ export class DeterministicPlanSchedulerService {
       metadata,
     };
 
+    const phaseKey =
+      (typeof frozenMeta.phaseKey === 'string' && frozenMeta.phaseKey) ||
+      (typeof planNode?.phaseKey === 'string' && planNode.phaseKey) ||
+      `phase_${String(step.stepIndex || 1).padStart(2, '0')}_${step.planNodeId || step.id}`;
+    const phaseName =
+      (typeof frozenMeta.phaseName === 'string' && frozenMeta.phaseName) ||
+      (typeof planNode?.name === 'string' && planNode.name) ||
+      step.planNodeId ||
+      `Step ${step.stepIndex || 1}`;
+    const phaseType =
+      runtimeType === 'browser'
+        ? 'browser_recording'
+        : isBuiltin
+          ? 'builtin'
+          : 'workflow_activity';
+    const phaseMetadata = { phaseKey, phaseName, phaseType };
+
+    await this.executionPhaseSyncService?.markPhaseRunningForStep(
+      execution.id,
+      runtimeSessionId,
+      phaseMetadata,
+      step
+    );
+
     const result = await this.orchestrator.executeStep(request);
 
-    if (!result || !result.success) {
+    await this.executionPhaseSyncService?.syncPhaseAfterStepResult(
+      execution.id,
+      runtimeSessionId,
+      result,
+      phaseMetadata,
+      step
+    );
+
+    const terminalOutputAllowed =
+      planNode?.failurePolicy === 'continue' &&
+      result?.output &&
+      typeof result.output === 'object' &&
+      !Array.isArray(result.output);
+    if ((!result || !result.success) && !terminalOutputAllowed) {
       const errMsg = result?.errorMessage || `Skill execution '${capabilityId}' failed`;
       const error = new Error(errMsg) as Error & { code?: string };
       error.code = result?.errorCode || 'NODE_EXECUTION_FAILED';
       throw error;
     }
 
+    const runtimeOutput = await this.materializeContentRefs(execution.id, step.id, (result.output || {}) as Record<string, any>);
     const outputJson = this.validateOutputContract(
       step,
-      (result.output || {}) as Record<string, any>,
+      runtimeOutput,
       execution.id
     );
 
@@ -624,21 +767,44 @@ export class DeterministicPlanSchedulerService {
       },
     });
 
+    if (this.resultRefs?.enabled) {
+      const resultRef = await this.resultRefs.create({
+        executionId: execution.id,
+        producerStepId: step.id,
+        payload: outputJson,
+        outputSchema: step.outputSchemaJson,
+        schemaDigest: resolveBrowserRunOutputSchemaDigest(outputJson),
+      });
+      await this.prisma.executionStep.update({
+        where: { id: step.id },
+        data: { outputJson: { inline: outputJson, resultRef } as any },
+      });
+    }
+
     // Save artifacts if generated by skill step
-    const rawArtifacts =
-      result.artifacts ||
-      outputJson?.artifacts ||
-      (outputJson?.artifact ? [outputJson.artifact] : undefined);
+    const rawArtifacts = this.extractArtifacts(result.artifacts, outputJson);
     if (Array.isArray(rawArtifacts)) {
       for (const art of rawArtifacts) {
+        if (!art || typeof art !== 'object') continue;
         const artifactUrl = art.url || art.storageUri;
         if (art && artifactUrl) {
+          const externalArtifactId = art.id || art.externalArtifactId || null;
+          if (
+            externalArtifactId &&
+            (await this.prisma.executionArtifact.findFirst({
+              where: { executionId: execution.id, producerStepId: step.id, externalArtifactId },
+              select: { id: true },
+            }))
+          ) {
+            continue;
+          }
           const createdArtifact = await this.prisma.executionArtifact.create({
             data: {
               executionId: execution.id,
               producerStepId: step.id,
               producerNodeId: step.planNodeId || step.id,
               artifactType: art.type || art.artifactType || 'file',
+              externalArtifactId,
               name: art.name || 'output_artifact',
               url: artifactUrl,
               mimeType: art.mimeType || 'application/octet-stream',
@@ -696,6 +862,7 @@ export class DeterministicPlanSchedulerService {
         oldStatus: execution.status,
         newStatus: 'succeeded',
       });
+      await this.closeRuntimeSessions(execution.id, 'deterministic_execution_succeeded');
       return;
     }
 
@@ -720,6 +887,7 @@ export class DeterministicPlanSchedulerService {
         failureCode: checkResult.errorCode || 'FINAL_OUTPUT_MISSING',
         failureReason: checkResult.errorMessage || 'Final outputs unsatisfied',
       });
+      await this.closeRuntimeSessions(execution.id, 'deterministic_final_output_failed');
       return;
     }
 
@@ -756,9 +924,35 @@ export class DeterministicPlanSchedulerService {
       newStatus: 'succeeded',
     });
 
+    await this.executionPhaseSyncService?.completeActivePhasesOnExecutionSuccess(
+      execution.id,
+      ''
+    );
+
+    await this.closeRuntimeSessions(execution.id, 'deterministic_execution_succeeded');
+
     this.logger.log(
       `Execution ${execution.id} successfully completed all deterministic plan steps.`
     );
+  }
+
+  private async ensureStandardBrowserSession(execution: any, step: any): Promise<string> {
+    if (!this.runtimeSessionCoordinator) {
+      const error = new Error(
+        'Deterministic browser execution requires the session-broker runtime session coordinator'
+      ) as Error & { code?: string };
+      error.code = 'RUNTIME_SESSION_COORDINATOR_UNAVAILABLE';
+      throw error;
+    }
+    return this.runtimeSessionCoordinator.ensureBrowserSession({
+      executionId: execution.id,
+      userId: execution.createdBy,
+      stepId: step.id,
+    });
+  }
+
+  private async closeRuntimeSessions(executionId: string, reason: string): Promise<void> {
+    await this.runtimeSessionCoordinator?.closeForTerminalExecution(executionId, reason);
   }
 
   private async resolveFinalOutputs(
@@ -782,7 +976,7 @@ export class DeterministicPlanSchedulerService {
     for (const req of planDraft.finalOutputs) {
       const step = stepByNode.get(req.fromNodeId);
       if (!step) continue;
-      const outputData = (step.outputJson as Record<string, any>) || {};
+      const outputData = unwrapStoredStepOutput(step.outputJson);
       const value = outputData[req.fromNodeOutput];
 
       const matchedArtifact = artifacts.find(
@@ -802,6 +996,62 @@ export class DeterministicPlanSchedulerService {
     }
 
     return outputs;
+  }
+
+  private extractArtifacts(
+    runtimeArtifacts: unknown,
+    output: Record<string, any>
+  ): Array<Record<string, any>> | undefined {
+    const browserRunOutput = output.browserRunOutput;
+    const candidates = [
+      runtimeArtifacts,
+      output.artifacts,
+      browserRunOutput && typeof browserRunOutput === 'object'
+        ? (browserRunOutput as Record<string, unknown>).artifacts
+        : undefined,
+      output.artifact ? [output.artifact] : undefined,
+    ];
+    const artifacts = candidates.find(Array.isArray);
+    return Array.isArray(artifacts)
+      ? artifacts.filter(
+          (artifact): artifact is Record<string, any> =>
+            Boolean(artifact) && typeof artifact === 'object' && !Array.isArray(artifact)
+        )
+      : undefined;
+  }
+
+  private async materializeContentRefs(executionId: string, producerStepId: string, output: Record<string, any>): Promise<Record<string, any>> {
+    const candidates = Array.isArray(output.contentCandidates) ? output.contentCandidates : [];
+    if (!candidates.length) return output;
+    const next = { ...output };
+    for (const candidate of candidates) {
+      if (candidate && typeof candidate === 'object' && typeof candidate.outputName === 'string' && candidate.outputName.trim()) {
+        if (!next[candidate.outputName]) {
+          next[candidate.outputName] = candidate.text || candidate;
+        }
+      }
+    }
+    if (!this.resultRefs?.enabled || process.env.BROWSER_CONTENT_REF_ENABLED === 'false') return next;
+    delete next.contentCandidates;
+    const browser = next.browserRunOutput && typeof next.browserRunOutput === 'object' ? next.browserRunOutput as Record<string, any> : undefined;
+    for (const candidate of candidates) {
+      if (!candidate || typeof candidate !== 'object' || typeof candidate.text !== 'string') continue;
+      if (typeof candidate.sourceUrl !== 'string' || !candidate.sourceUrl.trim()) {
+        // ContentRefV1 deliberately requires an origin.  Do not turn an
+        // anonymous/raw capture into a bindable document.
+        if (typeof candidate.outputName === 'string') delete next[candidate.outputName];
+        continue;
+      }
+      const text = candidate.text;
+      const ref = await this.resultRefs.create({ executionId, producerStepId, payload: { schemaVersion: 'extracted-content/v1', markdown: text }, schemaDigest: createHash('sha256').update('extracted-content/v1').digest('hex') });
+      const content = { schemaVersion: 'content-ref/v1', contentId: createHash('sha256').update(`${executionId}|${producerStepId}|${candidate.sourceStepId || ''}|${ref.id}`).digest('hex').slice(0, 32), resultRefId: ref.id, pageId: '', sourceUrl: candidate.sourceUrl || '', finalUrl: candidate.finalUrl || candidate.sourceUrl || '', ...(candidate.title ? { title: candidate.title } : {}), mediaType: 'text/plain', extraction: { profile: candidate.profile || 'article', method: candidate.method || 'visible-text', confidence: Number(candidate.confidence) || 0, fallbackLevel: Number(candidate.fallbackLevel) || 0, extractedAt: new Date().toISOString() }, integrity: { sha256: createHash('sha256').update(text).digest('hex'), chars: text.length, bytes: Buffer.byteLength(text), truncated: candidate.truncated === true }, safety: { activeContentRemoved: candidate.activeContentRemoved === true, suspectedPromptInjection: candidate.suspectedPromptInjection === true, untrustedExternalContent: true }, preview: text.slice(0, 160) };
+      const page = Array.isArray(browser?.pages) ? browser.pages.find((item: any) => item.stepId === candidate.sourceStepId) : undefined;
+      if (page) { content.pageId = page.pageId; page.content = content; }
+      if (typeof candidate.outputName === 'string' && candidate.outputName.trim()) {
+        next[candidate.outputName] = content;
+      }
+    }
+    return next;
   }
 
   private validateOutputContract(
@@ -846,7 +1096,26 @@ export class DeterministicPlanSchedulerService {
         output,
         dataPath || '$.result.businessData'
       );
-      const schemaTarget = extractedData === undefined ? output : extractedData;
+      const rawTarget = extractedData === undefined ? output : extractedData;
+      let schemaTarget = rawTarget;
+      if (rawTarget && typeof rawTarget === 'object' && !Array.isArray(rawTarget)) {
+        let hasContentRef = false;
+        const copy: Record<string, unknown> = { ...rawTarget };
+        for (const [k, v] of Object.entries(copy)) {
+          if (
+            v &&
+            typeof v === 'object' &&
+            (v as any).schemaVersion === 'content-ref/v1' &&
+            (outputSchema as any)?.properties?.[k]?.type === 'string'
+          ) {
+            copy[k] = (v as any).preview || '';
+            hasContentRef = true;
+          }
+        }
+        if (hasContentRef) {
+          schemaTarget = copy;
+        }
+      }
       const schemaValidation = jsonSchemaValidator.validate(schemaTarget, outputSchema);
       if (!schemaValidation.valid) {
         const errMsgs = schemaValidation.errors
@@ -899,4 +1168,16 @@ export class DeterministicPlanSchedulerService {
     if (!Array.isArray(nodes) || nodes.length === 0) return true;
     return nodes.some((node: any) => !node?.contractRef);
   }
+}
+
+function resolveBrowserRunOutputSchemaDigest(value: unknown): string | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const browserRunOutput = (value as Record<string, unknown>).browserRunOutput;
+  if (!browserRunOutput || typeof browserRunOutput !== 'object' || Array.isArray(browserRunOutput)) {
+    return undefined;
+  }
+  const run = (browserRunOutput as Record<string, unknown>).run;
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return undefined;
+  const digest = (run as Record<string, unknown>).contractDigest;
+  return typeof digest === 'string' && /^[a-f0-9]{64}$/iu.test(digest) ? digest : undefined;
 }

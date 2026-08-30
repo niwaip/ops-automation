@@ -175,8 +175,9 @@ export class DeterministicContractAssemblerService {
     }
 
     const mappedRequiredUserInputs = bindingResult.requiredUserInputs.map((input) => {
-      const nodeRef = input.nodeId?.split('_')[0] || input.nodeId;
-      const mappedNodeId = refToNodeId.get(nodeRef) || input.nodeId;
+      const mappedNodeId = input.nodeId
+        ? refToNodeId.get(input.nodeId) || input.nodeId
+        : input.nodeId;
       return {
         ...input,
         nodeId: mappedNodeId,
@@ -187,7 +188,7 @@ export class DeterministicContractAssemblerService {
       schemaVersion: 'deterministic-plan/v1',
       plannerVersion: '2.1.0-two-stage-llm',
       catalogVersion: '1.0.0',
-      planType: nodes.length > 1 ? 'sequential' : 'single',
+      planType: this.resolvePlanType(nodes),
       objective: topology.objective,
       originalRequest: topology.objective,
       status: 'validated',
@@ -205,5 +206,17 @@ export class DeterministicContractAssemblerService {
     }
 
     return planDraft;
+  }
+
+  private resolvePlanType(
+    nodes: DeterministicPlanNodeV1[],
+  ): DeterministicPlanDraftV1['planType'] {
+    if (nodes.length <= 1) return 'single';
+    const isLinear = nodes.every((node, index) =>
+      index === 0
+        ? node.dependsOn.length === 0
+        : node.dependsOn.length === 1 && node.dependsOn[0] === nodes[index - 1]!.nodeId,
+    );
+    return isLinear ? 'sequential' : 'dag';
   }
 }

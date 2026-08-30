@@ -41,6 +41,7 @@ import { ListSectionHeader } from '@/components/page/PageScaffold';
 import type { ColumnsType } from 'antd/es/table';
 import { AiDraftDrawer } from '../components/AiDraftDrawer';
 import { WorkflowEditModal } from '../components/WorkflowEditModal';
+import { WorkflowDetailModal } from '../components/WorkflowEdit/components/WorkflowDetailModal';
 
 const { Text } = Typography;
 
@@ -55,6 +56,15 @@ const SECTION_CARD_STYLE = {
 const centerTitle = (title: string) => <div style={{ textAlign: 'center' }}>{title}</div>;
 const shorten = (str: string, len = 20) =>
   str && str.length > len ? str.substring(0, len) + '...' : str;
+
+const getLogicalStepSummary = (workflow: TemporalWorkflowDTO) => {
+  const plan = workflow.workflowDsl?.sourceContext?.browserLogicalPlan;
+  return {
+    total: plan?.totalStepCount || workflow.workflowDsl?.steps?.length || 0,
+    browser: plan?.browserStepCount || workflow.workflowDsl?.steps?.length || 0,
+    postProcessing: plan?.postProcessingStepCount || 0,
+  };
+};
 
 const getArtifactStatusMeta = (status?: string) => {
   switch (status) {
@@ -309,7 +319,16 @@ const TemporalPage: React.FC = () => {
       key: 'stepCount',
       width: 60,
       align: 'center',
-      render: (_, r) => <Badge count={r.workflowDsl?.steps?.length || 0} showZero color="blue" />,
+      render: (_, r) => {
+        const summary = getLogicalStepSummary(r);
+        return (
+          <Tooltip
+            title={`流程节点 ${summary.total}：Temporal 浏览器步骤 ${summary.browser}，控制面后处理 ${summary.postProcessing}`}
+          >
+            <Badge count={summary.total} showZero color="blue" />
+          </Tooltip>
+        );
+      },
     },
     {
       title: centerTitle('工作单元数'),
@@ -358,9 +377,7 @@ const TemporalPage: React.FC = () => {
           return <Tag>未发布</Tag>;
         }
         return (
-          <Tag color={r.isActive ? 'green' : 'orange'}>
-            {r.isActive ? '已发布' : '已停用'}
-          </Tag>
+          <Tag color={r.isActive ? 'green' : 'orange'}>{r.isActive ? '已发布' : '已停用'}</Tag>
         );
       },
     },
@@ -540,29 +557,16 @@ const TemporalPage: React.FC = () => {
         />
       </Card>
 
-      <Modal
-        title="工作流详情"
-        open={detailModalVisible}
+      <WorkflowDetailModal
+        visible={detailModalVisible}
         onCancel={() => setDetailModalVisible(false)}
-        footer={null}
-        width={800}
-      >
-        {selectedWorkflow && (
-          <pre
-            style={{
-              background: 'var(--bg-secondary)',
-              padding: 12,
-              borderRadius: 8,
-              overflow: 'auto',
-              maxHeight: 600,
-              fontSize: 12,
-              fontFamily: 'monospace',
-            }}
-          >
-            {JSON.stringify(selectedWorkflow, null, 2)}
-          </pre>
-        )}
-      </Modal>
+        selectedWorkflow={selectedWorkflow}
+        SECTION_CARD_STYLE={SECTION_CARD_STYLE}
+        getActivitySourceMeta={(step) => ({
+          color: step?.activityRef?.startsWith('custom:') ? 'green' : 'blue',
+          label: step?.activityName || 'Temporal Activity',
+        })}
+      />
 
       <AiDraftDrawer
         visible={aiDraftDrawerVisible}

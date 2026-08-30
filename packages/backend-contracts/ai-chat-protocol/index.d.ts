@@ -147,3 +147,4 @@ export interface ChannelCapability {
 }
 export declare const isRecord: (value: unknown) => value is Record<string, unknown>;
 export declare const isExecutionResultPayload: (value: unknown) => value is ExecutionResultPayload;
+//# sourceMappingURL=index.d.ts.map

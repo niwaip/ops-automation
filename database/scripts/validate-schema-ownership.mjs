@@ -6,9 +6,30 @@ const root = process.cwd();
 const manifest = JSON.parse(
   fs.readFileSync(path.join(root, 'database/schema-ownership.json'), 'utf8')
 );
+const accessPolicy = JSON.parse(
+  fs.readFileSync(path.join(root, 'database/security/access-policy.json'), 'utf8')
+);
 const sourcePath = path.join(root, manifest.schemaSource);
 const source = fs.readFileSync(sourcePath, 'utf8');
-const tables = [...source.matchAll(/@@map\("([^"]+)"\)/gu)].map((match) => match[1]).sort();
+const tableNames = (schema) =>
+  [...schema.matchAll(/@@map\("([^"]+)"\)/gu)].map((match) => match[1]);
+const sourceTables = tableNames(source);
+const supplementalTables = [];
+
+for (const supplemental of manifest.supplementalSources || []) {
+  const supplementalPath = path.join(root, supplemental.schema);
+  const declared = new Set(supplemental.includeTables || []);
+  const available = new Set(tableNames(fs.readFileSync(supplementalPath, 'utf8')));
+  const missingDeclared = [...declared].filter((table) => !available.has(table));
+  if (missingDeclared.length > 0) {
+    throw new Error(
+      `Supplemental schema ownership source has missing table(s): ${supplemental.schema} [${missingDeclared}]`
+    );
+  }
+  supplementalTables.push(...declared);
+}
+
+const tables = [...new Set([...sourceTables, ...supplementalTables])].sort();
 const declarations = new Map();
 
 for (const [owner, ownedTables] of Object.entries(manifest.owners)) {
@@ -32,6 +53,23 @@ for (const mirror of manifest.generatedMirrors) {
     throw new Error(
       `Generated Prisma mirror drifted: ${mirror}. Run database/scripts/sync-prisma-schema.sh`
     );
+  }
+}
+
+const owners = Object.keys(manifest.owners).sort();
+const policyOwners = Object.keys(accessPolicy.writerGroupByOwner || {}).sort();
+if (owners.join(',') !== policyOwners.join(',')) {
+  throw new Error(
+    `Database access policy owner mismatch. schema=[${owners}] policy=[${policyOwners}]`
+  );
+}
+
+const policyLogins = accessPolicy.applicationLogins || {};
+for (const [loginEnv, loginOwners] of Object.entries(policyLogins)) {
+  for (const owner of loginOwners) {
+    if (!manifest.owners[owner]) {
+      throw new Error(`Database access policy ${loginEnv} references unknown owner: ${owner}`);
+    }
   }
 }
 

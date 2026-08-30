@@ -73,3 +73,12 @@ export const getReportServiceUrl = (): string => {
 
   return isContainerRuntime() ? 'http://ops-report:3008' : 'http://localhost:3008';
 };
+
+export const getCarboneServiceUrl = (): string => {
+  const configured = readConfiguredUrl(process.env.CARBONE_SERVICE_URL);
+  if (configured) {
+    return configured;
+  }
+
+  return isContainerRuntime() ? 'http://carbone-engine:3009' : 'http://localhost:3009';
+};

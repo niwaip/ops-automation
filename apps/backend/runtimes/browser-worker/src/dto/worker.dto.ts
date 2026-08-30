@@ -319,6 +319,10 @@ export class ExecuteStepDto {
   @IsString()
   stepId!: string;
 
+  @ApiProperty({ description: 'One-based attempt number for deterministic evidence IDs', required: false })
+  @IsOptional()
+  attempt?: number;
+
   @ApiProperty({
     description: 'Action to perform',
     enum: [
@@ -357,6 +361,11 @@ export class ExecuteStepDto {
   @IsObject()
   args?: Record<string, unknown>;
 
+  @ApiProperty({ description: 'Explicit P1 content capture profile', required: false })
+  @IsOptional()
+  @IsObject()
+  captureProfile?: Record<string, unknown>;
+
   @ApiProperty({ description: 'Assertion to validate after action', required: false })
   @IsOptional()
   assertion?: {
@@ -369,6 +378,21 @@ export class ExecuteStepResultDto {
   @ApiProperty({ description: 'Whether the step succeeded' })
   @IsBoolean()
   success!: boolean;
+
+  @ApiProperty({ description: 'Execution state after post-action observation', required: false })
+  @IsOptional()
+  @IsString()
+  executionState?: 'completed' | 'failed' | 'ambiguous';
+
+  @ApiProperty({ description: 'Timestamp at which the action was attempted', required: false })
+  @IsOptional()
+  @IsString()
+  attemptedAt?: string;
+
+  @ApiProperty({ description: 'Timestamp at which the post-action page was observed', required: false })
+  @IsOptional()
+  @IsString()
+  observedAt?: string;
 
   @ApiProperty({ description: 'Snapshot ID for the step result', required: false })
   @IsOptional()
@@ -405,6 +429,19 @@ export class ExecuteStepResultDto {
   @IsOptional()
   @IsObject()
   pageState?: BrowserPageStateDto;
+
+  @ApiProperty({ description: 'Post-action verification evidence', required: false })
+  @IsOptional()
+  @IsObject()
+  postCheck?: {
+    inspected: boolean;
+    targetReached?: boolean;
+    evidence: Array<{ code: string; passed: boolean | 'unknown'; expected?: unknown; actual?: unknown }>;
+  };
+
+  @ApiProperty({ description: 'Non-fatal evidence and observation warnings', required: false, type: [String] })
+  @IsOptional()
+  warningCodes?: string[];
 
   @ApiProperty({ description: 'Error code if step failed', required: false })
   @IsOptional()

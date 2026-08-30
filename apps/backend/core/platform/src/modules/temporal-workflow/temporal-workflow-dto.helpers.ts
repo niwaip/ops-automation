@@ -84,6 +84,10 @@ export function extractSourceContext(
     userDescription: pickFirstNonEmptyString(declaredSourceContext.userDescription),
     generatedAt: pickFirstNonEmptyString(declaredSourceContext.generatedAt),
     warnings,
+    browserLoopDraft: parseJson(declaredSourceContext.browserLoopDraft),
+    browserWorkflowComposition: parseJson(declaredSourceContext.browserWorkflowComposition),
+    browserLogicalPlan: parseJson(declaredSourceContext.browserLogicalPlan),
+    templateAssetSummary: parseJson(declaredSourceContext.templateAssetSummary),
     sourceTemplate,
   };
 }

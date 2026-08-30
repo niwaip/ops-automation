@@ -347,6 +347,58 @@ export interface BrowserLoopDraftLike {
   updatedAt?: string;
 }
 
+export interface BrowserPostProcessingStepLike {
+  id?: string;
+  type?: 'llm_operation' | 'workflow_skill';
+  dependsOn?: string[];
+  sourceStepId?: string;
+  sourceStepIds?: string[];
+  operationId?: string;
+  operationVersion?: string;
+  skillId?: string;
+  releaseId?: string;
+  processingMode?: 'summary' | 'custom';
+  promptTemplate?: string;
+  runWhen?: 'browser_succeeded' | 'browser_terminal';
+  inputBindings?: Record<string, unknown>;
+  inputProjection?: string;
+}
+
+export interface BrowserWorkflowCompositionLike {
+  schemaVersion?: string;
+  pageAliases?: Array<Record<string, unknown>>;
+  outputDeclarations?: Array<Record<string, unknown>>;
+  postProcessingSteps?: BrowserPostProcessingStepLike[];
+  finalNodeId?: string;
+}
+
+export interface BrowserWorkflowLogicalStep {
+  id: string;
+  name: string;
+  type: 'browser_activity' | 'llm_operation' | 'workflow_skill';
+  dependsOn: string[];
+  workflowStepId?: string;
+  sourceStepId?: string;
+  sourceStepIds?: string[];
+  operationId?: string;
+  operationVersion?: string;
+  skillId?: string;
+  releaseId?: string;
+  runWhen?: 'browser_succeeded' | 'browser_terminal';
+}
+
+/**
+ * Display/execution contract for a browser template plus explicit post-processing.
+ * Browser activities remain Temporal steps; LLM operations are control-plane nodes.
+ */
+export interface BrowserWorkflowLogicalPlan {
+  schemaVersion: 'browser-template-logical-plan/v1';
+  browserStepCount: number;
+  postProcessingStepCount: number;
+  totalStepCount: number;
+  steps: BrowserWorkflowLogicalStep[];
+}
+
 export interface TemporalWorkflowSourceContext {
   sourceType?: 'template' | 'browser_template' | 'ai' | 'text' | 'url';
   referenceUrl?: string;
@@ -354,6 +406,8 @@ export interface TemporalWorkflowSourceContext {
   generatedAt?: string;
   warnings?: string[];
   browserLoopDraft?: BrowserLoopDraftLike;
+  browserWorkflowComposition?: BrowserWorkflowCompositionLike;
+  browserLogicalPlan?: BrowserWorkflowLogicalPlan;
   sourceTemplate?: TemporalWorkflowSourceTemplate | null;
   templateAssetSummary?: {
     assetVersion: string;
@@ -436,6 +490,9 @@ export interface BrowserWorkflowDraft {
     commandCount: number;
     placeholderCount: number;
     placeholders: string[];
+    browserStepCount: number;
+    postProcessingStepCount: number;
+    totalStepCount: number;
   };
 }
 
@@ -627,6 +684,7 @@ export interface GenerateBrowserWorkflowDraftDTO {
   commands?: BrowserDraftCommandInput[];
   templateId?: string;
   templateSteps?: BrowserTemplateStepInput[];
+  workflowComposition?: BrowserWorkflowCompositionLike;
   loopDraft?: BrowserLoopDraftLike;
   paramsSchema?: BrowserTemplateParamsSchema;
   name?: string;

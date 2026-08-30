@@ -152,6 +152,7 @@ export class RecorderDebugOutcomeService {
   ): RecorderBrowserExecutionSummary {
     return {
       success: Boolean(execution.success),
+      ...(execution.recovered ? { recovered: true, recovery: execution.recovery } : {}),
       ...(execution.message ? { message: execution.message } : {}),
       commandCount: commands.length,
       executedCommandCount: execution.executedCommands?.length || 0,

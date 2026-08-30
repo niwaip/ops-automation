@@ -7,6 +7,10 @@ import { CapabilityReleaseBrowserRuntimeResultService } from '../../../registry-
 import { CapabilityReleaseBrowserRuntimeService } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime.service';
 import { CapabilityReleaseBrowserRuntimeStepExecutorService } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-step-executor.service';
 import { CapabilityReleaseBrowserRuntimeSupportService } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-support.service';
+import { BrowserPostStateReconcilerService } from '../../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-post-state-reconciler.service';
+import { BrowserRuntimeStepResultStateService } from '../../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-runtime-step-result-state.service';
+import { BrowserRunOutputMaterializerService } from '../../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-run-output-materializer.service';
+import { BrowserLegacyOutputAdapter } from '../../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-legacy-output.adapter';
 import { CapabilityReleaseDocumentRuntimeService } from '../../../registry-release/release-manager/src/publisher/capability-release-document-runtime.service';
 import { CapabilityReleaseRuntimeService, type CapabilityReleaseRuntimeAccessors } from '../../../registry-release/release-manager/src/publisher/capability-release-runtime.service';
 import { ReleaseRuntimeBindingService } from '../../../registry-release/release-manager/src/publisher/release-runtime-binding.service';
@@ -50,20 +54,36 @@ describe('CapabilityReleaseRuntimeService', () => {
       getReleaseByPublishedSkillOrThrow: jest.fn(),
     };
 
+    const browserSessionBroker = {
+      acquire: jest.fn().mockImplementation(async (input: { runtimeSessionId?: string }) => ({
+        runtimeSessionId:
+          input.runtimeSessionId || '11111111-1111-4111-8111-111111111111',
+        ownedByRuntime: !input.runtimeSessionId,
+      })),
+      closeOwnedQuietly: jest.fn().mockResolvedValue(undefined),
+      freeze: jest.fn().mockResolvedValue(undefined),
+    };
     const capabilityReleaseBrowserRuntimeSupportService =
-      new CapabilityReleaseBrowserRuntimeSupportService();
+      new CapabilityReleaseBrowserRuntimeSupportService(browserSessionBroker as any);
+    const browserRuntimeStepResultStateService = new BrowserRuntimeStepResultStateService();
     const capabilityReleaseBrowserRuntimeStepExecutorService =
       new CapabilityReleaseBrowserRuntimeStepExecutorService(
         browserRecordingActionPolicyService as BrowserRecordingActionPolicyService,
-        capabilityReleaseBrowserRuntimeSupportService
+        capabilityReleaseBrowserRuntimeSupportService,
+        new BrowserPostStateReconcilerService(),
+        browserRuntimeStepResultStateService
       );
     const capabilityReleaseBrowserRuntimeLoopExecutorService =
       new CapabilityReleaseBrowserRuntimeLoopExecutorService(
         capabilityReleaseBrowserRuntimeStepExecutorService,
-        capabilityReleaseBrowserRuntimeSupportService
+        capabilityReleaseBrowserRuntimeSupportService,
+        browserRuntimeStepResultStateService
       );
     const capabilityReleaseBrowserRuntimeResultService =
-      new CapabilityReleaseBrowserRuntimeResultService();
+      new CapabilityReleaseBrowserRuntimeResultService(
+        new BrowserRunOutputMaterializerService(),
+        new BrowserLegacyOutputAdapter()
+      );
     const capabilityReleaseBrowserRuntimeExecutorService =
       new CapabilityReleaseBrowserRuntimeExecutorService(
         capabilityReleaseBrowserRuntimeStepExecutorService,
@@ -74,7 +94,8 @@ describe('CapabilityReleaseRuntimeService', () => {
       capabilityReleaseBrowserRecordingService as any,
       capabilityReleaseBrowserRuntimeExecutorService,
       capabilityReleaseBrowserRuntimeResultService,
-      capabilityReleaseBrowserRuntimeSupportService
+      capabilityReleaseBrowserRuntimeSupportService,
+      browserSessionBroker as any
     );
     const service = new CapabilityReleaseRuntimeService(
       activityService as any,
@@ -97,6 +118,7 @@ describe('CapabilityReleaseRuntimeService', () => {
       capabilityReleaseBrowserRecordingService,
       capabilityReleaseSkillDraftService,
       releaseRuntimeBindingService,
+      browserSessionBroker,
       accessors,
     };
   };
@@ -509,7 +531,7 @@ describe('CapabilityReleaseRuntimeService', () => {
   });
 
   it('returns takeover_required when published browser recording template branch mismatches', async () => {
-    const { service, accessors, capabilityReleaseBrowserRecordingService, releaseRuntimeBindingService } =
+    const { service, accessors, capabilityReleaseBrowserRecordingService, releaseRuntimeBindingService, browserSessionBroker } =
       createService();
 
     releaseRuntimeBindingService.getReleaseByPublishedSkillOrThrow.mockResolvedValue({
@@ -616,8 +638,7 @@ describe('CapabilityReleaseRuntimeService', () => {
       'http://localhost:3004/browser/init',
       expect.objectContaining({
         backend: 'cli',
-        runtimeSessionId: expect.stringMatching(/^capability-runtime-/),
-        initialUrl: 'http://192.168.100.143/',
+        runtimeSessionId: '11111111-1111-4111-8111-111111111111',
       }),
       { timeout: 60000 }
     );
@@ -635,14 +656,9 @@ describe('CapabilityReleaseRuntimeService', () => {
       }),
       { timeout: 120000 }
     );
-    expect(mockedAxios.post).toHaveBeenNthCalledWith(
-      3,
-      'http://localhost:3004/browser/freeze',
-      expect.objectContaining({
-        backend: 'cli',
-        reason: '低于阈值需要人工介入',
-      }),
-      { timeout: 30000 }
+    expect(browserSessionBroker.freeze).toHaveBeenCalledWith(
+      '11111111-1111-4111-8111-111111111111',
+      '低于阈值需要人工介入'
     );
     expect(result).toEqual(
       expect.objectContaining({
@@ -682,7 +698,7 @@ describe('CapabilityReleaseRuntimeService', () => {
   });
 
   it('requires takeover before executing high-risk browser recording actions at runtime', async () => {
-    const { service, accessors, capabilityReleaseBrowserRecordingService, releaseRuntimeBindingService } =
+    const { service, accessors, capabilityReleaseBrowserRecordingService, releaseRuntimeBindingService, browserSessionBroker } =
       createService();
 
     releaseRuntimeBindingService.getReleaseByPublishedSkillOrThrow.mockResolvedValue({
@@ -742,18 +758,13 @@ describe('CapabilityReleaseRuntimeService', () => {
       'http://localhost:3004/browser/init',
       expect.objectContaining({
         backend: 'cli',
-        runtimeSessionId: expect.stringMatching(/^capability-runtime-/),
+        runtimeSessionId: '11111111-1111-4111-8111-111111111111',
       }),
       { timeout: 60000 }
     );
-    expect(mockedAxios.post).toHaveBeenNthCalledWith(
-      2,
-      'http://localhost:3004/browser/freeze',
-      expect.objectContaining({
-        backend: 'cli',
-        reason: expect.stringContaining('需要人工接管'),
-      }),
-      { timeout: 30000 }
+    expect(browserSessionBroker.freeze).toHaveBeenCalledWith(
+      '11111111-1111-4111-8111-111111111111',
+      expect.stringContaining('需要人工接管')
     );
     expect(mockedAxios.post).not.toHaveBeenCalledWith(
       'http://localhost:3004/browser/execute-step',
@@ -848,7 +859,7 @@ describe('CapabilityReleaseRuntimeService', () => {
       'http://localhost:3004/browser/init',
       expect.objectContaining({
         backend: 'cli',
-        runtimeSessionId: expect.stringMatching(/^capability-runtime-/),
+        runtimeSessionId: '11111111-1111-4111-8111-111111111111',
       }),
       { timeout: 60000 }
     );
@@ -857,13 +868,10 @@ describe('CapabilityReleaseRuntimeService', () => {
       expect.anything(),
       expect.anything()
     );
-    expect(mockedAxios.post).toHaveBeenLastCalledWith(
+    expect(mockedAxios.post).not.toHaveBeenCalledWith(
       'http://localhost:3004/browser/reset',
-      expect.objectContaining({
-        backend: 'cli',
-        runtimeSessionId: expect.stringMatching(/^capability-runtime-/),
-      }),
-      { timeout: 30000 }
+      expect.anything(),
+      expect.anything()
     );
     expect(result).toEqual(
       expect.objectContaining({

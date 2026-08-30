@@ -8,6 +8,7 @@ import type { ExecutionLoopSummary } from '@/features/executions/shared/lib/exec
 import { getPhaseStatusColor, getPhaseStatusLabel, getPhaseStepStatus } from '@/features/executions/shared/lib/phase';
 import { formatPhaseDisplayName } from '@/features/executions/shared/lib/phaseText';
 import { formatLocalizedDateTime } from '@/shared/utils/dateText';
+import { ExpandableMarkdownContent } from '@/features/executions/shared/components/ExecutionPayloadContent';
 
 const { Text } = Typography;
 
@@ -97,9 +98,17 @@ const ExecutionActivityOverviewCard: React.FC<ExecutionActivityOverviewCardProps
               {labels.detailButton}
             </Button>
           </Space>
-          <div style={{ display: 'grid', gap: 4 }}>
+          <div style={{ display: 'grid', gap: 6, width: '100%', maxWidth: '100%' }}>
             <Text type="secondary">{labels.processingSummary}</Text>
-            <Text strong>{summaryHeadline || labels.noSummary}</Text>
+            {summaryHeadline ? (
+              <ExpandableMarkdownContent
+                text={summaryHeadline}
+                maxCollapsedLines={15}
+                maxCollapsedHeight={360}
+              />
+            ) : (
+              <Text strong>{labels.noSummary}</Text>
+            )}
           </div>
           <Space wrap size={[12, 8]}>
             <Text type="secondary">{labels.executionSummaryHint}</Text>

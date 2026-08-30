@@ -43,6 +43,7 @@ export const WorkflowMainForm: React.FC<WorkflowMainFormProps> = ({
   return (
     <Form form={form} layout="vertical">
       <BasicInfoSection
+        form={form}
         isGeneratedCodeStale={isGeneratedCodeStale}
         currentSourceContext={currentSourceContext}
         currentSourceTemplate={currentSourceTemplate}

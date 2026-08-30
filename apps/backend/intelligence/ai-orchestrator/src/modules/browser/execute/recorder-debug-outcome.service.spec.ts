@@ -568,6 +568,89 @@ describe('RecorderDebugOutcomeService', () => {
     );
   });
 
+  it('accepts a successful navigation when the current page already matches the target', () => {
+    const service = new RecorderDebugOutcomeService();
+    const outcome = service.buildOutcome({
+      status: 'executed',
+      reply: '已打开百度。',
+      userGoal: '打开百度',
+      observation: {
+        currentPageUrl: 'https://www.baidu.com/',
+        title: '百度一下',
+        text: '百度一下',
+        inputs: [],
+        buttons: [],
+        headings: [],
+        links: [],
+        suggestedParameters: [],
+      },
+      commands: [
+        { tool: 'navigate', params: { url: 'https://www.baidu.com' }, description: '打开百度' },
+      ],
+      execution: {
+        success: true,
+        results: [],
+        executedCommands: [
+          { tool: 'navigate', params: { url: 'https://www.baidu.com' }, description: '打开百度' },
+        ],
+      },
+    });
+
+    expect(outcome.verification).toEqual(
+      expect.objectContaining({ verifier: 'navigate', success: true, confidence: 1 })
+    );
+  });
+
+  it('verifies navigate, search, and click-result as a complete search flow', () => {
+    const service = new RecorderDebugOutcomeService();
+    const commands: any[] = [
+      { tool: 'navigate', params: { url: 'https://www.baidu.com' }, description: '打开百度' },
+      { tool: 'smart_search', params: { query: '浏览器自动化' }, description: '搜索内容' },
+      { tool: 'click_result', params: { index: 1 }, description: '点击第1个结果' },
+    ];
+    const outcome = service.buildOutcome({
+      status: 'executed',
+      reply: '已打开指定结果。',
+      userGoal: '查看百度搜索并打开指定结果',
+      beforeObservation: {
+        currentPageUrl: 'about:blank',
+        title: '',
+        text: '',
+        inputs: [],
+        buttons: [],
+        headings: [],
+        links: [],
+        suggestedParameters: [],
+      },
+      observation: {
+        currentPageUrl: 'https://example.com/result',
+        title: '指定结果',
+        text: '目标正文',
+        inputs: [],
+        buttons: [],
+        headings: ['目标页面'],
+        links: [],
+        suggestedParameters: [],
+      },
+      commands,
+      execution: { success: true, results: [], executedCommands: commands },
+    });
+
+    expect(outcome.verification).toEqual(
+      expect.objectContaining({
+        verifier: 'search-result-open',
+        routeReason: 'goal-pattern',
+        success: true,
+      })
+    );
+    expect(outcome.verification.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'search_submitted', passed: true }),
+        expect.objectContaining({ code: 'result_opened', passed: true }),
+      ])
+    );
+  });
+
   it('rejects grounding chosenTarget when observation ref node collides with command intent', () => {
     const service = new RecorderDebugOutcomeService();
     const observation: any = {

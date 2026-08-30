@@ -12,7 +12,6 @@ import {
   Collapse,
   Image,
   Empty,
-  Tabs,
   Select,
   Timeline,
   theme as antdTheme,
@@ -47,6 +46,136 @@ const formatSessionTime = (timestamp?: number): string => {
 
 const transformLocalhostUrl = (url: string | undefined): string => {
   return replaceLocalhostWithCurrentHost(url) || '';
+};
+
+const isCliOutput = (value?: string): boolean => {
+  if (!value) return false;
+  const trimmed = value.trim();
+  return (
+    trimmed.includes('### Result') ||
+    trimmed.includes('### Ran Playwright code') ||
+    trimmed.includes('### Events') ||
+    trimmed.startsWith('- Page URL:')
+  );
+};
+
+const cleanHtmlSourceForDisplay = (html: string): string => {
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, '')
+    .replace(/<template\b[^>]*>[\s\S]*?<\/template>/gi, '')
+    .replace(/<textarea\b[^>]*(?:display:\s*none|display:none|_css)[^>]*>[\s\S]*?<\/textarea>/gi, '')
+    .replace(/<textarea\b[^>]*id=["'][^"']*css[^"']*["'][^>]*>[\s\S]*?<\/textarea>/gi, '')
+    .replace(/<input\b[^>]*type=["']hidden["'][^>]*>/gi, '')
+    .trim();
+};
+
+const extractGenuineHtml = (rawHtml?: string): string | undefined => {
+  if (!rawHtml || !rawHtml.trim()) {
+    return undefined;
+  }
+  const trimmed = rawHtml.trim();
+
+  let htmlCandidate: string | undefined;
+  if (isCliOutput(trimmed)) {
+    const match = trimmed.match(
+      /### Result\s*\n?([\s\S]*?)(?:\n### Ran Playwright code|\n### |\n```|$)/
+    );
+    const candidate = match && typeof match[1] === 'string' ? match[1].trim() : trimmed;
+    try {
+      const parsed = JSON.parse(candidate);
+      if (typeof parsed === 'string' && /<[a-z!/][\s\S]*>/i.test(parsed.trim())) {
+        htmlCandidate = parsed.trim();
+      }
+    } catch {
+      const unquoted =
+        (candidate.startsWith('"') && candidate.endsWith('"')) ||
+        (candidate.startsWith("'") && candidate.endsWith("'"))
+          ? candidate.slice(1, -1).trim()
+          : candidate;
+      if (/<[a-z!/][\s\S]*>/i.test(unquoted)) {
+        htmlCandidate = unquoted;
+      }
+    }
+  } else if (/<[a-z!/][\s\S]*>/i.test(trimmed)) {
+    htmlCandidate = trimmed;
+  }
+
+  if (htmlCandidate) {
+    const cleaned = cleanHtmlSourceForDisplay(htmlCandidate);
+    return cleaned.length > 0 ? cleaned : htmlCandidate;
+  }
+
+  return undefined;
+};
+
+const cleanTextContentForDisplay = (text?: string): string | undefined => {
+  if (!text || !text.trim()) return undefined;
+  if (isCliOutput(text)) return undefined;
+
+  let cleaned = text.trim();
+
+  // Cut off noise footers
+  const noiseFooters = [
+    '滚动到底部自动加载更多',
+    '本站服务器由',
+    '出海云服务器',
+    '全站飙升榜',
+    '反馈建议',
+    '请作者喝奶茶',
+    '热榜会员',
+    '服务协议',
+    '京ICP备'
+  ];
+
+  for (const footer of noiseFooters) {
+    const idx = cleaned.indexOf(footer);
+    if (idx !== -1) {
+      cleaned = cleaned.slice(0, idx).trim();
+    }
+  }
+
+  // Remove reaction count badges / emojis / isolated buttons
+  cleaned = cleaned
+    .split('\n')
+    .filter((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return false;
+      if (/^\+[0-9]+$/.test(trimmed)) return false;
+      if (/^[😂👍❤️🔥]+$/.test(trimmed)) return false;
+      if (['换一换', '展开', '收起', '分享', '点赞', '收藏', '关注'].includes(trimmed)) return false;
+      return true;
+    })
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  return cleaned.length > 0 ? cleaned : undefined;
+};
+
+const getCleanStepMessage = (message?: string): string | undefined => {
+  if (!message || !message.trim()) {
+    return undefined;
+  }
+  const trimmed = message.trim();
+  if (isCliOutput(trimmed)) {
+    return undefined;
+  }
+  return trimmed;
+};
+
+const getStepExecutionLog = (step: {
+  message?: string;
+  text?: string;
+  html?: string;
+}): string | undefined => {
+  for (const candidate of [step.message, step.text, step.html]) {
+    if (candidate && isCliOutput(candidate)) {
+      return candidate.trim();
+    }
+  }
+  return undefined;
 };
 
 const getBlockingPresentation = (
@@ -374,195 +503,202 @@ const SessionDetailPage: React.FC = () => {
           />
         ) : (
           <Timeline
-            items={steps.map((step: StepResult, index: number) => ({
-              color: step.success ? 'green' : 'red',
-              dot: step.success ? <CheckCircleOutlined /> : <CloseCircleOutlined />,
-              children: (
-                <Card
-                  size="small"
-                  style={{
-                    background: step.success
-                      ? 'rgba(16, 185, 129, 0.10)'
-                      : 'rgba(239, 68, 68, 0.10)',
-                    border: `1px solid ${step.success ? 'rgba(16, 185, 129, 0.28)' : 'rgba(239, 68, 68, 0.28)'}`,
-                    borderRadius: 8,
-                    marginBottom: 8,
-                  }}
-                >
-                  <Space direction="vertical" style={{ width: '100%' }} size="small">
-                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                      <Space>
-                        <Tag color={step.success ? 'success' : 'error'}>
-                          {step.success ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
-                        </Tag>
-                        <Tag color="blue">{index + 1}</Tag>
+            items={steps.map((step: StepResult, index: number) => {
+              const cleanMessage = getCleanStepMessage(step.message);
+              const genuineHtml = extractGenuineHtml(step.html);
+              const rawLog = getStepExecutionLog(step);
+              const rawTextCandidate =
+                step.text && !isCliOutput(step.text) ? step.text.trim() : undefined;
+              const nonCliText =
+                cleanTextContentForDisplay(rawTextCandidate) || rawTextCandidate;
+
+              return {
+                color: step.success ? 'green' : 'red',
+                dot: step.success ? <CheckCircleOutlined /> : <CloseCircleOutlined />,
+                children: (
+                  <Card
+                    size="small"
+                    style={{
+                      background: step.success
+                        ? 'rgba(16, 185, 129, 0.10)'
+                        : 'rgba(239, 68, 68, 0.10)',
+                      border: `1px solid ${step.success ? 'rgba(16, 185, 129, 0.28)' : 'rgba(239, 68, 68, 0.28)'}`,
+                      borderRadius: 8,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Space direction="vertical" style={{ width: '100%' }} size="small">
+                      <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                        <Space>
+                          <Tag color={step.success ? 'success' : 'error'}>
+                            {step.success ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+                          </Tag>
+                          <Tag color="blue">{index + 1}</Tag>
                           {step.confirmation_required && <Tag color="gold">等待确认</Tag>}
                           {step.takeover && <Tag color="orange">人工接管</Tag>}
                           {step.replay_forbidden && <Tag color="red">禁止回放</Tag>}
-                        <Space size="small">
-                          {getActionIcon(step.action)}
-                          <Text strong>{step.action}</Text>
+                          <Space size="small">
+                            {getActionIcon(step.action)}
+                            <Text strong>{step.action}</Text>
+                          </Space>
                         </Space>
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                          {new Date(step.timestamp).toLocaleTimeString()}
+                        </Text>
                       </Space>
-                      <Text type="secondary" style={{ fontSize: 11 }}>
-                        {new Date(step.timestamp).toLocaleTimeString()}
-                      </Text>
+
+                      {step.error && (
+                        <div
+                          style={{
+                            background: step.confirmation_required
+                              ? 'rgba(245, 158, 11, 0.12)'
+                              : step.takeover
+                                ? 'rgba(249, 115, 22, 0.12)'
+                                : 'rgba(239, 68, 68, 0.12)',
+                            border: step.confirmation_required
+                              ? '1px solid rgba(245, 158, 11, 0.24)'
+                              : step.takeover
+                                ? '1px solid rgba(249, 115, 22, 0.24)'
+                                : '1px solid rgba(239, 68, 68, 0.24)',
+                            padding: 8,
+                            borderRadius: 4,
+                          }}
+                        >
+                          <Text type="danger">{step.error}</Text>
+                          {(step.confirmation_reason ||
+                            step.takeover_reason ||
+                            step.replay_forbidden_reason) && (
+                            <div style={{ marginTop: 4 }}>
+                              <Text type="secondary">
+                                {step.confirmation_reason ||
+                                  step.takeover_reason ||
+                                  step.replay_forbidden_reason}
+                              </Text>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {cleanMessage && step.success && (
+                        <div
+                          style={{
+                            background: 'rgba(16, 185, 129, 0.12)',
+                            border: '1px solid rgba(16, 185, 129, 0.24)',
+                            padding: 8,
+                            borderRadius: 4,
+                          }}
+                        >
+                          <Text type="success">{cleanMessage}</Text>
+                        </div>
+                      )}
+
+                      {step.screenshot && (
+                        <Collapse
+                          size="small"
+                          ghost
+                          defaultActiveKey={['screenshot']}
+                          items={[
+                            {
+                              key: 'screenshot',
+                              label: (
+                                <Space>
+                                  <CameraOutlined />
+                                  <Text>截图</Text>
+                                </Space>
+                              ),
+                              children: (
+                                <div style={{ textAlign: 'center' }}>
+                                  <Image
+                                    src={
+                                      step.screenshot.startsWith('data:')
+                                        ? step.screenshot
+                                        : `data:image/png;base64,${step.screenshot}`
+                                    }
+                                    alt="Screenshot"
+                                    style={{ maxWidth: '100%', maxHeight: 400, borderRadius: 4 }}
+                                  />
+                                </div>
+                              ),
+                            },
+                          ]}
+                        />
+                      )}
+
+                      {nonCliText && (
+                        <Collapse
+                          size="small"
+                          ghost
+                          defaultActiveKey={['text']}
+                          items={[
+                            {
+                              key: 'text',
+                              label: (
+                                <Space>
+                                  <FileTextOutlined />
+                                  <Text strong>提取正文内容</Text>
+                                </Space>
+                              ),
+                              children: (
+                                <pre
+                                  style={{
+                                    ...jsonBlockStyle,
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-word',
+                                    fontFamily: 'inherit',
+                                    fontSize: 13,
+                                    lineHeight: 1.6,
+                                  }}
+                                >
+                                  {nonCliText}
+                                </pre>
+                              ),
+                            },
+                          ]}
+                        />
+                      )}
+
+                      {genuineHtml && (
+                        <Collapse
+                          size="small"
+                          ghost
+                          items={[
+                            {
+                              key: 'html',
+                              label: (
+                                <Space>
+                                  <CodeOutlined />
+                                  <Text>HTML 源码</Text>
+                                </Space>
+                              ),
+                              children: <pre style={jsonBlockStyle}>{genuineHtml}</pre>,
+                            },
+                          ]}
+                        />
+                      )}
+
+                      {rawLog && (
+                        <Collapse
+                          size="small"
+                          ghost
+                          items={[
+                            {
+                              key: 'log',
+                              label: (
+                                <Space>
+                                  <CodeOutlined />
+                                  <Text type="secondary">执行日志</Text>
+                                </Space>
+                              ),
+                              children: <pre style={jsonBlockStyle}>{rawLog}</pre>,
+                            },
+                          ]}
+                        />
+                      )}
                     </Space>
-
-                    {step.error && (
-                      <div
-                        style={{
-                          background: step.confirmation_required
-                            ? 'rgba(245, 158, 11, 0.12)'
-                            : step.takeover
-                              ? 'rgba(249, 115, 22, 0.12)'
-                              : 'rgba(239, 68, 68, 0.12)',
-                          border: step.confirmation_required
-                            ? '1px solid rgba(245, 158, 11, 0.24)'
-                            : step.takeover
-                              ? '1px solid rgba(249, 115, 22, 0.24)'
-                              : '1px solid rgba(239, 68, 68, 0.24)',
-                          padding: 8,
-                          borderRadius: 4,
-                        }}
-                      >
-                        <Text type="danger">{step.error}</Text>
-                        {(step.confirmation_reason ||
-                          step.takeover_reason ||
-                          step.replay_forbidden_reason) && (
-                          <div style={{ marginTop: 4 }}>
-                            <Text type="secondary">
-                              {step.confirmation_reason ||
-                                step.takeover_reason ||
-                                step.replay_forbidden_reason}
-                            </Text>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {step.message && step.success && (
-                      <div
-                        style={{
-                          background: 'rgba(16, 185, 129, 0.12)',
-                          border: '1px solid rgba(16, 185, 129, 0.24)',
-                          padding: 8,
-                          borderRadius: 4,
-                        }}
-                      >
-                        <Text type="success">{step.message}</Text>
-                      </div>
-                    )}
-
-                    {step.screenshot && (
-                      <Collapse
-                        size="small"
-                        ghost
-                        items={[
-                          {
-                            key: 'screenshot',
-                            label: (
-                              <Space>
-                                <CameraOutlined />
-                                <Text>截图</Text>
-                              </Space>
-                            ),
-                            children: (
-                              <div style={{ textAlign: 'center' }}>
-                                <Image
-                                  src={
-                                    step.screenshot.startsWith('data:')
-                                      ? step.screenshot
-                                      : `data:image/png;base64,${step.screenshot}`
-                                  }
-                                  alt="Screenshot"
-                                  style={{ maxWidth: '100%', maxHeight: 400, borderRadius: 4 }}
-                                />
-                              </div>
-                            ),
-                          },
-                        ]}
-                      />
-                    )}
-
-                    {step.text && (
-                      <Collapse
-                        size="small"
-                        ghost
-                        items={[
-                          {
-                            key: 'text',
-                            label: (
-                              <Space>
-                                <FileTextOutlined />
-                                <Text>文本内容</Text>
-                              </Space>
-                            ),
-                            children: <pre style={jsonBlockStyle}>{step.text}</pre>,
-                          },
-                        ]}
-                      />
-                    )}
-
-                    {step.html && (
-                      <Collapse
-                        size="small"
-                        ghost
-                        items={[
-                          {
-                            key: 'html',
-                            label: (
-                              <Space>
-                                <CodeOutlined />
-                                <Text>HTML</Text>
-                              </Space>
-                            ),
-                            children: (
-                              <Tabs
-                                size="small"
-                                items={[
-                                  {
-                                    key: 'preview',
-                                    label: '预览',
-                                    children: (
-                                      <div
-                                        style={{
-                                          border: `1px solid ${token.colorBorderSecondary}`,
-                                          borderRadius: 4,
-                                          overflow: 'hidden',
-                                          background: token.colorBgContainer,
-                                        }}
-                                      >
-                                        <iframe
-                                          srcDoc={step.html}
-                                          sandbox=""
-                                          title={`${step.step_id}-html-preview`}
-                                          style={{
-                                            width: '100%',
-                                            height: 420,
-                                            border: 'none',
-                                            background: '#fff',
-                                          }}
-                                        />
-                                      </div>
-                                    ),
-                                  },
-                                  {
-                                    key: 'source',
-                                    label: '源码',
-                                    children: <pre style={jsonBlockStyle}>{step.html}</pre>,
-                                  },
-                                ]}
-                              />
-                            ),
-                          },
-                        ]}
-                      />
-                    )}
-                  </Space>
-                </Card>
-              ),
-            }))}
+                  </Card>
+                ),
+              };
+            })}
           />
         )}
       </Card>

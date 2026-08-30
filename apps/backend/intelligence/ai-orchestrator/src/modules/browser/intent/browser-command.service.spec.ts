@@ -2345,17 +2345,23 @@ describe('BrowserCommandService', () => {
       commands: [
         {
           tool: 'navigate',
-          params: { url: 'https://www.baidu.com/s?wd=%E6%AF%9B%E5%88%A9%E7%8E%87' },
+          params: { url: 'https://www.baidu.com' },
+          description: '打开百度',
+        },
+        {
+          tool: 'smart_search',
+          params: { query: '毛利率' },
           description: '在百度搜索 毛利率',
         },
       ],
-      explanation: '将在百度搜索 毛利率',
+      explanation: '将依次打开百度，搜索 毛利率',
       parserMetadata: {
         search: {
           status: 'success',
           reason: 'search-default-engine',
           intentType: 'engine_search',
           query: '毛利率',
+          resultIndex: undefined,
           triggerTerm: '百度',
           engine: 'baidu',
           usedRuntimeProfile: false,
@@ -2367,7 +2373,7 @@ describe('BrowserCommandService', () => {
     expect(createHitLog).toHaveBeenCalledWith(
       expect.objectContaining({
         normalized_semantic: expect.objectContaining({
-          parser_source: 'search-profile',
+          parser_source: 'sequential-pattern',
           parser_metadata: {
             search: expect.objectContaining({
               reason: 'search-default-engine',

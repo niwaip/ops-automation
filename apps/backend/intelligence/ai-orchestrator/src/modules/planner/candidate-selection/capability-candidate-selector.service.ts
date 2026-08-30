@@ -4,9 +4,16 @@ import {
   type CompactCapabilityCardV1,
   type SkillPlanNodeV1,
 } from '@ops/backend-deterministic-plan';
+import {
+  browserCompositionHasPostProcessing,
+  buildBrowserCapabilityOutputSchema,
+} from '@ops/backend-browser-execution-contract';
 import { resolveParamEnumValues } from '../params/param-enum-constraint';
 import { LlmOperationCatalogProjector } from '../../llm-operation/llm-operation-catalog.projector';
-import { selectIntentRankedCandidates } from './capability-intent-match.util';
+import {
+  calculateCapabilityIntentScore,
+  selectIntentRankedCandidates,
+} from './capability-intent-match.util';
 
 @Injectable()
 export class CapabilityCandidateSelectorService {
@@ -124,6 +131,10 @@ export class CapabilityCandidateSelectorService {
       validSkills.push(skill);
     }
 
+    this.logger.log(
+      `Valid skills (${validSkills.length}): ${validSkills.map((s) => `${s.skillName || s.name}:${calculateCapabilityIntentScore(userRequest, [s.skillName, s.name, s.skillId, s.id, s.description, s.triggerKeywords, s.goal])}`).join(', ')}`
+    );
+
     // Keep catalog order for small sets. When the token cap is active, rank first
     // so an explicitly requested user capability cannot be dropped merely because
     // built-ins or older entries appeared earlier in the merged catalog.
@@ -167,7 +178,16 @@ export class CapabilityCandidateSelectorService {
         runtimeMetadata
       );
       const executionRuntimeType = runtimeMetadata?.runtimeType || undefined;
-      const outputProjection = projectOutputSchemaV1(outputSchema);
+      const composition = runtimeMetadata?.composition;
+      const effectiveOutputSchema =
+        runtimeType === 'browser_template'
+          ? buildBrowserCapabilityOutputSchema({
+              declaredOutputSchema: outputSchema,
+              runtimeMetadata,
+              composition,
+            })
+          : outputSchema;
+      const outputProjection = projectOutputSchemaV1(effectiveOutputSchema);
       const supportsArtifactOutput = this.detectArtifactSupport(
         outputProjection.outputContract,
         runtimeMetadata,
@@ -179,7 +199,13 @@ export class CapabilityCandidateSelectorService {
         kind: 'skill',
         displayName: skill.skillName || skill.name || skillId,
         summary,
-        goals: [runtimeType, skill.skillName || skill.name || skillId],
+        goals: [
+          runtimeType,
+          skill.skillName || skill.name || skillId,
+          ...(browserCompositionHasPostProcessing(composition)
+            ? ['embedded_post_processing']
+            : []),
+        ],
         inputs: this.extractSchemaSummary(inputSchema),
         outputs: outputProjection.outputContract,
         primaryOutput: outputProjection.primaryOutput,
@@ -253,8 +279,15 @@ export class CapabilityCandidateSelectorService {
 
   private mapExecutionTypeToRuntimeType(
     executionType?: string,
-    _runtimeMetadata?: any
+    runtimeMetadata?: any
   ): SkillPlanNodeV1['runtimeType'] {
+    if (
+      runtimeMetadata?.sourceType === 'browser_recording' ||
+      runtimeMetadata?.sourceType === 'browser_template' ||
+      runtimeMetadata?.executionPlan?.runtimeHints?.sourceType === 'browser_recording'
+    ) {
+      return 'browser_template';
+    }
     switch (executionType) {
       case 'flow':
         return 'workflow';

@@ -2,6 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ValueBindingV1 } from '@ops/backend-deterministic-plan';
 import { ERROR_CODES } from '@ops/backend-error-codes';
+import { unwrapStoredStepOutput } from './stored-step-output';
+import { ContentRefResolverService } from '../content/content-ref-resolver.service';
+import { OpsReportProjectionService } from './ops-report-projection.service';
 
 interface SkillParamSchemaField {
   enum?: Array<string | number>;
@@ -13,7 +16,11 @@ interface SkillParamSchemaField {
 export class DeterministicNodeInputResolverService {
   private readonly logger = new Logger(DeterministicNodeInputResolverService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly contentRefResolver: ContentRefResolverService,
+    private readonly opsReportProjection: OpsReportProjectionService,
+  ) {}
 
   /**
    * Resolves all input bindings for a specific execution step against user input & upstream completed steps.
@@ -30,6 +37,7 @@ export class DeterministicNodeInputResolverService {
     inputBindings: Record<string, ValueBindingV1>,
     executionInputJson: Record<string, any> = {},
     capabilityId?: string,
+    nodeKind?: string,
   ): Promise<Record<string, any>> {
     const resolvedInput: Record<string, any> = {};
     // Per-field binding source, so §9.2 enum handling can distinguish
@@ -54,7 +62,7 @@ export class DeterministicNodeInputResolverService {
     const stepOutputMap = new Map<string, any>();
     for (const step of upstreamSteps) {
       if (step.planNodeId && step.outputJson) {
-        stepOutputMap.set(step.planNodeId, step.outputJson);
+        stepOutputMap.set(step.planNodeId, unwrapStoredStepOutput(step.outputJson));
       }
     }
 
@@ -85,10 +93,74 @@ export class DeterministicNodeInputResolverService {
           if (upstreamOutput) {
             const outPath = binding.path || binding.outputPath || '';
             const upstreamValue = this.getValueByPath(upstreamOutput, outPath);
-            resolvedInput[field] =
-              binding.transform === 'extract_unique_array'
-                ? this.extractUniqueArray(upstreamValue, field, targetNodeId)
-                : upstreamValue;
+            if (
+              binding.transform === 'resolve_text_content' &&
+              process.env.DETERMINISTIC_CONTENT_BINDING_ENABLED === 'false'
+            ) {
+              const error: any = new Error('CONTENT_BINDING_DISABLED: resolve_text_content requires DETERMINISTIC_CONTENT_BINDING_ENABLED=true');
+              error.code = 'CONTENT_BINDING_DISABLED';
+              throw error;
+            }
+            if (
+              binding.transform === 'project_ops_report' &&
+              process.env.OPS_REPORT_PROJECTION_ENABLED !== 'true'
+            ) {
+              const error: any = new Error('OPS_REPORT_PROJECTION_DISABLED: project_ops_report requires OPS_REPORT_PROJECTION_ENABLED=true');
+              error.code = 'OPS_REPORT_PROJECTION_DISABLED';
+              throw error;
+            }
+
+            if (binding.transform === 'extract_unique_array') {
+              resolvedInput[field] = this.extractUniqueArray(upstreamValue, field, targetNodeId);
+            } else if (binding.transform === 'project_ops_report') {
+              resolvedInput[field] = this.projectOpsReport(upstreamValue, capabilityId || 'workflow');
+            } else if (binding.transform === 'resolve_text_content') {
+              const rawPaths = Array.isArray((binding as any).paths)
+                ? ((binding as any).paths as string[]).filter(Boolean)
+                : outPath.includes(',')
+                  ? outPath.split(',').map((p) => p.trim()).filter(Boolean)
+                  : [outPath];
+
+              const resolveSingle = async (val: unknown): Promise<string> => {
+                if (typeof val === 'string') return val;
+                if (val && typeof val === 'object') {
+                  if ('text' in val && typeof (val as any).text === 'string') {
+                    return (val as any).text;
+                  }
+                  if ('markdown' in val && typeof (val as any).markdown === 'string') {
+                    return (val as any).markdown;
+                  }
+                  if ('content' in val && typeof (val as any).content === 'string') {
+                    return (val as any).content;
+                  }
+                }
+                try {
+                  const resolved = await this.contentRefResolver.resolve(executionId, val);
+                  return resolved.text;
+                } catch {
+                  return typeof val === 'string' ? val : (val ? JSON.stringify(val) : '');
+                }
+              };
+
+              if (rawPaths.length > 1) {
+                const texts: string[] = [];
+                for (const p of rawPaths) {
+                  const stepVal = this.getValueByPath(upstreamOutput, p);
+                  if (stepVal !== undefined && stepVal !== null) {
+                    const stepText = await resolveSingle(stepVal);
+                    if (stepText.trim()) {
+                      const stepName = p.replace(/_clean_content$/, '');
+                      texts.push(`### 步骤【${stepName}】提取正文：\n\n${stepText.trim()}`);
+                    }
+                  }
+                }
+                resolvedInput[field] = texts.length > 0 ? texts.join('\n\n---\n\n') : await resolveSingle(upstreamValue);
+              } else {
+                resolvedInput[field] = await resolveSingle(upstreamValue);
+              }
+            } else {
+              resolvedInput[field] = upstreamValue;
+            }
             valueSources[field] = 'node_output';
           } else {
             this.logger.warn(
@@ -107,11 +179,51 @@ export class DeterministicNodeInputResolverService {
       }
     }
 
+    // For skill execution (non-llm_operation), automatically inherit top-level user inputs provided in executionInputJson
+    if (capabilityId && nodeKind !== 'llm_operation' && executionInputJson && typeof executionInputJson === 'object') {
+      for (const [key, val] of Object.entries(executionInputJson)) {
+        if (
+          key !== 'prompt' &&
+          key !== '__promptDebug' &&
+          key !== 'idempotencyKey' &&
+          key !== 'planDraft' &&
+          key !== 'deterministicPlan' &&
+          val !== undefined
+        ) {
+          if (resolvedInput[key] === undefined) {
+            resolvedInput[key] = val;
+            valueSources[key] = 'user_input';
+          }
+        }
+      }
+    }
+
     if (capabilityId) {
       await this.applySkillSchemaConstraints(resolvedInput, capabilityId, valueSources);
     }
 
     return resolvedInput;
+  }
+
+  private projectOpsReport(value: unknown, skillId: string): unknown {
+    const record = value && typeof value === 'object' && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : undefined;
+    const browser = record?.browserRunOutput && typeof record.browserRunOutput === 'object'
+      ? record.browserRunOutput
+      : value;
+    if (!browser || typeof browser !== 'object' || Array.isArray(browser)) {
+      const error: any = new Error('OPS_REPORT_PROJECTION_INVALID: browserRunOutput is required');
+      error.code = 'OPS_REPORT_PROJECTION_INVALID';
+      throw error;
+    }
+    const pages = Array.isArray((browser as any).pages) ? (browser as any).pages : [];
+    const entryUrl = typeof pages[0]?.url === 'string' ? pages[0].url : 'about:blank';
+    return this.opsReportProjection.project({
+      browser: browser as any,
+      skillId,
+      entryUrl,
+    });
   }
 
   private extractUniqueArray(value: unknown, field: string, producerNodeId: string): unknown[] {
@@ -394,9 +506,34 @@ export class DeterministicNodeInputResolverService {
     const parts = path.replace(/^\$\.?/, '').split('.');
     let current = obj;
     for (const part of parts) {
-      if (current === null || current === undefined) return undefined;
+      if (current === null || current === undefined) {
+        current = undefined;
+        break;
+      }
       current = current[part];
     }
-    return current;
+    if (current !== undefined) return current;
+
+    // Fallback for browserRunOutput / stepResults container if path was not found at root
+    if (obj && typeof obj === 'object') {
+      const stepResults = Array.isArray(obj.stepResults)
+        ? obj.stepResults
+        : Array.isArray(obj.browserRunOutput?.stepResults)
+          ? obj.browserRunOutput.stepResults
+          : Array.isArray(obj.inline?.stepResults)
+            ? obj.inline.stepResults
+            : Array.isArray(obj.inline?.browserRunOutput?.stepResults)
+              ? obj.inline.browserRunOutput.stepResults
+              : [];
+
+      for (let i = stepResults.length - 1; i >= 0; i--) {
+        const stepOut = stepResults[i]?.output;
+        if (stepOut && typeof stepOut === 'object' && stepOut[path] !== undefined) {
+          return stepOut[path];
+        }
+      }
+    }
+
+    return undefined;
   }
 }

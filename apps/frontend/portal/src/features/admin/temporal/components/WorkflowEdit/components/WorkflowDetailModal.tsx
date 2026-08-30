@@ -20,6 +20,17 @@ export const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
   SECTION_CARD_STYLE,
   getActivitySourceMeta,
 }) => {
+  const temporalSteps = selectedWorkflow?.workflowDsl?.steps || [];
+  const browserLogicalPlan = selectedWorkflow?.workflowDsl?.sourceContext?.browserLogicalPlan;
+  const displayedSteps =
+    Array.isArray(browserLogicalPlan?.steps) && browserLogicalPlan.steps.length > 0
+      ? browserLogicalPlan.steps
+      : temporalSteps.map((step: any) => ({
+          ...step,
+          workflowStepId: step.id,
+          type: step.type === 'activity' ? 'browser_activity' : step.type,
+          dependsOn: [],
+        }));
   return (
     <Modal
       title={
@@ -86,7 +97,7 @@ export const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
               </Col>
             </Row>
           </Card>
-          <Collapse defaultActiveKey={['workflow', 'activities']} ghost>
+          <Collapse defaultActiveKey={['steps']} ghost>
             <Panel
               header={
                 <Text>
@@ -96,8 +107,11 @@ export const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
               key="steps"
             >
               <Space direction="vertical" style={{ width: '100%' }} size={10}>
-                {(selectedWorkflow.workflowDsl?.steps || []).map((step: any, index: number) => {
-                  const sourceMeta = getActivitySourceMeta(step);
+                {displayedSteps.map((step: any, index: number) => {
+                  const temporalStep = temporalSteps.find(
+                    (candidate: any) => candidate.id === (step.workflowStepId || step.id)
+                  );
+                  const sourceMeta = getActivitySourceMeta(temporalStep || step);
                   return (
                     <Card
                       key={step.id || index}
@@ -112,12 +126,19 @@ export const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                         <Space wrap>
                           <Tag color="green">步骤 {index + 1}</Tag>
                           <Text strong>{step.name || `步骤 ${index + 1}`}</Text>
-                          {step.type === 'activity' ? (
+                          {step.type === 'browser_activity' || step.type === 'activity' ? (
                             <Tag color={sourceMeta.color}>{sourceMeta.label}</Tag>
+                          ) : step.type === 'llm_operation' ? (
+                            <Tag color="purple">控制面 LLM Operation</Tag>
+                          ) : step.type === 'workflow_skill' ? (
+                            <Tag color="cyan">控制面工作流</Tag>
                           ) : (
                             <Tag>{step.type}</Tag>
                           )}
                         </Space>
+                        {Array.isArray(step.dependsOn) && step.dependsOn.length > 0 ? (
+                          <Text type="secondary">依赖: {step.dependsOn.join(', ')}</Text>
+                        ) : null}
                       </Space>
                     </Card>
                   );

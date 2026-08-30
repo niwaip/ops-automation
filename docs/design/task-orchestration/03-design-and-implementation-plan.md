@@ -936,43 +936,45 @@ P0 启用顺序：先迁移表，再打开只记录，然后 Outbox 双写，最
 
 ### 20.2 P1 交付卡
 
-| 编号                     | 状态                                           | 关键落点                                                                                             | 验收标准                                                                                                                     |
-| ------------------------ | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| P1-1 Top 3～6 Retrieval  | 代码完成                                       | `CapabilityCandidateSelectorService`；`PLANNER_CAPABILITY_TOP_K=6`                                   | 配置强制夹紧 3～6；先过滤未发布/无合同能力；显式点名能力不得被截断                                                           |
-| P1-2 Result Ref          | 代码完成，默认关                               | `@ops/backend-result-ref`、`ResultRefService`；迁移 `20260824231500`；`RESULT_REF_ENABLED`           | 按 Execution Owner 授权；1～32 个字段路径；拒绝原型污染路径；Preview 限深、截断、敏感键脱敏；灰度期保留 `{inline,resultRef}` |
-| P1-3 Runtime Registry    | 代码完成                                       | Nest Discovery 自动发现 `RuntimeAdapterRegistry`                                                     | 生产 DI 只需注册 Provider；Route 重复启动失败；兼容旧测试的构造参数不参与生产装配                                            |
-| P1-4 Capability SDK      | 代码完成                                       | `packages/capability-sdk`                                                                            | Certified 强制 Digest、正反例、Owner、Runbook、幂等、Probe；Production 额外强制 SLO/Canary/回滚版本                          |
-| P1-5 Prompt/Token Ledger | 代码完成，默认关                               | Telemetry/Ledger Service；迁移 `20260824232500`；`MODEL_INVOCATION_LEDGER_ENABLED`                   | Snapshot 只存 Digest、生成参数和引用；规划前调用按 Trace 记录，Execution 创建后 Attach；业务不因记账失败                     |
-| P1-6 Schema/Owner        | 代码完成                                       | 权威 Schema、`database/schema-ownership.json`、同步/验证脚本                                         | `pnpm validate:schema-ownership` 要求镜像字节相同、所有表恰好一个 Owner                                                      |
-| P1-7 Dev/Prod Docker     | 代码与严格交付流水线完成，待首次受保护分支发布 | `docker/node-service/Dockerfile`、`docker-compose.production.yml`、`task-orchestration-delivery.yml` | 冻结 Lockfile、非 Root、无源码挂载/启动迁移/Docker Socket/固定容器名；CI 严格验证、扫描并推送仅以 Digest 引用的镜像          |
+| 编号                     | 状态                                           | 关键落点                                                                                                                                             | 验收标准                                                                                                                                                                                                |
+| ------------------------ | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1-1 Top 3～6 Retrieval  | 代码完成                                       | `CapabilityCandidateSelectorService`；`PLANNER_CAPABILITY_TOP_K=6`                                                                                   | 配置强制夹紧 3～6；先过滤未发布/无合同能力；显式点名能力不得被截断                                                                                                                                      |
+| P1-2 Result Ref          | 代码完成，默认关                               | `@ops/backend-result-ref`、`ResultRefService`；迁移 `20260824231500`；`RESULT_REF_ENABLED`                                                           | 按 Execution Owner 授权；1～32 个字段路径；拒绝原型污染路径；Preview 限深、截断、敏感键脱敏；灰度期保留 `{inline,resultRef}`                                                                            |
+| P1-3 Runtime Registry    | 代码完成                                       | Nest Discovery 自动发现 `RuntimeAdapterRegistry`                                                                                                     | 生产 DI 只需注册 Provider；Route 重复启动失败；兼容旧测试的构造参数不参与生产装配                                                                                                                       |
+| P1-4 Capability SDK      | 代码完成                                       | `packages/capability-sdk`                                                                                                                            | Certified 强制 Digest、正反例、Owner、Runbook、幂等、Probe；Production 额外强制 SLO/Canary/回滚版本                                                                                                     |
+| P1-5 Prompt/Token Ledger | 代码完成，默认关                               | Telemetry/Ledger Service；迁移 `20260824232500`；`MODEL_INVOCATION_LEDGER_ENABLED`                                                                   | Snapshot 只存 Digest、生成参数和引用；规划前调用按 Trace 记录，Execution 创建后 Attach；业务不因记账失败                                                                                                |
+| P1-6 Schema/Owner        | 代码完成                                       | 权威 Schema、`database/schema-ownership.json`、同步/验证脚本                                                                                         | `pnpm validate:schema-ownership` 要求镜像字节相同、所有表恰好一个 Owner                                                                                                                                 |
+| P1-7 Dev/Prod Docker     | 代码与严格交付流水线完成，待首次受保护分支发布 | `docker/node-service/Dockerfile`、`docker-compose.production.yml`、Release Job、`validate-production-delivery.sh`、`task-orchestration-delivery.yml` | 校验器自动拒绝非 Digest 镜像、非内部网络、host port/volume/Docker Socket、启动迁移、固定容器名和 Root Runtime；Release Job 仅通过 `release` Profile 运行，CI 严格验证、扫描并推送仅以 Digest 引用的镜像 |
 
 P1 Result Ref 删除 Inline 和数据 Owner 撤权都必须跨至少一个稳定发布窗口，当前版本只做双写和权限模板。
 
 ### 20.3 P2 交付卡
 
-| 编号                      | 状态                            | 关键落点                                                                                                                              | 验收标准                                                                                                                                                                                                                                                         |
-| ------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P2-1 Scoped Memory        | 三层 Scope 注入完成，默认关     | `ScopedMemoryService`、`ScopedPlannerMemoryService`；迁移 `20260824234000`；`SCOPED_MEMORY_PROMPT_ENABLED`                            | Prompt 只接受 Active Memory，按 User > Team > Active Organization 优先；活动组织来自认证服务，Control Plane 再自行查询 Active Membership/Team，绝不信任客户端团队列表；深度/集合/字符串均截断；只进入 `plannerContext`、不写 Execution input；不可用时规划继续。 |
-| P2-2 Candidate Recipe     | Shadow 治理链路完成，未自动激活 | `CandidateRecipeService`、`/admin/candidate-recipes` 和 Evaluation 表                                                                 | 创建时 Advisory Lock 分配不可覆写版本且状态必为 candidate；`candidate -> shadow -> approved -> canary -> active`；同 Fixture 只计一次；晋级在单事务内行锁校验；审批门槛 20/95%，Active 门槛 50/98% 且必须有 Approver。运行时仍不得读取 Candidate/Shadow Recipe。 |
-| P2-3 Runtime Worker       | 部署模板完成                    | Production Compose `runtime-worker`                                                                                                   | `RUNTIME_WORKER_REPLICAS` 独立扩容；无 Data 网络；下线后 Lease 可接管                                                                                                                                                                                            |
-| P2-4 Safe Ready Set       | 代码完成，默认串行              | `DeterministicReadySetService`；`SAFE_READY_SET_PARALLEL_ENABLED=false`                                                               | 依赖全成功才 Ready；仅 `none/read` 且幂等作用域不同才并行；元数据不足退化单节点                                                                                                                                                                                  |
-| P2-5 DB/Network Isolation | 部署约束完成，待 DBA 授权切换   | `database/security/roles.sql`；`CONTROL_PLANE_DATABASE_URL` / `AI_ORCHESTRATOR_DATABASE_URL`；`control/runtime/data` Internal Network | Production Compose 强制 Control 与 AI 使用不同登录凭据；AI 仅在 Data 网络以 Intelligence Writer 身份访问，不能写 Execution；Control 不授 Registry Writer；Runtime 无 Data 网络；PUBLIC 无 Schema Create。                                                        |
-| P2-6 Temporal 评估        | 已完成，结论不迁移              | `04-temporal-authority-decision.md`                                                                                                   | Control Plane 继续是 Frozen Plan/审批/Ready Set/Outbox 唯一权威；Temporal 仅做精确 Capability Runtime                                                                                                                                                            |
+| 编号                      | 状态                            | 关键落点                                                                                                                                                | 验收标准                                                                                                                                                                                                                                                                                        |
+| ------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P2-1 Scoped Memory        | 三层 Scope 注入完成，默认关     | `ScopedMemoryService`、`ScopedPlannerMemoryService`；迁移 `20260824234000`；`SCOPED_MEMORY_PROMPT_ENABLED`                                              | Prompt 只接受 Active Memory，按 User > Team > Active Organization 优先；活动组织来自认证服务，Control Plane 再自行查询 Active Membership/Team，绝不信任客户端团队列表；深度/集合/字符串均截断；只进入 `plannerContext`、不写 Execution input；不可用时规划继续。                                |
+| P2-2 Candidate Recipe     | Shadow 治理链路完成，未自动激活 | `CandidateRecipeService`、`/admin/candidate-recipes` 和 Evaluation 表                                                                                   | 创建时 Advisory Lock 分配不可覆写版本且状态必为 candidate；`candidate -> shadow -> approved -> canary -> active`；同 Fixture 只计一次；晋级在单事务内行锁校验；审批门槛 20/95%，Active 门槛 50/98% 且必须有 Approver。运行时仍不得读取 Candidate/Shadow Recipe。                                |
+| P2-3 Runtime Worker       | 部署模板完成                    | Production Compose `runtime-worker`                                                                                                                     | `RUNTIME_WORKER_REPLICAS` 独立扩容；无 Data 网络；下线后 Lease 可接管                                                                                                                                                                                                                           |
+| P2-4 Safe Ready Set       | 代码完成，默认串行              | `DeterministicReadySetService`；`SAFE_READY_SET_PARALLEL_ENABLED=false`                                                                                 | 依赖全成功才 Ready；仅 `none/read` 且幂等作用域不同才并行；元数据不足退化单节点                                                                                                                                                                                                                 |
+| P2-5 DB/Network Isolation | 部署约束完成，待 DBA 授权切换   | `database/security/access-policy.json`、`roles.sql`、`verify-application-roles.mjs`；应用和 Migration URL 分离；`control/runtime/data` Internal Network | Production Compose 强制 Control 与 AI 使用不同登录凭据；Schema Migrations 只接受 Release-only 管理凭据；发布校验遍历全部 Owner 表、Writer Group 和应用 Login；AI 可写其 LLM Operation Registry、不能写 Execution；Control 不授 Registry Writer；Runtime 无 Data 网络；PUBLIC 无 Schema Create。 |
+| P2-6 Temporal 评估        | 已完成，结论不迁移              | `04-temporal-authority-decision.md`                                                                                                                     | Control Plane 继续是 Frozen Plan/审批/Ready Set/Outbox 唯一权威；Temporal 仅做精确 Capability Runtime                                                                                                                                                                                           |
 
 ### 20.4 生产发布顺序
 
 1. 备份并审核 Prisma Migration 历史；存在 Failed Migration 时先修复历史，禁止 `db push`。
-2. 按时间顺序应用五个新 Migration，验证表、外键、唯一约束和索引。
-3. 构建、扫描并推送不可变镜像，以 Digest 填充 Production Compose。
-4. 所有新开关保持关闭部署代码，先完成旧链路回归。
-5. 打开 Planning Decision/Token Ledger 只记录，再打开 Result Ref 双写。
-6. 打开 Outbox 双写，启动独立 Dispatcher/Schedule，然后切换新执行权。
-7. 仅对内部低风险组织启用 Risk V2/Ready Set；并行最后开启。
-8. Candidate Recipe 只运行 Shadow，达门槛且人工批准后才 Canary。
-9. 为各应用 Login Role 授予 Reader 和其承载的逻辑模块 Writer；每张表仍只有一个逻辑 Owner。观察拒绝日志后撤销共享写角色。
-   Production Compose 必须分别注入 `CONTROL_PLANE_DATABASE_URL` 与
-   `AI_ORCHESTRATOR_DATABASE_URL`，禁止回退为共享 `DATABASE_URL`。
-10. Scoped Memory 先只为内部测试组织开启：通过 `PUT /api/internal/scoped-memories/self` 写入
+2. 以受保护分支构建、扫描并推送不可变镜像，以 Digest 填充 Production Compose；应用服务保持未启动。
+3. 使用 `pnpm run run:production-schema-migrator` 执行唯一 canonical Prisma migration history，并校验 AI Orchestrator Schema。该 Job 仅在 `release` Profile 中存在，绝不作为应用启动依赖。
+4. DBA 在迁移成功后执行 `database/security/roles.sql`，为 Login Role 配置约定的 group membership；禁止把管理员或 Migration URL 注入应用服务。
+5. 使用 `pnpm run verify:production-release-db-roles` 运行正、反向权限验证；通过后再验证表、外键、唯一约束、索引和角色拒绝日志。
+6. 所有新开关保持关闭部署代码，先完成旧链路回归。
+7. 打开 Planning Decision/Token Ledger 只记录，再打开 Result Ref 双写。
+8. 打开 Outbox 双写，启动独立 Dispatcher/Schedule，然后切换新执行权。
+9. 仅对内部低风险组织启用 Risk V2/Ready Set；并行最后开启。
+10. Candidate Recipe 只运行 Shadow，达门槛且人工批准后才 Canary。
+11. 为各应用 Login Role 授予 Reader 和其承载的逻辑模块 Writer；每张表仍只有一个逻辑 Owner。观察拒绝日志后撤销共享写角色。
+    Production Compose 必须分别注入 `CONTROL_PLANE_DATABASE_URL` 与
+    `AI_ORCHESTRATOR_DATABASE_URL`，禁止回退为共享 `DATABASE_URL`。
+12. Scoped Memory 先只为内部测试组织开启：通过 `PUT /api/internal/scoped-memories/self` 写入
     `planner_context/default`，确认规划 Prompt 命中且 Execution input 不含该值；活动组织必须来自
     `/auth/me`，Control Plane 以自身 Membership 查询扩展 Team Scope，禁止由客户端声明 Team ID。
 
@@ -997,6 +999,43 @@ DATABASE_URL="$CONTROL_PLANE_TEST_DATABASE_URL" \
 
 数据库验收还必须覆盖：Migration 在生产基线副本上顺序执行、Outbox 多实例 Claim、Schedule Fire 唯一性、
 Result Ref Owner 隔离、Trace Usage Attach 和并行 Ready Set。任一失败都必须保持对应 Feature Flag 关闭。
+
+`validate-production-delivery.sh` 除必填变量和 Compose 渲染外，还必须解析包含 `release` Profile 的 JSON 并校验：所有应用镜像以
+Digest 固定、服务网络精确满足 `control/runtime/data` 隔离、无发布到宿主机的端口、无 volume 或 Docker Socket、
+无 `build`/`container_name`/`privileged`、无启动迁移命令，以及运行时 Dockerfile 明确切换为非 Root `ops` 用户。
+它还必须验证 `schema-migrator` 与 `database-role-verifier` 均只在 `release` Profile、只接入 Data Network、无应用依赖、
+无应用 `DATABASE_URL`、使用固定且经过审计的命令、并在镜像的非 Root 用户下运行。
+
+开发环境的 `workspace-deps-init` 与 `apply-latest-db-schema.sh` 必须运行唯一 canonical migration history，再校验 AI Orchestrator Schema；不能让 AI Registry 在空库上依赖应用启动时的隐式建表，也不能维护第二个 Prisma history。
+
+#### 20.5.1 生产数据库 Release Job 操作合同
+
+Release Job 使用两个只给发布程序的数据库连接：
+
+- `CONTROL_PLANE_MIGRATION_DATABASE_URL`：执行唯一 canonical Prisma history；该历史包含 Platform、Control Plane 与经字节校验纳入的 LLM Operation Registry SQL。脚本在已有但无历史的旧库上只会在基线 SQL 审核通过后 adopt baseline。
+- `AI_ORCHESTRATOR_MIGRATION_DATABASE_URL`：仅用于证明 AI 使用同一物理数据库/schema 的独立发布凭据；Release Job 会在不记录凭据的前提下比较目标地址，若不是同一数据库/schema 则 fail-closed。AI Schema 只做 `prisma validate`，不再维护第二个 `_prisma_migrations` 历史。
+
+当前阶段是共享数据库、分离 Login Role/Writer Group 的架构；Production Delivery 会同时拒绝指向不同目标的两个应用 URL 和两个 Migration URL。若未来真正拆库，必须先设计独立 Schema、迁移历史和跨库 Read Model，不能仅把 AI URL 改到另一数据库。
+
+在受保护 CI 的已审批发布环境中提供下列变量后，按以下不可跳过的关口执行：
+
+```bash
+pnpm run run:production-schema-migrator
+# DBA applies database/security/roles.sql and login-role membership here.
+pnpm run verify:production-release-db-roles
+```
+
+两个命令都会先做静态交付校验；前者只运行 `schema-migrator`，后者只运行 `database-role-verifier`。两者都不执行应用 `up`，也不打开任何 Feature Flag。`database/security/roles.sql` 必须由 DBA 在 canonical history 成功后、权限验证之前执行。`access-policy.json` 是应用 Login → Logical Owner → Writer Group 的唯一权限映射；验证器会遍历全部受治理表，检查每个 Writer Group 的唯一写权、每个应用 Login 的精确继承关系和有效写权，因而能同时拒绝 AI 写 Execution、Control 写 Registry、或任何直接/继承的越权写入。
+
+Release Job 的验收标准：
+
+1. 审计日志能关联受保护提交、三个应用 Image Digest、两条 migration URL 的密钥引用（不记录值）和 Prisma migration history。
+2. `schema-migrator`、DBA 授权与 `database-role-verifier` 三个关口均成功，两个 Job 不产生常驻容器；普通 `docker compose up` 不会包含它们。
+3. 三个应用 Login 使用不同凭据；migration/admin 凭据未出现在任何应用 service 的 rendered environment。
+4. 75 张当前纳入治理的表均有且仅有一个 Owner；AI 只能写 LLM Registry/Intelligence 表，不能写 Execution；Control 不能写 Registry 表。
+5. 任一 migration、权限或验证失败时停止于应用部署之前；仅允许按已审核的补偿/回滚 Runbook 处理，不自动降级权限或重试 DDL。
+
+CI 还必须在独立空 PostgreSQL 数据库中执行 canonical Prisma history、校验 AI Schema，再创建仅用于测试的三个应用 Login、应用 `roles.sql` 并运行同一个 `verify-application-roles.mjs`。该 fixture 只接受 `ROLE_POLICY_FIXTURE_CONFIRM=ci-only`，不能作为生产授权入口；它用于证明 Release Job、权限模板和全表最小权限在干净库上可复现。
 
 ### 20.6 2026-08-25 多步骤搜索链路加固
 

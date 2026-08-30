@@ -9,3 +9,4 @@ export interface AuditStamp {
 export interface KeyValueRecord {
     [key: string]: unknown;
 }
+//# sourceMappingURL=index.d.ts.map

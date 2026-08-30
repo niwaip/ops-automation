@@ -616,7 +616,17 @@ export class DeterministicPlanFreezeService {
     node: DeterministicPlanDraftV1['nodes'][number],
     contract: ResolvedCapabilityContract,
   ): void {
-    node.outputContract = this.schemaToOutputContract(contract.outputSchema);
+    if (node.kind === 'skill' && contract.runtimeType) {
+      node.runtimeType = contract.runtimeType as any;
+      (node as any).executionRuntimeType =
+        contract.runtimeType === 'browser_template' ? 'browser' : contract.runtimeType;
+    }
+    const authoritativeContract = this.schemaToOutputContract(contract.outputSchema);
+    // Browser composition outputs are already projected from the immutable
+    // release's outputDeclarations by the catalog.  Never merge planner-authored
+    // browser fields here: doing so resurrects stale synthetic outputs such as
+    // `summary` and makes them look authoritative.
+    node.outputContract = authoritativeContract;
 
     if (node.kind !== 'llm_operation') return;
     const ref = contract.capabilityRef;

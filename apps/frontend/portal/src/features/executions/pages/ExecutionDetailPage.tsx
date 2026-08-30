@@ -4,7 +4,6 @@ import {
   Alert,
   Button,
   Card,
-  Collapse,
   Descriptions,
   Empty,
   Spin,
@@ -20,6 +19,7 @@ import {
 } from '@/shared/lib/executionStatusMeta';
 import InlineRecoveryPanel from '@/features/executions/shared/InlineRecoveryPanel';
 import { getStepStatusColor } from '@/features/executions/list/listView';
+import { StepOutputViewer } from '@/features/executions/shared/StepOutputViewer';
 
 const { Text } = Typography;
 
@@ -124,15 +124,6 @@ export const ExecutionDetailPage: React.FC = () => {
                 step.outputJson && Object.keys(step.outputJson).length > 0;
               const hasError = Boolean(step.errorMessage);
 
-              // 提取 presentation 里的 detailText 作为摘要（如果有）
-              const presentation = (step.outputJson as any)?.presentation;
-              const detailText: string | undefined =
-                typeof presentation?.detailText === 'string' && presentation.detailText !== 'success'
-                  ? presentation.detailText
-                  : undefined;
-              // 提取 result 对象作为核心输出
-              const resultPayload = (step.outputJson as any)?.result;
-
               return {
                 color: getStepStatusColor(step.status),
                 children: (
@@ -188,98 +179,12 @@ export const ExecutionDetailPage: React.FC = () => {
                       />
                     )}
 
-                    {/* 步骤输出：优先展示 detailText 摘要，然后是 result，最后是完整 outputJson */}
+                    {/* 步骤输出：优先展示截图、正文与动作 */}
                     {hasOutput && (
-                      <Collapse
-                        size="small"
-                        ghost
-                        items={[
-                          {
-                            key: 'output',
-                            label: (
-                              <Text type="secondary" style={{ fontSize: 12 }}>
-                                {detailText
-                                  ? `输出摘要：${detailText.slice(0, 80)}${detailText.length > 80 ? '...' : ''}`
-                                  : `查看步骤输出 (${Object.keys(step.outputJson!).join('、')})`}
-                              </Text>
-                            ),
-                            children: (
-                              <div>
-                                {/* 如果有 detailText，优先用 pre 展示 */}
-                                {detailText && (
-                                  <div style={{ marginBottom: 12 }}>
-                                    <Text strong style={{ fontSize: 12 }}>
-                                      摘要内容
-                                    </Text>
-                                    <pre
-                                      style={{
-                                        marginTop: 4,
-                                        padding: '8px 12px',
-                                        background: 'var(--bg-secondary)',
-                                        borderRadius: 6,
-                                        fontSize: 12,
-                                        whiteSpace: 'pre-wrap',
-                                        wordBreak: 'break-word',
-                                        maxHeight: 400,
-                                        overflow: 'auto',
-                                      }}
-                                    >
-                                      {detailText}
-                                    </pre>
-                                  </div>
-                                )}
-
-                                {/* result 字段（结构化结果）*/}
-                                {resultPayload !== undefined && (
-                                  <div style={{ marginBottom: 12 }}>
-                                    <Text strong style={{ fontSize: 12 }}>
-                                      result
-                                    </Text>
-                                    <pre
-                                      style={{
-                                        marginTop: 4,
-                                        padding: '8px 12px',
-                                        background: 'var(--bg-secondary)',
-                                        borderRadius: 6,
-                                        fontSize: 12,
-                                        whiteSpace: 'pre-wrap',
-                                        wordBreak: 'break-word',
-                                        maxHeight: 400,
-                                        overflow: 'auto',
-                                      }}
-                                    >
-                                      {typeof resultPayload === 'string'
-                                        ? resultPayload
-                                        : JSON.stringify(resultPayload, null, 2)}
-                                    </pre>
-                                  </div>
-                                )}
-
-                                {/* 完整 outputJson */}
-                                <div>
-                                  <Text strong style={{ fontSize: 12 }}>
-                                    完整输出 (outputJson)
-                                  </Text>
-                                  <pre
-                                    style={{
-                                      marginTop: 4,
-                                      padding: '8px 12px',
-                                      background: 'var(--bg-secondary)',
-                                      borderRadius: 6,
-                                      fontSize: 12,
-                                      whiteSpace: 'pre-wrap',
-                                      wordBreak: 'break-word',
-                                      maxHeight: 400,
-                                      overflow: 'auto',
-                                    }}
-                                  >
-                                    {JSON.stringify(step.outputJson, null, 2)}
-                                  </pre>
-                                </div>
-                              </div>
-                            ),
-                          },
-                        ]}
+                      <StepOutputViewer
+                        outputJson={step.outputJson}
+                        stepName={step.name}
+                        stepAction={step.action}
                       />
                     )}
                   </Card>

@@ -3,6 +3,7 @@ import * as crypto from 'crypto';
 import axios from 'axios';
 import { ERROR_CODES } from '@ops/backend-error-codes';
 import { computeContractDigest as computeSharedContractDigest } from '@ops/backend-runtime-capability-contract';
+import { buildBrowserCapabilityOutputSchema } from '@ops/backend-browser-execution-contract';
 import { getAiOrchestratorUrl } from '../../../config/service-endpoints';
 
 export interface ResolvedCapabilityContract {
@@ -29,6 +30,8 @@ export interface ResolvedCapabilityContract {
    * contract envelope always normalizes to 'published_skill' (design doc §2.5).
    */
   sourceType?: 'builtin_skill' | 'published_skill' | 'llm_operation';
+  /** Runtime authority derived from the immutable published release snapshot. */
+  runtimeType?: string;
 }
 
 /**
@@ -196,10 +199,27 @@ export class CapabilityContractCatalogService {
               );
             }
           }
+          const runtimeType = this.resolvePublishedRuntimeType(releasedPayload);
+          if (runtimeType === 'browser_template') {
+            const apiEndpoints = this.asRecord(releasedPayload.apiEndpoints);
+            const runtimeMetadata =
+              this.asRecord(releasedPayload.runtimeMetadata) ||
+              this.asRecord(apiEndpoints?.runtimeMetadata);
+            releasedOutput = buildBrowserCapabilityOutputSchema({
+              declaredOutputSchema: releasedOutput,
+              runtimeMetadata,
+              executionPlan: releasedPayload.executionPlan,
+              composition:
+                runtimeMetadata?.composition ||
+                releasedPayload.workflowComposition ||
+                releasedPayload.composition,
+            });
+          }
           return {
             inputSchema: this.paramsSchemaToJsonSchema(releasedParams ?? null),
             outputSchema: releasedOutput as Record<string, unknown>,
             sourceType: 'published_skill',
+            runtimeType,
           };
         }
 
@@ -262,6 +282,22 @@ const inputSchema = this.paramsSchemaToJsonSchema(skillConfig.paramsSchema);
     throw new Error(`No catalog contract resolvable for node '${node.nodeId}' (${node.kind})`);
   }
 
+  private resolvePublishedRuntimeType(payload: Record<string, unknown>): string | undefined {
+    const apiEndpoints = this.asRecord(payload.apiEndpoints);
+    const runtimeMetadata = this.asRecord(apiEndpoints?.runtimeMetadata);
+    const sourceType =
+      (typeof payload.sourceType === 'string' && payload.sourceType) ||
+      (typeof runtimeMetadata?.sourceType === 'string' && runtimeMetadata.sourceType);
+    if (sourceType === 'browser_recording' || sourceType === 'browser_template') {
+      return 'browser_template';
+    }
+
+    const declaredRuntime =
+      (typeof payload.runtimeType === 'string' && payload.runtimeType) ||
+      (typeof runtimeMetadata?.runtimeType === 'string' && runtimeMetadata.runtimeType);
+    return declaredRuntime || undefined;
+  }
+
   /**
    * Resolve the source snapshot payload of the published release pinned by the
    * node (`published_skill_id` + `release_version`, §9.3 strict resolution for
@@ -313,10 +349,40 @@ const inputSchema = this.paramsSchemaToJsonSchema(skillConfig.paramsSchema);
       .findUnique({ where: { id: snapshotId } })
       .catch(() => null);
     const payload = snapshot?.sourcePayloadJson;
-    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-      return {};
+    const recordPayload: Record<string, unknown> =
+      payload && typeof payload === 'object' && !Array.isArray(payload)
+        ? { ...(payload as Record<string, unknown>) }
+        : {};
+
+    // Fallback: If outputSchema is missing in source snapshot, load from current skill draft or live config
+    if (!recordPayload.outputSchema && release.currentSkillDraftId) {
+      const draft = await client.skillDraft
+        .findUnique({ where: { id: release.currentSkillDraftId } })
+        .catch(() => null);
+      if (draft?.draftPayloadJson && typeof draft.draftPayloadJson === 'object') {
+        const draftPayload = draft.draftPayloadJson as Record<string, unknown>;
+        if (draftPayload.outputSchema) {
+          recordPayload.outputSchema = draftPayload.outputSchema;
+        }
+        if (!recordPayload.paramsSchema && draftPayload.paramsSchema) {
+          recordPayload.paramsSchema = draftPayload.paramsSchema;
+        }
+      }
     }
-    return payload as Record<string, unknown>;
+
+    if (!recordPayload.outputSchema && skillUuid) {
+      const cfg = await client.skillConfig
+        .findUnique({ where: { id: skillUuid } })
+        .catch(() => null);
+      if (cfg?.outputSchema && typeof cfg.outputSchema === 'object') {
+        recordPayload.outputSchema = cfg.outputSchema as Record<string, unknown>;
+      }
+      if (!recordPayload.paramsSchema && cfg?.paramsSchema && typeof cfg.paramsSchema === 'object') {
+        recordPayload.paramsSchema = cfg.paramsSchema as Record<string, unknown>;
+      }
+    }
+
+    return recordPayload;
   }
 
   /**
@@ -347,33 +413,96 @@ const inputSchema = this.paramsSchemaToJsonSchema(skillConfig.paramsSchema);
         : null;
     const runtimeMetadata =
       payload.apiEndpoints && typeof payload.apiEndpoints === 'object'
-        ? (payload.apiEndpoints as Record<string, unknown>).runtimeMetadata
+        ? ((payload.apiEndpoints as Record<string, unknown>).runtimeMetadata as Record<string, unknown> | undefined)
         : undefined;
     const outputParams =
       (workflowDsl?.outputParams as Record<string, unknown> | undefined) ??
       (payload.outputParams as Record<string, unknown> | undefined) ??
       (runtimeMetadata && typeof runtimeMetadata === 'object'
-        ? (runtimeMetadata as Record<string, unknown>).outputParams
+        ? (runtimeMetadata.outputParams as Record<string, unknown> | undefined)
         : undefined);
-    if (!outputParams || typeof outputParams !== 'object' || Array.isArray(outputParams)) {
-      return null;
-    }
-    const fields = Object.entries(outputParams).filter(
-      ([key, meta]) => !!key && meta !== null && typeof meta === 'object'
-    );
-    if (fields.length === 0) {
-      return null;
-    }
+
     const properties: Record<string, unknown> = {};
-    for (const [key, meta] of fields) {
-      const description = (meta as Record<string, unknown>).description;
-      properties[key] =
-        typeof description === 'string' && description.length > 0 ? { description } : {};
+    const required: string[] = [];
+
+    if (outputParams && typeof outputParams === 'object' && !Array.isArray(outputParams)) {
+      const fields = Object.entries(outputParams).filter(
+        ([key, meta]) => !!key && meta !== null && typeof meta === 'object'
+      );
+      for (const [key, meta] of fields) {
+        const description = (meta as Record<string, unknown>).description;
+        properties[key] =
+          typeof description === 'string' && description.length > 0 ? { description } : {};
+        required.push(key);
+      }
     }
+
+    // Support browser recording composition outputDeclarations
+    const composition =
+      (runtimeMetadata?.composition as Record<string, unknown> | undefined) ??
+      (payload.composition as Record<string, unknown> | undefined);
+    const outputDeclarations = Array.isArray(composition?.outputDeclarations)
+      ? (composition.outputDeclarations as Array<Record<string, unknown>>)
+      : [];
+    for (const decl of outputDeclarations) {
+      if (decl && typeof decl.name === 'string' && decl.name.trim()) {
+        properties[decl.name.trim()] = {
+          type: decl.kind === 'content' ? 'string' : 'object',
+          description: `Browser recording output ${decl.name}`,
+        };
+        if (decl.required) {
+          required.push(decl.name.trim());
+        }
+      }
+    }
+
+    // Support browser recording executionPlan outputs
+    const executionPlan =
+      (runtimeMetadata?.executionPlan as Record<string, unknown> | undefined) ??
+      (payload.executionPlan as Record<string, unknown> | undefined);
+    const outputs = Array.isArray(executionPlan?.outputs)
+      ? (executionPlan.outputs as Array<Record<string, unknown>>)
+      : [];
+    for (const out of outputs) {
+      if (out && typeof out.name === 'string' && out.name.trim()) {
+        properties[out.name.trim()] = {
+          type: typeof out.type === 'string' ? out.type : 'object',
+          description: typeof out.description === 'string' ? out.description : `Output ${out.name}`,
+        };
+      }
+    }
+
+    // Browser aliases and declared outputs come from one shared projection.
+    // In particular, browser-only recordings must not advertise an invented
+    // textual `summary` output.
+    if (
+      payload.sourceType === 'browser_recording' ||
+      runtimeMetadata?.sourceType === 'browser_recording' ||
+      Boolean(executionPlan)
+    ) {
+      const projected = buildBrowserCapabilityOutputSchema({
+        runtimeMetadata,
+        executionPlan,
+        composition,
+      });
+      for (const [key, meta] of Object.entries(
+        (projected.properties as Record<string, unknown>) || {},
+      )) {
+        if (!properties[key]) {
+          properties[key] = meta;
+        }
+      }
+    }
+
+    if (Object.keys(properties).length === 0) {
+      return null;
+    }
+
     return {
       type: 'object',
+      ...(properties.text ? { primaryOutput: 'text' } : {}),
       properties,
-      required: fields.map(([key]) => key),
+      required: Array.from(new Set(required)),
       additionalProperties: true,
     };
   }
@@ -383,6 +512,12 @@ const inputSchema = this.paramsSchemaToJsonSchema(skillConfig.paramsSchema);
 
   private isValidUuid(value: string): boolean {
     return CapabilityContractCatalogService.UUID_REGEX.test(value);
+  }
+
+  private asRecord(value: unknown): Record<string, unknown> | undefined {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : undefined;
   }
 
   /**

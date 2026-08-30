@@ -63,7 +63,7 @@ export class TemplateService {
       paramsSchema: dto.params_schema || this.getDefaultParamsSchema(),
       steps: dto.steps || [],
       guards: dto.guards || [],
-      config: dto.config || {},
+      config: this.normalizeWorkflowCompositionConfig(dto.config || {}),
       createdBy: dto.created_by,
       reviewedBy: null,
       publishedAt: null,
@@ -153,29 +153,9 @@ export class TemplateService {
     // When steps are explicitly updated, mirror them into config.executionPlan.templateSteps
     // so that session-broker (which prefers executionPlan.templateSteps over top-level steps)
     // always executes the latest locators.
-    let resolvedConfig = dto.config || template.config;
+    let resolvedConfig = this.normalizeWorkflowCompositionConfig(dto.config || template.config);
     if (dto.steps && Array.isArray(dto.steps)) {
-      const existingConfig =
-        resolvedConfig && typeof resolvedConfig === 'object' && !Array.isArray(resolvedConfig)
-          ? (resolvedConfig as Record<string, unknown>)
-          : {};
-      const existingExecutionPlan =
-        existingConfig.executionPlan &&
-        typeof existingConfig.executionPlan === 'object' &&
-        !Array.isArray(existingConfig.executionPlan)
-          ? (existingConfig.executionPlan as Record<string, unknown>)
-          : undefined;
-
-      if (existingExecutionPlan) {
-        // Sync templateSteps inside executionPlan to the new top-level steps.
-        resolvedConfig = {
-          ...existingConfig,
-          executionPlan: {
-            ...existingExecutionPlan,
-            templateSteps: dto.steps,
-          },
-        };
-      }
+      resolvedConfig = this.syncTemplateStepsInConfig(resolvedConfig, dto.steps);
     }
 
     const mergedTemplate: TemplateRecord = {
@@ -307,7 +287,7 @@ export class TemplateService {
       paramsSchema: (dto.params_schema || this.getDefaultParamsSchema()) as unknown,
       steps: (dto.steps || []) as unknown,
       guards: (dto.guards || []) as unknown,
-      config: (dto.config || {}) as unknown,
+      config: this.normalizeWorkflowCompositionConfig(dto.config || {}) as unknown,
       createdBy: dto.created_by,
       status: 'DRAFT' as const,
     } as any;
@@ -325,6 +305,80 @@ export class TemplateService {
     if (dto.config) data.config = dto.config as unknown;
 
     return data as any;
+  }
+
+  /**
+   * The browser recording stays pure. Template-owned composition is mirrored
+   * into the publish payload only when the template author explicitly saves it,
+   * so the existing release bridge and Control Plane consume one contract.
+   */
+  private normalizeWorkflowCompositionConfig(value: unknown): Record<string, unknown> {
+    const config = this.asRecord(value) || {};
+    const nextConfig = { ...config };
+    delete nextConfig.composition;
+    const composition = this.asRecord(config.workflowComposition);
+    const skillDraft = this.asRecord(config.skillDraft);
+    const publishPayload = this.asRecord(skillDraft?.publishPayload);
+    if (!skillDraft || !publishPayload) return nextConfig;
+
+    const apiEndpoints = this.asRecord(publishPayload.apiEndpoints) || {};
+    const runtimeMetadata = { ...(this.asRecord(apiEndpoints.runtimeMetadata) || {}) };
+    delete runtimeMetadata.composition;
+    delete runtimeMetadata.compositePlan;
+    delete runtimeMetadata.compositionSource;
+    if (composition) {
+      runtimeMetadata.composition = composition;
+      runtimeMetadata.compositionSource = 'template_editor';
+    }
+    nextConfig.skillDraft = {
+      ...skillDraft,
+      publishPayload: {
+        ...publishPayload,
+        apiEndpoints: {
+          ...apiEndpoints,
+          runtimeMetadata,
+        },
+      },
+    };
+    return nextConfig;
+  }
+
+  /** Keeps both legacy and immutable publish-payload execution plans in sync. */
+  private syncTemplateStepsInConfig(
+    value: unknown,
+    steps: UpdateTemplateDto['steps']
+  ): Record<string, unknown> {
+    const config = this.asRecord(value) || {};
+    const nextConfig = { ...config };
+    const executionPlan = this.asRecord(config.executionPlan);
+    if (executionPlan) {
+      nextConfig.executionPlan = { ...executionPlan, templateSteps: steps };
+    }
+
+    const skillDraft = this.asRecord(config.skillDraft);
+    const publishPayload = this.asRecord(skillDraft?.publishPayload);
+    if (!skillDraft || !publishPayload) return nextConfig;
+    const apiEndpoints = this.asRecord(publishPayload.apiEndpoints) || {};
+    const runtimeMetadata = { ...(this.asRecord(apiEndpoints.runtimeMetadata) || {}) };
+    const publishedExecutionPlan = this.asRecord(runtimeMetadata.executionPlan);
+    runtimeMetadata.executionPlan = {
+      ...(publishedExecutionPlan || {}),
+      templateSteps: steps,
+    };
+    nextConfig.skillDraft = {
+      ...skillDraft,
+      publishPayload: {
+        ...publishPayload,
+        apiEndpoints: { ...apiEndpoints, runtimeMetadata },
+      },
+    };
+    return nextConfig;
+  }
+
+  private asRecord(value: unknown): Record<string, unknown> | undefined {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : undefined;
   }
 
   private parsePositiveInt(value: number | string | undefined, fallback: number): number {

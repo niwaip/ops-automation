@@ -55,6 +55,18 @@ export type TemplateStepExecutionPolicy =
   | 'require_takeover'
   | 'forbid_in_replay';
 
+export interface TemplateCaptureProfile {
+  schemaVersion: 'capture-profile/v1';
+  profile: TemplateCaptureProfileName;
+  capture: {
+    screenshot: boolean;
+    html: boolean;
+    snapshot: boolean;
+    mainContent: boolean;
+  };
+  limits: { htmlBytes: number; contentChars: number; tableCells: number };
+}
+
 export interface TemplateStep {
   step_id: string;
   action: TemplateStepAction;
@@ -67,6 +79,58 @@ export interface TemplateStep {
   branch?: BranchConfig;
   description?: string;
   execution_policy?: TemplateStepExecutionPolicy;
+  /** Deterministic, per-browser-step result collection. This never invokes an LLM. */
+  capture_profile?: TemplateCaptureProfile;
+}
+
+export type TemplateCaptureProfileName = 'article' | 'application' | 'audit' | 'raw';
+export type TemplatePostProcessingType = 'none' | 'llm_operation' | 'workflow_skill';
+export type TemplatePostProcessingRunWhen = 'browser_succeeded' | 'browser_terminal';
+
+export interface TemplateWorkflowComposition {
+  schemaVersion: 'browser-template-workflow-composition/v1';
+  pageAliases: Array<{
+    alias: string;
+    sourceStepId?: string;
+    match: { urlPattern?: string; titlePattern?: string };
+    captureProfile: TemplateCaptureProfile;
+  }>;
+  outputDeclarations: Array<{
+    name: string;
+    sourcePageAlias: string;
+    sourceStepId?: string;
+    kind: 'content' | 'value' | 'artifact' | 'page_state';
+    sourcePath?: string;
+    required: boolean;
+  }>;
+  finalNodeId?: string;
+  postProcessingSteps: Array<
+    | {
+        id: string;
+        type: 'llm_operation';
+        operationId: string;
+        operationVersion: string;
+        inputBindings: Record<string, unknown>;
+        runWhen: TemplatePostProcessingRunWhen;
+        dependsOn?: string[];
+        sourceStepId?: string;
+        sourceStepIds?: string[];
+        processingMode?: 'summary' | 'custom';
+        promptTemplate?: string;
+      }
+    | {
+        id: string;
+        type: 'workflow_skill';
+        skillId: string;
+        releaseId: string;
+        inputProjection: 'ops-report-projection/v1';
+        runWhen: TemplatePostProcessingRunWhen;
+        dependsOn?: string[];
+        sourceStepId?: string;
+        sourceStepIds?: string[];
+        inputBindings?: Record<string, unknown>;
+      }
+  >;
 }
 
 export interface Template {

@@ -3,9 +3,17 @@ import { Modal, Segmented, Space, Input, Button, Card, Tag, Typography, Alert } 
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { CarboneTemplate } from '@/api/carbone';
 import type { Template } from '@/api/template';
+import { readTemplateWorkflowComposition } from '@/features/browser-templates/lib/templateWorkflowComposition';
 import type { TemplateModalMode } from '../hooks/useWorkflowDraftTemplates';
 
 const { Text } = Typography;
+
+const getBrowserTemplateStepSummary = (template: Template) => {
+  const browser = Array.isArray(template.steps) ? template.steps.length : 0;
+  const postProcessing =
+    readTemplateWorkflowComposition(template.config || {})?.postProcessingSteps?.length || 0;
+  return { browser, postProcessing, total: browser + postProcessing };
+};
 
 export interface WorkflowTemplatePickerModalProps {
   templateModalVisible: boolean;
@@ -143,7 +151,7 @@ export const WorkflowTemplatePickerModal: React.FC<WorkflowTemplatePickerModalPr
           <Alert
             type="info"
             showIcon
-            message="请选择已生成的浏览器模版，系统将自动转换为 Browser Activity 工作流草稿"
+            message="请选择浏览器模版；浏览器操作转换为 Temporal Activity，显式 LLM/报告后处理保留为控制面流程节点"
           />
           <Space style={{ width: '100%', justifyContent: 'space-between' }}>
             <Input
@@ -175,40 +183,47 @@ export const WorkflowTemplatePickerModal: React.FC<WorkflowTemplatePickerModalPr
                 const desc = String(item.description || '').toLowerCase();
                 return name.includes(kw) || id.includes(kw) || desc.includes(kw);
               })
-              .map((item) => (
-                <Card key={item.id} size="small" style={{ marginBottom: 8 }}>
-                  <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                    <Space>
-                      <Tag
-                        color={
-                          item.status === 'PUBLISHED'
-                            ? 'green'
-                            : item.status === 'REVIEW'
-                              ? 'gold'
-                              : 'blue'
-                        }
+              .map((item) => {
+                const stepSummary = getBrowserTemplateStepSummary(item);
+                return (
+                  <Card key={item.id} size="small" style={{ marginBottom: 8 }}>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Space>
+                        <Tag
+                          color={
+                            item.status === 'PUBLISHED'
+                              ? 'green'
+                              : item.status === 'REVIEW'
+                                ? 'gold'
+                                : 'blue'
+                          }
+                        >
+                          {item.status === 'DRAFT' ? 'DRAFT（可编辑版本）' : item.status}
+                        </Tag>
+                        <Text strong>{item.name || item.id}</Text>
+                        <Text type="secondary">ID: {item.id}</Text>
+                        <Tag>流程节点: {stepSummary.total}</Tag>
+                        <Tag color="blue">浏览器: {stepSummary.browser}</Tag>
+                        {stepSummary.postProcessing > 0 ? (
+                          <Tag color="purple">后处理: {stepSummary.postProcessing}</Tag>
+                        ) : null}
+                      </Space>
+                      <Button
+                        type="primary"
+                        onClick={() => {
+                          void handleSelectBrowserTemplate(item);
+                        }}
+                        loading={generatingBrowserTemplateId === item.id}
+                        disabled={Boolean(generatingBrowserTemplateId)}
                       >
-                        {item.status}
-                      </Tag>
-                      <Text strong>{item.name || item.id}</Text>
-                      <Text type="secondary">ID: {item.id}</Text>
-                      <Tag>步骤: {Array.isArray(item.steps) ? item.steps.length : 0}</Tag>
+                        {generatingBrowserTemplateId === item.id
+                          ? '生成中...'
+                          : '用此浏览器模版生成'}
+                      </Button>
                     </Space>
-                    <Button
-                      type="primary"
-                      onClick={() => {
-                        void handleSelectBrowserTemplate(item);
-                      }}
-                      loading={generatingBrowserTemplateId === item.id}
-                      disabled={Boolean(generatingBrowserTemplateId)}
-                    >
-                      {generatingBrowserTemplateId === item.id
-                        ? '生成中...'
-                        : '用此浏览器模版生成'}
-                    </Button>
-                  </Space>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             {(!browserTemplates || browserTemplates.length === 0) && (
               <Alert message="暂无已生成浏览器模版，或加载失败" type="warning" showIcon />
             )}

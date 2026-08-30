@@ -1,8 +1,10 @@
+import { Injectable } from '@nestjs/common';
 import { ExecuteCapabilityRuntimeResultDTO } from '../interfaces';
 import { CapabilityReleaseBrowserRuntimeLoopExecutorService } from './capability-release-browser-runtime-loop-executor.service';
 import { CapabilityReleaseBrowserRuntimeStepExecutorService } from './capability-release-browser-runtime-step-executor.service';
 import { BrowserRuntimeExecutionContext } from './capability-release-browser-runtime.types';
 
+@Injectable()
 export class CapabilityReleaseBrowserRuntimeExecutorService {
   constructor(
     private readonly capabilityReleaseBrowserRuntimeStepExecutorService: CapabilityReleaseBrowserRuntimeStepExecutorService,

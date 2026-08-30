@@ -13,7 +13,7 @@ describe('DeterministicNodeInputResolverService', () => {
       executionStep: { findMany: jest.fn().mockResolvedValue([]) },
       $queryRawUnsafe: jest.fn().mockResolvedValue([]),
     };
-    resolver = new DeterministicNodeInputResolverService(prismaMock as any);
+    resolver = new DeterministicNodeInputResolverService(prismaMock as any, {} as any, {} as any);
   });
 
   const mockSchemaRow = (fields: Record<string, any> | null) => {

@@ -153,6 +153,8 @@ describe('PlaywrightCliAdapter', () => {
     const adapter = createAdapter();
     jest.spyOn(adapter, 'ensureDirectories').mockResolvedValue(undefined);
     jest.spyOn(adapter, 'ensureSessionReady').mockResolvedValue(undefined);
+    jest.spyOn(adapter as any, 'enrichResultArtifacts').mockImplementation(async (_s: string, res: any) => res);
+    jest.spyOn(adapter as any, 'settlePageAfterAction').mockResolvedValue(undefined);
     const execCliSpy = jest.spyOn(adapter, 'execCli').mockResolvedValue({
       stdout: 'ok',
       stderr: '',
@@ -172,6 +174,58 @@ describe('PlaywrightCliAdapter', () => {
       'scope.locator("[data-ai-action=\\"detail\\"]").nth(0)'
     );
     expect(execCliSpy.mock.calls[0][1][1]).toContain('locator.click({ force: true, timeout: 5000 })');
+  });
+
+  describe('normalizeEvalStringOutput', () => {
+    it('extracts HTML from Playwright CLI output with ### Result markdown wrapper', () => {
+      const adapter = createAdapter();
+      const stdout = [
+        '- Page URL: `http://example.com`',
+        '- Page Title: Example',
+        '### Events',
+        '- Clicked button',
+        '### Result',
+        '"<!DOCTYPE html><html><head><title>Test</title></head><body><h1>Hello</h1></body></html>"',
+        '### Ran Playwright code',
+        '```js',
+        'async page => { ... }',
+        '```',
+      ].join('\n');
+
+      const result = (adapter as any).normalizeEvalStringOutput(stdout);
+      expect(result).toBe('<!DOCTYPE html><html><head><title>Test</title></head><body><h1>Hello</h1></body></html>');
+    });
+
+    it('handles empty ### Result string correctly without leaving quotes or headers', () => {
+      const adapter = createAdapter();
+      const stdout = [
+        '- Page URL: `http://example.com`',
+        '### Result',
+        '""',
+        '### Ran Playwright code',
+      ].join('\n');
+
+      const result = (adapter as any).normalizeEvalStringOutput(stdout);
+      expect(result).toBe('');
+    });
+
+    it('handles plain text result with escaped newlines and quotes', () => {
+      const adapter = createAdapter();
+      const stdout = [
+        '### Result',
+        '"line 1\\nline 2 with \\"quotes\\""',
+        '### Ran Playwright code',
+      ].join('\n');
+
+      const result = (adapter as any).normalizeEvalStringOutput(stdout);
+      expect(result).toBe('line 1\nline 2 with "quotes"');
+    });
+
+    it('returns raw text if no ### Result marker is present', () => {
+      const adapter = createAdapter();
+      expect((adapter as any).normalizeEvalStringOutput('simple text')).toBe('simple text');
+      expect((adapter as any).normalizeEvalStringOutput('')).toBe('');
+    });
   });
 
   it('uses nth locator fallback for nth-match wait selectors', async () => {

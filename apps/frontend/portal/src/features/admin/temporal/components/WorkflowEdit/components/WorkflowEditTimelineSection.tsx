@@ -1,6 +1,26 @@
 import React from 'react';
-import { Card, Space, Button, Tooltip, Input, Timeline, Alert, Tag, Row, Col, Typography } from 'antd';
-import { ApiOutlined, SearchOutlined, PlusOutlined, ThunderboltOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import {
+  Card,
+  Space,
+  Button,
+  Tooltip,
+  Input,
+  Timeline,
+  Alert,
+  Tag,
+  Row,
+  Col,
+  Typography,
+} from 'antd';
+import {
+  ApiOutlined,
+  SearchOutlined,
+  PlusOutlined,
+  ThunderboltOutlined,
+  DeleteOutlined,
+  CheckCircleOutlined,
+  RobotOutlined,
+} from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -49,6 +69,13 @@ export const WorkflowEditTimelineSection: React.FC<WorkflowEditTimelineSectionPr
   handleOpenActivitySelector,
   children,
 }) => {
+  const browserLogicalPlan = workflowDsl?.sourceContext?.browserLogicalPlan;
+  const controlPlaneSteps = Array.isArray(browserLogicalPlan?.steps)
+    ? browserLogicalPlan.steps.filter((step: any) => step.type !== 'browser_activity')
+    : [];
+  const totalLogicalSteps =
+    Number(browserLogicalPlan?.totalStepCount) ||
+    workflowDsl.steps.length + controlPlaneSteps.length;
   return (
     <Row gutter={12} align="top" wrap={false}>
       <Col
@@ -189,7 +216,7 @@ export const WorkflowEditTimelineSection: React.FC<WorkflowEditTimelineSectionPr
             size={stepsSidebarCollapsed ? 8 : 10}
           >
             <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              {!stepsSidebarCollapsed && <Text strong>流程步骤</Text>}
+              {!stepsSidebarCollapsed && <Text strong>流程节点（{totalLogicalSteps}）</Text>}
               <Space size={4}>
                 {!stepsSidebarCollapsed && (
                   <Button
@@ -220,7 +247,7 @@ export const WorkflowEditTimelineSection: React.FC<WorkflowEditTimelineSectionPr
                   justifyContent: 'center',
                 }}
               >
-                <Tooltip title={`流程步骤（${workflowDsl.steps.length}），点击图标展开`}>
+                <Tooltip title={`流程节点（${totalLogicalSteps}），点击图标展开`}>
                   <Button
                     type="text"
                     icon={<ThunderboltOutlined style={{ fontSize: 18 }} />}
@@ -236,9 +263,7 @@ export const WorkflowEditTimelineSection: React.FC<WorkflowEditTimelineSectionPr
                   <Timeline.Item
                     key={step.id}
                     color={selectedStepIndexForConfig === index ? 'green' : 'blue'}
-                    dot={
-                      selectedStepIndexForConfig === index ? <CheckCircleOutlined /> : undefined
-                    }
+                    dot={selectedStepIndexForConfig === index ? <CheckCircleOutlined /> : undefined}
                   >
                     <Card
                       hoverable
@@ -304,6 +329,37 @@ export const WorkflowEditTimelineSection: React.FC<WorkflowEditTimelineSectionPr
                             </Button>
                           </Space>
                         )}
+                      </Space>
+                    </Card>
+                  </Timeline.Item>
+                ))}
+                {controlPlaneSteps.map((step: any, index: number) => (
+                  <Timeline.Item
+                    key={`control-plane:${step.id || index}`}
+                    color="purple"
+                    dot={<RobotOutlined />}
+                  >
+                    <Card
+                      size="small"
+                      style={{
+                        marginBottom: 6,
+                        background: 'rgba(139, 92, 246, 0.08)',
+                        border: '1px solid rgba(139, 92, 246, 0.35)',
+                      }}
+                    >
+                      <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                        <Text strong>{step.name || step.id}</Text>
+                        <Space wrap size={4}>
+                          <Tag color="purple">
+                            {step.type === 'llm_operation' ? 'LLM 后处理' : '工作流后处理'}
+                          </Tag>
+                          <Tag>控制面执行</Tag>
+                        </Space>
+                        {Array.isArray(step.dependsOn) && step.dependsOn.length > 0 ? (
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            依赖: {step.dependsOn.join(', ')}
+                          </Text>
+                        ) : null}
                       </Space>
                     </Card>
                   </Timeline.Item>

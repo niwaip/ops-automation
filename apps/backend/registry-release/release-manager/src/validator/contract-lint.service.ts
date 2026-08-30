@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { buildBrowserCapabilityOutputSchema } from '@ops/backend-browser-execution-contract';
 import { createHash } from 'node:crypto';
 import { jsonSchemaValidator } from '@ops/backend-runtime-capability-contract';
 
@@ -568,6 +569,18 @@ export class ContractLintService {
         type: 'object',
         properties,
       };
+    }
+    if (
+      contract.executionPlan ||
+      contract.browserRecording ||
+      contract.executionFlow ||
+      contract.steps
+    ) {
+      return buildBrowserCapabilityOutputSchema({
+        runtimeMetadata: contract.runtimeMetadata,
+        executionPlan: contract.executionPlan,
+        composition: contract.workflowComposition || contract.composition,
+      });
     }
     return null;
   }

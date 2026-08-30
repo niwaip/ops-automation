@@ -38,10 +38,12 @@ import {
   DisabledCandidateReranker,
   DisabledSemanticCandidateRetriever,
 } from './candidate-selection/semantic-routing.port';
+import { WorkflowAuthoringController } from './workflow-authoring/workflow-authoring.controller';
+import { WorkflowAuthoringService } from './workflow-authoring/workflow-authoring.service';
 
 @Module({
   imports: [RecognizerModule, ModelModule, LlmOperationModule],
-  controllers: [DeterministicPlanController],
+  controllers: [DeterministicPlanController, WorkflowAuthoringController],
   providers: [
     PlannerService,
     PlannerMatchPhaseService,
@@ -74,6 +76,7 @@ import {
     DeterministicPlanPresentationService,
     DisabledSemanticCandidateRetriever,
     DisabledCandidateReranker,
+    WorkflowAuthoringService,
   ],
   exports: [
     PlannerService,
@@ -91,6 +94,7 @@ import {
     SkillCacheService,
     DisabledSemanticCandidateRetriever,
     DisabledCandidateReranker,
+    WorkflowAuthoringService,
   ],
 })
 export class PlannerModule {}

@@ -64,6 +64,11 @@ describe('CapabilityRuntimeAdapter', () => {
           phaseKey: 'phase_10_step_10',
           executionStepName: '10. click',
           executionStepIndex: 10,
+          captureProfile: {
+            schemaVersion: 'capture-profile/v1',
+            profile: 'article',
+            capture: { screenshot: true, html: true, mainContent: true },
+          },
         },
       },
       { timeout: 300000 }
@@ -270,5 +275,39 @@ describe('CapabilityRuntimeAdapter', () => {
     expect(result.retryable).toBe(true);
     expect(result.requiresTakeover).toBe(true);
     expect(result.takeoverReason).toBe('登录后页面未进入预期状态');
+  });
+
+  it('extracts detailed message when capability runtime responds with BadRequestException format', async () => {
+    mockedAxios.post.mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          statusCode: 400,
+          message: '工作流运行凭证未配置: apiKey（配置 TAVILY_API_KEY 或 SEARCH_API_KEY）',
+          error: 'Bad Request',
+        },
+      },
+    });
+
+    const adapter = new CapabilityRuntimeAdapter(new OutputNormalizerService());
+    const result = await adapter.invokeStep({
+      requestId: 'request-err',
+      executionId: 'execution-err',
+      stepId: 'step-err',
+      runtimeType: 'custom',
+      runtimeSessionId: 'runtime-err',
+      publishedSkillId: 'skill-1',
+      capabilityType: 'skill.runtime',
+      action: 'execute',
+      input: {},
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.status).toBe('failed');
+    expect(result.errorCode).toBe('CAPABILITY_RUNTIME_FAILED');
+    expect(result.errorMessage).toBe(
+      '工作流运行凭证未配置: apiKey（配置 TAVILY_API_KEY 或 SEARCH_API_KEY）'
+    );
+    expect(result.retryable).toBe(false);
   });
 });

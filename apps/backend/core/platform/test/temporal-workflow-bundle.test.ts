@@ -435,6 +435,82 @@ describe('TemporalWorkflowManagementService publish gate', () => {
     );
   });
 
+  it('preserves the executable artifact when only source-context metadata changes', async () => {
+    const validatedAt = new Date('2026-08-27T08:00:00.000Z');
+    const existing = {
+      id: 'workflow-source-context-change',
+      name: '浏览器工作流',
+      description: null,
+      taskQueue: 'SKILL_TASK_QUEUE',
+      workflowDsl: {
+        ...workflowDsl,
+        sourceContext: { sourceType: 'browser_template' },
+      },
+      activityDsl,
+      generatedCode: workflowCode,
+      artifactVersion: 1,
+      artifactHash,
+      validationStatus: 'validated',
+      validationScore: 100,
+      validationResultJson: { success: true },
+      validatedAt,
+      isActive: false,
+      deployedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const prisma = {
+      temporalWorkflow: {
+        findUnique: jest.fn().mockResolvedValue(existing),
+        update: jest
+          .fn()
+          .mockImplementation(({ data }) => Promise.resolve({ ...existing, ...data })),
+      },
+    };
+    const normalizationService = {
+      normalizeActivityDsl: jest.fn((value) => JSON.parse(JSON.stringify(value))),
+      normalizeWorkflowDsl: jest.fn((value, name, taskQueue) =>
+        Promise.resolve({ ...JSON.parse(JSON.stringify(value)), name, taskQueue })
+      ),
+      normalizeName: jest.fn((value) => value),
+      normalizeDescription: jest.fn((value) => value || null),
+      normalizeTaskQueue: jest.fn((value) => value),
+    };
+    const artifactService = {
+      computeArtifactHash: jest.fn().mockReturnValue(artifactHash),
+      getCurrentArtifactVersion: jest.fn().mockReturnValue(1),
+    };
+    const service = new TemporalWorkflowManagementService(
+      prisma as any,
+      normalizationService as any,
+      artifactService as any
+    );
+
+    await service.update(existing.id, {
+      workflowDsl: {
+        ...existing.workflowDsl,
+        sourceContext: {
+          sourceType: 'browser_template',
+          browserLogicalPlan: {
+            schemaVersion: 'browser-template-logical-plan/v1',
+            browserStepCount: 1,
+            postProcessingStepCount: 1,
+            totalStepCount: 2,
+            steps: [],
+          },
+        },
+      } as any,
+    });
+
+    const updateData = prisma.temporalWorkflow.update.mock.calls[0][0].data;
+    expect(updateData).not.toHaveProperty('generatedCode');
+    expect(updateData).not.toHaveProperty('artifactHash');
+    expect(updateData).not.toHaveProperty('validationStatus');
+    expect(updateData).not.toHaveProperty('validatedAt');
+    expect(updateData).not.toHaveProperty('deployedAt');
+    expect(updateData).not.toHaveProperty('isActive');
+  });
+
   it('invalidates evidence but preserves code when only the validation contract changes', async () => {
     const existing = {
       id: 'workflow-validation-contract-change',

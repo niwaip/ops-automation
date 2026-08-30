@@ -72,6 +72,7 @@ function makeClient(over: Record<string, any> = {}) {
     },
     skillConfig: {
       findFirst: jest.fn(() => Promise.resolve(skillConfigs[0] ?? null)),
+      findUnique: jest.fn(() => Promise.resolve(null)),
     },
     capabilityRelease: {
       findFirst: jest.fn(({ where }: any) => {
@@ -358,6 +359,45 @@ describe('CapabilityContractCatalogService (fix ③ — version-precise resoluti
         required: ['topic'],
       });
       expect(contract.sourceType).toBe('published_skill');
+    });
+
+    it('derives browser_template runtime authority from a pinned browser recording release', async () => {
+      const client = makeClient();
+      client.__setSkillConfig(configWith({ properties: {} }, null));
+      client.__setPublishedRelease(8, {
+        outputSchema: {
+          type: 'object',
+          properties: {
+            text: { type: 'string' },
+            summary: { type: 'string' },
+          },
+        },
+        apiEndpoints: {
+          runtimeMetadata: {
+            sourceType: 'browser_recording',
+            executionPlan: {
+              outputs: [{ name: 'pageState', type: 'object' }],
+            },
+          },
+        },
+      });
+
+      const contract = await service.resolveContract(client, {
+        nodeId: 'browser-node',
+        kind: 'skill',
+        skillId: 'custom_skill',
+        skillVersion: '8',
+      });
+
+      expect(contract.runtimeType).toBe('browser_template');
+      expect(contract.outputSchema).toMatchObject({
+        primaryOutput: 'text',
+        properties: expect.objectContaining({
+          text: expect.objectContaining({ type: 'string' }),
+          pageState: expect.objectContaining({ type: 'object' }),
+        }),
+      });
+      expect((contract.outputSchema?.properties as Record<string, unknown>).summary).toBeUndefined();
     });
 
     it('rejects a pinned custom-skill version that does not exist in capability_releases (fail-closed)', async () => {

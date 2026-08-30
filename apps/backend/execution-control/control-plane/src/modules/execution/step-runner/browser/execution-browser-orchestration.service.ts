@@ -612,9 +612,14 @@ export class ExecutionBrowserOrchestrationService {
       ...(this.readJsonRecord(currentNormalized.browserPhaseVariables) || {}),
       ...phaseVariables,
     };
+    const outputRecord = this.readJsonRecord(phaseOutput.output);
     const browserResult = {
       ...currentResult,
       ...phaseOutput,
+      ...(outputRecord?.text ? { text: outputRecord.text } : {}),
+      ...(outputRecord?.content ? { content: outputRecord.content } : {}),
+      ...(outputRecord?.mainContent ? { mainContent: outputRecord.mainContent } : {}),
+      ...(outputRecord?.summary ? { summary: outputRecord.summary } : {}),
       runtimeSessionId,
       backend: typeof currentResult.backend === 'string' ? currentResult.backend : 'browser',
       ...(Object.keys(persistedBrowserPhaseVariables).length > 0

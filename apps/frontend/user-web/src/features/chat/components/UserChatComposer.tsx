@@ -14,6 +14,7 @@ import type { AIModel, UploadedFileDescriptor } from '@ops/user-core';
 import { apiClient, runtimeConfig } from '../../../api';
 import { authStore } from '../../../adapters/auth/authStore';
 import { supportsNativeReasoning } from '@/shared/lib/aiModelReasoning';
+import { shouldSubmitChatComposerOnEnter } from '../lib/chatComposerKeyboard';
 
 import styles from '../pages/ChatPage.module.css';
 
@@ -174,6 +175,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
   });
 
   const inputRef = useRef<TextAreaRef | null>(null);
+  const compositionActiveRef = useRef(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -407,6 +409,12 @@ export function UserChatComposer(props: UserChatComposerProps) {
             placeholder={placeholder}
             className={styles['user-chat-input-textarea']}
             disabled={disabled || isTranscribing || isUploadingFile}
+            onCompositionStart={() => {
+              compositionActiveRef.current = true;
+            }}
+            onCompositionEnd={() => {
+              compositionActiveRef.current = false;
+            }}
             onKeyDown={(e) => {
               // Arrow-key history navigation (no modifier keys)
               if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -414,7 +422,12 @@ export function UserChatComposer(props: UserChatComposerProps) {
               }
             }}
             onPressEnter={(event) => {
-              if (!event.shiftKey) {
+              if (
+                shouldSubmitChatComposerOnEnter(
+                  event as React.KeyboardEvent<HTMLTextAreaElement>,
+                  compositionActiveRef.current
+                )
+              ) {
                 event.preventDefault();
                 handleTriggerSend();
               }

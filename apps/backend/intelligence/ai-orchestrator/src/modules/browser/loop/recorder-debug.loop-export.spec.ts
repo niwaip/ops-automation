@@ -713,13 +713,23 @@ describe('RecorderDebugService', () => {
     ).toBe(false);
     expect(artifacts.skillDraft.parameters).toEqual([
       expect.objectContaining({
+        name: 'startUrl',
+        required: false,
+        exampleValue: 'http://localhost/#approvals',
+      }),
+      expect.objectContaining({
         name: 'grossMarginThreshold',
         required: true,
         exampleValue: '20',
       }),
     ]);
     expect(artifacts.skillDraft.publishPayload.paramsSchema.properties.rowIndex).toBeUndefined();
-    expect(artifacts.skillDraft.publishPayload.paramsSchema.properties.startUrl).toBeUndefined();
+    expect(artifacts.skillDraft.publishPayload.paramsSchema.properties.startUrl).toEqual(
+      expect.objectContaining({
+        type: 'string',
+        default: 'http://localhost/#approvals',
+      })
+    );
     expect(artifacts.skillDraft.publishPayload.paramsSchema.properties.grossMarginThreshold).toEqual(
       expect.objectContaining({
         type: 'number',
@@ -925,6 +935,11 @@ describe('RecorderDebugService', () => {
     );
     expect(artifacts.skillDraft.parameters).toEqual([
       expect.objectContaining({
+        name: 'startUrl',
+        required: false,
+        exampleValue: 'http://localhost/#approvals',
+      }),
+      expect.objectContaining({
         name: 'grossMarginThreshold',
         required: true,
         exampleValue: '20',
@@ -933,6 +948,10 @@ describe('RecorderDebugService', () => {
     expect(artifacts.skillDraft.publishPayload.paramsSchema).toEqual(
       expect.objectContaining({
         properties: {
+          startUrl: expect.objectContaining({
+            type: 'string',
+            default: 'http://localhost/#approvals',
+          }),
           grossMarginThreshold: expect.objectContaining({
             type: 'number',
             default: 20,

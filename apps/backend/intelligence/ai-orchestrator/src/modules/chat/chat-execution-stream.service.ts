@@ -20,12 +20,16 @@ const reportChatExecutionStreamDebug = (
   msg: string,
   data: Record<string, unknown>
 ) => {
-  fetch('http://127.0.0.1:7777/event', {
+  const endpoint = process.env.CHAT_EXECUTION_DEBUG_ENDPOINT?.trim();
+  if (!endpoint) {
+    return;
+  }
+  fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      sessionId: 'chat-failure-loop-history',
-      runId: 'backend-chat-stream',
+      sessionId: process.env.CHAT_EXECUTION_DEBUG_SESSION_ID || 'chat-execution-stream',
+      runId: process.env.CHAT_EXECUTION_DEBUG_RUN_ID || 'runtime',
       hypothesisId,
       location,
       msg,

@@ -95,17 +95,23 @@ describe('BrowserCommandSearchService', () => {
         commands: [
           {
             tool: 'navigate',
-            params: { url: 'https://www.baidu.com/s?wd=%E6%AF%9B%E5%88%A9%E7%8E%87' },
+            params: { url: 'https://www.baidu.com' },
+            description: '打开百度',
+          },
+          {
+            tool: 'smart_search',
+            params: { query: '毛利率' },
             description: '在百度搜索 毛利率',
           },
         ],
-        explanation: '将在百度搜索 毛利率',
+        explanation: '将依次打开百度，搜索 毛利率',
         parserMetadata: {
           search: {
             status: 'success',
             reason: 'search-default-engine',
             intentType: 'engine_search',
             query: '毛利率',
+            resultIndex: undefined,
             triggerTerm: '百度',
             engine: 'baidu',
             usedRuntimeProfile: false,
@@ -114,5 +120,31 @@ describe('BrowserCommandSearchService', () => {
         },
       },
     });
+  });
+
+  it('keeps explicit engine search and result click as three ordered actions', () => {
+    const result = service.parseSearchCommandDetailed(
+      '在百度搜索 浏览器自动化 然后点击第一个结果',
+      {}
+    );
+
+    expect(result.status).toBe('success');
+    expect(result.response?.commands).toEqual([
+      {
+        tool: 'navigate',
+        params: { url: 'https://www.baidu.com' },
+        description: '打开百度',
+      },
+      {
+        tool: 'smart_search',
+        params: { query: '浏览器自动化' },
+        description: '在百度搜索 浏览器自动化',
+      },
+      {
+        tool: 'click_result',
+        params: { index: 1 },
+        description: '点击第1个结果',
+      },
+    ]);
   });
 });

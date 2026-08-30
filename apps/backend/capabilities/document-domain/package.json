@@ -27,6 +27,7 @@
     "@nestjs/core": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/swagger": "^7.0.0",
+    "@ops/backend-builtin-skill-contract": "file:../../../../packages/backend-contracts/builtin-skill-contract",
     "@ops/backend-runtime-capability-contract": "file:../../../../packages/backend-contracts/runtime-capability-contract",
     "@prisma/client": "^6.19.3",
     "axios": "^1.6.0",

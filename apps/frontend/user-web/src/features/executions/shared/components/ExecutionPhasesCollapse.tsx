@@ -56,6 +56,14 @@ const ExecutionPhasesCollapse: React.FC<ExecutionPhasesCollapseProps> = ({
         const phaseArtifacts = getPhaseArtifacts(phase);
         const isBrowserActivityPhase = isBrowserWorkflowActivity(phase);
         const snapshotSources = extractWorkflowActivitySnapshotSources(phase);
+        const rawPhaseOutput = phase.output as Record<string, any> | undefined;
+        const phaseDisplayOutput =
+          rawPhaseOutput &&
+          typeof rawPhaseOutput === 'object' &&
+          'output' in rawPhaseOutput &&
+          rawPhaseOutput.output !== null
+            ? rawPhaseOutput.output
+            : rawPhaseOutput;
 
         return {
           ...buildExecutionDetailCollapseItem({
@@ -63,89 +71,78 @@ const ExecutionPhasesCollapse: React.FC<ExecutionPhasesCollapseProps> = ({
             title: formatPhaseDisplayName(phase),
             summary: `${phase.status} / ${formatLocalizedDateTime(phase.startedAt || phase.createdAt)}`,
             children: (
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              <Space wrap size={[8, 4]}>
-                <Tag>{phase.phaseType}</Tag>
-                <ExecutionStatusTag color={getPhaseStatusColor(phase.status)}>
-                  {phase.status}
-                </ExecutionStatusTag>
-                <Text type="secondary">{`Key: ${phase.phaseKey}`}</Text>
-                <Text type="secondary">{`尝试: ${phase.attempt}`}</Text>
-                {isBrowserActivityPhase && phase.runtimeSessionId ? (
-                  <Text copyable={{ text: phase.runtimeSessionId }}>{`会话: ${phase.runtimeSessionId}`}</Text>
-                ) : null}
-              </Space>
-              <Space wrap>
-                {execution.status !== 'human_control' &&
-                (phase.status === 'running' || phase.status === 'failed') ? (
-                  <Button
-                    size="small"
-                    onClick={() => onTakeoverPhase(phase)}
-                    loading={takeoverLoading}
-                  >
-                    接管当前阶段
-                  </Button>
-                ) : null}
-              </Space>
-              {phase.errorMessage ? (
-                <Alert
-                  type="error"
-                  showIcon
-                  message={phase.errorCode || '阶段失败'}
-                  description={phase.errorMessage}
-                />
-              ) : null}
-              {phase.phaseType === 'workflow_activity' ? (
-                isBrowserActivityPhase ? (
-                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                    <ExecutionDetailSectionCard
-                      title="Activity 结果"
+              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                <Space wrap size={[8, 4]}>
+                  <Tag>{phase.phaseType}</Tag>
+                  <ExecutionStatusTag color={getPhaseStatusColor(phase.status)}>
+                    {phase.status}
+                  </ExecutionStatusTag>
+                  <Text type="secondary">{`Key: ${phase.phaseKey}`}</Text>
+                  <Text type="secondary">{`尝试: ${phase.attempt}`}</Text>
+                  {isBrowserActivityPhase && phase.runtimeSessionId ? (
+                    <Text copyable={{ text: phase.runtimeSessionId }}>{`会话: ${phase.runtimeSessionId}`}</Text>
+                  ) : null}
+                </Space>
+                <Space wrap>
+                  {execution.status !== 'human_control' &&
+                  (phase.status === 'running' || phase.status === 'failed') ? (
+                    <Button
+                      size="small"
+                      onClick={() => onTakeoverPhase(phase)}
+                      loading={takeoverLoading}
                     >
-                      <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                        <Space wrap size={[12, 4]}>
-                          <Text type="secondary">{`步骤数: ${phaseSteps.length}`}</Text>
-                          <Text type="secondary">{`截图: ${snapshotSources.length}`}</Text>
-                        </Space>
-                        <ExecutionImageGallery
-                          imageStyle={snapshotImageStyle}
-                          items={snapshotSources.map((src, index) => ({
-                            key: `${phase.id}-snapshot-${index + 1}`,
-                            src,
-                            alt: `${phase.phaseName || phase.phaseKey}-snapshot-${index + 1}`,
-                          }))}
-                          emptyText="该 Activity 暂无可展示截图。"
-                        />
+                      接管当前阶段
+                    </Button>
+                  ) : null}
+                </Space>
+                {phase.errorMessage ? (
+                  <Alert
+                    type="error"
+                    showIcon
+                    message={phase.errorCode || '阶段失败'}
+                    description={phase.errorMessage}
+                  />
+                ) : null}
+
+                {snapshotSources.length > 0 ? (
+                  <ExecutionDetailSectionCard title="截图画面">
+                    <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                      <Space wrap size={[12, 4]}>
+                        <Text type="secondary">{`步骤数: ${phaseSteps.length}`}</Text>
+                        <Text type="secondary">{`截图: ${snapshotSources.length}`}</Text>
                       </Space>
-                    </ExecutionDetailSectionCard>
-                    {phaseSteps.length > 0 ? (
-                      <ExecutionPhaseStepsTimeline
-                        phaseName={phase.phaseName}
-                        phaseKey={phase.phaseKey}
-                        phaseSteps={phaseSteps}
-                        phaseArtifacts={phaseArtifacts}
+                      <ExecutionImageGallery
+                        imageStyle={snapshotImageStyle}
+                        items={snapshotSources.map((src, index) => ({
+                          key: `${phase.id}-snapshot-${index + 1}`,
+                          src,
+                          alt: `${phase.phaseName || phase.phaseKey}-snapshot-${index + 1}`,
+                        }))}
+                        emptyText="该阶段暂无可展示截图。"
                       />
-                    ) : null}
-                  </Space>
-                ) : (
-                  <ExecutionDetailSectionCard
-                    title="Activity 输出"
-                  >
+                    </Space>
+                  </ExecutionDetailSectionCard>
+                ) : null}
+
+                {phaseSteps.length > 0 ? (
+                  <ExecutionPhaseStepsTimeline
+                    phaseName={phase.phaseName}
+                    phaseKey={phase.phaseKey}
+                    phaseSteps={phaseSteps}
+                    phaseArtifacts={phaseArtifacts}
+                  />
+                ) : null}
+
+                {phaseDisplayOutput ? (
+                  <ExecutionDetailSectionCard title={isBrowserActivityPhase ? '阶段输出 / 提取正文' : '阶段输出'}>
                     <ExecutionPayloadContent
-                      value={phase.output}
-                      emptyText="该 Activity 暂无输出内容。"
+                      value={phaseDisplayOutput}
+                      emptyText="该阶段暂无输出内容。"
                       treatSingleResultFieldAsMarkdown
                     />
                   </ExecutionDetailSectionCard>
-                )
-              ) : phaseSteps.length > 0 ? (
-                <ExecutionPhaseStepsTimeline
-                  phaseName={phase.phaseName}
-                  phaseKey={phase.phaseKey}
-                  phaseSteps={phaseSteps}
-                  phaseArtifacts={phaseArtifacts}
-                />
-              ) : null}
-            </Space>
+                ) : null}
+              </Space>
             ),
           }),
         };

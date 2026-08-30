@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+# Development/bootstrap entrypoint for every Prisma migration history that
+# shares the Ops database. Production uses the explicit release Job instead.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+node "$REPO_ROOT/database/scripts/validate-migration-authority.mjs"
+bash "$SCRIPT_DIR/apply-latest-db-schema-in-container.sh"
+bash "$SCRIPT_DIR/apply-ai-orchestrator-db-schema-in-container.sh"

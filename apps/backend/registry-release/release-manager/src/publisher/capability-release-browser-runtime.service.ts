@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { getBrowserWorkerUrl } from '../config/service-endpoints';
 import { asRecord, BrowserRecordingRuntimeStep } from '../compiler/browser-recording-runtime.types';
@@ -13,14 +13,17 @@ import { CapabilityReleaseBrowserRuntimeExecutorService } from './capability-rel
 import { CapabilityReleaseBrowserRuntimeResultService } from './capability-release-browser-runtime-result.service';
 import { CapabilityReleaseBrowserRuntimeSupportService } from './capability-release-browser-runtime-support.service';
 import { BrowserRuntimePlanValidation } from './capability-release-browser-runtime.types';
+import { CapabilityReleaseBrowserSessionBrokerService } from './capability-release-browser-session-broker.service';
 
+@Injectable()
 export class CapabilityReleaseBrowserRuntimeService {
   constructor(
     private readonly browserRecordingExecutionPlanValidatorService: BrowserRecordingExecutionPlanValidatorService,
     private readonly capabilityReleaseBrowserRecordingService: CapabilityReleaseBrowserRecordingService,
     private readonly capabilityReleaseBrowserRuntimeExecutorService: CapabilityReleaseBrowserRuntimeExecutorService,
     private readonly capabilityReleaseBrowserRuntimeResultService: CapabilityReleaseBrowserRuntimeResultService,
-    private readonly capabilityReleaseBrowserRuntimeSupportService: CapabilityReleaseBrowserRuntimeSupportService
+    private readonly capabilityReleaseBrowserRuntimeSupportService: CapabilityReleaseBrowserRuntimeSupportService,
+    private readonly browserSessionBroker: CapabilityReleaseBrowserSessionBrokerService
   ) {}
 
   async executePublishedSkill(
@@ -33,7 +36,9 @@ export class CapabilityReleaseBrowserRuntimeService {
   ): Promise<ExecuteCapabilityRuntimeResultDTO> {
     const snapshot = await accessors.getCurrentSnapshotOrThrow(release);
     const runtimeInput = input || {};
-    const rawExecutionPlan = asRecord(asRecord(snapshot.sourcePayload.apiEndpoints)?.runtimeMetadata)
+    const rawExecutionPlan = asRecord(
+      asRecord(snapshot.sourcePayload.apiEndpoints)?.runtimeMetadata
+    )
       ? asRecord(asRecord(snapshot.sourcePayload.apiEndpoints)?.runtimeMetadata)?.executionPlan
       : undefined;
     const rawTemplateBranchConditions = Array.isArray(asRecord(rawExecutionPlan)?.templateSteps)
@@ -71,8 +76,6 @@ export class CapabilityReleaseBrowserRuntimeService {
       );
     }
 
-    const runtimeSessionId = options?.runtimeSessionId || `capability-runtime-${randomUUID()}`;
-    const shouldResetSession = !options?.runtimeSessionId;
     const browserWorkerUrl = getBrowserWorkerUrl();
     const runtimeExecutionId = options?.executionId || `capability-runtime-${release.id}`;
     const planValidation = this.browserRecordingExecutionPlanValidatorService.validateForRuntime(
@@ -90,6 +93,12 @@ export class CapabilityReleaseBrowserRuntimeService {
       runtimeInput,
       options?.metadata
     );
+    const sessionLease = await this.browserSessionBroker.acquire({
+      runtimeSessionId: options?.runtimeSessionId,
+      userId,
+      executionId: options?.executionId,
+    });
+    const runtimeSessionId = sessionLease.runtimeSessionId;
     const resolvedBranchSteps = runtimeStepsToExecute
       .filter(
         (step: BrowserRecordingRuntimeStep) => step.action === 'branch' && Boolean(step.branch)
@@ -156,23 +165,32 @@ export class CapabilityReleaseBrowserRuntimeService {
     ];
     const state = {
       preserveRuntimeSession: false,
+      startedAt: new Date().toISOString(),
       currentPageUrl: initialUrl,
+      captureOrdinal: 0,
+      attemptByStepId: {} as Record<string, number>,
       stepResults: [] as Array<Record<string, unknown>>,
       variables: {} as Record<string, unknown>,
       runtimeEvidence,
+      warnings: [] as Array<{ code: string; message: string; stepId?: string }>,
+      contentCandidates: [] as Array<Record<string, unknown>>,
       logs,
     };
 
     try {
       const shouldInitBrowserSession =
-        !options?.runtimeSessionId || !targetRuntimeStep || targetRuntimeStep.action === 'goto';
+        !options?.runtimeSessionId &&
+        (!targetRuntimeStep ||
+          targetRuntimeStep.action === 'goto' ||
+          targetRuntimeStep.action === 'navigate');
       if (shouldInitBrowserSession) {
+        // Worker allocation is owned by session-broker. The release runtime only
+        // initializes the browser attached to that formal runtime session when not pre-allocated.
         await axios.post<{ success: boolean; message?: string }>(
           `${browserWorkerUrl}/browser/init`,
           {
             backend,
             runtimeSessionId,
-            ...(initialUrl ? { initialUrl } : {}),
             sessionPreferences,
           },
           { timeout: 60000 }
@@ -189,6 +207,7 @@ export class CapabilityReleaseBrowserRuntimeService {
       }): Promise<ExecuteCapabilityRuntimeResultDTO> => {
         const payload = this.capabilityReleaseBrowserRuntimeResultService.buildRuntimePayload({
           runtimeSessionId,
+          runtimeExecutionId,
           backend,
           planValidation: planValidation as BrowserRuntimePlanValidation,
           runtimeTrace,
@@ -223,35 +242,36 @@ export class CapabilityReleaseBrowserRuntimeService {
         });
       }
 
-      const executionResult =
-        await this.capabilityReleaseBrowserRuntimeExecutorService.execute({
-          release,
-          skillId,
-          options,
-          accessors,
-          runtimeInput,
-          runtimeSessionId,
-          runtimeExecutionId,
-          browserWorkerUrl,
-          backend,
-          planValidation: planValidation as BrowserRuntimePlanValidation,
-          runtimeStepsToExecute,
-          targetRuntimeStep,
-          loopPlan,
-          state,
-          failWithAudit,
-        });
+      const executionResult = await this.capabilityReleaseBrowserRuntimeExecutorService.execute({
+        release,
+        skillId,
+        options,
+        accessors,
+        runtimeInput,
+        runtimeSessionId,
+        runtimeExecutionId,
+        browserWorkerUrl,
+        backend,
+        planValidation: planValidation as BrowserRuntimePlanValidation,
+        runtimeStepsToExecute,
+        targetRuntimeStep,
+        loopPlan,
+        state,
+        failWithAudit,
+      });
       if (executionResult) {
         return executionResult;
       }
 
-      const normalizedResult = this.capabilityReleaseBrowserRuntimeResultService.buildRuntimePayload({
-        runtimeSessionId,
-        backend,
-        planValidation: planValidation as BrowserRuntimePlanValidation,
-        runtimeTrace,
-        state,
-      });
+      const normalizedResult =
+        this.capabilityReleaseBrowserRuntimeResultService.buildRuntimePayload({
+          runtimeSessionId,
+          runtimeExecutionId,
+          backend,
+          planValidation: planValidation as BrowserRuntimePlanValidation,
+          runtimeTrace,
+          state,
+        });
 
       await this.capabilityReleaseBrowserRuntimeResultService.insertSuccessAudit({
         release,
@@ -270,6 +290,7 @@ export class CapabilityReleaseBrowserRuntimeService {
         capabilityVersion: options?.capabilityVersion || null,
         publishedSkillId: skillId,
         runtime: 'browser_recording',
+        runtimeSessionId,
         success: true,
         output: normalizedResult,
         result: normalizedResult,
@@ -277,7 +298,8 @@ export class CapabilityReleaseBrowserRuntimeService {
         error: null,
       };
     } catch (error) {
-      const message = this.capabilityReleaseBrowserRuntimeResultService.normalizeUnexpectedError(error);
+      const message =
+        this.capabilityReleaseBrowserRuntimeResultService.normalizeUnexpectedError(error);
       logs.push(`[BrowserRuntime][Error] ${message}`);
 
       return this.capabilityReleaseBrowserRuntimeResultService.failWithAudit({
@@ -299,14 +321,11 @@ export class CapabilityReleaseBrowserRuntimeService {
         logs,
       });
     } finally {
-      if (shouldResetSession && !state.preserveRuntimeSession) {
-        await axios
-          .post(
-            `${browserWorkerUrl}/browser/reset`,
-            { backend, runtimeSessionId },
-            { timeout: 30000 }
-          )
-          .catch(() => undefined);
+      if (!state.preserveRuntimeSession) {
+        await this.browserSessionBroker.closeOwnedQuietly(
+          sessionLease,
+          'published_browser_template_completed'
+        );
       }
     }
   }

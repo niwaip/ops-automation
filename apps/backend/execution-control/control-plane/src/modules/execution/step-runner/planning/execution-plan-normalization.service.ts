@@ -947,6 +947,9 @@ export class ExecutionPlanNormalizationService {
     source: ExecutionParamSource
   ): void {
     Object.entries(properties || {}).forEach(([name, property]) => {
+      if (this.isRuntimeCredentialField(name)) {
+        return;
+      }
       const normalizedDefault = this.executionInputResolutionService.normalizeSubmittedInputValue(
         property?.default,
         String(property?.type || 'string')
@@ -967,6 +970,9 @@ export class ExecutionPlanNormalizationService {
     properties: Record<string, SkillSchemaPropertyLike>
   ): void {
     Object.entries(policies || {}).forEach(([name, policy]) => {
+      if (this.isRuntimeCredentialField(name)) {
+        return;
+      }
       const normalizedDefault = this.executionInputResolutionService.normalizeSubmittedInputValue(
         policy?.defaultValue,
         String(properties[name]?.type || 'string')
@@ -979,6 +985,10 @@ export class ExecutionPlanNormalizationService {
       resolution.input[name] = normalizedDefault;
       resolution.sources[name] = 'workflow_default';
     });
+  }
+
+  private isRuntimeCredentialField(name: string): boolean {
+    return /(?:api[_-]?key|access[_-]?token|refresh[_-]?token|authorization|secret)$/i.test(name);
   }
 
   private mapBrowserActivityCommands(

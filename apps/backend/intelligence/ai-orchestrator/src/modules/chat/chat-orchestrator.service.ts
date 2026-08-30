@@ -598,12 +598,13 @@ export class ChatOrchestratorService {
             type: StreamEventType.ERROR,
             content: `创建等待输入执行单失败: ${errorMsg}`,
           };
+          return;
         }
 
         yield {
           type: StreamEventType.WAITING_INPUT,
           content: this.waitingInputService.formatWaitingInputMessage({
-            intro: `已识别到技能 ${planDraft.skill_match.skill_name}，但还缺少必要信息。`,
+            intro: `已识别到技能 ${planDraft.skill_match?.skill_name || '已识别技能'}，但还缺少必要信息。`,
             missingInputs,
             semantic: waitingInputSemantic,
           }),

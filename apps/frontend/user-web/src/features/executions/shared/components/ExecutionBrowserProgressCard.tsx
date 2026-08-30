@@ -45,77 +45,92 @@ const ExecutionBrowserProgressCard: React.FC<ExecutionBrowserProgressCardProps> 
   selectedCompletedPhaseCount,
   selectedLoopCount,
   shouldShowSelectedCurrentPhaseInfo,
-  shouldShowSelectedExecutionSummary,
-  selectedSummaryHeadline,
   selectedLoopSummary,
 }) => {
+  const isFinished =
+    execution.status === 'succeeded' ||
+    execution.status === 'failed' ||
+    execution.status === 'cancelled';
+
   return (
     <ExecutionDetailSectionCard title="步骤进度">
-      {!shouldShowSelectedExecutionSummary ? (
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <ExecutionDetailSectionCard title="当前步骤">
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              <ExecutionStatusSummaryTags
-                items={[
-                  {
-                    text: statusLabels[execution.status],
-                    color: statusColors[execution.status],
-                  },
-                  currentSelectedPhase
-                    ? {
-                        text: formatPhaseDisplayName(currentSelectedPhase, {
-                          fallbackIndex: selectedCurrentPhaseIndex + 1,
-                        }),
-                        color: 'processing',
-                      }
-                    : null,
-                  currentSelectedStep ? { text: `步骤 ${currentSelectedStep.stepIndex + 1}` } : null,
-                ]}
-              />
-              <div>
-                <Text strong style={{ fontSize: 16 }}>
-                  {currentSelectedStep?.name ||
-                    currentSelectedPhase?.phaseName ||
-                    currentSelectedPhase?.phaseKey ||
-                    '-'}
+      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <ExecutionStatusSummaryTags
+          items={[
+            {
+              text: statusLabels[execution.status],
+              color: statusColors[execution.status],
+            },
+            { text: `总阶段数: ${displaySelectedPhases.length}` },
+            { text: `已完成: ${selectedCompletedPhaseCount}`, color: 'green' },
+            selectedLoopCount > 0 ? { text: `轮次: ${selectedLoopCount}` } : null,
+          ]}
+        />
+
+        {!isFinished && (currentSelectedStep || currentSelectedPhase) ? (
+          <div>
+            <Text strong style={{ fontSize: 15 }}>
+              {currentSelectedStep?.name ||
+                currentSelectedPhase?.phaseName ||
+                currentSelectedPhase?.phaseKey ||
+                '-'}
+            </Text>
+            <div style={{ marginTop: 4 }}>
+              <Text type="secondary">
+                {currentSelectedStep?.action ||
+                  currentSelectedStep?.type ||
+                  '展示当前正在执行的步骤。'}
+              </Text>
+            </div>
+          </div>
+        ) : null}
+
+        {shouldShowSelectedCurrentPhaseInfo && currentSelectedPhase ? (
+          <Alert
+            type={execution.status === 'human_control' ? 'warning' : 'info'}
+            showIcon
+            message={`当前阶段：${currentSelectedPhase.phaseName || currentSelectedPhase.phaseKey || '-'}`}
+            description={
+              <Space wrap size={[12, 4]}>
+                <Text type="secondary">{`Key: ${currentSelectedPhase.phaseKey}`}</Text>
+                <Text type="secondary">
+                  {formatLocalizedDateTime(
+                    currentSelectedPhase.startedAt || currentSelectedPhase.createdAt
+                  )}
                 </Text>
-                <div style={{ marginTop: 6 }}>
-                  <Text type="secondary">
-                    {currentSelectedStep?.action ||
-                      currentSelectedStep?.type ||
-                      '展示当前正在执行的步骤。'}
-                  </Text>
-                </div>
-              </div>
-              <Space wrap size={[12, 8]}>
-                <Text type="secondary">{`进度: ${selectedCurrentPhaseIndex + 1} / ${displaySelectedPhases.length}`}</Text>
-                <Text type="secondary">{`已完成: ${selectedCompletedPhaseCount}`}</Text>
-                {selectedLoopCount > 0 ? <Text type="secondary">{`轮次: ${selectedLoopCount}`}</Text> : null}
+                {currentSelectedPhase.errorMessage ? (
+                  <Text type="danger">{currentSelectedPhase.errorMessage}</Text>
+                ) : null}
               </Space>
-              {shouldShowSelectedCurrentPhaseInfo && currentSelectedPhase ? (
-                <Alert
-                  type={execution.status === 'human_control' ? 'warning' : 'info'}
-                  showIcon
-                  message={`当前阶段：${currentSelectedPhase.phaseName || currentSelectedPhase.phaseKey || '-'}`}
-                  description={
-                    <Space wrap size={[12, 4]}>
-                      <Text type="secondary">{`Key: ${currentSelectedPhase.phaseKey}`}</Text>
-                      <Text type="secondary">
-                        {formatLocalizedDateTime(
-                          currentSelectedPhase.startedAt || currentSelectedPhase.createdAt
-                        )}
-                      </Text>
-                      {currentSelectedPhase.errorMessage ? (
-                        <Text type="danger">{currentSelectedPhase.errorMessage}</Text>
-                      ) : null}
-                    </Space>
-                  }
-                />
-              ) : null}
-            </Space>
-          </ExecutionDetailSectionCard>
+            }
+          />
+        ) : null}
+
+        {execution.failureReason ? (
+          <Alert
+            type="error"
+            showIcon
+            message="执行失败"
+            description={
+              <Space direction="vertical" size={4}>
+                <Text type="danger">{execution.failureReason}</Text>
+                {execution.endedAt ? (
+                  <Text type="secondary">
+                    {`结束时间: ${formatLocalizedDateTime(execution.endedAt)}`}
+                  </Text>
+                ) : null}
+              </Space>
+            }
+          />
+        ) : null}
+
+        {displaySelectedPhases.length > 0 ? (
           <Steps
-            current={selectedCurrentPhaseIndex}
+            current={
+              isFinished
+                ? displaySelectedPhases.length
+                : selectedCurrentPhaseIndex
+            }
             size="small"
             responsive
             items={displaySelectedPhases.map((phase, index) => ({
@@ -124,70 +139,32 @@ const ExecutionBrowserProgressCard: React.FC<ExecutionBrowserProgressCardProps> 
               description: (
                 <Space wrap size={[8, 4]}>
                   <Tag color={getPhaseStatusColor(phase.status)}>{phase.status}</Tag>
-                  {currentSelectedPhase?.id === phase.id ? (
+                  {!isFinished && currentSelectedPhase?.id === phase.id ? (
                     <Tag color="processing">当前 Activity</Tag>
                   ) : null}
                 </Space>
               ),
             }))}
           />
-        </Space>
-      ) : (
-        <ExecutionDetailSectionCard title="执行总结">
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
-            <ExecutionStatusSummaryTags
-              items={[
-                {
-                  text: statusLabels[execution.status],
-                  color: statusColors[execution.status],
-                },
-                { text: `总阶段数: ${displaySelectedPhases.length}` },
-                { text: `已完成: ${selectedCompletedPhaseCount}`, color: 'green' },
-                selectedLoopCount > 0 ? { text: `轮次: ${selectedLoopCount}` } : null,
-              ]}
-            />
-            <Alert
-              type={
-                execution.status === 'succeeded'
-                  ? 'success'
-                  : execution.status === 'failed'
-                    ? 'error'
-                    : 'warning'
-              }
-              showIcon
-              message={selectedSummaryHeadline}
-              description={
-                <Space wrap size={[12, 8]}>
-                  {execution.endedAt ? (
-                    <Text type="secondary">
-                      {`结束时间: ${formatLocalizedDateTime(execution.endedAt)}`}
-                    </Text>
-                  ) : null}
-                  {execution.failureReason ? (
-                    <Text type="danger">{execution.failureReason}</Text>
-                  ) : null}
-                </Space>
-              }
-            />
-            {selectedLoopSummary ? (
-              <Descriptions column={2} size="small">
-                <Descriptions.Item label="处理条数">
-                  {selectedLoopSummary.totalItems}
-                </Descriptions.Item>
-                <Descriptions.Item label="人工介入">
-                  {selectedLoopSummary.hasManualHandling ? '是' : '否'}
-                </Descriptions.Item>
-                <Descriptions.Item label="自动承认">
-                  {`${selectedLoopSummary.autoApprovedCount} 条`}
-                </Descriptions.Item>
-                <Descriptions.Item label="人工处理">
-                  {`${selectedLoopSummary.manualHandledCount} 条`}
-                </Descriptions.Item>
-              </Descriptions>
-            ) : null}
-          </Space>
-        </ExecutionDetailSectionCard>
-      )}
+        ) : null}
+
+        {selectedLoopSummary ? (
+          <Descriptions column={2} size="small" style={{ marginTop: 8 }}>
+            <Descriptions.Item label="处理条数">
+              {selectedLoopSummary.totalItems}
+            </Descriptions.Item>
+            <Descriptions.Item label="人工介入">
+              {selectedLoopSummary.hasManualHandling ? '是' : '否'}
+            </Descriptions.Item>
+            <Descriptions.Item label="自动承认">
+              {`${selectedLoopSummary.autoApprovedCount} 条`}
+            </Descriptions.Item>
+            <Descriptions.Item label="人工处理">
+              {`${selectedLoopSummary.manualHandledCount} 条`}
+            </Descriptions.Item>
+          </Descriptions>
+        ) : null}
+      </Space>
     </ExecutionDetailSectionCard>
   );
 };
