@@ -4,12 +4,13 @@ import type { LlmOperationTemplate } from './llm-operation.registry';
 import { computeOperationDigest } from './operation-digest.util';
 
 const USER_PROMPT_TEMPLATES: Record<LlmOperationIdV1, string> = {
-  summarize_list: '请对以下内容做结构化总结：\n\n{{items}}',
+  summarize_list: '任务要求：{{instruction}}\n\n请对以下内容做结构化总结：\n\n{{items}}',
   generate_text: '任务指令：{{instruction}}\n\n可用上下文：\n{{context}}',
   transform_text: '文本处理指令：{{instruction}}\n\n待处理内容：\n{{content}}',
   rewrite_to_markdown: '请重写并格式化以下内容：\n\n{{content}}',
-  summarize_text: '请按系统要求对以下文本进行总结：\n\n{{text}}',
+  summarize_text: '用户要求：{{instruction}}\n\n待总结文本：\n\n{{text}}',
   extract_structured_fields: '目标字段：{{target_fields}}\n\n文本：\n\n{{text}}',
+  format_document_blocks: '标题：{{title}}\n主题风格：{{theme}}\n排版指令：{{instructions}}\n\n待排版文本：\n\n{{text}}',
   classify_intent_label: '文本：\n\n{{text}}',
   merge_multi_source_notes: '源数据：\n\n{{sources}}',
 };

@@ -22,6 +22,7 @@
   "browserTemplates": "浏览器模版",
   "browserSemanticRules": "规则管理(AI审查)",
   "systemTools": "系统工具",
+  "backup": "数据备份与还原",
   "promptDebug": "Prompt 调试",
   "logout": "退出登录",
   "profile": "个人信息",

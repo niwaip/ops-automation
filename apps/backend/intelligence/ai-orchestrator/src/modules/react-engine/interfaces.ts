@@ -418,6 +418,7 @@ export interface FlowTemplate {
  */
 export interface SkillMatchResult {
   skillId: string;
+  skillVersion?: string;
   skillName: string;
   matchedKeywords: string[];
   confidence: number;

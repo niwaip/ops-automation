@@ -58,9 +58,10 @@ export class ChatOrchestratorService {
     body: ChatRequestDTO,
     authorization: string | undefined,
     traceId: string,
-    history: ExecutionContext['history']
+    history: ExecutionContext['history'],
+    trustedIdentity?: { userId: string; userRoles?: string[]; organizationId?: string }
   ): Promise<{ context?: ExecutionContext; authError?: StreamEvent }> {
-    const resolvedUser = await this.resolveAuthenticatedUser(authorization);
+    const resolvedUser = trustedIdentity || (await this.resolveAuthenticatedUser(authorization));
 
     if (!resolvedUser.userId) {
       this.logger.warn(
@@ -379,12 +380,9 @@ export class ChatOrchestratorService {
           },
         };
 
-        yield* this.executionStreamService.observeExecution(
-          result.executionId,
-          authToken,
-          user,
-          { modelId: resolvedModelId }
-        );
+        yield* this.executionStreamService.observeExecution(result.executionId, authToken, user, {
+          modelId: resolvedModelId,
+        });
         return;
       } else {
         if (result.errorCode === 'CAPABILITY_NOT_FOUND') {
@@ -462,6 +460,24 @@ export class ChatOrchestratorService {
       continuationPlanDraft ||
       (await this.plannerService.completePlanFromMatchPhase({
         ...plannerInput,
+        request: {
+          ...plannerInput.request,
+          context: {
+            ...plannerInput.request.context,
+            ...(hasPreviousResult
+              ? {
+                  mode: 'single_step_continuation',
+                  previous_result: {
+                    executionId: latestResult?.executionId,
+                    resultType: latestResult?.resultType,
+                    resultTitle: latestResult?.resultTitle,
+                    structuredData: latestResult?.structuredData,
+                    detailText: latestResult?.summaryText,
+                  },
+                }
+              : {}),
+          },
+        },
         matchPhase,
       }));
 
@@ -492,6 +508,7 @@ export class ChatOrchestratorService {
           }>(
             {
               skillId: planDraft.skill_match.skill_id,
+              skillVersion: planDraft.skill_match.skill_version,
               ...(body.idempotencyKey ? { idempotencyKey: body.idempotencyKey } : {}),
               input: {
                 prompt: body.message,
@@ -629,6 +646,7 @@ export class ChatOrchestratorService {
         const execution = await this.controlPlaneClient.createExecution<{ id: string }>(
           {
             skillId: planDraft.skill_match.skill_id,
+            skillVersion: planDraft.skill_match.skill_version,
             ...(body.idempotencyKey ? { idempotencyKey: body.idempotencyKey } : {}),
             input: {
               prompt: body.message,

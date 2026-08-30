@@ -39,6 +39,11 @@ export const LLM_OPERATION_TEMPLATES: { [K in LlmOperationIdV1]: LlmOperationTem
           description: '需要总结的列表、搜索结果或条目集合',
           'x-ops-input-role': 'content',
         },
+        instruction: {
+          type: 'string',
+          description: '用户提出的总结与排版要求，例如字数限制、重点方向或格式要求',
+          'x-ops-input-role': 'instruction',
+        },
       },
     },
     outputSchema: {
@@ -51,6 +56,15 @@ export const LLM_OPERATION_TEMPLATES: { [K in LlmOperationIdV1]: LlmOperationTem
     },
     buildPrompt: (input: Record<string, any>) => {
       const items = Array.isArray(input.items) ? input.items : [input.items || ''];
+      const instruction = String(input.instruction || '').trim();
+      const lengthMatch = instruction.match(
+        /([0-9一二两三四五六七八九十百千]+)\s*(?:字|词|chars?|words?)(?:以内|左右|以下|内)?/i
+      );
+      const limitNum = lengthMatch ? parseInt(lengthMatch[1], 10) || 500 : null;
+      const targetLen = limitNum ? Math.max(100, Math.floor(limitNum * 0.6)) : 300;
+      const lengthNotice = lengthMatch
+        ? `\n【硬性字数限制（最高优先级）】：用户明确要求【${lengthMatch[0]}】！全文总字数（含标题、标点和符号）必须严格少于 ${limitNum} 字！请将总结目标长度控制在 ${targetLen} 字以内，只保留 1 个简短总括和 3~4 条精炼要点，绝对不可展开长文！`
+        : '';
       const textBlock = items
         .slice(0, 10)
         .map((item: any, idx: number) => {
@@ -72,12 +86,15 @@ export const LLM_OPERATION_TEMPLATES: { [K in LlmOperationIdV1]: LlmOperationTem
 
       return {
         systemPrompt: `你是一个专业的总结分析助手。请对传入的列表条目进行客观、严谨、要点清晰的 Markdown 结构化总结。
-输出要求：
-1. 语言简炼、结构规范，使用 Markdown 标题、列表或表格。
+
+## 核心原则（最高优先级）
+${instruction ? `1. 【硬性用户要求】：${instruction}${lengthNotice}` : '1. 摘要正文控制在 800 个中文字符以内，合并重复信息。'}
 2. 保持客观事实，禁止无中生有。
-3. 摘要正文控制在 800 个中文字符以内，合并重复信息，禁止复述大段原文。
-4. 只输出 Markdown 总结正文，不要输出 JSON、字段名、代码围栏或任务过程；运行时会将正文封装到 markdown_content 协议字段。`,
-        userPrompt: `请对以下内容做结构化总结：\n\n${textBlock}`,
+3. 使用 Markdown 标题或列表清晰呈现。
+
+## 输出格式
+只输出 Markdown 总结正文，不要输出 JSON、字段名、代码围栏或任务过程；运行时会将正文封装到 markdown_content 协议字段。`,
+        userPrompt: `${instruction ? `【用户要求】：${instruction}\n\n` : ''}请对以下内容做结构化总结：\n\n${textBlock}`,
       };
     },
     parseAndValidateOutput: (rawText: string) => {
@@ -306,6 +323,11 @@ ${content}`,
           description: '需要总结的原始文本',
           'x-ops-input-role': 'content',
         },
+        instruction: {
+          type: 'string',
+          description: '用户提出的总结要求与约束（如字数限制、重点关注方向、排版格式要求等）',
+          'x-ops-input-role': 'instruction',
+        },
       },
     },
     outputSchema: {
@@ -318,29 +340,26 @@ ${content}`,
     },
     buildPrompt: (input: Record<string, any>) => {
       const text = String(input.text || '');
+      const instruction = String(input.instruction || '').trim();
+      const lengthMatch = instruction.match(
+        /([0-9一二两三四五六七八九十百千]+)\s*(?:字|词|chars?|words?)(?:以内|左右|以下|内)?/i
+      );
+      const limitNum = lengthMatch ? parseInt(lengthMatch[1], 10) || 500 : null;
+      const lengthNotice = lengthMatch
+        ? `\n【极其严格的字数硬约束（最高优先级）】：用户明确要求【${lengthMatch[0]}】！全文中文字符数（含标题和标点）必须严格少于 ${limitNum} 字！请直接采用「1 句总括 + 3~4 条精炼要点（- ）」的简短形式，禁止保留多层小标题或冗长步骤，确保总字数控制在 ${Math.min(limitNum - 100, 300)} 字左右，绝对不可超长！`
+        : '';
       return {
         systemPrompt: `你是一位专业的内容总结助手。请对输入的文本做高质量总结。
 
-## 内容要求
-1. 忠实原文：只使用原文中明确存在的信息，不猜测、不补造、不添加观点或评论。
-2. 覆盖核心：先梳理原文的主题结构，再逐主题提炼要点；核心主题不可遗漏，次要细节可省略。
-3. 事实保真：保留原文中的数值、单位、日期、人名、机构名、专有名词等关键事实，不得改写或近似。
-4. 核心观点与结论：原文中若有作者的核心观点、判断或结论性表述，必须提炼并忠实呈现，不得曲解立场；原文没有明确观点或结论时，不要强行添加。
-5. 简洁：去掉寒暄、重复、冗余和铺垫性表述，直接呈现结论与要点。
-6. 语言：使用简体中文；原文为其他语言时翻译为中文，关键专有名词可保留原文。
-
-## 格式要求
-1. 必须使用 Markdown 结构化呈现，禁止把多个要点用分号（；）串联成一大段连续文字。
-2. 单一主题：输出一段简洁总结。
-3. 多个要点：使用 Markdown 列表（- ），每个要点独占一行。
-4. 多个主题或章节：使用 ## 小标题分段，段内要点用列表呈现。
-5. 适合对比的数据：使用 Markdown 表格。
-6. 总结以一句总括开头（说明文档/文本的性质与主题），再展开要点。
-7. 提炼出的核心观点与结论，用「核心观点与结论」小节单独呈现，放于要点之后。
+## 核心原则（最高优先级）
+${instruction ? `1. 【硬性要求】：${instruction}${lengthNotice}` : '1. 简洁精炼：去掉寒暄与铺垫，直接呈现结论与要点。'}
+2. 忠实原文：只使用原文中明确存在的信息，不猜测、不补造事实。
+3. 事实保真：保留原文中的数值、单位、日期、人名、专有名词等关键事实。
+4. 语言规范：使用简体中文。
 
 ## 输出格式
-只输出 Markdown 总结正文，不要输出 JSON、summary 字段名、代码围栏或任务过程；运行时会将正文封装到 summary 协议字段。`,
-        userPrompt: `文本：\n\n${text}`,
+只输出 Markdown 总结正文，不要输出 JSON、summary 字段名、代码围栏或解释过程；运行时会将正文封装到 summary 协议字段。`,
+        userPrompt: `${instruction ? `【用户要求与字数限制】：${instruction}（请严格控制在 ${limitNum || 500} 字以内，采用极简要点输出）\n\n` : ''}待总结文本：\n\n${text}`,
       };
     },
     parseAndValidateOutput: (rawText: string) => {
@@ -413,6 +432,163 @@ ${content}`,
       const val = jsonSchemaValidator.validate(
         res,
         LLM_OPERATION_TEMPLATES.extract_structured_fields.outputSchema!
+      );
+      if (!val.valid) {
+        throw new Error(`OUTPUT_SCHEMA_VIOLATION: ${val.errors?.map((e) => e.message).join(', ')}`);
+      }
+      return res;
+    },
+  },
+
+  format_document_blocks: {
+    operationId: 'format_document_blocks',
+    promptTemplateId: 'format-document-blocks',
+    version: '1',
+    modelPolicyId: 'task-default',
+    temperature: 0,
+    maxInputTokens: 48000,
+    maxOutputTokens: 16000,
+    oversizeInput: 'truncate',
+    inputSchema: {
+      type: 'object',
+      required: ['text'],
+      properties: {
+        text: {
+          type: 'string',
+          description: '需要排版并转换为结构化文档块的内容',
+          'x-ops-input-role': 'content',
+        },
+        title: {
+          type: 'string',
+          description: '文档标题，若未提供则根据内容自动提炼',
+          'x-ops-input-role': 'configuration',
+        },
+        theme: {
+          type: 'string',
+          enum: ['business_report', 'clean_article', 'tech_spec', 'general'],
+          description:
+            '排版与视觉风格：business_report (商务简报), clean_article (极简文章), tech_spec (技术文档), general (通用)',
+          'x-ops-input-role': 'configuration',
+        },
+        instructions: {
+          type: 'string',
+          description: '额外排版指令',
+          'x-ops-input-role': 'instruction',
+        },
+      },
+    },
+    outputSchema: {
+      type: 'object',
+      required: ['content'],
+      properties: {
+        title: { type: 'string' },
+        theme: { type: 'string' },
+        pageNumbers: { type: 'boolean' },
+        content: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['type'],
+            properties: {
+              type: {
+                type: 'string',
+                enum: ['heading', 'h2', 'h3', 'paragraph', 'table', 'list', 'code'],
+              },
+              text: { type: 'string' },
+              items: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+              ordered: { type: 'boolean' },
+              headers: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+              rows: {
+                type: 'array',
+                items: {
+                  type: 'array',
+                  items: { type: 'string' },
+                },
+              },
+              language: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    buildPrompt: (input: Record<string, any>) => {
+      const text = String(input.text || '');
+      const title = input.title ? String(input.title).trim() : '';
+      const theme = input.theme ? String(input.theme).trim() : '';
+      const instructions = input.instructions ? String(input.instructions).trim() : '';
+
+      return {
+        systemPrompt: `你是一个专业的文档排版与结构化适配器。你的职责是将输入的非结构化文本、Markdown 或总结提炼并组织为结构化文档块（Content Blocks），用于直接生成排版优美的 PDF/Word 报告。
+
+## 排版规则：
+1. 块类型 (type)：
+   - "heading": 文档大标题（若已在顶层指定 title，正文从 h2 开始）
+   - "h2": 核心模块/大段落标题
+   - "h3": 子小节标题
+   - "paragraph": 正文段落（text 字段包含文本）
+   - "list": 要点清单（必须包含 items: string[]，可选 ordered: boolean）
+   - "table": 数据表格（必须包含 headers: string[], rows: string[][]）
+   - "code": 代码/引用块（包含 text: string，可选 language: string）
+2. 主题自适应 (theme)：
+   - 资讯汇总/热点简报/日报 -> "business_report"
+   - 长文总结/深度阅读/笔记 -> "clean_article"
+   - 架构说明/技术规范/API -> "tech_spec"
+   - 其他 -> "general"
+3. 输出纯 JSON 对象，格式示例：
+{
+  "title": "文档主标题",
+  "theme": "business_report",
+  "pageNumbers": true,
+  "content": [
+    { "type": "h2", "text": "一、要点总览" },
+    { "type": "paragraph", "text": "本报告汇总如下核心事项..." },
+    { "type": "list", "items": ["要点 1", "要点 2"] }
+  ]
+}`,
+        userPrompt: `${title ? `文档指定标题：${title}\n` : ''}${theme ? `指定主题风格：${theme}\n` : ''}${instructions ? `排版要求：${instructions}\n` : ''}
+待排版内容：
+${text}`,
+      };
+    },
+    parseAndValidateOutput: (rawText: string) => {
+      const json = parseJsonFromText(rawText);
+      let content = json.content;
+      if (typeof content === 'string') {
+        content = [{ type: 'paragraph', text: content }];
+      } else if (!Array.isArray(content)) {
+        if (json.blocks && Array.isArray(json.blocks)) {
+          content = json.blocks;
+        } else {
+          content = [{ type: 'paragraph', text: rawText.slice(0, 1000) }];
+        }
+      }
+
+      // Ensure block structures are valid
+      const normalizedContent = (content as any[]).map((block) => {
+        if (typeof block === 'string') return { type: 'paragraph', text: block };
+        if (block && typeof block === 'object') {
+          const type = block.type || 'paragraph';
+          return { ...block, type };
+        }
+        return { type: 'paragraph', text: String(block) };
+      });
+
+      const res: Record<string, any> = {
+        content: normalizedContent,
+        pageNumbers: json.pageNumbers !== false,
+      };
+      if (json.title) res.title = String(json.title);
+      if (json.theme) res.theme = String(json.theme);
+
+      const val = jsonSchemaValidator.validate(
+        res,
+        LLM_OPERATION_TEMPLATES.format_document_blocks.outputSchema!
       );
       if (!val.valid) {
         throw new Error(`OUTPUT_SCHEMA_VIOLATION: ${val.errors?.map((e) => e.message).join(', ')}`);

@@ -1,0 +1,17 @@
+{
+  "workflowVersion": "v1",
+  "engine": "domain-handler",
+  "handlerKey": "document.pdf.split",
+  "steps": [
+    {
+      "stepId": "split_pdf_pages",
+      "action": "split",
+      "inputMapping": {
+        "fileBase64": "$.input.fileBase64",
+        "fileName": "$.input.fileName",
+        "pages": "$.input.pages",
+        "fileNamePrefix": "$.input.fileNamePrefix"
+      }
+    }
+  ]
+}

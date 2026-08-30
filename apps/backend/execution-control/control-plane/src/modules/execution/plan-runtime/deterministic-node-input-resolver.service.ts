@@ -181,13 +181,24 @@ export class DeterministicNodeInputResolverService {
 
     // For skill execution (non-llm_operation), automatically inherit top-level user inputs provided in executionInputJson
     if (capabilityId && nodeKind !== 'llm_operation' && executionInputJson && typeof executionInputJson === 'object') {
+      const EXCLUDED_INHERIT_KEYS = new Set([
+        'prompt',
+        '__promptDebug',
+        'idempotencyKey',
+        'planDraft',
+        'deterministicPlan',
+        'systemInputs',
+        'plannerContext',
+        'context',
+        'session_id',
+        'user_id',
+        'authToken',
+        'traceId',
+      ]);
       for (const [key, val] of Object.entries(executionInputJson)) {
         if (
-          key !== 'prompt' &&
-          key !== '__promptDebug' &&
-          key !== 'idempotencyKey' &&
-          key !== 'planDraft' &&
-          key !== 'deterministicPlan' &&
+          !EXCLUDED_INHERIT_KEYS.has(key) &&
+          !key.startsWith('previousResult') &&
           val !== undefined
         ) {
           if (resolvedInput[key] === undefined) {

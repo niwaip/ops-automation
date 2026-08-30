@@ -6,6 +6,7 @@ import { LlmOperationRuntimeAdapter } from '../adapters/llm-operation-runtime.ad
 import { ExecutionStreamService } from '../lifecycle/execution-stream.service';
 import { RuntimeExecutionOrchestrator } from '../step-runner/runtime/runtime-execution.orchestrator';
 import {
+  BROWSER_RECORDING_ROOT_NODE_ID,
   DeterministicPlanDraftV1,
   ValueBindingV1,
   computePlanHash,
@@ -216,6 +217,10 @@ export class DeterministicPlanSchedulerService {
     }
 
     if (this.shouldSkipForRunWhen(execution, planNode)) {
+      const skipReason =
+        planNode?.runWhen === 'browser_terminal'
+          ? 'browser_terminal_unavailable'
+          : 'browser_not_succeeded';
       await this.prisma.executionStep.update({
         where: { id: stepId },
         data: { status: 'skipped', endedAt: new Date(), leaseExpiresAt: null },
@@ -223,14 +228,14 @@ export class DeterministicPlanSchedulerService {
       await this.eventPublisher.createEvent(
         execution.id,
         'execution.node.skipped' as any,
-        { planNodeId, reason: 'browser_not_succeeded', runWhen: 'browser_succeeded' },
-        { stepId },
+        { planNodeId, reason: skipReason, runWhen: planNode?.runWhen },
+        { stepId }
       );
       await this.eventPublisher.createEvent(
         execution.id,
         'step.skipped',
-        { stepId, planNodeId, reason: 'browser_not_succeeded' },
-        { stepId },
+        { stepId, planNodeId, reason: skipReason },
+        { stepId }
       );
       if (autoAdvance) await this.advanceExecution(execution.id);
       return;
@@ -364,7 +369,7 @@ export class DeterministicPlanSchedulerService {
           execution.id,
           'execution.browser_terminal.continued' as any,
           { planNodeId, errorMessage: errMsg, errorCode: error.code || 'NODE_EXECUTION_FAILED' },
-          { stepId },
+          { stepId }
         );
         if (autoAdvance) await this.advanceExecution(execution.id);
       }
@@ -372,12 +377,17 @@ export class DeterministicPlanSchedulerService {
   }
 
   private shouldSkipForRunWhen(execution: any, planNode: any): boolean {
-    if (planNode?.runWhen !== 'browser_succeeded') return false;
-    const browserStep = (execution.steps || []).find((candidate: any) => candidate.planNodeId === 'browser_recording');
-    if (!browserStep) return false;
+    if (!planNode?.runWhen) return false;
+    const browserStep = (execution.steps || []).find(
+      (candidate: any) => candidate.planNodeId === BROWSER_RECORDING_ROOT_NODE_ID
+    );
+    if (!browserStep) return true;
+    if (planNode.runWhen === 'browser_terminal') return false;
+    if (planNode.runWhen !== 'browser_succeeded') return true;
     if (['failed', 'cancelled', 'skipped'].includes(browserStep.status)) return true;
     const output = unwrapStoredStepOutput(browserStep.outputJson);
-    const browser = output && typeof output === 'object' ? (output as any).browserRunOutput : undefined;
+    const browser =
+      output && typeof output === 'object' ? (output as any).browserRunOutput : undefined;
     const status = browser?.run?.status || browser?.status || output?.status;
     if (status) {
       return !['completed', 'completed_with_warnings', 'success', 'succeeded'].includes(status);
@@ -470,10 +480,15 @@ export class DeterministicPlanSchedulerService {
     if (!inputSchema || typeof inputSchema !== 'object' || Object.keys(inputSchema).length === 0) {
       return;
     }
-    // apiKey is scheduler-injected transport/credential metadata (not part of
-    // the capability input contract) — exclude it from contract validation so
-    // closed-object schemas (additionalProperties: false) don't reject it.
-    const { apiKey: _apiKey, ...contractInput } = input;
+    // apiKey and transient scheduler metadata are not part of the capability input contract
+    // — exclude them from contract validation so closed-object schemas (additionalProperties: false) don't reject them.
+    const TRANSIENT_KEYS = new Set(['apiKey', 'idempotencyKey']);
+    const contractInput: Record<string, any> = {};
+    for (const [k, v] of Object.entries(input || {})) {
+      if (!TRANSIENT_KEYS.has(k) && !k.startsWith('previousResult')) {
+        contractInput[k] = v;
+      }
+    }
     const validation = jsonSchemaValidator.validateInput(contractInput || {}, inputSchema);
     if (!validation.valid) {
       const firstError = validation.errors?.[0] as any;
@@ -684,9 +699,7 @@ export class DeterministicPlanSchedulerService {
       step.action || step.outputContractJson?.runtimeType
     );
     const runtimeSessionId =
-      runtimeType === 'browser'
-        ? await this.ensureStandardBrowserSession(execution, step)
-        : '';
+      runtimeType === 'browser' ? await this.ensureStandardBrowserSession(execution, step) : '';
 
     const request = {
       requestId: `${execution.id}:${step.id}`,
@@ -714,11 +727,7 @@ export class DeterministicPlanSchedulerService {
       step.planNodeId ||
       `Step ${step.stepIndex || 1}`;
     const phaseType =
-      runtimeType === 'browser'
-        ? 'browser_recording'
-        : isBuiltin
-          ? 'builtin'
-          : 'workflow_activity';
+      runtimeType === 'browser' ? 'browser_recording' : isBuiltin ? 'builtin' : 'workflow_activity';
     const phaseMetadata = { phaseKey, phaseName, phaseType };
 
     await this.executionPhaseSyncService?.markPhaseRunningForStep(
@@ -750,12 +759,12 @@ export class DeterministicPlanSchedulerService {
       throw error;
     }
 
-    const runtimeOutput = await this.materializeContentRefs(execution.id, step.id, (result.output || {}) as Record<string, any>);
-    const outputJson = this.validateOutputContract(
-      step,
-      runtimeOutput,
-      execution.id
+    const runtimeOutput = await this.materializeContentRefs(
+      execution.id,
+      step.id,
+      (result.output || {}) as Record<string, any>
     );
+    const outputJson = this.validateOutputContract(step, runtimeOutput, execution.id);
 
     await this.prisma.executionStep.update({
       where: { id: step.id },
@@ -924,10 +933,7 @@ export class DeterministicPlanSchedulerService {
       newStatus: 'succeeded',
     });
 
-    await this.executionPhaseSyncService?.completeActivePhasesOnExecutionSuccess(
-      execution.id,
-      ''
-    );
+    await this.executionPhaseSyncService?.completeActivePhasesOnExecutionSuccess(execution.id, '');
 
     await this.closeRuntimeSessions(execution.id, 'deterministic_execution_succeeded');
 
@@ -1020,22 +1026,36 @@ export class DeterministicPlanSchedulerService {
       : undefined;
   }
 
-  private async materializeContentRefs(executionId: string, producerStepId: string, output: Record<string, any>): Promise<Record<string, any>> {
+  private async materializeContentRefs(
+    executionId: string,
+    producerStepId: string,
+    output: Record<string, any>
+  ): Promise<Record<string, any>> {
     const candidates = Array.isArray(output.contentCandidates) ? output.contentCandidates : [];
     if (!candidates.length) return output;
     const next = { ...output };
     for (const candidate of candidates) {
-      if (candidate && typeof candidate === 'object' && typeof candidate.outputName === 'string' && candidate.outputName.trim()) {
+      if (
+        candidate &&
+        typeof candidate === 'object' &&
+        typeof candidate.outputName === 'string' &&
+        candidate.outputName.trim()
+      ) {
         if (!next[candidate.outputName]) {
           next[candidate.outputName] = candidate.text || candidate;
         }
       }
     }
-    if (!this.resultRefs?.enabled || process.env.BROWSER_CONTENT_REF_ENABLED === 'false') return next;
+    if (!this.resultRefs?.enabled || process.env.BROWSER_CONTENT_REF_ENABLED === 'false')
+      return next;
     delete next.contentCandidates;
-    const browser = next.browserRunOutput && typeof next.browserRunOutput === 'object' ? next.browserRunOutput as Record<string, any> : undefined;
+    const browser =
+      next.browserRunOutput && typeof next.browserRunOutput === 'object'
+        ? (next.browserRunOutput as Record<string, any>)
+        : undefined;
     for (const candidate of candidates) {
-      if (!candidate || typeof candidate !== 'object' || typeof candidate.text !== 'string') continue;
+      if (!candidate || typeof candidate !== 'object' || typeof candidate.text !== 'string')
+        continue;
       if (typeof candidate.sourceUrl !== 'string' || !candidate.sourceUrl.trim()) {
         // ContentRefV1 deliberately requires an origin.  Do not turn an
         // anonymous/raw capture into a bindable document.
@@ -1043,10 +1063,51 @@ export class DeterministicPlanSchedulerService {
         continue;
       }
       const text = candidate.text;
-      const ref = await this.resultRefs.create({ executionId, producerStepId, payload: { schemaVersion: 'extracted-content/v1', markdown: text }, schemaDigest: createHash('sha256').update('extracted-content/v1').digest('hex') });
-      const content = { schemaVersion: 'content-ref/v1', contentId: createHash('sha256').update(`${executionId}|${producerStepId}|${candidate.sourceStepId || ''}|${ref.id}`).digest('hex').slice(0, 32), resultRefId: ref.id, pageId: '', sourceUrl: candidate.sourceUrl || '', finalUrl: candidate.finalUrl || candidate.sourceUrl || '', ...(candidate.title ? { title: candidate.title } : {}), mediaType: 'text/plain', extraction: { profile: candidate.profile || 'article', method: candidate.method || 'visible-text', confidence: Number(candidate.confidence) || 0, fallbackLevel: Number(candidate.fallbackLevel) || 0, extractedAt: new Date().toISOString() }, integrity: { sha256: createHash('sha256').update(text).digest('hex'), chars: text.length, bytes: Buffer.byteLength(text), truncated: candidate.truncated === true }, safety: { activeContentRemoved: candidate.activeContentRemoved === true, suspectedPromptInjection: candidate.suspectedPromptInjection === true, untrustedExternalContent: true }, preview: text.slice(0, 160) };
-      const page = Array.isArray(browser?.pages) ? browser.pages.find((item: any) => item.stepId === candidate.sourceStepId) : undefined;
-      if (page) { content.pageId = page.pageId; page.content = content; }
+      const ref = await this.resultRefs.create({
+        executionId,
+        producerStepId,
+        payload: { schemaVersion: 'extracted-content/v1', markdown: text },
+        schemaDigest: createHash('sha256').update('extracted-content/v1').digest('hex'),
+      });
+      const content = {
+        schemaVersion: 'content-ref/v1',
+        contentId: createHash('sha256')
+          .update(`${executionId}|${producerStepId}|${candidate.sourceStepId || ''}|${ref.id}`)
+          .digest('hex')
+          .slice(0, 32),
+        resultRefId: ref.id,
+        pageId: '',
+        sourceUrl: candidate.sourceUrl || '',
+        finalUrl: candidate.finalUrl || candidate.sourceUrl || '',
+        ...(candidate.title ? { title: candidate.title } : {}),
+        mediaType: 'text/plain',
+        extraction: {
+          profile: candidate.profile || 'article',
+          method: candidate.method || 'visible-text',
+          confidence: Number(candidate.confidence) || 0,
+          fallbackLevel: Number(candidate.fallbackLevel) || 0,
+          extractedAt: new Date().toISOString(),
+        },
+        integrity: {
+          sha256: createHash('sha256').update(text).digest('hex'),
+          chars: text.length,
+          bytes: Buffer.byteLength(text),
+          truncated: candidate.truncated === true,
+        },
+        safety: {
+          activeContentRemoved: candidate.activeContentRemoved === true,
+          suspectedPromptInjection: candidate.suspectedPromptInjection === true,
+          untrustedExternalContent: true,
+        },
+        preview: text.slice(0, 160),
+      };
+      const page = Array.isArray(browser?.pages)
+        ? browser.pages.find((item: any) => item.stepId === candidate.sourceStepId)
+        : undefined;
+      if (page) {
+        content.pageId = page.pageId;
+        page.content = content;
+      }
       if (typeof candidate.outputName === 'string' && candidate.outputName.trim()) {
         next[candidate.outputName] = content;
       }
@@ -1173,7 +1234,11 @@ export class DeterministicPlanSchedulerService {
 function resolveBrowserRunOutputSchemaDigest(value: unknown): string | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
   const browserRunOutput = (value as Record<string, unknown>).browserRunOutput;
-  if (!browserRunOutput || typeof browserRunOutput !== 'object' || Array.isArray(browserRunOutput)) {
+  if (
+    !browserRunOutput ||
+    typeof browserRunOutput !== 'object' ||
+    Array.isArray(browserRunOutput)
+  ) {
     return undefined;
   }
   const run = (browserRunOutput as Record<string, unknown>).run;

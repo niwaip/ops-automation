@@ -124,11 +124,11 @@ describe('CapabilityCandidateSelectorService', () => {
     expect(result.skillCards.map((card) => card.id)).toEqual(['alpha', 'web-search', 'omega']);
   });
 
-  it('keeps an explicitly requested user capability when the 3-6 card cap is active', async () => {
-    const skills = Array.from({ length: 7 }, (_, index) => ({
-      id: index === 6 ? 'bark-push' : `generic-${index}`,
-      name: index === 6 ? 'Bark推送服务' : `通用能力 ${index}`,
-      description: index === 6 ? '通过 Bark 将内容推送到设备' : '通用处理能力',
+  it('keeps an explicitly requested user capability when the card cap is active', async () => {
+    const skills = Array.from({ length: 35 }, (_, index) => ({
+      id: index === 34 ? 'bark-push' : `generic-${index}`,
+      name: index === 34 ? 'Bark推送服务' : `通用能力 ${index}`,
+      description: index === 34 ? '通过 Bark 将内容推送到设备' : '通用处理能力',
       executionType: 'flow',
       paramsSchema: { properties: { content: { type: 'string' } } },
       outputSchema: { properties: { result: { type: 'string' } } },
@@ -140,7 +140,7 @@ describe('CapabilityCandidateSelectorService', () => {
 
     const result = await service.selectCandidates('总结后最后用 Bark 进行推送', skills);
 
-    expect(result.skillCards).toHaveLength(6);
+    expect(result.skillCards).toHaveLength(30);
     expect(result.skillCards[0]?.id).toBe('bark-push');
   });
 

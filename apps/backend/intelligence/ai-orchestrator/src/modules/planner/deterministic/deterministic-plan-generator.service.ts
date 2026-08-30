@@ -23,6 +23,12 @@ import {
   hasRoutingSignal,
 } from '../routing/routing-policy.matcher';
 import { RoutingPolicyService } from '../routing/routing-policy.service';
+import type {
+  DeterministicTopologyDraftV1,
+  TopologyNodeV1,
+} from '../topology/deterministic-topology.types';
+
+import { UserHabitRouterService } from '../habit/user-habit-router.service';
 
 @Injectable()
 export class DeterministicPlanGeneratorService {
@@ -50,7 +56,9 @@ export class DeterministicPlanGeneratorService {
     @Optional()
     private readonly explicitSkillIntent?: ExplicitSkillIntentService,
     @Optional()
-    private readonly routingPolicy?: RoutingPolicyService
+    private readonly routingPolicy?: RoutingPolicyService,
+    @Optional()
+    private readonly userHabitRouter?: UserHabitRouterService
   ) {}
 
   public async generatePlan(
@@ -92,12 +100,23 @@ export class DeterministicPlanGeneratorService {
           (dto.systemInputs?.previousResultData !== undefined ||
             dto.systemInputs?.previousResultText)
         );
-        const recipe = this.recipeMatcher?.matchRecipe(
-          dto.userRequest,
-          skillCards,
-          llmOperationCards,
-          { hasPreviousResult }
-        );
+        // Layer 1: Check User Habit Fast-Gate (0-Token)
+        const userId = dto.telemetry?.user?.userId;
+        let habitTopology: DeterministicTopologyDraftV1 | null = null;
+        let habitExemplar: string | undefined;
+
+        if (this.userHabitRouter && userId) {
+          const habitDecision = await this.userHabitRouter.evaluateHabit(userId, dto.userRequest);
+          if (habitDecision.type === 'exact_topology' && habitDecision.topology) {
+            habitTopology = habitDecision.topology;
+          } else if (habitDecision.type === 'exemplar') {
+            habitExemplar = habitDecision.exemplarPrompt;
+          }
+        }
+
+        const recipe = habitTopology
+          ? null
+          : this.recipeMatcher?.matchRecipe(dto.userRequest, { hasPreviousResult });
         let recipeTopology = recipe
           ? this.recipeTopologyBuilder?.buildTopologyFromRecipe(
               recipe,
@@ -116,7 +135,10 @@ export class DeterministicPlanGeneratorService {
           const recipeCoverage = this.topologyValidator.validateTopology(
             recipeTopology,
             aliasMap,
-            explicitlyRequestedSkills
+            explicitlyRequestedSkills,
+            {
+              allowOperationOnly: true,
+            }
           );
           if (!recipeCoverage.valid || hasUncoveredActionKeyword) {
             this.logger.log(
@@ -125,8 +147,13 @@ export class DeterministicPlanGeneratorService {
             recipeTopology = null;
           }
         }
-        const topologySource = recipeTopology ? 'recipe' : 'llm';
+        const topologySource = habitTopology
+          ? 'habit_fast_gate'
+          : recipeTopology
+            ? 'recipe'
+            : 'llm';
         const topologyDraft =
+          habitTopology ||
           recipeTopology ||
           (await this.topologyPlanner.planTopology(dto.userRequest, routingCards, {
             hasPreviousResult,
@@ -135,10 +162,17 @@ export class DeterministicPlanGeneratorService {
                 ? (dto.systemInputs?.previousResultRef as any).resultType
                 : undefined,
             scopedMemory: dto.plannerContext?.scopedMemory,
+            exemplar: habitExemplar,
             telemetry: dto.telemetry,
           }));
 
         if (topologyDraft) {
+          if (topologyDraft.requiresExternalData === undefined) {
+            topologyDraft.requiresExternalData =
+              hasRoutingSignal(dto.userRequest, 'search', policy) ||
+              hasRoutingSignal(dto.userRequest, 'documentSource', policy) ||
+              this.hasSkillDataSourceForOperation(topologyDraft.nodes, aliasMap);
+          }
           if (
             topologyDraft.matchDecision !== 'matched' ||
             !isAcceptedSkillMatch(topologyDraft.matchConfidence)
@@ -149,6 +183,9 @@ export class DeterministicPlanGeneratorService {
             err.code = 'CAPABILITY_NOT_FOUND';
             throw err;
           }
+
+          this.normalizeDocumentTopology(topologyDraft, aliasMap);
+
           const validation = this.topologyValidator.validateTopology(
             topologyDraft,
             aliasMap,
@@ -188,8 +225,18 @@ export class DeterministicPlanGeneratorService {
             );
 
             (planDraft as any).planningRoute = {
-              routeClass: topologySource === 'recipe' ? 'recipe_plan' : 'generated_plan',
-              routeSource: topologySource === 'recipe' ? 'recipe' : 'llm_topology',
+              routeClass:
+                topologySource === 'habit_fast_gate'
+                  ? 'habit_fast_gate'
+                  : topologySource === 'recipe'
+                    ? 'recipe_plan'
+                    : 'generated_plan',
+              routeSource:
+                topologySource === 'habit_fast_gate'
+                  ? 'habit_fast_gate'
+                  : topologySource === 'recipe'
+                    ? 'recipe'
+                    : 'llm_topology',
               confidence: topologyDraft.matchConfidence,
               reasonCodes: [
                 `topology_source:${topologySource}`,
@@ -363,6 +410,31 @@ export class DeterministicPlanGeneratorService {
     });
     if (!preferred) throw new Error('No active AI model configured for task operations');
     return preferred;
+  }
+
+  private hasSkillDataSourceForOperation(
+    nodes: Array<{ ref: string; capabilityKey: string; dependsOn: string[] }>,
+    capabilityMap: Map<string, CompactCapabilityCardV1>
+  ): boolean {
+    const nodeByRef = new Map(nodes.map((node) => [node.ref, node]));
+    const hasSkillAncestor = (nodeRef: string, visited = new Set<string>()): boolean => {
+      if (visited.has(nodeRef)) return false;
+      visited.add(nodeRef);
+      const node = nodeByRef.get(nodeRef);
+      if (!node) return false;
+      return node.dependsOn.some((dependencyRef) => {
+        const dependency = nodeByRef.get(dependencyRef);
+        if (!dependency) return false;
+        if (capabilityMap.get(dependency.capabilityKey)?.kind === 'skill') return true;
+        return hasSkillAncestor(dependencyRef, visited);
+      });
+    };
+
+    return nodes.some(
+      (node) =>
+        capabilityMap.get(node.capabilityKey)?.kind === 'llm_operation' &&
+        hasSkillAncestor(node.ref)
+    );
   }
 
   private async resolveRuntimeModelId(dto: GenerateDeterministicPlanRequestDto): Promise<string> {
@@ -963,6 +1035,72 @@ ${JSON.stringify(llmOperationCards, null, 2)}
       const err: any = new Error(`最终节点 '${producerNode.nodeId}' 不是可生成文件产物的 Skill`);
       err.code = 'FINAL_OUTPUT_UNSATISFIED';
       throw err;
+    }
+  }
+
+  private normalizeDocumentTopology(
+    topologyDraft: DeterministicTopologyDraftV1,
+    aliasMap: Map<string, any>
+  ): void {
+    let formatBlocksKey: string | undefined;
+    for (const [key, card] of aliasMap.entries()) {
+      if (card?.id === 'format_document_blocks') {
+        formatBlocksKey = key;
+        break;
+      }
+    }
+    if (!formatBlocksKey || !Array.isArray(topologyDraft.nodes)) return;
+
+    const newNodes: TopologyNodeV1[] = [];
+    let modified = false;
+
+    for (let i = 0; i < topologyDraft.nodes.length; i++) {
+      const node = topologyDraft.nodes[i];
+      if (!node) continue;
+      const card = aliasMap.get(node.capabilityKey);
+
+      if (card?.id === 'platform.document.pdf-create') {
+        const prevRef =
+          node.dependsOn?.[0] || (i > 0 ? topologyDraft.nodes[i - 1]?.ref : undefined);
+        const prevNode = prevRef
+          ? topologyDraft.nodes.find((n) => n?.ref === prevRef)
+          : undefined;
+        const prevCard = prevNode ? aliasMap.get(prevNode.capabilityKey) : undefined;
+
+        if (prevNode && prevCard && prevCard.id !== 'format_document_blocks') {
+          const adapterRef = `adapter_ref_${i + 1}`;
+          const adapterNode: TopologyNodeV1 = {
+            ref: adapterRef,
+            capabilityKey: formatBlocksKey,
+            dependsOn: [prevNode.ref],
+          };
+          newNodes.push(adapterNode);
+          node.dependsOn = [adapterRef];
+          modified = true;
+        }
+      }
+      newNodes.push(node);
+    }
+
+    if (modified) {
+      const refMap = new Map<string, string>();
+      newNodes.forEach((node, index) => {
+        const oldRef = node.ref;
+        const nextRef = `n${index + 1}`;
+        refMap.set(oldRef, nextRef);
+        node.ref = nextRef;
+      });
+      newNodes.forEach((node) => {
+        node.dependsOn = (node.dependsOn || []).map((dep) => refMap.get(dep) || dep);
+      });
+      topologyDraft.nodes = newNodes;
+      if (topologyDraft.finalNodeRef) {
+        topologyDraft.finalNodeRef =
+          refMap.get(topologyDraft.finalNodeRef) || topologyDraft.finalNodeRef;
+      }
+      this.logger.log(
+        `Auto-inserted format_document_blocks adapter before platform.document.pdf-create in topology`
+      );
     }
   }
 }

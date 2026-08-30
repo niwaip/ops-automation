@@ -4,6 +4,27 @@ import {
 } from './planning-contract';
 
 describe('planning capability contract', () => {
+  it('matches an explicitly mentioned capability id', () => {
+    const match = matchDeterministicRoutingCapability(
+      '请使用 platform.document.pdf-create 生成一个 PDF',
+      [
+        {
+          id: 'platform.document.pdf-create',
+          name: '创建 PDF 文档',
+          triggerKeywords: ['生成PDF'],
+        },
+        {
+          id: 'platform.document.pdf-merge',
+          name: '合并 PDF 文档',
+          triggerKeywords: ['合并PDF'],
+        },
+      ]
+    );
+
+    expect(match?.capability.id).toBe('platform.document.pdf-create');
+    expect(match?.matchedSignals).toContain('platform.document.pdf-create');
+  });
+
   it('derives a distinctive subject signal from a capability action name', () => {
     const match = matchDeterministicRoutingCapability('上海的天气', [
       { id: 'weather', name: '天气查询', triggerKeywords: ['HTTP 请求'] },

@@ -1,0 +1,15 @@
+{
+  "workflowVersion": "v1",
+  "engine": "domain-handler",
+  "handlerKey": "document.pdf.merge",
+  "steps": [
+    {
+      "stepId": "merge_pdf_files",
+      "action": "merge",
+      "inputMapping": {
+        "files": "$.input.files",
+        "fileName": "$.input.fileName"
+      }
+    }
+  ]
+}

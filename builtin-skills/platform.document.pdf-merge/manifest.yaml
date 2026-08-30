@@ -1,0 +1,102 @@
+apiVersion: platform.ops/v1alpha1
+kind: BuiltinWorkflowSkill
+metadata:
+  key: platform.document.pdf-merge
+  displayName: 内置 PDF 合并
+  description: 按输入顺序确定性合并 2-10 个 PDF，并将结果写入受控产物存储
+  owner: platform-document
+  labels:
+    category: artifact
+    domain: document
+    format: pdf
+    operation: merge
+spec:
+  definitionVersion: 1.0.0
+  lifecycle: stable
+  defaultAccess:
+    mode: authenticated
+  planner:
+    enabled: true
+    triggerKeywords:
+      - 合并PDF
+      - 拼接PDF
+      - 多个PDF合成一个
+      - merge pdf
+    matchSummary: 按给定顺序将多个 PDF 合并为一个可下载 PDF
+    runtimeType: artifact
+    supportsArtifact: true
+  contracts:
+    input:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        required: [files]
+        properties:
+          files:
+            type: array
+            minItems: 2
+            maxItems: 10
+            items:
+              type: object
+              additionalProperties: false
+              required: [fileBase64]
+              properties:
+                fileBase64:
+                  type: string
+                  contentEncoding: base64
+                  minLength: 8
+                  maxLength: 13981020
+                fileName:
+                  type: string
+                  maxLength: 255
+          fileName:
+            type: string
+            maxLength: 120
+            default: merged.pdf
+    output:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        x-primary-output: artifact
+        required: [operation, artifact, artifacts, pageCount, inputCount]
+        properties:
+          operation: { type: string, const: merge }
+          artifact:
+            type: object
+            x-value-type: artifact_ref
+            required: [type, name, url, mimeType, metadata]
+            properties:
+              type: { type: string }
+              id: { type: string }
+              name: { type: string }
+              url: { type: string }
+              mimeType: { type: string, const: application/pdf }
+              sizeBytes: { type: number }
+              metadata: { type: object }
+          artifacts:
+            type: array
+            minItems: 1
+          pageCount: { type: integer, minimum: 1, maximum: 200 }
+          inputCount: { type: integer, minimum: 2, maximum: 10 }
+  workflow:
+    engine: domain-handler
+    definitionRef: workflow.json
+  runtime:
+    adapterRoute: builtin:workflow
+    handlerKey: document.pdf.merge
+    idempotency: required
+    timeoutSeconds: 30
+    retryPolicy:
+      maximumAttempts: 2
+  migration:
+    minimumPlatformVersion: 4.0.0
+    contractCompatibility: backward
+  smokeTest:
+    inputRef: fixtures/smoke-input.json
+    assertions:
+      - output.operation equals merge
+      - output.pageCount equals 4
+      - output.artifact.mimeType equals application/pdf
+      - output.artifact.metadata.sha256 exists

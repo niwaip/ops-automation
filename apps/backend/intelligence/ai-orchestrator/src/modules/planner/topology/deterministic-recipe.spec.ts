@@ -65,6 +65,24 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
       },
     } as any,
     {
+      id: 'platform.web.extract',
+      kind: 'skill',
+      displayName: '打开网页获取正文',
+      summary: '打开网页并提取网页正文内容',
+      goals: ['web extract', '网页正文'],
+      inputs: {
+        startUrl: 'string',
+      },
+      outputs: {
+        text: 'string',
+      },
+      primaryOutput: 'text',
+      category: 'workflow',
+      supportsArtifactOutput: false,
+      publishedSkillId: 'platform.web.extract',
+      executableVersion: '1.0.0',
+    } as any,
+    {
       id: 'platform.web_search',
       kind: 'skill',
       displayName: 'Web Search',
@@ -169,7 +187,7 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
 
   it('builds and binds a legacy recipe topology through the LLM parameter recognizer', async () => {
     const userRequest = '搜索最新 AI 新闻，总结并输出 ai-news.md';
-    const matched = matcher.matchRecipe(userRequest, mockSkillCards, mockLlmOpCards);
+    const matched = matcher.matchRecipe(userRequest);
 
     expect(matched).not.toBeNull();
     expect(matched?.recipeName).toBe('search_summarize_write_markdown');
@@ -209,7 +227,7 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
 
   it('uses a deterministic transform recipe for advice grounded in the previous result', async () => {
     const userRequest = '给出穿衣建议';
-    const matched = matcher.matchRecipe(userRequest, mockSkillCards, mockLlmOpCards, {
+    const matched = matcher.matchRecipe(userRequest, {
       hasPreviousResult: true,
     });
 
@@ -244,7 +262,7 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
 
   it('builds PDF extraction followed by text summarization with system-provided bytes', async () => {
     const userRequest = '总结pdf';
-    const matched = matcher.matchRecipe(userRequest, mockSkillCards, mockLlmOpCards);
+    const matched = matcher.matchRecipe(userRequest);
     expect(matched?.recipeName).toBe('document_extract_then_summarize');
 
     const topology = topologyBuilder.buildTopologyFromRecipe(
@@ -272,11 +290,35 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
     expect(bindingResult.requiredUserInputs).toHaveLength(0);
   });
 
-  it('treats an uploaded PDF filename as a request to extract its content', () => {
-    const matched = matcher.matchRecipe(
-      '1.pdf\n[系统上下文：用户已上传 PDF 附件，需要提取 PDF 内容]',
+  it.each([
+    '打开网页 如何总结',
+    '打开网页，总结内容',
+    '浏览这个网站然后帮我归纳',
+  ])('builds a fixed web extraction then summarization recipe: %s', (userRequest) => {
+    const matched = matcher.matchRecipe(userRequest);
+    expect(matched?.recipeName).toBe('web_extract_then_summarize');
+
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
       mockSkillCards,
       mockLlmOpCards
+    );
+
+    expect(topology?.nodes).toEqual([
+      expect.objectContaining({ ref: 'n1', capabilityKey: 'platform.web.extract' }),
+      expect.objectContaining({
+        ref: 'n2',
+        capabilityKey: 'summarize_text',
+        dependsOn: ['n1'],
+      }),
+    ]);
+    expect(topology?.finalNodeRef).toBe('n2');
+    expect(topology?.recipeName).toBe('web_extract_then_summarize');
+  });
+
+  it('treats an uploaded PDF filename as a request to extract its content', () => {
+    const matched = matcher.matchRecipe(
+      '1.pdf\n[系统上下文：用户已上传 PDF 附件]'
     );
     const topology = topologyBuilder.buildTopologyFromRecipe(
       matched!,
@@ -289,9 +331,23 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
     expect(topology?.nodes[0]?.capabilityKey).toBe('platform.document.pdf-content-extractor');
   });
 
+  it('does NOT match document_extract or grounded_text_transform for pdf split or merge requests', () => {
+    const splitMatched = matcher.matchRecipe(
+      '拆分这个pdf\n[系统上下文：用户已上传 PDF 附件]',
+      { hasPreviousResult: true }
+    );
+    expect(splitMatched).toBeNull();
+
+    const mergeMatched = matcher.matchRecipe(
+      '合并这两个pdf文件',
+      { hasPreviousResult: true }
+    );
+    expect(mergeMatched).toBeNull();
+  });
+
   it('generates requiredUserInputs when search query is missing', async () => {
     const userRequest = '帮我总结，并输出 report.md'; // missing search query
-    const matched = matcher.matchRecipe(userRequest, mockSkillCards, mockLlmOpCards);
+    const matched = matcher.matchRecipe(userRequest);
 
     expect(matched?.recipeName).toBe('summarize_then_write_markdown');
 
@@ -316,5 +372,41 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
       path: 'summary',
     });
     expect(bindingResult.planInputs.n2?.fileName).toBe('report.md');
+  });
+
+  it('resolves a renamed summarization operation from its candidate contract', () => {
+    const renamedOperation: CompactCapabilityCardV1 = {
+      ...mockLlmOpCards[0]!,
+      id: 'tenant.list_digest.v2',
+      displayName: '列表内容摘要器',
+      summary: '将列表内容进行总结并输出文本',
+    };
+    const matched = matcher.matchRecipe('搜索 AI 新闻并总结');
+    const topology = topologyBuilder.buildTopologyFromRecipe(matched!, mockSkillCards, [
+      renamedOperation,
+    ]);
+
+    expect(topology?.nodes[1]?.capabilityKey).toBe('tenant.list_digest.v2');
+    expect(topology?.requiresExternalData).toBe(true);
+  });
+
+  it('returns null when recipe capabilities cannot be resolved', () => {
+    const matched = matcher.matchRecipe('搜索 AI 新闻并总结');
+
+    expect(topologyBuilder.buildTopologyFromRecipe(matched!, mockSkillCards, [])).toBeNull();
+  });
+
+  it('derives artifact output from the final node instead of any upstream node', () => {
+    const artifactSearchCards = mockSkillCards.map((card) =>
+      card.id === 'platform.web_search' ? { ...card, supportsArtifactOutput: true } : card
+    );
+    const matched = matcher.matchRecipe('搜索 AI 新闻并总结');
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
+      artifactSearchCards,
+      mockLlmOpCards
+    );
+
+    expect(topology?.finalOutputKind).toBe('value');
   });
 });

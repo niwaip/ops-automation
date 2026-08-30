@@ -33,11 +33,18 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.BROWSER_RECORDING_ROOT_NODE_ID = void 0;
 exports.projectOutputSchemaV1 = projectOutputSchemaV1;
 exports.resolvePrimaryOutputFieldV1 = resolvePrimaryOutputFieldV1;
 exports.canonicalizePlan = canonicalizePlan;
 exports.computePlanHash = computePlanHash;
 const crypto = __importStar(require("crypto"));
+/**
+ * Reserved root node ID for recorder-composite browser plans.  This is a
+ * protocol identifier shared by the compiler, validator, and scheduler rather
+ * than an implementation-local naming convention.
+ */
+exports.BROWSER_RECORDING_ROOT_NODE_ID = 'browser_recording';
 const VALUE_TYPES_V1 = new Set([
     'string',
     'number',
@@ -243,6 +250,9 @@ function canonicalizePlan(plan) {
         objective: plan.objective.trim(),
         nodes: sortedNodes,
         finalOutputs: sortedFinalOutputs,
+        ...(plan.requirements
+            ? { requirements: sortObjectKeys(plan.requirements) }
+            : {}),
     };
 }
 function sortObjectKeys(obj) {

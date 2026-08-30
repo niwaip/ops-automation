@@ -229,6 +229,7 @@ export class PlanGeneratorService {
   toPlanSkillMatch(matchedSkill: SkillMatchResult): PlanSkillMatchDTO {
     return {
       skill_id: matchedSkill.skillId,
+      ...(matchedSkill.skillVersion ? { skill_version: matchedSkill.skillVersion } : {}),
       skill_name: matchedSkill.skillName,
       confidence: matchedSkill.confidence,
       match_reason: matchedSkill.matchReason,

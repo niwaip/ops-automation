@@ -50,4 +50,34 @@ describe('PdfContentExtractorService', () => {
       PayloadTooLargeException
     );
   });
+
+  it('extracts text from docx files when provided', async () => {
+    // A minimal valid docx buffer created with zip / mammoth
+    const JSZip = require('jszip');
+    const zip = new JSZip();
+    zip.file('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+    zip.file('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+    zip.file('word/document.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Hello DOCX Content</w:t></w:r></w:p></w:body></w:document>');
+    const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+
+    const result = await service.extract({
+      fileBase64: buffer.toString('base64'),
+      fileName: '1234.docx',
+    });
+
+    expect(result.text).toContain('Hello DOCX Content');
+    expect(result.extraction.format).toBe('docx');
+  });
+
+  it('extracts text from markdown files when provided', async () => {
+    const mdContent = '# Chapter 1\n\nThis is a unique markdown content.';
+    const result = await service.extract({
+      fileBase64: Buffer.from(mdContent, 'utf8').toString('base64'),
+      fileName: '03-spell-unique.md',
+    });
+
+    expect(result.text).toBe(mdContent);
+    expect(result.extraction.format).toBe('text');
+    expect(result.metadata.format).toBe('md');
+  });
 });

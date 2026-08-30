@@ -14,6 +14,8 @@ import { IdentityAccessBridgeModule } from './governance/identity-access/identit
 import { OrganizationBridgeModule } from './governance/organization/organization-bridge.module';
 
 import { BuiltinSkillModule } from './modules/builtin-skill/builtin-skill.module';
+import { SystemBackupModule } from './modules/system-backup/system-backup.module';
+import { ImChannelModule } from './modules/im-channel/im-channel.module';
 
 @Module({
   imports: [
@@ -45,6 +47,8 @@ import { BuiltinSkillModule } from './modules/builtin-skill/builtin-skill.module
     TemporalWorkflowModule,
     ReleaseManagerRuntimeAdapterModule,
     CapabilityReleaseModule,
+    SystemBackupModule,
+    ImChannelModule,
   ],
   providers: [
     // Global JWT guard - applied to all routes by default

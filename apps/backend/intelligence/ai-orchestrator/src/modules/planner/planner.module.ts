@@ -32,6 +32,7 @@ import { DeterministicTopologyValidatorService } from './topology/deterministic-
 import { DeterministicRecipeMatcherService } from './topology/deterministic-recipe-matcher.service';
 import { DeterministicRecipeTopologyBuilderService } from './topology/deterministic-recipe-topology-builder.service';
 import { ExplicitSkillIntentService } from './topology/explicit-skill-intent.service';
+import { UserHabitRouterService } from './habit/user-habit-router.service';
 
 import { DeterministicPlanPresentationService } from './params/deterministic-plan-presentation.service';
 import {
@@ -77,6 +78,7 @@ import { WorkflowAuthoringService } from './workflow-authoring/workflow-authorin
     DisabledSemanticCandidateRetriever,
     DisabledCandidateReranker,
     WorkflowAuthoringService,
+    UserHabitRouterService,
   ],
   exports: [
     PlannerService,
@@ -95,6 +97,7 @@ import { WorkflowAuthoringService } from './workflow-authoring/workflow-authorin
     DisabledSemanticCandidateRetriever,
     DisabledCandidateReranker,
     WorkflowAuthoringService,
+    UserHabitRouterService,
   ],
 })
 export class PlannerModule {}

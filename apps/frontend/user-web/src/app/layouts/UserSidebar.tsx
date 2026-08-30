@@ -1,4 +1,10 @@
-import { DashboardOutlined, MessageOutlined, OrderedListOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import {
+  DashboardOutlined,
+  MessageOutlined,
+  OrderedListOutlined,
+  SettingOutlined,
+  ThunderboltOutlined,
+} from '@ant-design/icons';
 import { Layout, Menu } from 'antd';
 import type { MenuProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
@@ -31,7 +37,12 @@ export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
     { key: '/dashboard', icon: <DashboardOutlined />, label: t('menu.dashboard', '工作台') },
     { key: '/chat', icon: <MessageOutlined />, label: t('menu.chat', 'AI 对话') },
     { key: '/executions', icon: <OrderedListOutlined />, label: t('menu.executions', '执行列表') },
-    { key: '/published-skills', icon: <ThunderboltOutlined />, label: t('menu.published_skills', '已发布技能') },
+    {
+      key: '/published-skills',
+      icon: <ThunderboltOutlined />,
+      label: t('menu.published_skills', '已发布技能'),
+    },
+    { key: '/im-channels', icon: <SettingOutlined />, label: t('menu.im_channels', 'IM 渠道') },
   ] satisfies Required<MenuProps>['items'];
 
   return (

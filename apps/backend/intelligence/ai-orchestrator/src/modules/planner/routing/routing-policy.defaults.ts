@@ -22,6 +22,11 @@ export const BUILTIN_ROUTING_POLICY: Omit<RoutingPolicySnapshotV1, 'digest'> = {
       '通知',
       '发送',
       'bark',
+      '拆分',
+      '拆页',
+      '分割',
+      '合并',
+      '拼接',
     ],
     generation: [
       '建议',
@@ -46,6 +51,7 @@ export const BUILTIN_ROUTING_POLICY: Omit<RoutingPolicySnapshotV1, 'digest'> = {
       'brainstorm',
     ],
     documentSource: ['pdf', '附件'],
+    webSource: ['网页', '网站', 'url', 'http'],
     artifact: [
       '输出 md',
       '输出md',
@@ -61,6 +67,16 @@ export const BUILTIN_ROUTING_POLICY: Omit<RoutingPolicySnapshotV1, 'digest'> = {
       '导出',
       '写到文件',
       '输出为',
+      '生成 pdf',
+      '生成pdf',
+      '输出 pdf',
+      '输出pdf',
+      '导出 pdf',
+      '导出pdf',
+      '导出为 pdf',
+      '导出为pdf',
+      'pdf 文件',
+      'pdf文件',
     ],
     search: [
       '搜索',
@@ -91,6 +107,7 @@ export const BUILTIN_ROUTING_POLICY: Omit<RoutingPolicySnapshotV1, 'digest'> = {
     search: ['search', '搜索'],
     markdownWriter: ['markdown', '写'],
     documentExtractor: ['content-extractor', 'pdf', '内容提取'],
+    webExtractor: ['打开网页', '网页正文', '网页内容', 'web extract', 'browser extract'],
   },
   intentNormalization: {
     equivalences: [

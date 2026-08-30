@@ -11,7 +11,7 @@ import type { Prisma } from '../../prisma/client';
 import { buildSystemEvalFixtures } from './system-operation-eval-fixtures';
 import { SYSTEM_OPERATION_DEFINITIONS } from '../system-operation-definitions';
 
-export const SYSTEM_OPERATION_VERSION = '1.0.18';
+export const SYSTEM_OPERATION_VERSION = '1.0.27';
 
 export async function seedSystemLlmOperations(
   prisma: PrismaService,

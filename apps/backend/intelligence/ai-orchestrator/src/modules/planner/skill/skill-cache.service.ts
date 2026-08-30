@@ -583,8 +583,10 @@ export class SkillCacheService {
   }
 
   private buildRequestHeaders(authToken?: string, traceId?: string): Record<string, string> {
+    const internalSecret = process.env.INTERNAL_API_SHARED_SECRET;
     return {
       ...(authToken ? { Authorization: authToken } : {}),
+      ...(internalSecret ? { 'X-Internal-Auth': internalSecret } : {}),
       ...(traceId ? { [TRACE_ID_HEADER]: traceId } : {}),
     };
   }

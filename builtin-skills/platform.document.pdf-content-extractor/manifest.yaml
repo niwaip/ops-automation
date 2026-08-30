@@ -107,7 +107,7 @@ spec:
             additionalProperties: false
             required: [format, method, ocrUsed]
             properties:
-              format: { type: string, const: pdf }
+              format: { type: string, enum: [pdf, docx, text] }
               method: { type: string, const: embedded_text }
               ocrUsed: { type: boolean, const: false }
   workflow:

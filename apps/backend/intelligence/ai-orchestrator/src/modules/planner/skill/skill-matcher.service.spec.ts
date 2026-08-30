@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 import { SkillMatcherService } from './skill-matcher.service';
 
 jest.mock('axios');
@@ -14,6 +14,7 @@ describe('SkillMatcherService deterministic explicit routing', () => {
       availableSkills: [
         {
           skillId: 'skill-bark',
+          executableVersion: '2.1.0',
           skillName: 'Bark推送服务',
           description: '向用户设备推送消息',
           triggerKeywords: ['bark', '推送'],
@@ -37,6 +38,7 @@ describe('SkillMatcherService deterministic explicit routing', () => {
     expect(result).toEqual(
       expect.objectContaining({
         skillId: 'skill-bark',
+        skillVersion: '2.1.0',
         confidence: 0.99,
         matchReason: 'deterministic_routing_signal',
       })
@@ -71,7 +73,7 @@ describe('SkillMatcherService deterministic explicit routing', () => {
 
   it('preserves provider unavailability as a retryable match outcome', async () => {
     const service = new SkillMatcherService({} as any);
-    (axios.isAxiosError as unknown as jest.Mock).mockReturnValueOnce(true);
+    (isAxiosError as unknown as jest.Mock).mockReturnValueOnce(true);
     (axios.post as jest.Mock).mockRejectedValueOnce({
       isAxiosError: true,
       response: {

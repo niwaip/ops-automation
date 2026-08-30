@@ -16,7 +16,7 @@ export class DeterministicTopologyValidatorService {
     topology: unknown,
     aliasMap: Map<string, CompactCapabilityCardV1>,
     explicitlyRequestedSkills: CompactCapabilityCardV1[] = [],
-    options?: { allowOperationOnly?: boolean },
+    options?: { allowOperationOnly?: boolean }
   ): TopologyValidationResult {
     const errors: string[] = [];
 
@@ -27,7 +27,9 @@ export class DeterministicTopologyValidatorService {
     const draft = topology as Partial<DeterministicTopologyDraftV1>;
 
     if (draft.schemaVersion !== 'deterministic-topology/v1') {
-      errors.push(`Invalid schemaVersion: expected 'deterministic-topology/v1', got '${draft.schemaVersion}'`);
+      errors.push(
+        `Invalid schemaVersion: expected 'deterministic-topology/v1', got '${draft.schemaVersion}'`
+      );
     }
 
     if (draft.matchDecision !== 'matched' && draft.matchDecision !== 'no_match') {
@@ -92,7 +94,9 @@ export class DeterministicTopologyValidatorService {
       if (Array.isArray(node.dependsOn)) {
         for (const depRef of node.dependsOn) {
           if (!seenRefs.has(depRef) || depRef === node.ref) {
-            errors.push(`Node '${node.ref}' dependsOn invalid or forward/self reference '${depRef}'`);
+            errors.push(
+              `Node '${node.ref}' dependsOn invalid or forward/self reference '${depRef}'`
+            );
           }
         }
       }
@@ -105,9 +109,7 @@ export class DeterministicTopologyValidatorService {
       (node) => aliasMap.get(node.capabilityKey)?.kind === 'llm_operation'
     ).length;
     if (llmOperationNodeCount > 3) {
-      errors.push(
-        `LLM operation node count exceeds maximum 3 (got ${llmOperationNodeCount})`
-      );
+      errors.push(`LLM operation node count exceeds maximum 3 (got ${llmOperationNodeCount})`);
     }
     if (!hasSkillNode && options?.allowOperationOnly !== true) {
       errors.push('Operation-only topology is not allowed in this planning context');
@@ -119,7 +121,7 @@ export class DeterministicTopologyValidatorService {
         return card?.kind === 'skill'
           ? [card.id, card.publishedSkillId].filter((id): id is string => Boolean(id))
           : [];
-      }),
+      })
     );
     for (const requiredSkill of explicitlyRequestedSkills) {
       const covered = [requiredSkill.id, requiredSkill.publishedSkillId]
@@ -127,13 +129,19 @@ export class DeterministicTopologyValidatorService {
         .some((id) => selectedSkillIds.has(id));
       if (!covered) {
         errors.push(
-          `Topology does not cover explicitly requested Skill '${requiredSkill.displayName || requiredSkill.id}'`,
+          `Topology does not cover explicitly requested Skill '${requiredSkill.displayName || requiredSkill.id}'`
         );
       }
     }
 
     if (draft.finalOutputKind !== 'value' && draft.finalOutputKind !== 'artifact') {
       errors.push(`Invalid finalOutputKind '${draft.finalOutputKind}'`);
+    }
+    if (
+      draft.requiresExternalData !== undefined &&
+      typeof draft.requiresExternalData !== 'boolean'
+    ) {
+      errors.push(`Invalid requiresExternalData '${draft.requiresExternalData}'`);
     }
 
     if (!draft.finalNodeRef || typeof draft.finalNodeRef !== 'string') {
@@ -144,7 +152,9 @@ export class DeterministicTopologyValidatorService {
       const finalNode = draft.nodes.find((n) => n.ref === draft.finalNodeRef);
       const finalCard = aliasMap.get(finalNode?.capabilityKey || '');
       if (finalCard && !finalCard.supportsArtifactOutput) {
-        errors.push(`User requested artifact output, but final node '${draft.finalNodeRef}' (${finalCard.displayName}) does not support artifact output`);
+        errors.push(
+          `User requested artifact output, but final node '${draft.finalNodeRef}' (${finalCard.displayName}) does not support artifact output`
+        );
       }
     }
 

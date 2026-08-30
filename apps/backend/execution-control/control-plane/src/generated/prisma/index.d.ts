@@ -19,6 +19,11 @@ export type PrismaPromise<T> = $Public.PrismaPromise<T>
  */
 export type User = $Result.DefaultSelection<Prisma.$UserPayload>
 /**
+ * Model ImChannelConnection
+ * 
+ */
+export type ImChannelConnection = $Result.DefaultSelection<Prisma.$ImChannelConnectionPayload>
+/**
  * Model Role
  * 
  */
@@ -214,6 +219,36 @@ export type RoutingObservation = $Result.DefaultSelection<Prisma.$RoutingObserva
  */
 export type PlanningDecision = $Result.DefaultSelection<Prisma.$PlanningDecisionPayload>
 /**
+ * Model TaskPolicySet
+ * 
+ */
+export type TaskPolicySet = $Result.DefaultSelection<Prisma.$TaskPolicySetPayload>
+/**
+ * Model TaskCommandAlias
+ * 
+ */
+export type TaskCommandAlias = $Result.DefaultSelection<Prisma.$TaskCommandAliasPayload>
+/**
+ * Model TaskRecipe
+ * 
+ */
+export type TaskRecipe = $Result.DefaultSelection<Prisma.$TaskRecipePayload>
+/**
+ * Model TaskCapabilityBinding
+ * 
+ */
+export type TaskCapabilityBinding = $Result.DefaultSelection<Prisma.$TaskCapabilityBindingPayload>
+/**
+ * Model TaskPolicyProposal
+ * 
+ */
+export type TaskPolicyProposal = $Result.DefaultSelection<Prisma.$TaskPolicyProposalPayload>
+/**
+ * Model TaskPolicyAuditLog
+ * 
+ */
+export type TaskPolicyAuditLog = $Result.DefaultSelection<Prisma.$TaskPolicyAuditLogPayload>
+/**
  * Model PromptSnapshot
  * 
  */
@@ -357,6 +392,35 @@ export namespace $Enums {
 export type UserRoleType = (typeof UserRoleType)[keyof typeof UserRoleType]
 
 
+export const ImChannelType: {
+  wechat: 'wechat'
+};
+
+export type ImChannelType = (typeof ImChannelType)[keyof typeof ImChannelType]
+
+
+export const ImConnectionStatus: {
+  unconfigured: 'unconfigured',
+  provisioning: 'provisioning',
+  disabled: 'disabled',
+  connecting: 'connecting',
+  online: 'online',
+  reauth_required: 'reauth_required',
+  error: 'error'
+};
+
+export type ImConnectionStatus = (typeof ImConnectionStatus)[keyof typeof ImConnectionStatus]
+
+
+export const ImInteractionMode: {
+  auto: 'auto',
+  chat: 'chat',
+  task: 'task'
+};
+
+export type ImInteractionMode = (typeof ImInteractionMode)[keyof typeof ImInteractionMode]
+
+
 export const OrganizationType: {
   enterprise: 'enterprise',
   subsidiary: 'subsidiary',
@@ -389,6 +453,18 @@ export type IdentityProviderType = (typeof IdentityProviderType)[keyof typeof Id
 export type UserRoleType = $Enums.UserRoleType
 
 export const UserRoleType: typeof $Enums.UserRoleType
+
+export type ImChannelType = $Enums.ImChannelType
+
+export const ImChannelType: typeof $Enums.ImChannelType
+
+export type ImConnectionStatus = $Enums.ImConnectionStatus
+
+export const ImConnectionStatus: typeof $Enums.ImConnectionStatus
+
+export type ImInteractionMode = $Enums.ImInteractionMode
+
+export const ImInteractionMode: typeof $Enums.ImInteractionMode
 
 export type OrganizationType = $Enums.OrganizationType
 
@@ -534,6 +610,16 @@ export class PrismaClient<
     * ```
     */
   get user(): Prisma.UserDelegate<ExtArgs>;
+
+  /**
+   * `prisma.imChannelConnection`: Exposes CRUD operations for the **ImChannelConnection** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more ImChannelConnections
+    * const imChannelConnections = await prisma.imChannelConnection.findMany()
+    * ```
+    */
+  get imChannelConnection(): Prisma.ImChannelConnectionDelegate<ExtArgs>;
 
   /**
    * `prisma.role`: Exposes CRUD operations for the **Role** model.
@@ -924,6 +1010,66 @@ export class PrismaClient<
     * ```
     */
   get planningDecision(): Prisma.PlanningDecisionDelegate<ExtArgs>;
+
+  /**
+   * `prisma.taskPolicySet`: Exposes CRUD operations for the **TaskPolicySet** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more TaskPolicySets
+    * const taskPolicySets = await prisma.taskPolicySet.findMany()
+    * ```
+    */
+  get taskPolicySet(): Prisma.TaskPolicySetDelegate<ExtArgs>;
+
+  /**
+   * `prisma.taskCommandAlias`: Exposes CRUD operations for the **TaskCommandAlias** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more TaskCommandAliases
+    * const taskCommandAliases = await prisma.taskCommandAlias.findMany()
+    * ```
+    */
+  get taskCommandAlias(): Prisma.TaskCommandAliasDelegate<ExtArgs>;
+
+  /**
+   * `prisma.taskRecipe`: Exposes CRUD operations for the **TaskRecipe** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more TaskRecipes
+    * const taskRecipes = await prisma.taskRecipe.findMany()
+    * ```
+    */
+  get taskRecipe(): Prisma.TaskRecipeDelegate<ExtArgs>;
+
+  /**
+   * `prisma.taskCapabilityBinding`: Exposes CRUD operations for the **TaskCapabilityBinding** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more TaskCapabilityBindings
+    * const taskCapabilityBindings = await prisma.taskCapabilityBinding.findMany()
+    * ```
+    */
+  get taskCapabilityBinding(): Prisma.TaskCapabilityBindingDelegate<ExtArgs>;
+
+  /**
+   * `prisma.taskPolicyProposal`: Exposes CRUD operations for the **TaskPolicyProposal** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more TaskPolicyProposals
+    * const taskPolicyProposals = await prisma.taskPolicyProposal.findMany()
+    * ```
+    */
+  get taskPolicyProposal(): Prisma.TaskPolicyProposalDelegate<ExtArgs>;
+
+  /**
+   * `prisma.taskPolicyAuditLog`: Exposes CRUD operations for the **TaskPolicyAuditLog** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more TaskPolicyAuditLogs
+    * const taskPolicyAuditLogs = await prisma.taskPolicyAuditLog.findMany()
+    * ```
+    */
+  get taskPolicyAuditLog(): Prisma.TaskPolicyAuditLogDelegate<ExtArgs>;
 
   /**
    * `prisma.promptSnapshot`: Exposes CRUD operations for the **PromptSnapshot** model.
@@ -1626,6 +1772,7 @@ export namespace Prisma {
 
   export const ModelName: {
     User: 'User',
+    ImChannelConnection: 'ImChannelConnection',
     Role: 'Role',
     UserRole: 'UserRole',
     Organization: 'Organization',
@@ -1665,6 +1812,12 @@ export namespace Prisma {
     AssistantFeedbackCurrent: 'AssistantFeedbackCurrent',
     RoutingObservation: 'RoutingObservation',
     PlanningDecision: 'PlanningDecision',
+    TaskPolicySet: 'TaskPolicySet',
+    TaskCommandAlias: 'TaskCommandAlias',
+    TaskRecipe: 'TaskRecipe',
+    TaskCapabilityBinding: 'TaskCapabilityBinding',
+    TaskPolicyProposal: 'TaskPolicyProposal',
+    TaskPolicyAuditLog: 'TaskPolicyAuditLog',
     PromptSnapshot: 'PromptSnapshot',
     LlmUsageLedger: 'LlmUsageLedger',
     ExecutionOutbox: 'ExecutionOutbox',
@@ -1706,7 +1859,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "user" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionResultRef" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "userSavedSkill" | "userWorkflowAlias" | "userSavedSkillVersion" | "assistantFeedbackEvent" | "assistantFeedbackCurrent" | "routingObservation" | "planningDecision" | "promptSnapshot" | "llmUsageLedger" | "executionOutbox" | "scheduleFire" | "habitLearningRun" | "userHabitCandidate" | "userHabit" | "userPersonalizationPreference" | "scopedMemory" | "candidateRecipe" | "candidateRecipeEvaluation" | "habitGovernanceAudit" | "builtinSkill" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent"
+      modelProps: "user" | "imChannelConnection" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionResultRef" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "userSavedSkill" | "userWorkflowAlias" | "userSavedSkillVersion" | "assistantFeedbackEvent" | "assistantFeedbackCurrent" | "routingObservation" | "planningDecision" | "taskPolicySet" | "taskCommandAlias" | "taskRecipe" | "taskCapabilityBinding" | "taskPolicyProposal" | "taskPolicyAuditLog" | "promptSnapshot" | "llmUsageLedger" | "executionOutbox" | "scheduleFire" | "habitLearningRun" | "userHabitCandidate" | "userHabit" | "userPersonalizationPreference" | "scopedMemory" | "candidateRecipe" | "candidateRecipeEvaluation" | "habitGovernanceAudit" | "builtinSkill" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1777,6 +1930,76 @@ export namespace Prisma {
           count: {
             args: Prisma.UserCountArgs<ExtArgs>
             result: $Utils.Optional<UserCountAggregateOutputType> | number
+          }
+        }
+      }
+      ImChannelConnection: {
+        payload: Prisma.$ImChannelConnectionPayload<ExtArgs>
+        fields: Prisma.ImChannelConnectionFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.ImChannelConnectionFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.ImChannelConnectionFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload>
+          }
+          findFirst: {
+            args: Prisma.ImChannelConnectionFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.ImChannelConnectionFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload>
+          }
+          findMany: {
+            args: Prisma.ImChannelConnectionFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload>[]
+          }
+          create: {
+            args: Prisma.ImChannelConnectionCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload>
+          }
+          createMany: {
+            args: Prisma.ImChannelConnectionCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.ImChannelConnectionCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload>[]
+          }
+          delete: {
+            args: Prisma.ImChannelConnectionDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload>
+          }
+          update: {
+            args: Prisma.ImChannelConnectionUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload>
+          }
+          deleteMany: {
+            args: Prisma.ImChannelConnectionDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.ImChannelConnectionUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.ImChannelConnectionUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImChannelConnectionPayload>
+          }
+          aggregate: {
+            args: Prisma.ImChannelConnectionAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateImChannelConnection>
+          }
+          groupBy: {
+            args: Prisma.ImChannelConnectionGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ImChannelConnectionGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.ImChannelConnectionCountArgs<ExtArgs>
+            result: $Utils.Optional<ImChannelConnectionCountAggregateOutputType> | number
           }
         }
       }
@@ -4510,6 +4733,426 @@ export namespace Prisma {
           }
         }
       }
+      TaskPolicySet: {
+        payload: Prisma.$TaskPolicySetPayload<ExtArgs>
+        fields: Prisma.TaskPolicySetFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.TaskPolicySetFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicySetPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.TaskPolicySetFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicySetPayload>
+          }
+          findFirst: {
+            args: Prisma.TaskPolicySetFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicySetPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.TaskPolicySetFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicySetPayload>
+          }
+          findMany: {
+            args: Prisma.TaskPolicySetFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicySetPayload>[]
+          }
+          create: {
+            args: Prisma.TaskPolicySetCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicySetPayload>
+          }
+          createMany: {
+            args: Prisma.TaskPolicySetCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.TaskPolicySetCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicySetPayload>[]
+          }
+          delete: {
+            args: Prisma.TaskPolicySetDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicySetPayload>
+          }
+          update: {
+            args: Prisma.TaskPolicySetUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicySetPayload>
+          }
+          deleteMany: {
+            args: Prisma.TaskPolicySetDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.TaskPolicySetUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.TaskPolicySetUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicySetPayload>
+          }
+          aggregate: {
+            args: Prisma.TaskPolicySetAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateTaskPolicySet>
+          }
+          groupBy: {
+            args: Prisma.TaskPolicySetGroupByArgs<ExtArgs>
+            result: $Utils.Optional<TaskPolicySetGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.TaskPolicySetCountArgs<ExtArgs>
+            result: $Utils.Optional<TaskPolicySetCountAggregateOutputType> | number
+          }
+        }
+      }
+      TaskCommandAlias: {
+        payload: Prisma.$TaskCommandAliasPayload<ExtArgs>
+        fields: Prisma.TaskCommandAliasFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.TaskCommandAliasFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCommandAliasPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.TaskCommandAliasFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCommandAliasPayload>
+          }
+          findFirst: {
+            args: Prisma.TaskCommandAliasFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCommandAliasPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.TaskCommandAliasFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCommandAliasPayload>
+          }
+          findMany: {
+            args: Prisma.TaskCommandAliasFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCommandAliasPayload>[]
+          }
+          create: {
+            args: Prisma.TaskCommandAliasCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCommandAliasPayload>
+          }
+          createMany: {
+            args: Prisma.TaskCommandAliasCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.TaskCommandAliasCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCommandAliasPayload>[]
+          }
+          delete: {
+            args: Prisma.TaskCommandAliasDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCommandAliasPayload>
+          }
+          update: {
+            args: Prisma.TaskCommandAliasUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCommandAliasPayload>
+          }
+          deleteMany: {
+            args: Prisma.TaskCommandAliasDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.TaskCommandAliasUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.TaskCommandAliasUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCommandAliasPayload>
+          }
+          aggregate: {
+            args: Prisma.TaskCommandAliasAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateTaskCommandAlias>
+          }
+          groupBy: {
+            args: Prisma.TaskCommandAliasGroupByArgs<ExtArgs>
+            result: $Utils.Optional<TaskCommandAliasGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.TaskCommandAliasCountArgs<ExtArgs>
+            result: $Utils.Optional<TaskCommandAliasCountAggregateOutputType> | number
+          }
+        }
+      }
+      TaskRecipe: {
+        payload: Prisma.$TaskRecipePayload<ExtArgs>
+        fields: Prisma.TaskRecipeFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.TaskRecipeFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskRecipePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.TaskRecipeFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskRecipePayload>
+          }
+          findFirst: {
+            args: Prisma.TaskRecipeFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskRecipePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.TaskRecipeFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskRecipePayload>
+          }
+          findMany: {
+            args: Prisma.TaskRecipeFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskRecipePayload>[]
+          }
+          create: {
+            args: Prisma.TaskRecipeCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskRecipePayload>
+          }
+          createMany: {
+            args: Prisma.TaskRecipeCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.TaskRecipeCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskRecipePayload>[]
+          }
+          delete: {
+            args: Prisma.TaskRecipeDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskRecipePayload>
+          }
+          update: {
+            args: Prisma.TaskRecipeUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskRecipePayload>
+          }
+          deleteMany: {
+            args: Prisma.TaskRecipeDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.TaskRecipeUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.TaskRecipeUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskRecipePayload>
+          }
+          aggregate: {
+            args: Prisma.TaskRecipeAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateTaskRecipe>
+          }
+          groupBy: {
+            args: Prisma.TaskRecipeGroupByArgs<ExtArgs>
+            result: $Utils.Optional<TaskRecipeGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.TaskRecipeCountArgs<ExtArgs>
+            result: $Utils.Optional<TaskRecipeCountAggregateOutputType> | number
+          }
+        }
+      }
+      TaskCapabilityBinding: {
+        payload: Prisma.$TaskCapabilityBindingPayload<ExtArgs>
+        fields: Prisma.TaskCapabilityBindingFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.TaskCapabilityBindingFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCapabilityBindingPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.TaskCapabilityBindingFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCapabilityBindingPayload>
+          }
+          findFirst: {
+            args: Prisma.TaskCapabilityBindingFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCapabilityBindingPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.TaskCapabilityBindingFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCapabilityBindingPayload>
+          }
+          findMany: {
+            args: Prisma.TaskCapabilityBindingFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCapabilityBindingPayload>[]
+          }
+          create: {
+            args: Prisma.TaskCapabilityBindingCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCapabilityBindingPayload>
+          }
+          createMany: {
+            args: Prisma.TaskCapabilityBindingCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.TaskCapabilityBindingCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCapabilityBindingPayload>[]
+          }
+          delete: {
+            args: Prisma.TaskCapabilityBindingDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCapabilityBindingPayload>
+          }
+          update: {
+            args: Prisma.TaskCapabilityBindingUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCapabilityBindingPayload>
+          }
+          deleteMany: {
+            args: Prisma.TaskCapabilityBindingDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.TaskCapabilityBindingUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.TaskCapabilityBindingUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCapabilityBindingPayload>
+          }
+          aggregate: {
+            args: Prisma.TaskCapabilityBindingAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateTaskCapabilityBinding>
+          }
+          groupBy: {
+            args: Prisma.TaskCapabilityBindingGroupByArgs<ExtArgs>
+            result: $Utils.Optional<TaskCapabilityBindingGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.TaskCapabilityBindingCountArgs<ExtArgs>
+            result: $Utils.Optional<TaskCapabilityBindingCountAggregateOutputType> | number
+          }
+        }
+      }
+      TaskPolicyProposal: {
+        payload: Prisma.$TaskPolicyProposalPayload<ExtArgs>
+        fields: Prisma.TaskPolicyProposalFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.TaskPolicyProposalFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyProposalPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.TaskPolicyProposalFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyProposalPayload>
+          }
+          findFirst: {
+            args: Prisma.TaskPolicyProposalFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyProposalPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.TaskPolicyProposalFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyProposalPayload>
+          }
+          findMany: {
+            args: Prisma.TaskPolicyProposalFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyProposalPayload>[]
+          }
+          create: {
+            args: Prisma.TaskPolicyProposalCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyProposalPayload>
+          }
+          createMany: {
+            args: Prisma.TaskPolicyProposalCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.TaskPolicyProposalCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyProposalPayload>[]
+          }
+          delete: {
+            args: Prisma.TaskPolicyProposalDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyProposalPayload>
+          }
+          update: {
+            args: Prisma.TaskPolicyProposalUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyProposalPayload>
+          }
+          deleteMany: {
+            args: Prisma.TaskPolicyProposalDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.TaskPolicyProposalUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.TaskPolicyProposalUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyProposalPayload>
+          }
+          aggregate: {
+            args: Prisma.TaskPolicyProposalAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateTaskPolicyProposal>
+          }
+          groupBy: {
+            args: Prisma.TaskPolicyProposalGroupByArgs<ExtArgs>
+            result: $Utils.Optional<TaskPolicyProposalGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.TaskPolicyProposalCountArgs<ExtArgs>
+            result: $Utils.Optional<TaskPolicyProposalCountAggregateOutputType> | number
+          }
+        }
+      }
+      TaskPolicyAuditLog: {
+        payload: Prisma.$TaskPolicyAuditLogPayload<ExtArgs>
+        fields: Prisma.TaskPolicyAuditLogFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.TaskPolicyAuditLogFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyAuditLogPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.TaskPolicyAuditLogFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyAuditLogPayload>
+          }
+          findFirst: {
+            args: Prisma.TaskPolicyAuditLogFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyAuditLogPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.TaskPolicyAuditLogFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyAuditLogPayload>
+          }
+          findMany: {
+            args: Prisma.TaskPolicyAuditLogFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyAuditLogPayload>[]
+          }
+          create: {
+            args: Prisma.TaskPolicyAuditLogCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyAuditLogPayload>
+          }
+          createMany: {
+            args: Prisma.TaskPolicyAuditLogCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.TaskPolicyAuditLogCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyAuditLogPayload>[]
+          }
+          delete: {
+            args: Prisma.TaskPolicyAuditLogDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyAuditLogPayload>
+          }
+          update: {
+            args: Prisma.TaskPolicyAuditLogUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyAuditLogPayload>
+          }
+          deleteMany: {
+            args: Prisma.TaskPolicyAuditLogDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.TaskPolicyAuditLogUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.TaskPolicyAuditLogUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskPolicyAuditLogPayload>
+          }
+          aggregate: {
+            args: Prisma.TaskPolicyAuditLogAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateTaskPolicyAuditLog>
+          }
+          groupBy: {
+            args: Prisma.TaskPolicyAuditLogGroupByArgs<ExtArgs>
+            result: $Utils.Optional<TaskPolicyAuditLogGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.TaskPolicyAuditLogCountArgs<ExtArgs>
+            result: $Utils.Optional<TaskPolicyAuditLogCountAggregateOutputType> | number
+          }
+        }
+      }
       PromptSnapshot: {
         payload: Prisma.$PromptSnapshotPayload<ExtArgs>
         fields: Prisma.PromptSnapshotFieldRefs
@@ -6496,6 +7139,7 @@ export namespace Prisma {
     orgMemberships: number
     assignedOrgRoles: number
     chatSessions: number
+    imChannelConnections: number
     skillAccessRequests: number
     processedSkillAccessRequests: number
   }
@@ -6506,6 +7150,7 @@ export namespace Prisma {
     orgMemberships?: boolean | UserCountOutputTypeCountOrgMembershipsArgs
     assignedOrgRoles?: boolean | UserCountOutputTypeCountAssignedOrgRolesArgs
     chatSessions?: boolean | UserCountOutputTypeCountChatSessionsArgs
+    imChannelConnections?: boolean | UserCountOutputTypeCountImChannelConnectionsArgs
     skillAccessRequests?: boolean | UserCountOutputTypeCountSkillAccessRequestsArgs
     processedSkillAccessRequests?: boolean | UserCountOutputTypeCountProcessedSkillAccessRequestsArgs
   }
@@ -6554,6 +7199,13 @@ export namespace Prisma {
    */
   export type UserCountOutputTypeCountChatSessionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: ChatSessionWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountImChannelConnectionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ImChannelConnectionWhereInput
   }
 
   /**
@@ -7062,6 +7714,73 @@ export namespace Prisma {
 
 
   /**
+   * Count Type TaskPolicySetCountOutputType
+   */
+
+  export type TaskPolicySetCountOutputType = {
+    aliases: number
+    recipes: number
+    bindings: number
+    proposals: number
+    auditLogs: number
+  }
+
+  export type TaskPolicySetCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    aliases?: boolean | TaskPolicySetCountOutputTypeCountAliasesArgs
+    recipes?: boolean | TaskPolicySetCountOutputTypeCountRecipesArgs
+    bindings?: boolean | TaskPolicySetCountOutputTypeCountBindingsArgs
+    proposals?: boolean | TaskPolicySetCountOutputTypeCountProposalsArgs
+    auditLogs?: boolean | TaskPolicySetCountOutputTypeCountAuditLogsArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * TaskPolicySetCountOutputType without action
+   */
+  export type TaskPolicySetCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicySetCountOutputType
+     */
+    select?: TaskPolicySetCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * TaskPolicySetCountOutputType without action
+   */
+  export type TaskPolicySetCountOutputTypeCountAliasesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TaskCommandAliasWhereInput
+  }
+
+  /**
+   * TaskPolicySetCountOutputType without action
+   */
+  export type TaskPolicySetCountOutputTypeCountRecipesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TaskRecipeWhereInput
+  }
+
+  /**
+   * TaskPolicySetCountOutputType without action
+   */
+  export type TaskPolicySetCountOutputTypeCountBindingsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TaskCapabilityBindingWhereInput
+  }
+
+  /**
+   * TaskPolicySetCountOutputType without action
+   */
+  export type TaskPolicySetCountOutputTypeCountProposalsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TaskPolicyProposalWhereInput
+  }
+
+  /**
+   * TaskPolicySetCountOutputType without action
+   */
+  export type TaskPolicySetCountOutputTypeCountAuditLogsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TaskPolicyAuditLogWhereInput
+  }
+
+
+  /**
    * Count Type BuiltinSkillCountOutputType
    */
 
@@ -7379,6 +8098,7 @@ export namespace Prisma {
     assignedOrgRoles?: boolean | User$assignedOrgRolesArgs<ExtArgs>
     activeOrg?: boolean | User$activeOrgArgs<ExtArgs>
     chatSessions?: boolean | User$chatSessionsArgs<ExtArgs>
+    imChannelConnections?: boolean | User$imChannelConnectionsArgs<ExtArgs>
     skillAccessRequests?: boolean | User$skillAccessRequestsArgs<ExtArgs>
     processedSkillAccessRequests?: boolean | User$processedSkillAccessRequestsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
@@ -7424,6 +8144,7 @@ export namespace Prisma {
     assignedOrgRoles?: boolean | User$assignedOrgRolesArgs<ExtArgs>
     activeOrg?: boolean | User$activeOrgArgs<ExtArgs>
     chatSessions?: boolean | User$chatSessionsArgs<ExtArgs>
+    imChannelConnections?: boolean | User$imChannelConnectionsArgs<ExtArgs>
     skillAccessRequests?: boolean | User$skillAccessRequestsArgs<ExtArgs>
     processedSkillAccessRequests?: boolean | User$processedSkillAccessRequestsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
@@ -7441,6 +8162,7 @@ export namespace Prisma {
       assignedOrgRoles: Prisma.$OrgRoleBindingPayload<ExtArgs>[]
       activeOrg: Prisma.$OrganizationPayload<ExtArgs> | null
       chatSessions: Prisma.$ChatSessionPayload<ExtArgs>[]
+      imChannelConnections: Prisma.$ImChannelConnectionPayload<ExtArgs>[]
       skillAccessRequests: Prisma.$SkillAccessRequestPayload<ExtArgs>[]
       processedSkillAccessRequests: Prisma.$SkillAccessRequestPayload<ExtArgs>[]
     }
@@ -7828,6 +8550,7 @@ export namespace Prisma {
     assignedOrgRoles<T extends User$assignedOrgRolesArgs<ExtArgs> = {}>(args?: Subset<T, User$assignedOrgRolesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$OrgRoleBindingPayload<ExtArgs>, T, "findMany"> | Null>
     activeOrg<T extends User$activeOrgArgs<ExtArgs> = {}>(args?: Subset<T, User$activeOrgArgs<ExtArgs>>): Prisma__OrganizationClient<$Result.GetResult<Prisma.$OrganizationPayload<ExtArgs>, T, "findUniqueOrThrow"> | null, null, ExtArgs>
     chatSessions<T extends User$chatSessionsArgs<ExtArgs> = {}>(args?: Subset<T, User$chatSessionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ChatSessionPayload<ExtArgs>, T, "findMany"> | Null>
+    imChannelConnections<T extends User$imChannelConnectionsArgs<ExtArgs> = {}>(args?: Subset<T, User$imChannelConnectionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "findMany"> | Null>
     skillAccessRequests<T extends User$skillAccessRequestsArgs<ExtArgs> = {}>(args?: Subset<T, User$skillAccessRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "findMany"> | Null>
     processedSkillAccessRequests<T extends User$processedSkillAccessRequestsArgs<ExtArgs> = {}>(args?: Subset<T, User$processedSkillAccessRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "findMany"> | Null>
     /**
@@ -8305,6 +9028,26 @@ export namespace Prisma {
   }
 
   /**
+   * User.imChannelConnections
+   */
+  export type User$imChannelConnectionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    where?: ImChannelConnectionWhereInput
+    orderBy?: ImChannelConnectionOrderByWithRelationInput | ImChannelConnectionOrderByWithRelationInput[]
+    cursor?: ImChannelConnectionWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: ImChannelConnectionScalarFieldEnum | ImChannelConnectionScalarFieldEnum[]
+  }
+
+  /**
    * User.skillAccessRequests
    */
   export type User$skillAccessRequestsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -8356,6 +9099,1071 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: UserInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model ImChannelConnection
+   */
+
+  export type AggregateImChannelConnection = {
+    _count: ImChannelConnectionCountAggregateOutputType | null
+    _min: ImChannelConnectionMinAggregateOutputType | null
+    _max: ImChannelConnectionMaxAggregateOutputType | null
+  }
+
+  export type ImChannelConnectionMinAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    channel: $Enums.ImChannelType | null
+    enabled: boolean | null
+    status: $Enums.ImConnectionStatus | null
+    interactionMode: $Enums.ImInteractionMode | null
+    providerAccountId: string | null
+    providerOwnerUserId: string | null
+    providerBaseUrl: string | null
+    encryptedCredential: string | null
+    updateCursor: string | null
+    lastConnectedAt: Date | null
+    lastMessageAt: Date | null
+    lastError: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ImChannelConnectionMaxAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    channel: $Enums.ImChannelType | null
+    enabled: boolean | null
+    status: $Enums.ImConnectionStatus | null
+    interactionMode: $Enums.ImInteractionMode | null
+    providerAccountId: string | null
+    providerOwnerUserId: string | null
+    providerBaseUrl: string | null
+    encryptedCredential: string | null
+    updateCursor: string | null
+    lastConnectedAt: Date | null
+    lastMessageAt: Date | null
+    lastError: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ImChannelConnectionCountAggregateOutputType = {
+    id: number
+    userId: number
+    channel: number
+    enabled: number
+    status: number
+    interactionMode: number
+    providerAccountId: number
+    providerOwnerUserId: number
+    providerBaseUrl: number
+    encryptedCredential: number
+    updateCursor: number
+    lastConnectedAt: number
+    lastMessageAt: number
+    lastError: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type ImChannelConnectionMinAggregateInputType = {
+    id?: true
+    userId?: true
+    channel?: true
+    enabled?: true
+    status?: true
+    interactionMode?: true
+    providerAccountId?: true
+    providerOwnerUserId?: true
+    providerBaseUrl?: true
+    encryptedCredential?: true
+    updateCursor?: true
+    lastConnectedAt?: true
+    lastMessageAt?: true
+    lastError?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ImChannelConnectionMaxAggregateInputType = {
+    id?: true
+    userId?: true
+    channel?: true
+    enabled?: true
+    status?: true
+    interactionMode?: true
+    providerAccountId?: true
+    providerOwnerUserId?: true
+    providerBaseUrl?: true
+    encryptedCredential?: true
+    updateCursor?: true
+    lastConnectedAt?: true
+    lastMessageAt?: true
+    lastError?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ImChannelConnectionCountAggregateInputType = {
+    id?: true
+    userId?: true
+    channel?: true
+    enabled?: true
+    status?: true
+    interactionMode?: true
+    providerAccountId?: true
+    providerOwnerUserId?: true
+    providerBaseUrl?: true
+    encryptedCredential?: true
+    updateCursor?: true
+    lastConnectedAt?: true
+    lastMessageAt?: true
+    lastError?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type ImChannelConnectionAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ImChannelConnection to aggregate.
+     */
+    where?: ImChannelConnectionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ImChannelConnections to fetch.
+     */
+    orderBy?: ImChannelConnectionOrderByWithRelationInput | ImChannelConnectionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: ImChannelConnectionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ImChannelConnections from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ImChannelConnections.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned ImChannelConnections
+    **/
+    _count?: true | ImChannelConnectionCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: ImChannelConnectionMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: ImChannelConnectionMaxAggregateInputType
+  }
+
+  export type GetImChannelConnectionAggregateType<T extends ImChannelConnectionAggregateArgs> = {
+        [P in keyof T & keyof AggregateImChannelConnection]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateImChannelConnection[P]>
+      : GetScalarType<T[P], AggregateImChannelConnection[P]>
+  }
+
+
+
+
+  export type ImChannelConnectionGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ImChannelConnectionWhereInput
+    orderBy?: ImChannelConnectionOrderByWithAggregationInput | ImChannelConnectionOrderByWithAggregationInput[]
+    by: ImChannelConnectionScalarFieldEnum[] | ImChannelConnectionScalarFieldEnum
+    having?: ImChannelConnectionScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: ImChannelConnectionCountAggregateInputType | true
+    _min?: ImChannelConnectionMinAggregateInputType
+    _max?: ImChannelConnectionMaxAggregateInputType
+  }
+
+  export type ImChannelConnectionGroupByOutputType = {
+    id: string
+    userId: string
+    channel: $Enums.ImChannelType
+    enabled: boolean
+    status: $Enums.ImConnectionStatus
+    interactionMode: $Enums.ImInteractionMode
+    providerAccountId: string | null
+    providerOwnerUserId: string | null
+    providerBaseUrl: string | null
+    encryptedCredential: string | null
+    updateCursor: string | null
+    lastConnectedAt: Date | null
+    lastMessageAt: Date | null
+    lastError: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: ImChannelConnectionCountAggregateOutputType | null
+    _min: ImChannelConnectionMinAggregateOutputType | null
+    _max: ImChannelConnectionMaxAggregateOutputType | null
+  }
+
+  type GetImChannelConnectionGroupByPayload<T extends ImChannelConnectionGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<ImChannelConnectionGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof ImChannelConnectionGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], ImChannelConnectionGroupByOutputType[P]>
+            : GetScalarType<T[P], ImChannelConnectionGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type ImChannelConnectionSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    channel?: boolean
+    enabled?: boolean
+    status?: boolean
+    interactionMode?: boolean
+    providerAccountId?: boolean
+    providerOwnerUserId?: boolean
+    providerBaseUrl?: boolean
+    encryptedCredential?: boolean
+    updateCursor?: boolean
+    lastConnectedAt?: boolean
+    lastMessageAt?: boolean
+    lastError?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["imChannelConnection"]>
+
+  export type ImChannelConnectionSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    channel?: boolean
+    enabled?: boolean
+    status?: boolean
+    interactionMode?: boolean
+    providerAccountId?: boolean
+    providerOwnerUserId?: boolean
+    providerBaseUrl?: boolean
+    encryptedCredential?: boolean
+    updateCursor?: boolean
+    lastConnectedAt?: boolean
+    lastMessageAt?: boolean
+    lastError?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["imChannelConnection"]>
+
+  export type ImChannelConnectionSelectScalar = {
+    id?: boolean
+    userId?: boolean
+    channel?: boolean
+    enabled?: boolean
+    status?: boolean
+    interactionMode?: boolean
+    providerAccountId?: boolean
+    providerOwnerUserId?: boolean
+    providerBaseUrl?: boolean
+    encryptedCredential?: boolean
+    updateCursor?: boolean
+    lastConnectedAt?: boolean
+    lastMessageAt?: boolean
+    lastError?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type ImChannelConnectionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type ImChannelConnectionIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $ImChannelConnectionPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "ImChannelConnection"
+    objects: {
+      user: Prisma.$UserPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userId: string
+      channel: $Enums.ImChannelType
+      enabled: boolean
+      status: $Enums.ImConnectionStatus
+      interactionMode: $Enums.ImInteractionMode
+      providerAccountId: string | null
+      providerOwnerUserId: string | null
+      providerBaseUrl: string | null
+      encryptedCredential: string | null
+      updateCursor: string | null
+      lastConnectedAt: Date | null
+      lastMessageAt: Date | null
+      lastError: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["imChannelConnection"]>
+    composites: {}
+  }
+
+  type ImChannelConnectionGetPayload<S extends boolean | null | undefined | ImChannelConnectionDefaultArgs> = $Result.GetResult<Prisma.$ImChannelConnectionPayload, S>
+
+  type ImChannelConnectionCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<ImChannelConnectionFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: ImChannelConnectionCountAggregateInputType | true
+    }
+
+  export interface ImChannelConnectionDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['ImChannelConnection'], meta: { name: 'ImChannelConnection' } }
+    /**
+     * Find zero or one ImChannelConnection that matches the filter.
+     * @param {ImChannelConnectionFindUniqueArgs} args - Arguments to find a ImChannelConnection
+     * @example
+     * // Get one ImChannelConnection
+     * const imChannelConnection = await prisma.imChannelConnection.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends ImChannelConnectionFindUniqueArgs>(args: SelectSubset<T, ImChannelConnectionFindUniqueArgs<ExtArgs>>): Prisma__ImChannelConnectionClient<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one ImChannelConnection that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {ImChannelConnectionFindUniqueOrThrowArgs} args - Arguments to find a ImChannelConnection
+     * @example
+     * // Get one ImChannelConnection
+     * const imChannelConnection = await prisma.imChannelConnection.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends ImChannelConnectionFindUniqueOrThrowArgs>(args: SelectSubset<T, ImChannelConnectionFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ImChannelConnectionClient<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first ImChannelConnection that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImChannelConnectionFindFirstArgs} args - Arguments to find a ImChannelConnection
+     * @example
+     * // Get one ImChannelConnection
+     * const imChannelConnection = await prisma.imChannelConnection.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends ImChannelConnectionFindFirstArgs>(args?: SelectSubset<T, ImChannelConnectionFindFirstArgs<ExtArgs>>): Prisma__ImChannelConnectionClient<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first ImChannelConnection that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImChannelConnectionFindFirstOrThrowArgs} args - Arguments to find a ImChannelConnection
+     * @example
+     * // Get one ImChannelConnection
+     * const imChannelConnection = await prisma.imChannelConnection.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends ImChannelConnectionFindFirstOrThrowArgs>(args?: SelectSubset<T, ImChannelConnectionFindFirstOrThrowArgs<ExtArgs>>): Prisma__ImChannelConnectionClient<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more ImChannelConnections that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImChannelConnectionFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all ImChannelConnections
+     * const imChannelConnections = await prisma.imChannelConnection.findMany()
+     * 
+     * // Get first 10 ImChannelConnections
+     * const imChannelConnections = await prisma.imChannelConnection.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const imChannelConnectionWithIdOnly = await prisma.imChannelConnection.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends ImChannelConnectionFindManyArgs>(args?: SelectSubset<T, ImChannelConnectionFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a ImChannelConnection.
+     * @param {ImChannelConnectionCreateArgs} args - Arguments to create a ImChannelConnection.
+     * @example
+     * // Create one ImChannelConnection
+     * const ImChannelConnection = await prisma.imChannelConnection.create({
+     *   data: {
+     *     // ... data to create a ImChannelConnection
+     *   }
+     * })
+     * 
+     */
+    create<T extends ImChannelConnectionCreateArgs>(args: SelectSubset<T, ImChannelConnectionCreateArgs<ExtArgs>>): Prisma__ImChannelConnectionClient<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many ImChannelConnections.
+     * @param {ImChannelConnectionCreateManyArgs} args - Arguments to create many ImChannelConnections.
+     * @example
+     * // Create many ImChannelConnections
+     * const imChannelConnection = await prisma.imChannelConnection.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends ImChannelConnectionCreateManyArgs>(args?: SelectSubset<T, ImChannelConnectionCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many ImChannelConnections and returns the data saved in the database.
+     * @param {ImChannelConnectionCreateManyAndReturnArgs} args - Arguments to create many ImChannelConnections.
+     * @example
+     * // Create many ImChannelConnections
+     * const imChannelConnection = await prisma.imChannelConnection.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many ImChannelConnections and only return the `id`
+     * const imChannelConnectionWithIdOnly = await prisma.imChannelConnection.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends ImChannelConnectionCreateManyAndReturnArgs>(args?: SelectSubset<T, ImChannelConnectionCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a ImChannelConnection.
+     * @param {ImChannelConnectionDeleteArgs} args - Arguments to delete one ImChannelConnection.
+     * @example
+     * // Delete one ImChannelConnection
+     * const ImChannelConnection = await prisma.imChannelConnection.delete({
+     *   where: {
+     *     // ... filter to delete one ImChannelConnection
+     *   }
+     * })
+     * 
+     */
+    delete<T extends ImChannelConnectionDeleteArgs>(args: SelectSubset<T, ImChannelConnectionDeleteArgs<ExtArgs>>): Prisma__ImChannelConnectionClient<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one ImChannelConnection.
+     * @param {ImChannelConnectionUpdateArgs} args - Arguments to update one ImChannelConnection.
+     * @example
+     * // Update one ImChannelConnection
+     * const imChannelConnection = await prisma.imChannelConnection.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends ImChannelConnectionUpdateArgs>(args: SelectSubset<T, ImChannelConnectionUpdateArgs<ExtArgs>>): Prisma__ImChannelConnectionClient<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more ImChannelConnections.
+     * @param {ImChannelConnectionDeleteManyArgs} args - Arguments to filter ImChannelConnections to delete.
+     * @example
+     * // Delete a few ImChannelConnections
+     * const { count } = await prisma.imChannelConnection.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends ImChannelConnectionDeleteManyArgs>(args?: SelectSubset<T, ImChannelConnectionDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ImChannelConnections.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImChannelConnectionUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many ImChannelConnections
+     * const imChannelConnection = await prisma.imChannelConnection.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends ImChannelConnectionUpdateManyArgs>(args: SelectSubset<T, ImChannelConnectionUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one ImChannelConnection.
+     * @param {ImChannelConnectionUpsertArgs} args - Arguments to update or create a ImChannelConnection.
+     * @example
+     * // Update or create a ImChannelConnection
+     * const imChannelConnection = await prisma.imChannelConnection.upsert({
+     *   create: {
+     *     // ... data to create a ImChannelConnection
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the ImChannelConnection we want to update
+     *   }
+     * })
+     */
+    upsert<T extends ImChannelConnectionUpsertArgs>(args: SelectSubset<T, ImChannelConnectionUpsertArgs<ExtArgs>>): Prisma__ImChannelConnectionClient<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of ImChannelConnections.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImChannelConnectionCountArgs} args - Arguments to filter ImChannelConnections to count.
+     * @example
+     * // Count the number of ImChannelConnections
+     * const count = await prisma.imChannelConnection.count({
+     *   where: {
+     *     // ... the filter for the ImChannelConnections we want to count
+     *   }
+     * })
+    **/
+    count<T extends ImChannelConnectionCountArgs>(
+      args?: Subset<T, ImChannelConnectionCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], ImChannelConnectionCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a ImChannelConnection.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImChannelConnectionAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends ImChannelConnectionAggregateArgs>(args: Subset<T, ImChannelConnectionAggregateArgs>): Prisma.PrismaPromise<GetImChannelConnectionAggregateType<T>>
+
+    /**
+     * Group by ImChannelConnection.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImChannelConnectionGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends ImChannelConnectionGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: ImChannelConnectionGroupByArgs['orderBy'] }
+        : { orderBy?: ImChannelConnectionGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, ImChannelConnectionGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetImChannelConnectionGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the ImChannelConnection model
+   */
+  readonly fields: ImChannelConnectionFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for ImChannelConnection.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__ImChannelConnectionClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the ImChannelConnection model
+   */ 
+  interface ImChannelConnectionFieldRefs {
+    readonly id: FieldRef<"ImChannelConnection", 'String'>
+    readonly userId: FieldRef<"ImChannelConnection", 'String'>
+    readonly channel: FieldRef<"ImChannelConnection", 'ImChannelType'>
+    readonly enabled: FieldRef<"ImChannelConnection", 'Boolean'>
+    readonly status: FieldRef<"ImChannelConnection", 'ImConnectionStatus'>
+    readonly interactionMode: FieldRef<"ImChannelConnection", 'ImInteractionMode'>
+    readonly providerAccountId: FieldRef<"ImChannelConnection", 'String'>
+    readonly providerOwnerUserId: FieldRef<"ImChannelConnection", 'String'>
+    readonly providerBaseUrl: FieldRef<"ImChannelConnection", 'String'>
+    readonly encryptedCredential: FieldRef<"ImChannelConnection", 'String'>
+    readonly updateCursor: FieldRef<"ImChannelConnection", 'String'>
+    readonly lastConnectedAt: FieldRef<"ImChannelConnection", 'DateTime'>
+    readonly lastMessageAt: FieldRef<"ImChannelConnection", 'DateTime'>
+    readonly lastError: FieldRef<"ImChannelConnection", 'String'>
+    readonly createdAt: FieldRef<"ImChannelConnection", 'DateTime'>
+    readonly updatedAt: FieldRef<"ImChannelConnection", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * ImChannelConnection findUnique
+   */
+  export type ImChannelConnectionFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * Filter, which ImChannelConnection to fetch.
+     */
+    where: ImChannelConnectionWhereUniqueInput
+  }
+
+  /**
+   * ImChannelConnection findUniqueOrThrow
+   */
+  export type ImChannelConnectionFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * Filter, which ImChannelConnection to fetch.
+     */
+    where: ImChannelConnectionWhereUniqueInput
+  }
+
+  /**
+   * ImChannelConnection findFirst
+   */
+  export type ImChannelConnectionFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * Filter, which ImChannelConnection to fetch.
+     */
+    where?: ImChannelConnectionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ImChannelConnections to fetch.
+     */
+    orderBy?: ImChannelConnectionOrderByWithRelationInput | ImChannelConnectionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ImChannelConnections.
+     */
+    cursor?: ImChannelConnectionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ImChannelConnections from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ImChannelConnections.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ImChannelConnections.
+     */
+    distinct?: ImChannelConnectionScalarFieldEnum | ImChannelConnectionScalarFieldEnum[]
+  }
+
+  /**
+   * ImChannelConnection findFirstOrThrow
+   */
+  export type ImChannelConnectionFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * Filter, which ImChannelConnection to fetch.
+     */
+    where?: ImChannelConnectionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ImChannelConnections to fetch.
+     */
+    orderBy?: ImChannelConnectionOrderByWithRelationInput | ImChannelConnectionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ImChannelConnections.
+     */
+    cursor?: ImChannelConnectionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ImChannelConnections from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ImChannelConnections.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ImChannelConnections.
+     */
+    distinct?: ImChannelConnectionScalarFieldEnum | ImChannelConnectionScalarFieldEnum[]
+  }
+
+  /**
+   * ImChannelConnection findMany
+   */
+  export type ImChannelConnectionFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * Filter, which ImChannelConnections to fetch.
+     */
+    where?: ImChannelConnectionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ImChannelConnections to fetch.
+     */
+    orderBy?: ImChannelConnectionOrderByWithRelationInput | ImChannelConnectionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing ImChannelConnections.
+     */
+    cursor?: ImChannelConnectionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ImChannelConnections from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ImChannelConnections.
+     */
+    skip?: number
+    distinct?: ImChannelConnectionScalarFieldEnum | ImChannelConnectionScalarFieldEnum[]
+  }
+
+  /**
+   * ImChannelConnection create
+   */
+  export type ImChannelConnectionCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * The data needed to create a ImChannelConnection.
+     */
+    data: XOR<ImChannelConnectionCreateInput, ImChannelConnectionUncheckedCreateInput>
+  }
+
+  /**
+   * ImChannelConnection createMany
+   */
+  export type ImChannelConnectionCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many ImChannelConnections.
+     */
+    data: ImChannelConnectionCreateManyInput | ImChannelConnectionCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ImChannelConnection createManyAndReturn
+   */
+  export type ImChannelConnectionCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many ImChannelConnections.
+     */
+    data: ImChannelConnectionCreateManyInput | ImChannelConnectionCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * ImChannelConnection update
+   */
+  export type ImChannelConnectionUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * The data needed to update a ImChannelConnection.
+     */
+    data: XOR<ImChannelConnectionUpdateInput, ImChannelConnectionUncheckedUpdateInput>
+    /**
+     * Choose, which ImChannelConnection to update.
+     */
+    where: ImChannelConnectionWhereUniqueInput
+  }
+
+  /**
+   * ImChannelConnection updateMany
+   */
+  export type ImChannelConnectionUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update ImChannelConnections.
+     */
+    data: XOR<ImChannelConnectionUpdateManyMutationInput, ImChannelConnectionUncheckedUpdateManyInput>
+    /**
+     * Filter which ImChannelConnections to update
+     */
+    where?: ImChannelConnectionWhereInput
+  }
+
+  /**
+   * ImChannelConnection upsert
+   */
+  export type ImChannelConnectionUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * The filter to search for the ImChannelConnection to update in case it exists.
+     */
+    where: ImChannelConnectionWhereUniqueInput
+    /**
+     * In case the ImChannelConnection found by the `where` argument doesn't exist, create a new ImChannelConnection with this data.
+     */
+    create: XOR<ImChannelConnectionCreateInput, ImChannelConnectionUncheckedCreateInput>
+    /**
+     * In case the ImChannelConnection was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<ImChannelConnectionUpdateInput, ImChannelConnectionUncheckedUpdateInput>
+  }
+
+  /**
+   * ImChannelConnection delete
+   */
+  export type ImChannelConnectionDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
+    /**
+     * Filter which ImChannelConnection to delete.
+     */
+    where: ImChannelConnectionWhereUniqueInput
+  }
+
+  /**
+   * ImChannelConnection deleteMany
+   */
+  export type ImChannelConnectionDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ImChannelConnections to delete
+     */
+    where?: ImChannelConnectionWhereInput
+  }
+
+  /**
+   * ImChannelConnection without action
+   */
+  export type ImChannelConnectionDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImChannelConnection
+     */
+    select?: ImChannelConnectionSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImChannelConnectionInclude<ExtArgs> | null
   }
 
 
@@ -48591,6 +50399,6235 @@ export namespace Prisma {
 
 
   /**
+   * Model TaskPolicySet
+   */
+
+  export type AggregateTaskPolicySet = {
+    _count: TaskPolicySetCountAggregateOutputType | null
+    _min: TaskPolicySetMinAggregateOutputType | null
+    _max: TaskPolicySetMaxAggregateOutputType | null
+  }
+
+  export type TaskPolicySetMinAggregateOutputType = {
+    id: string | null
+    name: string | null
+    scopeType: string | null
+    scopeId: string | null
+    status: string | null
+    version: string | null
+    schemaVersion: string | null
+    digest: string | null
+    createdBy: string | null
+    publishedAt: Date | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type TaskPolicySetMaxAggregateOutputType = {
+    id: string | null
+    name: string | null
+    scopeType: string | null
+    scopeId: string | null
+    status: string | null
+    version: string | null
+    schemaVersion: string | null
+    digest: string | null
+    createdBy: string | null
+    publishedAt: Date | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type TaskPolicySetCountAggregateOutputType = {
+    id: number
+    name: number
+    scopeType: number
+    scopeId: number
+    status: number
+    version: number
+    schemaVersion: number
+    policyJson: number
+    digest: number
+    createdBy: number
+    publishedAt: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type TaskPolicySetMinAggregateInputType = {
+    id?: true
+    name?: true
+    scopeType?: true
+    scopeId?: true
+    status?: true
+    version?: true
+    schemaVersion?: true
+    digest?: true
+    createdBy?: true
+    publishedAt?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type TaskPolicySetMaxAggregateInputType = {
+    id?: true
+    name?: true
+    scopeType?: true
+    scopeId?: true
+    status?: true
+    version?: true
+    schemaVersion?: true
+    digest?: true
+    createdBy?: true
+    publishedAt?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type TaskPolicySetCountAggregateInputType = {
+    id?: true
+    name?: true
+    scopeType?: true
+    scopeId?: true
+    status?: true
+    version?: true
+    schemaVersion?: true
+    policyJson?: true
+    digest?: true
+    createdBy?: true
+    publishedAt?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type TaskPolicySetAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TaskPolicySet to aggregate.
+     */
+    where?: TaskPolicySetWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskPolicySets to fetch.
+     */
+    orderBy?: TaskPolicySetOrderByWithRelationInput | TaskPolicySetOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: TaskPolicySetWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskPolicySets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskPolicySets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned TaskPolicySets
+    **/
+    _count?: true | TaskPolicySetCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: TaskPolicySetMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: TaskPolicySetMaxAggregateInputType
+  }
+
+  export type GetTaskPolicySetAggregateType<T extends TaskPolicySetAggregateArgs> = {
+        [P in keyof T & keyof AggregateTaskPolicySet]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateTaskPolicySet[P]>
+      : GetScalarType<T[P], AggregateTaskPolicySet[P]>
+  }
+
+
+
+
+  export type TaskPolicySetGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TaskPolicySetWhereInput
+    orderBy?: TaskPolicySetOrderByWithAggregationInput | TaskPolicySetOrderByWithAggregationInput[]
+    by: TaskPolicySetScalarFieldEnum[] | TaskPolicySetScalarFieldEnum
+    having?: TaskPolicySetScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: TaskPolicySetCountAggregateInputType | true
+    _min?: TaskPolicySetMinAggregateInputType
+    _max?: TaskPolicySetMaxAggregateInputType
+  }
+
+  export type TaskPolicySetGroupByOutputType = {
+    id: string
+    name: string
+    scopeType: string
+    scopeId: string
+    status: string
+    version: string
+    schemaVersion: string
+    policyJson: JsonValue
+    digest: string
+    createdBy: string | null
+    publishedAt: Date | null
+    createdAt: Date
+    updatedAt: Date
+    _count: TaskPolicySetCountAggregateOutputType | null
+    _min: TaskPolicySetMinAggregateOutputType | null
+    _max: TaskPolicySetMaxAggregateOutputType | null
+  }
+
+  type GetTaskPolicySetGroupByPayload<T extends TaskPolicySetGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<TaskPolicySetGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof TaskPolicySetGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], TaskPolicySetGroupByOutputType[P]>
+            : GetScalarType<T[P], TaskPolicySetGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type TaskPolicySetSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    scopeType?: boolean
+    scopeId?: boolean
+    status?: boolean
+    version?: boolean
+    schemaVersion?: boolean
+    policyJson?: boolean
+    digest?: boolean
+    createdBy?: boolean
+    publishedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    aliases?: boolean | TaskPolicySet$aliasesArgs<ExtArgs>
+    recipes?: boolean | TaskPolicySet$recipesArgs<ExtArgs>
+    bindings?: boolean | TaskPolicySet$bindingsArgs<ExtArgs>
+    proposals?: boolean | TaskPolicySet$proposalsArgs<ExtArgs>
+    auditLogs?: boolean | TaskPolicySet$auditLogsArgs<ExtArgs>
+    _count?: boolean | TaskPolicySetCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["taskPolicySet"]>
+
+  export type TaskPolicySetSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    scopeType?: boolean
+    scopeId?: boolean
+    status?: boolean
+    version?: boolean
+    schemaVersion?: boolean
+    policyJson?: boolean
+    digest?: boolean
+    createdBy?: boolean
+    publishedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["taskPolicySet"]>
+
+  export type TaskPolicySetSelectScalar = {
+    id?: boolean
+    name?: boolean
+    scopeType?: boolean
+    scopeId?: boolean
+    status?: boolean
+    version?: boolean
+    schemaVersion?: boolean
+    policyJson?: boolean
+    digest?: boolean
+    createdBy?: boolean
+    publishedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type TaskPolicySetInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    aliases?: boolean | TaskPolicySet$aliasesArgs<ExtArgs>
+    recipes?: boolean | TaskPolicySet$recipesArgs<ExtArgs>
+    bindings?: boolean | TaskPolicySet$bindingsArgs<ExtArgs>
+    proposals?: boolean | TaskPolicySet$proposalsArgs<ExtArgs>
+    auditLogs?: boolean | TaskPolicySet$auditLogsArgs<ExtArgs>
+    _count?: boolean | TaskPolicySetCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type TaskPolicySetIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+
+  export type $TaskPolicySetPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "TaskPolicySet"
+    objects: {
+      aliases: Prisma.$TaskCommandAliasPayload<ExtArgs>[]
+      recipes: Prisma.$TaskRecipePayload<ExtArgs>[]
+      bindings: Prisma.$TaskCapabilityBindingPayload<ExtArgs>[]
+      proposals: Prisma.$TaskPolicyProposalPayload<ExtArgs>[]
+      auditLogs: Prisma.$TaskPolicyAuditLogPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      name: string
+      scopeType: string
+      scopeId: string
+      status: string
+      version: string
+      schemaVersion: string
+      policyJson: Prisma.JsonValue
+      digest: string
+      createdBy: string | null
+      publishedAt: Date | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["taskPolicySet"]>
+    composites: {}
+  }
+
+  type TaskPolicySetGetPayload<S extends boolean | null | undefined | TaskPolicySetDefaultArgs> = $Result.GetResult<Prisma.$TaskPolicySetPayload, S>
+
+  type TaskPolicySetCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<TaskPolicySetFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: TaskPolicySetCountAggregateInputType | true
+    }
+
+  export interface TaskPolicySetDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['TaskPolicySet'], meta: { name: 'TaskPolicySet' } }
+    /**
+     * Find zero or one TaskPolicySet that matches the filter.
+     * @param {TaskPolicySetFindUniqueArgs} args - Arguments to find a TaskPolicySet
+     * @example
+     * // Get one TaskPolicySet
+     * const taskPolicySet = await prisma.taskPolicySet.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends TaskPolicySetFindUniqueArgs>(args: SelectSubset<T, TaskPolicySetFindUniqueArgs<ExtArgs>>): Prisma__TaskPolicySetClient<$Result.GetResult<Prisma.$TaskPolicySetPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one TaskPolicySet that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {TaskPolicySetFindUniqueOrThrowArgs} args - Arguments to find a TaskPolicySet
+     * @example
+     * // Get one TaskPolicySet
+     * const taskPolicySet = await prisma.taskPolicySet.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends TaskPolicySetFindUniqueOrThrowArgs>(args: SelectSubset<T, TaskPolicySetFindUniqueOrThrowArgs<ExtArgs>>): Prisma__TaskPolicySetClient<$Result.GetResult<Prisma.$TaskPolicySetPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first TaskPolicySet that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicySetFindFirstArgs} args - Arguments to find a TaskPolicySet
+     * @example
+     * // Get one TaskPolicySet
+     * const taskPolicySet = await prisma.taskPolicySet.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends TaskPolicySetFindFirstArgs>(args?: SelectSubset<T, TaskPolicySetFindFirstArgs<ExtArgs>>): Prisma__TaskPolicySetClient<$Result.GetResult<Prisma.$TaskPolicySetPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first TaskPolicySet that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicySetFindFirstOrThrowArgs} args - Arguments to find a TaskPolicySet
+     * @example
+     * // Get one TaskPolicySet
+     * const taskPolicySet = await prisma.taskPolicySet.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends TaskPolicySetFindFirstOrThrowArgs>(args?: SelectSubset<T, TaskPolicySetFindFirstOrThrowArgs<ExtArgs>>): Prisma__TaskPolicySetClient<$Result.GetResult<Prisma.$TaskPolicySetPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more TaskPolicySets that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicySetFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all TaskPolicySets
+     * const taskPolicySets = await prisma.taskPolicySet.findMany()
+     * 
+     * // Get first 10 TaskPolicySets
+     * const taskPolicySets = await prisma.taskPolicySet.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const taskPolicySetWithIdOnly = await prisma.taskPolicySet.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends TaskPolicySetFindManyArgs>(args?: SelectSubset<T, TaskPolicySetFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskPolicySetPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a TaskPolicySet.
+     * @param {TaskPolicySetCreateArgs} args - Arguments to create a TaskPolicySet.
+     * @example
+     * // Create one TaskPolicySet
+     * const TaskPolicySet = await prisma.taskPolicySet.create({
+     *   data: {
+     *     // ... data to create a TaskPolicySet
+     *   }
+     * })
+     * 
+     */
+    create<T extends TaskPolicySetCreateArgs>(args: SelectSubset<T, TaskPolicySetCreateArgs<ExtArgs>>): Prisma__TaskPolicySetClient<$Result.GetResult<Prisma.$TaskPolicySetPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many TaskPolicySets.
+     * @param {TaskPolicySetCreateManyArgs} args - Arguments to create many TaskPolicySets.
+     * @example
+     * // Create many TaskPolicySets
+     * const taskPolicySet = await prisma.taskPolicySet.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends TaskPolicySetCreateManyArgs>(args?: SelectSubset<T, TaskPolicySetCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many TaskPolicySets and returns the data saved in the database.
+     * @param {TaskPolicySetCreateManyAndReturnArgs} args - Arguments to create many TaskPolicySets.
+     * @example
+     * // Create many TaskPolicySets
+     * const taskPolicySet = await prisma.taskPolicySet.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many TaskPolicySets and only return the `id`
+     * const taskPolicySetWithIdOnly = await prisma.taskPolicySet.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends TaskPolicySetCreateManyAndReturnArgs>(args?: SelectSubset<T, TaskPolicySetCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskPolicySetPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a TaskPolicySet.
+     * @param {TaskPolicySetDeleteArgs} args - Arguments to delete one TaskPolicySet.
+     * @example
+     * // Delete one TaskPolicySet
+     * const TaskPolicySet = await prisma.taskPolicySet.delete({
+     *   where: {
+     *     // ... filter to delete one TaskPolicySet
+     *   }
+     * })
+     * 
+     */
+    delete<T extends TaskPolicySetDeleteArgs>(args: SelectSubset<T, TaskPolicySetDeleteArgs<ExtArgs>>): Prisma__TaskPolicySetClient<$Result.GetResult<Prisma.$TaskPolicySetPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one TaskPolicySet.
+     * @param {TaskPolicySetUpdateArgs} args - Arguments to update one TaskPolicySet.
+     * @example
+     * // Update one TaskPolicySet
+     * const taskPolicySet = await prisma.taskPolicySet.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends TaskPolicySetUpdateArgs>(args: SelectSubset<T, TaskPolicySetUpdateArgs<ExtArgs>>): Prisma__TaskPolicySetClient<$Result.GetResult<Prisma.$TaskPolicySetPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more TaskPolicySets.
+     * @param {TaskPolicySetDeleteManyArgs} args - Arguments to filter TaskPolicySets to delete.
+     * @example
+     * // Delete a few TaskPolicySets
+     * const { count } = await prisma.taskPolicySet.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends TaskPolicySetDeleteManyArgs>(args?: SelectSubset<T, TaskPolicySetDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more TaskPolicySets.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicySetUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many TaskPolicySets
+     * const taskPolicySet = await prisma.taskPolicySet.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends TaskPolicySetUpdateManyArgs>(args: SelectSubset<T, TaskPolicySetUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one TaskPolicySet.
+     * @param {TaskPolicySetUpsertArgs} args - Arguments to update or create a TaskPolicySet.
+     * @example
+     * // Update or create a TaskPolicySet
+     * const taskPolicySet = await prisma.taskPolicySet.upsert({
+     *   create: {
+     *     // ... data to create a TaskPolicySet
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the TaskPolicySet we want to update
+     *   }
+     * })
+     */
+    upsert<T extends TaskPolicySetUpsertArgs>(args: SelectSubset<T, TaskPolicySetUpsertArgs<ExtArgs>>): Prisma__TaskPolicySetClient<$Result.GetResult<Prisma.$TaskPolicySetPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of TaskPolicySets.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicySetCountArgs} args - Arguments to filter TaskPolicySets to count.
+     * @example
+     * // Count the number of TaskPolicySets
+     * const count = await prisma.taskPolicySet.count({
+     *   where: {
+     *     // ... the filter for the TaskPolicySets we want to count
+     *   }
+     * })
+    **/
+    count<T extends TaskPolicySetCountArgs>(
+      args?: Subset<T, TaskPolicySetCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], TaskPolicySetCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a TaskPolicySet.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicySetAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends TaskPolicySetAggregateArgs>(args: Subset<T, TaskPolicySetAggregateArgs>): Prisma.PrismaPromise<GetTaskPolicySetAggregateType<T>>
+
+    /**
+     * Group by TaskPolicySet.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicySetGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends TaskPolicySetGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: TaskPolicySetGroupByArgs['orderBy'] }
+        : { orderBy?: TaskPolicySetGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, TaskPolicySetGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetTaskPolicySetGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the TaskPolicySet model
+   */
+  readonly fields: TaskPolicySetFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for TaskPolicySet.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__TaskPolicySetClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    aliases<T extends TaskPolicySet$aliasesArgs<ExtArgs> = {}>(args?: Subset<T, TaskPolicySet$aliasesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskCommandAliasPayload<ExtArgs>, T, "findMany"> | Null>
+    recipes<T extends TaskPolicySet$recipesArgs<ExtArgs> = {}>(args?: Subset<T, TaskPolicySet$recipesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskRecipePayload<ExtArgs>, T, "findMany"> | Null>
+    bindings<T extends TaskPolicySet$bindingsArgs<ExtArgs> = {}>(args?: Subset<T, TaskPolicySet$bindingsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskCapabilityBindingPayload<ExtArgs>, T, "findMany"> | Null>
+    proposals<T extends TaskPolicySet$proposalsArgs<ExtArgs> = {}>(args?: Subset<T, TaskPolicySet$proposalsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskPolicyProposalPayload<ExtArgs>, T, "findMany"> | Null>
+    auditLogs<T extends TaskPolicySet$auditLogsArgs<ExtArgs> = {}>(args?: Subset<T, TaskPolicySet$auditLogsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskPolicyAuditLogPayload<ExtArgs>, T, "findMany"> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the TaskPolicySet model
+   */ 
+  interface TaskPolicySetFieldRefs {
+    readonly id: FieldRef<"TaskPolicySet", 'String'>
+    readonly name: FieldRef<"TaskPolicySet", 'String'>
+    readonly scopeType: FieldRef<"TaskPolicySet", 'String'>
+    readonly scopeId: FieldRef<"TaskPolicySet", 'String'>
+    readonly status: FieldRef<"TaskPolicySet", 'String'>
+    readonly version: FieldRef<"TaskPolicySet", 'String'>
+    readonly schemaVersion: FieldRef<"TaskPolicySet", 'String'>
+    readonly policyJson: FieldRef<"TaskPolicySet", 'Json'>
+    readonly digest: FieldRef<"TaskPolicySet", 'String'>
+    readonly createdBy: FieldRef<"TaskPolicySet", 'String'>
+    readonly publishedAt: FieldRef<"TaskPolicySet", 'DateTime'>
+    readonly createdAt: FieldRef<"TaskPolicySet", 'DateTime'>
+    readonly updatedAt: FieldRef<"TaskPolicySet", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * TaskPolicySet findUnique
+   */
+  export type TaskPolicySetFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicySet
+     */
+    select?: TaskPolicySetSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicySetInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskPolicySet to fetch.
+     */
+    where: TaskPolicySetWhereUniqueInput
+  }
+
+  /**
+   * TaskPolicySet findUniqueOrThrow
+   */
+  export type TaskPolicySetFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicySet
+     */
+    select?: TaskPolicySetSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicySetInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskPolicySet to fetch.
+     */
+    where: TaskPolicySetWhereUniqueInput
+  }
+
+  /**
+   * TaskPolicySet findFirst
+   */
+  export type TaskPolicySetFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicySet
+     */
+    select?: TaskPolicySetSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicySetInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskPolicySet to fetch.
+     */
+    where?: TaskPolicySetWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskPolicySets to fetch.
+     */
+    orderBy?: TaskPolicySetOrderByWithRelationInput | TaskPolicySetOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TaskPolicySets.
+     */
+    cursor?: TaskPolicySetWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskPolicySets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskPolicySets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TaskPolicySets.
+     */
+    distinct?: TaskPolicySetScalarFieldEnum | TaskPolicySetScalarFieldEnum[]
+  }
+
+  /**
+   * TaskPolicySet findFirstOrThrow
+   */
+  export type TaskPolicySetFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicySet
+     */
+    select?: TaskPolicySetSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicySetInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskPolicySet to fetch.
+     */
+    where?: TaskPolicySetWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskPolicySets to fetch.
+     */
+    orderBy?: TaskPolicySetOrderByWithRelationInput | TaskPolicySetOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TaskPolicySets.
+     */
+    cursor?: TaskPolicySetWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskPolicySets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskPolicySets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TaskPolicySets.
+     */
+    distinct?: TaskPolicySetScalarFieldEnum | TaskPolicySetScalarFieldEnum[]
+  }
+
+  /**
+   * TaskPolicySet findMany
+   */
+  export type TaskPolicySetFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicySet
+     */
+    select?: TaskPolicySetSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicySetInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskPolicySets to fetch.
+     */
+    where?: TaskPolicySetWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskPolicySets to fetch.
+     */
+    orderBy?: TaskPolicySetOrderByWithRelationInput | TaskPolicySetOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing TaskPolicySets.
+     */
+    cursor?: TaskPolicySetWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskPolicySets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskPolicySets.
+     */
+    skip?: number
+    distinct?: TaskPolicySetScalarFieldEnum | TaskPolicySetScalarFieldEnum[]
+  }
+
+  /**
+   * TaskPolicySet create
+   */
+  export type TaskPolicySetCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicySet
+     */
+    select?: TaskPolicySetSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicySetInclude<ExtArgs> | null
+    /**
+     * The data needed to create a TaskPolicySet.
+     */
+    data: XOR<TaskPolicySetCreateInput, TaskPolicySetUncheckedCreateInput>
+  }
+
+  /**
+   * TaskPolicySet createMany
+   */
+  export type TaskPolicySetCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many TaskPolicySets.
+     */
+    data: TaskPolicySetCreateManyInput | TaskPolicySetCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * TaskPolicySet createManyAndReturn
+   */
+  export type TaskPolicySetCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicySet
+     */
+    select?: TaskPolicySetSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many TaskPolicySets.
+     */
+    data: TaskPolicySetCreateManyInput | TaskPolicySetCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * TaskPolicySet update
+   */
+  export type TaskPolicySetUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicySet
+     */
+    select?: TaskPolicySetSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicySetInclude<ExtArgs> | null
+    /**
+     * The data needed to update a TaskPolicySet.
+     */
+    data: XOR<TaskPolicySetUpdateInput, TaskPolicySetUncheckedUpdateInput>
+    /**
+     * Choose, which TaskPolicySet to update.
+     */
+    where: TaskPolicySetWhereUniqueInput
+  }
+
+  /**
+   * TaskPolicySet updateMany
+   */
+  export type TaskPolicySetUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update TaskPolicySets.
+     */
+    data: XOR<TaskPolicySetUpdateManyMutationInput, TaskPolicySetUncheckedUpdateManyInput>
+    /**
+     * Filter which TaskPolicySets to update
+     */
+    where?: TaskPolicySetWhereInput
+  }
+
+  /**
+   * TaskPolicySet upsert
+   */
+  export type TaskPolicySetUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicySet
+     */
+    select?: TaskPolicySetSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicySetInclude<ExtArgs> | null
+    /**
+     * The filter to search for the TaskPolicySet to update in case it exists.
+     */
+    where: TaskPolicySetWhereUniqueInput
+    /**
+     * In case the TaskPolicySet found by the `where` argument doesn't exist, create a new TaskPolicySet with this data.
+     */
+    create: XOR<TaskPolicySetCreateInput, TaskPolicySetUncheckedCreateInput>
+    /**
+     * In case the TaskPolicySet was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<TaskPolicySetUpdateInput, TaskPolicySetUncheckedUpdateInput>
+  }
+
+  /**
+   * TaskPolicySet delete
+   */
+  export type TaskPolicySetDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicySet
+     */
+    select?: TaskPolicySetSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicySetInclude<ExtArgs> | null
+    /**
+     * Filter which TaskPolicySet to delete.
+     */
+    where: TaskPolicySetWhereUniqueInput
+  }
+
+  /**
+   * TaskPolicySet deleteMany
+   */
+  export type TaskPolicySetDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TaskPolicySets to delete
+     */
+    where?: TaskPolicySetWhereInput
+  }
+
+  /**
+   * TaskPolicySet.aliases
+   */
+  export type TaskPolicySet$aliasesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCommandAlias
+     */
+    select?: TaskCommandAliasSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCommandAliasInclude<ExtArgs> | null
+    where?: TaskCommandAliasWhereInput
+    orderBy?: TaskCommandAliasOrderByWithRelationInput | TaskCommandAliasOrderByWithRelationInput[]
+    cursor?: TaskCommandAliasWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: TaskCommandAliasScalarFieldEnum | TaskCommandAliasScalarFieldEnum[]
+  }
+
+  /**
+   * TaskPolicySet.recipes
+   */
+  export type TaskPolicySet$recipesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskRecipe
+     */
+    select?: TaskRecipeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskRecipeInclude<ExtArgs> | null
+    where?: TaskRecipeWhereInput
+    orderBy?: TaskRecipeOrderByWithRelationInput | TaskRecipeOrderByWithRelationInput[]
+    cursor?: TaskRecipeWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: TaskRecipeScalarFieldEnum | TaskRecipeScalarFieldEnum[]
+  }
+
+  /**
+   * TaskPolicySet.bindings
+   */
+  export type TaskPolicySet$bindingsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCapabilityBinding
+     */
+    select?: TaskCapabilityBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCapabilityBindingInclude<ExtArgs> | null
+    where?: TaskCapabilityBindingWhereInput
+    orderBy?: TaskCapabilityBindingOrderByWithRelationInput | TaskCapabilityBindingOrderByWithRelationInput[]
+    cursor?: TaskCapabilityBindingWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: TaskCapabilityBindingScalarFieldEnum | TaskCapabilityBindingScalarFieldEnum[]
+  }
+
+  /**
+   * TaskPolicySet.proposals
+   */
+  export type TaskPolicySet$proposalsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyProposal
+     */
+    select?: TaskPolicyProposalSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyProposalInclude<ExtArgs> | null
+    where?: TaskPolicyProposalWhereInput
+    orderBy?: TaskPolicyProposalOrderByWithRelationInput | TaskPolicyProposalOrderByWithRelationInput[]
+    cursor?: TaskPolicyProposalWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: TaskPolicyProposalScalarFieldEnum | TaskPolicyProposalScalarFieldEnum[]
+  }
+
+  /**
+   * TaskPolicySet.auditLogs
+   */
+  export type TaskPolicySet$auditLogsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyAuditLog
+     */
+    select?: TaskPolicyAuditLogSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyAuditLogInclude<ExtArgs> | null
+    where?: TaskPolicyAuditLogWhereInput
+    orderBy?: TaskPolicyAuditLogOrderByWithRelationInput | TaskPolicyAuditLogOrderByWithRelationInput[]
+    cursor?: TaskPolicyAuditLogWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: TaskPolicyAuditLogScalarFieldEnum | TaskPolicyAuditLogScalarFieldEnum[]
+  }
+
+  /**
+   * TaskPolicySet without action
+   */
+  export type TaskPolicySetDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicySet
+     */
+    select?: TaskPolicySetSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicySetInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model TaskCommandAlias
+   */
+
+  export type AggregateTaskCommandAlias = {
+    _count: TaskCommandAliasCountAggregateOutputType | null
+    _avg: TaskCommandAliasAvgAggregateOutputType | null
+    _sum: TaskCommandAliasSumAggregateOutputType | null
+    _min: TaskCommandAliasMinAggregateOutputType | null
+    _max: TaskCommandAliasMaxAggregateOutputType | null
+  }
+
+  export type TaskCommandAliasAvgAggregateOutputType = {
+    weight: number | null
+    evidenceCount: number | null
+  }
+
+  export type TaskCommandAliasSumAggregateOutputType = {
+    weight: number | null
+    evidenceCount: number | null
+  }
+
+  export type TaskCommandAliasMinAggregateOutputType = {
+    id: string | null
+    policySetId: string | null
+    canonicalCommand: string | null
+    alias: string | null
+    matchType: string | null
+    weight: number | null
+    source: string | null
+    status: string | null
+    evidenceCount: number | null
+    createdAt: Date | null
+  }
+
+  export type TaskCommandAliasMaxAggregateOutputType = {
+    id: string | null
+    policySetId: string | null
+    canonicalCommand: string | null
+    alias: string | null
+    matchType: string | null
+    weight: number | null
+    source: string | null
+    status: string | null
+    evidenceCount: number | null
+    createdAt: Date | null
+  }
+
+  export type TaskCommandAliasCountAggregateOutputType = {
+    id: number
+    policySetId: number
+    canonicalCommand: number
+    alias: number
+    matchType: number
+    weight: number
+    source: number
+    status: number
+    evidenceCount: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type TaskCommandAliasAvgAggregateInputType = {
+    weight?: true
+    evidenceCount?: true
+  }
+
+  export type TaskCommandAliasSumAggregateInputType = {
+    weight?: true
+    evidenceCount?: true
+  }
+
+  export type TaskCommandAliasMinAggregateInputType = {
+    id?: true
+    policySetId?: true
+    canonicalCommand?: true
+    alias?: true
+    matchType?: true
+    weight?: true
+    source?: true
+    status?: true
+    evidenceCount?: true
+    createdAt?: true
+  }
+
+  export type TaskCommandAliasMaxAggregateInputType = {
+    id?: true
+    policySetId?: true
+    canonicalCommand?: true
+    alias?: true
+    matchType?: true
+    weight?: true
+    source?: true
+    status?: true
+    evidenceCount?: true
+    createdAt?: true
+  }
+
+  export type TaskCommandAliasCountAggregateInputType = {
+    id?: true
+    policySetId?: true
+    canonicalCommand?: true
+    alias?: true
+    matchType?: true
+    weight?: true
+    source?: true
+    status?: true
+    evidenceCount?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type TaskCommandAliasAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TaskCommandAlias to aggregate.
+     */
+    where?: TaskCommandAliasWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskCommandAliases to fetch.
+     */
+    orderBy?: TaskCommandAliasOrderByWithRelationInput | TaskCommandAliasOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: TaskCommandAliasWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskCommandAliases from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskCommandAliases.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned TaskCommandAliases
+    **/
+    _count?: true | TaskCommandAliasCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: TaskCommandAliasAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: TaskCommandAliasSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: TaskCommandAliasMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: TaskCommandAliasMaxAggregateInputType
+  }
+
+  export type GetTaskCommandAliasAggregateType<T extends TaskCommandAliasAggregateArgs> = {
+        [P in keyof T & keyof AggregateTaskCommandAlias]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateTaskCommandAlias[P]>
+      : GetScalarType<T[P], AggregateTaskCommandAlias[P]>
+  }
+
+
+
+
+  export type TaskCommandAliasGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TaskCommandAliasWhereInput
+    orderBy?: TaskCommandAliasOrderByWithAggregationInput | TaskCommandAliasOrderByWithAggregationInput[]
+    by: TaskCommandAliasScalarFieldEnum[] | TaskCommandAliasScalarFieldEnum
+    having?: TaskCommandAliasScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: TaskCommandAliasCountAggregateInputType | true
+    _avg?: TaskCommandAliasAvgAggregateInputType
+    _sum?: TaskCommandAliasSumAggregateInputType
+    _min?: TaskCommandAliasMinAggregateInputType
+    _max?: TaskCommandAliasMaxAggregateInputType
+  }
+
+  export type TaskCommandAliasGroupByOutputType = {
+    id: string
+    policySetId: string
+    canonicalCommand: string
+    alias: string
+    matchType: string
+    weight: number
+    source: string
+    status: string
+    evidenceCount: number
+    createdAt: Date
+    _count: TaskCommandAliasCountAggregateOutputType | null
+    _avg: TaskCommandAliasAvgAggregateOutputType | null
+    _sum: TaskCommandAliasSumAggregateOutputType | null
+    _min: TaskCommandAliasMinAggregateOutputType | null
+    _max: TaskCommandAliasMaxAggregateOutputType | null
+  }
+
+  type GetTaskCommandAliasGroupByPayload<T extends TaskCommandAliasGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<TaskCommandAliasGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof TaskCommandAliasGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], TaskCommandAliasGroupByOutputType[P]>
+            : GetScalarType<T[P], TaskCommandAliasGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type TaskCommandAliasSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    policySetId?: boolean
+    canonicalCommand?: boolean
+    alias?: boolean
+    matchType?: boolean
+    weight?: boolean
+    source?: boolean
+    status?: boolean
+    evidenceCount?: boolean
+    createdAt?: boolean
+    policySet?: boolean | TaskPolicySetDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["taskCommandAlias"]>
+
+  export type TaskCommandAliasSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    policySetId?: boolean
+    canonicalCommand?: boolean
+    alias?: boolean
+    matchType?: boolean
+    weight?: boolean
+    source?: boolean
+    status?: boolean
+    evidenceCount?: boolean
+    createdAt?: boolean
+    policySet?: boolean | TaskPolicySetDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["taskCommandAlias"]>
+
+  export type TaskCommandAliasSelectScalar = {
+    id?: boolean
+    policySetId?: boolean
+    canonicalCommand?: boolean
+    alias?: boolean
+    matchType?: boolean
+    weight?: boolean
+    source?: boolean
+    status?: boolean
+    evidenceCount?: boolean
+    createdAt?: boolean
+  }
+
+  export type TaskCommandAliasInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    policySet?: boolean | TaskPolicySetDefaultArgs<ExtArgs>
+  }
+  export type TaskCommandAliasIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    policySet?: boolean | TaskPolicySetDefaultArgs<ExtArgs>
+  }
+
+  export type $TaskCommandAliasPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "TaskCommandAlias"
+    objects: {
+      policySet: Prisma.$TaskPolicySetPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      policySetId: string
+      canonicalCommand: string
+      alias: string
+      matchType: string
+      weight: number
+      source: string
+      status: string
+      evidenceCount: number
+      createdAt: Date
+    }, ExtArgs["result"]["taskCommandAlias"]>
+    composites: {}
+  }
+
+  type TaskCommandAliasGetPayload<S extends boolean | null | undefined | TaskCommandAliasDefaultArgs> = $Result.GetResult<Prisma.$TaskCommandAliasPayload, S>
+
+  type TaskCommandAliasCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<TaskCommandAliasFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: TaskCommandAliasCountAggregateInputType | true
+    }
+
+  export interface TaskCommandAliasDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['TaskCommandAlias'], meta: { name: 'TaskCommandAlias' } }
+    /**
+     * Find zero or one TaskCommandAlias that matches the filter.
+     * @param {TaskCommandAliasFindUniqueArgs} args - Arguments to find a TaskCommandAlias
+     * @example
+     * // Get one TaskCommandAlias
+     * const taskCommandAlias = await prisma.taskCommandAlias.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends TaskCommandAliasFindUniqueArgs>(args: SelectSubset<T, TaskCommandAliasFindUniqueArgs<ExtArgs>>): Prisma__TaskCommandAliasClient<$Result.GetResult<Prisma.$TaskCommandAliasPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one TaskCommandAlias that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {TaskCommandAliasFindUniqueOrThrowArgs} args - Arguments to find a TaskCommandAlias
+     * @example
+     * // Get one TaskCommandAlias
+     * const taskCommandAlias = await prisma.taskCommandAlias.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends TaskCommandAliasFindUniqueOrThrowArgs>(args: SelectSubset<T, TaskCommandAliasFindUniqueOrThrowArgs<ExtArgs>>): Prisma__TaskCommandAliasClient<$Result.GetResult<Prisma.$TaskCommandAliasPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first TaskCommandAlias that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCommandAliasFindFirstArgs} args - Arguments to find a TaskCommandAlias
+     * @example
+     * // Get one TaskCommandAlias
+     * const taskCommandAlias = await prisma.taskCommandAlias.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends TaskCommandAliasFindFirstArgs>(args?: SelectSubset<T, TaskCommandAliasFindFirstArgs<ExtArgs>>): Prisma__TaskCommandAliasClient<$Result.GetResult<Prisma.$TaskCommandAliasPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first TaskCommandAlias that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCommandAliasFindFirstOrThrowArgs} args - Arguments to find a TaskCommandAlias
+     * @example
+     * // Get one TaskCommandAlias
+     * const taskCommandAlias = await prisma.taskCommandAlias.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends TaskCommandAliasFindFirstOrThrowArgs>(args?: SelectSubset<T, TaskCommandAliasFindFirstOrThrowArgs<ExtArgs>>): Prisma__TaskCommandAliasClient<$Result.GetResult<Prisma.$TaskCommandAliasPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more TaskCommandAliases that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCommandAliasFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all TaskCommandAliases
+     * const taskCommandAliases = await prisma.taskCommandAlias.findMany()
+     * 
+     * // Get first 10 TaskCommandAliases
+     * const taskCommandAliases = await prisma.taskCommandAlias.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const taskCommandAliasWithIdOnly = await prisma.taskCommandAlias.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends TaskCommandAliasFindManyArgs>(args?: SelectSubset<T, TaskCommandAliasFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskCommandAliasPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a TaskCommandAlias.
+     * @param {TaskCommandAliasCreateArgs} args - Arguments to create a TaskCommandAlias.
+     * @example
+     * // Create one TaskCommandAlias
+     * const TaskCommandAlias = await prisma.taskCommandAlias.create({
+     *   data: {
+     *     // ... data to create a TaskCommandAlias
+     *   }
+     * })
+     * 
+     */
+    create<T extends TaskCommandAliasCreateArgs>(args: SelectSubset<T, TaskCommandAliasCreateArgs<ExtArgs>>): Prisma__TaskCommandAliasClient<$Result.GetResult<Prisma.$TaskCommandAliasPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many TaskCommandAliases.
+     * @param {TaskCommandAliasCreateManyArgs} args - Arguments to create many TaskCommandAliases.
+     * @example
+     * // Create many TaskCommandAliases
+     * const taskCommandAlias = await prisma.taskCommandAlias.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends TaskCommandAliasCreateManyArgs>(args?: SelectSubset<T, TaskCommandAliasCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many TaskCommandAliases and returns the data saved in the database.
+     * @param {TaskCommandAliasCreateManyAndReturnArgs} args - Arguments to create many TaskCommandAliases.
+     * @example
+     * // Create many TaskCommandAliases
+     * const taskCommandAlias = await prisma.taskCommandAlias.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many TaskCommandAliases and only return the `id`
+     * const taskCommandAliasWithIdOnly = await prisma.taskCommandAlias.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends TaskCommandAliasCreateManyAndReturnArgs>(args?: SelectSubset<T, TaskCommandAliasCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskCommandAliasPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a TaskCommandAlias.
+     * @param {TaskCommandAliasDeleteArgs} args - Arguments to delete one TaskCommandAlias.
+     * @example
+     * // Delete one TaskCommandAlias
+     * const TaskCommandAlias = await prisma.taskCommandAlias.delete({
+     *   where: {
+     *     // ... filter to delete one TaskCommandAlias
+     *   }
+     * })
+     * 
+     */
+    delete<T extends TaskCommandAliasDeleteArgs>(args: SelectSubset<T, TaskCommandAliasDeleteArgs<ExtArgs>>): Prisma__TaskCommandAliasClient<$Result.GetResult<Prisma.$TaskCommandAliasPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one TaskCommandAlias.
+     * @param {TaskCommandAliasUpdateArgs} args - Arguments to update one TaskCommandAlias.
+     * @example
+     * // Update one TaskCommandAlias
+     * const taskCommandAlias = await prisma.taskCommandAlias.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends TaskCommandAliasUpdateArgs>(args: SelectSubset<T, TaskCommandAliasUpdateArgs<ExtArgs>>): Prisma__TaskCommandAliasClient<$Result.GetResult<Prisma.$TaskCommandAliasPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more TaskCommandAliases.
+     * @param {TaskCommandAliasDeleteManyArgs} args - Arguments to filter TaskCommandAliases to delete.
+     * @example
+     * // Delete a few TaskCommandAliases
+     * const { count } = await prisma.taskCommandAlias.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends TaskCommandAliasDeleteManyArgs>(args?: SelectSubset<T, TaskCommandAliasDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more TaskCommandAliases.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCommandAliasUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many TaskCommandAliases
+     * const taskCommandAlias = await prisma.taskCommandAlias.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends TaskCommandAliasUpdateManyArgs>(args: SelectSubset<T, TaskCommandAliasUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one TaskCommandAlias.
+     * @param {TaskCommandAliasUpsertArgs} args - Arguments to update or create a TaskCommandAlias.
+     * @example
+     * // Update or create a TaskCommandAlias
+     * const taskCommandAlias = await prisma.taskCommandAlias.upsert({
+     *   create: {
+     *     // ... data to create a TaskCommandAlias
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the TaskCommandAlias we want to update
+     *   }
+     * })
+     */
+    upsert<T extends TaskCommandAliasUpsertArgs>(args: SelectSubset<T, TaskCommandAliasUpsertArgs<ExtArgs>>): Prisma__TaskCommandAliasClient<$Result.GetResult<Prisma.$TaskCommandAliasPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of TaskCommandAliases.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCommandAliasCountArgs} args - Arguments to filter TaskCommandAliases to count.
+     * @example
+     * // Count the number of TaskCommandAliases
+     * const count = await prisma.taskCommandAlias.count({
+     *   where: {
+     *     // ... the filter for the TaskCommandAliases we want to count
+     *   }
+     * })
+    **/
+    count<T extends TaskCommandAliasCountArgs>(
+      args?: Subset<T, TaskCommandAliasCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], TaskCommandAliasCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a TaskCommandAlias.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCommandAliasAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends TaskCommandAliasAggregateArgs>(args: Subset<T, TaskCommandAliasAggregateArgs>): Prisma.PrismaPromise<GetTaskCommandAliasAggregateType<T>>
+
+    /**
+     * Group by TaskCommandAlias.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCommandAliasGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends TaskCommandAliasGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: TaskCommandAliasGroupByArgs['orderBy'] }
+        : { orderBy?: TaskCommandAliasGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, TaskCommandAliasGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetTaskCommandAliasGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the TaskCommandAlias model
+   */
+  readonly fields: TaskCommandAliasFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for TaskCommandAlias.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__TaskCommandAliasClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    policySet<T extends TaskPolicySetDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TaskPolicySetDefaultArgs<ExtArgs>>): Prisma__TaskPolicySetClient<$Result.GetResult<Prisma.$TaskPolicySetPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the TaskCommandAlias model
+   */ 
+  interface TaskCommandAliasFieldRefs {
+    readonly id: FieldRef<"TaskCommandAlias", 'String'>
+    readonly policySetId: FieldRef<"TaskCommandAlias", 'String'>
+    readonly canonicalCommand: FieldRef<"TaskCommandAlias", 'String'>
+    readonly alias: FieldRef<"TaskCommandAlias", 'String'>
+    readonly matchType: FieldRef<"TaskCommandAlias", 'String'>
+    readonly weight: FieldRef<"TaskCommandAlias", 'Float'>
+    readonly source: FieldRef<"TaskCommandAlias", 'String'>
+    readonly status: FieldRef<"TaskCommandAlias", 'String'>
+    readonly evidenceCount: FieldRef<"TaskCommandAlias", 'Int'>
+    readonly createdAt: FieldRef<"TaskCommandAlias", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * TaskCommandAlias findUnique
+   */
+  export type TaskCommandAliasFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCommandAlias
+     */
+    select?: TaskCommandAliasSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCommandAliasInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskCommandAlias to fetch.
+     */
+    where: TaskCommandAliasWhereUniqueInput
+  }
+
+  /**
+   * TaskCommandAlias findUniqueOrThrow
+   */
+  export type TaskCommandAliasFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCommandAlias
+     */
+    select?: TaskCommandAliasSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCommandAliasInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskCommandAlias to fetch.
+     */
+    where: TaskCommandAliasWhereUniqueInput
+  }
+
+  /**
+   * TaskCommandAlias findFirst
+   */
+  export type TaskCommandAliasFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCommandAlias
+     */
+    select?: TaskCommandAliasSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCommandAliasInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskCommandAlias to fetch.
+     */
+    where?: TaskCommandAliasWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskCommandAliases to fetch.
+     */
+    orderBy?: TaskCommandAliasOrderByWithRelationInput | TaskCommandAliasOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TaskCommandAliases.
+     */
+    cursor?: TaskCommandAliasWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskCommandAliases from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskCommandAliases.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TaskCommandAliases.
+     */
+    distinct?: TaskCommandAliasScalarFieldEnum | TaskCommandAliasScalarFieldEnum[]
+  }
+
+  /**
+   * TaskCommandAlias findFirstOrThrow
+   */
+  export type TaskCommandAliasFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCommandAlias
+     */
+    select?: TaskCommandAliasSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCommandAliasInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskCommandAlias to fetch.
+     */
+    where?: TaskCommandAliasWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskCommandAliases to fetch.
+     */
+    orderBy?: TaskCommandAliasOrderByWithRelationInput | TaskCommandAliasOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TaskCommandAliases.
+     */
+    cursor?: TaskCommandAliasWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskCommandAliases from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskCommandAliases.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TaskCommandAliases.
+     */
+    distinct?: TaskCommandAliasScalarFieldEnum | TaskCommandAliasScalarFieldEnum[]
+  }
+
+  /**
+   * TaskCommandAlias findMany
+   */
+  export type TaskCommandAliasFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCommandAlias
+     */
+    select?: TaskCommandAliasSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCommandAliasInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskCommandAliases to fetch.
+     */
+    where?: TaskCommandAliasWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskCommandAliases to fetch.
+     */
+    orderBy?: TaskCommandAliasOrderByWithRelationInput | TaskCommandAliasOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing TaskCommandAliases.
+     */
+    cursor?: TaskCommandAliasWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskCommandAliases from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskCommandAliases.
+     */
+    skip?: number
+    distinct?: TaskCommandAliasScalarFieldEnum | TaskCommandAliasScalarFieldEnum[]
+  }
+
+  /**
+   * TaskCommandAlias create
+   */
+  export type TaskCommandAliasCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCommandAlias
+     */
+    select?: TaskCommandAliasSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCommandAliasInclude<ExtArgs> | null
+    /**
+     * The data needed to create a TaskCommandAlias.
+     */
+    data: XOR<TaskCommandAliasCreateInput, TaskCommandAliasUncheckedCreateInput>
+  }
+
+  /**
+   * TaskCommandAlias createMany
+   */
+  export type TaskCommandAliasCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many TaskCommandAliases.
+     */
+    data: TaskCommandAliasCreateManyInput | TaskCommandAliasCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * TaskCommandAlias createManyAndReturn
+   */
+  export type TaskCommandAliasCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCommandAlias
+     */
+    select?: TaskCommandAliasSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many TaskCommandAliases.
+     */
+    data: TaskCommandAliasCreateManyInput | TaskCommandAliasCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCommandAliasIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * TaskCommandAlias update
+   */
+  export type TaskCommandAliasUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCommandAlias
+     */
+    select?: TaskCommandAliasSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCommandAliasInclude<ExtArgs> | null
+    /**
+     * The data needed to update a TaskCommandAlias.
+     */
+    data: XOR<TaskCommandAliasUpdateInput, TaskCommandAliasUncheckedUpdateInput>
+    /**
+     * Choose, which TaskCommandAlias to update.
+     */
+    where: TaskCommandAliasWhereUniqueInput
+  }
+
+  /**
+   * TaskCommandAlias updateMany
+   */
+  export type TaskCommandAliasUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update TaskCommandAliases.
+     */
+    data: XOR<TaskCommandAliasUpdateManyMutationInput, TaskCommandAliasUncheckedUpdateManyInput>
+    /**
+     * Filter which TaskCommandAliases to update
+     */
+    where?: TaskCommandAliasWhereInput
+  }
+
+  /**
+   * TaskCommandAlias upsert
+   */
+  export type TaskCommandAliasUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCommandAlias
+     */
+    select?: TaskCommandAliasSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCommandAliasInclude<ExtArgs> | null
+    /**
+     * The filter to search for the TaskCommandAlias to update in case it exists.
+     */
+    where: TaskCommandAliasWhereUniqueInput
+    /**
+     * In case the TaskCommandAlias found by the `where` argument doesn't exist, create a new TaskCommandAlias with this data.
+     */
+    create: XOR<TaskCommandAliasCreateInput, TaskCommandAliasUncheckedCreateInput>
+    /**
+     * In case the TaskCommandAlias was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<TaskCommandAliasUpdateInput, TaskCommandAliasUncheckedUpdateInput>
+  }
+
+  /**
+   * TaskCommandAlias delete
+   */
+  export type TaskCommandAliasDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCommandAlias
+     */
+    select?: TaskCommandAliasSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCommandAliasInclude<ExtArgs> | null
+    /**
+     * Filter which TaskCommandAlias to delete.
+     */
+    where: TaskCommandAliasWhereUniqueInput
+  }
+
+  /**
+   * TaskCommandAlias deleteMany
+   */
+  export type TaskCommandAliasDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TaskCommandAliases to delete
+     */
+    where?: TaskCommandAliasWhereInput
+  }
+
+  /**
+   * TaskCommandAlias without action
+   */
+  export type TaskCommandAliasDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCommandAlias
+     */
+    select?: TaskCommandAliasSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCommandAliasInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model TaskRecipe
+   */
+
+  export type AggregateTaskRecipe = {
+    _count: TaskRecipeCountAggregateOutputType | null
+    _min: TaskRecipeMinAggregateOutputType | null
+    _max: TaskRecipeMaxAggregateOutputType | null
+  }
+
+  export type TaskRecipeMinAggregateOutputType = {
+    id: string | null
+    policySetId: string | null
+    recipeKey: string | null
+    version: string | null
+    name: string | null
+    riskLevel: string | null
+    status: string | null
+    createdAt: Date | null
+  }
+
+  export type TaskRecipeMaxAggregateOutputType = {
+    id: string | null
+    policySetId: string | null
+    recipeKey: string | null
+    version: string | null
+    name: string | null
+    riskLevel: string | null
+    status: string | null
+    createdAt: Date | null
+  }
+
+  export type TaskRecipeCountAggregateOutputType = {
+    id: number
+    policySetId: number
+    recipeKey: number
+    version: number
+    name: number
+    requiredCommandsJson: number
+    optionalCommandsJson: number
+    triggerJson: number
+    stepsJson: number
+    bindingsJson: number
+    completionClaimsJson: number
+    riskLevel: number
+    status: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type TaskRecipeMinAggregateInputType = {
+    id?: true
+    policySetId?: true
+    recipeKey?: true
+    version?: true
+    name?: true
+    riskLevel?: true
+    status?: true
+    createdAt?: true
+  }
+
+  export type TaskRecipeMaxAggregateInputType = {
+    id?: true
+    policySetId?: true
+    recipeKey?: true
+    version?: true
+    name?: true
+    riskLevel?: true
+    status?: true
+    createdAt?: true
+  }
+
+  export type TaskRecipeCountAggregateInputType = {
+    id?: true
+    policySetId?: true
+    recipeKey?: true
+    version?: true
+    name?: true
+    requiredCommandsJson?: true
+    optionalCommandsJson?: true
+    triggerJson?: true
+    stepsJson?: true
+    bindingsJson?: true
+    completionClaimsJson?: true
+    riskLevel?: true
+    status?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type TaskRecipeAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TaskRecipe to aggregate.
+     */
+    where?: TaskRecipeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskRecipes to fetch.
+     */
+    orderBy?: TaskRecipeOrderByWithRelationInput | TaskRecipeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: TaskRecipeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskRecipes from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskRecipes.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned TaskRecipes
+    **/
+    _count?: true | TaskRecipeCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: TaskRecipeMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: TaskRecipeMaxAggregateInputType
+  }
+
+  export type GetTaskRecipeAggregateType<T extends TaskRecipeAggregateArgs> = {
+        [P in keyof T & keyof AggregateTaskRecipe]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateTaskRecipe[P]>
+      : GetScalarType<T[P], AggregateTaskRecipe[P]>
+  }
+
+
+
+
+  export type TaskRecipeGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TaskRecipeWhereInput
+    orderBy?: TaskRecipeOrderByWithAggregationInput | TaskRecipeOrderByWithAggregationInput[]
+    by: TaskRecipeScalarFieldEnum[] | TaskRecipeScalarFieldEnum
+    having?: TaskRecipeScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: TaskRecipeCountAggregateInputType | true
+    _min?: TaskRecipeMinAggregateInputType
+    _max?: TaskRecipeMaxAggregateInputType
+  }
+
+  export type TaskRecipeGroupByOutputType = {
+    id: string
+    policySetId: string
+    recipeKey: string
+    version: string
+    name: string
+    requiredCommandsJson: JsonValue
+    optionalCommandsJson: JsonValue
+    triggerJson: JsonValue
+    stepsJson: JsonValue
+    bindingsJson: JsonValue
+    completionClaimsJson: JsonValue
+    riskLevel: string
+    status: string
+    createdAt: Date
+    _count: TaskRecipeCountAggregateOutputType | null
+    _min: TaskRecipeMinAggregateOutputType | null
+    _max: TaskRecipeMaxAggregateOutputType | null
+  }
+
+  type GetTaskRecipeGroupByPayload<T extends TaskRecipeGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<TaskRecipeGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof TaskRecipeGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], TaskRecipeGroupByOutputType[P]>
+            : GetScalarType<T[P], TaskRecipeGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type TaskRecipeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    policySetId?: boolean
+    recipeKey?: boolean
+    version?: boolean
+    name?: boolean
+    requiredCommandsJson?: boolean
+    optionalCommandsJson?: boolean
+    triggerJson?: boolean
+    stepsJson?: boolean
+    bindingsJson?: boolean
+    completionClaimsJson?: boolean
+    riskLevel?: boolean
+    status?: boolean
+    createdAt?: boolean
+    policySet?: boolean | TaskPolicySetDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["taskRecipe"]>
+
+  export type TaskRecipeSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    policySetId?: boolean
+    recipeKey?: boolean
+    version?: boolean
+    name?: boolean
+    requiredCommandsJson?: boolean
+    optionalCommandsJson?: boolean
+    triggerJson?: boolean
+    stepsJson?: boolean
+    bindingsJson?: boolean
+    completionClaimsJson?: boolean
+    riskLevel?: boolean
+    status?: boolean
+    createdAt?: boolean
+    policySet?: boolean | TaskPolicySetDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["taskRecipe"]>
+
+  export type TaskRecipeSelectScalar = {
+    id?: boolean
+    policySetId?: boolean
+    recipeKey?: boolean
+    version?: boolean
+    name?: boolean
+    requiredCommandsJson?: boolean
+    optionalCommandsJson?: boolean
+    triggerJson?: boolean
+    stepsJson?: boolean
+    bindingsJson?: boolean
+    completionClaimsJson?: boolean
+    riskLevel?: boolean
+    status?: boolean
+    createdAt?: boolean
+  }
+
+  export type TaskRecipeInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    policySet?: boolean | TaskPolicySetDefaultArgs<ExtArgs>
+  }
+  export type TaskRecipeIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    policySet?: boolean | TaskPolicySetDefaultArgs<ExtArgs>
+  }
+
+  export type $TaskRecipePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "TaskRecipe"
+    objects: {
+      policySet: Prisma.$TaskPolicySetPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      policySetId: string
+      recipeKey: string
+      version: string
+      name: string
+      requiredCommandsJson: Prisma.JsonValue
+      optionalCommandsJson: Prisma.JsonValue
+      triggerJson: Prisma.JsonValue
+      stepsJson: Prisma.JsonValue
+      bindingsJson: Prisma.JsonValue
+      completionClaimsJson: Prisma.JsonValue
+      riskLevel: string
+      status: string
+      createdAt: Date
+    }, ExtArgs["result"]["taskRecipe"]>
+    composites: {}
+  }
+
+  type TaskRecipeGetPayload<S extends boolean | null | undefined | TaskRecipeDefaultArgs> = $Result.GetResult<Prisma.$TaskRecipePayload, S>
+
+  type TaskRecipeCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<TaskRecipeFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: TaskRecipeCountAggregateInputType | true
+    }
+
+  export interface TaskRecipeDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['TaskRecipe'], meta: { name: 'TaskRecipe' } }
+    /**
+     * Find zero or one TaskRecipe that matches the filter.
+     * @param {TaskRecipeFindUniqueArgs} args - Arguments to find a TaskRecipe
+     * @example
+     * // Get one TaskRecipe
+     * const taskRecipe = await prisma.taskRecipe.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends TaskRecipeFindUniqueArgs>(args: SelectSubset<T, TaskRecipeFindUniqueArgs<ExtArgs>>): Prisma__TaskRecipeClient<$Result.GetResult<Prisma.$TaskRecipePayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one TaskRecipe that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {TaskRecipeFindUniqueOrThrowArgs} args - Arguments to find a TaskRecipe
+     * @example
+     * // Get one TaskRecipe
+     * const taskRecipe = await prisma.taskRecipe.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends TaskRecipeFindUniqueOrThrowArgs>(args: SelectSubset<T, TaskRecipeFindUniqueOrThrowArgs<ExtArgs>>): Prisma__TaskRecipeClient<$Result.GetResult<Prisma.$TaskRecipePayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first TaskRecipe that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskRecipeFindFirstArgs} args - Arguments to find a TaskRecipe
+     * @example
+     * // Get one TaskRecipe
+     * const taskRecipe = await prisma.taskRecipe.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends TaskRecipeFindFirstArgs>(args?: SelectSubset<T, TaskRecipeFindFirstArgs<ExtArgs>>): Prisma__TaskRecipeClient<$Result.GetResult<Prisma.$TaskRecipePayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first TaskRecipe that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskRecipeFindFirstOrThrowArgs} args - Arguments to find a TaskRecipe
+     * @example
+     * // Get one TaskRecipe
+     * const taskRecipe = await prisma.taskRecipe.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends TaskRecipeFindFirstOrThrowArgs>(args?: SelectSubset<T, TaskRecipeFindFirstOrThrowArgs<ExtArgs>>): Prisma__TaskRecipeClient<$Result.GetResult<Prisma.$TaskRecipePayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more TaskRecipes that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskRecipeFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all TaskRecipes
+     * const taskRecipes = await prisma.taskRecipe.findMany()
+     * 
+     * // Get first 10 TaskRecipes
+     * const taskRecipes = await prisma.taskRecipe.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const taskRecipeWithIdOnly = await prisma.taskRecipe.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends TaskRecipeFindManyArgs>(args?: SelectSubset<T, TaskRecipeFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskRecipePayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a TaskRecipe.
+     * @param {TaskRecipeCreateArgs} args - Arguments to create a TaskRecipe.
+     * @example
+     * // Create one TaskRecipe
+     * const TaskRecipe = await prisma.taskRecipe.create({
+     *   data: {
+     *     // ... data to create a TaskRecipe
+     *   }
+     * })
+     * 
+     */
+    create<T extends TaskRecipeCreateArgs>(args: SelectSubset<T, TaskRecipeCreateArgs<ExtArgs>>): Prisma__TaskRecipeClient<$Result.GetResult<Prisma.$TaskRecipePayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many TaskRecipes.
+     * @param {TaskRecipeCreateManyArgs} args - Arguments to create many TaskRecipes.
+     * @example
+     * // Create many TaskRecipes
+     * const taskRecipe = await prisma.taskRecipe.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends TaskRecipeCreateManyArgs>(args?: SelectSubset<T, TaskRecipeCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many TaskRecipes and returns the data saved in the database.
+     * @param {TaskRecipeCreateManyAndReturnArgs} args - Arguments to create many TaskRecipes.
+     * @example
+     * // Create many TaskRecipes
+     * const taskRecipe = await prisma.taskRecipe.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many TaskRecipes and only return the `id`
+     * const taskRecipeWithIdOnly = await prisma.taskRecipe.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends TaskRecipeCreateManyAndReturnArgs>(args?: SelectSubset<T, TaskRecipeCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskRecipePayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a TaskRecipe.
+     * @param {TaskRecipeDeleteArgs} args - Arguments to delete one TaskRecipe.
+     * @example
+     * // Delete one TaskRecipe
+     * const TaskRecipe = await prisma.taskRecipe.delete({
+     *   where: {
+     *     // ... filter to delete one TaskRecipe
+     *   }
+     * })
+     * 
+     */
+    delete<T extends TaskRecipeDeleteArgs>(args: SelectSubset<T, TaskRecipeDeleteArgs<ExtArgs>>): Prisma__TaskRecipeClient<$Result.GetResult<Prisma.$TaskRecipePayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one TaskRecipe.
+     * @param {TaskRecipeUpdateArgs} args - Arguments to update one TaskRecipe.
+     * @example
+     * // Update one TaskRecipe
+     * const taskRecipe = await prisma.taskRecipe.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends TaskRecipeUpdateArgs>(args: SelectSubset<T, TaskRecipeUpdateArgs<ExtArgs>>): Prisma__TaskRecipeClient<$Result.GetResult<Prisma.$TaskRecipePayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more TaskRecipes.
+     * @param {TaskRecipeDeleteManyArgs} args - Arguments to filter TaskRecipes to delete.
+     * @example
+     * // Delete a few TaskRecipes
+     * const { count } = await prisma.taskRecipe.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends TaskRecipeDeleteManyArgs>(args?: SelectSubset<T, TaskRecipeDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more TaskRecipes.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskRecipeUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many TaskRecipes
+     * const taskRecipe = await prisma.taskRecipe.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends TaskRecipeUpdateManyArgs>(args: SelectSubset<T, TaskRecipeUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one TaskRecipe.
+     * @param {TaskRecipeUpsertArgs} args - Arguments to update or create a TaskRecipe.
+     * @example
+     * // Update or create a TaskRecipe
+     * const taskRecipe = await prisma.taskRecipe.upsert({
+     *   create: {
+     *     // ... data to create a TaskRecipe
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the TaskRecipe we want to update
+     *   }
+     * })
+     */
+    upsert<T extends TaskRecipeUpsertArgs>(args: SelectSubset<T, TaskRecipeUpsertArgs<ExtArgs>>): Prisma__TaskRecipeClient<$Result.GetResult<Prisma.$TaskRecipePayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of TaskRecipes.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskRecipeCountArgs} args - Arguments to filter TaskRecipes to count.
+     * @example
+     * // Count the number of TaskRecipes
+     * const count = await prisma.taskRecipe.count({
+     *   where: {
+     *     // ... the filter for the TaskRecipes we want to count
+     *   }
+     * })
+    **/
+    count<T extends TaskRecipeCountArgs>(
+      args?: Subset<T, TaskRecipeCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], TaskRecipeCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a TaskRecipe.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskRecipeAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends TaskRecipeAggregateArgs>(args: Subset<T, TaskRecipeAggregateArgs>): Prisma.PrismaPromise<GetTaskRecipeAggregateType<T>>
+
+    /**
+     * Group by TaskRecipe.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskRecipeGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends TaskRecipeGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: TaskRecipeGroupByArgs['orderBy'] }
+        : { orderBy?: TaskRecipeGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, TaskRecipeGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetTaskRecipeGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the TaskRecipe model
+   */
+  readonly fields: TaskRecipeFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for TaskRecipe.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__TaskRecipeClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    policySet<T extends TaskPolicySetDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TaskPolicySetDefaultArgs<ExtArgs>>): Prisma__TaskPolicySetClient<$Result.GetResult<Prisma.$TaskPolicySetPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the TaskRecipe model
+   */ 
+  interface TaskRecipeFieldRefs {
+    readonly id: FieldRef<"TaskRecipe", 'String'>
+    readonly policySetId: FieldRef<"TaskRecipe", 'String'>
+    readonly recipeKey: FieldRef<"TaskRecipe", 'String'>
+    readonly version: FieldRef<"TaskRecipe", 'String'>
+    readonly name: FieldRef<"TaskRecipe", 'String'>
+    readonly requiredCommandsJson: FieldRef<"TaskRecipe", 'Json'>
+    readonly optionalCommandsJson: FieldRef<"TaskRecipe", 'Json'>
+    readonly triggerJson: FieldRef<"TaskRecipe", 'Json'>
+    readonly stepsJson: FieldRef<"TaskRecipe", 'Json'>
+    readonly bindingsJson: FieldRef<"TaskRecipe", 'Json'>
+    readonly completionClaimsJson: FieldRef<"TaskRecipe", 'Json'>
+    readonly riskLevel: FieldRef<"TaskRecipe", 'String'>
+    readonly status: FieldRef<"TaskRecipe", 'String'>
+    readonly createdAt: FieldRef<"TaskRecipe", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * TaskRecipe findUnique
+   */
+  export type TaskRecipeFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskRecipe
+     */
+    select?: TaskRecipeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskRecipeInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskRecipe to fetch.
+     */
+    where: TaskRecipeWhereUniqueInput
+  }
+
+  /**
+   * TaskRecipe findUniqueOrThrow
+   */
+  export type TaskRecipeFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskRecipe
+     */
+    select?: TaskRecipeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskRecipeInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskRecipe to fetch.
+     */
+    where: TaskRecipeWhereUniqueInput
+  }
+
+  /**
+   * TaskRecipe findFirst
+   */
+  export type TaskRecipeFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskRecipe
+     */
+    select?: TaskRecipeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskRecipeInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskRecipe to fetch.
+     */
+    where?: TaskRecipeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskRecipes to fetch.
+     */
+    orderBy?: TaskRecipeOrderByWithRelationInput | TaskRecipeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TaskRecipes.
+     */
+    cursor?: TaskRecipeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskRecipes from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskRecipes.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TaskRecipes.
+     */
+    distinct?: TaskRecipeScalarFieldEnum | TaskRecipeScalarFieldEnum[]
+  }
+
+  /**
+   * TaskRecipe findFirstOrThrow
+   */
+  export type TaskRecipeFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskRecipe
+     */
+    select?: TaskRecipeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskRecipeInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskRecipe to fetch.
+     */
+    where?: TaskRecipeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskRecipes to fetch.
+     */
+    orderBy?: TaskRecipeOrderByWithRelationInput | TaskRecipeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TaskRecipes.
+     */
+    cursor?: TaskRecipeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskRecipes from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskRecipes.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TaskRecipes.
+     */
+    distinct?: TaskRecipeScalarFieldEnum | TaskRecipeScalarFieldEnum[]
+  }
+
+  /**
+   * TaskRecipe findMany
+   */
+  export type TaskRecipeFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskRecipe
+     */
+    select?: TaskRecipeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskRecipeInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskRecipes to fetch.
+     */
+    where?: TaskRecipeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskRecipes to fetch.
+     */
+    orderBy?: TaskRecipeOrderByWithRelationInput | TaskRecipeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing TaskRecipes.
+     */
+    cursor?: TaskRecipeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskRecipes from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskRecipes.
+     */
+    skip?: number
+    distinct?: TaskRecipeScalarFieldEnum | TaskRecipeScalarFieldEnum[]
+  }
+
+  /**
+   * TaskRecipe create
+   */
+  export type TaskRecipeCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskRecipe
+     */
+    select?: TaskRecipeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskRecipeInclude<ExtArgs> | null
+    /**
+     * The data needed to create a TaskRecipe.
+     */
+    data: XOR<TaskRecipeCreateInput, TaskRecipeUncheckedCreateInput>
+  }
+
+  /**
+   * TaskRecipe createMany
+   */
+  export type TaskRecipeCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many TaskRecipes.
+     */
+    data: TaskRecipeCreateManyInput | TaskRecipeCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * TaskRecipe createManyAndReturn
+   */
+  export type TaskRecipeCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskRecipe
+     */
+    select?: TaskRecipeSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many TaskRecipes.
+     */
+    data: TaskRecipeCreateManyInput | TaskRecipeCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskRecipeIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * TaskRecipe update
+   */
+  export type TaskRecipeUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskRecipe
+     */
+    select?: TaskRecipeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskRecipeInclude<ExtArgs> | null
+    /**
+     * The data needed to update a TaskRecipe.
+     */
+    data: XOR<TaskRecipeUpdateInput, TaskRecipeUncheckedUpdateInput>
+    /**
+     * Choose, which TaskRecipe to update.
+     */
+    where: TaskRecipeWhereUniqueInput
+  }
+
+  /**
+   * TaskRecipe updateMany
+   */
+  export type TaskRecipeUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update TaskRecipes.
+     */
+    data: XOR<TaskRecipeUpdateManyMutationInput, TaskRecipeUncheckedUpdateManyInput>
+    /**
+     * Filter which TaskRecipes to update
+     */
+    where?: TaskRecipeWhereInput
+  }
+
+  /**
+   * TaskRecipe upsert
+   */
+  export type TaskRecipeUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskRecipe
+     */
+    select?: TaskRecipeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskRecipeInclude<ExtArgs> | null
+    /**
+     * The filter to search for the TaskRecipe to update in case it exists.
+     */
+    where: TaskRecipeWhereUniqueInput
+    /**
+     * In case the TaskRecipe found by the `where` argument doesn't exist, create a new TaskRecipe with this data.
+     */
+    create: XOR<TaskRecipeCreateInput, TaskRecipeUncheckedCreateInput>
+    /**
+     * In case the TaskRecipe was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<TaskRecipeUpdateInput, TaskRecipeUncheckedUpdateInput>
+  }
+
+  /**
+   * TaskRecipe delete
+   */
+  export type TaskRecipeDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskRecipe
+     */
+    select?: TaskRecipeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskRecipeInclude<ExtArgs> | null
+    /**
+     * Filter which TaskRecipe to delete.
+     */
+    where: TaskRecipeWhereUniqueInput
+  }
+
+  /**
+   * TaskRecipe deleteMany
+   */
+  export type TaskRecipeDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TaskRecipes to delete
+     */
+    where?: TaskRecipeWhereInput
+  }
+
+  /**
+   * TaskRecipe without action
+   */
+  export type TaskRecipeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskRecipe
+     */
+    select?: TaskRecipeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskRecipeInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model TaskCapabilityBinding
+   */
+
+  export type AggregateTaskCapabilityBinding = {
+    _count: TaskCapabilityBindingCountAggregateOutputType | null
+    _avg: TaskCapabilityBindingAvgAggregateOutputType | null
+    _sum: TaskCapabilityBindingSumAggregateOutputType | null
+    _min: TaskCapabilityBindingMinAggregateOutputType | null
+    _max: TaskCapabilityBindingMaxAggregateOutputType | null
+  }
+
+  export type TaskCapabilityBindingAvgAggregateOutputType = {
+    priority: number | null
+  }
+
+  export type TaskCapabilityBindingSumAggregateOutputType = {
+    priority: number | null
+  }
+
+  export type TaskCapabilityBindingMinAggregateOutputType = {
+    id: string | null
+    policySetId: string | null
+    capabilityRole: string | null
+    capabilityId: string | null
+    capabilityVersion: string | null
+    priority: number | null
+    status: string | null
+    createdAt: Date | null
+  }
+
+  export type TaskCapabilityBindingMaxAggregateOutputType = {
+    id: string | null
+    policySetId: string | null
+    capabilityRole: string | null
+    capabilityId: string | null
+    capabilityVersion: string | null
+    priority: number | null
+    status: string | null
+    createdAt: Date | null
+  }
+
+  export type TaskCapabilityBindingCountAggregateOutputType = {
+    id: number
+    policySetId: number
+    capabilityRole: number
+    capabilityId: number
+    capabilityVersion: number
+    priority: number
+    inputMappingJson: number
+    outputMappingJson: number
+    status: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type TaskCapabilityBindingAvgAggregateInputType = {
+    priority?: true
+  }
+
+  export type TaskCapabilityBindingSumAggregateInputType = {
+    priority?: true
+  }
+
+  export type TaskCapabilityBindingMinAggregateInputType = {
+    id?: true
+    policySetId?: true
+    capabilityRole?: true
+    capabilityId?: true
+    capabilityVersion?: true
+    priority?: true
+    status?: true
+    createdAt?: true
+  }
+
+  export type TaskCapabilityBindingMaxAggregateInputType = {
+    id?: true
+    policySetId?: true
+    capabilityRole?: true
+    capabilityId?: true
+    capabilityVersion?: true
+    priority?: true
+    status?: true
+    createdAt?: true
+  }
+
+  export type TaskCapabilityBindingCountAggregateInputType = {
+    id?: true
+    policySetId?: true
+    capabilityRole?: true
+    capabilityId?: true
+    capabilityVersion?: true
+    priority?: true
+    inputMappingJson?: true
+    outputMappingJson?: true
+    status?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type TaskCapabilityBindingAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TaskCapabilityBinding to aggregate.
+     */
+    where?: TaskCapabilityBindingWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskCapabilityBindings to fetch.
+     */
+    orderBy?: TaskCapabilityBindingOrderByWithRelationInput | TaskCapabilityBindingOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: TaskCapabilityBindingWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskCapabilityBindings from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskCapabilityBindings.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned TaskCapabilityBindings
+    **/
+    _count?: true | TaskCapabilityBindingCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: TaskCapabilityBindingAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: TaskCapabilityBindingSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: TaskCapabilityBindingMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: TaskCapabilityBindingMaxAggregateInputType
+  }
+
+  export type GetTaskCapabilityBindingAggregateType<T extends TaskCapabilityBindingAggregateArgs> = {
+        [P in keyof T & keyof AggregateTaskCapabilityBinding]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateTaskCapabilityBinding[P]>
+      : GetScalarType<T[P], AggregateTaskCapabilityBinding[P]>
+  }
+
+
+
+
+  export type TaskCapabilityBindingGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TaskCapabilityBindingWhereInput
+    orderBy?: TaskCapabilityBindingOrderByWithAggregationInput | TaskCapabilityBindingOrderByWithAggregationInput[]
+    by: TaskCapabilityBindingScalarFieldEnum[] | TaskCapabilityBindingScalarFieldEnum
+    having?: TaskCapabilityBindingScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: TaskCapabilityBindingCountAggregateInputType | true
+    _avg?: TaskCapabilityBindingAvgAggregateInputType
+    _sum?: TaskCapabilityBindingSumAggregateInputType
+    _min?: TaskCapabilityBindingMinAggregateInputType
+    _max?: TaskCapabilityBindingMaxAggregateInputType
+  }
+
+  export type TaskCapabilityBindingGroupByOutputType = {
+    id: string
+    policySetId: string
+    capabilityRole: string
+    capabilityId: string
+    capabilityVersion: string | null
+    priority: number
+    inputMappingJson: JsonValue
+    outputMappingJson: JsonValue
+    status: string
+    createdAt: Date
+    _count: TaskCapabilityBindingCountAggregateOutputType | null
+    _avg: TaskCapabilityBindingAvgAggregateOutputType | null
+    _sum: TaskCapabilityBindingSumAggregateOutputType | null
+    _min: TaskCapabilityBindingMinAggregateOutputType | null
+    _max: TaskCapabilityBindingMaxAggregateOutputType | null
+  }
+
+  type GetTaskCapabilityBindingGroupByPayload<T extends TaskCapabilityBindingGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<TaskCapabilityBindingGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof TaskCapabilityBindingGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], TaskCapabilityBindingGroupByOutputType[P]>
+            : GetScalarType<T[P], TaskCapabilityBindingGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type TaskCapabilityBindingSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    policySetId?: boolean
+    capabilityRole?: boolean
+    capabilityId?: boolean
+    capabilityVersion?: boolean
+    priority?: boolean
+    inputMappingJson?: boolean
+    outputMappingJson?: boolean
+    status?: boolean
+    createdAt?: boolean
+    policySet?: boolean | TaskPolicySetDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["taskCapabilityBinding"]>
+
+  export type TaskCapabilityBindingSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    policySetId?: boolean
+    capabilityRole?: boolean
+    capabilityId?: boolean
+    capabilityVersion?: boolean
+    priority?: boolean
+    inputMappingJson?: boolean
+    outputMappingJson?: boolean
+    status?: boolean
+    createdAt?: boolean
+    policySet?: boolean | TaskPolicySetDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["taskCapabilityBinding"]>
+
+  export type TaskCapabilityBindingSelectScalar = {
+    id?: boolean
+    policySetId?: boolean
+    capabilityRole?: boolean
+    capabilityId?: boolean
+    capabilityVersion?: boolean
+    priority?: boolean
+    inputMappingJson?: boolean
+    outputMappingJson?: boolean
+    status?: boolean
+    createdAt?: boolean
+  }
+
+  export type TaskCapabilityBindingInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    policySet?: boolean | TaskPolicySetDefaultArgs<ExtArgs>
+  }
+  export type TaskCapabilityBindingIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    policySet?: boolean | TaskPolicySetDefaultArgs<ExtArgs>
+  }
+
+  export type $TaskCapabilityBindingPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "TaskCapabilityBinding"
+    objects: {
+      policySet: Prisma.$TaskPolicySetPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      policySetId: string
+      capabilityRole: string
+      capabilityId: string
+      capabilityVersion: string | null
+      priority: number
+      inputMappingJson: Prisma.JsonValue
+      outputMappingJson: Prisma.JsonValue
+      status: string
+      createdAt: Date
+    }, ExtArgs["result"]["taskCapabilityBinding"]>
+    composites: {}
+  }
+
+  type TaskCapabilityBindingGetPayload<S extends boolean | null | undefined | TaskCapabilityBindingDefaultArgs> = $Result.GetResult<Prisma.$TaskCapabilityBindingPayload, S>
+
+  type TaskCapabilityBindingCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<TaskCapabilityBindingFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: TaskCapabilityBindingCountAggregateInputType | true
+    }
+
+  export interface TaskCapabilityBindingDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['TaskCapabilityBinding'], meta: { name: 'TaskCapabilityBinding' } }
+    /**
+     * Find zero or one TaskCapabilityBinding that matches the filter.
+     * @param {TaskCapabilityBindingFindUniqueArgs} args - Arguments to find a TaskCapabilityBinding
+     * @example
+     * // Get one TaskCapabilityBinding
+     * const taskCapabilityBinding = await prisma.taskCapabilityBinding.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends TaskCapabilityBindingFindUniqueArgs>(args: SelectSubset<T, TaskCapabilityBindingFindUniqueArgs<ExtArgs>>): Prisma__TaskCapabilityBindingClient<$Result.GetResult<Prisma.$TaskCapabilityBindingPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one TaskCapabilityBinding that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {TaskCapabilityBindingFindUniqueOrThrowArgs} args - Arguments to find a TaskCapabilityBinding
+     * @example
+     * // Get one TaskCapabilityBinding
+     * const taskCapabilityBinding = await prisma.taskCapabilityBinding.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends TaskCapabilityBindingFindUniqueOrThrowArgs>(args: SelectSubset<T, TaskCapabilityBindingFindUniqueOrThrowArgs<ExtArgs>>): Prisma__TaskCapabilityBindingClient<$Result.GetResult<Prisma.$TaskCapabilityBindingPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first TaskCapabilityBinding that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCapabilityBindingFindFirstArgs} args - Arguments to find a TaskCapabilityBinding
+     * @example
+     * // Get one TaskCapabilityBinding
+     * const taskCapabilityBinding = await prisma.taskCapabilityBinding.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends TaskCapabilityBindingFindFirstArgs>(args?: SelectSubset<T, TaskCapabilityBindingFindFirstArgs<ExtArgs>>): Prisma__TaskCapabilityBindingClient<$Result.GetResult<Prisma.$TaskCapabilityBindingPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first TaskCapabilityBinding that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCapabilityBindingFindFirstOrThrowArgs} args - Arguments to find a TaskCapabilityBinding
+     * @example
+     * // Get one TaskCapabilityBinding
+     * const taskCapabilityBinding = await prisma.taskCapabilityBinding.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends TaskCapabilityBindingFindFirstOrThrowArgs>(args?: SelectSubset<T, TaskCapabilityBindingFindFirstOrThrowArgs<ExtArgs>>): Prisma__TaskCapabilityBindingClient<$Result.GetResult<Prisma.$TaskCapabilityBindingPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more TaskCapabilityBindings that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCapabilityBindingFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all TaskCapabilityBindings
+     * const taskCapabilityBindings = await prisma.taskCapabilityBinding.findMany()
+     * 
+     * // Get first 10 TaskCapabilityBindings
+     * const taskCapabilityBindings = await prisma.taskCapabilityBinding.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const taskCapabilityBindingWithIdOnly = await prisma.taskCapabilityBinding.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends TaskCapabilityBindingFindManyArgs>(args?: SelectSubset<T, TaskCapabilityBindingFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskCapabilityBindingPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a TaskCapabilityBinding.
+     * @param {TaskCapabilityBindingCreateArgs} args - Arguments to create a TaskCapabilityBinding.
+     * @example
+     * // Create one TaskCapabilityBinding
+     * const TaskCapabilityBinding = await prisma.taskCapabilityBinding.create({
+     *   data: {
+     *     // ... data to create a TaskCapabilityBinding
+     *   }
+     * })
+     * 
+     */
+    create<T extends TaskCapabilityBindingCreateArgs>(args: SelectSubset<T, TaskCapabilityBindingCreateArgs<ExtArgs>>): Prisma__TaskCapabilityBindingClient<$Result.GetResult<Prisma.$TaskCapabilityBindingPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many TaskCapabilityBindings.
+     * @param {TaskCapabilityBindingCreateManyArgs} args - Arguments to create many TaskCapabilityBindings.
+     * @example
+     * // Create many TaskCapabilityBindings
+     * const taskCapabilityBinding = await prisma.taskCapabilityBinding.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends TaskCapabilityBindingCreateManyArgs>(args?: SelectSubset<T, TaskCapabilityBindingCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many TaskCapabilityBindings and returns the data saved in the database.
+     * @param {TaskCapabilityBindingCreateManyAndReturnArgs} args - Arguments to create many TaskCapabilityBindings.
+     * @example
+     * // Create many TaskCapabilityBindings
+     * const taskCapabilityBinding = await prisma.taskCapabilityBinding.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many TaskCapabilityBindings and only return the `id`
+     * const taskCapabilityBindingWithIdOnly = await prisma.taskCapabilityBinding.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends TaskCapabilityBindingCreateManyAndReturnArgs>(args?: SelectSubset<T, TaskCapabilityBindingCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskCapabilityBindingPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a TaskCapabilityBinding.
+     * @param {TaskCapabilityBindingDeleteArgs} args - Arguments to delete one TaskCapabilityBinding.
+     * @example
+     * // Delete one TaskCapabilityBinding
+     * const TaskCapabilityBinding = await prisma.taskCapabilityBinding.delete({
+     *   where: {
+     *     // ... filter to delete one TaskCapabilityBinding
+     *   }
+     * })
+     * 
+     */
+    delete<T extends TaskCapabilityBindingDeleteArgs>(args: SelectSubset<T, TaskCapabilityBindingDeleteArgs<ExtArgs>>): Prisma__TaskCapabilityBindingClient<$Result.GetResult<Prisma.$TaskCapabilityBindingPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one TaskCapabilityBinding.
+     * @param {TaskCapabilityBindingUpdateArgs} args - Arguments to update one TaskCapabilityBinding.
+     * @example
+     * // Update one TaskCapabilityBinding
+     * const taskCapabilityBinding = await prisma.taskCapabilityBinding.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends TaskCapabilityBindingUpdateArgs>(args: SelectSubset<T, TaskCapabilityBindingUpdateArgs<ExtArgs>>): Prisma__TaskCapabilityBindingClient<$Result.GetResult<Prisma.$TaskCapabilityBindingPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more TaskCapabilityBindings.
+     * @param {TaskCapabilityBindingDeleteManyArgs} args - Arguments to filter TaskCapabilityBindings to delete.
+     * @example
+     * // Delete a few TaskCapabilityBindings
+     * const { count } = await prisma.taskCapabilityBinding.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends TaskCapabilityBindingDeleteManyArgs>(args?: SelectSubset<T, TaskCapabilityBindingDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more TaskCapabilityBindings.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCapabilityBindingUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many TaskCapabilityBindings
+     * const taskCapabilityBinding = await prisma.taskCapabilityBinding.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends TaskCapabilityBindingUpdateManyArgs>(args: SelectSubset<T, TaskCapabilityBindingUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one TaskCapabilityBinding.
+     * @param {TaskCapabilityBindingUpsertArgs} args - Arguments to update or create a TaskCapabilityBinding.
+     * @example
+     * // Update or create a TaskCapabilityBinding
+     * const taskCapabilityBinding = await prisma.taskCapabilityBinding.upsert({
+     *   create: {
+     *     // ... data to create a TaskCapabilityBinding
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the TaskCapabilityBinding we want to update
+     *   }
+     * })
+     */
+    upsert<T extends TaskCapabilityBindingUpsertArgs>(args: SelectSubset<T, TaskCapabilityBindingUpsertArgs<ExtArgs>>): Prisma__TaskCapabilityBindingClient<$Result.GetResult<Prisma.$TaskCapabilityBindingPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of TaskCapabilityBindings.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCapabilityBindingCountArgs} args - Arguments to filter TaskCapabilityBindings to count.
+     * @example
+     * // Count the number of TaskCapabilityBindings
+     * const count = await prisma.taskCapabilityBinding.count({
+     *   where: {
+     *     // ... the filter for the TaskCapabilityBindings we want to count
+     *   }
+     * })
+    **/
+    count<T extends TaskCapabilityBindingCountArgs>(
+      args?: Subset<T, TaskCapabilityBindingCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], TaskCapabilityBindingCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a TaskCapabilityBinding.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCapabilityBindingAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends TaskCapabilityBindingAggregateArgs>(args: Subset<T, TaskCapabilityBindingAggregateArgs>): Prisma.PrismaPromise<GetTaskCapabilityBindingAggregateType<T>>
+
+    /**
+     * Group by TaskCapabilityBinding.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCapabilityBindingGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends TaskCapabilityBindingGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: TaskCapabilityBindingGroupByArgs['orderBy'] }
+        : { orderBy?: TaskCapabilityBindingGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, TaskCapabilityBindingGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetTaskCapabilityBindingGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the TaskCapabilityBinding model
+   */
+  readonly fields: TaskCapabilityBindingFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for TaskCapabilityBinding.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__TaskCapabilityBindingClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    policySet<T extends TaskPolicySetDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TaskPolicySetDefaultArgs<ExtArgs>>): Prisma__TaskPolicySetClient<$Result.GetResult<Prisma.$TaskPolicySetPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the TaskCapabilityBinding model
+   */ 
+  interface TaskCapabilityBindingFieldRefs {
+    readonly id: FieldRef<"TaskCapabilityBinding", 'String'>
+    readonly policySetId: FieldRef<"TaskCapabilityBinding", 'String'>
+    readonly capabilityRole: FieldRef<"TaskCapabilityBinding", 'String'>
+    readonly capabilityId: FieldRef<"TaskCapabilityBinding", 'String'>
+    readonly capabilityVersion: FieldRef<"TaskCapabilityBinding", 'String'>
+    readonly priority: FieldRef<"TaskCapabilityBinding", 'Int'>
+    readonly inputMappingJson: FieldRef<"TaskCapabilityBinding", 'Json'>
+    readonly outputMappingJson: FieldRef<"TaskCapabilityBinding", 'Json'>
+    readonly status: FieldRef<"TaskCapabilityBinding", 'String'>
+    readonly createdAt: FieldRef<"TaskCapabilityBinding", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * TaskCapabilityBinding findUnique
+   */
+  export type TaskCapabilityBindingFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCapabilityBinding
+     */
+    select?: TaskCapabilityBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCapabilityBindingInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskCapabilityBinding to fetch.
+     */
+    where: TaskCapabilityBindingWhereUniqueInput
+  }
+
+  /**
+   * TaskCapabilityBinding findUniqueOrThrow
+   */
+  export type TaskCapabilityBindingFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCapabilityBinding
+     */
+    select?: TaskCapabilityBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCapabilityBindingInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskCapabilityBinding to fetch.
+     */
+    where: TaskCapabilityBindingWhereUniqueInput
+  }
+
+  /**
+   * TaskCapabilityBinding findFirst
+   */
+  export type TaskCapabilityBindingFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCapabilityBinding
+     */
+    select?: TaskCapabilityBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCapabilityBindingInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskCapabilityBinding to fetch.
+     */
+    where?: TaskCapabilityBindingWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskCapabilityBindings to fetch.
+     */
+    orderBy?: TaskCapabilityBindingOrderByWithRelationInput | TaskCapabilityBindingOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TaskCapabilityBindings.
+     */
+    cursor?: TaskCapabilityBindingWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskCapabilityBindings from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskCapabilityBindings.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TaskCapabilityBindings.
+     */
+    distinct?: TaskCapabilityBindingScalarFieldEnum | TaskCapabilityBindingScalarFieldEnum[]
+  }
+
+  /**
+   * TaskCapabilityBinding findFirstOrThrow
+   */
+  export type TaskCapabilityBindingFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCapabilityBinding
+     */
+    select?: TaskCapabilityBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCapabilityBindingInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskCapabilityBinding to fetch.
+     */
+    where?: TaskCapabilityBindingWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskCapabilityBindings to fetch.
+     */
+    orderBy?: TaskCapabilityBindingOrderByWithRelationInput | TaskCapabilityBindingOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TaskCapabilityBindings.
+     */
+    cursor?: TaskCapabilityBindingWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskCapabilityBindings from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskCapabilityBindings.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TaskCapabilityBindings.
+     */
+    distinct?: TaskCapabilityBindingScalarFieldEnum | TaskCapabilityBindingScalarFieldEnum[]
+  }
+
+  /**
+   * TaskCapabilityBinding findMany
+   */
+  export type TaskCapabilityBindingFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCapabilityBinding
+     */
+    select?: TaskCapabilityBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCapabilityBindingInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskCapabilityBindings to fetch.
+     */
+    where?: TaskCapabilityBindingWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskCapabilityBindings to fetch.
+     */
+    orderBy?: TaskCapabilityBindingOrderByWithRelationInput | TaskCapabilityBindingOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing TaskCapabilityBindings.
+     */
+    cursor?: TaskCapabilityBindingWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskCapabilityBindings from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskCapabilityBindings.
+     */
+    skip?: number
+    distinct?: TaskCapabilityBindingScalarFieldEnum | TaskCapabilityBindingScalarFieldEnum[]
+  }
+
+  /**
+   * TaskCapabilityBinding create
+   */
+  export type TaskCapabilityBindingCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCapabilityBinding
+     */
+    select?: TaskCapabilityBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCapabilityBindingInclude<ExtArgs> | null
+    /**
+     * The data needed to create a TaskCapabilityBinding.
+     */
+    data: XOR<TaskCapabilityBindingCreateInput, TaskCapabilityBindingUncheckedCreateInput>
+  }
+
+  /**
+   * TaskCapabilityBinding createMany
+   */
+  export type TaskCapabilityBindingCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many TaskCapabilityBindings.
+     */
+    data: TaskCapabilityBindingCreateManyInput | TaskCapabilityBindingCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * TaskCapabilityBinding createManyAndReturn
+   */
+  export type TaskCapabilityBindingCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCapabilityBinding
+     */
+    select?: TaskCapabilityBindingSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many TaskCapabilityBindings.
+     */
+    data: TaskCapabilityBindingCreateManyInput | TaskCapabilityBindingCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCapabilityBindingIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * TaskCapabilityBinding update
+   */
+  export type TaskCapabilityBindingUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCapabilityBinding
+     */
+    select?: TaskCapabilityBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCapabilityBindingInclude<ExtArgs> | null
+    /**
+     * The data needed to update a TaskCapabilityBinding.
+     */
+    data: XOR<TaskCapabilityBindingUpdateInput, TaskCapabilityBindingUncheckedUpdateInput>
+    /**
+     * Choose, which TaskCapabilityBinding to update.
+     */
+    where: TaskCapabilityBindingWhereUniqueInput
+  }
+
+  /**
+   * TaskCapabilityBinding updateMany
+   */
+  export type TaskCapabilityBindingUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update TaskCapabilityBindings.
+     */
+    data: XOR<TaskCapabilityBindingUpdateManyMutationInput, TaskCapabilityBindingUncheckedUpdateManyInput>
+    /**
+     * Filter which TaskCapabilityBindings to update
+     */
+    where?: TaskCapabilityBindingWhereInput
+  }
+
+  /**
+   * TaskCapabilityBinding upsert
+   */
+  export type TaskCapabilityBindingUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCapabilityBinding
+     */
+    select?: TaskCapabilityBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCapabilityBindingInclude<ExtArgs> | null
+    /**
+     * The filter to search for the TaskCapabilityBinding to update in case it exists.
+     */
+    where: TaskCapabilityBindingWhereUniqueInput
+    /**
+     * In case the TaskCapabilityBinding found by the `where` argument doesn't exist, create a new TaskCapabilityBinding with this data.
+     */
+    create: XOR<TaskCapabilityBindingCreateInput, TaskCapabilityBindingUncheckedCreateInput>
+    /**
+     * In case the TaskCapabilityBinding was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<TaskCapabilityBindingUpdateInput, TaskCapabilityBindingUncheckedUpdateInput>
+  }
+
+  /**
+   * TaskCapabilityBinding delete
+   */
+  export type TaskCapabilityBindingDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCapabilityBinding
+     */
+    select?: TaskCapabilityBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCapabilityBindingInclude<ExtArgs> | null
+    /**
+     * Filter which TaskCapabilityBinding to delete.
+     */
+    where: TaskCapabilityBindingWhereUniqueInput
+  }
+
+  /**
+   * TaskCapabilityBinding deleteMany
+   */
+  export type TaskCapabilityBindingDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TaskCapabilityBindings to delete
+     */
+    where?: TaskCapabilityBindingWhereInput
+  }
+
+  /**
+   * TaskCapabilityBinding without action
+   */
+  export type TaskCapabilityBindingDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCapabilityBinding
+     */
+    select?: TaskCapabilityBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskCapabilityBindingInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model TaskPolicyProposal
+   */
+
+  export type AggregateTaskPolicyProposal = {
+    _count: TaskPolicyProposalCountAggregateOutputType | null
+    _avg: TaskPolicyProposalAvgAggregateOutputType | null
+    _sum: TaskPolicyProposalSumAggregateOutputType | null
+    _min: TaskPolicyProposalMinAggregateOutputType | null
+    _max: TaskPolicyProposalMaxAggregateOutputType | null
+  }
+
+  export type TaskPolicyProposalAvgAggregateOutputType = {
+    confidence: number | null
+  }
+
+  export type TaskPolicyProposalSumAggregateOutputType = {
+    confidence: number | null
+  }
+
+  export type TaskPolicyProposalMinAggregateOutputType = {
+    id: string | null
+    policySetId: string | null
+    proposalType: string | null
+    scopeType: string | null
+    scopeId: string | null
+    status: string | null
+    confidence: number | null
+    proposedBy: string | null
+    reviewedBy: string | null
+    reviewedAt: Date | null
+    createdAt: Date | null
+  }
+
+  export type TaskPolicyProposalMaxAggregateOutputType = {
+    id: string | null
+    policySetId: string | null
+    proposalType: string | null
+    scopeType: string | null
+    scopeId: string | null
+    status: string | null
+    confidence: number | null
+    proposedBy: string | null
+    reviewedBy: string | null
+    reviewedAt: Date | null
+    createdAt: Date | null
+  }
+
+  export type TaskPolicyProposalCountAggregateOutputType = {
+    id: number
+    policySetId: number
+    proposalType: number
+    scopeType: number
+    scopeId: number
+    status: number
+    patchJson: number
+    evidenceJson: number
+    confidence: number
+    proposedBy: number
+    reviewedBy: number
+    reviewedAt: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type TaskPolicyProposalAvgAggregateInputType = {
+    confidence?: true
+  }
+
+  export type TaskPolicyProposalSumAggregateInputType = {
+    confidence?: true
+  }
+
+  export type TaskPolicyProposalMinAggregateInputType = {
+    id?: true
+    policySetId?: true
+    proposalType?: true
+    scopeType?: true
+    scopeId?: true
+    status?: true
+    confidence?: true
+    proposedBy?: true
+    reviewedBy?: true
+    reviewedAt?: true
+    createdAt?: true
+  }
+
+  export type TaskPolicyProposalMaxAggregateInputType = {
+    id?: true
+    policySetId?: true
+    proposalType?: true
+    scopeType?: true
+    scopeId?: true
+    status?: true
+    confidence?: true
+    proposedBy?: true
+    reviewedBy?: true
+    reviewedAt?: true
+    createdAt?: true
+  }
+
+  export type TaskPolicyProposalCountAggregateInputType = {
+    id?: true
+    policySetId?: true
+    proposalType?: true
+    scopeType?: true
+    scopeId?: true
+    status?: true
+    patchJson?: true
+    evidenceJson?: true
+    confidence?: true
+    proposedBy?: true
+    reviewedBy?: true
+    reviewedAt?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type TaskPolicyProposalAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TaskPolicyProposal to aggregate.
+     */
+    where?: TaskPolicyProposalWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskPolicyProposals to fetch.
+     */
+    orderBy?: TaskPolicyProposalOrderByWithRelationInput | TaskPolicyProposalOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: TaskPolicyProposalWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskPolicyProposals from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskPolicyProposals.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned TaskPolicyProposals
+    **/
+    _count?: true | TaskPolicyProposalCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: TaskPolicyProposalAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: TaskPolicyProposalSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: TaskPolicyProposalMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: TaskPolicyProposalMaxAggregateInputType
+  }
+
+  export type GetTaskPolicyProposalAggregateType<T extends TaskPolicyProposalAggregateArgs> = {
+        [P in keyof T & keyof AggregateTaskPolicyProposal]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateTaskPolicyProposal[P]>
+      : GetScalarType<T[P], AggregateTaskPolicyProposal[P]>
+  }
+
+
+
+
+  export type TaskPolicyProposalGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TaskPolicyProposalWhereInput
+    orderBy?: TaskPolicyProposalOrderByWithAggregationInput | TaskPolicyProposalOrderByWithAggregationInput[]
+    by: TaskPolicyProposalScalarFieldEnum[] | TaskPolicyProposalScalarFieldEnum
+    having?: TaskPolicyProposalScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: TaskPolicyProposalCountAggregateInputType | true
+    _avg?: TaskPolicyProposalAvgAggregateInputType
+    _sum?: TaskPolicyProposalSumAggregateInputType
+    _min?: TaskPolicyProposalMinAggregateInputType
+    _max?: TaskPolicyProposalMaxAggregateInputType
+  }
+
+  export type TaskPolicyProposalGroupByOutputType = {
+    id: string
+    policySetId: string | null
+    proposalType: string
+    scopeType: string
+    scopeId: string
+    status: string
+    patchJson: JsonValue
+    evidenceJson: JsonValue
+    confidence: number
+    proposedBy: string
+    reviewedBy: string | null
+    reviewedAt: Date | null
+    createdAt: Date
+    _count: TaskPolicyProposalCountAggregateOutputType | null
+    _avg: TaskPolicyProposalAvgAggregateOutputType | null
+    _sum: TaskPolicyProposalSumAggregateOutputType | null
+    _min: TaskPolicyProposalMinAggregateOutputType | null
+    _max: TaskPolicyProposalMaxAggregateOutputType | null
+  }
+
+  type GetTaskPolicyProposalGroupByPayload<T extends TaskPolicyProposalGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<TaskPolicyProposalGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof TaskPolicyProposalGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], TaskPolicyProposalGroupByOutputType[P]>
+            : GetScalarType<T[P], TaskPolicyProposalGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type TaskPolicyProposalSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    policySetId?: boolean
+    proposalType?: boolean
+    scopeType?: boolean
+    scopeId?: boolean
+    status?: boolean
+    patchJson?: boolean
+    evidenceJson?: boolean
+    confidence?: boolean
+    proposedBy?: boolean
+    reviewedBy?: boolean
+    reviewedAt?: boolean
+    createdAt?: boolean
+    policySet?: boolean | TaskPolicyProposal$policySetArgs<ExtArgs>
+  }, ExtArgs["result"]["taskPolicyProposal"]>
+
+  export type TaskPolicyProposalSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    policySetId?: boolean
+    proposalType?: boolean
+    scopeType?: boolean
+    scopeId?: boolean
+    status?: boolean
+    patchJson?: boolean
+    evidenceJson?: boolean
+    confidence?: boolean
+    proposedBy?: boolean
+    reviewedBy?: boolean
+    reviewedAt?: boolean
+    createdAt?: boolean
+    policySet?: boolean | TaskPolicyProposal$policySetArgs<ExtArgs>
+  }, ExtArgs["result"]["taskPolicyProposal"]>
+
+  export type TaskPolicyProposalSelectScalar = {
+    id?: boolean
+    policySetId?: boolean
+    proposalType?: boolean
+    scopeType?: boolean
+    scopeId?: boolean
+    status?: boolean
+    patchJson?: boolean
+    evidenceJson?: boolean
+    confidence?: boolean
+    proposedBy?: boolean
+    reviewedBy?: boolean
+    reviewedAt?: boolean
+    createdAt?: boolean
+  }
+
+  export type TaskPolicyProposalInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    policySet?: boolean | TaskPolicyProposal$policySetArgs<ExtArgs>
+  }
+  export type TaskPolicyProposalIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    policySet?: boolean | TaskPolicyProposal$policySetArgs<ExtArgs>
+  }
+
+  export type $TaskPolicyProposalPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "TaskPolicyProposal"
+    objects: {
+      policySet: Prisma.$TaskPolicySetPayload<ExtArgs> | null
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      policySetId: string | null
+      proposalType: string
+      scopeType: string
+      scopeId: string
+      status: string
+      patchJson: Prisma.JsonValue
+      evidenceJson: Prisma.JsonValue
+      confidence: number
+      proposedBy: string
+      reviewedBy: string | null
+      reviewedAt: Date | null
+      createdAt: Date
+    }, ExtArgs["result"]["taskPolicyProposal"]>
+    composites: {}
+  }
+
+  type TaskPolicyProposalGetPayload<S extends boolean | null | undefined | TaskPolicyProposalDefaultArgs> = $Result.GetResult<Prisma.$TaskPolicyProposalPayload, S>
+
+  type TaskPolicyProposalCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<TaskPolicyProposalFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: TaskPolicyProposalCountAggregateInputType | true
+    }
+
+  export interface TaskPolicyProposalDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['TaskPolicyProposal'], meta: { name: 'TaskPolicyProposal' } }
+    /**
+     * Find zero or one TaskPolicyProposal that matches the filter.
+     * @param {TaskPolicyProposalFindUniqueArgs} args - Arguments to find a TaskPolicyProposal
+     * @example
+     * // Get one TaskPolicyProposal
+     * const taskPolicyProposal = await prisma.taskPolicyProposal.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends TaskPolicyProposalFindUniqueArgs>(args: SelectSubset<T, TaskPolicyProposalFindUniqueArgs<ExtArgs>>): Prisma__TaskPolicyProposalClient<$Result.GetResult<Prisma.$TaskPolicyProposalPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one TaskPolicyProposal that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {TaskPolicyProposalFindUniqueOrThrowArgs} args - Arguments to find a TaskPolicyProposal
+     * @example
+     * // Get one TaskPolicyProposal
+     * const taskPolicyProposal = await prisma.taskPolicyProposal.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends TaskPolicyProposalFindUniqueOrThrowArgs>(args: SelectSubset<T, TaskPolicyProposalFindUniqueOrThrowArgs<ExtArgs>>): Prisma__TaskPolicyProposalClient<$Result.GetResult<Prisma.$TaskPolicyProposalPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first TaskPolicyProposal that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicyProposalFindFirstArgs} args - Arguments to find a TaskPolicyProposal
+     * @example
+     * // Get one TaskPolicyProposal
+     * const taskPolicyProposal = await prisma.taskPolicyProposal.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends TaskPolicyProposalFindFirstArgs>(args?: SelectSubset<T, TaskPolicyProposalFindFirstArgs<ExtArgs>>): Prisma__TaskPolicyProposalClient<$Result.GetResult<Prisma.$TaskPolicyProposalPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first TaskPolicyProposal that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicyProposalFindFirstOrThrowArgs} args - Arguments to find a TaskPolicyProposal
+     * @example
+     * // Get one TaskPolicyProposal
+     * const taskPolicyProposal = await prisma.taskPolicyProposal.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends TaskPolicyProposalFindFirstOrThrowArgs>(args?: SelectSubset<T, TaskPolicyProposalFindFirstOrThrowArgs<ExtArgs>>): Prisma__TaskPolicyProposalClient<$Result.GetResult<Prisma.$TaskPolicyProposalPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more TaskPolicyProposals that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicyProposalFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all TaskPolicyProposals
+     * const taskPolicyProposals = await prisma.taskPolicyProposal.findMany()
+     * 
+     * // Get first 10 TaskPolicyProposals
+     * const taskPolicyProposals = await prisma.taskPolicyProposal.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const taskPolicyProposalWithIdOnly = await prisma.taskPolicyProposal.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends TaskPolicyProposalFindManyArgs>(args?: SelectSubset<T, TaskPolicyProposalFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskPolicyProposalPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a TaskPolicyProposal.
+     * @param {TaskPolicyProposalCreateArgs} args - Arguments to create a TaskPolicyProposal.
+     * @example
+     * // Create one TaskPolicyProposal
+     * const TaskPolicyProposal = await prisma.taskPolicyProposal.create({
+     *   data: {
+     *     // ... data to create a TaskPolicyProposal
+     *   }
+     * })
+     * 
+     */
+    create<T extends TaskPolicyProposalCreateArgs>(args: SelectSubset<T, TaskPolicyProposalCreateArgs<ExtArgs>>): Prisma__TaskPolicyProposalClient<$Result.GetResult<Prisma.$TaskPolicyProposalPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many TaskPolicyProposals.
+     * @param {TaskPolicyProposalCreateManyArgs} args - Arguments to create many TaskPolicyProposals.
+     * @example
+     * // Create many TaskPolicyProposals
+     * const taskPolicyProposal = await prisma.taskPolicyProposal.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends TaskPolicyProposalCreateManyArgs>(args?: SelectSubset<T, TaskPolicyProposalCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many TaskPolicyProposals and returns the data saved in the database.
+     * @param {TaskPolicyProposalCreateManyAndReturnArgs} args - Arguments to create many TaskPolicyProposals.
+     * @example
+     * // Create many TaskPolicyProposals
+     * const taskPolicyProposal = await prisma.taskPolicyProposal.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many TaskPolicyProposals and only return the `id`
+     * const taskPolicyProposalWithIdOnly = await prisma.taskPolicyProposal.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends TaskPolicyProposalCreateManyAndReturnArgs>(args?: SelectSubset<T, TaskPolicyProposalCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskPolicyProposalPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a TaskPolicyProposal.
+     * @param {TaskPolicyProposalDeleteArgs} args - Arguments to delete one TaskPolicyProposal.
+     * @example
+     * // Delete one TaskPolicyProposal
+     * const TaskPolicyProposal = await prisma.taskPolicyProposal.delete({
+     *   where: {
+     *     // ... filter to delete one TaskPolicyProposal
+     *   }
+     * })
+     * 
+     */
+    delete<T extends TaskPolicyProposalDeleteArgs>(args: SelectSubset<T, TaskPolicyProposalDeleteArgs<ExtArgs>>): Prisma__TaskPolicyProposalClient<$Result.GetResult<Prisma.$TaskPolicyProposalPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one TaskPolicyProposal.
+     * @param {TaskPolicyProposalUpdateArgs} args - Arguments to update one TaskPolicyProposal.
+     * @example
+     * // Update one TaskPolicyProposal
+     * const taskPolicyProposal = await prisma.taskPolicyProposal.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends TaskPolicyProposalUpdateArgs>(args: SelectSubset<T, TaskPolicyProposalUpdateArgs<ExtArgs>>): Prisma__TaskPolicyProposalClient<$Result.GetResult<Prisma.$TaskPolicyProposalPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more TaskPolicyProposals.
+     * @param {TaskPolicyProposalDeleteManyArgs} args - Arguments to filter TaskPolicyProposals to delete.
+     * @example
+     * // Delete a few TaskPolicyProposals
+     * const { count } = await prisma.taskPolicyProposal.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends TaskPolicyProposalDeleteManyArgs>(args?: SelectSubset<T, TaskPolicyProposalDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more TaskPolicyProposals.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicyProposalUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many TaskPolicyProposals
+     * const taskPolicyProposal = await prisma.taskPolicyProposal.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends TaskPolicyProposalUpdateManyArgs>(args: SelectSubset<T, TaskPolicyProposalUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one TaskPolicyProposal.
+     * @param {TaskPolicyProposalUpsertArgs} args - Arguments to update or create a TaskPolicyProposal.
+     * @example
+     * // Update or create a TaskPolicyProposal
+     * const taskPolicyProposal = await prisma.taskPolicyProposal.upsert({
+     *   create: {
+     *     // ... data to create a TaskPolicyProposal
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the TaskPolicyProposal we want to update
+     *   }
+     * })
+     */
+    upsert<T extends TaskPolicyProposalUpsertArgs>(args: SelectSubset<T, TaskPolicyProposalUpsertArgs<ExtArgs>>): Prisma__TaskPolicyProposalClient<$Result.GetResult<Prisma.$TaskPolicyProposalPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of TaskPolicyProposals.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicyProposalCountArgs} args - Arguments to filter TaskPolicyProposals to count.
+     * @example
+     * // Count the number of TaskPolicyProposals
+     * const count = await prisma.taskPolicyProposal.count({
+     *   where: {
+     *     // ... the filter for the TaskPolicyProposals we want to count
+     *   }
+     * })
+    **/
+    count<T extends TaskPolicyProposalCountArgs>(
+      args?: Subset<T, TaskPolicyProposalCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], TaskPolicyProposalCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a TaskPolicyProposal.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicyProposalAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends TaskPolicyProposalAggregateArgs>(args: Subset<T, TaskPolicyProposalAggregateArgs>): Prisma.PrismaPromise<GetTaskPolicyProposalAggregateType<T>>
+
+    /**
+     * Group by TaskPolicyProposal.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicyProposalGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends TaskPolicyProposalGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: TaskPolicyProposalGroupByArgs['orderBy'] }
+        : { orderBy?: TaskPolicyProposalGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, TaskPolicyProposalGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetTaskPolicyProposalGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the TaskPolicyProposal model
+   */
+  readonly fields: TaskPolicyProposalFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for TaskPolicyProposal.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__TaskPolicyProposalClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    policySet<T extends TaskPolicyProposal$policySetArgs<ExtArgs> = {}>(args?: Subset<T, TaskPolicyProposal$policySetArgs<ExtArgs>>): Prisma__TaskPolicySetClient<$Result.GetResult<Prisma.$TaskPolicySetPayload<ExtArgs>, T, "findUniqueOrThrow"> | null, null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the TaskPolicyProposal model
+   */ 
+  interface TaskPolicyProposalFieldRefs {
+    readonly id: FieldRef<"TaskPolicyProposal", 'String'>
+    readonly policySetId: FieldRef<"TaskPolicyProposal", 'String'>
+    readonly proposalType: FieldRef<"TaskPolicyProposal", 'String'>
+    readonly scopeType: FieldRef<"TaskPolicyProposal", 'String'>
+    readonly scopeId: FieldRef<"TaskPolicyProposal", 'String'>
+    readonly status: FieldRef<"TaskPolicyProposal", 'String'>
+    readonly patchJson: FieldRef<"TaskPolicyProposal", 'Json'>
+    readonly evidenceJson: FieldRef<"TaskPolicyProposal", 'Json'>
+    readonly confidence: FieldRef<"TaskPolicyProposal", 'Float'>
+    readonly proposedBy: FieldRef<"TaskPolicyProposal", 'String'>
+    readonly reviewedBy: FieldRef<"TaskPolicyProposal", 'String'>
+    readonly reviewedAt: FieldRef<"TaskPolicyProposal", 'DateTime'>
+    readonly createdAt: FieldRef<"TaskPolicyProposal", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * TaskPolicyProposal findUnique
+   */
+  export type TaskPolicyProposalFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyProposal
+     */
+    select?: TaskPolicyProposalSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyProposalInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskPolicyProposal to fetch.
+     */
+    where: TaskPolicyProposalWhereUniqueInput
+  }
+
+  /**
+   * TaskPolicyProposal findUniqueOrThrow
+   */
+  export type TaskPolicyProposalFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyProposal
+     */
+    select?: TaskPolicyProposalSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyProposalInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskPolicyProposal to fetch.
+     */
+    where: TaskPolicyProposalWhereUniqueInput
+  }
+
+  /**
+   * TaskPolicyProposal findFirst
+   */
+  export type TaskPolicyProposalFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyProposal
+     */
+    select?: TaskPolicyProposalSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyProposalInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskPolicyProposal to fetch.
+     */
+    where?: TaskPolicyProposalWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskPolicyProposals to fetch.
+     */
+    orderBy?: TaskPolicyProposalOrderByWithRelationInput | TaskPolicyProposalOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TaskPolicyProposals.
+     */
+    cursor?: TaskPolicyProposalWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskPolicyProposals from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskPolicyProposals.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TaskPolicyProposals.
+     */
+    distinct?: TaskPolicyProposalScalarFieldEnum | TaskPolicyProposalScalarFieldEnum[]
+  }
+
+  /**
+   * TaskPolicyProposal findFirstOrThrow
+   */
+  export type TaskPolicyProposalFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyProposal
+     */
+    select?: TaskPolicyProposalSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyProposalInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskPolicyProposal to fetch.
+     */
+    where?: TaskPolicyProposalWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskPolicyProposals to fetch.
+     */
+    orderBy?: TaskPolicyProposalOrderByWithRelationInput | TaskPolicyProposalOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TaskPolicyProposals.
+     */
+    cursor?: TaskPolicyProposalWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskPolicyProposals from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskPolicyProposals.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TaskPolicyProposals.
+     */
+    distinct?: TaskPolicyProposalScalarFieldEnum | TaskPolicyProposalScalarFieldEnum[]
+  }
+
+  /**
+   * TaskPolicyProposal findMany
+   */
+  export type TaskPolicyProposalFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyProposal
+     */
+    select?: TaskPolicyProposalSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyProposalInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskPolicyProposals to fetch.
+     */
+    where?: TaskPolicyProposalWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskPolicyProposals to fetch.
+     */
+    orderBy?: TaskPolicyProposalOrderByWithRelationInput | TaskPolicyProposalOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing TaskPolicyProposals.
+     */
+    cursor?: TaskPolicyProposalWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskPolicyProposals from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskPolicyProposals.
+     */
+    skip?: number
+    distinct?: TaskPolicyProposalScalarFieldEnum | TaskPolicyProposalScalarFieldEnum[]
+  }
+
+  /**
+   * TaskPolicyProposal create
+   */
+  export type TaskPolicyProposalCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyProposal
+     */
+    select?: TaskPolicyProposalSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyProposalInclude<ExtArgs> | null
+    /**
+     * The data needed to create a TaskPolicyProposal.
+     */
+    data: XOR<TaskPolicyProposalCreateInput, TaskPolicyProposalUncheckedCreateInput>
+  }
+
+  /**
+   * TaskPolicyProposal createMany
+   */
+  export type TaskPolicyProposalCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many TaskPolicyProposals.
+     */
+    data: TaskPolicyProposalCreateManyInput | TaskPolicyProposalCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * TaskPolicyProposal createManyAndReturn
+   */
+  export type TaskPolicyProposalCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyProposal
+     */
+    select?: TaskPolicyProposalSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many TaskPolicyProposals.
+     */
+    data: TaskPolicyProposalCreateManyInput | TaskPolicyProposalCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyProposalIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * TaskPolicyProposal update
+   */
+  export type TaskPolicyProposalUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyProposal
+     */
+    select?: TaskPolicyProposalSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyProposalInclude<ExtArgs> | null
+    /**
+     * The data needed to update a TaskPolicyProposal.
+     */
+    data: XOR<TaskPolicyProposalUpdateInput, TaskPolicyProposalUncheckedUpdateInput>
+    /**
+     * Choose, which TaskPolicyProposal to update.
+     */
+    where: TaskPolicyProposalWhereUniqueInput
+  }
+
+  /**
+   * TaskPolicyProposal updateMany
+   */
+  export type TaskPolicyProposalUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update TaskPolicyProposals.
+     */
+    data: XOR<TaskPolicyProposalUpdateManyMutationInput, TaskPolicyProposalUncheckedUpdateManyInput>
+    /**
+     * Filter which TaskPolicyProposals to update
+     */
+    where?: TaskPolicyProposalWhereInput
+  }
+
+  /**
+   * TaskPolicyProposal upsert
+   */
+  export type TaskPolicyProposalUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyProposal
+     */
+    select?: TaskPolicyProposalSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyProposalInclude<ExtArgs> | null
+    /**
+     * The filter to search for the TaskPolicyProposal to update in case it exists.
+     */
+    where: TaskPolicyProposalWhereUniqueInput
+    /**
+     * In case the TaskPolicyProposal found by the `where` argument doesn't exist, create a new TaskPolicyProposal with this data.
+     */
+    create: XOR<TaskPolicyProposalCreateInput, TaskPolicyProposalUncheckedCreateInput>
+    /**
+     * In case the TaskPolicyProposal was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<TaskPolicyProposalUpdateInput, TaskPolicyProposalUncheckedUpdateInput>
+  }
+
+  /**
+   * TaskPolicyProposal delete
+   */
+  export type TaskPolicyProposalDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyProposal
+     */
+    select?: TaskPolicyProposalSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyProposalInclude<ExtArgs> | null
+    /**
+     * Filter which TaskPolicyProposal to delete.
+     */
+    where: TaskPolicyProposalWhereUniqueInput
+  }
+
+  /**
+   * TaskPolicyProposal deleteMany
+   */
+  export type TaskPolicyProposalDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TaskPolicyProposals to delete
+     */
+    where?: TaskPolicyProposalWhereInput
+  }
+
+  /**
+   * TaskPolicyProposal.policySet
+   */
+  export type TaskPolicyProposal$policySetArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicySet
+     */
+    select?: TaskPolicySetSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicySetInclude<ExtArgs> | null
+    where?: TaskPolicySetWhereInput
+  }
+
+  /**
+   * TaskPolicyProposal without action
+   */
+  export type TaskPolicyProposalDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyProposal
+     */
+    select?: TaskPolicyProposalSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyProposalInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model TaskPolicyAuditLog
+   */
+
+  export type AggregateTaskPolicyAuditLog = {
+    _count: TaskPolicyAuditLogCountAggregateOutputType | null
+    _min: TaskPolicyAuditLogMinAggregateOutputType | null
+    _max: TaskPolicyAuditLogMaxAggregateOutputType | null
+  }
+
+  export type TaskPolicyAuditLogMinAggregateOutputType = {
+    id: string | null
+    policySetId: string | null
+    actorUserId: string | null
+    action: string | null
+    createdAt: Date | null
+  }
+
+  export type TaskPolicyAuditLogMaxAggregateOutputType = {
+    id: string | null
+    policySetId: string | null
+    actorUserId: string | null
+    action: string | null
+    createdAt: Date | null
+  }
+
+  export type TaskPolicyAuditLogCountAggregateOutputType = {
+    id: number
+    policySetId: number
+    actorUserId: number
+    action: number
+    detailJson: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type TaskPolicyAuditLogMinAggregateInputType = {
+    id?: true
+    policySetId?: true
+    actorUserId?: true
+    action?: true
+    createdAt?: true
+  }
+
+  export type TaskPolicyAuditLogMaxAggregateInputType = {
+    id?: true
+    policySetId?: true
+    actorUserId?: true
+    action?: true
+    createdAt?: true
+  }
+
+  export type TaskPolicyAuditLogCountAggregateInputType = {
+    id?: true
+    policySetId?: true
+    actorUserId?: true
+    action?: true
+    detailJson?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type TaskPolicyAuditLogAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TaskPolicyAuditLog to aggregate.
+     */
+    where?: TaskPolicyAuditLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskPolicyAuditLogs to fetch.
+     */
+    orderBy?: TaskPolicyAuditLogOrderByWithRelationInput | TaskPolicyAuditLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: TaskPolicyAuditLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskPolicyAuditLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskPolicyAuditLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned TaskPolicyAuditLogs
+    **/
+    _count?: true | TaskPolicyAuditLogCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: TaskPolicyAuditLogMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: TaskPolicyAuditLogMaxAggregateInputType
+  }
+
+  export type GetTaskPolicyAuditLogAggregateType<T extends TaskPolicyAuditLogAggregateArgs> = {
+        [P in keyof T & keyof AggregateTaskPolicyAuditLog]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateTaskPolicyAuditLog[P]>
+      : GetScalarType<T[P], AggregateTaskPolicyAuditLog[P]>
+  }
+
+
+
+
+  export type TaskPolicyAuditLogGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TaskPolicyAuditLogWhereInput
+    orderBy?: TaskPolicyAuditLogOrderByWithAggregationInput | TaskPolicyAuditLogOrderByWithAggregationInput[]
+    by: TaskPolicyAuditLogScalarFieldEnum[] | TaskPolicyAuditLogScalarFieldEnum
+    having?: TaskPolicyAuditLogScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: TaskPolicyAuditLogCountAggregateInputType | true
+    _min?: TaskPolicyAuditLogMinAggregateInputType
+    _max?: TaskPolicyAuditLogMaxAggregateInputType
+  }
+
+  export type TaskPolicyAuditLogGroupByOutputType = {
+    id: string
+    policySetId: string | null
+    actorUserId: string | null
+    action: string
+    detailJson: JsonValue
+    createdAt: Date
+    _count: TaskPolicyAuditLogCountAggregateOutputType | null
+    _min: TaskPolicyAuditLogMinAggregateOutputType | null
+    _max: TaskPolicyAuditLogMaxAggregateOutputType | null
+  }
+
+  type GetTaskPolicyAuditLogGroupByPayload<T extends TaskPolicyAuditLogGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<TaskPolicyAuditLogGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof TaskPolicyAuditLogGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], TaskPolicyAuditLogGroupByOutputType[P]>
+            : GetScalarType<T[P], TaskPolicyAuditLogGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type TaskPolicyAuditLogSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    policySetId?: boolean
+    actorUserId?: boolean
+    action?: boolean
+    detailJson?: boolean
+    createdAt?: boolean
+    policySet?: boolean | TaskPolicyAuditLog$policySetArgs<ExtArgs>
+  }, ExtArgs["result"]["taskPolicyAuditLog"]>
+
+  export type TaskPolicyAuditLogSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    policySetId?: boolean
+    actorUserId?: boolean
+    action?: boolean
+    detailJson?: boolean
+    createdAt?: boolean
+    policySet?: boolean | TaskPolicyAuditLog$policySetArgs<ExtArgs>
+  }, ExtArgs["result"]["taskPolicyAuditLog"]>
+
+  export type TaskPolicyAuditLogSelectScalar = {
+    id?: boolean
+    policySetId?: boolean
+    actorUserId?: boolean
+    action?: boolean
+    detailJson?: boolean
+    createdAt?: boolean
+  }
+
+  export type TaskPolicyAuditLogInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    policySet?: boolean | TaskPolicyAuditLog$policySetArgs<ExtArgs>
+  }
+  export type TaskPolicyAuditLogIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    policySet?: boolean | TaskPolicyAuditLog$policySetArgs<ExtArgs>
+  }
+
+  export type $TaskPolicyAuditLogPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "TaskPolicyAuditLog"
+    objects: {
+      policySet: Prisma.$TaskPolicySetPayload<ExtArgs> | null
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      policySetId: string | null
+      actorUserId: string | null
+      action: string
+      detailJson: Prisma.JsonValue
+      createdAt: Date
+    }, ExtArgs["result"]["taskPolicyAuditLog"]>
+    composites: {}
+  }
+
+  type TaskPolicyAuditLogGetPayload<S extends boolean | null | undefined | TaskPolicyAuditLogDefaultArgs> = $Result.GetResult<Prisma.$TaskPolicyAuditLogPayload, S>
+
+  type TaskPolicyAuditLogCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<TaskPolicyAuditLogFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: TaskPolicyAuditLogCountAggregateInputType | true
+    }
+
+  export interface TaskPolicyAuditLogDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['TaskPolicyAuditLog'], meta: { name: 'TaskPolicyAuditLog' } }
+    /**
+     * Find zero or one TaskPolicyAuditLog that matches the filter.
+     * @param {TaskPolicyAuditLogFindUniqueArgs} args - Arguments to find a TaskPolicyAuditLog
+     * @example
+     * // Get one TaskPolicyAuditLog
+     * const taskPolicyAuditLog = await prisma.taskPolicyAuditLog.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends TaskPolicyAuditLogFindUniqueArgs>(args: SelectSubset<T, TaskPolicyAuditLogFindUniqueArgs<ExtArgs>>): Prisma__TaskPolicyAuditLogClient<$Result.GetResult<Prisma.$TaskPolicyAuditLogPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one TaskPolicyAuditLog that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {TaskPolicyAuditLogFindUniqueOrThrowArgs} args - Arguments to find a TaskPolicyAuditLog
+     * @example
+     * // Get one TaskPolicyAuditLog
+     * const taskPolicyAuditLog = await prisma.taskPolicyAuditLog.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends TaskPolicyAuditLogFindUniqueOrThrowArgs>(args: SelectSubset<T, TaskPolicyAuditLogFindUniqueOrThrowArgs<ExtArgs>>): Prisma__TaskPolicyAuditLogClient<$Result.GetResult<Prisma.$TaskPolicyAuditLogPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first TaskPolicyAuditLog that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicyAuditLogFindFirstArgs} args - Arguments to find a TaskPolicyAuditLog
+     * @example
+     * // Get one TaskPolicyAuditLog
+     * const taskPolicyAuditLog = await prisma.taskPolicyAuditLog.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends TaskPolicyAuditLogFindFirstArgs>(args?: SelectSubset<T, TaskPolicyAuditLogFindFirstArgs<ExtArgs>>): Prisma__TaskPolicyAuditLogClient<$Result.GetResult<Prisma.$TaskPolicyAuditLogPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first TaskPolicyAuditLog that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicyAuditLogFindFirstOrThrowArgs} args - Arguments to find a TaskPolicyAuditLog
+     * @example
+     * // Get one TaskPolicyAuditLog
+     * const taskPolicyAuditLog = await prisma.taskPolicyAuditLog.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends TaskPolicyAuditLogFindFirstOrThrowArgs>(args?: SelectSubset<T, TaskPolicyAuditLogFindFirstOrThrowArgs<ExtArgs>>): Prisma__TaskPolicyAuditLogClient<$Result.GetResult<Prisma.$TaskPolicyAuditLogPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more TaskPolicyAuditLogs that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicyAuditLogFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all TaskPolicyAuditLogs
+     * const taskPolicyAuditLogs = await prisma.taskPolicyAuditLog.findMany()
+     * 
+     * // Get first 10 TaskPolicyAuditLogs
+     * const taskPolicyAuditLogs = await prisma.taskPolicyAuditLog.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const taskPolicyAuditLogWithIdOnly = await prisma.taskPolicyAuditLog.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends TaskPolicyAuditLogFindManyArgs>(args?: SelectSubset<T, TaskPolicyAuditLogFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskPolicyAuditLogPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a TaskPolicyAuditLog.
+     * @param {TaskPolicyAuditLogCreateArgs} args - Arguments to create a TaskPolicyAuditLog.
+     * @example
+     * // Create one TaskPolicyAuditLog
+     * const TaskPolicyAuditLog = await prisma.taskPolicyAuditLog.create({
+     *   data: {
+     *     // ... data to create a TaskPolicyAuditLog
+     *   }
+     * })
+     * 
+     */
+    create<T extends TaskPolicyAuditLogCreateArgs>(args: SelectSubset<T, TaskPolicyAuditLogCreateArgs<ExtArgs>>): Prisma__TaskPolicyAuditLogClient<$Result.GetResult<Prisma.$TaskPolicyAuditLogPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many TaskPolicyAuditLogs.
+     * @param {TaskPolicyAuditLogCreateManyArgs} args - Arguments to create many TaskPolicyAuditLogs.
+     * @example
+     * // Create many TaskPolicyAuditLogs
+     * const taskPolicyAuditLog = await prisma.taskPolicyAuditLog.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends TaskPolicyAuditLogCreateManyArgs>(args?: SelectSubset<T, TaskPolicyAuditLogCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many TaskPolicyAuditLogs and returns the data saved in the database.
+     * @param {TaskPolicyAuditLogCreateManyAndReturnArgs} args - Arguments to create many TaskPolicyAuditLogs.
+     * @example
+     * // Create many TaskPolicyAuditLogs
+     * const taskPolicyAuditLog = await prisma.taskPolicyAuditLog.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many TaskPolicyAuditLogs and only return the `id`
+     * const taskPolicyAuditLogWithIdOnly = await prisma.taskPolicyAuditLog.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends TaskPolicyAuditLogCreateManyAndReturnArgs>(args?: SelectSubset<T, TaskPolicyAuditLogCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskPolicyAuditLogPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a TaskPolicyAuditLog.
+     * @param {TaskPolicyAuditLogDeleteArgs} args - Arguments to delete one TaskPolicyAuditLog.
+     * @example
+     * // Delete one TaskPolicyAuditLog
+     * const TaskPolicyAuditLog = await prisma.taskPolicyAuditLog.delete({
+     *   where: {
+     *     // ... filter to delete one TaskPolicyAuditLog
+     *   }
+     * })
+     * 
+     */
+    delete<T extends TaskPolicyAuditLogDeleteArgs>(args: SelectSubset<T, TaskPolicyAuditLogDeleteArgs<ExtArgs>>): Prisma__TaskPolicyAuditLogClient<$Result.GetResult<Prisma.$TaskPolicyAuditLogPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one TaskPolicyAuditLog.
+     * @param {TaskPolicyAuditLogUpdateArgs} args - Arguments to update one TaskPolicyAuditLog.
+     * @example
+     * // Update one TaskPolicyAuditLog
+     * const taskPolicyAuditLog = await prisma.taskPolicyAuditLog.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends TaskPolicyAuditLogUpdateArgs>(args: SelectSubset<T, TaskPolicyAuditLogUpdateArgs<ExtArgs>>): Prisma__TaskPolicyAuditLogClient<$Result.GetResult<Prisma.$TaskPolicyAuditLogPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more TaskPolicyAuditLogs.
+     * @param {TaskPolicyAuditLogDeleteManyArgs} args - Arguments to filter TaskPolicyAuditLogs to delete.
+     * @example
+     * // Delete a few TaskPolicyAuditLogs
+     * const { count } = await prisma.taskPolicyAuditLog.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends TaskPolicyAuditLogDeleteManyArgs>(args?: SelectSubset<T, TaskPolicyAuditLogDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more TaskPolicyAuditLogs.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicyAuditLogUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many TaskPolicyAuditLogs
+     * const taskPolicyAuditLog = await prisma.taskPolicyAuditLog.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends TaskPolicyAuditLogUpdateManyArgs>(args: SelectSubset<T, TaskPolicyAuditLogUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one TaskPolicyAuditLog.
+     * @param {TaskPolicyAuditLogUpsertArgs} args - Arguments to update or create a TaskPolicyAuditLog.
+     * @example
+     * // Update or create a TaskPolicyAuditLog
+     * const taskPolicyAuditLog = await prisma.taskPolicyAuditLog.upsert({
+     *   create: {
+     *     // ... data to create a TaskPolicyAuditLog
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the TaskPolicyAuditLog we want to update
+     *   }
+     * })
+     */
+    upsert<T extends TaskPolicyAuditLogUpsertArgs>(args: SelectSubset<T, TaskPolicyAuditLogUpsertArgs<ExtArgs>>): Prisma__TaskPolicyAuditLogClient<$Result.GetResult<Prisma.$TaskPolicyAuditLogPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of TaskPolicyAuditLogs.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicyAuditLogCountArgs} args - Arguments to filter TaskPolicyAuditLogs to count.
+     * @example
+     * // Count the number of TaskPolicyAuditLogs
+     * const count = await prisma.taskPolicyAuditLog.count({
+     *   where: {
+     *     // ... the filter for the TaskPolicyAuditLogs we want to count
+     *   }
+     * })
+    **/
+    count<T extends TaskPolicyAuditLogCountArgs>(
+      args?: Subset<T, TaskPolicyAuditLogCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], TaskPolicyAuditLogCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a TaskPolicyAuditLog.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicyAuditLogAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends TaskPolicyAuditLogAggregateArgs>(args: Subset<T, TaskPolicyAuditLogAggregateArgs>): Prisma.PrismaPromise<GetTaskPolicyAuditLogAggregateType<T>>
+
+    /**
+     * Group by TaskPolicyAuditLog.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskPolicyAuditLogGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends TaskPolicyAuditLogGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: TaskPolicyAuditLogGroupByArgs['orderBy'] }
+        : { orderBy?: TaskPolicyAuditLogGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, TaskPolicyAuditLogGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetTaskPolicyAuditLogGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the TaskPolicyAuditLog model
+   */
+  readonly fields: TaskPolicyAuditLogFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for TaskPolicyAuditLog.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__TaskPolicyAuditLogClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    policySet<T extends TaskPolicyAuditLog$policySetArgs<ExtArgs> = {}>(args?: Subset<T, TaskPolicyAuditLog$policySetArgs<ExtArgs>>): Prisma__TaskPolicySetClient<$Result.GetResult<Prisma.$TaskPolicySetPayload<ExtArgs>, T, "findUniqueOrThrow"> | null, null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the TaskPolicyAuditLog model
+   */ 
+  interface TaskPolicyAuditLogFieldRefs {
+    readonly id: FieldRef<"TaskPolicyAuditLog", 'String'>
+    readonly policySetId: FieldRef<"TaskPolicyAuditLog", 'String'>
+    readonly actorUserId: FieldRef<"TaskPolicyAuditLog", 'String'>
+    readonly action: FieldRef<"TaskPolicyAuditLog", 'String'>
+    readonly detailJson: FieldRef<"TaskPolicyAuditLog", 'Json'>
+    readonly createdAt: FieldRef<"TaskPolicyAuditLog", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * TaskPolicyAuditLog findUnique
+   */
+  export type TaskPolicyAuditLogFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyAuditLog
+     */
+    select?: TaskPolicyAuditLogSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyAuditLogInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskPolicyAuditLog to fetch.
+     */
+    where: TaskPolicyAuditLogWhereUniqueInput
+  }
+
+  /**
+   * TaskPolicyAuditLog findUniqueOrThrow
+   */
+  export type TaskPolicyAuditLogFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyAuditLog
+     */
+    select?: TaskPolicyAuditLogSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyAuditLogInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskPolicyAuditLog to fetch.
+     */
+    where: TaskPolicyAuditLogWhereUniqueInput
+  }
+
+  /**
+   * TaskPolicyAuditLog findFirst
+   */
+  export type TaskPolicyAuditLogFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyAuditLog
+     */
+    select?: TaskPolicyAuditLogSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyAuditLogInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskPolicyAuditLog to fetch.
+     */
+    where?: TaskPolicyAuditLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskPolicyAuditLogs to fetch.
+     */
+    orderBy?: TaskPolicyAuditLogOrderByWithRelationInput | TaskPolicyAuditLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TaskPolicyAuditLogs.
+     */
+    cursor?: TaskPolicyAuditLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskPolicyAuditLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskPolicyAuditLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TaskPolicyAuditLogs.
+     */
+    distinct?: TaskPolicyAuditLogScalarFieldEnum | TaskPolicyAuditLogScalarFieldEnum[]
+  }
+
+  /**
+   * TaskPolicyAuditLog findFirstOrThrow
+   */
+  export type TaskPolicyAuditLogFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyAuditLog
+     */
+    select?: TaskPolicyAuditLogSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyAuditLogInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskPolicyAuditLog to fetch.
+     */
+    where?: TaskPolicyAuditLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskPolicyAuditLogs to fetch.
+     */
+    orderBy?: TaskPolicyAuditLogOrderByWithRelationInput | TaskPolicyAuditLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TaskPolicyAuditLogs.
+     */
+    cursor?: TaskPolicyAuditLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskPolicyAuditLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskPolicyAuditLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TaskPolicyAuditLogs.
+     */
+    distinct?: TaskPolicyAuditLogScalarFieldEnum | TaskPolicyAuditLogScalarFieldEnum[]
+  }
+
+  /**
+   * TaskPolicyAuditLog findMany
+   */
+  export type TaskPolicyAuditLogFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyAuditLog
+     */
+    select?: TaskPolicyAuditLogSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyAuditLogInclude<ExtArgs> | null
+    /**
+     * Filter, which TaskPolicyAuditLogs to fetch.
+     */
+    where?: TaskPolicyAuditLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskPolicyAuditLogs to fetch.
+     */
+    orderBy?: TaskPolicyAuditLogOrderByWithRelationInput | TaskPolicyAuditLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing TaskPolicyAuditLogs.
+     */
+    cursor?: TaskPolicyAuditLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskPolicyAuditLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskPolicyAuditLogs.
+     */
+    skip?: number
+    distinct?: TaskPolicyAuditLogScalarFieldEnum | TaskPolicyAuditLogScalarFieldEnum[]
+  }
+
+  /**
+   * TaskPolicyAuditLog create
+   */
+  export type TaskPolicyAuditLogCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyAuditLog
+     */
+    select?: TaskPolicyAuditLogSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyAuditLogInclude<ExtArgs> | null
+    /**
+     * The data needed to create a TaskPolicyAuditLog.
+     */
+    data: XOR<TaskPolicyAuditLogCreateInput, TaskPolicyAuditLogUncheckedCreateInput>
+  }
+
+  /**
+   * TaskPolicyAuditLog createMany
+   */
+  export type TaskPolicyAuditLogCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many TaskPolicyAuditLogs.
+     */
+    data: TaskPolicyAuditLogCreateManyInput | TaskPolicyAuditLogCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * TaskPolicyAuditLog createManyAndReturn
+   */
+  export type TaskPolicyAuditLogCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyAuditLog
+     */
+    select?: TaskPolicyAuditLogSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many TaskPolicyAuditLogs.
+     */
+    data: TaskPolicyAuditLogCreateManyInput | TaskPolicyAuditLogCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyAuditLogIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * TaskPolicyAuditLog update
+   */
+  export type TaskPolicyAuditLogUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyAuditLog
+     */
+    select?: TaskPolicyAuditLogSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyAuditLogInclude<ExtArgs> | null
+    /**
+     * The data needed to update a TaskPolicyAuditLog.
+     */
+    data: XOR<TaskPolicyAuditLogUpdateInput, TaskPolicyAuditLogUncheckedUpdateInput>
+    /**
+     * Choose, which TaskPolicyAuditLog to update.
+     */
+    where: TaskPolicyAuditLogWhereUniqueInput
+  }
+
+  /**
+   * TaskPolicyAuditLog updateMany
+   */
+  export type TaskPolicyAuditLogUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update TaskPolicyAuditLogs.
+     */
+    data: XOR<TaskPolicyAuditLogUpdateManyMutationInput, TaskPolicyAuditLogUncheckedUpdateManyInput>
+    /**
+     * Filter which TaskPolicyAuditLogs to update
+     */
+    where?: TaskPolicyAuditLogWhereInput
+  }
+
+  /**
+   * TaskPolicyAuditLog upsert
+   */
+  export type TaskPolicyAuditLogUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyAuditLog
+     */
+    select?: TaskPolicyAuditLogSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyAuditLogInclude<ExtArgs> | null
+    /**
+     * The filter to search for the TaskPolicyAuditLog to update in case it exists.
+     */
+    where: TaskPolicyAuditLogWhereUniqueInput
+    /**
+     * In case the TaskPolicyAuditLog found by the `where` argument doesn't exist, create a new TaskPolicyAuditLog with this data.
+     */
+    create: XOR<TaskPolicyAuditLogCreateInput, TaskPolicyAuditLogUncheckedCreateInput>
+    /**
+     * In case the TaskPolicyAuditLog was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<TaskPolicyAuditLogUpdateInput, TaskPolicyAuditLogUncheckedUpdateInput>
+  }
+
+  /**
+   * TaskPolicyAuditLog delete
+   */
+  export type TaskPolicyAuditLogDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyAuditLog
+     */
+    select?: TaskPolicyAuditLogSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyAuditLogInclude<ExtArgs> | null
+    /**
+     * Filter which TaskPolicyAuditLog to delete.
+     */
+    where: TaskPolicyAuditLogWhereUniqueInput
+  }
+
+  /**
+   * TaskPolicyAuditLog deleteMany
+   */
+  export type TaskPolicyAuditLogDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TaskPolicyAuditLogs to delete
+     */
+    where?: TaskPolicyAuditLogWhereInput
+  }
+
+  /**
+   * TaskPolicyAuditLog.policySet
+   */
+  export type TaskPolicyAuditLog$policySetArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicySet
+     */
+    select?: TaskPolicySetSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicySetInclude<ExtArgs> | null
+    where?: TaskPolicySetWhereInput
+  }
+
+  /**
+   * TaskPolicyAuditLog without action
+   */
+  export type TaskPolicyAuditLogDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskPolicyAuditLog
+     */
+    select?: TaskPolicyAuditLogSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TaskPolicyAuditLogInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Model PromptSnapshot
    */
 
@@ -74263,6 +82300,28 @@ export namespace Prisma {
   export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
 
 
+  export const ImChannelConnectionScalarFieldEnum: {
+    id: 'id',
+    userId: 'userId',
+    channel: 'channel',
+    enabled: 'enabled',
+    status: 'status',
+    interactionMode: 'interactionMode',
+    providerAccountId: 'providerAccountId',
+    providerOwnerUserId: 'providerOwnerUserId',
+    providerBaseUrl: 'providerBaseUrl',
+    encryptedCredential: 'encryptedCredential',
+    updateCursor: 'updateCursor',
+    lastConnectedAt: 'lastConnectedAt',
+    lastMessageAt: 'lastMessageAt',
+    lastError: 'lastError',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type ImChannelConnectionScalarFieldEnum = (typeof ImChannelConnectionScalarFieldEnum)[keyof typeof ImChannelConnectionScalarFieldEnum]
+
+
   export const RoleScalarFieldEnum: {
     id: 'id',
     name: 'name',
@@ -74967,6 +83026,108 @@ export namespace Prisma {
   export type PlanningDecisionScalarFieldEnum = (typeof PlanningDecisionScalarFieldEnum)[keyof typeof PlanningDecisionScalarFieldEnum]
 
 
+  export const TaskPolicySetScalarFieldEnum: {
+    id: 'id',
+    name: 'name',
+    scopeType: 'scopeType',
+    scopeId: 'scopeId',
+    status: 'status',
+    version: 'version',
+    schemaVersion: 'schemaVersion',
+    policyJson: 'policyJson',
+    digest: 'digest',
+    createdBy: 'createdBy',
+    publishedAt: 'publishedAt',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type TaskPolicySetScalarFieldEnum = (typeof TaskPolicySetScalarFieldEnum)[keyof typeof TaskPolicySetScalarFieldEnum]
+
+
+  export const TaskCommandAliasScalarFieldEnum: {
+    id: 'id',
+    policySetId: 'policySetId',
+    canonicalCommand: 'canonicalCommand',
+    alias: 'alias',
+    matchType: 'matchType',
+    weight: 'weight',
+    source: 'source',
+    status: 'status',
+    evidenceCount: 'evidenceCount',
+    createdAt: 'createdAt'
+  };
+
+  export type TaskCommandAliasScalarFieldEnum = (typeof TaskCommandAliasScalarFieldEnum)[keyof typeof TaskCommandAliasScalarFieldEnum]
+
+
+  export const TaskRecipeScalarFieldEnum: {
+    id: 'id',
+    policySetId: 'policySetId',
+    recipeKey: 'recipeKey',
+    version: 'version',
+    name: 'name',
+    requiredCommandsJson: 'requiredCommandsJson',
+    optionalCommandsJson: 'optionalCommandsJson',
+    triggerJson: 'triggerJson',
+    stepsJson: 'stepsJson',
+    bindingsJson: 'bindingsJson',
+    completionClaimsJson: 'completionClaimsJson',
+    riskLevel: 'riskLevel',
+    status: 'status',
+    createdAt: 'createdAt'
+  };
+
+  export type TaskRecipeScalarFieldEnum = (typeof TaskRecipeScalarFieldEnum)[keyof typeof TaskRecipeScalarFieldEnum]
+
+
+  export const TaskCapabilityBindingScalarFieldEnum: {
+    id: 'id',
+    policySetId: 'policySetId',
+    capabilityRole: 'capabilityRole',
+    capabilityId: 'capabilityId',
+    capabilityVersion: 'capabilityVersion',
+    priority: 'priority',
+    inputMappingJson: 'inputMappingJson',
+    outputMappingJson: 'outputMappingJson',
+    status: 'status',
+    createdAt: 'createdAt'
+  };
+
+  export type TaskCapabilityBindingScalarFieldEnum = (typeof TaskCapabilityBindingScalarFieldEnum)[keyof typeof TaskCapabilityBindingScalarFieldEnum]
+
+
+  export const TaskPolicyProposalScalarFieldEnum: {
+    id: 'id',
+    policySetId: 'policySetId',
+    proposalType: 'proposalType',
+    scopeType: 'scopeType',
+    scopeId: 'scopeId',
+    status: 'status',
+    patchJson: 'patchJson',
+    evidenceJson: 'evidenceJson',
+    confidence: 'confidence',
+    proposedBy: 'proposedBy',
+    reviewedBy: 'reviewedBy',
+    reviewedAt: 'reviewedAt',
+    createdAt: 'createdAt'
+  };
+
+  export type TaskPolicyProposalScalarFieldEnum = (typeof TaskPolicyProposalScalarFieldEnum)[keyof typeof TaskPolicyProposalScalarFieldEnum]
+
+
+  export const TaskPolicyAuditLogScalarFieldEnum: {
+    id: 'id',
+    policySetId: 'policySetId',
+    actorUserId: 'actorUserId',
+    action: 'action',
+    detailJson: 'detailJson',
+    createdAt: 'createdAt'
+  };
+
+  export type TaskPolicyAuditLogScalarFieldEnum = (typeof TaskPolicyAuditLogScalarFieldEnum)[keyof typeof TaskPolicyAuditLogScalarFieldEnum]
+
+
   export const PromptSnapshotScalarFieldEnum: {
     id: 'id',
     ownerUserId: 'ownerUserId',
@@ -75541,6 +83702,48 @@ export namespace Prisma {
 
 
   /**
+   * Reference to a field of type 'ImChannelType'
+   */
+  export type EnumImChannelTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ImChannelType'>
+    
+
+
+  /**
+   * Reference to a field of type 'ImChannelType[]'
+   */
+  export type ListEnumImChannelTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ImChannelType[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'ImConnectionStatus'
+   */
+  export type EnumImConnectionStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ImConnectionStatus'>
+    
+
+
+  /**
+   * Reference to a field of type 'ImConnectionStatus[]'
+   */
+  export type ListEnumImConnectionStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ImConnectionStatus[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'ImInteractionMode'
+   */
+  export type EnumImInteractionModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ImInteractionMode'>
+    
+
+
+  /**
+   * Reference to a field of type 'ImInteractionMode[]'
+   */
+  export type ListEnumImInteractionModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ImInteractionMode[]'>
+    
+
+
+  /**
    * Reference to a field of type 'Json'
    */
   export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
@@ -75671,6 +83874,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingListRelationFilter
     activeOrg?: XOR<OrganizationNullableRelationFilter, OrganizationWhereInput> | null
     chatSessions?: ChatSessionListRelationFilter
+    imChannelConnections?: ImChannelConnectionListRelationFilter
     skillAccessRequests?: SkillAccessRequestListRelationFilter
     processedSkillAccessRequests?: SkillAccessRequestListRelationFilter
   }
@@ -75695,6 +83899,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingOrderByRelationAggregateInput
     activeOrg?: OrganizationOrderByWithRelationInput
     chatSessions?: ChatSessionOrderByRelationAggregateInput
+    imChannelConnections?: ImChannelConnectionOrderByRelationAggregateInput
     skillAccessRequests?: SkillAccessRequestOrderByRelationAggregateInput
     processedSkillAccessRequests?: SkillAccessRequestOrderByRelationAggregateInput
   }
@@ -75722,6 +83927,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingListRelationFilter
     activeOrg?: XOR<OrganizationNullableRelationFilter, OrganizationWhereInput> | null
     chatSessions?: ChatSessionListRelationFilter
+    imChannelConnections?: ImChannelConnectionListRelationFilter
     skillAccessRequests?: SkillAccessRequestListRelationFilter
     processedSkillAccessRequests?: SkillAccessRequestListRelationFilter
   }, "id" | "username" | "email">
@@ -75762,6 +83968,117 @@ export namespace Prisma {
     lastLoginAt?: DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
     createdAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
+  }
+
+  export type ImChannelConnectionWhereInput = {
+    AND?: ImChannelConnectionWhereInput | ImChannelConnectionWhereInput[]
+    OR?: ImChannelConnectionWhereInput[]
+    NOT?: ImChannelConnectionWhereInput | ImChannelConnectionWhereInput[]
+    id?: UuidFilter<"ImChannelConnection"> | string
+    userId?: UuidFilter<"ImChannelConnection"> | string
+    channel?: EnumImChannelTypeFilter<"ImChannelConnection"> | $Enums.ImChannelType
+    enabled?: BoolFilter<"ImChannelConnection"> | boolean
+    status?: EnumImConnectionStatusFilter<"ImChannelConnection"> | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFilter<"ImChannelConnection"> | $Enums.ImInteractionMode
+    providerAccountId?: StringNullableFilter<"ImChannelConnection"> | string | null
+    providerOwnerUserId?: StringNullableFilter<"ImChannelConnection"> | string | null
+    providerBaseUrl?: StringNullableFilter<"ImChannelConnection"> | string | null
+    encryptedCredential?: StringNullableFilter<"ImChannelConnection"> | string | null
+    updateCursor?: StringNullableFilter<"ImChannelConnection"> | string | null
+    lastConnectedAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
+    lastMessageAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
+    lastError?: StringNullableFilter<"ImChannelConnection"> | string | null
+    createdAt?: DateTimeFilter<"ImChannelConnection"> | Date | string
+    updatedAt?: DateTimeFilter<"ImChannelConnection"> | Date | string
+    user?: XOR<UserRelationFilter, UserWhereInput>
+  }
+
+  export type ImChannelConnectionOrderByWithRelationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    channel?: SortOrder
+    enabled?: SortOrder
+    status?: SortOrder
+    interactionMode?: SortOrder
+    providerAccountId?: SortOrderInput | SortOrder
+    providerOwnerUserId?: SortOrderInput | SortOrder
+    providerBaseUrl?: SortOrderInput | SortOrder
+    encryptedCredential?: SortOrderInput | SortOrder
+    updateCursor?: SortOrderInput | SortOrder
+    lastConnectedAt?: SortOrderInput | SortOrder
+    lastMessageAt?: SortOrderInput | SortOrder
+    lastError?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    user?: UserOrderByWithRelationInput
+  }
+
+  export type ImChannelConnectionWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    userId_channel?: ImChannelConnectionUserIdChannelCompoundUniqueInput
+    AND?: ImChannelConnectionWhereInput | ImChannelConnectionWhereInput[]
+    OR?: ImChannelConnectionWhereInput[]
+    NOT?: ImChannelConnectionWhereInput | ImChannelConnectionWhereInput[]
+    userId?: UuidFilter<"ImChannelConnection"> | string
+    channel?: EnumImChannelTypeFilter<"ImChannelConnection"> | $Enums.ImChannelType
+    enabled?: BoolFilter<"ImChannelConnection"> | boolean
+    status?: EnumImConnectionStatusFilter<"ImChannelConnection"> | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFilter<"ImChannelConnection"> | $Enums.ImInteractionMode
+    providerAccountId?: StringNullableFilter<"ImChannelConnection"> | string | null
+    providerOwnerUserId?: StringNullableFilter<"ImChannelConnection"> | string | null
+    providerBaseUrl?: StringNullableFilter<"ImChannelConnection"> | string | null
+    encryptedCredential?: StringNullableFilter<"ImChannelConnection"> | string | null
+    updateCursor?: StringNullableFilter<"ImChannelConnection"> | string | null
+    lastConnectedAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
+    lastMessageAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
+    lastError?: StringNullableFilter<"ImChannelConnection"> | string | null
+    createdAt?: DateTimeFilter<"ImChannelConnection"> | Date | string
+    updatedAt?: DateTimeFilter<"ImChannelConnection"> | Date | string
+    user?: XOR<UserRelationFilter, UserWhereInput>
+  }, "id" | "userId_channel">
+
+  export type ImChannelConnectionOrderByWithAggregationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    channel?: SortOrder
+    enabled?: SortOrder
+    status?: SortOrder
+    interactionMode?: SortOrder
+    providerAccountId?: SortOrderInput | SortOrder
+    providerOwnerUserId?: SortOrderInput | SortOrder
+    providerBaseUrl?: SortOrderInput | SortOrder
+    encryptedCredential?: SortOrderInput | SortOrder
+    updateCursor?: SortOrderInput | SortOrder
+    lastConnectedAt?: SortOrderInput | SortOrder
+    lastMessageAt?: SortOrderInput | SortOrder
+    lastError?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: ImChannelConnectionCountOrderByAggregateInput
+    _max?: ImChannelConnectionMaxOrderByAggregateInput
+    _min?: ImChannelConnectionMinOrderByAggregateInput
+  }
+
+  export type ImChannelConnectionScalarWhereWithAggregatesInput = {
+    AND?: ImChannelConnectionScalarWhereWithAggregatesInput | ImChannelConnectionScalarWhereWithAggregatesInput[]
+    OR?: ImChannelConnectionScalarWhereWithAggregatesInput[]
+    NOT?: ImChannelConnectionScalarWhereWithAggregatesInput | ImChannelConnectionScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"ImChannelConnection"> | string
+    userId?: UuidWithAggregatesFilter<"ImChannelConnection"> | string
+    channel?: EnumImChannelTypeWithAggregatesFilter<"ImChannelConnection"> | $Enums.ImChannelType
+    enabled?: BoolWithAggregatesFilter<"ImChannelConnection"> | boolean
+    status?: EnumImConnectionStatusWithAggregatesFilter<"ImChannelConnection"> | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeWithAggregatesFilter<"ImChannelConnection"> | $Enums.ImInteractionMode
+    providerAccountId?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
+    providerOwnerUserId?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
+    providerBaseUrl?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
+    encryptedCredential?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
+    updateCursor?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
+    lastConnectedAt?: DateTimeNullableWithAggregatesFilter<"ImChannelConnection"> | Date | string | null
+    lastMessageAt?: DateTimeNullableWithAggregatesFilter<"ImChannelConnection"> | Date | string | null
+    lastError?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"ImChannelConnection"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"ImChannelConnection"> | Date | string
   }
 
   export type RoleWhereInput = {
@@ -79417,6 +87734,538 @@ export namespace Prisma {
     createdAt?: DateTimeWithAggregatesFilter<"PlanningDecision"> | Date | string
   }
 
+  export type TaskPolicySetWhereInput = {
+    AND?: TaskPolicySetWhereInput | TaskPolicySetWhereInput[]
+    OR?: TaskPolicySetWhereInput[]
+    NOT?: TaskPolicySetWhereInput | TaskPolicySetWhereInput[]
+    id?: UuidFilter<"TaskPolicySet"> | string
+    name?: StringFilter<"TaskPolicySet"> | string
+    scopeType?: StringFilter<"TaskPolicySet"> | string
+    scopeId?: StringFilter<"TaskPolicySet"> | string
+    status?: StringFilter<"TaskPolicySet"> | string
+    version?: StringFilter<"TaskPolicySet"> | string
+    schemaVersion?: StringFilter<"TaskPolicySet"> | string
+    policyJson?: JsonFilter<"TaskPolicySet">
+    digest?: StringFilter<"TaskPolicySet"> | string
+    createdBy?: UuidNullableFilter<"TaskPolicySet"> | string | null
+    publishedAt?: DateTimeNullableFilter<"TaskPolicySet"> | Date | string | null
+    createdAt?: DateTimeFilter<"TaskPolicySet"> | Date | string
+    updatedAt?: DateTimeFilter<"TaskPolicySet"> | Date | string
+    aliases?: TaskCommandAliasListRelationFilter
+    recipes?: TaskRecipeListRelationFilter
+    bindings?: TaskCapabilityBindingListRelationFilter
+    proposals?: TaskPolicyProposalListRelationFilter
+    auditLogs?: TaskPolicyAuditLogListRelationFilter
+  }
+
+  export type TaskPolicySetOrderByWithRelationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    scopeType?: SortOrder
+    scopeId?: SortOrder
+    status?: SortOrder
+    version?: SortOrder
+    schemaVersion?: SortOrder
+    policyJson?: SortOrder
+    digest?: SortOrder
+    createdBy?: SortOrderInput | SortOrder
+    publishedAt?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    aliases?: TaskCommandAliasOrderByRelationAggregateInput
+    recipes?: TaskRecipeOrderByRelationAggregateInput
+    bindings?: TaskCapabilityBindingOrderByRelationAggregateInput
+    proposals?: TaskPolicyProposalOrderByRelationAggregateInput
+    auditLogs?: TaskPolicyAuditLogOrderByRelationAggregateInput
+  }
+
+  export type TaskPolicySetWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    scopeType_scopeId_version?: TaskPolicySetScopeTypeScopeIdVersionCompoundUniqueInput
+    AND?: TaskPolicySetWhereInput | TaskPolicySetWhereInput[]
+    OR?: TaskPolicySetWhereInput[]
+    NOT?: TaskPolicySetWhereInput | TaskPolicySetWhereInput[]
+    name?: StringFilter<"TaskPolicySet"> | string
+    scopeType?: StringFilter<"TaskPolicySet"> | string
+    scopeId?: StringFilter<"TaskPolicySet"> | string
+    status?: StringFilter<"TaskPolicySet"> | string
+    version?: StringFilter<"TaskPolicySet"> | string
+    schemaVersion?: StringFilter<"TaskPolicySet"> | string
+    policyJson?: JsonFilter<"TaskPolicySet">
+    digest?: StringFilter<"TaskPolicySet"> | string
+    createdBy?: UuidNullableFilter<"TaskPolicySet"> | string | null
+    publishedAt?: DateTimeNullableFilter<"TaskPolicySet"> | Date | string | null
+    createdAt?: DateTimeFilter<"TaskPolicySet"> | Date | string
+    updatedAt?: DateTimeFilter<"TaskPolicySet"> | Date | string
+    aliases?: TaskCommandAliasListRelationFilter
+    recipes?: TaskRecipeListRelationFilter
+    bindings?: TaskCapabilityBindingListRelationFilter
+    proposals?: TaskPolicyProposalListRelationFilter
+    auditLogs?: TaskPolicyAuditLogListRelationFilter
+  }, "id" | "scopeType_scopeId_version">
+
+  export type TaskPolicySetOrderByWithAggregationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    scopeType?: SortOrder
+    scopeId?: SortOrder
+    status?: SortOrder
+    version?: SortOrder
+    schemaVersion?: SortOrder
+    policyJson?: SortOrder
+    digest?: SortOrder
+    createdBy?: SortOrderInput | SortOrder
+    publishedAt?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: TaskPolicySetCountOrderByAggregateInput
+    _max?: TaskPolicySetMaxOrderByAggregateInput
+    _min?: TaskPolicySetMinOrderByAggregateInput
+  }
+
+  export type TaskPolicySetScalarWhereWithAggregatesInput = {
+    AND?: TaskPolicySetScalarWhereWithAggregatesInput | TaskPolicySetScalarWhereWithAggregatesInput[]
+    OR?: TaskPolicySetScalarWhereWithAggregatesInput[]
+    NOT?: TaskPolicySetScalarWhereWithAggregatesInput | TaskPolicySetScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"TaskPolicySet"> | string
+    name?: StringWithAggregatesFilter<"TaskPolicySet"> | string
+    scopeType?: StringWithAggregatesFilter<"TaskPolicySet"> | string
+    scopeId?: StringWithAggregatesFilter<"TaskPolicySet"> | string
+    status?: StringWithAggregatesFilter<"TaskPolicySet"> | string
+    version?: StringWithAggregatesFilter<"TaskPolicySet"> | string
+    schemaVersion?: StringWithAggregatesFilter<"TaskPolicySet"> | string
+    policyJson?: JsonWithAggregatesFilter<"TaskPolicySet">
+    digest?: StringWithAggregatesFilter<"TaskPolicySet"> | string
+    createdBy?: UuidNullableWithAggregatesFilter<"TaskPolicySet"> | string | null
+    publishedAt?: DateTimeNullableWithAggregatesFilter<"TaskPolicySet"> | Date | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"TaskPolicySet"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"TaskPolicySet"> | Date | string
+  }
+
+  export type TaskCommandAliasWhereInput = {
+    AND?: TaskCommandAliasWhereInput | TaskCommandAliasWhereInput[]
+    OR?: TaskCommandAliasWhereInput[]
+    NOT?: TaskCommandAliasWhereInput | TaskCommandAliasWhereInput[]
+    id?: UuidFilter<"TaskCommandAlias"> | string
+    policySetId?: UuidFilter<"TaskCommandAlias"> | string
+    canonicalCommand?: StringFilter<"TaskCommandAlias"> | string
+    alias?: StringFilter<"TaskCommandAlias"> | string
+    matchType?: StringFilter<"TaskCommandAlias"> | string
+    weight?: FloatFilter<"TaskCommandAlias"> | number
+    source?: StringFilter<"TaskCommandAlias"> | string
+    status?: StringFilter<"TaskCommandAlias"> | string
+    evidenceCount?: IntFilter<"TaskCommandAlias"> | number
+    createdAt?: DateTimeFilter<"TaskCommandAlias"> | Date | string
+    policySet?: XOR<TaskPolicySetRelationFilter, TaskPolicySetWhereInput>
+  }
+
+  export type TaskCommandAliasOrderByWithRelationInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    canonicalCommand?: SortOrder
+    alias?: SortOrder
+    matchType?: SortOrder
+    weight?: SortOrder
+    source?: SortOrder
+    status?: SortOrder
+    evidenceCount?: SortOrder
+    createdAt?: SortOrder
+    policySet?: TaskPolicySetOrderByWithRelationInput
+  }
+
+  export type TaskCommandAliasWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    policySetId_canonicalCommand_alias?: TaskCommandAliasPolicySetIdCanonicalCommandAliasCompoundUniqueInput
+    AND?: TaskCommandAliasWhereInput | TaskCommandAliasWhereInput[]
+    OR?: TaskCommandAliasWhereInput[]
+    NOT?: TaskCommandAliasWhereInput | TaskCommandAliasWhereInput[]
+    policySetId?: UuidFilter<"TaskCommandAlias"> | string
+    canonicalCommand?: StringFilter<"TaskCommandAlias"> | string
+    alias?: StringFilter<"TaskCommandAlias"> | string
+    matchType?: StringFilter<"TaskCommandAlias"> | string
+    weight?: FloatFilter<"TaskCommandAlias"> | number
+    source?: StringFilter<"TaskCommandAlias"> | string
+    status?: StringFilter<"TaskCommandAlias"> | string
+    evidenceCount?: IntFilter<"TaskCommandAlias"> | number
+    createdAt?: DateTimeFilter<"TaskCommandAlias"> | Date | string
+    policySet?: XOR<TaskPolicySetRelationFilter, TaskPolicySetWhereInput>
+  }, "id" | "policySetId_canonicalCommand_alias">
+
+  export type TaskCommandAliasOrderByWithAggregationInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    canonicalCommand?: SortOrder
+    alias?: SortOrder
+    matchType?: SortOrder
+    weight?: SortOrder
+    source?: SortOrder
+    status?: SortOrder
+    evidenceCount?: SortOrder
+    createdAt?: SortOrder
+    _count?: TaskCommandAliasCountOrderByAggregateInput
+    _avg?: TaskCommandAliasAvgOrderByAggregateInput
+    _max?: TaskCommandAliasMaxOrderByAggregateInput
+    _min?: TaskCommandAliasMinOrderByAggregateInput
+    _sum?: TaskCommandAliasSumOrderByAggregateInput
+  }
+
+  export type TaskCommandAliasScalarWhereWithAggregatesInput = {
+    AND?: TaskCommandAliasScalarWhereWithAggregatesInput | TaskCommandAliasScalarWhereWithAggregatesInput[]
+    OR?: TaskCommandAliasScalarWhereWithAggregatesInput[]
+    NOT?: TaskCommandAliasScalarWhereWithAggregatesInput | TaskCommandAliasScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"TaskCommandAlias"> | string
+    policySetId?: UuidWithAggregatesFilter<"TaskCommandAlias"> | string
+    canonicalCommand?: StringWithAggregatesFilter<"TaskCommandAlias"> | string
+    alias?: StringWithAggregatesFilter<"TaskCommandAlias"> | string
+    matchType?: StringWithAggregatesFilter<"TaskCommandAlias"> | string
+    weight?: FloatWithAggregatesFilter<"TaskCommandAlias"> | number
+    source?: StringWithAggregatesFilter<"TaskCommandAlias"> | string
+    status?: StringWithAggregatesFilter<"TaskCommandAlias"> | string
+    evidenceCount?: IntWithAggregatesFilter<"TaskCommandAlias"> | number
+    createdAt?: DateTimeWithAggregatesFilter<"TaskCommandAlias"> | Date | string
+  }
+
+  export type TaskRecipeWhereInput = {
+    AND?: TaskRecipeWhereInput | TaskRecipeWhereInput[]
+    OR?: TaskRecipeWhereInput[]
+    NOT?: TaskRecipeWhereInput | TaskRecipeWhereInput[]
+    id?: UuidFilter<"TaskRecipe"> | string
+    policySetId?: UuidFilter<"TaskRecipe"> | string
+    recipeKey?: StringFilter<"TaskRecipe"> | string
+    version?: StringFilter<"TaskRecipe"> | string
+    name?: StringFilter<"TaskRecipe"> | string
+    requiredCommandsJson?: JsonFilter<"TaskRecipe">
+    optionalCommandsJson?: JsonFilter<"TaskRecipe">
+    triggerJson?: JsonFilter<"TaskRecipe">
+    stepsJson?: JsonFilter<"TaskRecipe">
+    bindingsJson?: JsonFilter<"TaskRecipe">
+    completionClaimsJson?: JsonFilter<"TaskRecipe">
+    riskLevel?: StringFilter<"TaskRecipe"> | string
+    status?: StringFilter<"TaskRecipe"> | string
+    createdAt?: DateTimeFilter<"TaskRecipe"> | Date | string
+    policySet?: XOR<TaskPolicySetRelationFilter, TaskPolicySetWhereInput>
+  }
+
+  export type TaskRecipeOrderByWithRelationInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    recipeKey?: SortOrder
+    version?: SortOrder
+    name?: SortOrder
+    requiredCommandsJson?: SortOrder
+    optionalCommandsJson?: SortOrder
+    triggerJson?: SortOrder
+    stepsJson?: SortOrder
+    bindingsJson?: SortOrder
+    completionClaimsJson?: SortOrder
+    riskLevel?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+    policySet?: TaskPolicySetOrderByWithRelationInput
+  }
+
+  export type TaskRecipeWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    policySetId_recipeKey_version?: TaskRecipePolicySetIdRecipeKeyVersionCompoundUniqueInput
+    AND?: TaskRecipeWhereInput | TaskRecipeWhereInput[]
+    OR?: TaskRecipeWhereInput[]
+    NOT?: TaskRecipeWhereInput | TaskRecipeWhereInput[]
+    policySetId?: UuidFilter<"TaskRecipe"> | string
+    recipeKey?: StringFilter<"TaskRecipe"> | string
+    version?: StringFilter<"TaskRecipe"> | string
+    name?: StringFilter<"TaskRecipe"> | string
+    requiredCommandsJson?: JsonFilter<"TaskRecipe">
+    optionalCommandsJson?: JsonFilter<"TaskRecipe">
+    triggerJson?: JsonFilter<"TaskRecipe">
+    stepsJson?: JsonFilter<"TaskRecipe">
+    bindingsJson?: JsonFilter<"TaskRecipe">
+    completionClaimsJson?: JsonFilter<"TaskRecipe">
+    riskLevel?: StringFilter<"TaskRecipe"> | string
+    status?: StringFilter<"TaskRecipe"> | string
+    createdAt?: DateTimeFilter<"TaskRecipe"> | Date | string
+    policySet?: XOR<TaskPolicySetRelationFilter, TaskPolicySetWhereInput>
+  }, "id" | "policySetId_recipeKey_version">
+
+  export type TaskRecipeOrderByWithAggregationInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    recipeKey?: SortOrder
+    version?: SortOrder
+    name?: SortOrder
+    requiredCommandsJson?: SortOrder
+    optionalCommandsJson?: SortOrder
+    triggerJson?: SortOrder
+    stepsJson?: SortOrder
+    bindingsJson?: SortOrder
+    completionClaimsJson?: SortOrder
+    riskLevel?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+    _count?: TaskRecipeCountOrderByAggregateInput
+    _max?: TaskRecipeMaxOrderByAggregateInput
+    _min?: TaskRecipeMinOrderByAggregateInput
+  }
+
+  export type TaskRecipeScalarWhereWithAggregatesInput = {
+    AND?: TaskRecipeScalarWhereWithAggregatesInput | TaskRecipeScalarWhereWithAggregatesInput[]
+    OR?: TaskRecipeScalarWhereWithAggregatesInput[]
+    NOT?: TaskRecipeScalarWhereWithAggregatesInput | TaskRecipeScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"TaskRecipe"> | string
+    policySetId?: UuidWithAggregatesFilter<"TaskRecipe"> | string
+    recipeKey?: StringWithAggregatesFilter<"TaskRecipe"> | string
+    version?: StringWithAggregatesFilter<"TaskRecipe"> | string
+    name?: StringWithAggregatesFilter<"TaskRecipe"> | string
+    requiredCommandsJson?: JsonWithAggregatesFilter<"TaskRecipe">
+    optionalCommandsJson?: JsonWithAggregatesFilter<"TaskRecipe">
+    triggerJson?: JsonWithAggregatesFilter<"TaskRecipe">
+    stepsJson?: JsonWithAggregatesFilter<"TaskRecipe">
+    bindingsJson?: JsonWithAggregatesFilter<"TaskRecipe">
+    completionClaimsJson?: JsonWithAggregatesFilter<"TaskRecipe">
+    riskLevel?: StringWithAggregatesFilter<"TaskRecipe"> | string
+    status?: StringWithAggregatesFilter<"TaskRecipe"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"TaskRecipe"> | Date | string
+  }
+
+  export type TaskCapabilityBindingWhereInput = {
+    AND?: TaskCapabilityBindingWhereInput | TaskCapabilityBindingWhereInput[]
+    OR?: TaskCapabilityBindingWhereInput[]
+    NOT?: TaskCapabilityBindingWhereInput | TaskCapabilityBindingWhereInput[]
+    id?: UuidFilter<"TaskCapabilityBinding"> | string
+    policySetId?: UuidFilter<"TaskCapabilityBinding"> | string
+    capabilityRole?: StringFilter<"TaskCapabilityBinding"> | string
+    capabilityId?: StringFilter<"TaskCapabilityBinding"> | string
+    capabilityVersion?: StringNullableFilter<"TaskCapabilityBinding"> | string | null
+    priority?: IntFilter<"TaskCapabilityBinding"> | number
+    inputMappingJson?: JsonFilter<"TaskCapabilityBinding">
+    outputMappingJson?: JsonFilter<"TaskCapabilityBinding">
+    status?: StringFilter<"TaskCapabilityBinding"> | string
+    createdAt?: DateTimeFilter<"TaskCapabilityBinding"> | Date | string
+    policySet?: XOR<TaskPolicySetRelationFilter, TaskPolicySetWhereInput>
+  }
+
+  export type TaskCapabilityBindingOrderByWithRelationInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    capabilityRole?: SortOrder
+    capabilityId?: SortOrder
+    capabilityVersion?: SortOrderInput | SortOrder
+    priority?: SortOrder
+    inputMappingJson?: SortOrder
+    outputMappingJson?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+    policySet?: TaskPolicySetOrderByWithRelationInput
+  }
+
+  export type TaskCapabilityBindingWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    policySetId_capabilityRole_capabilityId_capabilityVersion?: TaskCapabilityBindingPolicySetIdCapabilityRoleCapabilityIdCapabilityVersionCompoundUniqueInput
+    AND?: TaskCapabilityBindingWhereInput | TaskCapabilityBindingWhereInput[]
+    OR?: TaskCapabilityBindingWhereInput[]
+    NOT?: TaskCapabilityBindingWhereInput | TaskCapabilityBindingWhereInput[]
+    policySetId?: UuidFilter<"TaskCapabilityBinding"> | string
+    capabilityRole?: StringFilter<"TaskCapabilityBinding"> | string
+    capabilityId?: StringFilter<"TaskCapabilityBinding"> | string
+    capabilityVersion?: StringNullableFilter<"TaskCapabilityBinding"> | string | null
+    priority?: IntFilter<"TaskCapabilityBinding"> | number
+    inputMappingJson?: JsonFilter<"TaskCapabilityBinding">
+    outputMappingJson?: JsonFilter<"TaskCapabilityBinding">
+    status?: StringFilter<"TaskCapabilityBinding"> | string
+    createdAt?: DateTimeFilter<"TaskCapabilityBinding"> | Date | string
+    policySet?: XOR<TaskPolicySetRelationFilter, TaskPolicySetWhereInput>
+  }, "id" | "policySetId_capabilityRole_capabilityId_capabilityVersion">
+
+  export type TaskCapabilityBindingOrderByWithAggregationInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    capabilityRole?: SortOrder
+    capabilityId?: SortOrder
+    capabilityVersion?: SortOrderInput | SortOrder
+    priority?: SortOrder
+    inputMappingJson?: SortOrder
+    outputMappingJson?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+    _count?: TaskCapabilityBindingCountOrderByAggregateInput
+    _avg?: TaskCapabilityBindingAvgOrderByAggregateInput
+    _max?: TaskCapabilityBindingMaxOrderByAggregateInput
+    _min?: TaskCapabilityBindingMinOrderByAggregateInput
+    _sum?: TaskCapabilityBindingSumOrderByAggregateInput
+  }
+
+  export type TaskCapabilityBindingScalarWhereWithAggregatesInput = {
+    AND?: TaskCapabilityBindingScalarWhereWithAggregatesInput | TaskCapabilityBindingScalarWhereWithAggregatesInput[]
+    OR?: TaskCapabilityBindingScalarWhereWithAggregatesInput[]
+    NOT?: TaskCapabilityBindingScalarWhereWithAggregatesInput | TaskCapabilityBindingScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"TaskCapabilityBinding"> | string
+    policySetId?: UuidWithAggregatesFilter<"TaskCapabilityBinding"> | string
+    capabilityRole?: StringWithAggregatesFilter<"TaskCapabilityBinding"> | string
+    capabilityId?: StringWithAggregatesFilter<"TaskCapabilityBinding"> | string
+    capabilityVersion?: StringNullableWithAggregatesFilter<"TaskCapabilityBinding"> | string | null
+    priority?: IntWithAggregatesFilter<"TaskCapabilityBinding"> | number
+    inputMappingJson?: JsonWithAggregatesFilter<"TaskCapabilityBinding">
+    outputMappingJson?: JsonWithAggregatesFilter<"TaskCapabilityBinding">
+    status?: StringWithAggregatesFilter<"TaskCapabilityBinding"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"TaskCapabilityBinding"> | Date | string
+  }
+
+  export type TaskPolicyProposalWhereInput = {
+    AND?: TaskPolicyProposalWhereInput | TaskPolicyProposalWhereInput[]
+    OR?: TaskPolicyProposalWhereInput[]
+    NOT?: TaskPolicyProposalWhereInput | TaskPolicyProposalWhereInput[]
+    id?: UuidFilter<"TaskPolicyProposal"> | string
+    policySetId?: UuidNullableFilter<"TaskPolicyProposal"> | string | null
+    proposalType?: StringFilter<"TaskPolicyProposal"> | string
+    scopeType?: StringFilter<"TaskPolicyProposal"> | string
+    scopeId?: StringFilter<"TaskPolicyProposal"> | string
+    status?: StringFilter<"TaskPolicyProposal"> | string
+    patchJson?: JsonFilter<"TaskPolicyProposal">
+    evidenceJson?: JsonFilter<"TaskPolicyProposal">
+    confidence?: FloatFilter<"TaskPolicyProposal"> | number
+    proposedBy?: StringFilter<"TaskPolicyProposal"> | string
+    reviewedBy?: UuidNullableFilter<"TaskPolicyProposal"> | string | null
+    reviewedAt?: DateTimeNullableFilter<"TaskPolicyProposal"> | Date | string | null
+    createdAt?: DateTimeFilter<"TaskPolicyProposal"> | Date | string
+    policySet?: XOR<TaskPolicySetNullableRelationFilter, TaskPolicySetWhereInput> | null
+  }
+
+  export type TaskPolicyProposalOrderByWithRelationInput = {
+    id?: SortOrder
+    policySetId?: SortOrderInput | SortOrder
+    proposalType?: SortOrder
+    scopeType?: SortOrder
+    scopeId?: SortOrder
+    status?: SortOrder
+    patchJson?: SortOrder
+    evidenceJson?: SortOrder
+    confidence?: SortOrder
+    proposedBy?: SortOrder
+    reviewedBy?: SortOrderInput | SortOrder
+    reviewedAt?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    policySet?: TaskPolicySetOrderByWithRelationInput
+  }
+
+  export type TaskPolicyProposalWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: TaskPolicyProposalWhereInput | TaskPolicyProposalWhereInput[]
+    OR?: TaskPolicyProposalWhereInput[]
+    NOT?: TaskPolicyProposalWhereInput | TaskPolicyProposalWhereInput[]
+    policySetId?: UuidNullableFilter<"TaskPolicyProposal"> | string | null
+    proposalType?: StringFilter<"TaskPolicyProposal"> | string
+    scopeType?: StringFilter<"TaskPolicyProposal"> | string
+    scopeId?: StringFilter<"TaskPolicyProposal"> | string
+    status?: StringFilter<"TaskPolicyProposal"> | string
+    patchJson?: JsonFilter<"TaskPolicyProposal">
+    evidenceJson?: JsonFilter<"TaskPolicyProposal">
+    confidence?: FloatFilter<"TaskPolicyProposal"> | number
+    proposedBy?: StringFilter<"TaskPolicyProposal"> | string
+    reviewedBy?: UuidNullableFilter<"TaskPolicyProposal"> | string | null
+    reviewedAt?: DateTimeNullableFilter<"TaskPolicyProposal"> | Date | string | null
+    createdAt?: DateTimeFilter<"TaskPolicyProposal"> | Date | string
+    policySet?: XOR<TaskPolicySetNullableRelationFilter, TaskPolicySetWhereInput> | null
+  }, "id">
+
+  export type TaskPolicyProposalOrderByWithAggregationInput = {
+    id?: SortOrder
+    policySetId?: SortOrderInput | SortOrder
+    proposalType?: SortOrder
+    scopeType?: SortOrder
+    scopeId?: SortOrder
+    status?: SortOrder
+    patchJson?: SortOrder
+    evidenceJson?: SortOrder
+    confidence?: SortOrder
+    proposedBy?: SortOrder
+    reviewedBy?: SortOrderInput | SortOrder
+    reviewedAt?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    _count?: TaskPolicyProposalCountOrderByAggregateInput
+    _avg?: TaskPolicyProposalAvgOrderByAggregateInput
+    _max?: TaskPolicyProposalMaxOrderByAggregateInput
+    _min?: TaskPolicyProposalMinOrderByAggregateInput
+    _sum?: TaskPolicyProposalSumOrderByAggregateInput
+  }
+
+  export type TaskPolicyProposalScalarWhereWithAggregatesInput = {
+    AND?: TaskPolicyProposalScalarWhereWithAggregatesInput | TaskPolicyProposalScalarWhereWithAggregatesInput[]
+    OR?: TaskPolicyProposalScalarWhereWithAggregatesInput[]
+    NOT?: TaskPolicyProposalScalarWhereWithAggregatesInput | TaskPolicyProposalScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"TaskPolicyProposal"> | string
+    policySetId?: UuidNullableWithAggregatesFilter<"TaskPolicyProposal"> | string | null
+    proposalType?: StringWithAggregatesFilter<"TaskPolicyProposal"> | string
+    scopeType?: StringWithAggregatesFilter<"TaskPolicyProposal"> | string
+    scopeId?: StringWithAggregatesFilter<"TaskPolicyProposal"> | string
+    status?: StringWithAggregatesFilter<"TaskPolicyProposal"> | string
+    patchJson?: JsonWithAggregatesFilter<"TaskPolicyProposal">
+    evidenceJson?: JsonWithAggregatesFilter<"TaskPolicyProposal">
+    confidence?: FloatWithAggregatesFilter<"TaskPolicyProposal"> | number
+    proposedBy?: StringWithAggregatesFilter<"TaskPolicyProposal"> | string
+    reviewedBy?: UuidNullableWithAggregatesFilter<"TaskPolicyProposal"> | string | null
+    reviewedAt?: DateTimeNullableWithAggregatesFilter<"TaskPolicyProposal"> | Date | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"TaskPolicyProposal"> | Date | string
+  }
+
+  export type TaskPolicyAuditLogWhereInput = {
+    AND?: TaskPolicyAuditLogWhereInput | TaskPolicyAuditLogWhereInput[]
+    OR?: TaskPolicyAuditLogWhereInput[]
+    NOT?: TaskPolicyAuditLogWhereInput | TaskPolicyAuditLogWhereInput[]
+    id?: UuidFilter<"TaskPolicyAuditLog"> | string
+    policySetId?: UuidNullableFilter<"TaskPolicyAuditLog"> | string | null
+    actorUserId?: UuidNullableFilter<"TaskPolicyAuditLog"> | string | null
+    action?: StringFilter<"TaskPolicyAuditLog"> | string
+    detailJson?: JsonFilter<"TaskPolicyAuditLog">
+    createdAt?: DateTimeFilter<"TaskPolicyAuditLog"> | Date | string
+    policySet?: XOR<TaskPolicySetNullableRelationFilter, TaskPolicySetWhereInput> | null
+  }
+
+  export type TaskPolicyAuditLogOrderByWithRelationInput = {
+    id?: SortOrder
+    policySetId?: SortOrderInput | SortOrder
+    actorUserId?: SortOrderInput | SortOrder
+    action?: SortOrder
+    detailJson?: SortOrder
+    createdAt?: SortOrder
+    policySet?: TaskPolicySetOrderByWithRelationInput
+  }
+
+  export type TaskPolicyAuditLogWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: TaskPolicyAuditLogWhereInput | TaskPolicyAuditLogWhereInput[]
+    OR?: TaskPolicyAuditLogWhereInput[]
+    NOT?: TaskPolicyAuditLogWhereInput | TaskPolicyAuditLogWhereInput[]
+    policySetId?: UuidNullableFilter<"TaskPolicyAuditLog"> | string | null
+    actorUserId?: UuidNullableFilter<"TaskPolicyAuditLog"> | string | null
+    action?: StringFilter<"TaskPolicyAuditLog"> | string
+    detailJson?: JsonFilter<"TaskPolicyAuditLog">
+    createdAt?: DateTimeFilter<"TaskPolicyAuditLog"> | Date | string
+    policySet?: XOR<TaskPolicySetNullableRelationFilter, TaskPolicySetWhereInput> | null
+  }, "id">
+
+  export type TaskPolicyAuditLogOrderByWithAggregationInput = {
+    id?: SortOrder
+    policySetId?: SortOrderInput | SortOrder
+    actorUserId?: SortOrderInput | SortOrder
+    action?: SortOrder
+    detailJson?: SortOrder
+    createdAt?: SortOrder
+    _count?: TaskPolicyAuditLogCountOrderByAggregateInput
+    _max?: TaskPolicyAuditLogMaxOrderByAggregateInput
+    _min?: TaskPolicyAuditLogMinOrderByAggregateInput
+  }
+
+  export type TaskPolicyAuditLogScalarWhereWithAggregatesInput = {
+    AND?: TaskPolicyAuditLogScalarWhereWithAggregatesInput | TaskPolicyAuditLogScalarWhereWithAggregatesInput[]
+    OR?: TaskPolicyAuditLogScalarWhereWithAggregatesInput[]
+    NOT?: TaskPolicyAuditLogScalarWhereWithAggregatesInput | TaskPolicyAuditLogScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"TaskPolicyAuditLog"> | string
+    policySetId?: UuidNullableWithAggregatesFilter<"TaskPolicyAuditLog"> | string | null
+    actorUserId?: UuidNullableWithAggregatesFilter<"TaskPolicyAuditLog"> | string | null
+    action?: StringWithAggregatesFilter<"TaskPolicyAuditLog"> | string
+    detailJson?: JsonWithAggregatesFilter<"TaskPolicyAuditLog">
+    createdAt?: DateTimeWithAggregatesFilter<"TaskPolicyAuditLog"> | Date | string
+  }
+
   export type PromptSnapshotWhereInput = {
     AND?: PromptSnapshotWhereInput | PromptSnapshotWhereInput[]
     OR?: PromptSnapshotWhereInput[]
@@ -81765,6 +90614,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
@@ -81788,6 +90638,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
@@ -81811,6 +90662,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
@@ -81834,6 +90686,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
@@ -81881,6 +90734,138 @@ export namespace Prisma {
     activeOrgId?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
     lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ImChannelConnectionCreateInput = {
+    id?: string
+    channel?: $Enums.ImChannelType
+    enabled?: boolean
+    status?: $Enums.ImConnectionStatus
+    interactionMode?: $Enums.ImInteractionMode
+    providerAccountId?: string | null
+    providerOwnerUserId?: string | null
+    providerBaseUrl?: string | null
+    encryptedCredential?: string | null
+    updateCursor?: string | null
+    lastConnectedAt?: Date | string | null
+    lastMessageAt?: Date | string | null
+    lastError?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutImChannelConnectionsInput
+  }
+
+  export type ImChannelConnectionUncheckedCreateInput = {
+    id?: string
+    userId: string
+    channel?: $Enums.ImChannelType
+    enabled?: boolean
+    status?: $Enums.ImConnectionStatus
+    interactionMode?: $Enums.ImInteractionMode
+    providerAccountId?: string | null
+    providerOwnerUserId?: string | null
+    providerBaseUrl?: string | null
+    encryptedCredential?: string | null
+    updateCursor?: string | null
+    lastConnectedAt?: Date | string | null
+    lastMessageAt?: Date | string | null
+    lastError?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ImChannelConnectionUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    channel?: EnumImChannelTypeFieldUpdateOperationsInput | $Enums.ImChannelType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumImConnectionStatusFieldUpdateOperationsInput | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFieldUpdateOperationsInput | $Enums.ImInteractionMode
+    providerAccountId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
+    lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutImChannelConnectionsNestedInput
+  }
+
+  export type ImChannelConnectionUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    channel?: EnumImChannelTypeFieldUpdateOperationsInput | $Enums.ImChannelType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumImConnectionStatusFieldUpdateOperationsInput | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFieldUpdateOperationsInput | $Enums.ImInteractionMode
+    providerAccountId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
+    lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ImChannelConnectionCreateManyInput = {
+    id?: string
+    userId: string
+    channel?: $Enums.ImChannelType
+    enabled?: boolean
+    status?: $Enums.ImConnectionStatus
+    interactionMode?: $Enums.ImInteractionMode
+    providerAccountId?: string | null
+    providerOwnerUserId?: string | null
+    providerBaseUrl?: string | null
+    encryptedCredential?: string | null
+    updateCursor?: string | null
+    lastConnectedAt?: Date | string | null
+    lastMessageAt?: Date | string | null
+    lastError?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ImChannelConnectionUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    channel?: EnumImChannelTypeFieldUpdateOperationsInput | $Enums.ImChannelType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumImConnectionStatusFieldUpdateOperationsInput | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFieldUpdateOperationsInput | $Enums.ImInteractionMode
+    providerAccountId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
+    lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ImChannelConnectionUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    channel?: EnumImChannelTypeFieldUpdateOperationsInput | $Enums.ImChannelType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumImConnectionStatusFieldUpdateOperationsInput | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFieldUpdateOperationsInput | $Enums.ImInteractionMode
+    providerAccountId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
+    lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastError?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -86081,6 +95066,609 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type TaskPolicySetCreateInput = {
+    id?: string
+    name: string
+    scopeType: string
+    scopeId: string
+    status: string
+    version: string
+    schemaVersion: string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest: string
+    createdBy?: string | null
+    publishedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    aliases?: TaskCommandAliasCreateNestedManyWithoutPolicySetInput
+    recipes?: TaskRecipeCreateNestedManyWithoutPolicySetInput
+    bindings?: TaskCapabilityBindingCreateNestedManyWithoutPolicySetInput
+    proposals?: TaskPolicyProposalCreateNestedManyWithoutPolicySetInput
+    auditLogs?: TaskPolicyAuditLogCreateNestedManyWithoutPolicySetInput
+  }
+
+  export type TaskPolicySetUncheckedCreateInput = {
+    id?: string
+    name: string
+    scopeType: string
+    scopeId: string
+    status: string
+    version: string
+    schemaVersion: string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest: string
+    createdBy?: string | null
+    publishedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    aliases?: TaskCommandAliasUncheckedCreateNestedManyWithoutPolicySetInput
+    recipes?: TaskRecipeUncheckedCreateNestedManyWithoutPolicySetInput
+    bindings?: TaskCapabilityBindingUncheckedCreateNestedManyWithoutPolicySetInput
+    proposals?: TaskPolicyProposalUncheckedCreateNestedManyWithoutPolicySetInput
+    auditLogs?: TaskPolicyAuditLogUncheckedCreateNestedManyWithoutPolicySetInput
+  }
+
+  export type TaskPolicySetUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest?: StringFieldUpdateOperationsInput | string
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    publishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    aliases?: TaskCommandAliasUpdateManyWithoutPolicySetNestedInput
+    recipes?: TaskRecipeUpdateManyWithoutPolicySetNestedInput
+    bindings?: TaskCapabilityBindingUpdateManyWithoutPolicySetNestedInput
+    proposals?: TaskPolicyProposalUpdateManyWithoutPolicySetNestedInput
+    auditLogs?: TaskPolicyAuditLogUpdateManyWithoutPolicySetNestedInput
+  }
+
+  export type TaskPolicySetUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest?: StringFieldUpdateOperationsInput | string
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    publishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    aliases?: TaskCommandAliasUncheckedUpdateManyWithoutPolicySetNestedInput
+    recipes?: TaskRecipeUncheckedUpdateManyWithoutPolicySetNestedInput
+    bindings?: TaskCapabilityBindingUncheckedUpdateManyWithoutPolicySetNestedInput
+    proposals?: TaskPolicyProposalUncheckedUpdateManyWithoutPolicySetNestedInput
+    auditLogs?: TaskPolicyAuditLogUncheckedUpdateManyWithoutPolicySetNestedInput
+  }
+
+  export type TaskPolicySetCreateManyInput = {
+    id?: string
+    name: string
+    scopeType: string
+    scopeId: string
+    status: string
+    version: string
+    schemaVersion: string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest: string
+    createdBy?: string | null
+    publishedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type TaskPolicySetUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest?: StringFieldUpdateOperationsInput | string
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    publishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskPolicySetUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest?: StringFieldUpdateOperationsInput | string
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    publishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskCommandAliasCreateInput = {
+    id?: string
+    canonicalCommand: string
+    alias: string
+    matchType?: string
+    weight?: number
+    source?: string
+    status?: string
+    evidenceCount?: number
+    createdAt?: Date | string
+    policySet: TaskPolicySetCreateNestedOneWithoutAliasesInput
+  }
+
+  export type TaskCommandAliasUncheckedCreateInput = {
+    id?: string
+    policySetId: string
+    canonicalCommand: string
+    alias: string
+    matchType?: string
+    weight?: number
+    source?: string
+    status?: string
+    evidenceCount?: number
+    createdAt?: Date | string
+  }
+
+  export type TaskCommandAliasUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    canonicalCommand?: StringFieldUpdateOperationsInput | string
+    alias?: StringFieldUpdateOperationsInput | string
+    matchType?: StringFieldUpdateOperationsInput | string
+    weight?: FloatFieldUpdateOperationsInput | number
+    source?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    evidenceCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    policySet?: TaskPolicySetUpdateOneRequiredWithoutAliasesNestedInput
+  }
+
+  export type TaskCommandAliasUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    policySetId?: StringFieldUpdateOperationsInput | string
+    canonicalCommand?: StringFieldUpdateOperationsInput | string
+    alias?: StringFieldUpdateOperationsInput | string
+    matchType?: StringFieldUpdateOperationsInput | string
+    weight?: FloatFieldUpdateOperationsInput | number
+    source?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    evidenceCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskCommandAliasCreateManyInput = {
+    id?: string
+    policySetId: string
+    canonicalCommand: string
+    alias: string
+    matchType?: string
+    weight?: number
+    source?: string
+    status?: string
+    evidenceCount?: number
+    createdAt?: Date | string
+  }
+
+  export type TaskCommandAliasUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    canonicalCommand?: StringFieldUpdateOperationsInput | string
+    alias?: StringFieldUpdateOperationsInput | string
+    matchType?: StringFieldUpdateOperationsInput | string
+    weight?: FloatFieldUpdateOperationsInput | number
+    source?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    evidenceCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskCommandAliasUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    policySetId?: StringFieldUpdateOperationsInput | string
+    canonicalCommand?: StringFieldUpdateOperationsInput | string
+    alias?: StringFieldUpdateOperationsInput | string
+    matchType?: StringFieldUpdateOperationsInput | string
+    weight?: FloatFieldUpdateOperationsInput | number
+    source?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    evidenceCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskRecipeCreateInput = {
+    id?: string
+    recipeKey: string
+    version: string
+    name: string
+    requiredCommandsJson?: JsonNullValueInput | InputJsonValue
+    optionalCommandsJson?: JsonNullValueInput | InputJsonValue
+    triggerJson?: JsonNullValueInput | InputJsonValue
+    stepsJson?: JsonNullValueInput | InputJsonValue
+    bindingsJson?: JsonNullValueInput | InputJsonValue
+    completionClaimsJson?: JsonNullValueInput | InputJsonValue
+    riskLevel?: string
+    status?: string
+    createdAt?: Date | string
+    policySet: TaskPolicySetCreateNestedOneWithoutRecipesInput
+  }
+
+  export type TaskRecipeUncheckedCreateInput = {
+    id?: string
+    policySetId: string
+    recipeKey: string
+    version: string
+    name: string
+    requiredCommandsJson?: JsonNullValueInput | InputJsonValue
+    optionalCommandsJson?: JsonNullValueInput | InputJsonValue
+    triggerJson?: JsonNullValueInput | InputJsonValue
+    stepsJson?: JsonNullValueInput | InputJsonValue
+    bindingsJson?: JsonNullValueInput | InputJsonValue
+    completionClaimsJson?: JsonNullValueInput | InputJsonValue
+    riskLevel?: string
+    status?: string
+    createdAt?: Date | string
+  }
+
+  export type TaskRecipeUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    recipeKey?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    requiredCommandsJson?: JsonNullValueInput | InputJsonValue
+    optionalCommandsJson?: JsonNullValueInput | InputJsonValue
+    triggerJson?: JsonNullValueInput | InputJsonValue
+    stepsJson?: JsonNullValueInput | InputJsonValue
+    bindingsJson?: JsonNullValueInput | InputJsonValue
+    completionClaimsJson?: JsonNullValueInput | InputJsonValue
+    riskLevel?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    policySet?: TaskPolicySetUpdateOneRequiredWithoutRecipesNestedInput
+  }
+
+  export type TaskRecipeUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    policySetId?: StringFieldUpdateOperationsInput | string
+    recipeKey?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    requiredCommandsJson?: JsonNullValueInput | InputJsonValue
+    optionalCommandsJson?: JsonNullValueInput | InputJsonValue
+    triggerJson?: JsonNullValueInput | InputJsonValue
+    stepsJson?: JsonNullValueInput | InputJsonValue
+    bindingsJson?: JsonNullValueInput | InputJsonValue
+    completionClaimsJson?: JsonNullValueInput | InputJsonValue
+    riskLevel?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskRecipeCreateManyInput = {
+    id?: string
+    policySetId: string
+    recipeKey: string
+    version: string
+    name: string
+    requiredCommandsJson?: JsonNullValueInput | InputJsonValue
+    optionalCommandsJson?: JsonNullValueInput | InputJsonValue
+    triggerJson?: JsonNullValueInput | InputJsonValue
+    stepsJson?: JsonNullValueInput | InputJsonValue
+    bindingsJson?: JsonNullValueInput | InputJsonValue
+    completionClaimsJson?: JsonNullValueInput | InputJsonValue
+    riskLevel?: string
+    status?: string
+    createdAt?: Date | string
+  }
+
+  export type TaskRecipeUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    recipeKey?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    requiredCommandsJson?: JsonNullValueInput | InputJsonValue
+    optionalCommandsJson?: JsonNullValueInput | InputJsonValue
+    triggerJson?: JsonNullValueInput | InputJsonValue
+    stepsJson?: JsonNullValueInput | InputJsonValue
+    bindingsJson?: JsonNullValueInput | InputJsonValue
+    completionClaimsJson?: JsonNullValueInput | InputJsonValue
+    riskLevel?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskRecipeUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    policySetId?: StringFieldUpdateOperationsInput | string
+    recipeKey?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    requiredCommandsJson?: JsonNullValueInput | InputJsonValue
+    optionalCommandsJson?: JsonNullValueInput | InputJsonValue
+    triggerJson?: JsonNullValueInput | InputJsonValue
+    stepsJson?: JsonNullValueInput | InputJsonValue
+    bindingsJson?: JsonNullValueInput | InputJsonValue
+    completionClaimsJson?: JsonNullValueInput | InputJsonValue
+    riskLevel?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskCapabilityBindingCreateInput = {
+    id?: string
+    capabilityRole: string
+    capabilityId: string
+    capabilityVersion?: string | null
+    priority?: number
+    inputMappingJson?: JsonNullValueInput | InputJsonValue
+    outputMappingJson?: JsonNullValueInput | InputJsonValue
+    status?: string
+    createdAt?: Date | string
+    policySet: TaskPolicySetCreateNestedOneWithoutBindingsInput
+  }
+
+  export type TaskCapabilityBindingUncheckedCreateInput = {
+    id?: string
+    policySetId: string
+    capabilityRole: string
+    capabilityId: string
+    capabilityVersion?: string | null
+    priority?: number
+    inputMappingJson?: JsonNullValueInput | InputJsonValue
+    outputMappingJson?: JsonNullValueInput | InputJsonValue
+    status?: string
+    createdAt?: Date | string
+  }
+
+  export type TaskCapabilityBindingUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    capabilityRole?: StringFieldUpdateOperationsInput | string
+    capabilityId?: StringFieldUpdateOperationsInput | string
+    capabilityVersion?: NullableStringFieldUpdateOperationsInput | string | null
+    priority?: IntFieldUpdateOperationsInput | number
+    inputMappingJson?: JsonNullValueInput | InputJsonValue
+    outputMappingJson?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    policySet?: TaskPolicySetUpdateOneRequiredWithoutBindingsNestedInput
+  }
+
+  export type TaskCapabilityBindingUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    policySetId?: StringFieldUpdateOperationsInput | string
+    capabilityRole?: StringFieldUpdateOperationsInput | string
+    capabilityId?: StringFieldUpdateOperationsInput | string
+    capabilityVersion?: NullableStringFieldUpdateOperationsInput | string | null
+    priority?: IntFieldUpdateOperationsInput | number
+    inputMappingJson?: JsonNullValueInput | InputJsonValue
+    outputMappingJson?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskCapabilityBindingCreateManyInput = {
+    id?: string
+    policySetId: string
+    capabilityRole: string
+    capabilityId: string
+    capabilityVersion?: string | null
+    priority?: number
+    inputMappingJson?: JsonNullValueInput | InputJsonValue
+    outputMappingJson?: JsonNullValueInput | InputJsonValue
+    status?: string
+    createdAt?: Date | string
+  }
+
+  export type TaskCapabilityBindingUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    capabilityRole?: StringFieldUpdateOperationsInput | string
+    capabilityId?: StringFieldUpdateOperationsInput | string
+    capabilityVersion?: NullableStringFieldUpdateOperationsInput | string | null
+    priority?: IntFieldUpdateOperationsInput | number
+    inputMappingJson?: JsonNullValueInput | InputJsonValue
+    outputMappingJson?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskCapabilityBindingUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    policySetId?: StringFieldUpdateOperationsInput | string
+    capabilityRole?: StringFieldUpdateOperationsInput | string
+    capabilityId?: StringFieldUpdateOperationsInput | string
+    capabilityVersion?: NullableStringFieldUpdateOperationsInput | string | null
+    priority?: IntFieldUpdateOperationsInput | number
+    inputMappingJson?: JsonNullValueInput | InputJsonValue
+    outputMappingJson?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskPolicyProposalCreateInput = {
+    id?: string
+    proposalType: string
+    scopeType: string
+    scopeId: string
+    status?: string
+    patchJson: JsonNullValueInput | InputJsonValue
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    confidence: number
+    proposedBy?: string
+    reviewedBy?: string | null
+    reviewedAt?: Date | string | null
+    createdAt?: Date | string
+    policySet?: TaskPolicySetCreateNestedOneWithoutProposalsInput
+  }
+
+  export type TaskPolicyProposalUncheckedCreateInput = {
+    id?: string
+    policySetId?: string | null
+    proposalType: string
+    scopeType: string
+    scopeId: string
+    status?: string
+    patchJson: JsonNullValueInput | InputJsonValue
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    confidence: number
+    proposedBy?: string
+    reviewedBy?: string | null
+    reviewedAt?: Date | string | null
+    createdAt?: Date | string
+  }
+
+  export type TaskPolicyProposalUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    proposalType?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    patchJson?: JsonNullValueInput | InputJsonValue
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    confidence?: FloatFieldUpdateOperationsInput | number
+    proposedBy?: StringFieldUpdateOperationsInput | string
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    policySet?: TaskPolicySetUpdateOneWithoutProposalsNestedInput
+  }
+
+  export type TaskPolicyProposalUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    policySetId?: NullableStringFieldUpdateOperationsInput | string | null
+    proposalType?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    patchJson?: JsonNullValueInput | InputJsonValue
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    confidence?: FloatFieldUpdateOperationsInput | number
+    proposedBy?: StringFieldUpdateOperationsInput | string
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskPolicyProposalCreateManyInput = {
+    id?: string
+    policySetId?: string | null
+    proposalType: string
+    scopeType: string
+    scopeId: string
+    status?: string
+    patchJson: JsonNullValueInput | InputJsonValue
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    confidence: number
+    proposedBy?: string
+    reviewedBy?: string | null
+    reviewedAt?: Date | string | null
+    createdAt?: Date | string
+  }
+
+  export type TaskPolicyProposalUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    proposalType?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    patchJson?: JsonNullValueInput | InputJsonValue
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    confidence?: FloatFieldUpdateOperationsInput | number
+    proposedBy?: StringFieldUpdateOperationsInput | string
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskPolicyProposalUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    policySetId?: NullableStringFieldUpdateOperationsInput | string | null
+    proposalType?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    patchJson?: JsonNullValueInput | InputJsonValue
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    confidence?: FloatFieldUpdateOperationsInput | number
+    proposedBy?: StringFieldUpdateOperationsInput | string
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskPolicyAuditLogCreateInput = {
+    id?: string
+    actorUserId?: string | null
+    action: string
+    detailJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    policySet?: TaskPolicySetCreateNestedOneWithoutAuditLogsInput
+  }
+
+  export type TaskPolicyAuditLogUncheckedCreateInput = {
+    id?: string
+    policySetId?: string | null
+    actorUserId?: string | null
+    action: string
+    detailJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type TaskPolicyAuditLogUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    actorUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    action?: StringFieldUpdateOperationsInput | string
+    detailJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    policySet?: TaskPolicySetUpdateOneWithoutAuditLogsNestedInput
+  }
+
+  export type TaskPolicyAuditLogUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    policySetId?: NullableStringFieldUpdateOperationsInput | string | null
+    actorUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    action?: StringFieldUpdateOperationsInput | string
+    detailJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskPolicyAuditLogCreateManyInput = {
+    id?: string
+    policySetId?: string | null
+    actorUserId?: string | null
+    action: string
+    detailJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type TaskPolicyAuditLogUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    actorUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    action?: StringFieldUpdateOperationsInput | string
+    detailJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskPolicyAuditLogUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    policySetId?: NullableStringFieldUpdateOperationsInput | string | null
+    actorUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    action?: StringFieldUpdateOperationsInput | string
+    detailJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type PromptSnapshotCreateInput = {
     id?: string
     ownerUserId: string
@@ -88961,6 +98549,12 @@ export namespace Prisma {
     none?: ChatSessionWhereInput
   }
 
+  export type ImChannelConnectionListRelationFilter = {
+    every?: ImChannelConnectionWhereInput
+    some?: ImChannelConnectionWhereInput
+    none?: ImChannelConnectionWhereInput
+  }
+
   export type SkillAccessRequestListRelationFilter = {
     every?: SkillAccessRequestWhereInput
     some?: SkillAccessRequestWhereInput
@@ -88985,6 +98579,10 @@ export namespace Prisma {
   }
 
   export type ChatSessionOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type ImChannelConnectionOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -89151,6 +98749,124 @@ export namespace Prisma {
     _min?: NestedDateTimeFilter<$PrismaModel>
     _max?: NestedDateTimeFilter<$PrismaModel>
   }
+
+  export type EnumImChannelTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImChannelType | EnumImChannelTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.ImChannelType[] | ListEnumImChannelTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImChannelType[] | ListEnumImChannelTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumImChannelTypeFilter<$PrismaModel> | $Enums.ImChannelType
+  }
+
+  export type EnumImConnectionStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImConnectionStatus | EnumImConnectionStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.ImConnectionStatus[] | ListEnumImConnectionStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImConnectionStatus[] | ListEnumImConnectionStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumImConnectionStatusFilter<$PrismaModel> | $Enums.ImConnectionStatus
+  }
+
+  export type EnumImInteractionModeFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImInteractionMode | EnumImInteractionModeFieldRefInput<$PrismaModel>
+    in?: $Enums.ImInteractionMode[] | ListEnumImInteractionModeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImInteractionMode[] | ListEnumImInteractionModeFieldRefInput<$PrismaModel>
+    not?: NestedEnumImInteractionModeFilter<$PrismaModel> | $Enums.ImInteractionMode
+  }
+
+  export type UserRelationFilter = {
+    is?: UserWhereInput
+    isNot?: UserWhereInput
+  }
+
+  export type ImChannelConnectionUserIdChannelCompoundUniqueInput = {
+    userId: string
+    channel: $Enums.ImChannelType
+  }
+
+  export type ImChannelConnectionCountOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    channel?: SortOrder
+    enabled?: SortOrder
+    status?: SortOrder
+    interactionMode?: SortOrder
+    providerAccountId?: SortOrder
+    providerOwnerUserId?: SortOrder
+    providerBaseUrl?: SortOrder
+    encryptedCredential?: SortOrder
+    updateCursor?: SortOrder
+    lastConnectedAt?: SortOrder
+    lastMessageAt?: SortOrder
+    lastError?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ImChannelConnectionMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    channel?: SortOrder
+    enabled?: SortOrder
+    status?: SortOrder
+    interactionMode?: SortOrder
+    providerAccountId?: SortOrder
+    providerOwnerUserId?: SortOrder
+    providerBaseUrl?: SortOrder
+    encryptedCredential?: SortOrder
+    updateCursor?: SortOrder
+    lastConnectedAt?: SortOrder
+    lastMessageAt?: SortOrder
+    lastError?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ImChannelConnectionMinOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    channel?: SortOrder
+    enabled?: SortOrder
+    status?: SortOrder
+    interactionMode?: SortOrder
+    providerAccountId?: SortOrder
+    providerOwnerUserId?: SortOrder
+    providerBaseUrl?: SortOrder
+    encryptedCredential?: SortOrder
+    updateCursor?: SortOrder
+    lastConnectedAt?: SortOrder
+    lastMessageAt?: SortOrder
+    lastError?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EnumImChannelTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImChannelType | EnumImChannelTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.ImChannelType[] | ListEnumImChannelTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImChannelType[] | ListEnumImChannelTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumImChannelTypeWithAggregatesFilter<$PrismaModel> | $Enums.ImChannelType
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumImChannelTypeFilter<$PrismaModel>
+    _max?: NestedEnumImChannelTypeFilter<$PrismaModel>
+  }
+
+  export type EnumImConnectionStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImConnectionStatus | EnumImConnectionStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.ImConnectionStatus[] | ListEnumImConnectionStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImConnectionStatus[] | ListEnumImConnectionStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumImConnectionStatusWithAggregatesFilter<$PrismaModel> | $Enums.ImConnectionStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumImConnectionStatusFilter<$PrismaModel>
+    _max?: NestedEnumImConnectionStatusFilter<$PrismaModel>
+  }
+
+  export type EnumImInteractionModeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImInteractionMode | EnumImInteractionModeFieldRefInput<$PrismaModel>
+    in?: $Enums.ImInteractionMode[] | ListEnumImInteractionModeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImInteractionMode[] | ListEnumImInteractionModeFieldRefInput<$PrismaModel>
+    not?: NestedEnumImInteractionModeWithAggregatesFilter<$PrismaModel> | $Enums.ImInteractionMode
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumImInteractionModeFilter<$PrismaModel>
+    _max?: NestedEnumImInteractionModeFilter<$PrismaModel>
+  }
   export type JsonFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<JsonFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonFilterBase<$PrismaModel>>, 'path'>>,
@@ -89235,11 +98951,6 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedJsonFilter<$PrismaModel>
     _max?: NestedJsonFilter<$PrismaModel>
-  }
-
-  export type UserRelationFilter = {
-    is?: UserWhereInput
-    isNot?: UserWhereInput
   }
 
   export type RoleRelationFilter = {
@@ -91515,6 +101226,372 @@ export namespace Prisma {
     createdAt?: SortOrder
   }
 
+  export type TaskCommandAliasListRelationFilter = {
+    every?: TaskCommandAliasWhereInput
+    some?: TaskCommandAliasWhereInput
+    none?: TaskCommandAliasWhereInput
+  }
+
+  export type TaskRecipeListRelationFilter = {
+    every?: TaskRecipeWhereInput
+    some?: TaskRecipeWhereInput
+    none?: TaskRecipeWhereInput
+  }
+
+  export type TaskCapabilityBindingListRelationFilter = {
+    every?: TaskCapabilityBindingWhereInput
+    some?: TaskCapabilityBindingWhereInput
+    none?: TaskCapabilityBindingWhereInput
+  }
+
+  export type TaskPolicyProposalListRelationFilter = {
+    every?: TaskPolicyProposalWhereInput
+    some?: TaskPolicyProposalWhereInput
+    none?: TaskPolicyProposalWhereInput
+  }
+
+  export type TaskPolicyAuditLogListRelationFilter = {
+    every?: TaskPolicyAuditLogWhereInput
+    some?: TaskPolicyAuditLogWhereInput
+    none?: TaskPolicyAuditLogWhereInput
+  }
+
+  export type TaskCommandAliasOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type TaskRecipeOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type TaskCapabilityBindingOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type TaskPolicyProposalOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type TaskPolicyAuditLogOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type TaskPolicySetScopeTypeScopeIdVersionCompoundUniqueInput = {
+    scopeType: string
+    scopeId: string
+    version: string
+  }
+
+  export type TaskPolicySetCountOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    scopeType?: SortOrder
+    scopeId?: SortOrder
+    status?: SortOrder
+    version?: SortOrder
+    schemaVersion?: SortOrder
+    policyJson?: SortOrder
+    digest?: SortOrder
+    createdBy?: SortOrder
+    publishedAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type TaskPolicySetMaxOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    scopeType?: SortOrder
+    scopeId?: SortOrder
+    status?: SortOrder
+    version?: SortOrder
+    schemaVersion?: SortOrder
+    digest?: SortOrder
+    createdBy?: SortOrder
+    publishedAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type TaskPolicySetMinOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    scopeType?: SortOrder
+    scopeId?: SortOrder
+    status?: SortOrder
+    version?: SortOrder
+    schemaVersion?: SortOrder
+    digest?: SortOrder
+    createdBy?: SortOrder
+    publishedAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FloatFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel>
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatFilter<$PrismaModel> | number
+  }
+
+  export type TaskPolicySetRelationFilter = {
+    is?: TaskPolicySetWhereInput
+    isNot?: TaskPolicySetWhereInput
+  }
+
+  export type TaskCommandAliasPolicySetIdCanonicalCommandAliasCompoundUniqueInput = {
+    policySetId: string
+    canonicalCommand: string
+    alias: string
+  }
+
+  export type TaskCommandAliasCountOrderByAggregateInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    canonicalCommand?: SortOrder
+    alias?: SortOrder
+    matchType?: SortOrder
+    weight?: SortOrder
+    source?: SortOrder
+    status?: SortOrder
+    evidenceCount?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskCommandAliasAvgOrderByAggregateInput = {
+    weight?: SortOrder
+    evidenceCount?: SortOrder
+  }
+
+  export type TaskCommandAliasMaxOrderByAggregateInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    canonicalCommand?: SortOrder
+    alias?: SortOrder
+    matchType?: SortOrder
+    weight?: SortOrder
+    source?: SortOrder
+    status?: SortOrder
+    evidenceCount?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskCommandAliasMinOrderByAggregateInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    canonicalCommand?: SortOrder
+    alias?: SortOrder
+    matchType?: SortOrder
+    weight?: SortOrder
+    source?: SortOrder
+    status?: SortOrder
+    evidenceCount?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskCommandAliasSumOrderByAggregateInput = {
+    weight?: SortOrder
+    evidenceCount?: SortOrder
+  }
+
+  export type FloatWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel>
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedFloatFilter<$PrismaModel>
+    _min?: NestedFloatFilter<$PrismaModel>
+    _max?: NestedFloatFilter<$PrismaModel>
+  }
+
+  export type TaskRecipePolicySetIdRecipeKeyVersionCompoundUniqueInput = {
+    policySetId: string
+    recipeKey: string
+    version: string
+  }
+
+  export type TaskRecipeCountOrderByAggregateInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    recipeKey?: SortOrder
+    version?: SortOrder
+    name?: SortOrder
+    requiredCommandsJson?: SortOrder
+    optionalCommandsJson?: SortOrder
+    triggerJson?: SortOrder
+    stepsJson?: SortOrder
+    bindingsJson?: SortOrder
+    completionClaimsJson?: SortOrder
+    riskLevel?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskRecipeMaxOrderByAggregateInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    recipeKey?: SortOrder
+    version?: SortOrder
+    name?: SortOrder
+    riskLevel?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskRecipeMinOrderByAggregateInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    recipeKey?: SortOrder
+    version?: SortOrder
+    name?: SortOrder
+    riskLevel?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskCapabilityBindingPolicySetIdCapabilityRoleCapabilityIdCapabilityVersionCompoundUniqueInput = {
+    policySetId: string
+    capabilityRole: string
+    capabilityId: string
+    capabilityVersion: string
+  }
+
+  export type TaskCapabilityBindingCountOrderByAggregateInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    capabilityRole?: SortOrder
+    capabilityId?: SortOrder
+    capabilityVersion?: SortOrder
+    priority?: SortOrder
+    inputMappingJson?: SortOrder
+    outputMappingJson?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskCapabilityBindingAvgOrderByAggregateInput = {
+    priority?: SortOrder
+  }
+
+  export type TaskCapabilityBindingMaxOrderByAggregateInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    capabilityRole?: SortOrder
+    capabilityId?: SortOrder
+    capabilityVersion?: SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskCapabilityBindingMinOrderByAggregateInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    capabilityRole?: SortOrder
+    capabilityId?: SortOrder
+    capabilityVersion?: SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskCapabilityBindingSumOrderByAggregateInput = {
+    priority?: SortOrder
+  }
+
+  export type TaskPolicySetNullableRelationFilter = {
+    is?: TaskPolicySetWhereInput | null
+    isNot?: TaskPolicySetWhereInput | null
+  }
+
+  export type TaskPolicyProposalCountOrderByAggregateInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    proposalType?: SortOrder
+    scopeType?: SortOrder
+    scopeId?: SortOrder
+    status?: SortOrder
+    patchJson?: SortOrder
+    evidenceJson?: SortOrder
+    confidence?: SortOrder
+    proposedBy?: SortOrder
+    reviewedBy?: SortOrder
+    reviewedAt?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskPolicyProposalAvgOrderByAggregateInput = {
+    confidence?: SortOrder
+  }
+
+  export type TaskPolicyProposalMaxOrderByAggregateInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    proposalType?: SortOrder
+    scopeType?: SortOrder
+    scopeId?: SortOrder
+    status?: SortOrder
+    confidence?: SortOrder
+    proposedBy?: SortOrder
+    reviewedBy?: SortOrder
+    reviewedAt?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskPolicyProposalMinOrderByAggregateInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    proposalType?: SortOrder
+    scopeType?: SortOrder
+    scopeId?: SortOrder
+    status?: SortOrder
+    confidence?: SortOrder
+    proposedBy?: SortOrder
+    reviewedBy?: SortOrder
+    reviewedAt?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskPolicyProposalSumOrderByAggregateInput = {
+    confidence?: SortOrder
+  }
+
+  export type TaskPolicyAuditLogCountOrderByAggregateInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    actorUserId?: SortOrder
+    action?: SortOrder
+    detailJson?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskPolicyAuditLogMaxOrderByAggregateInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    actorUserId?: SortOrder
+    action?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskPolicyAuditLogMinOrderByAggregateInput = {
+    id?: SortOrder
+    policySetId?: SortOrder
+    actorUserId?: SortOrder
+    action?: SortOrder
+    createdAt?: SortOrder
+  }
+
   export type PromptSnapshotCountOrderByAggregateInput = {
     id?: SortOrder
     ownerUserId?: SortOrder
@@ -92881,6 +102958,13 @@ export namespace Prisma {
     connect?: ChatSessionWhereUniqueInput | ChatSessionWhereUniqueInput[]
   }
 
+  export type ImChannelConnectionCreateNestedManyWithoutUserInput = {
+    create?: XOR<ImChannelConnectionCreateWithoutUserInput, ImChannelConnectionUncheckedCreateWithoutUserInput> | ImChannelConnectionCreateWithoutUserInput[] | ImChannelConnectionUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: ImChannelConnectionCreateOrConnectWithoutUserInput | ImChannelConnectionCreateOrConnectWithoutUserInput[]
+    createMany?: ImChannelConnectionCreateManyUserInputEnvelope
+    connect?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+  }
+
   export type SkillAccessRequestCreateNestedManyWithoutRequesterInput = {
     create?: XOR<SkillAccessRequestCreateWithoutRequesterInput, SkillAccessRequestUncheckedCreateWithoutRequesterInput> | SkillAccessRequestCreateWithoutRequesterInput[] | SkillAccessRequestUncheckedCreateWithoutRequesterInput[]
     connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutRequesterInput | SkillAccessRequestCreateOrConnectWithoutRequesterInput[]
@@ -92928,6 +103012,13 @@ export namespace Prisma {
     connectOrCreate?: ChatSessionCreateOrConnectWithoutUserInput | ChatSessionCreateOrConnectWithoutUserInput[]
     createMany?: ChatSessionCreateManyUserInputEnvelope
     connect?: ChatSessionWhereUniqueInput | ChatSessionWhereUniqueInput[]
+  }
+
+  export type ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<ImChannelConnectionCreateWithoutUserInput, ImChannelConnectionUncheckedCreateWithoutUserInput> | ImChannelConnectionCreateWithoutUserInput[] | ImChannelConnectionUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: ImChannelConnectionCreateOrConnectWithoutUserInput | ImChannelConnectionCreateOrConnectWithoutUserInput[]
+    createMany?: ImChannelConnectionCreateManyUserInputEnvelope
+    connect?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
   }
 
   export type SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput = {
@@ -93048,6 +103139,20 @@ export namespace Prisma {
     deleteMany?: ChatSessionScalarWhereInput | ChatSessionScalarWhereInput[]
   }
 
+  export type ImChannelConnectionUpdateManyWithoutUserNestedInput = {
+    create?: XOR<ImChannelConnectionCreateWithoutUserInput, ImChannelConnectionUncheckedCreateWithoutUserInput> | ImChannelConnectionCreateWithoutUserInput[] | ImChannelConnectionUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: ImChannelConnectionCreateOrConnectWithoutUserInput | ImChannelConnectionCreateOrConnectWithoutUserInput[]
+    upsert?: ImChannelConnectionUpsertWithWhereUniqueWithoutUserInput | ImChannelConnectionUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: ImChannelConnectionCreateManyUserInputEnvelope
+    set?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+    disconnect?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+    delete?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+    connect?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+    update?: ImChannelConnectionUpdateWithWhereUniqueWithoutUserInput | ImChannelConnectionUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: ImChannelConnectionUpdateManyWithWhereWithoutUserInput | ImChannelConnectionUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: ImChannelConnectionScalarWhereInput | ImChannelConnectionScalarWhereInput[]
+  }
+
   export type SkillAccessRequestUpdateManyWithoutRequesterNestedInput = {
     create?: XOR<SkillAccessRequestCreateWithoutRequesterInput, SkillAccessRequestUncheckedCreateWithoutRequesterInput> | SkillAccessRequestCreateWithoutRequesterInput[] | SkillAccessRequestUncheckedCreateWithoutRequesterInput[]
     connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutRequesterInput | SkillAccessRequestCreateOrConnectWithoutRequesterInput[]
@@ -93146,6 +103251,20 @@ export namespace Prisma {
     deleteMany?: ChatSessionScalarWhereInput | ChatSessionScalarWhereInput[]
   }
 
+  export type ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<ImChannelConnectionCreateWithoutUserInput, ImChannelConnectionUncheckedCreateWithoutUserInput> | ImChannelConnectionCreateWithoutUserInput[] | ImChannelConnectionUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: ImChannelConnectionCreateOrConnectWithoutUserInput | ImChannelConnectionCreateOrConnectWithoutUserInput[]
+    upsert?: ImChannelConnectionUpsertWithWhereUniqueWithoutUserInput | ImChannelConnectionUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: ImChannelConnectionCreateManyUserInputEnvelope
+    set?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+    disconnect?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+    delete?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+    connect?: ImChannelConnectionWhereUniqueInput | ImChannelConnectionWhereUniqueInput[]
+    update?: ImChannelConnectionUpdateWithWhereUniqueWithoutUserInput | ImChannelConnectionUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: ImChannelConnectionUpdateManyWithWhereWithoutUserInput | ImChannelConnectionUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: ImChannelConnectionScalarWhereInput | ImChannelConnectionScalarWhereInput[]
+  }
+
   export type SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput = {
     create?: XOR<SkillAccessRequestCreateWithoutRequesterInput, SkillAccessRequestUncheckedCreateWithoutRequesterInput> | SkillAccessRequestCreateWithoutRequesterInput[] | SkillAccessRequestUncheckedCreateWithoutRequesterInput[]
     connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutRequesterInput | SkillAccessRequestCreateOrConnectWithoutRequesterInput[]
@@ -93172,6 +103291,32 @@ export namespace Prisma {
     update?: SkillAccessRequestUpdateWithWhereUniqueWithoutProcessorInput | SkillAccessRequestUpdateWithWhereUniqueWithoutProcessorInput[]
     updateMany?: SkillAccessRequestUpdateManyWithWhereWithoutProcessorInput | SkillAccessRequestUpdateManyWithWhereWithoutProcessorInput[]
     deleteMany?: SkillAccessRequestScalarWhereInput | SkillAccessRequestScalarWhereInput[]
+  }
+
+  export type UserCreateNestedOneWithoutImChannelConnectionsInput = {
+    create?: XOR<UserCreateWithoutImChannelConnectionsInput, UserUncheckedCreateWithoutImChannelConnectionsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutImChannelConnectionsInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type EnumImChannelTypeFieldUpdateOperationsInput = {
+    set?: $Enums.ImChannelType
+  }
+
+  export type EnumImConnectionStatusFieldUpdateOperationsInput = {
+    set?: $Enums.ImConnectionStatus
+  }
+
+  export type EnumImInteractionModeFieldUpdateOperationsInput = {
+    set?: $Enums.ImInteractionMode
+  }
+
+  export type UserUpdateOneRequiredWithoutImChannelConnectionsNestedInput = {
+    create?: XOR<UserCreateWithoutImChannelConnectionsInput, UserUncheckedCreateWithoutImChannelConnectionsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutImChannelConnectionsInput
+    upsert?: UserUpsertWithoutImChannelConnectionsInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutImChannelConnectionsInput, UserUpdateWithoutImChannelConnectionsInput>, UserUncheckedUpdateWithoutImChannelConnectionsInput>
   }
 
   export type UserRoleCreateNestedManyWithoutRoleInput = {
@@ -95042,6 +105187,298 @@ export namespace Prisma {
     divide?: number
   }
 
+  export type TaskCommandAliasCreateNestedManyWithoutPolicySetInput = {
+    create?: XOR<TaskCommandAliasCreateWithoutPolicySetInput, TaskCommandAliasUncheckedCreateWithoutPolicySetInput> | TaskCommandAliasCreateWithoutPolicySetInput[] | TaskCommandAliasUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskCommandAliasCreateOrConnectWithoutPolicySetInput | TaskCommandAliasCreateOrConnectWithoutPolicySetInput[]
+    createMany?: TaskCommandAliasCreateManyPolicySetInputEnvelope
+    connect?: TaskCommandAliasWhereUniqueInput | TaskCommandAliasWhereUniqueInput[]
+  }
+
+  export type TaskRecipeCreateNestedManyWithoutPolicySetInput = {
+    create?: XOR<TaskRecipeCreateWithoutPolicySetInput, TaskRecipeUncheckedCreateWithoutPolicySetInput> | TaskRecipeCreateWithoutPolicySetInput[] | TaskRecipeUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskRecipeCreateOrConnectWithoutPolicySetInput | TaskRecipeCreateOrConnectWithoutPolicySetInput[]
+    createMany?: TaskRecipeCreateManyPolicySetInputEnvelope
+    connect?: TaskRecipeWhereUniqueInput | TaskRecipeWhereUniqueInput[]
+  }
+
+  export type TaskCapabilityBindingCreateNestedManyWithoutPolicySetInput = {
+    create?: XOR<TaskCapabilityBindingCreateWithoutPolicySetInput, TaskCapabilityBindingUncheckedCreateWithoutPolicySetInput> | TaskCapabilityBindingCreateWithoutPolicySetInput[] | TaskCapabilityBindingUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskCapabilityBindingCreateOrConnectWithoutPolicySetInput | TaskCapabilityBindingCreateOrConnectWithoutPolicySetInput[]
+    createMany?: TaskCapabilityBindingCreateManyPolicySetInputEnvelope
+    connect?: TaskCapabilityBindingWhereUniqueInput | TaskCapabilityBindingWhereUniqueInput[]
+  }
+
+  export type TaskPolicyProposalCreateNestedManyWithoutPolicySetInput = {
+    create?: XOR<TaskPolicyProposalCreateWithoutPolicySetInput, TaskPolicyProposalUncheckedCreateWithoutPolicySetInput> | TaskPolicyProposalCreateWithoutPolicySetInput[] | TaskPolicyProposalUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskPolicyProposalCreateOrConnectWithoutPolicySetInput | TaskPolicyProposalCreateOrConnectWithoutPolicySetInput[]
+    createMany?: TaskPolicyProposalCreateManyPolicySetInputEnvelope
+    connect?: TaskPolicyProposalWhereUniqueInput | TaskPolicyProposalWhereUniqueInput[]
+  }
+
+  export type TaskPolicyAuditLogCreateNestedManyWithoutPolicySetInput = {
+    create?: XOR<TaskPolicyAuditLogCreateWithoutPolicySetInput, TaskPolicyAuditLogUncheckedCreateWithoutPolicySetInput> | TaskPolicyAuditLogCreateWithoutPolicySetInput[] | TaskPolicyAuditLogUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskPolicyAuditLogCreateOrConnectWithoutPolicySetInput | TaskPolicyAuditLogCreateOrConnectWithoutPolicySetInput[]
+    createMany?: TaskPolicyAuditLogCreateManyPolicySetInputEnvelope
+    connect?: TaskPolicyAuditLogWhereUniqueInput | TaskPolicyAuditLogWhereUniqueInput[]
+  }
+
+  export type TaskCommandAliasUncheckedCreateNestedManyWithoutPolicySetInput = {
+    create?: XOR<TaskCommandAliasCreateWithoutPolicySetInput, TaskCommandAliasUncheckedCreateWithoutPolicySetInput> | TaskCommandAliasCreateWithoutPolicySetInput[] | TaskCommandAliasUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskCommandAliasCreateOrConnectWithoutPolicySetInput | TaskCommandAliasCreateOrConnectWithoutPolicySetInput[]
+    createMany?: TaskCommandAliasCreateManyPolicySetInputEnvelope
+    connect?: TaskCommandAliasWhereUniqueInput | TaskCommandAliasWhereUniqueInput[]
+  }
+
+  export type TaskRecipeUncheckedCreateNestedManyWithoutPolicySetInput = {
+    create?: XOR<TaskRecipeCreateWithoutPolicySetInput, TaskRecipeUncheckedCreateWithoutPolicySetInput> | TaskRecipeCreateWithoutPolicySetInput[] | TaskRecipeUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskRecipeCreateOrConnectWithoutPolicySetInput | TaskRecipeCreateOrConnectWithoutPolicySetInput[]
+    createMany?: TaskRecipeCreateManyPolicySetInputEnvelope
+    connect?: TaskRecipeWhereUniqueInput | TaskRecipeWhereUniqueInput[]
+  }
+
+  export type TaskCapabilityBindingUncheckedCreateNestedManyWithoutPolicySetInput = {
+    create?: XOR<TaskCapabilityBindingCreateWithoutPolicySetInput, TaskCapabilityBindingUncheckedCreateWithoutPolicySetInput> | TaskCapabilityBindingCreateWithoutPolicySetInput[] | TaskCapabilityBindingUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskCapabilityBindingCreateOrConnectWithoutPolicySetInput | TaskCapabilityBindingCreateOrConnectWithoutPolicySetInput[]
+    createMany?: TaskCapabilityBindingCreateManyPolicySetInputEnvelope
+    connect?: TaskCapabilityBindingWhereUniqueInput | TaskCapabilityBindingWhereUniqueInput[]
+  }
+
+  export type TaskPolicyProposalUncheckedCreateNestedManyWithoutPolicySetInput = {
+    create?: XOR<TaskPolicyProposalCreateWithoutPolicySetInput, TaskPolicyProposalUncheckedCreateWithoutPolicySetInput> | TaskPolicyProposalCreateWithoutPolicySetInput[] | TaskPolicyProposalUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskPolicyProposalCreateOrConnectWithoutPolicySetInput | TaskPolicyProposalCreateOrConnectWithoutPolicySetInput[]
+    createMany?: TaskPolicyProposalCreateManyPolicySetInputEnvelope
+    connect?: TaskPolicyProposalWhereUniqueInput | TaskPolicyProposalWhereUniqueInput[]
+  }
+
+  export type TaskPolicyAuditLogUncheckedCreateNestedManyWithoutPolicySetInput = {
+    create?: XOR<TaskPolicyAuditLogCreateWithoutPolicySetInput, TaskPolicyAuditLogUncheckedCreateWithoutPolicySetInput> | TaskPolicyAuditLogCreateWithoutPolicySetInput[] | TaskPolicyAuditLogUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskPolicyAuditLogCreateOrConnectWithoutPolicySetInput | TaskPolicyAuditLogCreateOrConnectWithoutPolicySetInput[]
+    createMany?: TaskPolicyAuditLogCreateManyPolicySetInputEnvelope
+    connect?: TaskPolicyAuditLogWhereUniqueInput | TaskPolicyAuditLogWhereUniqueInput[]
+  }
+
+  export type TaskCommandAliasUpdateManyWithoutPolicySetNestedInput = {
+    create?: XOR<TaskCommandAliasCreateWithoutPolicySetInput, TaskCommandAliasUncheckedCreateWithoutPolicySetInput> | TaskCommandAliasCreateWithoutPolicySetInput[] | TaskCommandAliasUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskCommandAliasCreateOrConnectWithoutPolicySetInput | TaskCommandAliasCreateOrConnectWithoutPolicySetInput[]
+    upsert?: TaskCommandAliasUpsertWithWhereUniqueWithoutPolicySetInput | TaskCommandAliasUpsertWithWhereUniqueWithoutPolicySetInput[]
+    createMany?: TaskCommandAliasCreateManyPolicySetInputEnvelope
+    set?: TaskCommandAliasWhereUniqueInput | TaskCommandAliasWhereUniqueInput[]
+    disconnect?: TaskCommandAliasWhereUniqueInput | TaskCommandAliasWhereUniqueInput[]
+    delete?: TaskCommandAliasWhereUniqueInput | TaskCommandAliasWhereUniqueInput[]
+    connect?: TaskCommandAliasWhereUniqueInput | TaskCommandAliasWhereUniqueInput[]
+    update?: TaskCommandAliasUpdateWithWhereUniqueWithoutPolicySetInput | TaskCommandAliasUpdateWithWhereUniqueWithoutPolicySetInput[]
+    updateMany?: TaskCommandAliasUpdateManyWithWhereWithoutPolicySetInput | TaskCommandAliasUpdateManyWithWhereWithoutPolicySetInput[]
+    deleteMany?: TaskCommandAliasScalarWhereInput | TaskCommandAliasScalarWhereInput[]
+  }
+
+  export type TaskRecipeUpdateManyWithoutPolicySetNestedInput = {
+    create?: XOR<TaskRecipeCreateWithoutPolicySetInput, TaskRecipeUncheckedCreateWithoutPolicySetInput> | TaskRecipeCreateWithoutPolicySetInput[] | TaskRecipeUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskRecipeCreateOrConnectWithoutPolicySetInput | TaskRecipeCreateOrConnectWithoutPolicySetInput[]
+    upsert?: TaskRecipeUpsertWithWhereUniqueWithoutPolicySetInput | TaskRecipeUpsertWithWhereUniqueWithoutPolicySetInput[]
+    createMany?: TaskRecipeCreateManyPolicySetInputEnvelope
+    set?: TaskRecipeWhereUniqueInput | TaskRecipeWhereUniqueInput[]
+    disconnect?: TaskRecipeWhereUniqueInput | TaskRecipeWhereUniqueInput[]
+    delete?: TaskRecipeWhereUniqueInput | TaskRecipeWhereUniqueInput[]
+    connect?: TaskRecipeWhereUniqueInput | TaskRecipeWhereUniqueInput[]
+    update?: TaskRecipeUpdateWithWhereUniqueWithoutPolicySetInput | TaskRecipeUpdateWithWhereUniqueWithoutPolicySetInput[]
+    updateMany?: TaskRecipeUpdateManyWithWhereWithoutPolicySetInput | TaskRecipeUpdateManyWithWhereWithoutPolicySetInput[]
+    deleteMany?: TaskRecipeScalarWhereInput | TaskRecipeScalarWhereInput[]
+  }
+
+  export type TaskCapabilityBindingUpdateManyWithoutPolicySetNestedInput = {
+    create?: XOR<TaskCapabilityBindingCreateWithoutPolicySetInput, TaskCapabilityBindingUncheckedCreateWithoutPolicySetInput> | TaskCapabilityBindingCreateWithoutPolicySetInput[] | TaskCapabilityBindingUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskCapabilityBindingCreateOrConnectWithoutPolicySetInput | TaskCapabilityBindingCreateOrConnectWithoutPolicySetInput[]
+    upsert?: TaskCapabilityBindingUpsertWithWhereUniqueWithoutPolicySetInput | TaskCapabilityBindingUpsertWithWhereUniqueWithoutPolicySetInput[]
+    createMany?: TaskCapabilityBindingCreateManyPolicySetInputEnvelope
+    set?: TaskCapabilityBindingWhereUniqueInput | TaskCapabilityBindingWhereUniqueInput[]
+    disconnect?: TaskCapabilityBindingWhereUniqueInput | TaskCapabilityBindingWhereUniqueInput[]
+    delete?: TaskCapabilityBindingWhereUniqueInput | TaskCapabilityBindingWhereUniqueInput[]
+    connect?: TaskCapabilityBindingWhereUniqueInput | TaskCapabilityBindingWhereUniqueInput[]
+    update?: TaskCapabilityBindingUpdateWithWhereUniqueWithoutPolicySetInput | TaskCapabilityBindingUpdateWithWhereUniqueWithoutPolicySetInput[]
+    updateMany?: TaskCapabilityBindingUpdateManyWithWhereWithoutPolicySetInput | TaskCapabilityBindingUpdateManyWithWhereWithoutPolicySetInput[]
+    deleteMany?: TaskCapabilityBindingScalarWhereInput | TaskCapabilityBindingScalarWhereInput[]
+  }
+
+  export type TaskPolicyProposalUpdateManyWithoutPolicySetNestedInput = {
+    create?: XOR<TaskPolicyProposalCreateWithoutPolicySetInput, TaskPolicyProposalUncheckedCreateWithoutPolicySetInput> | TaskPolicyProposalCreateWithoutPolicySetInput[] | TaskPolicyProposalUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskPolicyProposalCreateOrConnectWithoutPolicySetInput | TaskPolicyProposalCreateOrConnectWithoutPolicySetInput[]
+    upsert?: TaskPolicyProposalUpsertWithWhereUniqueWithoutPolicySetInput | TaskPolicyProposalUpsertWithWhereUniqueWithoutPolicySetInput[]
+    createMany?: TaskPolicyProposalCreateManyPolicySetInputEnvelope
+    set?: TaskPolicyProposalWhereUniqueInput | TaskPolicyProposalWhereUniqueInput[]
+    disconnect?: TaskPolicyProposalWhereUniqueInput | TaskPolicyProposalWhereUniqueInput[]
+    delete?: TaskPolicyProposalWhereUniqueInput | TaskPolicyProposalWhereUniqueInput[]
+    connect?: TaskPolicyProposalWhereUniqueInput | TaskPolicyProposalWhereUniqueInput[]
+    update?: TaskPolicyProposalUpdateWithWhereUniqueWithoutPolicySetInput | TaskPolicyProposalUpdateWithWhereUniqueWithoutPolicySetInput[]
+    updateMany?: TaskPolicyProposalUpdateManyWithWhereWithoutPolicySetInput | TaskPolicyProposalUpdateManyWithWhereWithoutPolicySetInput[]
+    deleteMany?: TaskPolicyProposalScalarWhereInput | TaskPolicyProposalScalarWhereInput[]
+  }
+
+  export type TaskPolicyAuditLogUpdateManyWithoutPolicySetNestedInput = {
+    create?: XOR<TaskPolicyAuditLogCreateWithoutPolicySetInput, TaskPolicyAuditLogUncheckedCreateWithoutPolicySetInput> | TaskPolicyAuditLogCreateWithoutPolicySetInput[] | TaskPolicyAuditLogUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskPolicyAuditLogCreateOrConnectWithoutPolicySetInput | TaskPolicyAuditLogCreateOrConnectWithoutPolicySetInput[]
+    upsert?: TaskPolicyAuditLogUpsertWithWhereUniqueWithoutPolicySetInput | TaskPolicyAuditLogUpsertWithWhereUniqueWithoutPolicySetInput[]
+    createMany?: TaskPolicyAuditLogCreateManyPolicySetInputEnvelope
+    set?: TaskPolicyAuditLogWhereUniqueInput | TaskPolicyAuditLogWhereUniqueInput[]
+    disconnect?: TaskPolicyAuditLogWhereUniqueInput | TaskPolicyAuditLogWhereUniqueInput[]
+    delete?: TaskPolicyAuditLogWhereUniqueInput | TaskPolicyAuditLogWhereUniqueInput[]
+    connect?: TaskPolicyAuditLogWhereUniqueInput | TaskPolicyAuditLogWhereUniqueInput[]
+    update?: TaskPolicyAuditLogUpdateWithWhereUniqueWithoutPolicySetInput | TaskPolicyAuditLogUpdateWithWhereUniqueWithoutPolicySetInput[]
+    updateMany?: TaskPolicyAuditLogUpdateManyWithWhereWithoutPolicySetInput | TaskPolicyAuditLogUpdateManyWithWhereWithoutPolicySetInput[]
+    deleteMany?: TaskPolicyAuditLogScalarWhereInput | TaskPolicyAuditLogScalarWhereInput[]
+  }
+
+  export type TaskCommandAliasUncheckedUpdateManyWithoutPolicySetNestedInput = {
+    create?: XOR<TaskCommandAliasCreateWithoutPolicySetInput, TaskCommandAliasUncheckedCreateWithoutPolicySetInput> | TaskCommandAliasCreateWithoutPolicySetInput[] | TaskCommandAliasUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskCommandAliasCreateOrConnectWithoutPolicySetInput | TaskCommandAliasCreateOrConnectWithoutPolicySetInput[]
+    upsert?: TaskCommandAliasUpsertWithWhereUniqueWithoutPolicySetInput | TaskCommandAliasUpsertWithWhereUniqueWithoutPolicySetInput[]
+    createMany?: TaskCommandAliasCreateManyPolicySetInputEnvelope
+    set?: TaskCommandAliasWhereUniqueInput | TaskCommandAliasWhereUniqueInput[]
+    disconnect?: TaskCommandAliasWhereUniqueInput | TaskCommandAliasWhereUniqueInput[]
+    delete?: TaskCommandAliasWhereUniqueInput | TaskCommandAliasWhereUniqueInput[]
+    connect?: TaskCommandAliasWhereUniqueInput | TaskCommandAliasWhereUniqueInput[]
+    update?: TaskCommandAliasUpdateWithWhereUniqueWithoutPolicySetInput | TaskCommandAliasUpdateWithWhereUniqueWithoutPolicySetInput[]
+    updateMany?: TaskCommandAliasUpdateManyWithWhereWithoutPolicySetInput | TaskCommandAliasUpdateManyWithWhereWithoutPolicySetInput[]
+    deleteMany?: TaskCommandAliasScalarWhereInput | TaskCommandAliasScalarWhereInput[]
+  }
+
+  export type TaskRecipeUncheckedUpdateManyWithoutPolicySetNestedInput = {
+    create?: XOR<TaskRecipeCreateWithoutPolicySetInput, TaskRecipeUncheckedCreateWithoutPolicySetInput> | TaskRecipeCreateWithoutPolicySetInput[] | TaskRecipeUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskRecipeCreateOrConnectWithoutPolicySetInput | TaskRecipeCreateOrConnectWithoutPolicySetInput[]
+    upsert?: TaskRecipeUpsertWithWhereUniqueWithoutPolicySetInput | TaskRecipeUpsertWithWhereUniqueWithoutPolicySetInput[]
+    createMany?: TaskRecipeCreateManyPolicySetInputEnvelope
+    set?: TaskRecipeWhereUniqueInput | TaskRecipeWhereUniqueInput[]
+    disconnect?: TaskRecipeWhereUniqueInput | TaskRecipeWhereUniqueInput[]
+    delete?: TaskRecipeWhereUniqueInput | TaskRecipeWhereUniqueInput[]
+    connect?: TaskRecipeWhereUniqueInput | TaskRecipeWhereUniqueInput[]
+    update?: TaskRecipeUpdateWithWhereUniqueWithoutPolicySetInput | TaskRecipeUpdateWithWhereUniqueWithoutPolicySetInput[]
+    updateMany?: TaskRecipeUpdateManyWithWhereWithoutPolicySetInput | TaskRecipeUpdateManyWithWhereWithoutPolicySetInput[]
+    deleteMany?: TaskRecipeScalarWhereInput | TaskRecipeScalarWhereInput[]
+  }
+
+  export type TaskCapabilityBindingUncheckedUpdateManyWithoutPolicySetNestedInput = {
+    create?: XOR<TaskCapabilityBindingCreateWithoutPolicySetInput, TaskCapabilityBindingUncheckedCreateWithoutPolicySetInput> | TaskCapabilityBindingCreateWithoutPolicySetInput[] | TaskCapabilityBindingUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskCapabilityBindingCreateOrConnectWithoutPolicySetInput | TaskCapabilityBindingCreateOrConnectWithoutPolicySetInput[]
+    upsert?: TaskCapabilityBindingUpsertWithWhereUniqueWithoutPolicySetInput | TaskCapabilityBindingUpsertWithWhereUniqueWithoutPolicySetInput[]
+    createMany?: TaskCapabilityBindingCreateManyPolicySetInputEnvelope
+    set?: TaskCapabilityBindingWhereUniqueInput | TaskCapabilityBindingWhereUniqueInput[]
+    disconnect?: TaskCapabilityBindingWhereUniqueInput | TaskCapabilityBindingWhereUniqueInput[]
+    delete?: TaskCapabilityBindingWhereUniqueInput | TaskCapabilityBindingWhereUniqueInput[]
+    connect?: TaskCapabilityBindingWhereUniqueInput | TaskCapabilityBindingWhereUniqueInput[]
+    update?: TaskCapabilityBindingUpdateWithWhereUniqueWithoutPolicySetInput | TaskCapabilityBindingUpdateWithWhereUniqueWithoutPolicySetInput[]
+    updateMany?: TaskCapabilityBindingUpdateManyWithWhereWithoutPolicySetInput | TaskCapabilityBindingUpdateManyWithWhereWithoutPolicySetInput[]
+    deleteMany?: TaskCapabilityBindingScalarWhereInput | TaskCapabilityBindingScalarWhereInput[]
+  }
+
+  export type TaskPolicyProposalUncheckedUpdateManyWithoutPolicySetNestedInput = {
+    create?: XOR<TaskPolicyProposalCreateWithoutPolicySetInput, TaskPolicyProposalUncheckedCreateWithoutPolicySetInput> | TaskPolicyProposalCreateWithoutPolicySetInput[] | TaskPolicyProposalUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskPolicyProposalCreateOrConnectWithoutPolicySetInput | TaskPolicyProposalCreateOrConnectWithoutPolicySetInput[]
+    upsert?: TaskPolicyProposalUpsertWithWhereUniqueWithoutPolicySetInput | TaskPolicyProposalUpsertWithWhereUniqueWithoutPolicySetInput[]
+    createMany?: TaskPolicyProposalCreateManyPolicySetInputEnvelope
+    set?: TaskPolicyProposalWhereUniqueInput | TaskPolicyProposalWhereUniqueInput[]
+    disconnect?: TaskPolicyProposalWhereUniqueInput | TaskPolicyProposalWhereUniqueInput[]
+    delete?: TaskPolicyProposalWhereUniqueInput | TaskPolicyProposalWhereUniqueInput[]
+    connect?: TaskPolicyProposalWhereUniqueInput | TaskPolicyProposalWhereUniqueInput[]
+    update?: TaskPolicyProposalUpdateWithWhereUniqueWithoutPolicySetInput | TaskPolicyProposalUpdateWithWhereUniqueWithoutPolicySetInput[]
+    updateMany?: TaskPolicyProposalUpdateManyWithWhereWithoutPolicySetInput | TaskPolicyProposalUpdateManyWithWhereWithoutPolicySetInput[]
+    deleteMany?: TaskPolicyProposalScalarWhereInput | TaskPolicyProposalScalarWhereInput[]
+  }
+
+  export type TaskPolicyAuditLogUncheckedUpdateManyWithoutPolicySetNestedInput = {
+    create?: XOR<TaskPolicyAuditLogCreateWithoutPolicySetInput, TaskPolicyAuditLogUncheckedCreateWithoutPolicySetInput> | TaskPolicyAuditLogCreateWithoutPolicySetInput[] | TaskPolicyAuditLogUncheckedCreateWithoutPolicySetInput[]
+    connectOrCreate?: TaskPolicyAuditLogCreateOrConnectWithoutPolicySetInput | TaskPolicyAuditLogCreateOrConnectWithoutPolicySetInput[]
+    upsert?: TaskPolicyAuditLogUpsertWithWhereUniqueWithoutPolicySetInput | TaskPolicyAuditLogUpsertWithWhereUniqueWithoutPolicySetInput[]
+    createMany?: TaskPolicyAuditLogCreateManyPolicySetInputEnvelope
+    set?: TaskPolicyAuditLogWhereUniqueInput | TaskPolicyAuditLogWhereUniqueInput[]
+    disconnect?: TaskPolicyAuditLogWhereUniqueInput | TaskPolicyAuditLogWhereUniqueInput[]
+    delete?: TaskPolicyAuditLogWhereUniqueInput | TaskPolicyAuditLogWhereUniqueInput[]
+    connect?: TaskPolicyAuditLogWhereUniqueInput | TaskPolicyAuditLogWhereUniqueInput[]
+    update?: TaskPolicyAuditLogUpdateWithWhereUniqueWithoutPolicySetInput | TaskPolicyAuditLogUpdateWithWhereUniqueWithoutPolicySetInput[]
+    updateMany?: TaskPolicyAuditLogUpdateManyWithWhereWithoutPolicySetInput | TaskPolicyAuditLogUpdateManyWithWhereWithoutPolicySetInput[]
+    deleteMany?: TaskPolicyAuditLogScalarWhereInput | TaskPolicyAuditLogScalarWhereInput[]
+  }
+
+  export type TaskPolicySetCreateNestedOneWithoutAliasesInput = {
+    create?: XOR<TaskPolicySetCreateWithoutAliasesInput, TaskPolicySetUncheckedCreateWithoutAliasesInput>
+    connectOrCreate?: TaskPolicySetCreateOrConnectWithoutAliasesInput
+    connect?: TaskPolicySetWhereUniqueInput
+  }
+
+  export type FloatFieldUpdateOperationsInput = {
+    set?: number
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
+  export type TaskPolicySetUpdateOneRequiredWithoutAliasesNestedInput = {
+    create?: XOR<TaskPolicySetCreateWithoutAliasesInput, TaskPolicySetUncheckedCreateWithoutAliasesInput>
+    connectOrCreate?: TaskPolicySetCreateOrConnectWithoutAliasesInput
+    upsert?: TaskPolicySetUpsertWithoutAliasesInput
+    connect?: TaskPolicySetWhereUniqueInput
+    update?: XOR<XOR<TaskPolicySetUpdateToOneWithWhereWithoutAliasesInput, TaskPolicySetUpdateWithoutAliasesInput>, TaskPolicySetUncheckedUpdateWithoutAliasesInput>
+  }
+
+  export type TaskPolicySetCreateNestedOneWithoutRecipesInput = {
+    create?: XOR<TaskPolicySetCreateWithoutRecipesInput, TaskPolicySetUncheckedCreateWithoutRecipesInput>
+    connectOrCreate?: TaskPolicySetCreateOrConnectWithoutRecipesInput
+    connect?: TaskPolicySetWhereUniqueInput
+  }
+
+  export type TaskPolicySetUpdateOneRequiredWithoutRecipesNestedInput = {
+    create?: XOR<TaskPolicySetCreateWithoutRecipesInput, TaskPolicySetUncheckedCreateWithoutRecipesInput>
+    connectOrCreate?: TaskPolicySetCreateOrConnectWithoutRecipesInput
+    upsert?: TaskPolicySetUpsertWithoutRecipesInput
+    connect?: TaskPolicySetWhereUniqueInput
+    update?: XOR<XOR<TaskPolicySetUpdateToOneWithWhereWithoutRecipesInput, TaskPolicySetUpdateWithoutRecipesInput>, TaskPolicySetUncheckedUpdateWithoutRecipesInput>
+  }
+
+  export type TaskPolicySetCreateNestedOneWithoutBindingsInput = {
+    create?: XOR<TaskPolicySetCreateWithoutBindingsInput, TaskPolicySetUncheckedCreateWithoutBindingsInput>
+    connectOrCreate?: TaskPolicySetCreateOrConnectWithoutBindingsInput
+    connect?: TaskPolicySetWhereUniqueInput
+  }
+
+  export type TaskPolicySetUpdateOneRequiredWithoutBindingsNestedInput = {
+    create?: XOR<TaskPolicySetCreateWithoutBindingsInput, TaskPolicySetUncheckedCreateWithoutBindingsInput>
+    connectOrCreate?: TaskPolicySetCreateOrConnectWithoutBindingsInput
+    upsert?: TaskPolicySetUpsertWithoutBindingsInput
+    connect?: TaskPolicySetWhereUniqueInput
+    update?: XOR<XOR<TaskPolicySetUpdateToOneWithWhereWithoutBindingsInput, TaskPolicySetUpdateWithoutBindingsInput>, TaskPolicySetUncheckedUpdateWithoutBindingsInput>
+  }
+
+  export type TaskPolicySetCreateNestedOneWithoutProposalsInput = {
+    create?: XOR<TaskPolicySetCreateWithoutProposalsInput, TaskPolicySetUncheckedCreateWithoutProposalsInput>
+    connectOrCreate?: TaskPolicySetCreateOrConnectWithoutProposalsInput
+    connect?: TaskPolicySetWhereUniqueInput
+  }
+
+  export type TaskPolicySetUpdateOneWithoutProposalsNestedInput = {
+    create?: XOR<TaskPolicySetCreateWithoutProposalsInput, TaskPolicySetUncheckedCreateWithoutProposalsInput>
+    connectOrCreate?: TaskPolicySetCreateOrConnectWithoutProposalsInput
+    upsert?: TaskPolicySetUpsertWithoutProposalsInput
+    disconnect?: TaskPolicySetWhereInput | boolean
+    delete?: TaskPolicySetWhereInput | boolean
+    connect?: TaskPolicySetWhereUniqueInput
+    update?: XOR<XOR<TaskPolicySetUpdateToOneWithWhereWithoutProposalsInput, TaskPolicySetUpdateWithoutProposalsInput>, TaskPolicySetUncheckedUpdateWithoutProposalsInput>
+  }
+
+  export type TaskPolicySetCreateNestedOneWithoutAuditLogsInput = {
+    create?: XOR<TaskPolicySetCreateWithoutAuditLogsInput, TaskPolicySetUncheckedCreateWithoutAuditLogsInput>
+    connectOrCreate?: TaskPolicySetCreateOrConnectWithoutAuditLogsInput
+    connect?: TaskPolicySetWhereUniqueInput
+  }
+
+  export type TaskPolicySetUpdateOneWithoutAuditLogsNestedInput = {
+    create?: XOR<TaskPolicySetCreateWithoutAuditLogsInput, TaskPolicySetUncheckedCreateWithoutAuditLogsInput>
+    connectOrCreate?: TaskPolicySetCreateOrConnectWithoutAuditLogsInput
+    upsert?: TaskPolicySetUpsertWithoutAuditLogsInput
+    disconnect?: TaskPolicySetWhereInput | boolean
+    delete?: TaskPolicySetWhereInput | boolean
+    connect?: TaskPolicySetWhereUniqueInput
+    update?: XOR<XOR<TaskPolicySetUpdateToOneWithWhereWithoutAuditLogsInput, TaskPolicySetUpdateWithoutAuditLogsInput>, TaskPolicySetUncheckedUpdateWithoutAuditLogsInput>
+  }
+
   export type NullableDecimalFieldUpdateOperationsInput = {
     set?: Decimal | DecimalJsLike | number | string | null
     increment?: Decimal | DecimalJsLike | number | string
@@ -95487,6 +105924,57 @@ export namespace Prisma {
     _min?: NestedDateTimeFilter<$PrismaModel>
     _max?: NestedDateTimeFilter<$PrismaModel>
   }
+
+  export type NestedEnumImChannelTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImChannelType | EnumImChannelTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.ImChannelType[] | ListEnumImChannelTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImChannelType[] | ListEnumImChannelTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumImChannelTypeFilter<$PrismaModel> | $Enums.ImChannelType
+  }
+
+  export type NestedEnumImConnectionStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImConnectionStatus | EnumImConnectionStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.ImConnectionStatus[] | ListEnumImConnectionStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImConnectionStatus[] | ListEnumImConnectionStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumImConnectionStatusFilter<$PrismaModel> | $Enums.ImConnectionStatus
+  }
+
+  export type NestedEnumImInteractionModeFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImInteractionMode | EnumImInteractionModeFieldRefInput<$PrismaModel>
+    in?: $Enums.ImInteractionMode[] | ListEnumImInteractionModeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImInteractionMode[] | ListEnumImInteractionModeFieldRefInput<$PrismaModel>
+    not?: NestedEnumImInteractionModeFilter<$PrismaModel> | $Enums.ImInteractionMode
+  }
+
+  export type NestedEnumImChannelTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImChannelType | EnumImChannelTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.ImChannelType[] | ListEnumImChannelTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImChannelType[] | ListEnumImChannelTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumImChannelTypeWithAggregatesFilter<$PrismaModel> | $Enums.ImChannelType
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumImChannelTypeFilter<$PrismaModel>
+    _max?: NestedEnumImChannelTypeFilter<$PrismaModel>
+  }
+
+  export type NestedEnumImConnectionStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImConnectionStatus | EnumImConnectionStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.ImConnectionStatus[] | ListEnumImConnectionStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImConnectionStatus[] | ListEnumImConnectionStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumImConnectionStatusWithAggregatesFilter<$PrismaModel> | $Enums.ImConnectionStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumImConnectionStatusFilter<$PrismaModel>
+    _max?: NestedEnumImConnectionStatusFilter<$PrismaModel>
+  }
+
+  export type NestedEnumImInteractionModeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ImInteractionMode | EnumImInteractionModeFieldRefInput<$PrismaModel>
+    in?: $Enums.ImInteractionMode[] | ListEnumImInteractionModeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ImInteractionMode[] | ListEnumImInteractionModeFieldRefInput<$PrismaModel>
+    not?: NestedEnumImInteractionModeWithAggregatesFilter<$PrismaModel> | $Enums.ImInteractionMode
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumImInteractionModeFilter<$PrismaModel>
+    _max?: NestedEnumImInteractionModeFilter<$PrismaModel>
+  }
   export type NestedJsonFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<NestedJsonFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonFilterBase<$PrismaModel>>, 'path'>>,
@@ -95678,6 +106166,22 @@ export namespace Prisma {
     _sum?: NestedFloatNullableFilter<$PrismaModel>
     _min?: NestedFloatNullableFilter<$PrismaModel>
     _max?: NestedFloatNullableFilter<$PrismaModel>
+  }
+
+  export type NestedFloatWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel>
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedFloatFilter<$PrismaModel>
+    _min?: NestedFloatFilter<$PrismaModel>
+    _max?: NestedFloatFilter<$PrismaModel>
   }
 
   export type NestedDecimalNullableFilter<$PrismaModel = never> = {
@@ -95881,6 +106385,52 @@ export namespace Prisma {
 
   export type ChatSessionCreateManyUserInputEnvelope = {
     data: ChatSessionCreateManyUserInput | ChatSessionCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type ImChannelConnectionCreateWithoutUserInput = {
+    id?: string
+    channel?: $Enums.ImChannelType
+    enabled?: boolean
+    status?: $Enums.ImConnectionStatus
+    interactionMode?: $Enums.ImInteractionMode
+    providerAccountId?: string | null
+    providerOwnerUserId?: string | null
+    providerBaseUrl?: string | null
+    encryptedCredential?: string | null
+    updateCursor?: string | null
+    lastConnectedAt?: Date | string | null
+    lastMessageAt?: Date | string | null
+    lastError?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ImChannelConnectionUncheckedCreateWithoutUserInput = {
+    id?: string
+    channel?: $Enums.ImChannelType
+    enabled?: boolean
+    status?: $Enums.ImConnectionStatus
+    interactionMode?: $Enums.ImInteractionMode
+    providerAccountId?: string | null
+    providerOwnerUserId?: string | null
+    providerBaseUrl?: string | null
+    encryptedCredential?: string | null
+    updateCursor?: string | null
+    lastConnectedAt?: Date | string | null
+    lastMessageAt?: Date | string | null
+    lastError?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ImChannelConnectionCreateOrConnectWithoutUserInput = {
+    where: ImChannelConnectionWhereUniqueInput
+    create: XOR<ImChannelConnectionCreateWithoutUserInput, ImChannelConnectionUncheckedCreateWithoutUserInput>
+  }
+
+  export type ImChannelConnectionCreateManyUserInputEnvelope = {
+    data: ImChannelConnectionCreateManyUserInput | ImChannelConnectionCreateManyUserInput[]
     skipDuplicates?: boolean
   }
 
@@ -96127,6 +106677,44 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"ChatSession"> | Date | string
   }
 
+  export type ImChannelConnectionUpsertWithWhereUniqueWithoutUserInput = {
+    where: ImChannelConnectionWhereUniqueInput
+    update: XOR<ImChannelConnectionUpdateWithoutUserInput, ImChannelConnectionUncheckedUpdateWithoutUserInput>
+    create: XOR<ImChannelConnectionCreateWithoutUserInput, ImChannelConnectionUncheckedCreateWithoutUserInput>
+  }
+
+  export type ImChannelConnectionUpdateWithWhereUniqueWithoutUserInput = {
+    where: ImChannelConnectionWhereUniqueInput
+    data: XOR<ImChannelConnectionUpdateWithoutUserInput, ImChannelConnectionUncheckedUpdateWithoutUserInput>
+  }
+
+  export type ImChannelConnectionUpdateManyWithWhereWithoutUserInput = {
+    where: ImChannelConnectionScalarWhereInput
+    data: XOR<ImChannelConnectionUpdateManyMutationInput, ImChannelConnectionUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type ImChannelConnectionScalarWhereInput = {
+    AND?: ImChannelConnectionScalarWhereInput | ImChannelConnectionScalarWhereInput[]
+    OR?: ImChannelConnectionScalarWhereInput[]
+    NOT?: ImChannelConnectionScalarWhereInput | ImChannelConnectionScalarWhereInput[]
+    id?: UuidFilter<"ImChannelConnection"> | string
+    userId?: UuidFilter<"ImChannelConnection"> | string
+    channel?: EnumImChannelTypeFilter<"ImChannelConnection"> | $Enums.ImChannelType
+    enabled?: BoolFilter<"ImChannelConnection"> | boolean
+    status?: EnumImConnectionStatusFilter<"ImChannelConnection"> | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFilter<"ImChannelConnection"> | $Enums.ImInteractionMode
+    providerAccountId?: StringNullableFilter<"ImChannelConnection"> | string | null
+    providerOwnerUserId?: StringNullableFilter<"ImChannelConnection"> | string | null
+    providerBaseUrl?: StringNullableFilter<"ImChannelConnection"> | string | null
+    encryptedCredential?: StringNullableFilter<"ImChannelConnection"> | string | null
+    updateCursor?: StringNullableFilter<"ImChannelConnection"> | string | null
+    lastConnectedAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
+    lastMessageAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
+    lastError?: StringNullableFilter<"ImChannelConnection"> | string | null
+    createdAt?: DateTimeFilter<"ImChannelConnection"> | Date | string
+    updatedAt?: DateTimeFilter<"ImChannelConnection"> | Date | string
+  }
+
   export type SkillAccessRequestUpsertWithWhereUniqueWithoutRequesterInput = {
     where: SkillAccessRequestWhereUniqueInput
     update: XOR<SkillAccessRequestUpdateWithoutRequesterInput, SkillAccessRequestUncheckedUpdateWithoutRequesterInput>
@@ -96173,6 +106761,114 @@ export namespace Prisma {
   export type SkillAccessRequestUpdateManyWithWhereWithoutProcessorInput = {
     where: SkillAccessRequestScalarWhereInput
     data: XOR<SkillAccessRequestUpdateManyMutationInput, SkillAccessRequestUncheckedUpdateManyWithoutProcessorInput>
+  }
+
+  export type UserCreateWithoutImChannelConnectionsInput = {
+    id?: string
+    username: string
+    passwordHash: string
+    email?: string | null
+    role?: $Enums.UserRoleType
+    ldapDn?: string | null
+    adSid?: string | null
+    externalId?: string | null
+    isActive?: boolean
+    lastLoginAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    userRoles?: UserRoleCreateNestedManyWithoutUserInput
+    assignedRoles?: UserRoleCreateNestedManyWithoutAssignerInput
+    orgMemberships?: OrgMembershipCreateNestedManyWithoutUserInput
+    assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
+    activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
+    chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
+  }
+
+  export type UserUncheckedCreateWithoutImChannelConnectionsInput = {
+    id?: string
+    username: string
+    passwordHash: string
+    email?: string | null
+    role?: $Enums.UserRoleType
+    ldapDn?: string | null
+    adSid?: string | null
+    externalId?: string | null
+    activeOrgId?: string | null
+    isActive?: boolean
+    lastLoginAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    userRoles?: UserRoleUncheckedCreateNestedManyWithoutUserInput
+    assignedRoles?: UserRoleUncheckedCreateNestedManyWithoutAssignerInput
+    orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
+    assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
+    chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
+  }
+
+  export type UserCreateOrConnectWithoutImChannelConnectionsInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutImChannelConnectionsInput, UserUncheckedCreateWithoutImChannelConnectionsInput>
+  }
+
+  export type UserUpsertWithoutImChannelConnectionsInput = {
+    update: XOR<UserUpdateWithoutImChannelConnectionsInput, UserUncheckedUpdateWithoutImChannelConnectionsInput>
+    create: XOR<UserCreateWithoutImChannelConnectionsInput, UserUncheckedCreateWithoutImChannelConnectionsInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutImChannelConnectionsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutImChannelConnectionsInput, UserUncheckedUpdateWithoutImChannelConnectionsInput>
+  }
+
+  export type UserUpdateWithoutImChannelConnectionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    username?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: EnumUserRoleTypeFieldUpdateOperationsInput | $Enums.UserRoleType
+    ldapDn?: NullableStringFieldUpdateOperationsInput | string | null
+    adSid?: NullableStringFieldUpdateOperationsInput | string | null
+    externalId?: NullableStringFieldUpdateOperationsInput | string | null
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userRoles?: UserRoleUpdateManyWithoutUserNestedInput
+    assignedRoles?: UserRoleUpdateManyWithoutAssignerNestedInput
+    orgMemberships?: OrgMembershipUpdateManyWithoutUserNestedInput
+    assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
+    activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
+    chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutImChannelConnectionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    username?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: EnumUserRoleTypeFieldUpdateOperationsInput | $Enums.UserRoleType
+    ldapDn?: NullableStringFieldUpdateOperationsInput | string | null
+    adSid?: NullableStringFieldUpdateOperationsInput | string | null
+    externalId?: NullableStringFieldUpdateOperationsInput | string | null
+    activeOrgId?: NullableStringFieldUpdateOperationsInput | string | null
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userRoles?: UserRoleUncheckedUpdateManyWithoutUserNestedInput
+    assignedRoles?: UserRoleUncheckedUpdateManyWithoutAssignerNestedInput
+    orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
+    assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
+    chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
 
   export type UserRoleCreateWithoutRoleInput = {
@@ -96325,6 +107021,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
@@ -96347,6 +107044,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
@@ -96403,6 +107101,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
@@ -96425,6 +107124,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
@@ -96463,6 +107163,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
@@ -96485,6 +107186,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
@@ -96553,6 +107255,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
@@ -96575,6 +107278,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
@@ -96781,6 +107485,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
@@ -96803,6 +107508,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
@@ -97516,6 +108222,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
@@ -97538,6 +108245,7 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedCreateNestedManyWithoutAssignerInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
@@ -97702,6 +108410,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
@@ -97724,6 +108433,7 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedUpdateManyWithoutAssignerNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
@@ -98089,6 +108799,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipCreateNestedManyWithoutUserInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
@@ -98111,6 +108822,7 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedCreateNestedManyWithoutAssignerInput
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
@@ -98264,6 +108976,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUpdateManyWithoutUserNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
@@ -98286,6 +108999,7 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedUpdateManyWithoutAssignerNestedInput
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
@@ -98766,6 +109480,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
 
@@ -98788,6 +109503,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
 
@@ -98815,6 +109531,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
   }
 
@@ -98837,6 +109554,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
   }
 
@@ -98936,6 +109654,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
 
@@ -98958,6 +109677,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
 
@@ -98991,6 +109711,7 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
   }
 
@@ -99013,6 +109734,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
   }
 
@@ -99176,6 +109898,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
@@ -99198,6 +109921,7 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedCreateNestedManyWithoutAssignerInput
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
@@ -99264,6 +109988,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
@@ -99286,6 +110011,7 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedUpdateManyWithoutAssignerNestedInput
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
@@ -101906,6 +112632,825 @@ export namespace Prisma {
     aliases?: UserWorkflowAliasUncheckedUpdateManyWithoutSkillNestedInput
   }
 
+  export type TaskCommandAliasCreateWithoutPolicySetInput = {
+    id?: string
+    canonicalCommand: string
+    alias: string
+    matchType?: string
+    weight?: number
+    source?: string
+    status?: string
+    evidenceCount?: number
+    createdAt?: Date | string
+  }
+
+  export type TaskCommandAliasUncheckedCreateWithoutPolicySetInput = {
+    id?: string
+    canonicalCommand: string
+    alias: string
+    matchType?: string
+    weight?: number
+    source?: string
+    status?: string
+    evidenceCount?: number
+    createdAt?: Date | string
+  }
+
+  export type TaskCommandAliasCreateOrConnectWithoutPolicySetInput = {
+    where: TaskCommandAliasWhereUniqueInput
+    create: XOR<TaskCommandAliasCreateWithoutPolicySetInput, TaskCommandAliasUncheckedCreateWithoutPolicySetInput>
+  }
+
+  export type TaskCommandAliasCreateManyPolicySetInputEnvelope = {
+    data: TaskCommandAliasCreateManyPolicySetInput | TaskCommandAliasCreateManyPolicySetInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type TaskRecipeCreateWithoutPolicySetInput = {
+    id?: string
+    recipeKey: string
+    version: string
+    name: string
+    requiredCommandsJson?: JsonNullValueInput | InputJsonValue
+    optionalCommandsJson?: JsonNullValueInput | InputJsonValue
+    triggerJson?: JsonNullValueInput | InputJsonValue
+    stepsJson?: JsonNullValueInput | InputJsonValue
+    bindingsJson?: JsonNullValueInput | InputJsonValue
+    completionClaimsJson?: JsonNullValueInput | InputJsonValue
+    riskLevel?: string
+    status?: string
+    createdAt?: Date | string
+  }
+
+  export type TaskRecipeUncheckedCreateWithoutPolicySetInput = {
+    id?: string
+    recipeKey: string
+    version: string
+    name: string
+    requiredCommandsJson?: JsonNullValueInput | InputJsonValue
+    optionalCommandsJson?: JsonNullValueInput | InputJsonValue
+    triggerJson?: JsonNullValueInput | InputJsonValue
+    stepsJson?: JsonNullValueInput | InputJsonValue
+    bindingsJson?: JsonNullValueInput | InputJsonValue
+    completionClaimsJson?: JsonNullValueInput | InputJsonValue
+    riskLevel?: string
+    status?: string
+    createdAt?: Date | string
+  }
+
+  export type TaskRecipeCreateOrConnectWithoutPolicySetInput = {
+    where: TaskRecipeWhereUniqueInput
+    create: XOR<TaskRecipeCreateWithoutPolicySetInput, TaskRecipeUncheckedCreateWithoutPolicySetInput>
+  }
+
+  export type TaskRecipeCreateManyPolicySetInputEnvelope = {
+    data: TaskRecipeCreateManyPolicySetInput | TaskRecipeCreateManyPolicySetInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type TaskCapabilityBindingCreateWithoutPolicySetInput = {
+    id?: string
+    capabilityRole: string
+    capabilityId: string
+    capabilityVersion?: string | null
+    priority?: number
+    inputMappingJson?: JsonNullValueInput | InputJsonValue
+    outputMappingJson?: JsonNullValueInput | InputJsonValue
+    status?: string
+    createdAt?: Date | string
+  }
+
+  export type TaskCapabilityBindingUncheckedCreateWithoutPolicySetInput = {
+    id?: string
+    capabilityRole: string
+    capabilityId: string
+    capabilityVersion?: string | null
+    priority?: number
+    inputMappingJson?: JsonNullValueInput | InputJsonValue
+    outputMappingJson?: JsonNullValueInput | InputJsonValue
+    status?: string
+    createdAt?: Date | string
+  }
+
+  export type TaskCapabilityBindingCreateOrConnectWithoutPolicySetInput = {
+    where: TaskCapabilityBindingWhereUniqueInput
+    create: XOR<TaskCapabilityBindingCreateWithoutPolicySetInput, TaskCapabilityBindingUncheckedCreateWithoutPolicySetInput>
+  }
+
+  export type TaskCapabilityBindingCreateManyPolicySetInputEnvelope = {
+    data: TaskCapabilityBindingCreateManyPolicySetInput | TaskCapabilityBindingCreateManyPolicySetInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type TaskPolicyProposalCreateWithoutPolicySetInput = {
+    id?: string
+    proposalType: string
+    scopeType: string
+    scopeId: string
+    status?: string
+    patchJson: JsonNullValueInput | InputJsonValue
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    confidence: number
+    proposedBy?: string
+    reviewedBy?: string | null
+    reviewedAt?: Date | string | null
+    createdAt?: Date | string
+  }
+
+  export type TaskPolicyProposalUncheckedCreateWithoutPolicySetInput = {
+    id?: string
+    proposalType: string
+    scopeType: string
+    scopeId: string
+    status?: string
+    patchJson: JsonNullValueInput | InputJsonValue
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    confidence: number
+    proposedBy?: string
+    reviewedBy?: string | null
+    reviewedAt?: Date | string | null
+    createdAt?: Date | string
+  }
+
+  export type TaskPolicyProposalCreateOrConnectWithoutPolicySetInput = {
+    where: TaskPolicyProposalWhereUniqueInput
+    create: XOR<TaskPolicyProposalCreateWithoutPolicySetInput, TaskPolicyProposalUncheckedCreateWithoutPolicySetInput>
+  }
+
+  export type TaskPolicyProposalCreateManyPolicySetInputEnvelope = {
+    data: TaskPolicyProposalCreateManyPolicySetInput | TaskPolicyProposalCreateManyPolicySetInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type TaskPolicyAuditLogCreateWithoutPolicySetInput = {
+    id?: string
+    actorUserId?: string | null
+    action: string
+    detailJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type TaskPolicyAuditLogUncheckedCreateWithoutPolicySetInput = {
+    id?: string
+    actorUserId?: string | null
+    action: string
+    detailJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type TaskPolicyAuditLogCreateOrConnectWithoutPolicySetInput = {
+    where: TaskPolicyAuditLogWhereUniqueInput
+    create: XOR<TaskPolicyAuditLogCreateWithoutPolicySetInput, TaskPolicyAuditLogUncheckedCreateWithoutPolicySetInput>
+  }
+
+  export type TaskPolicyAuditLogCreateManyPolicySetInputEnvelope = {
+    data: TaskPolicyAuditLogCreateManyPolicySetInput | TaskPolicyAuditLogCreateManyPolicySetInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type TaskCommandAliasUpsertWithWhereUniqueWithoutPolicySetInput = {
+    where: TaskCommandAliasWhereUniqueInput
+    update: XOR<TaskCommandAliasUpdateWithoutPolicySetInput, TaskCommandAliasUncheckedUpdateWithoutPolicySetInput>
+    create: XOR<TaskCommandAliasCreateWithoutPolicySetInput, TaskCommandAliasUncheckedCreateWithoutPolicySetInput>
+  }
+
+  export type TaskCommandAliasUpdateWithWhereUniqueWithoutPolicySetInput = {
+    where: TaskCommandAliasWhereUniqueInput
+    data: XOR<TaskCommandAliasUpdateWithoutPolicySetInput, TaskCommandAliasUncheckedUpdateWithoutPolicySetInput>
+  }
+
+  export type TaskCommandAliasUpdateManyWithWhereWithoutPolicySetInput = {
+    where: TaskCommandAliasScalarWhereInput
+    data: XOR<TaskCommandAliasUpdateManyMutationInput, TaskCommandAliasUncheckedUpdateManyWithoutPolicySetInput>
+  }
+
+  export type TaskCommandAliasScalarWhereInput = {
+    AND?: TaskCommandAliasScalarWhereInput | TaskCommandAliasScalarWhereInput[]
+    OR?: TaskCommandAliasScalarWhereInput[]
+    NOT?: TaskCommandAliasScalarWhereInput | TaskCommandAliasScalarWhereInput[]
+    id?: UuidFilter<"TaskCommandAlias"> | string
+    policySetId?: UuidFilter<"TaskCommandAlias"> | string
+    canonicalCommand?: StringFilter<"TaskCommandAlias"> | string
+    alias?: StringFilter<"TaskCommandAlias"> | string
+    matchType?: StringFilter<"TaskCommandAlias"> | string
+    weight?: FloatFilter<"TaskCommandAlias"> | number
+    source?: StringFilter<"TaskCommandAlias"> | string
+    status?: StringFilter<"TaskCommandAlias"> | string
+    evidenceCount?: IntFilter<"TaskCommandAlias"> | number
+    createdAt?: DateTimeFilter<"TaskCommandAlias"> | Date | string
+  }
+
+  export type TaskRecipeUpsertWithWhereUniqueWithoutPolicySetInput = {
+    where: TaskRecipeWhereUniqueInput
+    update: XOR<TaskRecipeUpdateWithoutPolicySetInput, TaskRecipeUncheckedUpdateWithoutPolicySetInput>
+    create: XOR<TaskRecipeCreateWithoutPolicySetInput, TaskRecipeUncheckedCreateWithoutPolicySetInput>
+  }
+
+  export type TaskRecipeUpdateWithWhereUniqueWithoutPolicySetInput = {
+    where: TaskRecipeWhereUniqueInput
+    data: XOR<TaskRecipeUpdateWithoutPolicySetInput, TaskRecipeUncheckedUpdateWithoutPolicySetInput>
+  }
+
+  export type TaskRecipeUpdateManyWithWhereWithoutPolicySetInput = {
+    where: TaskRecipeScalarWhereInput
+    data: XOR<TaskRecipeUpdateManyMutationInput, TaskRecipeUncheckedUpdateManyWithoutPolicySetInput>
+  }
+
+  export type TaskRecipeScalarWhereInput = {
+    AND?: TaskRecipeScalarWhereInput | TaskRecipeScalarWhereInput[]
+    OR?: TaskRecipeScalarWhereInput[]
+    NOT?: TaskRecipeScalarWhereInput | TaskRecipeScalarWhereInput[]
+    id?: UuidFilter<"TaskRecipe"> | string
+    policySetId?: UuidFilter<"TaskRecipe"> | string
+    recipeKey?: StringFilter<"TaskRecipe"> | string
+    version?: StringFilter<"TaskRecipe"> | string
+    name?: StringFilter<"TaskRecipe"> | string
+    requiredCommandsJson?: JsonFilter<"TaskRecipe">
+    optionalCommandsJson?: JsonFilter<"TaskRecipe">
+    triggerJson?: JsonFilter<"TaskRecipe">
+    stepsJson?: JsonFilter<"TaskRecipe">
+    bindingsJson?: JsonFilter<"TaskRecipe">
+    completionClaimsJson?: JsonFilter<"TaskRecipe">
+    riskLevel?: StringFilter<"TaskRecipe"> | string
+    status?: StringFilter<"TaskRecipe"> | string
+    createdAt?: DateTimeFilter<"TaskRecipe"> | Date | string
+  }
+
+  export type TaskCapabilityBindingUpsertWithWhereUniqueWithoutPolicySetInput = {
+    where: TaskCapabilityBindingWhereUniqueInput
+    update: XOR<TaskCapabilityBindingUpdateWithoutPolicySetInput, TaskCapabilityBindingUncheckedUpdateWithoutPolicySetInput>
+    create: XOR<TaskCapabilityBindingCreateWithoutPolicySetInput, TaskCapabilityBindingUncheckedCreateWithoutPolicySetInput>
+  }
+
+  export type TaskCapabilityBindingUpdateWithWhereUniqueWithoutPolicySetInput = {
+    where: TaskCapabilityBindingWhereUniqueInput
+    data: XOR<TaskCapabilityBindingUpdateWithoutPolicySetInput, TaskCapabilityBindingUncheckedUpdateWithoutPolicySetInput>
+  }
+
+  export type TaskCapabilityBindingUpdateManyWithWhereWithoutPolicySetInput = {
+    where: TaskCapabilityBindingScalarWhereInput
+    data: XOR<TaskCapabilityBindingUpdateManyMutationInput, TaskCapabilityBindingUncheckedUpdateManyWithoutPolicySetInput>
+  }
+
+  export type TaskCapabilityBindingScalarWhereInput = {
+    AND?: TaskCapabilityBindingScalarWhereInput | TaskCapabilityBindingScalarWhereInput[]
+    OR?: TaskCapabilityBindingScalarWhereInput[]
+    NOT?: TaskCapabilityBindingScalarWhereInput | TaskCapabilityBindingScalarWhereInput[]
+    id?: UuidFilter<"TaskCapabilityBinding"> | string
+    policySetId?: UuidFilter<"TaskCapabilityBinding"> | string
+    capabilityRole?: StringFilter<"TaskCapabilityBinding"> | string
+    capabilityId?: StringFilter<"TaskCapabilityBinding"> | string
+    capabilityVersion?: StringNullableFilter<"TaskCapabilityBinding"> | string | null
+    priority?: IntFilter<"TaskCapabilityBinding"> | number
+    inputMappingJson?: JsonFilter<"TaskCapabilityBinding">
+    outputMappingJson?: JsonFilter<"TaskCapabilityBinding">
+    status?: StringFilter<"TaskCapabilityBinding"> | string
+    createdAt?: DateTimeFilter<"TaskCapabilityBinding"> | Date | string
+  }
+
+  export type TaskPolicyProposalUpsertWithWhereUniqueWithoutPolicySetInput = {
+    where: TaskPolicyProposalWhereUniqueInput
+    update: XOR<TaskPolicyProposalUpdateWithoutPolicySetInput, TaskPolicyProposalUncheckedUpdateWithoutPolicySetInput>
+    create: XOR<TaskPolicyProposalCreateWithoutPolicySetInput, TaskPolicyProposalUncheckedCreateWithoutPolicySetInput>
+  }
+
+  export type TaskPolicyProposalUpdateWithWhereUniqueWithoutPolicySetInput = {
+    where: TaskPolicyProposalWhereUniqueInput
+    data: XOR<TaskPolicyProposalUpdateWithoutPolicySetInput, TaskPolicyProposalUncheckedUpdateWithoutPolicySetInput>
+  }
+
+  export type TaskPolicyProposalUpdateManyWithWhereWithoutPolicySetInput = {
+    where: TaskPolicyProposalScalarWhereInput
+    data: XOR<TaskPolicyProposalUpdateManyMutationInput, TaskPolicyProposalUncheckedUpdateManyWithoutPolicySetInput>
+  }
+
+  export type TaskPolicyProposalScalarWhereInput = {
+    AND?: TaskPolicyProposalScalarWhereInput | TaskPolicyProposalScalarWhereInput[]
+    OR?: TaskPolicyProposalScalarWhereInput[]
+    NOT?: TaskPolicyProposalScalarWhereInput | TaskPolicyProposalScalarWhereInput[]
+    id?: UuidFilter<"TaskPolicyProposal"> | string
+    policySetId?: UuidNullableFilter<"TaskPolicyProposal"> | string | null
+    proposalType?: StringFilter<"TaskPolicyProposal"> | string
+    scopeType?: StringFilter<"TaskPolicyProposal"> | string
+    scopeId?: StringFilter<"TaskPolicyProposal"> | string
+    status?: StringFilter<"TaskPolicyProposal"> | string
+    patchJson?: JsonFilter<"TaskPolicyProposal">
+    evidenceJson?: JsonFilter<"TaskPolicyProposal">
+    confidence?: FloatFilter<"TaskPolicyProposal"> | number
+    proposedBy?: StringFilter<"TaskPolicyProposal"> | string
+    reviewedBy?: UuidNullableFilter<"TaskPolicyProposal"> | string | null
+    reviewedAt?: DateTimeNullableFilter<"TaskPolicyProposal"> | Date | string | null
+    createdAt?: DateTimeFilter<"TaskPolicyProposal"> | Date | string
+  }
+
+  export type TaskPolicyAuditLogUpsertWithWhereUniqueWithoutPolicySetInput = {
+    where: TaskPolicyAuditLogWhereUniqueInput
+    update: XOR<TaskPolicyAuditLogUpdateWithoutPolicySetInput, TaskPolicyAuditLogUncheckedUpdateWithoutPolicySetInput>
+    create: XOR<TaskPolicyAuditLogCreateWithoutPolicySetInput, TaskPolicyAuditLogUncheckedCreateWithoutPolicySetInput>
+  }
+
+  export type TaskPolicyAuditLogUpdateWithWhereUniqueWithoutPolicySetInput = {
+    where: TaskPolicyAuditLogWhereUniqueInput
+    data: XOR<TaskPolicyAuditLogUpdateWithoutPolicySetInput, TaskPolicyAuditLogUncheckedUpdateWithoutPolicySetInput>
+  }
+
+  export type TaskPolicyAuditLogUpdateManyWithWhereWithoutPolicySetInput = {
+    where: TaskPolicyAuditLogScalarWhereInput
+    data: XOR<TaskPolicyAuditLogUpdateManyMutationInput, TaskPolicyAuditLogUncheckedUpdateManyWithoutPolicySetInput>
+  }
+
+  export type TaskPolicyAuditLogScalarWhereInput = {
+    AND?: TaskPolicyAuditLogScalarWhereInput | TaskPolicyAuditLogScalarWhereInput[]
+    OR?: TaskPolicyAuditLogScalarWhereInput[]
+    NOT?: TaskPolicyAuditLogScalarWhereInput | TaskPolicyAuditLogScalarWhereInput[]
+    id?: UuidFilter<"TaskPolicyAuditLog"> | string
+    policySetId?: UuidNullableFilter<"TaskPolicyAuditLog"> | string | null
+    actorUserId?: UuidNullableFilter<"TaskPolicyAuditLog"> | string | null
+    action?: StringFilter<"TaskPolicyAuditLog"> | string
+    detailJson?: JsonFilter<"TaskPolicyAuditLog">
+    createdAt?: DateTimeFilter<"TaskPolicyAuditLog"> | Date | string
+  }
+
+  export type TaskPolicySetCreateWithoutAliasesInput = {
+    id?: string
+    name: string
+    scopeType: string
+    scopeId: string
+    status: string
+    version: string
+    schemaVersion: string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest: string
+    createdBy?: string | null
+    publishedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    recipes?: TaskRecipeCreateNestedManyWithoutPolicySetInput
+    bindings?: TaskCapabilityBindingCreateNestedManyWithoutPolicySetInput
+    proposals?: TaskPolicyProposalCreateNestedManyWithoutPolicySetInput
+    auditLogs?: TaskPolicyAuditLogCreateNestedManyWithoutPolicySetInput
+  }
+
+  export type TaskPolicySetUncheckedCreateWithoutAliasesInput = {
+    id?: string
+    name: string
+    scopeType: string
+    scopeId: string
+    status: string
+    version: string
+    schemaVersion: string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest: string
+    createdBy?: string | null
+    publishedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    recipes?: TaskRecipeUncheckedCreateNestedManyWithoutPolicySetInput
+    bindings?: TaskCapabilityBindingUncheckedCreateNestedManyWithoutPolicySetInput
+    proposals?: TaskPolicyProposalUncheckedCreateNestedManyWithoutPolicySetInput
+    auditLogs?: TaskPolicyAuditLogUncheckedCreateNestedManyWithoutPolicySetInput
+  }
+
+  export type TaskPolicySetCreateOrConnectWithoutAliasesInput = {
+    where: TaskPolicySetWhereUniqueInput
+    create: XOR<TaskPolicySetCreateWithoutAliasesInput, TaskPolicySetUncheckedCreateWithoutAliasesInput>
+  }
+
+  export type TaskPolicySetUpsertWithoutAliasesInput = {
+    update: XOR<TaskPolicySetUpdateWithoutAliasesInput, TaskPolicySetUncheckedUpdateWithoutAliasesInput>
+    create: XOR<TaskPolicySetCreateWithoutAliasesInput, TaskPolicySetUncheckedCreateWithoutAliasesInput>
+    where?: TaskPolicySetWhereInput
+  }
+
+  export type TaskPolicySetUpdateToOneWithWhereWithoutAliasesInput = {
+    where?: TaskPolicySetWhereInput
+    data: XOR<TaskPolicySetUpdateWithoutAliasesInput, TaskPolicySetUncheckedUpdateWithoutAliasesInput>
+  }
+
+  export type TaskPolicySetUpdateWithoutAliasesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest?: StringFieldUpdateOperationsInput | string
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    publishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    recipes?: TaskRecipeUpdateManyWithoutPolicySetNestedInput
+    bindings?: TaskCapabilityBindingUpdateManyWithoutPolicySetNestedInput
+    proposals?: TaskPolicyProposalUpdateManyWithoutPolicySetNestedInput
+    auditLogs?: TaskPolicyAuditLogUpdateManyWithoutPolicySetNestedInput
+  }
+
+  export type TaskPolicySetUncheckedUpdateWithoutAliasesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest?: StringFieldUpdateOperationsInput | string
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    publishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    recipes?: TaskRecipeUncheckedUpdateManyWithoutPolicySetNestedInput
+    bindings?: TaskCapabilityBindingUncheckedUpdateManyWithoutPolicySetNestedInput
+    proposals?: TaskPolicyProposalUncheckedUpdateManyWithoutPolicySetNestedInput
+    auditLogs?: TaskPolicyAuditLogUncheckedUpdateManyWithoutPolicySetNestedInput
+  }
+
+  export type TaskPolicySetCreateWithoutRecipesInput = {
+    id?: string
+    name: string
+    scopeType: string
+    scopeId: string
+    status: string
+    version: string
+    schemaVersion: string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest: string
+    createdBy?: string | null
+    publishedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    aliases?: TaskCommandAliasCreateNestedManyWithoutPolicySetInput
+    bindings?: TaskCapabilityBindingCreateNestedManyWithoutPolicySetInput
+    proposals?: TaskPolicyProposalCreateNestedManyWithoutPolicySetInput
+    auditLogs?: TaskPolicyAuditLogCreateNestedManyWithoutPolicySetInput
+  }
+
+  export type TaskPolicySetUncheckedCreateWithoutRecipesInput = {
+    id?: string
+    name: string
+    scopeType: string
+    scopeId: string
+    status: string
+    version: string
+    schemaVersion: string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest: string
+    createdBy?: string | null
+    publishedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    aliases?: TaskCommandAliasUncheckedCreateNestedManyWithoutPolicySetInput
+    bindings?: TaskCapabilityBindingUncheckedCreateNestedManyWithoutPolicySetInput
+    proposals?: TaskPolicyProposalUncheckedCreateNestedManyWithoutPolicySetInput
+    auditLogs?: TaskPolicyAuditLogUncheckedCreateNestedManyWithoutPolicySetInput
+  }
+
+  export type TaskPolicySetCreateOrConnectWithoutRecipesInput = {
+    where: TaskPolicySetWhereUniqueInput
+    create: XOR<TaskPolicySetCreateWithoutRecipesInput, TaskPolicySetUncheckedCreateWithoutRecipesInput>
+  }
+
+  export type TaskPolicySetUpsertWithoutRecipesInput = {
+    update: XOR<TaskPolicySetUpdateWithoutRecipesInput, TaskPolicySetUncheckedUpdateWithoutRecipesInput>
+    create: XOR<TaskPolicySetCreateWithoutRecipesInput, TaskPolicySetUncheckedCreateWithoutRecipesInput>
+    where?: TaskPolicySetWhereInput
+  }
+
+  export type TaskPolicySetUpdateToOneWithWhereWithoutRecipesInput = {
+    where?: TaskPolicySetWhereInput
+    data: XOR<TaskPolicySetUpdateWithoutRecipesInput, TaskPolicySetUncheckedUpdateWithoutRecipesInput>
+  }
+
+  export type TaskPolicySetUpdateWithoutRecipesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest?: StringFieldUpdateOperationsInput | string
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    publishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    aliases?: TaskCommandAliasUpdateManyWithoutPolicySetNestedInput
+    bindings?: TaskCapabilityBindingUpdateManyWithoutPolicySetNestedInput
+    proposals?: TaskPolicyProposalUpdateManyWithoutPolicySetNestedInput
+    auditLogs?: TaskPolicyAuditLogUpdateManyWithoutPolicySetNestedInput
+  }
+
+  export type TaskPolicySetUncheckedUpdateWithoutRecipesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest?: StringFieldUpdateOperationsInput | string
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    publishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    aliases?: TaskCommandAliasUncheckedUpdateManyWithoutPolicySetNestedInput
+    bindings?: TaskCapabilityBindingUncheckedUpdateManyWithoutPolicySetNestedInput
+    proposals?: TaskPolicyProposalUncheckedUpdateManyWithoutPolicySetNestedInput
+    auditLogs?: TaskPolicyAuditLogUncheckedUpdateManyWithoutPolicySetNestedInput
+  }
+
+  export type TaskPolicySetCreateWithoutBindingsInput = {
+    id?: string
+    name: string
+    scopeType: string
+    scopeId: string
+    status: string
+    version: string
+    schemaVersion: string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest: string
+    createdBy?: string | null
+    publishedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    aliases?: TaskCommandAliasCreateNestedManyWithoutPolicySetInput
+    recipes?: TaskRecipeCreateNestedManyWithoutPolicySetInput
+    proposals?: TaskPolicyProposalCreateNestedManyWithoutPolicySetInput
+    auditLogs?: TaskPolicyAuditLogCreateNestedManyWithoutPolicySetInput
+  }
+
+  export type TaskPolicySetUncheckedCreateWithoutBindingsInput = {
+    id?: string
+    name: string
+    scopeType: string
+    scopeId: string
+    status: string
+    version: string
+    schemaVersion: string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest: string
+    createdBy?: string | null
+    publishedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    aliases?: TaskCommandAliasUncheckedCreateNestedManyWithoutPolicySetInput
+    recipes?: TaskRecipeUncheckedCreateNestedManyWithoutPolicySetInput
+    proposals?: TaskPolicyProposalUncheckedCreateNestedManyWithoutPolicySetInput
+    auditLogs?: TaskPolicyAuditLogUncheckedCreateNestedManyWithoutPolicySetInput
+  }
+
+  export type TaskPolicySetCreateOrConnectWithoutBindingsInput = {
+    where: TaskPolicySetWhereUniqueInput
+    create: XOR<TaskPolicySetCreateWithoutBindingsInput, TaskPolicySetUncheckedCreateWithoutBindingsInput>
+  }
+
+  export type TaskPolicySetUpsertWithoutBindingsInput = {
+    update: XOR<TaskPolicySetUpdateWithoutBindingsInput, TaskPolicySetUncheckedUpdateWithoutBindingsInput>
+    create: XOR<TaskPolicySetCreateWithoutBindingsInput, TaskPolicySetUncheckedCreateWithoutBindingsInput>
+    where?: TaskPolicySetWhereInput
+  }
+
+  export type TaskPolicySetUpdateToOneWithWhereWithoutBindingsInput = {
+    where?: TaskPolicySetWhereInput
+    data: XOR<TaskPolicySetUpdateWithoutBindingsInput, TaskPolicySetUncheckedUpdateWithoutBindingsInput>
+  }
+
+  export type TaskPolicySetUpdateWithoutBindingsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest?: StringFieldUpdateOperationsInput | string
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    publishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    aliases?: TaskCommandAliasUpdateManyWithoutPolicySetNestedInput
+    recipes?: TaskRecipeUpdateManyWithoutPolicySetNestedInput
+    proposals?: TaskPolicyProposalUpdateManyWithoutPolicySetNestedInput
+    auditLogs?: TaskPolicyAuditLogUpdateManyWithoutPolicySetNestedInput
+  }
+
+  export type TaskPolicySetUncheckedUpdateWithoutBindingsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest?: StringFieldUpdateOperationsInput | string
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    publishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    aliases?: TaskCommandAliasUncheckedUpdateManyWithoutPolicySetNestedInput
+    recipes?: TaskRecipeUncheckedUpdateManyWithoutPolicySetNestedInput
+    proposals?: TaskPolicyProposalUncheckedUpdateManyWithoutPolicySetNestedInput
+    auditLogs?: TaskPolicyAuditLogUncheckedUpdateManyWithoutPolicySetNestedInput
+  }
+
+  export type TaskPolicySetCreateWithoutProposalsInput = {
+    id?: string
+    name: string
+    scopeType: string
+    scopeId: string
+    status: string
+    version: string
+    schemaVersion: string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest: string
+    createdBy?: string | null
+    publishedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    aliases?: TaskCommandAliasCreateNestedManyWithoutPolicySetInput
+    recipes?: TaskRecipeCreateNestedManyWithoutPolicySetInput
+    bindings?: TaskCapabilityBindingCreateNestedManyWithoutPolicySetInput
+    auditLogs?: TaskPolicyAuditLogCreateNestedManyWithoutPolicySetInput
+  }
+
+  export type TaskPolicySetUncheckedCreateWithoutProposalsInput = {
+    id?: string
+    name: string
+    scopeType: string
+    scopeId: string
+    status: string
+    version: string
+    schemaVersion: string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest: string
+    createdBy?: string | null
+    publishedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    aliases?: TaskCommandAliasUncheckedCreateNestedManyWithoutPolicySetInput
+    recipes?: TaskRecipeUncheckedCreateNestedManyWithoutPolicySetInput
+    bindings?: TaskCapabilityBindingUncheckedCreateNestedManyWithoutPolicySetInput
+    auditLogs?: TaskPolicyAuditLogUncheckedCreateNestedManyWithoutPolicySetInput
+  }
+
+  export type TaskPolicySetCreateOrConnectWithoutProposalsInput = {
+    where: TaskPolicySetWhereUniqueInput
+    create: XOR<TaskPolicySetCreateWithoutProposalsInput, TaskPolicySetUncheckedCreateWithoutProposalsInput>
+  }
+
+  export type TaskPolicySetUpsertWithoutProposalsInput = {
+    update: XOR<TaskPolicySetUpdateWithoutProposalsInput, TaskPolicySetUncheckedUpdateWithoutProposalsInput>
+    create: XOR<TaskPolicySetCreateWithoutProposalsInput, TaskPolicySetUncheckedCreateWithoutProposalsInput>
+    where?: TaskPolicySetWhereInput
+  }
+
+  export type TaskPolicySetUpdateToOneWithWhereWithoutProposalsInput = {
+    where?: TaskPolicySetWhereInput
+    data: XOR<TaskPolicySetUpdateWithoutProposalsInput, TaskPolicySetUncheckedUpdateWithoutProposalsInput>
+  }
+
+  export type TaskPolicySetUpdateWithoutProposalsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest?: StringFieldUpdateOperationsInput | string
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    publishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    aliases?: TaskCommandAliasUpdateManyWithoutPolicySetNestedInput
+    recipes?: TaskRecipeUpdateManyWithoutPolicySetNestedInput
+    bindings?: TaskCapabilityBindingUpdateManyWithoutPolicySetNestedInput
+    auditLogs?: TaskPolicyAuditLogUpdateManyWithoutPolicySetNestedInput
+  }
+
+  export type TaskPolicySetUncheckedUpdateWithoutProposalsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest?: StringFieldUpdateOperationsInput | string
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    publishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    aliases?: TaskCommandAliasUncheckedUpdateManyWithoutPolicySetNestedInput
+    recipes?: TaskRecipeUncheckedUpdateManyWithoutPolicySetNestedInput
+    bindings?: TaskCapabilityBindingUncheckedUpdateManyWithoutPolicySetNestedInput
+    auditLogs?: TaskPolicyAuditLogUncheckedUpdateManyWithoutPolicySetNestedInput
+  }
+
+  export type TaskPolicySetCreateWithoutAuditLogsInput = {
+    id?: string
+    name: string
+    scopeType: string
+    scopeId: string
+    status: string
+    version: string
+    schemaVersion: string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest: string
+    createdBy?: string | null
+    publishedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    aliases?: TaskCommandAliasCreateNestedManyWithoutPolicySetInput
+    recipes?: TaskRecipeCreateNestedManyWithoutPolicySetInput
+    bindings?: TaskCapabilityBindingCreateNestedManyWithoutPolicySetInput
+    proposals?: TaskPolicyProposalCreateNestedManyWithoutPolicySetInput
+  }
+
+  export type TaskPolicySetUncheckedCreateWithoutAuditLogsInput = {
+    id?: string
+    name: string
+    scopeType: string
+    scopeId: string
+    status: string
+    version: string
+    schemaVersion: string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest: string
+    createdBy?: string | null
+    publishedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    aliases?: TaskCommandAliasUncheckedCreateNestedManyWithoutPolicySetInput
+    recipes?: TaskRecipeUncheckedCreateNestedManyWithoutPolicySetInput
+    bindings?: TaskCapabilityBindingUncheckedCreateNestedManyWithoutPolicySetInput
+    proposals?: TaskPolicyProposalUncheckedCreateNestedManyWithoutPolicySetInput
+  }
+
+  export type TaskPolicySetCreateOrConnectWithoutAuditLogsInput = {
+    where: TaskPolicySetWhereUniqueInput
+    create: XOR<TaskPolicySetCreateWithoutAuditLogsInput, TaskPolicySetUncheckedCreateWithoutAuditLogsInput>
+  }
+
+  export type TaskPolicySetUpsertWithoutAuditLogsInput = {
+    update: XOR<TaskPolicySetUpdateWithoutAuditLogsInput, TaskPolicySetUncheckedUpdateWithoutAuditLogsInput>
+    create: XOR<TaskPolicySetCreateWithoutAuditLogsInput, TaskPolicySetUncheckedCreateWithoutAuditLogsInput>
+    where?: TaskPolicySetWhereInput
+  }
+
+  export type TaskPolicySetUpdateToOneWithWhereWithoutAuditLogsInput = {
+    where?: TaskPolicySetWhereInput
+    data: XOR<TaskPolicySetUpdateWithoutAuditLogsInput, TaskPolicySetUncheckedUpdateWithoutAuditLogsInput>
+  }
+
+  export type TaskPolicySetUpdateWithoutAuditLogsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest?: StringFieldUpdateOperationsInput | string
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    publishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    aliases?: TaskCommandAliasUpdateManyWithoutPolicySetNestedInput
+    recipes?: TaskRecipeUpdateManyWithoutPolicySetNestedInput
+    bindings?: TaskCapabilityBindingUpdateManyWithoutPolicySetNestedInput
+    proposals?: TaskPolicyProposalUpdateManyWithoutPolicySetNestedInput
+  }
+
+  export type TaskPolicySetUncheckedUpdateWithoutAuditLogsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    schemaVersion?: StringFieldUpdateOperationsInput | string
+    policyJson?: JsonNullValueInput | InputJsonValue
+    digest?: StringFieldUpdateOperationsInput | string
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    publishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    aliases?: TaskCommandAliasUncheckedUpdateManyWithoutPolicySetNestedInput
+    recipes?: TaskRecipeUncheckedUpdateManyWithoutPolicySetNestedInput
+    bindings?: TaskCapabilityBindingUncheckedUpdateManyWithoutPolicySetNestedInput
+    proposals?: TaskPolicyProposalUncheckedUpdateManyWithoutPolicySetNestedInput
+  }
+
   export type BuiltinSkillVersionCreateWithoutBuiltinSkillInput = {
     id?: string
     definitionVersion: string
@@ -102522,6 +114067,24 @@ export namespace Prisma {
     updatedAt?: Date | string
   }
 
+  export type ImChannelConnectionCreateManyUserInput = {
+    id?: string
+    channel?: $Enums.ImChannelType
+    enabled?: boolean
+    status?: $Enums.ImConnectionStatus
+    interactionMode?: $Enums.ImInteractionMode
+    providerAccountId?: string | null
+    providerOwnerUserId?: string | null
+    providerBaseUrl?: string | null
+    encryptedCredential?: string | null
+    updateCursor?: string | null
+    lastConnectedAt?: Date | string | null
+    lastMessageAt?: Date | string | null
+    lastError?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
   export type SkillAccessRequestCreateManyRequesterInput = {
     id?: string
     skillId: string
@@ -102674,6 +114237,60 @@ export namespace Prisma {
     title?: NullableStringFieldUpdateOperationsInput | string | null
     modelId?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ImChannelConnectionUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    channel?: EnumImChannelTypeFieldUpdateOperationsInput | $Enums.ImChannelType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumImConnectionStatusFieldUpdateOperationsInput | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFieldUpdateOperationsInput | $Enums.ImInteractionMode
+    providerAccountId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
+    lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ImChannelConnectionUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    channel?: EnumImChannelTypeFieldUpdateOperationsInput | $Enums.ImChannelType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumImConnectionStatusFieldUpdateOperationsInput | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFieldUpdateOperationsInput | $Enums.ImInteractionMode
+    providerAccountId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
+    lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ImChannelConnectionUncheckedUpdateManyWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    channel?: EnumImChannelTypeFieldUpdateOperationsInput | $Enums.ImChannelType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumImConnectionStatusFieldUpdateOperationsInput | $Enums.ImConnectionStatus
+    interactionMode?: EnumImInteractionModeFieldUpdateOperationsInput | $Enums.ImInteractionMode
+    providerAccountId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
+    lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastError?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -103127,6 +114744,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
@@ -103149,6 +114767,7 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
@@ -104274,6 +115893,258 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type TaskCommandAliasCreateManyPolicySetInput = {
+    id?: string
+    canonicalCommand: string
+    alias: string
+    matchType?: string
+    weight?: number
+    source?: string
+    status?: string
+    evidenceCount?: number
+    createdAt?: Date | string
+  }
+
+  export type TaskRecipeCreateManyPolicySetInput = {
+    id?: string
+    recipeKey: string
+    version: string
+    name: string
+    requiredCommandsJson?: JsonNullValueInput | InputJsonValue
+    optionalCommandsJson?: JsonNullValueInput | InputJsonValue
+    triggerJson?: JsonNullValueInput | InputJsonValue
+    stepsJson?: JsonNullValueInput | InputJsonValue
+    bindingsJson?: JsonNullValueInput | InputJsonValue
+    completionClaimsJson?: JsonNullValueInput | InputJsonValue
+    riskLevel?: string
+    status?: string
+    createdAt?: Date | string
+  }
+
+  export type TaskCapabilityBindingCreateManyPolicySetInput = {
+    id?: string
+    capabilityRole: string
+    capabilityId: string
+    capabilityVersion?: string | null
+    priority?: number
+    inputMappingJson?: JsonNullValueInput | InputJsonValue
+    outputMappingJson?: JsonNullValueInput | InputJsonValue
+    status?: string
+    createdAt?: Date | string
+  }
+
+  export type TaskPolicyProposalCreateManyPolicySetInput = {
+    id?: string
+    proposalType: string
+    scopeType: string
+    scopeId: string
+    status?: string
+    patchJson: JsonNullValueInput | InputJsonValue
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    confidence: number
+    proposedBy?: string
+    reviewedBy?: string | null
+    reviewedAt?: Date | string | null
+    createdAt?: Date | string
+  }
+
+  export type TaskPolicyAuditLogCreateManyPolicySetInput = {
+    id?: string
+    actorUserId?: string | null
+    action: string
+    detailJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type TaskCommandAliasUpdateWithoutPolicySetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    canonicalCommand?: StringFieldUpdateOperationsInput | string
+    alias?: StringFieldUpdateOperationsInput | string
+    matchType?: StringFieldUpdateOperationsInput | string
+    weight?: FloatFieldUpdateOperationsInput | number
+    source?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    evidenceCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskCommandAliasUncheckedUpdateWithoutPolicySetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    canonicalCommand?: StringFieldUpdateOperationsInput | string
+    alias?: StringFieldUpdateOperationsInput | string
+    matchType?: StringFieldUpdateOperationsInput | string
+    weight?: FloatFieldUpdateOperationsInput | number
+    source?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    evidenceCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskCommandAliasUncheckedUpdateManyWithoutPolicySetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    canonicalCommand?: StringFieldUpdateOperationsInput | string
+    alias?: StringFieldUpdateOperationsInput | string
+    matchType?: StringFieldUpdateOperationsInput | string
+    weight?: FloatFieldUpdateOperationsInput | number
+    source?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    evidenceCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskRecipeUpdateWithoutPolicySetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    recipeKey?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    requiredCommandsJson?: JsonNullValueInput | InputJsonValue
+    optionalCommandsJson?: JsonNullValueInput | InputJsonValue
+    triggerJson?: JsonNullValueInput | InputJsonValue
+    stepsJson?: JsonNullValueInput | InputJsonValue
+    bindingsJson?: JsonNullValueInput | InputJsonValue
+    completionClaimsJson?: JsonNullValueInput | InputJsonValue
+    riskLevel?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskRecipeUncheckedUpdateWithoutPolicySetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    recipeKey?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    requiredCommandsJson?: JsonNullValueInput | InputJsonValue
+    optionalCommandsJson?: JsonNullValueInput | InputJsonValue
+    triggerJson?: JsonNullValueInput | InputJsonValue
+    stepsJson?: JsonNullValueInput | InputJsonValue
+    bindingsJson?: JsonNullValueInput | InputJsonValue
+    completionClaimsJson?: JsonNullValueInput | InputJsonValue
+    riskLevel?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskRecipeUncheckedUpdateManyWithoutPolicySetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    recipeKey?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    requiredCommandsJson?: JsonNullValueInput | InputJsonValue
+    optionalCommandsJson?: JsonNullValueInput | InputJsonValue
+    triggerJson?: JsonNullValueInput | InputJsonValue
+    stepsJson?: JsonNullValueInput | InputJsonValue
+    bindingsJson?: JsonNullValueInput | InputJsonValue
+    completionClaimsJson?: JsonNullValueInput | InputJsonValue
+    riskLevel?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskCapabilityBindingUpdateWithoutPolicySetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    capabilityRole?: StringFieldUpdateOperationsInput | string
+    capabilityId?: StringFieldUpdateOperationsInput | string
+    capabilityVersion?: NullableStringFieldUpdateOperationsInput | string | null
+    priority?: IntFieldUpdateOperationsInput | number
+    inputMappingJson?: JsonNullValueInput | InputJsonValue
+    outputMappingJson?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskCapabilityBindingUncheckedUpdateWithoutPolicySetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    capabilityRole?: StringFieldUpdateOperationsInput | string
+    capabilityId?: StringFieldUpdateOperationsInput | string
+    capabilityVersion?: NullableStringFieldUpdateOperationsInput | string | null
+    priority?: IntFieldUpdateOperationsInput | number
+    inputMappingJson?: JsonNullValueInput | InputJsonValue
+    outputMappingJson?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskCapabilityBindingUncheckedUpdateManyWithoutPolicySetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    capabilityRole?: StringFieldUpdateOperationsInput | string
+    capabilityId?: StringFieldUpdateOperationsInput | string
+    capabilityVersion?: NullableStringFieldUpdateOperationsInput | string | null
+    priority?: IntFieldUpdateOperationsInput | number
+    inputMappingJson?: JsonNullValueInput | InputJsonValue
+    outputMappingJson?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskPolicyProposalUpdateWithoutPolicySetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    proposalType?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    patchJson?: JsonNullValueInput | InputJsonValue
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    confidence?: FloatFieldUpdateOperationsInput | number
+    proposedBy?: StringFieldUpdateOperationsInput | string
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskPolicyProposalUncheckedUpdateWithoutPolicySetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    proposalType?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    patchJson?: JsonNullValueInput | InputJsonValue
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    confidence?: FloatFieldUpdateOperationsInput | number
+    proposedBy?: StringFieldUpdateOperationsInput | string
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskPolicyProposalUncheckedUpdateManyWithoutPolicySetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    proposalType?: StringFieldUpdateOperationsInput | string
+    scopeType?: StringFieldUpdateOperationsInput | string
+    scopeId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    patchJson?: JsonNullValueInput | InputJsonValue
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    confidence?: FloatFieldUpdateOperationsInput | number
+    proposedBy?: StringFieldUpdateOperationsInput | string
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskPolicyAuditLogUpdateWithoutPolicySetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    actorUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    action?: StringFieldUpdateOperationsInput | string
+    detailJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskPolicyAuditLogUncheckedUpdateWithoutPolicySetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    actorUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    action?: StringFieldUpdateOperationsInput | string
+    detailJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskPolicyAuditLogUncheckedUpdateManyWithoutPolicySetInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    actorUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    action?: StringFieldUpdateOperationsInput | string
+    detailJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type BuiltinSkillVersionCreateManyBuiltinSkillInput = {
     id?: string
     definitionVersion: string
@@ -104502,6 +116373,10 @@ export namespace Prisma {
      */
     export type UserSavedSkillCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = UserSavedSkillCountOutputTypeDefaultArgs<ExtArgs>
     /**
+     * @deprecated Use TaskPolicySetCountOutputTypeDefaultArgs instead
+     */
+    export type TaskPolicySetCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = TaskPolicySetCountOutputTypeDefaultArgs<ExtArgs>
+    /**
      * @deprecated Use BuiltinSkillCountOutputTypeDefaultArgs instead
      */
     export type BuiltinSkillCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = BuiltinSkillCountOutputTypeDefaultArgs<ExtArgs>
@@ -104513,6 +116388,10 @@ export namespace Prisma {
      * @deprecated Use UserDefaultArgs instead
      */
     export type UserArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = UserDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use ImChannelConnectionDefaultArgs instead
+     */
+    export type ImChannelConnectionArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ImChannelConnectionDefaultArgs<ExtArgs>
     /**
      * @deprecated Use RoleDefaultArgs instead
      */
@@ -104669,6 +116548,30 @@ export namespace Prisma {
      * @deprecated Use PlanningDecisionDefaultArgs instead
      */
     export type PlanningDecisionArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = PlanningDecisionDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use TaskPolicySetDefaultArgs instead
+     */
+    export type TaskPolicySetArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = TaskPolicySetDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use TaskCommandAliasDefaultArgs instead
+     */
+    export type TaskCommandAliasArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = TaskCommandAliasDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use TaskRecipeDefaultArgs instead
+     */
+    export type TaskRecipeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = TaskRecipeDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use TaskCapabilityBindingDefaultArgs instead
+     */
+    export type TaskCapabilityBindingArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = TaskCapabilityBindingDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use TaskPolicyProposalDefaultArgs instead
+     */
+    export type TaskPolicyProposalArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = TaskPolicyProposalDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use TaskPolicyAuditLogDefaultArgs instead
+     */
+    export type TaskPolicyAuditLogArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = TaskPolicyAuditLogDefaultArgs<ExtArgs>
     /**
      * @deprecated Use PromptSnapshotDefaultArgs instead
      */

@@ -23,7 +23,7 @@ export class DeterministicContractAssemblerService {
     topology: DeterministicTopologyDraftV1,
     bindingResult: ParameterBindingResult,
     capabilityMap: Map<string, CompactCapabilityCardV1>,
-    runtimeModelId?: string,
+    runtimeModelId?: string
   ): DeterministicPlanDraftV1 {
     const nodes: DeterministicPlanNodeV1[] = [];
     const refToNodeId = new Map<string, string>();
@@ -41,10 +41,9 @@ export class DeterministicContractAssemblerService {
       const nodeId = refToNodeId.get(node.ref)!;
 
       const outputContract: Record<string, ValueTypeV1> = {};
-      const outputProperties =
-        (card?.outputs as any)?.properties
-          ? ((card?.outputs as any).properties as Record<string, any>)
-          : (card?.outputs as Record<string, any>) || {};
+      const outputProperties = (card?.outputs as any)?.properties
+        ? ((card?.outputs as any).properties as Record<string, any>)
+        : (card?.outputs as Record<string, any>) || {};
 
       for (const [key, val] of Object.entries(outputProperties)) {
         outputContract[key] =
@@ -53,7 +52,11 @@ export class DeterministicContractAssemblerService {
             : (val as ValueTypeV1) || 'string';
       }
       if (Object.keys(outputContract).length === 0) {
-        outputContract.result = 'string';
+        const err = new Error(
+          `Capability '${card?.id || node.capabilityKey}' has no authoritative output contract`
+        ) as Error & { code: string };
+        err.code = 'CAPABILITY_CONTRACT_MISSING';
+        throw err;
       }
 
       const dependsOnNodeIds = node.dependsOn.map((depRef) => refToNodeId.get(depRef) || depRef);
@@ -77,7 +80,9 @@ export class DeterministicContractAssemblerService {
       if (isSkill) {
         const rawRuntimeType = card?.category || 'workflow';
         const runtimeType: 'api' | 'workflow' | 'browser_template' | 'artifact' =
-          rawRuntimeType === 'artifact' || rawRuntimeType === 'browser_template' || rawRuntimeType === 'api'
+          rawRuntimeType === 'artifact' ||
+          rawRuntimeType === 'browser_template' ||
+          rawRuntimeType === 'api'
             ? rawRuntimeType
             : 'workflow';
 
@@ -99,7 +104,7 @@ export class DeterministicContractAssemblerService {
       } else {
         if (!card?.executableVersion || !card.operationDigest || !card.contractDigest) {
           const err = new Error(
-            `LLM Operation '${card?.id || node.capabilityKey}' is missing immutable version metadata`,
+            `LLM Operation '${card?.id || node.capabilityKey}' is missing immutable version metadata`
           ) as Error & { code: string };
           err.code = 'CAPABILITY_NOT_FOUND';
           throw err;
@@ -137,14 +142,14 @@ export class DeterministicContractAssemblerService {
         outputContract: finalNode.outputContract,
         primaryOutput: finalCard?.primaryOutput,
       },
-      requestedType,
+      requestedType
     );
 
     if (!primaryOutput && requestedType) {
       const err: any = new Error(
         `Cannot resolve a unique primary output for final capability '${finalCard?.id || finalNodeId}'` +
-        `${requestedType ? ` with semantic type '${requestedType}'` : ''}. ` +
-        `Declare primaryOutput/x-primary-output in its authoritative output schema.`,
+          `${requestedType ? ` with semantic type '${requestedType}'` : ''}. ` +
+          `Declare primaryOutput/x-primary-output in its authoritative output schema.`
       );
       err.code = 'FINAL_OUTPUT_UNSATISFIED';
       throw err;
@@ -194,13 +199,19 @@ export class DeterministicContractAssemblerService {
       status: 'validated',
       nodes,
       finalOutputs,
+      requirements: {
+        externalData: topology.requiresExternalData === true,
+      },
       requiredUserInputs:
         mappedRequiredUserInputs.length > 0 ? mappedRequiredUserInputs : undefined,
     };
 
     try {
       const canonical = canonicalizePlan(planDraft);
-      planDraft.planHash = crypto.createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
+      planDraft.planHash = crypto
+        .createHash('sha256')
+        .update(JSON.stringify(canonical))
+        .digest('hex');
     } catch {
       // Ignore hash error fallback
     }
@@ -208,14 +219,12 @@ export class DeterministicContractAssemblerService {
     return planDraft;
   }
 
-  private resolvePlanType(
-    nodes: DeterministicPlanNodeV1[],
-  ): DeterministicPlanDraftV1['planType'] {
+  private resolvePlanType(nodes: DeterministicPlanNodeV1[]): DeterministicPlanDraftV1['planType'] {
     if (nodes.length <= 1) return 'single';
     const isLinear = nodes.every((node, index) =>
       index === 0
         ? node.dependsOn.length === 0
-        : node.dependsOn.length === 1 && node.dependsOn[0] === nodes[index - 1]!.nodeId,
+        : node.dependsOn.length === 1 && node.dependsOn[0] === nodes[index - 1]!.nodeId
     );
     return isLinear ? 'sequential' : 'dag';
   }

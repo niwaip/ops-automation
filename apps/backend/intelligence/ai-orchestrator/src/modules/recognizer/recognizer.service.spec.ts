@@ -332,6 +332,51 @@ describe('RecognizerService model routing', () => {
     });
   });
 
+  it('preserves a direct array-of-objects parameter instead of flattening it away', async () => {
+    const requestedModelId = 'requested-model-id';
+    const content = [
+      { type: 'heading', text: '验证结果' },
+      { type: 'paragraph', text: '端到端验证通过。' },
+    ];
+    const requestedClient = {
+      chatCompletion: jest.fn().mockResolvedValue({
+        content: JSON.stringify({ content }),
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      }),
+    };
+
+    service.registerTemplate({
+      template_id: 'pdf-content-template',
+      name: 'PDF Content Template',
+      params_schema: {
+        properties: {
+          content: { type: 'array', description: 'PDF content blocks' },
+        },
+        required: ['content'],
+      },
+    });
+
+    modelService.resolveModelId.mockResolvedValue(requestedModelId);
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
+    modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
+
+    const result = await service.recognizeParams({
+      template_id: 'pdf-content-template',
+      user_input: `content = ${JSON.stringify(content)}`,
+      modelId: requestedModelId,
+      params_schema: {
+        properties: {
+          content: { type: 'array', description: 'PDF content blocks' },
+        },
+        required: ['content'],
+      },
+    });
+
+    expect(result.params.content).toEqual(content);
+  });
+
   it('flattens nested object and object-array outputs into schema-compatible parameter keys', async () => {
     const requestedModelId = 'requested-model-id';
     const requestedClient = {

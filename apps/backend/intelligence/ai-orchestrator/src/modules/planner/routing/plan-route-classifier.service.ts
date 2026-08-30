@@ -49,11 +49,21 @@ export class PlanRouteClassifierService {
     if (context?.hasPreviousResult !== true || !userRequest?.trim()) return false;
     const text = userRequest.trim();
     const policy = this.routingPolicy.getSnapshot();
-    const hasProcessingIntent = hasRoutingSignal(text, 'processing', policy);
+    const hasSummarizeIntent = hasRoutingSignal(text, 'summarize', policy);
     const hasSequentialIntent = hasRoutingSignal(text, 'sequential', policy);
-    const hasArtifactIntent = hasRoutingSignal(text, 'artifact', policy);
     const hasDocumentSource = hasRoutingSignal(text, 'documentSource', policy);
+    const hasSearchIntent = hasRoutingSignal(text, 'search', policy);
+    const hasProcessingIntent = hasRoutingSignal(text, 'processing', policy);
 
-    return hasProcessingIntent && !hasSequentialIntent && !hasArtifactIntent && !hasDocumentSource;
+    // If user specifically requests summarization, route to DeterministicPlan (LLM Operation: summarize_text)
+    if (hasSummarizeIntent) return false;
+
+    // Single-step continuation is for non-summarize processing / integration skills (e.g. bark push)
+    return (
+      (hasProcessingIntent || hasRoutingSignal(text, 'artifact', policy)) &&
+      !hasSequentialIntent &&
+      !hasDocumentSource &&
+      !hasSearchIntent
+    );
   }
 }

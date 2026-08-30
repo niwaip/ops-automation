@@ -1,0 +1,11 @@
+{
+  "capabilityKey": "platform.document.pdf-split",
+  "definitionVersion": "1.0.0",
+  "definitionDigest": "sha256:2cbb1feab6ab45f803523a9da74e4a776102f3ad53a79af0991afbdea66f3cf3",
+  "fileHashes": {
+    "manifest.yaml": "sha256:9a59b8d19e75a9c15b424f1c2e23291e172dc19b4166fe8bc81ebd5c324a7156",
+    "workflow.json": "sha256:21f50152bef5aa80a16adb6fe71d13ff242f6d246ce8c30c3dfa2d23b1053729",
+    "fixtures/smoke-input.json": "sha256:881464c4c7dd3d7697db09c680fb3cb46ebec057570600e3f23bf8250df1cdf1"
+  },
+  "createdAt": "2026-08-29T20:00:00.000+08:00"
+}

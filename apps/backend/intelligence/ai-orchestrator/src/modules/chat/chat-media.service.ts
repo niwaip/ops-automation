@@ -165,7 +165,7 @@ export class ChatMediaService {
     const config = client.getConfig();
     const baseURL = config.baseURL.replace(/\/chat\/completions$/, '').replace(/\/$/, '');
     const formData = new FormData();
-    const blob = new Blob([file.buffer], { type: file.mimetype });
+    const blob = new Blob([new Uint8Array(file.buffer)], { type: file.mimetype });
     formData.append('file', blob, file.originalname);
     formData.append('model', model.name);
 

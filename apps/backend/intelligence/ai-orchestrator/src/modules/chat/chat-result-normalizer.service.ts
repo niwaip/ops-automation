@@ -31,6 +31,7 @@ export interface WorkflowResultArtifact {
   url?: string;
   path?: string;
   mimeType?: string;
+  sizeBytes?: number;
 }
 
 export type WorkflowResultTextFormat = 'plain_text' | 'markdown';
@@ -187,7 +188,7 @@ export class ChatResultNormalizerService {
     }
 
     // If structuredData is purely an internal artifact/finalOutputs payload, don't dump its JSON.
-    // Artifacts are already surfaced via download buttons; show a clean completion message instead.
+    // Artifacts are already surfaced via download buttons or markdown links; show a clean completion message instead.
     const isFinalOutputsPayload =
       result.structuredData !== undefined &&
       result.structuredData !== null &&
@@ -197,9 +198,32 @@ export class ChatResultNormalizerService {
         const keys = Object.keys(result.structuredData as Record<string, unknown>);
         return (
           keys.length > 0 &&
-          keys.every((k) => ['finalOutputs', 'artifact', 'artifacts'].includes(k))
+          keys.every((k) =>
+            [
+              'finalOutputs',
+              'artifact',
+              'artifacts',
+              'operation',
+              'pageCount',
+              'selectedPages',
+            ].includes(k)
+          )
         );
       })();
+
+    if (result.artifacts.length > 1 && isFinalOutputsPayload) {
+      const artifactList = result.artifacts
+        .map((a, idx) => {
+          const name = a.name || `文档_${idx + 1}`;
+          const sizeKb = a.sizeBytes ? ` (${Math.round(a.sizeBytes / 1024)} KB)` : '';
+          const targetUrl = a.downloadUrl || a.url;
+          return targetUrl ? `- [${name}](${targetUrl})${sizeKb}` : `- ${name}${sizeKb}`;
+        })
+        .join('\n');
+      return `任务已成功完成，已为您生成 ${result.artifacts.length} 个文档产物：\n\n${artifactList}${
+        executionId ? `\n\n执行单 ID: ${executionId}` : ''
+      }`;
+    }
 
     if (isFinalOutputsPayload) {
       const artifactName =
@@ -557,16 +581,24 @@ export class ChatResultNormalizerService {
         this.asString(record.fileName),
         this.asString(record.label)
       );
+      const sizeBytes =
+        typeof record.sizeBytes === 'number'
+          ? record.sizeBytes
+          : typeof record.size === 'number'
+            ? record.size
+            : undefined;
+
       if (downloadUrl || url) {
         artifacts.push({
           type: artifactType || (downloadUrl ? 'file' : 'url'),
           artifactType,
           name,
           label: name,
-          downloadUrl: this.normalizeArtifactUrl(downloadUrl),
-          url: this.normalizeArtifactUrl(url),
+          downloadUrl: this.normalizeArtifactUrl(downloadUrl || url),
+          url: this.normalizeArtifactUrl(url || downloadUrl),
           mimeType: this.asString(record.mimeType) || this.asString(record.mime_type),
           path: this.asString(record.path),
+          sizeBytes,
         });
       }
 
@@ -589,14 +621,20 @@ export class ChatResultNormalizerService {
       if (!record) {
         return;
       }
+      const rawDownloadUrl = this.firstNonEmptyString(
+        this.asString(record.downloadUrl),
+        this.asString(record.url)
+      );
+      const rawUrl = this.firstNonEmptyString(
+        this.asString(record.url),
+        this.asString(record.downloadUrl)
+      );
       const artifact: WorkflowResultArtifact = {
         type:
           this.asString(record.type) ||
           this.asString(record.artifactType) ||
           this.asString(record.artifact_type) ||
-          (this.firstNonEmptyString(this.asString(record.downloadUrl), this.asString(record.url))
-            ? 'file'
-            : 'artifact'),
+          (this.firstNonEmptyString(rawDownloadUrl, rawUrl) ? 'file' : 'artifact'),
         artifactType: this.firstNonEmptyString(
           this.asString(record.artifactType),
           this.asString(record.artifact_type),
@@ -604,13 +642,19 @@ export class ChatResultNormalizerService {
         ),
         name: this.firstNonEmptyString(this.asString(record.name), this.asString(record.label)),
         label: this.firstNonEmptyString(this.asString(record.label), this.asString(record.name)),
-        downloadUrl: this.normalizeArtifactUrl(this.asString(record.downloadUrl)),
-        url: this.normalizeArtifactUrl(this.asString(record.url)),
+        downloadUrl: this.normalizeArtifactUrl(rawDownloadUrl),
+        url: this.normalizeArtifactUrl(rawUrl),
         path: this.asString(record.path),
         mimeType: this.firstNonEmptyString(
           this.asString(record.mimeType),
           this.asString(record.mime_type)
         ),
+        sizeBytes:
+          typeof record.sizeBytes === 'number'
+            ? record.sizeBytes
+            : typeof record.size === 'number'
+              ? record.size
+              : undefined,
       };
       const artifactLocation = artifact.downloadUrl || artifact.url || artifact.path;
       const dedupeKey = artifactLocation || `${artifact.type}|${artifact.name || ''}`;

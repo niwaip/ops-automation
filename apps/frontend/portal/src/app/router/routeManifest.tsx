@@ -11,6 +11,7 @@ import {
   ThunderboltOutlined,
   ToolOutlined,
   UserOutlined,
+  CloudSyncOutlined,
 } from '@ant-design/icons';
 import { lazy } from 'react';
 import UserWebRedirectPage from '@/app/router/UserWebRedirectPage';
@@ -29,6 +30,7 @@ const AIModelAdminPage = lazy(() => import('@/features/admin/models/pages/AIMode
 const SkillAdminPage = lazy(() => import('@/features/admin/skills/pages/SkillAdminPage'));
 const BrowserSemanticRuleAdminPage = lazy(() => import('@/features/admin/browser-semantics/pages/BrowserSemanticRuleAdminPage'));
 const SystemToolAdminPage = lazy(() => import('@/features/admin/tools/pages/SystemToolAdminPage'));
+const SystemBackupAdminPage = lazy(() => import('@/features/admin/backup/pages/SystemBackupAdminPage'));
 const PromptDebugPage = lazy(() => import('@/features/admin/prompt-debug/pages/PromptDebugPage'));
 const HabitLearningPage = lazy(() => import('@/features/admin/habit-learning/pages/HabitLearningPage'));
 const FlowsPage = lazy(() => import('@/features/admin/flows/pages/FlowsPage'));
@@ -281,6 +283,12 @@ export const portalRouteEntries: PortalRouteEntry[] = [
           icon: <MessageOutlined />,
           requiresAdmin: true,
         },
+        {
+          key: '/admin/backup',
+          labelKey: 'backup',
+          icon: <CloudSyncOutlined />,
+          requiresAdmin: true,
+        },
       ],
     },
   },
@@ -307,6 +315,12 @@ export const portalRouteEntries: PortalRouteEntry[] = [
     element: <SystemToolAdminPage />,
     requiresAdmin: true,
     activeMenuKey: '/admin/tools',
+  },
+  {
+    path: '/admin/backup',
+    element: <SystemBackupAdminPage />,
+    requiresAdmin: true,
+    activeMenuKey: '/admin/backup',
   },
   {
     path: '/admin/prompt-debug',

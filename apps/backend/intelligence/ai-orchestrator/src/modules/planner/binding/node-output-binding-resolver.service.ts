@@ -25,6 +25,12 @@ export class NodeOutputBindingResolverService {
     { upstreamKey: 'markdown_content', downstreamKey: 'content' },
     { upstreamKey: 'text', downstreamKey: 'content' },
     { upstreamKey: 'body', downstreamKey: 'content' },
+    { upstreamKey: 'summary', downstreamKey: 'text' },
+    { upstreamKey: 'markdown_content', downstreamKey: 'text' },
+    { upstreamKey: 'content', downstreamKey: 'text' },
+    { upstreamKey: 'body', downstreamKey: 'text' },
+    { upstreamKey: 'result', downstreamKey: 'content' },
+    { upstreamKey: 'result', downstreamKey: 'text' },
   ];
 
   public resolveNodeOutputBinding(

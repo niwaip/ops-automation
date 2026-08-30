@@ -25,6 +25,7 @@
     "dashboard": "ワークベンチ",
     "chat": "AIチャット",
     "executions": "実行リスト",
-    "published_skills": "公開スキル"
+    "published_skills": "公開スキル",
+    "im_channels": "IM チャネル"
   }
 }

@@ -21,8 +21,8 @@ export class CapabilityCandidateSelectorService {
   private readonly candidateLimit: number;
 
   constructor(@Optional() private readonly catalogProjector?: LlmOperationCatalogProjector) {
-    const configured = Number.parseInt(process.env.PLANNER_CAPABILITY_TOP_K || '6', 10);
-    this.candidateLimit = Number.isFinite(configured) ? Math.min(6, Math.max(3, configured)) : 6;
+    const configured = Number.parseInt(process.env.PLANNER_CAPABILITY_TOP_K || '30', 10);
+    this.candidateLimit = Number.isFinite(configured) && configured > 0 ? configured : 30;
   }
 
   public async selectCandidates(

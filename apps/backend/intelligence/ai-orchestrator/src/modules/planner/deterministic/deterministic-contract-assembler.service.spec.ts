@@ -1,7 +1,4 @@
-import type {
-  CompactCapabilityCardV1,
-  RequiredUserInputV1,
-} from '@ops/backend-deterministic-plan';
+import type { CompactCapabilityCardV1, RequiredUserInputV1 } from '@ops/backend-deterministic-plan';
 import { DeterministicContractAssemblerService } from './deterministic-contract-assembler.service';
 
 describe('DeterministicContractAssemblerService', () => {
@@ -37,11 +34,13 @@ describe('DeterministicContractAssemblerService', () => {
         finalOutputKind: 'value',
       },
       {
-        nodeBindings: { phase_1: { query: { source: 'user_input', path: 'planInputs.phase_1.query' } } },
+        nodeBindings: {
+          phase_1: { query: { source: 'user_input', path: 'planInputs.phase_1.query' } },
+        },
         planInputs: { phase_1: {} },
         requiredUserInputs: [requiredInput],
       },
-      new Map([['s0', card]]),
+      new Map([['s0', card]])
     );
 
     expect(plan.requiredUserInputs?.[0]?.nodeId).toBe('phase_1_网页搜索');
@@ -64,9 +63,31 @@ describe('DeterministicContractAssemblerService', () => {
         finalOutputKind: 'value',
       },
       { nodeBindings: { n1: {}, n2: {} }, planInputs: { n1: {}, n2: {} }, requiredUserInputs: [] },
-      new Map([['s0', card]]),
+      new Map([['s0', card]])
     );
 
     expect(plan.planType).toBe('dag');
+  });
+
+  it('rejects a capability without an authoritative output contract', () => {
+    const assembler = new DeterministicContractAssemblerService();
+    const missingOutputCard = { ...card, outputs: {} };
+
+    expect(() =>
+      assembler.assemblePlan(
+        {
+          schemaVersion: 'deterministic-topology/v1',
+          objective: '执行能力',
+          matchDecision: 'matched',
+          matchConfidence: 1,
+          matchReason: 'matched',
+          nodes: [{ ref: 'n1', capabilityKey: 's0', dependsOn: [] }],
+          finalNodeRef: 'n1',
+          finalOutputKind: 'value',
+        },
+        { nodeBindings: { n1: {} }, planInputs: { n1: {} }, requiredUserInputs: [] },
+        new Map([['s0', missingOutputCard]])
+      )
+    ).toThrow(expect.objectContaining({ code: 'CAPABILITY_CONTRACT_MISSING' }));
   });
 });

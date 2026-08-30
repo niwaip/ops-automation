@@ -113,7 +113,19 @@ function findExactFieldValue(value: unknown, fieldName: string, depth = 0): unkn
   if (depth > 4) return undefined;
   const record = asRecord(value);
   if (!record) return undefined;
-  if (Object.prototype.hasOwnProperty.call(record, fieldName)) return record[fieldName];
+  if (Object.prototype.hasOwnProperty.call(record, fieldName)) {
+    const val = record[fieldName];
+    if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+      const nested =
+        asString((val as any).text) ||
+        asString((val as any).content) ||
+        asString((val as any).value) ||
+        asString((val as any).summary);
+      if (nested) return nested;
+      return undefined;
+    }
+    return val;
+  }
   for (const child of Object.values(record)) {
     const found = findExactFieldValue(child, fieldName, depth + 1);
     if (found !== undefined) return found;
@@ -124,7 +136,9 @@ function findExactFieldValue(value: unknown, fieldName: string, depth = 0): unkn
 function normalizeForType(value: unknown, type?: string): unknown {
   if (!hasMeaningfulValue(value)) return undefined;
   if (type === 'string') {
-    return typeof value === 'string' ? value.trim() : JSON.stringify(value);
+    if (typeof value === 'string') return value.trim();
+    if (typeof value === 'object') return undefined;
+    return String(value).trim();
   }
   if (type === 'array') return Array.isArray(value) && value.length > 0 ? value : undefined;
   if (type === 'number') {

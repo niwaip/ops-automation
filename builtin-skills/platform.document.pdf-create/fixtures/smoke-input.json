@@ -1,0 +1,20 @@
+{
+  "fileName": "created-smoke.pdf",
+  "title": "内置 PDF 生成",
+  "pageNumbers": true,
+  "content": [
+    {
+      "type": "heading",
+      "text": "摘要"
+    },
+    {
+      "type": "paragraph",
+      "text": "由默认 PDF 原子能力生成，验证中文字体与页码。"
+    },
+    {
+      "type": "table",
+      "headers": ["能力", "状态"],
+      "rows": [["PDF 生成", "就绪"]]
+    }
+  ]
+}

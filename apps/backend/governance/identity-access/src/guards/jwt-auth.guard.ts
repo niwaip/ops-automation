@@ -36,20 +36,21 @@ export class JwtAuthGuard implements CanActivate {
     if (
       internalSecret &&
       typeof internalAuth === 'string' &&
-      internalAuth === internalSecret &&
-      typeof internalUserId === 'string' &&
-      internalUserId.trim()
+      internalAuth === internalSecret
     ) {
       request.user = {
-        id: internalUserId,
+        id:
+          typeof internalUserId === 'string' && internalUserId.trim()
+            ? internalUserId
+            : 'system',
         username:
           typeof internalUsername === 'string' && internalUsername.trim()
             ? internalUsername
-            : internalUserId,
+            : 'system',
         role:
           typeof internalUserRole === 'string' && internalUserRole.trim()
             ? internalUserRole
-            : 'employee',
+            : 'admin',
         activeOrgId: null,
       };
       void fetch(debugUrl, {
@@ -64,7 +65,7 @@ export class JwtAuthGuard implements CanActivate {
           data: {
             method: request.method,
             url: request.url,
-            userId: internalUserId,
+            userId: request.user.id,
             hasInternalAuth: true,
           },
           ts: Date.now(),

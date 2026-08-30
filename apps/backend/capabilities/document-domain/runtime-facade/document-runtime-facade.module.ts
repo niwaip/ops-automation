@@ -14,6 +14,12 @@ import { MarkdownArtifactController } from './markdown-artifact/markdown-artifac
 import { MarkdownArtifactService } from './markdown-artifact/markdown-artifact.service';
 import { DocumentContentExtractionController } from './content-extraction/document-content-extraction.controller';
 import { PdfContentExtractorService } from './content-extraction/pdf-content-extractor.service';
+import { PdfArtifactStorageService } from './pdf-operations/pdf-artifact-storage.service';
+import { PdfCreateService } from './pdf-operations/pdf-create.service';
+import { PdfInputDecoderService } from './pdf-operations/pdf-input-decoder.service';
+import { PdfMergeService } from './pdf-operations/pdf-merge.service';
+import { PdfOperationsController } from './pdf-operations/pdf-operations.controller';
+import { PdfSplitService } from './pdf-operations/pdf-split.service';
 
 @Module({
   imports: [PrismaModule],
@@ -22,6 +28,7 @@ import { PdfContentExtractorService } from './content-extraction/pdf-content-ext
     DocumentSkillRenderEntryController,
     MarkdownArtifactController,
     DocumentContentExtractionController,
+    PdfOperationsController,
   ],
   providers: [
     PreviewService,
@@ -34,6 +41,11 @@ import { PdfContentExtractorService } from './content-extraction/pdf-content-ext
     StudioSkillRenderDataService,
     MarkdownArtifactService,
     PdfContentExtractorService,
+    PdfArtifactStorageService,
+    PdfInputDecoderService,
+    PdfMergeService,
+    PdfSplitService,
+    PdfCreateService,
   ],
   exports: [
     PreviewService,
@@ -46,6 +58,11 @@ import { PdfContentExtractorService } from './content-extraction/pdf-content-ext
     StudioSkillRenderDataService,
     MarkdownArtifactService,
     PdfContentExtractorService,
+    PdfArtifactStorageService,
+    PdfInputDecoderService,
+    PdfMergeService,
+    PdfSplitService,
+    PdfCreateService,
   ],
 })
 export class DocumentRuntimeFacadeModule {}

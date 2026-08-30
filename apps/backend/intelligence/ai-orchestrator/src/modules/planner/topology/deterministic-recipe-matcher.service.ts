@@ -1,5 +1,4 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import type { CompactCapabilityCardV1 } from '@ops/backend-deterministic-plan';
 import {
   createBuiltinRoutingPolicySnapshot,
   hasRoutingSignal,
@@ -12,7 +11,8 @@ export type RecipeType =
   | 'search_then_summarize'
   | 'search_summarize_write_markdown'
   | 'summarize_then_write_markdown'
-  | 'document_extract_then_summarize';
+  | 'document_extract_then_summarize'
+  | 'web_extract_then_summarize';
 
 export interface MatchedRecipe {
   recipeName: RecipeType;
@@ -20,11 +20,18 @@ export interface MatchedRecipe {
   steps: Array<{
     ref: string;
     kind: 'skill' | 'llm_operation';
-    role: 'search' | 'summarize' | 'transform' | 'markdown_writer' | 'document_extract';
-    operationId?: string;
+    role:
+      | 'search'
+      | 'summarize'
+      | 'transform'
+      | 'markdown_writer'
+      | 'document_extract'
+      | 'web_extract';
+    inputShape?: 'list' | 'text';
     dependsOn: string[];
   }>;
   finalNodeRef: string;
+  requiresExternalData: boolean;
 }
 
 @Injectable()
@@ -35,30 +42,71 @@ export class DeterministicRecipeMatcherService {
 
   public matchRecipe(
     userRequest: string,
-    skillCards: CompactCapabilityCardV1[],
-    llmOperationCards: CompactCapabilityCardV1[],
     context?: { hasPreviousResult?: boolean }
   ): MatchedRecipe | null {
-    void skillCards;
-    void llmOperationCards;
     const policy = this.routingPolicy?.getSnapshot() || createBuiltinRoutingPolicySnapshot();
     const hasSearch = hasRoutingSignal(userRequest, 'search', policy);
     const hasSummarize = hasRoutingSignal(userRequest, 'summarize', policy);
     const hasProcessing = hasRoutingSignal(userRequest, 'processing', policy);
     const hasGeneration = hasRoutingSignal(userRequest, 'generation', policy);
-    const hasMarkdown = hasRoutingSignal(userRequest, 'markdown', policy);
-    const hasPdf = hasRoutingSignal(userRequest, 'documentSource', policy);
+    const isExplicitFileExport =
+      /(?:生成|输出|导出|保存|写入|创建)\s*(?:为|成)?\s*(?:markdown|md|文档|文件|.*\.md)|\b(?:markdown|md)\s*(?:文件|交付件|文档)|\.md\b/i.test(
+        userRequest
+      );
+    const isJustFormatConstraint =
+      /(?:用|以|按|按照)?\s*markdown\s*格式(?:总结|回复|输出|回答|提炼|概括)?/i.test(userRequest) &&
+      !/(?:生成|导出|保存|写入)\s*(?:为|成)?\s*.*\.md|\.md\b/i.test(userRequest);
+    const hasMarkdownFile = isExplicitFileExport && !isJustFormatConstraint;
+    const hasMarkdown = hasMarkdownFile;
+    const hasPdfExport =
+      (hasRoutingSignal(userRequest, 'artifact', policy) || /pdf/i.test(userRequest)) &&
+      /生成\s*pdf|输出\s*pdf|导出\s*pdf|create\s*pdf|制作\s*pdf/i.test(userRequest);
+    const hasPdfSplit = /拆分|拆页|分割|抽页|split/i.test(userRequest);
+    const hasPdfMerge = /合并|拼接|merge/i.test(userRequest);
+    const hasWeb = hasRoutingSignal(userRequest, 'webSource', policy);
+    const hasPdf =
+      !hasPdfExport &&
+      !hasPdfSplit &&
+      !hasPdfMerge &&
+      !hasWeb &&
+      hasRoutingSignal(userRequest, 'documentSource', policy);
     const hasUncoveredAction = hasRoutingSignal(userRequest, 'uncoveredAction', policy);
 
-    // 模式 0：在已有可信结果之上做单次 LLM 变换。该 Recipe 跳过
+    // 网页获取 + 总结是高频且拓扑稳定的组合：使用固定 Recipe
+    // 保留 Skill 执行的稳定性，同时避免单 Skill 只覆盖“打开”就宣告整体完成。
+    if (hasWeb && hasSummarize) {
+      this.logger.log(
+        `Matched Recipe: web_extract_then_summarize for request: "${userRequest}"`
+      );
+      return {
+        recipeName: 'web_extract_then_summarize',
+        objective: userRequest,
+        steps: [
+          { ref: 'n1', kind: 'skill', role: 'web_extract', dependsOn: [] },
+          {
+            ref: 'n2',
+            kind: 'llm_operation',
+            role: 'summarize',
+            inputShape: 'text',
+            dependsOn: ['n1'],
+          },
+        ],
+        finalNodeRef: 'n2',
+        requiresExternalData: true,
+      };
+    }
+
+    // 模式 0：在已有可信结果之上做单次 LLM 变换或摘要。该 Recipe 跳过
     // Skill 匹配模型和拓扑模型，并由参数绑定器把不可变结果快照绑定到 content。
     if (
       context?.hasPreviousResult === true &&
-      (hasGeneration || hasProcessing) &&
-      !hasSummarize &&
+      (hasGeneration || hasProcessing || hasSummarize) &&
       !hasSearch &&
-      !hasMarkdown &&
+      !hasMarkdownFile &&
       !hasPdf &&
+      !hasPdfSplit &&
+      !hasPdfMerge &&
+      !hasPdfExport &&
       !hasUncoveredAction
     ) {
       this.logger.log(`Matched Recipe: grounded_text_transform for request: "${userRequest}"`);
@@ -69,12 +117,13 @@ export class DeterministicRecipeMatcherService {
           {
             ref: 'n1',
             kind: 'llm_operation',
-            role: 'transform',
-            operationId: 'transform_text',
+            role: hasSummarize ? 'summarize' : 'transform',
+            inputShape: 'text',
             dependsOn: [],
           },
         ],
         finalNodeRef: 'n1',
+        requiresExternalData: false,
       };
     }
 
@@ -93,11 +142,12 @@ export class DeterministicRecipeMatcherService {
             ref: 'n2',
             kind: 'llm_operation',
             role: 'summarize',
-            operationId: 'summarize_text',
+            inputShape: 'text',
             dependsOn: ['n1'],
           },
         ],
         finalNodeRef: 'n2',
+        requiresExternalData: true,
       };
     }
 
@@ -108,6 +158,7 @@ export class DeterministicRecipeMatcherService {
         objective: userRequest,
         steps: [{ ref: 'n1', kind: 'skill', role: 'document_extract', dependsOn: [] }],
         finalNodeRef: 'n1',
+        requiresExternalData: true,
       };
     }
 
@@ -125,12 +176,13 @@ export class DeterministicRecipeMatcherService {
             ref: 'n2',
             kind: 'llm_operation',
             role: 'summarize',
-            operationId: 'summarize_list',
+            inputShape: 'list',
             dependsOn: ['n1'],
           },
           { ref: 'n3', kind: 'skill', role: 'markdown_writer', dependsOn: ['n2'] },
         ],
         finalNodeRef: 'n3',
+        requiresExternalData: true,
       };
     }
 
@@ -146,16 +198,17 @@ export class DeterministicRecipeMatcherService {
             ref: 'n2',
             kind: 'llm_operation',
             role: 'summarize',
-            operationId: 'summarize_list',
+            inputShape: 'list',
             dependsOn: ['n1'],
           },
         ],
         finalNodeRef: 'n2',
+        requiresExternalData: true,
       };
     }
 
     // 模式 3：总结 + 输出 Markdown 文件
-    if (hasSummarize && hasMarkdown && !hasSearch) {
+    if (hasSummarize && hasMarkdownFile && !hasSearch) {
       this.logger.log(
         `Matched Recipe: summarize_then_write_markdown for request: "${userRequest}"`
       );
@@ -167,12 +220,13 @@ export class DeterministicRecipeMatcherService {
             ref: 'n1',
             kind: 'llm_operation',
             role: 'summarize',
-            operationId: 'summarize_text',
+            inputShape: 'text',
             dependsOn: [],
           },
           { ref: 'n2', kind: 'skill', role: 'markdown_writer', dependsOn: ['n1'] },
         ],
         finalNodeRef: 'n2',
+        requiresExternalData: false,
       };
     }
 

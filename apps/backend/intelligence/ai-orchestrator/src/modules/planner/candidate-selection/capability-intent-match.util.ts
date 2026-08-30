@@ -14,6 +14,35 @@ const GENERIC_ASCII_TOKENS = new Set([
 
 const GENERIC_NAME_SUFFIXES = ['工作流', '服务', '能力', '技能'];
 
+const PLANNER_STOP_WORDS = new Set([
+  '然后',
+  '进行',
+  '如何',
+  '最后',
+  '并且',
+  '通过',
+  '使用',
+  '一下',
+  '当前',
+  '可以',
+  '以及',
+  '根据',
+  '基于',
+  '为了',
+  '如果',
+  '或者',
+  '用于',
+  '一个',
+  '给出',
+  '完成',
+  '帮我',
+  '请帮',
+  '麻烦',
+  '怎样',
+  '怎么',
+  '给我',
+]);
+
 export function calculateCapabilityIntentScore(
   userRequest: string,
   candidateTexts: unknown[],
@@ -34,27 +63,32 @@ export function calculateCapabilityIntentScore(
 
     if (compact.length >= 4 && compactRequest.includes(compact)) {
       score = Math.max(score, 100 + Math.min(compact.length, 30));
-    } else if (compact.length >= 2 && compact.length < 8 && compactRequest.includes(compact)) {
+    } else if (
+      compact.length >= 2 &&
+      compact.length < 8 &&
+      !PLANNER_STOP_WORDS.has(compact) &&
+      compactRequest.includes(compact)
+    ) {
       score += 20 * compact.length;
     }
 
-    if (compact.length >= 4 && compact.length <= 40) {
-      for (let len = Math.min(compactRequest.length, 10); len >= 4; len--) {
-        for (let start = 0; start <= compactRequest.length - len; start++) {
-          const sub = compactRequest.slice(start, start + len);
-          if (compact.includes(sub)) {
-            score = Math.max(score, 80 + len * 5);
-          }
+    for (let len = Math.min(compactRequest.length, 10); len >= 2; len--) {
+      for (let start = 0; start <= compactRequest.length - len; start++) {
+        const sub = compactRequest.slice(start, start + len);
+        if (PLANNER_STOP_WORDS.has(sub)) continue;
+        if (/^[a-z0-9_-]+$/.test(sub) && len < 4) continue;
+        if (compact.includes(sub)) {
+          score = Math.max(score, len >= 4 ? 80 + len * 5 : 35 + len * 15);
         }
       }
     }
 
-    for (const token of extractDistinctiveAsciiTokens(normalized)) {
+    for (const token of extractDistinctiveAsciiTokens(cleanText)) {
       if (request.includes(token)) score += 25;
     }
 
     const chineseAlias = stripGenericSuffix(compact);
-    if (/^[\u3400-\u9fff]{2,}$/.test(chineseAlias)) {
+    if (/^[\u3400-\u9fff]{2,}$/.test(chineseAlias) && !PLANNER_STOP_WORDS.has(chineseAlias)) {
       if (compactRequest.includes(chineseAlias)) {
         score += 40;
       }
@@ -125,6 +159,16 @@ export function hasExplicitCapabilityInvocation(
 
       const prefix = normalizedRequest.slice(Math.max(0, index - 16), index);
       const suffix = normalizedRequest.slice(index + alias.length).trim();
+
+      // Format modifiers like 'markdown 格式' / 'json 格式' are LLM style instructions, not skill invocations
+      if (
+        (alias === 'markdown' || alias === 'md' || alias === 'json' || alias.includes('markdown')) &&
+        (suffix.startsWith('格式') || suffix.startsWith('样式') || suffix.startsWith('排版') || suffix.startsWith('语法')) &&
+        !/(?:文件|文档|写入|导出|保存|生成文件)/i.test(normalizedRequest)
+      ) {
+        continue;
+      }
+
       if (
         /(?:最后|然后|并且|再)?\s*(?:用|使用|通过|调用|借助|using|use|via)\s*$/.test(prefix) ||
         /(?:最后|然后|并且|再)\s*$/.test(prefix) ||
@@ -145,7 +189,8 @@ function flattenTextValues(value: unknown): string[] {
 }
 
 function extractDistinctiveAsciiTokens(text: string): string[] {
-  return Array.from(text.matchAll(/[a-z][a-z0-9_-]{2,}/g), (match) => match[0])
+  const expanded = text.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+  return Array.from(expanded.matchAll(/[a-z][a-z0-9_-]{2,}/g), (match) => match[0])
     .filter((token) => !GENERIC_ASCII_TOKENS.has(token) && !isUuid(token));
 }
 

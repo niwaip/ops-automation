@@ -56,6 +56,8 @@ describe('ExecutionCreateService deterministic waiting input', () => {
     await service.create(
       'user-1',
       {
+        skillId: 'platform.document.pdf-create',
+        capabilityId: 'platform.document.pdf-create',
         executionMode: 'deterministic_plan',
         input: { prompt: '查询微博热点并总结，用 Bark 推送' },
         deterministicPlan: {
@@ -86,6 +88,7 @@ describe('ExecutionCreateService deterministic waiting input', () => {
 
     expect(tx.execution.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
+        skillId: null,
         status: 'waiting_input',
         executionMode: 'deterministic_plan',
         normalizedInputJson: expect.objectContaining({
@@ -106,5 +109,12 @@ describe('ExecutionCreateService deterministic waiting input', () => {
       data: { currentStepId: 'waiting-step-1' },
     });
     expect(planSchedulerService.advanceExecution).not.toHaveBeenCalled();
+    expect(hooks.emitEvent).toHaveBeenCalledWith(
+      'execution-1',
+      'execution.created',
+      expect.objectContaining({
+        skillId: 'platform.document.pdf-create',
+      })
+    );
   });
 });

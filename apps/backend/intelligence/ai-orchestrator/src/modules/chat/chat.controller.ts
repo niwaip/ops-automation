@@ -11,6 +11,7 @@ import {
   Res,
   UploadedFile,
   UseInterceptors,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -31,6 +32,7 @@ import { SetAssistantFeedbackDto } from './assistant-feedback.dto';
 import { ChatConversationService } from './chat-conversation.service';
 import { ChatMediaService } from './chat-media.service';
 import { ChatOrchestratorService } from './chat-orchestrator.service';
+import { parseChatSlashCommand } from './chat-slash-command.util';
 
 type SseEventPayload = {
   type: string;
@@ -96,16 +98,27 @@ export class ChatController {
   @Get('chat/sessions')
   @ApiOperation({ summary: 'List chat sessions' })
   @ApiResponse({ status: 200, description: 'Chat sessions loaded successfully' })
-  async listSessions(): Promise<ChatSessionsResponseDTO> {
-    const sessions = await this.chatConversationService.listSessions();
+  async listSessions(@Req() req: Request): Promise<ChatSessionsResponseDTO> {
+    const identity = await this.chatOrchestratorService.resolveAuthenticatedUser(
+      req.headers.authorization
+    );
+    if (!identity.userId) throw new UnauthorizedException('Login required');
+    const sessions = await this.chatConversationService.listSessions(identity.userId);
     return { sessions };
   }
 
   @Get('chat/history/:sessionId')
   @ApiOperation({ summary: 'Get chat history by session ID' })
   @ApiResponse({ status: 200, description: 'Chat history loaded successfully' })
-  async getChatHistory(@Param('sessionId') sessionId: string): Promise<ChatHistoryResponseDTO> {
-    const messages = await this.chatConversationService.getChatHistory(sessionId);
+  async getChatHistory(
+    @Param('sessionId') sessionId: string,
+    @Req() req: Request
+  ): Promise<ChatHistoryResponseDTO> {
+    const identity = await this.chatOrchestratorService.resolveAuthenticatedUser(
+      req.headers.authorization
+    );
+    if (!identity.userId) throw new UnauthorizedException('Login required');
+    const messages = await this.chatConversationService.getChatHistory(sessionId, identity.userId);
     return { messages };
   }
 
@@ -166,7 +179,7 @@ export class ChatController {
 
     const traceId = getOrCreateTraceId(body.traceId || req.traceId);
     const sessionId = body.sessionId || 'default';
-    const mode: 'chat' | 'task' = body.config?.mode || 'chat';
+    const parsed = parseChatSlashCommand(body.message, body.config?.mode || 'chat');
     let seq = 0;
     const emit = (event: SseEventPayload) => {
       seq += 1;
@@ -178,6 +191,29 @@ export class ChatController {
           seq,
         })
       );
+    };
+
+    if (parsed.isCommandOnly && parsed.systemReply) {
+      emit({
+        type: StreamEventType.OBSERVATION,
+        content: parsed.systemReply,
+      });
+      emit({
+        type: 'done',
+        content: 'Stream completed',
+      });
+      res.end();
+      return;
+    }
+
+    const mode: 'chat' | 'task' = parsed.mode;
+    body = {
+      ...body,
+      message: parsed.message,
+      config: {
+        ...body.config,
+        mode,
+      },
     };
 
     try {
@@ -273,7 +309,32 @@ export class ChatController {
   ): Promise<ChatResponseDTO> {
     const traceId = getOrCreateTraceId(body.traceId || req.traceId);
     const sessionId = body.sessionId || 'default';
-    const mode: 'chat' | 'task' = body.config?.mode || 'task';
+    const parsed = parseChatSlashCommand(body.message, body.config?.mode || 'task');
+
+    if (parsed.isCommandOnly && parsed.systemReply) {
+      return {
+        response: parsed.systemReply,
+        events: [
+          this.enrichStreamEvent(
+            {
+              type: StreamEventType.OBSERVATION,
+              content: parsed.systemReply,
+            } as unknown as SseEventPayload,
+            { sessionId, traceId, seq: 1 }
+          ) as unknown as StreamEvent,
+        ],
+      };
+    }
+
+    const mode: 'chat' | 'task' = parsed.mode;
+    body = {
+      ...body,
+      message: parsed.message,
+      config: {
+        ...body.config,
+        mode,
+      },
+    };
 
     if (mode === 'chat') {
       const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
@@ -368,6 +429,97 @@ export class ChatController {
       }
     }
 
+    return { response: finalResponse, events };
+  }
+
+  @Post('internal/chat')
+  @ApiOperation({ summary: 'Internal non-streaming chat for trusted channel gateways' })
+  async internalChat(@Body() body: ChatRequestDTO, @Req() req: Request): Promise<ChatResponseDTO> {
+    const expected = process.env.INTERNAL_API_SHARED_SECRET;
+    const supplied = req.headers['x-internal-auth'];
+    const userId = req.headers['x-user-id'];
+    if (!expected || supplied !== expected || typeof userId !== 'string' || !userId.trim()) {
+      throw new UnauthorizedException('Invalid internal identity');
+    }
+    const parsed = parseChatSlashCommand(body.message, body.config?.mode || 'chat');
+    if (parsed.isCommandOnly && parsed.systemReply) {
+      return {
+        response: parsed.systemReply,
+        events: [],
+      };
+    }
+    const mode: 'chat' | 'task' = parsed.mode;
+    body = {
+      ...body,
+      message: parsed.message,
+      config: {
+        ...body.config,
+        mode,
+      },
+    };
+    if (mode !== 'task') {
+      return this.chatConversationService.chat({ ...body, userId }, userId);
+    }
+
+    const traceId = getOrCreateTraceId(body.traceId);
+    const sessionId = body.sessionId || 'default';
+    const taskBody: ChatRequestDTO = {
+      ...body,
+      userId,
+      files: this.chatMediaService.resolveUploadedFiles(body.files),
+    };
+    const history = await this.chatConversationService.loadTaskHistory(sessionId);
+    const taskModeContext = await this.chatOrchestratorService.buildTaskModeContext(
+      taskBody,
+      undefined,
+      traceId,
+      history,
+      {
+        userId,
+        userRoles:
+          typeof req.headers['x-user-roles'] === 'string'
+            ? req.headers['x-user-roles']
+                .split(',')
+                .map((role) => role.trim())
+                .filter(Boolean)
+            : undefined,
+        organizationId:
+          typeof req.headers['x-organization-id'] === 'string'
+            ? req.headers['x-organization-id']
+            : undefined,
+      }
+    );
+    if (!taskModeContext.context) throw new UnauthorizedException('Invalid internal identity');
+
+    const events: StreamEvent[] = [];
+    let finalResponse = '';
+    let latestPersistableEvent: StreamEvent | null = null;
+    for await (const event of this.chatOrchestratorService.handleTaskMode(
+      taskBody,
+      taskModeContext.context
+    )) {
+      const enriched = this.enrichStreamEvent(event as unknown as SseEventPayload, {
+        sessionId,
+        traceId,
+        seq: events.length + 1,
+      }) as unknown as StreamEvent;
+      events.push(enriched);
+      if (this.isPersistableTaskEvent(enriched)) {
+        latestPersistableEvent = enriched;
+        finalResponse = enriched.content;
+      }
+    }
+    if (latestPersistableEvent) {
+      const sessionPatch = await this.chatConversationService.persistTaskConversation({
+        sessionId,
+        userContent: body.message,
+        terminalEvent: latestPersistableEvent,
+        modelId: body.modelId,
+        ownerUserId: userId,
+        clientMessageId: body.clientMessageId,
+      });
+      if (sessionPatch) events.push(sessionPatch);
+    }
     return { response: finalResponse, events };
   }
 

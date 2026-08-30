@@ -73,7 +73,7 @@ import {
   ListSectionHeader,
 } from '@/components/page/PageScaffold';
 
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 const { Option } = Select;
 const { TabPane } = Tabs;
 const { Panel } = Collapse;
@@ -836,21 +836,71 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
       title: t('admin:skillName'),
       dataIndex: 'name',
       key: 'name',
-      width: 150,
-      render: (name: string) => <strong>{name}</strong>,
+      width: 220,
+      render: (name: string, record) => (
+        <Space direction="vertical" size={2}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>{name}</span>
+            {isRegistryBuiltinSkill(record) ? (
+              <Tag
+                color="cyan"
+                style={{
+                  margin: 0,
+                  fontSize: 11,
+                  lineHeight: '18px',
+                  padding: '0 6px',
+                  borderRadius: 4,
+                }}
+              >
+                系统内置
+              </Tag>
+            ) : (
+              <Tag
+                color="purple"
+                style={{
+                  margin: 0,
+                  fontSize: 11,
+                  lineHeight: '18px',
+                  padding: '0 6px',
+                  borderRadius: 4,
+                }}
+              >
+                自定义
+              </Tag>
+            )}
+          </div>
+          <Text type="secondary" style={{ fontSize: 11, wordBreak: 'break-all' }}>
+            {record.id}
+          </Text>
+        </Space>
+      ),
     },
     {
       title: t('admin:skillDescription'),
       dataIndex: 'description',
       key: 'description',
-      width: 240,
-      ellipsis: true,
+      width: 260,
+      render: (desc: string) => (
+        <Paragraph
+          ellipsis={{ rows: 2, tooltip: desc }}
+          style={{ marginBottom: 0, color: 'inherit', fontSize: 13 }}
+        >
+          {desc || '-'}
+        </Paragraph>
+      ),
     },
     {
       title: '执行流程',
       key: 'executionFlow',
-      width: 200,
+      width: 170,
       render: (_, record) => {
+        if (isRegistryBuiltinSkill(record)) {
+          return (
+            <Tag color="geekblue" style={{ margin: 0 }}>
+              内置领域算子
+            </Tag>
+          );
+        }
         const hasTemplates =
           record.executionFlowTemplateIds && record.executionFlowTemplateIds.length > 0;
         const hasInline = record.executionFlow && record.executionFlow.length > 0;
@@ -858,7 +908,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
         if (hasTemplates && hasInline) {
           return (
             <Tag color="orange" icon={<OrderedListOutlined />}>
-              模板 + 手动追加
+              模板 + 扩展
             </Tag>
           );
         }
@@ -870,19 +920,14 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
           );
         }
         if (!hasInline) {
-          return <Text type="secondary">默认流程</Text>;
+          return <Text type="secondary">标准流程</Text>;
         }
         return (
-          <Space wrap>
+          <Space wrap size={4}>
             {record.executionFlow.map((step, idx) => (
-              <Badge
-                key={idx}
-                count={idx + 1}
-                size="small"
-                style={{ backgroundColor: 'var(--primary-color)' }}
-              >
-                <Tag style={{ margin: 0 }}>{step.name}</Tag>
-              </Badge>
+              <Tag key={idx} style={{ margin: 0 }}>
+                {step.name}
+              </Tag>
             ))}
           </Space>
         );
@@ -892,43 +937,78 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
       title: t('admin:triggerKeywords'),
       dataIndex: 'triggerKeywords',
       key: 'triggerKeywords',
-      width: 150,
-      render: (keywords: string[]) => (
-        <Tooltip title="AI匹配失败时的回退方案">
-          <Space size="small" wrap>
-            {keywords?.slice(0, 3).map((kw) => (
-              <Tag key={kw} color="orange">
-                {kw}
-              </Tag>
-            ))}
-            {keywords?.length > 3 && <Tag>+{keywords.length - 3}</Tag>}
-          </Space>
-        </Tooltip>
-      ),
+      width: 200,
+      render: (keywords: string[]) => {
+        if (!keywords || keywords.length === 0) {
+          return <Text type="secondary" style={{ fontSize: 12 }}>-</Text>;
+        }
+        return (
+          <Tooltip title={`触发关键词（共 ${keywords.length} 个）：\n${keywords.join('、')}`}>
+            <Space size={4} wrap>
+              {keywords.slice(0, 3).map((kw) => (
+                <Tag
+                  key={kw}
+                  bordered={false}
+                  style={{
+                    backgroundColor: 'rgba(250, 173, 20, 0.15)',
+                    color: '#faad14',
+                    margin: 0,
+                    fontSize: 12,
+                  }}
+                >
+                  {kw}
+                </Tag>
+              ))}
+              {keywords.length > 3 && (
+                <Tag
+                  bordered={false}
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    color: 'rgba(255, 255, 255, 0.65)',
+                    margin: 0,
+                    fontSize: 11,
+                  }}
+                >
+                  +{keywords.length - 3}
+                </Tag>
+              )}
+            </Space>
+          </Tooltip>
+        );
+      },
     },
     {
       title: '公开状态',
       key: 'published',
-      width: 140,
+      width: 130,
+      align: 'center',
       render: (_, record) => (
-        <Tag color={record.isPublished ? 'success' : 'default'}>
-          {record.isPublished ? '已公开可执行' : '仅系统定义'}
-        </Tag>
+        <Badge
+          status={record.isPublished ? 'success' : 'default'}
+          text={
+            <span style={{ fontSize: 13, color: record.isPublished ? '#52c41a' : undefined }}>
+              {record.isPublished ? '已公开可执行' : '仅系统定义'}
+            </span>
+          }
+        />
       ),
     },
     {
       title: t('admin:skillStatus'),
       dataIndex: 'isActive',
       key: 'isActive',
-      width: 80,
+      width: 90,
+      align: 'center',
       render: (isActive: boolean) => (
-        <Tag color={isActive ? 'success' : 'error'}>{isActive ? '启用' : '禁用'}</Tag>
+        <Tag color={isActive ? 'success' : 'default'} style={{ margin: 0 }}>
+          {isActive ? '启用' : '禁用'}
+        </Tag>
       ),
     },
     {
       title: t('common:actions'),
       key: 'actions',
-      width: 300,
+      width: 220,
       fixed: 'right',
       render: (_, record) => {
         if (isRegistryBuiltinSkill(record)) {
@@ -940,9 +1020,8 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                 icon={<InfoCircleOutlined />}
                 onClick={() => handleViewDetail(record)}
               >
-                详情
+                查看详情
               </Button>
-              <Tag color="blue">注册表托管</Tag>
             </Space>
           );
         }

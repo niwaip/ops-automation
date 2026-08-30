@@ -7,6 +7,7 @@
 > 日期：2026-08-26
 >
 > 前置文档：
+>
 > - [总体设计](./browser-execution-contract-and-workflow-composition-design.md)
 > - [P0 落地与检验设计](./browser-execution-p0-implementation-and-validation-design.md)
 
@@ -142,11 +143,7 @@ packages/backend-contracts/browser-execution-contract/
 ### 4.2 CaptureProfileV1
 
 ```ts
-export type CaptureProfileName =
-  | 'article'
-  | 'application'
-  | 'audit'
-  | 'raw';
+export type CaptureProfileName = 'article' | 'application' | 'audit' | 'raw';
 
 export interface CaptureProfileV1 {
   schemaVersion: 'capture-profile/v1';
@@ -173,12 +170,12 @@ export interface CaptureProfileV1 {
 
 推荐默认值：
 
-| Profile | 使用场景 | mainContent | 原始证据 | 提取策略 |
-| --- | --- | --- | --- | --- |
-| `article` | 新闻、文档、博客 | 是 | HTML + Screenshot | Readability 优先 |
-| `application` | 控制台、表单、仪表板 | 可选 | HTML + Screenshot + Snapshot | main/role/density |
-| `audit` | 运维、合规 | 是 | 全部 | 可见文本 + 表格优先 |
-| `raw` | 调试和兼容 | 否 | 全部 | 不提取正文 |
+| Profile       | 使用场景             | mainContent | 原始证据                     | 提取策略            |
+| ------------- | -------------------- | ----------- | ---------------------------- | ------------------- |
+| `article`     | 新闻、文档、博客     | 是          | HTML + Screenshot            | Readability 优先    |
+| `application` | 控制台、表单、仪表板 | 可选        | HTML + Screenshot + Snapshot | main/role/density   |
+| `audit`       | 运维、合规           | 是          | 全部                         | 可见文本 + 表格优先 |
+| `raw`         | 调试和兼容           | 否          | 全部                         | 不提取正文          |
 
 Profile 必须在模板编辑或 Skill 发布时确定。运行时可用输入覆盖限制值，但不能把 `mainContent=false` 隐式改成 `true`。
 
@@ -198,12 +195,7 @@ export interface ContentRefV1 {
   mediaType: 'text/markdown' | 'text/plain' | 'application/json';
   extraction: {
     profile: CaptureProfileName;
-    method:
-      | 'readability'
-      | 'semantic-main'
-      | 'density'
-      | 'visible-text'
-      | 'none';
+    method: 'readability' | 'semantic-main' | 'density' | 'visible-text' | 'none';
     confidence: number;
     fallbackLevel: number;
     extractedAt: string;
@@ -679,6 +671,9 @@ Workflow Skill 输入 Schema 至少声明：
 
 - `runWhen=browser_succeeded`：只在 succeeded/recovered 后生成报告。
 - `runWhen=browser_terminal`：成功、失败、partial 都生成报告。
+- 录制组合计划的浏览器根节点使用协议保留 ID `browser_recording`；编译器、冻结验证器和调度器必须引用同一个共享常量。
+- `failurePolicy=continue` 仅允许用于上述 `browser_template` 根节点，并且计划中必须存在以它为祖先的 `browser_terminal` 消费节点。
+- 任意声明 `runWhen` 的节点都必须能沿 DAG 依赖追溯到该浏览器根节点；缺失或改名在冻结阶段失败关闭。
 - 浏览器被取消时，默认不启动报告；需要时必须单独配置。
 - 报告失败不改变已经终态的浏览器节点。
 - 整体执行状态根据计划策略计算，不能把报告失败伪装成浏览器失败。
@@ -752,29 +747,29 @@ COMPOSITE_BROWSER_PLAN_ENABLED=false
 
 ### 12.1 新增
 
-| 模块 | 文件/目录 | 职责 |
-| --- | --- | --- |
-| Contract | `browser-execution-contract/src/content-*` | ContentRef/Profile Schema |
-| Contract | `browser-execution-contract/src/ops-report-*` | 报告投影 Schema |
-| Worker | `browser-worker/src/modules/browser/content/` | 提取、净化、评分 |
-| Control Plane | `control-plane/src/modules/execution/content/` | ContentRef 授权与解析 |
-| Control Plane | `plan-runtime/ops-report-projection.service.ts` | 确定性投影 |
-| Browser Template | `templates/template.service.ts` | 模板组合持久化和发布载荷同步 |
-| Frontend | `browser-templates/components/TemplateWorkflowCompositionTab.tsx` | 显式组合 UI |
+| 模块             | 文件/目录                                                         | 职责                         |
+| ---------------- | ----------------------------------------------------------------- | ---------------------------- |
+| Contract         | `browser-execution-contract/src/content-*`                        | ContentRef/Profile Schema    |
+| Contract         | `browser-execution-contract/src/ops-report-*`                     | 报告投影 Schema              |
+| Worker           | `browser-worker/src/modules/browser/content/`                     | 提取、净化、评分             |
+| Control Plane    | `control-plane/src/modules/execution/content/`                    | ContentRef 授权与解析        |
+| Control Plane    | `plan-runtime/ops-report-projection.service.ts`                   | 确定性投影                   |
+| Browser Template | `templates/template.service.ts`                                   | 模板组合持久化和发布载荷同步 |
+| Frontend         | `browser-templates/components/TemplateWorkflowCompositionTab.tsx` | 显式组合 UI                  |
 
 ### 12.2 修改
 
-| 文件 | 修改 |
-| --- | --- |
+| 文件                                                         | 修改                         |
+| ------------------------------------------------------------ | ---------------------------- |
 | `packages/backend-contracts/deterministic-plan/src/index.ts` | 内容解析 transform 或升级 v2 |
-| `browser-recording-runtime.types.ts` | capture profile 与声明输出 |
-| `capability-release-browser-runtime-result.service.ts` | page content materialization |
-| `deterministic-plan-validator.service.ts` | binding 类型与 Schema 校验 |
-| `deterministic-plan-freeze.service.ts` | 冻结内容引用规则 |
-| `deterministic-plan-scheduler.service.ts` | 节点前 ContentRef 解析 |
-| `llm-operation` prompt renderer | untrusted content 隔离 |
-| `TemplateWorkflowCompositionTab.tsx` | 组合计划配置与预览入口 |
-| `TemplatePreview.tsx` | 输出和后处理节点展示 |
+| `browser-recording-runtime.types.ts`                         | capture profile 与声明输出   |
+| `capability-release-browser-runtime-result.service.ts`       | page content materialization |
+| `deterministic-plan-validator.service.ts`                    | binding 类型与 Schema 校验   |
+| `deterministic-plan-freeze.service.ts`                       | 冻结内容引用规则             |
+| `deterministic-plan-scheduler.service.ts`                    | 节点前 ContentRef 解析       |
+| `llm-operation` prompt renderer                              | untrusted content 隔离       |
+| `TemplateWorkflowCompositionTab.tsx`                         | 组合计划配置与预览入口       |
+| `TemplatePreview.tsx`                                        | 输出和后处理节点展示         |
 
 ### 12.3 复杂度门禁
 
@@ -825,93 +820,93 @@ P2 再评估专用内容索引表。
 
 ### 14.1 契约测试
 
-| 编号 | 场景 | 期望 |
-| --- | --- | --- |
-| PC-01 | 合法 CaptureProfile | Schema 通过 |
-| PC-02 | 未知 profile | 发布失败 |
-| PC-03 | ContentRef 缺 resultRefId | Schema 失败 |
-| PC-04 | confidence 越界 | Schema 失败 |
-| PC-05 | Projection 状态未知 | Schema 失败 |
-| PC-06 | Browser V2 无 content | 向后兼容通过 |
-| PC-07 | 非声明 content 输出 | Materializer 拒绝导出 |
-| PC-08 | Schema digest 固定 | 多次构建一致 |
+| 编号  | 场景                      | 期望                  |
+| ----- | ------------------------- | --------------------- |
+| PC-01 | 合法 CaptureProfile       | Schema 通过           |
+| PC-02 | 未知 profile              | 发布失败              |
+| PC-03 | ContentRef 缺 resultRefId | Schema 失败           |
+| PC-04 | confidence 越界           | Schema 失败           |
+| PC-05 | Projection 状态未知       | Schema 失败           |
+| PC-06 | Browser V2 无 content     | 向后兼容通过          |
+| PC-07 | 非声明 content 输出       | Materializer 拒绝导出 |
+| PC-08 | Schema digest 固定        | 多次构建一致          |
 
 ### 14.2 正文提取单元测试
 
 准备版本化 HTML fixtures：新闻、博客、中文文档、英文文档、SPA 控制台、表格页、登录页、空页、超长页、恶意页面。
 
-| 编号 | 场景 | 期望 |
-| --- | --- | --- |
-| EX-01 | 标准 article | Readability 提取标题和正文 |
-| EX-02 | article 失败但有 main | semantic-main fallback |
-| EX-03 | 导航文本很多 | 正文不被导航淹没 |
-| EX-04 | 中文内容 | 段落、标点和语言正确 |
-| EX-05 | 代码文档 | 代码块纯文本保留 |
-| EX-06 | 表格页 audit profile | 表头与单元格保留 |
-| EX-07 | application profile | 不用 Readability 丢弃状态区 |
-| EX-08 | script/style | 主动内容全部移除 |
-| EX-09 | 隐藏 token | 不进入正文 |
-| EX-10 | prompt injection 文本 | 保留文本并打安全标签 |
-| EX-11 | 超长正文 | 按边界截断且标记 truncated |
-| EX-12 | 所有策略低分 | 返回最佳候选和 warning |
+| 编号  | 场景                  | 期望                        |
+| ----- | --------------------- | --------------------------- |
+| EX-01 | 标准 article          | Readability 提取标题和正文  |
+| EX-02 | article 失败但有 main | semantic-main fallback      |
+| EX-03 | 导航文本很多          | 正文不被导航淹没            |
+| EX-04 | 中文内容              | 段落、标点和语言正确        |
+| EX-05 | 代码文档              | 代码块纯文本保留            |
+| EX-06 | 表格页 audit profile  | 表头与单元格保留            |
+| EX-07 | application profile   | 不用 Readability 丢弃状态区 |
+| EX-08 | script/style          | 主动内容全部移除            |
+| EX-09 | 隐藏 token            | 不进入正文                  |
+| EX-10 | prompt injection 文本 | 保留文本并打安全标签        |
+| EX-11 | 超长正文              | 按边界截断且标记 truncated  |
+| EX-12 | 所有策略低分          | 返回最佳候选和 warning      |
 
 Golden fixture 比较使用结构化段落和关键事实，不使用对空白极敏感的整段字符串快照。
 
 ### 14.3 Content Resolver 测试
 
-| 编号 | 场景 | 期望 |
-| --- | --- | --- |
-| CR-01 | 同租户合法读取 | 返回完整正文 |
-| CR-02 | 跨租户读取 | 拒绝 |
-| CR-03 | 不属于当前执行图 | 拒绝 |
-| CR-04 | sha256 不一致 | 拒绝并告警 |
-| CR-05 | ResultRef 不存在 | 目标节点确定性失败 |
-| CR-06 | 超 token 限额 | 截断或拒绝符合策略 |
-| CR-07 | 重复读取 | 内容和 digest 一致 |
-| CR-08 | preview 被误当完整正文 | 测试应捕获 |
+| 编号  | 场景                   | 期望               |
+| ----- | ---------------------- | ------------------ |
+| CR-01 | 同租户合法读取         | 返回完整正文       |
+| CR-02 | 跨租户读取             | 拒绝               |
+| CR-03 | 不属于当前执行图       | 拒绝               |
+| CR-04 | sha256 不一致          | 拒绝并告警         |
+| CR-05 | ResultRef 不存在       | 目标节点确定性失败 |
+| CR-06 | 超 token 限额          | 截断或拒绝符合策略 |
+| CR-07 | 重复读取               | 内容和 digest 一致 |
+| CR-08 | preview 被误当完整正文 | 测试应捕获         |
 
 ### 14.4 Recorder 与 Template 测试
 
-| 编号 | 场景 | 期望 |
-| --- | --- | --- |
-| RC-01 | Recorder 导出 | 始终只导出 Browser Skill |
-| RC-02 | Template 添加 LLM Operation | 导出两个独立节点 |
-| RC-03 | Template 添加 Workflow Skill | 固定 releaseId |
-| RC-04 | Template 删除后处理 | 计划中不残留节点 |
-| RC-05 | 重名输出 | 发布前阻断 |
-| RC-06 | 不存在的 binding | 发布前阻断 |
-| RC-07 | 未 attested operation | 发布前阻断 |
-| RC-08 | 旧录制组合打开 | 单向迁移到模板配置，保存后清除录制来源 |
-| RC-09 | 页面别名匹配多页 | 要求消歧或明确策略 |
-| RC-10 | 预览计划 | 节点和边可视一致 |
+| 编号  | 场景                         | 期望                                   |
+| ----- | ---------------------------- | -------------------------------------- |
+| RC-01 | Recorder 导出                | 始终只导出 Browser Skill               |
+| RC-02 | Template 添加 LLM Operation  | 导出两个独立节点                       |
+| RC-03 | Template 添加 Workflow Skill | 固定 releaseId                         |
+| RC-04 | Template 删除后处理          | 计划中不残留节点                       |
+| RC-05 | 重名输出                     | 发布前阻断                             |
+| RC-06 | 不存在的 binding             | 发布前阻断                             |
+| RC-07 | 未 attested operation        | 发布前阻断                             |
+| RC-08 | 旧录制组合打开               | 单向迁移到模板配置，保存后清除录制来源 |
+| RC-09 | 页面别名匹配多页             | 要求消歧或明确策略                     |
+| RC-10 | 预览计划                     | 节点和边可视一致                       |
 
 ### 14.5 确定性计划测试
 
-| 编号 | 场景 | 期望 |
-| --- | --- | --- |
+| 编号  | 场景                              | 期望                  |
+| ----- | --------------------------------- | --------------------- |
 | DP-01 | ContentRef -> summarize_text.text | 解析并通过输入 Schema |
-| DP-02 | 普通字符串使用 resolve transform | 拒绝 |
-| DP-03 | ContentRef 未 resolve 直接给 LLM | 拒绝 |
-| DP-04 | freeze 后 operation 版本变化 | 仍使用冻结版本 |
-| DP-05 | 只重试 LLM 节点 | 不重跑浏览器 |
-| DP-06 | 浏览器失败 + success-only | LLM 跳过 |
-| DP-07 | 浏览器 failed + terminal report | 报告执行 |
-| DP-08 | 组合图成环 | validator 拒绝 |
+| DP-02 | 普通字符串使用 resolve transform  | 拒绝                  |
+| DP-03 | ContentRef 未 resolve 直接给 LLM  | 拒绝                  |
+| DP-04 | freeze 后 operation 版本变化      | 仍使用冻结版本        |
+| DP-05 | 只重试 LLM 节点                   | 不重跑浏览器          |
+| DP-06 | 浏览器失败 + success-only         | LLM 跳过              |
+| DP-07 | 浏览器 failed + terminal report   | 报告执行              |
+| DP-08 | 组合图成环                        | validator 拒绝        |
 
 ### 14.6 运维投影与报告测试
 
-| 编号 | 场景 | 期望 |
-| --- | --- | --- |
-| OR-01 | 全部步骤成功 | status=succeeded，统计准确 |
+| 编号  | 场景               | 期望                            |
+| ----- | ------------------ | ------------------------------- |
+| OR-01 | 全部步骤成功       | status=succeeded，统计准确      |
 | OR-02 | navigate recovered | status=recovered，记录 incident |
-| OR-03 | 分支未选择 | skipped 不计 failed |
-| OR-04 | 循环三次 | iteration 统计和 evidence 稳定 |
-| OR-05 | 断言失败 | check=fail 并保留 observed |
-| OR-06 | 相同输入重复投影 | digest 一致 |
-| OR-07 | 报告节点重试 | 复用浏览器 ResultRef |
-| OR-08 | 报告失败 | 浏览器节点状态不变 |
-| OR-09 | terminal 模式 | 生成失败报告 |
-| OR-10 | evidence 无权限 | 报告节点失败且不泄露 URL |
+| OR-03 | 分支未选择         | skipped 不计 failed             |
+| OR-04 | 循环三次           | iteration 统计和 evidence 稳定  |
+| OR-05 | 断言失败           | check=fail 并保留 observed      |
+| OR-06 | 相同输入重复投影   | digest 一致                     |
+| OR-07 | 报告节点重试       | 复用浏览器 ResultRef            |
+| OR-08 | 报告失败           | 浏览器节点状态不变              |
+| OR-09 | terminal 模式      | 生成失败报告                    |
+| OR-10 | evidence 无权限    | 报告节点失败且不泄露 URL        |
 
 ### 14.7 安全测试
 
@@ -927,13 +922,13 @@ Golden fixture 比较使用结构化段落和关键事实，不使用对空白�
 
 P1 初始 SLO：
 
-| 指标 | 目标 |
-| --- | --- |
-| 1 MB HTML 正文提取 P95 | <= 500 ms |
-| 正文提取额外内存 P95 | <= 64 MB/page |
-| ContentRef 解析 P95 | <= 150 ms，不含远端对象存储 |
-| 未启用 mainContent 的额外耗时 | <= 20 ms |
-| 组合计划调度额外耗时 P95 | <= 100 ms |
+| 指标                          | 目标                        |
+| ----------------------------- | --------------------------- |
+| 1 MB HTML 正文提取 P95        | <= 500 ms                   |
+| 正文提取额外内存 P95          | <= 64 MB/page               |
+| ContentRef 解析 P95           | <= 150 ms，不含远端对象存储 |
+| 未启用 mainContent 的额外耗时 | <= 20 ms                    |
+| 组合计划调度额外耗时 P95      | <= 100 ms                   |
 
 性能不达标时优先关闭正文提取或降低上限，不能关闭截图/HTML 证据。
 

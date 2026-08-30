@@ -9,6 +9,7 @@ RUN apt-get -o Acquire::Retries=5 update \
     libreoffice-writer \
     libreoffice-calc \
     libreoffice-impress \
+    fonts-noto-cjk \
     curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

@@ -138,6 +138,25 @@ exports.Prisma.UserScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.ImChannelConnectionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  channel: 'channel',
+  enabled: 'enabled',
+  status: 'status',
+  interactionMode: 'interactionMode',
+  providerAccountId: 'providerAccountId',
+  providerOwnerUserId: 'providerOwnerUserId',
+  providerBaseUrl: 'providerBaseUrl',
+  encryptedCredential: 'encryptedCredential',
+  updateCursor: 'updateCursor',
+  lastConnectedAt: 'lastConnectedAt',
+  lastMessageAt: 'lastMessageAt',
+  lastError: 'lastError',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.RoleScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -725,6 +744,90 @@ exports.Prisma.PlanningDecisionScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.TaskPolicySetScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  scopeType: 'scopeType',
+  scopeId: 'scopeId',
+  status: 'status',
+  version: 'version',
+  schemaVersion: 'schemaVersion',
+  policyJson: 'policyJson',
+  digest: 'digest',
+  createdBy: 'createdBy',
+  publishedAt: 'publishedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.TaskCommandAliasScalarFieldEnum = {
+  id: 'id',
+  policySetId: 'policySetId',
+  canonicalCommand: 'canonicalCommand',
+  alias: 'alias',
+  matchType: 'matchType',
+  weight: 'weight',
+  source: 'source',
+  status: 'status',
+  evidenceCount: 'evidenceCount',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.TaskRecipeScalarFieldEnum = {
+  id: 'id',
+  policySetId: 'policySetId',
+  recipeKey: 'recipeKey',
+  version: 'version',
+  name: 'name',
+  requiredCommandsJson: 'requiredCommandsJson',
+  optionalCommandsJson: 'optionalCommandsJson',
+  triggerJson: 'triggerJson',
+  stepsJson: 'stepsJson',
+  bindingsJson: 'bindingsJson',
+  completionClaimsJson: 'completionClaimsJson',
+  riskLevel: 'riskLevel',
+  status: 'status',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.TaskCapabilityBindingScalarFieldEnum = {
+  id: 'id',
+  policySetId: 'policySetId',
+  capabilityRole: 'capabilityRole',
+  capabilityId: 'capabilityId',
+  capabilityVersion: 'capabilityVersion',
+  priority: 'priority',
+  inputMappingJson: 'inputMappingJson',
+  outputMappingJson: 'outputMappingJson',
+  status: 'status',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.TaskPolicyProposalScalarFieldEnum = {
+  id: 'id',
+  policySetId: 'policySetId',
+  proposalType: 'proposalType',
+  scopeType: 'scopeType',
+  scopeId: 'scopeId',
+  status: 'status',
+  patchJson: 'patchJson',
+  evidenceJson: 'evidenceJson',
+  confidence: 'confidence',
+  proposedBy: 'proposedBy',
+  reviewedBy: 'reviewedBy',
+  reviewedAt: 'reviewedAt',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.TaskPolicyAuditLogScalarFieldEnum = {
+  id: 'id',
+  policySetId: 'policySetId',
+  actorUserId: 'actorUserId',
+  action: 'action',
+  detailJson: 'detailJson',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.PromptSnapshotScalarFieldEnum = {
   id: 'id',
   ownerUserId: 'ownerUserId',
@@ -1153,6 +1256,26 @@ exports.UserRoleType = exports.$Enums.UserRoleType = {
   agent: 'agent'
 };
 
+exports.ImChannelType = exports.$Enums.ImChannelType = {
+  wechat: 'wechat'
+};
+
+exports.ImConnectionStatus = exports.$Enums.ImConnectionStatus = {
+  unconfigured: 'unconfigured',
+  provisioning: 'provisioning',
+  disabled: 'disabled',
+  connecting: 'connecting',
+  online: 'online',
+  reauth_required: 'reauth_required',
+  error: 'error'
+};
+
+exports.ImInteractionMode = exports.$Enums.ImInteractionMode = {
+  auto: 'auto',
+  chat: 'chat',
+  task: 'task'
+};
+
 exports.OrganizationType = exports.$Enums.OrganizationType = {
   enterprise: 'enterprise',
   subsidiary: 'subsidiary',
@@ -1174,6 +1297,7 @@ exports.IdentityProviderType = exports.$Enums.IdentityProviderType = {
 
 exports.Prisma.ModelName = {
   User: 'User',
+  ImChannelConnection: 'ImChannelConnection',
   Role: 'Role',
   UserRole: 'UserRole',
   Organization: 'Organization',
@@ -1213,6 +1337,12 @@ exports.Prisma.ModelName = {
   AssistantFeedbackCurrent: 'AssistantFeedbackCurrent',
   RoutingObservation: 'RoutingObservation',
   PlanningDecision: 'PlanningDecision',
+  TaskPolicySet: 'TaskPolicySet',
+  TaskCommandAlias: 'TaskCommandAlias',
+  TaskRecipe: 'TaskRecipe',
+  TaskCapabilityBinding: 'TaskCapabilityBinding',
+  TaskPolicyProposal: 'TaskPolicyProposal',
+  TaskPolicyAuditLog: 'TaskPolicyAuditLog',
   PromptSnapshot: 'PromptSnapshot',
   LlmUsageLedger: 'LlmUsageLedger',
   ExecutionOutbox: 'ExecutionOutbox',

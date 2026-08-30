@@ -12,6 +12,10 @@ import {
 import { BuiltinSkillRegistryService } from '../registry/builtin-skill-registry.service';
 import { BuiltinSkillAuditService } from '../audit/builtin-skill-audit.service';
 import { getCarboneServiceUrl } from '../../../config/service-endpoints';
+import {
+  ARTIFACT_SMOKE_HANDLER_KEYS,
+  verifyBuiltinArtifactSmoke,
+} from './builtin-skill-artifact-smoke-verifier';
 
 @Injectable()
 export class BuiltinSkillProvisioningService {
@@ -176,72 +180,12 @@ export class BuiltinSkillProvisioningService {
           throw new Error('Smoke test execution returned invalid result');
         }
 
-        // For document artifact writer, verify artifact object, sizeBytes > 0, and metadata.sha256
-        if (handlerKey === 'document.markdown-artifact-writer') {
-          const handlerOutput = (smokeResult as any).output || smokeResult;
-          const artifact = handlerOutput.artifact;
-          if (!artifact || typeof artifact.url !== 'string' || !artifact.metadata?.sha256) {
-            throw new Error(
-              'Smoke test execution failed output contract: missing valid artifact.url or metadata.sha256'
-            );
-          }
-          if (typeof artifact.sizeBytes !== 'number' || artifact.sizeBytes <= 0) {
-            throw new Error('Smoke test execution failed output contract: sizeBytes must be > 0');
-          }
-
-          // Download artifact and re-compute SHA-256 from raw bytes.
-          // Resolve relative URLs (e.g. `/renders/xxx.md`) or CARBONE_EXTERNAL_URL
-          // (which may point to host localhost from inside the docker network)
-          // back to CARBONE_SERVICE_URL so the smoke test reaches the actual
-          // carbone-engine container regardless of how artifact.url was built.
-          try {
-            const baseUrl = getCarboneServiceUrl();
-            let downloadUrl = artifact.url;
-            if (
-              !/^https?:\/\//i.test(downloadUrl) ||
-              downloadUrl.includes('localhost') ||
-              downloadUrl.includes('127.0.0.1')
-            ) {
-              const path = downloadUrl.replace(/^https?:\/\/[^/]+/, '');
-              downloadUrl = `${baseUrl.replace(/\/+$/, '')}${path}`;
-            }
-            const dl = await axios.get<ArrayBuffer>(downloadUrl, {
-              responseType: 'arraybuffer',
-              timeout: 15000,
-            });
-            const rawBytes = Buffer.from(dl.data);
-            const computedSha256 = crypto.createHash('sha256').update(rawBytes).digest('hex');
-            if (computedSha256 !== artifact.metadata.sha256) {
-              throw new Error(
-                `Smoke test SHA-256 mismatch: computed ${computedSha256}, handler returned ${artifact.metadata.sha256} (size=${rawBytes.length})`
-              );
-            }
-            if (rawBytes.length !== artifact.sizeBytes) {
-              throw new Error(
-                `Smoke test size mismatch: downloaded ${rawBytes.length} bytes, handler reported ${artifact.sizeBytes}`
-              );
-            }
-          } catch (dlErr: any) {
-            throw new Error(`Smoke test artifact download/verification failed: ${dlErr.message}`);
-          }
-
-          // Idempotency check: run 2nd time with SAME idempotency key and verify identical output
-          const secondResult = await this.executeSmokeHandler(
+        if (ARTIFACT_SMOKE_HANDLER_KEYS.has(handlerKey)) {
+          await verifyBuiltinArtifactSmoke({
             handlerKey,
-            smokeInput,
-            smokeIdempotencyKey
-          );
-          const secondOutput = (secondResult as any)?.output || secondResult;
-          const secondArtifact = secondOutput?.artifact;
-          if (
-            !secondArtifact ||
-            secondArtifact.url !== artifact.url ||
-            secondArtifact.metadata?.sha256 !== artifact.metadata?.sha256
-          ) {
-            throw new Error(
-              'Smoke test idempotency verification failed: second run produced different artifact url or sha256'
-            );
-          }
+            smokeResult,
+            rerun: () => this.executeSmokeHandler(handlerKey, smokeInput, smokeIdempotencyKey),
+          });
         }
 
         if (handlerKey === 'document.content-extractor.pdf') {
@@ -333,41 +277,39 @@ export class BuiltinSkillProvisioningService {
     input: Record<string, unknown>,
     idempotencyKeyOverride?: string
   ): Promise<any> {
-    if (handlerKey === 'document.markdown-artifact-writer') {
-      const domainUrl = getCarboneServiceUrl();
-      const smokeExecutionId = idempotencyKeyOverride || 'smoke-' + Date.now();
-      const response = await axios.post(
-        `${domainUrl}/internal/document/markdown-artifacts/invoke`,
-        {
-          executionId: smokeExecutionId,
-          stepId: 'smoke-step',
-          capabilityKey: 'platform.document.markdown-artifact-writer',
-          definitionVersion: '0.0.0-smoke',
-          idempotencyKey: smokeExecutionId,
-          input,
-        },
-        { timeout: 15000 }
-      );
-      return response.data as BuiltinSkillHandlerResult;
-    }
-
-    const documentExtractorEndpoints: Record<string, { capabilityKey: string; endpoint: string }> =
+    const documentHandlerEndpoints: Record<string, { capabilityKey: string; endpoint: string }> =
       {
+        'document.markdown-artifact-writer': {
+          capabilityKey: 'platform.document.markdown-artifact-writer',
+          endpoint: '/internal/document/markdown-artifacts/invoke',
+        },
         'document.content-extractor.pdf': {
           capabilityKey: 'platform.document.pdf-content-extractor',
           endpoint: '/internal/document/content-extractors/pdf/invoke',
         },
+        'document.pdf.merge': {
+          capabilityKey: 'platform.document.pdf-merge',
+          endpoint: '/internal/document/pdf/merge/invoke',
+        },
+        'document.pdf.split': {
+          capabilityKey: 'platform.document.pdf-split',
+          endpoint: '/internal/document/pdf/split/invoke',
+        },
+        'document.pdf.create': {
+          capabilityKey: 'platform.document.pdf-create',
+          endpoint: '/internal/document/pdf/create/invoke',
+        },
       };
-    const extractor = documentExtractorEndpoints[handlerKey];
-    if (extractor) {
+    const documentHandler = documentHandlerEndpoints[handlerKey];
+    if (documentHandler) {
       const domainUrl = getCarboneServiceUrl();
       const smokeExecutionId = idempotencyKeyOverride || 'smoke-' + Date.now();
       const response = await axios.post(
-        `${domainUrl}${extractor.endpoint}`,
+        `${domainUrl}${documentHandler.endpoint}`,
         {
           executionId: smokeExecutionId,
           stepId: 'smoke-step',
-          capabilityKey: extractor.capabilityKey,
+          capabilityKey: documentHandler.capabilityKey,
           definitionVersion: '0.0.0-smoke',
           idempotencyKey: smokeExecutionId,
           input,

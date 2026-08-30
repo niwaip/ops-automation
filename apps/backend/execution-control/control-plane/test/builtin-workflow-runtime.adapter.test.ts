@@ -27,6 +27,12 @@ describe('BuiltinWorkflowRuntimeAdapter Unit Tests', () => {
     expect(isSupported).toBe(true);
   });
 
+  it('registers the default PDF atomic capability handlers', () => {
+    expect(registry.hasHandler('document.pdf.merge')).toBe(true);
+    expect(registry.hasHandler('document.pdf.split')).toBe(true);
+    expect(registry.hasHandler('document.pdf.create')).toBe(true);
+  });
+
   it('should reject execution if definitionVersion is missing', async () => {
     const result = await adapter.invokeStep({
       requestId: 'req-1',
