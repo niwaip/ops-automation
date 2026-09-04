@@ -1270,6 +1270,25 @@ exports.Prisma.WorkspaceNodeScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.WorkbenchTodoScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  title: 'title',
+  description: 'description',
+  priority: 'priority',
+  status: 'status',
+  dueDate: 'dueDate',
+  completedAt: 'completedAt',
+  sourceType: 'sourceType',
+  sourceRefId: 'sourceRefId',
+  sourceTitle: 'sourceTitle',
+  contextData: 'contextData',
+  boundWorkflowId: 'boundWorkflowId',
+  executionId: 'executionId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -1355,6 +1374,28 @@ exports.WorkspaceNodeType = exports.$Enums.WorkspaceNodeType = {
   folder: 'folder'
 };
 
+exports.TodoPriority = exports.$Enums.TodoPriority = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  urgent: 'urgent'
+};
+
+exports.TodoStatus = exports.$Enums.TodoStatus = {
+  pending: 'pending',
+  in_progress: 'in_progress',
+  completed: 'completed',
+  cancelled: 'cancelled'
+};
+
+exports.TodoSourceType = exports.$Enums.TodoSourceType = {
+  manual: 'manual',
+  chat: 'chat',
+  email: 'email',
+  schedule: 'schedule',
+  im_channel: 'im_channel'
+};
+
 exports.Prisma.ModelName = {
   User: 'User',
   ImChannelConnection: 'ImChannelConnection',
@@ -1432,7 +1473,8 @@ exports.Prisma.ModelName = {
   DeploymentRecord: 'DeploymentRecord',
   ReleaseAuditEvent: 'ReleaseAuditEvent',
   Workspace: 'Workspace',
-  WorkspaceNode: 'WorkspaceNode'
+  WorkspaceNode: 'WorkspaceNode',
+  WorkbenchTodo: 'WorkbenchTodo'
 };
 
 /**

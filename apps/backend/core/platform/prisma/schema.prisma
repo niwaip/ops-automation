@@ -1732,3 +1732,57 @@ model WorkspaceNode {
   @@index([workspaceId, name])
   @@map("workspace_nodes")
 }
+
+enum TodoPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum TodoStatus {
+  pending
+  in_progress
+  completed
+  cancelled
+}
+
+enum TodoSourceType {
+  manual
+  chat
+  email
+  schedule
+  im_channel
+}
+
+model WorkbenchTodo {
+  id              String         @id @default(uuid()) @db.Uuid
+  userId          String         @map("user_id") @db.VarChar(64)
+  title           String         @db.VarChar(500)
+  description     String?        @db.Text
+  priority        TodoPriority   @default(medium)
+  status          TodoStatus     @default(pending)
+  dueDate         DateTime?      @map("due_date") @db.Timestamptz(6)
+  completedAt     DateTime?      @map("completed_at") @db.Timestamptz(6)
+
+  // Source attribution
+  sourceType      TodoSourceType @default(manual) @map("source_type")
+  sourceRefId     String?        @map("source_ref_id") @db.VarChar(255)
+  sourceTitle     String?        @map("source_title") @db.VarChar(255)
+
+  // 5W1H & context JSON: { who, what, when, where, why, how, tags, ... }
+  contextData     Json?          @map("context_data")
+
+  // Automation & Execution linkage
+  boundWorkflowId String?        @map("bound_workflow_id") @db.VarChar(255)
+  executionId     String?        @map("execution_id") @db.VarChar(255)
+
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId, status])
+  @@index([userId, dueDate])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("workbench_todos")
+}
+

@@ -18,6 +18,7 @@ import { SystemBackupModule } from './modules/system-backup/system-backup.module
 import { ImChannelModule } from './modules/im-channel/im-channel.module';
 import { UserConnectionModule } from './modules/user-connection/user-connection.module';
 import { WorkspaceModule } from './modules/workspace/workspace.module';
+import { WorkbenchTodoModule } from './modules/workbench-todo/workbench-todo.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { WorkspaceModule } from './modules/workspace/workspace.module';
     ImChannelModule,
     UserConnectionModule,
     WorkspaceModule,
+    WorkbenchTodoModule,
   ],
   providers: [
     // Global JWT guard - applied to all routes by default

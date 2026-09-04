@@ -779,9 +779,12 @@ export class TemporalWorkflowCodegenService {
     lines.push(
       '36. 【下载型步骤特殊规则】：如果结果主要是文件或文档，请在 `result.summary` 中说明“已生成结果”，并在 `artifacts` 中提供下载链接或路径。'
     );
+    lines.push(
+      '37. 【任务调用兼容】：工作流支持作为自动化任务被任务规划器（如工作台待办 Todo）调用。如果 `params` 传入了 `todoId`，请在日志中输出任务标识 `workflow.logger.info(f"Task invocation for todo: {params.get(\'todoId\')}")`，便于审计跟踪。'
+    );
 
     if (workflowDsl.errorHandling?.type === 'saga') {
-      lines.push('37. 【Saga 模式】：必须维护 compensations 列表，在失败时逆序执行补偿任务。');
+      lines.push('38. 【Saga 模式】：必须维护 compensations 列表，在失败时逆序执行补偿任务。');
     }
 
     lines.push(

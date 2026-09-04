@@ -398,6 +398,11 @@ export type Workspace = $Result.DefaultSelection<Prisma.$WorkspacePayload>
  * 
  */
 export type WorkspaceNode = $Result.DefaultSelection<Prisma.$WorkspaceNodePayload>
+/**
+ * Model WorkbenchTodo
+ * 
+ */
+export type WorkbenchTodo = $Result.DefaultSelection<Prisma.$WorkbenchTodoPayload>
 
 /**
  * Enums
@@ -485,6 +490,37 @@ export const WorkspaceNodeType: {
 
 export type WorkspaceNodeType = (typeof WorkspaceNodeType)[keyof typeof WorkspaceNodeType]
 
+
+export const TodoPriority: {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  urgent: 'urgent'
+};
+
+export type TodoPriority = (typeof TodoPriority)[keyof typeof TodoPriority]
+
+
+export const TodoStatus: {
+  pending: 'pending',
+  in_progress: 'in_progress',
+  completed: 'completed',
+  cancelled: 'cancelled'
+};
+
+export type TodoStatus = (typeof TodoStatus)[keyof typeof TodoStatus]
+
+
+export const TodoSourceType: {
+  manual: 'manual',
+  chat: 'chat',
+  email: 'email',
+  schedule: 'schedule',
+  im_channel: 'im_channel'
+};
+
+export type TodoSourceType = (typeof TodoSourceType)[keyof typeof TodoSourceType]
+
 }
 
 export type UserRoleType = $Enums.UserRoleType
@@ -522,6 +558,18 @@ export const WorkspaceType: typeof $Enums.WorkspaceType
 export type WorkspaceNodeType = $Enums.WorkspaceNodeType
 
 export const WorkspaceNodeType: typeof $Enums.WorkspaceNodeType
+
+export type TodoPriority = $Enums.TodoPriority
+
+export const TodoPriority: typeof $Enums.TodoPriority
+
+export type TodoStatus = $Enums.TodoStatus
+
+export const TodoStatus: typeof $Enums.TodoStatus
+
+export type TodoSourceType = $Enums.TodoSourceType
+
+export const TodoSourceType: typeof $Enums.TodoSourceType
 
 /**
  * ##  Prisma Client ʲˢ
@@ -1415,6 +1463,16 @@ export class PrismaClient<
     * ```
     */
   get workspaceNode(): Prisma.WorkspaceNodeDelegate<ExtArgs>;
+
+  /**
+   * `prisma.workbenchTodo`: Exposes CRUD operations for the **WorkbenchTodo** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more WorkbenchTodos
+    * const workbenchTodos = await prisma.workbenchTodo.findMany()
+    * ```
+    */
+  get workbenchTodo(): Prisma.WorkbenchTodoDelegate<ExtArgs>;
 }
 
 export namespace Prisma {
@@ -1932,7 +1990,8 @@ export namespace Prisma {
     DeploymentRecord: 'DeploymentRecord',
     ReleaseAuditEvent: 'ReleaseAuditEvent',
     Workspace: 'Workspace',
-    WorkspaceNode: 'WorkspaceNode'
+    WorkspaceNode: 'WorkspaceNode',
+    WorkbenchTodo: 'WorkbenchTodo'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -1948,7 +2007,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "user" | "imChannelConnection" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionResultRef" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "userSavedSkill" | "userWorkflowAlias" | "userSavedSkillVersion" | "assistantFeedbackEvent" | "assistantFeedbackCurrent" | "routingObservation" | "planningDecision" | "taskPolicySet" | "taskCommandAlias" | "taskRecipe" | "taskCapabilityBinding" | "taskPolicyProposal" | "taskPolicyAuditLog" | "executionCompletionClaim" | "promptSnapshot" | "llmUsageLedger" | "executionOutbox" | "scheduleFire" | "habitLearningRun" | "userHabitCandidate" | "userHabit" | "userPersonalizationPreference" | "scopedMemory" | "candidateRecipe" | "candidateRecipeEvaluation" | "habitGovernanceAudit" | "builtinSkill" | "builtinSkillRuntimeConfig" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent" | "workspace" | "workspaceNode"
+      modelProps: "user" | "imChannelConnection" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionResultRef" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "userSavedSkill" | "userWorkflowAlias" | "userSavedSkillVersion" | "assistantFeedbackEvent" | "assistantFeedbackCurrent" | "routingObservation" | "planningDecision" | "taskPolicySet" | "taskCommandAlias" | "taskRecipe" | "taskCapabilityBinding" | "taskPolicyProposal" | "taskPolicyAuditLog" | "executionCompletionClaim" | "promptSnapshot" | "llmUsageLedger" | "executionOutbox" | "scheduleFire" | "habitLearningRun" | "userHabitCandidate" | "userHabit" | "userPersonalizationPreference" | "scopedMemory" | "candidateRecipe" | "candidateRecipeEvaluation" | "habitGovernanceAudit" | "builtinSkill" | "builtinSkillRuntimeConfig" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent" | "workspace" | "workspaceNode" | "workbenchTodo"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -7339,6 +7398,76 @@ export namespace Prisma {
           count: {
             args: Prisma.WorkspaceNodeCountArgs<ExtArgs>
             result: $Utils.Optional<WorkspaceNodeCountAggregateOutputType> | number
+          }
+        }
+      }
+      WorkbenchTodo: {
+        payload: Prisma.$WorkbenchTodoPayload<ExtArgs>
+        fields: Prisma.WorkbenchTodoFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.WorkbenchTodoFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.WorkbenchTodoFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload>
+          }
+          findFirst: {
+            args: Prisma.WorkbenchTodoFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.WorkbenchTodoFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload>
+          }
+          findMany: {
+            args: Prisma.WorkbenchTodoFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload>[]
+          }
+          create: {
+            args: Prisma.WorkbenchTodoCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload>
+          }
+          createMany: {
+            args: Prisma.WorkbenchTodoCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.WorkbenchTodoCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload>[]
+          }
+          delete: {
+            args: Prisma.WorkbenchTodoDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload>
+          }
+          update: {
+            args: Prisma.WorkbenchTodoUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload>
+          }
+          deleteMany: {
+            args: Prisma.WorkbenchTodoDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.WorkbenchTodoUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.WorkbenchTodoUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload>
+          }
+          aggregate: {
+            args: Prisma.WorkbenchTodoAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateWorkbenchTodo>
+          }
+          groupBy: {
+            args: Prisma.WorkbenchTodoGroupByArgs<ExtArgs>
+            result: $Utils.Optional<WorkbenchTodoGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.WorkbenchTodoCountArgs<ExtArgs>
+            result: $Utils.Optional<WorkbenchTodoCountAggregateOutputType> | number
           }
         }
       }
@@ -86739,6 +86868,1012 @@ export namespace Prisma {
 
 
   /**
+   * Model WorkbenchTodo
+   */
+
+  export type AggregateWorkbenchTodo = {
+    _count: WorkbenchTodoCountAggregateOutputType | null
+    _min: WorkbenchTodoMinAggregateOutputType | null
+    _max: WorkbenchTodoMaxAggregateOutputType | null
+  }
+
+  export type WorkbenchTodoMinAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    title: string | null
+    description: string | null
+    priority: $Enums.TodoPriority | null
+    status: $Enums.TodoStatus | null
+    dueDate: Date | null
+    completedAt: Date | null
+    sourceType: $Enums.TodoSourceType | null
+    sourceRefId: string | null
+    sourceTitle: string | null
+    boundWorkflowId: string | null
+    executionId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type WorkbenchTodoMaxAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    title: string | null
+    description: string | null
+    priority: $Enums.TodoPriority | null
+    status: $Enums.TodoStatus | null
+    dueDate: Date | null
+    completedAt: Date | null
+    sourceType: $Enums.TodoSourceType | null
+    sourceRefId: string | null
+    sourceTitle: string | null
+    boundWorkflowId: string | null
+    executionId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type WorkbenchTodoCountAggregateOutputType = {
+    id: number
+    userId: number
+    title: number
+    description: number
+    priority: number
+    status: number
+    dueDate: number
+    completedAt: number
+    sourceType: number
+    sourceRefId: number
+    sourceTitle: number
+    contextData: number
+    boundWorkflowId: number
+    executionId: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type WorkbenchTodoMinAggregateInputType = {
+    id?: true
+    userId?: true
+    title?: true
+    description?: true
+    priority?: true
+    status?: true
+    dueDate?: true
+    completedAt?: true
+    sourceType?: true
+    sourceRefId?: true
+    sourceTitle?: true
+    boundWorkflowId?: true
+    executionId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type WorkbenchTodoMaxAggregateInputType = {
+    id?: true
+    userId?: true
+    title?: true
+    description?: true
+    priority?: true
+    status?: true
+    dueDate?: true
+    completedAt?: true
+    sourceType?: true
+    sourceRefId?: true
+    sourceTitle?: true
+    boundWorkflowId?: true
+    executionId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type WorkbenchTodoCountAggregateInputType = {
+    id?: true
+    userId?: true
+    title?: true
+    description?: true
+    priority?: true
+    status?: true
+    dueDate?: true
+    completedAt?: true
+    sourceType?: true
+    sourceRefId?: true
+    sourceTitle?: true
+    contextData?: true
+    boundWorkflowId?: true
+    executionId?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type WorkbenchTodoAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which WorkbenchTodo to aggregate.
+     */
+    where?: WorkbenchTodoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkbenchTodos to fetch.
+     */
+    orderBy?: WorkbenchTodoOrderByWithRelationInput | WorkbenchTodoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: WorkbenchTodoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkbenchTodos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkbenchTodos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned WorkbenchTodos
+    **/
+    _count?: true | WorkbenchTodoCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: WorkbenchTodoMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: WorkbenchTodoMaxAggregateInputType
+  }
+
+  export type GetWorkbenchTodoAggregateType<T extends WorkbenchTodoAggregateArgs> = {
+        [P in keyof T & keyof AggregateWorkbenchTodo]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateWorkbenchTodo[P]>
+      : GetScalarType<T[P], AggregateWorkbenchTodo[P]>
+  }
+
+
+
+
+  export type WorkbenchTodoGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: WorkbenchTodoWhereInput
+    orderBy?: WorkbenchTodoOrderByWithAggregationInput | WorkbenchTodoOrderByWithAggregationInput[]
+    by: WorkbenchTodoScalarFieldEnum[] | WorkbenchTodoScalarFieldEnum
+    having?: WorkbenchTodoScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: WorkbenchTodoCountAggregateInputType | true
+    _min?: WorkbenchTodoMinAggregateInputType
+    _max?: WorkbenchTodoMaxAggregateInputType
+  }
+
+  export type WorkbenchTodoGroupByOutputType = {
+    id: string
+    userId: string
+    title: string
+    description: string | null
+    priority: $Enums.TodoPriority
+    status: $Enums.TodoStatus
+    dueDate: Date | null
+    completedAt: Date | null
+    sourceType: $Enums.TodoSourceType
+    sourceRefId: string | null
+    sourceTitle: string | null
+    contextData: JsonValue | null
+    boundWorkflowId: string | null
+    executionId: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: WorkbenchTodoCountAggregateOutputType | null
+    _min: WorkbenchTodoMinAggregateOutputType | null
+    _max: WorkbenchTodoMaxAggregateOutputType | null
+  }
+
+  type GetWorkbenchTodoGroupByPayload<T extends WorkbenchTodoGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<WorkbenchTodoGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof WorkbenchTodoGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], WorkbenchTodoGroupByOutputType[P]>
+            : GetScalarType<T[P], WorkbenchTodoGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type WorkbenchTodoSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    title?: boolean
+    description?: boolean
+    priority?: boolean
+    status?: boolean
+    dueDate?: boolean
+    completedAt?: boolean
+    sourceType?: boolean
+    sourceRefId?: boolean
+    sourceTitle?: boolean
+    contextData?: boolean
+    boundWorkflowId?: boolean
+    executionId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["workbenchTodo"]>
+
+  export type WorkbenchTodoSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    title?: boolean
+    description?: boolean
+    priority?: boolean
+    status?: boolean
+    dueDate?: boolean
+    completedAt?: boolean
+    sourceType?: boolean
+    sourceRefId?: boolean
+    sourceTitle?: boolean
+    contextData?: boolean
+    boundWorkflowId?: boolean
+    executionId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["workbenchTodo"]>
+
+  export type WorkbenchTodoSelectScalar = {
+    id?: boolean
+    userId?: boolean
+    title?: boolean
+    description?: boolean
+    priority?: boolean
+    status?: boolean
+    dueDate?: boolean
+    completedAt?: boolean
+    sourceType?: boolean
+    sourceRefId?: boolean
+    sourceTitle?: boolean
+    contextData?: boolean
+    boundWorkflowId?: boolean
+    executionId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+
+  export type $WorkbenchTodoPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "WorkbenchTodo"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userId: string
+      title: string
+      description: string | null
+      priority: $Enums.TodoPriority
+      status: $Enums.TodoStatus
+      dueDate: Date | null
+      completedAt: Date | null
+      sourceType: $Enums.TodoSourceType
+      sourceRefId: string | null
+      sourceTitle: string | null
+      contextData: Prisma.JsonValue | null
+      boundWorkflowId: string | null
+      executionId: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["workbenchTodo"]>
+    composites: {}
+  }
+
+  type WorkbenchTodoGetPayload<S extends boolean | null | undefined | WorkbenchTodoDefaultArgs> = $Result.GetResult<Prisma.$WorkbenchTodoPayload, S>
+
+  type WorkbenchTodoCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<WorkbenchTodoFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: WorkbenchTodoCountAggregateInputType | true
+    }
+
+  export interface WorkbenchTodoDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['WorkbenchTodo'], meta: { name: 'WorkbenchTodo' } }
+    /**
+     * Find zero or one WorkbenchTodo that matches the filter.
+     * @param {WorkbenchTodoFindUniqueArgs} args - Arguments to find a WorkbenchTodo
+     * @example
+     * // Get one WorkbenchTodo
+     * const workbenchTodo = await prisma.workbenchTodo.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends WorkbenchTodoFindUniqueArgs>(args: SelectSubset<T, WorkbenchTodoFindUniqueArgs<ExtArgs>>): Prisma__WorkbenchTodoClient<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one WorkbenchTodo that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {WorkbenchTodoFindUniqueOrThrowArgs} args - Arguments to find a WorkbenchTodo
+     * @example
+     * // Get one WorkbenchTodo
+     * const workbenchTodo = await prisma.workbenchTodo.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends WorkbenchTodoFindUniqueOrThrowArgs>(args: SelectSubset<T, WorkbenchTodoFindUniqueOrThrowArgs<ExtArgs>>): Prisma__WorkbenchTodoClient<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first WorkbenchTodo that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchTodoFindFirstArgs} args - Arguments to find a WorkbenchTodo
+     * @example
+     * // Get one WorkbenchTodo
+     * const workbenchTodo = await prisma.workbenchTodo.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends WorkbenchTodoFindFirstArgs>(args?: SelectSubset<T, WorkbenchTodoFindFirstArgs<ExtArgs>>): Prisma__WorkbenchTodoClient<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first WorkbenchTodo that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchTodoFindFirstOrThrowArgs} args - Arguments to find a WorkbenchTodo
+     * @example
+     * // Get one WorkbenchTodo
+     * const workbenchTodo = await prisma.workbenchTodo.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends WorkbenchTodoFindFirstOrThrowArgs>(args?: SelectSubset<T, WorkbenchTodoFindFirstOrThrowArgs<ExtArgs>>): Prisma__WorkbenchTodoClient<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more WorkbenchTodos that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchTodoFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all WorkbenchTodos
+     * const workbenchTodos = await prisma.workbenchTodo.findMany()
+     * 
+     * // Get first 10 WorkbenchTodos
+     * const workbenchTodos = await prisma.workbenchTodo.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const workbenchTodoWithIdOnly = await prisma.workbenchTodo.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends WorkbenchTodoFindManyArgs>(args?: SelectSubset<T, WorkbenchTodoFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a WorkbenchTodo.
+     * @param {WorkbenchTodoCreateArgs} args - Arguments to create a WorkbenchTodo.
+     * @example
+     * // Create one WorkbenchTodo
+     * const WorkbenchTodo = await prisma.workbenchTodo.create({
+     *   data: {
+     *     // ... data to create a WorkbenchTodo
+     *   }
+     * })
+     * 
+     */
+    create<T extends WorkbenchTodoCreateArgs>(args: SelectSubset<T, WorkbenchTodoCreateArgs<ExtArgs>>): Prisma__WorkbenchTodoClient<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many WorkbenchTodos.
+     * @param {WorkbenchTodoCreateManyArgs} args - Arguments to create many WorkbenchTodos.
+     * @example
+     * // Create many WorkbenchTodos
+     * const workbenchTodo = await prisma.workbenchTodo.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends WorkbenchTodoCreateManyArgs>(args?: SelectSubset<T, WorkbenchTodoCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many WorkbenchTodos and returns the data saved in the database.
+     * @param {WorkbenchTodoCreateManyAndReturnArgs} args - Arguments to create many WorkbenchTodos.
+     * @example
+     * // Create many WorkbenchTodos
+     * const workbenchTodo = await prisma.workbenchTodo.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many WorkbenchTodos and only return the `id`
+     * const workbenchTodoWithIdOnly = await prisma.workbenchTodo.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends WorkbenchTodoCreateManyAndReturnArgs>(args?: SelectSubset<T, WorkbenchTodoCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a WorkbenchTodo.
+     * @param {WorkbenchTodoDeleteArgs} args - Arguments to delete one WorkbenchTodo.
+     * @example
+     * // Delete one WorkbenchTodo
+     * const WorkbenchTodo = await prisma.workbenchTodo.delete({
+     *   where: {
+     *     // ... filter to delete one WorkbenchTodo
+     *   }
+     * })
+     * 
+     */
+    delete<T extends WorkbenchTodoDeleteArgs>(args: SelectSubset<T, WorkbenchTodoDeleteArgs<ExtArgs>>): Prisma__WorkbenchTodoClient<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one WorkbenchTodo.
+     * @param {WorkbenchTodoUpdateArgs} args - Arguments to update one WorkbenchTodo.
+     * @example
+     * // Update one WorkbenchTodo
+     * const workbenchTodo = await prisma.workbenchTodo.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends WorkbenchTodoUpdateArgs>(args: SelectSubset<T, WorkbenchTodoUpdateArgs<ExtArgs>>): Prisma__WorkbenchTodoClient<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more WorkbenchTodos.
+     * @param {WorkbenchTodoDeleteManyArgs} args - Arguments to filter WorkbenchTodos to delete.
+     * @example
+     * // Delete a few WorkbenchTodos
+     * const { count } = await prisma.workbenchTodo.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends WorkbenchTodoDeleteManyArgs>(args?: SelectSubset<T, WorkbenchTodoDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more WorkbenchTodos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchTodoUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many WorkbenchTodos
+     * const workbenchTodo = await prisma.workbenchTodo.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends WorkbenchTodoUpdateManyArgs>(args: SelectSubset<T, WorkbenchTodoUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one WorkbenchTodo.
+     * @param {WorkbenchTodoUpsertArgs} args - Arguments to update or create a WorkbenchTodo.
+     * @example
+     * // Update or create a WorkbenchTodo
+     * const workbenchTodo = await prisma.workbenchTodo.upsert({
+     *   create: {
+     *     // ... data to create a WorkbenchTodo
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the WorkbenchTodo we want to update
+     *   }
+     * })
+     */
+    upsert<T extends WorkbenchTodoUpsertArgs>(args: SelectSubset<T, WorkbenchTodoUpsertArgs<ExtArgs>>): Prisma__WorkbenchTodoClient<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of WorkbenchTodos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchTodoCountArgs} args - Arguments to filter WorkbenchTodos to count.
+     * @example
+     * // Count the number of WorkbenchTodos
+     * const count = await prisma.workbenchTodo.count({
+     *   where: {
+     *     // ... the filter for the WorkbenchTodos we want to count
+     *   }
+     * })
+    **/
+    count<T extends WorkbenchTodoCountArgs>(
+      args?: Subset<T, WorkbenchTodoCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], WorkbenchTodoCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a WorkbenchTodo.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchTodoAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends WorkbenchTodoAggregateArgs>(args: Subset<T, WorkbenchTodoAggregateArgs>): Prisma.PrismaPromise<GetWorkbenchTodoAggregateType<T>>
+
+    /**
+     * Group by WorkbenchTodo.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchTodoGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends WorkbenchTodoGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: WorkbenchTodoGroupByArgs['orderBy'] }
+        : { orderBy?: WorkbenchTodoGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, WorkbenchTodoGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetWorkbenchTodoGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the WorkbenchTodo model
+   */
+  readonly fields: WorkbenchTodoFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for WorkbenchTodo.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__WorkbenchTodoClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the WorkbenchTodo model
+   */ 
+  interface WorkbenchTodoFieldRefs {
+    readonly id: FieldRef<"WorkbenchTodo", 'String'>
+    readonly userId: FieldRef<"WorkbenchTodo", 'String'>
+    readonly title: FieldRef<"WorkbenchTodo", 'String'>
+    readonly description: FieldRef<"WorkbenchTodo", 'String'>
+    readonly priority: FieldRef<"WorkbenchTodo", 'TodoPriority'>
+    readonly status: FieldRef<"WorkbenchTodo", 'TodoStatus'>
+    readonly dueDate: FieldRef<"WorkbenchTodo", 'DateTime'>
+    readonly completedAt: FieldRef<"WorkbenchTodo", 'DateTime'>
+    readonly sourceType: FieldRef<"WorkbenchTodo", 'TodoSourceType'>
+    readonly sourceRefId: FieldRef<"WorkbenchTodo", 'String'>
+    readonly sourceTitle: FieldRef<"WorkbenchTodo", 'String'>
+    readonly contextData: FieldRef<"WorkbenchTodo", 'Json'>
+    readonly boundWorkflowId: FieldRef<"WorkbenchTodo", 'String'>
+    readonly executionId: FieldRef<"WorkbenchTodo", 'String'>
+    readonly createdAt: FieldRef<"WorkbenchTodo", 'DateTime'>
+    readonly updatedAt: FieldRef<"WorkbenchTodo", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * WorkbenchTodo findUnique
+   */
+  export type WorkbenchTodoFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchTodo to fetch.
+     */
+    where: WorkbenchTodoWhereUniqueInput
+  }
+
+  /**
+   * WorkbenchTodo findUniqueOrThrow
+   */
+  export type WorkbenchTodoFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchTodo to fetch.
+     */
+    where: WorkbenchTodoWhereUniqueInput
+  }
+
+  /**
+   * WorkbenchTodo findFirst
+   */
+  export type WorkbenchTodoFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchTodo to fetch.
+     */
+    where?: WorkbenchTodoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkbenchTodos to fetch.
+     */
+    orderBy?: WorkbenchTodoOrderByWithRelationInput | WorkbenchTodoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for WorkbenchTodos.
+     */
+    cursor?: WorkbenchTodoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkbenchTodos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkbenchTodos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of WorkbenchTodos.
+     */
+    distinct?: WorkbenchTodoScalarFieldEnum | WorkbenchTodoScalarFieldEnum[]
+  }
+
+  /**
+   * WorkbenchTodo findFirstOrThrow
+   */
+  export type WorkbenchTodoFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchTodo to fetch.
+     */
+    where?: WorkbenchTodoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkbenchTodos to fetch.
+     */
+    orderBy?: WorkbenchTodoOrderByWithRelationInput | WorkbenchTodoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for WorkbenchTodos.
+     */
+    cursor?: WorkbenchTodoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkbenchTodos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkbenchTodos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of WorkbenchTodos.
+     */
+    distinct?: WorkbenchTodoScalarFieldEnum | WorkbenchTodoScalarFieldEnum[]
+  }
+
+  /**
+   * WorkbenchTodo findMany
+   */
+  export type WorkbenchTodoFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchTodos to fetch.
+     */
+    where?: WorkbenchTodoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkbenchTodos to fetch.
+     */
+    orderBy?: WorkbenchTodoOrderByWithRelationInput | WorkbenchTodoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing WorkbenchTodos.
+     */
+    cursor?: WorkbenchTodoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkbenchTodos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkbenchTodos.
+     */
+    skip?: number
+    distinct?: WorkbenchTodoScalarFieldEnum | WorkbenchTodoScalarFieldEnum[]
+  }
+
+  /**
+   * WorkbenchTodo create
+   */
+  export type WorkbenchTodoCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * The data needed to create a WorkbenchTodo.
+     */
+    data: XOR<WorkbenchTodoCreateInput, WorkbenchTodoUncheckedCreateInput>
+  }
+
+  /**
+   * WorkbenchTodo createMany
+   */
+  export type WorkbenchTodoCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many WorkbenchTodos.
+     */
+    data: WorkbenchTodoCreateManyInput | WorkbenchTodoCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * WorkbenchTodo createManyAndReturn
+   */
+  export type WorkbenchTodoCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many WorkbenchTodos.
+     */
+    data: WorkbenchTodoCreateManyInput | WorkbenchTodoCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * WorkbenchTodo update
+   */
+  export type WorkbenchTodoUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * The data needed to update a WorkbenchTodo.
+     */
+    data: XOR<WorkbenchTodoUpdateInput, WorkbenchTodoUncheckedUpdateInput>
+    /**
+     * Choose, which WorkbenchTodo to update.
+     */
+    where: WorkbenchTodoWhereUniqueInput
+  }
+
+  /**
+   * WorkbenchTodo updateMany
+   */
+  export type WorkbenchTodoUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update WorkbenchTodos.
+     */
+    data: XOR<WorkbenchTodoUpdateManyMutationInput, WorkbenchTodoUncheckedUpdateManyInput>
+    /**
+     * Filter which WorkbenchTodos to update
+     */
+    where?: WorkbenchTodoWhereInput
+  }
+
+  /**
+   * WorkbenchTodo upsert
+   */
+  export type WorkbenchTodoUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * The filter to search for the WorkbenchTodo to update in case it exists.
+     */
+    where: WorkbenchTodoWhereUniqueInput
+    /**
+     * In case the WorkbenchTodo found by the `where` argument doesn't exist, create a new WorkbenchTodo with this data.
+     */
+    create: XOR<WorkbenchTodoCreateInput, WorkbenchTodoUncheckedCreateInput>
+    /**
+     * In case the WorkbenchTodo was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<WorkbenchTodoUpdateInput, WorkbenchTodoUncheckedUpdateInput>
+  }
+
+  /**
+   * WorkbenchTodo delete
+   */
+  export type WorkbenchTodoDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * Filter which WorkbenchTodo to delete.
+     */
+    where: WorkbenchTodoWhereUniqueInput
+  }
+
+  /**
+   * WorkbenchTodo deleteMany
+   */
+  export type WorkbenchTodoDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which WorkbenchTodos to delete
+     */
+    where?: WorkbenchTodoWhereInput
+  }
+
+  /**
+   * WorkbenchTodo without action
+   */
+  export type WorkbenchTodoDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -88131,6 +89266,28 @@ export namespace Prisma {
   export type WorkspaceNodeScalarFieldEnum = (typeof WorkspaceNodeScalarFieldEnum)[keyof typeof WorkspaceNodeScalarFieldEnum]
 
 
+  export const WorkbenchTodoScalarFieldEnum: {
+    id: 'id',
+    userId: 'userId',
+    title: 'title',
+    description: 'description',
+    priority: 'priority',
+    status: 'status',
+    dueDate: 'dueDate',
+    completedAt: 'completedAt',
+    sourceType: 'sourceType',
+    sourceRefId: 'sourceRefId',
+    sourceTitle: 'sourceTitle',
+    contextData: 'contextData',
+    boundWorkflowId: 'boundWorkflowId',
+    executionId: 'executionId',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type WorkbenchTodoScalarFieldEnum = (typeof WorkbenchTodoScalarFieldEnum)[keyof typeof WorkbenchTodoScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -88405,6 +89562,48 @@ export namespace Prisma {
    * Reference to a field of type 'WorkspaceNodeType[]'
    */
   export type ListEnumWorkspaceNodeTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WorkspaceNodeType[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'TodoPriority'
+   */
+  export type EnumTodoPriorityFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TodoPriority'>
+    
+
+
+  /**
+   * Reference to a field of type 'TodoPriority[]'
+   */
+  export type ListEnumTodoPriorityFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TodoPriority[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'TodoStatus'
+   */
+  export type EnumTodoStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TodoStatus'>
+    
+
+
+  /**
+   * Reference to a field of type 'TodoStatus[]'
+   */
+  export type ListEnumTodoStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TodoStatus[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'TodoSourceType'
+   */
+  export type EnumTodoSourceTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TodoSourceType'>
+    
+
+
+  /**
+   * Reference to a field of type 'TodoSourceType[]'
+   */
+  export type ListEnumTodoSourceTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TodoSourceType[]'>
     
   /**
    * Deep Input Types
@@ -95471,6 +96670,113 @@ export namespace Prisma {
     createdBy?: StringWithAggregatesFilter<"WorkspaceNode"> | string
     createdAt?: DateTimeWithAggregatesFilter<"WorkspaceNode"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"WorkspaceNode"> | Date | string
+  }
+
+  export type WorkbenchTodoWhereInput = {
+    AND?: WorkbenchTodoWhereInput | WorkbenchTodoWhereInput[]
+    OR?: WorkbenchTodoWhereInput[]
+    NOT?: WorkbenchTodoWhereInput | WorkbenchTodoWhereInput[]
+    id?: UuidFilter<"WorkbenchTodo"> | string
+    userId?: StringFilter<"WorkbenchTodo"> | string
+    title?: StringFilter<"WorkbenchTodo"> | string
+    description?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    priority?: EnumTodoPriorityFilter<"WorkbenchTodo"> | $Enums.TodoPriority
+    status?: EnumTodoStatusFilter<"WorkbenchTodo"> | $Enums.TodoStatus
+    dueDate?: DateTimeNullableFilter<"WorkbenchTodo"> | Date | string | null
+    completedAt?: DateTimeNullableFilter<"WorkbenchTodo"> | Date | string | null
+    sourceType?: EnumTodoSourceTypeFilter<"WorkbenchTodo"> | $Enums.TodoSourceType
+    sourceRefId?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    sourceTitle?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    contextData?: JsonNullableFilter<"WorkbenchTodo">
+    boundWorkflowId?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    executionId?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    createdAt?: DateTimeFilter<"WorkbenchTodo"> | Date | string
+    updatedAt?: DateTimeFilter<"WorkbenchTodo"> | Date | string
+  }
+
+  export type WorkbenchTodoOrderByWithRelationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    description?: SortOrderInput | SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    dueDate?: SortOrderInput | SortOrder
+    completedAt?: SortOrderInput | SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrderInput | SortOrder
+    sourceTitle?: SortOrderInput | SortOrder
+    contextData?: SortOrderInput | SortOrder
+    boundWorkflowId?: SortOrderInput | SortOrder
+    executionId?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkbenchTodoWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: WorkbenchTodoWhereInput | WorkbenchTodoWhereInput[]
+    OR?: WorkbenchTodoWhereInput[]
+    NOT?: WorkbenchTodoWhereInput | WorkbenchTodoWhereInput[]
+    userId?: StringFilter<"WorkbenchTodo"> | string
+    title?: StringFilter<"WorkbenchTodo"> | string
+    description?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    priority?: EnumTodoPriorityFilter<"WorkbenchTodo"> | $Enums.TodoPriority
+    status?: EnumTodoStatusFilter<"WorkbenchTodo"> | $Enums.TodoStatus
+    dueDate?: DateTimeNullableFilter<"WorkbenchTodo"> | Date | string | null
+    completedAt?: DateTimeNullableFilter<"WorkbenchTodo"> | Date | string | null
+    sourceType?: EnumTodoSourceTypeFilter<"WorkbenchTodo"> | $Enums.TodoSourceType
+    sourceRefId?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    sourceTitle?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    contextData?: JsonNullableFilter<"WorkbenchTodo">
+    boundWorkflowId?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    executionId?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    createdAt?: DateTimeFilter<"WorkbenchTodo"> | Date | string
+    updatedAt?: DateTimeFilter<"WorkbenchTodo"> | Date | string
+  }, "id">
+
+  export type WorkbenchTodoOrderByWithAggregationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    description?: SortOrderInput | SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    dueDate?: SortOrderInput | SortOrder
+    completedAt?: SortOrderInput | SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrderInput | SortOrder
+    sourceTitle?: SortOrderInput | SortOrder
+    contextData?: SortOrderInput | SortOrder
+    boundWorkflowId?: SortOrderInput | SortOrder
+    executionId?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: WorkbenchTodoCountOrderByAggregateInput
+    _max?: WorkbenchTodoMaxOrderByAggregateInput
+    _min?: WorkbenchTodoMinOrderByAggregateInput
+  }
+
+  export type WorkbenchTodoScalarWhereWithAggregatesInput = {
+    AND?: WorkbenchTodoScalarWhereWithAggregatesInput | WorkbenchTodoScalarWhereWithAggregatesInput[]
+    OR?: WorkbenchTodoScalarWhereWithAggregatesInput[]
+    NOT?: WorkbenchTodoScalarWhereWithAggregatesInput | WorkbenchTodoScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"WorkbenchTodo"> | string
+    userId?: StringWithAggregatesFilter<"WorkbenchTodo"> | string
+    title?: StringWithAggregatesFilter<"WorkbenchTodo"> | string
+    description?: StringNullableWithAggregatesFilter<"WorkbenchTodo"> | string | null
+    priority?: EnumTodoPriorityWithAggregatesFilter<"WorkbenchTodo"> | $Enums.TodoPriority
+    status?: EnumTodoStatusWithAggregatesFilter<"WorkbenchTodo"> | $Enums.TodoStatus
+    dueDate?: DateTimeNullableWithAggregatesFilter<"WorkbenchTodo"> | Date | string | null
+    completedAt?: DateTimeNullableWithAggregatesFilter<"WorkbenchTodo"> | Date | string | null
+    sourceType?: EnumTodoSourceTypeWithAggregatesFilter<"WorkbenchTodo"> | $Enums.TodoSourceType
+    sourceRefId?: StringNullableWithAggregatesFilter<"WorkbenchTodo"> | string | null
+    sourceTitle?: StringNullableWithAggregatesFilter<"WorkbenchTodo"> | string | null
+    contextData?: JsonNullableWithAggregatesFilter<"WorkbenchTodo">
+    boundWorkflowId?: StringNullableWithAggregatesFilter<"WorkbenchTodo"> | string | null
+    executionId?: StringNullableWithAggregatesFilter<"WorkbenchTodo"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"WorkbenchTodo"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"WorkbenchTodo"> | Date | string
   }
 
   export type UserCreateInput = {
@@ -103662,6 +104968,139 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type WorkbenchTodoCreateInput = {
+    id?: string
+    userId: string
+    title: string
+    description?: string | null
+    priority?: $Enums.TodoPriority
+    status?: $Enums.TodoStatus
+    dueDate?: Date | string | null
+    completedAt?: Date | string | null
+    sourceType?: $Enums.TodoSourceType
+    sourceRefId?: string | null
+    sourceTitle?: string | null
+    contextData?: NullableJsonNullValueInput | InputJsonValue
+    boundWorkflowId?: string | null
+    executionId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkbenchTodoUncheckedCreateInput = {
+    id?: string
+    userId: string
+    title: string
+    description?: string | null
+    priority?: $Enums.TodoPriority
+    status?: $Enums.TodoStatus
+    dueDate?: Date | string | null
+    completedAt?: Date | string | null
+    sourceType?: $Enums.TodoSourceType
+    sourceRefId?: string | null
+    sourceTitle?: string | null
+    contextData?: NullableJsonNullValueInput | InputJsonValue
+    boundWorkflowId?: string | null
+    executionId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkbenchTodoUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    priority?: EnumTodoPriorityFieldUpdateOperationsInput | $Enums.TodoPriority
+    status?: EnumTodoStatusFieldUpdateOperationsInput | $Enums.TodoStatus
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sourceType?: EnumTodoSourceTypeFieldUpdateOperationsInput | $Enums.TodoSourceType
+    sourceRefId?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceTitle?: NullableStringFieldUpdateOperationsInput | string | null
+    contextData?: NullableJsonNullValueInput | InputJsonValue
+    boundWorkflowId?: NullableStringFieldUpdateOperationsInput | string | null
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkbenchTodoUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    priority?: EnumTodoPriorityFieldUpdateOperationsInput | $Enums.TodoPriority
+    status?: EnumTodoStatusFieldUpdateOperationsInput | $Enums.TodoStatus
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sourceType?: EnumTodoSourceTypeFieldUpdateOperationsInput | $Enums.TodoSourceType
+    sourceRefId?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceTitle?: NullableStringFieldUpdateOperationsInput | string | null
+    contextData?: NullableJsonNullValueInput | InputJsonValue
+    boundWorkflowId?: NullableStringFieldUpdateOperationsInput | string | null
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkbenchTodoCreateManyInput = {
+    id?: string
+    userId: string
+    title: string
+    description?: string | null
+    priority?: $Enums.TodoPriority
+    status?: $Enums.TodoStatus
+    dueDate?: Date | string | null
+    completedAt?: Date | string | null
+    sourceType?: $Enums.TodoSourceType
+    sourceRefId?: string | null
+    sourceTitle?: string | null
+    contextData?: NullableJsonNullValueInput | InputJsonValue
+    boundWorkflowId?: string | null
+    executionId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkbenchTodoUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    priority?: EnumTodoPriorityFieldUpdateOperationsInput | $Enums.TodoPriority
+    status?: EnumTodoStatusFieldUpdateOperationsInput | $Enums.TodoStatus
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sourceType?: EnumTodoSourceTypeFieldUpdateOperationsInput | $Enums.TodoSourceType
+    sourceRefId?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceTitle?: NullableStringFieldUpdateOperationsInput | string | null
+    contextData?: NullableJsonNullValueInput | InputJsonValue
+    boundWorkflowId?: NullableStringFieldUpdateOperationsInput | string | null
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkbenchTodoUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    priority?: EnumTodoPriorityFieldUpdateOperationsInput | $Enums.TodoPriority
+    status?: EnumTodoStatusFieldUpdateOperationsInput | $Enums.TodoStatus
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sourceType?: EnumTodoSourceTypeFieldUpdateOperationsInput | $Enums.TodoSourceType
+    sourceRefId?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceTitle?: NullableStringFieldUpdateOperationsInput | string | null
+    contextData?: NullableJsonNullValueInput | InputJsonValue
+    boundWorkflowId?: NullableStringFieldUpdateOperationsInput | string | null
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type UuidFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -108415,6 +109854,112 @@ export namespace Prisma {
     _max?: NestedEnumWorkspaceNodeTypeFilter<$PrismaModel>
   }
 
+  export type EnumTodoPriorityFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoPriority | EnumTodoPriorityFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoPriority[] | ListEnumTodoPriorityFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoPriority[] | ListEnumTodoPriorityFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoPriorityFilter<$PrismaModel> | $Enums.TodoPriority
+  }
+
+  export type EnumTodoStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoStatus | EnumTodoStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoStatus[] | ListEnumTodoStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoStatus[] | ListEnumTodoStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoStatusFilter<$PrismaModel> | $Enums.TodoStatus
+  }
+
+  export type EnumTodoSourceTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoSourceType | EnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoSourceType[] | ListEnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoSourceType[] | ListEnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoSourceTypeFilter<$PrismaModel> | $Enums.TodoSourceType
+  }
+
+  export type WorkbenchTodoCountOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    description?: SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    dueDate?: SortOrder
+    completedAt?: SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrder
+    sourceTitle?: SortOrder
+    contextData?: SortOrder
+    boundWorkflowId?: SortOrder
+    executionId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkbenchTodoMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    description?: SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    dueDate?: SortOrder
+    completedAt?: SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrder
+    sourceTitle?: SortOrder
+    boundWorkflowId?: SortOrder
+    executionId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkbenchTodoMinOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    description?: SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    dueDate?: SortOrder
+    completedAt?: SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrder
+    sourceTitle?: SortOrder
+    boundWorkflowId?: SortOrder
+    executionId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EnumTodoPriorityWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoPriority | EnumTodoPriorityFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoPriority[] | ListEnumTodoPriorityFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoPriority[] | ListEnumTodoPriorityFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoPriorityWithAggregatesFilter<$PrismaModel> | $Enums.TodoPriority
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumTodoPriorityFilter<$PrismaModel>
+    _max?: NestedEnumTodoPriorityFilter<$PrismaModel>
+  }
+
+  export type EnumTodoStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoStatus | EnumTodoStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoStatus[] | ListEnumTodoStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoStatus[] | ListEnumTodoStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoStatusWithAggregatesFilter<$PrismaModel> | $Enums.TodoStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumTodoStatusFilter<$PrismaModel>
+    _max?: NestedEnumTodoStatusFilter<$PrismaModel>
+  }
+
+  export type EnumTodoSourceTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoSourceType | EnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoSourceType[] | ListEnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoSourceType[] | ListEnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoSourceTypeWithAggregatesFilter<$PrismaModel> | $Enums.TodoSourceType
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumTodoSourceTypeFilter<$PrismaModel>
+    _max?: NestedEnumTodoSourceTypeFilter<$PrismaModel>
+  }
+
   export type UserRoleCreateNestedManyWithoutUserInput = {
     create?: XOR<UserRoleCreateWithoutUserInput, UserRoleUncheckedCreateWithoutUserInput> | UserRoleCreateWithoutUserInput[] | UserRoleUncheckedCreateWithoutUserInput[]
     connectOrCreate?: UserRoleCreateOrConnectWithoutUserInput | UserRoleCreateOrConnectWithoutUserInput[]
@@ -111395,6 +112940,18 @@ export namespace Prisma {
     deleteMany?: WorkspaceNodeScalarWhereInput | WorkspaceNodeScalarWhereInput[]
   }
 
+  export type EnumTodoPriorityFieldUpdateOperationsInput = {
+    set?: $Enums.TodoPriority
+  }
+
+  export type EnumTodoStatusFieldUpdateOperationsInput = {
+    set?: $Enums.TodoStatus
+  }
+
+  export type EnumTodoSourceTypeFieldUpdateOperationsInput = {
+    set?: $Enums.TodoSourceType
+  }
+
   export type NestedUuidFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -111954,6 +113511,57 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumWorkspaceNodeTypeFilter<$PrismaModel>
     _max?: NestedEnumWorkspaceNodeTypeFilter<$PrismaModel>
+  }
+
+  export type NestedEnumTodoPriorityFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoPriority | EnumTodoPriorityFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoPriority[] | ListEnumTodoPriorityFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoPriority[] | ListEnumTodoPriorityFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoPriorityFilter<$PrismaModel> | $Enums.TodoPriority
+  }
+
+  export type NestedEnumTodoStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoStatus | EnumTodoStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoStatus[] | ListEnumTodoStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoStatus[] | ListEnumTodoStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoStatusFilter<$PrismaModel> | $Enums.TodoStatus
+  }
+
+  export type NestedEnumTodoSourceTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoSourceType | EnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoSourceType[] | ListEnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoSourceType[] | ListEnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoSourceTypeFilter<$PrismaModel> | $Enums.TodoSourceType
+  }
+
+  export type NestedEnumTodoPriorityWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoPriority | EnumTodoPriorityFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoPriority[] | ListEnumTodoPriorityFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoPriority[] | ListEnumTodoPriorityFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoPriorityWithAggregatesFilter<$PrismaModel> | $Enums.TodoPriority
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumTodoPriorityFilter<$PrismaModel>
+    _max?: NestedEnumTodoPriorityFilter<$PrismaModel>
+  }
+
+  export type NestedEnumTodoStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoStatus | EnumTodoStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoStatus[] | ListEnumTodoStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoStatus[] | ListEnumTodoStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoStatusWithAggregatesFilter<$PrismaModel> | $Enums.TodoStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumTodoStatusFilter<$PrismaModel>
+    _max?: NestedEnumTodoStatusFilter<$PrismaModel>
+  }
+
+  export type NestedEnumTodoSourceTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoSourceType | EnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoSourceType[] | ListEnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoSourceType[] | ListEnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoSourceTypeWithAggregatesFilter<$PrismaModel> | $Enums.TodoSourceType
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumTodoSourceTypeFilter<$PrismaModel>
+    _max?: NestedEnumTodoSourceTypeFilter<$PrismaModel>
   }
 
   export type UserRoleCreateWithoutUserInput = {
@@ -123024,6 +124632,10 @@ export namespace Prisma {
      * @deprecated Use WorkspaceNodeDefaultArgs instead
      */
     export type WorkspaceNodeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = WorkspaceNodeDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use WorkbenchTodoDefaultArgs instead
+     */
+    export type WorkbenchTodoArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = WorkbenchTodoDefaultArgs<ExtArgs>
 
   /**
    * Batch Payload for updateMany & deleteMany & createMany
