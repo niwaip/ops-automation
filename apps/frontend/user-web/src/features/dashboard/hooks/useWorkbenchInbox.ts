@@ -177,6 +177,34 @@ export function useWorkbenchInbox({ message, onTodoCreated }: UseWorkbenchInboxO
     [deleteMutation]
   );
 
+  // 同步未读邮件至收件箱
+  const syncEmailMutation = useMutation(
+    async (limit?: number) => {
+      return await workbenchInboxApi.syncEmail(limit);
+    },
+    {
+      onSuccess: (res) => {
+        void queryClient.invalidateQueries(["workbench-inbox"]);
+        void queryClient.invalidateQueries(["workbench-inbox-summary"]);
+        if (res.success) {
+          void message.success(res.message);
+        } else {
+          void message.warning(res.message);
+        }
+      },
+      onError: (err: any) => {
+        void message.error(`邮件同步失败: ${err?.message || "网络请求异常"}`);
+      },
+    }
+  );
+
+  const handleSyncEmail = useCallback(
+    (limit?: number) => {
+      syncEmailMutation.mutate(limit);
+    },
+    [syncEmailMutation]
+  );
+
   return {
     inboxDraft,
     setInboxDraft,
@@ -185,11 +213,13 @@ export function useWorkbenchInbox({ message, onTodoCreated }: UseWorkbenchInboxO
     inboxItems,
     inboxSummary,
     isLoading: isLoading || ingestMutation.isLoading || convertMutation.isLoading,
+    isSyncingEmail: syncEmailMutation.isLoading,
     clarifyingIds,
     handleQuickIngest,
     handleClarifyItem,
     handleConvertToTodo,
     handleArchiveItem,
     handleDeleteItem,
+    handleSyncEmail,
   };
 }

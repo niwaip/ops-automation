@@ -3,9 +3,11 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   DeleteOutlined,
+  EyeOutlined,
   FolderOutlined,
   InboxOutlined,
   LoadingOutlined,
+  MailOutlined,
   RobotOutlined,
   ThunderboltOutlined,
 } from "@ant-design/icons";
@@ -22,6 +24,7 @@ import {
   Tooltip,
   Typography,
 } from "antd";
+import { useNavigate } from "react-router-dom";
 import type { WorkbenchInboxItem } from "../../../api/workbenchInbox";
 import { formatMonthDayTime } from "../../../shared/utils/dateText";
 import styles from "../pages/DashboardPage.module.css";
@@ -38,9 +41,11 @@ interface InboxListProps {
   };
   inboxDraft: string;
   clarifyingIds: Record<string, boolean>;
+  isSyncingEmail?: boolean;
   onFilterChange: (filter: "all" | "unprocessed" | "clarified" | "converted") => void;
   onDraftChange: (draft: string) => void;
   onQuickIngest: () => void;
+  onSyncEmail?: () => void;
   onClarifyItem: (item: WorkbenchInboxItem) => void;
   onConvertToTodo: (id: string) => void;
   onArchiveItem: (id: string) => void;
@@ -53,14 +58,18 @@ export function InboxList({
   inboxSummary,
   inboxDraft,
   clarifyingIds,
+  isSyncingEmail,
   onFilterChange,
   onDraftChange,
   onQuickIngest,
+  onSyncEmail,
   onClarifyItem,
   onConvertToTodo,
   onArchiveItem,
   onDeleteItem,
 }: InboxListProps) {
+  const navigate = useNavigate();
+
   const renderSourceTag = (sourceType: string) => {
     switch (sourceType) {
       case "chat":
@@ -79,6 +88,18 @@ export function InboxList({
   };
 
   const renderConfidenceTag = (item: WorkbenchInboxItem) => {
+    const extra = (item.extra || item.unifiedPayload?.extra || {}) as Record<string, any>;
+    const isIntervention = Boolean(
+      extra.requiresHumanIntervention || item.title?.includes("需人工介入")
+    );
+    if (isIntervention) {
+      return (
+        <Tag color="error" icon={<EyeOutlined />}>
+          需人工介入
+        </Tag>
+      );
+    }
+
     const score = Math.round(item.confidence * 100);
     if (score >= 75) {
       return <Tag color="success">置信度 {score}% · 要素完整</Tag>;
@@ -97,7 +118,11 @@ export function InboxList({
       case "clarified":
         return <Tag color="cyan">已AI厘清</Tag>;
       case "converted":
-        return <Tag color="default" icon={<CheckCircleOutlined style={{ color: "#52c41a" }} />}>已转待办</Tag>;
+        return (
+          <Tag color="default" icon={<CheckCircleOutlined style={{ color: "#52c41a" }} />}>
+            已转待办
+          </Tag>
+        );
       case "archived":
         return <Tag color="default">已归档</Tag>;
       default:
@@ -107,11 +132,11 @@ export function InboxList({
 
   return (
     <Space direction="vertical" size={16} style={{ width: "100%" }}>
-      {/* 快速收集输入框 */}
+      {/* 快速收集输入框与定时同步按钮 */}
       <div className={styles["workbench-todo-form"]}>
         <Input.TextArea
           value={inboxDraft}
-          placeholder="快速收集灵感、邮件要点或外部任务至收件箱（无需立刻拆解，支持统一格式接入）..."
+          placeholder="快速收集灵感、邮件要点或外部任务至收件箱（支持多行录入，后续统一整理）..."
           onChange={(e) => onDraftChange(e.target.value)}
           autoSize={{ minRows: 2, maxRows: 4 }}
         />
@@ -124,6 +149,16 @@ export function InboxList({
           >
             收集到收件箱
           </Button>
+          {onSyncEmail ? (
+            <Button
+              className={`${styles["workbench-action-button"]} ${styles["workbench-todo-toolbar-button"]} ${styles["is-ai"]}`}
+              icon={isSyncingEmail ? <LoadingOutlined spin /> : <MailOutlined />}
+              onClick={onSyncEmail}
+              loading={isSyncingEmail}
+            >
+              收取邮件
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -160,6 +195,8 @@ export function InboxList({
             const isConverted = item.status === "converted";
             const clarification = item.aiClarification;
             const actionItem = clarification?.actionItem;
+            const extra = (item.extra || item.unifiedPayload?.extra || {}) as Record<string, any>;
+            const isIntervention = Boolean(extra.requiresHumanIntervention || item.title?.includes("需人工介入"));
 
             return (
               <List.Item key={item.id} style={{ padding: "8px 0", border: "none" }}>
@@ -168,7 +205,11 @@ export function InboxList({
                   style={{
                     width: "100%",
                     opacity: isConverted ? 0.72 : 1,
-                    borderLeft: item.confidence < 0.75 ? "3px solid #faad14" : "3px solid #1677ff",
+                    borderLeft: isIntervention
+                      ? "3px solid #ff4d4f"
+                      : item.confidence < 0.75
+                      ? "3px solid #faad14"
+                      : "3px solid #1677ff",
                   }}
                 >
                   <Space direction="vertical" size={10} style={{ width: "100%" }}>
@@ -193,7 +234,7 @@ export function InboxList({
                         <Typography.Paragraph
                           type="secondary"
                           ellipsis={{ rows: 2, expandable: true, symbol: "展开" }}
-                          style={{ margin: "6px 0 0", fontSize: 12 }}
+                          style={{ margin: "6px 0 0", fontSize: 12, whiteSpace: "pre-line" }}
                         >
                           {item.rawContent}
                         </Typography.Paragraph>
@@ -201,6 +242,18 @@ export function InboxList({
 
                       {/* 右侧动作按钮 */}
                       <Space size={4}>
+                        {isIntervention && extra.actionUrl ? (
+                          <Button
+                            size="small"
+                            type="primary"
+                            danger
+                            icon={<EyeOutlined />}
+                            onClick={() => navigate(extra.actionUrl)}
+                          >
+                            前往处理
+                          </Button>
+                        ) : null}
+
                         {!isConverted ? (
                           <>
                             <Tooltip title="使用大模型对内容进行 5W1H 深度厘清并推断优先级/工作流">

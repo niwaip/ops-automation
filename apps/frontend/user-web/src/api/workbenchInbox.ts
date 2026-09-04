@@ -56,6 +56,7 @@ export interface WorkbenchInboxItem {
   aiClarification?: InboxAiClarification | null;
   convertedTodoId?: string | null;
   unifiedPayload?: UnifiedInboxContent | null;
+  extra?: Record<string, any> | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -147,4 +148,30 @@ export const workbenchInboxApi = {
   delete: async (id: string): Promise<{ success: boolean; id: string }> => {
     return await apiClient.delete(`/workbench-inbox/${id}`);
   },
+
+  syncEmail: async (limit?: number): Promise<EmailSyncResult> => {
+    return await apiClient.post(`/workbench-inbox/sync-email${limit ? `?limit=${limit}` : ""}`);
+  },
+
+  getEmailSyncStatus: async (): Promise<EmailSyncStatus> => {
+    return await apiClient.get("/workbench-inbox/sync-email/status");
+  },
 };
+
+export interface EmailSyncResult {
+  success: boolean;
+  message: string;
+  processedCount: number;
+  skippedCount: number;
+  errors: string[];
+  lastSyncedAt: string;
+}
+
+export interface EmailSyncStatus {
+  isConfigured: boolean;
+  emailAddress?: string;
+  providerType?: string;
+  lastSyncedAt?: string;
+  lastSyncStatus?: "success" | "failed" | "idle";
+  lastError?: string;
+}

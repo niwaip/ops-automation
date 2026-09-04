@@ -80,11 +80,13 @@ export function TodoCard({
     inboxItems,
     inboxSummary,
     clarifyingIds,
+    isSyncingEmail,
     handleQuickIngest,
     handleClarifyItem,
     handleConvertToTodo,
     handleArchiveItem,
     handleDeleteItem,
+    handleSyncEmail,
   } = useWorkbenchInbox({
     message,
     onTodoCreated: () => {
@@ -213,9 +215,11 @@ export function TodoCard({
           inboxSummary={inboxSummary}
           inboxDraft={inboxDraft}
           clarifyingIds={clarifyingIds}
+          isSyncingEmail={isSyncingEmail}
           onFilterChange={setInboxFilter}
           onDraftChange={setInboxDraft}
           onQuickIngest={handleQuickIngest}
+          onSyncEmail={handleSyncEmail}
           onClarifyItem={handleClarifyItem}
           onConvertToTodo={(id) => handleConvertToTodo(id)}
           onArchiveItem={handleArchiveItem}
