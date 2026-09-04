@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   CheckCircleOutlined,
   CheckSquareOutlined,
@@ -49,11 +49,26 @@ export function SaveToTodoAction({ message, userQuery }: SaveToTodoActionProps) 
   const plainContent = (message.role === 'assistant' ? parsedContent.answer : message.content).trim();
 
   // 加载可执行工作流列表以供关联
-  const { data: capabilities = [] } = useQuery(
+  const { data: rawCapabilities } = useQuery(
     ['task-runnable-capabilities'],
     () => workbenchTodoApi.discoverCapabilities(),
-    { enabled: modalVisible, staleTime: 60000 }
+    {
+      enabled: modalVisible,
+      staleTime: 60000,
+      retry: false,
+    }
   );
+
+  const safeCapabilities = useMemo(() => {
+    if (Array.isArray(rawCapabilities)) return rawCapabilities;
+    if (rawCapabilities && Array.isArray((rawCapabilities as any).data)) {
+      return (rawCapabilities as any).data;
+    }
+    if (rawCapabilities && Array.isArray((rawCapabilities as any).items)) {
+      return (rawCapabilities as any).items;
+    }
+    return [];
+  }, [rawCapabilities]);
 
   // 触发 5W1H 智能提炼预览
   const extractMutation = useMutation(
@@ -68,17 +83,34 @@ export function SaveToTodoAction({ message, userQuery }: SaveToTodoActionProps) 
     },
     {
       onSuccess: (preview: ExtractedTodoPreview) => {
-        form.setFieldsValue({
-          title: preview.title,
-          description: preview.description,
-          priority: preview.priority,
-          dueDate: preview.dueDate ? dayjs(preview.dueDate) : undefined,
-          boundWorkflowId: preview.suggestedWorkflowId || undefined,
-        });
+        try {
+          const safePreview = preview && typeof preview === 'object' ? preview : ({} as any);
+          let validDueDate: dayjs.Dayjs | undefined;
+          if (safePreview.dueDate) {
+            const parsed = dayjs(safePreview.dueDate);
+            if (parsed.isValid()) {
+              validDueDate = parsed;
+            }
+          }
+
+          form.setFieldsValue({
+            title: safePreview.title || (userQuery ? `处理: ${userQuery.slice(0, 30)}` : '待办事项'),
+            description: safePreview.description || plainContent,
+            priority: safePreview.priority || 'medium',
+            dueDate: validDueDate,
+            boundWorkflowId: safePreview.suggestedWorkflowId || undefined,
+          });
+        } catch {
+          form.setFieldsValue({
+            title: userQuery ? `处理: ${userQuery.slice(0, 30)}` : '待办事项',
+            description: plainContent,
+            priority: 'medium',
+          });
+        }
         setModalVisible(true);
       },
       onError: () => {
-        // 若提取失败，仍打开对话框并填入默认兜底数据
+        // 若提取接口失败，平滑兜底打开弹窗
         form.setFieldsValue({
           title: userQuery ? `处理: ${userQuery.slice(0, 30)}` : '待办事项',
           description: plainContent,
@@ -95,10 +127,10 @@ export function SaveToTodoAction({ message, userQuery }: SaveToTodoActionProps) 
   const createMutation = useMutation(
     async (values: any) => {
       const payload: CreateWorkbenchTodoPayload = {
-        title: values.title.trim(),
+        title: (values.title || '').trim(),
         description: values.description?.trim(),
-        priority: values.priority as TodoPriority,
-        dueDate: values.dueDate ? values.dueDate.toISOString() : undefined,
+        priority: (values.priority as TodoPriority) || 'medium',
+        dueDate: values.dueDate && dayjs.isDayjs(values.dueDate) ? values.dueDate.toISOString() : undefined,
         sourceType: 'chat',
         sourceRefId: message.id,
         sourceTitle: userQuery ? `来自对话: ${userQuery.slice(0, 24)}` : '来自 AI 对话',
@@ -117,6 +149,7 @@ export function SaveToTodoAction({ message, userQuery }: SaveToTodoActionProps) 
         setSavedTodoId(created.id);
         setModalVisible(false);
         void queryClient.invalidateQueries(['workbench-todos']);
+        void queryClient.invalidateQueries(['workbench-todos-summary']);
         toast.success({
           content: (
             <Space>
@@ -153,40 +186,58 @@ export function SaveToTodoAction({ message, userQuery }: SaveToTodoActionProps) 
       const values = await form.validateFields();
       createMutation.mutate(values);
     } catch {
-      // Form validation failed
+      // 表单校验未通过
     }
   };
 
-  if (savedTodoId) {
+  // 仅保留图标，符合操作栏轻量化设计规范
+  const renderTriggerButton = () => {
+    if (savedTodoId) {
+      return (
+        <Tooltip title="已加入工作台待办，点击前往工作台">
+          <Button
+            type="text"
+            size="small"
+            icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+            onClick={() => navigate('/dashboard')}
+            className="chat-action-btn chat-action-btn-icon"
+            aria-label="已加入工作台待办"
+          />
+        </Tooltip>
+      );
+    }
+
+    if (extractMutation.isLoading) {
+      return (
+        <Tooltip title="正在智能分析任务要素...">
+          <Button
+            type="text"
+            size="small"
+            icon={<LoadingOutlined spin />}
+            className="chat-action-btn chat-action-btn-icon"
+            disabled
+          />
+        </Tooltip>
+      );
+    }
+
     return (
-      <Tooltip title="已加入工作台待办，点击前往工作台">
+      <Tooltip title="转为工作台待办 (5W1H 智能识别)">
         <Button
           type="text"
           size="small"
-          icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-          onClick={() => navigate('/dashboard')}
-          style={{ fontSize: 12, color: '#52c41a' }}
-        >
-          已存待办
-        </Button>
+          icon={<CheckSquareOutlined />}
+          onClick={handleOpenModal}
+          className="chat-action-btn chat-action-btn-icon"
+          aria-label="转为待办"
+        />
       </Tooltip>
     );
-  }
+  };
 
   return (
     <>
-      <Tooltip title="将此条 AI 分析/建议提炼并转为工作台待办">
-        <Button
-          type="text"
-          size="small"
-          icon={extractMutation.isLoading ? <LoadingOutlined /> : <CheckSquareOutlined />}
-          onClick={handleOpenModal}
-          disabled={extractMutation.isLoading}
-          style={{ fontSize: 12, color: '#64748b' }}
-        >
-          {extractMutation.isLoading ? '提取中...' : '转为待办'}
-        </Button>
-      </Tooltip>
+      {renderTriggerButton()}
 
       <Modal
         title={
@@ -205,7 +256,7 @@ export function SaveToTodoAction({ message, userQuery }: SaveToTodoActionProps) 
         destroyOnClose
       >
         <Typography.Paragraph type="secondary" style={{ fontSize: 13, marginBottom: 16 }}>
-          系统已自动基于 5W1H 模型提取任务动作、责任要素与截止时间。请核对并确认：
+          系统已基于 5W1H 模型提取任务动作、责任要素与截止时间。请核对并确认：
         </Typography.Paragraph>
 
         <Form form={form} layout="vertical" initialValues={{ priority: 'medium' }}>
@@ -258,8 +309,8 @@ export function SaveToTodoAction({ message, userQuery }: SaveToTodoActionProps) 
             <Select
               allowClear
               placeholder="请选择可执行此任务的自动化工作流（可选）"
-              options={capabilities.map((c) => ({
-                label: `${c.name} (${c.type})`,
+              options={safeCapabilities.map((c: any) => ({
+                label: `${c.name || c.id} (${c.type || 'workflow'})`,
                 value: c.id,
               }))}
             />
