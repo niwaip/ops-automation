@@ -46,10 +46,16 @@ function compileAssertion(
         issue: `验证断言引用了未声明的业务输出字段: ${explicitField}`,
       };
     }
+    let normalizedFieldPath = normalizeRelativePath(assertion.fieldPath);
+    if (normalizedFieldPath === `$.${explicitField}` || normalizedFieldPath === explicitField) {
+      normalizedFieldPath = '$';
+    } else if (normalizedFieldPath.startsWith(`$.${explicitField}.`)) {
+      normalizedFieldPath = `$.${normalizedFieldPath.slice(explicitField.length + 3)}`;
+    }
     compiledAssertion = {
       ...assertion,
       field: explicitField,
-      fieldPath: normalizeRelativePath(assertion.fieldPath),
+      fieldPath: normalizedFieldPath,
       path: undefined,
     };
   } else {

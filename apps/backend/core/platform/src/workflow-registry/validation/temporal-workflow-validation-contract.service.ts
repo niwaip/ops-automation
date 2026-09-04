@@ -254,8 +254,18 @@ export class TemporalWorkflowValidationContractService {
       field && businessData && typeof businessData === 'object' && !Array.isArray(businessData)
         ? (businessData as Record<string, unknown>)[field]
         : undefined;
+    let fieldPath = assertion.fieldPath || '$';
+    if (field) {
+      if (fieldPath === `$.${field}` || fieldPath === field) {
+        fieldPath = '$';
+      } else if (fieldPath.startsWith(`$.${field}.`)) {
+        fieldPath = `$.${fieldPath.slice(field.length + 3)}`;
+      } else if (fieldPath.startsWith(`${field}.`)) {
+        fieldPath = `$.${fieldPath.slice(field.length + 1)}`;
+      }
+    }
     const value = field
-      ? this.extractPath(fieldValue, assertion.fieldPath || '$')
+      ? this.extractPath(fieldValue, fieldPath)
       : this.extractPath(rawResult, assertion.path || '$');
     const operator = normalizeWorkflowValidationAssertionOperator(
       (assertion as { operator?: unknown }).operator
