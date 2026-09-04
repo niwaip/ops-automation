@@ -10,6 +10,7 @@ import { EmailInboxSyncService } from "./workflow/email-inbox-sync.service";
 import { EmailInboxSyncController } from "./workflow/email-inbox-sync.controller";
 import { ExecutionInterventionGateService } from "./interceptor/execution-intervention-gate.service";
 import { ExecutionInterventionGateController } from "./interceptor/execution-intervention-gate.controller";
+import { WorkbenchInboxInternalController } from "./workbench-inbox-internal.controller";
 
 @Module({
   imports: [PrismaModule, WorkbenchTodoModule, UserConnectionModule],
@@ -17,6 +18,7 @@ import { ExecutionInterventionGateController } from "./interceptor/execution-int
     WorkbenchInboxController,
     EmailInboxSyncController,
     ExecutionInterventionGateController,
+    WorkbenchInboxInternalController,
   ],
   providers: [
     WorkbenchInboxService,

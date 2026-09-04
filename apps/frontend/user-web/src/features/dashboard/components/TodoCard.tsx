@@ -1,18 +1,12 @@
-import { useState } from "react";
 import {
   ClockCircleOutlined,
   DeleteOutlined,
-  EyeOutlined,
-  InboxOutlined,
-  OrderedListOutlined,
   PlayCircleOutlined,
   PlusOutlined,
   RobotOutlined,
   ThunderboltOutlined,
 } from "@ant-design/icons";
 import {
-  App,
-  Badge,
   Button,
   Card,
   Checkbox,
@@ -21,7 +15,6 @@ import {
   List,
   Popconfirm,
   Radio,
-  Segmented,
   Space,
   Tag,
   Tooltip,
@@ -31,8 +24,6 @@ import { useNavigate } from "react-router-dom";
 import type { WorkbenchTodoItem } from "@/api/workbenchTodo";
 import { formatMonthDayTime } from "@/shared/utils/dateText";
 import styles from "../pages/DashboardPage.module.css";
-import { useWorkbenchInbox } from "../hooks/useWorkbenchInbox";
-import { InboxList } from "./InboxList";
 
 interface TodoCardProps {
   todoDraft: string;
@@ -69,30 +60,6 @@ export function TodoCard({
   onDeleteTodo,
 }: TodoCardProps) {
   const navigate = useNavigate();
-  const { message } = App.useApp();
-  const [gtdMode, setGtdMode] = useState<"todos" | "inbox">("todos");
-
-  const {
-    inboxDraft,
-    setInboxDraft,
-    inboxFilter,
-    setInboxFilter,
-    inboxItems,
-    inboxSummary,
-    clarifyingIds,
-    isSyncingEmail,
-    handleQuickIngest,
-    handleClarifyItem,
-    handleConvertToTodo,
-    handleArchiveItem,
-    handleDeleteItem,
-    handleSyncEmail,
-  } = useWorkbenchInbox({
-    message,
-    onTodoCreated: () => {
-      setGtdMode("todos");
-    },
-  });
 
   const renderPriorityTag = (priority: string) => {
     switch (priority) {
@@ -143,117 +110,39 @@ export function TodoCard({
 
   return (
     <Card
-      className={styles["workbench-panel"]}
+      className={`${styles["workbench-panel"]} ${styles["workbench-dual-card"]}`}
+      styles={{ body: { display: "flex", flexDirection: "column", flex: 1, minHeight: 0, padding: "16px 20px" } }}
       title={
         <div className={styles["workbench-panel-header"]}>
           <Space size={12} align="center">
             <Typography.Text strong className={styles["workbench-panel-title"]}>
-              {gtdMode === "todos" ? "行动看板 (Actions)" : "GTD 收件箱 (Inbox)"}
+              行动待办看板
             </Typography.Text>
-            <Segmented
-              value={gtdMode}
-              onChange={(val) => setGtdMode(val as "todos" | "inbox")}
-              options={[
-                {
-                  label: (
-                    <Space size={4}>
-                      <OrderedListOutlined />
-                      <span>待办看板</span>
-                      {todoSummary.pending > 0 ? (
-                        <Badge count={todoSummary.pending} size="small" />
-                      ) : null}
-                    </Space>
-                  ),
-                  value: "todos",
-                },
-                {
-                  label: (
-                    <Space size={4}>
-                      <InboxOutlined />
-                      <span>GTD 收件箱</span>
-                      {inboxSummary.unprocessed > 0 ? (
-                        <Badge
-                          count={inboxSummary.unprocessed}
-                          size="small"
-                          style={{ backgroundColor: "#faad14" }}
-                        />
-                      ) : null}
-                    </Space>
-                  ),
-                  value: "inbox",
-                },
-              ]}
-            />
           </Space>
-          <Typography.Text className={styles["workbench-panel-subtitle"]}>
-            {gtdMode === "todos"
-              ? "规划与执行任务，支持 5W1H 智能识别与自动化工作流调用。"
-              : "统一接入邮件、对话与工作流内容；置信度不足时支持 AI 深度整理与转待办。"}
+          <Typography.Text type="secondary" className={styles["workbench-panel-desc"]}>
+            规划与执行个人核心日常任务；支持 5W1H 智能识别与自动化工作流直接调度。
           </Typography.Text>
         </div>
       }
       extra={
-        gtdMode === "todos" ? (
-          <Space>
-            <Tag color="blue">待办 {todoSummary.pending}</Tag>
-            {todoSummary.overdue ? <Tag color="error">逾期 {todoSummary.overdue}</Tag> : null}
-            <Tag color="success">已完成 {todoSummary.completed}</Tag>
-          </Space>
-        ) : (
-          <Space>
-            <Tag color="warning">待整理 {inboxSummary.unprocessed}</Tag>
-            <Tag color="cyan">已厘清 {inboxSummary.clarified}</Tag>
-            <Tag color="default">总计 {inboxSummary.total}</Tag>
-          </Space>
-        )
+        <Space size={6}>
+          <Tag color="blue">待办 {todoSummary.pending}</Tag>
+          {todoSummary.overdue ? <Tag color="error">逾期 {todoSummary.overdue}</Tag> : null}
+          <Tag color="success">已完成 {todoSummary.completed}</Tag>
+        </Space>
       }
     >
-      {gtdMode === "inbox" ? (
-        <InboxList
-          inboxItems={inboxItems}
-          inboxFilter={inboxFilter}
-          inboxSummary={inboxSummary}
-          inboxDraft={inboxDraft}
-          clarifyingIds={clarifyingIds}
-          isSyncingEmail={isSyncingEmail}
-          onFilterChange={setInboxFilter}
-          onDraftChange={setInboxDraft}
-          onQuickIngest={handleQuickIngest}
-          onSyncEmail={handleSyncEmail}
-          onClarifyItem={handleClarifyItem}
-          onConvertToTodo={(id) => handleConvertToTodo(id)}
-          onArchiveItem={handleArchiveItem}
-          onDeleteItem={handleDeleteItem}
-        />
-      ) : (
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
-          {/* 顶部标签切换 */}
-          {onTabChange ? (
-            <Radio.Group
-              value={activeTab}
-              onChange={(e) => onTabChange(e.target.value)}
-              size="small"
-              buttonStyle="solid"
-            >
-              <Radio.Button value="all">全部 ({todoSummary.total})</Radio.Button>
-              <Radio.Button value="today">今日待办</Radio.Button>
-              <Radio.Button value="pending">未完成 ({todoSummary.pending})</Radio.Button>
-              {todoSummary.overdue ? (
-                <Radio.Button value="overdue">逾期 ({todoSummary.overdue})</Radio.Button>
-              ) : null}
-              <Radio.Button value="completed">已完成 ({todoSummary.completed})</Radio.Button>
-            </Radio.Group>
-          ) : null}
-
+      <div className={styles["workbench-card-body-wrapper"]}>
+        <div className={styles["workbench-card-content-stack"]}>
           {/* 待办输入栏 */}
           <div className={styles["workbench-todo-form"]}>
             <Input.TextArea
               value={todoDraft}
               placeholder={
-                "输入一段任务描述，支持回车批量解析\n例如：\n1. 今天 17:00 前处理故障接管单\n2. 审核数据库备份工作流\n3. 导出月度运维报表"
+                "输入待办任务描述，支持回车批量解析：\n1. 今天 17:00 前处理异常接管单\n2. 审核邮件归纳与自动化执行记录\n3. 导出月度运维报表"
               }
               onChange={(event) => onDraftChange(event.target.value)}
-              autoSize={{ minRows: 2, maxRows: 5 }}
+              autoSize={{ minRows: 2, maxRows: 4 }}
             />
             <div className={styles["workbench-todo-form-actions"]}>
               <Button
@@ -262,7 +151,7 @@ export function TodoCard({
                 icon={<PlusOutlined />}
                 onClick={onCreateTodo}
               >
-                添加
+                添加任务
               </Button>
               <Button
                 className={`${styles["workbench-action-button"]} ${styles["workbench-todo-toolbar-button"]} ${styles["is-ai"]}`}
@@ -294,158 +183,130 @@ export function TodoCard({
             </div>
           </div>
 
-          {/* 待办列表 */}
-          {todos.length === 0 ? (
-            <Empty description="暂无匹配的待办任务，可在上方添加，或在「GTD 收件箱」中将外部条目转为待办" />
-          ) : (
-            <List
-              dataSource={todos}
-              renderItem={(item) => {
-                const isCompleted = item.status === "completed";
-                return (
-                  <List.Item key={item.id} style={{ padding: "8px 0", border: "none" }}>
-                    <div
-                      className={styles["workbench-todo-item"]}
-                      style={{
-                        width: "100%",
-                        borderLeft:
-                          item.priority === "urgent"
-                            ? "3px solid #ff4d4f"
-                            : item.priority === "high"
-                            ? "3px solid #fa8c16"
-                            : undefined,
-                      }}
+          {/* 状态标签切换 */}
+          {onTabChange ? (
+            <Radio.Group
+              value={activeTab}
+              onChange={(e) => onTabChange(e.target.value)}
+              size="small"
+              buttonStyle="solid"
+            >
+              <Radio.Button value="all">全部 ({todoSummary.total})</Radio.Button>
+              <Radio.Button value="today">今日待办</Radio.Button>
+              <Radio.Button value="pending">未完成 ({todoSummary.pending})</Radio.Button>
+              {todoSummary.overdue ? (
+                <Radio.Button value="overdue">逾期 ({todoSummary.overdue})</Radio.Button>
+              ) : null}
+              <Radio.Button value="completed">已完成 ({todoSummary.completed})</Radio.Button>
+            </Radio.Group>
+          ) : null}
+
+          {/* 待办列表 (可滚动区域) */}
+          <div className={styles["workbench-card-scroll-area"]}>
+            {todos.length === 0 ? (
+              <Empty description="暂无匹配待办，可在上方输入添加，或在左侧「GTD 收集箱」将邮件或便签一键转为待办" />
+            ) : (
+              <List
+            dataSource={todos}
+            renderItem={(item) => {
+              const isCompleted = item.status === "completed";
+              return (
+                <List.Item key={item.id} style={{ padding: "8px 0", border: "none" }}>
+                  <div
+                    className={styles["workbench-todo-item"]}
+                    style={{
+                      width: "100%",
+                      borderLeft:
+                        item.priority === "urgent"
+                          ? "3px solid #ff4d4f"
+                          : item.priority === "high"
+                          ? "3px solid #fa8c16"
+                          : undefined,
+                    }}
+                  >
+                    <Space
+                      direction="vertical"
+                      size={6}
+                      style={{ width: "100%" }}
                     >
-                      <Space
-                        direction="vertical"
-                        size={8}
-                        style={{ width: "100%", opacity: isCompleted ? 0.72 : 1 }}
-                      >
-                        <Space
-                          className={styles["workbench-todo-row"]}
-                          style={{
-                            width: "100%",
-                            justifyContent: "space-between",
-                            alignItems: "flex-start",
-                          }}
+                      <div className={styles["workbench-todo-item-row"]}>
+                        <Checkbox
+                          checked={isCompleted}
+                          onChange={(e) => onToggleTodo(item.id, e.target.checked)}
+                          className={styles["workbench-todo-checkbox"]}
                         >
-                          <Space style={{ alignItems: "flex-start" }}>
-                            <Checkbox
-                              checked={isCompleted}
-                              onChange={(event) => onToggleTodo(item.id, event.target.checked)}
-                              style={{ marginTop: 2 }}
-                            />
-                            <div>
-                              <Space wrap size={6}>
-                                {renderPriorityTag(item.priority)}
-                                {renderSourceTag(item.sourceType)}
-                                <Typography.Text
-                                  delete={isCompleted}
-                                  strong={item.priority === "high" || item.priority === "urgent"}
-                                >
-                                  {item.title}
-                                </Typography.Text>
-                              </Space>
-                              {item.description ? (
-                                <Typography.Paragraph
-                                  type="secondary"
-                                  ellipsis={{ rows: 2, expandable: true, symbol: "展开" }}
-                                  style={{ margin: "4px 0 0", fontSize: 12 }}
-                                >
-                                  {item.description}
-                                </Typography.Paragraph>
-                              ) : null}
-                            </div>
-                          </Space>
+                          <Typography.Text
+                            delete={isCompleted}
+                            strong={!isCompleted}
+                            className={styles["workbench-todo-title"]}
+                          >
+                            {item.title}
+                          </Typography.Text>
+                        </Checkbox>
 
-                          {/* 右侧动作按钮组 */}
-                          <Space size={4}>
-                            {item.boundWorkflowId && !isCompleted ? (
-                              <Tooltip title="触发绑定工作流一键执行">
-                                <Button
-                                  size="small"
-                                  type="primary"
-                                  icon={<ThunderboltOutlined />}
-                                  onClick={() => onExecuteTodo && onExecuteTodo(item.id)}
-                                >
-                                  执行
-                                </Button>
-                              </Tooltip>
-                            ) : null}
-
-                            {item.executionId ? (
-                              <Tooltip title="查看对应自动化执行详情">
-                                <Button
-                                  size="small"
-                                  icon={<EyeOutlined />}
-                                  onClick={() => navigate(`/executions/${item.executionId}`)}
-                                >
-                                  执行详情
-                                </Button>
-                              </Tooltip>
-                            ) : null}
-
-                            <Button
-                              size="small"
-                              className={styles["workbench-action-button"]}
-                              icon={<RobotOutlined />}
-                              onClick={() =>
-                                onLaunchAiAssistant(
-                                  [
-                                    "请帮我处理这个待办任务。",
-                                    `任务：${item.title}`,
-                                    item.description ? `说明：${item.description}` : "",
-                                    "请输出：任务拆解步骤、自动化执行建议、所需参数或通知草稿。",
-                                  ]
-                                    .filter(Boolean)
-                                    .join("\n")
-                                )
-                              }
-                            >
-                              AI 处理
-                            </Button>
-
-                            {onDeleteTodo ? (
-                              <Popconfirm
-                                title="确定删除此待办吗？"
-                                onConfirm={() => onDeleteTodo(item.id)}
-                                okText="删除"
-                                cancelText="取消"
+                        <Space size={6} className={styles["workbench-todo-actions"]}>
+                          {item.boundWorkflowId ? (
+                            <Tooltip title="一键执行关联工作流">
+                              <Button
+                                size="small"
+                                type="text"
+                                icon={<ThunderboltOutlined style={{ color: "#722ed1" }} />}
+                                onClick={() =>
+                                  onExecuteTodo
+                                    ? onExecuteTodo(item.id)
+                                    : navigate(`/executions/new?workflowId=${item.boundWorkflowId}`)
+                                }
                               >
-                                <Button
-                                  size="small"
-                                  type="text"
-                                  danger
-                                  icon={<DeleteOutlined />}
-                                />
-                              </Popconfirm>
-                            ) : null}
-                          </Space>
-                        </Space>
+                                执行工作流
+                              </Button>
+                            </Tooltip>
+                          ) : null}
 
-                        {/* 底部元数据 */}
-                        <div className={styles["workbench-todo-meta"]}>
-                          <Space size={8} wrap>
-                            {renderDueDateTag(item.dueDate, isCompleted)}
-                            <Tag bordered={false}>
-                              更新于 {formatMonthDayTime(item.updatedAt)}
-                            </Tag>
-                            {item.sourceTitle ? (
-                              <Tag bordered={false}>
-                                来源: {item.sourceTitle}
-                              </Tag>
-                            ) : null}
-                          </Space>
-                        </div>
-                      </Space>
-                    </div>
-                  </List.Item>
-                );
-              }}
-            />
-          )}
-        </Space>
-      )}
+                          {onDeleteTodo ? (
+                            <Popconfirm
+                              title="确定删除此待办？"
+                              onConfirm={() => onDeleteTodo(item.id)}
+                              okText="删除"
+                              cancelText="取消"
+                            >
+                              <Button
+                                size="small"
+                                type="text"
+                                danger
+                                icon={<DeleteOutlined />}
+                              />
+                            </Popconfirm>
+                          ) : null}
+                        </Space>
+                      </div>
+
+                      {item.description ? (
+                        <Typography.Paragraph
+                          type="secondary"
+                          style={{ margin: "2px 0 4px 24px", fontSize: 13 }}
+                          ellipsis={{ rows: 2 }}
+                        >
+                          {item.description}
+                        </Typography.Paragraph>
+                      ) : null}
+
+                      <div style={{ marginLeft: 24 }}>
+                        <Space size={[6, 6]} wrap>
+                          {renderPriorityTag(item.priority)}
+                          {renderSourceTag(item.sourceType)}
+                          {renderDueDateTag(item.dueDate, isCompleted)}
+                        </Space>
+                      </div>
+                    </Space>
+                  </div>
+                </List.Item>
+              );
+            }}
+          />
+        )}
+      </div>
+        </div>
+      </div>
     </Card>
   );
 }

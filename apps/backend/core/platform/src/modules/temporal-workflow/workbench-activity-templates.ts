@@ -11,6 +11,7 @@ export const FIXED_EXECUTION_INTERVENTION_GATE_ACTIVITY_FN = 'executionIntervent
 export const FIXED_EMAIL_FETCH_UNREAD_ACTIVITY_CODE = `import os
 import json
 import urllib.request
+import urllib.error
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 from typing import Dict, Any
@@ -25,43 +26,51 @@ async def emailFetchUnread(input_data: Dict[str, Any]) -> Dict[str, Any]:
     max_count = int(input_data.get("maxCount") or 20)
     user_id = str(input_data.get("userId") or "").strip()
 
-    req_url = f"{platform_url}/api/workbench-inbox/sync-email/status"
-    emails = []
+    if not user_id:
+        raise ApplicationError("缺少必要的用户上下文 (userId)，无法执行邮件拉取", non_retryable=True)
+
+    req_url = f"{platform_url}/internal/workbench-inbox/emails/fetch-unread"
+    payload = json.dumps({"userId": user_id, "maxCount": max_count}).encode("utf-8")
+    req = urllib.request.Request(
+        req_url,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "X-User-Id": user_id,
+            "User-Agent": "TemporalWorker/1.0"
+        },
+        method="POST"
+    )
+
     try:
-        req = urllib.request.Request(req_url, headers={"User-Agent": "TemporalWorker/1.0"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=20) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            if isinstance(data.get("emails"), list):
-                emails = data["emails"]
-            elif isinstance(data.get("items"), list):
-                emails = data["items"]
-    except Exception as e:
-        activity.logger.warning(f"拉取邮件状态或未读列表异常: {str(e)}")
-
-    if not emails:
-        emails = [
-            {
-                "id": "mail_sample_001",
-                "subject": "系统未读任务通知",
-                "from": "notification@ops.internal",
-                "body": "这是一条待沉淀入 GTD 收件箱的未读邮件内容",
-                "snippet": "待沉淀入 GTD 收件箱",
-                "receivedAt": "2026-09-04T12:00:00Z"
+            emails = data.get("emails", [])
+            activity.logger.info(f"成功拉取到 {len(emails)} 封未读邮件")
+            return {
+                "success": True,
+                "emails": emails,
+                "count": len(emails),
+                "maxCount": max_count,
             }
-        ]
-
-    chosen_emails = emails[:max_count]
-    return {
-        "success": True,
-        "emails": chosen_emails,
-        "count": len(chosen_emails),
-        "maxCount": max_count,
-    }
+    except urllib.error.HTTPError as e:
+        err_msg = str(e)
+        try:
+            body = json.loads(e.read().decode("utf-8"))
+            err_msg = body.get("message") or err_msg
+        except Exception:
+            pass
+        activity.logger.error(f"拉取未读邮件接口异常: {err_msg}")
+        raise ApplicationError(f"未读邮件拉取失败: {err_msg}", non_retryable=True)
+    except Exception as e:
+        activity.logger.error(f"拉取未读邮件网络或系统异常: {str(e)}")
+        raise ApplicationError(f"未读邮件拉取异常: {str(e)}", non_retryable=True)
 `;
 
 export const FIXED_INBOX_COLLECT_ACTIVITY_CODE = `import os
 import json
 import urllib.request
+import urllib.error
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 from typing import Dict, Any
@@ -72,6 +81,10 @@ async def inboxCollect(input_data: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(input_data, dict):
         input_data = {}
 
+    user_id = str(input_data.get("userId") or "").strip()
+    if not user_id:
+        raise ApplicationError("缺少必要的用户上下文 (userId)，无法沉淀数据入库", non_retryable=True)
+
     raw_items = input_data.get("items") or input_data.get("emails") or []
     if isinstance(raw_items, str):
         try:
@@ -81,119 +94,58 @@ async def inboxCollect(input_data: Dict[str, Any]) -> Dict[str, Any]:
 
     platform_url = os.getenv("PLATFORM_INTERNAL_URL", "http://ops-platform:3001")
 
-    # 1. 批量处理邮件或条目列表
-    if isinstance(raw_items, list) and len(raw_items) > 0:
-        collected_items = []
-        message_ids = []
-        for idx, itm in enumerate(raw_items):
-            if not isinstance(itm, dict):
-                continue
-            t = str(itm.get("title") or itm.get("subject") or f"未命名邮件 {idx + 1}").strip()
-            c = str(itm.get("rawContent") or itm.get("body") or itm.get("snippet") or t).strip()
-            s_type = str(itm.get("sourceType") or input_data.get("sourceType") or "EMAIL").upper()
-            s_sender = str(itm.get("sourceSender") or itm.get("from") or "").strip()
-            s_ref = str(itm.get("sourceRefId") or itm.get("id") or f"msg_{idx + 1}").strip()
+    payload = json.dumps({
+        "userId": user_id,
+        "items": raw_items,
+        "sourceType": input_data.get("sourceType") or "EMAIL",
+        "title": input_data.get("title"),
+        "rawContent": input_data.get("rawContent"),
+        "sourceSender": input_data.get("sourceSender"),
+        "sourceRefId": input_data.get("sourceRefId"),
+        "autoDeduplicate": bool(input_data.get("autoDeduplicate", True)),
+    }).encode("utf-8")
 
-            payload = json.dumps({
-                "title": t,
-                "rawContent": c,
-                "sourceType": s_type,
-                "sourceSender": s_sender or None,
-                "sourceRefId": s_ref or None,
-            }).encode("utf-8")
+    req = urllib.request.Request(
+        f"{platform_url}/internal/workbench-inbox/collect",
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "X-User-Id": user_id,
+            "User-Agent": "TemporalWorker/1.0"
+        },
+        method="POST"
+    )
 
-            res_item = {
-                "id": f"inbox_{s_ref}",
-                "title": t,
-                "rawContent": c,
-                "sourceType": s_type,
-                "sourceSender": s_sender,
-                "sourceRefId": s_ref,
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            items = data.get("items") or []
+            message_ids = data.get("messageIds") or []
+            activity.logger.info(f"成功将 {len(items)} 条记录真实沉淀至 GTD 收件箱")
+            return {
+                "success": True,
+                "items": items,
+                "messageIds": message_ids,
+                "count": len(items),
             }
-
-            try:
-                req = urllib.request.Request(
-                    f"{platform_url}/api/workbench-inbox",
-                    data=payload,
-                    headers={"Content-Type": "application/json", "User-Agent": "TemporalWorker/1.0"},
-                    method="POST"
-                )
-                with urllib.request.urlopen(req, timeout=10) as resp:
-                    resp_data = json.loads(resp.read().decode("utf-8"))
-                    if isinstance(resp_data, dict) and resp_data.get("id"):
-                        res_item["id"] = resp_data["id"]
-            except Exception as e:
-                activity.logger.warning(f"写入收件箱服务端接口异常，采用本地收录: {str(e)}")
-
-            collected_items.append(res_item)
-            message_ids.append(s_ref)
-
-        activity.logger.info(f"成功沉淀 {len(collected_items)} 条记录至 GTD 收件箱")
-        return {
-            "success": True,
-            "items": collected_items,
-            "messageIds": message_ids,
-            "count": len(collected_items),
-        }
-
-    # 2. 单条条目处理
-    title = str(input_data.get("title") or "").strip()
-    if title:
-        raw_content = str(input_data.get("rawContent") or "").strip()
-        source_type = str(input_data.get("sourceType") or "SYSTEM").upper()
-        source_sender = str(input_data.get("sourceSender") or "").strip()
-        source_ref_id = str(input_data.get("sourceRefId") or "single_item").strip()
-
-        res_item = {
-            "id": f"inbox_{source_ref_id}",
-            "title": title,
-            "rawContent": raw_content,
-            "sourceType": source_type,
-            "sourceSender": source_sender,
-            "sourceRefId": source_ref_id,
-        }
-
+    except urllib.error.HTTPError as e:
+        err_msg = str(e)
         try:
-            payload = json.dumps({
-                "title": title,
-                "rawContent": raw_content,
-                "sourceType": source_type,
-                "sourceSender": source_sender or None,
-                "sourceRefId": source_ref_id or None,
-            }).encode("utf-8")
-            req = urllib.request.Request(
-                f"{platform_url}/api/workbench-inbox",
-                data=payload,
-                headers={"Content-Type": "application/json", "User-Agent": "TemporalWorker/1.0"},
-                method="POST"
-            )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                resp_data = json.loads(resp.read().decode("utf-8"))
-                if isinstance(resp_data, dict) and resp_data.get("id"):
-                    res_item["id"] = resp_data["id"]
-        except Exception as e:
-            activity.logger.warning(f"写入收件箱服务端接口异常，采用本地收录: {str(e)}")
-
-        return {
-            "success": True,
-            "item": res_item,
-            "items": [res_item],
-            "messageIds": [source_ref_id],
-            "count": 1,
-        }
-
-    # 3. 兜底空列表（无未读邮件或验证场景下安全返回）
-    return {
-        "success": True,
-        "items": [],
-        "messageIds": [],
-        "count": 0,
-        "message": "无待沉淀条目",
-    }
+            body = json.loads(e.read().decode("utf-8"))
+            err_msg = body.get("message") or err_msg
+        except Exception:
+            pass
+        activity.logger.error(f"写入收件箱失败: {err_msg}")
+        raise ApplicationError(f"写入收件箱失败: {err_msg}", non_retryable=True)
+    except Exception as e:
+        activity.logger.error(f"写入收件箱异常: {str(e)}")
+        raise ApplicationError(f"写入收件箱异常: {str(e)}", non_retryable=True)
 `;
 
 export const FIXED_EMAIL_MARK_READ_ACTIVITY_CODE = `import os
 import json
+import urllib.request
+import urllib.error
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 from typing import Dict, Any
@@ -204,17 +156,63 @@ async def emailMarkRead(input_data: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(input_data, dict):
         input_data = {}
 
+    user_id = str(input_data.get("userId") or "").strip()
+    if not user_id:
+        raise ApplicationError("缺少必要的用户上下文 (userId)，无法执行邮件回写已读", non_retryable=True)
+
     message_ids = input_data.get("messageIds") or []
     if isinstance(message_ids, str):
         message_ids = [message_ids]
 
-    activity.logger.info(f"成功将 {len(message_ids)} 封邮件回写标为已读")
-    return {
-        "success": True,
-        "markedCount": len(message_ids),
-        "markedReadCount": len(message_ids),
+    if not message_ids:
+        activity.logger.info("无待标记已读邮件，跳过回写")
+        return {
+            "success": True,
+            "markedCount": 0,
+            "markedReadCount": 0,
+            "messageIds": [],
+        }
+
+    platform_url = os.getenv("PLATFORM_INTERNAL_URL", "http://ops-platform:3001")
+    payload = json.dumps({
+        "userId": user_id,
         "messageIds": message_ids,
-    }
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        f"{platform_url}/internal/workbench-inbox/emails/mark-read",
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "X-User-Id": user_id,
+            "User-Agent": "TemporalWorker/1.0"
+        },
+        method="POST"
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            marked_count = int(data.get("markedCount", len(message_ids)))
+            activity.logger.info(f"成功将 {marked_count} 封邮件回写标为已读")
+            return {
+                "success": True,
+                "markedCount": marked_count,
+                "markedReadCount": marked_count,
+                "messageIds": data.get("messageIds", message_ids),
+            }
+    except urllib.error.HTTPError as e:
+        err_msg = str(e)
+        try:
+            body = json.loads(e.read().decode("utf-8"))
+            err_msg = body.get("message") or err_msg
+        except Exception:
+            pass
+        activity.logger.error(f"标记邮件已读失败: {err_msg}")
+        raise ApplicationError(f"标记邮件已读失败: {err_msg}", non_retryable=True)
+    except Exception as e:
+        activity.logger.error(f"标记邮件已读异常: {str(e)}")
+        raise ApplicationError(f"标记邮件已读异常: {str(e)}", non_retryable=True)
 `;
 
 export const FIXED_TODO_SYNC_EXTERNAL_ACTIVITY_CODE = `import os

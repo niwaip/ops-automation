@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import axios from 'axios';
 import * as net from 'net';
 import * as tls from 'tls';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -8,6 +9,34 @@ import { SaveUserEmailDto, TestUserEmailDto } from './user-email-connection.dto'
 
 const KIND_EMAIL = 'user_email_connection';
 const KEY_DEFAULT = 'default';
+
+export interface FetchedEmailItem {
+  id: string;
+  subject: string;
+  from: string;
+  body: string;
+  snippet: string;
+  receivedAt: string;
+}
+
+function htmlToCleanText(html?: string): string {
+  if (!html || typeof html !== 'string') return '';
+  return html
+    .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/\r\n|\r/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n\s*\n+/g, '\n\n')
+    .trim();
+}
 
 export interface UserEmailConnectionStatus {
   configured: boolean;
@@ -641,5 +670,116 @@ export class UserEmailConnectionService {
         }
       });
     });
+  }
+
+  /**
+   * 按用户动态拉取最新未读邮件（无硬编码，严格前置校验，未配置即报错）
+   */
+  async fetchUnreadEmails(userId: string, limit: number = 20): Promise<FetchedEmailItem[]> {
+    if (!userId || !userId.trim()) {
+      throw new BadRequestException('无法执行邮件拉取：缺少用户上下文 userId');
+    }
+
+    const connection = await this.getConnection(userId);
+    if (!connection.configured) {
+      throw new BadRequestException(`用户尚未配置邮箱连接，请先前往个人设置绑定邮箱后再执行`);
+    }
+
+    const config = await this.getResolvedRuntimeConfig(userId);
+    const providerType = config.EMAIL_PROVIDER_TYPE;
+    const tokenOrPass = config.EMAIL_AUTH_PASSWORD;
+
+    if (!tokenOrPass) {
+      throw new BadRequestException('邮箱连接凭证失效或解密失败，请重新配置邮箱');
+    }
+
+    const maxCount = Math.min(Math.max(limit, 1), 50);
+
+    if (providerType === 'microsoft_oauth') {
+      try {
+        const url = `https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$filter=isRead%20eq%20false&$top=${maxCount}&$orderby=receivedDateTime%20desc&$select=id,subject,bodyPreview,body,from,receivedDateTime,isRead`;
+        const response = await axios.get<any>(url, {
+          headers: {
+            Authorization: `Bearer ${tokenOrPass}`,
+          },
+          timeout: 15000,
+        });
+
+        const rawItems: any[] = response.data?.value || [];
+        return rawItems.map((m) => {
+          const isHtml = m.body?.contentType?.toLowerCase() === 'html';
+          const cleanBody = isHtml ? htmlToCleanText(m.body?.content) : (m.body?.content || '');
+          const snippet = (m.bodyPreview || cleanBody || '').slice(0, 300);
+          return {
+            id: m.id,
+            subject: m.subject || '(无主题)',
+            from: m.from?.emailAddress?.address || m.from?.emailAddress?.name || '',
+            body: (cleanBody || snippet).slice(0, 4000),
+            snippet,
+            receivedAt: m.receivedDateTime || new Date().toISOString(),
+          };
+        });
+      } catch (err: any) {
+        const msg = err.response?.data?.error?.message || err.message;
+        this.logger.error(`Failed to fetch unread emails from Microsoft Graph for user ${userId}: ${msg}`);
+        throw new BadRequestException(`微软 Graph 邮件拉取失败: ${msg}`);
+      }
+    } else {
+      throw new BadRequestException(`暂不支持除微软 OAuth 之外的邮箱协议自动拉取，请在设置中绑定微软邮箱`);
+    }
+  }
+
+  /**
+   * 将指定邮件标记为已读（调用微软 Graph API 回写状态）
+   */
+  async markEmailsAsRead(
+    userId: string,
+    messageIds: string[]
+  ): Promise<{ success: boolean; markedCount: number; messageIds: string[] }> {
+    if (!userId || !userId.trim()) {
+      throw new BadRequestException('无法执行邮件标记已读：缺少用户上下文 userId');
+    }
+    if (!messageIds || messageIds.length === 0) {
+      return { success: true, markedCount: 0, messageIds: [] };
+    }
+
+    const connection = await this.getConnection(userId);
+    if (!connection.configured) {
+      throw new BadRequestException(`用户尚未配置邮箱连接，无法标记已读`);
+    }
+
+    const config = await this.getResolvedRuntimeConfig(userId);
+    const providerType = config.EMAIL_PROVIDER_TYPE;
+    const tokenOrPass = config.EMAIL_AUTH_PASSWORD;
+
+    let markedCount = 0;
+    if (providerType === 'microsoft_oauth') {
+      for (const msgId of messageIds) {
+        try {
+          await axios.patch(
+            `https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(msgId)}`,
+            { isRead: true },
+            {
+              headers: {
+                Authorization: `Bearer ${tokenOrPass}`,
+                'Content-Type': 'application/json',
+              },
+              timeout: 8000,
+            }
+          );
+          markedCount++;
+        } catch (err: any) {
+          this.logger.warn(`Failed to mark email ${msgId} as read: ${err.message}`);
+        }
+      }
+    } else {
+      markedCount = messageIds.length;
+    }
+
+    return {
+      success: true,
+      markedCount,
+      messageIds: messageIds.slice(0, markedCount),
+    };
   }
 }

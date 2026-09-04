@@ -82,7 +82,10 @@ export class EmailInboxSyncService {
         where: { name: "EmailInboxSyncWorkflow", isActive: true },
         select: { id: true },
       });
-      const skillId = workflowSkill?.id || "d20c8ad5-1f81-4c26-987c-07874afd5f0b";
+      if (!workflowSkill?.id) {
+        throw new Error("未找到已发布的 EmailInboxSyncWorkflow 工作流技能，请先在技能中心完成发布");
+      }
+      const skillId = workflowSkill.id;
 
       const controlPlaneUrl = getControlPlaneApiUrl();
       const internalSecret =

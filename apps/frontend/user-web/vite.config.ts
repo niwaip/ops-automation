@@ -96,7 +96,7 @@ export default defineConfig({
     fs: {
       allow: [resolveAppRootEntry(), resolveChatWebEntry(), resolveUserCoreRootEntry()],
     },
-    allowedHosts: ['user-web', 'ops-user-web', 'host.docker.internal'],
+    allowedHosts: true,
     headers: {
       'Cache-Control': 'no-store',
     },

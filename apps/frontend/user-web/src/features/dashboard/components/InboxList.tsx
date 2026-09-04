@@ -3,6 +3,7 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   DeleteOutlined,
+  ExclamationCircleOutlined,
   EyeOutlined,
   FolderOutlined,
   InboxOutlined,
@@ -11,6 +12,7 @@ import {
   RobotOutlined,
   ThunderboltOutlined,
 } from "@ant-design/icons";
+import { useEffect, useRef, useState } from "react";
 import {
   Button,
   Card,
@@ -69,6 +71,45 @@ export function InboxList({
   onDeleteItem,
 }: InboxListProps) {
   const navigate = useNavigate();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isShaking, setIsShaking] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
+  const handleCollectClick = () => {
+    if (!inboxDraft.trim()) {
+      // 1. 输入框抖动闪烁提示几下
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500);
+
+      // 2. 输入框下方红字显示 3 秒钟
+      setErrorMessage("请先输入要收集的内容，再点击收集到收件箱");
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+      timerRef.current = setTimeout(() => {
+        setErrorMessage(null);
+      }, 3000);
+      return;
+    }
+
+    setErrorMessage(null);
+    onQuickIngest();
+  };
+
+  const handleDraftChange = (val: string) => {
+    if (errorMessage && val.trim()) {
+      setErrorMessage(null);
+    }
+    onDraftChange(val);
+  };
 
   const renderSourceTag = (sourceType: string) => {
     switch (sourceType) {
@@ -131,33 +172,45 @@ export function InboxList({
   };
 
   return (
-    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+    <div className={styles["workbench-card-content-stack"]}>
       {/* 快速收集输入框与定时同步按钮 */}
       <div className={styles["workbench-todo-form"]}>
         <Input.TextArea
+          className={isShaking ? styles["inbox-input-shake"] : undefined}
+          status={errorMessage ? "error" : undefined}
           value={inboxDraft}
           placeholder="快速收集灵感、邮件要点或外部任务至收件箱（支持多行录入，后续统一整理）..."
-          onChange={(e) => onDraftChange(e.target.value)}
+          onChange={(e) => handleDraftChange(e.target.value)}
           autoSize={{ minRows: 2, maxRows: 4 }}
         />
+        {errorMessage ? (
+          <div className={styles["inbox-error-message"]}>
+            <ExclamationCircleOutlined />
+            <span>{errorMessage}</span>
+          </div>
+        ) : null}
         <div className={styles["workbench-todo-form-actions"]}>
-          <Button
-            type="primary"
-            className={`${styles["workbench-action-button"]} ${styles["workbench-todo-toolbar-button"]} ${styles["is-create"]}`}
-            icon={<InboxOutlined />}
-            onClick={onQuickIngest}
-          >
-            收集到收件箱
-          </Button>
-          {onSyncEmail ? (
+          <Tooltip title="将上方文本框中输入的便签或要点保存入 GTD 收件箱">
             <Button
-              className={`${styles["workbench-action-button"]} ${styles["workbench-todo-toolbar-button"]} ${styles["is-ai"]}`}
-              icon={isSyncingEmail ? <LoadingOutlined spin /> : <MailOutlined />}
-              onClick={onSyncEmail}
-              loading={isSyncingEmail}
+              type="primary"
+              className={`${styles["workbench-action-button"]} ${styles["workbench-todo-toolbar-button"]} ${styles["is-create"]}`}
+              icon={<InboxOutlined />}
+              onClick={handleCollectClick}
             >
-              收取邮件
+              收集到收件箱
             </Button>
+          </Tooltip>
+          {onSyncEmail ? (
+            <Tooltip title="执行工作流：从已绑定的邮箱拉取未读邮件并沉淀入 GTD 收件箱">
+              <Button
+                className={`${styles["workbench-action-button"]} ${styles["workbench-todo-toolbar-button"]} ${styles["is-ai"]}`}
+                icon={isSyncingEmail ? <LoadingOutlined spin /> : <MailOutlined />}
+                onClick={onSyncEmail}
+                loading={isSyncingEmail}
+              >
+                收取邮件
+              </Button>
+            </Tooltip>
           ) : null}
         </div>
       </div>
@@ -181,14 +234,15 @@ export function InboxList({
         </Radio.Button>
       </Radio.Group>
 
-      {/* 收件箱条目列表 */}
-      {inboxItems.length === 0 ? (
-        <Empty
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description="收件箱暂无此状态条目 (Inbox Zero)"
-        />
-      ) : (
-        <List
+      {/* 收件箱条目列表 (可滚动区域) */}
+      <div className={styles["workbench-card-scroll-area"]}>
+        {inboxItems.length === 0 ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="收件箱暂无此状态条目 (Inbox Zero)"
+          />
+        ) : (
+          <List
           dataSource={inboxItems}
           renderItem={(item) => {
             const isClarifying = clarifyingIds[item.id];
@@ -358,6 +412,7 @@ export function InboxList({
           }}
         />
       )}
-    </Space>
+    </div>
+  </div>
   );
 }

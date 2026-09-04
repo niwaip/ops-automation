@@ -189,6 +189,9 @@ export class CapabilityReleaseRuntimeService {
       if (!normalizedInput.workflowId) {
         normalizedInput.workflowId = runtimeSessionId;
       }
+      if (userId && !normalizedInput.userId) {
+        normalizedInput.userId = userId;
+      }
 
       const fn = accessors.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
       const taskQueue =
