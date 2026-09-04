@@ -133,6 +133,8 @@ export function useExecutionCreateForm({
       'schedulePattern',
       'scheduleHour',
       'scheduleMinute',
+      'hourlyInterval',
+      'minutelyInterval',
       'weeklyDays',
       'monthlyDay',
     ]);

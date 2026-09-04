@@ -5,6 +5,8 @@ import { executionCreateSubtleCardStyle } from '@/features/executions/create/com
 import type { SchedulePattern } from '@/features/executions/create/lib/executionCreate';
 import {
   HOUR_OPTIONS,
+  HOURLY_INTERVAL_OPTIONS,
+  MINUTELY_INTERVAL_OPTIONS,
   MINUTE_OPTIONS,
   MONTH_DAY_OPTIONS,
   TIMEZONE_OPTIONS,
@@ -90,9 +92,11 @@ const ExecutionCreateScheduleSettingsCard: React.FC<
                 style={{
                   width: '100%',
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                  gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
                 }}
               >
+                <Radio.Button value="minutely">按分钟</Radio.Button>
+                <Radio.Button value="hourly">按小时</Radio.Button>
                 <Radio.Button value="workdays">工作日</Radio.Button>
                 <Radio.Button value="weekly">按周</Radio.Button>
                 <Radio.Button value="monthly">按月</Radio.Button>
@@ -101,48 +105,120 @@ const ExecutionCreateScheduleSettingsCard: React.FC<
           </div>
 
           <div style={{ ...executionCreateSubtleCardStyle, padding: 14 }}>
-            <Text
-              type="secondary"
-              style={{ display: 'block', fontSize: 12, marginBottom: 8 }}
-            >
-              执行时间
-            </Text>
-            <Form.Item style={{ marginBottom: 0 }}>
-              <div
-                style={{
-                  display: 'inline-grid',
-                  gridTemplateColumns: '84px auto 84px',
-                  gap: 6,
-                  alignItems: 'center',
-                }}
-              >
+            {schedulePattern === 'minutely' ? (
+              <>
+                <Text
+                  type="secondary"
+                  style={{ display: 'block', fontSize: 12, marginBottom: 8 }}
+                >
+                  执行频率
+                </Text>
                 <Form.Item
-                  name="scheduleHour"
-                  noStyle
-                  rules={[{ required: true, message: '请选择小时' }]}
+                  name="minutelyInterval"
+                  rules={[{ required: true, message: '请选择执行分钟间隔' }]}
+                  style={{ marginBottom: 0 }}
                 >
                   <Select
                     size="small"
                     style={{ width: '100%' }}
-                    options={HOUR_OPTIONS}
-                    placeholder="小时"
+                    options={MINUTELY_INTERVAL_OPTIONS}
+                    placeholder="选择间隔"
                   />
                 </Form.Item>
-                <Text style={{ textAlign: 'center', minWidth: 12 }}>:</Text>
-                <Form.Item
-                  name="scheduleMinute"
-                  noStyle
-                  rules={[{ required: true, message: '请选择分钟' }]}
+              </>
+            ) : schedulePattern === 'hourly' ? (
+              <>
+                <Text
+                  type="secondary"
+                  style={{ display: 'block', fontSize: 12, marginBottom: 8 }}
                 >
-                  <Select
-                    size="small"
-                    style={{ width: '100%' }}
-                    options={MINUTE_OPTIONS}
-                    placeholder="分钟"
-                  />
+                  执行频率与时间
+                </Text>
+                <div
+                  style={{
+                    display: 'inline-grid',
+                    gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
+                    gap: 6,
+                    alignItems: 'center',
+                    width: '100%',
+                  }}
+                >
+                  <Form.Item
+                    name="hourlyInterval"
+                    noStyle
+                    rules={[{ required: true, message: '请选择小时周期' }]}
+                  >
+                    <Select
+                      size="small"
+                      style={{ width: '100%' }}
+                      options={HOURLY_INTERVAL_OPTIONS}
+                      placeholder="周期"
+                    />
+                  </Form.Item>
+                  <Text style={{ textAlign: 'center', minWidth: 12 }}>在</Text>
+                  <Form.Item
+                    name="scheduleMinute"
+                    noStyle
+                    rules={[{ required: true, message: '请选择分钟' }]}
+                  >
+                    <Select
+                      size="small"
+                      style={{ width: '100%' }}
+                      options={MINUTE_OPTIONS.map((opt) => ({
+                        label: `${opt.label} 分`,
+                        value: opt.value,
+                      }))}
+                      placeholder="分钟"
+                    />
+                  </Form.Item>
+                </div>
+              </>
+            ) : (
+              <>
+                <Text
+                  type="secondary"
+                  style={{ display: 'block', fontSize: 12, marginBottom: 8 }}
+                >
+                  执行时间
+                </Text>
+                <Form.Item style={{ marginBottom: 0 }}>
+                  <div
+                    style={{
+                      display: 'inline-grid',
+                      gridTemplateColumns: '84px auto 84px',
+                      gap: 6,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Form.Item
+                      name="scheduleHour"
+                      noStyle
+                      rules={[{ required: true, message: '请选择小时' }]}
+                    >
+                      <Select
+                        size="small"
+                        style={{ width: '100%' }}
+                        options={HOUR_OPTIONS}
+                        placeholder="小时"
+                      />
+                    </Form.Item>
+                    <Text style={{ textAlign: 'center', minWidth: 12 }}>:</Text>
+                    <Form.Item
+                      name="scheduleMinute"
+                      noStyle
+                      rules={[{ required: true, message: '请选择分钟' }]}
+                    >
+                      <Select
+                        size="small"
+                        style={{ width: '100%' }}
+                        options={MINUTE_OPTIONS}
+                        placeholder="分钟"
+                      />
+                    </Form.Item>
+                  </div>
                 </Form.Item>
-              </div>
-            </Form.Item>
+              </>
+            )}
           </div>
         </div>
 

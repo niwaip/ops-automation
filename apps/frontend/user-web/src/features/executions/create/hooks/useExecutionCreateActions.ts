@@ -90,6 +90,8 @@ export function useExecutionCreateActions({
           schedulePattern: 'workdays',
           scheduleHour: '09',
           scheduleMinute: '00',
+          hourlyInterval: 1,
+          minutelyInterval: 15,
           weeklyDays: ['1'],
           monthlyDay: 1,
         });

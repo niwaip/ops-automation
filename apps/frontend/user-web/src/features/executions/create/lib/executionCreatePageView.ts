@@ -58,6 +58,8 @@ interface BuildExecutionCreateScheduleRuleSummaryOptions {
   schedulePattern: SchedulePattern;
   scheduleHour?: string;
   scheduleMinute?: string;
+  hourlyInterval?: number;
+  minutelyInterval?: number;
   weeklyDays?: string[];
   monthlyDay?: number;
 }
@@ -66,6 +68,8 @@ export function buildExecutionCreateScheduleRuleSummary({
   schedulePattern,
   scheduleHour,
   scheduleMinute,
+  hourlyInterval,
+  minutelyInterval,
   weeklyDays,
   monthlyDay,
 }: BuildExecutionCreateScheduleRuleSummaryOptions) {
@@ -73,6 +77,8 @@ export function buildExecutionCreateScheduleRuleSummary({
     schedulePattern,
     scheduleHour,
     scheduleMinute,
+    hourlyInterval,
+    minutelyInterval,
     weeklyDays,
     monthlyDay,
   });

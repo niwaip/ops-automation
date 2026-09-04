@@ -300,11 +300,6 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
-      '/api/workbench-todos': {
-        target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
       '/api/workbench-inbox': {
         target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
         changeOrigin: true,

@@ -216,6 +216,12 @@ export function useExecutionCreateSkillState({
     if (!form.getFieldValue('scheduleMinute')) {
       form.setFieldValue('scheduleMinute', '00');
     }
+    if (!form.getFieldValue('hourlyInterval')) {
+      form.setFieldValue('hourlyInterval', 1);
+    }
+    if (!form.getFieldValue('minutelyInterval')) {
+      form.setFieldValue('minutelyInterval', 15);
+    }
     if (!form.getFieldValue('weeklyDays')) {
       form.setFieldValue('weeklyDays', ['1']);
     }

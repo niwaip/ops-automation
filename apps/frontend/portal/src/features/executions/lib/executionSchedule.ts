@@ -1,15 +1,3 @@
-import type { CreateScheduleRequest, UpdateScheduleRequest } from '@/api/schedules';
-import type { SkillParamsSchema } from '@/api/skill';
-
-export type SchemaField = {
-  name: string;
-  type: string;
-  description?: string;
-  required: boolean;
-  defaultValue?: unknown;
-  enum?: Array<string | number>;
-};
-
 export type ExecutionMode = 'immediate' | 'schedule';
 export type SchedulePattern = 'minutely' | 'hourly' | 'workdays' | 'weekly' | 'monthly';
 
@@ -28,7 +16,6 @@ export type ExecutionCreateFormValues = {
   weeklyDays?: string[];
   monthlyDay?: number;
 };
-export type ExecutionScheduleToggleInput = Pick<UpdateScheduleRequest, 'isActive'>;
 
 export const getDefaultScheduleName = (skillName?: string) => `${skillName || '技能'} 定时执行`;
 
@@ -87,23 +74,6 @@ export const TIMEZONE_OPTIONS = [
   { label: '伦敦时间 (Europe/London)', value: 'Europe/London' },
   { label: '纽约时间 (America/New_York)', value: 'America/New_York' },
 ];
-
-export const getTypeTagColor = (type: string) => {
-  const normalizedType = type.toLowerCase();
-  if (normalizedType === 'boolean') return 'green';
-  if (normalizedType === 'number' || normalizedType === 'integer') return 'blue';
-  if (normalizedType === 'object' || normalizedType === 'json') return 'purple';
-  return 'default';
-};
-
-export const stringifyPreview = (value: unknown) => {
-  try {
-    const text = JSON.stringify(value, null, 2);
-    return text.length > 240 ? `${text.slice(0, 240)}...` : text;
-  } catch {
-    return String(value);
-  }
-};
 
 export const buildScheduleCronExpression = (values: ExecutionCreateFormValues) => {
   const pattern = values.schedulePattern || 'workdays';
@@ -188,92 +158,71 @@ export const buildScheduleRuleText = (values: {
   return `每个工作日 ${timeText}`;
 };
 
-export const getSchemaFields = (schema?: SkillParamsSchema): SchemaField[] => {
-  if (!schema?.properties) {
-    return [];
+interface SummarizeCronExpressionOptions {
+  workdaysLabel?: string;
+  weekdayLabelMap?: ReadonlyMap<string, string>;
+}
+
+export const summarizeCronExpression = (
+  cronExpression?: string,
+  options: SummarizeCronExpressionOptions = {}
+): string => {
+  if (!cronExpression) {
+    return '未设置';
   }
 
-  const requiredFields = new Set(schema.required || []);
-  return Object.entries(schema.properties).map(([name, config]) => ({
-    name,
-    type: config?.type || 'string',
-    description: config?.description,
-    required: requiredFields.has(name) || Boolean(config?.required),
-    defaultValue: config?.default,
-    enum: config?.enum,
-  }));
+  const parts = cronExpression.trim().split(/\s+/);
+  if (parts.length !== 5) {
+    return cronExpression;
+  }
+
+  const [minute, hour, dayOfMonth, _month, dayOfWeek] = parts;
+
+  // 1. Minutely patterns
+  if (dayOfMonth === '*' && dayOfWeek === '*' && hour === '*') {
+    if (minute === '*') {
+      return '每分钟';
+    }
+    const matchEveryMinutes = minute.match(/^\*\/(\d+)$/);
+    if (matchEveryMinutes) {
+      return `每 ${matchEveryMinutes[1]} 分钟`;
+    }
+  }
+
+  // 2. Hourly patterns
+  if (dayOfMonth === '*' && dayOfWeek === '*') {
+    const isMinuteNumber = /^\d+$/.test(minute);
+    const minNum = Number(minute);
+
+    if (hour === '*' && isMinuteNumber) {
+      return minNum === 0 ? '每小时整点' : `每小时第 ${minNum} 分`;
+    }
+
+    const matchEveryHours = hour.match(/^\*\/(\d+)$/);
+    if (matchEveryHours && isMinuteNumber) {
+      const intervalHours = matchEveryHours[1];
+      return minNum === 0 ? `每 ${intervalHours} 小时整点` : `每 ${intervalHours} 小时第 ${minNum} 分`;
+    }
+  }
+
+  const timeText = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  const workdaysLabel = options.workdaysLabel || '每个工作日';
+
+  if (dayOfMonth === '*' && dayOfWeek === '1-5') {
+    return `${workdaysLabel} ${timeText}`;
+  }
+
+  if (dayOfMonth !== '*' && dayOfWeek === '*') {
+    return `每月 ${dayOfMonth} 日 ${timeText}`;
+  }
+
+  if (dayOfMonth === '*' && dayOfWeek !== '*') {
+    const weekText = dayOfWeek
+      .split(',')
+      .map((day) => (options.weekdayLabelMap || WEEKDAY_LABEL_MAP).get(day) || day)
+      .join('、');
+    return `每周 ${weekText} ${timeText}`;
+  }
+
+  return cronExpression;
 };
-
-export const getInitialInputValues = (fields: SchemaField[]): Record<string, unknown> => {
-  return fields.reduce<Record<string, unknown>>((acc, field) => {
-    if (field.defaultValue === undefined) {
-      if (field.type === 'boolean') {
-        acc[field.name] = false;
-      }
-      return acc;
-    }
-
-    if (field.type === 'object' || field.type === 'json' || field.type === 'array') {
-      acc[field.name] =
-        typeof field.defaultValue === 'string'
-          ? field.defaultValue
-          : JSON.stringify(field.defaultValue, null, 2);
-      return acc;
-    }
-
-    acc[field.name] = field.defaultValue;
-    return acc;
-  }, {});
-};
-
-export const normalizeInputValues = (
-  values: Record<string, unknown>,
-  fields: SchemaField[]
-): Record<string, unknown> => {
-  return fields.reduce<Record<string, unknown>>((acc, field) => {
-    const rawValue = values[field.name];
-
-    if (rawValue === undefined || rawValue === null || rawValue === '') {
-      return acc;
-    }
-
-    const normalizedType = field.type.toLowerCase();
-
-    if (
-      (normalizedType === 'object' || normalizedType === 'json' || normalizedType === 'array') &&
-      typeof rawValue === 'string'
-    ) {
-      acc[field.name] = JSON.parse(rawValue);
-      return acc;
-    }
-
-    acc[field.name] = rawValue;
-    return acc;
-  }, {});
-};
-
-export const buildExecutionScheduleCreateRequest = ({
-  values,
-  schemaFields,
-  selectedSkillDisplayName,
-  selectedSkillVersion,
-}: {
-  values: ExecutionCreateFormValues;
-  schemaFields: SchemaField[];
-  selectedSkillDisplayName: string;
-  selectedSkillVersion?: string;
-}): CreateScheduleRequest => ({
-  name: values.scheduleName?.trim() || getDefaultScheduleName(selectedSkillDisplayName),
-  description: values.scheduleDescription?.trim() || undefined,
-  skillId: values.skillId,
-  skillVersion: selectedSkillVersion,
-  input: normalizeInputValues(values.input || {}, schemaFields),
-  cronExpression: buildScheduleCronExpression(values),
-  timezone: values.timezone?.trim() || 'Asia/Shanghai',
-});
-
-export const buildExecutionScheduleToggleInput = (
-  isActive: boolean
-): ExecutionScheduleToggleInput => ({
-  isActive,
-});
