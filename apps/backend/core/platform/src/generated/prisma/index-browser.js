@@ -1289,6 +1289,25 @@ exports.Prisma.WorkbenchTodoScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.WorkbenchInboxItemScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  title: 'title',
+  rawContent: 'rawContent',
+  sourceType: 'sourceType',
+  sourceRefId: 'sourceRefId',
+  sourceTitle: 'sourceTitle',
+  sourceSender: 'sourceSender',
+  unifiedPayload: 'unifiedPayload',
+  status: 'status',
+  confidence: 'confidence',
+  aiClarification: 'aiClarification',
+  convertedTodoId: 'convertedTodoId',
+  clarifiedAt: 'clarifiedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -1396,6 +1415,14 @@ exports.TodoSourceType = exports.$Enums.TodoSourceType = {
   im_channel: 'im_channel'
 };
 
+exports.InboxItemStatus = exports.$Enums.InboxItemStatus = {
+  unprocessed: 'unprocessed',
+  clarified: 'clarified',
+  converted: 'converted',
+  archived: 'archived',
+  discarded: 'discarded'
+};
+
 exports.Prisma.ModelName = {
   User: 'User',
   ImChannelConnection: 'ImChannelConnection',
@@ -1474,7 +1501,8 @@ exports.Prisma.ModelName = {
   ReleaseAuditEvent: 'ReleaseAuditEvent',
   Workspace: 'Workspace',
   WorkspaceNode: 'WorkspaceNode',
-  WorkbenchTodo: 'WorkbenchTodo'
+  WorkbenchTodo: 'WorkbenchTodo',
+  WorkbenchInboxItem: 'WorkbenchInboxItem'
 };
 
 /**

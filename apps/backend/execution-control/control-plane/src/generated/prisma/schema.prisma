@@ -1785,3 +1785,34 @@ model WorkbenchTodo {
   @@index([userId, createdAt(sort: Desc)])
   @@map("workbench_todos")
 }
+
+enum InboxItemStatus {
+  unprocessed
+  clarified
+  converted
+  archived
+  discarded
+}
+
+model WorkbenchInboxItem {
+  id              String          @id @default(uuid()) @db.Uuid
+  userId          String          @map("user_id") @db.VarChar(64)
+  title           String          @db.VarChar(500)
+  rawContent      String          @map("raw_content") @db.Text
+  sourceType      TodoSourceType  @default(manual) @map("source_type")
+  sourceRefId     String?         @map("source_ref_id") @db.VarChar(255)
+  sourceTitle     String?         @map("source_title") @db.VarChar(255)
+  sourceSender    String?         @map("source_sender") @db.VarChar(255)
+  unifiedPayload  Json            @default("{}") @map("unified_payload")
+  status          InboxItemStatus @default(unprocessed)
+  confidence      Float           @default(1.0)
+  aiClarification Json?           @map("ai_clarification")
+  convertedTodoId String?         @map("converted_todo_id") @db.Uuid
+  clarifiedAt     DateTime?       @map("clarified_at") @db.Timestamptz(6)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId, status])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("workbench_inbox_items")
+}

@@ -403,6 +403,11 @@ export type WorkspaceNode = $Result.DefaultSelection<Prisma.$WorkspaceNodePayloa
  * 
  */
 export type WorkbenchTodo = $Result.DefaultSelection<Prisma.$WorkbenchTodoPayload>
+/**
+ * Model WorkbenchInboxItem
+ * 
+ */
+export type WorkbenchInboxItem = $Result.DefaultSelection<Prisma.$WorkbenchInboxItemPayload>
 
 /**
  * Enums
@@ -521,6 +526,17 @@ export const TodoSourceType: {
 
 export type TodoSourceType = (typeof TodoSourceType)[keyof typeof TodoSourceType]
 
+
+export const InboxItemStatus: {
+  unprocessed: 'unprocessed',
+  clarified: 'clarified',
+  converted: 'converted',
+  archived: 'archived',
+  discarded: 'discarded'
+};
+
+export type InboxItemStatus = (typeof InboxItemStatus)[keyof typeof InboxItemStatus]
+
 }
 
 export type UserRoleType = $Enums.UserRoleType
@@ -570,6 +586,10 @@ export const TodoStatus: typeof $Enums.TodoStatus
 export type TodoSourceType = $Enums.TodoSourceType
 
 export const TodoSourceType: typeof $Enums.TodoSourceType
+
+export type InboxItemStatus = $Enums.InboxItemStatus
+
+export const InboxItemStatus: typeof $Enums.InboxItemStatus
 
 /**
  * ##  Prisma Client ʲˢ
@@ -1473,6 +1493,16 @@ export class PrismaClient<
     * ```
     */
   get workbenchTodo(): Prisma.WorkbenchTodoDelegate<ExtArgs>;
+
+  /**
+   * `prisma.workbenchInboxItem`: Exposes CRUD operations for the **WorkbenchInboxItem** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more WorkbenchInboxItems
+    * const workbenchInboxItems = await prisma.workbenchInboxItem.findMany()
+    * ```
+    */
+  get workbenchInboxItem(): Prisma.WorkbenchInboxItemDelegate<ExtArgs>;
 }
 
 export namespace Prisma {
@@ -1991,7 +2021,8 @@ export namespace Prisma {
     ReleaseAuditEvent: 'ReleaseAuditEvent',
     Workspace: 'Workspace',
     WorkspaceNode: 'WorkspaceNode',
-    WorkbenchTodo: 'WorkbenchTodo'
+    WorkbenchTodo: 'WorkbenchTodo',
+    WorkbenchInboxItem: 'WorkbenchInboxItem'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -2007,7 +2038,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "user" | "imChannelConnection" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionResultRef" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "userSavedSkill" | "userWorkflowAlias" | "userSavedSkillVersion" | "assistantFeedbackEvent" | "assistantFeedbackCurrent" | "routingObservation" | "planningDecision" | "taskPolicySet" | "taskCommandAlias" | "taskRecipe" | "taskCapabilityBinding" | "taskPolicyProposal" | "taskPolicyAuditLog" | "executionCompletionClaim" | "promptSnapshot" | "llmUsageLedger" | "executionOutbox" | "scheduleFire" | "habitLearningRun" | "userHabitCandidate" | "userHabit" | "userPersonalizationPreference" | "scopedMemory" | "candidateRecipe" | "candidateRecipeEvaluation" | "habitGovernanceAudit" | "builtinSkill" | "builtinSkillRuntimeConfig" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent" | "workspace" | "workspaceNode" | "workbenchTodo"
+      modelProps: "user" | "imChannelConnection" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionResultRef" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "userSavedSkill" | "userWorkflowAlias" | "userSavedSkillVersion" | "assistantFeedbackEvent" | "assistantFeedbackCurrent" | "routingObservation" | "planningDecision" | "taskPolicySet" | "taskCommandAlias" | "taskRecipe" | "taskCapabilityBinding" | "taskPolicyProposal" | "taskPolicyAuditLog" | "executionCompletionClaim" | "promptSnapshot" | "llmUsageLedger" | "executionOutbox" | "scheduleFire" | "habitLearningRun" | "userHabitCandidate" | "userHabit" | "userPersonalizationPreference" | "scopedMemory" | "candidateRecipe" | "candidateRecipeEvaluation" | "habitGovernanceAudit" | "builtinSkill" | "builtinSkillRuntimeConfig" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent" | "workspace" | "workspaceNode" | "workbenchTodo" | "workbenchInboxItem"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -7468,6 +7499,76 @@ export namespace Prisma {
           count: {
             args: Prisma.WorkbenchTodoCountArgs<ExtArgs>
             result: $Utils.Optional<WorkbenchTodoCountAggregateOutputType> | number
+          }
+        }
+      }
+      WorkbenchInboxItem: {
+        payload: Prisma.$WorkbenchInboxItemPayload<ExtArgs>
+        fields: Prisma.WorkbenchInboxItemFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.WorkbenchInboxItemFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.WorkbenchInboxItemFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload>
+          }
+          findFirst: {
+            args: Prisma.WorkbenchInboxItemFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.WorkbenchInboxItemFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload>
+          }
+          findMany: {
+            args: Prisma.WorkbenchInboxItemFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload>[]
+          }
+          create: {
+            args: Prisma.WorkbenchInboxItemCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload>
+          }
+          createMany: {
+            args: Prisma.WorkbenchInboxItemCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.WorkbenchInboxItemCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload>[]
+          }
+          delete: {
+            args: Prisma.WorkbenchInboxItemDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload>
+          }
+          update: {
+            args: Prisma.WorkbenchInboxItemUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload>
+          }
+          deleteMany: {
+            args: Prisma.WorkbenchInboxItemDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.WorkbenchInboxItemUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.WorkbenchInboxItemUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload>
+          }
+          aggregate: {
+            args: Prisma.WorkbenchInboxItemAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateWorkbenchInboxItem>
+          }
+          groupBy: {
+            args: Prisma.WorkbenchInboxItemGroupByArgs<ExtArgs>
+            result: $Utils.Optional<WorkbenchInboxItemGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.WorkbenchInboxItemCountArgs<ExtArgs>
+            result: $Utils.Optional<WorkbenchInboxItemCountAggregateOutputType> | number
           }
         }
       }
@@ -87874,6 +87975,1042 @@ export namespace Prisma {
 
 
   /**
+   * Model WorkbenchInboxItem
+   */
+
+  export type AggregateWorkbenchInboxItem = {
+    _count: WorkbenchInboxItemCountAggregateOutputType | null
+    _avg: WorkbenchInboxItemAvgAggregateOutputType | null
+    _sum: WorkbenchInboxItemSumAggregateOutputType | null
+    _min: WorkbenchInboxItemMinAggregateOutputType | null
+    _max: WorkbenchInboxItemMaxAggregateOutputType | null
+  }
+
+  export type WorkbenchInboxItemAvgAggregateOutputType = {
+    confidence: number | null
+  }
+
+  export type WorkbenchInboxItemSumAggregateOutputType = {
+    confidence: number | null
+  }
+
+  export type WorkbenchInboxItemMinAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    title: string | null
+    rawContent: string | null
+    sourceType: $Enums.TodoSourceType | null
+    sourceRefId: string | null
+    sourceTitle: string | null
+    sourceSender: string | null
+    status: $Enums.InboxItemStatus | null
+    confidence: number | null
+    convertedTodoId: string | null
+    clarifiedAt: Date | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type WorkbenchInboxItemMaxAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    title: string | null
+    rawContent: string | null
+    sourceType: $Enums.TodoSourceType | null
+    sourceRefId: string | null
+    sourceTitle: string | null
+    sourceSender: string | null
+    status: $Enums.InboxItemStatus | null
+    confidence: number | null
+    convertedTodoId: string | null
+    clarifiedAt: Date | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type WorkbenchInboxItemCountAggregateOutputType = {
+    id: number
+    userId: number
+    title: number
+    rawContent: number
+    sourceType: number
+    sourceRefId: number
+    sourceTitle: number
+    sourceSender: number
+    unifiedPayload: number
+    status: number
+    confidence: number
+    aiClarification: number
+    convertedTodoId: number
+    clarifiedAt: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type WorkbenchInboxItemAvgAggregateInputType = {
+    confidence?: true
+  }
+
+  export type WorkbenchInboxItemSumAggregateInputType = {
+    confidence?: true
+  }
+
+  export type WorkbenchInboxItemMinAggregateInputType = {
+    id?: true
+    userId?: true
+    title?: true
+    rawContent?: true
+    sourceType?: true
+    sourceRefId?: true
+    sourceTitle?: true
+    sourceSender?: true
+    status?: true
+    confidence?: true
+    convertedTodoId?: true
+    clarifiedAt?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type WorkbenchInboxItemMaxAggregateInputType = {
+    id?: true
+    userId?: true
+    title?: true
+    rawContent?: true
+    sourceType?: true
+    sourceRefId?: true
+    sourceTitle?: true
+    sourceSender?: true
+    status?: true
+    confidence?: true
+    convertedTodoId?: true
+    clarifiedAt?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type WorkbenchInboxItemCountAggregateInputType = {
+    id?: true
+    userId?: true
+    title?: true
+    rawContent?: true
+    sourceType?: true
+    sourceRefId?: true
+    sourceTitle?: true
+    sourceSender?: true
+    unifiedPayload?: true
+    status?: true
+    confidence?: true
+    aiClarification?: true
+    convertedTodoId?: true
+    clarifiedAt?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type WorkbenchInboxItemAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which WorkbenchInboxItem to aggregate.
+     */
+    where?: WorkbenchInboxItemWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkbenchInboxItems to fetch.
+     */
+    orderBy?: WorkbenchInboxItemOrderByWithRelationInput | WorkbenchInboxItemOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: WorkbenchInboxItemWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkbenchInboxItems from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkbenchInboxItems.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned WorkbenchInboxItems
+    **/
+    _count?: true | WorkbenchInboxItemCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: WorkbenchInboxItemAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: WorkbenchInboxItemSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: WorkbenchInboxItemMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: WorkbenchInboxItemMaxAggregateInputType
+  }
+
+  export type GetWorkbenchInboxItemAggregateType<T extends WorkbenchInboxItemAggregateArgs> = {
+        [P in keyof T & keyof AggregateWorkbenchInboxItem]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateWorkbenchInboxItem[P]>
+      : GetScalarType<T[P], AggregateWorkbenchInboxItem[P]>
+  }
+
+
+
+
+  export type WorkbenchInboxItemGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: WorkbenchInboxItemWhereInput
+    orderBy?: WorkbenchInboxItemOrderByWithAggregationInput | WorkbenchInboxItemOrderByWithAggregationInput[]
+    by: WorkbenchInboxItemScalarFieldEnum[] | WorkbenchInboxItemScalarFieldEnum
+    having?: WorkbenchInboxItemScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: WorkbenchInboxItemCountAggregateInputType | true
+    _avg?: WorkbenchInboxItemAvgAggregateInputType
+    _sum?: WorkbenchInboxItemSumAggregateInputType
+    _min?: WorkbenchInboxItemMinAggregateInputType
+    _max?: WorkbenchInboxItemMaxAggregateInputType
+  }
+
+  export type WorkbenchInboxItemGroupByOutputType = {
+    id: string
+    userId: string
+    title: string
+    rawContent: string
+    sourceType: $Enums.TodoSourceType
+    sourceRefId: string | null
+    sourceTitle: string | null
+    sourceSender: string | null
+    unifiedPayload: JsonValue
+    status: $Enums.InboxItemStatus
+    confidence: number
+    aiClarification: JsonValue | null
+    convertedTodoId: string | null
+    clarifiedAt: Date | null
+    createdAt: Date
+    updatedAt: Date
+    _count: WorkbenchInboxItemCountAggregateOutputType | null
+    _avg: WorkbenchInboxItemAvgAggregateOutputType | null
+    _sum: WorkbenchInboxItemSumAggregateOutputType | null
+    _min: WorkbenchInboxItemMinAggregateOutputType | null
+    _max: WorkbenchInboxItemMaxAggregateOutputType | null
+  }
+
+  type GetWorkbenchInboxItemGroupByPayload<T extends WorkbenchInboxItemGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<WorkbenchInboxItemGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof WorkbenchInboxItemGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], WorkbenchInboxItemGroupByOutputType[P]>
+            : GetScalarType<T[P], WorkbenchInboxItemGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type WorkbenchInboxItemSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    title?: boolean
+    rawContent?: boolean
+    sourceType?: boolean
+    sourceRefId?: boolean
+    sourceTitle?: boolean
+    sourceSender?: boolean
+    unifiedPayload?: boolean
+    status?: boolean
+    confidence?: boolean
+    aiClarification?: boolean
+    convertedTodoId?: boolean
+    clarifiedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["workbenchInboxItem"]>
+
+  export type WorkbenchInboxItemSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    title?: boolean
+    rawContent?: boolean
+    sourceType?: boolean
+    sourceRefId?: boolean
+    sourceTitle?: boolean
+    sourceSender?: boolean
+    unifiedPayload?: boolean
+    status?: boolean
+    confidence?: boolean
+    aiClarification?: boolean
+    convertedTodoId?: boolean
+    clarifiedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["workbenchInboxItem"]>
+
+  export type WorkbenchInboxItemSelectScalar = {
+    id?: boolean
+    userId?: boolean
+    title?: boolean
+    rawContent?: boolean
+    sourceType?: boolean
+    sourceRefId?: boolean
+    sourceTitle?: boolean
+    sourceSender?: boolean
+    unifiedPayload?: boolean
+    status?: boolean
+    confidence?: boolean
+    aiClarification?: boolean
+    convertedTodoId?: boolean
+    clarifiedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+
+  export type $WorkbenchInboxItemPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "WorkbenchInboxItem"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userId: string
+      title: string
+      rawContent: string
+      sourceType: $Enums.TodoSourceType
+      sourceRefId: string | null
+      sourceTitle: string | null
+      sourceSender: string | null
+      unifiedPayload: Prisma.JsonValue
+      status: $Enums.InboxItemStatus
+      confidence: number
+      aiClarification: Prisma.JsonValue | null
+      convertedTodoId: string | null
+      clarifiedAt: Date | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["workbenchInboxItem"]>
+    composites: {}
+  }
+
+  type WorkbenchInboxItemGetPayload<S extends boolean | null | undefined | WorkbenchInboxItemDefaultArgs> = $Result.GetResult<Prisma.$WorkbenchInboxItemPayload, S>
+
+  type WorkbenchInboxItemCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<WorkbenchInboxItemFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: WorkbenchInboxItemCountAggregateInputType | true
+    }
+
+  export interface WorkbenchInboxItemDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['WorkbenchInboxItem'], meta: { name: 'WorkbenchInboxItem' } }
+    /**
+     * Find zero or one WorkbenchInboxItem that matches the filter.
+     * @param {WorkbenchInboxItemFindUniqueArgs} args - Arguments to find a WorkbenchInboxItem
+     * @example
+     * // Get one WorkbenchInboxItem
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends WorkbenchInboxItemFindUniqueArgs>(args: SelectSubset<T, WorkbenchInboxItemFindUniqueArgs<ExtArgs>>): Prisma__WorkbenchInboxItemClient<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one WorkbenchInboxItem that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {WorkbenchInboxItemFindUniqueOrThrowArgs} args - Arguments to find a WorkbenchInboxItem
+     * @example
+     * // Get one WorkbenchInboxItem
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends WorkbenchInboxItemFindUniqueOrThrowArgs>(args: SelectSubset<T, WorkbenchInboxItemFindUniqueOrThrowArgs<ExtArgs>>): Prisma__WorkbenchInboxItemClient<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first WorkbenchInboxItem that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchInboxItemFindFirstArgs} args - Arguments to find a WorkbenchInboxItem
+     * @example
+     * // Get one WorkbenchInboxItem
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends WorkbenchInboxItemFindFirstArgs>(args?: SelectSubset<T, WorkbenchInboxItemFindFirstArgs<ExtArgs>>): Prisma__WorkbenchInboxItemClient<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first WorkbenchInboxItem that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchInboxItemFindFirstOrThrowArgs} args - Arguments to find a WorkbenchInboxItem
+     * @example
+     * // Get one WorkbenchInboxItem
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends WorkbenchInboxItemFindFirstOrThrowArgs>(args?: SelectSubset<T, WorkbenchInboxItemFindFirstOrThrowArgs<ExtArgs>>): Prisma__WorkbenchInboxItemClient<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more WorkbenchInboxItems that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchInboxItemFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all WorkbenchInboxItems
+     * const workbenchInboxItems = await prisma.workbenchInboxItem.findMany()
+     * 
+     * // Get first 10 WorkbenchInboxItems
+     * const workbenchInboxItems = await prisma.workbenchInboxItem.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const workbenchInboxItemWithIdOnly = await prisma.workbenchInboxItem.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends WorkbenchInboxItemFindManyArgs>(args?: SelectSubset<T, WorkbenchInboxItemFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a WorkbenchInboxItem.
+     * @param {WorkbenchInboxItemCreateArgs} args - Arguments to create a WorkbenchInboxItem.
+     * @example
+     * // Create one WorkbenchInboxItem
+     * const WorkbenchInboxItem = await prisma.workbenchInboxItem.create({
+     *   data: {
+     *     // ... data to create a WorkbenchInboxItem
+     *   }
+     * })
+     * 
+     */
+    create<T extends WorkbenchInboxItemCreateArgs>(args: SelectSubset<T, WorkbenchInboxItemCreateArgs<ExtArgs>>): Prisma__WorkbenchInboxItemClient<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many WorkbenchInboxItems.
+     * @param {WorkbenchInboxItemCreateManyArgs} args - Arguments to create many WorkbenchInboxItems.
+     * @example
+     * // Create many WorkbenchInboxItems
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends WorkbenchInboxItemCreateManyArgs>(args?: SelectSubset<T, WorkbenchInboxItemCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many WorkbenchInboxItems and returns the data saved in the database.
+     * @param {WorkbenchInboxItemCreateManyAndReturnArgs} args - Arguments to create many WorkbenchInboxItems.
+     * @example
+     * // Create many WorkbenchInboxItems
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many WorkbenchInboxItems and only return the `id`
+     * const workbenchInboxItemWithIdOnly = await prisma.workbenchInboxItem.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends WorkbenchInboxItemCreateManyAndReturnArgs>(args?: SelectSubset<T, WorkbenchInboxItemCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a WorkbenchInboxItem.
+     * @param {WorkbenchInboxItemDeleteArgs} args - Arguments to delete one WorkbenchInboxItem.
+     * @example
+     * // Delete one WorkbenchInboxItem
+     * const WorkbenchInboxItem = await prisma.workbenchInboxItem.delete({
+     *   where: {
+     *     // ... filter to delete one WorkbenchInboxItem
+     *   }
+     * })
+     * 
+     */
+    delete<T extends WorkbenchInboxItemDeleteArgs>(args: SelectSubset<T, WorkbenchInboxItemDeleteArgs<ExtArgs>>): Prisma__WorkbenchInboxItemClient<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one WorkbenchInboxItem.
+     * @param {WorkbenchInboxItemUpdateArgs} args - Arguments to update one WorkbenchInboxItem.
+     * @example
+     * // Update one WorkbenchInboxItem
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends WorkbenchInboxItemUpdateArgs>(args: SelectSubset<T, WorkbenchInboxItemUpdateArgs<ExtArgs>>): Prisma__WorkbenchInboxItemClient<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more WorkbenchInboxItems.
+     * @param {WorkbenchInboxItemDeleteManyArgs} args - Arguments to filter WorkbenchInboxItems to delete.
+     * @example
+     * // Delete a few WorkbenchInboxItems
+     * const { count } = await prisma.workbenchInboxItem.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends WorkbenchInboxItemDeleteManyArgs>(args?: SelectSubset<T, WorkbenchInboxItemDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more WorkbenchInboxItems.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchInboxItemUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many WorkbenchInboxItems
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends WorkbenchInboxItemUpdateManyArgs>(args: SelectSubset<T, WorkbenchInboxItemUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one WorkbenchInboxItem.
+     * @param {WorkbenchInboxItemUpsertArgs} args - Arguments to update or create a WorkbenchInboxItem.
+     * @example
+     * // Update or create a WorkbenchInboxItem
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.upsert({
+     *   create: {
+     *     // ... data to create a WorkbenchInboxItem
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the WorkbenchInboxItem we want to update
+     *   }
+     * })
+     */
+    upsert<T extends WorkbenchInboxItemUpsertArgs>(args: SelectSubset<T, WorkbenchInboxItemUpsertArgs<ExtArgs>>): Prisma__WorkbenchInboxItemClient<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of WorkbenchInboxItems.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchInboxItemCountArgs} args - Arguments to filter WorkbenchInboxItems to count.
+     * @example
+     * // Count the number of WorkbenchInboxItems
+     * const count = await prisma.workbenchInboxItem.count({
+     *   where: {
+     *     // ... the filter for the WorkbenchInboxItems we want to count
+     *   }
+     * })
+    **/
+    count<T extends WorkbenchInboxItemCountArgs>(
+      args?: Subset<T, WorkbenchInboxItemCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], WorkbenchInboxItemCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a WorkbenchInboxItem.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchInboxItemAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends WorkbenchInboxItemAggregateArgs>(args: Subset<T, WorkbenchInboxItemAggregateArgs>): Prisma.PrismaPromise<GetWorkbenchInboxItemAggregateType<T>>
+
+    /**
+     * Group by WorkbenchInboxItem.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchInboxItemGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends WorkbenchInboxItemGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: WorkbenchInboxItemGroupByArgs['orderBy'] }
+        : { orderBy?: WorkbenchInboxItemGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, WorkbenchInboxItemGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetWorkbenchInboxItemGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the WorkbenchInboxItem model
+   */
+  readonly fields: WorkbenchInboxItemFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for WorkbenchInboxItem.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__WorkbenchInboxItemClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the WorkbenchInboxItem model
+   */ 
+  interface WorkbenchInboxItemFieldRefs {
+    readonly id: FieldRef<"WorkbenchInboxItem", 'String'>
+    readonly userId: FieldRef<"WorkbenchInboxItem", 'String'>
+    readonly title: FieldRef<"WorkbenchInboxItem", 'String'>
+    readonly rawContent: FieldRef<"WorkbenchInboxItem", 'String'>
+    readonly sourceType: FieldRef<"WorkbenchInboxItem", 'TodoSourceType'>
+    readonly sourceRefId: FieldRef<"WorkbenchInboxItem", 'String'>
+    readonly sourceTitle: FieldRef<"WorkbenchInboxItem", 'String'>
+    readonly sourceSender: FieldRef<"WorkbenchInboxItem", 'String'>
+    readonly unifiedPayload: FieldRef<"WorkbenchInboxItem", 'Json'>
+    readonly status: FieldRef<"WorkbenchInboxItem", 'InboxItemStatus'>
+    readonly confidence: FieldRef<"WorkbenchInboxItem", 'Float'>
+    readonly aiClarification: FieldRef<"WorkbenchInboxItem", 'Json'>
+    readonly convertedTodoId: FieldRef<"WorkbenchInboxItem", 'String'>
+    readonly clarifiedAt: FieldRef<"WorkbenchInboxItem", 'DateTime'>
+    readonly createdAt: FieldRef<"WorkbenchInboxItem", 'DateTime'>
+    readonly updatedAt: FieldRef<"WorkbenchInboxItem", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * WorkbenchInboxItem findUnique
+   */
+  export type WorkbenchInboxItemFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchInboxItem to fetch.
+     */
+    where: WorkbenchInboxItemWhereUniqueInput
+  }
+
+  /**
+   * WorkbenchInboxItem findUniqueOrThrow
+   */
+  export type WorkbenchInboxItemFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchInboxItem to fetch.
+     */
+    where: WorkbenchInboxItemWhereUniqueInput
+  }
+
+  /**
+   * WorkbenchInboxItem findFirst
+   */
+  export type WorkbenchInboxItemFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchInboxItem to fetch.
+     */
+    where?: WorkbenchInboxItemWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkbenchInboxItems to fetch.
+     */
+    orderBy?: WorkbenchInboxItemOrderByWithRelationInput | WorkbenchInboxItemOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for WorkbenchInboxItems.
+     */
+    cursor?: WorkbenchInboxItemWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkbenchInboxItems from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkbenchInboxItems.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of WorkbenchInboxItems.
+     */
+    distinct?: WorkbenchInboxItemScalarFieldEnum | WorkbenchInboxItemScalarFieldEnum[]
+  }
+
+  /**
+   * WorkbenchInboxItem findFirstOrThrow
+   */
+  export type WorkbenchInboxItemFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchInboxItem to fetch.
+     */
+    where?: WorkbenchInboxItemWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkbenchInboxItems to fetch.
+     */
+    orderBy?: WorkbenchInboxItemOrderByWithRelationInput | WorkbenchInboxItemOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for WorkbenchInboxItems.
+     */
+    cursor?: WorkbenchInboxItemWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkbenchInboxItems from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkbenchInboxItems.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of WorkbenchInboxItems.
+     */
+    distinct?: WorkbenchInboxItemScalarFieldEnum | WorkbenchInboxItemScalarFieldEnum[]
+  }
+
+  /**
+   * WorkbenchInboxItem findMany
+   */
+  export type WorkbenchInboxItemFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchInboxItems to fetch.
+     */
+    where?: WorkbenchInboxItemWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkbenchInboxItems to fetch.
+     */
+    orderBy?: WorkbenchInboxItemOrderByWithRelationInput | WorkbenchInboxItemOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing WorkbenchInboxItems.
+     */
+    cursor?: WorkbenchInboxItemWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkbenchInboxItems from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkbenchInboxItems.
+     */
+    skip?: number
+    distinct?: WorkbenchInboxItemScalarFieldEnum | WorkbenchInboxItemScalarFieldEnum[]
+  }
+
+  /**
+   * WorkbenchInboxItem create
+   */
+  export type WorkbenchInboxItemCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * The data needed to create a WorkbenchInboxItem.
+     */
+    data: XOR<WorkbenchInboxItemCreateInput, WorkbenchInboxItemUncheckedCreateInput>
+  }
+
+  /**
+   * WorkbenchInboxItem createMany
+   */
+  export type WorkbenchInboxItemCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many WorkbenchInboxItems.
+     */
+    data: WorkbenchInboxItemCreateManyInput | WorkbenchInboxItemCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * WorkbenchInboxItem createManyAndReturn
+   */
+  export type WorkbenchInboxItemCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many WorkbenchInboxItems.
+     */
+    data: WorkbenchInboxItemCreateManyInput | WorkbenchInboxItemCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * WorkbenchInboxItem update
+   */
+  export type WorkbenchInboxItemUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * The data needed to update a WorkbenchInboxItem.
+     */
+    data: XOR<WorkbenchInboxItemUpdateInput, WorkbenchInboxItemUncheckedUpdateInput>
+    /**
+     * Choose, which WorkbenchInboxItem to update.
+     */
+    where: WorkbenchInboxItemWhereUniqueInput
+  }
+
+  /**
+   * WorkbenchInboxItem updateMany
+   */
+  export type WorkbenchInboxItemUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update WorkbenchInboxItems.
+     */
+    data: XOR<WorkbenchInboxItemUpdateManyMutationInput, WorkbenchInboxItemUncheckedUpdateManyInput>
+    /**
+     * Filter which WorkbenchInboxItems to update
+     */
+    where?: WorkbenchInboxItemWhereInput
+  }
+
+  /**
+   * WorkbenchInboxItem upsert
+   */
+  export type WorkbenchInboxItemUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * The filter to search for the WorkbenchInboxItem to update in case it exists.
+     */
+    where: WorkbenchInboxItemWhereUniqueInput
+    /**
+     * In case the WorkbenchInboxItem found by the `where` argument doesn't exist, create a new WorkbenchInboxItem with this data.
+     */
+    create: XOR<WorkbenchInboxItemCreateInput, WorkbenchInboxItemUncheckedCreateInput>
+    /**
+     * In case the WorkbenchInboxItem was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<WorkbenchInboxItemUpdateInput, WorkbenchInboxItemUncheckedUpdateInput>
+  }
+
+  /**
+   * WorkbenchInboxItem delete
+   */
+  export type WorkbenchInboxItemDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * Filter which WorkbenchInboxItem to delete.
+     */
+    where: WorkbenchInboxItemWhereUniqueInput
+  }
+
+  /**
+   * WorkbenchInboxItem deleteMany
+   */
+  export type WorkbenchInboxItemDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which WorkbenchInboxItems to delete
+     */
+    where?: WorkbenchInboxItemWhereInput
+  }
+
+  /**
+   * WorkbenchInboxItem without action
+   */
+  export type WorkbenchInboxItemDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -89288,6 +90425,28 @@ export namespace Prisma {
   export type WorkbenchTodoScalarFieldEnum = (typeof WorkbenchTodoScalarFieldEnum)[keyof typeof WorkbenchTodoScalarFieldEnum]
 
 
+  export const WorkbenchInboxItemScalarFieldEnum: {
+    id: 'id',
+    userId: 'userId',
+    title: 'title',
+    rawContent: 'rawContent',
+    sourceType: 'sourceType',
+    sourceRefId: 'sourceRefId',
+    sourceTitle: 'sourceTitle',
+    sourceSender: 'sourceSender',
+    unifiedPayload: 'unifiedPayload',
+    status: 'status',
+    confidence: 'confidence',
+    aiClarification: 'aiClarification',
+    convertedTodoId: 'convertedTodoId',
+    clarifiedAt: 'clarifiedAt',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type WorkbenchInboxItemScalarFieldEnum = (typeof WorkbenchInboxItemScalarFieldEnum)[keyof typeof WorkbenchInboxItemScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -89604,6 +90763,20 @@ export namespace Prisma {
    * Reference to a field of type 'TodoSourceType[]'
    */
   export type ListEnumTodoSourceTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TodoSourceType[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'InboxItemStatus'
+   */
+  export type EnumInboxItemStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'InboxItemStatus'>
+    
+
+
+  /**
+   * Reference to a field of type 'InboxItemStatus[]'
+   */
+  export type ListEnumInboxItemStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'InboxItemStatus[]'>
     
   /**
    * Deep Input Types
@@ -96777,6 +97950,115 @@ export namespace Prisma {
     executionId?: StringNullableWithAggregatesFilter<"WorkbenchTodo"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"WorkbenchTodo"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"WorkbenchTodo"> | Date | string
+  }
+
+  export type WorkbenchInboxItemWhereInput = {
+    AND?: WorkbenchInboxItemWhereInput | WorkbenchInboxItemWhereInput[]
+    OR?: WorkbenchInboxItemWhereInput[]
+    NOT?: WorkbenchInboxItemWhereInput | WorkbenchInboxItemWhereInput[]
+    id?: UuidFilter<"WorkbenchInboxItem"> | string
+    userId?: StringFilter<"WorkbenchInboxItem"> | string
+    title?: StringFilter<"WorkbenchInboxItem"> | string
+    rawContent?: StringFilter<"WorkbenchInboxItem"> | string
+    sourceType?: EnumTodoSourceTypeFilter<"WorkbenchInboxItem"> | $Enums.TodoSourceType
+    sourceRefId?: StringNullableFilter<"WorkbenchInboxItem"> | string | null
+    sourceTitle?: StringNullableFilter<"WorkbenchInboxItem"> | string | null
+    sourceSender?: StringNullableFilter<"WorkbenchInboxItem"> | string | null
+    unifiedPayload?: JsonFilter<"WorkbenchInboxItem">
+    status?: EnumInboxItemStatusFilter<"WorkbenchInboxItem"> | $Enums.InboxItemStatus
+    confidence?: FloatFilter<"WorkbenchInboxItem"> | number
+    aiClarification?: JsonNullableFilter<"WorkbenchInboxItem">
+    convertedTodoId?: UuidNullableFilter<"WorkbenchInboxItem"> | string | null
+    clarifiedAt?: DateTimeNullableFilter<"WorkbenchInboxItem"> | Date | string | null
+    createdAt?: DateTimeFilter<"WorkbenchInboxItem"> | Date | string
+    updatedAt?: DateTimeFilter<"WorkbenchInboxItem"> | Date | string
+  }
+
+  export type WorkbenchInboxItemOrderByWithRelationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    rawContent?: SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrderInput | SortOrder
+    sourceTitle?: SortOrderInput | SortOrder
+    sourceSender?: SortOrderInput | SortOrder
+    unifiedPayload?: SortOrder
+    status?: SortOrder
+    confidence?: SortOrder
+    aiClarification?: SortOrderInput | SortOrder
+    convertedTodoId?: SortOrderInput | SortOrder
+    clarifiedAt?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkbenchInboxItemWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: WorkbenchInboxItemWhereInput | WorkbenchInboxItemWhereInput[]
+    OR?: WorkbenchInboxItemWhereInput[]
+    NOT?: WorkbenchInboxItemWhereInput | WorkbenchInboxItemWhereInput[]
+    userId?: StringFilter<"WorkbenchInboxItem"> | string
+    title?: StringFilter<"WorkbenchInboxItem"> | string
+    rawContent?: StringFilter<"WorkbenchInboxItem"> | string
+    sourceType?: EnumTodoSourceTypeFilter<"WorkbenchInboxItem"> | $Enums.TodoSourceType
+    sourceRefId?: StringNullableFilter<"WorkbenchInboxItem"> | string | null
+    sourceTitle?: StringNullableFilter<"WorkbenchInboxItem"> | string | null
+    sourceSender?: StringNullableFilter<"WorkbenchInboxItem"> | string | null
+    unifiedPayload?: JsonFilter<"WorkbenchInboxItem">
+    status?: EnumInboxItemStatusFilter<"WorkbenchInboxItem"> | $Enums.InboxItemStatus
+    confidence?: FloatFilter<"WorkbenchInboxItem"> | number
+    aiClarification?: JsonNullableFilter<"WorkbenchInboxItem">
+    convertedTodoId?: UuidNullableFilter<"WorkbenchInboxItem"> | string | null
+    clarifiedAt?: DateTimeNullableFilter<"WorkbenchInboxItem"> | Date | string | null
+    createdAt?: DateTimeFilter<"WorkbenchInboxItem"> | Date | string
+    updatedAt?: DateTimeFilter<"WorkbenchInboxItem"> | Date | string
+  }, "id">
+
+  export type WorkbenchInboxItemOrderByWithAggregationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    rawContent?: SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrderInput | SortOrder
+    sourceTitle?: SortOrderInput | SortOrder
+    sourceSender?: SortOrderInput | SortOrder
+    unifiedPayload?: SortOrder
+    status?: SortOrder
+    confidence?: SortOrder
+    aiClarification?: SortOrderInput | SortOrder
+    convertedTodoId?: SortOrderInput | SortOrder
+    clarifiedAt?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: WorkbenchInboxItemCountOrderByAggregateInput
+    _avg?: WorkbenchInboxItemAvgOrderByAggregateInput
+    _max?: WorkbenchInboxItemMaxOrderByAggregateInput
+    _min?: WorkbenchInboxItemMinOrderByAggregateInput
+    _sum?: WorkbenchInboxItemSumOrderByAggregateInput
+  }
+
+  export type WorkbenchInboxItemScalarWhereWithAggregatesInput = {
+    AND?: WorkbenchInboxItemScalarWhereWithAggregatesInput | WorkbenchInboxItemScalarWhereWithAggregatesInput[]
+    OR?: WorkbenchInboxItemScalarWhereWithAggregatesInput[]
+    NOT?: WorkbenchInboxItemScalarWhereWithAggregatesInput | WorkbenchInboxItemScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"WorkbenchInboxItem"> | string
+    userId?: StringWithAggregatesFilter<"WorkbenchInboxItem"> | string
+    title?: StringWithAggregatesFilter<"WorkbenchInboxItem"> | string
+    rawContent?: StringWithAggregatesFilter<"WorkbenchInboxItem"> | string
+    sourceType?: EnumTodoSourceTypeWithAggregatesFilter<"WorkbenchInboxItem"> | $Enums.TodoSourceType
+    sourceRefId?: StringNullableWithAggregatesFilter<"WorkbenchInboxItem"> | string | null
+    sourceTitle?: StringNullableWithAggregatesFilter<"WorkbenchInboxItem"> | string | null
+    sourceSender?: StringNullableWithAggregatesFilter<"WorkbenchInboxItem"> | string | null
+    unifiedPayload?: JsonWithAggregatesFilter<"WorkbenchInboxItem">
+    status?: EnumInboxItemStatusWithAggregatesFilter<"WorkbenchInboxItem"> | $Enums.InboxItemStatus
+    confidence?: FloatWithAggregatesFilter<"WorkbenchInboxItem"> | number
+    aiClarification?: JsonNullableWithAggregatesFilter<"WorkbenchInboxItem">
+    convertedTodoId?: UuidNullableWithAggregatesFilter<"WorkbenchInboxItem"> | string | null
+    clarifiedAt?: DateTimeNullableWithAggregatesFilter<"WorkbenchInboxItem"> | Date | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"WorkbenchInboxItem"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"WorkbenchInboxItem"> | Date | string
   }
 
   export type UserCreateInput = {
@@ -105101,6 +106383,139 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type WorkbenchInboxItemCreateInput = {
+    id?: string
+    userId: string
+    title: string
+    rawContent: string
+    sourceType?: $Enums.TodoSourceType
+    sourceRefId?: string | null
+    sourceTitle?: string | null
+    sourceSender?: string | null
+    unifiedPayload?: JsonNullValueInput | InputJsonValue
+    status?: $Enums.InboxItemStatus
+    confidence?: number
+    aiClarification?: NullableJsonNullValueInput | InputJsonValue
+    convertedTodoId?: string | null
+    clarifiedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkbenchInboxItemUncheckedCreateInput = {
+    id?: string
+    userId: string
+    title: string
+    rawContent: string
+    sourceType?: $Enums.TodoSourceType
+    sourceRefId?: string | null
+    sourceTitle?: string | null
+    sourceSender?: string | null
+    unifiedPayload?: JsonNullValueInput | InputJsonValue
+    status?: $Enums.InboxItemStatus
+    confidence?: number
+    aiClarification?: NullableJsonNullValueInput | InputJsonValue
+    convertedTodoId?: string | null
+    clarifiedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkbenchInboxItemUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    rawContent?: StringFieldUpdateOperationsInput | string
+    sourceType?: EnumTodoSourceTypeFieldUpdateOperationsInput | $Enums.TodoSourceType
+    sourceRefId?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceTitle?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceSender?: NullableStringFieldUpdateOperationsInput | string | null
+    unifiedPayload?: JsonNullValueInput | InputJsonValue
+    status?: EnumInboxItemStatusFieldUpdateOperationsInput | $Enums.InboxItemStatus
+    confidence?: FloatFieldUpdateOperationsInput | number
+    aiClarification?: NullableJsonNullValueInput | InputJsonValue
+    convertedTodoId?: NullableStringFieldUpdateOperationsInput | string | null
+    clarifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkbenchInboxItemUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    rawContent?: StringFieldUpdateOperationsInput | string
+    sourceType?: EnumTodoSourceTypeFieldUpdateOperationsInput | $Enums.TodoSourceType
+    sourceRefId?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceTitle?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceSender?: NullableStringFieldUpdateOperationsInput | string | null
+    unifiedPayload?: JsonNullValueInput | InputJsonValue
+    status?: EnumInboxItemStatusFieldUpdateOperationsInput | $Enums.InboxItemStatus
+    confidence?: FloatFieldUpdateOperationsInput | number
+    aiClarification?: NullableJsonNullValueInput | InputJsonValue
+    convertedTodoId?: NullableStringFieldUpdateOperationsInput | string | null
+    clarifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkbenchInboxItemCreateManyInput = {
+    id?: string
+    userId: string
+    title: string
+    rawContent: string
+    sourceType?: $Enums.TodoSourceType
+    sourceRefId?: string | null
+    sourceTitle?: string | null
+    sourceSender?: string | null
+    unifiedPayload?: JsonNullValueInput | InputJsonValue
+    status?: $Enums.InboxItemStatus
+    confidence?: number
+    aiClarification?: NullableJsonNullValueInput | InputJsonValue
+    convertedTodoId?: string | null
+    clarifiedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkbenchInboxItemUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    rawContent?: StringFieldUpdateOperationsInput | string
+    sourceType?: EnumTodoSourceTypeFieldUpdateOperationsInput | $Enums.TodoSourceType
+    sourceRefId?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceTitle?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceSender?: NullableStringFieldUpdateOperationsInput | string | null
+    unifiedPayload?: JsonNullValueInput | InputJsonValue
+    status?: EnumInboxItemStatusFieldUpdateOperationsInput | $Enums.InboxItemStatus
+    confidence?: FloatFieldUpdateOperationsInput | number
+    aiClarification?: NullableJsonNullValueInput | InputJsonValue
+    convertedTodoId?: NullableStringFieldUpdateOperationsInput | string | null
+    clarifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkbenchInboxItemUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    rawContent?: StringFieldUpdateOperationsInput | string
+    sourceType?: EnumTodoSourceTypeFieldUpdateOperationsInput | $Enums.TodoSourceType
+    sourceRefId?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceTitle?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceSender?: NullableStringFieldUpdateOperationsInput | string | null
+    unifiedPayload?: JsonNullValueInput | InputJsonValue
+    status?: EnumInboxItemStatusFieldUpdateOperationsInput | $Enums.InboxItemStatus
+    confidence?: FloatFieldUpdateOperationsInput | number
+    aiClarification?: NullableJsonNullValueInput | InputJsonValue
+    convertedTodoId?: NullableStringFieldUpdateOperationsInput | string | null
+    clarifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type UuidFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -109960,6 +111375,84 @@ export namespace Prisma {
     _max?: NestedEnumTodoSourceTypeFilter<$PrismaModel>
   }
 
+  export type EnumInboxItemStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.InboxItemStatus | EnumInboxItemStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.InboxItemStatus[] | ListEnumInboxItemStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.InboxItemStatus[] | ListEnumInboxItemStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumInboxItemStatusFilter<$PrismaModel> | $Enums.InboxItemStatus
+  }
+
+  export type WorkbenchInboxItemCountOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    rawContent?: SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrder
+    sourceTitle?: SortOrder
+    sourceSender?: SortOrder
+    unifiedPayload?: SortOrder
+    status?: SortOrder
+    confidence?: SortOrder
+    aiClarification?: SortOrder
+    convertedTodoId?: SortOrder
+    clarifiedAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkbenchInboxItemAvgOrderByAggregateInput = {
+    confidence?: SortOrder
+  }
+
+  export type WorkbenchInboxItemMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    rawContent?: SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrder
+    sourceTitle?: SortOrder
+    sourceSender?: SortOrder
+    status?: SortOrder
+    confidence?: SortOrder
+    convertedTodoId?: SortOrder
+    clarifiedAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkbenchInboxItemMinOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    rawContent?: SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrder
+    sourceTitle?: SortOrder
+    sourceSender?: SortOrder
+    status?: SortOrder
+    confidence?: SortOrder
+    convertedTodoId?: SortOrder
+    clarifiedAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkbenchInboxItemSumOrderByAggregateInput = {
+    confidence?: SortOrder
+  }
+
+  export type EnumInboxItemStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.InboxItemStatus | EnumInboxItemStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.InboxItemStatus[] | ListEnumInboxItemStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.InboxItemStatus[] | ListEnumInboxItemStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumInboxItemStatusWithAggregatesFilter<$PrismaModel> | $Enums.InboxItemStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumInboxItemStatusFilter<$PrismaModel>
+    _max?: NestedEnumInboxItemStatusFilter<$PrismaModel>
+  }
+
   export type UserRoleCreateNestedManyWithoutUserInput = {
     create?: XOR<UserRoleCreateWithoutUserInput, UserRoleUncheckedCreateWithoutUserInput> | UserRoleCreateWithoutUserInput[] | UserRoleUncheckedCreateWithoutUserInput[]
     connectOrCreate?: UserRoleCreateOrConnectWithoutUserInput | UserRoleCreateOrConnectWithoutUserInput[]
@@ -112952,6 +114445,10 @@ export namespace Prisma {
     set?: $Enums.TodoSourceType
   }
 
+  export type EnumInboxItemStatusFieldUpdateOperationsInput = {
+    set?: $Enums.InboxItemStatus
+  }
+
   export type NestedUuidFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -113562,6 +115059,23 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumTodoSourceTypeFilter<$PrismaModel>
     _max?: NestedEnumTodoSourceTypeFilter<$PrismaModel>
+  }
+
+  export type NestedEnumInboxItemStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.InboxItemStatus | EnumInboxItemStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.InboxItemStatus[] | ListEnumInboxItemStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.InboxItemStatus[] | ListEnumInboxItemStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumInboxItemStatusFilter<$PrismaModel> | $Enums.InboxItemStatus
+  }
+
+  export type NestedEnumInboxItemStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.InboxItemStatus | EnumInboxItemStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.InboxItemStatus[] | ListEnumInboxItemStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.InboxItemStatus[] | ListEnumInboxItemStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumInboxItemStatusWithAggregatesFilter<$PrismaModel> | $Enums.InboxItemStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumInboxItemStatusFilter<$PrismaModel>
+    _max?: NestedEnumInboxItemStatusFilter<$PrismaModel>
   }
 
   export type UserRoleCreateWithoutUserInput = {
@@ -124636,6 +126150,10 @@ export namespace Prisma {
      * @deprecated Use WorkbenchTodoDefaultArgs instead
      */
     export type WorkbenchTodoArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = WorkbenchTodoDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use WorkbenchInboxItemDefaultArgs instead
+     */
+    export type WorkbenchInboxItemArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = WorkbenchInboxItemDefaultArgs<ExtArgs>
 
   /**
    * Batch Payload for updateMany & deleteMany & createMany
