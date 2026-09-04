@@ -342,6 +342,8 @@ export function buildUniversalLinearWorkflowCode(
     '    def _render_template(cls, value: Any, base_input: Dict[str, Any], step_results: Dict[str, Any]) -> Any:',
     '        if isinstance(value, str):',
     '            stripped = value.strip()',
+    '            if stripped.startswith("$.") or (stripped.startswith("$") and len(stripped) > 1 and not stripped[1].isdigit()):',
+    '                return cls._resolve_ref(stripped, base_input, step_results)',
     '            whole_match = re.fullmatch(r"\\{\\{\\s*([^{}]+)\\s*\\}\\}", stripped)',
     '            if whole_match:',
     '                return cls._resolve_ref(whole_match.group(1).strip(), base_input, step_results)',
