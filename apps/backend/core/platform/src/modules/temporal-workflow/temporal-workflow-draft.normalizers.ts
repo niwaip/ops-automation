@@ -286,6 +286,11 @@ function collectWorkflowInputPlaceholdersFromSteps(args: {
 }): Set<string> {
   const { steps, pickFirstNonEmptyString, collectTemplateVariables } = args;
   const placeholders = new Set<string>();
+  const stepIds = new Set<string>(
+    (steps || [])
+      .map((step) => pickFirstNonEmptyString(step?.id))
+      .filter((id): id is string => Boolean(id))
+  );
   for (const step of steps || []) {
     if (!step || step.type !== 'activity') {
       continue;
@@ -344,7 +349,15 @@ function collectWorkflowInputPlaceholdersFromSteps(args: {
     });
   }
 
-  return new Set(Array.from(placeholders).filter((key) => isValidTemplateToken(key)));
+  return new Set(
+    Array.from(placeholders).filter((key) => {
+      if (!isValidTemplateToken(key)) return false;
+      if (stepIds.has(key)) return false;
+      const rootKey = key.split('.')[0];
+      if (stepIds.has(rootKey)) return false;
+      return true;
+    })
+  );
 }
 
 function mergeDraftInputParamsWithStepPlaceholders(args: {
@@ -443,6 +456,21 @@ function mergeDraftInputParamsWithStepPlaceholders(args: {
                 buildWorkflowSemanticHint,
               }),
     };
+  });
+
+  const stepIds = new Set<string>(
+    (steps || [])
+      .map((step) => pickFirstNonEmptyString(step?.id))
+      .filter((id): id is string => Boolean(id))
+  );
+  stepIds.forEach((id) => {
+    if (
+      merged[id] &&
+      (merged[id].source === 'inferred_from_template' ||
+        merged[id].source === 'inferred_from_reference_url')
+    ) {
+      delete merged[id];
+    }
   });
 
   return merged;

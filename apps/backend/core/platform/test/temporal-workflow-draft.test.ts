@@ -1810,6 +1810,71 @@ describe('TemporalWorkflowAiDraftService', () => {
     });
   });
 
+  it('does not infer step references like step_1 or step_2.emails as workflow input params', () => {
+    const { workflowConfigService, workflowNormalizationService } = createService();
+
+    const normalizedInputParams = normalizeDraftInputParams({
+      inputParams: {
+        maxCount: {
+          description: '拉取数量',
+          required: false,
+          defaultValue: '10',
+        },
+      },
+      steps: [
+        {
+          id: 'step_1',
+          name: '拉取未读邮件',
+          type: 'activity',
+          activityRef: 'builtin:emailFetchUnread',
+          input: {
+            __emailFetchUnread: {
+              maxCount: '{maxCount}',
+            },
+          },
+        },
+        {
+          id: 'step_2',
+          name: '沉淀入 GTD 收件箱',
+          type: 'activity',
+          activityRef: 'builtin:inboxCollect',
+          input: {
+            __inboxCollect: {
+              items: '{step_1.emails}',
+              sourceType: '{sourceType}',
+            },
+          },
+        },
+        {
+          id: 'step_3',
+          name: '干预网关',
+          type: 'activity',
+          activityRef: 'builtin:executionInterventionGate',
+          input: {
+            __executionInterventionGate: {
+              previousStepResults: {
+                fetch: '{step_1}',
+                inbox: '{step_2}',
+              },
+            },
+          },
+        },
+      ],
+      pickFirstNonEmptyString,
+      collectTemplateVariables: (value, target) =>
+        workflowConfigService.collectTemplateVariables(value, target),
+      normalizeWorkflowInputRenderPath,
+      buildWorkflowSemanticHint: (...values) =>
+        workflowNormalizationService.buildWorkflowSemanticHint(...values),
+    });
+
+    expect(normalizedInputParams).toBeDefined();
+    expect(Object.keys(normalizedInputParams || {}).sort()).toEqual(['maxCount', 'sourceType']);
+    expect(normalizedInputParams?.step_1).toBeUndefined();
+    expect(normalizedInputParams?.step_2).toBeUndefined();
+    expect(normalizedInputParams?.step_3).toBeUndefined();
+  });
+
   it('rejects enum defaults and examples outside the declared candidates', () => {
     const issues = validateAiWorkflowDraftPlan(
       {

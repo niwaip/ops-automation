@@ -554,8 +554,21 @@ export function buildAiDraftResolutionSampleInputs(
     (...values) => deps.pickFirstNonEmptyString(...values)
   );
 
+  const stepIds = new Set<string>(
+    steps.map((s) => deps.pickFirstNonEmptyString(s?.id)).filter((id): id is string => Boolean(id))
+  );
+
   steps.forEach((step) => {
     support.collectTemplateVariables(step?.input || {}, placeholderKeys);
+  });
+
+  stepIds.forEach((id) => {
+    placeholderKeys.delete(id);
+    for (const key of Array.from(placeholderKeys)) {
+      if (key.startsWith(`${id}.`)) {
+        placeholderKeys.delete(key);
+      }
+    }
   });
 
   [...knownEntries.map(([key]) => key), ...Array.from(placeholderKeys)].forEach((rawKey) => {
