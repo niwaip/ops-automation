@@ -96,8 +96,18 @@ export function DashboardPage() {
   const [handledExecutions, setHandledExecutions] = useState<WorkbenchHandledExecutionMap>(() =>
     loadWorkbenchHandledExecutions()
   );
-  const { handleCreateTodo, handleToggleTodo, setTodoDraft, todoDraft, todoSummary, todos } =
-    useWorkbenchTodos({ message });
+  const {
+    activeTab,
+    handleCreateTodo,
+    handleDeleteTodo,
+    handleExecuteTodo,
+    handleToggleTodo,
+    setActiveTab,
+    setTodoDraft,
+    todoDraft,
+    todoSummary,
+    todos,
+  } = useWorkbenchTodos({ message });
   const {
     activeSchedules,
     executionsReady,
@@ -286,11 +296,15 @@ export function DashboardPage() {
               todoDraft={todoDraft}
               todoSummary={todoSummary}
               todos={todos}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
               onCreateTodo={handleCreateTodo}
               onDraftChange={setTodoDraft}
               onLaunchAiAssistant={launchAiAssistant}
               onOpenNewExecution={() => navigate('/executions/new')}
               onToggleTodo={handleToggleTodo}
+              onExecuteTodo={handleExecuteTodo}
+              onDeleteTodo={handleDeleteTodo}
             />
 
             <SummaryCard

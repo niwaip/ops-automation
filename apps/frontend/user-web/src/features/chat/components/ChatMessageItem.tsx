@@ -32,6 +32,7 @@ import {
 } from './TaskMessageBlocks';
 import { SaveWorkflowAction } from './workflow-save/SaveWorkflowAction';
 import { SaveToWorkspaceAction } from './workspace-save/SaveToWorkspaceAction';
+import { SaveToTodoAction } from './todo-save/SaveToTodoAction';
 import { MessageFeedbackActions } from './feedback/MessageFeedbackActions';
 import styles from '../pages/ChatPage.module.css';
 
@@ -315,6 +316,9 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                     ) : null}
                     {!message.isStreaming ? (
                       <SaveToWorkspaceAction message={message} userQuery={userQuery} />
+                    ) : null}
+                    {!message.isStreaming ? (
+                      <SaveToTodoAction message={message} userQuery={userQuery} />
                     ) : null}
                     {rateLimit?.requests_remaining !== undefined ? (
                       <Typography.Text type="secondary" className={styles['user-chat-usage-text']}>
