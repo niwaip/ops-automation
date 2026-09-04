@@ -34,6 +34,8 @@ import {
   FIXED_CONDITION_CHECK_ACTIVITY_FN,
 } from './fixed-activity-templates';
 import type { ActivityDeprecation } from './temporal-activity.types';
+import { getWorkbenchBuiltinActivities } from './workbench-activities.definitions';
+export * from './workbench-activities.definitions';
 
 export interface BuiltinActivityDefinition {
   key: string;
@@ -891,6 +893,11 @@ export class BuiltinActivityRegistry {
     this.activities.set(shellCommand.key, shellCommand);
     this.activities.set(waitDelay.key, waitDelay);
     this.activities.set(conditionCheck.key, conditionCheck);
+
+    // 注册 GTD 收件箱、邮件与待办任务相关内置活动
+    for (const act of getWorkbenchBuiltinActivities()) {
+      this.activities.set(act.key, act);
+    }
   }
 
   list(): BuiltinActivityDefinition[] {
