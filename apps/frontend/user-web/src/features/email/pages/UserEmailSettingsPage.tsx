@@ -42,6 +42,7 @@ import {
   type MicrosoftDeviceCodeResponse,
   type SaveUserEmailRequest,
 } from '@/api';
+import { EmailInboxSyncCard } from '../components/EmailInboxSyncCard';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -608,6 +609,9 @@ export default function UserEmailSettingsPage() {
                 </div>
               </Space>
             </Card>
+
+            {/* GTD 收件箱自动同步卡片 */}
+            <EmailInboxSyncCard isConfigured={Boolean(status?.configured)} />
 
             {/* AI 对话指令指引 */}
             <Card
