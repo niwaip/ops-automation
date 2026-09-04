@@ -3,7 +3,6 @@ import axios from "axios";
 import { PrismaService } from "../../../prisma/prisma.service";
 import { getControlPlaneApiUrl } from "../../../config/service-endpoints";
 import { UserEmailConnectionService } from "../../user-connection/user-email-connection.service";
-import { TodoSourceType } from "../dto/workbench-inbox.dto";
 import { WorkbenchInboxService } from "../workbench-inbox.service";
 
 export interface EmailSyncResult {
@@ -53,7 +52,8 @@ export class EmailInboxSyncService {
   }
 
   /**
-   * 执行邮件收取 -> 存入 GTD 收件箱 -> 标为已读 完整闭环流水线
+   * 执行邮件收取 -> 存入 GTD 收件箱 -> 标为已读 流水线
+   * （完全切换为由 EmailInboxSyncWorkflow 工作流执行，移除原有硬编码三步过程式代码）
    */
   async syncUserUnreadEmails(
     userId: string,
@@ -72,184 +72,123 @@ export class EmailInboxSyncService {
     }
 
     const limit = Math.min(Math.max(options?.limit || 20, 1), 50);
-    const errors: string[] = [];
-    let processedCount = 0;
-    let skippedCount = 0;
+    const now = new Date().toISOString();
 
     try {
-      this.logger.log(`Starting email sync for userId=${userId}, limit=${limit}`);
+      this.logger.log(`Invoking EmailInboxSyncWorkflow for userId=${userId}, limit=${limit}`);
 
-      // 1. 调用内置邮件技能 platform.email.messages 获取未读邮件
+      // 1. 动态解析已发布的 EmailInboxSyncWorkflow 技能 ID
+      const workflowSkill = await this.prisma.skillConfig.findFirst({
+        where: { name: "EmailInboxSyncWorkflow", isActive: true },
+        select: { id: true },
+      });
+      const skillId = workflowSkill?.id || "d20c8ad5-1f81-4c26-987c-07874afd5f0b";
+
       const controlPlaneUrl = getControlPlaneApiUrl();
       const internalSecret =
         process.env.INTERNAL_API_SHARED_SECRET || process.env.INTERNAL_API_SECRET;
 
-      let unreadMessages: Array<{
-        id: string;
-        subject?: string;
-        from?: string;
-        body?: string;
-        snippet?: string;
-        receivedAt?: string;
-        hasAttachments?: boolean;
-      }> = [];
-
-      try {
-        const response = await axios.post(
-          `${controlPlaneUrl}/executions`,
-          {
-            skillId: "platform.email.messages",
-            capabilityId: "platform.email.messages",
-            input: {
-              folder: "inbox",
-              unreadOnly: true,
-              limit,
-            },
-          },
-          {
-            headers: {
-              "Content-Type": "application/json",
-              ...(internalSecret ? { "x-internal-secret": internalSecret } : {}),
-              ...(options?.authToken ? { Authorization: options.authToken } : {}),
-              "X-User-Id": userId,
-            },
-            timeout: 15000,
-          }
-        );
-
-        const executionData = response.data as any;
-        // 如果返回了直接的输出结果或中间记录
-        if (executionData?.output?.items && Array.isArray(executionData.output.items)) {
-          unreadMessages = executionData.output.items;
-        } else if (executionData?.result?.items && Array.isArray(executionData.result.items)) {
-          unreadMessages = executionData.result.items;
-        } else if (Array.isArray(executionData?.items)) {
-          unreadMessages = executionData.items;
-        }
-      } catch (err: any) {
-        // 若从 control-plane 直接调用遇到网络或执行单排队，尝试获取该用户的邮件并容错
-        const errMsg = err.response?.data?.message || err.message;
-        this.logger.warn(`Control-plane email execution error: ${errMsg}`);
-        errors.push(`邮件拉取失败: ${errMsg}`);
-      }
-
-      if (unreadMessages.length === 0) {
-        const now = new Date().toISOString();
-        this.syncStatusMap.set(userId, { lastSyncedAt: now, lastSyncStatus: "success" });
-        return {
-          success: true,
-          message: "当前收件箱没有新的未读邮件",
-          processedCount: 0,
-          skippedCount: 0,
-          errors,
-          lastSyncedAt: now,
-        };
-      }
-
-      // 2. 幂等接入 GTD 收件箱
-      const succeededMessageIds: string[] = [];
-
-      for (const email of unreadMessages) {
-        const emailRefId = email.id || String(email.receivedAt || "");
-        if (!emailRefId) continue;
-
-        // 幂等防重：检查是否已有相同 sourceRefId 的收件箱记录
-        const existing = await this.prisma.workbenchInboxItem.findFirst({
-          where: {
+      // 2. 调度已发布工作流执行（通过 Control Plane 驱动 Temporal 编排引擎）
+      const response = await axios.post<{ id: string; status?: string; result?: any }>(
+        `${controlPlaneUrl}/executions`,
+        {
+          skillId,
+          capabilityId: skillId,
+          input: {
+            runMode: "AUTO",
+            maxCount: limit,
+            sourceType: "EMAIL",
+            autoDeduplicate: true,
             userId,
-            sourceType: TodoSourceType.email,
-            sourceRefId: emailRefId,
           },
-        });
-
-        if (existing) {
-          skippedCount++;
-          succeededMessageIds.push(email.id); // 已经在收件箱中，仍记录以确保标记为已读
-          continue;
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            ...(internalSecret ? { "x-internal-secret": internalSecret } : {}),
+            ...(options?.authToken ? { Authorization: options.authToken } : {}),
+            "X-User-Id": userId,
+          },
+          timeout: 15000,
         }
+      );
 
-        const title = email.subject?.trim() || "（无主题邮件）";
-        const rawContent = (email.body || email.snippet || title).trim();
+      const executionId = response.data?.id;
+      this.logger.log(`EmailInboxSyncWorkflow dispatched: executionId=${executionId}`);
 
-        try {
-          await this.inboxService.ingest(userId, {
-            title,
-            rawContent,
-            sourceType: TodoSourceType.email,
-            sourceSender: email.from,
-            sourceRefId: emailRefId,
-            sourceTitle: email.subject || "邮件通知",
-            extra: {
-              receivedAt: email.receivedAt,
-              hasAttachments: email.hasAttachments,
-              providerType: connection.providerType,
-            },
-          });
-          processedCount++;
-          succeededMessageIds.push(email.id);
-        } catch (ingestErr: any) {
-          errors.push(`写入邮件「${title}」至收件箱失败: ${ingestErr.message}`);
-        }
-      }
-
-      // 3. 将成功摄入收件箱的邮件在原邮箱中批量更新为已读 (isRead: true)
-      if (succeededMessageIds.length > 0) {
-        try {
-          await axios.post(
-            `${controlPlaneUrl}/executions`,
-            {
-              skillId: "platform.email.update",
-              capabilityId: "platform.email.update",
-              input: {
-                messageRefs: succeededMessageIds,
-                isRead: true,
-              },
-            },
-            {
+      let executionData: any = response.data;
+      // 若非直接终态，短暂轮询等待工作流返回业务数据（最多轮询 6 次，共 3 秒）
+      if (
+        executionId &&
+        executionData?.status !== "succeeded" &&
+        executionData?.status !== "failed"
+      ) {
+        for (let i = 0; i < 6; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          try {
+            const pollRes = await axios.get(`${controlPlaneUrl}/executions/${executionId}`, {
               headers: {
-                "Content-Type": "application/json",
                 ...(internalSecret ? { "x-internal-secret": internalSecret } : {}),
                 ...(options?.authToken ? { Authorization: options.authToken } : {}),
                 "X-User-Id": userId,
               },
-              timeout: 10000,
+              timeout: 5000,
+            });
+            executionData = pollRes.data;
+            if (executionData?.status === "succeeded" || executionData?.status === "failed") {
+              break;
             }
-          );
-        } catch (updateErr: any) {
-          this.logger.warn(`Failed to mark emails as read: ${updateErr.message}`);
-          errors.push(`标记邮件已读异常: ${updateErr.message}`);
+          } catch {
+            // 轮询异常不阻断，继续等待或返回已提交
+          }
         }
       }
 
-      const now = new Date().toISOString();
+      const isFailed = executionData?.status === "failed";
+      const businessData =
+        executionData?.result?.businessData ||
+        executionData?.result_json?.result?.businessData ||
+        executionData?.result_json?.businessData ||
+        {};
+      const processedCount =
+        Array.isArray(businessData.inboxItems)
+          ? businessData.inboxItems.length
+          : Array.isArray(businessData.messageIds)
+          ? businessData.messageIds.length
+          : 0;
+      const markedReadCount = businessData.markedReadCount ?? processedCount;
+      const errorReason = businessData.errorReason || executionData?.failureReason;
+
       this.syncStatusMap.set(userId, {
         lastSyncedAt: now,
-        lastSyncStatus: errors.length > 0 ? "failed" : "success",
-        lastError: errors.join("; "),
+        lastSyncStatus: isFailed ? "failed" : "success",
+        lastError: isFailed ? (errorReason || "工作流执行失败") : undefined,
       });
 
       return {
-        success: errors.length === 0 || processedCount > 0,
-        message: `邮件同步完成：新增 ${processedCount} 封入收件箱，跳过 ${skippedCount} 封已收邮件`,
+        success: !isFailed,
+        message: isFailed
+          ? `工作流执行失败: ${errorReason || "未知异常"}`
+          : `工作流同步完成：已沉淀 ${processedCount} 封邮件，已标记 ${markedReadCount} 封已读`,
         processedCount,
-        skippedCount,
-        errors,
+        skippedCount: 0,
+        errors: isFailed && errorReason ? [errorReason] : [],
         lastSyncedAt: now,
       };
     } catch (globalErr: any) {
-      this.logger.error(`Email sync failed globally: ${globalErr.message}`, globalErr.stack);
-      const now = new Date().toISOString();
+      const errMsg = globalErr.response?.data?.message || globalErr.message;
+      this.logger.error(`Email sync workflow invocation failed: ${errMsg}`, globalErr.stack);
       this.syncStatusMap.set(userId, {
         lastSyncedAt: now,
         lastSyncStatus: "failed",
-        lastError: globalErr.message,
+        lastError: errMsg,
       });
       return {
         success: false,
-        message: `邮件同步异常: ${globalErr.message}`,
-        processedCount,
-        skippedCount,
-        errors: [...errors, globalErr.message],
+        message: `工作流触发异常: ${errMsg}`,
+        processedCount: 0,
+        skippedCount: 0,
+        errors: [errMsg],
         lastSyncedAt: now,
       };
     }

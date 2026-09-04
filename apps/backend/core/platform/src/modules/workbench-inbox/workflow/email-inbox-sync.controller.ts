@@ -20,7 +20,7 @@ export class EmailInboxSyncController {
   }
 
   @Post()
-  @ApiOperation({ summary: "手动触发邮件同步到 GTD 收件箱并置为已读" })
+  @ApiOperation({ summary: "手动触发邮件同步到 GTD 收件箱并置为已读（调度执行 EmailInboxSyncWorkflow 工作流）" })
   async triggerSync(
     @Request() req: any,
     @Headers("authorization") authToken?: string,
