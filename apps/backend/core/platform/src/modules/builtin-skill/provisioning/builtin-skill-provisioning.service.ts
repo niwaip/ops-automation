@@ -331,6 +331,57 @@ export class BuiltinSkillProvisioningService {
       };
     }
 
+    if (handlerKey === 'search.web' || handlerKey === 'platform.search.web') {
+      return {
+        success: true,
+        output: {
+          query: String(input.query || 'smoke test'),
+          provider: 'tavily',
+          results: [],
+          resultCount: 0,
+          searchedAt: new Date().toISOString(),
+          warnings: ['Provisioning smoke test does not call the external search provider'],
+        },
+      };
+    }
+
+    if (handlerKey === 'workspace.explorer' || handlerKey === 'platform.workspace.explorer') {
+      return {
+        success: true,
+        output: {
+          query: String(input.query || 'smoke test'),
+          answer: 'Provisioning smoke test workspace explorer answer',
+          citations: [],
+          searchedFilesCount: 0,
+        },
+      };
+    }
+
+    if (handlerKey === 'email.messages' || handlerKey === 'platform.email.messages') {
+      return {
+        success: true,
+        output: {
+          mailboxKey: 'smoke-test-mailbox',
+          items: [],
+          resultCount: 0,
+          fetchedAt: new Date().toISOString(),
+          warnings: ['Provisioning smoke test'],
+        },
+      };
+    }
+
+    if (handlerKey === 'email.send' || handlerKey === 'platform.email.send') {
+      return {
+        success: true,
+        output: {
+          deliveryId: 'del_smoke_' + Date.now(),
+          state: 'accepted',
+          acceptedAt: new Date().toISOString(),
+          warnings: ['Provisioning smoke test'],
+        },
+      };
+    }
+
     throw new Error(`No smoke handler registered for '${handlerKey}' — deployment aborted`);
   }
 }

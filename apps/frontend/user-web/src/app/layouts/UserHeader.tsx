@@ -33,6 +33,10 @@ export function UserHeader({ language, selectedMenuKey }: UserHeaderProps) {
       case '/chat': return t('menu.chat', 'AI 对话');
       case '/executions': return t('menu.executions', '执行列表');
       case '/published-skills': return t('menu.published_skills', '已发布技能');
+      case '/workspaces': return t('menu.workspaces', '文件空间');
+      case '/settings': return t('menu.settings', '设置');
+      case '/im-channels': return t('menu.im_channels', 'IM 渠道');
+      case '/email-settings': return t('menu.email_settings', '邮箱连接');
       default: return t('menu.dashboard', '工作台');
     }
   };

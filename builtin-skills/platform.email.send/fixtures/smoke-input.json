@@ -1,0 +1,10 @@
+{
+  "to": [
+    {
+      "name": "Ops Team",
+      "address": "ops@example.com"
+    }
+  ],
+  "subject": "System Smoke Test Email",
+  "textBody": "This is a smoke test email content."
+}

@@ -97,4 +97,67 @@ describe('projectPreviousResultIntoRecognition', () => {
     expect(result.projectedFields).toEqual([]);
     expect(result.recognized.params).toEqual({});
   });
+
+  it('does not project parameters when user prompt contains relative extraction directives like 第一个url', () => {
+    const browserSkillSchema = {
+      properties: {
+        startUrl: {
+          type: 'string' as const,
+          description: '起始地址',
+          required: true,
+        },
+      },
+      required: ['startUrl'],
+    };
+
+    const result = projectPreviousResultIntoRecognition(
+      { params: {}, confidence: 0.9 },
+      browserSkillSchema,
+      {
+        mode: 'single_step_continuation',
+        previous_result: {
+          executionId: 'prev-crawl-1',
+          structuredData: {
+            browserPhaseVariables: { startUrl: 'https://rebang.today/home' },
+          },
+          detailText: '1. 知乎热榜: https://www.zhihu.com/question/123\n2. 微博: https://weibo.com/456',
+        },
+      },
+      '打开 第一个url'
+    );
+
+    expect(result.projectedFields).toEqual([]);
+    expect(result.recognized.params.startUrl).toBeUndefined();
+  });
+
+  it('ignores input arguments like browserPhaseVariables in structuredData during exact field search', () => {
+    const browserSkillSchema = {
+      properties: {
+        startUrl: {
+          type: 'string' as const,
+          description: '起始地址',
+          required: true,
+        },
+      },
+      required: ['startUrl'],
+    };
+
+    const result = projectPreviousResultIntoRecognition(
+      { params: {}, confidence: 0.9 },
+      browserSkillSchema,
+      {
+        mode: 'single_step_continuation',
+        previous_result: {
+          executionId: 'prev-crawl-1',
+          structuredData: {
+            browserPhaseVariables: { startUrl: 'https://rebang.today/home' },
+          },
+        },
+      },
+      '打开网页'
+    );
+
+    expect(result.projectedFields).toEqual([]);
+    expect(result.recognized.params.startUrl).toBeUndefined();
+  });
 });

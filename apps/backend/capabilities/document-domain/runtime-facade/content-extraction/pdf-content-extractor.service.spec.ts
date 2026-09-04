@@ -80,4 +80,23 @@ describe('PdfContentExtractorService', () => {
     expect(result.extraction.format).toBe('text');
     expect(result.metadata.format).toBe('md');
   });
+
+  it('extracts text from pptx files when provided', async () => {
+    const JSZip = require('jszip');
+    const zip = new JSZip();
+    zip.file(
+      'ppt/slides/slide1.xml',
+      '<?xml version="1.0" encoding="UTF-8"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>Enterprise AIGC Roadmap</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>'
+    );
+    const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+
+    const result = await service.extract({
+      fileBase64: buffer.toString('base64'),
+      fileName: 'presentation.pptx',
+    });
+
+    expect(result.text).toContain('Enterprise AIGC Roadmap');
+    expect(result.extraction.format).toBe('pptx');
+    expect(result.pageCount).toBe(1);
+  });
 });

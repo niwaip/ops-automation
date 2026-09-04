@@ -4,6 +4,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useStore } from 'zustand';
 import { UserChatWidget } from '@/features/chat/components/UserChatWidget';
 import { useChatStore } from '@/features/chat';
+import { GlobalWorkspacePreviewModal } from '@/features/workspace/components/GlobalWorkspacePreviewModal';
 import { preferencesStore } from '../../adapters/preferences/preferencesStore';
 import { UserSidebar } from './UserSidebar';
 import { UserHeader } from './UserHeader';
@@ -34,15 +35,19 @@ export function UserLayout() {
     ? '/executions'
     : location.pathname.startsWith('/published-skills')
       ? '/published-skills'
-      : location.pathname.startsWith('/im-channels')
-        ? '/im-channels'
-        : location.pathname.startsWith('/notifications')
-          ? '/notifications'
-          : location.pathname.startsWith('/chat')
-            ? '/chat'
-            : location.pathname.startsWith('/reports')
-              ? '/reports'
-              : location.pathname;
+      : location.pathname.startsWith('/workspaces')
+        ? '/workspaces'
+        : location.pathname.startsWith('/settings') ||
+          location.pathname.startsWith('/im-channels') ||
+          location.pathname.startsWith('/email-settings')
+          ? '/settings'
+          : location.pathname.startsWith('/notifications')
+            ? '/notifications'
+            : location.pathname.startsWith('/chat')
+              ? '/chat'
+              : location.pathname.startsWith('/reports')
+                ? '/reports'
+                : location.pathname;
 
   return (
     <Layout className={styles['user-shell']}>
@@ -62,6 +67,7 @@ export function UserLayout() {
         </Content>
         {isChatRoute ? null : <UserChatWidget />}
       </Layout>
+      <GlobalWorkspacePreviewModal />
     </Layout>
   );
 }

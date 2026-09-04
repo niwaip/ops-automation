@@ -26,6 +26,8 @@
     "chat": "AIチャット",
     "executions": "実行リスト",
     "published_skills": "公開スキル",
+    "workspaces": "ワークスペース",
+    "settings": "設定",
     "im_channels": "IM チャネル"
   }
 }

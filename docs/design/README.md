@@ -29,6 +29,7 @@
 - 三类能力体系与 LLM Operation 可控治理设计：[three-capability-types-and-llm-operation-governance-design.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/three-capability-types-and-llm-operation-governance-design.md)
 - 三类能力体系与 LLM Operation 治理落地计划：[three-capability-types-and-llm-operation-implementation-plan.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/three-capability-types-and-llm-operation-implementation-plan.md)
 - Activity Plugin 规格生成、真实探测与确定性编译落地：[activity-plugin-spec-and-real-probe-implementation.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/activity-plugin-spec-and-real-probe-implementation.md)
+- 独立 Email Skill Suite（Gmail / Outlook）设计：[email-skill/README.md](email-skill/README.md)
 
 ## 补充资料
 

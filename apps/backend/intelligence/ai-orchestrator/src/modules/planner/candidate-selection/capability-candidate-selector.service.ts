@@ -202,10 +202,17 @@ export class CapabilityCandidateSelectorService {
         goals: [
           runtimeType,
           skill.skillName || skill.name || skillId,
+          ...(Array.isArray(skill.triggerKeywords) ? skill.triggerKeywords : []),
+          ...(Array.isArray(skill.runtimeHints?.triggerKeywords) ? skill.runtimeHints.triggerKeywords : []),
+          ...(typeof skill.goal === 'string' ? [skill.goal] : []),
+          ...(typeof skill.userGoal === 'string' ? [skill.userGoal] : []),
+          ...(typeof (skill.workflowMetadata as any)?.userGoal === 'string'
+            ? [(skill.workflowMetadata as any).userGoal]
+            : []),
           ...(browserCompositionHasPostProcessing(composition)
             ? ['embedded_post_processing']
             : []),
-        ],
+        ].filter(Boolean),
         inputs: this.extractSchemaSummary(inputSchema),
         outputs: outputProjection.outputContract,
         primaryOutput: outputProjection.primaryOutput,
@@ -538,6 +545,12 @@ export class CapabilityCandidateSelectorService {
       ...(enumValues ? { enum: enumValues } : {}),
       ...(typeof source['x-ops-input-role'] === 'string'
         ? { 'x-ops-input-role': source['x-ops-input-role'] }
+        : {}),
+      ...(source['x-enum-aliases'] && typeof source['x-enum-aliases'] === 'object'
+        ? { 'x-enum-aliases': source['x-enum-aliases'] }
+        : {}),
+      ...(source.enum_aliases && typeof source.enum_aliases === 'object'
+        ? { 'x-enum-aliases': source.enum_aliases }
         : {}),
       ...this.pickSchemaConstraints(source),
     };

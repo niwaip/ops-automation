@@ -1,0 +1,133 @@
+apiVersion: platform.ops/v1alpha1
+kind: BuiltinWorkflowSkill
+metadata:
+  key: platform.search.web
+  displayName: 内置联网搜索
+  description: 检索公开互联网中的最新网页与新闻信息，并返回可引用的结构化来源
+  owner: platform-search
+  labels:
+    category: search
+    domain: web
+spec:
+  definitionVersion: 1.0.3
+  lifecycle: experimental
+  defaultAccess:
+    mode: authenticated
+  planner:
+    enabled: true
+    triggerKeywords:
+      - 联网搜索
+      - 搜索网页
+      - 查询最新信息
+      - 查一下
+      - 搜一下
+      - 搜一搜
+      - 新闻
+      - 最新新闻
+      - 新闻搜索
+      - 查新闻
+      - 搜新闻
+      - 找新闻
+      - 检索
+      - 搜索
+      - 查找
+      - 查询
+      - 新闻
+      - 查找资料
+      - 搜索资料
+      - 最新消息
+      - 最新动态
+      - 实时资讯
+      - 网络搜索
+      - 网页搜索
+    matchSummary: 在用户允许联网时检索公开互联网并返回带来源的结果
+    runtimeType: workflow
+    supportsArtifact: false
+  contracts:
+    input:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        required: [query]
+        properties:
+          query:
+            type: string
+            minLength: 1
+            maxLength: 1000
+          maxResults:
+            type: integer
+            minimum: 1
+            maximum: 10
+            default: 5
+          topic:
+            type: string
+            enum: [general, news]
+            default: general
+          searchDepth:
+            type: string
+            enum: [basic, advanced]
+            default: basic
+          days:
+            type: integer
+            minimum: 1
+            maximum: 30
+          includeDomains:
+            type: array
+            maxItems: 20
+            items:
+              type: string
+              maxLength: 253
+          excludeDomains:
+            type: array
+            maxItems: 20
+            items:
+              type: string
+              maxLength: 253
+    output:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        x-primary-output: results
+        required: [query, provider, results, resultCount, searchedAt, warnings]
+        properties:
+          query: { type: string }
+          provider: { type: string }
+          answer: { type: string }
+          results:
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              required: [title, url, snippet, score]
+              properties:
+                title: { type: string }
+                url: { type: string, format: uri }
+                snippet: { type: string }
+                score: { type: number }
+                publishedAt: { type: string }
+          resultCount: { type: integer, minimum: 0 }
+          searchedAt: { type: string, format: date-time }
+          warnings:
+            type: array
+            items: { type: string }
+  workflow:
+    engine: domain-handler
+    definitionRef: workflow.json
+  runtime:
+    adapterRoute: builtin:workflow
+    handlerKey: search.web
+    idempotency: disabled
+    timeoutSeconds: 20
+    retryPolicy:
+      maximumAttempts: 2
+  migration:
+    minimumPlatformVersion: 4.0.0
+    contractCompatibility: backward
+  smokeTest:
+    inputRef: fixtures/smoke-input.json
+    assertions:
+      - output.query exists
+      - output.results exists
+      - output.provider exists

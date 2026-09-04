@@ -71,7 +71,44 @@ export class MultiNodeParameterBinderService {
     const notes: string[] = [];
 
     for (const node of nodes) {
-      const card = capabilityMap.get(node.capabilityKey);
+      let card = capabilityMap.get(node.capabilityKey);
+
+      // Auto-adapt: if node is an LLM operation expecting 'text' (summarize_text),
+      // but upstream dependencies only output an array/list (e.g. items) and NO single text,
+      // adapt the node to 'summarize_list' so it binds upstream.items seamlessly!
+      if (
+        card?.kind === 'llm_operation' &&
+        (node.capabilityKey === 'summarize_text' || card.id === 'summarize_text')
+      ) {
+        const hasUpstreamListOnly = node.dependsOn.some((depRef) => {
+          const depNode = nodes.find((n) => n.ref === depRef);
+          const depCard = capabilityMap.get(depNode?.capabilityKey || '');
+          const outputs = (depCard?.outputs as any)?.properties || depCard?.outputs || {};
+          const hasList = Object.keys(outputs).some(
+            (k) =>
+              /items|results|list/i.test(k) ||
+              /array|news_item_list/i.test(String(outputs[k] || ''))
+          );
+          const hasText = Object.keys(outputs).some(
+            (k) =>
+              /^(content|text|markdown_content)$/i.test(k) ||
+              /^(string|text|markdown_content)$/i.test(String(outputs[k] || ''))
+          );
+          return hasList && !hasText;
+        });
+
+        if (hasUpstreamListOnly) {
+          const listCard = Array.from(capabilityMap.values()).find(
+            (c) => c.id === 'summarize_list'
+          );
+          if (listCard) {
+            node.capabilityKey = listCard.id;
+            card = listCard;
+            notes.push(`节点 '${node.ref}' 依据上游列表输出形态自适应切换为 'summarize_list'。`);
+          }
+        }
+      }
+
       const compressedInputs = (card?.inputs as Record<string, string>) || {};
       const bindings: Record<string, ValueBindingV1> = {};
       const nodeInputs: Record<string, unknown> = {};
@@ -157,15 +194,15 @@ export class MultiNodeParameterBinderService {
         compressedInputs,
         rawSchema
       );
-      const deterministic = card
-        ? this.deterministicParamResolver?.resolveTextParams(
+      const deterministic = card && this.deterministicParamResolver
+        ? this.deterministicParamResolver.resolve(
             userRequest,
-            card,
-            recognizerProperties
+            { properties: recognizerProperties as any },
+            card
           )
         : undefined;
       let recognizedParams: Record<string, unknown> = deterministic?.params || {};
-      notes.push(...(deterministic?.notes || []));
+      notes.push(...(deterministic?.debug?.notes || []));
 
       const modelRecognizerProperties = Object.fromEntries(
         Object.entries(recognizerProperties).filter(

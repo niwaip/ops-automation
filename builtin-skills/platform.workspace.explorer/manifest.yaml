@@ -1,0 +1,109 @@
+apiVersion: platform.ops/v1alpha1
+kind: BuiltinWorkflowSkill
+metadata:
+  key: platform.workspace.explorer
+  displayName: 内置工作空间文档探索
+  description: 自主探查个人与企业工作空间知识文档，支持关键词扫描定位、大纲速览与按行视窗细致研读
+  owner: platform-workspace
+  labels:
+    category: search
+    domain: workspace
+spec:
+  definitionVersion: 1.0.0
+  lifecycle: experimental
+  slashCommand: /doc
+  slashAliases:
+    - /workspace
+    - /rag
+  defaultAccess:
+    mode: authenticated
+  planner:
+    enabled: true
+    triggerKeywords:
+      - 查阅空间
+      - 工作空间
+      - 空间文档
+      - 文档搜索
+      - 知识库
+      - 查文档
+      - 空间资料
+      - 内部资料
+      - 研读文档
+      - 搜索文件
+      - 查看文件
+      - 空间检索
+      - 文档探查
+      - 知识检索
+      - 知识空间
+      - /doc
+      - /workspace
+      - /rag
+      - doc
+      - workspace
+      - rag
+    matchSummary: 自主探查工作空间中的知识文档、规范与资料，并返回可溯源的结构化解答
+    runtimeType: workflow
+    supportsArtifact: false
+  contracts:
+    input:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        required: [query]
+        properties:
+          query:
+            type: string
+            minLength: 1
+            maxLength: 1000
+            description: 检索或探索的目标主题、问题或文件名
+          workspaceId:
+            type: string
+            description: 可选指定工作空间 ID
+          maxFiles:
+            type: integer
+            minimum: 1
+            maximum: 10
+            default: 5
+    output:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        x-primary-output: answer
+        required: [query, answer, citations, searchedFilesCount]
+        properties:
+          query: { type: string }
+          answer: { type: string }
+          citations:
+            type: array
+            items:
+              type: object
+              properties:
+                fileName: { type: string }
+                workspaceName: { type: string }
+                line: { type: integer }
+                snippet: { type: string }
+          searchedFilesCount: { type: integer }
+          scannedFiles:
+            type: array
+            items:
+              type: string
+  workflow:
+    engine: domain-handler
+    definitionRef: workflow.json
+  runtime:
+    adapterRoute: builtin:workflow
+    handlerKey: workspace.explorer
+    idempotency: disabled
+    timeoutSeconds: 20
+    retryPolicy:
+      maximumAttempts: 2
+  migration:
+    minimumPlatformVersion: 4.0.0
+    contractCompatibility: backward
+  smokeTest:
+    inputRef: fixtures/smoke-input.json
+    assertions:
+      - output.query exists
+      - output.answer exists

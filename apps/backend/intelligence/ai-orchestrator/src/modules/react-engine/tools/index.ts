@@ -14,6 +14,9 @@ export { ApiCallTool } from './api-call.tool';
 export { FlowExecuteTool } from './flow-execute.tool';
 export { BrowserStepTool } from './browser-step.tool';
 export { ScriptTool } from './script.tool';
+export { WorkspaceSearchTool } from './workspace-search.tool';
+export { WorkspaceOutlineTool } from './workspace-outline.tool';
+export { WorkspaceReadTool } from './workspace-read.tool';
 
 import { SkillMatchTool } from './skill-match.tool';
 import { ParamCollectTool } from './param-collect.tool';
@@ -25,6 +28,9 @@ import { ApiCallTool } from './api-call.tool';
 import { FlowExecuteTool } from './flow-execute.tool';
 import { BrowserStepTool } from './browser-step.tool';
 import { ScriptTool } from './script.tool';
+import { WorkspaceSearchTool } from './workspace-search.tool';
+import { WorkspaceOutlineTool } from './workspace-outline.tool';
+import { WorkspaceReadTool } from './workspace-read.tool';
 
 export const ALL_TOOLS = [
   SkillMatchTool,
@@ -37,4 +43,7 @@ export const ALL_TOOLS = [
   FlowExecuteTool,
   BrowserStepTool,
   ScriptTool,
+  WorkspaceSearchTool,
+  WorkspaceOutlineTool,
+  WorkspaceReadTool,
 ];

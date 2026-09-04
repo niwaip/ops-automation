@@ -1,20 +1,15 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   createBuiltinRoutingPolicySnapshot,
+  extractTerminalActions,
   hasRoutingSignal,
 } from '../routing/routing-policy.matcher';
 import { RoutingPolicyService } from '../routing/routing-policy.service';
 
-export type RecipeType =
-  | 'document_extract'
-  | 'grounded_text_transform'
-  | 'search_then_summarize'
-  | 'search_summarize_write_markdown'
-  | 'summarize_then_write_markdown'
-  | 'document_extract_then_summarize'
-  | 'web_extract_then_summarize';
+export type RecipeType = string;
 
 export interface MatchedRecipe {
+  source?: 'policy' | 'builtin';
   recipeName: RecipeType;
   objective: string;
   steps: Array<{
@@ -26,12 +21,15 @@ export interface MatchedRecipe {
       | 'transform'
       | 'markdown_writer'
       | 'document_extract'
-      | 'web_extract';
+      | 'web_extract'
+      | 'generate'
+      | 'notify';
     inputShape?: 'list' | 'text';
     dependsOn: string[];
   }>;
   finalNodeRef: string;
   requiresExternalData: boolean;
+  completionClaims?: string[];
 }
 
 @Injectable()
@@ -64,13 +62,92 @@ export class DeterministicRecipeMatcherService {
     const hasPdfSplit = /拆分|拆页|分割|抽页|split/i.test(userRequest);
     const hasPdfMerge = /合并|拼接|merge/i.test(userRequest);
     const hasWeb = hasRoutingSignal(userRequest, 'webSource', policy);
-    const hasPdf =
+    const hasDocumentExtract =
       !hasPdfExport &&
       !hasPdfSplit &&
       !hasPdfMerge &&
       !hasWeb &&
       hasRoutingSignal(userRequest, 'documentSource', policy);
     const hasUncoveredAction = hasRoutingSignal(userRequest, 'uncoveredAction', policy);
+    const terminalActions = extractTerminalActions(userRequest, policy);
+    const hasTerminalNotify = terminalActions.some((a) => ['bark', 'email', 'sms'].includes(a));
+    const hasNotifyAction =
+      hasTerminalNotify ||
+      (hasUncoveredAction && /(?:推送|通知|发送|发给|发信|bark)/i.test(userRequest));
+
+    // 搜索/查询 + 总结 + 通知/推送
+    if (hasSearch && hasSummarize && hasNotifyAction) {
+      this.logger.log(`Matched Recipe: search_summarize_notify for request: "${userRequest}"`);
+      return {
+        recipeName: 'search_summarize_notify',
+        objective: userRequest,
+        steps: [
+          { ref: 'n1', kind: 'skill', role: 'search', dependsOn: [] },
+          {
+            ref: 'n2',
+            kind: 'llm_operation',
+            role: 'summarize',
+            inputShape: 'list',
+            dependsOn: ['n1'],
+          },
+          { ref: 'n3', kind: 'skill', role: 'notify', dependsOn: ['n2'] },
+        ],
+        finalNodeRef: 'n3',
+        requiresExternalData: true,
+      };
+    }
+
+    // 搜索/查询 + 通知/推送 (如 天气查询 -> Bark推送)
+    if (hasSearch && hasNotifyAction && !hasSummarize) {
+      this.logger.log(`Matched Recipe: search_then_notify for request: "${userRequest}"`);
+      return {
+        recipeName: 'search_then_notify',
+        objective: userRequest,
+        steps: [
+          { ref: 'n1', kind: 'skill', role: 'search', dependsOn: [] },
+          { ref: 'n2', kind: 'skill', role: 'notify', dependsOn: ['n1'] },
+        ],
+        finalNodeRef: 'n2',
+        requiresExternalData: true,
+      };
+    }
+
+    // 网页抓取 + 总结 + 通知/推送
+    if (hasWeb && hasSummarize && hasNotifyAction) {
+      this.logger.log(`Matched Recipe: web_extract_summarize_notify for request: "${userRequest}"`);
+      return {
+        recipeName: 'web_extract_summarize_notify',
+        objective: userRequest,
+        steps: [
+          { ref: 'n1', kind: 'skill', role: 'web_extract', dependsOn: [] },
+          {
+            ref: 'n2',
+            kind: 'llm_operation',
+            role: 'summarize',
+            inputShape: 'text',
+            dependsOn: ['n1'],
+          },
+          { ref: 'n3', kind: 'skill', role: 'notify', dependsOn: ['n2'] },
+        ],
+        finalNodeRef: 'n3',
+        requiresExternalData: true,
+      };
+    }
+
+    // 网页抓取 + 通知/推送
+    if (hasWeb && hasNotifyAction && !hasSummarize) {
+      this.logger.log(`Matched Recipe: web_extract_then_notify for request: "${userRequest}"`);
+      return {
+        recipeName: 'web_extract_then_notify',
+        objective: userRequest,
+        steps: [
+          { ref: 'n1', kind: 'skill', role: 'web_extract', dependsOn: [] },
+          { ref: 'n2', kind: 'skill', role: 'notify', dependsOn: ['n1'] },
+        ],
+        finalNodeRef: 'n2',
+        requiresExternalData: true,
+      };
+    }
 
     // 网页获取 + 总结是高频且拓扑稳定的组合：使用固定 Recipe
     // 保留 Skill 执行的稳定性，同时避免单 Skill 只覆盖“打开”就宣告整体完成。
@@ -101,13 +178,15 @@ export class DeterministicRecipeMatcherService {
     if (
       context?.hasPreviousResult === true &&
       (hasGeneration || hasProcessing || hasSummarize) &&
+      !hasWeb &&
       !hasSearch &&
       !hasMarkdownFile &&
-      !hasPdf &&
+      !hasDocumentExtract &&
       !hasPdfSplit &&
       !hasPdfMerge &&
       !hasPdfExport &&
-      !hasUncoveredAction
+      !hasUncoveredAction &&
+      !/(?:https?:\/\/|www\.)[^\s]+/i.test(userRequest)
     ) {
       this.logger.log(`Matched Recipe: grounded_text_transform for request: "${userRequest}"`);
       return {
@@ -117,7 +196,7 @@ export class DeterministicRecipeMatcherService {
           {
             ref: 'n1',
             kind: 'llm_operation',
-            role: hasSummarize ? 'summarize' : 'transform',
+            role: hasSummarize ? 'summarize' : hasGeneration ? 'generate' : 'transform',
             inputShape: 'text',
             dependsOn: [],
           },
@@ -127,9 +206,9 @@ export class DeterministicRecipeMatcherService {
       };
     }
 
-    // 模式 1：PDF/附件文本提取 + 摘要。提取与生成式处理保持为两个
-    // 独立能力，其他文档提取器后续可复用同一编排形态。
-    if (hasSummarize && hasPdf) {
+    // 模式 1：文档/附件文本提取 + 摘要。提取与生成式处理保持为两个
+    // 独立能力，支持 PDF/Word/PPTX/TXT 等文档提取器复用同一编排形态。
+    if (hasSummarize && hasDocumentExtract) {
       this.logger.log(
         `Matched Recipe: document_extract_then_summarize for request: "${userRequest}"`
       );
@@ -151,7 +230,7 @@ export class DeterministicRecipeMatcherService {
       };
     }
 
-    if (hasPdf) {
+    if (hasDocumentExtract) {
       this.logger.log(`Matched Recipe: document_extract for request: "${userRequest}"`);
       return {
         recipeName: 'document_extract',
@@ -226,6 +305,37 @@ export class DeterministicRecipeMatcherService {
           { ref: 'n2', kind: 'skill', role: 'markdown_writer', dependsOn: ['n1'] },
         ],
         finalNodeRef: 'n2',
+        requiresExternalData: false,
+      };
+    }
+
+    // 模式 4：标准 LLM 文本生成/建议/见解/创作（纯文本无工具依赖）
+    if (
+      hasGeneration &&
+      !hasWeb &&
+      !hasSearch &&
+      !hasMarkdownFile &&
+      !hasDocumentExtract &&
+      !hasPdfSplit &&
+      !hasPdfMerge &&
+      !hasPdfExport &&
+      !hasUncoveredAction &&
+      !/(?:https?:\/\/|www\.)[^\s]+/i.test(userRequest)
+    ) {
+      this.logger.log(`Matched Recipe: standard_text_generation for request: "${userRequest}"`);
+      return {
+        recipeName: 'standard_text_generation',
+        objective: userRequest,
+        steps: [
+          {
+            ref: 'n1',
+            kind: 'llm_operation',
+            role: 'generate',
+            inputShape: 'text',
+            dependsOn: [],
+          },
+        ],
+        finalNodeRef: 'n1',
         requiresExternalData: false,
       };
     }

@@ -24,6 +24,7 @@ import { TaskFallbackPolicyService } from './task-fallback-policy.service';
 import { ChatTaskResumeService } from './chat-task-resume.service';
 import { ChatPlanningPresentationService } from './chat-planning-presentation.service';
 import { ScopedPlannerMemoryService } from './scoped-planner-memory.service';
+import { formatFriendlyExecutionError } from './chat-error-formatter';
 
 @Injectable()
 export class ChatOrchestratorService {
@@ -123,9 +124,16 @@ export class ChatOrchestratorService {
         });
       if (savedWorkflowResult.matched) {
         if (!savedWorkflowResult.success || !savedWorkflowResult.executionId) {
+          const friendlyMessage = formatFriendlyExecutionError(
+            savedWorkflowResult.errorMessage,
+            {
+              skillName: savedWorkflowResult.workflow?.name,
+              phase: 'saved_workflow',
+            }
+          );
           yield {
             type: StreamEventType.ERROR,
-            content: `已匹配保存的工作流，但创建执行失败 [${savedWorkflowResult.errorCode || 'SAVED_WORKFLOW_EXECUTION_FAILED'}]: ${savedWorkflowResult.errorMessage || '无法创建执行单'}`,
+            content: `已匹配保存的工作流，但创建执行失败 [${savedWorkflowResult.errorCode || 'SAVED_WORKFLOW_EXECUTION_FAILED'}]: ${friendlyMessage}`,
           };
           return;
         }
@@ -183,6 +191,7 @@ export class ChatOrchestratorService {
           uploadedFiles: body.files,
           system_collected: this.planningPresentation.buildUploadedFileParams(body.files),
           history: context.history,
+          web_search_enabled: body.config?.webSearch === true,
         },
       },
       userId: context.userId,
@@ -274,8 +283,18 @@ export class ChatOrchestratorService {
         content: '正在获取用户可用 Skill 列表并进行确定性多步骤任务拆分规划...',
       };
 
+      const isExplicitWebSearch =
+        body.config?.webSearch === true ||
+        (/搜索|联网搜索|查一下|最新|检索|全网|搜一下|搜搜/i.test(planningRequest) &&
+          !/邮件|email|收件箱/i.test(planningRequest));
+
       const availableSkills =
-        (await this.skillCacheService?.loadAvailableSkills(authToken, traceId)) || [];
+        (await this.skillCacheService?.loadAvailableSkills(
+          authToken,
+          traceId,
+          undefined,
+          isExplicitWebSearch
+        )) || [];
       const scopedMemory = await this.scopedPlannerMemoryService?.resolveForPlanning({
         authToken,
         user,
@@ -290,6 +309,25 @@ export class ChatOrchestratorService {
           availableSkills,
           systemInputs: {
             ...this.planningPresentation.buildUploadedFileParams(body.files),
+            ...(hasPreviousResult
+              ? {
+                  taskContext: {
+                    schemaVersion: 'task-context/v1',
+                    references: [
+                      {
+                        kind: 'session_result',
+                        selector: 'latest_compatible',
+                        executionId: latestResult?.executionId,
+                        semanticType: latestResult?.resultType || 'content.unknown',
+                        schemaVersion: 'execution-result/v1',
+                        trustLevel: 'verified_execution',
+                        structuredData: latestResult?.structuredData,
+                        detailText: latestResult?.summaryText,
+                      },
+                    ],
+                  },
+                }
+              : {}),
             ...(latestResult?.structuredData !== undefined
               ? { previousResultData: latestResult.structuredData }
               : {}),
@@ -397,12 +435,15 @@ export class ChatOrchestratorService {
           };
           return;
         }
+        const friendlyMessage = formatFriendlyExecutionError(result.errorMessage, {
+          phase: 'planning',
+        });
         yield {
           type: StreamEventType.ERROR,
-          content: `任务规划/创建失败 [${result.errorCode || 'UNKNOWN_ERROR'}]: ${result.errorMessage || '无法拆分该任务'}`,
+          content: `任务规划/创建失败 [${result.errorCode || 'UNKNOWN_ERROR'}]: ${friendlyMessage}`,
           data: {
             code: result.errorCode || 'UNKNOWN_ERROR',
-            errorMessage: result.errorMessage || '无法拆分该任务',
+            errorMessage: friendlyMessage,
             status: 'failed',
           },
         };
@@ -610,10 +651,13 @@ export class ChatOrchestratorService {
           }
           return;
         } catch (error: any) {
-          const errorMsg = error.response?.data?.message || error.message;
+          const friendlyMessage = formatFriendlyExecutionError(error, {
+            skillName: planDraft.skill_match?.skill_name,
+            phase: 'waiting_input',
+          });
           yield {
             type: StreamEventType.ERROR,
-            content: `创建等待输入执行单失败: ${errorMsg}`,
+            content: friendlyMessage,
           };
           return;
         }
@@ -697,10 +741,13 @@ export class ChatOrchestratorService {
         }
         return;
       } catch (error: any) {
-        const errorMsg = error.response?.data?.message || error.message;
+        const friendlyMessage = formatFriendlyExecutionError(error, {
+          skillName: planDraft.skill_match?.skill_name,
+          phase: 'execution',
+        });
         yield {
           type: StreamEventType.ERROR,
-          content: `创建执行单失败: ${errorMsg}`,
+          content: friendlyMessage,
         };
         if (!this.taskFallbackPolicyService?.isImplicitReactFallbackEnabled()) {
           return;

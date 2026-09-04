@@ -107,6 +107,7 @@ export interface BuiltinSkillInventoryDTO {
   defaultAccess: string;
   lifecycle: string;
   isEnabled: boolean;
+  runtimeConfig: BuiltinSkillRuntimeConfigStatus;
   activeVersionId?: string | null;
   activeVersion?: {
     id: string;
@@ -128,6 +129,21 @@ export interface BuiltinSkillInventoryDTO {
   }>;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface BuiltinSkillRuntimeConfigField {
+  key: string;
+  label: string;
+  description: string;
+  secret: boolean;
+  required: boolean;
+  configured: boolean;
+  updatedAt?: string | null;
+}
+
+export interface BuiltinSkillRuntimeConfigStatus {
+  capabilityKey: string;
+  fields: BuiltinSkillRuntimeConfigField[];
 }
 
 export interface BuiltinSkillInventoryResponse {
@@ -401,6 +417,23 @@ export const skillApi = {
 export const builtinSkillApi = {
   listInventory: async (): Promise<BuiltinSkillInventoryResponse> =>
     apiClient.get<BuiltinSkillInventoryResponse>('/skills/builtin-inventory'),
+  setEnabled: async (capabilityKey: string, enabled: boolean) =>
+    apiClient.patch<{ capabilityKey: string; isEnabled: boolean }>(
+      `/skills/builtin-inventory/${encodeURIComponent(capabilityKey)}/enabled`,
+      { enabled }
+    ),
+  getRuntimeConfig: async (capabilityKey: string): Promise<BuiltinSkillRuntimeConfigStatus> =>
+    apiClient.get<BuiltinSkillRuntimeConfigStatus>(
+      `/skills/builtin-inventory/${encodeURIComponent(capabilityKey)}/runtime-config`
+    ),
+  updateRuntimeConfig: async (
+    capabilityKey: string,
+    values: Record<string, string | null>
+  ): Promise<BuiltinSkillRuntimeConfigStatus> =>
+    apiClient.put<BuiltinSkillRuntimeConfigStatus>(
+      `/skills/builtin-inventory/${encodeURIComponent(capabilityKey)}/runtime-config`,
+      { values }
+    ),
 };
 
 // Role API (from auth service)

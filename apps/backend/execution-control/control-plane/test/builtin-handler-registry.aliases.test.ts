@@ -14,5 +14,7 @@ describe('BuiltinHandlerRegistryService capability aliases', () => {
     expect(registry.getHandler('platform.document.pdf-split')).toBe(
       registry.getHandler('document.pdf.split')
     );
+    expect(registry.getHandler('platform.search.web')).toBe(registry.getHandler('search.web'));
+    expect(registry.getHandler('tavily_search')).toBe(registry.getHandler('search.web'));
   });
 });

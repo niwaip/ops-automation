@@ -1,4 +1,5 @@
 import type { CapabilityCandidateSelectorService } from '../candidate-selection/capability-candidate-selector.service';
+import type { EffectiveTaskPolicySnapshot } from '../policy/task-policy.types';
 
 export interface GenerateDeterministicPlanRequestDto {
   userRequest: string;
@@ -6,6 +7,7 @@ export interface GenerateDeterministicPlanRequestDto {
   modelId?: string;
   availableSkills?: Parameters<CapabilityCandidateSelectorService['selectCandidates']>[1];
   systemInputs?: Record<string, unknown>;
+  taskPolicySnapshot?: EffectiveTaskPolicySnapshot;
   /**
    * Context used only while drafting a plan.  It is deliberately separate from
    * systemInputs because systemInputs are persisted as execution input.

@@ -114,18 +114,33 @@ export class NodeOutputBindingResolverService {
     upstreamRef: string,
     upstreamOutputs: Record<string, unknown>,
   ): ValueBindingV1 | null {
-    const candidates = Object.entries(upstreamOutputs).filter(([key, type]) => {
+    const explicitTextCandidates = Object.entries(upstreamOutputs).filter(([key]) => {
       if (this.STATUS_OUTPUT_NAMES.has(key.toLowerCase())) return false;
-      return (
-        /content|text|summary|markdown|message|body/i.test(key) ||
-        /^(?:string|text|markdown_content|summary)$/i.test(String(type || ''))
-      );
+      return /content|text|summary|markdown|message|body/i.test(key);
     });
-    if (candidates.length !== 1) return null;
-    return {
-      source: 'node_output',
-      nodeId: upstreamRef,
-      path: candidates[0]![0],
-    };
+    if (explicitTextCandidates.length === 1) {
+      return {
+        source: 'node_output',
+        nodeId: upstreamRef,
+        path: explicitTextCandidates[0]![0],
+      };
+    }
+
+    const typeTextCandidates = Object.entries(upstreamOutputs).filter(([key, type]) => {
+      if (this.STATUS_OUTPUT_NAMES.has(key.toLowerCase())) return false;
+      return /^(?:string|text|markdown_content|summary)$/i.test(String(type || ''));
+    });
+    const nonStatusKeys = Object.keys(upstreamOutputs).filter(
+      (k) => !this.STATUS_OUTPUT_NAMES.has(k.toLowerCase())
+    );
+    if (typeTextCandidates.length === 1 && nonStatusKeys.length === 1) {
+      return {
+        source: 'node_output',
+        nodeId: upstreamRef,
+        path: typeTextCandidates[0]![0],
+      };
+    }
+
+    return null;
   }
 }

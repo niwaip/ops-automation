@@ -148,15 +148,12 @@ export const resolveMessageExecutionId = (message: ChatMessage): string | undefi
 export const getLatestWaitingInputExecutionId = (
   messages: ChatMessage[]
 ): string | undefined => {
-  const assistantMessages = messages.filter((message) => message.role === 'assistant');
-  for (let index = assistantMessages.length - 1; index >= 0; index -= 1) {
-    const message = assistantMessages[index];
-    if (resolveMessageTaskStatus(message) !== 'waiting_input') {
-      continue;
-    }
-    const executionId = resolveMessageExecutionId(message);
-    if (executionId) {
-      return executionId;
+  if (!messages.length) return undefined;
+  // 仅当会话最新一条消息是处于 waiting_input 状态的助手消息时才恢复，避免误绑历史执行
+  const lastMessage = messages[messages.length - 1];
+  if (lastMessage && lastMessage.role === 'assistant') {
+    if (resolveMessageTaskStatus(lastMessage) === 'waiting_input') {
+      return resolveMessageExecutionId(lastMessage);
     }
   }
   return undefined;

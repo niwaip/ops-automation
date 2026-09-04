@@ -12,7 +12,7 @@ export interface ReasoningAdapterContext {
   maxOutputTokens?: number;
 }
 
-type ReasoningDialect = 'openrouter' | 'dashscope' | 'minimax' | 'openai' | 'generic';
+type ReasoningDialect = 'openrouter' | 'dashscope' | 'minimax' | 'openai' | 'gemini' | 'generic';
 
 /**
  * Converts the product-level off/low/medium/high option into provider-native
@@ -43,6 +43,9 @@ export function applyReasoningRequestAdapter(
       return;
     case 'minimax':
       payload.thinking = { type: 'adaptive' };
+      return;
+    case 'gemini':
+      payload.reasoning_effort = effort;
       return;
     case 'openai':
     case 'generic':
@@ -82,6 +85,9 @@ function applyDisabledReasoning(
     case 'openrouter':
       delete payload.reasoning;
       return;
+    case 'gemini':
+      delete payload.reasoning_effort;
+      return;
     case 'dashscope':
       payload.enable_thinking = false;
       return;
@@ -105,6 +111,13 @@ function applyDisabledReasoning(
 function resolveDialect(context: ReasoningAdapterContext): ReasoningDialect {
   const provider = (context.provider || '').toLowerCase();
   const baseURL = context.baseURL.toLowerCase();
+  if (
+    provider === 'gemini' ||
+    provider === 'google' ||
+    /(?:generativelanguage\.googleapis\.com)/i.test(baseURL)
+  ) {
+    return 'gemini';
+  }
   if (provider === 'openrouter' || baseURL.includes('openrouter.ai')) return 'openrouter';
   if (provider === 'alibaba-bailian' || baseURL.includes('dashscope.aliyuncs.com')) {
     return 'dashscope';

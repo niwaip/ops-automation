@@ -11,6 +11,9 @@ import { BuiltinSkillAuditService } from '../audit/builtin-skill-audit.service';
 
 const ALIAS_MAP: Record<string, string> = {
   markdown_artifact_writer: 'platform.document.markdown-artifact-writer',
+  tavily_search: 'platform.search.web',
+  web_search: 'platform.search.web',
+  workspace_explorer: 'platform.workspace.explorer',
 };
 
 @Injectable()
@@ -104,6 +107,24 @@ export class BuiltinSkillRegistryService {
     });
   }
 
+  async setSkillEnabled(keyOrAlias: string, isEnabled: boolean, operator?: string) {
+    const capabilityKey = this.resolveCanonicalKey(keyOrAlias);
+    const skill = await this.prisma.builtinSkill.findUnique({ where: { capabilityKey } });
+    if (!skill) throw new NotFoundException(`Builtin skill '${keyOrAlias}' not found`);
+    if (skill.isEnabled === isEnabled) return skill;
+    const updated = await this.prisma.builtinSkill.update({
+      where: { id: skill.id },
+      data: { isEnabled },
+    });
+    await this.auditService.logEvent({
+      builtinSkillId: skill.id,
+      action: isEnabled ? 'enabled' : 'disabled',
+      operator,
+      payload: { previousValue: skill.isEnabled, isEnabled },
+    });
+    return updated;
+  }
+
   async getActiveSkillVersion(keyOrAlias: string) {
     const skill = await this.findSkillByKey(keyOrAlias);
     if (!skill) {
@@ -158,7 +179,6 @@ export class BuiltinSkillRegistryService {
           category: manifest.metadata.labels?.category || skill.category,
           defaultAccess: manifest.spec.defaultAccess?.mode || skill.defaultAccess,
           lifecycle: manifest.spec.lifecycle || skill.lifecycle,
-          isEnabled: manifest.spec.planner?.enabled ?? skill.isEnabled,
         },
       });
     }

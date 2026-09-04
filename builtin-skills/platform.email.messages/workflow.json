@@ -1,0 +1,17 @@
+{
+  "workflowVersion": "v1",
+  "engine": "domain-handler",
+  "handlerKey": "email.messages",
+  "steps": [
+    {
+      "stepId": "read_messages",
+      "action": "email_messages",
+      "inputMapping": {
+        "mailboxKey": "$.input.mailboxKey",
+        "selector": "$.input.selector",
+        "detail": "$.input.detail",
+        "limit": "$.input.limit"
+      }
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios, { isAxiosError } from 'axios';
+import axios from 'axios';
 import { matchDeterministicRoutingCapability } from '@ops/backend-runtime-capability-contract';
 import { getAuthServiceUrl } from '../../../config/service-endpoints';
 import { TRACE_ID_HEADER } from '../../../common/trace.util';
@@ -198,20 +198,35 @@ export class SkillMatcherService {
     availableSkills: AvailableSkillDefinition[]
   ): SkillMatchResult | null {
     const normalizedInput = userInput.toLowerCase();
+
     let bestScore = 0;
     let bestSkill: AvailableSkillDefinition | undefined;
+    let bestMatchedKeywords: string[] = [];
 
     for (const skill of availableSkills) {
-      const keywordHits = skill.triggerKeywords.filter(
-        (keyword) => keyword && normalizedInput.includes(keyword.toLowerCase())
-      );
+      const keywordHits = (skill.triggerKeywords || []).filter((keyword) => {
+        if (!keyword) return false;
+        const normKw = keyword.toLowerCase().trim();
+        if (!normKw) return false;
+        if (normKw.includes(' ')) {
+          const tokens = normKw.split(/\s+/).filter(Boolean);
+          return tokens.every((token) => normalizedInput.includes(token));
+        }
+        return normalizedInput.includes(normKw);
+      });
+
       const descriptionHit = skill.description
         ? normalizedInput.includes(skill.description.toLowerCase())
         : false;
-      const score = keywordHits.length + (descriptionHit ? 0.5 : 0);
+
+      const score =
+        keywordHits.reduce((acc, kw) => acc + (kw.includes(' ') ? 3 : 2), 0) +
+        (descriptionHit ? 0.5 : 0);
+
       if (score > bestScore) {
         bestScore = score;
         bestSkill = skill;
+        bestMatchedKeywords = keywordHits;
       }
     }
 
@@ -221,10 +236,8 @@ export class SkillMatcherService {
 
     return this.buildMatchResult(
       bestSkill,
-      bestSkill.triggerKeywords.filter(
-        (keyword) => keyword && normalizedInput.includes(keyword.toLowerCase())
-      ),
-      Math.min(0.95, 0.8 + bestScore * 0.1),
+      bestMatchedKeywords,
+      Math.min(0.99, 0.8 + bestScore * 0.05),
       'keyword_fallback_match'
     );
   }
@@ -233,6 +246,33 @@ export class SkillMatcherService {
     userInput: string,
     availableSkills: AvailableSkillDefinition[]
   ): { skill: AvailableSkillDefinition; matchedKeywords: string[] } | null {
+    const trimmedInput = userInput.trim();
+    // 1. Generic Slash Command Matcher (data-driven by skill triggers, aliases and IDs)
+    const slashMatch = trimmedInput.match(/^[/、]([a-zA-Z0-9_-]+)\b/i);
+    if (slashMatch) {
+      const command = slashMatch[1].toLowerCase();
+      const matchedSkill = availableSkills.find((s) => {
+        const triggers = (s.triggerKeywords || []).map((t) =>
+          String(t).toLowerCase().replace(/^[/、]/, '')
+        );
+        if (triggers.includes(command)) return true;
+        const aliases = (
+          (s.apiEndpoints?.runtimeMetadata?.routingAliases as string[]) || []
+        ).map((a) => String(a).toLowerCase().replace(/^[/、]/, ''));
+        if (aliases.includes(command)) return true;
+        const idParts = s.skillId.toLowerCase().split('.');
+        if (idParts.includes(command)) return true;
+        return false;
+      });
+
+      if (matchedSkill) {
+        return {
+          skill: matchedSkill,
+          matchedKeywords: [slashMatch[0]],
+        };
+      }
+    }
+
     const match = matchDeterministicRoutingCapability(
       userInput,
       availableSkills.map((skill) => ({
@@ -295,7 +335,7 @@ export class SkillMatcherService {
   private resolveUnavailableCode(
     error: unknown
   ): 'SKILL_MATCH_MODEL_UNAVAILABLE' | 'SKILL_MATCH_SERVICE_UNAVAILABLE' {
-    if (!isAxiosError(error)) return 'SKILL_MATCH_SERVICE_UNAVAILABLE';
+    if (!axios.isAxiosError(error)) return 'SKILL_MATCH_SERVICE_UNAVAILABLE';
     const data = error.response?.data as { code?: string } | undefined;
     return data &&
       typeof data === 'object' &&

@@ -1,0 +1,146 @@
+apiVersion: platform.ops/v1alpha1
+kind: BuiltinWorkflowSkill
+metadata:
+  key: platform.email.messages
+  displayName: 内置邮件读取与搜索
+  description: 按条件检索、筛选或凭引用读取用户邮箱中的邮件列表与正文详情
+  owner: platform-email
+  labels:
+    category: communication
+    domain: email
+spec:
+  definitionVersion: 1.0.0
+  lifecycle: experimental
+  defaultAccess:
+    mode: authenticated
+  planner:
+    enabled: true
+    triggerKeywords:
+      - 查 邮件
+      - 查看 邮件
+      - 读取 邮件
+      - 搜索 邮件
+      - 未读 邮件
+      - 最近 邮件
+      - 最新 邮件
+      - 查邮件
+      - 读邮件
+      - 查看邮件
+      - 搜索邮件
+      - 找邮件
+      - 最新邮件
+      - 最近邮件
+      - 未读邮件
+      - 收件箱
+      - 发件箱
+      - 邮件列表
+      - 邮件内容
+      - 邮件详情
+      - 查收邮件
+      - 查信
+      - 读信
+    matchSummary: 读取或检索用户指定邮箱中的邮件列表、未读邮件及正文内容
+    runtimeType: workflow
+    supportsArtifact: false
+  contracts:
+    input:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: true
+        properties:
+          mailboxKey:
+            type: string
+          unreadOnly:
+            type: boolean
+            description: 是否只查询未读邮件
+          folder:
+            type: string
+            enum: [inbox, sent, drafts, archive, all]
+            default: inbox
+            description: 邮箱文件夹
+          query:
+            type: string
+            description: 邮件搜索关键词或发件人
+          text:
+            type: string
+            description: 搜索正文或主题关键词
+          selector:
+            type: object
+            properties:
+              kind:
+                type: string
+                enum: [recent, search, by_ref]
+                default: recent
+              folder:
+                type: string
+                enum: [inbox, sent, drafts, archive, all]
+              unreadOnly:
+                type: boolean
+              since:
+                type: string
+                format: date-time
+              until:
+                type: string
+                format: date-time
+              text:
+                type: string
+              messageRef:
+                type: string
+              filters:
+                type: object
+          detail:
+            type: string
+            enum: [summary, full]
+            default: summary
+          limit:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+    output:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        x-primary-output: items
+        required: [mailboxKey, items, resultCount, fetchedAt, warnings]
+        properties:
+          mailboxKey: { type: string }
+          items:
+            type: array
+            items:
+              type: object
+              required: [messageRef, folder, subject, isRead, contentTrust]
+              properties:
+                messageRef: { type: string }
+                folder: { type: string }
+                subject: { type: string }
+                isRead: { type: boolean }
+                receivedAt: { type: string }
+                snippet: { type: string }
+                contentTrust: { type: string }
+          resultCount: { type: integer, minimum: 0 }
+          fetchedAt: { type: string, format: date-time }
+          warnings:
+            type: array
+            items: { type: string }
+  workflow:
+    engine: domain-handler
+    definitionRef: workflow.json
+  runtime:
+    adapterRoute: builtin:workflow
+    handlerKey: email.messages
+    idempotency: disabled
+    timeoutSeconds: 30
+    retryPolicy:
+      maximumAttempts: 2
+  migration:
+    minimumPlatformVersion: 4.0.0
+    contractCompatibility: backward
+  smokeTest:
+    inputRef: fixtures/smoke-input.json
+    assertions:
+      - output.mailboxKey exists
+      - output.items exists
+      - output.resultCount exists

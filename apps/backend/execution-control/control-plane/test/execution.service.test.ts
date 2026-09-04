@@ -1325,7 +1325,7 @@ describe('ExecutionService.create planner draft reuse', () => {
       objective: 'query weather',
       summary: 'query weather via weather skill',
       skill_match: {
-        skill_id: 'skill-1',
+        skill_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
         skill_name: '天气查询',
         confidence: 0.99,
       },
@@ -1357,7 +1357,7 @@ describe('ExecutionService.create planner draft reuse', () => {
     await service.create(
       'user-1',
       {
-        skillId: 'skill-1',
+        skillId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
         runtimeType: 'workflow',
         input: { prompt: '上海的天气' },
         planDraft: providedPlanDraft,
@@ -1370,7 +1370,7 @@ describe('ExecutionService.create planner draft reuse', () => {
     expect(planningService.generatePlanDraft).not.toHaveBeenCalled();
     expect(prisma.execution.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        skillId: 'skill-1',
+        skillId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
         runtimeType: 'workflow',
         status: 'queued',
       }),
@@ -1390,7 +1390,7 @@ describe('ExecutionService.create planner draft reuse', () => {
     await service.create(
       'user-1',
       {
-        skillId: 'skill-1',
+        skillId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
         runtimeType: 'workflow',
         input: {
           'contract.partyA.name_cn': 'Party A CN Ltd',
@@ -1428,7 +1428,7 @@ describe('ExecutionService.create planner draft reuse', () => {
     );
     expect(prisma.execution.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        skillId: 'skill-1',
+        skillId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
         runtimeType: 'workflow',
         status: 'queued',
       }),

@@ -16,6 +16,8 @@ import { OrganizationBridgeModule } from './governance/organization/organization
 import { BuiltinSkillModule } from './modules/builtin-skill/builtin-skill.module';
 import { SystemBackupModule } from './modules/system-backup/system-backup.module';
 import { ImChannelModule } from './modules/im-channel/im-channel.module';
+import { UserConnectionModule } from './modules/user-connection/user-connection.module';
+import { WorkspaceModule } from './modules/workspace/workspace.module';
 
 @Module({
   imports: [
@@ -49,6 +51,8 @@ import { ImChannelModule } from './modules/im-channel/im-channel.module';
     CapabilityReleaseModule,
     SystemBackupModule,
     ImChannelModule,
+    UserConnectionModule,
+    WorkspaceModule,
   ],
   providers: [
     // Global JWT guard - applied to all routes by default

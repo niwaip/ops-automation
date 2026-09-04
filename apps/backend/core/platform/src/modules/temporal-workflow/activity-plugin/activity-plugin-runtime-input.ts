@@ -92,10 +92,8 @@ export function buildHttpPluginRuntimeInput(
       ? { ...(renderedHeaders as Record<string, unknown>) }
       : {};
   if (!Object.keys(headers).some((key) => key.toLowerCase() === 'user-agent')) {
-    headers['User-Agent'] = 'ops-automation-httpRequest-probe/1.0';
-  }
-  if (!Object.keys(headers).some((key) => key.toLowerCase() === 'accept')) {
-    headers.Accept = 'application/json, text/plain, */*';
+    headers['User-Agent'] =
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   }
 
   const runtimeInput: Record<string, unknown> = {

@@ -104,6 +104,68 @@ const getStructuredResultPreview = (value?: string | null): string | undefined =
   return undefined;
 };
 
+const renderMarkdownLink = ({
+  href,
+  children,
+  onClick,
+  ...props
+}: React.ComponentPropsWithoutRef<'a'>) => {
+  const isWorkspaceLink = Boolean(href?.includes('/workspaces') && href?.includes('fileId='));
+  if (isWorkspaceLink) {
+    return (
+      <span
+        role="button"
+        tabIndex={0}
+        style={{
+          color: 'var(--primary-color, #1677ff)',
+          textDecoration: 'underline',
+          wordBreak: 'break-all',
+          fontWeight: 500,
+          cursor: 'pointer',
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const fileIdMatch = href?.match(/[?&]fileId=([^&]+)/);
+          const wsMatch = href?.match(/[?&]workspaceId=([^&]+)/);
+          const fileId = fileIdMatch ? decodeURIComponent(fileIdMatch[1]) : '';
+          const workspaceId = wsMatch ? decodeURIComponent(wsMatch[1]) : undefined;
+          if (fileId && typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('open-workspace-preview', {
+                detail: {
+                  fileId,
+                  workspaceId,
+                  fileName: typeof children === 'string' ? children : undefined,
+                },
+              })
+            );
+          }
+        }}
+      >
+        {children}
+      </span>
+    );
+  }
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        color: 'var(--primary-color, #1677ff)',
+        textDecoration: 'underline',
+        wordBreak: 'break-all',
+        fontWeight: 500,
+      }}
+      onClick={onClick}
+      {...props}
+    >
+      {children}
+    </a>
+  );
+};
+
 const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
   executionStatus,
   executionId,
@@ -251,11 +313,27 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
   if (shouldShowErrorCard) {
     const detailError = errorMessage || failureReason || '任务执行失败';
     const previewError = getErrorPreview(detailError);
+    const isPermissionError =
+      /权限|申请授权|permission|forbidden/i.test(detailError) ||
+      /权限|申请授权|permission|forbidden/i.test(previewError);
+
     return (
       <div className="chat-outcome-card error">
         <div className="chat-outcome-title">任务失败</div>
         {renderMeta()}
         <div className="chat-outcome-body">{previewError}</div>
+        {isPermissionError ? (
+          <div className="chat-outcome-actions" style={{ marginTop: 12 }}>
+            <Button
+              type="primary"
+              size="small"
+              icon={<ThunderboltOutlined />}
+              href="/published-skills"
+            >
+              前往技能中心申请授权
+            </Button>
+          </div>
+        ) : null}
         {downloadUrl || temporalLink || executionDetailLink ? renderResourceLinks() : null}
         {previewError !== detailError ? (
           <details className="chat-outcome-details">
@@ -307,6 +385,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
                   <table>{children}</table>
                 </div>
               ),
+              a: renderMarkdownLink,
               img: ({ src, alt }: { src?: string; alt?: string }) => (
                 <img
                   src={src}
@@ -359,7 +438,14 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
       {renderMeta()}
       {bodySummary ? (
         <div className="chat-outcome-body">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{bodySummary}</ReactMarkdown>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              a: renderMarkdownLink,
+            }}
+          >
+            {bodySummary}
+          </ReactMarkdown>
         </div>
       ) : null}
       {downloadUrl || temporalLink ? renderResourceLinks() : null}

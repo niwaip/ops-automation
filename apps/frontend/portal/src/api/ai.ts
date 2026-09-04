@@ -14,7 +14,9 @@ export type ModelProvider =
   | 'minimax'
   | 'bigmodel'
   | 'siliconflow'
-  | 'openrouter';
+  | 'openrouter'
+  | 'gemini'
+  | 'google';
 
 export type ModelCapabilityTier = 'standard' | 'advanced';
 
@@ -221,6 +223,10 @@ export const aiModelApi = {
     return apiClient.post('/ai/models/test-config', { endpoint, apiKey, modelName });
   },
 
+  checkAllModels: async (): Promise<ModelBatchHealthCheckResponse> => {
+    return apiClient.post<ModelBatchHealthCheckResponse>('/ai/models/check-all');
+  },
+
   getDebugSettings: async (): Promise<PromptDebugSettings> => {
     return apiClient.get<PromptDebugSettings>('/ai/debug-settings');
   },
@@ -229,6 +235,26 @@ export const aiModelApi = {
     return apiClient.patch<PromptDebugSettings>('/ai/debug-settings', data);
   },
 };
+
+export interface ModelHealthCheckItem {
+  modelId: string;
+  modelName: string;
+  displayName?: string;
+  provider: string;
+  status: string;
+  success: boolean;
+  latencyMs: number;
+  response?: string;
+  error?: string;
+  checkedAt: string;
+}
+
+export interface ModelBatchHealthCheckResponse {
+  total: number;
+  passed: number;
+  failed: number;
+  results: ModelHealthCheckItem[];
+}
 
 // AI Parameter Recognition API
 export interface RecognizeParamsRequest {

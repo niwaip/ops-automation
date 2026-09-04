@@ -346,10 +346,18 @@ export class ChatExecutionStreamService {
           // both event.content AND the data fields that the frontend prioritizes.
           let effectiveAiSummary: string | undefined;
 
-          const shouldGeneratePresentationSummary =
-            (!alreadyHasPresentationText &&
-              (requestsAiSummary || hasSummarizationIntent || isSearchOrDataResult)) ||
-            (requestsAiSummary && (hasSummarizationIntent || isSearchOrDataResult));
+          const isEmailResult = Boolean(
+            rawRecord.mailboxKey ||
+            businessData?.mailboxKey ||
+            Array.isArray(rawRecord.items) ||
+            Array.isArray(businessData?.items)
+          );
+
+          const shouldGeneratePresentationSummary = isEmailResult
+            ? hasSummarizationIntent
+            : (!alreadyHasPresentationText &&
+                (requestsAiSummary || hasSummarizationIntent || isSearchOrDataResult)) ||
+              (requestsAiSummary && (hasSummarizationIntent || isSearchOrDataResult));
 
           if (shouldGeneratePresentationSummary) {
             const aiResult = await this.generateAiSummary(
@@ -376,7 +384,10 @@ export class ChatExecutionStreamService {
                 );
               }
             } else if (aiResult?.warning) {
-              chatContent = `${chatContent}\n\n---\n_⚠️ AI 自动总结未生成：${aiResult.warning}_`;
+              const warningText = aiResult.warning.startsWith('AI 自动总结未生成')
+                ? aiResult.warning
+                : `AI 自动总结未生成：${aiResult.warning}`;
+              chatContent = `${chatContent}\n\n---\n_⚠️ ${warningText}_`;
             }
           }
 
@@ -852,16 +863,36 @@ ${payloadStr.length > 10000 ? payloadStr.slice(0, 10000) + '\n... (输出已截�
 4. 保留对用户有意义的数值、单位、日期和状态，省略内部字段与调试信息。
 5. 使用清晰的 Markdown，避免输出原始 JSON。`;
 
-      const response = await client.chatCompletion([
-        {
-          role: 'system',
-          content:
-            '你是业务结果呈现助手。请把已验证的结构化执行结果转换成忠于原始数据、简洁易读的中文 Markdown；不要改变结果含义。',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
+      const timeoutMs = parseInt(process.env.AI_SUMMARY_TIMEOUT_MS || '35000', 10) || 35000;
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                `AI summary LLM call timed out after ${Math.round(timeoutMs / 1000)}s`
+              )
+            ),
+          timeoutMs
+        )
+      );
+
+      const response = await Promise.race([
+        client.chatCompletion({
+          messages: [
+            {
+              role: 'system',
+              content:
+                '你是业务结果呈现助手。请把已验证的结构化执行结果转换成忠于原始数据、简洁易读的中文 Markdown；不要改变结果含义。',
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          maxOutputTokens: 800,
+          reasoning: { enabled: false },
+        }),
+        timeoutPromise,
       ]);
 
       const rawSummaryText =
@@ -881,17 +912,23 @@ ${payloadStr.length > 10000 ? payloadStr.slice(0, 10000) + '\n... (输出已截�
         'AI summary returned empty content',
         { executionId, objective, modelId: preferredModel.id }
       );
-      return { warning: 'AI 返回了空内容' };
+      return { warning: 'AI 自动总结未生成：AI 返回了空内容' };
     } catch (error) {
-      const reason = error instanceof Error ? error.message : 'unknown';
-      this.logger.warn(`Failed to generate AI summary for execution ${executionId}: ${reason}`);
+      const rawReason = error instanceof Error ? error.message : 'unknown';
+      this.logger.warn(`Failed to generate AI summary for execution ${executionId}: ${rawReason}`);
       reportChatExecutionStreamDebug(
         'H3',
         'apps/backend/intelligence/ai-orchestrator/src/modules/chat/chat-execution-stream.service.ts:generateAiSummary',
         'AI summary LLM call failed',
-        { executionId, objective, reason }
+        { executionId, objective, reason: rawReason }
       );
-      return { warning: `AI 总结调用失败：${reason}` };
+      let friendlyReason = rawReason;
+      if (/timed out/i.test(rawReason)) {
+        friendlyReason = '大模型响应超时，已展示原始执行结果';
+      } else if (/econnrefused|failed to fetch|network error/i.test(rawReason)) {
+        friendlyReason = '大模型服务连接异常，已展示原始执行结果';
+      }
+      return { warning: `AI 自动总结未生成：${friendlyReason}` };
     }
   }
 }

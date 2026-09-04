@@ -1,0 +1,192 @@
+.preview-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.preview-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.preview-body {
+  max-height: 72vh;
+  min-height: 450px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 20px;
+  background: var(--bg-card, #ffffff);
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #f0f0f0);
+}
+
+/* Markdown 富文本阅读渲染 */
+.preview-markdown {
+  color: var(--text-primary, #262626);
+  font-size: 14px;
+  line-height: 1.75;
+  word-break: break-word;
+}
+
+.preview-markdown h1,
+.preview-markdown h2,
+.preview-markdown h3,
+.preview-markdown h4 {
+  color: var(--text-primary, #1f1f1f);
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 12px;
+  line-height: 1.35;
+}
+
+.preview-markdown h1 {
+  font-size: 22px;
+  border-bottom: 1px solid var(--border-color, #e8e8e8);
+  padding-bottom: 8px;
+}
+
+.preview-markdown h2 {
+  font-size: 18px;
+  border-bottom: 1px solid var(--border-color, #f0f0f0);
+  padding-bottom: 6px;
+}
+
+.preview-markdown h3 {
+  font-size: 16px;
+}
+
+.preview-markdown h4 {
+  font-size: 14px;
+}
+
+.preview-markdown p {
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+
+.preview-markdown ul,
+.preview-markdown ol {
+  padding-left: 24px;
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+
+.preview-markdown li {
+  margin-bottom: 4px;
+}
+
+.preview-markdown blockquote {
+  margin: 14px 0;
+  padding: 8px 16px;
+  background: var(--bg-hover, #f8f9fa);
+  border-left: 4px solid var(--primary-color, #1677ff);
+  border-radius: 0 6px 6px 0;
+  color: var(--text-secondary, #595959);
+}
+
+.preview-markdown blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.preview-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 13px;
+}
+
+.preview-markdown th,
+.preview-markdown td {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e8e8e8);
+  text-align: left;
+}
+
+.preview-markdown th {
+  background: var(--bg-secondary, #fafafa);
+  font-weight: 600;
+}
+
+.preview-markdown tr:nth-child(even) td {
+  background: var(--bg-hover, #fdfdfd);
+}
+
+.preview-markdown code:not(pre code) {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-secondary, #f2f3f5);
+  color: var(--primary-color, #1677ff);
+  border: 1px solid var(--border-color, #e5e6eb);
+}
+
+.preview-markdown pre {
+  margin: 16px 0;
+  padding: 14px 18px;
+  background: var(--bg-secondary, #1e1e1e);
+  color: var(--text-primary, #d4d4d4);
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  border: 1px solid var(--border-color, #333333);
+}
+
+.preview-markdown pre code {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  border: none;
+}
+
+.preview-markdown hr {
+  height: 1px;
+  background: var(--border-color, #e8e8e8);
+  border: none;
+  margin: 24px 0;
+}
+
+/* 源码/纯文本视图 */
+.preview-raw {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--bg-secondary, #1a1a1a);
+  color: var(--text-primary, #e0e0e0);
+  border: 1px solid var(--border-color, #333);
+}
+
+/* 原生 PDF 嵌入 iframe */
+.preview-pdf-frame {
+  width: 100%;
+  height: 72vh;
+  border: none;
+  border-radius: 8px;
+  background: #525659;
+}
+
+/* 图片预览 */
+.preview-image-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: var(--bg-secondary, #fafafa);
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 68vh;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}

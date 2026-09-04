@@ -107,6 +107,21 @@ export class ChatController {
     return { sessions };
   }
 
+  @Delete('chat/sessions/:sessionId')
+  @ApiOperation({ summary: 'Delete chat session' })
+  @ApiResponse({ status: 200, description: 'Chat session deleted successfully' })
+  async deleteSession(
+    @Param('sessionId') sessionId: string,
+    @Req() req: Request
+  ): Promise<{ success: boolean }> {
+    const identity = await this.chatOrchestratorService.resolveAuthenticatedUser(
+      req.headers.authorization
+    );
+    if (!identity.userId) throw new UnauthorizedException('Login required');
+    await this.chatConversationService.deleteSession(sessionId, identity.userId);
+    return { success: true };
+  }
+
   @Get('chat/history/:sessionId')
   @ApiOperation({ summary: 'Get chat history by session ID' })
   @ApiResponse({ status: 200, description: 'Chat history loaded successfully' })

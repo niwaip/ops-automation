@@ -283,6 +283,28 @@ export class ModelController {
     return { success };
   }
 
+  @Post('models/check-all')
+  @ApiOperation({ summary: 'Check health and connectivity of all registered AI models' })
+  async checkAllModelsHealth(): Promise<{
+    total: number;
+    passed: number;
+    failed: number;
+    results: Array<{
+      modelId: string;
+      modelName: string;
+      displayName?: string;
+      provider: string;
+      status: string;
+      success: boolean;
+      latencyMs: number;
+      response?: string;
+      error?: string;
+      checkedAt: string;
+    }>;
+  }> {
+    return this.modelService.checkAllModelsHealth();
+  }
+
   @Post('models/:id/test-config')
   @ApiOperation({ summary: 'Test model configuration using stored API key' })
   async testModelConfig(

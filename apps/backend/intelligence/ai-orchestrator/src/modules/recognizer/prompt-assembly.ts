@@ -148,8 +148,15 @@ function buildDynamicUserContextSection(
       ].join('\n')
     );
   } else if (context) {
+    if (context.previous_result && typeof context.previous_result === 'object') {
+      const pr = context.previous_result as Record<string, unknown>;
+      const detailText = typeof pr.detailText === 'string' ? pr.detailText.trim() : '';
+      if (detailText) {
+        sections.push(`[上一轮执行结果文本]\n${detailText.slice(0, 4000)}`);
+      }
+    }
     const lines = Object.entries(context)
-      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .filter(([key, value]) => key !== 'previous_result' && value !== undefined && value !== null && value !== '')
       .map(([key, value]) => `${key}: ${formatContextValue(value)}`);
     if (lines.length > 0) {
       sections.push(`[补充上下文]\n${lines.join('\n')}`);

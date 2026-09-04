@@ -7,6 +7,10 @@ export interface ChatUploadedFileDTO {
   size: number;
   content?: string;
   parsedContent?: string;
+  source?: 'upload' | 'workspace';
+  workspaceNodeId?: string;
+  workspaceId?: string;
+  storagePath?: string;
 }
 
 export interface ChatRequestDTO {
@@ -46,6 +50,7 @@ export interface ChatSessionDTO {
   title?: string;
   modelId?: string;
   status: 'active' | 'archived';
+  channel?: string;
   createdAt: string;
   updatedAt: string;
 }

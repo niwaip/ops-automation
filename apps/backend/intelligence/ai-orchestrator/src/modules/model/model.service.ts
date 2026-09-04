@@ -1440,4 +1440,86 @@ export class ModelService implements OnModuleInit {
 
     return result;
   }
+
+  /**
+   * Batch test health and connectivity of all registered models
+   */
+  async checkAllModelsHealth(): Promise<{
+    total: number;
+    passed: number;
+    failed: number;
+    results: Array<{
+      modelId: string;
+      modelName: string;
+      displayName?: string;
+      provider: string;
+      status: string;
+      success: boolean;
+      latencyMs: number;
+      response?: string;
+      error?: string;
+      checkedAt: string;
+    }>;
+  }> {
+    const models = Array.from(this.models.values());
+    const results = await Promise.all(
+      models.map(async (model) => {
+        const startTime = Date.now();
+        const client = this.getClient(model.id);
+        if (!client) {
+          return {
+            modelId: model.id,
+            modelName: model.name,
+            displayName: model.config?.display_name,
+            provider: model.provider,
+            status: model.status,
+            success: false,
+            latencyMs: 0,
+            error: '未配置有效 API Key 或模型客户端未初始化',
+            checkedAt: new Date().toISOString(),
+          };
+        }
+
+        try {
+          const response = await this.callModel(model.id, 'Ping. Please reply with "OK".');
+          const latencyMs = Date.now() - startTime;
+          return {
+            modelId: model.id,
+            modelName: model.name,
+            displayName: model.config?.display_name,
+            provider: model.provider,
+            status: model.status,
+            success: true,
+            latencyMs,
+            response: (response.content || 'OK').slice(0, 120),
+            checkedAt: new Date().toISOString(),
+          };
+        } catch (err: unknown) {
+          const latencyMs = Date.now() - startTime;
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          return {
+            modelId: model.id,
+            modelName: model.name,
+            displayName: model.config?.display_name,
+            provider: model.provider,
+            status: model.status,
+            success: false,
+            latencyMs,
+            error: errorMsg,
+            checkedAt: new Date().toISOString(),
+          };
+        }
+      })
+    );
+
+    const passed = results.filter((r) => r.success).length;
+    const failed = results.length - passed;
+
+    return {
+      total: results.length,
+      passed,
+      failed,
+      results,
+    };
+  }
 }

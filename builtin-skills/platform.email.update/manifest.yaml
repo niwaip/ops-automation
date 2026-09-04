@@ -1,0 +1,78 @@
+apiVersion: platform.ops/v1alpha1
+kind: BuiltinWorkflowSkill
+metadata:
+  key: platform.email.update
+  displayName: 内置邮件状态更新
+  description: 批量或按条件更新用户邮箱中邮件的已读/未读状态、旗标标记或移动文件夹
+  owner: platform-email
+  labels:
+    category: communication
+    domain: email
+spec:
+  definitionVersion: 1.0.0
+  lifecycle: experimental
+  defaultAccess:
+    mode: authenticated
+  planner:
+    enabled: true
+    triggerKeywords:
+      - 标为已读
+      - 标记已读
+      - 标记为已读
+      - 更新为已读
+      - 全部已读
+      - 设为已读
+      - 标为未读
+      - 标记未读
+      - 全部标为已读
+      - 未读转已读
+      - 一键已读
+      - 更新 已读
+      - 更新 未读
+      - 标记 已读
+      - 标 已读
+      - 改为已读
+      - 变更为已读
+    matchSummary: 将指定或符合条件的邮件状态更新为已读或未读
+    runtimeType: workflow
+    supportsArtifact: false
+  contracts:
+    input:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        properties:
+          mailboxKey:
+            type: string
+          messageRefs:
+            type: array
+            items: { type: string }
+          isRead:
+            type: boolean
+            default: true
+          selector:
+            type: object
+          prompt:
+            type: string
+    output:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        required: [updatedCount, success]
+        properties:
+          mailboxKey: { type: string }
+          updatedCount: { type: integer }
+          messageRefs:
+            type: array
+            items: { type: string }
+          isRead: { type: boolean }
+          success: { type: boolean }
+          updatedAt: { type: string }
+          updatedTitles:
+            type: array
+            items: { type: string }
+  runtime:
+    handlerKey: email.update
+    adapterRoute: builtin:workflow

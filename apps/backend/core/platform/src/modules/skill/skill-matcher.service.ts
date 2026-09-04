@@ -203,6 +203,33 @@ ${skillsXml}
     userInput: string,
     skills: SkillConfigDto[]
   ): { skill: SkillConfigDto; matchedKeywords: string[] } | null {
+    const trimmedInput = userInput.trim();
+    // 1. Generic Slash Command Matcher (data-driven by skill triggers, aliases and IDs)
+    const slashMatch = trimmedInput.match(/^[/、]([a-zA-Z0-9_-]+)\b/i);
+    if (slashMatch) {
+      const command = slashMatch[1].toLowerCase();
+      const matchedSkill = skills.find((s) => {
+        const triggers = (s.triggerKeywords || []).map((t) =>
+          String(t).toLowerCase().replace(/^[/、]/, '')
+        );
+        if (triggers.includes(command)) return true;
+        const aliases = (
+          (s.apiEndpoints?.runtimeMetadata?.routingAliases as string[]) || []
+        ).map((a) => String(a).toLowerCase().replace(/^[/、]/, ''));
+        if (aliases.includes(command)) return true;
+        const idParts = s.id.toLowerCase().split('.');
+        if (idParts.includes(command)) return true;
+        return false;
+      });
+
+      if (matchedSkill) {
+        return {
+          skill: matchedSkill,
+          matchedKeywords: [slashMatch[0]],
+        };
+      }
+    }
+
     const match = matchDeterministicRoutingCapability(
       userInput,
       skills.map((skill) => ({

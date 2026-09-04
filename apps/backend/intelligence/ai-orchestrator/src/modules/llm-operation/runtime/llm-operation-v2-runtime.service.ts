@@ -198,7 +198,9 @@ export class LlmOperationV2RuntimeService {
     const inputSchema = (manifest.inputSchema as Record<string, unknown>) ?? null;
     const outputSchema = (manifest.outputSchema as Record<string, unknown>) ?? null;
     const modelOutputMode = manifest.modelOutputMode === 'text' ? 'text' : 'json';
-    const maxInputTokens = (manifest.maxInputTokens as number) ?? 4000;
+    const templateTokens =
+      LLM_OPERATION_TEMPLATES[request.operationId as keyof typeof LLM_OPERATION_TEMPLATES]?.maxInputTokens;
+    const maxInputTokens = Math.max((manifest.maxInputTokens as number) ?? 4000, templateTokens ?? 4000);
     const maxOutputTokens = (manifest.maxOutputTokens as number) ?? 2000;
     const timeoutMs = (manifest.timeoutMs as number) ?? 30000;
     const repair = (manifest.repair as Record<string, unknown>) ?? {};
@@ -217,13 +219,34 @@ export class LlmOperationV2RuntimeService {
     // Oversize policy: 'truncate' operations keep a budget-sized prefix (with
     // a notice) instead of failing; 'reject' stays fail-closed via preflight.
     const inputPolicy = (manifest.inputPolicy as Record<string, unknown>) ?? {};
+    const templateOversize =
+      LLM_OPERATION_TEMPLATES[request.operationId as keyof typeof LLM_OPERATION_TEMPLATES]?.oversizeInput;
     const oversize =
-      resolved.source === 'database'
-        ? String(inputPolicy.oversize ?? 'reject') === 'truncate'
-          ? 'truncate'
-          : 'reject'
-        : (LLM_OPERATION_TEMPLATES[request.operationId as keyof typeof LLM_OPERATION_TEMPLATES]
-            ?.oversizeInput ?? 'reject');
+      templateOversize === 'truncate' || String(inputPolicy.oversize ?? '') === 'truncate'
+        ? 'truncate'
+        : 'reject';
+    // Enterprise Token Optimization: Slim list items before feeding to summarize_list
+    // Strips out non-essential raw data (e.g. raw HTML, complex headers, network refs)
+    // and preserves only what the LLM glue requires (title, sender, time, clean snippet).
+    if (request.operationId === 'summarize_list' && Array.isArray(request.input?.items)) {
+      request.input.items = (request.input.items as any[]).map((item) => {
+        if (!item || typeof item !== 'object') return item;
+        const title = item.title || item.subject || item.name || item.heading || '';
+        const from = item.from || item.sender || item.author || undefined;
+        const date = item.receivedAt || item.date || item.publishedAt || item.time || undefined;
+        const rawSummary =
+          item.summary || item.snippet || item.content || item.description || item.text || '';
+        const cleanSummary = String(rawSummary).slice(0, 400);
+
+        return {
+          title: String(title).trim(),
+          ...(from ? { from: String(from).trim() } : {}),
+          ...(date ? { date: String(date).trim() } : {}),
+          summary: cleanSummary.trim(),
+        };
+      });
+    }
+
     request.input = this.budgetEnforcer.prepareInput(request.input, maxInputTokens, oversize);
 
     try {

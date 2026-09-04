@@ -1,0 +1,118 @@
+.slash-dropdown {
+  position: absolute;
+  bottom: calc(100% - 2px);
+  left: 14px;
+  width: 480px;
+  max-width: calc(100% - 28px);
+  max-height: 380px;
+  background: var(--bg-card);
+  border-radius: var(--radius-md, 12px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.22), 0 4px 12px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--border-color);
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slashFadeIn 0.15s ease;
+}
+
+@keyframes slashFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slash-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.slash-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.slash-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 6px 0;
+  max-height: 280px;
+}
+
+.slash-item {
+  padding: 10px 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-left: 3px solid transparent;
+}
+
+.slash-item:hover,
+.slash-item.is-selected {
+  background: var(--bg-hover);
+}
+
+.slash-item.is-selected {
+  border-left-color: var(--primary-color);
+}
+
+.slash-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.slash-item-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slash-command-name {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.slash-command-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.slash-item-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slash-footer {
+  padding: 6px 14px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  font-size: 11.5px;
+  color: var(--text-tertiary, #8c8c8c);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}

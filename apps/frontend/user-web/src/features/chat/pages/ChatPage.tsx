@@ -1,10 +1,19 @@
 import {
+  DeleteOutlined,
+  DesktopOutlined,
   MenuUnfoldOutlined,
   PlusOutlined,
+  ReloadOutlined,
+  WechatOutlined,
 } from '@ant-design/icons';
 import {
   App,
   Button,
+  Popconfirm,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from 'react-query';
@@ -29,6 +38,7 @@ import {
 import {
   formatRelativeTime,
   getSessionPreview,
+  resolveSessionChannel,
 } from '../lib/sessionView';
 import {
   getLatestWaitingInputExecutionId,
@@ -69,6 +79,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   const [selectedModel, setSelectedModel] = useState<string>('default');
   const [chatMode, setChatMode] = useState<'chat' | 'task'>('task');
   const [enableThinking, setEnableThinking] = useState(true);
+  const [enableWebSearch, setEnableWebSearch] = useState(false);
   const [expandedThoughtMessageId, setExpandedThoughtMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const notifiedTaskStateKeysRef = useRef<Set<string>>(new Set());
@@ -88,6 +99,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     activeMessages,
     appendProgressLog,
     createDraftSession,
+    deleteSession,
     ensureSession,
     isSessionListCollapsed,
     mergeSessionHistory,
@@ -199,6 +211,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     createDraftSession,
     draft,
     enableThinking,
+    enableWebSearch,
     ensureSession,
     isStreaming,
     nativeReasoningEnabled,
@@ -215,14 +228,15 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   });
 
   // Wrap handleSend to push draft into sent history before clearing it
-  const handleSendWithHistory = useCallback((files?: UploadedFileDescriptor[]) => {
-    if (draft.trim()) {
+  const handleSendWithHistory = useCallback((files?: UploadedFileDescriptor[], contentOverride?: string) => {
+    const textToSave = contentOverride !== undefined ? contentOverride : draft;
+    if (textToSave.trim()) {
       setSentHistory((prev) => {
-        const next = [...prev, draft.trim()];
+        const next = [...prev, textToSave.trim()];
         return next.length > 50 ? next.slice(next.length - 50) : next;
       });
     }
-    handleSend(files);
+    handleSend(files, contentOverride);
   }, [draft, handleSend]);
 
   useEffect(() => {
@@ -316,6 +330,18 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
           selectedSessionId={selectedSessionId}
           isLoading={sessionsQuery.isLoading}
           onSelectSession={setSelectedSessionId}
+          onDeleteSession={async (sessionId) => {
+            deleteSession(sessionId);
+            try {
+              await chatApi.deleteSession(sessionId);
+              refetchSessions();
+            } catch {
+              // ignore
+            }
+          }}
+          onRefresh={() => {
+            void refetchSessions();
+          }}
           onCollapse={() => setIsSessionListCollapsed(true)}
           onCreateSession={handleCreateSession}
           getPreview={(sessionId) => getSessionPreview(sessionMessages[sessionId])}
@@ -333,6 +359,91 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
         />
 
         <div className={`${styles['user-chat-window-shell']}${embedded ? ` ${styles.embedded}` : ''}`}>
+          {selectedSession ? (
+            <div className={styles['user-chat-header-bar']}>
+              <div className={styles['user-chat-header-info']}>
+                {(() => {
+                  const channelMeta = resolveSessionChannel(selectedSession);
+                  return (
+                    <span
+                      className={`${styles['session-channel-tag']} ${
+                        styles[`channel-${channelMeta.key}`] || ''
+                      }`}
+                    >
+                      {channelMeta.key === 'wechat' ? (
+                        <WechatOutlined style={{ marginRight: 4 }} />
+                      ) : (
+                        <DesktopOutlined style={{ marginRight: 4 }} />
+                      )}
+                      {channelMeta.badgeText}
+                    </span>
+                  );
+                })()}
+                <Typography.Text
+                  strong
+                  className={styles['user-chat-header-title']}
+                  ellipsis={{ tooltip: selectedSession.title || '新对话' }}
+                >
+                  {selectedSession.title || '新对话'}
+                </Typography.Text>
+                {selectedSession.modelId && selectedSession.modelId !== 'default' ? (
+                  <Tag className={styles['session-model-tag']}>{selectedSession.modelId}</Tag>
+                ) : null}
+              </div>
+              <Space size={4} className={styles['user-chat-header-actions']}>
+                <Tooltip title="新建会话">
+                  <Button
+                    type="text"
+                    shape="circle"
+                    icon={<PlusOutlined />}
+                    onClick={handleCreateSession}
+                    className={styles['user-chat-header-btn']}
+                  />
+                </Tooltip>
+                <Tooltip title="刷新会话">
+                  <Button
+                    type="text"
+                    shape="circle"
+                    icon={<ReloadOutlined spin={selectedSessionHistoryQuery.isFetching} />}
+                    onClick={() => {
+                      void selectedSessionHistoryQuery.refetch();
+                      void refetchSessions();
+                    }}
+                    className={styles['user-chat-header-btn']}
+                  />
+                </Tooltip>
+                <Popconfirm
+                  title="删除当前会话"
+                  description="确定要删除当前会话及其所有历史记录吗？"
+                  okText="删除"
+                  cancelText="取消"
+                  okButtonProps={{ danger: true, size: 'small' }}
+                  cancelButtonProps={{ size: 'small' }}
+                  onConfirm={async () => {
+                    const sid = selectedSession.id;
+                    deleteSession(sid);
+                    try {
+                      await chatApi.deleteSession(sid);
+                      void refetchSessions();
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                >
+                  <Tooltip title="删除会话">
+                    <Button
+                      type="text"
+                      danger
+                      shape="circle"
+                      icon={<DeleteOutlined />}
+                      className={styles['user-chat-header-btn']}
+                    />
+                  </Tooltip>
+                </Popconfirm>
+              </Space>
+            </div>
+          ) : null}
+
           <ChatMessageList
             actionLoadingByMessage={actionLoadingByMessage}
             activeMessages={activeMessages}
@@ -361,6 +472,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             onChatModeChange={setChatMode}
             enableThinking={enableThinking}
             onEnableThinkingChange={setEnableThinking}
+            enableWebSearch={enableWebSearch}
+            onEnableWebSearchChange={setEnableWebSearch}
             thinkingLabel={thinkingToggleLabel}
             thinkingHint={thinkingToggleHint}
             nativeReasoningSupported={nativeReasoningSupported}

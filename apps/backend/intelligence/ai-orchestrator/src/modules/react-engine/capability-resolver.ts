@@ -19,6 +19,13 @@ type RuntimeToolPolicy = {
   status: string;
 };
 
+const WEB_SEARCH_SKILL_IDS = new Set([
+  'platform.search.web',
+  'platform.web_search',
+  'tavily_search',
+  'web_search',
+]);
+
 @Injectable()
 export class CapabilityResolver {
   private readonly logger = new Logger(CapabilityResolver.name);
@@ -30,7 +37,8 @@ export class CapabilityResolver {
   async resolve(request: ChatRequestDTO, context: ExecutionContext): Promise<CapabilitySnapshot> {
     const mode = request.config?.mode || 'task';
     const roles = request.userRoles || context.userRoles || [];
-    const availableSkills = await this.loadAvailableSkills(context);
+    const webSearchEnabled = request.config?.webSearch === true;
+    const availableSkills = await this.loadAvailableSkills(context, webSearchEnabled);
     const selectedSkillId = context.skill?.skillId || context.documentContext?.selectedSkillId;
 
     const visibleSkills = this.toVisibleSkills(availableSkills);
@@ -54,6 +62,7 @@ export class CapabilityResolver {
       sessionId: context.sessionId,
       roles,
       mode,
+      webSearchEnabled,
       selectedSkillId,
       skillScopedToolNames: toolScope.allowedToolNames,
       deniedToolNames: toolScope.deniedToolNames,
@@ -103,6 +112,10 @@ export class CapabilityResolver {
       return true;
     }
 
+    if (Boolean(snapshot.webSearchEnabled) !== (request.config?.webSearch === true)) {
+      return true;
+    }
+
     const requestRoles = request.userRoles || context.userRoles || [];
     if (!this.sameStringSet(snapshot.roles, requestRoles)) {
       return true;
@@ -131,7 +144,8 @@ export class CapabilityResolver {
   }
 
   private async loadAvailableSkills(
-    context: ExecutionContext
+    context: ExecutionContext,
+    webSearchEnabled: boolean
   ): Promise<AvailableSkillDefinition[]> {
     if (!context.userId) {
       return [];
@@ -153,7 +167,7 @@ export class CapabilityResolver {
       const payload = (await response.json()) as { skills?: Array<Record<string, unknown>> };
       const rawSkills = Array.isArray(payload.skills) ? payload.skills : [];
 
-      return rawSkills
+      const legacySkills = rawSkills
         .map((item) => {
           const apiEndpoints =
             typeof item.apiEndpoints === 'object' && item.apiEndpoints
@@ -224,12 +238,84 @@ export class CapabilityResolver {
               : undefined,
           };
         })
-        .filter((item) => item.skillId && item.skillName);
+        .filter((item) => item.skillId && item.skillName)
+        .filter((item) => webSearchEnabled || !this.isWebSearchSkill(item));
+
+      if (!webSearchEnabled) return legacySkills;
+
+      const builtinSearchSkill = await this.loadBuiltinWebSearchSkill(context);
+      if (!builtinSearchSkill) return legacySkills;
+
+      return [...legacySkills.filter((item) => !this.isWebSearchSkill(item)), builtinSearchSkill];
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown';
       this.logger.warn(`Failed to load available skills: ${message}`);
       return [];
     }
+  }
+
+  private async loadBuiltinWebSearchSkill(
+    context: ExecutionContext
+  ): Promise<AvailableSkillDefinition | undefined> {
+    try {
+      const internalSecret =
+        process.env.INTERNAL_API_SHARED_SECRET || process.env.INTERNAL_API_SECRET;
+      const response = await fetch(`${this.authServiceUrl}/internal/builtin-skills/catalog`, {
+        headers: {
+          ...(internalSecret ? { 'x-internal-secret': internalSecret } : {}),
+          ...(context.userId ? { 'x-user-id': context.userId } : {}),
+          ...(context.organizationId ? { 'x-org-id': context.organizationId } : {}),
+          ...(context.userRoles?.length ? { 'x-role-ids': context.userRoles.join(',') } : {}),
+          ...(context.traceId ? { 'x-trace-id': context.traceId } : {}),
+        },
+      });
+      if (!response.ok) {
+        this.logger.warn(`Failed to load built-in web search skill: ${response.status}`);
+        return undefined;
+      }
+
+      const payload = (await response.json()) as {
+        capabilities?: Array<Record<string, unknown>>;
+      };
+      const capability = (payload.capabilities || []).find((item) => {
+        const ref = item.capabilityRef as Record<string, unknown> | undefined;
+        return ref?.id === 'platform.search.web';
+      });
+      if (!capability) return undefined;
+
+      const ref = capability.capabilityRef as Record<string, unknown>;
+      const runtimeHints = capability.runtimeHints as Record<string, unknown> | undefined;
+      const inputSchema = (capability.inputSchema || {}) as Record<string, unknown>;
+      return {
+        skillId: String(ref.id),
+        skillName: String(capability.displayName || ref.id),
+        description:
+          typeof capability.description === 'string' ? capability.description : undefined,
+        triggerKeywords: Array.isArray(runtimeHints?.triggerKeywords)
+          ? runtimeHints.triggerKeywords.map(String)
+          : [],
+        paramsSchema: {
+          properties:
+            inputSchema.properties && typeof inputSchema.properties === 'object'
+              ? (inputSchema.properties as AvailableSkillDefinition['paramsSchema']['properties'])
+              : {},
+          required: Array.isArray(inputSchema.required) ? inputSchema.required.map(String) : [],
+        },
+        executionType: 'flow',
+        executionFlow: ['search_web'],
+        goal: '检索公开互联网中的最新信息并返回可引用来源',
+        expectedResult: '包含标题、URL、摘要和相关度的结构化搜索结果',
+      };
+    } catch (error) {
+      this.logger.warn(
+        `Failed to load built-in web search skill: ${error instanceof Error ? error.message : 'unknown'}`
+      );
+      return undefined;
+    }
+  }
+
+  private isWebSearchSkill(skill: AvailableSkillDefinition): boolean {
+    return WEB_SEARCH_SKILL_IDS.has(skill.skillId) || WEB_SEARCH_SKILL_IDS.has(skill.skillName);
   }
 
   private applyToolVisibilityPolicy(

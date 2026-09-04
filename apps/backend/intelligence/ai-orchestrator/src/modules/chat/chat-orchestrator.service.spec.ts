@@ -881,4 +881,63 @@ describe('ChatOrchestratorService', () => {
       )
     ).toBe(true);
   });
+
+  it('returns friendly Chinese error prompting authorization when skill execution creation fails with permission error', async () => {
+    const { service, plannerService, controlPlaneClient } = createService();
+    const planDraft = {
+      plan_id: 'plan-weather-1',
+      planner_mode: 'skill',
+      skill_match: {
+        skill_id: '6b346cd2-670a-4bbf-aa3d-5b9449fd8753',
+        skill_name: '天气查询',
+        confidence: 0.95,
+      },
+      required_inputs: [{ name: 'city', description: '城市', missing: true }],
+      steps: [],
+      usage: {
+        prompt_tokens: 10,
+        completion_tokens: 5,
+        total_tokens: 15,
+      },
+    };
+    plannerService.matchSkillPhase.mockResolvedValue({
+      objective: '查看今天的天气',
+      matchedSkill: { skillId: '6b346cd2-670a-4bbf-aa3d-5b9449fd8753', skillName: '天气查询' },
+      planDraft,
+      hasVisibleSkills: true,
+    });
+    plannerService.completePlanFromMatchPhase.mockResolvedValue(planDraft);
+    controlPlaneClient.createExecution.mockRejectedValue({
+      response: {
+        data: {
+          statusCode: 403,
+          message: 'You do not have permission to execute this skill',
+        },
+      },
+    });
+
+    const events: Array<{ type: StreamEventType; content: string }> = [];
+    for await (const event of service.handleTaskMode(
+      {
+        message: '查看今天的天气',
+        sessionId: 'session-weather-1',
+      },
+      {
+        sessionId: 'session-weather-1',
+        userId: 'user-weather-1',
+        userRoles: ['employee'],
+        traceId: 'trace-weather-1',
+        history: [],
+      },
+      'Bearer token-weather-1'
+    )) {
+      events.push({ type: event.type, content: event.content });
+    }
+
+    const errorEvent = events.find((e) => e.type === StreamEventType.ERROR);
+    expect(errorEvent).toBeDefined();
+    expect(errorEvent?.content).toBe(
+      '您当前暂无「天气查询」技能的执行权限。如需使用，请前往「技能中心」申请授权，或联系系统管理员开通权限。'
+    );
+  });
 });

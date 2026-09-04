@@ -157,4 +157,32 @@ describe('ModelController provider governance', () => {
 
     chatCompletionSpy.mockRestore();
   });
+
+  it('checks health of all registered models in batch', async () => {
+    await controller.createModel({
+      name: 'batch-model-1',
+      provider: 'openai',
+      api_endpoint: 'https://api.openai.com/v1',
+      api_key: 'key-1',
+    });
+
+    const chatCompletionSpy = jest
+      .spyOn(OpenAICompatibleClient.prototype, 'chatCompletion')
+      .mockResolvedValue({
+        content: 'OK',
+      });
+
+    const result = await controller.checkAllModelsHealth();
+
+    expect(result.total).toBe(1);
+    expect(result.passed).toBe(1);
+    expect(result.failed).toBe(0);
+    expect(result.results[0]).toMatchObject({
+      modelName: 'batch-model-1',
+      success: true,
+      response: 'OK',
+    });
+
+    chatCompletionSpy.mockRestore();
+  });
 });

@@ -17,6 +17,7 @@ interface ChatSessionListItem {
   title?: string;
   modelId?: string;
   status: 'active' | 'archived';
+  channel?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -261,6 +262,14 @@ export class ChatConversationService {
 
   async listSessions(ownerUserId?: string): Promise<ChatSessionListItem[]> {
     return this.sessionService.listChatSessions(ownerUserId);
+  }
+
+  async deleteSession(sessionId: string, ownerUserId?: string): Promise<void> {
+    const chatSession = await this.sessionService.getChatSession(sessionId);
+    if (ownerUserId && chatSession?.session?.ownerUserId && chatSession.session.ownerUserId !== ownerUserId) {
+      throw new Error('Cannot delete session of another user');
+    }
+    await this.sessionService.deleteChatSession(sessionId);
   }
 
   async getChatHistory(sessionId: string, ownerUserId?: string): Promise<ChatHistoryItem[]> {
@@ -638,7 +647,9 @@ export class ChatConversationService {
     const inferredSupport =
       /^(o1|o3|o4|qwq)/i.test(model.name) ||
       /(reasoner|reasoning|deepseek-r1)/i.test(model.name) ||
-      (model.provider === 'minimax' && /^MiniMax-M/i.test(model.name));
+      (model.provider === 'minimax' && /^MiniMax-M/i.test(model.name)) ||
+      ((model.provider === 'gemini' || model.provider === 'google') &&
+        /(?:thinking|2\.5)/i.test(model.name));
     const enabled = explicitSupport || inferredSupport;
     const effortValue =
       (typeof config.reasoning_effort === 'string' ? config.reasoning_effort : undefined) ||

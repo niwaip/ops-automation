@@ -12,6 +12,7 @@ import { DeterministicTopologyValidatorService } from '../topology/deterministic
 import { ExplicitSkillIntentService } from '../topology/explicit-skill-intent.service';
 import { DeterministicContractAssemblerService } from './deterministic-contract-assembler.service';
 import { DeterministicPlanGeneratorService } from './deterministic-plan-generator.service';
+import { DeterministicParamResolverService } from '../params/deterministic-param-resolver.service';
 
 describe('explicit terminal Skill planning e2e', () => {
   it('falls through the two-step recipe and plans search, summarize, then Bark push', async () => {
@@ -134,7 +135,7 @@ describe('explicit terminal Skill planning e2e', () => {
       ],
     });
 
-    expect(modelService.callModel).toHaveBeenCalledTimes(1);
+    expect(modelService.callModel).toHaveBeenCalledTimes(0);
     expect(plan.nodes).toHaveLength(3);
     expect(plan.nodes[2]).toMatchObject({
       kind: 'skill',
@@ -149,8 +150,120 @@ describe('explicit terminal Skill planning e2e', () => {
       expect.objectContaining({ targetField: 'code', fromNodeOutput: 'code' }),
       expect.objectContaining({ targetField: 'message', fromNodeOutput: 'message' }),
     ]);
-    expect(
-      (plan as typeof plan & { promptDebug: { systemPrompt: string } }).promptDebug.systemPrompt,
-    ).toBe('Two-Stage LLM Topology Planner');
+  });
+
+  it('deterministically plans weather query then Bark push with zero LLM topology calls', async () => {
+    const modelService = {
+      getPreferredDefaultModel: jest.fn().mockReturnValue({ id: 'model-1', name: 'test-model' }),
+      callModel: jest.fn(),
+    };
+    const recognizer = {
+      recognizeParams: jest.fn().mockResolvedValue({ params: {}, confidence: 1 }),
+    };
+    const candidateSelector = new CapabilityCandidateSelectorService();
+    const generator = new DeterministicPlanGeneratorService(
+      modelService as unknown as ModelService,
+      candidateSelector,
+      undefined,
+      new MultiNodeParameterBinderService(
+        new NodeOutputBindingResolverService(),
+        recognizer as unknown as RecognizerService,
+        new DeterministicParamResolverService(),
+      ),
+      new DeterministicContractAssemblerService(),
+      new RoutingCapabilityCardProjector(),
+      new DeterministicTopologyPlannerService(modelService as unknown as ModelService),
+      new DeterministicTopologyValidatorService(),
+      new DeterministicRecipeMatcherService(),
+      new DeterministicRecipeTopologyBuilderService(),
+      new ExplicitSkillIntentService(),
+    );
+
+    const plan = await generator.generatePlan({
+      userRequest: '上海的天气怎么样，然后bark发送',
+      availableSkills: [
+        {
+          id: 'weather-query',
+          name: '天气查询',
+          description: '根据用户输入的城市查询当天早中晚的天气情报',
+          executionType: 'flow',
+          paramsSchema: {
+            properties: {
+              city: {
+                type: 'string',
+                enum: ['Beijing', 'Shanghai', 'Guangzhou'],
+                'x-enum-aliases': {
+                  Shanghai: ['上海', '上海市'],
+                  Beijing: ['北京', '北京市'],
+                },
+              },
+            },
+            required: ['city'],
+          },
+          outputSchema: {
+            properties: {
+              result: { type: 'string' },
+            },
+            required: ['result'],
+          },
+          triggerKeywords: ['天气', '天气怎么样', '查天气'],
+          isPublished: true,
+          publishedReleaseVersion: 1,
+          publishedReleaseStatus: 'published',
+          publishedDeploymentStatus: 'deployed',
+        },
+        {
+          id: 'bark-push',
+          name: 'Bark推送服务',
+          description: '将内容通过 Bark 服务推送到用户设备',
+          executionType: 'flow',
+          paramsSchema: {
+            properties: {
+              content: { type: 'string' },
+              deviceKey: { type: 'string', default: 'configured-device-key' },
+            },
+            required: ['content'],
+          },
+          outputSchema: {
+            properties: {
+              code: { type: 'integer' },
+              message: { type: 'string' },
+            },
+          },
+          triggerKeywords: ['bark', '推送', 'Bark推送服务'],
+          isPublished: true,
+          publishedReleaseVersion: 1,
+          publishedReleaseStatus: 'published',
+          publishedDeploymentStatus: 'deployed',
+        },
+      ],
+    });
+
+    expect(modelService.callModel).toHaveBeenCalledTimes(0);
+    expect(plan.nodes).toHaveLength(2);
+    expect(plan.nodes[0]).toMatchObject({
+      kind: 'skill',
+      skillId: 'weather-query',
+      inputBindings: {
+        city: { source: 'literal', value: 'Shanghai' },
+      },
+    });
+    expect(plan.nodes[1]).toMatchObject({
+      kind: 'skill',
+      skillId: 'bark-push',
+      dependsOn: [expect.stringContaining('n1')],
+      inputBindings: {
+        content: {
+          source: 'node_output',
+          nodeId: expect.stringContaining('n1'),
+          path: 'result',
+        },
+        deviceKey: { source: 'literal', value: 'configured-device-key' },
+      },
+    });
+    expect(plan.finalOutputs).toEqual([
+      expect.objectContaining({ targetField: 'code', fromNodeOutput: 'code' }),
+      expect.objectContaining({ targetField: 'message', fromNodeOutput: 'message' }),
+    ]);
   });
 });

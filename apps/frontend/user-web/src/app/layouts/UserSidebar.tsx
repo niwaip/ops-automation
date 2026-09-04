@@ -1,5 +1,6 @@
 import {
   DashboardOutlined,
+  FolderOutlined,
   MessageOutlined,
   OrderedListOutlined,
   SettingOutlined,
@@ -33,7 +34,7 @@ export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
   const setSidebarCollapsed = useStore(preferencesStore, (state) => state.setSidebarCollapsed);
   const { t } = useTranslation('common');
 
-  const menuItems = [
+  const primaryMenuItems = [
     { key: '/dashboard', icon: <DashboardOutlined />, label: t('menu.dashboard', '工作台') },
     { key: '/chat', icon: <MessageOutlined />, label: t('menu.chat', 'AI 对话') },
     { key: '/executions', icon: <OrderedListOutlined />, label: t('menu.executions', '执行列表') },
@@ -42,7 +43,11 @@ export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
       icon: <ThunderboltOutlined />,
       label: t('menu.published_skills', '已发布技能'),
     },
-    { key: '/im-channels', icon: <SettingOutlined />, label: t('menu.im_channels', 'IM 渠道') },
+    { key: '/workspaces', icon: <FolderOutlined />, label: t('menu.workspaces', '文件空间') },
+  ] satisfies Required<MenuProps>['items'];
+
+  const bottomMenuItems = [
+    { key: '/settings', icon: <SettingOutlined />, label: t('menu.settings', '设置') },
   ] satisfies Required<MenuProps>['items'];
 
   return (
@@ -110,17 +115,32 @@ export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
           ) : null}
         </div>
       </div>
-      <Menu
-        className={styles['user-shell-menu']}
-        theme="dark"
-        mode="inline"
-        selectedKeys={[selectedMenuKey]}
-        onClick={({ key }) => {
-          setChatWidgetOpen(false);
-          navigate(key);
-        }}
-        items={menuItems}
-      />
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+        <Menu
+          className={styles['user-shell-menu']}
+          theme="dark"
+          mode="inline"
+          selectedKeys={[selectedMenuKey]}
+          onClick={({ key }) => {
+            setChatWidgetOpen(false);
+            navigate(key);
+          }}
+          items={primaryMenuItems}
+        />
+      </div>
+      <div className={styles['user-shell-bottom-menu-wrapper']}>
+        <Menu
+          className={`${styles['user-shell-menu']} ${styles['user-shell-bottom-menu']}`}
+          theme="dark"
+          mode="inline"
+          selectedKeys={[selectedMenuKey]}
+          onClick={({ key }) => {
+            setChatWidgetOpen(false);
+            navigate(key);
+          }}
+          items={bottomMenuItems}
+        />
+      </div>
     </Sider>
   );
 }

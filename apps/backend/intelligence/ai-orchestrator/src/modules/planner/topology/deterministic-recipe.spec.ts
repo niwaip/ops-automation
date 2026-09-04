@@ -177,6 +177,30 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
         },
       },
     } as any,
+    {
+      id: 'generate_text',
+      kind: 'llm_operation',
+      displayName: '标准 LLM 文本生成',
+      summary: '根据指令与可选上下文生成文本、解释或见解',
+      goals: ['generate_text', 'text_generation'],
+      inputs: {
+        instruction: 'string',
+        context: 'string',
+      },
+      outputs: {
+        content: 'string',
+      },
+      executableVersion: '1.0.0',
+      operationDigest: 'sha256:generate-text-operation',
+      contractDigest: 'sha256:generate-text-contract',
+      _rawInputSchema: {
+        required: ['instruction'],
+        properties: {
+          instruction: { type: 'string', 'x-ops-input-role': 'instruction' },
+          context: { type: 'string', 'x-ops-input-role': 'content' },
+        },
+      },
+    } as any,
   ];
 
   const capabilityMap = new Map<string, CompactCapabilityCardV1>();
@@ -226,7 +250,7 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
   });
 
   it('uses a deterministic transform recipe for advice grounded in the previous result', async () => {
-    const userRequest = '给出穿衣建议';
+    const userRequest = '改写穿衣提示';
     const matched = matcher.matchRecipe(userRequest, {
       hasPreviousResult: true,
     });
@@ -254,7 +278,7 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
 
     expect(bindingResult.planInputs.n1).toEqual({
       content: '上海 31°C，体感 36°C，局部阵雨',
-      instruction: '给出穿衣建议',
+      instruction: '改写穿衣提示',
     });
     expect(bindingResult.requiredUserInputs).toHaveLength(0);
     expect(recognizer.recognizeParams).not.toHaveBeenCalled();
@@ -294,8 +318,10 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
     '打开网页 如何总结',
     '打开网页，总结内容',
     '浏览这个网站然后帮我归纳',
+    '打开 https://www.zhihu.com/question/2049060571459368805 如何进行总结',
+    '访问 https://news.ycombinator.com 提炼核心观点',
   ])('builds a fixed web extraction then summarization recipe: %s', (userRequest) => {
-    const matched = matcher.matchRecipe(userRequest);
+    const matched = matcher.matchRecipe(userRequest, { hasPreviousResult: true });
     expect(matched?.recipeName).toBe('web_extract_then_summarize');
 
     const topology = topologyBuilder.buildTopologyFromRecipe(
@@ -408,5 +434,111 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
     );
 
     expect(topology?.finalOutputKind).toBe('value');
+  });
+
+  it('matches and binds grounded text generation when user asks for opinion/discussion on previous result', async () => {
+    const userRequest = '你觉得有道理嘛 给出你的见解';
+    const matched = matcher.matchRecipe(userRequest, { hasPreviousResult: true });
+
+    expect(matched).not.toBeNull();
+    expect(matched?.recipeName).toBe('grounded_text_transform');
+    expect(matched?.steps[0]?.role).toBe('generate');
+
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
+      mockSkillCards,
+      mockLlmOpCards
+    );
+    expect(topology).not.toBeNull();
+    expect(topology?.nodes[0]?.capabilityKey).toBe('generate_text');
+
+    const bindingResult = await binder.bindParameters(
+      userRequest,
+      topology!.nodes,
+      capabilityMap,
+      undefined,
+      {
+        previousResultRef: { executionId: 'exec-123' },
+        previousResultText: '这是前一轮获取的知乎问答正文',
+      }
+    );
+
+    expect(bindingResult.requiredUserInputs).toHaveLength(0);
+    expect(bindingResult.planInputs.n1?.instruction).toBe('你觉得有道理嘛 给出你的见解');
+    expect(bindingResult.planInputs.n1?.context).toBe('这是前一轮获取的知乎问答正文');
+    expect(bindingResult.nodeBindings.n1?.instruction).toEqual({
+      source: 'literal',
+      value: '你觉得有道理嘛 给出你的见解',
+    });
+  });
+
+  it('matches and binds standard text generation when user sends a standalone writing/opinion prompt without tools', async () => {
+    const userRequest = '写一篇关于人工智能未来发展的见解与分析';
+    const matched = matcher.matchRecipe(userRequest);
+
+    expect(matched).not.toBeNull();
+    expect(matched?.recipeName).toBe('standard_text_generation');
+
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
+      mockSkillCards,
+      mockLlmOpCards
+    );
+    expect(topology).not.toBeNull();
+    expect(topology?.nodes[0]?.capabilityKey).toBe('generate_text');
+
+    const bindingResult = await binder.bindParameters(userRequest, topology!.nodes, capabilityMap);
+
+    expect(bindingResult.requiredUserInputs).toHaveLength(0);
+    expect(bindingResult.planInputs.n1?.instruction).toBe('写一篇关于人工智能未来发展的见解与分析');
+    expect(bindingResult.nodeBindings.n1?.instruction).toEqual({
+      source: 'literal',
+      value: '写一篇关于人工智能未来发展的见解与分析',
+    });
+  });
+  it('selects platform.search.web over workspace.explorer when recipe requires list output (regression: 查看 deepseek harness 安装方法 进行总结)', () => {
+    // Reproduce the bug: "查看" in the request matched workspace.explorer keywords, boosting its
+    // intent score above search.web. workspace.explorer outputs { answer: string, ... } — no list
+    // field — so summarize_list.items could not bind. The fix: when downstream needs list output,
+    // skills without list/array output are scored 0 and excluded from selection.
+    const workspaceExplorer: CompactCapabilityCardV1 = {
+      id: 'platform.workspace.explorer',
+      kind: 'skill',
+      displayName: '内置工作空间文档探索',
+      summary: '查看工作空间文件，搜索并回答关于工作空间内容的问题',
+      goals: ['workflow', '内置工作空间文档探索', '查阅空间', '工作空间', '查看文件'],
+      inputs: { query: 'string' },
+      // No list/array output — only scalar answer
+      outputs: {
+        query: 'string',
+        answer: 'string',
+        citations: 'json',
+        scannedFiles: 'json',
+        searchedFilesCount: 'number',
+      },
+      primaryOutput: 'answer',
+      category: 'workflow',
+      supportsArtifactOutput: false,
+      publishedSkillId: 'platform.workspace.explorer',
+      executableVersion: '1.0.0',
+    } as any;
+
+    const competingSkills = [...mockSkillCards, workspaceExplorer];
+
+    const userRequest = '查看 deepseek harness 的安装方法 进行总结';
+    const matched = matcher.matchRecipe(userRequest);
+
+    expect(matched?.recipeName).toBe('search_then_summarize');
+
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
+      competingSkills,
+      mockLlmOpCards
+    );
+
+    expect(topology).not.toBeNull();
+    // n1 must be the web search skill, NOT workspace.explorer
+    expect(topology?.nodes[0]?.capabilityKey).toBe('platform.web_search');
+    expect(topology?.nodes[0]?.capabilityKey).not.toBe('platform.workspace.explorer');
   });
 });

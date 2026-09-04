@@ -1,0 +1,16 @@
+{
+  "workflowVersion": "v1",
+  "engine": "domain-handler",
+  "handlerKey": "workspace.explorer",
+  "steps": [
+    {
+      "stepId": "explore_workspace_knowledge",
+      "action": "workspace_explore",
+      "inputMapping": {
+        "query": "$.input.query",
+        "workspaceId": "$.input.workspaceId",
+        "maxFiles": "$.input.maxFiles"
+      }
+    }
+  ]
+}

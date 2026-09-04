@@ -28,7 +28,8 @@ export class PlannerMatchPhaseService {
     const availableSkills = await this.loadAvailableSkills(
       input.authToken,
       input.traceId,
-      targetSkillId || undefined
+      targetSkillId || undefined,
+      input.request.context?.web_search_enabled === true
     );
     let matchedSkill: SkillMatchResult | null = null;
     let failure: SkillMatchFailure | undefined;
@@ -60,9 +61,15 @@ export class PlannerMatchPhaseService {
   async loadAvailableSkills(
     authToken?: string,
     traceId?: string,
-    targetSkillId?: string
+    targetSkillId?: string,
+    webSearchEnabled = false
   ): Promise<AvailableSkillDefinition[]> {
-    return this.skillCacheService.loadAvailableSkills(authToken, traceId, targetSkillId);
+    return this.skillCacheService.loadAvailableSkills(
+      authToken,
+      traceId,
+      targetSkillId,
+      webSearchEnabled
+    );
   }
 
   async matchSkill(

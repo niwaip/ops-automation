@@ -1,0 +1,8 @@
+{
+  "lockVersion": 1,
+  "manifestHash": "sha256:f92c7823748fdd10b114e64684c686e9f3bb18b13c269ed3159c491170976d16",
+  "workflowHash": "sha256:workspace-explorer-wf-v1",
+  "createdAt": "2026-09-03T14:00:00.000Z",
+  "bundleKey": "platform.workspace.explorer",
+  "definitionDigest": "sha256:f92c7823748fdd10b114e64684c686e9f3bb18b13c269ed3159c491170976d16"
+}

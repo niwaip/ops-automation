@@ -17,6 +17,12 @@ import { ScopedMemoryService } from './scoped-memory.service';
 import { ScopedMemoryController } from './scoped-memory.controller';
 import { CandidateRecipeService } from './candidate-recipe.service';
 import { CandidateRecipeController } from './candidate-recipe.controller';
+import {
+  EffectiveTaskPolicyController,
+  TaskPolicyAdminController,
+} from './task-policy.controller';
+import { TaskPolicyRegistryService } from './task-policy-registry.service';
+import { TaskPolicyReplayService } from './task-policy-replay.service';
 
 @Module({
   imports: [PrismaModule],
@@ -29,6 +35,8 @@ import { CandidateRecipeController } from './candidate-recipe.controller';
     UserHabitController,
     ScopedMemoryController,
     CandidateRecipeController,
+    EffectiveTaskPolicyController,
+    TaskPolicyAdminController,
   ],
   providers: [
     RoutingObservationService,
@@ -39,6 +47,8 @@ import { CandidateRecipeController } from './candidate-recipe.controller';
     HabitAutoActivationService,
     HabitLearningService,
     HabitLearningRunnerService,
+    TaskPolicyRegistryService,
+    TaskPolicyReplayService,
   ],
   exports: [
     RoutingObservationService,
@@ -47,6 +57,8 @@ import { CandidateRecipeController } from './candidate-recipe.controller';
     ScopedMemoryService,
     CandidateRecipeService,
     HabitLearningService,
+    TaskPolicyRegistryService,
+    TaskPolicyReplayService,
   ],
 })
 export class ExperienceLearningModule {}
