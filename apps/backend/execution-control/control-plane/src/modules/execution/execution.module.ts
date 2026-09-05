@@ -69,6 +69,7 @@ import { ContentRefResolverService } from './content/content-ref-resolver.servic
 import { OpsReportProjectionService } from './plan-runtime/ops-report-projection.service';
 import { RecorderCompositePlanCompilerService } from './plan-runtime/recorder-composite-plan-compiler.service';
 import { DeterministicRuntimeSessionCoordinatorService } from './plan-runtime/deterministic-runtime-session-coordinator.service';
+import { CompletionClaimSynthesizerService } from './plan-runtime/completion-claim-synthesizer.service';
 
 @Module({
   imports: [DiscoveryModule, PrismaModule, BackfillModule, SavedSkillModule],
@@ -89,6 +90,7 @@ import { DeterministicRuntimeSessionCoordinatorService } from './plan-runtime/de
     DeterministicFinalOutputService,
     DeterministicPlanSchedulerService,
     DeterministicRuntimeSessionCoordinatorService,
+    CompletionClaimSynthesizerService,
     DeterministicReadySetService,
     DeterministicPlanRecoveryService,
     LegacyOutputAdapterService,

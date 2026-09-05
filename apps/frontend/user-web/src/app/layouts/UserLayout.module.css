@@ -9,7 +9,7 @@
 }
 
 .user-shell-sider {
-  overflow: auto;
+  overflow: hidden;
   height: 100vh;
   position: fixed !important;
   left: 0;
@@ -19,6 +19,12 @@
   z-index: 500;
   pointer-events: auto;
   isolation: isolate;
+}
+
+.user-shell-sider :global(.ant-layout-sider-children) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .user-shell-sider,
@@ -78,8 +84,20 @@
 .user-shell-menu {
   position: relative;
   z-index: 1;
-  padding: 10px 10px 88px !important;
+  padding: 8px 10px 16px !important;
   background: transparent !important;
+}
+
+.user-shell-bottom-menu-wrapper {
+  position: relative;
+  z-index: 2;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 6px 0 10px;
+  background: transparent;
+}
+
+.user-shell-bottom-menu {
+  padding: 0 !important;
 }
 
 .user-shell-menu .ant-menu-item {

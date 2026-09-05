@@ -249,6 +249,11 @@ export type TaskPolicyProposal = $Result.DefaultSelection<Prisma.$TaskPolicyProp
  */
 export type TaskPolicyAuditLog = $Result.DefaultSelection<Prisma.$TaskPolicyAuditLogPayload>
 /**
+ * Model ExecutionCompletionClaim
+ * 
+ */
+export type ExecutionCompletionClaim = $Result.DefaultSelection<Prisma.$ExecutionCompletionClaimPayload>
+/**
  * Model PromptSnapshot
  * 
  */
@@ -314,6 +319,11 @@ export type HabitGovernanceAudit = $Result.DefaultSelection<Prisma.$HabitGoverna
  */
 export type BuiltinSkill = $Result.DefaultSelection<Prisma.$BuiltinSkillPayload>
 /**
+ * Model BuiltinSkillRuntimeConfig
+ * 
+ */
+export type BuiltinSkillRuntimeConfig = $Result.DefaultSelection<Prisma.$BuiltinSkillRuntimeConfigPayload>
+/**
  * Model BuiltinSkillVersion
  * 
  */
@@ -378,6 +388,26 @@ export type DeploymentRecord = $Result.DefaultSelection<Prisma.$DeploymentRecord
  * 
  */
 export type ReleaseAuditEvent = $Result.DefaultSelection<Prisma.$ReleaseAuditEventPayload>
+/**
+ * Model Workspace
+ * 
+ */
+export type Workspace = $Result.DefaultSelection<Prisma.$WorkspacePayload>
+/**
+ * Model WorkspaceNode
+ * 
+ */
+export type WorkspaceNode = $Result.DefaultSelection<Prisma.$WorkspaceNodePayload>
+/**
+ * Model WorkbenchTodo
+ * 
+ */
+export type WorkbenchTodo = $Result.DefaultSelection<Prisma.$WorkbenchTodoPayload>
+/**
+ * Model WorkbenchInboxItem
+ * 
+ */
+export type WorkbenchInboxItem = $Result.DefaultSelection<Prisma.$WorkbenchInboxItemPayload>
 
 /**
  * Enums
@@ -448,6 +478,65 @@ export const IdentityProviderType: {
 
 export type IdentityProviderType = (typeof IdentityProviderType)[keyof typeof IdentityProviderType]
 
+
+export const WorkspaceType: {
+  personal: 'personal',
+  department: 'department',
+  company: 'company'
+};
+
+export type WorkspaceType = (typeof WorkspaceType)[keyof typeof WorkspaceType]
+
+
+export const WorkspaceNodeType: {
+  file: 'file',
+  folder: 'folder'
+};
+
+export type WorkspaceNodeType = (typeof WorkspaceNodeType)[keyof typeof WorkspaceNodeType]
+
+
+export const TodoPriority: {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  urgent: 'urgent'
+};
+
+export type TodoPriority = (typeof TodoPriority)[keyof typeof TodoPriority]
+
+
+export const TodoStatus: {
+  pending: 'pending',
+  in_progress: 'in_progress',
+  completed: 'completed',
+  cancelled: 'cancelled'
+};
+
+export type TodoStatus = (typeof TodoStatus)[keyof typeof TodoStatus]
+
+
+export const TodoSourceType: {
+  manual: 'manual',
+  chat: 'chat',
+  email: 'email',
+  schedule: 'schedule',
+  im_channel: 'im_channel'
+};
+
+export type TodoSourceType = (typeof TodoSourceType)[keyof typeof TodoSourceType]
+
+
+export const InboxItemStatus: {
+  unprocessed: 'unprocessed',
+  clarified: 'clarified',
+  converted: 'converted',
+  archived: 'archived',
+  discarded: 'discarded'
+};
+
+export type InboxItemStatus = (typeof InboxItemStatus)[keyof typeof InboxItemStatus]
+
 }
 
 export type UserRoleType = $Enums.UserRoleType
@@ -477,6 +566,30 @@ export const MembershipStatus: typeof $Enums.MembershipStatus
 export type IdentityProviderType = $Enums.IdentityProviderType
 
 export const IdentityProviderType: typeof $Enums.IdentityProviderType
+
+export type WorkspaceType = $Enums.WorkspaceType
+
+export const WorkspaceType: typeof $Enums.WorkspaceType
+
+export type WorkspaceNodeType = $Enums.WorkspaceNodeType
+
+export const WorkspaceNodeType: typeof $Enums.WorkspaceNodeType
+
+export type TodoPriority = $Enums.TodoPriority
+
+export const TodoPriority: typeof $Enums.TodoPriority
+
+export type TodoStatus = $Enums.TodoStatus
+
+export const TodoStatus: typeof $Enums.TodoStatus
+
+export type TodoSourceType = $Enums.TodoSourceType
+
+export const TodoSourceType: typeof $Enums.TodoSourceType
+
+export type InboxItemStatus = $Enums.InboxItemStatus
+
+export const InboxItemStatus: typeof $Enums.InboxItemStatus
 
 /**
  * ##  Prisma Client ʲˢ
@@ -1072,6 +1185,16 @@ export class PrismaClient<
   get taskPolicyAuditLog(): Prisma.TaskPolicyAuditLogDelegate<ExtArgs>;
 
   /**
+   * `prisma.executionCompletionClaim`: Exposes CRUD operations for the **ExecutionCompletionClaim** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more ExecutionCompletionClaims
+    * const executionCompletionClaims = await prisma.executionCompletionClaim.findMany()
+    * ```
+    */
+  get executionCompletionClaim(): Prisma.ExecutionCompletionClaimDelegate<ExtArgs>;
+
+  /**
    * `prisma.promptSnapshot`: Exposes CRUD operations for the **PromptSnapshot** model.
     * Example usage:
     * ```ts
@@ -1202,6 +1325,16 @@ export class PrismaClient<
   get builtinSkill(): Prisma.BuiltinSkillDelegate<ExtArgs>;
 
   /**
+   * `prisma.builtinSkillRuntimeConfig`: Exposes CRUD operations for the **BuiltinSkillRuntimeConfig** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more BuiltinSkillRuntimeConfigs
+    * const builtinSkillRuntimeConfigs = await prisma.builtinSkillRuntimeConfig.findMany()
+    * ```
+    */
+  get builtinSkillRuntimeConfig(): Prisma.BuiltinSkillRuntimeConfigDelegate<ExtArgs>;
+
+  /**
    * `prisma.builtinSkillVersion`: Exposes CRUD operations for the **BuiltinSkillVersion** model.
     * Example usage:
     * ```ts
@@ -1330,6 +1463,46 @@ export class PrismaClient<
     * ```
     */
   get releaseAuditEvent(): Prisma.ReleaseAuditEventDelegate<ExtArgs>;
+
+  /**
+   * `prisma.workspace`: Exposes CRUD operations for the **Workspace** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Workspaces
+    * const workspaces = await prisma.workspace.findMany()
+    * ```
+    */
+  get workspace(): Prisma.WorkspaceDelegate<ExtArgs>;
+
+  /**
+   * `prisma.workspaceNode`: Exposes CRUD operations for the **WorkspaceNode** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more WorkspaceNodes
+    * const workspaceNodes = await prisma.workspaceNode.findMany()
+    * ```
+    */
+  get workspaceNode(): Prisma.WorkspaceNodeDelegate<ExtArgs>;
+
+  /**
+   * `prisma.workbenchTodo`: Exposes CRUD operations for the **WorkbenchTodo** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more WorkbenchTodos
+    * const workbenchTodos = await prisma.workbenchTodo.findMany()
+    * ```
+    */
+  get workbenchTodo(): Prisma.WorkbenchTodoDelegate<ExtArgs>;
+
+  /**
+   * `prisma.workbenchInboxItem`: Exposes CRUD operations for the **WorkbenchInboxItem** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more WorkbenchInboxItems
+    * const workbenchInboxItems = await prisma.workbenchInboxItem.findMany()
+    * ```
+    */
+  get workbenchInboxItem(): Prisma.WorkbenchInboxItemDelegate<ExtArgs>;
 }
 
 export namespace Prisma {
@@ -1818,6 +1991,7 @@ export namespace Prisma {
     TaskCapabilityBinding: 'TaskCapabilityBinding',
     TaskPolicyProposal: 'TaskPolicyProposal',
     TaskPolicyAuditLog: 'TaskPolicyAuditLog',
+    ExecutionCompletionClaim: 'ExecutionCompletionClaim',
     PromptSnapshot: 'PromptSnapshot',
     LlmUsageLedger: 'LlmUsageLedger',
     ExecutionOutbox: 'ExecutionOutbox',
@@ -1831,6 +2005,7 @@ export namespace Prisma {
     CandidateRecipeEvaluation: 'CandidateRecipeEvaluation',
     HabitGovernanceAudit: 'HabitGovernanceAudit',
     BuiltinSkill: 'BuiltinSkill',
+    BuiltinSkillRuntimeConfig: 'BuiltinSkillRuntimeConfig',
     BuiltinSkillVersion: 'BuiltinSkillVersion',
     BuiltinSkillDeployment: 'BuiltinSkillDeployment',
     BuiltinSkillPermissionOverride: 'BuiltinSkillPermissionOverride',
@@ -1843,7 +2018,11 @@ export namespace Prisma {
     CapabilityAttestation: 'CapabilityAttestation',
     SkillDraft: 'SkillDraft',
     DeploymentRecord: 'DeploymentRecord',
-    ReleaseAuditEvent: 'ReleaseAuditEvent'
+    ReleaseAuditEvent: 'ReleaseAuditEvent',
+    Workspace: 'Workspace',
+    WorkspaceNode: 'WorkspaceNode',
+    WorkbenchTodo: 'WorkbenchTodo',
+    WorkbenchInboxItem: 'WorkbenchInboxItem'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -1859,7 +2038,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "user" | "imChannelConnection" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionResultRef" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "userSavedSkill" | "userWorkflowAlias" | "userSavedSkillVersion" | "assistantFeedbackEvent" | "assistantFeedbackCurrent" | "routingObservation" | "planningDecision" | "taskPolicySet" | "taskCommandAlias" | "taskRecipe" | "taskCapabilityBinding" | "taskPolicyProposal" | "taskPolicyAuditLog" | "promptSnapshot" | "llmUsageLedger" | "executionOutbox" | "scheduleFire" | "habitLearningRun" | "userHabitCandidate" | "userHabit" | "userPersonalizationPreference" | "scopedMemory" | "candidateRecipe" | "candidateRecipeEvaluation" | "habitGovernanceAudit" | "builtinSkill" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent"
+      modelProps: "user" | "imChannelConnection" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionResultRef" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "userSavedSkill" | "userWorkflowAlias" | "userSavedSkillVersion" | "assistantFeedbackEvent" | "assistantFeedbackCurrent" | "routingObservation" | "planningDecision" | "taskPolicySet" | "taskCommandAlias" | "taskRecipe" | "taskCapabilityBinding" | "taskPolicyProposal" | "taskPolicyAuditLog" | "executionCompletionClaim" | "promptSnapshot" | "llmUsageLedger" | "executionOutbox" | "scheduleFire" | "habitLearningRun" | "userHabitCandidate" | "userHabit" | "userPersonalizationPreference" | "scopedMemory" | "candidateRecipe" | "candidateRecipeEvaluation" | "habitGovernanceAudit" | "builtinSkill" | "builtinSkillRuntimeConfig" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent" | "workspace" | "workspaceNode" | "workbenchTodo" | "workbenchInboxItem"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -5153,6 +5332,76 @@ export namespace Prisma {
           }
         }
       }
+      ExecutionCompletionClaim: {
+        payload: Prisma.$ExecutionCompletionClaimPayload<ExtArgs>
+        fields: Prisma.ExecutionCompletionClaimFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.ExecutionCompletionClaimFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExecutionCompletionClaimPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.ExecutionCompletionClaimFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExecutionCompletionClaimPayload>
+          }
+          findFirst: {
+            args: Prisma.ExecutionCompletionClaimFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExecutionCompletionClaimPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.ExecutionCompletionClaimFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExecutionCompletionClaimPayload>
+          }
+          findMany: {
+            args: Prisma.ExecutionCompletionClaimFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExecutionCompletionClaimPayload>[]
+          }
+          create: {
+            args: Prisma.ExecutionCompletionClaimCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExecutionCompletionClaimPayload>
+          }
+          createMany: {
+            args: Prisma.ExecutionCompletionClaimCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.ExecutionCompletionClaimCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExecutionCompletionClaimPayload>[]
+          }
+          delete: {
+            args: Prisma.ExecutionCompletionClaimDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExecutionCompletionClaimPayload>
+          }
+          update: {
+            args: Prisma.ExecutionCompletionClaimUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExecutionCompletionClaimPayload>
+          }
+          deleteMany: {
+            args: Prisma.ExecutionCompletionClaimDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.ExecutionCompletionClaimUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.ExecutionCompletionClaimUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExecutionCompletionClaimPayload>
+          }
+          aggregate: {
+            args: Prisma.ExecutionCompletionClaimAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateExecutionCompletionClaim>
+          }
+          groupBy: {
+            args: Prisma.ExecutionCompletionClaimGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ExecutionCompletionClaimGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.ExecutionCompletionClaimCountArgs<ExtArgs>
+            result: $Utils.Optional<ExecutionCompletionClaimCountAggregateOutputType> | number
+          }
+        }
+      }
       PromptSnapshot: {
         payload: Prisma.$PromptSnapshotPayload<ExtArgs>
         fields: Prisma.PromptSnapshotFieldRefs
@@ -6060,6 +6309,76 @@ export namespace Prisma {
           count: {
             args: Prisma.BuiltinSkillCountArgs<ExtArgs>
             result: $Utils.Optional<BuiltinSkillCountAggregateOutputType> | number
+          }
+        }
+      }
+      BuiltinSkillRuntimeConfig: {
+        payload: Prisma.$BuiltinSkillRuntimeConfigPayload<ExtArgs>
+        fields: Prisma.BuiltinSkillRuntimeConfigFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.BuiltinSkillRuntimeConfigFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BuiltinSkillRuntimeConfigPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.BuiltinSkillRuntimeConfigFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BuiltinSkillRuntimeConfigPayload>
+          }
+          findFirst: {
+            args: Prisma.BuiltinSkillRuntimeConfigFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BuiltinSkillRuntimeConfigPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.BuiltinSkillRuntimeConfigFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BuiltinSkillRuntimeConfigPayload>
+          }
+          findMany: {
+            args: Prisma.BuiltinSkillRuntimeConfigFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BuiltinSkillRuntimeConfigPayload>[]
+          }
+          create: {
+            args: Prisma.BuiltinSkillRuntimeConfigCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BuiltinSkillRuntimeConfigPayload>
+          }
+          createMany: {
+            args: Prisma.BuiltinSkillRuntimeConfigCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.BuiltinSkillRuntimeConfigCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BuiltinSkillRuntimeConfigPayload>[]
+          }
+          delete: {
+            args: Prisma.BuiltinSkillRuntimeConfigDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BuiltinSkillRuntimeConfigPayload>
+          }
+          update: {
+            args: Prisma.BuiltinSkillRuntimeConfigUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BuiltinSkillRuntimeConfigPayload>
+          }
+          deleteMany: {
+            args: Prisma.BuiltinSkillRuntimeConfigDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.BuiltinSkillRuntimeConfigUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.BuiltinSkillRuntimeConfigUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BuiltinSkillRuntimeConfigPayload>
+          }
+          aggregate: {
+            args: Prisma.BuiltinSkillRuntimeConfigAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateBuiltinSkillRuntimeConfig>
+          }
+          groupBy: {
+            args: Prisma.BuiltinSkillRuntimeConfigGroupByArgs<ExtArgs>
+            result: $Utils.Optional<BuiltinSkillRuntimeConfigGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.BuiltinSkillRuntimeConfigCountArgs<ExtArgs>
+            result: $Utils.Optional<BuiltinSkillRuntimeConfigCountAggregateOutputType> | number
           }
         }
       }
@@ -6973,6 +7292,286 @@ export namespace Prisma {
           }
         }
       }
+      Workspace: {
+        payload: Prisma.$WorkspacePayload<ExtArgs>
+        fields: Prisma.WorkspaceFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.WorkspaceFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspacePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.WorkspaceFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspacePayload>
+          }
+          findFirst: {
+            args: Prisma.WorkspaceFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspacePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.WorkspaceFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspacePayload>
+          }
+          findMany: {
+            args: Prisma.WorkspaceFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspacePayload>[]
+          }
+          create: {
+            args: Prisma.WorkspaceCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspacePayload>
+          }
+          createMany: {
+            args: Prisma.WorkspaceCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.WorkspaceCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspacePayload>[]
+          }
+          delete: {
+            args: Prisma.WorkspaceDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspacePayload>
+          }
+          update: {
+            args: Prisma.WorkspaceUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspacePayload>
+          }
+          deleteMany: {
+            args: Prisma.WorkspaceDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.WorkspaceUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.WorkspaceUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspacePayload>
+          }
+          aggregate: {
+            args: Prisma.WorkspaceAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateWorkspace>
+          }
+          groupBy: {
+            args: Prisma.WorkspaceGroupByArgs<ExtArgs>
+            result: $Utils.Optional<WorkspaceGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.WorkspaceCountArgs<ExtArgs>
+            result: $Utils.Optional<WorkspaceCountAggregateOutputType> | number
+          }
+        }
+      }
+      WorkspaceNode: {
+        payload: Prisma.$WorkspaceNodePayload<ExtArgs>
+        fields: Prisma.WorkspaceNodeFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.WorkspaceNodeFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspaceNodePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.WorkspaceNodeFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspaceNodePayload>
+          }
+          findFirst: {
+            args: Prisma.WorkspaceNodeFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspaceNodePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.WorkspaceNodeFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspaceNodePayload>
+          }
+          findMany: {
+            args: Prisma.WorkspaceNodeFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspaceNodePayload>[]
+          }
+          create: {
+            args: Prisma.WorkspaceNodeCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspaceNodePayload>
+          }
+          createMany: {
+            args: Prisma.WorkspaceNodeCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.WorkspaceNodeCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspaceNodePayload>[]
+          }
+          delete: {
+            args: Prisma.WorkspaceNodeDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspaceNodePayload>
+          }
+          update: {
+            args: Prisma.WorkspaceNodeUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspaceNodePayload>
+          }
+          deleteMany: {
+            args: Prisma.WorkspaceNodeDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.WorkspaceNodeUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.WorkspaceNodeUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkspaceNodePayload>
+          }
+          aggregate: {
+            args: Prisma.WorkspaceNodeAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateWorkspaceNode>
+          }
+          groupBy: {
+            args: Prisma.WorkspaceNodeGroupByArgs<ExtArgs>
+            result: $Utils.Optional<WorkspaceNodeGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.WorkspaceNodeCountArgs<ExtArgs>
+            result: $Utils.Optional<WorkspaceNodeCountAggregateOutputType> | number
+          }
+        }
+      }
+      WorkbenchTodo: {
+        payload: Prisma.$WorkbenchTodoPayload<ExtArgs>
+        fields: Prisma.WorkbenchTodoFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.WorkbenchTodoFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.WorkbenchTodoFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload>
+          }
+          findFirst: {
+            args: Prisma.WorkbenchTodoFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.WorkbenchTodoFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload>
+          }
+          findMany: {
+            args: Prisma.WorkbenchTodoFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload>[]
+          }
+          create: {
+            args: Prisma.WorkbenchTodoCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload>
+          }
+          createMany: {
+            args: Prisma.WorkbenchTodoCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.WorkbenchTodoCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload>[]
+          }
+          delete: {
+            args: Prisma.WorkbenchTodoDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload>
+          }
+          update: {
+            args: Prisma.WorkbenchTodoUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload>
+          }
+          deleteMany: {
+            args: Prisma.WorkbenchTodoDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.WorkbenchTodoUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.WorkbenchTodoUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchTodoPayload>
+          }
+          aggregate: {
+            args: Prisma.WorkbenchTodoAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateWorkbenchTodo>
+          }
+          groupBy: {
+            args: Prisma.WorkbenchTodoGroupByArgs<ExtArgs>
+            result: $Utils.Optional<WorkbenchTodoGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.WorkbenchTodoCountArgs<ExtArgs>
+            result: $Utils.Optional<WorkbenchTodoCountAggregateOutputType> | number
+          }
+        }
+      }
+      WorkbenchInboxItem: {
+        payload: Prisma.$WorkbenchInboxItemPayload<ExtArgs>
+        fields: Prisma.WorkbenchInboxItemFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.WorkbenchInboxItemFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.WorkbenchInboxItemFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload>
+          }
+          findFirst: {
+            args: Prisma.WorkbenchInboxItemFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.WorkbenchInboxItemFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload>
+          }
+          findMany: {
+            args: Prisma.WorkbenchInboxItemFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload>[]
+          }
+          create: {
+            args: Prisma.WorkbenchInboxItemCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload>
+          }
+          createMany: {
+            args: Prisma.WorkbenchInboxItemCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.WorkbenchInboxItemCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload>[]
+          }
+          delete: {
+            args: Prisma.WorkbenchInboxItemDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload>
+          }
+          update: {
+            args: Prisma.WorkbenchInboxItemUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload>
+          }
+          deleteMany: {
+            args: Prisma.WorkbenchInboxItemDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.WorkbenchInboxItemUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.WorkbenchInboxItemUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$WorkbenchInboxItemPayload>
+          }
+          aggregate: {
+            args: Prisma.WorkbenchInboxItemAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateWorkbenchInboxItem>
+          }
+          groupBy: {
+            args: Prisma.WorkbenchInboxItemGroupByArgs<ExtArgs>
+            result: $Utils.Optional<WorkbenchInboxItemGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.WorkbenchInboxItemCountArgs<ExtArgs>
+            result: $Utils.Optional<WorkbenchInboxItemCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -7788,12 +8387,14 @@ export namespace Prisma {
     versions: number
     permissionOverrides: number
     auditEvents: number
+    runtimeConfigs: number
   }
 
   export type BuiltinSkillCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     versions?: boolean | BuiltinSkillCountOutputTypeCountVersionsArgs
     permissionOverrides?: boolean | BuiltinSkillCountOutputTypeCountPermissionOverridesArgs
     auditEvents?: boolean | BuiltinSkillCountOutputTypeCountAuditEventsArgs
+    runtimeConfigs?: boolean | BuiltinSkillCountOutputTypeCountRuntimeConfigsArgs
   }
 
   // Custom InputTypes
@@ -7828,6 +8429,13 @@ export namespace Prisma {
     where?: BuiltinSkillAuditEventWhereInput
   }
 
+  /**
+   * BuiltinSkillCountOutputType without action
+   */
+  export type BuiltinSkillCountOutputTypeCountRuntimeConfigsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: BuiltinSkillRuntimeConfigWhereInput
+  }
+
 
   /**
    * Count Type BuiltinSkillVersionCountOutputType
@@ -7857,6 +8465,68 @@ export namespace Prisma {
    */
   export type BuiltinSkillVersionCountOutputTypeCountDeploymentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: BuiltinSkillDeploymentWhereInput
+  }
+
+
+  /**
+   * Count Type WorkspaceCountOutputType
+   */
+
+  export type WorkspaceCountOutputType = {
+    nodes: number
+  }
+
+  export type WorkspaceCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    nodes?: boolean | WorkspaceCountOutputTypeCountNodesArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * WorkspaceCountOutputType without action
+   */
+  export type WorkspaceCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkspaceCountOutputType
+     */
+    select?: WorkspaceCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * WorkspaceCountOutputType without action
+   */
+  export type WorkspaceCountOutputTypeCountNodesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: WorkspaceNodeWhereInput
+  }
+
+
+  /**
+   * Count Type WorkspaceNodeCountOutputType
+   */
+
+  export type WorkspaceNodeCountOutputType = {
+    children: number
+  }
+
+  export type WorkspaceNodeCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    children?: boolean | WorkspaceNodeCountOutputTypeCountChildrenArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * WorkspaceNodeCountOutputType without action
+   */
+  export type WorkspaceNodeCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkspaceNodeCountOutputType
+     */
+    select?: WorkspaceNodeCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * WorkspaceNodeCountOutputType without action
+   */
+  export type WorkspaceNodeCountOutputTypeCountChildrenArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: WorkspaceNodeWhereInput
   }
 
 
@@ -56628,6 +57298,928 @@ export namespace Prisma {
 
 
   /**
+   * Model ExecutionCompletionClaim
+   */
+
+  export type AggregateExecutionCompletionClaim = {
+    _count: ExecutionCompletionClaimCountAggregateOutputType | null
+    _min: ExecutionCompletionClaimMinAggregateOutputType | null
+    _max: ExecutionCompletionClaimMaxAggregateOutputType | null
+  }
+
+  export type ExecutionCompletionClaimMinAggregateOutputType = {
+    id: string | null
+    executionId: string | null
+    stepId: string | null
+    planNodeId: string | null
+    claim: string | null
+    evidenceType: string | null
+    status: string | null
+    createdAt: Date | null
+  }
+
+  export type ExecutionCompletionClaimMaxAggregateOutputType = {
+    id: string | null
+    executionId: string | null
+    stepId: string | null
+    planNodeId: string | null
+    claim: string | null
+    evidenceType: string | null
+    status: string | null
+    createdAt: Date | null
+  }
+
+  export type ExecutionCompletionClaimCountAggregateOutputType = {
+    id: number
+    executionId: number
+    stepId: number
+    planNodeId: number
+    claim: number
+    evidenceType: number
+    evidenceJson: number
+    status: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type ExecutionCompletionClaimMinAggregateInputType = {
+    id?: true
+    executionId?: true
+    stepId?: true
+    planNodeId?: true
+    claim?: true
+    evidenceType?: true
+    status?: true
+    createdAt?: true
+  }
+
+  export type ExecutionCompletionClaimMaxAggregateInputType = {
+    id?: true
+    executionId?: true
+    stepId?: true
+    planNodeId?: true
+    claim?: true
+    evidenceType?: true
+    status?: true
+    createdAt?: true
+  }
+
+  export type ExecutionCompletionClaimCountAggregateInputType = {
+    id?: true
+    executionId?: true
+    stepId?: true
+    planNodeId?: true
+    claim?: true
+    evidenceType?: true
+    evidenceJson?: true
+    status?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type ExecutionCompletionClaimAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ExecutionCompletionClaim to aggregate.
+     */
+    where?: ExecutionCompletionClaimWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ExecutionCompletionClaims to fetch.
+     */
+    orderBy?: ExecutionCompletionClaimOrderByWithRelationInput | ExecutionCompletionClaimOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: ExecutionCompletionClaimWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ExecutionCompletionClaims from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ExecutionCompletionClaims.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned ExecutionCompletionClaims
+    **/
+    _count?: true | ExecutionCompletionClaimCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: ExecutionCompletionClaimMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: ExecutionCompletionClaimMaxAggregateInputType
+  }
+
+  export type GetExecutionCompletionClaimAggregateType<T extends ExecutionCompletionClaimAggregateArgs> = {
+        [P in keyof T & keyof AggregateExecutionCompletionClaim]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateExecutionCompletionClaim[P]>
+      : GetScalarType<T[P], AggregateExecutionCompletionClaim[P]>
+  }
+
+
+
+
+  export type ExecutionCompletionClaimGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ExecutionCompletionClaimWhereInput
+    orderBy?: ExecutionCompletionClaimOrderByWithAggregationInput | ExecutionCompletionClaimOrderByWithAggregationInput[]
+    by: ExecutionCompletionClaimScalarFieldEnum[] | ExecutionCompletionClaimScalarFieldEnum
+    having?: ExecutionCompletionClaimScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: ExecutionCompletionClaimCountAggregateInputType | true
+    _min?: ExecutionCompletionClaimMinAggregateInputType
+    _max?: ExecutionCompletionClaimMaxAggregateInputType
+  }
+
+  export type ExecutionCompletionClaimGroupByOutputType = {
+    id: string
+    executionId: string
+    stepId: string | null
+    planNodeId: string | null
+    claim: string
+    evidenceType: string
+    evidenceJson: JsonValue
+    status: string
+    createdAt: Date
+    _count: ExecutionCompletionClaimCountAggregateOutputType | null
+    _min: ExecutionCompletionClaimMinAggregateOutputType | null
+    _max: ExecutionCompletionClaimMaxAggregateOutputType | null
+  }
+
+  type GetExecutionCompletionClaimGroupByPayload<T extends ExecutionCompletionClaimGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<ExecutionCompletionClaimGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof ExecutionCompletionClaimGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], ExecutionCompletionClaimGroupByOutputType[P]>
+            : GetScalarType<T[P], ExecutionCompletionClaimGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type ExecutionCompletionClaimSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    executionId?: boolean
+    stepId?: boolean
+    planNodeId?: boolean
+    claim?: boolean
+    evidenceType?: boolean
+    evidenceJson?: boolean
+    status?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["executionCompletionClaim"]>
+
+  export type ExecutionCompletionClaimSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    executionId?: boolean
+    stepId?: boolean
+    planNodeId?: boolean
+    claim?: boolean
+    evidenceType?: boolean
+    evidenceJson?: boolean
+    status?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["executionCompletionClaim"]>
+
+  export type ExecutionCompletionClaimSelectScalar = {
+    id?: boolean
+    executionId?: boolean
+    stepId?: boolean
+    planNodeId?: boolean
+    claim?: boolean
+    evidenceType?: boolean
+    evidenceJson?: boolean
+    status?: boolean
+    createdAt?: boolean
+  }
+
+
+  export type $ExecutionCompletionClaimPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "ExecutionCompletionClaim"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      executionId: string
+      stepId: string | null
+      planNodeId: string | null
+      claim: string
+      evidenceType: string
+      evidenceJson: Prisma.JsonValue
+      status: string
+      createdAt: Date
+    }, ExtArgs["result"]["executionCompletionClaim"]>
+    composites: {}
+  }
+
+  type ExecutionCompletionClaimGetPayload<S extends boolean | null | undefined | ExecutionCompletionClaimDefaultArgs> = $Result.GetResult<Prisma.$ExecutionCompletionClaimPayload, S>
+
+  type ExecutionCompletionClaimCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<ExecutionCompletionClaimFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: ExecutionCompletionClaimCountAggregateInputType | true
+    }
+
+  export interface ExecutionCompletionClaimDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['ExecutionCompletionClaim'], meta: { name: 'ExecutionCompletionClaim' } }
+    /**
+     * Find zero or one ExecutionCompletionClaim that matches the filter.
+     * @param {ExecutionCompletionClaimFindUniqueArgs} args - Arguments to find a ExecutionCompletionClaim
+     * @example
+     * // Get one ExecutionCompletionClaim
+     * const executionCompletionClaim = await prisma.executionCompletionClaim.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends ExecutionCompletionClaimFindUniqueArgs>(args: SelectSubset<T, ExecutionCompletionClaimFindUniqueArgs<ExtArgs>>): Prisma__ExecutionCompletionClaimClient<$Result.GetResult<Prisma.$ExecutionCompletionClaimPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one ExecutionCompletionClaim that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {ExecutionCompletionClaimFindUniqueOrThrowArgs} args - Arguments to find a ExecutionCompletionClaim
+     * @example
+     * // Get one ExecutionCompletionClaim
+     * const executionCompletionClaim = await prisma.executionCompletionClaim.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends ExecutionCompletionClaimFindUniqueOrThrowArgs>(args: SelectSubset<T, ExecutionCompletionClaimFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ExecutionCompletionClaimClient<$Result.GetResult<Prisma.$ExecutionCompletionClaimPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first ExecutionCompletionClaim that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ExecutionCompletionClaimFindFirstArgs} args - Arguments to find a ExecutionCompletionClaim
+     * @example
+     * // Get one ExecutionCompletionClaim
+     * const executionCompletionClaim = await prisma.executionCompletionClaim.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends ExecutionCompletionClaimFindFirstArgs>(args?: SelectSubset<T, ExecutionCompletionClaimFindFirstArgs<ExtArgs>>): Prisma__ExecutionCompletionClaimClient<$Result.GetResult<Prisma.$ExecutionCompletionClaimPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first ExecutionCompletionClaim that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ExecutionCompletionClaimFindFirstOrThrowArgs} args - Arguments to find a ExecutionCompletionClaim
+     * @example
+     * // Get one ExecutionCompletionClaim
+     * const executionCompletionClaim = await prisma.executionCompletionClaim.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends ExecutionCompletionClaimFindFirstOrThrowArgs>(args?: SelectSubset<T, ExecutionCompletionClaimFindFirstOrThrowArgs<ExtArgs>>): Prisma__ExecutionCompletionClaimClient<$Result.GetResult<Prisma.$ExecutionCompletionClaimPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more ExecutionCompletionClaims that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ExecutionCompletionClaimFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all ExecutionCompletionClaims
+     * const executionCompletionClaims = await prisma.executionCompletionClaim.findMany()
+     * 
+     * // Get first 10 ExecutionCompletionClaims
+     * const executionCompletionClaims = await prisma.executionCompletionClaim.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const executionCompletionClaimWithIdOnly = await prisma.executionCompletionClaim.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends ExecutionCompletionClaimFindManyArgs>(args?: SelectSubset<T, ExecutionCompletionClaimFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ExecutionCompletionClaimPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a ExecutionCompletionClaim.
+     * @param {ExecutionCompletionClaimCreateArgs} args - Arguments to create a ExecutionCompletionClaim.
+     * @example
+     * // Create one ExecutionCompletionClaim
+     * const ExecutionCompletionClaim = await prisma.executionCompletionClaim.create({
+     *   data: {
+     *     // ... data to create a ExecutionCompletionClaim
+     *   }
+     * })
+     * 
+     */
+    create<T extends ExecutionCompletionClaimCreateArgs>(args: SelectSubset<T, ExecutionCompletionClaimCreateArgs<ExtArgs>>): Prisma__ExecutionCompletionClaimClient<$Result.GetResult<Prisma.$ExecutionCompletionClaimPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many ExecutionCompletionClaims.
+     * @param {ExecutionCompletionClaimCreateManyArgs} args - Arguments to create many ExecutionCompletionClaims.
+     * @example
+     * // Create many ExecutionCompletionClaims
+     * const executionCompletionClaim = await prisma.executionCompletionClaim.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends ExecutionCompletionClaimCreateManyArgs>(args?: SelectSubset<T, ExecutionCompletionClaimCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many ExecutionCompletionClaims and returns the data saved in the database.
+     * @param {ExecutionCompletionClaimCreateManyAndReturnArgs} args - Arguments to create many ExecutionCompletionClaims.
+     * @example
+     * // Create many ExecutionCompletionClaims
+     * const executionCompletionClaim = await prisma.executionCompletionClaim.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many ExecutionCompletionClaims and only return the `id`
+     * const executionCompletionClaimWithIdOnly = await prisma.executionCompletionClaim.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends ExecutionCompletionClaimCreateManyAndReturnArgs>(args?: SelectSubset<T, ExecutionCompletionClaimCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ExecutionCompletionClaimPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a ExecutionCompletionClaim.
+     * @param {ExecutionCompletionClaimDeleteArgs} args - Arguments to delete one ExecutionCompletionClaim.
+     * @example
+     * // Delete one ExecutionCompletionClaim
+     * const ExecutionCompletionClaim = await prisma.executionCompletionClaim.delete({
+     *   where: {
+     *     // ... filter to delete one ExecutionCompletionClaim
+     *   }
+     * })
+     * 
+     */
+    delete<T extends ExecutionCompletionClaimDeleteArgs>(args: SelectSubset<T, ExecutionCompletionClaimDeleteArgs<ExtArgs>>): Prisma__ExecutionCompletionClaimClient<$Result.GetResult<Prisma.$ExecutionCompletionClaimPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one ExecutionCompletionClaim.
+     * @param {ExecutionCompletionClaimUpdateArgs} args - Arguments to update one ExecutionCompletionClaim.
+     * @example
+     * // Update one ExecutionCompletionClaim
+     * const executionCompletionClaim = await prisma.executionCompletionClaim.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends ExecutionCompletionClaimUpdateArgs>(args: SelectSubset<T, ExecutionCompletionClaimUpdateArgs<ExtArgs>>): Prisma__ExecutionCompletionClaimClient<$Result.GetResult<Prisma.$ExecutionCompletionClaimPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more ExecutionCompletionClaims.
+     * @param {ExecutionCompletionClaimDeleteManyArgs} args - Arguments to filter ExecutionCompletionClaims to delete.
+     * @example
+     * // Delete a few ExecutionCompletionClaims
+     * const { count } = await prisma.executionCompletionClaim.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends ExecutionCompletionClaimDeleteManyArgs>(args?: SelectSubset<T, ExecutionCompletionClaimDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ExecutionCompletionClaims.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ExecutionCompletionClaimUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many ExecutionCompletionClaims
+     * const executionCompletionClaim = await prisma.executionCompletionClaim.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends ExecutionCompletionClaimUpdateManyArgs>(args: SelectSubset<T, ExecutionCompletionClaimUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one ExecutionCompletionClaim.
+     * @param {ExecutionCompletionClaimUpsertArgs} args - Arguments to update or create a ExecutionCompletionClaim.
+     * @example
+     * // Update or create a ExecutionCompletionClaim
+     * const executionCompletionClaim = await prisma.executionCompletionClaim.upsert({
+     *   create: {
+     *     // ... data to create a ExecutionCompletionClaim
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the ExecutionCompletionClaim we want to update
+     *   }
+     * })
+     */
+    upsert<T extends ExecutionCompletionClaimUpsertArgs>(args: SelectSubset<T, ExecutionCompletionClaimUpsertArgs<ExtArgs>>): Prisma__ExecutionCompletionClaimClient<$Result.GetResult<Prisma.$ExecutionCompletionClaimPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of ExecutionCompletionClaims.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ExecutionCompletionClaimCountArgs} args - Arguments to filter ExecutionCompletionClaims to count.
+     * @example
+     * // Count the number of ExecutionCompletionClaims
+     * const count = await prisma.executionCompletionClaim.count({
+     *   where: {
+     *     // ... the filter for the ExecutionCompletionClaims we want to count
+     *   }
+     * })
+    **/
+    count<T extends ExecutionCompletionClaimCountArgs>(
+      args?: Subset<T, ExecutionCompletionClaimCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], ExecutionCompletionClaimCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a ExecutionCompletionClaim.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ExecutionCompletionClaimAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends ExecutionCompletionClaimAggregateArgs>(args: Subset<T, ExecutionCompletionClaimAggregateArgs>): Prisma.PrismaPromise<GetExecutionCompletionClaimAggregateType<T>>
+
+    /**
+     * Group by ExecutionCompletionClaim.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ExecutionCompletionClaimGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends ExecutionCompletionClaimGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: ExecutionCompletionClaimGroupByArgs['orderBy'] }
+        : { orderBy?: ExecutionCompletionClaimGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, ExecutionCompletionClaimGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetExecutionCompletionClaimGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the ExecutionCompletionClaim model
+   */
+  readonly fields: ExecutionCompletionClaimFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for ExecutionCompletionClaim.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__ExecutionCompletionClaimClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the ExecutionCompletionClaim model
+   */ 
+  interface ExecutionCompletionClaimFieldRefs {
+    readonly id: FieldRef<"ExecutionCompletionClaim", 'String'>
+    readonly executionId: FieldRef<"ExecutionCompletionClaim", 'String'>
+    readonly stepId: FieldRef<"ExecutionCompletionClaim", 'String'>
+    readonly planNodeId: FieldRef<"ExecutionCompletionClaim", 'String'>
+    readonly claim: FieldRef<"ExecutionCompletionClaim", 'String'>
+    readonly evidenceType: FieldRef<"ExecutionCompletionClaim", 'String'>
+    readonly evidenceJson: FieldRef<"ExecutionCompletionClaim", 'Json'>
+    readonly status: FieldRef<"ExecutionCompletionClaim", 'String'>
+    readonly createdAt: FieldRef<"ExecutionCompletionClaim", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * ExecutionCompletionClaim findUnique
+   */
+  export type ExecutionCompletionClaimFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExecutionCompletionClaim
+     */
+    select?: ExecutionCompletionClaimSelect<ExtArgs> | null
+    /**
+     * Filter, which ExecutionCompletionClaim to fetch.
+     */
+    where: ExecutionCompletionClaimWhereUniqueInput
+  }
+
+  /**
+   * ExecutionCompletionClaim findUniqueOrThrow
+   */
+  export type ExecutionCompletionClaimFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExecutionCompletionClaim
+     */
+    select?: ExecutionCompletionClaimSelect<ExtArgs> | null
+    /**
+     * Filter, which ExecutionCompletionClaim to fetch.
+     */
+    where: ExecutionCompletionClaimWhereUniqueInput
+  }
+
+  /**
+   * ExecutionCompletionClaim findFirst
+   */
+  export type ExecutionCompletionClaimFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExecutionCompletionClaim
+     */
+    select?: ExecutionCompletionClaimSelect<ExtArgs> | null
+    /**
+     * Filter, which ExecutionCompletionClaim to fetch.
+     */
+    where?: ExecutionCompletionClaimWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ExecutionCompletionClaims to fetch.
+     */
+    orderBy?: ExecutionCompletionClaimOrderByWithRelationInput | ExecutionCompletionClaimOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ExecutionCompletionClaims.
+     */
+    cursor?: ExecutionCompletionClaimWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ExecutionCompletionClaims from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ExecutionCompletionClaims.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ExecutionCompletionClaims.
+     */
+    distinct?: ExecutionCompletionClaimScalarFieldEnum | ExecutionCompletionClaimScalarFieldEnum[]
+  }
+
+  /**
+   * ExecutionCompletionClaim findFirstOrThrow
+   */
+  export type ExecutionCompletionClaimFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExecutionCompletionClaim
+     */
+    select?: ExecutionCompletionClaimSelect<ExtArgs> | null
+    /**
+     * Filter, which ExecutionCompletionClaim to fetch.
+     */
+    where?: ExecutionCompletionClaimWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ExecutionCompletionClaims to fetch.
+     */
+    orderBy?: ExecutionCompletionClaimOrderByWithRelationInput | ExecutionCompletionClaimOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ExecutionCompletionClaims.
+     */
+    cursor?: ExecutionCompletionClaimWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ExecutionCompletionClaims from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ExecutionCompletionClaims.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ExecutionCompletionClaims.
+     */
+    distinct?: ExecutionCompletionClaimScalarFieldEnum | ExecutionCompletionClaimScalarFieldEnum[]
+  }
+
+  /**
+   * ExecutionCompletionClaim findMany
+   */
+  export type ExecutionCompletionClaimFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExecutionCompletionClaim
+     */
+    select?: ExecutionCompletionClaimSelect<ExtArgs> | null
+    /**
+     * Filter, which ExecutionCompletionClaims to fetch.
+     */
+    where?: ExecutionCompletionClaimWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ExecutionCompletionClaims to fetch.
+     */
+    orderBy?: ExecutionCompletionClaimOrderByWithRelationInput | ExecutionCompletionClaimOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing ExecutionCompletionClaims.
+     */
+    cursor?: ExecutionCompletionClaimWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ExecutionCompletionClaims from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ExecutionCompletionClaims.
+     */
+    skip?: number
+    distinct?: ExecutionCompletionClaimScalarFieldEnum | ExecutionCompletionClaimScalarFieldEnum[]
+  }
+
+  /**
+   * ExecutionCompletionClaim create
+   */
+  export type ExecutionCompletionClaimCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExecutionCompletionClaim
+     */
+    select?: ExecutionCompletionClaimSelect<ExtArgs> | null
+    /**
+     * The data needed to create a ExecutionCompletionClaim.
+     */
+    data: XOR<ExecutionCompletionClaimCreateInput, ExecutionCompletionClaimUncheckedCreateInput>
+  }
+
+  /**
+   * ExecutionCompletionClaim createMany
+   */
+  export type ExecutionCompletionClaimCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many ExecutionCompletionClaims.
+     */
+    data: ExecutionCompletionClaimCreateManyInput | ExecutionCompletionClaimCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ExecutionCompletionClaim createManyAndReturn
+   */
+  export type ExecutionCompletionClaimCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExecutionCompletionClaim
+     */
+    select?: ExecutionCompletionClaimSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many ExecutionCompletionClaims.
+     */
+    data: ExecutionCompletionClaimCreateManyInput | ExecutionCompletionClaimCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ExecutionCompletionClaim update
+   */
+  export type ExecutionCompletionClaimUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExecutionCompletionClaim
+     */
+    select?: ExecutionCompletionClaimSelect<ExtArgs> | null
+    /**
+     * The data needed to update a ExecutionCompletionClaim.
+     */
+    data: XOR<ExecutionCompletionClaimUpdateInput, ExecutionCompletionClaimUncheckedUpdateInput>
+    /**
+     * Choose, which ExecutionCompletionClaim to update.
+     */
+    where: ExecutionCompletionClaimWhereUniqueInput
+  }
+
+  /**
+   * ExecutionCompletionClaim updateMany
+   */
+  export type ExecutionCompletionClaimUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update ExecutionCompletionClaims.
+     */
+    data: XOR<ExecutionCompletionClaimUpdateManyMutationInput, ExecutionCompletionClaimUncheckedUpdateManyInput>
+    /**
+     * Filter which ExecutionCompletionClaims to update
+     */
+    where?: ExecutionCompletionClaimWhereInput
+  }
+
+  /**
+   * ExecutionCompletionClaim upsert
+   */
+  export type ExecutionCompletionClaimUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExecutionCompletionClaim
+     */
+    select?: ExecutionCompletionClaimSelect<ExtArgs> | null
+    /**
+     * The filter to search for the ExecutionCompletionClaim to update in case it exists.
+     */
+    where: ExecutionCompletionClaimWhereUniqueInput
+    /**
+     * In case the ExecutionCompletionClaim found by the `where` argument doesn't exist, create a new ExecutionCompletionClaim with this data.
+     */
+    create: XOR<ExecutionCompletionClaimCreateInput, ExecutionCompletionClaimUncheckedCreateInput>
+    /**
+     * In case the ExecutionCompletionClaim was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<ExecutionCompletionClaimUpdateInput, ExecutionCompletionClaimUncheckedUpdateInput>
+  }
+
+  /**
+   * ExecutionCompletionClaim delete
+   */
+  export type ExecutionCompletionClaimDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExecutionCompletionClaim
+     */
+    select?: ExecutionCompletionClaimSelect<ExtArgs> | null
+    /**
+     * Filter which ExecutionCompletionClaim to delete.
+     */
+    where: ExecutionCompletionClaimWhereUniqueInput
+  }
+
+  /**
+   * ExecutionCompletionClaim deleteMany
+   */
+  export type ExecutionCompletionClaimDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ExecutionCompletionClaims to delete
+     */
+    where?: ExecutionCompletionClaimWhereInput
+  }
+
+  /**
+   * ExecutionCompletionClaim without action
+   */
+  export type ExecutionCompletionClaimDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExecutionCompletionClaim
+     */
+    select?: ExecutionCompletionClaimSelect<ExtArgs> | null
+  }
+
+
+  /**
    * Model PromptSnapshot
    */
 
@@ -68532,6 +70124,7 @@ export namespace Prisma {
     versions?: boolean | BuiltinSkill$versionsArgs<ExtArgs>
     permissionOverrides?: boolean | BuiltinSkill$permissionOverridesArgs<ExtArgs>
     auditEvents?: boolean | BuiltinSkill$auditEventsArgs<ExtArgs>
+    runtimeConfigs?: boolean | BuiltinSkill$runtimeConfigsArgs<ExtArgs>
     _count?: boolean | BuiltinSkillCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["builtinSkill"]>
 
@@ -68569,6 +70162,7 @@ export namespace Prisma {
     versions?: boolean | BuiltinSkill$versionsArgs<ExtArgs>
     permissionOverrides?: boolean | BuiltinSkill$permissionOverridesArgs<ExtArgs>
     auditEvents?: boolean | BuiltinSkill$auditEventsArgs<ExtArgs>
+    runtimeConfigs?: boolean | BuiltinSkill$runtimeConfigsArgs<ExtArgs>
     _count?: boolean | BuiltinSkillCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type BuiltinSkillIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -68579,6 +70173,7 @@ export namespace Prisma {
       versions: Prisma.$BuiltinSkillVersionPayload<ExtArgs>[]
       permissionOverrides: Prisma.$BuiltinSkillPermissionOverridePayload<ExtArgs>[]
       auditEvents: Prisma.$BuiltinSkillAuditEventPayload<ExtArgs>[]
+      runtimeConfigs: Prisma.$BuiltinSkillRuntimeConfigPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -68960,6 +70555,7 @@ export namespace Prisma {
     versions<T extends BuiltinSkill$versionsArgs<ExtArgs> = {}>(args?: Subset<T, BuiltinSkill$versionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BuiltinSkillVersionPayload<ExtArgs>, T, "findMany"> | Null>
     permissionOverrides<T extends BuiltinSkill$permissionOverridesArgs<ExtArgs> = {}>(args?: Subset<T, BuiltinSkill$permissionOverridesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BuiltinSkillPermissionOverridePayload<ExtArgs>, T, "findMany"> | Null>
     auditEvents<T extends BuiltinSkill$auditEventsArgs<ExtArgs> = {}>(args?: Subset<T, BuiltinSkill$auditEventsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BuiltinSkillAuditEventPayload<ExtArgs>, T, "findMany"> | Null>
+    runtimeConfigs<T extends BuiltinSkill$runtimeConfigsArgs<ExtArgs> = {}>(args?: Subset<T, BuiltinSkill$runtimeConfigsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BuiltinSkillRuntimeConfigPayload<ExtArgs>, T, "findMany"> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -69375,6 +70971,26 @@ export namespace Prisma {
   }
 
   /**
+   * BuiltinSkill.runtimeConfigs
+   */
+  export type BuiltinSkill$runtimeConfigsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BuiltinSkillRuntimeConfig
+     */
+    select?: BuiltinSkillRuntimeConfigSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BuiltinSkillRuntimeConfigInclude<ExtArgs> | null
+    where?: BuiltinSkillRuntimeConfigWhereInput
+    orderBy?: BuiltinSkillRuntimeConfigOrderByWithRelationInput | BuiltinSkillRuntimeConfigOrderByWithRelationInput[]
+    cursor?: BuiltinSkillRuntimeConfigWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: BuiltinSkillRuntimeConfigScalarFieldEnum | BuiltinSkillRuntimeConfigScalarFieldEnum[]
+  }
+
+  /**
    * BuiltinSkill without action
    */
   export type BuiltinSkillDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -69386,6 +71002,963 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: BuiltinSkillInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model BuiltinSkillRuntimeConfig
+   */
+
+  export type AggregateBuiltinSkillRuntimeConfig = {
+    _count: BuiltinSkillRuntimeConfigCountAggregateOutputType | null
+    _min: BuiltinSkillRuntimeConfigMinAggregateOutputType | null
+    _max: BuiltinSkillRuntimeConfigMaxAggregateOutputType | null
+  }
+
+  export type BuiltinSkillRuntimeConfigMinAggregateOutputType = {
+    id: string | null
+    builtinSkillId: string | null
+    configKey: string | null
+    encryptedValue: string | null
+    updatedBy: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type BuiltinSkillRuntimeConfigMaxAggregateOutputType = {
+    id: string | null
+    builtinSkillId: string | null
+    configKey: string | null
+    encryptedValue: string | null
+    updatedBy: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type BuiltinSkillRuntimeConfigCountAggregateOutputType = {
+    id: number
+    builtinSkillId: number
+    configKey: number
+    encryptedValue: number
+    updatedBy: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type BuiltinSkillRuntimeConfigMinAggregateInputType = {
+    id?: true
+    builtinSkillId?: true
+    configKey?: true
+    encryptedValue?: true
+    updatedBy?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type BuiltinSkillRuntimeConfigMaxAggregateInputType = {
+    id?: true
+    builtinSkillId?: true
+    configKey?: true
+    encryptedValue?: true
+    updatedBy?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type BuiltinSkillRuntimeConfigCountAggregateInputType = {
+    id?: true
+    builtinSkillId?: true
+    configKey?: true
+    encryptedValue?: true
+    updatedBy?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type BuiltinSkillRuntimeConfigAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which BuiltinSkillRuntimeConfig to aggregate.
+     */
+    where?: BuiltinSkillRuntimeConfigWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of BuiltinSkillRuntimeConfigs to fetch.
+     */
+    orderBy?: BuiltinSkillRuntimeConfigOrderByWithRelationInput | BuiltinSkillRuntimeConfigOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: BuiltinSkillRuntimeConfigWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` BuiltinSkillRuntimeConfigs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` BuiltinSkillRuntimeConfigs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned BuiltinSkillRuntimeConfigs
+    **/
+    _count?: true | BuiltinSkillRuntimeConfigCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: BuiltinSkillRuntimeConfigMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: BuiltinSkillRuntimeConfigMaxAggregateInputType
+  }
+
+  export type GetBuiltinSkillRuntimeConfigAggregateType<T extends BuiltinSkillRuntimeConfigAggregateArgs> = {
+        [P in keyof T & keyof AggregateBuiltinSkillRuntimeConfig]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateBuiltinSkillRuntimeConfig[P]>
+      : GetScalarType<T[P], AggregateBuiltinSkillRuntimeConfig[P]>
+  }
+
+
+
+
+  export type BuiltinSkillRuntimeConfigGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: BuiltinSkillRuntimeConfigWhereInput
+    orderBy?: BuiltinSkillRuntimeConfigOrderByWithAggregationInput | BuiltinSkillRuntimeConfigOrderByWithAggregationInput[]
+    by: BuiltinSkillRuntimeConfigScalarFieldEnum[] | BuiltinSkillRuntimeConfigScalarFieldEnum
+    having?: BuiltinSkillRuntimeConfigScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: BuiltinSkillRuntimeConfigCountAggregateInputType | true
+    _min?: BuiltinSkillRuntimeConfigMinAggregateInputType
+    _max?: BuiltinSkillRuntimeConfigMaxAggregateInputType
+  }
+
+  export type BuiltinSkillRuntimeConfigGroupByOutputType = {
+    id: string
+    builtinSkillId: string
+    configKey: string
+    encryptedValue: string
+    updatedBy: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: BuiltinSkillRuntimeConfigCountAggregateOutputType | null
+    _min: BuiltinSkillRuntimeConfigMinAggregateOutputType | null
+    _max: BuiltinSkillRuntimeConfigMaxAggregateOutputType | null
+  }
+
+  type GetBuiltinSkillRuntimeConfigGroupByPayload<T extends BuiltinSkillRuntimeConfigGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<BuiltinSkillRuntimeConfigGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof BuiltinSkillRuntimeConfigGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], BuiltinSkillRuntimeConfigGroupByOutputType[P]>
+            : GetScalarType<T[P], BuiltinSkillRuntimeConfigGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type BuiltinSkillRuntimeConfigSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    builtinSkillId?: boolean
+    configKey?: boolean
+    encryptedValue?: boolean
+    updatedBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    builtinSkill?: boolean | BuiltinSkillDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["builtinSkillRuntimeConfig"]>
+
+  export type BuiltinSkillRuntimeConfigSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    builtinSkillId?: boolean
+    configKey?: boolean
+    encryptedValue?: boolean
+    updatedBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    builtinSkill?: boolean | BuiltinSkillDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["builtinSkillRuntimeConfig"]>
+
+  export type BuiltinSkillRuntimeConfigSelectScalar = {
+    id?: boolean
+    builtinSkillId?: boolean
+    configKey?: boolean
+    encryptedValue?: boolean
+    updatedBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type BuiltinSkillRuntimeConfigInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    builtinSkill?: boolean | BuiltinSkillDefaultArgs<ExtArgs>
+  }
+  export type BuiltinSkillRuntimeConfigIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    builtinSkill?: boolean | BuiltinSkillDefaultArgs<ExtArgs>
+  }
+
+  export type $BuiltinSkillRuntimeConfigPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "BuiltinSkillRuntimeConfig"
+    objects: {
+      builtinSkill: Prisma.$BuiltinSkillPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      builtinSkillId: string
+      configKey: string
+      encryptedValue: string
+      updatedBy: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["builtinSkillRuntimeConfig"]>
+    composites: {}
+  }
+
+  type BuiltinSkillRuntimeConfigGetPayload<S extends boolean | null | undefined | BuiltinSkillRuntimeConfigDefaultArgs> = $Result.GetResult<Prisma.$BuiltinSkillRuntimeConfigPayload, S>
+
+  type BuiltinSkillRuntimeConfigCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<BuiltinSkillRuntimeConfigFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: BuiltinSkillRuntimeConfigCountAggregateInputType | true
+    }
+
+  export interface BuiltinSkillRuntimeConfigDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['BuiltinSkillRuntimeConfig'], meta: { name: 'BuiltinSkillRuntimeConfig' } }
+    /**
+     * Find zero or one BuiltinSkillRuntimeConfig that matches the filter.
+     * @param {BuiltinSkillRuntimeConfigFindUniqueArgs} args - Arguments to find a BuiltinSkillRuntimeConfig
+     * @example
+     * // Get one BuiltinSkillRuntimeConfig
+     * const builtinSkillRuntimeConfig = await prisma.builtinSkillRuntimeConfig.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends BuiltinSkillRuntimeConfigFindUniqueArgs>(args: SelectSubset<T, BuiltinSkillRuntimeConfigFindUniqueArgs<ExtArgs>>): Prisma__BuiltinSkillRuntimeConfigClient<$Result.GetResult<Prisma.$BuiltinSkillRuntimeConfigPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one BuiltinSkillRuntimeConfig that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {BuiltinSkillRuntimeConfigFindUniqueOrThrowArgs} args - Arguments to find a BuiltinSkillRuntimeConfig
+     * @example
+     * // Get one BuiltinSkillRuntimeConfig
+     * const builtinSkillRuntimeConfig = await prisma.builtinSkillRuntimeConfig.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends BuiltinSkillRuntimeConfigFindUniqueOrThrowArgs>(args: SelectSubset<T, BuiltinSkillRuntimeConfigFindUniqueOrThrowArgs<ExtArgs>>): Prisma__BuiltinSkillRuntimeConfigClient<$Result.GetResult<Prisma.$BuiltinSkillRuntimeConfigPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first BuiltinSkillRuntimeConfig that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {BuiltinSkillRuntimeConfigFindFirstArgs} args - Arguments to find a BuiltinSkillRuntimeConfig
+     * @example
+     * // Get one BuiltinSkillRuntimeConfig
+     * const builtinSkillRuntimeConfig = await prisma.builtinSkillRuntimeConfig.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends BuiltinSkillRuntimeConfigFindFirstArgs>(args?: SelectSubset<T, BuiltinSkillRuntimeConfigFindFirstArgs<ExtArgs>>): Prisma__BuiltinSkillRuntimeConfigClient<$Result.GetResult<Prisma.$BuiltinSkillRuntimeConfigPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first BuiltinSkillRuntimeConfig that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {BuiltinSkillRuntimeConfigFindFirstOrThrowArgs} args - Arguments to find a BuiltinSkillRuntimeConfig
+     * @example
+     * // Get one BuiltinSkillRuntimeConfig
+     * const builtinSkillRuntimeConfig = await prisma.builtinSkillRuntimeConfig.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends BuiltinSkillRuntimeConfigFindFirstOrThrowArgs>(args?: SelectSubset<T, BuiltinSkillRuntimeConfigFindFirstOrThrowArgs<ExtArgs>>): Prisma__BuiltinSkillRuntimeConfigClient<$Result.GetResult<Prisma.$BuiltinSkillRuntimeConfigPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more BuiltinSkillRuntimeConfigs that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {BuiltinSkillRuntimeConfigFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all BuiltinSkillRuntimeConfigs
+     * const builtinSkillRuntimeConfigs = await prisma.builtinSkillRuntimeConfig.findMany()
+     * 
+     * // Get first 10 BuiltinSkillRuntimeConfigs
+     * const builtinSkillRuntimeConfigs = await prisma.builtinSkillRuntimeConfig.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const builtinSkillRuntimeConfigWithIdOnly = await prisma.builtinSkillRuntimeConfig.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends BuiltinSkillRuntimeConfigFindManyArgs>(args?: SelectSubset<T, BuiltinSkillRuntimeConfigFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BuiltinSkillRuntimeConfigPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a BuiltinSkillRuntimeConfig.
+     * @param {BuiltinSkillRuntimeConfigCreateArgs} args - Arguments to create a BuiltinSkillRuntimeConfig.
+     * @example
+     * // Create one BuiltinSkillRuntimeConfig
+     * const BuiltinSkillRuntimeConfig = await prisma.builtinSkillRuntimeConfig.create({
+     *   data: {
+     *     // ... data to create a BuiltinSkillRuntimeConfig
+     *   }
+     * })
+     * 
+     */
+    create<T extends BuiltinSkillRuntimeConfigCreateArgs>(args: SelectSubset<T, BuiltinSkillRuntimeConfigCreateArgs<ExtArgs>>): Prisma__BuiltinSkillRuntimeConfigClient<$Result.GetResult<Prisma.$BuiltinSkillRuntimeConfigPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many BuiltinSkillRuntimeConfigs.
+     * @param {BuiltinSkillRuntimeConfigCreateManyArgs} args - Arguments to create many BuiltinSkillRuntimeConfigs.
+     * @example
+     * // Create many BuiltinSkillRuntimeConfigs
+     * const builtinSkillRuntimeConfig = await prisma.builtinSkillRuntimeConfig.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends BuiltinSkillRuntimeConfigCreateManyArgs>(args?: SelectSubset<T, BuiltinSkillRuntimeConfigCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many BuiltinSkillRuntimeConfigs and returns the data saved in the database.
+     * @param {BuiltinSkillRuntimeConfigCreateManyAndReturnArgs} args - Arguments to create many BuiltinSkillRuntimeConfigs.
+     * @example
+     * // Create many BuiltinSkillRuntimeConfigs
+     * const builtinSkillRuntimeConfig = await prisma.builtinSkillRuntimeConfig.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many BuiltinSkillRuntimeConfigs and only return the `id`
+     * const builtinSkillRuntimeConfigWithIdOnly = await prisma.builtinSkillRuntimeConfig.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends BuiltinSkillRuntimeConfigCreateManyAndReturnArgs>(args?: SelectSubset<T, BuiltinSkillRuntimeConfigCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BuiltinSkillRuntimeConfigPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a BuiltinSkillRuntimeConfig.
+     * @param {BuiltinSkillRuntimeConfigDeleteArgs} args - Arguments to delete one BuiltinSkillRuntimeConfig.
+     * @example
+     * // Delete one BuiltinSkillRuntimeConfig
+     * const BuiltinSkillRuntimeConfig = await prisma.builtinSkillRuntimeConfig.delete({
+     *   where: {
+     *     // ... filter to delete one BuiltinSkillRuntimeConfig
+     *   }
+     * })
+     * 
+     */
+    delete<T extends BuiltinSkillRuntimeConfigDeleteArgs>(args: SelectSubset<T, BuiltinSkillRuntimeConfigDeleteArgs<ExtArgs>>): Prisma__BuiltinSkillRuntimeConfigClient<$Result.GetResult<Prisma.$BuiltinSkillRuntimeConfigPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one BuiltinSkillRuntimeConfig.
+     * @param {BuiltinSkillRuntimeConfigUpdateArgs} args - Arguments to update one BuiltinSkillRuntimeConfig.
+     * @example
+     * // Update one BuiltinSkillRuntimeConfig
+     * const builtinSkillRuntimeConfig = await prisma.builtinSkillRuntimeConfig.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends BuiltinSkillRuntimeConfigUpdateArgs>(args: SelectSubset<T, BuiltinSkillRuntimeConfigUpdateArgs<ExtArgs>>): Prisma__BuiltinSkillRuntimeConfigClient<$Result.GetResult<Prisma.$BuiltinSkillRuntimeConfigPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more BuiltinSkillRuntimeConfigs.
+     * @param {BuiltinSkillRuntimeConfigDeleteManyArgs} args - Arguments to filter BuiltinSkillRuntimeConfigs to delete.
+     * @example
+     * // Delete a few BuiltinSkillRuntimeConfigs
+     * const { count } = await prisma.builtinSkillRuntimeConfig.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends BuiltinSkillRuntimeConfigDeleteManyArgs>(args?: SelectSubset<T, BuiltinSkillRuntimeConfigDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more BuiltinSkillRuntimeConfigs.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {BuiltinSkillRuntimeConfigUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many BuiltinSkillRuntimeConfigs
+     * const builtinSkillRuntimeConfig = await prisma.builtinSkillRuntimeConfig.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends BuiltinSkillRuntimeConfigUpdateManyArgs>(args: SelectSubset<T, BuiltinSkillRuntimeConfigUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one BuiltinSkillRuntimeConfig.
+     * @param {BuiltinSkillRuntimeConfigUpsertArgs} args - Arguments to update or create a BuiltinSkillRuntimeConfig.
+     * @example
+     * // Update or create a BuiltinSkillRuntimeConfig
+     * const builtinSkillRuntimeConfig = await prisma.builtinSkillRuntimeConfig.upsert({
+     *   create: {
+     *     // ... data to create a BuiltinSkillRuntimeConfig
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the BuiltinSkillRuntimeConfig we want to update
+     *   }
+     * })
+     */
+    upsert<T extends BuiltinSkillRuntimeConfigUpsertArgs>(args: SelectSubset<T, BuiltinSkillRuntimeConfigUpsertArgs<ExtArgs>>): Prisma__BuiltinSkillRuntimeConfigClient<$Result.GetResult<Prisma.$BuiltinSkillRuntimeConfigPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of BuiltinSkillRuntimeConfigs.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {BuiltinSkillRuntimeConfigCountArgs} args - Arguments to filter BuiltinSkillRuntimeConfigs to count.
+     * @example
+     * // Count the number of BuiltinSkillRuntimeConfigs
+     * const count = await prisma.builtinSkillRuntimeConfig.count({
+     *   where: {
+     *     // ... the filter for the BuiltinSkillRuntimeConfigs we want to count
+     *   }
+     * })
+    **/
+    count<T extends BuiltinSkillRuntimeConfigCountArgs>(
+      args?: Subset<T, BuiltinSkillRuntimeConfigCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], BuiltinSkillRuntimeConfigCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a BuiltinSkillRuntimeConfig.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {BuiltinSkillRuntimeConfigAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends BuiltinSkillRuntimeConfigAggregateArgs>(args: Subset<T, BuiltinSkillRuntimeConfigAggregateArgs>): Prisma.PrismaPromise<GetBuiltinSkillRuntimeConfigAggregateType<T>>
+
+    /**
+     * Group by BuiltinSkillRuntimeConfig.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {BuiltinSkillRuntimeConfigGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends BuiltinSkillRuntimeConfigGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: BuiltinSkillRuntimeConfigGroupByArgs['orderBy'] }
+        : { orderBy?: BuiltinSkillRuntimeConfigGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, BuiltinSkillRuntimeConfigGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetBuiltinSkillRuntimeConfigGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the BuiltinSkillRuntimeConfig model
+   */
+  readonly fields: BuiltinSkillRuntimeConfigFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for BuiltinSkillRuntimeConfig.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__BuiltinSkillRuntimeConfigClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    builtinSkill<T extends BuiltinSkillDefaultArgs<ExtArgs> = {}>(args?: Subset<T, BuiltinSkillDefaultArgs<ExtArgs>>): Prisma__BuiltinSkillClient<$Result.GetResult<Prisma.$BuiltinSkillPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the BuiltinSkillRuntimeConfig model
+   */ 
+  interface BuiltinSkillRuntimeConfigFieldRefs {
+    readonly id: FieldRef<"BuiltinSkillRuntimeConfig", 'String'>
+    readonly builtinSkillId: FieldRef<"BuiltinSkillRuntimeConfig", 'String'>
+    readonly configKey: FieldRef<"BuiltinSkillRuntimeConfig", 'String'>
+    readonly encryptedValue: FieldRef<"BuiltinSkillRuntimeConfig", 'String'>
+    readonly updatedBy: FieldRef<"BuiltinSkillRuntimeConfig", 'String'>
+    readonly createdAt: FieldRef<"BuiltinSkillRuntimeConfig", 'DateTime'>
+    readonly updatedAt: FieldRef<"BuiltinSkillRuntimeConfig", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * BuiltinSkillRuntimeConfig findUnique
+   */
+  export type BuiltinSkillRuntimeConfigFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BuiltinSkillRuntimeConfig
+     */
+    select?: BuiltinSkillRuntimeConfigSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BuiltinSkillRuntimeConfigInclude<ExtArgs> | null
+    /**
+     * Filter, which BuiltinSkillRuntimeConfig to fetch.
+     */
+    where: BuiltinSkillRuntimeConfigWhereUniqueInput
+  }
+
+  /**
+   * BuiltinSkillRuntimeConfig findUniqueOrThrow
+   */
+  export type BuiltinSkillRuntimeConfigFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BuiltinSkillRuntimeConfig
+     */
+    select?: BuiltinSkillRuntimeConfigSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BuiltinSkillRuntimeConfigInclude<ExtArgs> | null
+    /**
+     * Filter, which BuiltinSkillRuntimeConfig to fetch.
+     */
+    where: BuiltinSkillRuntimeConfigWhereUniqueInput
+  }
+
+  /**
+   * BuiltinSkillRuntimeConfig findFirst
+   */
+  export type BuiltinSkillRuntimeConfigFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BuiltinSkillRuntimeConfig
+     */
+    select?: BuiltinSkillRuntimeConfigSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BuiltinSkillRuntimeConfigInclude<ExtArgs> | null
+    /**
+     * Filter, which BuiltinSkillRuntimeConfig to fetch.
+     */
+    where?: BuiltinSkillRuntimeConfigWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of BuiltinSkillRuntimeConfigs to fetch.
+     */
+    orderBy?: BuiltinSkillRuntimeConfigOrderByWithRelationInput | BuiltinSkillRuntimeConfigOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for BuiltinSkillRuntimeConfigs.
+     */
+    cursor?: BuiltinSkillRuntimeConfigWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` BuiltinSkillRuntimeConfigs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` BuiltinSkillRuntimeConfigs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of BuiltinSkillRuntimeConfigs.
+     */
+    distinct?: BuiltinSkillRuntimeConfigScalarFieldEnum | BuiltinSkillRuntimeConfigScalarFieldEnum[]
+  }
+
+  /**
+   * BuiltinSkillRuntimeConfig findFirstOrThrow
+   */
+  export type BuiltinSkillRuntimeConfigFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BuiltinSkillRuntimeConfig
+     */
+    select?: BuiltinSkillRuntimeConfigSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BuiltinSkillRuntimeConfigInclude<ExtArgs> | null
+    /**
+     * Filter, which BuiltinSkillRuntimeConfig to fetch.
+     */
+    where?: BuiltinSkillRuntimeConfigWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of BuiltinSkillRuntimeConfigs to fetch.
+     */
+    orderBy?: BuiltinSkillRuntimeConfigOrderByWithRelationInput | BuiltinSkillRuntimeConfigOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for BuiltinSkillRuntimeConfigs.
+     */
+    cursor?: BuiltinSkillRuntimeConfigWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` BuiltinSkillRuntimeConfigs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` BuiltinSkillRuntimeConfigs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of BuiltinSkillRuntimeConfigs.
+     */
+    distinct?: BuiltinSkillRuntimeConfigScalarFieldEnum | BuiltinSkillRuntimeConfigScalarFieldEnum[]
+  }
+
+  /**
+   * BuiltinSkillRuntimeConfig findMany
+   */
+  export type BuiltinSkillRuntimeConfigFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BuiltinSkillRuntimeConfig
+     */
+    select?: BuiltinSkillRuntimeConfigSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BuiltinSkillRuntimeConfigInclude<ExtArgs> | null
+    /**
+     * Filter, which BuiltinSkillRuntimeConfigs to fetch.
+     */
+    where?: BuiltinSkillRuntimeConfigWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of BuiltinSkillRuntimeConfigs to fetch.
+     */
+    orderBy?: BuiltinSkillRuntimeConfigOrderByWithRelationInput | BuiltinSkillRuntimeConfigOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing BuiltinSkillRuntimeConfigs.
+     */
+    cursor?: BuiltinSkillRuntimeConfigWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` BuiltinSkillRuntimeConfigs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` BuiltinSkillRuntimeConfigs.
+     */
+    skip?: number
+    distinct?: BuiltinSkillRuntimeConfigScalarFieldEnum | BuiltinSkillRuntimeConfigScalarFieldEnum[]
+  }
+
+  /**
+   * BuiltinSkillRuntimeConfig create
+   */
+  export type BuiltinSkillRuntimeConfigCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BuiltinSkillRuntimeConfig
+     */
+    select?: BuiltinSkillRuntimeConfigSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BuiltinSkillRuntimeConfigInclude<ExtArgs> | null
+    /**
+     * The data needed to create a BuiltinSkillRuntimeConfig.
+     */
+    data: XOR<BuiltinSkillRuntimeConfigCreateInput, BuiltinSkillRuntimeConfigUncheckedCreateInput>
+  }
+
+  /**
+   * BuiltinSkillRuntimeConfig createMany
+   */
+  export type BuiltinSkillRuntimeConfigCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many BuiltinSkillRuntimeConfigs.
+     */
+    data: BuiltinSkillRuntimeConfigCreateManyInput | BuiltinSkillRuntimeConfigCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * BuiltinSkillRuntimeConfig createManyAndReturn
+   */
+  export type BuiltinSkillRuntimeConfigCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BuiltinSkillRuntimeConfig
+     */
+    select?: BuiltinSkillRuntimeConfigSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many BuiltinSkillRuntimeConfigs.
+     */
+    data: BuiltinSkillRuntimeConfigCreateManyInput | BuiltinSkillRuntimeConfigCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BuiltinSkillRuntimeConfigIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * BuiltinSkillRuntimeConfig update
+   */
+  export type BuiltinSkillRuntimeConfigUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BuiltinSkillRuntimeConfig
+     */
+    select?: BuiltinSkillRuntimeConfigSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BuiltinSkillRuntimeConfigInclude<ExtArgs> | null
+    /**
+     * The data needed to update a BuiltinSkillRuntimeConfig.
+     */
+    data: XOR<BuiltinSkillRuntimeConfigUpdateInput, BuiltinSkillRuntimeConfigUncheckedUpdateInput>
+    /**
+     * Choose, which BuiltinSkillRuntimeConfig to update.
+     */
+    where: BuiltinSkillRuntimeConfigWhereUniqueInput
+  }
+
+  /**
+   * BuiltinSkillRuntimeConfig updateMany
+   */
+  export type BuiltinSkillRuntimeConfigUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update BuiltinSkillRuntimeConfigs.
+     */
+    data: XOR<BuiltinSkillRuntimeConfigUpdateManyMutationInput, BuiltinSkillRuntimeConfigUncheckedUpdateManyInput>
+    /**
+     * Filter which BuiltinSkillRuntimeConfigs to update
+     */
+    where?: BuiltinSkillRuntimeConfigWhereInput
+  }
+
+  /**
+   * BuiltinSkillRuntimeConfig upsert
+   */
+  export type BuiltinSkillRuntimeConfigUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BuiltinSkillRuntimeConfig
+     */
+    select?: BuiltinSkillRuntimeConfigSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BuiltinSkillRuntimeConfigInclude<ExtArgs> | null
+    /**
+     * The filter to search for the BuiltinSkillRuntimeConfig to update in case it exists.
+     */
+    where: BuiltinSkillRuntimeConfigWhereUniqueInput
+    /**
+     * In case the BuiltinSkillRuntimeConfig found by the `where` argument doesn't exist, create a new BuiltinSkillRuntimeConfig with this data.
+     */
+    create: XOR<BuiltinSkillRuntimeConfigCreateInput, BuiltinSkillRuntimeConfigUncheckedCreateInput>
+    /**
+     * In case the BuiltinSkillRuntimeConfig was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<BuiltinSkillRuntimeConfigUpdateInput, BuiltinSkillRuntimeConfigUncheckedUpdateInput>
+  }
+
+  /**
+   * BuiltinSkillRuntimeConfig delete
+   */
+  export type BuiltinSkillRuntimeConfigDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BuiltinSkillRuntimeConfig
+     */
+    select?: BuiltinSkillRuntimeConfigSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BuiltinSkillRuntimeConfigInclude<ExtArgs> | null
+    /**
+     * Filter which BuiltinSkillRuntimeConfig to delete.
+     */
+    where: BuiltinSkillRuntimeConfigWhereUniqueInput
+  }
+
+  /**
+   * BuiltinSkillRuntimeConfig deleteMany
+   */
+  export type BuiltinSkillRuntimeConfigDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which BuiltinSkillRuntimeConfigs to delete
+     */
+    where?: BuiltinSkillRuntimeConfigWhereInput
+  }
+
+  /**
+   * BuiltinSkillRuntimeConfig without action
+   */
+  export type BuiltinSkillRuntimeConfigDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BuiltinSkillRuntimeConfig
+     */
+    select?: BuiltinSkillRuntimeConfigSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BuiltinSkillRuntimeConfigInclude<ExtArgs> | null
   }
 
 
@@ -82268,6 +84841,4176 @@ export namespace Prisma {
 
 
   /**
+   * Model Workspace
+   */
+
+  export type AggregateWorkspace = {
+    _count: WorkspaceCountAggregateOutputType | null
+    _avg: WorkspaceAvgAggregateOutputType | null
+    _sum: WorkspaceSumAggregateOutputType | null
+    _min: WorkspaceMinAggregateOutputType | null
+    _max: WorkspaceMaxAggregateOutputType | null
+  }
+
+  export type WorkspaceAvgAggregateOutputType = {
+    quotaBytes: number | null
+    usedBytes: number | null
+  }
+
+  export type WorkspaceSumAggregateOutputType = {
+    quotaBytes: bigint | null
+    usedBytes: bigint | null
+  }
+
+  export type WorkspaceMinAggregateOutputType = {
+    id: string | null
+    name: string | null
+    type: $Enums.WorkspaceType | null
+    ownerUserId: string | null
+    departmentId: string | null
+    quotaBytes: bigint | null
+    usedBytes: bigint | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type WorkspaceMaxAggregateOutputType = {
+    id: string | null
+    name: string | null
+    type: $Enums.WorkspaceType | null
+    ownerUserId: string | null
+    departmentId: string | null
+    quotaBytes: bigint | null
+    usedBytes: bigint | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type WorkspaceCountAggregateOutputType = {
+    id: number
+    name: number
+    type: number
+    ownerUserId: number
+    departmentId: number
+    quotaBytes: number
+    usedBytes: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type WorkspaceAvgAggregateInputType = {
+    quotaBytes?: true
+    usedBytes?: true
+  }
+
+  export type WorkspaceSumAggregateInputType = {
+    quotaBytes?: true
+    usedBytes?: true
+  }
+
+  export type WorkspaceMinAggregateInputType = {
+    id?: true
+    name?: true
+    type?: true
+    ownerUserId?: true
+    departmentId?: true
+    quotaBytes?: true
+    usedBytes?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type WorkspaceMaxAggregateInputType = {
+    id?: true
+    name?: true
+    type?: true
+    ownerUserId?: true
+    departmentId?: true
+    quotaBytes?: true
+    usedBytes?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type WorkspaceCountAggregateInputType = {
+    id?: true
+    name?: true
+    type?: true
+    ownerUserId?: true
+    departmentId?: true
+    quotaBytes?: true
+    usedBytes?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type WorkspaceAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Workspace to aggregate.
+     */
+    where?: WorkspaceWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Workspaces to fetch.
+     */
+    orderBy?: WorkspaceOrderByWithRelationInput | WorkspaceOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: WorkspaceWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Workspaces from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Workspaces.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned Workspaces
+    **/
+    _count?: true | WorkspaceCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: WorkspaceAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: WorkspaceSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: WorkspaceMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: WorkspaceMaxAggregateInputType
+  }
+
+  export type GetWorkspaceAggregateType<T extends WorkspaceAggregateArgs> = {
+        [P in keyof T & keyof AggregateWorkspace]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateWorkspace[P]>
+      : GetScalarType<T[P], AggregateWorkspace[P]>
+  }
+
+
+
+
+  export type WorkspaceGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: WorkspaceWhereInput
+    orderBy?: WorkspaceOrderByWithAggregationInput | WorkspaceOrderByWithAggregationInput[]
+    by: WorkspaceScalarFieldEnum[] | WorkspaceScalarFieldEnum
+    having?: WorkspaceScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: WorkspaceCountAggregateInputType | true
+    _avg?: WorkspaceAvgAggregateInputType
+    _sum?: WorkspaceSumAggregateInputType
+    _min?: WorkspaceMinAggregateInputType
+    _max?: WorkspaceMaxAggregateInputType
+  }
+
+  export type WorkspaceGroupByOutputType = {
+    id: string
+    name: string
+    type: $Enums.WorkspaceType
+    ownerUserId: string | null
+    departmentId: string | null
+    quotaBytes: bigint
+    usedBytes: bigint
+    createdAt: Date
+    updatedAt: Date
+    _count: WorkspaceCountAggregateOutputType | null
+    _avg: WorkspaceAvgAggregateOutputType | null
+    _sum: WorkspaceSumAggregateOutputType | null
+    _min: WorkspaceMinAggregateOutputType | null
+    _max: WorkspaceMaxAggregateOutputType | null
+  }
+
+  type GetWorkspaceGroupByPayload<T extends WorkspaceGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<WorkspaceGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof WorkspaceGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], WorkspaceGroupByOutputType[P]>
+            : GetScalarType<T[P], WorkspaceGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type WorkspaceSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    type?: boolean
+    ownerUserId?: boolean
+    departmentId?: boolean
+    quotaBytes?: boolean
+    usedBytes?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    nodes?: boolean | Workspace$nodesArgs<ExtArgs>
+    _count?: boolean | WorkspaceCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["workspace"]>
+
+  export type WorkspaceSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    type?: boolean
+    ownerUserId?: boolean
+    departmentId?: boolean
+    quotaBytes?: boolean
+    usedBytes?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["workspace"]>
+
+  export type WorkspaceSelectScalar = {
+    id?: boolean
+    name?: boolean
+    type?: boolean
+    ownerUserId?: boolean
+    departmentId?: boolean
+    quotaBytes?: boolean
+    usedBytes?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type WorkspaceInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    nodes?: boolean | Workspace$nodesArgs<ExtArgs>
+    _count?: boolean | WorkspaceCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type WorkspaceIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+
+  export type $WorkspacePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "Workspace"
+    objects: {
+      nodes: Prisma.$WorkspaceNodePayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      name: string
+      type: $Enums.WorkspaceType
+      ownerUserId: string | null
+      departmentId: string | null
+      quotaBytes: bigint
+      usedBytes: bigint
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["workspace"]>
+    composites: {}
+  }
+
+  type WorkspaceGetPayload<S extends boolean | null | undefined | WorkspaceDefaultArgs> = $Result.GetResult<Prisma.$WorkspacePayload, S>
+
+  type WorkspaceCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<WorkspaceFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: WorkspaceCountAggregateInputType | true
+    }
+
+  export interface WorkspaceDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Workspace'], meta: { name: 'Workspace' } }
+    /**
+     * Find zero or one Workspace that matches the filter.
+     * @param {WorkspaceFindUniqueArgs} args - Arguments to find a Workspace
+     * @example
+     * // Get one Workspace
+     * const workspace = await prisma.workspace.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends WorkspaceFindUniqueArgs>(args: SelectSubset<T, WorkspaceFindUniqueArgs<ExtArgs>>): Prisma__WorkspaceClient<$Result.GetResult<Prisma.$WorkspacePayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one Workspace that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {WorkspaceFindUniqueOrThrowArgs} args - Arguments to find a Workspace
+     * @example
+     * // Get one Workspace
+     * const workspace = await prisma.workspace.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends WorkspaceFindUniqueOrThrowArgs>(args: SelectSubset<T, WorkspaceFindUniqueOrThrowArgs<ExtArgs>>): Prisma__WorkspaceClient<$Result.GetResult<Prisma.$WorkspacePayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first Workspace that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkspaceFindFirstArgs} args - Arguments to find a Workspace
+     * @example
+     * // Get one Workspace
+     * const workspace = await prisma.workspace.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends WorkspaceFindFirstArgs>(args?: SelectSubset<T, WorkspaceFindFirstArgs<ExtArgs>>): Prisma__WorkspaceClient<$Result.GetResult<Prisma.$WorkspacePayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first Workspace that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkspaceFindFirstOrThrowArgs} args - Arguments to find a Workspace
+     * @example
+     * // Get one Workspace
+     * const workspace = await prisma.workspace.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends WorkspaceFindFirstOrThrowArgs>(args?: SelectSubset<T, WorkspaceFindFirstOrThrowArgs<ExtArgs>>): Prisma__WorkspaceClient<$Result.GetResult<Prisma.$WorkspacePayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more Workspaces that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkspaceFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all Workspaces
+     * const workspaces = await prisma.workspace.findMany()
+     * 
+     * // Get first 10 Workspaces
+     * const workspaces = await prisma.workspace.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const workspaceWithIdOnly = await prisma.workspace.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends WorkspaceFindManyArgs>(args?: SelectSubset<T, WorkspaceFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$WorkspacePayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a Workspace.
+     * @param {WorkspaceCreateArgs} args - Arguments to create a Workspace.
+     * @example
+     * // Create one Workspace
+     * const Workspace = await prisma.workspace.create({
+     *   data: {
+     *     // ... data to create a Workspace
+     *   }
+     * })
+     * 
+     */
+    create<T extends WorkspaceCreateArgs>(args: SelectSubset<T, WorkspaceCreateArgs<ExtArgs>>): Prisma__WorkspaceClient<$Result.GetResult<Prisma.$WorkspacePayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many Workspaces.
+     * @param {WorkspaceCreateManyArgs} args - Arguments to create many Workspaces.
+     * @example
+     * // Create many Workspaces
+     * const workspace = await prisma.workspace.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends WorkspaceCreateManyArgs>(args?: SelectSubset<T, WorkspaceCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many Workspaces and returns the data saved in the database.
+     * @param {WorkspaceCreateManyAndReturnArgs} args - Arguments to create many Workspaces.
+     * @example
+     * // Create many Workspaces
+     * const workspace = await prisma.workspace.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many Workspaces and only return the `id`
+     * const workspaceWithIdOnly = await prisma.workspace.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends WorkspaceCreateManyAndReturnArgs>(args?: SelectSubset<T, WorkspaceCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$WorkspacePayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a Workspace.
+     * @param {WorkspaceDeleteArgs} args - Arguments to delete one Workspace.
+     * @example
+     * // Delete one Workspace
+     * const Workspace = await prisma.workspace.delete({
+     *   where: {
+     *     // ... filter to delete one Workspace
+     *   }
+     * })
+     * 
+     */
+    delete<T extends WorkspaceDeleteArgs>(args: SelectSubset<T, WorkspaceDeleteArgs<ExtArgs>>): Prisma__WorkspaceClient<$Result.GetResult<Prisma.$WorkspacePayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one Workspace.
+     * @param {WorkspaceUpdateArgs} args - Arguments to update one Workspace.
+     * @example
+     * // Update one Workspace
+     * const workspace = await prisma.workspace.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends WorkspaceUpdateArgs>(args: SelectSubset<T, WorkspaceUpdateArgs<ExtArgs>>): Prisma__WorkspaceClient<$Result.GetResult<Prisma.$WorkspacePayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more Workspaces.
+     * @param {WorkspaceDeleteManyArgs} args - Arguments to filter Workspaces to delete.
+     * @example
+     * // Delete a few Workspaces
+     * const { count } = await prisma.workspace.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends WorkspaceDeleteManyArgs>(args?: SelectSubset<T, WorkspaceDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Workspaces.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkspaceUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many Workspaces
+     * const workspace = await prisma.workspace.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends WorkspaceUpdateManyArgs>(args: SelectSubset<T, WorkspaceUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one Workspace.
+     * @param {WorkspaceUpsertArgs} args - Arguments to update or create a Workspace.
+     * @example
+     * // Update or create a Workspace
+     * const workspace = await prisma.workspace.upsert({
+     *   create: {
+     *     // ... data to create a Workspace
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the Workspace we want to update
+     *   }
+     * })
+     */
+    upsert<T extends WorkspaceUpsertArgs>(args: SelectSubset<T, WorkspaceUpsertArgs<ExtArgs>>): Prisma__WorkspaceClient<$Result.GetResult<Prisma.$WorkspacePayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of Workspaces.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkspaceCountArgs} args - Arguments to filter Workspaces to count.
+     * @example
+     * // Count the number of Workspaces
+     * const count = await prisma.workspace.count({
+     *   where: {
+     *     // ... the filter for the Workspaces we want to count
+     *   }
+     * })
+    **/
+    count<T extends WorkspaceCountArgs>(
+      args?: Subset<T, WorkspaceCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], WorkspaceCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a Workspace.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkspaceAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends WorkspaceAggregateArgs>(args: Subset<T, WorkspaceAggregateArgs>): Prisma.PrismaPromise<GetWorkspaceAggregateType<T>>
+
+    /**
+     * Group by Workspace.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkspaceGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends WorkspaceGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: WorkspaceGroupByArgs['orderBy'] }
+        : { orderBy?: WorkspaceGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, WorkspaceGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetWorkspaceGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the Workspace model
+   */
+  readonly fields: WorkspaceFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for Workspace.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__WorkspaceClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    nodes<T extends Workspace$nodesArgs<ExtArgs> = {}>(args?: Subset<T, Workspace$nodesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$WorkspaceNodePayload<ExtArgs>, T, "findMany"> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the Workspace model
+   */ 
+  interface WorkspaceFieldRefs {
+    readonly id: FieldRef<"Workspace", 'String'>
+    readonly name: FieldRef<"Workspace", 'String'>
+    readonly type: FieldRef<"Workspace", 'WorkspaceType'>
+    readonly ownerUserId: FieldRef<"Workspace", 'String'>
+    readonly departmentId: FieldRef<"Workspace", 'String'>
+    readonly quotaBytes: FieldRef<"Workspace", 'BigInt'>
+    readonly usedBytes: FieldRef<"Workspace", 'BigInt'>
+    readonly createdAt: FieldRef<"Workspace", 'DateTime'>
+    readonly updatedAt: FieldRef<"Workspace", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * Workspace findUnique
+   */
+  export type WorkspaceFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Workspace
+     */
+    select?: WorkspaceSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceInclude<ExtArgs> | null
+    /**
+     * Filter, which Workspace to fetch.
+     */
+    where: WorkspaceWhereUniqueInput
+  }
+
+  /**
+   * Workspace findUniqueOrThrow
+   */
+  export type WorkspaceFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Workspace
+     */
+    select?: WorkspaceSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceInclude<ExtArgs> | null
+    /**
+     * Filter, which Workspace to fetch.
+     */
+    where: WorkspaceWhereUniqueInput
+  }
+
+  /**
+   * Workspace findFirst
+   */
+  export type WorkspaceFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Workspace
+     */
+    select?: WorkspaceSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceInclude<ExtArgs> | null
+    /**
+     * Filter, which Workspace to fetch.
+     */
+    where?: WorkspaceWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Workspaces to fetch.
+     */
+    orderBy?: WorkspaceOrderByWithRelationInput | WorkspaceOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Workspaces.
+     */
+    cursor?: WorkspaceWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Workspaces from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Workspaces.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Workspaces.
+     */
+    distinct?: WorkspaceScalarFieldEnum | WorkspaceScalarFieldEnum[]
+  }
+
+  /**
+   * Workspace findFirstOrThrow
+   */
+  export type WorkspaceFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Workspace
+     */
+    select?: WorkspaceSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceInclude<ExtArgs> | null
+    /**
+     * Filter, which Workspace to fetch.
+     */
+    where?: WorkspaceWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Workspaces to fetch.
+     */
+    orderBy?: WorkspaceOrderByWithRelationInput | WorkspaceOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Workspaces.
+     */
+    cursor?: WorkspaceWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Workspaces from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Workspaces.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Workspaces.
+     */
+    distinct?: WorkspaceScalarFieldEnum | WorkspaceScalarFieldEnum[]
+  }
+
+  /**
+   * Workspace findMany
+   */
+  export type WorkspaceFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Workspace
+     */
+    select?: WorkspaceSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceInclude<ExtArgs> | null
+    /**
+     * Filter, which Workspaces to fetch.
+     */
+    where?: WorkspaceWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Workspaces to fetch.
+     */
+    orderBy?: WorkspaceOrderByWithRelationInput | WorkspaceOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing Workspaces.
+     */
+    cursor?: WorkspaceWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Workspaces from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Workspaces.
+     */
+    skip?: number
+    distinct?: WorkspaceScalarFieldEnum | WorkspaceScalarFieldEnum[]
+  }
+
+  /**
+   * Workspace create
+   */
+  export type WorkspaceCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Workspace
+     */
+    select?: WorkspaceSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceInclude<ExtArgs> | null
+    /**
+     * The data needed to create a Workspace.
+     */
+    data: XOR<WorkspaceCreateInput, WorkspaceUncheckedCreateInput>
+  }
+
+  /**
+   * Workspace createMany
+   */
+  export type WorkspaceCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many Workspaces.
+     */
+    data: WorkspaceCreateManyInput | WorkspaceCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * Workspace createManyAndReturn
+   */
+  export type WorkspaceCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Workspace
+     */
+    select?: WorkspaceSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many Workspaces.
+     */
+    data: WorkspaceCreateManyInput | WorkspaceCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * Workspace update
+   */
+  export type WorkspaceUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Workspace
+     */
+    select?: WorkspaceSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceInclude<ExtArgs> | null
+    /**
+     * The data needed to update a Workspace.
+     */
+    data: XOR<WorkspaceUpdateInput, WorkspaceUncheckedUpdateInput>
+    /**
+     * Choose, which Workspace to update.
+     */
+    where: WorkspaceWhereUniqueInput
+  }
+
+  /**
+   * Workspace updateMany
+   */
+  export type WorkspaceUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update Workspaces.
+     */
+    data: XOR<WorkspaceUpdateManyMutationInput, WorkspaceUncheckedUpdateManyInput>
+    /**
+     * Filter which Workspaces to update
+     */
+    where?: WorkspaceWhereInput
+  }
+
+  /**
+   * Workspace upsert
+   */
+  export type WorkspaceUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Workspace
+     */
+    select?: WorkspaceSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceInclude<ExtArgs> | null
+    /**
+     * The filter to search for the Workspace to update in case it exists.
+     */
+    where: WorkspaceWhereUniqueInput
+    /**
+     * In case the Workspace found by the `where` argument doesn't exist, create a new Workspace with this data.
+     */
+    create: XOR<WorkspaceCreateInput, WorkspaceUncheckedCreateInput>
+    /**
+     * In case the Workspace was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<WorkspaceUpdateInput, WorkspaceUncheckedUpdateInput>
+  }
+
+  /**
+   * Workspace delete
+   */
+  export type WorkspaceDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Workspace
+     */
+    select?: WorkspaceSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceInclude<ExtArgs> | null
+    /**
+     * Filter which Workspace to delete.
+     */
+    where: WorkspaceWhereUniqueInput
+  }
+
+  /**
+   * Workspace deleteMany
+   */
+  export type WorkspaceDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Workspaces to delete
+     */
+    where?: WorkspaceWhereInput
+  }
+
+  /**
+   * Workspace.nodes
+   */
+  export type Workspace$nodesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkspaceNode
+     */
+    select?: WorkspaceNodeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceNodeInclude<ExtArgs> | null
+    where?: WorkspaceNodeWhereInput
+    orderBy?: WorkspaceNodeOrderByWithRelationInput | WorkspaceNodeOrderByWithRelationInput[]
+    cursor?: WorkspaceNodeWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: WorkspaceNodeScalarFieldEnum | WorkspaceNodeScalarFieldEnum[]
+  }
+
+  /**
+   * Workspace without action
+   */
+  export type WorkspaceDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Workspace
+     */
+    select?: WorkspaceSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model WorkspaceNode
+   */
+
+  export type AggregateWorkspaceNode = {
+    _count: WorkspaceNodeCountAggregateOutputType | null
+    _avg: WorkspaceNodeAvgAggregateOutputType | null
+    _sum: WorkspaceNodeSumAggregateOutputType | null
+    _min: WorkspaceNodeMinAggregateOutputType | null
+    _max: WorkspaceNodeMaxAggregateOutputType | null
+  }
+
+  export type WorkspaceNodeAvgAggregateOutputType = {
+    fileSize: number | null
+  }
+
+  export type WorkspaceNodeSumAggregateOutputType = {
+    fileSize: bigint | null
+  }
+
+  export type WorkspaceNodeMinAggregateOutputType = {
+    id: string | null
+    workspaceId: string | null
+    parentId: string | null
+    name: string | null
+    type: $Enums.WorkspaceNodeType | null
+    fileSize: bigint | null
+    mimeType: string | null
+    storagePath: string | null
+    createdBy: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type WorkspaceNodeMaxAggregateOutputType = {
+    id: string | null
+    workspaceId: string | null
+    parentId: string | null
+    name: string | null
+    type: $Enums.WorkspaceNodeType | null
+    fileSize: bigint | null
+    mimeType: string | null
+    storagePath: string | null
+    createdBy: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type WorkspaceNodeCountAggregateOutputType = {
+    id: number
+    workspaceId: number
+    parentId: number
+    name: number
+    type: number
+    fileSize: number
+    mimeType: number
+    storagePath: number
+    digestJson: number
+    createdBy: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type WorkspaceNodeAvgAggregateInputType = {
+    fileSize?: true
+  }
+
+  export type WorkspaceNodeSumAggregateInputType = {
+    fileSize?: true
+  }
+
+  export type WorkspaceNodeMinAggregateInputType = {
+    id?: true
+    workspaceId?: true
+    parentId?: true
+    name?: true
+    type?: true
+    fileSize?: true
+    mimeType?: true
+    storagePath?: true
+    createdBy?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type WorkspaceNodeMaxAggregateInputType = {
+    id?: true
+    workspaceId?: true
+    parentId?: true
+    name?: true
+    type?: true
+    fileSize?: true
+    mimeType?: true
+    storagePath?: true
+    createdBy?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type WorkspaceNodeCountAggregateInputType = {
+    id?: true
+    workspaceId?: true
+    parentId?: true
+    name?: true
+    type?: true
+    fileSize?: true
+    mimeType?: true
+    storagePath?: true
+    digestJson?: true
+    createdBy?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type WorkspaceNodeAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which WorkspaceNode to aggregate.
+     */
+    where?: WorkspaceNodeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkspaceNodes to fetch.
+     */
+    orderBy?: WorkspaceNodeOrderByWithRelationInput | WorkspaceNodeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: WorkspaceNodeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkspaceNodes from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkspaceNodes.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned WorkspaceNodes
+    **/
+    _count?: true | WorkspaceNodeCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: WorkspaceNodeAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: WorkspaceNodeSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: WorkspaceNodeMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: WorkspaceNodeMaxAggregateInputType
+  }
+
+  export type GetWorkspaceNodeAggregateType<T extends WorkspaceNodeAggregateArgs> = {
+        [P in keyof T & keyof AggregateWorkspaceNode]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateWorkspaceNode[P]>
+      : GetScalarType<T[P], AggregateWorkspaceNode[P]>
+  }
+
+
+
+
+  export type WorkspaceNodeGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: WorkspaceNodeWhereInput
+    orderBy?: WorkspaceNodeOrderByWithAggregationInput | WorkspaceNodeOrderByWithAggregationInput[]
+    by: WorkspaceNodeScalarFieldEnum[] | WorkspaceNodeScalarFieldEnum
+    having?: WorkspaceNodeScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: WorkspaceNodeCountAggregateInputType | true
+    _avg?: WorkspaceNodeAvgAggregateInputType
+    _sum?: WorkspaceNodeSumAggregateInputType
+    _min?: WorkspaceNodeMinAggregateInputType
+    _max?: WorkspaceNodeMaxAggregateInputType
+  }
+
+  export type WorkspaceNodeGroupByOutputType = {
+    id: string
+    workspaceId: string
+    parentId: string | null
+    name: string
+    type: $Enums.WorkspaceNodeType
+    fileSize: bigint
+    mimeType: string | null
+    storagePath: string | null
+    digestJson: JsonValue | null
+    createdBy: string
+    createdAt: Date
+    updatedAt: Date
+    _count: WorkspaceNodeCountAggregateOutputType | null
+    _avg: WorkspaceNodeAvgAggregateOutputType | null
+    _sum: WorkspaceNodeSumAggregateOutputType | null
+    _min: WorkspaceNodeMinAggregateOutputType | null
+    _max: WorkspaceNodeMaxAggregateOutputType | null
+  }
+
+  type GetWorkspaceNodeGroupByPayload<T extends WorkspaceNodeGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<WorkspaceNodeGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof WorkspaceNodeGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], WorkspaceNodeGroupByOutputType[P]>
+            : GetScalarType<T[P], WorkspaceNodeGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type WorkspaceNodeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    workspaceId?: boolean
+    parentId?: boolean
+    name?: boolean
+    type?: boolean
+    fileSize?: boolean
+    mimeType?: boolean
+    storagePath?: boolean
+    digestJson?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    workspace?: boolean | WorkspaceDefaultArgs<ExtArgs>
+    parent?: boolean | WorkspaceNode$parentArgs<ExtArgs>
+    children?: boolean | WorkspaceNode$childrenArgs<ExtArgs>
+    _count?: boolean | WorkspaceNodeCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["workspaceNode"]>
+
+  export type WorkspaceNodeSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    workspaceId?: boolean
+    parentId?: boolean
+    name?: boolean
+    type?: boolean
+    fileSize?: boolean
+    mimeType?: boolean
+    storagePath?: boolean
+    digestJson?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    workspace?: boolean | WorkspaceDefaultArgs<ExtArgs>
+    parent?: boolean | WorkspaceNode$parentArgs<ExtArgs>
+  }, ExtArgs["result"]["workspaceNode"]>
+
+  export type WorkspaceNodeSelectScalar = {
+    id?: boolean
+    workspaceId?: boolean
+    parentId?: boolean
+    name?: boolean
+    type?: boolean
+    fileSize?: boolean
+    mimeType?: boolean
+    storagePath?: boolean
+    digestJson?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type WorkspaceNodeInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    workspace?: boolean | WorkspaceDefaultArgs<ExtArgs>
+    parent?: boolean | WorkspaceNode$parentArgs<ExtArgs>
+    children?: boolean | WorkspaceNode$childrenArgs<ExtArgs>
+    _count?: boolean | WorkspaceNodeCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type WorkspaceNodeIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    workspace?: boolean | WorkspaceDefaultArgs<ExtArgs>
+    parent?: boolean | WorkspaceNode$parentArgs<ExtArgs>
+  }
+
+  export type $WorkspaceNodePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "WorkspaceNode"
+    objects: {
+      workspace: Prisma.$WorkspacePayload<ExtArgs>
+      parent: Prisma.$WorkspaceNodePayload<ExtArgs> | null
+      children: Prisma.$WorkspaceNodePayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      workspaceId: string
+      parentId: string | null
+      name: string
+      type: $Enums.WorkspaceNodeType
+      fileSize: bigint
+      mimeType: string | null
+      storagePath: string | null
+      digestJson: Prisma.JsonValue | null
+      createdBy: string
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["workspaceNode"]>
+    composites: {}
+  }
+
+  type WorkspaceNodeGetPayload<S extends boolean | null | undefined | WorkspaceNodeDefaultArgs> = $Result.GetResult<Prisma.$WorkspaceNodePayload, S>
+
+  type WorkspaceNodeCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<WorkspaceNodeFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: WorkspaceNodeCountAggregateInputType | true
+    }
+
+  export interface WorkspaceNodeDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['WorkspaceNode'], meta: { name: 'WorkspaceNode' } }
+    /**
+     * Find zero or one WorkspaceNode that matches the filter.
+     * @param {WorkspaceNodeFindUniqueArgs} args - Arguments to find a WorkspaceNode
+     * @example
+     * // Get one WorkspaceNode
+     * const workspaceNode = await prisma.workspaceNode.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends WorkspaceNodeFindUniqueArgs>(args: SelectSubset<T, WorkspaceNodeFindUniqueArgs<ExtArgs>>): Prisma__WorkspaceNodeClient<$Result.GetResult<Prisma.$WorkspaceNodePayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one WorkspaceNode that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {WorkspaceNodeFindUniqueOrThrowArgs} args - Arguments to find a WorkspaceNode
+     * @example
+     * // Get one WorkspaceNode
+     * const workspaceNode = await prisma.workspaceNode.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends WorkspaceNodeFindUniqueOrThrowArgs>(args: SelectSubset<T, WorkspaceNodeFindUniqueOrThrowArgs<ExtArgs>>): Prisma__WorkspaceNodeClient<$Result.GetResult<Prisma.$WorkspaceNodePayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first WorkspaceNode that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkspaceNodeFindFirstArgs} args - Arguments to find a WorkspaceNode
+     * @example
+     * // Get one WorkspaceNode
+     * const workspaceNode = await prisma.workspaceNode.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends WorkspaceNodeFindFirstArgs>(args?: SelectSubset<T, WorkspaceNodeFindFirstArgs<ExtArgs>>): Prisma__WorkspaceNodeClient<$Result.GetResult<Prisma.$WorkspaceNodePayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first WorkspaceNode that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkspaceNodeFindFirstOrThrowArgs} args - Arguments to find a WorkspaceNode
+     * @example
+     * // Get one WorkspaceNode
+     * const workspaceNode = await prisma.workspaceNode.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends WorkspaceNodeFindFirstOrThrowArgs>(args?: SelectSubset<T, WorkspaceNodeFindFirstOrThrowArgs<ExtArgs>>): Prisma__WorkspaceNodeClient<$Result.GetResult<Prisma.$WorkspaceNodePayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more WorkspaceNodes that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkspaceNodeFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all WorkspaceNodes
+     * const workspaceNodes = await prisma.workspaceNode.findMany()
+     * 
+     * // Get first 10 WorkspaceNodes
+     * const workspaceNodes = await prisma.workspaceNode.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const workspaceNodeWithIdOnly = await prisma.workspaceNode.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends WorkspaceNodeFindManyArgs>(args?: SelectSubset<T, WorkspaceNodeFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$WorkspaceNodePayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a WorkspaceNode.
+     * @param {WorkspaceNodeCreateArgs} args - Arguments to create a WorkspaceNode.
+     * @example
+     * // Create one WorkspaceNode
+     * const WorkspaceNode = await prisma.workspaceNode.create({
+     *   data: {
+     *     // ... data to create a WorkspaceNode
+     *   }
+     * })
+     * 
+     */
+    create<T extends WorkspaceNodeCreateArgs>(args: SelectSubset<T, WorkspaceNodeCreateArgs<ExtArgs>>): Prisma__WorkspaceNodeClient<$Result.GetResult<Prisma.$WorkspaceNodePayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many WorkspaceNodes.
+     * @param {WorkspaceNodeCreateManyArgs} args - Arguments to create many WorkspaceNodes.
+     * @example
+     * // Create many WorkspaceNodes
+     * const workspaceNode = await prisma.workspaceNode.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends WorkspaceNodeCreateManyArgs>(args?: SelectSubset<T, WorkspaceNodeCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many WorkspaceNodes and returns the data saved in the database.
+     * @param {WorkspaceNodeCreateManyAndReturnArgs} args - Arguments to create many WorkspaceNodes.
+     * @example
+     * // Create many WorkspaceNodes
+     * const workspaceNode = await prisma.workspaceNode.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many WorkspaceNodes and only return the `id`
+     * const workspaceNodeWithIdOnly = await prisma.workspaceNode.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends WorkspaceNodeCreateManyAndReturnArgs>(args?: SelectSubset<T, WorkspaceNodeCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$WorkspaceNodePayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a WorkspaceNode.
+     * @param {WorkspaceNodeDeleteArgs} args - Arguments to delete one WorkspaceNode.
+     * @example
+     * // Delete one WorkspaceNode
+     * const WorkspaceNode = await prisma.workspaceNode.delete({
+     *   where: {
+     *     // ... filter to delete one WorkspaceNode
+     *   }
+     * })
+     * 
+     */
+    delete<T extends WorkspaceNodeDeleteArgs>(args: SelectSubset<T, WorkspaceNodeDeleteArgs<ExtArgs>>): Prisma__WorkspaceNodeClient<$Result.GetResult<Prisma.$WorkspaceNodePayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one WorkspaceNode.
+     * @param {WorkspaceNodeUpdateArgs} args - Arguments to update one WorkspaceNode.
+     * @example
+     * // Update one WorkspaceNode
+     * const workspaceNode = await prisma.workspaceNode.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends WorkspaceNodeUpdateArgs>(args: SelectSubset<T, WorkspaceNodeUpdateArgs<ExtArgs>>): Prisma__WorkspaceNodeClient<$Result.GetResult<Prisma.$WorkspaceNodePayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more WorkspaceNodes.
+     * @param {WorkspaceNodeDeleteManyArgs} args - Arguments to filter WorkspaceNodes to delete.
+     * @example
+     * // Delete a few WorkspaceNodes
+     * const { count } = await prisma.workspaceNode.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends WorkspaceNodeDeleteManyArgs>(args?: SelectSubset<T, WorkspaceNodeDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more WorkspaceNodes.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkspaceNodeUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many WorkspaceNodes
+     * const workspaceNode = await prisma.workspaceNode.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends WorkspaceNodeUpdateManyArgs>(args: SelectSubset<T, WorkspaceNodeUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one WorkspaceNode.
+     * @param {WorkspaceNodeUpsertArgs} args - Arguments to update or create a WorkspaceNode.
+     * @example
+     * // Update or create a WorkspaceNode
+     * const workspaceNode = await prisma.workspaceNode.upsert({
+     *   create: {
+     *     // ... data to create a WorkspaceNode
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the WorkspaceNode we want to update
+     *   }
+     * })
+     */
+    upsert<T extends WorkspaceNodeUpsertArgs>(args: SelectSubset<T, WorkspaceNodeUpsertArgs<ExtArgs>>): Prisma__WorkspaceNodeClient<$Result.GetResult<Prisma.$WorkspaceNodePayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of WorkspaceNodes.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkspaceNodeCountArgs} args - Arguments to filter WorkspaceNodes to count.
+     * @example
+     * // Count the number of WorkspaceNodes
+     * const count = await prisma.workspaceNode.count({
+     *   where: {
+     *     // ... the filter for the WorkspaceNodes we want to count
+     *   }
+     * })
+    **/
+    count<T extends WorkspaceNodeCountArgs>(
+      args?: Subset<T, WorkspaceNodeCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], WorkspaceNodeCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a WorkspaceNode.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkspaceNodeAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends WorkspaceNodeAggregateArgs>(args: Subset<T, WorkspaceNodeAggregateArgs>): Prisma.PrismaPromise<GetWorkspaceNodeAggregateType<T>>
+
+    /**
+     * Group by WorkspaceNode.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkspaceNodeGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends WorkspaceNodeGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: WorkspaceNodeGroupByArgs['orderBy'] }
+        : { orderBy?: WorkspaceNodeGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, WorkspaceNodeGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetWorkspaceNodeGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the WorkspaceNode model
+   */
+  readonly fields: WorkspaceNodeFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for WorkspaceNode.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__WorkspaceNodeClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    workspace<T extends WorkspaceDefaultArgs<ExtArgs> = {}>(args?: Subset<T, WorkspaceDefaultArgs<ExtArgs>>): Prisma__WorkspaceClient<$Result.GetResult<Prisma.$WorkspacePayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    parent<T extends WorkspaceNode$parentArgs<ExtArgs> = {}>(args?: Subset<T, WorkspaceNode$parentArgs<ExtArgs>>): Prisma__WorkspaceNodeClient<$Result.GetResult<Prisma.$WorkspaceNodePayload<ExtArgs>, T, "findUniqueOrThrow"> | null, null, ExtArgs>
+    children<T extends WorkspaceNode$childrenArgs<ExtArgs> = {}>(args?: Subset<T, WorkspaceNode$childrenArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$WorkspaceNodePayload<ExtArgs>, T, "findMany"> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the WorkspaceNode model
+   */ 
+  interface WorkspaceNodeFieldRefs {
+    readonly id: FieldRef<"WorkspaceNode", 'String'>
+    readonly workspaceId: FieldRef<"WorkspaceNode", 'String'>
+    readonly parentId: FieldRef<"WorkspaceNode", 'String'>
+    readonly name: FieldRef<"WorkspaceNode", 'String'>
+    readonly type: FieldRef<"WorkspaceNode", 'WorkspaceNodeType'>
+    readonly fileSize: FieldRef<"WorkspaceNode", 'BigInt'>
+    readonly mimeType: FieldRef<"WorkspaceNode", 'String'>
+    readonly storagePath: FieldRef<"WorkspaceNode", 'String'>
+    readonly digestJson: FieldRef<"WorkspaceNode", 'Json'>
+    readonly createdBy: FieldRef<"WorkspaceNode", 'String'>
+    readonly createdAt: FieldRef<"WorkspaceNode", 'DateTime'>
+    readonly updatedAt: FieldRef<"WorkspaceNode", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * WorkspaceNode findUnique
+   */
+  export type WorkspaceNodeFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkspaceNode
+     */
+    select?: WorkspaceNodeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceNodeInclude<ExtArgs> | null
+    /**
+     * Filter, which WorkspaceNode to fetch.
+     */
+    where: WorkspaceNodeWhereUniqueInput
+  }
+
+  /**
+   * WorkspaceNode findUniqueOrThrow
+   */
+  export type WorkspaceNodeFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkspaceNode
+     */
+    select?: WorkspaceNodeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceNodeInclude<ExtArgs> | null
+    /**
+     * Filter, which WorkspaceNode to fetch.
+     */
+    where: WorkspaceNodeWhereUniqueInput
+  }
+
+  /**
+   * WorkspaceNode findFirst
+   */
+  export type WorkspaceNodeFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkspaceNode
+     */
+    select?: WorkspaceNodeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceNodeInclude<ExtArgs> | null
+    /**
+     * Filter, which WorkspaceNode to fetch.
+     */
+    where?: WorkspaceNodeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkspaceNodes to fetch.
+     */
+    orderBy?: WorkspaceNodeOrderByWithRelationInput | WorkspaceNodeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for WorkspaceNodes.
+     */
+    cursor?: WorkspaceNodeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkspaceNodes from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkspaceNodes.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of WorkspaceNodes.
+     */
+    distinct?: WorkspaceNodeScalarFieldEnum | WorkspaceNodeScalarFieldEnum[]
+  }
+
+  /**
+   * WorkspaceNode findFirstOrThrow
+   */
+  export type WorkspaceNodeFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkspaceNode
+     */
+    select?: WorkspaceNodeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceNodeInclude<ExtArgs> | null
+    /**
+     * Filter, which WorkspaceNode to fetch.
+     */
+    where?: WorkspaceNodeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkspaceNodes to fetch.
+     */
+    orderBy?: WorkspaceNodeOrderByWithRelationInput | WorkspaceNodeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for WorkspaceNodes.
+     */
+    cursor?: WorkspaceNodeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkspaceNodes from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkspaceNodes.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of WorkspaceNodes.
+     */
+    distinct?: WorkspaceNodeScalarFieldEnum | WorkspaceNodeScalarFieldEnum[]
+  }
+
+  /**
+   * WorkspaceNode findMany
+   */
+  export type WorkspaceNodeFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkspaceNode
+     */
+    select?: WorkspaceNodeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceNodeInclude<ExtArgs> | null
+    /**
+     * Filter, which WorkspaceNodes to fetch.
+     */
+    where?: WorkspaceNodeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkspaceNodes to fetch.
+     */
+    orderBy?: WorkspaceNodeOrderByWithRelationInput | WorkspaceNodeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing WorkspaceNodes.
+     */
+    cursor?: WorkspaceNodeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkspaceNodes from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkspaceNodes.
+     */
+    skip?: number
+    distinct?: WorkspaceNodeScalarFieldEnum | WorkspaceNodeScalarFieldEnum[]
+  }
+
+  /**
+   * WorkspaceNode create
+   */
+  export type WorkspaceNodeCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkspaceNode
+     */
+    select?: WorkspaceNodeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceNodeInclude<ExtArgs> | null
+    /**
+     * The data needed to create a WorkspaceNode.
+     */
+    data: XOR<WorkspaceNodeCreateInput, WorkspaceNodeUncheckedCreateInput>
+  }
+
+  /**
+   * WorkspaceNode createMany
+   */
+  export type WorkspaceNodeCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many WorkspaceNodes.
+     */
+    data: WorkspaceNodeCreateManyInput | WorkspaceNodeCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * WorkspaceNode createManyAndReturn
+   */
+  export type WorkspaceNodeCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkspaceNode
+     */
+    select?: WorkspaceNodeSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many WorkspaceNodes.
+     */
+    data: WorkspaceNodeCreateManyInput | WorkspaceNodeCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceNodeIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * WorkspaceNode update
+   */
+  export type WorkspaceNodeUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkspaceNode
+     */
+    select?: WorkspaceNodeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceNodeInclude<ExtArgs> | null
+    /**
+     * The data needed to update a WorkspaceNode.
+     */
+    data: XOR<WorkspaceNodeUpdateInput, WorkspaceNodeUncheckedUpdateInput>
+    /**
+     * Choose, which WorkspaceNode to update.
+     */
+    where: WorkspaceNodeWhereUniqueInput
+  }
+
+  /**
+   * WorkspaceNode updateMany
+   */
+  export type WorkspaceNodeUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update WorkspaceNodes.
+     */
+    data: XOR<WorkspaceNodeUpdateManyMutationInput, WorkspaceNodeUncheckedUpdateManyInput>
+    /**
+     * Filter which WorkspaceNodes to update
+     */
+    where?: WorkspaceNodeWhereInput
+  }
+
+  /**
+   * WorkspaceNode upsert
+   */
+  export type WorkspaceNodeUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkspaceNode
+     */
+    select?: WorkspaceNodeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceNodeInclude<ExtArgs> | null
+    /**
+     * The filter to search for the WorkspaceNode to update in case it exists.
+     */
+    where: WorkspaceNodeWhereUniqueInput
+    /**
+     * In case the WorkspaceNode found by the `where` argument doesn't exist, create a new WorkspaceNode with this data.
+     */
+    create: XOR<WorkspaceNodeCreateInput, WorkspaceNodeUncheckedCreateInput>
+    /**
+     * In case the WorkspaceNode was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<WorkspaceNodeUpdateInput, WorkspaceNodeUncheckedUpdateInput>
+  }
+
+  /**
+   * WorkspaceNode delete
+   */
+  export type WorkspaceNodeDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkspaceNode
+     */
+    select?: WorkspaceNodeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceNodeInclude<ExtArgs> | null
+    /**
+     * Filter which WorkspaceNode to delete.
+     */
+    where: WorkspaceNodeWhereUniqueInput
+  }
+
+  /**
+   * WorkspaceNode deleteMany
+   */
+  export type WorkspaceNodeDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which WorkspaceNodes to delete
+     */
+    where?: WorkspaceNodeWhereInput
+  }
+
+  /**
+   * WorkspaceNode.parent
+   */
+  export type WorkspaceNode$parentArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkspaceNode
+     */
+    select?: WorkspaceNodeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceNodeInclude<ExtArgs> | null
+    where?: WorkspaceNodeWhereInput
+  }
+
+  /**
+   * WorkspaceNode.children
+   */
+  export type WorkspaceNode$childrenArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkspaceNode
+     */
+    select?: WorkspaceNodeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceNodeInclude<ExtArgs> | null
+    where?: WorkspaceNodeWhereInput
+    orderBy?: WorkspaceNodeOrderByWithRelationInput | WorkspaceNodeOrderByWithRelationInput[]
+    cursor?: WorkspaceNodeWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: WorkspaceNodeScalarFieldEnum | WorkspaceNodeScalarFieldEnum[]
+  }
+
+  /**
+   * WorkspaceNode without action
+   */
+  export type WorkspaceNodeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkspaceNode
+     */
+    select?: WorkspaceNodeSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: WorkspaceNodeInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model WorkbenchTodo
+   */
+
+  export type AggregateWorkbenchTodo = {
+    _count: WorkbenchTodoCountAggregateOutputType | null
+    _min: WorkbenchTodoMinAggregateOutputType | null
+    _max: WorkbenchTodoMaxAggregateOutputType | null
+  }
+
+  export type WorkbenchTodoMinAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    title: string | null
+    description: string | null
+    priority: $Enums.TodoPriority | null
+    status: $Enums.TodoStatus | null
+    dueDate: Date | null
+    completedAt: Date | null
+    sourceType: $Enums.TodoSourceType | null
+    sourceRefId: string | null
+    sourceTitle: string | null
+    boundWorkflowId: string | null
+    executionId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type WorkbenchTodoMaxAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    title: string | null
+    description: string | null
+    priority: $Enums.TodoPriority | null
+    status: $Enums.TodoStatus | null
+    dueDate: Date | null
+    completedAt: Date | null
+    sourceType: $Enums.TodoSourceType | null
+    sourceRefId: string | null
+    sourceTitle: string | null
+    boundWorkflowId: string | null
+    executionId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type WorkbenchTodoCountAggregateOutputType = {
+    id: number
+    userId: number
+    title: number
+    description: number
+    priority: number
+    status: number
+    dueDate: number
+    completedAt: number
+    sourceType: number
+    sourceRefId: number
+    sourceTitle: number
+    contextData: number
+    boundWorkflowId: number
+    executionId: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type WorkbenchTodoMinAggregateInputType = {
+    id?: true
+    userId?: true
+    title?: true
+    description?: true
+    priority?: true
+    status?: true
+    dueDate?: true
+    completedAt?: true
+    sourceType?: true
+    sourceRefId?: true
+    sourceTitle?: true
+    boundWorkflowId?: true
+    executionId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type WorkbenchTodoMaxAggregateInputType = {
+    id?: true
+    userId?: true
+    title?: true
+    description?: true
+    priority?: true
+    status?: true
+    dueDate?: true
+    completedAt?: true
+    sourceType?: true
+    sourceRefId?: true
+    sourceTitle?: true
+    boundWorkflowId?: true
+    executionId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type WorkbenchTodoCountAggregateInputType = {
+    id?: true
+    userId?: true
+    title?: true
+    description?: true
+    priority?: true
+    status?: true
+    dueDate?: true
+    completedAt?: true
+    sourceType?: true
+    sourceRefId?: true
+    sourceTitle?: true
+    contextData?: true
+    boundWorkflowId?: true
+    executionId?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type WorkbenchTodoAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which WorkbenchTodo to aggregate.
+     */
+    where?: WorkbenchTodoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkbenchTodos to fetch.
+     */
+    orderBy?: WorkbenchTodoOrderByWithRelationInput | WorkbenchTodoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: WorkbenchTodoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkbenchTodos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkbenchTodos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned WorkbenchTodos
+    **/
+    _count?: true | WorkbenchTodoCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: WorkbenchTodoMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: WorkbenchTodoMaxAggregateInputType
+  }
+
+  export type GetWorkbenchTodoAggregateType<T extends WorkbenchTodoAggregateArgs> = {
+        [P in keyof T & keyof AggregateWorkbenchTodo]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateWorkbenchTodo[P]>
+      : GetScalarType<T[P], AggregateWorkbenchTodo[P]>
+  }
+
+
+
+
+  export type WorkbenchTodoGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: WorkbenchTodoWhereInput
+    orderBy?: WorkbenchTodoOrderByWithAggregationInput | WorkbenchTodoOrderByWithAggregationInput[]
+    by: WorkbenchTodoScalarFieldEnum[] | WorkbenchTodoScalarFieldEnum
+    having?: WorkbenchTodoScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: WorkbenchTodoCountAggregateInputType | true
+    _min?: WorkbenchTodoMinAggregateInputType
+    _max?: WorkbenchTodoMaxAggregateInputType
+  }
+
+  export type WorkbenchTodoGroupByOutputType = {
+    id: string
+    userId: string
+    title: string
+    description: string | null
+    priority: $Enums.TodoPriority
+    status: $Enums.TodoStatus
+    dueDate: Date | null
+    completedAt: Date | null
+    sourceType: $Enums.TodoSourceType
+    sourceRefId: string | null
+    sourceTitle: string | null
+    contextData: JsonValue | null
+    boundWorkflowId: string | null
+    executionId: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: WorkbenchTodoCountAggregateOutputType | null
+    _min: WorkbenchTodoMinAggregateOutputType | null
+    _max: WorkbenchTodoMaxAggregateOutputType | null
+  }
+
+  type GetWorkbenchTodoGroupByPayload<T extends WorkbenchTodoGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<WorkbenchTodoGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof WorkbenchTodoGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], WorkbenchTodoGroupByOutputType[P]>
+            : GetScalarType<T[P], WorkbenchTodoGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type WorkbenchTodoSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    title?: boolean
+    description?: boolean
+    priority?: boolean
+    status?: boolean
+    dueDate?: boolean
+    completedAt?: boolean
+    sourceType?: boolean
+    sourceRefId?: boolean
+    sourceTitle?: boolean
+    contextData?: boolean
+    boundWorkflowId?: boolean
+    executionId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["workbenchTodo"]>
+
+  export type WorkbenchTodoSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    title?: boolean
+    description?: boolean
+    priority?: boolean
+    status?: boolean
+    dueDate?: boolean
+    completedAt?: boolean
+    sourceType?: boolean
+    sourceRefId?: boolean
+    sourceTitle?: boolean
+    contextData?: boolean
+    boundWorkflowId?: boolean
+    executionId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["workbenchTodo"]>
+
+  export type WorkbenchTodoSelectScalar = {
+    id?: boolean
+    userId?: boolean
+    title?: boolean
+    description?: boolean
+    priority?: boolean
+    status?: boolean
+    dueDate?: boolean
+    completedAt?: boolean
+    sourceType?: boolean
+    sourceRefId?: boolean
+    sourceTitle?: boolean
+    contextData?: boolean
+    boundWorkflowId?: boolean
+    executionId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+
+  export type $WorkbenchTodoPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "WorkbenchTodo"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userId: string
+      title: string
+      description: string | null
+      priority: $Enums.TodoPriority
+      status: $Enums.TodoStatus
+      dueDate: Date | null
+      completedAt: Date | null
+      sourceType: $Enums.TodoSourceType
+      sourceRefId: string | null
+      sourceTitle: string | null
+      contextData: Prisma.JsonValue | null
+      boundWorkflowId: string | null
+      executionId: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["workbenchTodo"]>
+    composites: {}
+  }
+
+  type WorkbenchTodoGetPayload<S extends boolean | null | undefined | WorkbenchTodoDefaultArgs> = $Result.GetResult<Prisma.$WorkbenchTodoPayload, S>
+
+  type WorkbenchTodoCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<WorkbenchTodoFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: WorkbenchTodoCountAggregateInputType | true
+    }
+
+  export interface WorkbenchTodoDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['WorkbenchTodo'], meta: { name: 'WorkbenchTodo' } }
+    /**
+     * Find zero or one WorkbenchTodo that matches the filter.
+     * @param {WorkbenchTodoFindUniqueArgs} args - Arguments to find a WorkbenchTodo
+     * @example
+     * // Get one WorkbenchTodo
+     * const workbenchTodo = await prisma.workbenchTodo.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends WorkbenchTodoFindUniqueArgs>(args: SelectSubset<T, WorkbenchTodoFindUniqueArgs<ExtArgs>>): Prisma__WorkbenchTodoClient<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one WorkbenchTodo that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {WorkbenchTodoFindUniqueOrThrowArgs} args - Arguments to find a WorkbenchTodo
+     * @example
+     * // Get one WorkbenchTodo
+     * const workbenchTodo = await prisma.workbenchTodo.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends WorkbenchTodoFindUniqueOrThrowArgs>(args: SelectSubset<T, WorkbenchTodoFindUniqueOrThrowArgs<ExtArgs>>): Prisma__WorkbenchTodoClient<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first WorkbenchTodo that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchTodoFindFirstArgs} args - Arguments to find a WorkbenchTodo
+     * @example
+     * // Get one WorkbenchTodo
+     * const workbenchTodo = await prisma.workbenchTodo.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends WorkbenchTodoFindFirstArgs>(args?: SelectSubset<T, WorkbenchTodoFindFirstArgs<ExtArgs>>): Prisma__WorkbenchTodoClient<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first WorkbenchTodo that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchTodoFindFirstOrThrowArgs} args - Arguments to find a WorkbenchTodo
+     * @example
+     * // Get one WorkbenchTodo
+     * const workbenchTodo = await prisma.workbenchTodo.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends WorkbenchTodoFindFirstOrThrowArgs>(args?: SelectSubset<T, WorkbenchTodoFindFirstOrThrowArgs<ExtArgs>>): Prisma__WorkbenchTodoClient<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more WorkbenchTodos that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchTodoFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all WorkbenchTodos
+     * const workbenchTodos = await prisma.workbenchTodo.findMany()
+     * 
+     * // Get first 10 WorkbenchTodos
+     * const workbenchTodos = await prisma.workbenchTodo.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const workbenchTodoWithIdOnly = await prisma.workbenchTodo.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends WorkbenchTodoFindManyArgs>(args?: SelectSubset<T, WorkbenchTodoFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a WorkbenchTodo.
+     * @param {WorkbenchTodoCreateArgs} args - Arguments to create a WorkbenchTodo.
+     * @example
+     * // Create one WorkbenchTodo
+     * const WorkbenchTodo = await prisma.workbenchTodo.create({
+     *   data: {
+     *     // ... data to create a WorkbenchTodo
+     *   }
+     * })
+     * 
+     */
+    create<T extends WorkbenchTodoCreateArgs>(args: SelectSubset<T, WorkbenchTodoCreateArgs<ExtArgs>>): Prisma__WorkbenchTodoClient<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many WorkbenchTodos.
+     * @param {WorkbenchTodoCreateManyArgs} args - Arguments to create many WorkbenchTodos.
+     * @example
+     * // Create many WorkbenchTodos
+     * const workbenchTodo = await prisma.workbenchTodo.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends WorkbenchTodoCreateManyArgs>(args?: SelectSubset<T, WorkbenchTodoCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many WorkbenchTodos and returns the data saved in the database.
+     * @param {WorkbenchTodoCreateManyAndReturnArgs} args - Arguments to create many WorkbenchTodos.
+     * @example
+     * // Create many WorkbenchTodos
+     * const workbenchTodo = await prisma.workbenchTodo.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many WorkbenchTodos and only return the `id`
+     * const workbenchTodoWithIdOnly = await prisma.workbenchTodo.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends WorkbenchTodoCreateManyAndReturnArgs>(args?: SelectSubset<T, WorkbenchTodoCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a WorkbenchTodo.
+     * @param {WorkbenchTodoDeleteArgs} args - Arguments to delete one WorkbenchTodo.
+     * @example
+     * // Delete one WorkbenchTodo
+     * const WorkbenchTodo = await prisma.workbenchTodo.delete({
+     *   where: {
+     *     // ... filter to delete one WorkbenchTodo
+     *   }
+     * })
+     * 
+     */
+    delete<T extends WorkbenchTodoDeleteArgs>(args: SelectSubset<T, WorkbenchTodoDeleteArgs<ExtArgs>>): Prisma__WorkbenchTodoClient<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one WorkbenchTodo.
+     * @param {WorkbenchTodoUpdateArgs} args - Arguments to update one WorkbenchTodo.
+     * @example
+     * // Update one WorkbenchTodo
+     * const workbenchTodo = await prisma.workbenchTodo.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends WorkbenchTodoUpdateArgs>(args: SelectSubset<T, WorkbenchTodoUpdateArgs<ExtArgs>>): Prisma__WorkbenchTodoClient<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more WorkbenchTodos.
+     * @param {WorkbenchTodoDeleteManyArgs} args - Arguments to filter WorkbenchTodos to delete.
+     * @example
+     * // Delete a few WorkbenchTodos
+     * const { count } = await prisma.workbenchTodo.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends WorkbenchTodoDeleteManyArgs>(args?: SelectSubset<T, WorkbenchTodoDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more WorkbenchTodos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchTodoUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many WorkbenchTodos
+     * const workbenchTodo = await prisma.workbenchTodo.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends WorkbenchTodoUpdateManyArgs>(args: SelectSubset<T, WorkbenchTodoUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one WorkbenchTodo.
+     * @param {WorkbenchTodoUpsertArgs} args - Arguments to update or create a WorkbenchTodo.
+     * @example
+     * // Update or create a WorkbenchTodo
+     * const workbenchTodo = await prisma.workbenchTodo.upsert({
+     *   create: {
+     *     // ... data to create a WorkbenchTodo
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the WorkbenchTodo we want to update
+     *   }
+     * })
+     */
+    upsert<T extends WorkbenchTodoUpsertArgs>(args: SelectSubset<T, WorkbenchTodoUpsertArgs<ExtArgs>>): Prisma__WorkbenchTodoClient<$Result.GetResult<Prisma.$WorkbenchTodoPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of WorkbenchTodos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchTodoCountArgs} args - Arguments to filter WorkbenchTodos to count.
+     * @example
+     * // Count the number of WorkbenchTodos
+     * const count = await prisma.workbenchTodo.count({
+     *   where: {
+     *     // ... the filter for the WorkbenchTodos we want to count
+     *   }
+     * })
+    **/
+    count<T extends WorkbenchTodoCountArgs>(
+      args?: Subset<T, WorkbenchTodoCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], WorkbenchTodoCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a WorkbenchTodo.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchTodoAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends WorkbenchTodoAggregateArgs>(args: Subset<T, WorkbenchTodoAggregateArgs>): Prisma.PrismaPromise<GetWorkbenchTodoAggregateType<T>>
+
+    /**
+     * Group by WorkbenchTodo.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchTodoGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends WorkbenchTodoGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: WorkbenchTodoGroupByArgs['orderBy'] }
+        : { orderBy?: WorkbenchTodoGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, WorkbenchTodoGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetWorkbenchTodoGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the WorkbenchTodo model
+   */
+  readonly fields: WorkbenchTodoFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for WorkbenchTodo.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__WorkbenchTodoClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the WorkbenchTodo model
+   */ 
+  interface WorkbenchTodoFieldRefs {
+    readonly id: FieldRef<"WorkbenchTodo", 'String'>
+    readonly userId: FieldRef<"WorkbenchTodo", 'String'>
+    readonly title: FieldRef<"WorkbenchTodo", 'String'>
+    readonly description: FieldRef<"WorkbenchTodo", 'String'>
+    readonly priority: FieldRef<"WorkbenchTodo", 'TodoPriority'>
+    readonly status: FieldRef<"WorkbenchTodo", 'TodoStatus'>
+    readonly dueDate: FieldRef<"WorkbenchTodo", 'DateTime'>
+    readonly completedAt: FieldRef<"WorkbenchTodo", 'DateTime'>
+    readonly sourceType: FieldRef<"WorkbenchTodo", 'TodoSourceType'>
+    readonly sourceRefId: FieldRef<"WorkbenchTodo", 'String'>
+    readonly sourceTitle: FieldRef<"WorkbenchTodo", 'String'>
+    readonly contextData: FieldRef<"WorkbenchTodo", 'Json'>
+    readonly boundWorkflowId: FieldRef<"WorkbenchTodo", 'String'>
+    readonly executionId: FieldRef<"WorkbenchTodo", 'String'>
+    readonly createdAt: FieldRef<"WorkbenchTodo", 'DateTime'>
+    readonly updatedAt: FieldRef<"WorkbenchTodo", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * WorkbenchTodo findUnique
+   */
+  export type WorkbenchTodoFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchTodo to fetch.
+     */
+    where: WorkbenchTodoWhereUniqueInput
+  }
+
+  /**
+   * WorkbenchTodo findUniqueOrThrow
+   */
+  export type WorkbenchTodoFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchTodo to fetch.
+     */
+    where: WorkbenchTodoWhereUniqueInput
+  }
+
+  /**
+   * WorkbenchTodo findFirst
+   */
+  export type WorkbenchTodoFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchTodo to fetch.
+     */
+    where?: WorkbenchTodoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkbenchTodos to fetch.
+     */
+    orderBy?: WorkbenchTodoOrderByWithRelationInput | WorkbenchTodoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for WorkbenchTodos.
+     */
+    cursor?: WorkbenchTodoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkbenchTodos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkbenchTodos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of WorkbenchTodos.
+     */
+    distinct?: WorkbenchTodoScalarFieldEnum | WorkbenchTodoScalarFieldEnum[]
+  }
+
+  /**
+   * WorkbenchTodo findFirstOrThrow
+   */
+  export type WorkbenchTodoFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchTodo to fetch.
+     */
+    where?: WorkbenchTodoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkbenchTodos to fetch.
+     */
+    orderBy?: WorkbenchTodoOrderByWithRelationInput | WorkbenchTodoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for WorkbenchTodos.
+     */
+    cursor?: WorkbenchTodoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkbenchTodos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkbenchTodos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of WorkbenchTodos.
+     */
+    distinct?: WorkbenchTodoScalarFieldEnum | WorkbenchTodoScalarFieldEnum[]
+  }
+
+  /**
+   * WorkbenchTodo findMany
+   */
+  export type WorkbenchTodoFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchTodos to fetch.
+     */
+    where?: WorkbenchTodoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkbenchTodos to fetch.
+     */
+    orderBy?: WorkbenchTodoOrderByWithRelationInput | WorkbenchTodoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing WorkbenchTodos.
+     */
+    cursor?: WorkbenchTodoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkbenchTodos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkbenchTodos.
+     */
+    skip?: number
+    distinct?: WorkbenchTodoScalarFieldEnum | WorkbenchTodoScalarFieldEnum[]
+  }
+
+  /**
+   * WorkbenchTodo create
+   */
+  export type WorkbenchTodoCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * The data needed to create a WorkbenchTodo.
+     */
+    data: XOR<WorkbenchTodoCreateInput, WorkbenchTodoUncheckedCreateInput>
+  }
+
+  /**
+   * WorkbenchTodo createMany
+   */
+  export type WorkbenchTodoCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many WorkbenchTodos.
+     */
+    data: WorkbenchTodoCreateManyInput | WorkbenchTodoCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * WorkbenchTodo createManyAndReturn
+   */
+  export type WorkbenchTodoCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many WorkbenchTodos.
+     */
+    data: WorkbenchTodoCreateManyInput | WorkbenchTodoCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * WorkbenchTodo update
+   */
+  export type WorkbenchTodoUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * The data needed to update a WorkbenchTodo.
+     */
+    data: XOR<WorkbenchTodoUpdateInput, WorkbenchTodoUncheckedUpdateInput>
+    /**
+     * Choose, which WorkbenchTodo to update.
+     */
+    where: WorkbenchTodoWhereUniqueInput
+  }
+
+  /**
+   * WorkbenchTodo updateMany
+   */
+  export type WorkbenchTodoUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update WorkbenchTodos.
+     */
+    data: XOR<WorkbenchTodoUpdateManyMutationInput, WorkbenchTodoUncheckedUpdateManyInput>
+    /**
+     * Filter which WorkbenchTodos to update
+     */
+    where?: WorkbenchTodoWhereInput
+  }
+
+  /**
+   * WorkbenchTodo upsert
+   */
+  export type WorkbenchTodoUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * The filter to search for the WorkbenchTodo to update in case it exists.
+     */
+    where: WorkbenchTodoWhereUniqueInput
+    /**
+     * In case the WorkbenchTodo found by the `where` argument doesn't exist, create a new WorkbenchTodo with this data.
+     */
+    create: XOR<WorkbenchTodoCreateInput, WorkbenchTodoUncheckedCreateInput>
+    /**
+     * In case the WorkbenchTodo was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<WorkbenchTodoUpdateInput, WorkbenchTodoUncheckedUpdateInput>
+  }
+
+  /**
+   * WorkbenchTodo delete
+   */
+  export type WorkbenchTodoDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+    /**
+     * Filter which WorkbenchTodo to delete.
+     */
+    where: WorkbenchTodoWhereUniqueInput
+  }
+
+  /**
+   * WorkbenchTodo deleteMany
+   */
+  export type WorkbenchTodoDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which WorkbenchTodos to delete
+     */
+    where?: WorkbenchTodoWhereInput
+  }
+
+  /**
+   * WorkbenchTodo without action
+   */
+  export type WorkbenchTodoDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchTodo
+     */
+    select?: WorkbenchTodoSelect<ExtArgs> | null
+  }
+
+
+  /**
+   * Model WorkbenchInboxItem
+   */
+
+  export type AggregateWorkbenchInboxItem = {
+    _count: WorkbenchInboxItemCountAggregateOutputType | null
+    _avg: WorkbenchInboxItemAvgAggregateOutputType | null
+    _sum: WorkbenchInboxItemSumAggregateOutputType | null
+    _min: WorkbenchInboxItemMinAggregateOutputType | null
+    _max: WorkbenchInboxItemMaxAggregateOutputType | null
+  }
+
+  export type WorkbenchInboxItemAvgAggregateOutputType = {
+    confidence: number | null
+  }
+
+  export type WorkbenchInboxItemSumAggregateOutputType = {
+    confidence: number | null
+  }
+
+  export type WorkbenchInboxItemMinAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    title: string | null
+    rawContent: string | null
+    sourceType: $Enums.TodoSourceType | null
+    sourceRefId: string | null
+    sourceTitle: string | null
+    sourceSender: string | null
+    status: $Enums.InboxItemStatus | null
+    confidence: number | null
+    convertedTodoId: string | null
+    clarifiedAt: Date | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type WorkbenchInboxItemMaxAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    title: string | null
+    rawContent: string | null
+    sourceType: $Enums.TodoSourceType | null
+    sourceRefId: string | null
+    sourceTitle: string | null
+    sourceSender: string | null
+    status: $Enums.InboxItemStatus | null
+    confidence: number | null
+    convertedTodoId: string | null
+    clarifiedAt: Date | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type WorkbenchInboxItemCountAggregateOutputType = {
+    id: number
+    userId: number
+    title: number
+    rawContent: number
+    sourceType: number
+    sourceRefId: number
+    sourceTitle: number
+    sourceSender: number
+    unifiedPayload: number
+    status: number
+    confidence: number
+    aiClarification: number
+    convertedTodoId: number
+    clarifiedAt: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type WorkbenchInboxItemAvgAggregateInputType = {
+    confidence?: true
+  }
+
+  export type WorkbenchInboxItemSumAggregateInputType = {
+    confidence?: true
+  }
+
+  export type WorkbenchInboxItemMinAggregateInputType = {
+    id?: true
+    userId?: true
+    title?: true
+    rawContent?: true
+    sourceType?: true
+    sourceRefId?: true
+    sourceTitle?: true
+    sourceSender?: true
+    status?: true
+    confidence?: true
+    convertedTodoId?: true
+    clarifiedAt?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type WorkbenchInboxItemMaxAggregateInputType = {
+    id?: true
+    userId?: true
+    title?: true
+    rawContent?: true
+    sourceType?: true
+    sourceRefId?: true
+    sourceTitle?: true
+    sourceSender?: true
+    status?: true
+    confidence?: true
+    convertedTodoId?: true
+    clarifiedAt?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type WorkbenchInboxItemCountAggregateInputType = {
+    id?: true
+    userId?: true
+    title?: true
+    rawContent?: true
+    sourceType?: true
+    sourceRefId?: true
+    sourceTitle?: true
+    sourceSender?: true
+    unifiedPayload?: true
+    status?: true
+    confidence?: true
+    aiClarification?: true
+    convertedTodoId?: true
+    clarifiedAt?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type WorkbenchInboxItemAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which WorkbenchInboxItem to aggregate.
+     */
+    where?: WorkbenchInboxItemWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkbenchInboxItems to fetch.
+     */
+    orderBy?: WorkbenchInboxItemOrderByWithRelationInput | WorkbenchInboxItemOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: WorkbenchInboxItemWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkbenchInboxItems from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkbenchInboxItems.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned WorkbenchInboxItems
+    **/
+    _count?: true | WorkbenchInboxItemCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: WorkbenchInboxItemAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: WorkbenchInboxItemSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: WorkbenchInboxItemMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: WorkbenchInboxItemMaxAggregateInputType
+  }
+
+  export type GetWorkbenchInboxItemAggregateType<T extends WorkbenchInboxItemAggregateArgs> = {
+        [P in keyof T & keyof AggregateWorkbenchInboxItem]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateWorkbenchInboxItem[P]>
+      : GetScalarType<T[P], AggregateWorkbenchInboxItem[P]>
+  }
+
+
+
+
+  export type WorkbenchInboxItemGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: WorkbenchInboxItemWhereInput
+    orderBy?: WorkbenchInboxItemOrderByWithAggregationInput | WorkbenchInboxItemOrderByWithAggregationInput[]
+    by: WorkbenchInboxItemScalarFieldEnum[] | WorkbenchInboxItemScalarFieldEnum
+    having?: WorkbenchInboxItemScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: WorkbenchInboxItemCountAggregateInputType | true
+    _avg?: WorkbenchInboxItemAvgAggregateInputType
+    _sum?: WorkbenchInboxItemSumAggregateInputType
+    _min?: WorkbenchInboxItemMinAggregateInputType
+    _max?: WorkbenchInboxItemMaxAggregateInputType
+  }
+
+  export type WorkbenchInboxItemGroupByOutputType = {
+    id: string
+    userId: string
+    title: string
+    rawContent: string
+    sourceType: $Enums.TodoSourceType
+    sourceRefId: string | null
+    sourceTitle: string | null
+    sourceSender: string | null
+    unifiedPayload: JsonValue
+    status: $Enums.InboxItemStatus
+    confidence: number
+    aiClarification: JsonValue | null
+    convertedTodoId: string | null
+    clarifiedAt: Date | null
+    createdAt: Date
+    updatedAt: Date
+    _count: WorkbenchInboxItemCountAggregateOutputType | null
+    _avg: WorkbenchInboxItemAvgAggregateOutputType | null
+    _sum: WorkbenchInboxItemSumAggregateOutputType | null
+    _min: WorkbenchInboxItemMinAggregateOutputType | null
+    _max: WorkbenchInboxItemMaxAggregateOutputType | null
+  }
+
+  type GetWorkbenchInboxItemGroupByPayload<T extends WorkbenchInboxItemGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<WorkbenchInboxItemGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof WorkbenchInboxItemGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], WorkbenchInboxItemGroupByOutputType[P]>
+            : GetScalarType<T[P], WorkbenchInboxItemGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type WorkbenchInboxItemSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    title?: boolean
+    rawContent?: boolean
+    sourceType?: boolean
+    sourceRefId?: boolean
+    sourceTitle?: boolean
+    sourceSender?: boolean
+    unifiedPayload?: boolean
+    status?: boolean
+    confidence?: boolean
+    aiClarification?: boolean
+    convertedTodoId?: boolean
+    clarifiedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["workbenchInboxItem"]>
+
+  export type WorkbenchInboxItemSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    title?: boolean
+    rawContent?: boolean
+    sourceType?: boolean
+    sourceRefId?: boolean
+    sourceTitle?: boolean
+    sourceSender?: boolean
+    unifiedPayload?: boolean
+    status?: boolean
+    confidence?: boolean
+    aiClarification?: boolean
+    convertedTodoId?: boolean
+    clarifiedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["workbenchInboxItem"]>
+
+  export type WorkbenchInboxItemSelectScalar = {
+    id?: boolean
+    userId?: boolean
+    title?: boolean
+    rawContent?: boolean
+    sourceType?: boolean
+    sourceRefId?: boolean
+    sourceTitle?: boolean
+    sourceSender?: boolean
+    unifiedPayload?: boolean
+    status?: boolean
+    confidence?: boolean
+    aiClarification?: boolean
+    convertedTodoId?: boolean
+    clarifiedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+
+  export type $WorkbenchInboxItemPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "WorkbenchInboxItem"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userId: string
+      title: string
+      rawContent: string
+      sourceType: $Enums.TodoSourceType
+      sourceRefId: string | null
+      sourceTitle: string | null
+      sourceSender: string | null
+      unifiedPayload: Prisma.JsonValue
+      status: $Enums.InboxItemStatus
+      confidence: number
+      aiClarification: Prisma.JsonValue | null
+      convertedTodoId: string | null
+      clarifiedAt: Date | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["workbenchInboxItem"]>
+    composites: {}
+  }
+
+  type WorkbenchInboxItemGetPayload<S extends boolean | null | undefined | WorkbenchInboxItemDefaultArgs> = $Result.GetResult<Prisma.$WorkbenchInboxItemPayload, S>
+
+  type WorkbenchInboxItemCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<WorkbenchInboxItemFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: WorkbenchInboxItemCountAggregateInputType | true
+    }
+
+  export interface WorkbenchInboxItemDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['WorkbenchInboxItem'], meta: { name: 'WorkbenchInboxItem' } }
+    /**
+     * Find zero or one WorkbenchInboxItem that matches the filter.
+     * @param {WorkbenchInboxItemFindUniqueArgs} args - Arguments to find a WorkbenchInboxItem
+     * @example
+     * // Get one WorkbenchInboxItem
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends WorkbenchInboxItemFindUniqueArgs>(args: SelectSubset<T, WorkbenchInboxItemFindUniqueArgs<ExtArgs>>): Prisma__WorkbenchInboxItemClient<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one WorkbenchInboxItem that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {WorkbenchInboxItemFindUniqueOrThrowArgs} args - Arguments to find a WorkbenchInboxItem
+     * @example
+     * // Get one WorkbenchInboxItem
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends WorkbenchInboxItemFindUniqueOrThrowArgs>(args: SelectSubset<T, WorkbenchInboxItemFindUniqueOrThrowArgs<ExtArgs>>): Prisma__WorkbenchInboxItemClient<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first WorkbenchInboxItem that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchInboxItemFindFirstArgs} args - Arguments to find a WorkbenchInboxItem
+     * @example
+     * // Get one WorkbenchInboxItem
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends WorkbenchInboxItemFindFirstArgs>(args?: SelectSubset<T, WorkbenchInboxItemFindFirstArgs<ExtArgs>>): Prisma__WorkbenchInboxItemClient<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first WorkbenchInboxItem that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchInboxItemFindFirstOrThrowArgs} args - Arguments to find a WorkbenchInboxItem
+     * @example
+     * // Get one WorkbenchInboxItem
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends WorkbenchInboxItemFindFirstOrThrowArgs>(args?: SelectSubset<T, WorkbenchInboxItemFindFirstOrThrowArgs<ExtArgs>>): Prisma__WorkbenchInboxItemClient<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more WorkbenchInboxItems that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchInboxItemFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all WorkbenchInboxItems
+     * const workbenchInboxItems = await prisma.workbenchInboxItem.findMany()
+     * 
+     * // Get first 10 WorkbenchInboxItems
+     * const workbenchInboxItems = await prisma.workbenchInboxItem.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const workbenchInboxItemWithIdOnly = await prisma.workbenchInboxItem.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends WorkbenchInboxItemFindManyArgs>(args?: SelectSubset<T, WorkbenchInboxItemFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a WorkbenchInboxItem.
+     * @param {WorkbenchInboxItemCreateArgs} args - Arguments to create a WorkbenchInboxItem.
+     * @example
+     * // Create one WorkbenchInboxItem
+     * const WorkbenchInboxItem = await prisma.workbenchInboxItem.create({
+     *   data: {
+     *     // ... data to create a WorkbenchInboxItem
+     *   }
+     * })
+     * 
+     */
+    create<T extends WorkbenchInboxItemCreateArgs>(args: SelectSubset<T, WorkbenchInboxItemCreateArgs<ExtArgs>>): Prisma__WorkbenchInboxItemClient<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many WorkbenchInboxItems.
+     * @param {WorkbenchInboxItemCreateManyArgs} args - Arguments to create many WorkbenchInboxItems.
+     * @example
+     * // Create many WorkbenchInboxItems
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends WorkbenchInboxItemCreateManyArgs>(args?: SelectSubset<T, WorkbenchInboxItemCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many WorkbenchInboxItems and returns the data saved in the database.
+     * @param {WorkbenchInboxItemCreateManyAndReturnArgs} args - Arguments to create many WorkbenchInboxItems.
+     * @example
+     * // Create many WorkbenchInboxItems
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many WorkbenchInboxItems and only return the `id`
+     * const workbenchInboxItemWithIdOnly = await prisma.workbenchInboxItem.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends WorkbenchInboxItemCreateManyAndReturnArgs>(args?: SelectSubset<T, WorkbenchInboxItemCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a WorkbenchInboxItem.
+     * @param {WorkbenchInboxItemDeleteArgs} args - Arguments to delete one WorkbenchInboxItem.
+     * @example
+     * // Delete one WorkbenchInboxItem
+     * const WorkbenchInboxItem = await prisma.workbenchInboxItem.delete({
+     *   where: {
+     *     // ... filter to delete one WorkbenchInboxItem
+     *   }
+     * })
+     * 
+     */
+    delete<T extends WorkbenchInboxItemDeleteArgs>(args: SelectSubset<T, WorkbenchInboxItemDeleteArgs<ExtArgs>>): Prisma__WorkbenchInboxItemClient<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one WorkbenchInboxItem.
+     * @param {WorkbenchInboxItemUpdateArgs} args - Arguments to update one WorkbenchInboxItem.
+     * @example
+     * // Update one WorkbenchInboxItem
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends WorkbenchInboxItemUpdateArgs>(args: SelectSubset<T, WorkbenchInboxItemUpdateArgs<ExtArgs>>): Prisma__WorkbenchInboxItemClient<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more WorkbenchInboxItems.
+     * @param {WorkbenchInboxItemDeleteManyArgs} args - Arguments to filter WorkbenchInboxItems to delete.
+     * @example
+     * // Delete a few WorkbenchInboxItems
+     * const { count } = await prisma.workbenchInboxItem.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends WorkbenchInboxItemDeleteManyArgs>(args?: SelectSubset<T, WorkbenchInboxItemDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more WorkbenchInboxItems.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchInboxItemUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many WorkbenchInboxItems
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends WorkbenchInboxItemUpdateManyArgs>(args: SelectSubset<T, WorkbenchInboxItemUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one WorkbenchInboxItem.
+     * @param {WorkbenchInboxItemUpsertArgs} args - Arguments to update or create a WorkbenchInboxItem.
+     * @example
+     * // Update or create a WorkbenchInboxItem
+     * const workbenchInboxItem = await prisma.workbenchInboxItem.upsert({
+     *   create: {
+     *     // ... data to create a WorkbenchInboxItem
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the WorkbenchInboxItem we want to update
+     *   }
+     * })
+     */
+    upsert<T extends WorkbenchInboxItemUpsertArgs>(args: SelectSubset<T, WorkbenchInboxItemUpsertArgs<ExtArgs>>): Prisma__WorkbenchInboxItemClient<$Result.GetResult<Prisma.$WorkbenchInboxItemPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of WorkbenchInboxItems.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchInboxItemCountArgs} args - Arguments to filter WorkbenchInboxItems to count.
+     * @example
+     * // Count the number of WorkbenchInboxItems
+     * const count = await prisma.workbenchInboxItem.count({
+     *   where: {
+     *     // ... the filter for the WorkbenchInboxItems we want to count
+     *   }
+     * })
+    **/
+    count<T extends WorkbenchInboxItemCountArgs>(
+      args?: Subset<T, WorkbenchInboxItemCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], WorkbenchInboxItemCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a WorkbenchInboxItem.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchInboxItemAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends WorkbenchInboxItemAggregateArgs>(args: Subset<T, WorkbenchInboxItemAggregateArgs>): Prisma.PrismaPromise<GetWorkbenchInboxItemAggregateType<T>>
+
+    /**
+     * Group by WorkbenchInboxItem.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {WorkbenchInboxItemGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends WorkbenchInboxItemGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: WorkbenchInboxItemGroupByArgs['orderBy'] }
+        : { orderBy?: WorkbenchInboxItemGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, WorkbenchInboxItemGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetWorkbenchInboxItemGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the WorkbenchInboxItem model
+   */
+  readonly fields: WorkbenchInboxItemFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for WorkbenchInboxItem.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__WorkbenchInboxItemClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the WorkbenchInboxItem model
+   */ 
+  interface WorkbenchInboxItemFieldRefs {
+    readonly id: FieldRef<"WorkbenchInboxItem", 'String'>
+    readonly userId: FieldRef<"WorkbenchInboxItem", 'String'>
+    readonly title: FieldRef<"WorkbenchInboxItem", 'String'>
+    readonly rawContent: FieldRef<"WorkbenchInboxItem", 'String'>
+    readonly sourceType: FieldRef<"WorkbenchInboxItem", 'TodoSourceType'>
+    readonly sourceRefId: FieldRef<"WorkbenchInboxItem", 'String'>
+    readonly sourceTitle: FieldRef<"WorkbenchInboxItem", 'String'>
+    readonly sourceSender: FieldRef<"WorkbenchInboxItem", 'String'>
+    readonly unifiedPayload: FieldRef<"WorkbenchInboxItem", 'Json'>
+    readonly status: FieldRef<"WorkbenchInboxItem", 'InboxItemStatus'>
+    readonly confidence: FieldRef<"WorkbenchInboxItem", 'Float'>
+    readonly aiClarification: FieldRef<"WorkbenchInboxItem", 'Json'>
+    readonly convertedTodoId: FieldRef<"WorkbenchInboxItem", 'String'>
+    readonly clarifiedAt: FieldRef<"WorkbenchInboxItem", 'DateTime'>
+    readonly createdAt: FieldRef<"WorkbenchInboxItem", 'DateTime'>
+    readonly updatedAt: FieldRef<"WorkbenchInboxItem", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * WorkbenchInboxItem findUnique
+   */
+  export type WorkbenchInboxItemFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchInboxItem to fetch.
+     */
+    where: WorkbenchInboxItemWhereUniqueInput
+  }
+
+  /**
+   * WorkbenchInboxItem findUniqueOrThrow
+   */
+  export type WorkbenchInboxItemFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchInboxItem to fetch.
+     */
+    where: WorkbenchInboxItemWhereUniqueInput
+  }
+
+  /**
+   * WorkbenchInboxItem findFirst
+   */
+  export type WorkbenchInboxItemFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchInboxItem to fetch.
+     */
+    where?: WorkbenchInboxItemWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkbenchInboxItems to fetch.
+     */
+    orderBy?: WorkbenchInboxItemOrderByWithRelationInput | WorkbenchInboxItemOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for WorkbenchInboxItems.
+     */
+    cursor?: WorkbenchInboxItemWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkbenchInboxItems from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkbenchInboxItems.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of WorkbenchInboxItems.
+     */
+    distinct?: WorkbenchInboxItemScalarFieldEnum | WorkbenchInboxItemScalarFieldEnum[]
+  }
+
+  /**
+   * WorkbenchInboxItem findFirstOrThrow
+   */
+  export type WorkbenchInboxItemFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchInboxItem to fetch.
+     */
+    where?: WorkbenchInboxItemWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkbenchInboxItems to fetch.
+     */
+    orderBy?: WorkbenchInboxItemOrderByWithRelationInput | WorkbenchInboxItemOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for WorkbenchInboxItems.
+     */
+    cursor?: WorkbenchInboxItemWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkbenchInboxItems from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkbenchInboxItems.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of WorkbenchInboxItems.
+     */
+    distinct?: WorkbenchInboxItemScalarFieldEnum | WorkbenchInboxItemScalarFieldEnum[]
+  }
+
+  /**
+   * WorkbenchInboxItem findMany
+   */
+  export type WorkbenchInboxItemFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * Filter, which WorkbenchInboxItems to fetch.
+     */
+    where?: WorkbenchInboxItemWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of WorkbenchInboxItems to fetch.
+     */
+    orderBy?: WorkbenchInboxItemOrderByWithRelationInput | WorkbenchInboxItemOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing WorkbenchInboxItems.
+     */
+    cursor?: WorkbenchInboxItemWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` WorkbenchInboxItems from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` WorkbenchInboxItems.
+     */
+    skip?: number
+    distinct?: WorkbenchInboxItemScalarFieldEnum | WorkbenchInboxItemScalarFieldEnum[]
+  }
+
+  /**
+   * WorkbenchInboxItem create
+   */
+  export type WorkbenchInboxItemCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * The data needed to create a WorkbenchInboxItem.
+     */
+    data: XOR<WorkbenchInboxItemCreateInput, WorkbenchInboxItemUncheckedCreateInput>
+  }
+
+  /**
+   * WorkbenchInboxItem createMany
+   */
+  export type WorkbenchInboxItemCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many WorkbenchInboxItems.
+     */
+    data: WorkbenchInboxItemCreateManyInput | WorkbenchInboxItemCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * WorkbenchInboxItem createManyAndReturn
+   */
+  export type WorkbenchInboxItemCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many WorkbenchInboxItems.
+     */
+    data: WorkbenchInboxItemCreateManyInput | WorkbenchInboxItemCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * WorkbenchInboxItem update
+   */
+  export type WorkbenchInboxItemUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * The data needed to update a WorkbenchInboxItem.
+     */
+    data: XOR<WorkbenchInboxItemUpdateInput, WorkbenchInboxItemUncheckedUpdateInput>
+    /**
+     * Choose, which WorkbenchInboxItem to update.
+     */
+    where: WorkbenchInboxItemWhereUniqueInput
+  }
+
+  /**
+   * WorkbenchInboxItem updateMany
+   */
+  export type WorkbenchInboxItemUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update WorkbenchInboxItems.
+     */
+    data: XOR<WorkbenchInboxItemUpdateManyMutationInput, WorkbenchInboxItemUncheckedUpdateManyInput>
+    /**
+     * Filter which WorkbenchInboxItems to update
+     */
+    where?: WorkbenchInboxItemWhereInput
+  }
+
+  /**
+   * WorkbenchInboxItem upsert
+   */
+  export type WorkbenchInboxItemUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * The filter to search for the WorkbenchInboxItem to update in case it exists.
+     */
+    where: WorkbenchInboxItemWhereUniqueInput
+    /**
+     * In case the WorkbenchInboxItem found by the `where` argument doesn't exist, create a new WorkbenchInboxItem with this data.
+     */
+    create: XOR<WorkbenchInboxItemCreateInput, WorkbenchInboxItemUncheckedCreateInput>
+    /**
+     * In case the WorkbenchInboxItem was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<WorkbenchInboxItemUpdateInput, WorkbenchInboxItemUncheckedUpdateInput>
+  }
+
+  /**
+   * WorkbenchInboxItem delete
+   */
+  export type WorkbenchInboxItemDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+    /**
+     * Filter which WorkbenchInboxItem to delete.
+     */
+    where: WorkbenchInboxItemWhereUniqueInput
+  }
+
+  /**
+   * WorkbenchInboxItem deleteMany
+   */
+  export type WorkbenchInboxItemDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which WorkbenchInboxItems to delete
+     */
+    where?: WorkbenchInboxItemWhereInput
+  }
+
+  /**
+   * WorkbenchInboxItem without action
+   */
+  export type WorkbenchInboxItemDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the WorkbenchInboxItem
+     */
+    select?: WorkbenchInboxItemSelect<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -83128,6 +89871,21 @@ export namespace Prisma {
   export type TaskPolicyAuditLogScalarFieldEnum = (typeof TaskPolicyAuditLogScalarFieldEnum)[keyof typeof TaskPolicyAuditLogScalarFieldEnum]
 
 
+  export const ExecutionCompletionClaimScalarFieldEnum: {
+    id: 'id',
+    executionId: 'executionId',
+    stepId: 'stepId',
+    planNodeId: 'planNodeId',
+    claim: 'claim',
+    evidenceType: 'evidenceType',
+    evidenceJson: 'evidenceJson',
+    status: 'status',
+    createdAt: 'createdAt'
+  };
+
+  export type ExecutionCompletionClaimScalarFieldEnum = (typeof ExecutionCompletionClaimScalarFieldEnum)[keyof typeof ExecutionCompletionClaimScalarFieldEnum]
+
+
   export const PromptSnapshotScalarFieldEnum: {
     id: 'id',
     ownerUserId: 'ownerUserId',
@@ -83353,6 +90111,19 @@ export namespace Prisma {
   };
 
   export type BuiltinSkillScalarFieldEnum = (typeof BuiltinSkillScalarFieldEnum)[keyof typeof BuiltinSkillScalarFieldEnum]
+
+
+  export const BuiltinSkillRuntimeConfigScalarFieldEnum: {
+    id: 'id',
+    builtinSkillId: 'builtinSkillId',
+    configKey: 'configKey',
+    encryptedValue: 'encryptedValue',
+    updatedBy: 'updatedBy',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type BuiltinSkillRuntimeConfigScalarFieldEnum = (typeof BuiltinSkillRuntimeConfigScalarFieldEnum)[keyof typeof BuiltinSkillRuntimeConfigScalarFieldEnum]
 
 
   export const BuiltinSkillVersionScalarFieldEnum: {
@@ -83597,6 +90368,83 @@ export namespace Prisma {
   };
 
   export type ReleaseAuditEventScalarFieldEnum = (typeof ReleaseAuditEventScalarFieldEnum)[keyof typeof ReleaseAuditEventScalarFieldEnum]
+
+
+  export const WorkspaceScalarFieldEnum: {
+    id: 'id',
+    name: 'name',
+    type: 'type',
+    ownerUserId: 'ownerUserId',
+    departmentId: 'departmentId',
+    quotaBytes: 'quotaBytes',
+    usedBytes: 'usedBytes',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type WorkspaceScalarFieldEnum = (typeof WorkspaceScalarFieldEnum)[keyof typeof WorkspaceScalarFieldEnum]
+
+
+  export const WorkspaceNodeScalarFieldEnum: {
+    id: 'id',
+    workspaceId: 'workspaceId',
+    parentId: 'parentId',
+    name: 'name',
+    type: 'type',
+    fileSize: 'fileSize',
+    mimeType: 'mimeType',
+    storagePath: 'storagePath',
+    digestJson: 'digestJson',
+    createdBy: 'createdBy',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type WorkspaceNodeScalarFieldEnum = (typeof WorkspaceNodeScalarFieldEnum)[keyof typeof WorkspaceNodeScalarFieldEnum]
+
+
+  export const WorkbenchTodoScalarFieldEnum: {
+    id: 'id',
+    userId: 'userId',
+    title: 'title',
+    description: 'description',
+    priority: 'priority',
+    status: 'status',
+    dueDate: 'dueDate',
+    completedAt: 'completedAt',
+    sourceType: 'sourceType',
+    sourceRefId: 'sourceRefId',
+    sourceTitle: 'sourceTitle',
+    contextData: 'contextData',
+    boundWorkflowId: 'boundWorkflowId',
+    executionId: 'executionId',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type WorkbenchTodoScalarFieldEnum = (typeof WorkbenchTodoScalarFieldEnum)[keyof typeof WorkbenchTodoScalarFieldEnum]
+
+
+  export const WorkbenchInboxItemScalarFieldEnum: {
+    id: 'id',
+    userId: 'userId',
+    title: 'title',
+    rawContent: 'rawContent',
+    sourceType: 'sourceType',
+    sourceRefId: 'sourceRefId',
+    sourceTitle: 'sourceTitle',
+    sourceSender: 'sourceSender',
+    unifiedPayload: 'unifiedPayload',
+    status: 'status',
+    confidence: 'confidence',
+    aiClarification: 'aiClarification',
+    convertedTodoId: 'convertedTodoId',
+    clarifiedAt: 'clarifiedAt',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type WorkbenchInboxItemScalarFieldEnum = (typeof WorkbenchInboxItemScalarFieldEnum)[keyof typeof WorkbenchInboxItemScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -83845,6 +90693,90 @@ export namespace Prisma {
    * Reference to a field of type 'Decimal[]'
    */
   export type ListDecimalFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Decimal[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'WorkspaceType'
+   */
+  export type EnumWorkspaceTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WorkspaceType'>
+    
+
+
+  /**
+   * Reference to a field of type 'WorkspaceType[]'
+   */
+  export type ListEnumWorkspaceTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WorkspaceType[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'WorkspaceNodeType'
+   */
+  export type EnumWorkspaceNodeTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WorkspaceNodeType'>
+    
+
+
+  /**
+   * Reference to a field of type 'WorkspaceNodeType[]'
+   */
+  export type ListEnumWorkspaceNodeTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WorkspaceNodeType[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'TodoPriority'
+   */
+  export type EnumTodoPriorityFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TodoPriority'>
+    
+
+
+  /**
+   * Reference to a field of type 'TodoPriority[]'
+   */
+  export type ListEnumTodoPriorityFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TodoPriority[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'TodoStatus'
+   */
+  export type EnumTodoStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TodoStatus'>
+    
+
+
+  /**
+   * Reference to a field of type 'TodoStatus[]'
+   */
+  export type ListEnumTodoStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TodoStatus[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'TodoSourceType'
+   */
+  export type EnumTodoSourceTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TodoSourceType'>
+    
+
+
+  /**
+   * Reference to a field of type 'TodoSourceType[]'
+   */
+  export type ListEnumTodoSourceTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TodoSourceType[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'InboxItemStatus'
+   */
+  export type EnumInboxItemStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'InboxItemStatus'>
+    
+
+
+  /**
+   * Reference to a field of type 'InboxItemStatus[]'
+   */
+  export type ListEnumInboxItemStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'InboxItemStatus[]'>
     
   /**
    * Deep Input Types
@@ -88266,6 +95198,79 @@ export namespace Prisma {
     createdAt?: DateTimeWithAggregatesFilter<"TaskPolicyAuditLog"> | Date | string
   }
 
+  export type ExecutionCompletionClaimWhereInput = {
+    AND?: ExecutionCompletionClaimWhereInput | ExecutionCompletionClaimWhereInput[]
+    OR?: ExecutionCompletionClaimWhereInput[]
+    NOT?: ExecutionCompletionClaimWhereInput | ExecutionCompletionClaimWhereInput[]
+    id?: UuidFilter<"ExecutionCompletionClaim"> | string
+    executionId?: UuidFilter<"ExecutionCompletionClaim"> | string
+    stepId?: UuidNullableFilter<"ExecutionCompletionClaim"> | string | null
+    planNodeId?: StringNullableFilter<"ExecutionCompletionClaim"> | string | null
+    claim?: StringFilter<"ExecutionCompletionClaim"> | string
+    evidenceType?: StringFilter<"ExecutionCompletionClaim"> | string
+    evidenceJson?: JsonFilter<"ExecutionCompletionClaim">
+    status?: StringFilter<"ExecutionCompletionClaim"> | string
+    createdAt?: DateTimeFilter<"ExecutionCompletionClaim"> | Date | string
+  }
+
+  export type ExecutionCompletionClaimOrderByWithRelationInput = {
+    id?: SortOrder
+    executionId?: SortOrder
+    stepId?: SortOrderInput | SortOrder
+    planNodeId?: SortOrderInput | SortOrder
+    claim?: SortOrder
+    evidenceType?: SortOrder
+    evidenceJson?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type ExecutionCompletionClaimWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    executionId_claim_planNodeId?: ExecutionCompletionClaimExecutionIdClaimPlanNodeIdCompoundUniqueInput
+    AND?: ExecutionCompletionClaimWhereInput | ExecutionCompletionClaimWhereInput[]
+    OR?: ExecutionCompletionClaimWhereInput[]
+    NOT?: ExecutionCompletionClaimWhereInput | ExecutionCompletionClaimWhereInput[]
+    executionId?: UuidFilter<"ExecutionCompletionClaim"> | string
+    stepId?: UuidNullableFilter<"ExecutionCompletionClaim"> | string | null
+    planNodeId?: StringNullableFilter<"ExecutionCompletionClaim"> | string | null
+    claim?: StringFilter<"ExecutionCompletionClaim"> | string
+    evidenceType?: StringFilter<"ExecutionCompletionClaim"> | string
+    evidenceJson?: JsonFilter<"ExecutionCompletionClaim">
+    status?: StringFilter<"ExecutionCompletionClaim"> | string
+    createdAt?: DateTimeFilter<"ExecutionCompletionClaim"> | Date | string
+  }, "id" | "executionId_claim_planNodeId">
+
+  export type ExecutionCompletionClaimOrderByWithAggregationInput = {
+    id?: SortOrder
+    executionId?: SortOrder
+    stepId?: SortOrderInput | SortOrder
+    planNodeId?: SortOrderInput | SortOrder
+    claim?: SortOrder
+    evidenceType?: SortOrder
+    evidenceJson?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+    _count?: ExecutionCompletionClaimCountOrderByAggregateInput
+    _max?: ExecutionCompletionClaimMaxOrderByAggregateInput
+    _min?: ExecutionCompletionClaimMinOrderByAggregateInput
+  }
+
+  export type ExecutionCompletionClaimScalarWhereWithAggregatesInput = {
+    AND?: ExecutionCompletionClaimScalarWhereWithAggregatesInput | ExecutionCompletionClaimScalarWhereWithAggregatesInput[]
+    OR?: ExecutionCompletionClaimScalarWhereWithAggregatesInput[]
+    NOT?: ExecutionCompletionClaimScalarWhereWithAggregatesInput | ExecutionCompletionClaimScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"ExecutionCompletionClaim"> | string
+    executionId?: UuidWithAggregatesFilter<"ExecutionCompletionClaim"> | string
+    stepId?: UuidNullableWithAggregatesFilter<"ExecutionCompletionClaim"> | string | null
+    planNodeId?: StringNullableWithAggregatesFilter<"ExecutionCompletionClaim"> | string | null
+    claim?: StringWithAggregatesFilter<"ExecutionCompletionClaim"> | string
+    evidenceType?: StringWithAggregatesFilter<"ExecutionCompletionClaim"> | string
+    evidenceJson?: JsonWithAggregatesFilter<"ExecutionCompletionClaim">
+    status?: StringWithAggregatesFilter<"ExecutionCompletionClaim"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"ExecutionCompletionClaim"> | Date | string
+  }
+
   export type PromptSnapshotWhereInput = {
     AND?: PromptSnapshotWhereInput | PromptSnapshotWhereInput[]
     OR?: PromptSnapshotWhereInput[]
@@ -89313,6 +96318,7 @@ export namespace Prisma {
     versions?: BuiltinSkillVersionListRelationFilter
     permissionOverrides?: BuiltinSkillPermissionOverrideListRelationFilter
     auditEvents?: BuiltinSkillAuditEventListRelationFilter
+    runtimeConfigs?: BuiltinSkillRuntimeConfigListRelationFilter
   }
 
   export type BuiltinSkillOrderByWithRelationInput = {
@@ -89331,6 +96337,7 @@ export namespace Prisma {
     versions?: BuiltinSkillVersionOrderByRelationAggregateInput
     permissionOverrides?: BuiltinSkillPermissionOverrideOrderByRelationAggregateInput
     auditEvents?: BuiltinSkillAuditEventOrderByRelationAggregateInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigOrderByRelationAggregateInput
   }
 
   export type BuiltinSkillWhereUniqueInput = Prisma.AtLeast<{
@@ -89352,6 +96359,7 @@ export namespace Prisma {
     versions?: BuiltinSkillVersionListRelationFilter
     permissionOverrides?: BuiltinSkillPermissionOverrideListRelationFilter
     auditEvents?: BuiltinSkillAuditEventListRelationFilter
+    runtimeConfigs?: BuiltinSkillRuntimeConfigListRelationFilter
   }, "id" | "capabilityKey">
 
   export type BuiltinSkillOrderByWithAggregationInput = {
@@ -89388,6 +96396,72 @@ export namespace Prisma {
     activeVersionId?: UuidNullableWithAggregatesFilter<"BuiltinSkill"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"BuiltinSkill"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"BuiltinSkill"> | Date | string
+  }
+
+  export type BuiltinSkillRuntimeConfigWhereInput = {
+    AND?: BuiltinSkillRuntimeConfigWhereInput | BuiltinSkillRuntimeConfigWhereInput[]
+    OR?: BuiltinSkillRuntimeConfigWhereInput[]
+    NOT?: BuiltinSkillRuntimeConfigWhereInput | BuiltinSkillRuntimeConfigWhereInput[]
+    id?: UuidFilter<"BuiltinSkillRuntimeConfig"> | string
+    builtinSkillId?: UuidFilter<"BuiltinSkillRuntimeConfig"> | string
+    configKey?: StringFilter<"BuiltinSkillRuntimeConfig"> | string
+    encryptedValue?: StringFilter<"BuiltinSkillRuntimeConfig"> | string
+    updatedBy?: StringNullableFilter<"BuiltinSkillRuntimeConfig"> | string | null
+    createdAt?: DateTimeFilter<"BuiltinSkillRuntimeConfig"> | Date | string
+    updatedAt?: DateTimeFilter<"BuiltinSkillRuntimeConfig"> | Date | string
+    builtinSkill?: XOR<BuiltinSkillRelationFilter, BuiltinSkillWhereInput>
+  }
+
+  export type BuiltinSkillRuntimeConfigOrderByWithRelationInput = {
+    id?: SortOrder
+    builtinSkillId?: SortOrder
+    configKey?: SortOrder
+    encryptedValue?: SortOrder
+    updatedBy?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    builtinSkill?: BuiltinSkillOrderByWithRelationInput
+  }
+
+  export type BuiltinSkillRuntimeConfigWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    builtinSkillId_configKey?: BuiltinSkillRuntimeConfigBuiltinSkillIdConfigKeyCompoundUniqueInput
+    AND?: BuiltinSkillRuntimeConfigWhereInput | BuiltinSkillRuntimeConfigWhereInput[]
+    OR?: BuiltinSkillRuntimeConfigWhereInput[]
+    NOT?: BuiltinSkillRuntimeConfigWhereInput | BuiltinSkillRuntimeConfigWhereInput[]
+    builtinSkillId?: UuidFilter<"BuiltinSkillRuntimeConfig"> | string
+    configKey?: StringFilter<"BuiltinSkillRuntimeConfig"> | string
+    encryptedValue?: StringFilter<"BuiltinSkillRuntimeConfig"> | string
+    updatedBy?: StringNullableFilter<"BuiltinSkillRuntimeConfig"> | string | null
+    createdAt?: DateTimeFilter<"BuiltinSkillRuntimeConfig"> | Date | string
+    updatedAt?: DateTimeFilter<"BuiltinSkillRuntimeConfig"> | Date | string
+    builtinSkill?: XOR<BuiltinSkillRelationFilter, BuiltinSkillWhereInput>
+  }, "id" | "builtinSkillId_configKey">
+
+  export type BuiltinSkillRuntimeConfigOrderByWithAggregationInput = {
+    id?: SortOrder
+    builtinSkillId?: SortOrder
+    configKey?: SortOrder
+    encryptedValue?: SortOrder
+    updatedBy?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: BuiltinSkillRuntimeConfigCountOrderByAggregateInput
+    _max?: BuiltinSkillRuntimeConfigMaxOrderByAggregateInput
+    _min?: BuiltinSkillRuntimeConfigMinOrderByAggregateInput
+  }
+
+  export type BuiltinSkillRuntimeConfigScalarWhereWithAggregatesInput = {
+    AND?: BuiltinSkillRuntimeConfigScalarWhereWithAggregatesInput | BuiltinSkillRuntimeConfigScalarWhereWithAggregatesInput[]
+    OR?: BuiltinSkillRuntimeConfigScalarWhereWithAggregatesInput[]
+    NOT?: BuiltinSkillRuntimeConfigScalarWhereWithAggregatesInput | BuiltinSkillRuntimeConfigScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"BuiltinSkillRuntimeConfig"> | string
+    builtinSkillId?: UuidWithAggregatesFilter<"BuiltinSkillRuntimeConfig"> | string
+    configKey?: StringWithAggregatesFilter<"BuiltinSkillRuntimeConfig"> | string
+    encryptedValue?: StringWithAggregatesFilter<"BuiltinSkillRuntimeConfig"> | string
+    updatedBy?: StringNullableWithAggregatesFilter<"BuiltinSkillRuntimeConfig"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"BuiltinSkillRuntimeConfig"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"BuiltinSkillRuntimeConfig"> | Date | string
   }
 
   export type BuiltinSkillVersionWhereInput = {
@@ -90593,6 +97667,398 @@ export namespace Prisma {
     summary?: StringWithAggregatesFilter<"ReleaseAuditEvent"> | string
     detailsJson?: JsonNullableWithAggregatesFilter<"ReleaseAuditEvent">
     createdAt?: DateTimeWithAggregatesFilter<"ReleaseAuditEvent"> | Date | string
+  }
+
+  export type WorkspaceWhereInput = {
+    AND?: WorkspaceWhereInput | WorkspaceWhereInput[]
+    OR?: WorkspaceWhereInput[]
+    NOT?: WorkspaceWhereInput | WorkspaceWhereInput[]
+    id?: UuidFilter<"Workspace"> | string
+    name?: StringFilter<"Workspace"> | string
+    type?: EnumWorkspaceTypeFilter<"Workspace"> | $Enums.WorkspaceType
+    ownerUserId?: StringNullableFilter<"Workspace"> | string | null
+    departmentId?: StringNullableFilter<"Workspace"> | string | null
+    quotaBytes?: BigIntFilter<"Workspace"> | bigint | number
+    usedBytes?: BigIntFilter<"Workspace"> | bigint | number
+    createdAt?: DateTimeFilter<"Workspace"> | Date | string
+    updatedAt?: DateTimeFilter<"Workspace"> | Date | string
+    nodes?: WorkspaceNodeListRelationFilter
+  }
+
+  export type WorkspaceOrderByWithRelationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    ownerUserId?: SortOrderInput | SortOrder
+    departmentId?: SortOrderInput | SortOrder
+    quotaBytes?: SortOrder
+    usedBytes?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    nodes?: WorkspaceNodeOrderByRelationAggregateInput
+  }
+
+  export type WorkspaceWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    type_ownerUserId?: WorkspaceTypeOwnerUserIdCompoundUniqueInput
+    AND?: WorkspaceWhereInput | WorkspaceWhereInput[]
+    OR?: WorkspaceWhereInput[]
+    NOT?: WorkspaceWhereInput | WorkspaceWhereInput[]
+    name?: StringFilter<"Workspace"> | string
+    type?: EnumWorkspaceTypeFilter<"Workspace"> | $Enums.WorkspaceType
+    ownerUserId?: StringNullableFilter<"Workspace"> | string | null
+    departmentId?: StringNullableFilter<"Workspace"> | string | null
+    quotaBytes?: BigIntFilter<"Workspace"> | bigint | number
+    usedBytes?: BigIntFilter<"Workspace"> | bigint | number
+    createdAt?: DateTimeFilter<"Workspace"> | Date | string
+    updatedAt?: DateTimeFilter<"Workspace"> | Date | string
+    nodes?: WorkspaceNodeListRelationFilter
+  }, "id" | "type_ownerUserId">
+
+  export type WorkspaceOrderByWithAggregationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    ownerUserId?: SortOrderInput | SortOrder
+    departmentId?: SortOrderInput | SortOrder
+    quotaBytes?: SortOrder
+    usedBytes?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: WorkspaceCountOrderByAggregateInput
+    _avg?: WorkspaceAvgOrderByAggregateInput
+    _max?: WorkspaceMaxOrderByAggregateInput
+    _min?: WorkspaceMinOrderByAggregateInput
+    _sum?: WorkspaceSumOrderByAggregateInput
+  }
+
+  export type WorkspaceScalarWhereWithAggregatesInput = {
+    AND?: WorkspaceScalarWhereWithAggregatesInput | WorkspaceScalarWhereWithAggregatesInput[]
+    OR?: WorkspaceScalarWhereWithAggregatesInput[]
+    NOT?: WorkspaceScalarWhereWithAggregatesInput | WorkspaceScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"Workspace"> | string
+    name?: StringWithAggregatesFilter<"Workspace"> | string
+    type?: EnumWorkspaceTypeWithAggregatesFilter<"Workspace"> | $Enums.WorkspaceType
+    ownerUserId?: StringNullableWithAggregatesFilter<"Workspace"> | string | null
+    departmentId?: StringNullableWithAggregatesFilter<"Workspace"> | string | null
+    quotaBytes?: BigIntWithAggregatesFilter<"Workspace"> | bigint | number
+    usedBytes?: BigIntWithAggregatesFilter<"Workspace"> | bigint | number
+    createdAt?: DateTimeWithAggregatesFilter<"Workspace"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"Workspace"> | Date | string
+  }
+
+  export type WorkspaceNodeWhereInput = {
+    AND?: WorkspaceNodeWhereInput | WorkspaceNodeWhereInput[]
+    OR?: WorkspaceNodeWhereInput[]
+    NOT?: WorkspaceNodeWhereInput | WorkspaceNodeWhereInput[]
+    id?: UuidFilter<"WorkspaceNode"> | string
+    workspaceId?: UuidFilter<"WorkspaceNode"> | string
+    parentId?: UuidNullableFilter<"WorkspaceNode"> | string | null
+    name?: StringFilter<"WorkspaceNode"> | string
+    type?: EnumWorkspaceNodeTypeFilter<"WorkspaceNode"> | $Enums.WorkspaceNodeType
+    fileSize?: BigIntFilter<"WorkspaceNode"> | bigint | number
+    mimeType?: StringNullableFilter<"WorkspaceNode"> | string | null
+    storagePath?: StringNullableFilter<"WorkspaceNode"> | string | null
+    digestJson?: JsonNullableFilter<"WorkspaceNode">
+    createdBy?: StringFilter<"WorkspaceNode"> | string
+    createdAt?: DateTimeFilter<"WorkspaceNode"> | Date | string
+    updatedAt?: DateTimeFilter<"WorkspaceNode"> | Date | string
+    workspace?: XOR<WorkspaceRelationFilter, WorkspaceWhereInput>
+    parent?: XOR<WorkspaceNodeNullableRelationFilter, WorkspaceNodeWhereInput> | null
+    children?: WorkspaceNodeListRelationFilter
+  }
+
+  export type WorkspaceNodeOrderByWithRelationInput = {
+    id?: SortOrder
+    workspaceId?: SortOrder
+    parentId?: SortOrderInput | SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    fileSize?: SortOrder
+    mimeType?: SortOrderInput | SortOrder
+    storagePath?: SortOrderInput | SortOrder
+    digestJson?: SortOrderInput | SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    workspace?: WorkspaceOrderByWithRelationInput
+    parent?: WorkspaceNodeOrderByWithRelationInput
+    children?: WorkspaceNodeOrderByRelationAggregateInput
+  }
+
+  export type WorkspaceNodeWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: WorkspaceNodeWhereInput | WorkspaceNodeWhereInput[]
+    OR?: WorkspaceNodeWhereInput[]
+    NOT?: WorkspaceNodeWhereInput | WorkspaceNodeWhereInput[]
+    workspaceId?: UuidFilter<"WorkspaceNode"> | string
+    parentId?: UuidNullableFilter<"WorkspaceNode"> | string | null
+    name?: StringFilter<"WorkspaceNode"> | string
+    type?: EnumWorkspaceNodeTypeFilter<"WorkspaceNode"> | $Enums.WorkspaceNodeType
+    fileSize?: BigIntFilter<"WorkspaceNode"> | bigint | number
+    mimeType?: StringNullableFilter<"WorkspaceNode"> | string | null
+    storagePath?: StringNullableFilter<"WorkspaceNode"> | string | null
+    digestJson?: JsonNullableFilter<"WorkspaceNode">
+    createdBy?: StringFilter<"WorkspaceNode"> | string
+    createdAt?: DateTimeFilter<"WorkspaceNode"> | Date | string
+    updatedAt?: DateTimeFilter<"WorkspaceNode"> | Date | string
+    workspace?: XOR<WorkspaceRelationFilter, WorkspaceWhereInput>
+    parent?: XOR<WorkspaceNodeNullableRelationFilter, WorkspaceNodeWhereInput> | null
+    children?: WorkspaceNodeListRelationFilter
+  }, "id">
+
+  export type WorkspaceNodeOrderByWithAggregationInput = {
+    id?: SortOrder
+    workspaceId?: SortOrder
+    parentId?: SortOrderInput | SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    fileSize?: SortOrder
+    mimeType?: SortOrderInput | SortOrder
+    storagePath?: SortOrderInput | SortOrder
+    digestJson?: SortOrderInput | SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: WorkspaceNodeCountOrderByAggregateInput
+    _avg?: WorkspaceNodeAvgOrderByAggregateInput
+    _max?: WorkspaceNodeMaxOrderByAggregateInput
+    _min?: WorkspaceNodeMinOrderByAggregateInput
+    _sum?: WorkspaceNodeSumOrderByAggregateInput
+  }
+
+  export type WorkspaceNodeScalarWhereWithAggregatesInput = {
+    AND?: WorkspaceNodeScalarWhereWithAggregatesInput | WorkspaceNodeScalarWhereWithAggregatesInput[]
+    OR?: WorkspaceNodeScalarWhereWithAggregatesInput[]
+    NOT?: WorkspaceNodeScalarWhereWithAggregatesInput | WorkspaceNodeScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"WorkspaceNode"> | string
+    workspaceId?: UuidWithAggregatesFilter<"WorkspaceNode"> | string
+    parentId?: UuidNullableWithAggregatesFilter<"WorkspaceNode"> | string | null
+    name?: StringWithAggregatesFilter<"WorkspaceNode"> | string
+    type?: EnumWorkspaceNodeTypeWithAggregatesFilter<"WorkspaceNode"> | $Enums.WorkspaceNodeType
+    fileSize?: BigIntWithAggregatesFilter<"WorkspaceNode"> | bigint | number
+    mimeType?: StringNullableWithAggregatesFilter<"WorkspaceNode"> | string | null
+    storagePath?: StringNullableWithAggregatesFilter<"WorkspaceNode"> | string | null
+    digestJson?: JsonNullableWithAggregatesFilter<"WorkspaceNode">
+    createdBy?: StringWithAggregatesFilter<"WorkspaceNode"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"WorkspaceNode"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"WorkspaceNode"> | Date | string
+  }
+
+  export type WorkbenchTodoWhereInput = {
+    AND?: WorkbenchTodoWhereInput | WorkbenchTodoWhereInput[]
+    OR?: WorkbenchTodoWhereInput[]
+    NOT?: WorkbenchTodoWhereInput | WorkbenchTodoWhereInput[]
+    id?: UuidFilter<"WorkbenchTodo"> | string
+    userId?: StringFilter<"WorkbenchTodo"> | string
+    title?: StringFilter<"WorkbenchTodo"> | string
+    description?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    priority?: EnumTodoPriorityFilter<"WorkbenchTodo"> | $Enums.TodoPriority
+    status?: EnumTodoStatusFilter<"WorkbenchTodo"> | $Enums.TodoStatus
+    dueDate?: DateTimeNullableFilter<"WorkbenchTodo"> | Date | string | null
+    completedAt?: DateTimeNullableFilter<"WorkbenchTodo"> | Date | string | null
+    sourceType?: EnumTodoSourceTypeFilter<"WorkbenchTodo"> | $Enums.TodoSourceType
+    sourceRefId?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    sourceTitle?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    contextData?: JsonNullableFilter<"WorkbenchTodo">
+    boundWorkflowId?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    executionId?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    createdAt?: DateTimeFilter<"WorkbenchTodo"> | Date | string
+    updatedAt?: DateTimeFilter<"WorkbenchTodo"> | Date | string
+  }
+
+  export type WorkbenchTodoOrderByWithRelationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    description?: SortOrderInput | SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    dueDate?: SortOrderInput | SortOrder
+    completedAt?: SortOrderInput | SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrderInput | SortOrder
+    sourceTitle?: SortOrderInput | SortOrder
+    contextData?: SortOrderInput | SortOrder
+    boundWorkflowId?: SortOrderInput | SortOrder
+    executionId?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkbenchTodoWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: WorkbenchTodoWhereInput | WorkbenchTodoWhereInput[]
+    OR?: WorkbenchTodoWhereInput[]
+    NOT?: WorkbenchTodoWhereInput | WorkbenchTodoWhereInput[]
+    userId?: StringFilter<"WorkbenchTodo"> | string
+    title?: StringFilter<"WorkbenchTodo"> | string
+    description?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    priority?: EnumTodoPriorityFilter<"WorkbenchTodo"> | $Enums.TodoPriority
+    status?: EnumTodoStatusFilter<"WorkbenchTodo"> | $Enums.TodoStatus
+    dueDate?: DateTimeNullableFilter<"WorkbenchTodo"> | Date | string | null
+    completedAt?: DateTimeNullableFilter<"WorkbenchTodo"> | Date | string | null
+    sourceType?: EnumTodoSourceTypeFilter<"WorkbenchTodo"> | $Enums.TodoSourceType
+    sourceRefId?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    sourceTitle?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    contextData?: JsonNullableFilter<"WorkbenchTodo">
+    boundWorkflowId?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    executionId?: StringNullableFilter<"WorkbenchTodo"> | string | null
+    createdAt?: DateTimeFilter<"WorkbenchTodo"> | Date | string
+    updatedAt?: DateTimeFilter<"WorkbenchTodo"> | Date | string
+  }, "id">
+
+  export type WorkbenchTodoOrderByWithAggregationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    description?: SortOrderInput | SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    dueDate?: SortOrderInput | SortOrder
+    completedAt?: SortOrderInput | SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrderInput | SortOrder
+    sourceTitle?: SortOrderInput | SortOrder
+    contextData?: SortOrderInput | SortOrder
+    boundWorkflowId?: SortOrderInput | SortOrder
+    executionId?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: WorkbenchTodoCountOrderByAggregateInput
+    _max?: WorkbenchTodoMaxOrderByAggregateInput
+    _min?: WorkbenchTodoMinOrderByAggregateInput
+  }
+
+  export type WorkbenchTodoScalarWhereWithAggregatesInput = {
+    AND?: WorkbenchTodoScalarWhereWithAggregatesInput | WorkbenchTodoScalarWhereWithAggregatesInput[]
+    OR?: WorkbenchTodoScalarWhereWithAggregatesInput[]
+    NOT?: WorkbenchTodoScalarWhereWithAggregatesInput | WorkbenchTodoScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"WorkbenchTodo"> | string
+    userId?: StringWithAggregatesFilter<"WorkbenchTodo"> | string
+    title?: StringWithAggregatesFilter<"WorkbenchTodo"> | string
+    description?: StringNullableWithAggregatesFilter<"WorkbenchTodo"> | string | null
+    priority?: EnumTodoPriorityWithAggregatesFilter<"WorkbenchTodo"> | $Enums.TodoPriority
+    status?: EnumTodoStatusWithAggregatesFilter<"WorkbenchTodo"> | $Enums.TodoStatus
+    dueDate?: DateTimeNullableWithAggregatesFilter<"WorkbenchTodo"> | Date | string | null
+    completedAt?: DateTimeNullableWithAggregatesFilter<"WorkbenchTodo"> | Date | string | null
+    sourceType?: EnumTodoSourceTypeWithAggregatesFilter<"WorkbenchTodo"> | $Enums.TodoSourceType
+    sourceRefId?: StringNullableWithAggregatesFilter<"WorkbenchTodo"> | string | null
+    sourceTitle?: StringNullableWithAggregatesFilter<"WorkbenchTodo"> | string | null
+    contextData?: JsonNullableWithAggregatesFilter<"WorkbenchTodo">
+    boundWorkflowId?: StringNullableWithAggregatesFilter<"WorkbenchTodo"> | string | null
+    executionId?: StringNullableWithAggregatesFilter<"WorkbenchTodo"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"WorkbenchTodo"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"WorkbenchTodo"> | Date | string
+  }
+
+  export type WorkbenchInboxItemWhereInput = {
+    AND?: WorkbenchInboxItemWhereInput | WorkbenchInboxItemWhereInput[]
+    OR?: WorkbenchInboxItemWhereInput[]
+    NOT?: WorkbenchInboxItemWhereInput | WorkbenchInboxItemWhereInput[]
+    id?: UuidFilter<"WorkbenchInboxItem"> | string
+    userId?: StringFilter<"WorkbenchInboxItem"> | string
+    title?: StringFilter<"WorkbenchInboxItem"> | string
+    rawContent?: StringFilter<"WorkbenchInboxItem"> | string
+    sourceType?: EnumTodoSourceTypeFilter<"WorkbenchInboxItem"> | $Enums.TodoSourceType
+    sourceRefId?: StringNullableFilter<"WorkbenchInboxItem"> | string | null
+    sourceTitle?: StringNullableFilter<"WorkbenchInboxItem"> | string | null
+    sourceSender?: StringNullableFilter<"WorkbenchInboxItem"> | string | null
+    unifiedPayload?: JsonFilter<"WorkbenchInboxItem">
+    status?: EnumInboxItemStatusFilter<"WorkbenchInboxItem"> | $Enums.InboxItemStatus
+    confidence?: FloatFilter<"WorkbenchInboxItem"> | number
+    aiClarification?: JsonNullableFilter<"WorkbenchInboxItem">
+    convertedTodoId?: UuidNullableFilter<"WorkbenchInboxItem"> | string | null
+    clarifiedAt?: DateTimeNullableFilter<"WorkbenchInboxItem"> | Date | string | null
+    createdAt?: DateTimeFilter<"WorkbenchInboxItem"> | Date | string
+    updatedAt?: DateTimeFilter<"WorkbenchInboxItem"> | Date | string
+  }
+
+  export type WorkbenchInboxItemOrderByWithRelationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    rawContent?: SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrderInput | SortOrder
+    sourceTitle?: SortOrderInput | SortOrder
+    sourceSender?: SortOrderInput | SortOrder
+    unifiedPayload?: SortOrder
+    status?: SortOrder
+    confidence?: SortOrder
+    aiClarification?: SortOrderInput | SortOrder
+    convertedTodoId?: SortOrderInput | SortOrder
+    clarifiedAt?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkbenchInboxItemWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: WorkbenchInboxItemWhereInput | WorkbenchInboxItemWhereInput[]
+    OR?: WorkbenchInboxItemWhereInput[]
+    NOT?: WorkbenchInboxItemWhereInput | WorkbenchInboxItemWhereInput[]
+    userId?: StringFilter<"WorkbenchInboxItem"> | string
+    title?: StringFilter<"WorkbenchInboxItem"> | string
+    rawContent?: StringFilter<"WorkbenchInboxItem"> | string
+    sourceType?: EnumTodoSourceTypeFilter<"WorkbenchInboxItem"> | $Enums.TodoSourceType
+    sourceRefId?: StringNullableFilter<"WorkbenchInboxItem"> | string | null
+    sourceTitle?: StringNullableFilter<"WorkbenchInboxItem"> | string | null
+    sourceSender?: StringNullableFilter<"WorkbenchInboxItem"> | string | null
+    unifiedPayload?: JsonFilter<"WorkbenchInboxItem">
+    status?: EnumInboxItemStatusFilter<"WorkbenchInboxItem"> | $Enums.InboxItemStatus
+    confidence?: FloatFilter<"WorkbenchInboxItem"> | number
+    aiClarification?: JsonNullableFilter<"WorkbenchInboxItem">
+    convertedTodoId?: UuidNullableFilter<"WorkbenchInboxItem"> | string | null
+    clarifiedAt?: DateTimeNullableFilter<"WorkbenchInboxItem"> | Date | string | null
+    createdAt?: DateTimeFilter<"WorkbenchInboxItem"> | Date | string
+    updatedAt?: DateTimeFilter<"WorkbenchInboxItem"> | Date | string
+  }, "id">
+
+  export type WorkbenchInboxItemOrderByWithAggregationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    rawContent?: SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrderInput | SortOrder
+    sourceTitle?: SortOrderInput | SortOrder
+    sourceSender?: SortOrderInput | SortOrder
+    unifiedPayload?: SortOrder
+    status?: SortOrder
+    confidence?: SortOrder
+    aiClarification?: SortOrderInput | SortOrder
+    convertedTodoId?: SortOrderInput | SortOrder
+    clarifiedAt?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: WorkbenchInboxItemCountOrderByAggregateInput
+    _avg?: WorkbenchInboxItemAvgOrderByAggregateInput
+    _max?: WorkbenchInboxItemMaxOrderByAggregateInput
+    _min?: WorkbenchInboxItemMinOrderByAggregateInput
+    _sum?: WorkbenchInboxItemSumOrderByAggregateInput
+  }
+
+  export type WorkbenchInboxItemScalarWhereWithAggregatesInput = {
+    AND?: WorkbenchInboxItemScalarWhereWithAggregatesInput | WorkbenchInboxItemScalarWhereWithAggregatesInput[]
+    OR?: WorkbenchInboxItemScalarWhereWithAggregatesInput[]
+    NOT?: WorkbenchInboxItemScalarWhereWithAggregatesInput | WorkbenchInboxItemScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"WorkbenchInboxItem"> | string
+    userId?: StringWithAggregatesFilter<"WorkbenchInboxItem"> | string
+    title?: StringWithAggregatesFilter<"WorkbenchInboxItem"> | string
+    rawContent?: StringWithAggregatesFilter<"WorkbenchInboxItem"> | string
+    sourceType?: EnumTodoSourceTypeWithAggregatesFilter<"WorkbenchInboxItem"> | $Enums.TodoSourceType
+    sourceRefId?: StringNullableWithAggregatesFilter<"WorkbenchInboxItem"> | string | null
+    sourceTitle?: StringNullableWithAggregatesFilter<"WorkbenchInboxItem"> | string | null
+    sourceSender?: StringNullableWithAggregatesFilter<"WorkbenchInboxItem"> | string | null
+    unifiedPayload?: JsonWithAggregatesFilter<"WorkbenchInboxItem">
+    status?: EnumInboxItemStatusWithAggregatesFilter<"WorkbenchInboxItem"> | $Enums.InboxItemStatus
+    confidence?: FloatWithAggregatesFilter<"WorkbenchInboxItem"> | number
+    aiClarification?: JsonNullableWithAggregatesFilter<"WorkbenchInboxItem">
+    convertedTodoId?: UuidNullableWithAggregatesFilter<"WorkbenchInboxItem"> | string | null
+    clarifiedAt?: DateTimeNullableWithAggregatesFilter<"WorkbenchInboxItem"> | Date | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"WorkbenchInboxItem"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"WorkbenchInboxItem"> | Date | string
   }
 
   export type UserCreateInput = {
@@ -95669,6 +103135,90 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type ExecutionCompletionClaimCreateInput = {
+    id?: string
+    executionId: string
+    stepId?: string | null
+    planNodeId?: string | null
+    claim: string
+    evidenceType: string
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    status?: string
+    createdAt?: Date | string
+  }
+
+  export type ExecutionCompletionClaimUncheckedCreateInput = {
+    id?: string
+    executionId: string
+    stepId?: string | null
+    planNodeId?: string | null
+    claim: string
+    evidenceType: string
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    status?: string
+    createdAt?: Date | string
+  }
+
+  export type ExecutionCompletionClaimUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    executionId?: StringFieldUpdateOperationsInput | string
+    stepId?: NullableStringFieldUpdateOperationsInput | string | null
+    planNodeId?: NullableStringFieldUpdateOperationsInput | string | null
+    claim?: StringFieldUpdateOperationsInput | string
+    evidenceType?: StringFieldUpdateOperationsInput | string
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ExecutionCompletionClaimUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    executionId?: StringFieldUpdateOperationsInput | string
+    stepId?: NullableStringFieldUpdateOperationsInput | string | null
+    planNodeId?: NullableStringFieldUpdateOperationsInput | string | null
+    claim?: StringFieldUpdateOperationsInput | string
+    evidenceType?: StringFieldUpdateOperationsInput | string
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ExecutionCompletionClaimCreateManyInput = {
+    id?: string
+    executionId: string
+    stepId?: string | null
+    planNodeId?: string | null
+    claim: string
+    evidenceType: string
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    status?: string
+    createdAt?: Date | string
+  }
+
+  export type ExecutionCompletionClaimUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    executionId?: StringFieldUpdateOperationsInput | string
+    stepId?: NullableStringFieldUpdateOperationsInput | string | null
+    planNodeId?: NullableStringFieldUpdateOperationsInput | string | null
+    claim?: StringFieldUpdateOperationsInput | string
+    evidenceType?: StringFieldUpdateOperationsInput | string
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ExecutionCompletionClaimUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    executionId?: StringFieldUpdateOperationsInput | string
+    stepId?: NullableStringFieldUpdateOperationsInput | string | null
+    planNodeId?: NullableStringFieldUpdateOperationsInput | string | null
+    claim?: StringFieldUpdateOperationsInput | string
+    evidenceType?: StringFieldUpdateOperationsInput | string
+    evidenceJson?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type PromptSnapshotCreateInput = {
     id?: string
     ownerUserId: string
@@ -96896,6 +104446,7 @@ export namespace Prisma {
     versions?: BuiltinSkillVersionCreateNestedManyWithoutBuiltinSkillInput
     permissionOverrides?: BuiltinSkillPermissionOverrideCreateNestedManyWithoutBuiltinSkillInput
     auditEvents?: BuiltinSkillAuditEventCreateNestedManyWithoutBuiltinSkillInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigCreateNestedManyWithoutBuiltinSkillInput
   }
 
   export type BuiltinSkillUncheckedCreateInput = {
@@ -96914,6 +104465,7 @@ export namespace Prisma {
     versions?: BuiltinSkillVersionUncheckedCreateNestedManyWithoutBuiltinSkillInput
     permissionOverrides?: BuiltinSkillPermissionOverrideUncheckedCreateNestedManyWithoutBuiltinSkillInput
     auditEvents?: BuiltinSkillAuditEventUncheckedCreateNestedManyWithoutBuiltinSkillInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigUncheckedCreateNestedManyWithoutBuiltinSkillInput
   }
 
   export type BuiltinSkillUpdateInput = {
@@ -96932,6 +104484,7 @@ export namespace Prisma {
     versions?: BuiltinSkillVersionUpdateManyWithoutBuiltinSkillNestedInput
     permissionOverrides?: BuiltinSkillPermissionOverrideUpdateManyWithoutBuiltinSkillNestedInput
     auditEvents?: BuiltinSkillAuditEventUpdateManyWithoutBuiltinSkillNestedInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigUpdateManyWithoutBuiltinSkillNestedInput
   }
 
   export type BuiltinSkillUncheckedUpdateInput = {
@@ -96950,6 +104503,7 @@ export namespace Prisma {
     versions?: BuiltinSkillVersionUncheckedUpdateManyWithoutBuiltinSkillNestedInput
     permissionOverrides?: BuiltinSkillPermissionOverrideUncheckedUpdateManyWithoutBuiltinSkillNestedInput
     auditEvents?: BuiltinSkillAuditEventUncheckedUpdateManyWithoutBuiltinSkillNestedInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigUncheckedUpdateManyWithoutBuiltinSkillNestedInput
   }
 
   export type BuiltinSkillCreateManyInput = {
@@ -96993,6 +104547,75 @@ export namespace Prisma {
     lifecycle?: StringFieldUpdateOperationsInput | string
     isEnabled?: BoolFieldUpdateOperationsInput | boolean
     activeVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type BuiltinSkillRuntimeConfigCreateInput = {
+    id?: string
+    configKey: string
+    encryptedValue: string
+    updatedBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    builtinSkill: BuiltinSkillCreateNestedOneWithoutRuntimeConfigsInput
+  }
+
+  export type BuiltinSkillRuntimeConfigUncheckedCreateInput = {
+    id?: string
+    builtinSkillId: string
+    configKey: string
+    encryptedValue: string
+    updatedBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type BuiltinSkillRuntimeConfigUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    configKey?: StringFieldUpdateOperationsInput | string
+    encryptedValue?: StringFieldUpdateOperationsInput | string
+    updatedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    builtinSkill?: BuiltinSkillUpdateOneRequiredWithoutRuntimeConfigsNestedInput
+  }
+
+  export type BuiltinSkillRuntimeConfigUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    builtinSkillId?: StringFieldUpdateOperationsInput | string
+    configKey?: StringFieldUpdateOperationsInput | string
+    encryptedValue?: StringFieldUpdateOperationsInput | string
+    updatedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type BuiltinSkillRuntimeConfigCreateManyInput = {
+    id?: string
+    builtinSkillId: string
+    configKey: string
+    encryptedValue: string
+    updatedBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type BuiltinSkillRuntimeConfigUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    configKey?: StringFieldUpdateOperationsInput | string
+    encryptedValue?: StringFieldUpdateOperationsInput | string
+    updatedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type BuiltinSkillRuntimeConfigUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    builtinSkillId?: StringFieldUpdateOperationsInput | string
+    configKey?: StringFieldUpdateOperationsInput | string
+    encryptedValue?: StringFieldUpdateOperationsInput | string
+    updatedBy?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -98430,6 +106053,467 @@ export namespace Prisma {
     summary?: StringFieldUpdateOperationsInput | string
     detailsJson?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkspaceCreateInput = {
+    id?: string
+    name: string
+    type: $Enums.WorkspaceType
+    ownerUserId?: string | null
+    departmentId?: string | null
+    quotaBytes?: bigint | number
+    usedBytes?: bigint | number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    nodes?: WorkspaceNodeCreateNestedManyWithoutWorkspaceInput
+  }
+
+  export type WorkspaceUncheckedCreateInput = {
+    id?: string
+    name: string
+    type: $Enums.WorkspaceType
+    ownerUserId?: string | null
+    departmentId?: string | null
+    quotaBytes?: bigint | number
+    usedBytes?: bigint | number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    nodes?: WorkspaceNodeUncheckedCreateNestedManyWithoutWorkspaceInput
+  }
+
+  export type WorkspaceUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceTypeFieldUpdateOperationsInput | $Enums.WorkspaceType
+    ownerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    departmentId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotaBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    usedBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    nodes?: WorkspaceNodeUpdateManyWithoutWorkspaceNestedInput
+  }
+
+  export type WorkspaceUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceTypeFieldUpdateOperationsInput | $Enums.WorkspaceType
+    ownerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    departmentId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotaBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    usedBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    nodes?: WorkspaceNodeUncheckedUpdateManyWithoutWorkspaceNestedInput
+  }
+
+  export type WorkspaceCreateManyInput = {
+    id?: string
+    name: string
+    type: $Enums.WorkspaceType
+    ownerUserId?: string | null
+    departmentId?: string | null
+    quotaBytes?: bigint | number
+    usedBytes?: bigint | number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkspaceUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceTypeFieldUpdateOperationsInput | $Enums.WorkspaceType
+    ownerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    departmentId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotaBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    usedBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkspaceUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceTypeFieldUpdateOperationsInput | $Enums.WorkspaceType
+    ownerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    departmentId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotaBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    usedBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkspaceNodeCreateInput = {
+    id?: string
+    name: string
+    type: $Enums.WorkspaceNodeType
+    fileSize?: bigint | number
+    mimeType?: string | null
+    storagePath?: string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    workspace: WorkspaceCreateNestedOneWithoutNodesInput
+    parent?: WorkspaceNodeCreateNestedOneWithoutChildrenInput
+    children?: WorkspaceNodeCreateNestedManyWithoutParentInput
+  }
+
+  export type WorkspaceNodeUncheckedCreateInput = {
+    id?: string
+    workspaceId: string
+    parentId?: string | null
+    name: string
+    type: $Enums.WorkspaceNodeType
+    fileSize?: bigint | number
+    mimeType?: string | null
+    storagePath?: string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    children?: WorkspaceNodeUncheckedCreateNestedManyWithoutParentInput
+  }
+
+  export type WorkspaceNodeUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceNodeTypeFieldUpdateOperationsInput | $Enums.WorkspaceNodeType
+    fileSize?: BigIntFieldUpdateOperationsInput | bigint | number
+    mimeType?: NullableStringFieldUpdateOperationsInput | string | null
+    storagePath?: NullableStringFieldUpdateOperationsInput | string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    workspace?: WorkspaceUpdateOneRequiredWithoutNodesNestedInput
+    parent?: WorkspaceNodeUpdateOneWithoutChildrenNestedInput
+    children?: WorkspaceNodeUpdateManyWithoutParentNestedInput
+  }
+
+  export type WorkspaceNodeUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    workspaceId?: StringFieldUpdateOperationsInput | string
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceNodeTypeFieldUpdateOperationsInput | $Enums.WorkspaceNodeType
+    fileSize?: BigIntFieldUpdateOperationsInput | bigint | number
+    mimeType?: NullableStringFieldUpdateOperationsInput | string | null
+    storagePath?: NullableStringFieldUpdateOperationsInput | string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    children?: WorkspaceNodeUncheckedUpdateManyWithoutParentNestedInput
+  }
+
+  export type WorkspaceNodeCreateManyInput = {
+    id?: string
+    workspaceId: string
+    parentId?: string | null
+    name: string
+    type: $Enums.WorkspaceNodeType
+    fileSize?: bigint | number
+    mimeType?: string | null
+    storagePath?: string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkspaceNodeUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceNodeTypeFieldUpdateOperationsInput | $Enums.WorkspaceNodeType
+    fileSize?: BigIntFieldUpdateOperationsInput | bigint | number
+    mimeType?: NullableStringFieldUpdateOperationsInput | string | null
+    storagePath?: NullableStringFieldUpdateOperationsInput | string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkspaceNodeUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    workspaceId?: StringFieldUpdateOperationsInput | string
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceNodeTypeFieldUpdateOperationsInput | $Enums.WorkspaceNodeType
+    fileSize?: BigIntFieldUpdateOperationsInput | bigint | number
+    mimeType?: NullableStringFieldUpdateOperationsInput | string | null
+    storagePath?: NullableStringFieldUpdateOperationsInput | string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkbenchTodoCreateInput = {
+    id?: string
+    userId: string
+    title: string
+    description?: string | null
+    priority?: $Enums.TodoPriority
+    status?: $Enums.TodoStatus
+    dueDate?: Date | string | null
+    completedAt?: Date | string | null
+    sourceType?: $Enums.TodoSourceType
+    sourceRefId?: string | null
+    sourceTitle?: string | null
+    contextData?: NullableJsonNullValueInput | InputJsonValue
+    boundWorkflowId?: string | null
+    executionId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkbenchTodoUncheckedCreateInput = {
+    id?: string
+    userId: string
+    title: string
+    description?: string | null
+    priority?: $Enums.TodoPriority
+    status?: $Enums.TodoStatus
+    dueDate?: Date | string | null
+    completedAt?: Date | string | null
+    sourceType?: $Enums.TodoSourceType
+    sourceRefId?: string | null
+    sourceTitle?: string | null
+    contextData?: NullableJsonNullValueInput | InputJsonValue
+    boundWorkflowId?: string | null
+    executionId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkbenchTodoUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    priority?: EnumTodoPriorityFieldUpdateOperationsInput | $Enums.TodoPriority
+    status?: EnumTodoStatusFieldUpdateOperationsInput | $Enums.TodoStatus
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sourceType?: EnumTodoSourceTypeFieldUpdateOperationsInput | $Enums.TodoSourceType
+    sourceRefId?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceTitle?: NullableStringFieldUpdateOperationsInput | string | null
+    contextData?: NullableJsonNullValueInput | InputJsonValue
+    boundWorkflowId?: NullableStringFieldUpdateOperationsInput | string | null
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkbenchTodoUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    priority?: EnumTodoPriorityFieldUpdateOperationsInput | $Enums.TodoPriority
+    status?: EnumTodoStatusFieldUpdateOperationsInput | $Enums.TodoStatus
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sourceType?: EnumTodoSourceTypeFieldUpdateOperationsInput | $Enums.TodoSourceType
+    sourceRefId?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceTitle?: NullableStringFieldUpdateOperationsInput | string | null
+    contextData?: NullableJsonNullValueInput | InputJsonValue
+    boundWorkflowId?: NullableStringFieldUpdateOperationsInput | string | null
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkbenchTodoCreateManyInput = {
+    id?: string
+    userId: string
+    title: string
+    description?: string | null
+    priority?: $Enums.TodoPriority
+    status?: $Enums.TodoStatus
+    dueDate?: Date | string | null
+    completedAt?: Date | string | null
+    sourceType?: $Enums.TodoSourceType
+    sourceRefId?: string | null
+    sourceTitle?: string | null
+    contextData?: NullableJsonNullValueInput | InputJsonValue
+    boundWorkflowId?: string | null
+    executionId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkbenchTodoUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    priority?: EnumTodoPriorityFieldUpdateOperationsInput | $Enums.TodoPriority
+    status?: EnumTodoStatusFieldUpdateOperationsInput | $Enums.TodoStatus
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sourceType?: EnumTodoSourceTypeFieldUpdateOperationsInput | $Enums.TodoSourceType
+    sourceRefId?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceTitle?: NullableStringFieldUpdateOperationsInput | string | null
+    contextData?: NullableJsonNullValueInput | InputJsonValue
+    boundWorkflowId?: NullableStringFieldUpdateOperationsInput | string | null
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkbenchTodoUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    priority?: EnumTodoPriorityFieldUpdateOperationsInput | $Enums.TodoPriority
+    status?: EnumTodoStatusFieldUpdateOperationsInput | $Enums.TodoStatus
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    completedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sourceType?: EnumTodoSourceTypeFieldUpdateOperationsInput | $Enums.TodoSourceType
+    sourceRefId?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceTitle?: NullableStringFieldUpdateOperationsInput | string | null
+    contextData?: NullableJsonNullValueInput | InputJsonValue
+    boundWorkflowId?: NullableStringFieldUpdateOperationsInput | string | null
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkbenchInboxItemCreateInput = {
+    id?: string
+    userId: string
+    title: string
+    rawContent: string
+    sourceType?: $Enums.TodoSourceType
+    sourceRefId?: string | null
+    sourceTitle?: string | null
+    sourceSender?: string | null
+    unifiedPayload?: JsonNullValueInput | InputJsonValue
+    status?: $Enums.InboxItemStatus
+    confidence?: number
+    aiClarification?: NullableJsonNullValueInput | InputJsonValue
+    convertedTodoId?: string | null
+    clarifiedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkbenchInboxItemUncheckedCreateInput = {
+    id?: string
+    userId: string
+    title: string
+    rawContent: string
+    sourceType?: $Enums.TodoSourceType
+    sourceRefId?: string | null
+    sourceTitle?: string | null
+    sourceSender?: string | null
+    unifiedPayload?: JsonNullValueInput | InputJsonValue
+    status?: $Enums.InboxItemStatus
+    confidence?: number
+    aiClarification?: NullableJsonNullValueInput | InputJsonValue
+    convertedTodoId?: string | null
+    clarifiedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkbenchInboxItemUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    rawContent?: StringFieldUpdateOperationsInput | string
+    sourceType?: EnumTodoSourceTypeFieldUpdateOperationsInput | $Enums.TodoSourceType
+    sourceRefId?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceTitle?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceSender?: NullableStringFieldUpdateOperationsInput | string | null
+    unifiedPayload?: JsonNullValueInput | InputJsonValue
+    status?: EnumInboxItemStatusFieldUpdateOperationsInput | $Enums.InboxItemStatus
+    confidence?: FloatFieldUpdateOperationsInput | number
+    aiClarification?: NullableJsonNullValueInput | InputJsonValue
+    convertedTodoId?: NullableStringFieldUpdateOperationsInput | string | null
+    clarifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkbenchInboxItemUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    rawContent?: StringFieldUpdateOperationsInput | string
+    sourceType?: EnumTodoSourceTypeFieldUpdateOperationsInput | $Enums.TodoSourceType
+    sourceRefId?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceTitle?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceSender?: NullableStringFieldUpdateOperationsInput | string | null
+    unifiedPayload?: JsonNullValueInput | InputJsonValue
+    status?: EnumInboxItemStatusFieldUpdateOperationsInput | $Enums.InboxItemStatus
+    confidence?: FloatFieldUpdateOperationsInput | number
+    aiClarification?: NullableJsonNullValueInput | InputJsonValue
+    convertedTodoId?: NullableStringFieldUpdateOperationsInput | string | null
+    clarifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkbenchInboxItemCreateManyInput = {
+    id?: string
+    userId: string
+    title: string
+    rawContent: string
+    sourceType?: $Enums.TodoSourceType
+    sourceRefId?: string | null
+    sourceTitle?: string | null
+    sourceSender?: string | null
+    unifiedPayload?: JsonNullValueInput | InputJsonValue
+    status?: $Enums.InboxItemStatus
+    confidence?: number
+    aiClarification?: NullableJsonNullValueInput | InputJsonValue
+    convertedTodoId?: string | null
+    clarifiedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkbenchInboxItemUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    rawContent?: StringFieldUpdateOperationsInput | string
+    sourceType?: EnumTodoSourceTypeFieldUpdateOperationsInput | $Enums.TodoSourceType
+    sourceRefId?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceTitle?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceSender?: NullableStringFieldUpdateOperationsInput | string | null
+    unifiedPayload?: JsonNullValueInput | InputJsonValue
+    status?: EnumInboxItemStatusFieldUpdateOperationsInput | $Enums.InboxItemStatus
+    confidence?: FloatFieldUpdateOperationsInput | number
+    aiClarification?: NullableJsonNullValueInput | InputJsonValue
+    convertedTodoId?: NullableStringFieldUpdateOperationsInput | string | null
+    clarifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkbenchInboxItemUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    rawContent?: StringFieldUpdateOperationsInput | string
+    sourceType?: EnumTodoSourceTypeFieldUpdateOperationsInput | $Enums.TodoSourceType
+    sourceRefId?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceTitle?: NullableStringFieldUpdateOperationsInput | string | null
+    sourceSender?: NullableStringFieldUpdateOperationsInput | string | null
+    unifiedPayload?: JsonNullValueInput | InputJsonValue
+    status?: EnumInboxItemStatusFieldUpdateOperationsInput | $Enums.InboxItemStatus
+    confidence?: FloatFieldUpdateOperationsInput | number
+    aiClarification?: NullableJsonNullValueInput | InputJsonValue
+    convertedTodoId?: NullableStringFieldUpdateOperationsInput | string | null
+    clarifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type UuidFilter<$PrismaModel = never> = {
@@ -101592,6 +109676,46 @@ export namespace Prisma {
     createdAt?: SortOrder
   }
 
+  export type ExecutionCompletionClaimExecutionIdClaimPlanNodeIdCompoundUniqueInput = {
+    executionId: string
+    claim: string
+    planNodeId: string
+  }
+
+  export type ExecutionCompletionClaimCountOrderByAggregateInput = {
+    id?: SortOrder
+    executionId?: SortOrder
+    stepId?: SortOrder
+    planNodeId?: SortOrder
+    claim?: SortOrder
+    evidenceType?: SortOrder
+    evidenceJson?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type ExecutionCompletionClaimMaxOrderByAggregateInput = {
+    id?: SortOrder
+    executionId?: SortOrder
+    stepId?: SortOrder
+    planNodeId?: SortOrder
+    claim?: SortOrder
+    evidenceType?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type ExecutionCompletionClaimMinOrderByAggregateInput = {
+    id?: SortOrder
+    executionId?: SortOrder
+    stepId?: SortOrder
+    planNodeId?: SortOrder
+    claim?: SortOrder
+    evidenceType?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+  }
+
   export type PromptSnapshotCountOrderByAggregateInput = {
     id?: SortOrder
     ownerUserId?: SortOrder
@@ -102234,6 +110358,12 @@ export namespace Prisma {
     none?: BuiltinSkillAuditEventWhereInput
   }
 
+  export type BuiltinSkillRuntimeConfigListRelationFilter = {
+    every?: BuiltinSkillRuntimeConfigWhereInput
+    some?: BuiltinSkillRuntimeConfigWhereInput
+    none?: BuiltinSkillRuntimeConfigWhereInput
+  }
+
   export type BuiltinSkillVersionOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
@@ -102243,6 +110373,10 @@ export namespace Prisma {
   }
 
   export type BuiltinSkillAuditEventOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type BuiltinSkillRuntimeConfigOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -102294,6 +110428,41 @@ export namespace Prisma {
   export type BuiltinSkillRelationFilter = {
     is?: BuiltinSkillWhereInput
     isNot?: BuiltinSkillWhereInput
+  }
+
+  export type BuiltinSkillRuntimeConfigBuiltinSkillIdConfigKeyCompoundUniqueInput = {
+    builtinSkillId: string
+    configKey: string
+  }
+
+  export type BuiltinSkillRuntimeConfigCountOrderByAggregateInput = {
+    id?: SortOrder
+    builtinSkillId?: SortOrder
+    configKey?: SortOrder
+    encryptedValue?: SortOrder
+    updatedBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type BuiltinSkillRuntimeConfigMaxOrderByAggregateInput = {
+    id?: SortOrder
+    builtinSkillId?: SortOrder
+    configKey?: SortOrder
+    encryptedValue?: SortOrder
+    updatedBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type BuiltinSkillRuntimeConfigMinOrderByAggregateInput = {
+    id?: SortOrder
+    builtinSkillId?: SortOrder
+    configKey?: SortOrder
+    encryptedValue?: SortOrder
+    updatedBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
   }
 
   export type BuiltinSkillDeploymentListRelationFilter = {
@@ -102915,6 +111084,373 @@ export namespace Prisma {
     success?: SortOrder
     summary?: SortOrder
     createdAt?: SortOrder
+  }
+
+  export type EnumWorkspaceTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.WorkspaceType | EnumWorkspaceTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.WorkspaceType[] | ListEnumWorkspaceTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.WorkspaceType[] | ListEnumWorkspaceTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumWorkspaceTypeFilter<$PrismaModel> | $Enums.WorkspaceType
+  }
+
+  export type BigIntFilter<$PrismaModel = never> = {
+    equals?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    in?: bigint[] | number[] | ListBigIntFieldRefInput<$PrismaModel>
+    notIn?: bigint[] | number[] | ListBigIntFieldRefInput<$PrismaModel>
+    lt?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    lte?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    gt?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    gte?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    not?: NestedBigIntFilter<$PrismaModel> | bigint | number
+  }
+
+  export type WorkspaceNodeListRelationFilter = {
+    every?: WorkspaceNodeWhereInput
+    some?: WorkspaceNodeWhereInput
+    none?: WorkspaceNodeWhereInput
+  }
+
+  export type WorkspaceNodeOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type WorkspaceTypeOwnerUserIdCompoundUniqueInput = {
+    type: $Enums.WorkspaceType
+    ownerUserId: string
+  }
+
+  export type WorkspaceCountOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    ownerUserId?: SortOrder
+    departmentId?: SortOrder
+    quotaBytes?: SortOrder
+    usedBytes?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkspaceAvgOrderByAggregateInput = {
+    quotaBytes?: SortOrder
+    usedBytes?: SortOrder
+  }
+
+  export type WorkspaceMaxOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    ownerUserId?: SortOrder
+    departmentId?: SortOrder
+    quotaBytes?: SortOrder
+    usedBytes?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkspaceMinOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    ownerUserId?: SortOrder
+    departmentId?: SortOrder
+    quotaBytes?: SortOrder
+    usedBytes?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkspaceSumOrderByAggregateInput = {
+    quotaBytes?: SortOrder
+    usedBytes?: SortOrder
+  }
+
+  export type EnumWorkspaceTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.WorkspaceType | EnumWorkspaceTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.WorkspaceType[] | ListEnumWorkspaceTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.WorkspaceType[] | ListEnumWorkspaceTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumWorkspaceTypeWithAggregatesFilter<$PrismaModel> | $Enums.WorkspaceType
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumWorkspaceTypeFilter<$PrismaModel>
+    _max?: NestedEnumWorkspaceTypeFilter<$PrismaModel>
+  }
+
+  export type BigIntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    in?: bigint[] | number[] | ListBigIntFieldRefInput<$PrismaModel>
+    notIn?: bigint[] | number[] | ListBigIntFieldRefInput<$PrismaModel>
+    lt?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    lte?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    gt?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    gte?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    not?: NestedBigIntWithAggregatesFilter<$PrismaModel> | bigint | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedBigIntFilter<$PrismaModel>
+    _min?: NestedBigIntFilter<$PrismaModel>
+    _max?: NestedBigIntFilter<$PrismaModel>
+  }
+
+  export type EnumWorkspaceNodeTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.WorkspaceNodeType | EnumWorkspaceNodeTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.WorkspaceNodeType[] | ListEnumWorkspaceNodeTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.WorkspaceNodeType[] | ListEnumWorkspaceNodeTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumWorkspaceNodeTypeFilter<$PrismaModel> | $Enums.WorkspaceNodeType
+  }
+
+  export type WorkspaceRelationFilter = {
+    is?: WorkspaceWhereInput
+    isNot?: WorkspaceWhereInput
+  }
+
+  export type WorkspaceNodeNullableRelationFilter = {
+    is?: WorkspaceNodeWhereInput | null
+    isNot?: WorkspaceNodeWhereInput | null
+  }
+
+  export type WorkspaceNodeCountOrderByAggregateInput = {
+    id?: SortOrder
+    workspaceId?: SortOrder
+    parentId?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    fileSize?: SortOrder
+    mimeType?: SortOrder
+    storagePath?: SortOrder
+    digestJson?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkspaceNodeAvgOrderByAggregateInput = {
+    fileSize?: SortOrder
+  }
+
+  export type WorkspaceNodeMaxOrderByAggregateInput = {
+    id?: SortOrder
+    workspaceId?: SortOrder
+    parentId?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    fileSize?: SortOrder
+    mimeType?: SortOrder
+    storagePath?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkspaceNodeMinOrderByAggregateInput = {
+    id?: SortOrder
+    workspaceId?: SortOrder
+    parentId?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    fileSize?: SortOrder
+    mimeType?: SortOrder
+    storagePath?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkspaceNodeSumOrderByAggregateInput = {
+    fileSize?: SortOrder
+  }
+
+  export type EnumWorkspaceNodeTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.WorkspaceNodeType | EnumWorkspaceNodeTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.WorkspaceNodeType[] | ListEnumWorkspaceNodeTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.WorkspaceNodeType[] | ListEnumWorkspaceNodeTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumWorkspaceNodeTypeWithAggregatesFilter<$PrismaModel> | $Enums.WorkspaceNodeType
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumWorkspaceNodeTypeFilter<$PrismaModel>
+    _max?: NestedEnumWorkspaceNodeTypeFilter<$PrismaModel>
+  }
+
+  export type EnumTodoPriorityFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoPriority | EnumTodoPriorityFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoPriority[] | ListEnumTodoPriorityFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoPriority[] | ListEnumTodoPriorityFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoPriorityFilter<$PrismaModel> | $Enums.TodoPriority
+  }
+
+  export type EnumTodoStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoStatus | EnumTodoStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoStatus[] | ListEnumTodoStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoStatus[] | ListEnumTodoStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoStatusFilter<$PrismaModel> | $Enums.TodoStatus
+  }
+
+  export type EnumTodoSourceTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoSourceType | EnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoSourceType[] | ListEnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoSourceType[] | ListEnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoSourceTypeFilter<$PrismaModel> | $Enums.TodoSourceType
+  }
+
+  export type WorkbenchTodoCountOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    description?: SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    dueDate?: SortOrder
+    completedAt?: SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrder
+    sourceTitle?: SortOrder
+    contextData?: SortOrder
+    boundWorkflowId?: SortOrder
+    executionId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkbenchTodoMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    description?: SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    dueDate?: SortOrder
+    completedAt?: SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrder
+    sourceTitle?: SortOrder
+    boundWorkflowId?: SortOrder
+    executionId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkbenchTodoMinOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    description?: SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    dueDate?: SortOrder
+    completedAt?: SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrder
+    sourceTitle?: SortOrder
+    boundWorkflowId?: SortOrder
+    executionId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EnumTodoPriorityWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoPriority | EnumTodoPriorityFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoPriority[] | ListEnumTodoPriorityFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoPriority[] | ListEnumTodoPriorityFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoPriorityWithAggregatesFilter<$PrismaModel> | $Enums.TodoPriority
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumTodoPriorityFilter<$PrismaModel>
+    _max?: NestedEnumTodoPriorityFilter<$PrismaModel>
+  }
+
+  export type EnumTodoStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoStatus | EnumTodoStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoStatus[] | ListEnumTodoStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoStatus[] | ListEnumTodoStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoStatusWithAggregatesFilter<$PrismaModel> | $Enums.TodoStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumTodoStatusFilter<$PrismaModel>
+    _max?: NestedEnumTodoStatusFilter<$PrismaModel>
+  }
+
+  export type EnumTodoSourceTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoSourceType | EnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoSourceType[] | ListEnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoSourceType[] | ListEnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoSourceTypeWithAggregatesFilter<$PrismaModel> | $Enums.TodoSourceType
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumTodoSourceTypeFilter<$PrismaModel>
+    _max?: NestedEnumTodoSourceTypeFilter<$PrismaModel>
+  }
+
+  export type EnumInboxItemStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.InboxItemStatus | EnumInboxItemStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.InboxItemStatus[] | ListEnumInboxItemStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.InboxItemStatus[] | ListEnumInboxItemStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumInboxItemStatusFilter<$PrismaModel> | $Enums.InboxItemStatus
+  }
+
+  export type WorkbenchInboxItemCountOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    rawContent?: SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrder
+    sourceTitle?: SortOrder
+    sourceSender?: SortOrder
+    unifiedPayload?: SortOrder
+    status?: SortOrder
+    confidence?: SortOrder
+    aiClarification?: SortOrder
+    convertedTodoId?: SortOrder
+    clarifiedAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkbenchInboxItemAvgOrderByAggregateInput = {
+    confidence?: SortOrder
+  }
+
+  export type WorkbenchInboxItemMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    rawContent?: SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrder
+    sourceTitle?: SortOrder
+    sourceSender?: SortOrder
+    status?: SortOrder
+    confidence?: SortOrder
+    convertedTodoId?: SortOrder
+    clarifiedAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkbenchInboxItemMinOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    rawContent?: SortOrder
+    sourceType?: SortOrder
+    sourceRefId?: SortOrder
+    sourceTitle?: SortOrder
+    sourceSender?: SortOrder
+    status?: SortOrder
+    confidence?: SortOrder
+    convertedTodoId?: SortOrder
+    clarifiedAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type WorkbenchInboxItemSumOrderByAggregateInput = {
+    confidence?: SortOrder
+  }
+
+  export type EnumInboxItemStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.InboxItemStatus | EnumInboxItemStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.InboxItemStatus[] | ListEnumInboxItemStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.InboxItemStatus[] | ListEnumInboxItemStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumInboxItemStatusWithAggregatesFilter<$PrismaModel> | $Enums.InboxItemStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumInboxItemStatusFilter<$PrismaModel>
+    _max?: NestedEnumInboxItemStatusFilter<$PrismaModel>
   }
 
   export type UserRoleCreateNestedManyWithoutUserInput = {
@@ -105508,6 +114044,13 @@ export namespace Prisma {
     connect?: BuiltinSkillAuditEventWhereUniqueInput | BuiltinSkillAuditEventWhereUniqueInput[]
   }
 
+  export type BuiltinSkillRuntimeConfigCreateNestedManyWithoutBuiltinSkillInput = {
+    create?: XOR<BuiltinSkillRuntimeConfigCreateWithoutBuiltinSkillInput, BuiltinSkillRuntimeConfigUncheckedCreateWithoutBuiltinSkillInput> | BuiltinSkillRuntimeConfigCreateWithoutBuiltinSkillInput[] | BuiltinSkillRuntimeConfigUncheckedCreateWithoutBuiltinSkillInput[]
+    connectOrCreate?: BuiltinSkillRuntimeConfigCreateOrConnectWithoutBuiltinSkillInput | BuiltinSkillRuntimeConfigCreateOrConnectWithoutBuiltinSkillInput[]
+    createMany?: BuiltinSkillRuntimeConfigCreateManyBuiltinSkillInputEnvelope
+    connect?: BuiltinSkillRuntimeConfigWhereUniqueInput | BuiltinSkillRuntimeConfigWhereUniqueInput[]
+  }
+
   export type BuiltinSkillVersionUncheckedCreateNestedManyWithoutBuiltinSkillInput = {
     create?: XOR<BuiltinSkillVersionCreateWithoutBuiltinSkillInput, BuiltinSkillVersionUncheckedCreateWithoutBuiltinSkillInput> | BuiltinSkillVersionCreateWithoutBuiltinSkillInput[] | BuiltinSkillVersionUncheckedCreateWithoutBuiltinSkillInput[]
     connectOrCreate?: BuiltinSkillVersionCreateOrConnectWithoutBuiltinSkillInput | BuiltinSkillVersionCreateOrConnectWithoutBuiltinSkillInput[]
@@ -105527,6 +114070,13 @@ export namespace Prisma {
     connectOrCreate?: BuiltinSkillAuditEventCreateOrConnectWithoutBuiltinSkillInput | BuiltinSkillAuditEventCreateOrConnectWithoutBuiltinSkillInput[]
     createMany?: BuiltinSkillAuditEventCreateManyBuiltinSkillInputEnvelope
     connect?: BuiltinSkillAuditEventWhereUniqueInput | BuiltinSkillAuditEventWhereUniqueInput[]
+  }
+
+  export type BuiltinSkillRuntimeConfigUncheckedCreateNestedManyWithoutBuiltinSkillInput = {
+    create?: XOR<BuiltinSkillRuntimeConfigCreateWithoutBuiltinSkillInput, BuiltinSkillRuntimeConfigUncheckedCreateWithoutBuiltinSkillInput> | BuiltinSkillRuntimeConfigCreateWithoutBuiltinSkillInput[] | BuiltinSkillRuntimeConfigUncheckedCreateWithoutBuiltinSkillInput[]
+    connectOrCreate?: BuiltinSkillRuntimeConfigCreateOrConnectWithoutBuiltinSkillInput | BuiltinSkillRuntimeConfigCreateOrConnectWithoutBuiltinSkillInput[]
+    createMany?: BuiltinSkillRuntimeConfigCreateManyBuiltinSkillInputEnvelope
+    connect?: BuiltinSkillRuntimeConfigWhereUniqueInput | BuiltinSkillRuntimeConfigWhereUniqueInput[]
   }
 
   export type BuiltinSkillVersionUpdateManyWithoutBuiltinSkillNestedInput = {
@@ -105571,6 +114121,20 @@ export namespace Prisma {
     deleteMany?: BuiltinSkillAuditEventScalarWhereInput | BuiltinSkillAuditEventScalarWhereInput[]
   }
 
+  export type BuiltinSkillRuntimeConfigUpdateManyWithoutBuiltinSkillNestedInput = {
+    create?: XOR<BuiltinSkillRuntimeConfigCreateWithoutBuiltinSkillInput, BuiltinSkillRuntimeConfigUncheckedCreateWithoutBuiltinSkillInput> | BuiltinSkillRuntimeConfigCreateWithoutBuiltinSkillInput[] | BuiltinSkillRuntimeConfigUncheckedCreateWithoutBuiltinSkillInput[]
+    connectOrCreate?: BuiltinSkillRuntimeConfigCreateOrConnectWithoutBuiltinSkillInput | BuiltinSkillRuntimeConfigCreateOrConnectWithoutBuiltinSkillInput[]
+    upsert?: BuiltinSkillRuntimeConfigUpsertWithWhereUniqueWithoutBuiltinSkillInput | BuiltinSkillRuntimeConfigUpsertWithWhereUniqueWithoutBuiltinSkillInput[]
+    createMany?: BuiltinSkillRuntimeConfigCreateManyBuiltinSkillInputEnvelope
+    set?: BuiltinSkillRuntimeConfigWhereUniqueInput | BuiltinSkillRuntimeConfigWhereUniqueInput[]
+    disconnect?: BuiltinSkillRuntimeConfigWhereUniqueInput | BuiltinSkillRuntimeConfigWhereUniqueInput[]
+    delete?: BuiltinSkillRuntimeConfigWhereUniqueInput | BuiltinSkillRuntimeConfigWhereUniqueInput[]
+    connect?: BuiltinSkillRuntimeConfigWhereUniqueInput | BuiltinSkillRuntimeConfigWhereUniqueInput[]
+    update?: BuiltinSkillRuntimeConfigUpdateWithWhereUniqueWithoutBuiltinSkillInput | BuiltinSkillRuntimeConfigUpdateWithWhereUniqueWithoutBuiltinSkillInput[]
+    updateMany?: BuiltinSkillRuntimeConfigUpdateManyWithWhereWithoutBuiltinSkillInput | BuiltinSkillRuntimeConfigUpdateManyWithWhereWithoutBuiltinSkillInput[]
+    deleteMany?: BuiltinSkillRuntimeConfigScalarWhereInput | BuiltinSkillRuntimeConfigScalarWhereInput[]
+  }
+
   export type BuiltinSkillVersionUncheckedUpdateManyWithoutBuiltinSkillNestedInput = {
     create?: XOR<BuiltinSkillVersionCreateWithoutBuiltinSkillInput, BuiltinSkillVersionUncheckedCreateWithoutBuiltinSkillInput> | BuiltinSkillVersionCreateWithoutBuiltinSkillInput[] | BuiltinSkillVersionUncheckedCreateWithoutBuiltinSkillInput[]
     connectOrCreate?: BuiltinSkillVersionCreateOrConnectWithoutBuiltinSkillInput | BuiltinSkillVersionCreateOrConnectWithoutBuiltinSkillInput[]
@@ -105611,6 +114175,34 @@ export namespace Prisma {
     update?: BuiltinSkillAuditEventUpdateWithWhereUniqueWithoutBuiltinSkillInput | BuiltinSkillAuditEventUpdateWithWhereUniqueWithoutBuiltinSkillInput[]
     updateMany?: BuiltinSkillAuditEventUpdateManyWithWhereWithoutBuiltinSkillInput | BuiltinSkillAuditEventUpdateManyWithWhereWithoutBuiltinSkillInput[]
     deleteMany?: BuiltinSkillAuditEventScalarWhereInput | BuiltinSkillAuditEventScalarWhereInput[]
+  }
+
+  export type BuiltinSkillRuntimeConfigUncheckedUpdateManyWithoutBuiltinSkillNestedInput = {
+    create?: XOR<BuiltinSkillRuntimeConfigCreateWithoutBuiltinSkillInput, BuiltinSkillRuntimeConfigUncheckedCreateWithoutBuiltinSkillInput> | BuiltinSkillRuntimeConfigCreateWithoutBuiltinSkillInput[] | BuiltinSkillRuntimeConfigUncheckedCreateWithoutBuiltinSkillInput[]
+    connectOrCreate?: BuiltinSkillRuntimeConfigCreateOrConnectWithoutBuiltinSkillInput | BuiltinSkillRuntimeConfigCreateOrConnectWithoutBuiltinSkillInput[]
+    upsert?: BuiltinSkillRuntimeConfigUpsertWithWhereUniqueWithoutBuiltinSkillInput | BuiltinSkillRuntimeConfigUpsertWithWhereUniqueWithoutBuiltinSkillInput[]
+    createMany?: BuiltinSkillRuntimeConfigCreateManyBuiltinSkillInputEnvelope
+    set?: BuiltinSkillRuntimeConfigWhereUniqueInput | BuiltinSkillRuntimeConfigWhereUniqueInput[]
+    disconnect?: BuiltinSkillRuntimeConfigWhereUniqueInput | BuiltinSkillRuntimeConfigWhereUniqueInput[]
+    delete?: BuiltinSkillRuntimeConfigWhereUniqueInput | BuiltinSkillRuntimeConfigWhereUniqueInput[]
+    connect?: BuiltinSkillRuntimeConfigWhereUniqueInput | BuiltinSkillRuntimeConfigWhereUniqueInput[]
+    update?: BuiltinSkillRuntimeConfigUpdateWithWhereUniqueWithoutBuiltinSkillInput | BuiltinSkillRuntimeConfigUpdateWithWhereUniqueWithoutBuiltinSkillInput[]
+    updateMany?: BuiltinSkillRuntimeConfigUpdateManyWithWhereWithoutBuiltinSkillInput | BuiltinSkillRuntimeConfigUpdateManyWithWhereWithoutBuiltinSkillInput[]
+    deleteMany?: BuiltinSkillRuntimeConfigScalarWhereInput | BuiltinSkillRuntimeConfigScalarWhereInput[]
+  }
+
+  export type BuiltinSkillCreateNestedOneWithoutRuntimeConfigsInput = {
+    create?: XOR<BuiltinSkillCreateWithoutRuntimeConfigsInput, BuiltinSkillUncheckedCreateWithoutRuntimeConfigsInput>
+    connectOrCreate?: BuiltinSkillCreateOrConnectWithoutRuntimeConfigsInput
+    connect?: BuiltinSkillWhereUniqueInput
+  }
+
+  export type BuiltinSkillUpdateOneRequiredWithoutRuntimeConfigsNestedInput = {
+    create?: XOR<BuiltinSkillCreateWithoutRuntimeConfigsInput, BuiltinSkillUncheckedCreateWithoutRuntimeConfigsInput>
+    connectOrCreate?: BuiltinSkillCreateOrConnectWithoutRuntimeConfigsInput
+    upsert?: BuiltinSkillUpsertWithoutRuntimeConfigsInput
+    connect?: BuiltinSkillWhereUniqueInput
+    update?: XOR<XOR<BuiltinSkillUpdateToOneWithWhereWithoutRuntimeConfigsInput, BuiltinSkillUpdateWithoutRuntimeConfigsInput>, BuiltinSkillUncheckedUpdateWithoutRuntimeConfigsInput>
   }
 
   export type BuiltinSkillCreateNestedOneWithoutVersionsInput = {
@@ -105709,6 +114301,152 @@ export namespace Prisma {
     upsert?: BuiltinSkillUpsertWithoutAuditEventsInput
     connect?: BuiltinSkillWhereUniqueInput
     update?: XOR<XOR<BuiltinSkillUpdateToOneWithWhereWithoutAuditEventsInput, BuiltinSkillUpdateWithoutAuditEventsInput>, BuiltinSkillUncheckedUpdateWithoutAuditEventsInput>
+  }
+
+  export type WorkspaceNodeCreateNestedManyWithoutWorkspaceInput = {
+    create?: XOR<WorkspaceNodeCreateWithoutWorkspaceInput, WorkspaceNodeUncheckedCreateWithoutWorkspaceInput> | WorkspaceNodeCreateWithoutWorkspaceInput[] | WorkspaceNodeUncheckedCreateWithoutWorkspaceInput[]
+    connectOrCreate?: WorkspaceNodeCreateOrConnectWithoutWorkspaceInput | WorkspaceNodeCreateOrConnectWithoutWorkspaceInput[]
+    createMany?: WorkspaceNodeCreateManyWorkspaceInputEnvelope
+    connect?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+  }
+
+  export type WorkspaceNodeUncheckedCreateNestedManyWithoutWorkspaceInput = {
+    create?: XOR<WorkspaceNodeCreateWithoutWorkspaceInput, WorkspaceNodeUncheckedCreateWithoutWorkspaceInput> | WorkspaceNodeCreateWithoutWorkspaceInput[] | WorkspaceNodeUncheckedCreateWithoutWorkspaceInput[]
+    connectOrCreate?: WorkspaceNodeCreateOrConnectWithoutWorkspaceInput | WorkspaceNodeCreateOrConnectWithoutWorkspaceInput[]
+    createMany?: WorkspaceNodeCreateManyWorkspaceInputEnvelope
+    connect?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+  }
+
+  export type EnumWorkspaceTypeFieldUpdateOperationsInput = {
+    set?: $Enums.WorkspaceType
+  }
+
+  export type BigIntFieldUpdateOperationsInput = {
+    set?: bigint | number
+    increment?: bigint | number
+    decrement?: bigint | number
+    multiply?: bigint | number
+    divide?: bigint | number
+  }
+
+  export type WorkspaceNodeUpdateManyWithoutWorkspaceNestedInput = {
+    create?: XOR<WorkspaceNodeCreateWithoutWorkspaceInput, WorkspaceNodeUncheckedCreateWithoutWorkspaceInput> | WorkspaceNodeCreateWithoutWorkspaceInput[] | WorkspaceNodeUncheckedCreateWithoutWorkspaceInput[]
+    connectOrCreate?: WorkspaceNodeCreateOrConnectWithoutWorkspaceInput | WorkspaceNodeCreateOrConnectWithoutWorkspaceInput[]
+    upsert?: WorkspaceNodeUpsertWithWhereUniqueWithoutWorkspaceInput | WorkspaceNodeUpsertWithWhereUniqueWithoutWorkspaceInput[]
+    createMany?: WorkspaceNodeCreateManyWorkspaceInputEnvelope
+    set?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+    disconnect?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+    delete?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+    connect?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+    update?: WorkspaceNodeUpdateWithWhereUniqueWithoutWorkspaceInput | WorkspaceNodeUpdateWithWhereUniqueWithoutWorkspaceInput[]
+    updateMany?: WorkspaceNodeUpdateManyWithWhereWithoutWorkspaceInput | WorkspaceNodeUpdateManyWithWhereWithoutWorkspaceInput[]
+    deleteMany?: WorkspaceNodeScalarWhereInput | WorkspaceNodeScalarWhereInput[]
+  }
+
+  export type WorkspaceNodeUncheckedUpdateManyWithoutWorkspaceNestedInput = {
+    create?: XOR<WorkspaceNodeCreateWithoutWorkspaceInput, WorkspaceNodeUncheckedCreateWithoutWorkspaceInput> | WorkspaceNodeCreateWithoutWorkspaceInput[] | WorkspaceNodeUncheckedCreateWithoutWorkspaceInput[]
+    connectOrCreate?: WorkspaceNodeCreateOrConnectWithoutWorkspaceInput | WorkspaceNodeCreateOrConnectWithoutWorkspaceInput[]
+    upsert?: WorkspaceNodeUpsertWithWhereUniqueWithoutWorkspaceInput | WorkspaceNodeUpsertWithWhereUniqueWithoutWorkspaceInput[]
+    createMany?: WorkspaceNodeCreateManyWorkspaceInputEnvelope
+    set?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+    disconnect?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+    delete?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+    connect?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+    update?: WorkspaceNodeUpdateWithWhereUniqueWithoutWorkspaceInput | WorkspaceNodeUpdateWithWhereUniqueWithoutWorkspaceInput[]
+    updateMany?: WorkspaceNodeUpdateManyWithWhereWithoutWorkspaceInput | WorkspaceNodeUpdateManyWithWhereWithoutWorkspaceInput[]
+    deleteMany?: WorkspaceNodeScalarWhereInput | WorkspaceNodeScalarWhereInput[]
+  }
+
+  export type WorkspaceCreateNestedOneWithoutNodesInput = {
+    create?: XOR<WorkspaceCreateWithoutNodesInput, WorkspaceUncheckedCreateWithoutNodesInput>
+    connectOrCreate?: WorkspaceCreateOrConnectWithoutNodesInput
+    connect?: WorkspaceWhereUniqueInput
+  }
+
+  export type WorkspaceNodeCreateNestedOneWithoutChildrenInput = {
+    create?: XOR<WorkspaceNodeCreateWithoutChildrenInput, WorkspaceNodeUncheckedCreateWithoutChildrenInput>
+    connectOrCreate?: WorkspaceNodeCreateOrConnectWithoutChildrenInput
+    connect?: WorkspaceNodeWhereUniqueInput
+  }
+
+  export type WorkspaceNodeCreateNestedManyWithoutParentInput = {
+    create?: XOR<WorkspaceNodeCreateWithoutParentInput, WorkspaceNodeUncheckedCreateWithoutParentInput> | WorkspaceNodeCreateWithoutParentInput[] | WorkspaceNodeUncheckedCreateWithoutParentInput[]
+    connectOrCreate?: WorkspaceNodeCreateOrConnectWithoutParentInput | WorkspaceNodeCreateOrConnectWithoutParentInput[]
+    createMany?: WorkspaceNodeCreateManyParentInputEnvelope
+    connect?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+  }
+
+  export type WorkspaceNodeUncheckedCreateNestedManyWithoutParentInput = {
+    create?: XOR<WorkspaceNodeCreateWithoutParentInput, WorkspaceNodeUncheckedCreateWithoutParentInput> | WorkspaceNodeCreateWithoutParentInput[] | WorkspaceNodeUncheckedCreateWithoutParentInput[]
+    connectOrCreate?: WorkspaceNodeCreateOrConnectWithoutParentInput | WorkspaceNodeCreateOrConnectWithoutParentInput[]
+    createMany?: WorkspaceNodeCreateManyParentInputEnvelope
+    connect?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+  }
+
+  export type EnumWorkspaceNodeTypeFieldUpdateOperationsInput = {
+    set?: $Enums.WorkspaceNodeType
+  }
+
+  export type WorkspaceUpdateOneRequiredWithoutNodesNestedInput = {
+    create?: XOR<WorkspaceCreateWithoutNodesInput, WorkspaceUncheckedCreateWithoutNodesInput>
+    connectOrCreate?: WorkspaceCreateOrConnectWithoutNodesInput
+    upsert?: WorkspaceUpsertWithoutNodesInput
+    connect?: WorkspaceWhereUniqueInput
+    update?: XOR<XOR<WorkspaceUpdateToOneWithWhereWithoutNodesInput, WorkspaceUpdateWithoutNodesInput>, WorkspaceUncheckedUpdateWithoutNodesInput>
+  }
+
+  export type WorkspaceNodeUpdateOneWithoutChildrenNestedInput = {
+    create?: XOR<WorkspaceNodeCreateWithoutChildrenInput, WorkspaceNodeUncheckedCreateWithoutChildrenInput>
+    connectOrCreate?: WorkspaceNodeCreateOrConnectWithoutChildrenInput
+    upsert?: WorkspaceNodeUpsertWithoutChildrenInput
+    disconnect?: WorkspaceNodeWhereInput | boolean
+    delete?: WorkspaceNodeWhereInput | boolean
+    connect?: WorkspaceNodeWhereUniqueInput
+    update?: XOR<XOR<WorkspaceNodeUpdateToOneWithWhereWithoutChildrenInput, WorkspaceNodeUpdateWithoutChildrenInput>, WorkspaceNodeUncheckedUpdateWithoutChildrenInput>
+  }
+
+  export type WorkspaceNodeUpdateManyWithoutParentNestedInput = {
+    create?: XOR<WorkspaceNodeCreateWithoutParentInput, WorkspaceNodeUncheckedCreateWithoutParentInput> | WorkspaceNodeCreateWithoutParentInput[] | WorkspaceNodeUncheckedCreateWithoutParentInput[]
+    connectOrCreate?: WorkspaceNodeCreateOrConnectWithoutParentInput | WorkspaceNodeCreateOrConnectWithoutParentInput[]
+    upsert?: WorkspaceNodeUpsertWithWhereUniqueWithoutParentInput | WorkspaceNodeUpsertWithWhereUniqueWithoutParentInput[]
+    createMany?: WorkspaceNodeCreateManyParentInputEnvelope
+    set?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+    disconnect?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+    delete?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+    connect?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+    update?: WorkspaceNodeUpdateWithWhereUniqueWithoutParentInput | WorkspaceNodeUpdateWithWhereUniqueWithoutParentInput[]
+    updateMany?: WorkspaceNodeUpdateManyWithWhereWithoutParentInput | WorkspaceNodeUpdateManyWithWhereWithoutParentInput[]
+    deleteMany?: WorkspaceNodeScalarWhereInput | WorkspaceNodeScalarWhereInput[]
+  }
+
+  export type WorkspaceNodeUncheckedUpdateManyWithoutParentNestedInput = {
+    create?: XOR<WorkspaceNodeCreateWithoutParentInput, WorkspaceNodeUncheckedCreateWithoutParentInput> | WorkspaceNodeCreateWithoutParentInput[] | WorkspaceNodeUncheckedCreateWithoutParentInput[]
+    connectOrCreate?: WorkspaceNodeCreateOrConnectWithoutParentInput | WorkspaceNodeCreateOrConnectWithoutParentInput[]
+    upsert?: WorkspaceNodeUpsertWithWhereUniqueWithoutParentInput | WorkspaceNodeUpsertWithWhereUniqueWithoutParentInput[]
+    createMany?: WorkspaceNodeCreateManyParentInputEnvelope
+    set?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+    disconnect?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+    delete?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+    connect?: WorkspaceNodeWhereUniqueInput | WorkspaceNodeWhereUniqueInput[]
+    update?: WorkspaceNodeUpdateWithWhereUniqueWithoutParentInput | WorkspaceNodeUpdateWithWhereUniqueWithoutParentInput[]
+    updateMany?: WorkspaceNodeUpdateManyWithWhereWithoutParentInput | WorkspaceNodeUpdateManyWithWhereWithoutParentInput[]
+    deleteMany?: WorkspaceNodeScalarWhereInput | WorkspaceNodeScalarWhereInput[]
+  }
+
+  export type EnumTodoPriorityFieldUpdateOperationsInput = {
+    set?: $Enums.TodoPriority
+  }
+
+  export type EnumTodoStatusFieldUpdateOperationsInput = {
+    set?: $Enums.TodoStatus
+  }
+
+  export type EnumTodoSourceTypeFieldUpdateOperationsInput = {
+    set?: $Enums.TodoSourceType
+  }
+
+  export type EnumInboxItemStatusFieldUpdateOperationsInput = {
+    set?: $Enums.InboxItemStatus
   }
 
   export type NestedUuidFilter<$PrismaModel = never> = {
@@ -106209,6 +114947,135 @@ export namespace Prisma {
     _sum?: NestedDecimalNullableFilter<$PrismaModel>
     _min?: NestedDecimalNullableFilter<$PrismaModel>
     _max?: NestedDecimalNullableFilter<$PrismaModel>
+  }
+
+  export type NestedEnumWorkspaceTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.WorkspaceType | EnumWorkspaceTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.WorkspaceType[] | ListEnumWorkspaceTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.WorkspaceType[] | ListEnumWorkspaceTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumWorkspaceTypeFilter<$PrismaModel> | $Enums.WorkspaceType
+  }
+
+  export type NestedBigIntFilter<$PrismaModel = never> = {
+    equals?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    in?: bigint[] | number[] | ListBigIntFieldRefInput<$PrismaModel>
+    notIn?: bigint[] | number[] | ListBigIntFieldRefInput<$PrismaModel>
+    lt?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    lte?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    gt?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    gte?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    not?: NestedBigIntFilter<$PrismaModel> | bigint | number
+  }
+
+  export type NestedEnumWorkspaceTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.WorkspaceType | EnumWorkspaceTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.WorkspaceType[] | ListEnumWorkspaceTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.WorkspaceType[] | ListEnumWorkspaceTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumWorkspaceTypeWithAggregatesFilter<$PrismaModel> | $Enums.WorkspaceType
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumWorkspaceTypeFilter<$PrismaModel>
+    _max?: NestedEnumWorkspaceTypeFilter<$PrismaModel>
+  }
+
+  export type NestedBigIntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    in?: bigint[] | number[] | ListBigIntFieldRefInput<$PrismaModel>
+    notIn?: bigint[] | number[] | ListBigIntFieldRefInput<$PrismaModel>
+    lt?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    lte?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    gt?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    gte?: bigint | number | BigIntFieldRefInput<$PrismaModel>
+    not?: NestedBigIntWithAggregatesFilter<$PrismaModel> | bigint | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedBigIntFilter<$PrismaModel>
+    _min?: NestedBigIntFilter<$PrismaModel>
+    _max?: NestedBigIntFilter<$PrismaModel>
+  }
+
+  export type NestedEnumWorkspaceNodeTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.WorkspaceNodeType | EnumWorkspaceNodeTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.WorkspaceNodeType[] | ListEnumWorkspaceNodeTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.WorkspaceNodeType[] | ListEnumWorkspaceNodeTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumWorkspaceNodeTypeFilter<$PrismaModel> | $Enums.WorkspaceNodeType
+  }
+
+  export type NestedEnumWorkspaceNodeTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.WorkspaceNodeType | EnumWorkspaceNodeTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.WorkspaceNodeType[] | ListEnumWorkspaceNodeTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.WorkspaceNodeType[] | ListEnumWorkspaceNodeTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumWorkspaceNodeTypeWithAggregatesFilter<$PrismaModel> | $Enums.WorkspaceNodeType
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumWorkspaceNodeTypeFilter<$PrismaModel>
+    _max?: NestedEnumWorkspaceNodeTypeFilter<$PrismaModel>
+  }
+
+  export type NestedEnumTodoPriorityFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoPriority | EnumTodoPriorityFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoPriority[] | ListEnumTodoPriorityFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoPriority[] | ListEnumTodoPriorityFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoPriorityFilter<$PrismaModel> | $Enums.TodoPriority
+  }
+
+  export type NestedEnumTodoStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoStatus | EnumTodoStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoStatus[] | ListEnumTodoStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoStatus[] | ListEnumTodoStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoStatusFilter<$PrismaModel> | $Enums.TodoStatus
+  }
+
+  export type NestedEnumTodoSourceTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoSourceType | EnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoSourceType[] | ListEnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoSourceType[] | ListEnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoSourceTypeFilter<$PrismaModel> | $Enums.TodoSourceType
+  }
+
+  export type NestedEnumTodoPriorityWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoPriority | EnumTodoPriorityFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoPriority[] | ListEnumTodoPriorityFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoPriority[] | ListEnumTodoPriorityFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoPriorityWithAggregatesFilter<$PrismaModel> | $Enums.TodoPriority
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumTodoPriorityFilter<$PrismaModel>
+    _max?: NestedEnumTodoPriorityFilter<$PrismaModel>
+  }
+
+  export type NestedEnumTodoStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoStatus | EnumTodoStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoStatus[] | ListEnumTodoStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoStatus[] | ListEnumTodoStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoStatusWithAggregatesFilter<$PrismaModel> | $Enums.TodoStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumTodoStatusFilter<$PrismaModel>
+    _max?: NestedEnumTodoStatusFilter<$PrismaModel>
+  }
+
+  export type NestedEnumTodoSourceTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.TodoSourceType | EnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.TodoSourceType[] | ListEnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TodoSourceType[] | ListEnumTodoSourceTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumTodoSourceTypeWithAggregatesFilter<$PrismaModel> | $Enums.TodoSourceType
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumTodoSourceTypeFilter<$PrismaModel>
+    _max?: NestedEnumTodoSourceTypeFilter<$PrismaModel>
+  }
+
+  export type NestedEnumInboxItemStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.InboxItemStatus | EnumInboxItemStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.InboxItemStatus[] | ListEnumInboxItemStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.InboxItemStatus[] | ListEnumInboxItemStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumInboxItemStatusFilter<$PrismaModel> | $Enums.InboxItemStatus
+  }
+
+  export type NestedEnumInboxItemStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.InboxItemStatus | EnumInboxItemStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.InboxItemStatus[] | ListEnumInboxItemStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.InboxItemStatus[] | ListEnumInboxItemStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumInboxItemStatusWithAggregatesFilter<$PrismaModel> | $Enums.InboxItemStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumInboxItemStatusFilter<$PrismaModel>
+    _max?: NestedEnumInboxItemStatusFilter<$PrismaModel>
   }
 
   export type UserRoleCreateWithoutUserInput = {
@@ -113549,6 +122416,34 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type BuiltinSkillRuntimeConfigCreateWithoutBuiltinSkillInput = {
+    id?: string
+    configKey: string
+    encryptedValue: string
+    updatedBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type BuiltinSkillRuntimeConfigUncheckedCreateWithoutBuiltinSkillInput = {
+    id?: string
+    configKey: string
+    encryptedValue: string
+    updatedBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type BuiltinSkillRuntimeConfigCreateOrConnectWithoutBuiltinSkillInput = {
+    where: BuiltinSkillRuntimeConfigWhereUniqueInput
+    create: XOR<BuiltinSkillRuntimeConfigCreateWithoutBuiltinSkillInput, BuiltinSkillRuntimeConfigUncheckedCreateWithoutBuiltinSkillInput>
+  }
+
+  export type BuiltinSkillRuntimeConfigCreateManyBuiltinSkillInputEnvelope = {
+    data: BuiltinSkillRuntimeConfigCreateManyBuiltinSkillInput | BuiltinSkillRuntimeConfigCreateManyBuiltinSkillInput[]
+    skipDuplicates?: boolean
+  }
+
   export type BuiltinSkillVersionUpsertWithWhereUniqueWithoutBuiltinSkillInput = {
     where: BuiltinSkillVersionWhereUniqueInput
     update: XOR<BuiltinSkillVersionUpdateWithoutBuiltinSkillInput, BuiltinSkillVersionUncheckedUpdateWithoutBuiltinSkillInput>
@@ -113642,6 +122537,123 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"BuiltinSkillAuditEvent"> | Date | string
   }
 
+  export type BuiltinSkillRuntimeConfigUpsertWithWhereUniqueWithoutBuiltinSkillInput = {
+    where: BuiltinSkillRuntimeConfigWhereUniqueInput
+    update: XOR<BuiltinSkillRuntimeConfigUpdateWithoutBuiltinSkillInput, BuiltinSkillRuntimeConfigUncheckedUpdateWithoutBuiltinSkillInput>
+    create: XOR<BuiltinSkillRuntimeConfigCreateWithoutBuiltinSkillInput, BuiltinSkillRuntimeConfigUncheckedCreateWithoutBuiltinSkillInput>
+  }
+
+  export type BuiltinSkillRuntimeConfigUpdateWithWhereUniqueWithoutBuiltinSkillInput = {
+    where: BuiltinSkillRuntimeConfigWhereUniqueInput
+    data: XOR<BuiltinSkillRuntimeConfigUpdateWithoutBuiltinSkillInput, BuiltinSkillRuntimeConfigUncheckedUpdateWithoutBuiltinSkillInput>
+  }
+
+  export type BuiltinSkillRuntimeConfigUpdateManyWithWhereWithoutBuiltinSkillInput = {
+    where: BuiltinSkillRuntimeConfigScalarWhereInput
+    data: XOR<BuiltinSkillRuntimeConfigUpdateManyMutationInput, BuiltinSkillRuntimeConfigUncheckedUpdateManyWithoutBuiltinSkillInput>
+  }
+
+  export type BuiltinSkillRuntimeConfigScalarWhereInput = {
+    AND?: BuiltinSkillRuntimeConfigScalarWhereInput | BuiltinSkillRuntimeConfigScalarWhereInput[]
+    OR?: BuiltinSkillRuntimeConfigScalarWhereInput[]
+    NOT?: BuiltinSkillRuntimeConfigScalarWhereInput | BuiltinSkillRuntimeConfigScalarWhereInput[]
+    id?: UuidFilter<"BuiltinSkillRuntimeConfig"> | string
+    builtinSkillId?: UuidFilter<"BuiltinSkillRuntimeConfig"> | string
+    configKey?: StringFilter<"BuiltinSkillRuntimeConfig"> | string
+    encryptedValue?: StringFilter<"BuiltinSkillRuntimeConfig"> | string
+    updatedBy?: StringNullableFilter<"BuiltinSkillRuntimeConfig"> | string | null
+    createdAt?: DateTimeFilter<"BuiltinSkillRuntimeConfig"> | Date | string
+    updatedAt?: DateTimeFilter<"BuiltinSkillRuntimeConfig"> | Date | string
+  }
+
+  export type BuiltinSkillCreateWithoutRuntimeConfigsInput = {
+    id?: string
+    capabilityKey: string
+    displayName: string
+    description?: string | null
+    owner: string
+    category: string
+    defaultAccess?: string
+    lifecycle?: string
+    isEnabled?: boolean
+    activeVersionId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    versions?: BuiltinSkillVersionCreateNestedManyWithoutBuiltinSkillInput
+    permissionOverrides?: BuiltinSkillPermissionOverrideCreateNestedManyWithoutBuiltinSkillInput
+    auditEvents?: BuiltinSkillAuditEventCreateNestedManyWithoutBuiltinSkillInput
+  }
+
+  export type BuiltinSkillUncheckedCreateWithoutRuntimeConfigsInput = {
+    id?: string
+    capabilityKey: string
+    displayName: string
+    description?: string | null
+    owner: string
+    category: string
+    defaultAccess?: string
+    lifecycle?: string
+    isEnabled?: boolean
+    activeVersionId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    versions?: BuiltinSkillVersionUncheckedCreateNestedManyWithoutBuiltinSkillInput
+    permissionOverrides?: BuiltinSkillPermissionOverrideUncheckedCreateNestedManyWithoutBuiltinSkillInput
+    auditEvents?: BuiltinSkillAuditEventUncheckedCreateNestedManyWithoutBuiltinSkillInput
+  }
+
+  export type BuiltinSkillCreateOrConnectWithoutRuntimeConfigsInput = {
+    where: BuiltinSkillWhereUniqueInput
+    create: XOR<BuiltinSkillCreateWithoutRuntimeConfigsInput, BuiltinSkillUncheckedCreateWithoutRuntimeConfigsInput>
+  }
+
+  export type BuiltinSkillUpsertWithoutRuntimeConfigsInput = {
+    update: XOR<BuiltinSkillUpdateWithoutRuntimeConfigsInput, BuiltinSkillUncheckedUpdateWithoutRuntimeConfigsInput>
+    create: XOR<BuiltinSkillCreateWithoutRuntimeConfigsInput, BuiltinSkillUncheckedCreateWithoutRuntimeConfigsInput>
+    where?: BuiltinSkillWhereInput
+  }
+
+  export type BuiltinSkillUpdateToOneWithWhereWithoutRuntimeConfigsInput = {
+    where?: BuiltinSkillWhereInput
+    data: XOR<BuiltinSkillUpdateWithoutRuntimeConfigsInput, BuiltinSkillUncheckedUpdateWithoutRuntimeConfigsInput>
+  }
+
+  export type BuiltinSkillUpdateWithoutRuntimeConfigsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    capabilityKey?: StringFieldUpdateOperationsInput | string
+    displayName?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    owner?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    defaultAccess?: StringFieldUpdateOperationsInput | string
+    lifecycle?: StringFieldUpdateOperationsInput | string
+    isEnabled?: BoolFieldUpdateOperationsInput | boolean
+    activeVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    versions?: BuiltinSkillVersionUpdateManyWithoutBuiltinSkillNestedInput
+    permissionOverrides?: BuiltinSkillPermissionOverrideUpdateManyWithoutBuiltinSkillNestedInput
+    auditEvents?: BuiltinSkillAuditEventUpdateManyWithoutBuiltinSkillNestedInput
+  }
+
+  export type BuiltinSkillUncheckedUpdateWithoutRuntimeConfigsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    capabilityKey?: StringFieldUpdateOperationsInput | string
+    displayName?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    owner?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    defaultAccess?: StringFieldUpdateOperationsInput | string
+    lifecycle?: StringFieldUpdateOperationsInput | string
+    isEnabled?: BoolFieldUpdateOperationsInput | boolean
+    activeVersionId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    versions?: BuiltinSkillVersionUncheckedUpdateManyWithoutBuiltinSkillNestedInput
+    permissionOverrides?: BuiltinSkillPermissionOverrideUncheckedUpdateManyWithoutBuiltinSkillNestedInput
+    auditEvents?: BuiltinSkillAuditEventUncheckedUpdateManyWithoutBuiltinSkillNestedInput
+  }
+
   export type BuiltinSkillCreateWithoutVersionsInput = {
     id?: string
     capabilityKey: string
@@ -113657,6 +122669,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     permissionOverrides?: BuiltinSkillPermissionOverrideCreateNestedManyWithoutBuiltinSkillInput
     auditEvents?: BuiltinSkillAuditEventCreateNestedManyWithoutBuiltinSkillInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigCreateNestedManyWithoutBuiltinSkillInput
   }
 
   export type BuiltinSkillUncheckedCreateWithoutVersionsInput = {
@@ -113674,6 +122687,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     permissionOverrides?: BuiltinSkillPermissionOverrideUncheckedCreateNestedManyWithoutBuiltinSkillInput
     auditEvents?: BuiltinSkillAuditEventUncheckedCreateNestedManyWithoutBuiltinSkillInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigUncheckedCreateNestedManyWithoutBuiltinSkillInput
   }
 
   export type BuiltinSkillCreateOrConnectWithoutVersionsInput = {
@@ -113739,6 +122753,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     permissionOverrides?: BuiltinSkillPermissionOverrideUpdateManyWithoutBuiltinSkillNestedInput
     auditEvents?: BuiltinSkillAuditEventUpdateManyWithoutBuiltinSkillNestedInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigUpdateManyWithoutBuiltinSkillNestedInput
   }
 
   export type BuiltinSkillUncheckedUpdateWithoutVersionsInput = {
@@ -113756,6 +122771,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     permissionOverrides?: BuiltinSkillPermissionOverrideUncheckedUpdateManyWithoutBuiltinSkillNestedInput
     auditEvents?: BuiltinSkillAuditEventUncheckedUpdateManyWithoutBuiltinSkillNestedInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigUncheckedUpdateManyWithoutBuiltinSkillNestedInput
   }
 
   export type BuiltinSkillDeploymentUpsertWithWhereUniqueWithoutBuiltinSkillVersionInput = {
@@ -113872,6 +122888,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     versions?: BuiltinSkillVersionCreateNestedManyWithoutBuiltinSkillInput
     auditEvents?: BuiltinSkillAuditEventCreateNestedManyWithoutBuiltinSkillInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigCreateNestedManyWithoutBuiltinSkillInput
   }
 
   export type BuiltinSkillUncheckedCreateWithoutPermissionOverridesInput = {
@@ -113889,6 +122906,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     versions?: BuiltinSkillVersionUncheckedCreateNestedManyWithoutBuiltinSkillInput
     auditEvents?: BuiltinSkillAuditEventUncheckedCreateNestedManyWithoutBuiltinSkillInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigUncheckedCreateNestedManyWithoutBuiltinSkillInput
   }
 
   export type BuiltinSkillCreateOrConnectWithoutPermissionOverridesInput = {
@@ -113922,6 +122940,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     versions?: BuiltinSkillVersionUpdateManyWithoutBuiltinSkillNestedInput
     auditEvents?: BuiltinSkillAuditEventUpdateManyWithoutBuiltinSkillNestedInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigUpdateManyWithoutBuiltinSkillNestedInput
   }
 
   export type BuiltinSkillUncheckedUpdateWithoutPermissionOverridesInput = {
@@ -113939,6 +122958,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     versions?: BuiltinSkillVersionUncheckedUpdateManyWithoutBuiltinSkillNestedInput
     auditEvents?: BuiltinSkillAuditEventUncheckedUpdateManyWithoutBuiltinSkillNestedInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigUncheckedUpdateManyWithoutBuiltinSkillNestedInput
   }
 
   export type BuiltinSkillCreateWithoutAuditEventsInput = {
@@ -113956,6 +122976,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     versions?: BuiltinSkillVersionCreateNestedManyWithoutBuiltinSkillInput
     permissionOverrides?: BuiltinSkillPermissionOverrideCreateNestedManyWithoutBuiltinSkillInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigCreateNestedManyWithoutBuiltinSkillInput
   }
 
   export type BuiltinSkillUncheckedCreateWithoutAuditEventsInput = {
@@ -113973,6 +122994,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     versions?: BuiltinSkillVersionUncheckedCreateNestedManyWithoutBuiltinSkillInput
     permissionOverrides?: BuiltinSkillPermissionOverrideUncheckedCreateNestedManyWithoutBuiltinSkillInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigUncheckedCreateNestedManyWithoutBuiltinSkillInput
   }
 
   export type BuiltinSkillCreateOrConnectWithoutAuditEventsInput = {
@@ -114006,6 +123028,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     versions?: BuiltinSkillVersionUpdateManyWithoutBuiltinSkillNestedInput
     permissionOverrides?: BuiltinSkillPermissionOverrideUpdateManyWithoutBuiltinSkillNestedInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigUpdateManyWithoutBuiltinSkillNestedInput
   }
 
   export type BuiltinSkillUncheckedUpdateWithoutAuditEventsInput = {
@@ -114023,6 +123046,277 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     versions?: BuiltinSkillVersionUncheckedUpdateManyWithoutBuiltinSkillNestedInput
     permissionOverrides?: BuiltinSkillPermissionOverrideUncheckedUpdateManyWithoutBuiltinSkillNestedInput
+    runtimeConfigs?: BuiltinSkillRuntimeConfigUncheckedUpdateManyWithoutBuiltinSkillNestedInput
+  }
+
+  export type WorkspaceNodeCreateWithoutWorkspaceInput = {
+    id?: string
+    name: string
+    type: $Enums.WorkspaceNodeType
+    fileSize?: bigint | number
+    mimeType?: string | null
+    storagePath?: string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    parent?: WorkspaceNodeCreateNestedOneWithoutChildrenInput
+    children?: WorkspaceNodeCreateNestedManyWithoutParentInput
+  }
+
+  export type WorkspaceNodeUncheckedCreateWithoutWorkspaceInput = {
+    id?: string
+    parentId?: string | null
+    name: string
+    type: $Enums.WorkspaceNodeType
+    fileSize?: bigint | number
+    mimeType?: string | null
+    storagePath?: string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    children?: WorkspaceNodeUncheckedCreateNestedManyWithoutParentInput
+  }
+
+  export type WorkspaceNodeCreateOrConnectWithoutWorkspaceInput = {
+    where: WorkspaceNodeWhereUniqueInput
+    create: XOR<WorkspaceNodeCreateWithoutWorkspaceInput, WorkspaceNodeUncheckedCreateWithoutWorkspaceInput>
+  }
+
+  export type WorkspaceNodeCreateManyWorkspaceInputEnvelope = {
+    data: WorkspaceNodeCreateManyWorkspaceInput | WorkspaceNodeCreateManyWorkspaceInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type WorkspaceNodeUpsertWithWhereUniqueWithoutWorkspaceInput = {
+    where: WorkspaceNodeWhereUniqueInput
+    update: XOR<WorkspaceNodeUpdateWithoutWorkspaceInput, WorkspaceNodeUncheckedUpdateWithoutWorkspaceInput>
+    create: XOR<WorkspaceNodeCreateWithoutWorkspaceInput, WorkspaceNodeUncheckedCreateWithoutWorkspaceInput>
+  }
+
+  export type WorkspaceNodeUpdateWithWhereUniqueWithoutWorkspaceInput = {
+    where: WorkspaceNodeWhereUniqueInput
+    data: XOR<WorkspaceNodeUpdateWithoutWorkspaceInput, WorkspaceNodeUncheckedUpdateWithoutWorkspaceInput>
+  }
+
+  export type WorkspaceNodeUpdateManyWithWhereWithoutWorkspaceInput = {
+    where: WorkspaceNodeScalarWhereInput
+    data: XOR<WorkspaceNodeUpdateManyMutationInput, WorkspaceNodeUncheckedUpdateManyWithoutWorkspaceInput>
+  }
+
+  export type WorkspaceNodeScalarWhereInput = {
+    AND?: WorkspaceNodeScalarWhereInput | WorkspaceNodeScalarWhereInput[]
+    OR?: WorkspaceNodeScalarWhereInput[]
+    NOT?: WorkspaceNodeScalarWhereInput | WorkspaceNodeScalarWhereInput[]
+    id?: UuidFilter<"WorkspaceNode"> | string
+    workspaceId?: UuidFilter<"WorkspaceNode"> | string
+    parentId?: UuidNullableFilter<"WorkspaceNode"> | string | null
+    name?: StringFilter<"WorkspaceNode"> | string
+    type?: EnumWorkspaceNodeTypeFilter<"WorkspaceNode"> | $Enums.WorkspaceNodeType
+    fileSize?: BigIntFilter<"WorkspaceNode"> | bigint | number
+    mimeType?: StringNullableFilter<"WorkspaceNode"> | string | null
+    storagePath?: StringNullableFilter<"WorkspaceNode"> | string | null
+    digestJson?: JsonNullableFilter<"WorkspaceNode">
+    createdBy?: StringFilter<"WorkspaceNode"> | string
+    createdAt?: DateTimeFilter<"WorkspaceNode"> | Date | string
+    updatedAt?: DateTimeFilter<"WorkspaceNode"> | Date | string
+  }
+
+  export type WorkspaceCreateWithoutNodesInput = {
+    id?: string
+    name: string
+    type: $Enums.WorkspaceType
+    ownerUserId?: string | null
+    departmentId?: string | null
+    quotaBytes?: bigint | number
+    usedBytes?: bigint | number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkspaceUncheckedCreateWithoutNodesInput = {
+    id?: string
+    name: string
+    type: $Enums.WorkspaceType
+    ownerUserId?: string | null
+    departmentId?: string | null
+    quotaBytes?: bigint | number
+    usedBytes?: bigint | number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkspaceCreateOrConnectWithoutNodesInput = {
+    where: WorkspaceWhereUniqueInput
+    create: XOR<WorkspaceCreateWithoutNodesInput, WorkspaceUncheckedCreateWithoutNodesInput>
+  }
+
+  export type WorkspaceNodeCreateWithoutChildrenInput = {
+    id?: string
+    name: string
+    type: $Enums.WorkspaceNodeType
+    fileSize?: bigint | number
+    mimeType?: string | null
+    storagePath?: string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    workspace: WorkspaceCreateNestedOneWithoutNodesInput
+    parent?: WorkspaceNodeCreateNestedOneWithoutChildrenInput
+  }
+
+  export type WorkspaceNodeUncheckedCreateWithoutChildrenInput = {
+    id?: string
+    workspaceId: string
+    parentId?: string | null
+    name: string
+    type: $Enums.WorkspaceNodeType
+    fileSize?: bigint | number
+    mimeType?: string | null
+    storagePath?: string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkspaceNodeCreateOrConnectWithoutChildrenInput = {
+    where: WorkspaceNodeWhereUniqueInput
+    create: XOR<WorkspaceNodeCreateWithoutChildrenInput, WorkspaceNodeUncheckedCreateWithoutChildrenInput>
+  }
+
+  export type WorkspaceNodeCreateWithoutParentInput = {
+    id?: string
+    name: string
+    type: $Enums.WorkspaceNodeType
+    fileSize?: bigint | number
+    mimeType?: string | null
+    storagePath?: string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    workspace: WorkspaceCreateNestedOneWithoutNodesInput
+    children?: WorkspaceNodeCreateNestedManyWithoutParentInput
+  }
+
+  export type WorkspaceNodeUncheckedCreateWithoutParentInput = {
+    id?: string
+    workspaceId: string
+    name: string
+    type: $Enums.WorkspaceNodeType
+    fileSize?: bigint | number
+    mimeType?: string | null
+    storagePath?: string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    children?: WorkspaceNodeUncheckedCreateNestedManyWithoutParentInput
+  }
+
+  export type WorkspaceNodeCreateOrConnectWithoutParentInput = {
+    where: WorkspaceNodeWhereUniqueInput
+    create: XOR<WorkspaceNodeCreateWithoutParentInput, WorkspaceNodeUncheckedCreateWithoutParentInput>
+  }
+
+  export type WorkspaceNodeCreateManyParentInputEnvelope = {
+    data: WorkspaceNodeCreateManyParentInput | WorkspaceNodeCreateManyParentInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type WorkspaceUpsertWithoutNodesInput = {
+    update: XOR<WorkspaceUpdateWithoutNodesInput, WorkspaceUncheckedUpdateWithoutNodesInput>
+    create: XOR<WorkspaceCreateWithoutNodesInput, WorkspaceUncheckedCreateWithoutNodesInput>
+    where?: WorkspaceWhereInput
+  }
+
+  export type WorkspaceUpdateToOneWithWhereWithoutNodesInput = {
+    where?: WorkspaceWhereInput
+    data: XOR<WorkspaceUpdateWithoutNodesInput, WorkspaceUncheckedUpdateWithoutNodesInput>
+  }
+
+  export type WorkspaceUpdateWithoutNodesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceTypeFieldUpdateOperationsInput | $Enums.WorkspaceType
+    ownerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    departmentId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotaBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    usedBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkspaceUncheckedUpdateWithoutNodesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceTypeFieldUpdateOperationsInput | $Enums.WorkspaceType
+    ownerUserId?: NullableStringFieldUpdateOperationsInput | string | null
+    departmentId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotaBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    usedBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkspaceNodeUpsertWithoutChildrenInput = {
+    update: XOR<WorkspaceNodeUpdateWithoutChildrenInput, WorkspaceNodeUncheckedUpdateWithoutChildrenInput>
+    create: XOR<WorkspaceNodeCreateWithoutChildrenInput, WorkspaceNodeUncheckedCreateWithoutChildrenInput>
+    where?: WorkspaceNodeWhereInput
+  }
+
+  export type WorkspaceNodeUpdateToOneWithWhereWithoutChildrenInput = {
+    where?: WorkspaceNodeWhereInput
+    data: XOR<WorkspaceNodeUpdateWithoutChildrenInput, WorkspaceNodeUncheckedUpdateWithoutChildrenInput>
+  }
+
+  export type WorkspaceNodeUpdateWithoutChildrenInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceNodeTypeFieldUpdateOperationsInput | $Enums.WorkspaceNodeType
+    fileSize?: BigIntFieldUpdateOperationsInput | bigint | number
+    mimeType?: NullableStringFieldUpdateOperationsInput | string | null
+    storagePath?: NullableStringFieldUpdateOperationsInput | string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    workspace?: WorkspaceUpdateOneRequiredWithoutNodesNestedInput
+    parent?: WorkspaceNodeUpdateOneWithoutChildrenNestedInput
+  }
+
+  export type WorkspaceNodeUncheckedUpdateWithoutChildrenInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    workspaceId?: StringFieldUpdateOperationsInput | string
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceNodeTypeFieldUpdateOperationsInput | $Enums.WorkspaceNodeType
+    fileSize?: BigIntFieldUpdateOperationsInput | bigint | number
+    mimeType?: NullableStringFieldUpdateOperationsInput | string | null
+    storagePath?: NullableStringFieldUpdateOperationsInput | string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkspaceNodeUpsertWithWhereUniqueWithoutParentInput = {
+    where: WorkspaceNodeWhereUniqueInput
+    update: XOR<WorkspaceNodeUpdateWithoutParentInput, WorkspaceNodeUncheckedUpdateWithoutParentInput>
+    create: XOR<WorkspaceNodeCreateWithoutParentInput, WorkspaceNodeUncheckedCreateWithoutParentInput>
+  }
+
+  export type WorkspaceNodeUpdateWithWhereUniqueWithoutParentInput = {
+    where: WorkspaceNodeWhereUniqueInput
+    data: XOR<WorkspaceNodeUpdateWithoutParentInput, WorkspaceNodeUncheckedUpdateWithoutParentInput>
+  }
+
+  export type WorkspaceNodeUpdateManyWithWhereWithoutParentInput = {
+    where: WorkspaceNodeScalarWhereInput
+    data: XOR<WorkspaceNodeUpdateManyMutationInput, WorkspaceNodeUncheckedUpdateManyWithoutParentInput>
   }
 
   export type UserRoleCreateManyUserInput = {
@@ -116178,6 +125472,15 @@ export namespace Prisma {
     createdAt?: Date | string
   }
 
+  export type BuiltinSkillRuntimeConfigCreateManyBuiltinSkillInput = {
+    id?: string
+    configKey: string
+    encryptedValue: string
+    updatedBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
   export type BuiltinSkillVersionUpdateWithoutBuiltinSkillInput = {
     id?: StringFieldUpdateOperationsInput | string
     definitionVersion?: StringFieldUpdateOperationsInput | string
@@ -116279,6 +125582,33 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type BuiltinSkillRuntimeConfigUpdateWithoutBuiltinSkillInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    configKey?: StringFieldUpdateOperationsInput | string
+    encryptedValue?: StringFieldUpdateOperationsInput | string
+    updatedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type BuiltinSkillRuntimeConfigUncheckedUpdateWithoutBuiltinSkillInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    configKey?: StringFieldUpdateOperationsInput | string
+    encryptedValue?: StringFieldUpdateOperationsInput | string
+    updatedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type BuiltinSkillRuntimeConfigUncheckedUpdateManyWithoutBuiltinSkillInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    configKey?: StringFieldUpdateOperationsInput | string
+    encryptedValue?: StringFieldUpdateOperationsInput | string
+    updatedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type BuiltinSkillDeploymentCreateManyBuiltinSkillVersionInput = {
     id?: string
     environment: string
@@ -116321,6 +125651,122 @@ export namespace Prisma {
     smokeTestStatus?: NullableStringFieldUpdateOperationsInput | string | null
     smokeTestDigest?: NullableStringFieldUpdateOperationsInput | string | null
     failureCode?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type WorkspaceNodeCreateManyWorkspaceInput = {
+    id?: string
+    parentId?: string | null
+    name: string
+    type: $Enums.WorkspaceNodeType
+    fileSize?: bigint | number
+    mimeType?: string | null
+    storagePath?: string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkspaceNodeUpdateWithoutWorkspaceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceNodeTypeFieldUpdateOperationsInput | $Enums.WorkspaceNodeType
+    fileSize?: BigIntFieldUpdateOperationsInput | bigint | number
+    mimeType?: NullableStringFieldUpdateOperationsInput | string | null
+    storagePath?: NullableStringFieldUpdateOperationsInput | string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    parent?: WorkspaceNodeUpdateOneWithoutChildrenNestedInput
+    children?: WorkspaceNodeUpdateManyWithoutParentNestedInput
+  }
+
+  export type WorkspaceNodeUncheckedUpdateWithoutWorkspaceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceNodeTypeFieldUpdateOperationsInput | $Enums.WorkspaceNodeType
+    fileSize?: BigIntFieldUpdateOperationsInput | bigint | number
+    mimeType?: NullableStringFieldUpdateOperationsInput | string | null
+    storagePath?: NullableStringFieldUpdateOperationsInput | string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    children?: WorkspaceNodeUncheckedUpdateManyWithoutParentNestedInput
+  }
+
+  export type WorkspaceNodeUncheckedUpdateManyWithoutWorkspaceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceNodeTypeFieldUpdateOperationsInput | $Enums.WorkspaceNodeType
+    fileSize?: BigIntFieldUpdateOperationsInput | bigint | number
+    mimeType?: NullableStringFieldUpdateOperationsInput | string | null
+    storagePath?: NullableStringFieldUpdateOperationsInput | string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type WorkspaceNodeCreateManyParentInput = {
+    id?: string
+    workspaceId: string
+    name: string
+    type: $Enums.WorkspaceNodeType
+    fileSize?: bigint | number
+    mimeType?: string | null
+    storagePath?: string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type WorkspaceNodeUpdateWithoutParentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceNodeTypeFieldUpdateOperationsInput | $Enums.WorkspaceNodeType
+    fileSize?: BigIntFieldUpdateOperationsInput | bigint | number
+    mimeType?: NullableStringFieldUpdateOperationsInput | string | null
+    storagePath?: NullableStringFieldUpdateOperationsInput | string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    workspace?: WorkspaceUpdateOneRequiredWithoutNodesNestedInput
+    children?: WorkspaceNodeUpdateManyWithoutParentNestedInput
+  }
+
+  export type WorkspaceNodeUncheckedUpdateWithoutParentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    workspaceId?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceNodeTypeFieldUpdateOperationsInput | $Enums.WorkspaceNodeType
+    fileSize?: BigIntFieldUpdateOperationsInput | bigint | number
+    mimeType?: NullableStringFieldUpdateOperationsInput | string | null
+    storagePath?: NullableStringFieldUpdateOperationsInput | string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    children?: WorkspaceNodeUncheckedUpdateManyWithoutParentNestedInput
+  }
+
+  export type WorkspaceNodeUncheckedUpdateManyWithoutParentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    workspaceId?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumWorkspaceNodeTypeFieldUpdateOperationsInput | $Enums.WorkspaceNodeType
+    fileSize?: BigIntFieldUpdateOperationsInput | bigint | number
+    mimeType?: NullableStringFieldUpdateOperationsInput | string | null
+    storagePath?: NullableStringFieldUpdateOperationsInput | string | null
+    digestJson?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
 
@@ -116384,6 +125830,14 @@ export namespace Prisma {
      * @deprecated Use BuiltinSkillVersionCountOutputTypeDefaultArgs instead
      */
     export type BuiltinSkillVersionCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = BuiltinSkillVersionCountOutputTypeDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use WorkspaceCountOutputTypeDefaultArgs instead
+     */
+    export type WorkspaceCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = WorkspaceCountOutputTypeDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use WorkspaceNodeCountOutputTypeDefaultArgs instead
+     */
+    export type WorkspaceNodeCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = WorkspaceNodeCountOutputTypeDefaultArgs<ExtArgs>
     /**
      * @deprecated Use UserDefaultArgs instead
      */
@@ -116573,6 +126027,10 @@ export namespace Prisma {
      */
     export type TaskPolicyAuditLogArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = TaskPolicyAuditLogDefaultArgs<ExtArgs>
     /**
+     * @deprecated Use ExecutionCompletionClaimDefaultArgs instead
+     */
+    export type ExecutionCompletionClaimArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ExecutionCompletionClaimDefaultArgs<ExtArgs>
+    /**
      * @deprecated Use PromptSnapshotDefaultArgs instead
      */
     export type PromptSnapshotArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = PromptSnapshotDefaultArgs<ExtArgs>
@@ -116625,6 +126083,10 @@ export namespace Prisma {
      */
     export type BuiltinSkillArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = BuiltinSkillDefaultArgs<ExtArgs>
     /**
+     * @deprecated Use BuiltinSkillRuntimeConfigDefaultArgs instead
+     */
+    export type BuiltinSkillRuntimeConfigArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = BuiltinSkillRuntimeConfigDefaultArgs<ExtArgs>
+    /**
      * @deprecated Use BuiltinSkillVersionDefaultArgs instead
      */
     export type BuiltinSkillVersionArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = BuiltinSkillVersionDefaultArgs<ExtArgs>
@@ -116676,6 +126138,22 @@ export namespace Prisma {
      * @deprecated Use ReleaseAuditEventDefaultArgs instead
      */
     export type ReleaseAuditEventArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ReleaseAuditEventDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use WorkspaceDefaultArgs instead
+     */
+    export type WorkspaceArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = WorkspaceDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use WorkspaceNodeDefaultArgs instead
+     */
+    export type WorkspaceNodeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = WorkspaceNodeDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use WorkbenchTodoDefaultArgs instead
+     */
+    export type WorkbenchTodoArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = WorkbenchTodoDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use WorkbenchInboxItemDefaultArgs instead
+     */
+    export type WorkbenchInboxItemArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = WorkbenchInboxItemDefaultArgs<ExtArgs>
 
   /**
    * Batch Payload for updateMany & deleteMany & createMany

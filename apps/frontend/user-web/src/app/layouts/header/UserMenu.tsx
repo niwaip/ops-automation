@@ -1,6 +1,7 @@
-import { DownOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons';
+import { DownOutlined, LogoutOutlined, MailOutlined, UserOutlined } from '@ant-design/icons';
 import { Avatar, Dropdown, Tag, Typography } from 'antd';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStore } from 'zustand';
 import { authStore } from '../../../adapters/auth/authStore';
 import styles from '../UserLayout.module.css';
@@ -30,6 +31,7 @@ interface UserMenuProps {
  * 退出登录会清除当前 session 并返回登录页。
  */
 export function UserMenu({ language }: UserMenuProps) {
+  const navigate = useNavigate();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const user = useStore(authStore, (state) => state.user);
 
@@ -110,6 +112,24 @@ export function UserMenu({ language }: UserMenuProps) {
             </div>
           </div>
           <div className={styles['user-shell-user-menu-section']}>
+            <button
+              type="button"
+              className={styles['user-shell-user-menu-action']}
+              onClick={() => {
+                setUserMenuOpen(false);
+                navigate('/settings?tab=email');
+              }}
+            >
+              <span className={styles['user-shell-user-menu-action-icon']}>
+                <MailOutlined />
+              </span>
+              <span className={styles['user-shell-user-menu-action-copy']}>
+                <span className={styles['user-shell-user-menu-action-title']}>个人邮箱连接</span>
+                <span className={styles['user-shell-user-menu-action-description']}>
+                  配置专属工作/私人邮箱与发信授权
+                </span>
+              </span>
+            </button>
             <button
               type="button"
               className={`${styles['user-shell-user-menu-action']} ${styles.danger}`}

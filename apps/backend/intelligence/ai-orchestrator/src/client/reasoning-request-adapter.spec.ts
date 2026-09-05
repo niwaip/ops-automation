@@ -77,4 +77,21 @@ describe('applyReasoningRequestAdapter', () => {
     expect(enabledPayload).toEqual({ reasoning_effort: 'medium' });
     expect(disabledPayload).toEqual({});
   });
+
+  it('maps Gemini effort to reasoning_effort and removes it when disabled', () => {
+    const enabledPayload: Record<string, unknown> = {};
+    const disabledPayload: Record<string, unknown> = {};
+    const context = {
+      provider: 'gemini',
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
+      model: 'gemini-2.5-pro',
+    };
+    applyReasoningRequestAdapter(enabledPayload, context, {
+      enabled: true,
+      effort: 'high',
+    });
+    applyReasoningRequestAdapter(disabledPayload, context, { enabled: false });
+    expect(enabledPayload).toEqual({ reasoning_effort: 'high' });
+    expect(disabledPayload).toEqual({});
+  });
 });

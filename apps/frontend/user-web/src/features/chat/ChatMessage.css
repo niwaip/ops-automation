@@ -7,6 +7,8 @@
   gap: 12px;
   align-items: flex-end;
   animation: fadeIn 0.28s ease;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
 }
 
 @keyframes fadeIn {
@@ -59,12 +61,16 @@
 
 .chat-message-content {
   width: 100%;
+  max-width: 100%;
   padding: 14px 16px;
   border-radius: 22px;
-  word-break: break-word;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
   line-height: 1.6;
   font-size: 14px;
   backdrop-filter: blur(16px);
+  box-sizing: border-box;
 }
 
 .chat-message-content.user {
@@ -95,6 +101,10 @@
 
 .chat-message-plain {
   white-space: pre-wrap;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
+  max-width: 100%;
 }
 
 .chat-message-files {
@@ -822,8 +832,9 @@
   line-height: 1.48;
   color: inherit;
   white-space: normal;
-  word-break: break-word;
+  word-break: break-all;
   overflow-wrap: anywhere;
+  word-wrap: break-word;
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -843,6 +854,8 @@
   margin-bottom: 5px;
   font-weight: 600;
   color: inherit;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .chat-message-markdown h1 { font-size: 19px; }
@@ -851,6 +864,9 @@
 
 .chat-message-markdown p {
   margin: 0 0 6px;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
 }
 
 .chat-message-markdown p:last-child {
@@ -866,6 +882,9 @@
 .chat-message-markdown li {
   margin: 0;
   line-height: 1.42;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
 }
 
 .chat-message-markdown li + li {
@@ -890,16 +909,23 @@
   border-left: 3px solid rgba(99, 102, 241, 0.38);
   background: rgba(99, 102, 241, 0.05);
   border-radius: 12px;
-}
-
-.chat-message-markdown a {
-  color: #4f46e5;
-  text-decoration: none;
   word-break: break-all;
   overflow-wrap: anywhere;
 }
 
+.chat-message-markdown a {
+  color: #4f46e5;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all !important;
+  overflow-wrap: anywhere !important;
+  word-wrap: break-word !important;
+  display: inline;
+  max-width: 100%;
+}
+
 .chat-message-markdown a:hover {
+  color: #3730a3;
   text-decoration: underline;
 }
 

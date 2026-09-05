@@ -13,4 +13,9 @@ describe('getErrorPreview', () => {
   it('keeps a direct error message as the preview', () => {
     expect(getErrorPreview('模型服务不可用')).toBe('模型服务不可用');
   });
+
+  it('keeps permission guidance error message as preview', () => {
+    const msg = '您当前暂无「天气查询」技能的执行权限。如需使用，请前往「技能中心」申请授权，或联系系统管理员开通权限。';
+    expect(getErrorPreview(msg)).toBe(msg);
+  });
 });

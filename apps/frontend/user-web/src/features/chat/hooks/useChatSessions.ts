@@ -275,9 +275,25 @@ export function useChatSessions({
     return createDraftSession('新对话', now);
   }, [createDraftSession, selectedSession]);
 
+  const deleteSession = useCallback((sessionId: string) => {
+    setDraftSessions((current) => current.filter((session) => session.id !== sessionId));
+    setSessionOverrides((current) => {
+      const next = { ...current };
+      delete next[sessionId];
+      return next;
+    });
+    setSessionMessages((current) => {
+      const next = { ...current };
+      delete next[sessionId];
+      return next;
+    });
+    setSelectedSessionId((current) => (current === sessionId ? null : current));
+  }, []);
+
   return {
     activeMessages,
     createDraftSession,
+    deleteSession,
     ensureSession,
     selectedSession,
     selectedSessionId,

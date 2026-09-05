@@ -1,0 +1,133 @@
+apiVersion: platform.ops/v1alpha1
+kind: BuiltinWorkflowSkill
+metadata:
+  key: platform.email.send
+  displayName: 内置邮件发送
+  description: 通过配置的发信邮箱向指定收件人发送新邮件或回复历史邮件
+  owner: platform-email
+  labels:
+    category: communication
+    domain: email
+spec:
+  definitionVersion: 1.0.0
+  lifecycle: experimental
+  defaultAccess:
+    mode: authenticated
+  planner:
+    enabled: true
+    triggerKeywords:
+      - 发 邮件
+      - 发送 邮件
+      - 写 邮件
+      - 寄 邮件
+      - 回复 邮件
+      - 发邮件
+      - 发送邮件
+      - 写邮件
+      - 发封邮件
+      - 发一封邮件
+      - 发信
+      - 写信
+      - 回复邮件
+      - 回信
+      - 寄信
+      - 发送Email
+      - 发Email
+      - 邮件通知
+    matchSummary: 向指定收件人邮箱发送邮件通知或回复已有邮件
+    runtimeType: workflow
+    supportsArtifact: false
+  contracts:
+    input:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        properties:
+          mailboxKey:
+            type: string
+          mode:
+            type: string
+            enum: [new, reply]
+            default: new
+          to:
+            description: 收件人邮箱地址或收件人列表
+            oneOf:
+              - type: string
+              - type: array
+                items:
+                  oneOf:
+                    - type: string
+                    - type: object
+                      properties:
+                        name: { type: string }
+                        address: { type: string }
+          cc:
+            description: 抄送人邮箱地址或列表
+            oneOf:
+              - type: string
+              - type: array
+                items:
+                  oneOf:
+                    - type: string
+                    - type: object
+                      properties:
+                        name: { type: string }
+                        address: { type: string }
+          bcc:
+            description: 密送人邮箱地址或列表
+            oneOf:
+              - type: string
+              - type: array
+                items:
+                  oneOf:
+                    - type: string
+                    - type: object
+                      properties:
+                        name: { type: string }
+                        address: { type: string }
+          subject:
+            type: string
+            maxLength: 500
+          textBody:
+            type: string
+            maxLength: 50000
+          body:
+            type: string
+          content:
+            type: string
+          replyToMessageRef:
+            type: string
+    output:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        x-primary-output: deliveryId
+        required: [deliveryId, state, acceptedAt]
+        properties:
+          deliveryId: { type: string }
+          state: { type: string, enum: [accepted, unknown] }
+          providerMessageRef: { type: string }
+          acceptedAt: { type: string, format: date-time }
+          warnings:
+            type: array
+            items: { type: string }
+  workflow:
+    engine: domain-handler
+    definitionRef: workflow.json
+  runtime:
+    adapterRoute: builtin:workflow
+    handlerKey: email.send
+    idempotency: disabled
+    timeoutSeconds: 30
+    retryPolicy:
+      maximumAttempts: 2
+  migration:
+    minimumPlatformVersion: 4.0.0
+    contractCompatibility: backward
+  smokeTest:
+    inputRef: fixtures/smoke-input.json
+    assertions:
+      - output.deliveryId exists
+      - output.state exists

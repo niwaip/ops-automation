@@ -13,6 +13,32 @@ interface PreviousResultContext {
   previous_result?: unknown;
 }
 
+const IGNORED_INPUT_KEYS = new Set([
+  'browserPhaseVariables',
+  'input',
+  'inputs',
+  'inputJson',
+  'resolvedInputJson',
+  'commands',
+  'params',
+  'args',
+  'variables',
+  'request',
+  'user_input',
+  '__promptDebug',
+]);
+
+/**
+ * Checks whether user prompt contains relative/positional reference directives
+ * such as "第一个url", "第2条链接", "刚才的", "上述网址" etc.
+ */
+export function hasRelativeExtractionDirective(text?: string): boolean {
+  if (!text || typeof text !== 'string') return false;
+  return /(?:第[一二三四五六七八九十0-9]+[个条篇项份张页本位次]|第一个|第1个|第二个|第2个|第三个|第3个|前[一二两12]个|最新|刚才的|上面的|上一条|上述|链接|url|网址)/i.test(
+    text
+  );
+}
+
 /**
  * Completes a single Skill's unresolved required input from the latest completed
  * execution. Exact schema field matches are preferred. A primary-result
@@ -23,9 +49,16 @@ export function projectPreviousResultIntoRecognition(
   recognized: RecognizeParamsResponseDTO,
   schema: ParamsSchema,
   context?: PreviousResultContext,
+  userRequest?: string,
 ): PreviousResultContinuationProjection {
   const snapshot = asRecord(context?.previous_result);
   if (context?.mode !== 'single_step_continuation' || !snapshot) {
+    return { recognized, projectedFields: [] };
+  }
+
+  // If user prompt explicitly indicates relative extraction (e.g. "打开 第一个url"),
+  // do not deterministically short-circuit parameter recognition with stale values.
+  if (hasRelativeExtractionDirective(userRequest)) {
     return { recognized, projectedFields: [] };
   }
 
@@ -126,7 +159,8 @@ function findExactFieldValue(value: unknown, fieldName: string, depth = 0): unkn
     }
     return val;
   }
-  for (const child of Object.values(record)) {
+  for (const [childKey, child] of Object.entries(record)) {
+    if (IGNORED_INPUT_KEYS.has(childKey)) continue;
     const found = findExactFieldValue(child, fieldName, depth + 1);
     if (found !== undefined) return found;
   }

@@ -1,4 +1,5 @@
 import { Button, Space } from 'antd';
+import { EyeOutlined, FolderOutlined } from '@ant-design/icons';
 import type { ChatMessage, ChatProgressLog } from '@ops/user-core';
 import {
   isCompletionOnlyResultText,
@@ -164,6 +165,11 @@ export function TaskOutcomeBlock({
   }));
   const artifacts =
     message.metadata?.artifacts || message.metadata?.normalizedResult?.artifacts || [];
+  const citations = Array.isArray((message.metadata?.finalResultData as any)?.citations)
+    ? (message.metadata?.finalResultData as any).citations
+    : Array.isArray((taskParts.structuredResultData as any)?.citations)
+    ? (taskParts.structuredResultData as any).citations
+    : [];
   const hasTaskCard = hasTaskOutcomeContent(message);
 
   if (!hasTaskCard) {
@@ -234,6 +240,34 @@ export function TaskOutcomeBlock({
               if (!href) {
                 return null;
               }
+              const isWsLink = Boolean(href.includes('/workspaces') && href.includes('fileId='));
+              if (isWsLink) {
+                const fileIdMatch = href.match(/[?&]fileId=([^&]+)/);
+                const wsMatch = href.match(/[?&]workspaceId=([^&]+)/);
+                const fileId = fileIdMatch ? decodeURIComponent(fileIdMatch[1]) : '';
+                const workspaceId = wsMatch ? decodeURIComponent(wsMatch[1]) : undefined;
+                return (
+                  <Button
+                    key={`${href}-${index}`}
+                    size="small"
+                    onClick={() => {
+                      if (fileId && typeof window !== 'undefined') {
+                        window.dispatchEvent(
+                          new CustomEvent('open-workspace-preview', {
+                            detail: {
+                              fileId,
+                              workspaceId,
+                              fileName: artifact.label || artifact.name,
+                            },
+                          })
+                        );
+                      }
+                    }}
+                  >
+                    {artifact.label || artifact.name || `文档预览`}
+                  </Button>
+                );
+              }
               return (
                 <Button key={`${href}-${index}`} size="small" href={href} target="_blank">
                   {artifact.label || artifact.name || `结果项 ${index + 1}`}
@@ -249,6 +283,67 @@ export function TaskOutcomeBlock({
           <summary>查看补充说明</summary>
           <pre className={styles['user-chat-outcome-pre']}>{supplementalResult}</pre>
         </details>
+      ) : null}
+
+      {status === 'completed' && citations.length > 0 ? (
+        <div
+          style={{
+            marginTop: 8,
+            padding: '8px 12px',
+            background: 'rgba(22, 119, 255, 0.04)',
+            borderRadius: 8,
+            border: '1px solid rgba(22, 119, 255, 0.15)',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--primary-color, #1677ff)',
+              marginBottom: 6,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <FolderOutlined />
+            <span>参考工作空间文档（点击直接就地预览）：</span>
+          </div>
+          <Space wrap size={[6, 6]}>
+            {citations.map((cit: any, idx: number) => {
+              const fileId = cit.fileId;
+              const workspaceId = cit.workspaceId;
+              const name = cit.fileName || `文档 ${idx + 1}`;
+              const ws = cit.workspaceName ? `[${cit.workspaceName}] ` : '';
+              return (
+                <Button
+                  key={idx}
+                  size="small"
+                  type="primary"
+                  ghost
+                  icon={<EyeOutlined />}
+                  onClick={() => {
+                    if (fileId && typeof window !== 'undefined') {
+                      window.dispatchEvent(
+                        new CustomEvent('open-workspace-preview', {
+                          detail: { fileId, workspaceId, fileName: name },
+                        })
+                      );
+                    }
+                  }}
+                  style={{
+                    borderRadius: 6,
+                    fontSize: 12,
+                    cursor: fileId ? 'pointer' : 'default',
+                  }}
+                >
+                  {ws}{name}
+                  {cit.line ? <span style={{ opacity: 0.65, marginLeft: 4 }}>:L{cit.line}</span> : null}
+                </Button>
+              );
+            })}
+          </Space>
+        </div>
       ) : null}
     </>
   );

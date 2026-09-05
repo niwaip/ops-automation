@@ -43,7 +43,12 @@ const PublishedSkillListPage = lazy(() =>
     default: module.PublishedSkillListPage,
   }))
 );
-const ImChannelsPage = lazy(() => import('../../features/im-channels/pages/ImChannelsPage'));
+const SettingsPage = lazy(() => import('../../features/settings/pages/SettingsPage'));
+const WorkspacePage = lazy(() =>
+  import('../../features/workspace/pages/WorkspacePage').then((module) => ({
+    default: module.WorkspacePage,
+  }))
+);
 
 interface PrivateRouteProps {
   children: ReactNode;
@@ -92,7 +97,10 @@ export function AppRoutes() {
               <Route path="/executions/new" element={<ExecutionCreatePage />} />
               <Route path="/executions/:id" element={<ExecutionDetailPage />} />
               <Route path="/published-skills" element={<PublishedSkillListPage />} />
-              <Route path="/im-channels" element={<ImChannelsPage />} />
+              <Route path="/workspaces" element={<WorkspacePage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/im-channels" element={<Navigate to="/settings?tab=im" replace />} />
+              <Route path="/email-settings" element={<Navigate to="/settings?tab=email" replace />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/reports" element={<ReportListPage />} />
               <Route path="/reports/:id" element={<ReportDetailPage />} />

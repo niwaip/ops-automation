@@ -96,7 +96,7 @@ export default defineConfig({
     fs: {
       allow: [resolveAppRootEntry(), resolveChatWebEntry(), resolveUserCoreRootEntry()],
     },
-    allowedHosts: ['user-web', 'ops-user-web', 'host.docker.internal'],
+    allowedHosts: true,
     headers: {
       'Cache-Control': 'no-store',
     },
@@ -164,6 +164,26 @@ export default defineConfig({
         rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),
       },
       '/api/im-channels': {
+        target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
+        changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),
+      },
+      '/api/user-connections': {
+        target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
+        changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),
+      },
+      '/api/workspaces': {
+        target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
+        changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),
+      },
+      '/api/workbench-todos': {
+        target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
+        changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),
+      },
+      '/api/workbench-inbox': {
         target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
         changeOrigin: true,
         rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),

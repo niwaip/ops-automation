@@ -6,7 +6,10 @@ import { RecognizerService } from '../../recognizer/recognizer.service';
 import type { PlannerCompletePlanInput } from '../facade';
 import { PlanGeneratorService, PlanSemanticService } from '../plan';
 import { DeterministicParamResolverService, ParamRecognizerService } from '../params';
-import { projectPreviousResultIntoRecognition } from '../params/previous-result-continuation';
+import {
+  hasRelativeExtractionDirective,
+  projectPreviousResultIntoRecognition,
+} from '../params/previous-result-continuation';
 
 @Injectable()
 export class PlannerPlanDraftService {
@@ -44,7 +47,8 @@ export class PlannerPlanDraftService {
     const recognizerContext = this.buildRecognizerContext(input.context);
     const contractResolved = this.deterministicParamResolverService.resolve(
       objective,
-      matchedSkill.paramsSchema
+      matchedSkill.paramsSchema,
+      matchedSkill
     );
     const deterministicBase: RecognizeParamsResponseDTO = {
       params: {
@@ -71,13 +75,15 @@ export class PlannerPlanDraftService {
     const continuationProjection = projectPreviousResultIntoRecognition(
       mergedBase,
       matchedSkill.paramsSchema,
-      input.context
+      input.context,
+      objective
     );
     const recognitionFields = this.resolveRecognitionFields(
       matchedSkill,
       Object.keys(contractResolved.params || {}),
       continuationProjection.projectedFields,
-      input.context
+      input.context,
+      objective
     );
     const recognized =
       recognitionFields.length > 0
@@ -150,13 +156,20 @@ export class PlannerPlanDraftService {
     matchedSkill: SkillMatchResult,
     contractResolvedFields: string[],
     projectedPreviousResultFields: string[],
-    context?: Record<string, unknown>
+    context?: Record<string, unknown>,
+    objective?: string
   ): string[] {
     if (context?.mode === 'waiting_input_resume') {
       return this.paramRecognizerService.resolveRecognizerFieldNamesForContext(
         matchedSkill.paramsSchema?.properties || {},
         context
       );
+    }
+
+    // When the user input gives relative extraction directives (e.g. "打开 第一个url"),
+    // never bypass LLM semantic extraction.
+    if (hasRelativeExtractionDirective(objective)) {
+      return Object.keys(matchedSkill.paramsSchema?.properties || {});
     }
 
     const schemaFields = Object.keys(matchedSkill.paramsSchema?.properties || {});
@@ -315,9 +328,11 @@ export class PlannerPlanDraftService {
   private buildRecognizerContext(
     context?: Record<string, unknown>
   ): Record<string, unknown> | undefined {
-    if (context?.mode !== 'single_step_continuation') return context;
+    if (!context) return undefined;
+    // Retain previous_result so recognizer LLM can extract parameters from detailText,
+    // but filter out bloated raw history.
     return Object.fromEntries(
-      Object.entries(context).filter(([key]) => key !== 'previous_result' && key !== 'history')
+      Object.entries(context).filter(([key]) => key !== 'history')
     );
   }
 }

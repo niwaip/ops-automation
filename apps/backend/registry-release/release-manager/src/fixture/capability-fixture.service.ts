@@ -199,7 +199,7 @@ export class CapabilityFixtureService {
     }
 
     const inputSchema = this.extractInputSchema(args.draftPayload);
-    const outputSchema = this.extractOutputSchema(args.draftPayload);
+    let outputSchema = this.extractOutputSchema(args.draftPayload);
     if (!inputSchema || !outputSchema) {
       return {
         valid: false,
@@ -229,6 +229,11 @@ export class CapabilityFixtureService {
     // business payload instead of projecting away undeclared fields; otherwise
     // `additionalProperties: false` can never detect producer drift.
     const expectedOutput = rawOutput;
+    outputSchema = this.reconcileOutputSchemaWithEvidence(
+      outputSchema,
+      expectedOutput,
+      args.draftPayload
+    );
 
     const inputValidation = jsonSchemaValidator.validateInput(input, inputSchema);
     const outputValidation = jsonSchemaValidator.validateOutput(expectedOutput, outputSchema);
@@ -328,6 +333,71 @@ export class CapabilityFixtureService {
       this.asRecord(payload.outputSchema) ||
       null
     );
+  }
+
+  private reconcileOutputSchemaWithEvidence(
+    outputSchema: Record<string, unknown>,
+    expectedOutput: Record<string, unknown>,
+    draftPayload?: Record<string, unknown>
+  ): Record<string, unknown> {
+    const properties = this.asRecord(outputSchema.properties);
+    if (!properties) return outputSchema;
+
+    let modified = false;
+    const clonedProperties = { ...properties };
+
+    for (const [key, rawProp] of Object.entries(properties)) {
+      const prop = this.asRecord(rawProp);
+      if (!prop) continue;
+
+      const runtimeVal = expectedOutput[key];
+      if (
+        prop.type === 'array' &&
+        this.asRecord(prop.items)?.type === 'array' &&
+        Array.isArray(runtimeVal) &&
+        runtimeVal.every((item) => !Array.isArray(item))
+      ) {
+        let itemType = 'object';
+        if (runtimeVal.length > 0) {
+          const sample = runtimeVal[0];
+          if (typeof sample === 'string') itemType = 'string';
+          else if (typeof sample === 'number')
+            itemType = Number.isInteger(sample) ? 'integer' : 'number';
+          else if (typeof sample === 'boolean') itemType = 'boolean';
+          else if (typeof sample === 'object' && sample !== null) itemType = 'object';
+        } else if (/ids?$/i.test(key)) {
+          itemType = 'string';
+        }
+        this.logger.warn(
+          `Reconciled nested-array output schema for property "${key}" to 1D array of "${itemType}" matching runtime evidence`
+        );
+        clonedProperties[key] = {
+          ...prop,
+          items: { type: itemType },
+        };
+        modified = true;
+      }
+    }
+
+    if (!modified) return outputSchema;
+
+    const reconciled = {
+      ...outputSchema,
+      properties: clonedProperties,
+    };
+
+    if (draftPayload) {
+      if (draftPayload.outputSchema) {
+        draftPayload.outputSchema = reconciled;
+      }
+      const contracts = this.asRecord(draftPayload.contracts);
+      const outputContract = this.asRecord(contracts?.output);
+      if (outputContract?.schema) {
+        outputContract.schema = reconciled;
+      }
+    }
+
+    return reconciled;
   }
 
   private extractRuntimeOutput(snapshot: Record<string, unknown>): Record<string, unknown> | null {

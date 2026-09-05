@@ -1,4 +1,6 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import axios from 'axios';
 import type { ContentBlock } from '../../interfaces';
 import { ModelService } from '../model/model.service';
@@ -30,22 +32,68 @@ export class ChatMediaService {
    */
   resolveUploadedFiles(files?: ChatUploadedFileDTO[]): ChatUploadedFileDTO[] {
     return (files || []).map((file) => {
+      // 1. Check in-memory upload store
       const storedFile = this.fileStore.get(file.fileId);
-      if (!storedFile) {
+      if (storedFile) {
         return {
+          ...file,
           fileId: file.fileId,
-          fileName: file.fileName,
-          mimeType: file.mimeType,
-          size: file.size,
+          fileName: storedFile.fileName,
+          mimeType: storedFile.mimeType,
+          size: storedFile.size,
+          content: storedFile.content,
         };
+      }
+
+      // 2. Check workspace file storage
+      if (file.source === 'workspace' || file.workspaceNodeId || file.storagePath || file.fileId) {
+        try {
+          const rootDir =
+            process.env.WORKSPACE_STORAGE_ROOT ||
+            '/workspace/data/storage/workspaces';
+          let fullPath = file.storagePath ? path.join(rootDir, file.storagePath) : '';
+          if (!fullPath || !fs.existsSync(fullPath)) {
+            const targetId = file.workspaceNodeId || file.fileId;
+            const findFile = (dir: string): string | null => {
+              if (!fs.existsSync(dir)) return null;
+              const entries = fs.readdirSync(dir, { withFileTypes: true });
+              for (const entry of entries) {
+                const sub = path.join(dir, entry.name);
+                if (entry.isDirectory()) {
+                  const res = findFile(sub);
+                  if (res) return res;
+                } else if (entry.name.includes(targetId)) {
+                  return sub;
+                }
+              }
+              return null;
+            };
+            const found = findFile(rootDir);
+            if (found) fullPath = found;
+          }
+
+          if (fullPath && fs.existsSync(fullPath)) {
+            const buf = fs.readFileSync(fullPath);
+            return {
+              ...file,
+              fileId: file.fileId,
+              fileName: file.fileName,
+              mimeType: file.mimeType || 'application/octet-stream',
+              size: file.size || buf.length,
+              content: buf.toString('base64'),
+            };
+          }
+        } catch (err: any) {
+          this.logger.warn(`Failed to hydrate workspace file ${file.fileName}: ${err.message}`);
+        }
       }
 
       return {
         fileId: file.fileId,
-        fileName: storedFile.fileName,
-        mimeType: storedFile.mimeType,
-        size: storedFile.size,
-        content: storedFile.content,
+        fileName: file.fileName,
+        mimeType: file.mimeType,
+        size: file.size,
+        content: file.content,
       };
     });
   }

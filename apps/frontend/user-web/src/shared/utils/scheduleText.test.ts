@@ -35,6 +35,19 @@ describe('summarizeCronExpression', () => {
     ).toBe('每周 周一、周三、周五 09:00');
   });
 
+  it('should handle minutely schedules', () => {
+    expect(summarizeCronExpression('*/15 * * * *')).toBe('每 15 分钟');
+    expect(summarizeCronExpression('*/5 * * * *')).toBe('每 5 分钟');
+    expect(summarizeCronExpression('* * * * *')).toBe('每分钟');
+  });
+
+  it('should handle hourly schedules', () => {
+    expect(summarizeCronExpression('0 * * * *')).toBe('每小时整点');
+    expect(summarizeCronExpression('15 * * * *')).toBe('每小时第 15 分');
+    expect(summarizeCronExpression('0 */2 * * *')).toBe('每 2 小时整点');
+    expect(summarizeCronExpression('30 */3 * * *')).toBe('每 3 小时第 30 分');
+  });
+
   it('should fallback to original expression for other patterns', () => {
     expect(summarizeCronExpression('0 9 1 * 1-5')).toBe('0 9 1 * 1-5');
   });

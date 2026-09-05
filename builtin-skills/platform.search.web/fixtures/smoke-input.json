@@ -1,0 +1,6 @@
+{
+  "query": "OpenAI",
+  "maxResults": 3,
+  "topic": "general",
+  "searchDepth": "basic"
+}

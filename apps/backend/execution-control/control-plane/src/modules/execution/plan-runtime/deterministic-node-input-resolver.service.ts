@@ -179,9 +179,24 @@ export class DeterministicNodeInputResolverService {
       }
     }
 
+    let schema: Record<string, SkillParamSchemaField> | undefined;
+    if (capabilityId) {
+      try {
+        schema = await this.loadSkillParamSchema(capabilityId);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to load paramsSchema for capability '${capabilityId}'; skipping enum/default enforcement: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
+
     // For skill execution (non-llm_operation), automatically inherit top-level user inputs provided in executionInputJson
     if (capabilityId && nodeKind !== 'llm_operation' && executionInputJson && typeof executionInputJson === 'object') {
       const EXCLUDED_INHERIT_KEYS = new Set([
+        'userRequest',
+        'user_request',
         'prompt',
         '__promptDebug',
         'idempotencyKey',
@@ -191,9 +206,21 @@ export class DeterministicNodeInputResolverService {
         'plannerContext',
         'context',
         'session_id',
+        'sessionId',
+        'chatSessionId',
         'user_id',
+        'userId',
         'authToken',
         'traceId',
+        'channel',
+        'channelType',
+        'messageId',
+        'modelId',
+        'detailText',
+        'browserPhaseVariables',
+        'contentParts',
+        'role',
+        'telemetry',
       ]);
       for (const [key, val] of Object.entries(executionInputJson)) {
         if (
@@ -201,6 +228,10 @@ export class DeterministicNodeInputResolverService {
           !key.startsWith('previousResult') &&
           val !== undefined
         ) {
+          // If schema is known, only inherit if the property is defined in the skill schema
+          if (schema && Object.keys(schema).length > 0 && !Object.prototype.hasOwnProperty.call(schema, key)) {
+            continue;
+          }
           if (resolvedInput[key] === undefined) {
             resolvedInput[key] = val;
             valueSources[key] = 'user_input';
@@ -209,8 +240,8 @@ export class DeterministicNodeInputResolverService {
       }
     }
 
-    if (capabilityId) {
-      await this.applySkillSchemaConstraints(resolvedInput, capabilityId, valueSources);
+    if (capabilityId && schema) {
+      this.applySkillSchemaConstraintsWithLoadedSchema(resolvedInput, capabilityId, schema, valueSources);
     }
 
     return resolvedInput;
@@ -300,6 +331,16 @@ export class DeterministicNodeInputResolverService {
     if (!schema || Object.keys(schema).length === 0) {
       return;
     }
+
+    this.applySkillSchemaConstraintsWithLoadedSchema(resolvedInput, capabilityId, schema, sources);
+  }
+
+  private applySkillSchemaConstraintsWithLoadedSchema(
+    resolvedInput: Record<string, any>,
+    capabilityId: string,
+    schema: Record<string, SkillParamSchemaField>,
+    sources: Record<string, string> = {},
+  ): void {
 
     for (const fieldName of Object.keys(resolvedInput)) {
       const fieldSchema = schema[fieldName];

@@ -1,0 +1,20 @@
+{
+  "workflowVersion": "v1",
+  "engine": "domain-handler",
+  "handlerKey": "search.web",
+  "steps": [
+    {
+      "stepId": "search_public_web",
+      "action": "search_web",
+      "inputMapping": {
+        "query": "$.input.query",
+        "maxResults": "$.input.maxResults",
+        "topic": "$.input.topic",
+        "searchDepth": "$.input.searchDepth",
+        "days": "$.input.days",
+        "includeDomains": "$.input.includeDomains",
+        "excludeDomains": "$.input.excludeDomains"
+      }
+    }
+  ]
+}

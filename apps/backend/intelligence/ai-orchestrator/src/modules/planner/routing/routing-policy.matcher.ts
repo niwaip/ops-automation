@@ -53,6 +53,9 @@ export function hasRoutingSignal(
   group: RoutingSignalGroup,
   policy: RoutingPolicySnapshotV1,
 ): boolean {
+  if (group === 'webSource' && /(?:https?:\/\/|www\.)[^\s]+/i.test(value)) {
+    return true;
+  }
   return policy.signals[group].some((alias) => containsRoutingAlias(value, alias));
 }
 

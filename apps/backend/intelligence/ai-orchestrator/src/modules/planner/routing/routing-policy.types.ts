@@ -18,6 +18,7 @@ export const ROUTING_CAPABILITY_ROLES = [
   'markdownWriter',
   'documentExtractor',
   'webExtractor',
+  'notifier',
 ] as const;
 
 export type RoutingCapabilityRole = (typeof ROUTING_CAPABILITY_ROLES)[number];

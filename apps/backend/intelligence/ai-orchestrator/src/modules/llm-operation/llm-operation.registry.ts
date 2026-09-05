@@ -27,9 +27,10 @@ export const LLM_OPERATION_TEMPLATES: { [K in LlmOperationIdV1]: LlmOperationTem
     version: '1',
     modelPolicyId: 'task-default',
     temperature: 0,
-    maxInputTokens: 8000,
-    maxOutputTokens: 4000,
+    maxInputTokens: 32000,
+    maxOutputTokens: 8000,
     modelOutputMode: 'text',
+    oversizeInput: 'truncate',
     inputSchema: {
       type: 'object',
       required: ['items'],
@@ -69,7 +70,9 @@ export const LLM_OPERATION_TEMPLATES: { [K in LlmOperationIdV1]: LlmOperationTem
         .slice(0, 10)
         .map((item: any, idx: number) => {
           if (typeof item === 'object' && item !== null) {
-            const title = String(item.title || item.name || item.heading || '').trim();
+            const title = String(
+              item.title || item.name || item.heading || item.subject || ''
+            ).trim();
             const body = String(
               item.summary || item.snippet || item.content || item.description || item.text || ''
             ).trim();

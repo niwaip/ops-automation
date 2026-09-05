@@ -23,6 +23,8 @@ import {
   Popconfirm,
   Progress,
   Empty,
+  Switch,
+  Segmented,
 } from 'antd';
 import {
   SearchOutlined,
@@ -44,9 +46,12 @@ import {
   CodeOutlined,
   MessageOutlined,
   SettingOutlined,
+  AppstoreOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { buildGroupedBuiltinSkills, type SkillTableRow } from '../builtinSkillGrouping';
 import {
   skillApi,
   builtinSkillApi,
@@ -57,6 +62,7 @@ import {
   CreateSkillDTO,
   SkillValidationResult,
   SkillValidationStreamEvent,
+  BuiltinSkillInventoryDTO,
 } from '@/api/skill';
 import {
   isRegistryBuiltinSkill,
@@ -66,12 +72,13 @@ import { userApi } from '@/api/auth';
 import { carboneApi, CarboneTemplateDTO } from '@/api/carbone';
 import { executionFlowApi } from '@/api/flows';
 import { SkillAccessRequestReviewTab } from '@/features/admin/skills/components/SkillAccessRequestReviewTab';
-import { SkillAdminTabs, SkillAdminTabKey } from '@/features/admin/skills/components/SkillAdminTabs';
-import type { ColumnsType } from 'antd/es/table';
 import {
-  OverviewStatGrid,
-  ListSectionHeader,
-} from '@/components/page/PageScaffold';
+  SkillAdminTabs,
+  SkillAdminTabKey,
+} from '@/features/admin/skills/components/SkillAdminTabs';
+import { BuiltinSkillRuntimeConfigDrawer } from '@/features/admin/skills/components/BuiltinSkillRuntimeConfigDrawer';
+import type { ColumnsType } from 'antd/es/table';
+import { OverviewStatGrid, ListSectionHeader } from '@/components/page/PageScaffold';
 
 const { Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -275,12 +282,15 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
   const [activeTabKey, setActiveTabKey] = useState<SkillAdminTabKey>(
     (searchParams.get('tab') as SkillAdminTabKey) || 'builtin'
   );
+  const [builtinViewMode, setBuiltinViewMode] = useState<'grouped' | 'flat'>('grouped');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [permissionModalVisible, setPermissionModalVisible] = useState(false);
   const [validationModalVisible, setValidationModalVisible] = useState(false);
   const [editingSkill, setEditingSkill] = useState<SkillConfigDTO | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<SkillConfigDTO | null>(null);
+  const [configuringBuiltinSkill, setConfiguringBuiltinSkill] =
+    useState<BuiltinSkillInventoryDTO | null>(null);
   const [validationResult, setValidationResult] = useState<SkillValidationResult | null>(null);
   const [validatingSkillId, setValidatingSkillId] = useState<string | null>(null);
   const [validationLogs, setValidationLogs] = useState<string[]>([]);
@@ -312,8 +322,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
     ['skill-permissions', selectedSkill?.id],
     () => skillApi.getPermissions(selectedSkill!.id),
     {
-      enabled:
-        permissionModalVisible && !!selectedSkill && !isRegistryBuiltinSkill(selectedSkill),
+      enabled: permissionModalVisible && !!selectedSkill && !isRegistryBuiltinSkill(selectedSkill),
     }
   );
   const accessRequestsQuery = useQuery(
@@ -334,14 +343,30 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
 
   const allSkills = useMemo(
     () =>
-      mergeSkillInventory(
-        skillsQuery.data?.skills || [],
-        builtinSkillsQuery.data?.skills || []
-      ),
+      mergeSkillInventory(skillsQuery.data?.skills || [], builtinSkillsQuery.data?.skills || []),
     [skillsQuery.data?.skills, builtinSkillsQuery.data?.skills]
+  );
+  const builtinSkillByKey = useMemo(
+    () =>
+      new Map((builtinSkillsQuery.data?.skills || []).map((skill) => [skill.capabilityKey, skill])),
+    [builtinSkillsQuery.data?.skills]
   );
 
   // Mutations
+  const builtinEnabledMutation = useMutation(
+    ({ capabilityKey, enabled }: { capabilityKey: string; enabled: boolean }) =>
+      builtinSkillApi.setEnabled(capabilityKey, enabled),
+    {
+      onSuccess: (_, variables) => {
+        message.success(variables.enabled ? '内置 Skill 已启用' : '内置 Skill 已停用');
+        queryClient.invalidateQueries(['builtin-skill-inventory']);
+      },
+      onError: () => {
+        message.error('内置 Skill 状态更新失败');
+      },
+    }
+  );
+
   const createMutation = useMutation(skillApi.create, {
     onSuccess: () => {
       message.success(t('common:success'));
@@ -729,10 +754,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
   };
 
   // Filter skills by search text & tab
-  const builtinSkillsCount = useMemo(
-    () => allSkills.filter(isBuiltinSkill).length,
-    [allSkills]
-  );
+  const builtinSkillsCount = useMemo(() => allSkills.filter(isBuiltinSkill).length, [allSkills]);
 
   const customSkillsCount = useMemo(
     () => allSkills.filter((s) => !isBuiltinSkill(s)).length,
@@ -764,6 +786,13 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
     }
     return filteredSkills;
   }, [filteredSkills, activeTabKey]);
+
+  const tableDataSource = useMemo(() => {
+    if (activeTabKey === 'builtin' && builtinViewMode === 'grouped') {
+      return buildGroupedBuiltinSkills(displayedSkills, builtinSkillByKey);
+    }
+    return displayedSkills as SkillTableRow[];
+  }, [activeTabKey, builtinViewMode, displayedSkills, builtinSkillByKey]);
   const validationProgressMeta = getValidationProgressMeta(
     validationResult ? '验证完成' : validationStage,
     Boolean(validatingSkillId),
@@ -831,49 +860,89 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
   };
 
   // Columns
-  const columns: ColumnsType<SkillConfigDTO> = [
+  const columns: ColumnsType<SkillTableRow> = [
     {
       title: t('admin:skillName'),
       dataIndex: 'name',
       key: 'name',
-      width: 220,
-      render: (name: string, record) => (
-        <Space direction="vertical" size={2}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 600, fontSize: 14 }}>{name}</span>
-            {isRegistryBuiltinSkill(record) ? (
-              <Tag
-                color="cyan"
-                style={{
-                  margin: 0,
-                  fontSize: 11,
-                  lineHeight: '18px',
-                  padding: '0 6px',
-                  borderRadius: 4,
-                }}
-              >
-                系统内置
-              </Tag>
-            ) : (
-              <Tag
-                color="purple"
-                style={{
-                  margin: 0,
-                  fontSize: 11,
-                  lineHeight: '18px',
-                  padding: '0 6px',
-                  borderRadius: 4,
-                }}
-              >
-                自定义
-              </Tag>
-            )}
-          </div>
-          <Text type="secondary" style={{ fontSize: 11, wordBreak: 'break-all' }}>
-            {record.id}
-          </Text>
-        </Space>
-      ),
+      width: 260,
+      render: (name: string, record) => {
+        if (record.isGroup) {
+          return (
+            <Space direction="vertical" size={2}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 16 }}>{record.groupMeta?.icon}</span>
+                <span style={{ fontWeight: 700, fontSize: 14 }}>{name}</span>
+                <Tag
+                  color={record.groupMeta?.tagColor || 'blue'}
+                  style={{
+                    margin: 0,
+                    fontSize: 11,
+                    lineHeight: '18px',
+                    padding: '0 6px',
+                    borderRadius: 4,
+                  }}
+                >
+                  服务套件 ({record.childCount})
+                </Tag>
+              </div>
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                {record.groupKey} · 聚合 {record.childCount} 个独立原子能力
+              </Text>
+            </Space>
+          );
+        }
+        return (
+          <Space direction="vertical" size={2}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>{name}</span>
+              {record.groupKey ? (
+                <Tag
+                  color="blue"
+                  style={{
+                    margin: 0,
+                    fontSize: 10,
+                    lineHeight: '16px',
+                    padding: '0 4px',
+                    borderRadius: 4,
+                  }}
+                >
+                  子能力
+                </Tag>
+              ) : isRegistryBuiltinSkill(record) ? (
+                <Tag
+                  color="cyan"
+                  style={{
+                    margin: 0,
+                    fontSize: 11,
+                    lineHeight: '18px',
+                    padding: '0 6px',
+                    borderRadius: 4,
+                  }}
+                >
+                  系统内置
+                </Tag>
+              ) : (
+                <Tag
+                  color="purple"
+                  style={{
+                    margin: 0,
+                    fontSize: 11,
+                    lineHeight: '18px',
+                    padding: '0 6px',
+                    borderRadius: 4,
+                  }}
+                >
+                  自定义
+                </Tag>
+              )}
+            </div>
+            <Text type="secondary" style={{ fontSize: 11, wordBreak: 'break-all' }}>
+              {record.id}
+            </Text>
+          </Space>
+        );
+      },
     },
     {
       title: t('admin:skillDescription'),
@@ -894,6 +963,17 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
       key: 'executionFlow',
       width: 170,
       render: (_, record) => {
+        if (record.isGroup) {
+          return (
+            <Space wrap size={4}>
+              {record.children?.map((c) => (
+                <Tag key={c.id} style={{ margin: 0, fontSize: 11 }}>
+                  {c.name.replace(/^内置\s*/, '')}
+                </Tag>
+              ))}
+            </Space>
+          );
+        }
         if (isRegistryBuiltinSkill(record)) {
           return (
             <Tag color="geekblue" style={{ margin: 0 }}>
@@ -938,9 +1018,22 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
       dataIndex: 'triggerKeywords',
       key: 'triggerKeywords',
       width: 200,
-      render: (keywords: string[]) => {
+      render: (keywords: string[], record) => {
+        if (record.isGroup) {
+          const totalTriggers =
+            record.children?.reduce((acc, c) => acc + (c.triggerKeywords?.length || 0), 0) || 0;
+          return (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              共包含 {totalTriggers} 个专属意图触发词
+            </Text>
+          );
+        }
         if (!keywords || keywords.length === 0) {
-          return <Text type="secondary" style={{ fontSize: 12 }}>-</Text>;
+          return (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              -
+            </Text>
+          );
         }
         return (
           <Tooltip title={`触发关键词（共 ${keywords.length} 个）：\n${keywords.join('、')}`}>
@@ -982,28 +1075,87 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
       key: 'published',
       width: 130,
       align: 'center',
-      render: (_, record) => (
-        <Badge
-          status={record.isPublished ? 'success' : 'default'}
-          text={
-            <span style={{ fontSize: 13, color: record.isPublished ? '#52c41a' : undefined }}>
-              {record.isPublished ? '已公开可执行' : '仅系统定义'}
-            </span>
-          }
-        />
-      ),
+      render: (_, record) => {
+        if (record.isGroup) {
+          return (
+            <Badge
+              status={record.isPublished ? 'success' : 'default'}
+              text={
+                <span style={{ fontSize: 13, color: record.isPublished ? '#52c41a' : undefined }}>
+                  {record.enabledCount}/{record.childCount} 已就绪
+                </span>
+              }
+            />
+          );
+        }
+        return (
+          <Badge
+            status={record.isPublished ? 'success' : 'default'}
+            text={
+              <span style={{ fontSize: 13, color: record.isPublished ? '#52c41a' : undefined }}>
+                {record.isPublished ? '已公开可执行' : '仅系统定义'}
+              </span>
+            }
+          />
+        );
+      },
     },
     {
       title: t('admin:skillStatus'),
       dataIndex: 'isActive',
       key: 'isActive',
-      width: 90,
+      width: 100,
       align: 'center',
-      render: (isActive: boolean) => (
-        <Tag color={isActive ? 'success' : 'default'} style={{ margin: 0 }}>
-          {isActive ? '启用' : '禁用'}
-        </Tag>
-      ),
+      render: (isActive: boolean, record) => {
+        if (record.isGroup) {
+          const isBatchLoading = (record.children || []).some(
+            (c) =>
+              builtinEnabledMutation.isLoading &&
+              builtinEnabledMutation.variables?.capabilityKey === c.id
+          );
+          return (
+            <Space direction="vertical" size={2} align="center">
+              <Switch
+                checked={record.isActive}
+                checkedChildren="全开"
+                unCheckedChildren="全关"
+                loading={isBatchLoading}
+                onChange={async (enabled) => {
+                  for (const c of record.children || []) {
+                    if (c.isActive !== enabled) {
+                      await builtinEnabledMutation.mutateAsync({
+                        capabilityKey: c.id,
+                        enabled,
+                      });
+                    }
+                  }
+                }}
+              />
+              {record.someEnabled ? (
+                <span style={{ fontSize: 10, color: '#faad14' }}>部分开启</span>
+              ) : null}
+            </Space>
+          );
+        }
+        return isRegistryBuiltinSkill(record) ? (
+          <Switch
+            checked={isActive}
+            checkedChildren="启用"
+            unCheckedChildren="停用"
+            loading={
+              builtinEnabledMutation.isLoading &&
+              builtinEnabledMutation.variables?.capabilityKey === record.id
+            }
+            onChange={(enabled) =>
+              builtinEnabledMutation.mutate({ capabilityKey: record.id, enabled })
+            }
+          />
+        ) : (
+          <Tag color={isActive ? 'success' : 'default'} style={{ margin: 0 }}>
+            {isActive ? '启用' : '禁用'}
+          </Tag>
+        );
+      },
     },
     {
       title: t('common:actions'),
@@ -1011,6 +1163,29 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
       width: 220,
       fixed: 'right',
       render: (_, record) => {
+        if (record.isGroup) {
+          const configSkill = record.configurableSkill;
+          const runtimeConfig = configSkill
+            ? builtinSkillByKey.get(configSkill.id)?.runtimeConfig
+            : undefined;
+          return (
+            <Space size="small">
+              {(runtimeConfig?.fields.length || 0) > 0 && (
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<SettingOutlined />}
+                  onClick={() =>
+                    configSkill &&
+                    setConfiguringBuiltinSkill(builtinSkillByKey.get(configSkill.id) || null)
+                  }
+                >
+                  套件配置
+                </Button>
+              )}
+            </Space>
+          );
+        }
         if (isRegistryBuiltinSkill(record)) {
           return (
             <Space size="small">
@@ -1022,85 +1197,97 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
               >
                 查看详情
               </Button>
+              {(builtinSkillByKey.get(record.id)?.runtimeConfig?.fields.length || 0) > 0 && (
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<SettingOutlined />}
+                  onClick={() =>
+                    setConfiguringBuiltinSkill(builtinSkillByKey.get(record.id) || null)
+                  }
+                >
+                  配置
+                </Button>
+              )}
             </Space>
           );
         }
 
         return (
           <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            icon={<InfoCircleOutlined />}
-            onClick={() => handleViewDetail(record)}
-          >
-            详情
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            icon={<CheckCircleOutlined />}
-            onClick={() => handleValidate(record)}
-            loading={validatingSkillId === record.id}
-          >
-            验证
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
-            {t('common:edit')}
-          </Button>
-          <Tooltip
-            title={
-              record.isPublished
-                ? '为普通角色分配该公开 Skill 的使用权限'
-                : '只有已公开发布的 Skill 才能分配给普通用户'
-            }
-          >
             <Button
               type="link"
               size="small"
-              icon={<KeyOutlined />}
-              disabled={!record.isPublished}
-              onClick={() => handleManagePermissions(record)}
+              icon={<InfoCircleOutlined />}
+              onClick={() => handleViewDetail(record)}
             >
-              权限
+              详情
             </Button>
-          </Tooltip>
-          {record.isPublished ? (
             <Button
               type="link"
               size="small"
-              icon={<RocketOutlined />}
-              onClick={() => navigate(`/published-skills/${record.id}`)}
+              icon={<CheckCircleOutlined />}
+              onClick={() => handleValidate(record)}
+              loading={validatingSkillId === record.id}
             >
-              公开详情
+              验证
             </Button>
-          ) : null}
-          {record.publishedReleaseId ? (
             <Button
               type="link"
               size="small"
-              icon={<OrderedListOutlined />}
-              onClick={() =>
-                navigate(`/admin/capabilities?releaseId=${record.publishedReleaseId}&mode=view`)
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record)}
+            >
+              {t('common:edit')}
+            </Button>
+            <Tooltip
+              title={
+                record.isPublished
+                  ? '为普通角色分配该公开 Skill 的使用权限'
+                  : '只有已公开发布的 Skill 才能分配给普通用户'
               }
             >
-              发布溯源
+              <Button
+                type="link"
+                size="small"
+                icon={<KeyOutlined />}
+                disabled={!record.isPublished}
+                onClick={() => handleManagePermissions(record)}
+              >
+                权限
+              </Button>
+            </Tooltip>
+            {record.isPublished ? (
+              <Button
+                type="link"
+                size="small"
+                icon={<RocketOutlined />}
+                onClick={() => navigate(`/published-skills/${record.id}`)}
+              >
+                公开详情
+              </Button>
+            ) : null}
+            {record.publishedReleaseId ? (
+              <Button
+                type="link"
+                size="small"
+                icon={<OrderedListOutlined />}
+                onClick={() =>
+                  navigate(`/admin/capabilities?releaseId=${record.publishedReleaseId}&mode=view`)
+                }
+              >
+                发布溯源
+              </Button>
+            ) : null}
+            <Button
+              type="link"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record.id, record.name)}
+            >
+              {t('common:delete')}
             </Button>
-          ) : null}
-          <Button
-            type="link"
-            size="small"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.id, record.name)}
-          >
-            {t('common:delete')}
-          </Button>
           </Space>
         );
       },
@@ -1193,9 +1380,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                 {skill.builtinMetadata.capabilityKey}
               </Descriptions.Item>
               <Descriptions.Item label="当前版本">
-                {skill.builtinMetadata.activeVersion || (
-                  <Text type="secondary">未激活</Text>
-                )}
+                {skill.builtinMetadata.activeVersion || <Text type="secondary">未激活</Text>}
               </Descriptions.Item>
               <Descriptions.Item label="所有者">{skill.builtinMetadata.owner}</Descriptions.Item>
               <Descriptions.Item label="生命周期">
@@ -1418,6 +1603,17 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
           extra={
             <Space wrap size={12}>
               <Text type="secondary">当前显示 {displayedSkills.length} 条</Text>
+              {activeTabKey === 'builtin' && (
+                <Segmented
+                  size="middle"
+                  value={builtinViewMode}
+                  onChange={(val) => setBuiltinViewMode(val as 'grouped' | 'flat')}
+                  options={[
+                    { label: '套件分组', value: 'grouped', icon: <AppstoreOutlined /> },
+                    { label: '平铺列表', value: 'flat', icon: <UnorderedListOutlined /> },
+                  ]}
+                />
+              )}
               <Button
                 size="large"
                 icon={<FileTextOutlined />}
@@ -1488,17 +1684,35 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
           ) : null}
           <Table
             columns={columns}
-            dataSource={displayedSkills}
+            dataSource={tableDataSource}
             rowKey="id"
             loading={skillsQuery.isLoading || builtinSkillsQuery.isLoading}
             scroll={{ x: 1200 }}
-            pagination={{
-              showSizeChanger: true,
-              showTotal: (total) => t('common:pagination.total', { total }),
-            }}
+            expandable={
+              activeTabKey === 'builtin' && builtinViewMode === 'grouped'
+                ? {
+                    defaultExpandAllRows: true,
+                    rowExpandable: (record) => Boolean(record.isGroup),
+                  }
+                : undefined
+            }
+            pagination={
+              activeTabKey === 'builtin' && builtinViewMode === 'grouped'
+                ? false
+                : {
+                    showSizeChanger: true,
+                    showTotal: (total) => t('common:pagination.total', { total }),
+                  }
+            }
           />
         </SkillAdminTabs>
       </Card>
+
+      <BuiltinSkillRuntimeConfigDrawer
+        skill={configuringBuiltinSkill}
+        open={Boolean(configuringBuiltinSkill)}
+        onClose={() => setConfiguringBuiltinSkill(null)}
+      />
 
       {/* Detail Modal */}
       <Modal

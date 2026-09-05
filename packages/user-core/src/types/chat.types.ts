@@ -154,6 +154,7 @@ export interface ChatSession {
   title?: string;
   modelId?: string;
   status: 'active' | 'archived';
+  channel?: 'local' | 'wechat' | 'dingtalk' | 'feishu' | string;
   contextStrategy?: ChatContextStrategy;
   contextWindowTokens?: number;
   createdAt: string;
@@ -166,6 +167,11 @@ export interface UploadedFileDescriptor {
   mimeType?: string;
   size?: number;
   contentBase64?: string;
+  source?: 'upload' | 'workspace';
+  workspaceType?: 'personal' | 'department' | 'company';
+  workspaceNodeId?: string;
+  workspaceId?: string;
+  storagePath?: string;
 }
 
 export interface ChatRequest {

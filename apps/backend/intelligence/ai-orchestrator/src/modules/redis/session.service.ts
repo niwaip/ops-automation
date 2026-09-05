@@ -15,6 +15,7 @@ export interface ChatSessionData {
     title?: string;
     modelId?: string;
     status: 'active' | 'archived';
+    channel?: string;
     createdAt: string;
     updatedAt: string;
   };
@@ -55,10 +56,20 @@ export class SessionService {
     existing?: ChatSessionData['session']
   ): NonNullable<ChatSessionData['session']> {
     const now = new Date().toISOString();
+    const resolvedChannel =
+      existing?.channel ||
+      (sessionId.startsWith('wechat:')
+        ? 'wechat'
+        : sessionId.startsWith('dingtalk:')
+          ? 'dingtalk'
+          : sessionId.startsWith('feishu:') || sessionId.startsWith('lark:')
+            ? 'feishu'
+            : 'local');
     return {
       id: sessionId,
       ownerUserId: existing?.ownerUserId,
       status: 'active',
+      channel: resolvedChannel,
       createdAt: existing?.createdAt || now,
       updatedAt: existing?.updatedAt || existing?.createdAt || now,
       title: existing?.title,
@@ -110,6 +121,7 @@ export class SessionService {
       history,
       session: {
         ...baseSession,
+        channel: data.session?.channel || baseSession.channel,
         createdAt: data.session?.createdAt || firstTimestamp || baseSession.createdAt,
         updatedAt: data.session?.updatedAt || lastTimestamp || baseSession.updatedAt,
         title: this.buildChatSessionTitle(data.session?.title, history),

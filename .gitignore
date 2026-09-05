@@ -143,3 +143,8 @@ packages/backend-contracts/**/*.d.ts.map
 
 # Rendered output files
 apps/backend/capabilities/document-domain/public/renders/*
+
+# Runtime data & local tools
+data/
+.claude/
+

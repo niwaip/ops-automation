@@ -1,5 +1,5 @@
 import { useMemo, type ComponentProps, type ReactElement } from 'react';
-import type { FormInstance } from 'antd';
+import { Form, type FormInstance } from 'antd';
 import ExecutionCreateAiModal from '@/features/executions/create/components/ExecutionCreateAiModal';
 import ExecutionCreateScheduleListCard from '@/features/executions/create/components/ExecutionCreateScheduleListCard';
 import ExecutionCreateSkillInfoCard from '@/features/executions/create/components/ExecutionCreateSkillInfoCard';
@@ -98,16 +98,33 @@ export function useExecutionCreatePageView({
     [createLoading, executionMode, scheduleLoading, selectedSkillId]
   );
 
+  const scheduleHour = Form.useWatch('scheduleHour', form);
+  const scheduleMinute = Form.useWatch('scheduleMinute', form);
+  const hourlyInterval = Form.useWatch('hourlyInterval', form);
+  const minutelyInterval = Form.useWatch('minutelyInterval', form);
+  const weeklyDays = Form.useWatch('weeklyDays', form);
+  const monthlyDay = Form.useWatch('monthlyDay', form);
+
   const scheduleRuleSummary = useMemo(
     () =>
       buildExecutionCreateScheduleRuleSummary({
         schedulePattern,
-        scheduleHour: form.getFieldValue('scheduleHour'),
-        scheduleMinute: form.getFieldValue('scheduleMinute'),
-        weeklyDays: form.getFieldValue('weeklyDays'),
-        monthlyDay: form.getFieldValue('monthlyDay'),
+        scheduleHour,
+        scheduleMinute,
+        hourlyInterval,
+        minutelyInterval,
+        weeklyDays,
+        monthlyDay,
       }),
-    [form, schedulePattern]
+    [
+      hourlyInterval,
+      minutelyInterval,
+      monthlyDay,
+      scheduleHour,
+      scheduleMinute,
+      schedulePattern,
+      weeklyDays,
+    ]
   );
 
   const skillInfoCardProps = useMemo<SkillInfoCardProps>(

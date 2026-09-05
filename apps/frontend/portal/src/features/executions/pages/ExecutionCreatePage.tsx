@@ -68,54 +68,24 @@ type PublishedSkillCandidate = PublishedSkillOption & {
   releaseVersion: number;
 };
 
-type ExecutionMode = 'immediate' | 'schedule';
-type SchedulePattern = 'workdays' | 'weekly' | 'monthly';
-
-type ExecutionCreateFormValues = {
-  skillId: string;
-  input?: Record<string, unknown>;
-  executionMode: ExecutionMode;
-  scheduleName?: string;
-  scheduleDescription?: string;
-  timezone?: string;
-  schedulePattern?: SchedulePattern;
-  scheduleHour?: string;
-  scheduleMinute?: string;
-  weeklyDays?: string[];
-  monthlyDay?: number;
-};
-
-const getDefaultScheduleName = (skillName?: string) => `${skillName || '技能'} 定时执行`;
-const WEEKDAY_OPTIONS = [
-  { label: '周一', value: '1' },
-  { label: '周二', value: '2' },
-  { label: '周三', value: '3' },
-  { label: '周四', value: '4' },
-  { label: '周五', value: '5' },
-  { label: '周六', value: '6' },
-  { label: '周日', value: '0' },
-];
-const WEEKDAY_LABEL_MAP = new Map(WEEKDAY_OPTIONS.map((option) => [option.value, option.label]));
-const HOUR_OPTIONS = Array.from({ length: 24 }, (_, index) => ({
-  label: String(index).padStart(2, '0'),
-  value: String(index).padStart(2, '0'),
-}));
-const MINUTE_OPTIONS = Array.from({ length: 12 }, (_, index) => {
-  const minute = String(index * 5).padStart(2, '0');
-  return { label: minute, value: minute };
-});
-const MONTH_DAY_OPTIONS = Array.from({ length: 31 }, (_, index) => ({
-  label: `${index + 1} 日`,
-  value: index + 1,
-}));
-const TIMEZONE_OPTIONS = [
-  { label: '中国标准时间 (Asia/Shanghai)', value: 'Asia/Shanghai' },
-  { label: '协调世界时 (UTC)', value: 'UTC' },
-  { label: '日本标准时间 (Asia/Tokyo)', value: 'Asia/Tokyo' },
-  { label: '新加坡时间 (Asia/Singapore)', value: 'Asia/Singapore' },
-  { label: '伦敦时间 (Europe/London)', value: 'Europe/London' },
-  { label: '纽约时间 (America/New_York)', value: 'America/New_York' },
-];
+import type {
+  ExecutionCreateFormValues,
+  ExecutionMode,
+  SchedulePattern,
+} from '@/features/executions/lib/executionSchedule';
+import {
+  getDefaultScheduleName,
+  buildScheduleCronExpression,
+  buildScheduleRuleText,
+  summarizeCronExpression,
+  WEEKDAY_OPTIONS,
+  HOUR_OPTIONS,
+  MINUTE_OPTIONS,
+  MONTH_DAY_OPTIONS,
+  TIMEZONE_OPTIONS,
+  MINUTELY_INTERVAL_OPTIONS,
+  HOURLY_INTERVAL_OPTIONS,
+} from '@/features/executions/lib/executionSchedule';
 
 const getTypeTagColor = (type: string) => {
   const normalizedType = type.toLowerCase();
@@ -145,86 +115,6 @@ const stringifyPreview = (value: unknown) => {
   }
 };
 
-const buildScheduleCronExpression = (values: ExecutionCreateFormValues) => {
-  const hour = values.scheduleHour || '09';
-  const minute = values.scheduleMinute || '00';
-  const pattern = values.schedulePattern || 'workdays';
-
-  if (pattern === 'weekly') {
-    const selectedDays =
-      (values.weeklyDays || []).filter((day) => WEEKDAY_LABEL_MAP.has(day)).sort() || [];
-    if (selectedDays.length === 0) {
-      throw new Error('请选择至少一个每周执行日');
-    }
-    return `${minute} ${hour} * * ${selectedDays.join(',')}`;
-  }
-
-  if (pattern === 'monthly') {
-    const day = values.monthlyDay || 1;
-    return `${minute} ${hour} ${day} * *`;
-  }
-
-  return `${minute} ${hour} * * 1-5`;
-};
-
-const buildScheduleRuleText = (values: {
-  schedulePattern?: SchedulePattern;
-  scheduleHour?: string;
-  scheduleMinute?: string;
-  weeklyDays?: string[];
-  monthlyDay?: number;
-}) => {
-  const hour = values.scheduleHour || '09';
-  const minute = values.scheduleMinute || '00';
-  const pattern = values.schedulePattern || 'workdays';
-  const timeText = `${hour}:${minute}`;
-
-  if (pattern === 'weekly') {
-    const dayText = (values.weeklyDays || [])
-      .map((day) => WEEKDAY_LABEL_MAP.get(day))
-      .filter(Boolean)
-      .join('、');
-    return dayText ? `每周 ${dayText} ${timeText}` : `每周 ${timeText}`;
-  }
-
-  if (pattern === 'monthly') {
-    return `每月 ${values.monthlyDay || 1} 日 ${timeText}`;
-  }
-
-  return `每个工作日 ${timeText}`;
-};
-
-const summarizeCronExpression = (cronExpression?: string) => {
-  if (!cronExpression) {
-    return '未设置';
-  }
-
-  const parts = cronExpression.trim().split(/\s+/);
-  if (parts.length !== 5) {
-    return cronExpression;
-  }
-
-  const [minute, hour, dayOfMonth, _month, dayOfWeek] = parts;
-  const timeText = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-
-  if (dayOfMonth === '*' && dayOfWeek === '1-5') {
-    return `每个工作日 ${timeText}`;
-  }
-
-  if (dayOfMonth !== '*' && dayOfWeek === '*') {
-    return `每月 ${dayOfMonth} 日 ${timeText}`;
-  }
-
-  if (dayOfMonth === '*' && dayOfWeek !== '*') {
-    const weekText = dayOfWeek
-      .split(',')
-      .map((day) => WEEKDAY_LABEL_MAP.get(day) || day)
-      .join('、');
-    return `每周 ${weekText} ${timeText}`;
-  }
-
-  return cronExpression;
-};
 
 const getSchemaFields = (schema?: SkillParamsSchema): SchemaField[] => {
   if (!schema?.properties) {
@@ -508,6 +398,12 @@ const ExecutionCreatePage: React.FC = () => {
     if (!form.getFieldValue('scheduleMinute')) {
       form.setFieldValue('scheduleMinute', '00');
     }
+    if (!form.getFieldValue('hourlyInterval')) {
+      form.setFieldValue('hourlyInterval', 1);
+    }
+    if (!form.getFieldValue('minutelyInterval')) {
+      form.setFieldValue('minutelyInterval', 15);
+    }
     if (!form.getFieldValue('weeklyDays')) {
       form.setFieldValue('weeklyDays', ['1']);
     }
@@ -571,6 +467,8 @@ const ExecutionCreatePage: React.FC = () => {
           schedulePattern: 'workdays',
           scheduleHour: '09',
           scheduleMinute: '00',
+          hourlyInterval: 1,
+          minutelyInterval: 15,
           weeklyDays: ['1'],
           monthlyDay: 1,
         });
@@ -1063,6 +961,8 @@ const ExecutionCreatePage: React.FC = () => {
                               schedulePattern,
                               scheduleHour: form.getFieldValue('scheduleHour'),
                               scheduleMinute: form.getFieldValue('scheduleMinute'),
+                              hourlyInterval: form.getFieldValue('hourlyInterval'),
+                              minutelyInterval: form.getFieldValue('minutelyInterval'),
                               weeklyDays: form.getFieldValue('weeklyDays'),
                               monthlyDay: form.getFieldValue('monthlyDay'),
                             })}
@@ -1153,9 +1053,11 @@ const ExecutionCreatePage: React.FC = () => {
                             style={{
                               width: '100%',
                               display: 'grid',
-                              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                              gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
                             }}
                           >
+                            <Radio.Button value="minutely">按分钟</Radio.Button>
+                            <Radio.Button value="hourly">按小时</Radio.Button>
                             <Radio.Button value="workdays">工作日</Radio.Button>
                             <Radio.Button value="weekly">按周</Radio.Button>
                             <Radio.Button value="monthly">按月</Radio.Button>
@@ -1164,48 +1066,120 @@ const ExecutionCreatePage: React.FC = () => {
                       </div>
 
                       <div style={{ ...subtleCardStyle, padding: 14 }}>
-                        <Text
-                          type="secondary"
-                          style={{ display: 'block', fontSize: 12, marginBottom: 8 }}
-                        >
-                          执行时间
-                        </Text>
-                        <Form.Item style={{ marginBottom: 0 }}>
-                          <div
-                            style={{
-                              display: 'inline-grid',
-                              gridTemplateColumns: '84px auto 84px',
-                              gap: 6,
-                              alignItems: 'center',
-                            }}
-                          >
+                        {schedulePattern === 'minutely' ? (
+                          <>
+                            <Text
+                              type="secondary"
+                              style={{ display: 'block', fontSize: 12, marginBottom: 8 }}
+                            >
+                              执行频率
+                            </Text>
                             <Form.Item
-                              name="scheduleHour"
-                              noStyle
-                              rules={[{ required: true, message: '请选择小时' }]}
+                              name="minutelyInterval"
+                              rules={[{ required: true, message: '请选择执行分钟间隔' }]}
+                              style={{ marginBottom: 0 }}
                             >
                               <Select
                                 size="small"
                                 style={{ width: '100%' }}
-                                options={HOUR_OPTIONS}
-                                placeholder="小时"
+                                options={MINUTELY_INTERVAL_OPTIONS}
+                                placeholder="选择间隔"
                               />
                             </Form.Item>
-                            <Text style={{ textAlign: 'center', minWidth: 12 }}>:</Text>
-                            <Form.Item
-                              name="scheduleMinute"
-                              noStyle
-                              rules={[{ required: true, message: '请选择分钟' }]}
+                          </>
+                        ) : schedulePattern === 'hourly' ? (
+                          <>
+                            <Text
+                              type="secondary"
+                              style={{ display: 'block', fontSize: 12, marginBottom: 8 }}
                             >
-                              <Select
-                                size="small"
-                                style={{ width: '100%' }}
-                                options={MINUTE_OPTIONS}
-                                placeholder="分钟"
-                              />
+                              执行频率与时间
+                            </Text>
+                            <div
+                              style={{
+                                display: 'inline-grid',
+                                gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
+                                gap: 6,
+                                alignItems: 'center',
+                                width: '100%',
+                              }}
+                            >
+                              <Form.Item
+                                name="hourlyInterval"
+                                noStyle
+                                rules={[{ required: true, message: '请选择小时周期' }]}
+                              >
+                                <Select
+                                  size="small"
+                                  style={{ width: '100%' }}
+                                  options={HOURLY_INTERVAL_OPTIONS}
+                                  placeholder="周期"
+                                />
+                              </Form.Item>
+                              <Text style={{ textAlign: 'center', minWidth: 12 }}>在</Text>
+                              <Form.Item
+                                name="scheduleMinute"
+                                noStyle
+                                rules={[{ required: true, message: '请选择分钟' }]}
+                              >
+                                <Select
+                                  size="small"
+                                  style={{ width: '100%' }}
+                                  options={MINUTE_OPTIONS.map((opt) => ({
+                                    label: `${opt.label} 分`,
+                                    value: opt.value,
+                                  }))}
+                                  placeholder="分钟"
+                                />
+                              </Form.Item>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <Text
+                              type="secondary"
+                              style={{ display: 'block', fontSize: 12, marginBottom: 8 }}
+                            >
+                              执行时间
+                            </Text>
+                            <Form.Item style={{ marginBottom: 0 }}>
+                              <div
+                                style={{
+                                  display: 'inline-grid',
+                                  gridTemplateColumns: '84px auto 84px',
+                                  gap: 6,
+                                  alignItems: 'center',
+                                }}
+                              >
+                                <Form.Item
+                                  name="scheduleHour"
+                                  noStyle
+                                  rules={[{ required: true, message: '请选择小时' }]}
+                                >
+                                  <Select
+                                    size="small"
+                                    style={{ width: '100%' }}
+                                    options={HOUR_OPTIONS}
+                                    placeholder="小时"
+                                  />
+                                </Form.Item>
+                                <Text style={{ textAlign: 'center', minWidth: 12 }}>:</Text>
+                                <Form.Item
+                                  name="scheduleMinute"
+                                  noStyle
+                                  rules={[{ required: true, message: '请选择分钟' }]}
+                                >
+                                  <Select
+                                    size="small"
+                                    style={{ width: '100%' }}
+                                    options={MINUTE_OPTIONS}
+                                    placeholder="分钟"
+                                  />
+                                </Form.Item>
+                              </div>
                             </Form.Item>
-                          </div>
-                        </Form.Item>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -1268,6 +1242,8 @@ const ExecutionCreatePage: React.FC = () => {
                       'schedulePattern',
                       'scheduleHour',
                       'scheduleMinute',
+                      'hourlyInterval',
+                      'minutelyInterval',
                       'weeklyDays',
                       'monthlyDay',
                     ])

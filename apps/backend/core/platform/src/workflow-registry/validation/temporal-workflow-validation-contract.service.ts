@@ -23,6 +23,8 @@ export interface WorkflowValidationContractResult {
   errors: string[];
 }
 
+const SYSTEM_CONTEXT_KEYS = new Set(['userId', 'runtimeSessionId', 'workflowId']);
+
 @Injectable()
 export class TemporalWorkflowValidationContractService {
   normalizeInput(
@@ -40,7 +42,9 @@ export class TemporalWorkflowValidationContractService {
       return { input: this.removeEmptyValues(source) };
     }
 
-    const unknownKeys = Object.keys(source).filter((key) => !(key in definitions));
+    const unknownKeys = Object.keys(source).filter(
+      (key) => !(key in definitions) && !SYSTEM_CONTEXT_KEYS.has(key)
+    );
     if (unknownKeys.length > 0) {
       throw new BadRequestException(`端到端验证包含未声明参数: ${unknownKeys.join(', ')}`);
     }
@@ -56,7 +60,10 @@ export class TemporalWorkflowValidationContractService {
       : undefined;
     const disallowedKeys = allowedKeys
       ? Object.keys(source).filter(
-          (key) => !allowedKeys.has(key) && !this.isEmptyValue(source[key])
+          (key) =>
+            !allowedKeys.has(key) &&
+            !SYSTEM_CONTEXT_KEYS.has(key) &&
+            !this.isEmptyValue(source[key])
         )
       : [];
     if (disallowedKeys.length > 0) {
@@ -93,6 +100,12 @@ export class TemporalWorkflowValidationContractService {
     const missingKeys = [...requiredKeys].filter((key) => this.isEmptyValue(normalized[key]));
     if (missingKeys.length > 0) {
       throw new BadRequestException(`端到端验证缺少必填参数: ${missingKeys.join(', ')}`);
+    }
+
+    for (const sysKey of SYSTEM_CONTEXT_KEYS) {
+      if (source[sysKey] !== undefined && !this.isEmptyValue(source[sysKey])) {
+        normalized[sysKey] = source[sysKey];
+      }
     }
 
     return { input: normalized, scenario };
@@ -254,8 +267,18 @@ export class TemporalWorkflowValidationContractService {
       field && businessData && typeof businessData === 'object' && !Array.isArray(businessData)
         ? (businessData as Record<string, unknown>)[field]
         : undefined;
+    let fieldPath = assertion.fieldPath || '$';
+    if (field) {
+      if (fieldPath === `$.${field}` || fieldPath === field) {
+        fieldPath = '$';
+      } else if (fieldPath.startsWith(`$.${field}.`)) {
+        fieldPath = `$.${fieldPath.slice(field.length + 3)}`;
+      } else if (fieldPath.startsWith(`${field}.`)) {
+        fieldPath = `$.${fieldPath.slice(field.length + 1)}`;
+      }
+    }
     const value = field
-      ? this.extractPath(fieldValue, assertion.fieldPath || '$')
+      ? this.extractPath(fieldValue, fieldPath)
       : this.extractPath(rawResult, assertion.path || '$');
     const operator = normalizeWorkflowValidationAssertionOperator(
       (assertion as { operator?: unknown }).operator

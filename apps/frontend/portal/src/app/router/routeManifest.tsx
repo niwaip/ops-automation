@@ -12,6 +12,8 @@ import {
   ToolOutlined,
   UserOutlined,
   CloudSyncOutlined,
+  ApartmentOutlined,
+  FolderOpenOutlined,
 } from '@ant-design/icons';
 import { lazy } from 'react';
 import UserWebRedirectPage from '@/app/router/UserWebRedirectPage';
@@ -27,12 +29,14 @@ const RecorderPage = lazy(() => import('@/features/recorder/pages/RecorderPage')
 const RecorderDebugDetailPage = lazy(() => import('@/features/recorder/pages/RecorderDebugDetailPage'));
 const UserAdminPage = lazy(() => import('@/features/admin/users/pages/UserAdminPage'));
 const AIModelAdminPage = lazy(() => import('@/features/admin/models/pages/AIModelAdminPage'));
+const WorkspaceAdminPage = lazy(() => import('@/features/admin/workspace/pages/WorkspaceAdminPage'));
 const SkillAdminPage = lazy(() => import('@/features/admin/skills/pages/SkillAdminPage'));
 const BrowserSemanticRuleAdminPage = lazy(() => import('@/features/admin/browser-semantics/pages/BrowserSemanticRuleAdminPage'));
 const SystemToolAdminPage = lazy(() => import('@/features/admin/tools/pages/SystemToolAdminPage'));
 const SystemBackupAdminPage = lazy(() => import('@/features/admin/backup/pages/SystemBackupAdminPage'));
 const PromptDebugPage = lazy(() => import('@/features/admin/prompt-debug/pages/PromptDebugPage'));
 const HabitLearningPage = lazy(() => import('@/features/admin/habit-learning/pages/HabitLearningPage'));
+const TaskPoliciesPage = lazy(() => import('@/features/admin/task-policies/pages/TaskPoliciesPage'));
 const FlowsPage = lazy(() => import('@/features/admin/flows/pages/FlowsPage'));
 const TemporalPage = lazy(() => import('@/features/admin/temporal/pages/TemporalPage'));
 const ActivityPage = lazy(() => import('@/features/admin/activities/pages/ActivityPage'));
@@ -253,6 +257,13 @@ export const portalRouteEntries: PortalRouteEntry[] = [
       children: [
         { key: '/admin/users', labelKey: 'users', icon: <UserOutlined />, requiresAdmin: true },
         {
+          key: '/admin/workspaces',
+          labelKey: 'workspaces',
+          label: '企业知识空间',
+          icon: <FolderOpenOutlined />,
+          requiresAdmin: true,
+        },
+        {
           key: '/admin/models',
           labelKey: 'models',
           icon: <SettingOutlined />,
@@ -284,6 +295,12 @@ export const portalRouteEntries: PortalRouteEntry[] = [
           requiresAdmin: true,
         },
         {
+          key: '/admin/task-policies',
+          label: '任务策略',
+          icon: <ApartmentOutlined />,
+          requiresAdmin: true,
+        },
+        {
           key: '/admin/backup',
           labelKey: 'backup',
           icon: <CloudSyncOutlined />,
@@ -291,6 +308,12 @@ export const portalRouteEntries: PortalRouteEntry[] = [
         },
       ],
     },
+  },
+  {
+    path: '/admin/workspaces',
+    element: <WorkspaceAdminPage />,
+    requiresAdmin: true,
+    activeMenuKey: '/admin/workspaces',
   },
   {
     path: '/admin/models',
@@ -333,6 +356,12 @@ export const portalRouteEntries: PortalRouteEntry[] = [
     element: <HabitLearningPage />,
     requiresAdmin: true,
     activeMenuKey: '/admin/habit-learning',
+  },
+  {
+    path: '/admin/task-policies',
+    element: <TaskPoliciesPage />,
+    requiresAdmin: true,
+    activeMenuKey: '/admin/task-policies',
   },
   { path: '/report-templates', redirectTo: '/carbone-templates' },
   { path: '/report-templates/new', redirectTo: '/carbone-templates' },

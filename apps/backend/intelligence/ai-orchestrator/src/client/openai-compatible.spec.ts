@@ -269,4 +269,25 @@ describe('OpenAICompatibleClient', () => {
     expect(result.reasoningContent).toBe('reasoning only');
     expect(result.usage?.completion_tokens_details?.reasoning_tokens).toBe(4000);
   });
+
+  it('normalizes model IDs returned with models/ prefix in listModels', async () => {
+    const client = new OpenAICompatibleClient({
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
+      apiKey: 'test-key',
+      model: 'model-discovery',
+      provider: 'gemini',
+    });
+    (client as any).client.get = jest.fn().mockResolvedValue({
+      data: {
+        data: [
+          { id: 'models/gemini-2.5-pro' },
+          { id: 'models/gemini-2.5-flash' },
+          { id: 'gemini-2.0-flash' },
+        ],
+      },
+    });
+
+    const models = await client.listModels();
+    expect(models).toEqual(['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash']);
+  });
 });

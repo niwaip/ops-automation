@@ -21,6 +21,7 @@ import type { GenerateDeterministicPlanRequestDto } from './deterministic-plan-g
 import {
   createBuiltinRoutingPolicySnapshot,
   hasRoutingSignal,
+  matchesCapabilityRole,
 } from '../routing/routing-policy.matcher';
 import { RoutingPolicyService } from '../routing/routing-policy.service';
 import type {
@@ -29,6 +30,8 @@ import type {
 } from '../topology/deterministic-topology.types';
 
 import { UserHabitRouterService } from '../habit/user-habit-router.service';
+import { TaskCommandResolverService } from '../policy/task-command-resolver.service';
+import { attachCompletionClaims } from './completion-claim-plan';
 
 @Injectable()
 export class DeterministicPlanGeneratorService {
@@ -58,7 +61,9 @@ export class DeterministicPlanGeneratorService {
     @Optional()
     private readonly routingPolicy?: RoutingPolicyService,
     @Optional()
-    private readonly userHabitRouter?: UserHabitRouterService
+    private readonly userHabitRouter?: UserHabitRouterService,
+    @Optional()
+    private readonly taskCommandResolver?: TaskCommandResolverService
   ) {}
 
   public async generatePlan(
@@ -114,24 +119,67 @@ export class DeterministicPlanGeneratorService {
           }
         }
 
-        const recipe = habitTopology
+        const policyRecipe = this.taskCommandResolver?.matchRecipe(
+          dto.userRequest,
+          dto.taskPolicySnapshot,
+          { hasPreviousResult }
+        );
+        if (policyRecipe) {
+          habitTopology = null;
+        }
+        if (!policyRecipe && habitTopology) {
+          const habitValidation = this.topologyValidator.validateTopology(
+            habitTopology,
+            aliasMap,
+            explicitlyRequestedSkills,
+            { allowOperationOnly: true }
+          );
+          if (!habitValidation.valid) {
+            this.logger.warn(
+              `Stored habit topology is stale and will be ignored: ${habitValidation.errors.join('; ')}`
+            );
+            habitTopology = null;
+          }
+        }
+        const recipe = policyRecipe || (habitTopology
           ? null
-          : this.recipeMatcher?.matchRecipe(dto.userRequest, { hasPreviousResult });
+          : this.recipeMatcher?.matchRecipe(dto.userRequest, { hasPreviousResult }));
         let recipeTopology = recipe
           ? this.recipeTopologyBuilder?.buildTopologyFromRecipe(
               recipe,
               skillCards,
-              llmOperationCards
+              llmOperationCards,
+              dto.taskPolicySnapshot?.bindings
             )
           : null;
+        if (recipe?.source === 'policy' && !recipeTopology) {
+          const err: any = new Error(
+            `Policy recipe '${recipe.recipeName}' has an unresolved capability role`
+          );
+          err.code = 'RECIPE_CAPABILITY_ROLE_UNRESOLVED';
+          err.details = { recipeName: recipe.recipeName };
+          throw err;
+        }
         const policy = this.routingPolicy?.getSnapshot() || createBuiltinRoutingPolicySnapshot();
         const hasUncoveredActionKeyword = hasRoutingSignal(
           dto.userRequest,
           'uncoveredAction',
           policy
         );
+        const recipeCoversTerminalAction = recipeTopology?.nodes.some((node) => {
+          const card = aliasMap.get(node.capabilityKey);
+          return (
+            card &&
+            matchesCapabilityRole(
+              [card.displayName, card.id, card.summary, card.goals],
+              'notifier',
+              policy
+            )
+          );
+        });
+        const hasUncoveredAction = hasUncoveredActionKeyword && !recipeCoversTerminalAction;
 
-        if (recipeTopology && (explicitlyRequestedSkills.length > 0 || hasUncoveredActionKeyword)) {
+        if (recipeTopology && (explicitlyRequestedSkills.length > 0 || hasUncoveredAction)) {
           const recipeCoverage = this.topologyValidator.validateTopology(
             recipeTopology,
             aliasMap,
@@ -140,7 +188,7 @@ export class DeterministicPlanGeneratorService {
               allowOperationOnly: true,
             }
           );
-          if (!recipeCoverage.valid || hasUncoveredActionKeyword) {
+          if (!recipeCoverage.valid || hasUncoveredAction) {
             this.logger.log(
               `Recipe '${recipe?.recipeName}' does not cover the complete request (uncovered action or explicitly requested skill); delegating to AI topology planner`
             );
@@ -223,6 +271,7 @@ export class DeterministicPlanGeneratorService {
               aliasMap,
               runtimeModelId
             );
+            attachCompletionClaims(planDraft, recipe);
 
             (planDraft as any).planningRoute = {
               routeClass:

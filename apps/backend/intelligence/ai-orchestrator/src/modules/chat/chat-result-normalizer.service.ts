@@ -182,6 +182,11 @@ export class ChatResultNormalizerService {
       return documentSummary;
     }
 
+    const emailSummary = this.summarizeEmailResult(result, executionId);
+    if (emailSummary) {
+      return emailSummary;
+    }
+
     const browserSummary = this.summarizeBrowserResult(result, executionId);
     if (browserSummary) {
       return browserSummary;
@@ -341,6 +346,127 @@ export class ChatResultNormalizerService {
       ...(format ? [`- 格式：${format}`] : []),
       result.downloadUrl ? '- 可直接下载查看。' : '- 可在执行详情中查看结果。',
     ].join('\n');
+  }
+
+  private summarizeEmailResult(
+    result: NormalizedChatExecutionResult,
+    executionId?: string
+  ): string | undefined {
+    const record = this.asRecord(result.structuredData);
+    if (!record) return undefined;
+
+    // 1. Handle Email Update Result (platform.email.update)
+    if (record.updatedCount !== undefined && record.isRead !== undefined) {
+      const statusText = record.isRead ? '已读' : '未读';
+      const titles =
+        Array.isArray(record.updatedTitles) && record.updatedTitles.length > 0
+          ? `\n\n已更新的邮件：\n` +
+            record.updatedTitles.map((t: string, i: number) => `${i + 1}. 📧 **${t}**`).join('\n')
+          : '';
+      return `✅ 已成功将 **${record.updatedCount}** 封邮件状态更新为 **${statusText}**。${titles}${executionId ? `\n\n执行单 ID: ${executionId}` : ''}`;
+    }
+
+    // 2. Handle Email Send Result (platform.email.send)
+    if (record.deliveryId && record.state) {
+      return `🎉 邮件已成功投递！\n\n- **发件单号**：\`${record.deliveryId}\`\n- **状态**：${record.state}${executionId ? `\n\n执行单 ID: ${executionId}` : ''}`;
+    }
+
+    // 3. Handle Email Messages Query Result (platform.email.messages)
+    const items = Array.isArray(record.items) ? (record.items as Array<Record<string, any>>) : [];
+    if (items.length === 0 && record.mailboxKey !== undefined) {
+      return `已为您查询邮箱，收件箱当前暂无符合条件的邮件。${executionId ? `\n\n执行单 ID: ${executionId}` : ''}`;
+    }
+
+    if (items.length === 1) {
+      const item = items[0];
+      const subject = item.subject || '（无主题）';
+      const from =
+        item.from?.address || item.from?.name || (typeof item.from === 'string' ? item.from : '');
+      const to = Array.isArray(item.to)
+        ? item.to.map((t: any) => t.address || t.name).filter(Boolean).join(', ')
+        : '';
+      const dateText = item.receivedAt
+        ? new Date(item.receivedAt).toLocaleString('zh-CN')
+        : '未知时间';
+      const unreadTag = item.isRead === false ? ' 🔴 `[未读]`' : ' 🟢 `[已读]`';
+      let bodyContent = item.body?.content || item.snippet || '（无正文内容）';
+      if (typeof bodyContent === 'string' && /<[a-z][\s\S]*>/i.test(bodyContent)) {
+        bodyContent = this.cleanHtmlToText(bodyContent);
+      }
+
+      return [
+        `### 📧 ${subject}${unreadTag}`,
+        `- **发件人**：${from || '未知'}`,
+        ...(to ? [`- **收件人**：${to}`] : []),
+        `- **时间**：${dateText}`,
+        '',
+        '---',
+        '#### 📄 邮件完整正文：',
+        '',
+        bodyContent,
+        '',
+        executionId ? `执行单 ID: ${executionId}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n');
+    }
+
+    if (items.length > 1) {
+      const emailList = items
+        .map((item, idx) => {
+          const subject = item.subject || '（无主题）';
+          const from =
+            item.from?.address ||
+            item.from?.name ||
+            (typeof item.from === 'string' ? item.from : '');
+          const fromText = from ? `\n   - **发件人**：${from}` : '';
+          const dateText = item.receivedAt
+            ? `\n   - **时间**：${new Date(item.receivedAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+            : '';
+          const unreadTag = item.isRead === false ? ' 🔴 `[未读]`' : '';
+          const snippet = item.snippet ? `\n   - **摘要**：${item.snippet.slice(0, 150)}` : '';
+          return `${idx + 1}. 📧 **${subject}**${unreadTag}${fromText}${dateText}${snippet}`;
+        })
+        .join('\n\n');
+
+      return `已为您查找到 **${items.length}** 封邮件：\n\n${emailList}${executionId ? `\n\n执行单 ID: ${executionId}` : ''}`;
+    }
+
+    return undefined;
+  }
+
+  private cleanHtmlToText(html?: string): string {
+    if (!html || typeof html !== 'string') return '';
+    return html
+      .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<svg[^>]*>[\s\S]*?<\/svg>/gi, '')
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/<\/(p|div|tr|h[1-6]|li|blockquote|table)>/gi, '\n')
+      .replace(/<(br|hr)\s*\/?>/gi, '\n')
+      .replace(/<li[^>]*>/gi, '• ')
+      .replace(
+        /<a\s+[^>]*href=["'](https?:\/\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,
+        (_match, url, linkText) => {
+          const cleanLinkText = linkText.replace(/<[^>]+>/g, '').trim();
+          if (!cleanLinkText || cleanLinkText === url) return url;
+          return `[${cleanLinkText}](${url})`;
+        }
+      )
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;|&apos;/gi, "'")
+      .replace(/&#(\d+);/g, (_match, dec) => String.fromCharCode(dec))
+      .replace(/&#x([0-9a-f]+);/gi, (_match, hex) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/\r\n|\r/g, '\n')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n\s*\n\s*\n+/g, '\n\n')
+      .trim();
   }
 
   private buildEnvelope(

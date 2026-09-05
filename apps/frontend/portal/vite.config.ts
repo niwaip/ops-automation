@@ -104,12 +104,22 @@ export default defineConfig({
     fs: {
       allow: [resolveAppRootEntry(), resolveChatWebEntry(), resolveUserCoreRootEntry()],
     },
-    allowedHosts: ['portal', 'ops-portal', 'host.docker.internal'],
+    allowedHosts: true,
     // Force disable cache for development
     headers: {
       'Cache-Control': 'no-store',
     },
     proxy: {
+      '/api/workspaces': {
+        target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      '/api/workbench-todos': {
+        target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
       '/api/auth': {
         target: getProxyTarget(
           'ops-platform',
@@ -286,6 +296,11 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api/capabilities': {
+        target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      '/api/workbench-inbox': {
         target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0.0",
+  "bundleDigest": "sha256:ab4a17f31c5a8e41c6880fe0c3ed41bcab0cf75f5e387c1f4378a24bc6cab153",
+  "lockedAt": "2026-09-02T15:24:08.443Z",
+  "files": [
+    {
+      "path": "manifest.yaml",
+      "sha256": "ab4a17f31c5a8e41c6880fe0c3ed41bcab0cf75f5e387c1f4378a24bc6cab153"
+    }
+  ]
+}

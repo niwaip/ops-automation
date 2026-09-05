@@ -662,16 +662,17 @@ export class CapabilityReleaseSkillDraftService {
     description: string
   ): Record<string, unknown> {
     if (Array.isArray(value)) {
+      const defaultItemType = /ids?$/i.test(key) ? 'string' : 'object';
       return {
         type: 'array',
         items:
           value.length > 0
-            ? this.inferOutputPropertySchema(value[0], `${key}Item`, description)
-            : { type: 'object' },
+            ? this.inferOutputPropertySchema(value[0], `${key}Item`, `${key}Item`)
+            : { type: defaultItemType },
       };
     }
-    if (value && typeof value === 'object') {
-      return { type: 'object' };
+    if (typeof value === 'string') {
+      return { type: 'string' };
     }
     if (typeof value === 'number') {
       return { type: Number.isInteger(value) ? 'integer' : 'number' };
@@ -679,8 +680,12 @@ export class CapabilityReleaseSkillDraftService {
     if (typeof value === 'boolean') {
       return { type: 'boolean' };
     }
+    if (value && typeof value === 'object') {
+      return { type: 'object' };
+    }
     if (/结果数组|列表|results?/i.test(`${key} ${description}`)) {
-      return { type: 'array', items: { type: 'object' } };
+      const itemType = /ids?$/i.test(key) ? 'string' : 'object';
+      return { type: 'array', items: { type: itemType } };
     }
     if (/metadata|元数据/i.test(`${key} ${description}`)) {
       return { type: 'object' };

@@ -1,7 +1,7 @@
 {
   "capabilityKey": "platform.document.pdf-content-extractor",
   "definitionVersion": "1.0.0",
-  "definitionDigest": "sha256:feab3f86b2205be6c6b255b38290116b5a867e008c96824f6beacba71209a772",
+  "definitionDigest": "sha256:e0c7417a516301384426c1e60a99b60573c8608fc8a044bff08289f56b29f376",
   "fileHashes": {
     "manifest.yaml": "sha256:6f098a1628b6a68a2c7ec51c33f6fa4b5a0502dc1b0a2490b5587a1ad65cb795",
     "workflow.json": "sha256:2e8c1b3ebcd5602e59be346aa73def280e789fbef22aa057eb0196d70007248b",

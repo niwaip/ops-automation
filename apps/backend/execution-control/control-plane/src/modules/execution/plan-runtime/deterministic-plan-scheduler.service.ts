@@ -25,6 +25,7 @@ import { unwrapStoredStepOutput } from './stored-step-output';
 import { createHash } from 'crypto';
 import { DeterministicRuntimeSessionCoordinatorService } from './deterministic-runtime-session-coordinator.service';
 import { ExecutionPhaseSyncService } from '../state/execution-phase-sync.service';
+import { CompletionClaimSynthesizerService } from './completion-claim-synthesizer.service';
 
 @Injectable()
 export class DeterministicPlanSchedulerService {
@@ -46,7 +47,9 @@ export class DeterministicPlanSchedulerService {
     @Optional()
     private readonly runtimeSessionCoordinator?: DeterministicRuntimeSessionCoordinatorService,
     @Optional()
-    private readonly executionPhaseSyncService?: ExecutionPhaseSyncService
+    private readonly executionPhaseSyncService?: ExecutionPhaseSyncService,
+    @Optional()
+    private readonly completionClaims?: CompletionClaimSynthesizerService
   ) {}
 
   /**
@@ -482,10 +485,45 @@ export class DeterministicPlanSchedulerService {
     }
     // apiKey and transient scheduler metadata are not part of the capability input contract
     // — exclude them from contract validation so closed-object schemas (additionalProperties: false) don't reject them.
-    const TRANSIENT_KEYS = new Set(['apiKey', 'idempotencyKey']);
+    const TRANSIENT_KEYS = new Set([
+      'apiKey',
+      'idempotencyKey',
+      'userRequest',
+      'user_request',
+      'prompt',
+      '__promptDebug',
+      'chatSessionId',
+      'sessionId',
+      'session_id',
+      'userId',
+      'user_id',
+      'channel',
+      'channelType',
+      'messageId',
+      'authToken',
+      'traceId',
+      'modelId',
+      'detailText',
+      'systemInputs',
+      'plannerContext',
+      'telemetry',
+      'browserPhaseVariables',
+      'contentParts',
+      'role',
+      'planDraft',
+      'deterministicPlan',
+    ]);
     const contractInput: Record<string, any> = {};
     for (const [k, v] of Object.entries(input || {})) {
       if (!TRANSIENT_KEYS.has(k) && !k.startsWith('previousResult')) {
+        if (
+          inputSchema.additionalProperties === false &&
+          inputSchema.properties &&
+          typeof inputSchema.properties === 'object' &&
+          !Object.prototype.hasOwnProperty.call(inputSchema.properties, k)
+        ) {
+          continue;
+        }
         contractInput[k] = v;
       }
     }
@@ -606,6 +644,13 @@ export class DeterministicPlanSchedulerService {
       },
     });
 
+    const satisfiedClaims = await this.completionClaims?.synthesizeForStep({
+      executionId: execution.id,
+      step,
+      output: normalizedOutput,
+      plan: execution.plan?.planJson,
+    });
+
     await this.eventPublisher.createEvent(
       execution.id,
       'execution.node.succeeded' as any,
@@ -622,6 +667,7 @@ export class DeterministicPlanSchedulerService {
         stepId: step.id,
         planNodeId: step.planNodeId,
         result: normalizedOutput,
+        completionClaims: satisfiedClaims || [],
       },
       { stepId: step.id }
     );
@@ -659,8 +705,22 @@ export class DeterministicPlanSchedulerService {
 
     const stepIdempotencyKey =
       step.idempotencyKey || `${execution.id}:${step.id}:${step.planNodeId || step.capabilityId}`;
+    const sanitizedInput: Record<string, any> = {};
+    const inputSchema = step.inputSchemaJson;
+    for (const [k, v] of Object.entries(resolvedInput || {})) {
+      if (
+        inputSchema?.additionalProperties === false &&
+        inputSchema?.properties &&
+        typeof inputSchema.properties === 'object' &&
+        !Object.prototype.hasOwnProperty.call(inputSchema.properties, k) &&
+        k !== 'idempotencyKey'
+      ) {
+        continue;
+      }
+      sanitizedInput[k] = v;
+    }
     const inputWithIdempotency = {
-      ...resolvedInput,
+      ...sanitizedInput,
       idempotencyKey: resolvedInput?.idempotencyKey || stepIdempotencyKey,
     };
 
@@ -838,6 +898,13 @@ export class DeterministicPlanSchedulerService {
       }
     }
 
+    const satisfiedClaims = await this.completionClaims?.synthesizeForStep({
+      executionId: execution.id,
+      step,
+      output: outputJson,
+      plan: execution.plan?.planJson,
+    });
+
     await this.eventPublisher.createEvent(
       execution.id,
       'execution.node.succeeded' as any,
@@ -854,6 +921,7 @@ export class DeterministicPlanSchedulerService {
         stepId: step.id,
         planNodeId: step.planNodeId,
         result: outputJson,
+        completionClaims: satisfiedClaims || [],
       },
       { stepId: step.id }
     );
@@ -897,6 +965,31 @@ export class DeterministicPlanSchedulerService {
         failureReason: checkResult.errorMessage || 'Final outputs unsatisfied',
       });
       await this.closeRuntimeSessions(execution.id, 'deterministic_final_output_failed');
+      return;
+    }
+
+    const claimCheck = await this.completionClaims?.assertRequiredClaims(
+      execution.id,
+      planDraft
+    );
+    if (claimCheck && !claimCheck.satisfied) {
+      const failureReason = `Required completion claims are unsatisfied: ${claimCheck.missing.join(', ')}`;
+      await this.prisma.execution.update({
+        where: { id: execution.id },
+        data: {
+          status: 'failed',
+          failureCode: 'COMPLETION_CLAIMS_UNSATISFIED',
+          failureReason,
+          endedAt: new Date(),
+        },
+      });
+      await this.eventPublisher.createEvent(execution.id, 'execution.status_changed', {
+        oldStatus: execution.status,
+        newStatus: 'failed',
+        failureCode: 'COMPLETION_CLAIMS_UNSATISFIED',
+        failureReason,
+      });
+      await this.closeRuntimeSessions(execution.id, 'deterministic_completion_claims_failed');
       return;
     }
 

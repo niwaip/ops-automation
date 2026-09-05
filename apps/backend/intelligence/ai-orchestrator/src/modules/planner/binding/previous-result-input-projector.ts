@@ -8,6 +8,18 @@ export type LlmOperationInputRole = 'content' | 'instruction' | 'configuration';
 export interface PreviousResultProjection {
   value: unknown;
   sourceExecutionId?: string;
+  semanticType?: string;
+}
+
+interface TaskContextResultReference {
+  kind: 'session_result';
+  selector: 'latest_compatible' | 'execution_id';
+  executionId?: string;
+  semanticType?: string;
+  schemaVersion?: string;
+  trustLevel?: string;
+  structuredData?: unknown;
+  detailText?: string;
 }
 
 const MAX_COLLECTION_ITEMS = 20;
@@ -34,10 +46,13 @@ export function projectPreviousResultInput(
     return undefined;
   }
 
+  const contextResult = resolveTaskContextResult(systemInputs);
   const reference = asRecord(systemInputs?.previousResultRef);
-  const sourceExecutionId = asString(reference?.executionId);
-  const structuredData = systemInputs?.previousResultData;
-  const detailText = asString(systemInputs?.previousResultText);
+  const sourceExecutionId =
+    contextResult?.executionId || asString(reference?.executionId);
+  const semanticType = contextResult?.semanticType;
+  const structuredData = contextResult?.structuredData ?? systemInputs?.previousResultData;
+  const detailText = contextResult?.detailText || asString(systemInputs?.previousResultText);
 
   if (structuredData === undefined && !detailText) {
     return undefined;
@@ -56,16 +71,20 @@ export function projectPreviousResultInput(
       : detailText
         ? [detailText.slice(0, MAX_STRING_LENGTH)]
         : undefined;
-    return value === undefined ? undefined : { value, sourceExecutionId };
+    return value === undefined ? undefined : { value, sourceExecutionId, semanticType };
   }
 
   if (declaredTypes.includes('object')) {
     const record = asRecord(structuredData);
     if (record) {
-      return { value: compactValue(record, 0), sourceExecutionId };
+      return { value: compactValue(record, 0), sourceExecutionId, semanticType };
     }
     return detailText
-      ? { value: { text: detailText.slice(0, MAX_STRING_LENGTH) }, sourceExecutionId }
+      ? {
+          value: { text: detailText.slice(0, MAX_STRING_LENGTH) },
+          sourceExecutionId,
+          semanticType,
+        }
       : undefined;
   }
 
@@ -75,9 +94,41 @@ export function projectPreviousResultInput(
       selectPrimaryText(parseJsonText(detailText)) ||
       detailText ||
       stringifyCompact(structuredData);
-    return value ? { value: value.slice(0, MAX_STRING_LENGTH), sourceExecutionId } : undefined;
+    return value
+      ? { value: value.slice(0, MAX_STRING_LENGTH), sourceExecutionId, semanticType }
+      : undefined;
   }
 
+  return undefined;
+}
+
+function resolveTaskContextResult(
+  systemInputs?: Record<string, unknown>
+): TaskContextResultReference | undefined {
+  const taskContext = asRecord(systemInputs?.taskContext);
+  if (taskContext?.schemaVersion !== 'task-context/v1') return undefined;
+  const references = Array.isArray(taskContext.references) ? taskContext.references : [];
+  for (const item of references) {
+    const reference = asRecord(item);
+    if (reference?.kind !== 'session_result') continue;
+    if (
+      reference.selector !== 'latest_compatible' &&
+      reference.selector !== 'execution_id'
+    ) {
+      continue;
+    }
+    if (reference.trustLevel && reference.trustLevel !== 'verified_execution') continue;
+    return {
+      kind: 'session_result',
+      selector: reference.selector,
+      executionId: asString(reference.executionId),
+      semanticType: asString(reference.semanticType),
+      schemaVersion: asString(reference.schemaVersion),
+      trustLevel: asString(reference.trustLevel),
+      structuredData: reference.structuredData,
+      detailText: asString(reference.detailText),
+    };
+  }
   return undefined;
 }
 

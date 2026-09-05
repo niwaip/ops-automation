@@ -109,22 +109,35 @@ const normalizeChatSession = (raw: unknown): ChatSession | null => {
     return null;
   }
 
+  const rawChannel = candidate.channel;
+  const channel =
+    typeof rawChannel === 'string' && rawChannel.trim()
+      ? rawChannel.trim()
+      : candidate.id.startsWith('wechat:')
+        ? 'wechat'
+        : candidate.id.startsWith('dingtalk:')
+          ? 'dingtalk'
+          : candidate.id.startsWith('feishu:') || candidate.id.startsWith('lark:')
+            ? 'feishu'
+            : 'local';
+
   return {
     id: candidate.id,
     title: typeof candidate.title === 'string' ? candidate.title : undefined,
     modelId: typeof candidate.modelId === 'string' ? candidate.modelId : undefined,
     status: candidate.status,
-      contextStrategy:
-        candidate.contextStrategy === 'sliding_window' ||
-        candidate.contextStrategy === 'summary_compress' ||
-        candidate.contextStrategy === 'retrieval_augment' ||
-        candidate.contextStrategy === 'full'
-          ? (candidate.contextStrategy as ChatContextStrategy)
-          : undefined,
-      contextWindowTokens:
-        typeof candidate.contextWindowTokens === 'number'
-          ? candidate.contextWindowTokens
-          : undefined,
+    channel,
+    contextStrategy:
+      candidate.contextStrategy === 'sliding_window' ||
+      candidate.contextStrategy === 'summary_compress' ||
+      candidate.contextStrategy === 'retrieval_augment' ||
+      candidate.contextStrategy === 'full'
+        ? (candidate.contextStrategy as ChatContextStrategy)
+        : undefined,
+    contextWindowTokens:
+      typeof candidate.contextWindowTokens === 'number'
+        ? candidate.contextWindowTokens
+        : undefined,
     createdAt: normalizeTimestamp(candidate.createdAt),
     updatedAt: normalizeTimestamp(candidate.updatedAt),
   };
@@ -192,11 +205,16 @@ export const createChatApi = (client: ApiClient, runtimeConfig: RuntimeConfigPor
       url: resolveAiTransportPath(runtimeConfig, '/chat/stream'),
       payload: {
         ...request,
-        files: request.files?.map(({ fileId, fileName, mimeType, size }) => ({
-          fileId,
-          fileName,
-          mimeType,
-          size,
+        files: request.files?.map((file) => ({
+          fileId: file.fileId,
+          fileName: file.fileName,
+          mimeType: file.mimeType,
+          size: file.size,
+          source: file.source,
+          workspaceType: file.workspaceType,
+          workspaceNodeId: file.workspaceNodeId,
+          workspaceId: file.workspaceId,
+          storagePath: file.storagePath,
         })),
       },
       token,
@@ -231,4 +249,8 @@ export const createChatApi = (client: ApiClient, runtimeConfig: RuntimeConfigPor
       .map((item) => normalizeChatSession(item))
       .filter((item): item is ChatSession => item !== null);
   },
+  deleteSession: async (sessionId: string): Promise<{ success: boolean }> =>
+    client.delete(
+      resolveAiClientPath(runtimeConfig, `/chat/sessions/${encodeURIComponent(sessionId)}`)
+    ),
 });

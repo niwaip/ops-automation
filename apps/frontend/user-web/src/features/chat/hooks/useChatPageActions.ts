@@ -27,6 +27,7 @@ interface UseChatPageActionsOptions {
   createDraftSession: (initialTitle: string, now: string) => ChatSession;
   draft: string;
   enableThinking: boolean;
+  enableWebSearch?: boolean;
   ensureSession: (now: string) => ChatSession;
   isStreaming: boolean;
   nativeReasoningEnabled: boolean;
@@ -56,6 +57,7 @@ export function useChatPageActions({
   createDraftSession,
   draft,
   enableThinking,
+  enableWebSearch = false,
   ensureSession,
   isStreaming,
   nativeReasoningEnabled,
@@ -84,8 +86,8 @@ export function useChatPageActions({
     ]);
   }, [queryClient]);
 
-  const handleSend = useCallback((filesToSend?: UploadedFileDescriptor[]) => {
-    const content = draft.trim();
+  const handleSend = useCallback((filesToSend?: UploadedFileDescriptor[], contentOverride?: string) => {
+    const content = (contentOverride !== undefined ? contentOverride : draft).trim();
     const hasFiles = (filesToSend || []).length > 0;
     if ((!content && !hasFiles) || isStreaming) {
       return;
@@ -93,8 +95,9 @@ export function useChatPageActions({
 
     const resolvedModelId =
       selectedModel && selectedModel !== 'default' ? selectedModel : undefined;
-    const continuedExecutionId =
-      pendingExecutionId || getLatestWaitingInputExecutionId(activeMessages);
+    const continuedExecutionId = hasFiles
+      ? undefined
+      : (pendingExecutionId || getLatestWaitingInputExecutionId(activeMessages));
     const now = toChatTimestamp();
     const session = ensureSession(now);
     const userMessageId = buildMessageId();
@@ -142,6 +145,7 @@ export function useChatPageActions({
       mode: chatMode,
       thinking: enableThinking,
       reasoning: nativeReasoningEnabled,
+      webSearch: enableWebSearch,
     });
 
     if (pendingExecutionId) {
@@ -155,6 +159,7 @@ export function useChatPageActions({
     clearError,
     draft,
     enableThinking,
+    enableWebSearch,
     ensureSession,
     isStreaming,
     nativeReasoningEnabled,
@@ -298,6 +303,7 @@ export function useChatPageActions({
         mode: chatMode,
         thinking: enableThinking,
         reasoning: nativeReasoningEnabled,
+        webSearch: enableWebSearch,
       });
 
       void runAssistantRequest(selectedSession, request, assistantMessageId);
@@ -307,6 +313,7 @@ export function useChatPageActions({
       chatMode,
       clearError,
       enableThinking,
+      enableWebSearch,
       isStreaming,
       nativeReasoningEnabled,
       runAssistantRequest,

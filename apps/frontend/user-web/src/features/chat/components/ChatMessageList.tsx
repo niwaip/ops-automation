@@ -1,6 +1,7 @@
-import { Card, Empty, List, Skeleton, Typography } from 'antd';
+import { Card, Empty, Skeleton, Typography } from 'antd';
 import type { ChatMessage } from '@ops/user-core';
-import type { MutableRefObject } from 'react';
+import { type MutableRefObject, useEffect, useRef } from 'react';
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { ChatMessageItem } from './ChatMessageItem';
 import styles from '../pages/ChatPage.module.css';
 
@@ -27,10 +28,31 @@ export function ChatMessageList({
   onRetry,
   onToggleThought,
 }: ChatMessageListProps) {
+  const virtuosoRef = useRef<VirtuosoHandle | null>(null);
+
+  useEffect(() => {
+    if (messagesEndRef) {
+      messagesEndRef.current = {
+        scrollIntoView: (options?: ScrollIntoViewOptions) => {
+          virtuosoRef.current?.scrollToIndex({
+            index: Math.max(0, activeMessages.length - 1),
+            align: 'end',
+            behavior: options?.behavior === 'smooth' ? 'smooth' : 'auto',
+          });
+        },
+      } as unknown as HTMLDivElement;
+    }
+  }, [activeMessages.length, messagesEndRef]);
+
   return (
-    <Card className={styles['user-chat-thread']} styles={{ body: { paddingBottom: 8 } }}>
+    <Card
+      className={`${styles['user-chat-thread']} ${styles['virtualized-thread']}`}
+      styles={{ body: { padding: 0, overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column' } }}
+    >
       {historyLoading && activeMessages.length === 0 ? (
-        <Skeleton active avatar paragraph={{ rows: 4 }} />
+        <div style={{ padding: '30px 24px' }}>
+          <Skeleton active avatar paragraph={{ rows: 4 }} />
+        </div>
       ) : activeMessages.length === 0 ? (
         <div className={styles['user-chat-empty-state']}>
           <Empty
@@ -46,22 +68,49 @@ export function ChatMessageList({
           />
         </div>
       ) : (
-        <List
-          dataSource={activeMessages}
-          renderItem={(message) => (
-            <ChatMessageItem
-              message={message}
-              actionLoadingByMessage={actionLoadingByMessage}
-              expandedThought={expandedThoughtMessageId === message.id}
-              onToggleThought={onToggleThought}
-              onApproveExecution={onApproveExecution}
-              onRejectExecution={onRejectExecution}
-              onRetry={onRetry}
-            />
-          )}
+        <Virtuoso
+          ref={virtuosoRef}
+          style={{ height: '100%', width: '100%' }}
+          data={activeMessages}
+          followOutput="auto"
+          initialTopMostItemIndex={Math.max(0, activeMessages.length - 1)}
+          overscan={500}
+          itemContent={(index, message) => {
+            let userQuery: string | undefined;
+            if (message.role === 'assistant') {
+              for (let i = index - 1; i >= 0; i--) {
+                if (activeMessages[i]?.role === 'user') {
+                  userQuery = activeMessages[i]?.content;
+                  break;
+                }
+              }
+            }
+            return (
+              <div style={{ padding: '8px 24px' }}>
+                <ChatMessageItem
+                  key={message.id}
+                  message={message}
+                  userQuery={userQuery}
+                  actionLoading={actionLoadingByMessage[message.id]}
+                  expandedThought={expandedThoughtMessageId === message.id}
+                  onToggleThought={onToggleThought}
+                  onApproveExecution={onApproveExecution}
+                  onRejectExecution={onRejectExecution}
+                  onRetry={onRetry}
+                />
+              </div>
+            );
+          }}
+          components={{
+            Header: () => <div style={{ height: 16 }} />,
+            Footer: () => (
+              <div style={{ height: 16 }}>
+                <div ref={messagesEndRef} />
+              </div>
+            ),
+          }}
         />
       )}
-      <div ref={messagesEndRef} />
     </Card>
   );
 }

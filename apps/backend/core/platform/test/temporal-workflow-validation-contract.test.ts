@@ -141,6 +141,34 @@ describe('TemporalWorkflowValidationContractService', () => {
     expect(result).toEqual({ success: true, errors: [] });
   });
 
+  it('evaluates assertions when fieldPath redundantly contains the field name', () => {
+    const result = service.validateResult(
+      {
+        ...workflowDsl,
+        validation: {
+          assertions: [
+            { field: 'messageIds', fieldPath: '$.messageIds', operator: 'minItems', value: 1 },
+            { field: 'inboxItems', fieldPath: '$.inboxItems', operator: 'minItems', value: 1 },
+            { field: 'errorReason', fieldPath: '$.errorReason', operator: 'exists', value: true },
+          ],
+        },
+      },
+      {
+        result: {
+          result: {
+            businessData: {
+              messageIds: ['mail_sample_001'],
+              inboxItems: [{ id: 'inbox_1' }],
+              errorReason: '',
+            },
+          },
+        },
+      }
+    );
+
+    expect(result).toEqual({ success: true, errors: [] });
+  });
+
   it('accepts persisted AI aliases for required fields and numeric minimums', () => {
     const result = service.validateResult(
       {

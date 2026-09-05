@@ -3,6 +3,11 @@ import axios from 'axios';
 import { BuiltinSkillHandlerResult } from '@ops/backend-builtin-skill-contract';
 import type { RuntimeStepInvokeRequest } from './runtime-adapter.interface';
 import { getCarboneServiceUrl } from '../../../config/service-endpoints';
+import { executeWebSearch } from './search-web.handler';
+import { executeEmailMessages } from './email/email-messages.handler';
+import { executeEmailSend } from './email/email-send.handler';
+import { executeEmailUpdate } from './email/email-update.handler';
+import { executeWorkspaceExplorer } from './workspace/workspace-explorer.handler';
 
 export type BuiltinHandlerFn = (request: RuntimeStepInvokeRequest, idempotencyKey: string) => Promise<BuiltinSkillHandlerResult>;
 
@@ -37,6 +42,12 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
       '/internal/document/content-extractors/pdf/invoke',
       ['platform.document.pdf-content-extractor']
     );
+
+    // Public web search remains isolated behind the built-in capability. The
+    // provider credential is resolved only at runtime and never enters plans.
+    this.registerHandler('search.web', executeWebSearch);
+    this.registerHandler('platform.search.web', executeWebSearch);
+    this.registerHandler('tavily_search', executeWebSearch);
     this.registerDocumentDomainHandler('document.pdf.merge', '/internal/document/pdf/merge/invoke', [
       'platform.document.pdf-merge',
     ]);
@@ -49,7 +60,19 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
       ['platform.document.pdf-create']
     );
 
-    // 2. Platform Internal Notification Handler
+    // 2. Built-in Email Capabilities (email.messages, email.send, email.update)
+    this.registerHandler('email.messages', executeEmailMessages);
+    this.registerHandler('platform.email.messages', executeEmailMessages);
+    this.registerHandler('email.send', executeEmailSend);
+    this.registerHandler('platform.email.send', executeEmailSend);
+    this.registerHandler('email.update', executeEmailUpdate);
+    this.registerHandler('platform.email.update', executeEmailUpdate);
+
+    // 3. Built-in Workspace Explorer Capabilities
+    this.registerHandler('workspace.explorer', executeWorkspaceExplorer);
+    this.registerHandler('platform.workspace.explorer', executeWorkspaceExplorer);
+
+    // 4. Platform Internal Notification Handler
     this.registerHandler('platform.notification.internal-message', async (req) => {
       const recipientId = String(req.input?.recipientId || 'system');
       const title = String(req.input?.title || 'Notification');

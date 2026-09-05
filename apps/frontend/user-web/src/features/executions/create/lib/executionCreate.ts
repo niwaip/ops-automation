@@ -11,7 +11,7 @@ export type SchemaField = {
 };
 
 export type ExecutionMode = 'immediate' | 'schedule';
-export type SchedulePattern = 'workdays' | 'weekly' | 'monthly';
+export type SchedulePattern = 'minutely' | 'hourly' | 'workdays' | 'weekly' | 'monthly';
 
 export type ExecutionCreateFormValues = {
   skillId: string;
@@ -23,12 +23,32 @@ export type ExecutionCreateFormValues = {
   schedulePattern?: SchedulePattern;
   scheduleHour?: string;
   scheduleMinute?: string;
+  hourlyInterval?: number;
+  minutelyInterval?: number;
   weeklyDays?: string[];
   monthlyDay?: number;
 };
 export type ExecutionScheduleToggleInput = Pick<UpdateScheduleRequest, 'isActive'>;
 
 export const getDefaultScheduleName = (skillName?: string) => `${skillName || '技能'} 定时执行`;
+
+export const MINUTELY_INTERVAL_OPTIONS = [
+  { label: '每 5 分钟', value: 5 },
+  { label: '每 10 分钟', value: 10 },
+  { label: '每 15 分钟', value: 15 },
+  { label: '每 20 分钟', value: 20 },
+  { label: '每 30 分钟', value: 30 },
+];
+
+export const HOURLY_INTERVAL_OPTIONS = [
+  { label: '每 1 小时 (每小时)', value: 1 },
+  { label: '每 2 小时', value: 2 },
+  { label: '每 3 小时', value: 3 },
+  { label: '每 4 小时', value: 4 },
+  { label: '每 6 小时', value: 6 },
+  { label: '每 8 小时', value: 8 },
+  { label: '每 12 小时', value: 12 },
+];
 
 export const WEEKDAY_OPTIONS = [
   { label: '周一', value: '1' },
@@ -86,9 +106,24 @@ export const stringifyPreview = (value: unknown) => {
 };
 
 export const buildScheduleCronExpression = (values: ExecutionCreateFormValues) => {
+  const pattern = values.schedulePattern || 'workdays';
+
+  if (pattern === 'minutely') {
+    const interval = values.minutelyInterval || 15;
+    return `*/${interval} * * * *`;
+  }
+
+  if (pattern === 'hourly') {
+    const minute = values.scheduleMinute || '00';
+    const interval = values.hourlyInterval || 1;
+    if (interval <= 1) {
+      return `${minute} * * * *`;
+    }
+    return `${minute} */${interval} * * *`;
+  }
+
   const hour = values.scheduleHour || '09';
   const minute = values.scheduleMinute || '00';
-  const pattern = values.schedulePattern || 'workdays';
 
   if (pattern === 'weekly') {
     const selectedDays =
@@ -111,12 +146,31 @@ export const buildScheduleRuleText = (values: {
   schedulePattern?: SchedulePattern;
   scheduleHour?: string;
   scheduleMinute?: string;
+  hourlyInterval?: number;
+  minutelyInterval?: number;
   weeklyDays?: string[];
   monthlyDay?: number;
 }) => {
+  const pattern = values.schedulePattern || 'workdays';
+
+  if (pattern === 'minutely') {
+    const interval = values.minutelyInterval || 15;
+    return `每 ${interval} 分钟执行一次`;
+  }
+
+  if (pattern === 'hourly') {
+    const interval = values.hourlyInterval || 1;
+    const minute = values.scheduleMinute || '00';
+    if (interval <= 1) {
+      return minute === '00' ? '每小时整点' : `每小时第 ${Number(minute)} 分`;
+    }
+    return minute === '00'
+      ? `每 ${interval} 小时整点`
+      : `每 ${interval} 小时第 ${Number(minute)} 分`;
+  }
+
   const hour = values.scheduleHour || '09';
   const minute = values.scheduleMinute || '00';
-  const pattern = values.schedulePattern || 'workdays';
   const timeText = `${hour}:${minute}`;
 
   if (pattern === 'weekly') {

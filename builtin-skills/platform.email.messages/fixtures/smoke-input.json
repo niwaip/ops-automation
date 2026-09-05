@@ -1,0 +1,9 @@
+{
+  "selector": {
+    "kind": "recent",
+    "folder": "inbox",
+    "unreadOnly": false
+  },
+  "detail": "summary",
+  "limit": 5
+}

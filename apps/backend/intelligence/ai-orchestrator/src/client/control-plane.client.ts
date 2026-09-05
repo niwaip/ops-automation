@@ -219,6 +219,14 @@ export class ControlPlaneClient {
     return response.data;
   }
 
+  async getEffectiveTaskPolicy<T = unknown>(options?: ControlPlaneRequestOptions): Promise<T> {
+    const response = await axios.get<T>(
+      `${this.getBaseUrl()}/internal/task-policies/effective`,
+      this.buildConfig({ ...options, timeout: options?.timeout || 3000 })
+    );
+    return response.data;
+  }
+
   async recordModelInvocation<T = unknown>(
     body: Record<string, unknown>,
     options?: ControlPlaneRequestOptions

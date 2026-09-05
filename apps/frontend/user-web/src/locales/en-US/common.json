@@ -26,6 +26,8 @@
     "chat": "AI Chat",
     "executions": "Executions",
     "published_skills": "Published Skills",
+    "workspaces": "Workspaces",
+    "settings": "Settings",
     "im_channels": "IM Channels"
   }
 }

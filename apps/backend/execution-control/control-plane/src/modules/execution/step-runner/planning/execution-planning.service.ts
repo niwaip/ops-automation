@@ -84,7 +84,7 @@ export class ExecutionPlanningService {
   }> {
     const headers = this.buildAuthServiceHeaders(authToken, requester);
     if (!headers) {
-      throw new BadRequestException('Unable to verify skill permission');
+      throw new BadRequestException('无法验证技能执行权限（缺少认证信息）');
     }
 
     if (skillId.startsWith('platform.')) {
@@ -100,13 +100,13 @@ export class ExecutionPlanningService {
         );
         const data = resolveRes.data as any;
         if (!data?.found) {
-          throw new BadRequestException(`Builtin skill '${skillId}' not found: ${data?.reason}`);
+          throw new BadRequestException(`内置技能 '${skillId}' 未找到: ${data?.reason}`);
         }
         if (!data?.isHealthy) {
-          throw new BadRequestException(`Builtin skill '${skillId}' deployment is not healthy: ${data?.reason}`);
+          throw new BadRequestException(`内置技能 '${skillId}' 部署状态异常: ${data?.reason}`);
         }
         if (!data?.authorized) {
-          throw new ForbiddenException(`Builtin skill '${skillId}' access denied: ${data?.reason}`);
+          throw new ForbiddenException(`您暂无内置技能 '${skillId}' 的执行权限，如需使用请前往「技能中心」申请授权或联系管理员开通: ${data?.reason || ''}`);
         }
         return {
           id: data.capabilityKey,
@@ -120,7 +120,7 @@ export class ExecutionPlanningService {
       } catch (err: any) {
         if (err instanceof ForbiddenException || err instanceof BadRequestException) throw err;
         this.logger.warn(`Builtin skill resolve failed for ${skillId}: ${err.message}`);
-        throw new BadRequestException(`Unable to verify builtin skill permission for ${skillId}`);
+        throw new BadRequestException(`无法验证内置技能权限 (${skillId})`);
       }
     }
 
@@ -154,12 +154,17 @@ export class ExecutionPlanningService {
           : undefined;
 
       if (status === 403 || status === 404) {
-        throw new ForbiddenException('You do not have permission to execute this skill');
+        const remoteMessage = (error as any)?.response?.data?.message;
+        const msg =
+          typeof remoteMessage === 'string' && remoteMessage.includes('权限')
+            ? remoteMessage
+            : '您当前暂无该技能的执行权限，如需使用请前往「技能中心」申请授权，或联系系统管理员开通权限。';
+        throw new ForbiddenException(msg);
       }
 
       const message = error instanceof Error ? error.message : 'unknown error';
       this.logger.warn(`Failed to verify skill permission for ${skillId}: ${message}`);
-      throw new BadRequestException('Unable to verify skill permission');
+      throw new BadRequestException('无法验证技能执行权限');
     }
   }
 

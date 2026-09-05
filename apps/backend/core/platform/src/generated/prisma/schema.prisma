@@ -1151,6 +1151,23 @@ model TaskPolicyAuditLog {
   @@map("task_policy_audit_logs")
 }
 
+model ExecutionCompletionClaim {
+  id           String   @id @default(uuid()) @db.Uuid
+  executionId  String   @map("execution_id") @db.Uuid
+  stepId       String?  @map("step_id") @db.Uuid
+  planNodeId   String?  @map("plan_node_id") @db.VarChar(255)
+  claim        String   @db.VarChar(100)
+  evidenceType String   @map("evidence_type") @db.VarChar(32)
+  evidenceJson Json     @default("{}") @map("evidence_json")
+  status       String   @default("satisfied") @db.VarChar(16)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([executionId, claim, planNodeId])
+  @@index([executionId, status])
+  @@index([stepId])
+  @@map("execution_completion_claims")
+}
+
 model PromptSnapshot {
   id                    String   @id @default(uuid()) @db.Uuid
   ownerUserId           String   @map("owner_user_id") @db.Uuid
@@ -1390,9 +1407,25 @@ model BuiltinSkill {
   versions            BuiltinSkillVersion[]
   permissionOverrides BuiltinSkillPermissionOverride[]
   auditEvents         BuiltinSkillAuditEvent[]
+  runtimeConfigs      BuiltinSkillRuntimeConfig[]
 
   @@index([isEnabled, category])
   @@map("builtin_skills")
+}
+
+model BuiltinSkillRuntimeConfig {
+  id             String   @id @default(uuid()) @db.Uuid
+  builtinSkillId String   @map("builtin_skill_id") @db.Uuid
+  configKey      String   @map("config_key") @db.VarChar(128)
+  encryptedValue String   @map("encrypted_value") @db.Text
+  updatedBy      String?  @map("updated_by") @db.VarChar(255)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  builtinSkill BuiltinSkill @relation(fields: [builtinSkillId], references: [id], onDelete: Cascade)
+
+  @@unique([builtinSkillId, configKey])
+  @@map("builtin_skill_runtime_configs")
 }
 
 model BuiltinSkillVersion {
@@ -1647,4 +1680,139 @@ model ReleaseAuditEvent {
 
   @@index([releaseId, createdAt(sort: Desc)])
   @@map("release_audit_events")
+}
+
+enum WorkspaceType {
+  personal
+  department
+  company
+}
+
+enum WorkspaceNodeType {
+  file
+  folder
+}
+
+model Workspace {
+  id           String          @id @default(uuid()) @db.Uuid
+  name         String          @db.VarChar(255)
+  type         WorkspaceType
+  ownerUserId  String?         @map("owner_user_id") @db.VarChar(64)
+  departmentId String?         @map("department_id") @db.VarChar(64)
+  quotaBytes   BigInt          @default(5368709120) @map("quota_bytes")
+  usedBytes    BigInt          @default(0) @map("used_bytes")
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  nodes        WorkspaceNode[]
+
+  @@unique([type, ownerUserId])
+  @@index([type, departmentId])
+  @@map("workspaces")
+}
+
+model WorkspaceNode {
+  id          String            @id @default(uuid()) @db.Uuid
+  workspaceId String            @map("workspace_id") @db.Uuid
+  parentId    String?           @map("parent_id") @db.Uuid
+  name        String            @db.VarChar(255)
+  type        WorkspaceNodeType
+  fileSize    BigInt            @default(0) @map("file_size")
+  mimeType    String?           @map("mime_type") @db.VarChar(128)
+  storagePath String?           @map("storage_path") @db.Text
+  digestJson  Json?             @map("digest_json")
+  createdBy   String            @map("created_by") @db.VarChar(64)
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent    WorkspaceNode?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  WorkspaceNode[] @relation("FolderHierarchy")
+
+  @@index([workspaceId, parentId])
+  @@index([workspaceId, name])
+  @@map("workspace_nodes")
+}
+
+enum TodoPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum TodoStatus {
+  pending
+  in_progress
+  completed
+  cancelled
+}
+
+enum TodoSourceType {
+  manual
+  chat
+  email
+  schedule
+  im_channel
+}
+
+model WorkbenchTodo {
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @map("user_id") @db.VarChar(64)
+  title       String       @db.VarChar(500)
+  description String?      @db.Text
+  priority    TodoPriority @default(medium)
+  status      TodoStatus   @default(pending)
+  dueDate     DateTime?    @map("due_date") @db.Timestamptz(6)
+  completedAt DateTime?    @map("completed_at") @db.Timestamptz(6)
+
+  // Source attribution
+  sourceType  TodoSourceType @default(manual) @map("source_type")
+  sourceRefId String?        @map("source_ref_id") @db.VarChar(255)
+  sourceTitle String?        @map("source_title") @db.VarChar(255)
+
+  // 5W1H & context JSON: { who, what, when, where, why, how, tags, ... }
+  contextData Json? @map("context_data")
+
+  // Automation & Execution linkage
+  boundWorkflowId String? @map("bound_workflow_id") @db.VarChar(255)
+  executionId     String? @map("execution_id") @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId, status])
+  @@index([userId, dueDate])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("workbench_todos")
+}
+
+enum InboxItemStatus {
+  unprocessed
+  clarified
+  converted
+  archived
+  discarded
+}
+
+model WorkbenchInboxItem {
+  id              String          @id @default(uuid()) @db.Uuid
+  userId          String          @map("user_id") @db.VarChar(64)
+  title           String          @db.VarChar(500)
+  rawContent      String          @map("raw_content") @db.Text
+  sourceType      TodoSourceType  @default(manual) @map("source_type")
+  sourceRefId     String?         @map("source_ref_id") @db.VarChar(255)
+  sourceTitle     String?         @map("source_title") @db.VarChar(255)
+  sourceSender    String?         @map("source_sender") @db.VarChar(255)
+  unifiedPayload  Json            @default("{}") @map("unified_payload")
+  status          InboxItemStatus @default(unprocessed)
+  confidence      Float           @default(1.0)
+  aiClarification Json?           @map("ai_clarification")
+  convertedTodoId String?         @map("converted_todo_id") @db.Uuid
+  clarifiedAt     DateTime?       @map("clarified_at") @db.Timestamptz(6)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId, status])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("workbench_inbox_items")
 }

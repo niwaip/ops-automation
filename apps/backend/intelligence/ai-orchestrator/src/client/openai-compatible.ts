@@ -91,7 +91,12 @@ export class OpenAICompatibleClient {
       if (normalized.responseFormat === 'json_object' || this.useJsonMode) {
         data.response_format = { type: 'json_object' };
       }
-      if (normalized.promptCacheKey) {
+      const isGemini =
+        this.provider === 'gemini' ||
+        this.provider === 'google' ||
+        (this.baseURL || '').includes('generativelanguage.googleapis.com');
+
+      if (normalized.promptCacheKey && !isGemini) {
         data.prompt_cache_key = normalized.promptCacheKey;
       }
       if (normalized.maxOutputTokens) {
@@ -99,7 +104,8 @@ export class OpenAICompatibleClient {
       }
       if (
         normalized.promptCacheRetention &&
-        ['in_memory', '24h'].includes(normalized.promptCacheRetention)
+        ['in_memory', '24h'].includes(normalized.promptCacheRetention) &&
+        !isGemini
       ) {
         data.prompt_cache_retention = normalized.promptCacheRetention;
       }
@@ -130,7 +136,7 @@ export class OpenAICompatibleClient {
           );
         }
         throw new Error(
-          `OpenAI API Error: ${axiosError.response?.data?.error?.message || axiosError.message}`
+          `OpenAI API Error: ${this.extractApiErrorMessage(axiosError)}`
         );
       }
       throw error;
@@ -280,13 +286,19 @@ export class OpenAICompatibleClient {
       }
     }
 
-    if (axiosError.response?.data?.error?.message) {
-      return axiosError.response.data.error.message;
+    return this.extractApiErrorMessage(axiosError);
+  }
+
+  private extractApiErrorMessage(axiosError: any): string {
+    const rawData = axiosError?.response?.data;
+    const dataObj = Array.isArray(rawData) ? rawData[0] : rawData;
+    if (dataObj?.error?.message) {
+      return dataObj.error.message;
     }
-    if (typeof axiosError.response?.data?.message === 'string') {
-      return axiosError.response.data.message;
+    if (typeof dataObj?.message === 'string') {
+      return dataObj.message;
     }
-    return axiosError.message || 'Unknown error';
+    return axiosError?.message || 'Unknown error';
   }
 
   /**
@@ -377,13 +389,7 @@ export class OpenAICompatibleClient {
   }
 
   private isReasoningMandatoryError(error: unknown): boolean {
-    const axiosError = error as AxiosLikeError;
-    const message = (
-      axiosError.response?.data?.error?.message ||
-      (axiosError.response?.data as any)?.message ||
-      axiosError.message ||
-      ''
-    ).toLowerCase();
+    const message = this.extractApiErrorMessage(error).toLowerCase();
     return (
       /reasoning.{0,40}(?:mandatory|required|cannot be disabled|can't be disabled)/i.test(message) ||
       /(?:unrecognized|unknown|extra|invalid|unsupported).*(?:reasoning|thinking|enable_thinking)/i.test(
@@ -406,9 +412,14 @@ export class OpenAICompatibleClient {
    */
   async listModels(): Promise<string[]> {
     try {
-      // Use /models since baseURL already includes /v1
       const response = await this.client.get<ModelListResponse>('/models');
-      return response.data.data?.map((model: { id: string }) => model.id) || [];
+      return (
+        response.data.data
+          ?.map((model: { id: string }) =>
+            typeof model.id === 'string' ? model.id.replace(/^models\//, '') : ''
+          )
+          .filter((id: string) => id.length > 0) || []
+      );
     } catch (error: unknown) {
       const axiosError = error as AxiosLikeError;
       if (axiosError.message) {

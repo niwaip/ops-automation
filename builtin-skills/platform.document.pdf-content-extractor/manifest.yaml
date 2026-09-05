@@ -2,13 +2,13 @@ apiVersion: platform.ops/v1alpha1
 kind: BuiltinWorkflowSkill
 metadata:
   key: platform.document.pdf-content-extractor
-  displayName: 内置 PDF 内容提取
-  description: 从 PDF 文本层确定性提取分页文本与元数据，不执行 OCR 或内容总结
+  displayName: 内置文档内容提取
+  description: 从 PDF、PPTX、Word、Markdown 等文档中确定性提取文本、分页内容与元数据，不执行 OCR 或内容总结
   owner: platform-document
   labels:
     category: extraction
     domain: document
-    format: pdf
+    format: multi-format
 spec:
   definitionVersion: 1.0.0
   lifecycle: experimental
@@ -21,7 +21,13 @@ spec:
       - 提取PDF内容
       - 读取PDF文本
       - PDF转文本
-    matchSummary: 从 PDF 文本层提取全文、分页文本和文档元数据
+      - 解析文档
+      - 提取文档内容
+      - 读取文档
+      - 提取PPT
+      - 解析PPT
+      - 解析Word
+    matchSummary: 从 PDF、PPTX、Word 或文本文件中提取全文、分页文本和文档元数据
     runtimeType: workflow
     supportsArtifact: false
   contracts:
@@ -107,7 +113,7 @@ spec:
             additionalProperties: false
             required: [format, method, ocrUsed]
             properties:
-              format: { type: string, enum: [pdf, docx, text] }
+              format: { type: string, enum: [pdf, docx, pptx, xlsx, text] }
               method: { type: string, const: embedded_text }
               ocrUsed: { type: boolean, const: false }
   workflow:

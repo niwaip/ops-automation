@@ -15,6 +15,12 @@ type SkillCacheEntry<T> = {
 };
 
 const PLANNER_SKILL_CACHE_TTL_MS = Number(process.env.PLANNER_SKILL_CACHE_TTL_MS || 60_000);
+const WEB_SEARCH_SKILL_IDS = new Set([
+  'platform.search.web',
+  'platform.web_search',
+  'tavily_search',
+  'web_search',
+]);
 
 @Injectable()
 export class SkillCacheService {
@@ -32,8 +38,12 @@ export class SkillCacheService {
   async loadAvailableSkills(
     authToken?: string,
     traceId?: string,
-    targetSkillId?: string
+    targetSkillId?: string,
+    webSearchEnabled = false
   ): Promise<AvailableSkillDefinition[]> {
+    if (targetSkillId && this.isWebSearchSkillId(targetSkillId) && !webSearchEnabled) {
+      return [];
+    }
     if (targetSkillId) {
       const skill = await this.loadSkillById(targetSkillId, authToken, traceId);
       if (skill) {
@@ -44,7 +54,7 @@ export class SkillCacheService {
       );
     }
 
-    const cacheKey = this.buildAuthCacheKey(authToken);
+    const cacheKey = `${this.buildAuthCacheKey(authToken)}:web-search:${webSearchEnabled ? 'on' : 'off'}`;
     const cachedSkills = this.getCacheValue(this.availableSkillsCache, cacheKey);
     if (cachedSkills) {
       return cachedSkills;
@@ -128,7 +138,8 @@ export class SkillCacheService {
 
       const normalizedSkills = rawSkills
         .map((item) => this.mapRawSkillDefinition(item))
-        .filter((item) => item.skillId && item.skillName);
+        .filter((item) => item.skillId && item.skillName)
+        .filter((item) => webSearchEnabled || !this.isWebSearchSkill(item));
       this.setCacheValue(this.availableSkillsCache, cacheKey, normalizedSkills);
       normalizedSkills.forEach((skill) => {
         this.setCacheValue(
@@ -143,6 +154,14 @@ export class SkillCacheService {
       this.logger.warn(`Failed to load available skills for planner: ${message}`);
       return [];
     }
+  }
+
+  private isWebSearchSkill(skill: AvailableSkillDefinition): boolean {
+    return this.isWebSearchSkillId(skill.skillId) || this.isWebSearchSkillId(skill.skillName);
+  }
+
+  private isWebSearchSkillId(value: string): boolean {
+    return WEB_SEARCH_SKILL_IDS.has(value.trim().toLowerCase());
   }
 
   async loadSkillById(

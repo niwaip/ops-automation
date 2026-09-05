@@ -828,6 +828,18 @@ exports.Prisma.TaskPolicyAuditLogScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.ExecutionCompletionClaimScalarFieldEnum = {
+  id: 'id',
+  executionId: 'executionId',
+  stepId: 'stepId',
+  planNodeId: 'planNodeId',
+  claim: 'claim',
+  evidenceType: 'evidenceType',
+  evidenceJson: 'evidenceJson',
+  status: 'status',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.PromptSnapshotScalarFieldEnum = {
   id: 'id',
   ownerUserId: 'ownerUserId',
@@ -1012,6 +1024,16 @@ exports.Prisma.BuiltinSkillScalarFieldEnum = {
   lifecycle: 'lifecycle',
   isEnabled: 'isEnabled',
   activeVersionId: 'activeVersionId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.BuiltinSkillRuntimeConfigScalarFieldEnum = {
+  id: 'id',
+  builtinSkillId: 'builtinSkillId',
+  configKey: 'configKey',
+  encryptedValue: 'encryptedValue',
+  updatedBy: 'updatedBy',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -1221,6 +1243,71 @@ exports.Prisma.ReleaseAuditEventScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.WorkspaceScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  type: 'type',
+  ownerUserId: 'ownerUserId',
+  departmentId: 'departmentId',
+  quotaBytes: 'quotaBytes',
+  usedBytes: 'usedBytes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.WorkspaceNodeScalarFieldEnum = {
+  id: 'id',
+  workspaceId: 'workspaceId',
+  parentId: 'parentId',
+  name: 'name',
+  type: 'type',
+  fileSize: 'fileSize',
+  mimeType: 'mimeType',
+  storagePath: 'storagePath',
+  digestJson: 'digestJson',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.WorkbenchTodoScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  title: 'title',
+  description: 'description',
+  priority: 'priority',
+  status: 'status',
+  dueDate: 'dueDate',
+  completedAt: 'completedAt',
+  sourceType: 'sourceType',
+  sourceRefId: 'sourceRefId',
+  sourceTitle: 'sourceTitle',
+  contextData: 'contextData',
+  boundWorkflowId: 'boundWorkflowId',
+  executionId: 'executionId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.WorkbenchInboxItemScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  title: 'title',
+  rawContent: 'rawContent',
+  sourceType: 'sourceType',
+  sourceRefId: 'sourceRefId',
+  sourceTitle: 'sourceTitle',
+  sourceSender: 'sourceSender',
+  unifiedPayload: 'unifiedPayload',
+  status: 'status',
+  confidence: 'confidence',
+  aiClarification: 'aiClarification',
+  convertedTodoId: 'convertedTodoId',
+  clarifiedAt: 'clarifiedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -1295,6 +1382,47 @@ exports.IdentityProviderType = exports.$Enums.IdentityProviderType = {
   saml: 'saml'
 };
 
+exports.WorkspaceType = exports.$Enums.WorkspaceType = {
+  personal: 'personal',
+  department: 'department',
+  company: 'company'
+};
+
+exports.WorkspaceNodeType = exports.$Enums.WorkspaceNodeType = {
+  file: 'file',
+  folder: 'folder'
+};
+
+exports.TodoPriority = exports.$Enums.TodoPriority = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  urgent: 'urgent'
+};
+
+exports.TodoStatus = exports.$Enums.TodoStatus = {
+  pending: 'pending',
+  in_progress: 'in_progress',
+  completed: 'completed',
+  cancelled: 'cancelled'
+};
+
+exports.TodoSourceType = exports.$Enums.TodoSourceType = {
+  manual: 'manual',
+  chat: 'chat',
+  email: 'email',
+  schedule: 'schedule',
+  im_channel: 'im_channel'
+};
+
+exports.InboxItemStatus = exports.$Enums.InboxItemStatus = {
+  unprocessed: 'unprocessed',
+  clarified: 'clarified',
+  converted: 'converted',
+  archived: 'archived',
+  discarded: 'discarded'
+};
+
 exports.Prisma.ModelName = {
   User: 'User',
   ImChannelConnection: 'ImChannelConnection',
@@ -1343,6 +1471,7 @@ exports.Prisma.ModelName = {
   TaskCapabilityBinding: 'TaskCapabilityBinding',
   TaskPolicyProposal: 'TaskPolicyProposal',
   TaskPolicyAuditLog: 'TaskPolicyAuditLog',
+  ExecutionCompletionClaim: 'ExecutionCompletionClaim',
   PromptSnapshot: 'PromptSnapshot',
   LlmUsageLedger: 'LlmUsageLedger',
   ExecutionOutbox: 'ExecutionOutbox',
@@ -1356,6 +1485,7 @@ exports.Prisma.ModelName = {
   CandidateRecipeEvaluation: 'CandidateRecipeEvaluation',
   HabitGovernanceAudit: 'HabitGovernanceAudit',
   BuiltinSkill: 'BuiltinSkill',
+  BuiltinSkillRuntimeConfig: 'BuiltinSkillRuntimeConfig',
   BuiltinSkillVersion: 'BuiltinSkillVersion',
   BuiltinSkillDeployment: 'BuiltinSkillDeployment',
   BuiltinSkillPermissionOverride: 'BuiltinSkillPermissionOverride',
@@ -1368,7 +1498,11 @@ exports.Prisma.ModelName = {
   CapabilityAttestation: 'CapabilityAttestation',
   SkillDraft: 'SkillDraft',
   DeploymentRecord: 'DeploymentRecord',
-  ReleaseAuditEvent: 'ReleaseAuditEvent'
+  ReleaseAuditEvent: 'ReleaseAuditEvent',
+  Workspace: 'Workspace',
+  WorkspaceNode: 'WorkspaceNode',
+  WorkbenchTodo: 'WorkbenchTodo',
+  WorkbenchInboxItem: 'WorkbenchInboxItem'
 };
 
 /**

@@ -69,6 +69,35 @@ describe('projectPreviousResultInput', () => {
     expect(projectPreviousResultInput({ type: 'array' }, {})).toBeUndefined();
   });
 
+  it('prefers the trusted task-context reference over legacy previous-result fields', () => {
+    expect(
+      projectPreviousResultInput(
+        { type: 'string', 'x-ops-input-role': 'content' },
+        {
+          taskContext: {
+            schemaVersion: 'task-context/v1',
+            references: [
+              {
+                kind: 'session_result',
+                selector: 'latest_compatible',
+                executionId: 'execution-2',
+                trustLevel: 'verified_execution',
+                semanticType: 'webpage_content',
+                detailText: '可信的网页正文',
+              },
+            ],
+          },
+          previousResultText: '旧字段正文',
+        },
+        'content',
+      ),
+    ).toEqual({
+      value: '可信的网页正文',
+      sourceExecutionId: 'execution-2',
+      semanticType: 'webpage_content',
+    });
+  });
+
   it('projects prior output only into content-bearing fields', () => {
     const previousResult = { previousResultText: '上一轮正文' };
 

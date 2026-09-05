@@ -69,10 +69,12 @@ export class ScheduleFireDispatcherService implements OnModuleInit, OnModuleDest
               skillId: payload.skillId,
               skillVersion:
                 typeof payload.skillVersion === 'string' ? payload.skillVersion : undefined,
-              input:
-                payload.input && typeof payload.input === 'object' && !Array.isArray(payload.input)
+              input: {
+                ...(payload.input && typeof payload.input === 'object' && !Array.isArray(payload.input)
                   ? (payload.input as Record<string, unknown>)
-                  : {},
+                  : {}),
+                userId: payload.createdBy,
+              },
               triggerType: 'schedule',
               scheduleId: payload.scheduleId,
               idempotencyKey: `schedule-fire:${fireId}`,

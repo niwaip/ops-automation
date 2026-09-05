@@ -9,11 +9,16 @@ import {
   rankSavedWorkflows,
   type SavedWorkflowCandidate,
 } from './saved-workflow-matcher';
+import type { EffectiveTaskPolicySnapshot } from '../planner/policy/task-policy.types';
 
 @Injectable()
 export class DeterministicTaskExecutionService {
   private readonly logger = new Logger(DeterministicTaskExecutionService.name);
   private readonly routingPolicy: RoutingPolicyService;
+  private readonly taskPolicyCache = new Map<
+    string,
+    { expiresAt: number; value: EffectiveTaskPolicySnapshot }
+  >();
 
   constructor(
     private readonly routeClassifier: PlanRouteClassifierService,
@@ -174,7 +179,7 @@ export class DeterministicTaskExecutionService {
     userId: string,
     options?: {
       authToken?: string;
-      user?: { userId: string; userRoles?: string[] };
+      user?: { userId: string; userRoles?: string[]; organizationId?: string };
       availableSkills?: any[];
       systemInputs?: Record<string, unknown>;
       plannerContext?: { scopedMemory?: unknown };
@@ -193,12 +198,16 @@ export class DeterministicTaskExecutionService {
 
     let planDraft: any;
     try {
+      const taskPolicySnapshot = options?.user
+        ? await this.loadEffectiveTaskPolicy(options.authToken, options.user)
+        : undefined;
       planDraft = await this.planGenerator.generatePlan({
         userRequest: options?.planningRequest || userRequest,
         modelId: options?.modelId && options.modelId !== 'default' ? options.modelId : undefined,
         availableSkills: options?.availableSkills || [],
         systemInputs: options?.systemInputs,
         plannerContext: options?.plannerContext,
+        taskPolicySnapshot,
         ...(options?.user
           ? {
               telemetry: {
@@ -276,6 +285,28 @@ export class DeterministicTaskExecutionService {
         errorCode,
         errorMessage,
       };
+    }
+  }
+
+  private async loadEffectiveTaskPolicy(
+    authToken: string | undefined,
+    user: { userId: string; userRoles?: string[]; organizationId?: string }
+  ): Promise<EffectiveTaskPolicySnapshot | undefined> {
+    const cacheKey = `${user.organizationId || 'none'}:${user.userId}`;
+    const cached = this.taskPolicyCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) return cached.value;
+    try {
+      const value = await this.controlPlaneClient.getEffectiveTaskPolicy<EffectiveTaskPolicySnapshot>(
+        { authToken, user }
+      );
+      if (value?.schemaVersion !== 'effective-task-policy/v1') return undefined;
+      this.taskPolicyCache.set(cacheKey, { expiresAt: Date.now() + 30_000, value });
+      return value;
+    } catch (error: any) {
+      this.logger.warn(
+        `Unable to load effective task policy; using audited in-process baseline: ${error.message}`
+      );
+      return undefined;
     }
   }
 }

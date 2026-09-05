@@ -190,6 +190,7 @@ export interface CapabilitySnapshot {
   sessionId: string;
   roles: string[];
   mode: 'chat' | 'task';
+  webSearchEnabled?: boolean;
   selectedSkillId?: string;
   skillScopedToolNames?: string[];
   deniedToolNames?: string[];

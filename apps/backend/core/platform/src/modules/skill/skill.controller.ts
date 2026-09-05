@@ -18,11 +18,13 @@ import {
   Request,
   ForbiddenException,
   Res,
+  Patch,
 } from '@nestjs/common';
 import { JwtAuthGuard, Public, Roles, RolesGuard } from '@ops/identity-access';
 import { Response } from 'express';
 import { SkillService } from './skill.service';
 import { BuiltinSkillRegistryService } from '../builtin-skill/registry/builtin-skill-registry.service';
+import { BuiltinSkillRuntimeConfigService } from '../builtin-skill/runtime-config/builtin-skill-runtime-config.service';
 import {
   CreateSkillDTO,
   SkillConfigDto,
@@ -39,7 +41,8 @@ import {
 export class SkillController {
   constructor(
     private readonly skillService: SkillService,
-    private readonly builtinSkillRegistryService: BuiltinSkillRegistryService
+    private readonly builtinSkillRegistryService: BuiltinSkillRegistryService,
+    private readonly builtinSkillRuntimeConfigService: BuiltinSkillRuntimeConfigService
   ) {}
 
   /**
@@ -61,7 +64,51 @@ export class SkillController {
   @Roles('admin')
   async listBuiltinSkillInventory() {
     const skills = await this.builtinSkillRegistryService.listSkillInventory();
-    return { skills };
+    return {
+      skills: await Promise.all(
+        skills.map(async (skill) => ({
+          ...skill,
+          runtimeConfig: await this.builtinSkillRuntimeConfigService.getStatus(skill.capabilityKey),
+        }))
+      ),
+    };
+  }
+
+  @Patch('builtin-inventory/:capabilityKey/enabled')
+  @Roles('admin')
+  async setBuiltinSkillEnabled(
+    @Param('capabilityKey') capabilityKey: string,
+    @Body() body: { enabled: boolean },
+    @Request() req: any
+  ) {
+    if (typeof body?.enabled !== 'boolean')
+      throw new HttpException('enabled must be boolean', HttpStatus.BAD_REQUEST);
+    const skill = await this.builtinSkillRegistryService.setSkillEnabled(
+      capabilityKey,
+      body.enabled,
+      req.user?.id
+    );
+    return { capabilityKey: skill.capabilityKey, isEnabled: skill.isEnabled };
+  }
+
+  @Get('builtin-inventory/:capabilityKey/runtime-config')
+  @Roles('admin')
+  async getBuiltinSkillRuntimeConfig(@Param('capabilityKey') capabilityKey: string) {
+    return this.builtinSkillRuntimeConfigService.getStatus(capabilityKey);
+  }
+
+  @Put('builtin-inventory/:capabilityKey/runtime-config')
+  @Roles('admin')
+  async updateBuiltinSkillRuntimeConfig(
+    @Param('capabilityKey') capabilityKey: string,
+    @Body() body: { values?: Record<string, string | null> },
+    @Request() req: any
+  ) {
+    return this.builtinSkillRuntimeConfigService.update(
+      capabilityKey,
+      body?.values || {},
+      req.user?.id
+    );
   }
 
   /**
@@ -190,7 +237,7 @@ export class SkillController {
     // 检查用户是否有权限访问此 Skill
     const hasPermission = await this.skillService.checkUserSkillPermission(userId, id);
     if (!hasPermission) {
-      throw new ForbiddenException('You do not have permission to access this skill');
+      throw new ForbiddenException('您当前暂无该技能的访问权限，如需使用请前往「技能中心」申请授权或联系管理员开通');
     }
 
     const skill = await this.skillService.getSkill(id);

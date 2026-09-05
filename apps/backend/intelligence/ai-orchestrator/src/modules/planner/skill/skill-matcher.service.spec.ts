@@ -1,4 +1,4 @@
-import axios, { isAxiosError } from 'axios';
+import axios from 'axios';
 import { SkillMatcherService } from './skill-matcher.service';
 
 jest.mock('axios');
@@ -71,9 +71,73 @@ describe('SkillMatcherService deterministic explicit routing', () => {
     expect(axios.post).not.toHaveBeenCalled();
   });
 
+  it('routes a generic retrieval request to web search when it is the visible search skill', async () => {
+    const service = new SkillMatcherService({} as any);
+    const result = await service.matchSkill({
+      userInput: '检索 deepseek harness 的安装方法',
+      userId: 'user-1',
+      availableSkills: [
+        {
+          skillId: 'platform.search.web',
+          executableVersion: '1.0.0',
+          skillName: '内置联网搜索',
+          description: '检索公开互联网中的最新网页与新闻信息',
+          triggerKeywords: ['联网搜索', '检索', '查找资料', '搜索资料'],
+          paramsSchema: {
+            properties: {
+              query: { type: 'string', description: '检索词', required: true },
+            },
+            required: ['query'],
+          },
+        },
+      ],
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        skillId: 'platform.search.web',
+        confidence: 0.99,
+        matchReason: 'deterministic_routing_signal',
+      })
+    );
+    expect(axios.post).not.toHaveBeenCalled();
+  });
+
+  it('routes a find-news request to the default web search skill', async () => {
+    const service = new SkillMatcherService({} as any);
+    const result = await service.matchSkill({
+      userInput: '查找 openclaw 2 的新闻',
+      userId: 'user-1',
+      availableSkills: [
+        {
+          skillId: 'platform.search.web',
+          executableVersion: '1.0.3',
+          skillName: '内置联网搜索',
+          description: '检索公开互联网中的最新网页与新闻信息',
+          triggerKeywords: ['联网搜索', '检索', '搜索', '查找', '查询', '新闻'],
+          paramsSchema: {
+            properties: {
+              query: { type: 'string', description: '检索词', required: true },
+            },
+            required: ['query'],
+          },
+        },
+      ],
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        skillId: 'platform.search.web',
+        confidence: 0.99,
+        matchReason: 'deterministic_routing_signal',
+      })
+    );
+    expect(axios.post).not.toHaveBeenCalled();
+  });
+
   it('preserves provider unavailability as a retryable match outcome', async () => {
     const service = new SkillMatcherService({} as any);
-    (isAxiosError as unknown as jest.Mock).mockReturnValueOnce(true);
+    (axios.isAxiosError as unknown as jest.Mock).mockReturnValueOnce(true);
     (axios.post as jest.Mock).mockRejectedValueOnce({
       isAxiosError: true,
       response: {
