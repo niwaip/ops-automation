@@ -138,11 +138,13 @@ services:
       <<: *common-env
       PORT: ${SESSION_BROKER_PORT:-3002}
       DOCKER_ENV: true
+      PROJECT_ROOT: ${PROJECT_ROOT}
       BROWSER_WORKER_URL: http://${BROWSER_WORKER_HOST:-browser-worker}:${BROWSER_WORKER_PORT:-3004}
     ports:
       - '${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       workspace-deps-init:
         condition: service_completed_successfully
@@ -428,6 +430,10 @@ services:
         condition: service_healthy
       browser-semantics:
         condition: service_started
+    networks:
+      - ops-network
+      - ops-sandbox-network
+
 
   report:
     <<: *common-node-service
@@ -672,3 +678,6 @@ networks:
   ops-network:
     external: true
     name: ${NETWORK_NAME:-ops-network}
+  ops-sandbox-network:
+    external: true
+    name: ${SANDBOX_NETWORK_NAME:-ops-sandbox-network}

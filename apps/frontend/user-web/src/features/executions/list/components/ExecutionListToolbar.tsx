@@ -1,7 +1,13 @@
 import React from 'react';
 import styles from '../../pages/ExecutionListPage.module.css';
 import { Button, DatePicker, Input, Select, Typography } from 'antd';
-import { DeleteOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import {
+  CarryOutOutlined,
+  DeleteOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  SearchOutlined,
+} from '@ant-design/icons';
 import type { Dayjs } from 'dayjs';
 import type { ExecutionStatus } from '@/api/execution';
 
@@ -47,27 +53,32 @@ const ExecutionListToolbar: React.FC<ExecutionListToolbarProps> = ({
   return (
     <div className={styles['execution-list-toolbar']}>
       <div className={styles['execution-list-toolbar-heading']}>
-        <Text strong className={styles['execution-list-toolbar-title']}>
-          执行记录
-        </Text>
+        <div className={styles['execution-list-toolbar-title-row']}>
+          <span className={styles['execution-list-toolbar-icon-badge']}>
+            <CarryOutOutlined />
+          </span>
+          <Text strong className={styles['execution-list-toolbar-title']}>
+            任务中心
+          </Text>
+        </div>
         <Text type="secondary" className={styles['execution-list-toolbar-subtitle']}>
-          当前筛选后显示 {filteredCount} 条，本页总计 {total} 条记录。
+          实时追踪指派给数字员工的任务执行进度、目标产出与耗时指标 (显示 {filteredCount} / 共 {total} 项)
         </Text>
       </div>
       <div className={styles['execution-list-toolbar-row']}>
         <div className={styles['execution-list-toolbar-main']}>
           <div className={styles['execution-list-toolbar-controls']}>
             <Input
-              className={styles['execution-search-input execution-list-filter-control']}
+              className={`${styles['execution-search-input']} ${styles['execution-list-filter-control']}`}
               size="middle"
-              placeholder="搜索技能、输入内容或结果摘要"
-              prefix={<SearchOutlined />}
+              placeholder="搜索员工名称、任务单号、输入目标或交付成果..."
+              prefix={<SearchOutlined style={{ color: 'var(--text-secondary)' }} />}
               value={searchText}
               onChange={(e) => onSearchTextChange(e.target.value)}
               allowClear
             />
             <Select
-              className={styles['execution-status-filter execution-list-filter-control']}
+              className={`${styles['execution-status-filter']} ${styles['execution-list-filter-control']}`}
               size="middle"
               placeholder="全部状态"
               allowClear

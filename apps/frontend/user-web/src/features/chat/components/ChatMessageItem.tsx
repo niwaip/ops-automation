@@ -34,6 +34,7 @@ import { SaveWorkflowAction } from './workflow-save/SaveWorkflowAction';
 import { SaveToWorkspaceAction } from './workspace-save/SaveToWorkspaceAction';
 import { SaveToTodoAction } from './todo-save/SaveToTodoAction';
 import { MessageFeedbackActions } from './feedback/MessageFeedbackActions';
+import '../ChatMessage.css';
 import styles from '../pages/ChatPage.module.css';
 
 interface ChatMessageItemProps {
@@ -145,7 +146,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
         !hasDuplicatedTaskSummary &&
         plainContent !== message.metadata?.finalResult?.trim() &&
         plainContent !== message.metadata?.errorMessage?.trim())) &&
-      !(message.metadata?.mode === 'task' && hasProgressLogs) &&
+      !(message.metadata?.mode === 'task' && hasProgressLogs && message.isStreaming) &&
       !(isToolExecutionTask && !hasRenderableContentParts)
   );
   const usage = message.metadata?.usage;
@@ -255,6 +256,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                   isStreaming={Boolean(message.isStreaming)}
                   renderStructuredResult={message.metadata?.mode !== 'task'}
                   renderDeeplink={message.metadata?.mode !== 'task'}
+                  textMode={message.role === 'assistant' ? 'markdown' : 'plain'}
                 />
               ) : (
                 <SharedMessageContentRenderer

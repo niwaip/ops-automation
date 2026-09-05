@@ -52,7 +52,7 @@ export function EmailPromptGuideCard() {
       title={
         <Space size={8}>
           <ThunderboltOutlined style={{ color: '#fa8c16' }} />
-          <span style={{ fontWeight: 600, fontSize: 14 }}>在 AI 对话中直接使用</span>
+          <span style={{ fontWeight: 600, fontSize: 14 }}>在智能协同中直接使用</span>
         </Space>
       }
       bordered
@@ -65,7 +65,7 @@ export function EmailPromptGuideCard() {
       styles={{ body: { padding: '14px 16px' } }}
     >
       <Paragraph style={{ fontSize: 12, color: token.colorTextSecondary, marginBottom: 10 }}>
-        配置完成后，前往 <strong>AI 对话 (Chat)</strong> 输入自然语言指令，AI 将自动调用邮件能力：
+        配置完成后，前往 <strong>智能协同 (Chat)</strong> 输入自然语言指令，AI 将自动调用邮件能力：
       </Paragraph>
 
       <Collapse

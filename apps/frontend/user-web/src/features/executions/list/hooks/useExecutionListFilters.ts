@@ -89,8 +89,8 @@ export function useExecutionListFilters({
   const hasActiveFilters = Boolean(searchText.trim() || statusFilter);
 
   const emptyStateDescription = hasActiveFilters
-    ? '没有找到符合当前筛选条件的执行记录，可以调整关键词或状态后再试。'
-    : '当前账号还没有执行记录，可以从新建执行开始体验。';
+    ? '没有找到符合当前筛选条件的任务记录，可以调整关键词或状态后再试。'
+    : '当前账号还没有任务记录，可以指派数字员工开始体验。';
 
   return {
     filteredAndSortedData,

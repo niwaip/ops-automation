@@ -347,7 +347,7 @@ export class ChatConversationService {
     ];
   }
 
-  private async persistConversation(params: {
+  async persistConversation(params: {
     sessionId: string;
     userContent: string;
     assistantContent: string;
@@ -364,6 +364,7 @@ export class ChatConversationService {
       thinkingEnabled: params.thinkingEnabled,
       usage: params.usage,
       rateLimit: params.rateLimit,
+      clientMessageId: params.clientMessageId,
     });
     const nextSession = await this.sessionService.appendChatMessages(
       params.sessionId,
@@ -399,11 +400,15 @@ export class ChatConversationService {
     thinkingEnabled: boolean;
     usage?: unknown;
     rateLimit?: unknown;
+    clientMessageId?: string;
   }): Record<string, unknown> {
     const metadata: Record<string, unknown> = {
       mode: 'chat',
       showThinking: params.thinkingEnabled,
     };
+    if (params.clientMessageId) {
+      metadata.clientMessageId = params.clientMessageId;
+    }
     const thoughtLogsSnapshot = params.thinkingEnabled
       ? this.extractThinkingBlocks(params.rawAssistantContent)
       : [];
@@ -419,7 +424,7 @@ export class ChatConversationService {
     return metadata;
   }
 
-  private buildSessionPatchEvent(
+  buildSessionPatchEvent(
     sessionId: string,
     session?: NonNullable<ChatSessionData['session']>
   ): StreamEvent {

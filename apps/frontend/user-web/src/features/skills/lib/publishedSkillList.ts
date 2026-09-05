@@ -8,6 +8,7 @@ export interface PublishedSkillOverviewItem {
   value: number;
   icon: ReactNode;
   iconStyle: CSSProperties;
+  statusFilterValue?: string;
 }
 
 export interface PublishedSkillCounts {
@@ -17,6 +18,7 @@ export interface PublishedSkillCounts {
   requested: number;
   total: number;
   unauthorized: number;
+  scheduled?: number;
 }
 
 export type PublishedSkillSectionKey = 'authorized' | 'unauthorized';

@@ -123,6 +123,7 @@ export function useChatPageActions({
       metadata: {
         mode: chatMode,
         showThinking: enableThinking,
+        clientMessageId: userMessageId,
       },
     };
 

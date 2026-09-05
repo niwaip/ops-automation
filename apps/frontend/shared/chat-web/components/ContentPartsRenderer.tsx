@@ -21,6 +21,7 @@ interface ContentPartsRendererProps {
   renderStructuredResult?: boolean;
   renderDeeplink?: boolean;
   renderFileRef?: boolean;
+  textMode?: 'plain' | 'markdown';
 }
 
 const toStructuredResultText = (value: unknown): string | null => {
@@ -70,6 +71,7 @@ const ContentPartsRenderer: React.FC<ContentPartsRendererProps> = ({
   renderStructuredResult = true,
   renderDeeplink = true,
   renderFileRef = true,
+  textMode = 'markdown',
 }) => {
   if (!parts?.length) {
     return null;
@@ -104,7 +106,7 @@ const ContentPartsRenderer: React.FC<ContentPartsRendererProps> = ({
               <MessageContentRenderer
                 key={`text-${index}`}
                 content={part.text}
-                mode="plain"
+                mode={textMode}
                 isStreaming={isStreaming && index === renderableParts.length - 1}
               />
             );

@@ -40,7 +40,7 @@ export function SaveToTodoAction({ message, userQuery }: SaveToTodoActionProps) 
         title: userQuery ? `关于「${userQuery.slice(0, 24)}」的需求` : undefined,
         sourceType: "chat",
         sourceRefId: message.id,
-        sourceTitle: userQuery ? `对话: ${userQuery.slice(0, 20)}` : "AI 对话",
+        sourceTitle: userQuery ? `对话: ${userQuery.slice(0, 20)}` : "智能协同",
         sourceSender: message.role === "assistant" ? "AI 助手" : "用户",
         extra: {
           sessionId: message.sessionId,

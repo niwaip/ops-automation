@@ -1,0 +1,797 @@
+#!/usr/bin/env python3
+"""
+DeepSeek Harness (dsh) - Standardized Personal Mode CLI Runner
+Autonomous intelligence harness running inside the user sandbox container.
+"""
+
+import os
+import sys
+import json
+import glob
+import re
+import argparse
+import subprocess
+import urllib.request
+import urllib.parse
+import urllib.error
+from datetime import datetime
+from pathlib import Path
+
+VERSION = "1.3.0-sandbox"
+DEFAULT_CONFIG_PATH = "/home/sandbox/.dsh/config.json"
+DEFAULT_PROXY_URL = os.environ.get("DEEPSEEK_BASE_URL", "http://ops-ai-orchestrator:3007/ai/proxy/v1")
+VIRTUAL_API_KEY = os.environ.get("DEEPSEEK_API_KEY", os.environ.get("OPENAI_API_KEY", "sandbox-user-token-local"))
+WORKSPACE_DIR = os.environ.get("WORKSPACE", "/workspace")
+KNOWLEDGE_DIR = os.environ.get("KNOWLEDGE_DIR", "/knowledge")
+PLUGIN_DIR = os.environ.get("DSH_PLUGIN_DIR", "/opt/dsh/plugins")
+SKILL_DIR = os.environ.get("DSH_SKILL_DIR", "/opt/dsh/skills")
+
+def print_banner():
+    container_id = os.environ.get("HOSTNAME", "local-sandbox")[:12]
+    user = os.environ.get("USER", "sandbox")
+    print(f"⚡ [DeepSeek Harness v{VERSION} | Sandbox: {container_id} | User: {user} | Mode: Personal]")
+
+def cmd_version(args):
+    print_banner()
+    print(f"DeepSeek Harness CLI (dsh) version {VERSION}")
+    print(f"Python: {sys.version.split()[0]} | Node: {subprocess.getoutput('node -v 2>/dev/null') or 'N/A'}")
+    print(f"Workspace: {WORKSPACE_DIR}")
+    print(f"Knowledge Space: {KNOWLEDGE_DIR}")
+    print(f"Managed Plugins: {PLUGIN_DIR}")
+    print(f"Design & Slide Skills: {SKILL_DIR}")
+
+def cmd_info(args):
+    print_banner()
+    config = {}
+    if os.path.exists(DEFAULT_CONFIG_PATH):
+        try:
+            with open(DEFAULT_CONFIG_PATH, "r", encoding="utf-8") as f:
+                config = json.load(f)
+        except Exception:
+            pass
+
+    knowledge_files = list(Path(KNOWLEDGE_DIR).glob("**/*")) if os.path.exists(KNOWLEDGE_DIR) else []
+    knowledge_files = [f for f in knowledge_files if f.is_file()]
+
+    plugin_list = []
+    if os.path.exists(PLUGIN_DIR):
+        plugin_list = [d.name for d in Path(PLUGIN_DIR).iterdir() if d.is_dir() or d.name.endswith(".py")]
+
+    skill_list = []
+    if os.path.exists(SKILL_DIR):
+        skill_list = [d.name for d in Path(SKILL_DIR).iterdir() if d.is_dir() and not d.name.startswith(".")]
+
+    print("--- Sandbox Status ---")
+    print(f"Immutable Runtime: {config.get('immutable', True)}")
+    print(f"Managed By: {config.get('managedBy', 'Ops Automation Platform')}")
+    print(f"AI Proxy Endpoint: {DEFAULT_PROXY_URL}")
+    print(f"Virtual Token: {VIRTUAL_API_KEY[:10]}... (Managed by Platform Admin)")
+    print(f"Personal Knowledge Items: {len(knowledge_files)} available (Read-Only)")
+    print(f"Certified System Plugins: {len(plugin_list)} installed: {', '.join(plugin_list) if plugin_list else 'None'}")
+    print(f"Certified Design & Slide Skills: {len(skill_list)} installed: {', '.join(skill_list) if skill_list else 'None'}")
+    print(f"Workspace Path: {WORKSPACE_DIR} (Read-Write)")
+
+def cmd_plugins(args):
+    print_banner()
+    if not os.path.exists(PLUGIN_DIR):
+        print(f"Plugin directory {PLUGIN_DIR} not found.")
+        return
+
+    plugins = [p.name for p in Path(PLUGIN_DIR).iterdir() if not p.name.startswith(".")]
+    if not plugins:
+        print("No managed plugins installed. Certified plugins are distributed centrally by administrators.")
+    else:
+        print(f"Found {len(plugins)} certified plugins in {PLUGIN_DIR}:")
+        for p in sorted(plugins):
+            print(f" - {p}")
+
+def get_available_skills() -> list:
+    """Returns list of available skills with metadata"""
+    skills = []
+    if not os.path.exists(SKILL_DIR):
+        return skills
+    for item in sorted(Path(SKILL_DIR).iterdir()):
+        if not item.is_dir() or item.name.startswith("."):
+            continue
+        skill_file = item / "SKILL.md"
+        meta = {"id": item.name, "name": item.name, "description": ""}
+        if skill_file.exists():
+            try:
+                with open(skill_file, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    if content.startswith("---"):
+                        parts = content.split("---", 2)
+                        if len(parts) >= 3:
+                            for line in parts[1].splitlines():
+                                s = line.strip()
+                                if s.startswith("zh_name:") or (s.startswith("name:") and meta["name"] == item.name):
+                                    meta["name"] = s.split(":", 1)[1].strip().strip('"\'')
+                                elif s.startswith("zh_description:") or (s.startswith("description:") and not meta["description"]):
+                                    desc_val = s.split(":", 1)[1].strip().strip('"\'')
+                                    if desc_val not in ["|", ">"]:
+                                        meta["description"] = desc_val
+                    if not meta["description"] or meta["description"] in ["|", ">"]:
+                        body = parts[2] if len(parts) >= 3 else content
+                        for line in body.splitlines():
+                            line_t = line.strip()
+                            if not line_t.startswith("#") and not line_t.startswith("---") and not line_t.startswith(">") and line_t:
+                                meta["description"] = line_t[:90]
+                                break
+            except Exception:
+                pass
+        skills.append(meta)
+    return skills
+
+def cmd_skills(args):
+    print_banner()
+    skills = get_available_skills()
+    if not skills:
+        print(f"No certified skills installed in {SKILL_DIR}.")
+        return
+    print(f"Certified Design & Productivity Skills in {SKILL_DIR} ({len(skills)} installed):")
+    for s in skills:
+        desc = f" - {s['description']}" if s['description'] else ""
+        print(f" • {s['id']:<16} [{s['name']}]{desc}")
+
+def read_skill(skill_name: str) -> str:
+    """Reads skill documentation, style guide, and templates from SKILL_DIR"""
+    if not os.path.exists(SKILL_DIR):
+        return f"技能目录不存在: {SKILL_DIR}"
+
+    clean_name = skill_name.strip().lower()
+    target_dir = None
+    for item in Path(SKILL_DIR).iterdir():
+        if item.is_dir() and (item.name.lower() == clean_name or clean_name in item.name.lower() or item.name.lower() in clean_name):
+            target_dir = item
+            break
+    if not target_dir:
+        available = [d.name for d in Path(SKILL_DIR).iterdir() if d.is_dir() and not d.name.startswith(".")]
+        return f"未找到技能 '{skill_name}'。可用技能列表: {', '.join(available)}"
+
+    skill_file = target_dir / "SKILL.md" if (target_dir / "SKILL.md").exists() else target_dir / "README.md"
+    if not skill_file.exists():
+        return f"技能 '{target_dir.name}' 中未找到说明文档。"
+
+    try:
+        with open(skill_file, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        sub_files = []
+        for p in target_dir.rglob("*"):
+            if p.is_file() and not p.name.startswith(".") and p != skill_file:
+                rel = p.relative_to(target_dir)
+                if len(str(rel)) < 80:
+                    sub_files.append(str(rel))
+
+        addon = ""
+        if sub_files:
+            addon = f"\n\n【技能附带资源与可用模版 (位于 {target_dir})】:\n" + "\n".join(f"- {f}" for f in sub_files[:15])
+
+        return content + addon
+    except Exception as e:
+        return f"读取技能失败: {e}"
+
+CITY_PINYIN = {
+    "北京": "Beijing", "上海": "Shanghai", "广州": "Guangzhou", "深圳": "Shenzhen", "杭州": "Hangzhou",
+    "南京": "Nanjing", "苏州": "Suzhou", "成都": "Chengdu", "武汉": "Wuhan", "重庆": "Chongqing",
+    "西安": "Xi_an", "天津": "Tianjin", "长沙": "Changsha", "郑州": "Zhengzhou", "济南": "Jinan",
+    "青岛": "Qingdao", "沈阳": "Shenyang", "大连": "Dalian", "哈尔滨": "Harbin", "长春": "Changchun",
+    "福州": "Fuzhou", "厦门": "Xiamen", "合肥": "Hefei", "南昌": "Nanchang", "昆明": "Kunming",
+    "贵阳": "Guiyang", "南宁": "Nanning", "海口": "Haikou", "三亚": "Sanya", "石家庄": "Shijiazhuang",
+    "太原": "Taiyuan", "呼和浩特": "Hohhot", "兰州": "Lanzhou", "西宁": "Xining", "银川": "Yinchuan",
+    "乌鲁木齐": "Urumqi", "拉萨": "Lhasa", "香港": "Hong_Kong", "澳门": "Macau", "台北": "Taipei"
+}
+
+def fetch_weather(query_or_city: str) -> str:
+    """Fetches high-accuracy real-time weather and 3-day forecast via structured weather API"""
+    target = "Shanghai"
+    found_city = "上海"
+    for k, v in CITY_PINYIN.items():
+        if k in query_or_city:
+            target = v
+            found_city = k
+            break
+
+    try:
+        url = f"https://wttr.in/{target}?format=j1"
+        req = urllib.request.Request(url, headers={"User-Agent": "curl/8.0"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            weather = data.get("weather", [])
+            current = data.get("current_condition", [{}])[0]
+            curr_desc = current.get("weatherDesc", [{}])[0].get("value", "多云")
+            lines = [f"【{found_city} 实时权威气象与多日预报 ({target})】:"]
+            lines.append(
+                f"- 当前实时气温: {current.get('temp_C')}°C (体感 {current.get('FeelsLikeC')}°C), "
+                f"湿度 {current.get('humidity')}%, 风速 {current.get('windspeedKmph')}km/h, 状况: {curr_desc}"
+            )
+            for i, w in enumerate(weather[:3]):
+                label = "今天" if i == 0 else ("明天" if i == 1 else "后天")
+                hourly = w.get("hourly", [])
+                noon_desc = hourly[4].get("weatherDesc", [{}])[0].get("value", "多云") if len(hourly) > 4 else "晴间多云"
+                rain_chance = max([int(h.get("chanceofrain", "0")) for h in hourly]) if hourly else 0
+                lines.append(
+                    f"- {label} ({w.get('date')}): 最低 {w.get('mintempC')}°C ~ 最高 {w.get('maxtempC')}°C, "
+                    f"天气状况: {noon_desc}, 降水概率: {rain_chance}%"
+                )
+            return "\n".join(lines)
+    except Exception as e:
+        return f"查询 {found_city} 气象数据反馈: {e}"
+
+def perform_web_search(query: str, max_results: int = 8) -> str:
+    """Multi-source organic web search, weather and trending topic fetcher within sandbox"""
+    clean_q = re.sub(r'^(搜索|查询|查找|帮我搜索|请搜索|查看|获取|search|find|lookup)\s*', '', query, flags=re.I).strip() or query
+
+    # 1. 针对天气意图优先调用高精度结构化气象源
+    if re.search(r'(天气|预报|气温|下雨|晴天|降雨|温度|weather|forecast)', clean_q, re.I):
+        weather_res = fetch_weather(clean_q)
+        if "实时权威气象与多日预报" in weather_res:
+            return weather_res
+
+    # 2. 针对微博热搜/热点的专用实时高频接口
+    if re.search(r'(微博|weibo).*?(热搜|热点|榜|热门)', clean_q, re.I):
+        try:
+            url = "https://weibo.com/ajax/side/hotSearch"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Referer": "https://weibo.com"
+            }
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                realtime = data.get("data", {}).get("realtime", [])
+                results = ["【微博实时热搜榜最新排行】:"]
+                for i, item in enumerate(realtime[:15]):
+                    word = item.get("word", "")
+                    num = item.get("num", 0)
+                    tag = item.get("label_name", "") or item.get("icon_desc", "")
+                    tag_str = f"[{tag}] " if tag else ""
+                    results.append(f"{i+1}. {tag_str}{word} (热度值: {num})")
+                if len(results) > 1:
+                    return "\n".join(results)
+        except Exception:
+            pass
+
+    # 3. 优先调用管理员预置的 modsearch 模块化搜索引擎插件
+    modsearch_plugin = Path(PLUGIN_DIR) / "modsearch.py"
+    if modsearch_plugin.exists():
+        try:
+            proc = subprocess.run(
+                [sys.executable, str(modsearch_plugin), clean_q],
+                text=True,
+                capture_output=True,
+                timeout=25
+            )
+            out = proc.stdout.strip()
+            if out and not out.startswith("Error:"):
+                return out
+        except Exception:
+            pass
+
+    # 4. 通用必应搜索 + 反爬噪声与无关系统帮助文本过滤
+    results = []
+    discard_re = re.compile(r'windows.*?(帮助|支持|客户端)|无法正常浏览.*?浏览器版本过低|人机身份验证|enable cookies|captcha|microsoft support', re.I)
+    try:
+        url = f"https://www.bing.com/search?q={urllib.parse.quote(clean_q)}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8"
+        }
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as response:
+            html = response.read().decode("utf-8", errors="ignore")
+            snippets = re.findall(r'<div class="b_caption">.*?<p[^>]*>(.*?)</p>', html, re.DOTALL)
+            for s in snippets:
+                clean_text = re.sub(r'<[^>]+>', '', s).strip().replace("&nbsp;", " ").replace("&#0183;", "·")
+                if discard_re.search(clean_text) or len(clean_text) <= 15:
+                    continue
+                results.append(clean_text)
+    except Exception as e:
+        results.append(f"(网络检索连接提示: {e})")
+
+    if results:
+        return "\n".join([f"[{i+1}] {r}" for i, r in enumerate(results[:max_results])])
+    return ""
+
+def scan_personal_knowledge() -> str:
+    """Scans read-only personal knowledge space for reference material"""
+    if not os.path.exists(KNOWLEDGE_DIR):
+        return ""
+    files = list(Path(KNOWLEDGE_DIR).glob("**/*"))
+    files = [f for f in files if f.is_file() and not f.name.startswith(".")]
+    if not files:
+        return ""
+
+    summary = ["Personal Knowledge Base (/knowledge) contents:"]
+    for f in files[:10]:
+        try:
+            rel = f.relative_to(KNOWLEDGE_DIR)
+            content_preview = f.read_text(encoding="utf-8", errors="ignore")[:300]
+            summary.append(f"- File: {rel} ({f.stat().st_size} bytes)\n  Preview: {content_preview.strip()}")
+        except Exception:
+            continue
+    return "\n".join(summary)
+
+def call_model_proxy(messages: list, model: str = "deepseek-chat") -> str:
+    api_endpoint = f"{DEFAULT_PROXY_URL.rstrip('/')}/chat/completions"
+    payload = {"model": model, "messages": messages, "temperature": 0.4, "max_tokens": 4096, "stream": True}
+    req = urllib.request.Request(
+        api_endpoint,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {VIRTUAL_API_KEY}"}
+    )
+    chunks = []
+    with urllib.request.urlopen(req, timeout=300) as response:
+        for line in response:
+            l = line.decode("utf-8", errors="replace").strip()
+            if not l.startswith("data:"):
+                continue
+            d = l[5:].strip()
+            if d == "[DONE]":
+                break
+            try:
+                data_obj = json.loads(d)
+                if "error" in data_obj:
+                    raise RuntimeError(data_obj["error"].get("message", "Model execution error"))
+                chunk = data_obj.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                if chunk:
+                    chunks.append(chunk)
+            except json.JSONDecodeError:
+                pass
+    return "".join(chunks).strip()
+
+def parse_tool_calls(text: str) -> list:
+    """Parses tool calls from DSML, tool_call XML tags, or markdown code blocks"""
+    tools = []
+    # 1. 解析 DSML invoke 格式
+    for m in re.finditer(r'<｜DSML｜invoke name="(?P<name>[^"]+)"[^>]*>(?P<body>.*?)(?:</｜DSML｜invoke>|</｜DSML｜>|$)', text, re.DOTALL):
+        params = {pm.group("pname"): pm.group("pval").strip() for pm in re.finditer(r'<｜DSML｜parameter name="(?P<pname>[^"]+)"[^>]*>(?P<pval>.*?)</｜DSML｜parameter>', m.group("body"), re.DOTALL)}
+        tools.append({"type": "dsml", "name": m.group("name"), "params": params, "raw": m.group(0)})
+
+    # 2. 解析通用 <tool_call> ... (支持以 </tool_call> 或 </｜DSML｜> 闭合，并具备 JSON 语法容错)
+    tool_call_matches = re.finditer(
+        r'<tool_call>(.*?)(?:</tool_call>|</｜DSML｜(?:invoke)?>|</tool_calls>|$)',
+        text,
+        re.DOTALL
+    )
+    for m in tool_call_matches:
+        raw_body = m.group(1).strip()
+        if not raw_body:
+            continue
+        try:
+            parsed = json.loads(raw_body)
+            tools.append({
+                "type": "json",
+                "name": parsed.get("name", ""),
+                "params": parsed.get("arguments", {}),
+                "raw": m.group(0)
+            })
+            continue
+        except Exception:
+            pass
+
+        # 容错提取：当参数内包含未转义双引号、复杂换行或嵌套管道时
+        try:
+            name_m = re.search(r'"name":\s*"([^"]+)"', raw_body)
+            t_name = name_m.group(1) if name_m else "bash"
+            t_params = {}
+            args_m = re.search(r'"arguments":\s*\{(.*)\}', raw_body, re.DOTALL)
+            if args_m:
+                inner = args_m.group(1).strip()
+                try:
+                    t_params = json.loads("{" + inner + "}")
+                except Exception:
+                    cmd_m = re.search(r'"(?:cmd|command)":\s*"(.*)"\s*$', inner, re.DOTALL)
+                    query_m = re.search(r'"(?:query|__search_query|q)":\s*"(.*)"\s*$', inner, re.DOTALL)
+                    if cmd_m:
+                        t_params["cmd"] = cmd_m.group(1).strip()
+                    elif query_m:
+                        t_params["query"] = query_m.group(1).strip()
+            if t_name and t_params:
+                tools.append({"type": "json", "name": t_name, "params": t_params, "raw": m.group(0)})
+        except Exception:
+            pass
+
+    # 3. 解析裸 JSON / Markdown JSON 代码块工具调用 (自愈兼容正序与倒序键)
+    if not tools:
+        pats = [
+            r'(?:```(?:json)?\s*)?(\{\s*"(?:name|tool|action)"\s*:\s*"[^"]+"\s*,\s*"(?:arguments|parameters|params|action_input)"\s*:\s*\{.*?\}\s*\})(?:\s*```)?',
+            r'(?:```(?:json)?\s*)?(\{\s*"(?:arguments|parameters|params|action_input)"\s*:\s*\{.*?\}\s*,\s*"(?:name|tool|action)"\s*:\s*"[^"]+"\s*\})(?:\s*```)?'
+        ]
+        for pat in pats:
+            for m in re.finditer(pat, text, re.DOTALL):
+                try:
+                    parsed = json.loads(m.group(1).strip())
+                    t_name = parsed.get("name") or parsed.get("tool") or parsed.get("action")
+                    t_params = parsed.get("arguments") or parsed.get("parameters") or parsed.get("params") or parsed.get("action_input") or {}
+                    if t_name:
+                        tools.append({"type": "bare_json", "name": t_name, "params": t_params, "raw": m.group(0)})
+                except Exception:
+                    pass
+            if tools:
+                break
+
+    # 4. 仅当回答整体为纯代码块且无正文时，才将 markdown bash 代码块视为执行调用
+    if not tools:
+        stripped = text.strip()
+        if stripped.startswith("```") and stripped.endswith("```") and stripped.count("```") == 2:
+            bash_matches = re.finditer(r'```(?:bash|sh)\n(.*?)```', text, re.DOTALL)
+            for m in bash_matches:
+                tools.append({"type": "bash", "name": "bash", "params": {"cmd": m.group(1).strip()}, "raw": m.group(0)})
+
+    return tools
+
+def execute_tool(tool_name: str, params: dict) -> str:
+    """Executes the requested tool inside sandbox or network scraper"""
+    name_clean = tool_name.strip().lower()
+
+    if name_clean in ["weather", "get_weather", "query_weather"]:
+        city = (
+            params.get("city") or
+            params.get("location") or
+            params.get("query") or
+            (str(list(params.values())[0]) if params else "上海")
+        )
+        return fetch_weather(str(city))
+
+    elif name_clean in ["web_search", "search", "google_search", "bing_search", "modsearch"]:
+        query = (
+            params.get("__search_query") or
+            params.get("query") or
+            params.get("q") or
+            params.get("search_query") or
+            params.get("keyword") or
+            ""
+        )
+        if not query and params:
+            query = str(list(params.values())[0])
+        return perform_web_search(query)
+
+    elif name_clean in ["bash", "cmd", "terminal", "sh", "exec"]:
+        cmd = params.get("cmd") or params.get("command") or ""
+        if not cmd and params:
+            cmd = str(list(params.values())[0])
+        try:
+            proc = subprocess.run(
+                cmd,
+                shell=True,
+                cwd=WORKSPACE_DIR,
+                text=True,
+                capture_output=True,
+                timeout=20
+            )
+            return proc.stdout.strip() or proc.stderr.strip() or "(命令执行完成，返回退出码 0)"
+        except Exception as e:
+            return f"命令执行异常: {e}"
+
+    elif name_clean in ["knowledge_search", "scan_knowledge"]:
+        return scan_personal_knowledge()
+
+    elif name_clean in ["read_skill", "get_skill", "load_skill", "use_skill", "skill"]:
+        skill_name = (
+            params.get("skill_name") or
+            params.get("name") or
+            params.get("skill") or
+            (str(list(params.values())[0]) if params else "")
+        )
+        return read_skill(skill_name)
+
+    else:
+        plugin_file = Path(PLUGIN_DIR) / f"{tool_name}.py"
+        if plugin_file.exists():
+            try:
+                proc = subprocess.run(
+                    [sys.executable, str(plugin_file), json.dumps(params)],
+                    text=True,
+                    capture_output=True,
+                    timeout=20
+                )
+                return proc.stdout.strip() or proc.stderr.strip()
+            except Exception as e:
+                return f"插件执行异常: {e}"
+        return f"未识别工具名称: {tool_name}"
+
+def clean_output(text: str) -> str:
+    """Removes raw DSML, tool_call, bare tool JSON, and internal tags from final user output"""
+    text = re.sub(r'<｜DSML｜tool_calls>.*?</｜DSML｜tool_calls>', '', text, flags=re.DOTALL)
+    text = re.sub(r'<｜DSML｜invoke[^>]*>.*?(?:</｜DSML｜invoke>|</｜DSML｜>|$)', '', text, flags=re.DOTALL)
+    text = re.sub(r'<tool_call>.*?(?:</tool_call>|</｜DSML｜(?:invoke)?>|</tool_calls>|$)', '', text, flags=re.DOTALL)
+    pats = [
+        r'(?:```(?:json)?\s*)?\{\s*"(?:name|tool|action)"\s*:\s*"[^"]+"\s*,\s*"(?:arguments|parameters|params|action_input)"\s*:\s*\{.*?\}\s*\}(?:\s*```)?',
+        r'(?:```(?:json)?\s*)?\{\s*"(?:arguments|parameters|params|action_input)"\s*:\s*\{.*?\}\s*,\s*"(?:name|tool|action)"\s*:\s*"[^"]+"\s*\}(?:\s*```)?'
+    ]
+    for p in pats:
+        text = re.sub(p, '', text, flags=re.DOTALL)
+    text = re.sub(r'</?(?:tool_call|tool_calls|｜DSML｜[^>]*)>', '', text)
+    text = re.sub(r'<｜.*?｜>', '', text)
+    return re.sub(r'\n{3,}', '\n\n', text).strip()
+
+def cmd_run(args):
+    prompt = " ".join(args.query) if isinstance(args.query, list) else str(args.query)
+    if not prompt.strip():
+        print("Error: query prompt is required.", file=sys.stderr)
+        sys.exit(1)
+
+    print_banner()
+
+    knowledge_context = scan_personal_knowledge()
+
+    # 扩展的实时意图嗅探 (Web 搜索)
+    search_keywords = [
+        "搜索", "新闻", "最新", "热点", "热搜", "今天", "查", "查看",
+        "榜", "天气", "行情", "search", "news", "trending", "trend",
+        "b站", "bilibili", "微博", "知乎", "热度", "最高", "排行",
+        "最火", "热门", "推荐", "推荐下", "插件", "谁", "哪些", "多少", "评测",
+        "现在", "目前"
+    ]
+    is_search_intent = args.web_search or any(k in prompt for k in search_keywords)
+
+    # 扩展的 PPT / 前端原型设计意图嗅探
+    ppt_keywords = ["ppt", "slides", "幻灯片", "演示文稿", "deck", "汇报", "讲义"]
+    design_keywords = ["设计", "前端", "原型", "landing", "saas", "dashboard", "看板", "ui", "页面", "品味", "审美"]
+
+    skill_context = ""
+    is_ppt_intent = any(k in prompt.lower() for k in ppt_keywords)
+    is_design_intent = any(k in prompt.lower() for k in design_keywords)
+
+    if is_ppt_intent:
+        print("🎨 [Harness Skill Sniffer] 检测到 PPT / 演示文稿生成意图，正在加载设计引擎 (guizang-ppt)...")
+        skill_context = read_skill("guizang-ppt")
+    elif is_design_intent:
+        matched_skill = "frontend-design"
+        if "dashboard" in prompt.lower() or "看板" in prompt.lower():
+            matched_skill = "dashboard"
+        elif "landing" in prompt.lower() or "saas" in prompt.lower():
+            matched_skill = "saas-landing"
+        elif "原型" in prompt.lower() or "prototype" in prompt.lower():
+            matched_skill = "web-prototype"
+        print(f"🎨 [Harness Skill Sniffer] 检测到 UI / 前端设计意图，正在加载设计规则 ({matched_skill})...")
+        skill_context = read_skill(matched_skill)
+
+    search_context = ""
+    if is_search_intent:
+        print(f"🔍 [Harness Web Search] 正在检索实时数据: '{prompt}'...")
+        search_context = perform_web_search(prompt)
+        if search_context:
+            print("✓ 实时数据检索成功，已注入分析上下文。")
+
+    session_id = getattr(args, "session_id", None)
+    history_file = None
+    existing_history = []
+    if session_id:
+        clean_sid = re.sub(r'[^a-zA-Z0-9_-]', '_', session_id)
+        sessions_dir = Path(WORKSPACE_DIR) / ".dsh" / "sessions"
+        try:
+            sessions_dir.mkdir(parents=True, exist_ok=True)
+            history_file = sessions_dir / f"{clean_sid}.json"
+            if history_file.exists():
+                with open(history_file, "r", encoding="utf-8") as f:
+                    loaded = json.load(f)
+                    if isinstance(loaded, list):
+                        existing_history = loaded
+        except Exception:
+            pass
+
+    now_dt = datetime.now()
+    weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
+    now_str = f"{now_dt.strftime('%Y年%m月%d日 %H:%M:%S')} {weekdays[now_dt.weekday()]} (Asia/Shanghai)"
+
+    system_prompt = (
+        "You are DeepSeek Harness (dsh), an autonomous intelligence agent running directly inside the user's isolated Linux sandbox container.\n\n"
+        "【Environment Context】:\n"
+        "- Container: Standard Linux Sandbox\n"
+        "- User: sandbox (UID: 1001, non-root, immutable core system)\n"
+        "- Mode: personal (Work-related enterprise workflows are strictly isolated)\n"
+        f"- Workspace: {WORKSPACE_DIR} (read-write)\n"
+        f"- Knowledge Space: {KNOWLEDGE_DIR} (read-only personal knowledge)\n"
+        f"- Skills & Templates: {SKILL_DIR} (read-only certified design systems & slide engines)\n\n"
+        "【Available Tools in Sandbox】:\n"
+        "You have direct access to execute the following tools within the sandbox when you need fresh data, computation, or verification:\n"
+        "1. `weather`: Query real-time weather and 3-day forecast for any city.\n"
+        "   Call format: <tool_call>{\"name\": \"weather\", \"arguments\": {\"city\": \"城市名\"}}</tool_call>\n"
+        "2. `web_search`: Search the live web for up-to-date information, news, trending topics (powered by modsearch).\n"
+        "   Call format: <tool_call>{\"name\": \"web_search\", \"arguments\": {\"query\": \"搜索关键词\"}}</tool_call>\n"
+        "3. `bash`: Execute shell commands inside Linux sandbox /workspace (e.g. curl, python3, jq, cat, ls, find, sed, awk).\n"
+        "   Call format: <tool_call>{\"name\": \"bash\", \"arguments\": {\"cmd\": \"shell命令\"}}</tool_call> or ```bash\n命令\n```\n"
+        "4. `scan_knowledge`: Scan the user's personal knowledge base (/knowledge) for reference materials.\n"
+        "   Call format: <tool_call>{\"name\": \"scan_knowledge\", \"arguments\": {}}</tool_call>\n"
+        "5. `read_skill`: Read professional design, PPT presentation, and frontend templates/guidelines (/opt/dsh/skills).\n"
+        "   Available skills: `guizang-ppt` (magazine-style HTML slides with WebGL/dark background), `html-ppt` (deck studio with 15 decks & themes), `frontend-design`, `dashboard`, `saas-landing`, `web-prototype`, `taste-skill`, `pptx`, `slides`.\n"
+        "   Call format: <tool_call>{\"name\": \"read_skill\", \"arguments\": {\"skill_name\": \"guizang-ppt\"}}</tool_call>\n\n"
+        "【Autonomous Problem Solving & Design Instructions】:\n"
+        "1. Deliverable Creation: When asked to create PPT, slides, dashboard, landing page, UI, or code, DO NOT invoke search or shell tools unless live external facts are specifically requested. Use the loaded design rules and DIRECTLY write the full working code!\n"
+        "2. Real-time Accuracy: When asked for live news, real-time weather, or today's trends, refer to [Current System Timestamp] and autonomously invoke `weather` or `web_search`.\n"
+        "3. Tool Call Protocol: When invoking a tool, output strictly: <tool_call>{\"name\": \"...\", \"arguments\": {...}}</tool_call>. DO NOT output conversational filler before calling the tool. Output ONLY the tool call.\n"
+        "4. Design & PPT Output: Generate complete, single-file HTML/CSS/JS (inside ```html ``` code block) ready to open in any browser. Explain the structure and how to view it.\n"
+        "5. Final Output: Output clean, beautifully structured, accurate Chinese Markdown. Never leave raw XML or tool_call tags in the final answer."
+    )
+
+    user_parts = [f"[User Request]:\n{prompt}"]
+    if knowledge_context:
+        user_parts.append(f"[Mounted Personal Knowledge Base]:\n{knowledge_context}")
+    if skill_context:
+        user_parts.append(
+            f"[Loaded Design Skill & Style Guide]:\n{skill_context[:3500]}\n\n"
+            "【注意】：当前设计规范已为你成功加载就绪，你无需再调用任何工具。请直接根据以上规范生成高质量、美观单文件 HTML 幻灯片代码（保存在 ```html ``` 代码块中）。"
+        )
+    if search_context:
+        user_parts.append(f"[Live Retrieved Information]:\n{search_context}")
+    elif is_search_intent:
+        user_parts.append("[Search Status]: 初步检索未获得足够数据。请主动调用工具（如 weather, web_search, 或 bash 执行终端命令）自主获取最新数据解答用户。")
+    # 注意：根据 Prompt Caching (KV Cache) 前缀匹配原理，动态系统时间必须置于当前轮次提示词的末尾，确保前缀全局命中缓存！
+    user_parts.append(f"---\n[Current System Timestamp]: {now_str}")
+    current_turn_text = "\n\n".join(user_parts)
+    messages = [{"role": "system", "content": system_prompt}]
+
+    # 注入该会话的历史对话记录（最多取最近 10 条）
+    for h in existing_history[-10:]:
+        role = h.get("role")
+        content = h.get("content")
+        if role in ["user", "assistant"] and content:
+            messages.append({"role": role, "content": content})
+
+    messages.append({"role": "user", "content": current_turn_text})
+
+    try:
+        reply = call_model_proxy(messages, args.model or "deepseek-chat")
+
+        # 智能自主 ReAct 工具调用循环 (设计任务最多 1 轮以确保快速产出，普通任务最多 3 轮)
+        max_rounds = 1 if (is_ppt_intent or is_design_intent) else 3
+        for round_idx in range(max_rounds):
+            tool_calls = parse_tool_calls(reply)
+            if not tool_calls:
+                break
+
+            t = tool_calls[0]
+            t_name = t["name"]
+            t_params = t["params"]
+            param_preview = (
+                t_params.get("__search_query") or
+                t_params.get("query") or
+                t_params.get("cmd") or
+                str(t_params)
+            )
+
+            clean_param = re.sub(r'\s+', ' ', param_preview).strip()
+            if len(clean_param) > 80:
+                clean_param = clean_param[:80] + "..."
+            print(f"⚡ [Harness Tool Call] 正在调用工具: {t_name}({clean_param})...")
+            tool_res = execute_tool(t_name, t_params)
+            print("✓ 工具执行完成，正在分析并综合归纳...")
+
+            messages.append({"role": "assistant", "content": reply})
+            next_tip = "请继续推进并输出最终成果（制作PPT/网页请提供完整HTML代码）。"
+            if (is_ppt_intent or is_design_intent) and round_idx >= 1:
+                next_tip = "参考材料已完备。请立刻根据设计规范生成完整可运行的 HTML 代码（置于 ```html 代码块中）并详细说明。"
+            messages.append({
+                "role": "user",
+                "content": f"[Tool Execution Result - {t_name}]:\n{tool_res}\n\n{next_tip}"
+            })
+
+            reply = call_model_proxy(messages, args.model or "deepseek-chat")
+
+        final_text = clean_output(reply)
+        # 如果模型经过多轮后仍只输出工具调用或内容为空，强制请求输出最终成果
+        if not final_text or parse_tool_calls(final_text):
+            messages.append({"role": "assistant", "content": reply})
+            messages.append({
+                "role": "user",
+                "content": "请根据以上已获取到的所有信息，直接给出条理清晰、格式美观的最终中文回答（若任务为生成代码或PPT，请输出完整可运行的成果，严禁输出未闭合或未执行的工具标签）。"
+            })
+            try:
+                forced_reply = call_model_proxy(messages, args.model or "deepseek-chat")
+                final_text = clean_output(forced_reply) or forced_reply.strip()
+            except Exception:
+                pass
+
+        if not final_text:
+            final_text = "已为您完成沙箱智能检索与数据分析，未获取到更多额外内容。"
+
+        # 自动将输出中的完整 HTML 导出至工作区
+        if "```html" in final_text:
+            if final_text.count("<!DOCTYPE html") > 1:
+                idx = max(final_text.rfind("```html\n<!DOCTYPE html"), final_text.rfind("```html\r\n<!DOCTYPE html"))
+                if idx > 0:
+                    pfx = final_text[:final_text.find("```html")].strip()
+                    final_text = (pfx + "\n\n" if pfx else "") + final_text[idx:]
+            m_full = re.findall(r'```html\s*\n(<!DOCTYPE html[\s\S]*?</html>)\s*```', final_text, re.I)
+            if not m_full:
+                m_full = re.findall(r'```html\s*\n(<!DOCTYPE html[\s\S]*?)```', final_text, re.I)
+            best_html = m_full[-1].strip() if m_full else None
+            if best_html:
+                out_name = "presentation.html" if is_ppt_intent else "index.html"
+                out_path = Path(WORKSPACE_DIR) / out_name
+                try:
+                    with open(out_path, "w", encoding="utf-8") as f:
+                        f.write(best_html)
+                    print(f"✨ [Harness Export] 已将生成的作品完整写入工作区: {out_path}")
+                    if is_ppt_intent and not final_text.startswith("✨"):
+                        banner = (
+                            "✨ **演示文稿已生成完毕！**\n"
+                            f"- **输出文件**：`/workspace/{out_name}`\n"
+                            "- **操作提示**：您可以在下方直接**交互预览**、**全屏播放**（支持键盘 ← → / 空格翻页、ESC 查看大纲），或点击**下载**保存本地播放。\n\n"
+                        )
+                        final_text = banner + final_text
+                except Exception:
+                    pass
+
+        # 持久化当前轮次到会话历史文件
+        if history_file:
+            try:
+                existing_history.append({"role": "user", "content": prompt})
+                existing_history.append({"role": "assistant", "content": final_text})
+                with open(history_file, "w", encoding="utf-8") as f:
+                    json.dump(existing_history[-20:], f, ensure_ascii=False, indent=2)
+            except Exception:
+                pass
+
+        print("\n<<<DSH_FINAL_OUTPUT>>>\n" + final_text)
+
+    except urllib.error.HTTPError as e:
+        err_msg = e.read().decode("utf-8", errors="ignore")
+        try:
+            err_json = json.loads(err_msg)
+            err_detail = err_json.get("message", err_msg)
+        except Exception:
+            err_detail = err_msg
+        msg = f"\n❌ [DeepSeek Harness 异常]: 大模型代理调用失败 ({e.code}): {err_detail}"
+        print(msg)
+        sys.exit(1)
+    except Exception as e:
+        msg = f"\n❌ [DeepSeek Harness 异常]: 执行异常: {e}"
+        print(msg)
+        sys.exit(1)
+
+def cmd_exec(args):
+    cmd = " ".join(args.cmd) if isinstance(args.cmd, list) else str(args.cmd)
+    if not cmd.strip():
+        print("Error: command is required.", file=sys.stderr)
+        sys.exit(1)
+
+    print_banner()
+    print(f"🚀 Executing shell command in {WORKSPACE_DIR}: {cmd}")
+    proc = subprocess.run(cmd, shell=True, cwd=WORKSPACE_DIR, text=True, capture_output=False)
+    sys.exit(proc.returncode)
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="dsh",
+        description="DeepSeek Harness (dsh) - Standardized Personal User Sandbox CLI"
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Harness commands")
+
+    parser_ver = subparsers.add_parser("version", help="Show harness version info")
+    parser_ver.set_defaults(func=cmd_version)
+
+    parser_info = subparsers.add_parser("info", help="Show sandbox status and runtime bindings")
+    parser_info.set_defaults(func=cmd_info)
+
+    parser_plugins = subparsers.add_parser("plugins", help="List certified system plugins")
+    parser_plugins.set_defaults(func=cmd_plugins)
+
+    parser_skills = subparsers.add_parser("skills", help="List certified design and PPT skills")
+    parser_skills.set_defaults(func=cmd_skills)
+
+    parser_run = subparsers.add_parser("run", help="Run DeepSeek Harness on a prompt or task")
+    parser_run.add_argument("query", nargs="+", help="Prompt or task for DeepSeek Harness")
+    parser_run.add_argument("--web-search", "-s", action="store_true", help="Enable internet search retrieval")
+    parser_run.add_argument("--model", "-m", default="deepseek-chat", help="Model name (default: deepseek-chat)")
+    parser_run.add_argument("--session-id", default=None, help="Session identifier for multi-turn context")
+    parser_run.set_defaults(func=cmd_run)
+
+    parser_exec = subparsers.add_parser("exec", help="Execute shell command inside workspace")
+    parser_exec.add_argument("cmd", nargs="+", help="Shell command to run")
+    parser_exec.set_defaults(func=cmd_exec)
+
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(0)
+
+    args = parser.parse_args()
+    if hasattr(args, "func"):
+        args.func(args)
+    else:
+        parser.print_help()
+
+if __name__ == "__main__":
+    main()

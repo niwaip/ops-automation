@@ -79,7 +79,7 @@ export function TodoCard({
   const renderSourceTag = (sourceType: string) => {
     switch (sourceType) {
       case "chat":
-        return <Tag color="cyan">AI 对话</Tag>;
+        return <Tag color="cyan">智能协同</Tag>;
       case "email":
         return <Tag color="gold">邮件</Tag>;
       case "schedule":

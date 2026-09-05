@@ -121,7 +121,7 @@ export default function UserEmailSettingsPage() {
           </div>
         </Space>
         <Paragraph type="secondary" style={{ margin: '4px 0 0 42px', fontSize: 13 }}>
-          在此管理你的个人邮箱集成。系统每小时整点自动同步未读邮件入 GTD 收件箱，同时支持在 AI 对话中自然语言查发信。
+          在此管理你的个人邮箱集成。系统每小时整点自动同步未读邮件入 GTD 收件箱，同时支持在智能协同中自然语言查发信。
         </Paragraph>
       </div>
 
