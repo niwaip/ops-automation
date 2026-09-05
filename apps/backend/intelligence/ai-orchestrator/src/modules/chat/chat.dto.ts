@@ -11,6 +11,8 @@ export interface ChatUploadedFileDTO {
   workspaceNodeId?: string;
   workspaceId?: string;
   storagePath?: string;
+  filePath?: string;
+  extractedText?: string;
 }
 
 export interface ChatRequestDTO {

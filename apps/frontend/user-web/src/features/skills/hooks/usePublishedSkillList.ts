@@ -27,6 +27,9 @@ export const usePublishedSkillList = () => {
     unauthorized: false,
   });
 
+  const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+
   const catalogQuery = useQuery<{ skills: PublishedSkillCatalogItem[] }>(
     PUBLISHED_SKILL_CATALOG_QUERY_KEY,
     () => skillApi.listCatalog(),
@@ -106,6 +109,67 @@ export const usePublishedSkillList = () => {
     [schedulesQuery.data]
   );
 
+  const scheduledSkillsCount = useMemo(() => {
+    return skills.filter((skill) => {
+      const sList = schedulesBySkillId.get(skill.id) || [];
+      return sList.some((s) => s.isActive);
+    }).length;
+  }, [skills, schedulesBySkillId]);
+
+  const filterSkill = useCallback(
+    (skill: PublishedSkillCatalogItem) => {
+      if (searchText.trim()) {
+        const q = searchText.trim().toLowerCase();
+        const nameMatch = skill.name?.toLowerCase().includes(q);
+        const descMatch = skill.description?.toLowerCase().includes(q);
+        const keywordMatch = skill.triggerKeywords?.some((k) => k.toLowerCase().includes(q));
+        const toolMatch = skill.tools?.some((t) => t.toLowerCase().includes(q));
+        if (!nameMatch && !descMatch && !keywordMatch && !toolMatch) {
+          return false;
+        }
+      }
+
+      if (statusFilter && statusFilter !== 'all') {
+        if (statusFilter === 'authorized' && skill.accessStatus !== 'authorized') return false;
+        if (statusFilter === 'requested' && skill.accessStatus !== 'requested') return false;
+        if (statusFilter === 'rejected' && skill.accessRequest?.status !== 'rejected') return false;
+        if (statusFilter === 'available') {
+          if (
+            skill.accessStatus === 'authorized' ||
+            skill.accessStatus === 'requested' ||
+            skill.accessRequest?.status === 'rejected'
+          ) {
+            return false;
+          }
+        }
+        if (statusFilter === 'scheduled') {
+          const skillSchedules = schedulesBySkillId.get(skill.id) || [];
+          if (!skillSchedules.some((s) => s.isActive)) return false;
+        }
+      }
+
+      return true;
+    },
+    [schedulesBySkillId, searchText, statusFilter]
+  );
+
+  const filteredAuthorizedSkills = useMemo(
+    () => authorizedSkills.filter(filterSkill),
+    [authorizedSkills, filterSkill]
+  );
+
+  const filteredUnauthorizedSkills = useMemo(
+    () => orderedUnauthorizedSkills.filter(filterSkill),
+    [orderedUnauthorizedSkills, filterSkill]
+  );
+
+  const hasActiveFilters = Boolean(searchText.trim() || (statusFilter && statusFilter !== 'all'));
+
+  const clearAllFilters = useCallback(() => {
+    setSearchText('');
+    setStatusFilter(undefined);
+  }, []);
+
   const openRequestModal = useCallback((skill: PublishedSkillCatalogItem) => {
     setRequestTarget(skill);
     setRequestReason(skill.accessRequest?.reason || '');
@@ -150,8 +214,20 @@ export const usePublishedSkillList = () => {
     [navigate, openRequestModal]
   );
 
+  const handleChatCollaborate = useCallback(
+    (skill: PublishedSkillCatalogItem) => {
+      navigate('/chat', {
+        state: {
+          initialPrompt: `你好，我想请你作为【${skill.name}】协助我完成相关任务。`,
+        },
+      });
+    },
+    [navigate]
+  );
+
   return {
-    authorizedSkills,
+    authorizedSkills: filteredAuthorizedSkills,
+    allAuthorizedSkillsCount: authorizedSkills.length,
     collapsedSections,
     closeRequestModal,
     counts: {
@@ -161,17 +237,27 @@ export const usePublishedSkillList = () => {
       requested: requestedSkills.length,
       total: skills.length,
       unauthorized: unauthorizedSkills.length,
+      scheduled: scheduledSkillsCount,
     },
     handleSkillPrimaryAction,
+    handleChatCollaborate,
+    hasActiveFilters,
+    clearAllFilters,
     isInitialLoading: catalogQuery.isLoading && skills.length === 0,
-    orderedUnauthorizedSkills,
+    orderedUnauthorizedSkills: filteredUnauthorizedSkills,
+    allUnauthorizedSkillsCount: orderedUnauthorizedSkills.length,
     recentlyRequestedSkillId,
     requestAccessMutation,
     requestReason,
     requestTarget,
     schedulesBySkillId,
+    searchText,
+    setSearchText,
     setRequestReason,
+    statusFilter,
+    setStatusFilter,
     submitRequest,
     toggleSection,
+    totalVisibleCount: filteredAuthorizedSkills.length + filteredUnauthorizedSkills.length,
   };
 };

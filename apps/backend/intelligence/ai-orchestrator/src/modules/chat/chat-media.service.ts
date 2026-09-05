@@ -20,15 +20,15 @@ export class ChatMediaService {
       mimeType: string;
       size: number;
       content: string;
+      filePath?: string;
+      extractedText?: string;
     }
   >();
 
   constructor(private readonly modelService: ModelService) {}
 
   /**
-   * Hydrate upload references from the server-side store. Client-provided
-   * content is never trusted; task execution receives the canonical bytes that
-   * were accepted by the upload endpoint.
+   * Hydrate upload references from the server-side store or workspace storage.
    */
   resolveUploadedFiles(files?: ChatUploadedFileDTO[]): ChatUploadedFileDTO[] {
     return (files || []).map((file) => {
@@ -42,15 +42,22 @@ export class ChatMediaService {
           mimeType: storedFile.mimeType,
           size: storedFile.size,
           content: storedFile.content,
+          filePath: storedFile.filePath,
+          extractedText: storedFile.extractedText,
         };
       }
 
       // 2. Check workspace file storage
       if (file.source === 'workspace' || file.workspaceNodeId || file.storagePath || file.fileId) {
         try {
-          const rootDir =
-            process.env.WORKSPACE_STORAGE_ROOT ||
-            '/workspace/data/storage/workspaces';
+          const candidateRoots = [
+            process.env.WORKSPACE_STORAGE_ROOT,
+            '/workspace/data/storage/workspaces',
+            path.join(process.cwd(), 'data/storage/workspaces'),
+            path.resolve(__dirname, '../../../../../../../data/storage/workspaces'),
+          ].filter(Boolean) as string[];
+
+          const rootDir = candidateRoots.find((dir) => fs.existsSync(dir)) || candidateRoots[0] || '/workspace/data/storage/workspaces';
           let fullPath = file.storagePath ? path.join(rootDir, file.storagePath) : '';
           if (!fullPath || !fs.existsSync(fullPath)) {
             const targetId = file.workspaceNodeId || file.fileId;
@@ -62,7 +69,11 @@ export class ChatMediaService {
                 if (entry.isDirectory()) {
                   const res = findFile(sub);
                   if (res) return res;
-                } else if (entry.name.includes(targetId)) {
+                } else if (
+                  entry.name.includes(targetId) &&
+                  !entry.name.endsWith('.digest.json') &&
+                  !entry.name.endsWith('.extracted.txt')
+                ) {
                   return sub;
                 }
               }
@@ -74,14 +85,37 @@ export class ChatMediaService {
 
           if (fullPath && fs.existsSync(fullPath)) {
             const buf = fs.readFileSync(fullPath);
-            return {
+            let extractedText: string | undefined;
+            const extractedPath = `${fullPath}.extracted.txt`;
+            if (fs.existsSync(extractedPath)) {
+              try {
+                extractedText = fs.readFileSync(extractedPath, 'utf-8');
+              } catch {
+                // ignore
+              }
+            }
+
+            const hydratedItem: ChatUploadedFileDTO = {
               ...file,
               fileId: file.fileId,
               fileName: file.fileName,
               mimeType: file.mimeType || 'application/octet-stream',
               size: file.size || buf.length,
               content: buf.toString('base64'),
+              filePath: fullPath,
+              extractedText,
             };
+
+            this.fileStore.set(file.fileId, {
+              fileName: file.fileName,
+              mimeType: hydratedItem.mimeType,
+              size: hydratedItem.size,
+              content: hydratedItem.content!,
+              filePath: fullPath,
+              extractedText,
+            });
+
+            return hydratedItem;
           }
         } catch (err: any) {
           this.logger.warn(`Failed to hydrate workspace file ${file.fileName}: ${err.message}`);
@@ -106,45 +140,88 @@ export class ChatMediaService {
       return message;
     }
 
+    const resolvedFiles = this.resolveUploadedFiles(files);
     const contentBlocks: ContentBlock[] = [{ type: 'text', text: message }];
 
-    for (const file of files) {
+    for (const file of resolvedFiles) {
       const storedFile = this.fileStore.get(file.fileId);
-      if (!storedFile?.content) {
+      const content = file.content || storedFile?.content;
+      const extractedText = file.extractedText || storedFile?.extractedText;
+      const mimeType = file.mimeType || storedFile?.mimeType || '';
+
+      // 1. 如果有预提取的全文（如 PDF / 文档提取），直接注入文本供大模型研读
+      if (extractedText && extractedText.trim()) {
         contentBlocks.push({
           type: 'text',
-          text: `\n【文件: ${file.fileName}】\n(文件内容未找到，可能已过期)`,
+          text: `\n【文件: ${file.fileName}（文档文本提取内容）】\n${extractedText}`,
         });
         continue;
       }
 
-      const isImage = storedFile.mimeType.startsWith('image/');
+      if (!content) {
+        contentBlocks.push({
+          type: 'text',
+          text: `\n【文件: ${file.fileName}】\n(文件内容未找到)`,
+        });
+        continue;
+      }
+
+      // 2. 图片格式
+      const isImage = mimeType.startsWith('image/');
       if (isImage) {
         contentBlocks.push({
           type: 'image_url',
           image_url: {
-            url: `data:${storedFile.mimeType};base64,${storedFile.content}`,
+            url: `data:${mimeType};base64,${content}`,
             detail: 'auto',
           },
         });
         continue;
       }
 
+      // 3. 文本类文件解码
       try {
-        const decodedContent = Buffer.from(storedFile.content, 'base64').toString('utf-8');
-        contentBlocks.push({
-          type: 'text',
-          text: `\n【文件: ${storedFile.fileName}】\n${decodedContent}`,
-        });
+        const rawBuffer = Buffer.from(content, 'base64');
+        const isBinary = rawBuffer.slice(0, 512).includes(0);
+        if (!isBinary) {
+          const decodedContent = rawBuffer.toString('utf-8');
+          contentBlocks.push({
+            type: 'text',
+            text: `\n【文件: ${file.fileName}】\n${decodedContent}`,
+          });
+          continue;
+        }
       } catch {
-        contentBlocks.push({
-          type: 'text',
-          text: `\n【文件: ${storedFile.fileName} (${storedFile.mimeType}, ${storedFile.size}字节)】\n(二进制文件，无法直接显示内容)`,
-        });
+        // ignore
       }
+
+      // 4. 二进制文件
+      contentBlocks.push({
+        type: 'text',
+        text: `\n【文件: ${file.fileName} (${mimeType || '二进制文件'}, ${file.size}字节)】\n(二进制文档，已挂载至工作区)`,
+      });
     }
 
     return contentBlocks;
+  }
+
+  normalizeContentToText(content: string | ContentBlock[]): string {
+    if (typeof content === 'string') {
+      return content;
+    }
+
+    return content
+      .map((block) => {
+        if (block.type === 'text') {
+          return block.text || '';
+        }
+        if (block.type === 'image_url') {
+          return '[图片]';
+        }
+        return '';
+      })
+      .filter(Boolean)
+      .join('\n');
   }
 
   uploadChatFile(file: Express.Multer.File): ChatUploadFileResponseDTO {

@@ -33,6 +33,7 @@ import { ChatConversationService } from './chat-conversation.service';
 import { ChatMediaService } from './chat-media.service';
 import { ChatOrchestratorService } from './chat-orchestrator.service';
 import { parseChatSlashCommand } from './chat-slash-command.util';
+import { UserSandboxDispatcherService } from './user-sandbox-dispatcher.service';
 
 type SseEventPayload = {
   type: string;
@@ -49,7 +50,8 @@ export class ChatController {
     private readonly chatConversationService: ChatConversationService,
     private readonly chatMediaService: ChatMediaService,
     private readonly chatOrchestratorService: ChatOrchestratorService,
-    private readonly chatFeedbackService: ChatFeedbackService
+    private readonly chatFeedbackService: ChatFeedbackService,
+    private readonly userSandboxDispatcherService: UserSandboxDispatcherService
   ) {}
 
   private writeSse(res: Response, payload: Record<string, unknown>): void {
@@ -222,32 +224,67 @@ export class ChatController {
     }
 
     const mode: 'chat' | 'task' = parsed.mode;
+    const resolvedFiles = this.chatMediaService.resolveUploadedFiles(body.files);
     body = {
       ...body,
       message: parsed.message,
+      files: resolvedFiles,
       config: {
         ...body.config,
         mode,
       },
     };
 
+    const abortController = new AbortController();
+    req.on('close', () => {
+      if (!res.writableEnded) {
+        abortController.abort();
+      }
+    });
+
     try {
       if (mode === 'chat') {
         const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
           req.headers.authorization
         );
-        await this.chatConversationService.streamChat(
+        const userId = resolvedUser.userId || 'admin';
+
+        // 优先调度用户独立安全沙箱 (DeepSeek Harness) 执行
+        const handledBySandbox = await this.userSandboxDispatcherService.dispatchPersonalSandbox(
           body,
           (event) => {
-            emit(event as unknown as SseEventPayload);
+            if (!abortController.signal.aborted) {
+              emit(event as unknown as SseEventPayload);
+            }
           },
-          resolvedUser.userId
+          userId,
+          abortController.signal
         );
 
-        emit({
-          type: 'done',
-          content: 'Stream completed',
-        });
+        if (abortController.signal.aborted) {
+          res.end();
+          return;
+        }
+
+        if (!handledBySandbox) {
+          // 沙箱未就绪或出现异常时，优雅降级为模型直接流式交互
+          await this.chatConversationService.streamChat(
+            body,
+            (event) => {
+              if (!abortController.signal.aborted) {
+                emit(event as unknown as SseEventPayload);
+              }
+            },
+            resolvedUser.userId
+          );
+        }
+
+        if (!abortController.signal.aborted) {
+          emit({
+            type: 'done',
+            content: 'Stream completed',
+          });
+        }
         res.end();
         return;
       }
@@ -257,7 +294,7 @@ export class ChatController {
       );
       const taskBody: ChatRequestDTO = {
         ...body,
-        files: this.chatMediaService.resolveUploadedFiles(body.files),
+        files: body.files,
       };
       const taskModeContext = await this.chatOrchestratorService.buildTaskModeContext(
         taskBody,
@@ -314,6 +351,20 @@ export class ChatController {
       });
       res.end();
     }
+  }
+
+  @Post('chat/stop')
+  @ApiOperation({ summary: '显式停止正在执行的个人沙箱与会话任务' })
+  async stopChat(
+    @Body() body: { sessionId?: string },
+    @Req() req: Request
+  ): Promise<{ success: boolean; message: string }> {
+    const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
+      req.headers.authorization
+    );
+    const userId = resolvedUser.userId || 'admin';
+    await this.userSandboxDispatcherService.stopPersonalSandbox(userId);
+    return { success: true, message: 'Chat execution stopped successfully' };
   }
 
   @Post('chat')

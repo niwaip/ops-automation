@@ -23,9 +23,9 @@ const ExecutionListEmptyState: React.FC<ExecutionListEmptyStateProps> = ({
       <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={description}>
         <Space wrap size={12} style={{ justifyContent: 'center' }}>
           <Button type="primary" icon={<PlusOutlined />} onClick={onCreate}>
-            去新建执行
+            新建任务
           </Button>
-          <Button onClick={onViewPublishedSkills}>查看已发布技能</Button>
+          <Button onClick={onViewPublishedSkills}>查看数字员工</Button>
           {hasActiveFilters ? (
             <Button type="link" onClick={onClearFilters}>
               清空筛选条件

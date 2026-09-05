@@ -1,5 +1,6 @@
 import {
   AudioOutlined,
+  CloudSyncOutlined,
   FolderOpenOutlined,
   FolderOutlined,
   GlobalOutlined,
@@ -16,7 +17,7 @@ import type { TextAreaRef } from 'antd/es/input/TextArea';
 import type { AIModel, UploadedFileDescriptor } from '@ops/user-core';
 import { WorkspaceMentionDropdown } from './WorkspaceMentionDropdown';
 import { SlashCommandDropdown } from './SlashCommandDropdown';
-import type { SlashCommandDefinition } from '../lib/slashCommands';
+import { isWorkSlashCommand, type SlashCommandDefinition } from '../lib/slashCommands';
 import type { WorkspaceNode } from '../../../api/workspace';
 import { supportsNativeReasoning } from '@/shared/lib/aiModelReasoning';
 import { shouldSubmitChatComposerOnEnter } from '../lib/chatComposerKeyboard';
@@ -37,6 +38,7 @@ interface UserChatComposerProps {
   onDraftChange: (value: string) => void;
   onSend: (files?: UploadedFileDescriptor[], contentOverride?: string) => void;
   onStop?: () => void;
+  onRunInBackground?: () => void;
   onNewSession: () => void;
   chatMode: 'chat' | 'task';
   onChatModeChange: (mode: 'chat' | 'task') => void;
@@ -64,6 +66,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
     onDraftChange,
     onSend,
     onStop,
+    onRunInBackground,
     onNewSession,
     chatMode,
     onChatModeChange,
@@ -329,6 +332,13 @@ export function UserChatComposer(props: UserChatComposerProps) {
 
   const handleSelectSlashCommand = useCallback(
     (cmd: SlashCommandDefinition) => {
+      if (cmd.disabled || (chatMode === 'chat' && cmd.scope === 'work')) {
+        void antdMessage.warning(
+          cmd.disabledReason ||
+            '个人模式下不能调用工作能力。如需使用企业技能，请在左下方切换至「工作模式」。'
+        );
+        return;
+      }
       const text = draft;
       const textarea = inputRef.current?.resizableTextArea?.textArea;
       const cursorPos = textarea?.selectionStart ?? text.length;
@@ -345,7 +355,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
         textarea?.focus();
       }, 50);
     },
-    [draft, onDraftChange]
+    [chatMode, draft, onDraftChange]
   );
 
   const handleFileUpload = useCallback(async (file: File) => {
@@ -368,15 +378,21 @@ export function UserChatComposer(props: UserChatComposerProps) {
   }, []);
 
   const handleTriggerSend = useCallback(() => {
+    const trimmed = draft.trim();
+    if (chatMode === 'chat' && isWorkSlashCommand(trimmed)) {
+      void antdMessage.warning(
+        '个人模式下不能调用工作能力（如 /doc、/email、/extract 等）。如需使用企业技能，请切换到「工作模式」。'
+      );
+      return;
+    }
     const filesToSend = [...uploadedFiles];
     setUploadedFiles([]);
-    const trimmed = draft.trim();
-    if (workspaceSearchEnabled && trimmed && !trimmed.startsWith('/')) {
+    if (chatMode === 'task' && workspaceSearchEnabled && trimmed && !trimmed.startsWith('/')) {
       onSend(filesToSend, `/doc ${trimmed}`);
       return;
     }
     onSend(filesToSend);
-  }, [onSend, uploadedFiles, workspaceSearchEnabled, draft]);
+  }, [chatMode, draft, onSend, uploadedFiles, workspaceSearchEnabled]);
 
   return (
     <div className={styles['user-chat-input-container']} style={{ position: 'relative' }}>
@@ -393,6 +409,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
         open={slashOpen}
         searchQuery={slashQuery}
         selectedIndex={slashIndex}
+        chatMode={chatMode}
         onHoverIndex={setSlashIndex}
         onFilteredCommandsChange={setFilteredSlashCommands}
         onSelect={handleSelectSlashCommand}
@@ -559,10 +576,34 @@ export function UserChatComposer(props: UserChatComposerProps) {
             className={`${styles['user-chat-mode-switch']} ${styles[`mode-${chatMode}`] || ''}`}
             size="small"
             value={chatMode}
-            onChange={(value) => onChatModeChange(value as 'chat' | 'task')}
+            onChange={(value) => {
+              const nextMode = value as 'chat' | 'task';
+              if (nextMode === 'chat' && workspaceSearchEnabled) {
+                setWorkspaceSearchEnabled(false);
+              }
+              onChatModeChange(nextMode);
+            }}
             options={[
-              { label: '个人', value: 'chat', icon: <UserOutlined /> },
-              { label: '工作', value: 'task', icon: <RobotOutlined /> },
+              {
+                label: (
+                  <span>
+                    {chatMode === 'chat' && <span className={styles['user-chat-mode-dot']} />}
+                    个人
+                  </span>
+                ),
+                value: 'chat',
+                icon: <UserOutlined />,
+              },
+              {
+                label: (
+                  <span>
+                    {chatMode === 'task' && <span className={styles['user-chat-mode-dot']} />}
+                    工作
+                  </span>
+                ),
+                value: 'task',
+                icon: <RobotOutlined />,
+              },
             ]}
           />
           <div className={styles['user-chat-input-controls']}>
@@ -604,14 +645,17 @@ export function UserChatComposer(props: UserChatComposerProps) {
             </div>
             <div
               className={styles['user-chat-control-item']}
+              style={chatMode === 'chat' ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
               title={
-                workspaceSearchEnabled
-                  ? '工作空间知识检索：已开启（提问将自动探查并研读空间文档，点击关闭）'
-                  : '工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）'
+                chatMode === 'chat'
+                  ? '工作空间知识检索（/doc）为工作模式专属技能，个人模式下已禁用（个人沙箱已直接挂载 /knowledge）'
+                  : workspaceSearchEnabled
+                    ? '工作空间知识检索：已开启（提问将自动探查并研读空间文档，点击关闭）'
+                    : '工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）'
               }
             >
               <span className={styles['user-chat-control-label']}>
-                {workspaceSearchEnabled ? (
+                {workspaceSearchEnabled && chatMode === 'task' ? (
                   <FolderOpenOutlined style={{ marginRight: 4, color: '#6366f1' }} />
                 ) : (
                   <FolderOutlined style={{ marginRight: 4 }} />
@@ -620,7 +664,8 @@ export function UserChatComposer(props: UserChatComposerProps) {
               </span>
               <Switch
                 size="small"
-                checked={workspaceSearchEnabled}
+                disabled={disabled || isTranscribing || isUploadingFile || chatMode === 'chat'}
+                checked={chatMode === 'task' && workspaceSearchEnabled}
                 onChange={setWorkspaceSearchEnabled}
                 className={styles['user-chat-input-dot-switch']}
               />
@@ -695,8 +740,21 @@ export function UserChatComposer(props: UserChatComposerProps) {
                 icon={<PlusOutlined />}
               />
             </Tooltip>
+            {isStreaming && onRunInBackground ? (
+              <Tooltip title="将当前任务转入后台异步运行，无需等待；任务完成后将自动通知并同步至 GTD 收集箱">
+                <Button
+                  size="small"
+                  icon={<CloudSyncOutlined />}
+                  onClick={onRunInBackground}
+                  className={styles['user-chat-bg-task-btn']}
+                >
+                  后台运行
+                </Button>
+              </Tooltip>
+            ) : null}
             <Button
               type="primary"
+              danger={isStreaming}
               size="small"
               icon={isStreaming ? <StopOutlined /> : <SendOutlined />}
               onClick={() => {

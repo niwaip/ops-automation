@@ -134,7 +134,7 @@ const ExecutionCreatePage: React.FC = () => {
       <div style={{ marginBottom: 16 }}>
         <Space align="center">
           <Button size="small" icon={<ArrowLeftOutlined />} onClick={() => navigate('/executions')}>
-            返回执行列表
+            返回任务中心
           </Button>
         </Space>
       </div>

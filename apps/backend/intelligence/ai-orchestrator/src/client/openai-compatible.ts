@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { StringDecoder } from 'string_decoder';
 import { applyReasoningRequestAdapter } from './reasoning-request-adapter';
 import {
   ChatMessage,
@@ -213,42 +214,54 @@ export class OpenAICompatibleClient {
       let finalUsage: LLMUsage | undefined;
       const rateLimit = this.extractRateLimit(response.headers);
       const stream = response.data;
+      const decoder = new StringDecoder('utf-8');
+      let sseBuffer = '';
+
+      const processLine = (rawLine: string) => {
+        const trimmed = rawLine.trim();
+        if (!trimmed || trimmed.startsWith(':')) return;
+        if (!trimmed.startsWith('data:')) return;
+        const message = trimmed.replace(/^data:\s*/, '');
+        if (message === '[DONE]') return;
+        try {
+          const parsed = JSON.parse(message);
+
+          // Handle usage in stream
+          if (parsed.usage) {
+            finalUsage = parsed.usage;
+          }
+
+          const content = parsed.choices?.[0]?.delta?.content || '';
+          if (content) {
+            fullContent += content;
+            onChunk(content);
+          }
+        } catch {
+          // Incomplete or invalid JSON chunk
+        }
+      };
 
       stream.on('data', (chunk: Buffer) => {
-        const lines = chunk
-          .toString()
-          .split('\n')
-          .filter((line) => line.trim() !== '');
+        sseBuffer += decoder.write(chunk);
+        const lines = sseBuffer.split('\n');
+        sseBuffer = lines.pop() ?? '';
         for (const line of lines) {
-          const message = line.replace(/^data: /, '');
-          if (message === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(message);
-
-            // Handle usage in stream
-            if (parsed.usage) {
-              finalUsage = parsed.usage;
-            }
-
-            const content = parsed.choices?.[0]?.delta?.content || '';
-            if (content) {
-              fullContent += content;
-              onChunk(content);
-            }
-          } catch {
-            // Skip invalid JSON chunks
-          }
+          processLine(line);
         }
       });
 
       return new Promise((resolve, reject) => {
-        stream.on('end', () =>
+        stream.on('end', () => {
+          sseBuffer += decoder.end();
+          if (sseBuffer.trim()) {
+            processLine(sseBuffer);
+          }
           resolve({
             content: fullContent,
             usage: finalUsage,
             rateLimit,
-          })
-        );
+          });
+        });
         stream.on('error', reject);
       });
     } catch (error: unknown) {

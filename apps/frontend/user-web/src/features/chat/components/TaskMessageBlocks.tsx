@@ -360,7 +360,9 @@ export function TaskProgressBlock({ message }: TaskProgressBlockProps) {
     message.role !== 'assistant' ||
     message.metadata?.mode !== 'task' ||
     progressLogs.length === 0 ||
-    status !== 'running'
+    status !== 'running' ||
+    message.isStreaming === false ||
+    message.metadata?.executionStatus === 'cancelled'
   ) {
     return null;
   }
@@ -370,7 +372,12 @@ export function TaskProgressBlock({ message }: TaskProgressBlockProps) {
     return null;
   }
 
-  return <SharedTaskProgressCard currentProgressLog={currentProgress} isRunning />;
+  return (
+    <SharedTaskProgressCard
+      currentProgressLog={currentProgress}
+      isRunning={message.isStreaming === true && status === 'running'}
+    />
+  );
 }
 
 export const isTaskMessageWithStatus = (

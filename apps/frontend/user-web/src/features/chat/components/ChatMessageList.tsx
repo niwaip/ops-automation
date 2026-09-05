@@ -17,6 +17,13 @@ interface ChatMessageListProps {
   onToggleThought: (messageId: string) => void;
 }
 
+const ListHeader = () => <div style={{ height: 16 }} />;
+const ListFooter = () => <div style={{ height: 16 }} />;
+const virtuosoComponents = {
+  Header: ListHeader,
+  Footer: ListFooter,
+};
+
 export function ChatMessageList({
   actionLoadingByMessage,
   activeMessages,
@@ -29,18 +36,32 @@ export function ChatMessageList({
   onToggleThought,
 }: ChatMessageListProps) {
   const virtuosoRef = useRef<VirtuosoHandle | null>(null);
+  const initialIndexRef = useRef<number | null>(null);
+
+  if (initialIndexRef.current === null && activeMessages.length > 0) {
+    initialIndexRef.current = Math.max(0, activeMessages.length - 1);
+  }
 
   useEffect(() => {
     if (messagesEndRef) {
+      let rafId: number | null = null;
       messagesEndRef.current = {
         scrollIntoView: (options?: ScrollIntoViewOptions) => {
-          virtuosoRef.current?.scrollToIndex({
-            index: Math.max(0, activeMessages.length - 1),
-            align: 'end',
-            behavior: options?.behavior === 'smooth' ? 'smooth' : 'auto',
+          if (!activeMessages.length) return;
+          if (rafId) cancelAnimationFrame(rafId);
+          rafId = requestAnimationFrame(() => {
+            virtuosoRef.current?.scrollToIndex({
+              index: Math.max(0, activeMessages.length - 1),
+              align: 'end',
+              behavior: options?.behavior === 'smooth' ? 'smooth' : 'auto',
+            });
           });
         },
       } as unknown as HTMLDivElement;
+
+      return () => {
+        if (rafId) cancelAnimationFrame(rafId);
+      };
     }
   }, [activeMessages.length, messagesEndRef]);
 
@@ -72,9 +93,10 @@ export function ChatMessageList({
           ref={virtuosoRef}
           style={{ height: '100%', width: '100%' }}
           data={activeMessages}
-          followOutput="auto"
-          initialTopMostItemIndex={Math.max(0, activeMessages.length - 1)}
-          overscan={500}
+          computeItemKey={(index, message) => message.metadata?.clientMessageId || message.id || String(index)}
+          followOutput={(isAtBottom) => (isAtBottom ? 'auto' : false)}
+          initialTopMostItemIndex={initialIndexRef.current ?? undefined}
+          overscan={800}
           itemContent={(index, message) => {
             let userQuery: string | undefined;
             if (message.role === 'assistant') {
@@ -85,10 +107,11 @@ export function ChatMessageList({
                 }
               }
             }
+            const itemKey = message.metadata?.clientMessageId || message.id;
             return (
-              <div style={{ padding: '8px 24px' }}>
+              <div style={{ padding: '8px 24px', display: 'flow-root' }}>
                 <ChatMessageItem
-                  key={message.id}
+                  key={itemKey}
                   message={message}
                   userQuery={userQuery}
                   actionLoading={actionLoadingByMessage[message.id]}
@@ -101,14 +124,7 @@ export function ChatMessageList({
               </div>
             );
           }}
-          components={{
-            Header: () => <div style={{ height: 16 }} />,
-            Footer: () => (
-              <div style={{ height: 16 }}>
-                <div ref={messagesEndRef} />
-              </div>
-            ),
-          }}
+          components={virtuosoComponents}
         />
       )}
     </Card>

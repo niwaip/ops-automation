@@ -455,8 +455,8 @@ export function WorkspacePage() {
               <FolderOpenOutlined />
             </div>
             <div className={styles['workspace-brand-info']}>
-              <h2>文件空间</h2>
-              <p>企业共享与云协作盘</p>
+              <h2>资料空间</h2>
+              <p>企业知识库与协同资料盘</p>
             </div>
           </div>
 

@@ -126,6 +126,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     clearError,
     error,
     handleStopStreaming,
+    handleRunInBackground,
     isStreaming,
     runAssistantRequest,
   } = useChatStreaming({
@@ -267,9 +268,19 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     mergeSessionHistory(selectedSessionId, selectedSessionHistoryQuery.data, isStreaming);
   }, [isStreaming, mergeSessionHistory, selectedSessionHistoryQuery.data, selectedSessionId]);
 
+  const prevMessagesLengthRef = useRef(activeMessages.length);
+  const prevStreamingRef = useRef(isStreaming);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeMessages, isStreaming]);
+    const lengthChanged = activeMessages.length !== prevMessagesLengthRef.current;
+    const streamingStarted = isStreaming && !prevStreamingRef.current;
+    prevMessagesLengthRef.current = activeMessages.length;
+    prevStreamingRef.current = isStreaming;
+
+    if (lengthChanged || streamingStarted) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [activeMessages.length, isStreaming]);
 
   useEffect(() => {
     if (!activeMessages || activeMessages.length === 0) return;
@@ -467,6 +478,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             onDraftChange={setDraft}
             onSend={handleSendWithHistory}
             onStop={handleStopStreaming}
+            onRunInBackground={handleRunInBackground}
             onNewSession={handleCreateSession}
             chatMode={chatMode}
             onChatModeChange={setChatMode}

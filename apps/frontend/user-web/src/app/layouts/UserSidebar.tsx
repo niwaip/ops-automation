@@ -1,10 +1,10 @@
 import {
+  CarryOutOutlined,
   DashboardOutlined,
   FolderOutlined,
   MessageOutlined,
-  OrderedListOutlined,
   SettingOutlined,
-  ThunderboltOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { Layout, Menu } from 'antd';
 import type { MenuProps } from 'antd';
@@ -23,9 +23,7 @@ interface UserSidebarProps {
 }
 
 /**
- * 侧边栏：Logo + 折叠控制 + 导航菜单。
- *
- * 折叠状态来自 `preferencesStore`，点击菜单项时关闭 chat widget 并跳转。
+ * 侧边栏：一级导航（工作台 / 智能协同 / 任务中心 / 数字员工 / 资料空间 / 系统设置 等）。
  */
 export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
   const navigate = useNavigate();
@@ -36,18 +34,18 @@ export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
 
   const primaryMenuItems = [
     { key: '/dashboard', icon: <DashboardOutlined />, label: t('menu.dashboard', '工作台') },
-    { key: '/chat', icon: <MessageOutlined />, label: t('menu.chat', 'AI 对话') },
-    { key: '/executions', icon: <OrderedListOutlined />, label: t('menu.executions', '执行列表') },
+    { key: '/chat', icon: <MessageOutlined />, label: t('menu.chat', '智能协同') },
+    { key: '/executions', icon: <CarryOutOutlined />, label: t('menu.executions', '任务中心') },
     {
       key: '/published-skills',
-      icon: <ThunderboltOutlined />,
-      label: t('menu.published_skills', '已发布技能'),
+      icon: <TeamOutlined />,
+      label: t('menu.published_skills', '数字员工'),
     },
-    { key: '/workspaces', icon: <FolderOutlined />, label: t('menu.workspaces', '文件空间') },
+    { key: '/workspaces', icon: <FolderOutlined />, label: t('menu.workspaces', '资料空间') },
   ] satisfies Required<MenuProps>['items'];
 
   const bottomMenuItems = [
-    { key: '/settings', icon: <SettingOutlined />, label: t('menu.settings', '设置') },
+    { key: '/settings', icon: <SettingOutlined />, label: t('menu.settings', '系统设置') },
   ] satisfies Required<MenuProps>['items'];
 
   return (

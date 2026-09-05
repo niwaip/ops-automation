@@ -2,6 +2,7 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { normalizeTabSeparatedTable } from '../lib/tableNormalizer';
+import { HtmlPreviewBlock } from './HtmlPreviewBlock';
 
 interface MessageContentRendererProps {
   content: string;
@@ -29,6 +30,19 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
         components={{
           code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'> & { className?: string }) => {
             const match = /language-(\w+)/.exec(className || '');
+            const codeText = String(children || '');
+            if (
+              match &&
+              match[1] === 'html' &&
+              (codeText.includes('<!DOCTYPE html') ||
+                codeText.includes('<html') ||
+                codeText.includes('class="slide') ||
+                codeText.includes('presentation') ||
+                codeText.includes('guizang'))
+            ) {
+              return <HtmlPreviewBlock code={codeText.trim()} className={className} />;
+            }
+
             return match ? (
               <pre className={`code-block language-${match[1]}`}>
                 <code {...props}>{children}</code>

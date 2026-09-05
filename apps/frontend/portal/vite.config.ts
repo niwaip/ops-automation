@@ -190,6 +190,16 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/api/user-sandboxes': {
+        target: getProxyTarget(
+          'ops-session-broker',
+          3002,
+          ['SESSION_BROKER_HOST'],
+          ['SESSION_BROKER_PORT']
+        ),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
       '/api/workers': {
         target: getProxyTarget(
           'ops-session-broker',

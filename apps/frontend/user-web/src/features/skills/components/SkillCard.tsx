@@ -1,51 +1,64 @@
 import {
+  CalendarOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
+  MessageOutlined,
   PlayCircleOutlined,
+  RobotOutlined,
   SendOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Space, Tag, Typography, theme } from 'antd';
+import { Button, Card, Tag, Tooltip, Typography, theme } from 'antd';
 import type { PublishedSkillCatalogItem } from '@/api/skill';
 import type { ScheduleDto } from '@/api/schedules';
-import { deploymentColor } from '@/features/skills/lib/publishedSkillList';
-import {
-  descriptionStyle,
-  skillCardStyle,
-  skillMetaRowStyle,
-  skillMetaSectionStyle,
-  skillMetaSectionTitleStyle,
-  skillMetaValueStyle,
-} from '@/features/skills/components/publishedSkillListStyles';
+import styles from './EmployeeManagement.module.css';
 import { formatLocalizedDateTime } from '@/shared/utils/dateText';
 import { summarizeCronExpression } from '@/shared/utils/scheduleText';
 
 interface SkillCardProps {
   authorized: boolean;
   onPrimaryAction: (skill: PublishedSkillCatalogItem, authorized: boolean) => void;
+  onChatCollaborate?: (skill: PublishedSkillCatalogItem) => void;
   recentlyRequested: boolean;
   schedules: ScheduleDto[];
   skill: PublishedSkillCatalogItem;
 }
 
+const getEmployeeAvatarBackground = (name: string) => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const gradients = [
+    'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+    'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+    'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+    'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+    'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+  ];
+  return gradients[Math.abs(hash) % gradients.length];
+};
+
 const getAccessStatusTag = (skill: PublishedSkillCatalogItem) => {
   if (skill.accessStatus === 'authorized') {
-    return <Tag color="success">已授权</Tag>;
+    return <Tag color="success" style={{ marginInlineEnd: 0 }}>在岗 (已授权)</Tag>;
   }
 
   if (skill.accessStatus === 'requested') {
-    return <Tag color="processing">申请中</Tag>;
+    return <Tag color="processing" style={{ marginInlineEnd: 0 }}>审批中</Tag>;
   }
 
   if (skill.accessRequest?.status === 'rejected') {
-    return <Tag color="error">已拒绝</Tag>;
+    return <Tag color="error" style={{ marginInlineEnd: 0 }}>未通过</Tag>;
   }
 
-  return <Tag>未授权</Tag>;
+  return <Tag style={{ marginInlineEnd: 0 }}>待开通</Tag>;
 };
 
 export function SkillCard({
   authorized,
   onPrimaryAction,
+  onChatCollaborate,
   recentlyRequested,
   schedules,
   skill,
@@ -58,172 +71,200 @@ export function SkillCard({
     skill.accessRequest?.processedAt || skill.accessRequest?.updatedAt,
     { fallback: null }
   );
-  const resolvedSkillMetaSectionStyle = {
-    ...skillMetaSectionStyle,
-    border: `1px solid ${token.colorBorderSecondary}`,
-    background: token.colorFillTertiary,
-  };
+
+  const statusDotClass =
+    skill.accessStatus === 'authorized'
+      ? styles['dot-authorized']
+      : skill.accessStatus === 'requested'
+        ? styles['dot-requested']
+        : skill.accessRequest?.status === 'rejected'
+          ? styles['dot-rejected']
+          : styles['dot-unauthorized'];
+
+  // Collect display capabilities (tools + keywords)
+  const capabilities = [
+    ...(skill.tools || []),
+    ...(skill.triggerKeywords || []),
+  ].slice(0, 4);
 
   return (
     <Card
+      className={styles['employee-card']}
       style={{
-        ...skillCardStyle,
         borderColor: recentlyRequested && skill.accessStatus === 'requested' ? token.colorInfoBorder : undefined,
-        background: recentlyRequested && skill.accessStatus === 'requested' ? token.colorInfoBg : undefined,
       }}
-      styles={{ body: { display: 'flex', flexDirection: 'column', gap: 16, height: '100%', flex: 1 } }}
+      styles={{
+        body: {
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '18px',
+          height: '100%',
+          flex: 1,
+        },
+      }}
     >
-      <Space direction="vertical" size={10} style={{ width: '100%', flex: 1 }}>
-        <Space style={{ width: '100%', justifyContent: 'space-between' }} align="start">
-          <Typography.Title
-            level={5}
-            ellipsis={{ tooltip: skill.name }}
-            style={{ margin: 0, flex: 1, minWidth: 0 }}
+      {/* Employee Identity Header */}
+      <div className={styles['employee-card-header']}>
+        <div className={styles['employee-avatar-wrapper']}>
+          <div
+            className={styles['employee-avatar']}
+            style={{ background: getEmployeeAvatarBackground(skill.name) }}
           >
-            {skill.name}
-          </Typography.Title>
-          {getAccessStatusTag(skill)}
-        </Space>
+            <RobotOutlined />
+          </div>
+          <span className={`${styles['employee-status-dot']} ${statusDotClass}`} />
+        </div>
 
-        {authorized ? (
-          <>
-            <div style={{ ...resolvedSkillMetaSectionStyle, flex: 1, minHeight: 110 }}>
-              <Typography.Text type="secondary" style={skillMetaSectionTitleStyle}>
-                说明
-              </Typography.Text>
-              <Typography.Paragraph
-                type="secondary"
-                ellipsis={{ rows: 3 }}
-                style={descriptionStyle}
-              >
-                {skill.description || '暂无说明'}
-              </Typography.Paragraph>
+        <div className={styles['employee-header-meta']}>
+          <div className={styles['employee-name-row']}>
+            <Typography.Title
+              level={5}
+              ellipsis={{ tooltip: skill.name }}
+              className={styles['employee-name']}
+              style={{ margin: 0, flex: 1, minWidth: 0 }}
+            >
+              {skill.name}
+            </Typography.Title>
+            {getAccessStatusTag(skill)}
+          </div>
+
+          <div className={styles['employee-tags-row']}>
+            {skill.publishedReleaseVersion && (
+              <span className={styles['employee-version-pill']}>
+                v{skill.publishedReleaseVersion}
+              </span>
+            )}
+            {skill.publishedSourceType && (
+              <Tag bordered={false} style={{ margin: 0, fontSize: 11, padding: '0 4px' }}>
+                {skill.publishedSourceType}
+              </Tag>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Description and Capabilities */}
+      <div className={styles['employee-card-content']}>
+        <Typography.Paragraph
+          type="secondary"
+          ellipsis={{ rows: 2, tooltip: skill.description }}
+          className={styles['employee-desc']}
+        >
+          {skill.description || '专注执行自动化业务流程与跨系统任务协同。'}
+        </Typography.Paragraph>
+
+        {capabilities.length > 0 && (
+          <div className={styles['employee-capabilities-box']}>
+            <div className={styles['employee-cap-tags']}>
+              {capabilities.map((cap, idx) => (
+                <span key={idx} className={styles['employee-cap-tag']}>
+                  {cap}
+                </span>
+              ))}
             </div>
-            <div style={{ ...resolvedSkillMetaSectionStyle, minHeight: 90 }}>
-              <Typography.Text type="secondary" style={skillMetaSectionTitleStyle}>
-                定期任务
-              </Typography.Text>
-              {schedules.length === 0 ? (
-                <Typography.Text type="secondary" style={skillMetaValueStyle}>
-                  当前没有关联的定期任务
-                </Typography.Text>
+          </div>
+        )}
+
+        {/* Schedule & Duty Section */}
+        {authorized && (
+          <div
+            className={`${styles['employee-duty-box']} ${
+              activeSchedules.length > 0 ? styles['is-active-schedule'] : ''
+            }`}
+          >
+            <div className={styles['employee-duty-header']}>
+              <span className={styles['employee-duty-title']}>
+                <CalendarOutlined style={{ color: activeSchedules.length > 0 ? '#10b981' : undefined }} />
+                勤务排班
+              </span>
+              {activeSchedules.length > 0 ? (
+                <Tag color="success" bordered={false} style={{ margin: 0, fontSize: 10 }}>
+                  {activeSchedules.length} 项排班运行中
+                </Tag>
               ) : (
-                <Space direction="vertical" size={6} style={{ width: '100%' }}>
-                  <div style={skillMetaRowStyle}>
-                    <Typography.Text type="secondary" style={skillMetaValueStyle}>
-                      共 {schedules.length} 个，启用中 {activeSchedules.length} 个
-                    </Typography.Text>
-                    {nextSchedule?.timezone ? <Tag bordered={false}>{nextSchedule.timezone}</Tag> : null}
-                  </div>
-                  {nextSchedule ? (
-                    <>
-                      <Typography.Text style={skillMetaValueStyle}>
-                        {summarizeCronExpression(nextSchedule.cronExpression, {
-                          workdaysLabel: '工作日',
-                        })}
-                      </Typography.Text>
-                      <Typography.Text type="secondary" style={skillMetaValueStyle}>
-                        {nextSchedule.isActive ? '下次执行' : '最近更新'}：
-                        {formatLocalizedDateTime(
-                          nextSchedule.isActive
-                            ? nextSchedule.nextRunAt
-                            : nextSchedule.updatedAt || nextSchedule.nextRunAt
-                        )}
-                      </Typography.Text>
-                    </>
-                  ) : null}
-                </Space>
+                <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>按需即时指派</span>
               )}
             </div>
-          </>
-        ) : (
-          <>
-            <Typography.Paragraph type="secondary" ellipsis={{ rows: 2 }} style={descriptionStyle}>
-              {skill.description || '暂无说明'}
-            </Typography.Paragraph>
-            <Space size={[8, 8]} wrap>
-              <Tag>{skill.publishedSourceType || 'published'}</Tag>
-              <Tag color={deploymentColor(skill.publishedDeploymentStatus)}>
-                {skill.publishedDeploymentStatus || 'unknown'}
-              </Tag>
-              {skill.publishedReleaseVersion ? <Tag color="blue">v{skill.publishedReleaseVersion}</Tag> : null}
-            </Space>
-          </>
+
+            {nextSchedule ? (
+              <>
+                <span className={styles['employee-duty-desc']}>
+                  {summarizeCronExpression(nextSchedule.cronExpression, { workdaysLabel: '工作日' })}
+                </span>
+                <span className={styles['employee-duty-next']}>
+                  {nextSchedule.isActive ? '下次执勤' : '最近更新'}：
+                  {formatLocalizedDateTime(
+                    nextSchedule.isActive
+                      ? nextSchedule.nextRunAt
+                      : nextSchedule.updatedAt || nextSchedule.nextRunAt
+                  )}
+                </span>
+              </>
+            ) : (
+              <span className={styles['employee-duty-next']}>当前无周期定时执勤，随时接受人工指派</span>
+            )}
+          </div>
         )}
-      </Space>
 
-      {skill.accessStatus === 'requested' ? (
-        <Card
-          size="small"
-          variant="borderless"
-          style={{ background: recentlyRequested ? token.colorInfoBg : token.colorFillQuaternary }}
-          styles={{ body: { padding: 12 } }}
-        >
-          <Space direction="vertical" size={4}>
-            {recentlyRequested ? (
-              <Tag color="blue" style={{ width: 'fit-content', marginInlineEnd: 0 }}>
-                刚刚提交
-              </Tag>
-            ) : null}
-            <Typography.Text>
-              <ClockCircleOutlined style={{ marginRight: 6 }} />
-              已提交授权申请，等待管理员处理
-            </Typography.Text>
-            {skill.accessRequest?.reason ? (
-              <Typography.Text type="secondary">申请原因：{skill.accessRequest.reason}</Typography.Text>
-            ) : null}
-            {requestCreatedAt ? (
-              <Typography.Text type="secondary">提交时间：{requestCreatedAt}</Typography.Text>
-            ) : null}
-          </Space>
-        </Card>
-      ) : null}
+        {/* Request Alerts */}
+        {skill.accessStatus === 'requested' && (
+          <div className={`${styles['employee-request-alert']} ${styles['alert-pending']}`}>
+            <span style={{ fontWeight: 600 }}>
+              <ClockCircleOutlined style={{ marginRight: 5 }} />
+              开通申请审核中
+            </span>
+            {skill.accessRequest?.reason && (
+              <span>申请理由：{skill.accessRequest.reason}</span>
+            )}
+            {requestCreatedAt && <span>提交时间：{requestCreatedAt}</span>}
+          </div>
+        )}
 
-      {skill.accessStatus === 'unauthorized' && skill.accessRequest?.status === 'rejected' ? (
-        <Card
-          size="small"
-          variant="borderless"
-          style={{ background: token.colorErrorBg }}
-          styles={{ body: { padding: 12 } }}
-        >
-          <Space direction="vertical" size={4}>
-            <Typography.Text>
-              <CloseCircleOutlined style={{ marginRight: 6 }} />
-              最近一次授权申请未通过
-            </Typography.Text>
-            {skill.accessRequest?.reason ? (
-              <Typography.Text type="secondary">申请原因：{skill.accessRequest.reason}</Typography.Text>
-            ) : null}
-            {skill.accessRequest?.responseNote ? (
-              <Typography.Text type="secondary">
-                管理员备注：{skill.accessRequest.responseNote}
-              </Typography.Text>
-            ) : null}
-            {requestProcessedAt ? (
-              <Typography.Text type="secondary">处理时间：{requestProcessedAt}</Typography.Text>
-            ) : null}
-          </Space>
-        </Card>
-      ) : null}
+        {skill.accessStatus === 'unauthorized' && skill.accessRequest?.status === 'rejected' && (
+          <div className={`${styles['employee-request-alert']} ${styles['alert-rejected']}`}>
+            <span style={{ fontWeight: 600 }}>
+              <CloseCircleOutlined style={{ marginRight: 5 }} />
+              上次开通申请未通过
+            </span>
+            {skill.accessRequest?.responseNote && (
+              <span>管理员备注：{skill.accessRequest.responseNote}</span>
+            )}
+            {requestProcessedAt && <span>处理时间：{requestProcessedAt}</span>}
+          </div>
+        )}
+      </div>
 
-      <Space direction="vertical" size={8} style={{ marginTop: 'auto', width: '100%' }}>
+      {/* Action Footer */}
+      <div className={styles['employee-card-footer']}>
         <Button
-          block
           type={authorized ? 'primary' : skill.accessStatus === 'requested' ? 'default' : 'primary'}
           ghost={!authorized && skill.accessStatus !== 'requested'}
           icon={authorized ? <PlayCircleOutlined /> : <SendOutlined />}
           disabled={!authorized && skill.accessStatus === 'requested'}
           onClick={() => onPrimaryAction(skill, authorized)}
+          className={styles['employee-primary-action-btn']}
         >
           {authorized
-            ? '确认配置'
+            ? '指派任务'
             : skill.accessStatus === 'requested'
-              ? '已提交申请'
+              ? '审批中'
               : skill.accessRequest?.status === 'rejected'
                 ? '重新申请'
-                : '申请授权'}
+                : '申请开通'}
         </Button>
-      </Space>
+
+        {authorized && onChatCollaborate && (
+          <Tooltip title="进入智能协同，与该数字员工开展人机协同问答与任务委派">
+            <Button
+              icon={<MessageOutlined />}
+              onClick={() => onChatCollaborate(skill)}
+              className={styles['employee-secondary-action-btn']}
+            >
+              协同
+            </Button>
+          </Tooltip>
+        )}
+      </div>
     </Card>
   );
 }

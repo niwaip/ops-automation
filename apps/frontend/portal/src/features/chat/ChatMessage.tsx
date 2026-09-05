@@ -450,7 +450,13 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const renderContent = () => {
     if (isUser) {
       if (hasRenderableContentParts) {
-        return <ContentPartsRenderer parts={message.contentParts} isStreaming={Boolean(isStreaming)} />;
+        return (
+          <ContentPartsRenderer
+            parts={message.contentParts}
+            isStreaming={Boolean(isStreaming)}
+            textMode="plain"
+          />
+        );
       }
       return <MessageContentRenderer content={answerWithoutTaskCheckbox} mode="plain" />;
     }
@@ -495,6 +501,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
           isStreaming={Boolean(isStreaming)}
           renderStructuredResult={!isTaskMode}
           renderDeeplink={!isTaskMode}
+          textMode="markdown"
         />
       );
     }

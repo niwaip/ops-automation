@@ -7,6 +7,7 @@ import { FreezeModule } from './modules/freeze/freeze.module';
 import { TemplateModule } from './modules/template/template.module';
 import { RuntimeSessionModule } from './modules/runtime-session/runtime-session.module';
 import { ExecutionModule as WorkerRoutingModule } from './modules/execution/execution.module';
+import { UserSandboxModule } from './modules/user-sandbox/user-sandbox.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ExecutionModule as WorkerRoutingModule } from './modules/execution/exec
     WorkerRoutingModule,
     SessionModule,
     RuntimeSessionModule,
+    UserSandboxModule,
   ],
 })
 export class AppModule {}

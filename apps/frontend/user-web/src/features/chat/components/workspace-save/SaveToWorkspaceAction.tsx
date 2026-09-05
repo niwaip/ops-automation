@@ -109,7 +109,7 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
               style={{ padding: 0, marginLeft: 8 }}
               onClick={() => navigate('/workspaces')}
             >
-              前往文件空间查看
+              前往资料空间查看
             </Button>
           </span>,
           5
@@ -124,7 +124,7 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
   // 已保存状态
   if (savedNodeId) {
     return (
-      <Tooltip title="已保存至个人空间（AI 后台提炼中，点击前往空间查看）">
+      <Tooltip title="已保存至个人空间（AI 后台提炼中，点击前往资料空间查看）">
         <Button
           type="text"
           size="small"
@@ -154,7 +154,7 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
 
   // 默认可点击状态：一键保存
   return (
-    <Tooltip title="一键保存到个人空间（LLM 自动提炼归档）">
+    <Tooltip title="一键保存到资料空间（AI 自动提炼归档）">
       <Button
         type="text"
         size="small"

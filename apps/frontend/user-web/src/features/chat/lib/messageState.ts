@@ -211,6 +211,12 @@ export const areMessagesEquivalent = (
     );
   }
 
+  const localClientMessageId = localMessage.metadata?.clientMessageId;
+  const remoteClientMessageId = remoteMessage.metadata?.clientMessageId;
+  if (localClientMessageId && remoteClientMessageId) {
+    return localClientMessageId === remoteClientMessageId;
+  }
+
   const localExecutionId = resolveMessageExecutionId(localMessage);
   const remoteExecutionId = resolveMessageExecutionId(remoteMessage);
 
@@ -251,10 +257,15 @@ export const areMessagesEquivalent = (
         .filter(Boolean);
     const localTaskTexts = taskComparableTexts(localMessage);
     const remoteTaskTexts = new Set(taskComparableTexts(remoteMessage));
-    if (localTaskTexts.some((text) => remoteTaskTexts.has(text))) {
+    if (localTaskTexts.length > 0 && remoteTaskTexts.size > 0) {
+      return localTaskTexts.some((text) => remoteTaskTexts.has(text));
+    }
+    if (localTaskTexts.length === 0 && remoteTaskTexts.size > 0) {
       return true;
     }
-    return false;
+    if (localTaskTexts.length > 0 && remoteTaskTexts.size === 0) {
+      return false;
+    }
   }
 
   const localText = normalizeComparableMessageText(localMessage.content);
@@ -334,7 +345,10 @@ export const mergeHistoryMessages = (
       content: preserveLocalContent ? current.content : message.content,
       contentParts: mergeContentParts(current.contentParts, message.contentParts),
       isStreaming: false,
-      metadata: mergeDefinedMetadata(current.metadata, message.metadata),
+      metadata: mergeDefinedMetadata(current.metadata, {
+        ...message.metadata,
+        clientMessageId: current.metadata?.clientMessageId || localMatch.id,
+      }),
     });
   });
 

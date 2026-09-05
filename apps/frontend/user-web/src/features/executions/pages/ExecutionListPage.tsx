@@ -218,7 +218,11 @@ const ExecutionListPage: React.FC = () => {
 
   return (
     <div className={styles['execution-list-page']}>
-      <ExecutionListSummaryStrip items={overviewItems} />
+      <ExecutionListSummaryStrip
+        items={overviewItems}
+        activeStatusFilter={statusFilter}
+        onSelectFilter={setStatusFilter}
+      />
 
       <Card className={styles['execution-list-card']} styles={{ body: { padding: 0 } }}>
         <ExecutionListToolbar {...toolbarProps} />
