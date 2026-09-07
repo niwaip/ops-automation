@@ -55,7 +55,7 @@ async function bootstrap() {
           sessionId: debugSessionId,
           runId: 'pre-fix',
           hypothesisId: 'B',
-          location: 'apps/backend/core/platform/src/main.ts',
+          location: 'apps/backend/platform/src/main.ts',
           msg: '[DEBUG] platform bootstrap failed before auth login became available',
           data: {
             errorName: error instanceof Error ? error.name : typeof error,

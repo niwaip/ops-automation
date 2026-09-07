@@ -34,6 +34,7 @@ import { ImChannelModule } from './modules/im-channel/im-channel.module';
 
     // JWT module configuration
     JwtModule.register({
+      global: true,
       secret: process.env.JWT_SECRET || 'jwt_secret_key_change_in_production',
       signOptions: {
         expiresIn: '15m', // Access token: 15 minutes

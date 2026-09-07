@@ -4,79 +4,79 @@ import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import {
   BridgeRecorderExportDTO,
-} from '../../../registry-release/release-manager/src/interfaces';
-import { CapabilityReleaseAssistService } from '../../../registry-release/release-manager/src/capability-release-assist.service';
-import { CapabilityReleaseSkillDraftService } from '../../../registry-release/release-manager/src/capability-release-skill-draft.service';
+} from '../../registry-release/release-manager/src/interfaces';
+import { CapabilityReleaseAssistService } from '../../registry-release/release-manager/src/capability-release-assist.service';
+import { CapabilityReleaseSkillDraftService } from '../../registry-release/release-manager/src/capability-release-skill-draft.service';
 import {
   BrowserRecordingFlowNormalizerService,
-} from '../../../registry-release/release-manager/src/compiler/browser-recording-flow-normalizer.service';
+} from '../../registry-release/release-manager/src/compiler/browser-recording-flow-normalizer.service';
 import {
   BrowserRecordingRuntimeLoopPlannerService,
-} from '../../../registry-release/release-manager/src/compiler/browser-recording-runtime-loop-planner.service';
+} from '../../registry-release/release-manager/src/compiler/browser-recording-runtime-loop-planner.service';
 import {
   BrowserRecordingRuntimePlannerService,
-} from '../../../registry-release/release-manager/src/compiler/browser-recording-runtime-planner.service';
+} from '../../registry-release/release-manager/src/compiler/browser-recording-runtime-planner.service';
 import {
   BrowserRecordingRuntimeStepBuilderService,
-} from '../../../registry-release/release-manager/src/compiler/browser-recording-runtime-step-builder.service';
-import { CapabilityReleaseBrowserRecordingService } from '../../../registry-release/release-manager/src/compiler/capability-release-browser-recording.service';
+} from '../../registry-release/release-manager/src/compiler/browser-recording-runtime-step-builder.service';
+import { CapabilityReleaseBrowserRecordingService } from '../../registry-release/release-manager/src/compiler/capability-release-browser-recording.service';
 import {
   CapabilityReleaseBuildValidationService,
-} from '../../../registry-release/release-manager/src/compiler/capability-release-build-validation.service';
+} from '../../registry-release/release-manager/src/compiler/capability-release-build-validation.service';
 import {
   CapabilityReleaseRecorderBridgeCompilerService,
-} from '../../../registry-release/release-manager/src/compiler/capability-release-recorder-bridge-compiler.service';
-import { CapabilityReleaseTemporalSchemaService } from '../../../registry-release/release-manager/src/compiler/capability-release-temporal-schema.service';
-import { BrowserRecordingActionPolicyService } from '../../../registry-release/release-manager/src/validator/browser-recording-action-policy.service';
+} from '../../registry-release/release-manager/src/compiler/capability-release-recorder-bridge-compiler.service';
+import { CapabilityReleaseTemporalSchemaService } from '../../registry-release/release-manager/src/compiler/capability-release-temporal-schema.service';
+import { BrowserRecordingActionPolicyService } from '../../registry-release/release-manager/src/validator/browser-recording-action-policy.service';
 import {
   CapabilityReleasePublishValidatorService,
-} from '../../../registry-release/release-manager/src/validator/capability-release-publish-validator.service';
-import { SchemaCompatibilityService } from '../../../registry-release/release-manager/src/validator/schema-compatibility.service';
-import { ContractLintService } from '../../../registry-release/release-manager/src/validator/contract-lint.service';
-import { CapabilityAttestationService } from '../../../registry-release/release-manager/src/attestation/capability-attestation.service';
-import { CapabilityFixtureService } from '../../../registry-release/release-manager/src/fixture/capability-fixture.service';
+} from '../../registry-release/release-manager/src/validator/capability-release-publish-validator.service';
+import { SchemaCompatibilityService } from '../../registry-release/release-manager/src/validator/schema-compatibility.service';
+import { ContractLintService } from '../../registry-release/release-manager/src/validator/contract-lint.service';
+import { CapabilityAttestationService } from '../../registry-release/release-manager/src/attestation/capability-attestation.service';
+import { CapabilityFixtureService } from '../../registry-release/release-manager/src/fixture/capability-fixture.service';
 import {
   CapabilityReleaseBrowserRuntimeExecutorService,
-} from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-executor.service';
+} from '../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-executor.service';
 import {
   CapabilityReleaseBrowserRuntimeLoopExecutorService,
-} from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-loop-executor.service';
+} from '../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-loop-executor.service';
 import {
   CapabilityReleaseBrowserRuntimeResultService,
-} from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-result.service';
+} from '../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-result.service';
 import {
   CapabilityReleaseBrowserRuntimeService,
-} from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime.service';
+} from '../../registry-release/release-manager/src/publisher/capability-release-browser-runtime.service';
 import {
   CapabilityReleaseBrowserRuntimeStepExecutorService,
-} from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-step-executor.service';
+} from '../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-step-executor.service';
 import {
   CapabilityReleaseBrowserRuntimeSupportService,
-} from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-support.service';
-import { BrowserPostStateReconcilerService } from '../../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-post-state-reconciler.service';
-import { BrowserRuntimeStepResultStateService } from '../../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-runtime-step-result-state.service';
-import { BrowserRunOutputMaterializerService } from '../../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-run-output-materializer.service';
-import { BrowserLegacyOutputAdapter } from '../../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-legacy-output.adapter';
+} from '../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-support.service';
+import { BrowserPostStateReconcilerService } from '../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-post-state-reconciler.service';
+import { BrowserRuntimeStepResultStateService } from '../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-runtime-step-result-state.service';
+import { BrowserRunOutputMaterializerService } from '../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-run-output-materializer.service';
+import { BrowserLegacyOutputAdapter } from '../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-legacy-output.adapter';
 import {
   CapabilityReleaseDeploymentSmokeService,
-} from '../../../registry-release/release-manager/src/publisher/capability-release-deployment-smoke.service';
+} from '../../registry-release/release-manager/src/publisher/capability-release-deployment-smoke.service';
 import {
   CapabilityReleaseDeploymentService,
-} from '../../../registry-release/release-manager/src/publisher/capability-release-deployment.service';
+} from '../../registry-release/release-manager/src/publisher/capability-release-deployment.service';
 import {
   CapabilityReleaseDocumentRuntimeService,
-} from '../../../registry-release/release-manager/src/publisher/capability-release-document-runtime.service';
+} from '../../registry-release/release-manager/src/publisher/capability-release-document-runtime.service';
 import {
   CapabilityReleasePublishService,
-} from '../../../registry-release/release-manager/src/publisher/capability-release-publish.service';
+} from '../../registry-release/release-manager/src/publisher/capability-release-publish.service';
 import {
   CapabilityReleasePublishWriterService,
-} from '../../../registry-release/release-manager/src/publisher/capability-release-publish-writer.service';
+} from '../../registry-release/release-manager/src/publisher/capability-release-publish-writer.service';
 import {
   CapabilityReleaseRuntimeService,
-} from '../../../registry-release/release-manager/src/publisher/capability-release-runtime.service';
-import { CapabilityReleaseSkillPublisherService } from '../../../registry-release/release-manager/src/publisher/capability-release-skill-publisher.service';
-import { ReleaseRuntimeBindingService } from '../../../registry-release/release-manager/src/publisher/release-runtime-binding.service';
+} from '../../registry-release/release-manager/src/publisher/capability-release-runtime.service';
+import { CapabilityReleaseSkillPublisherService } from '../../registry-release/release-manager/src/publisher/capability-release-skill-publisher.service';
+import { ReleaseRuntimeBindingService } from '../../registry-release/release-manager/src/publisher/release-runtime-binding.service';
 import {
   ReleaseAccessorBindingsService,
   ReleaseAccessorDepsService,
@@ -101,11 +101,11 @@ import {
   ReleaseRuntimeAccessorBindingsService,
   ReleaseSupportAccessorDepsService,
   ReleaseSupportService,
-} from '../../../registry-release/release-manager/src/release';
+} from '../../registry-release/release-manager/src/release';
 import {
   CapabilityReleaseManifestService,
   CapabilityReleaseService,
-} from '../../../registry-release/release-manager/src/release';
+} from '../../registry-release/release-manager/src/release';
 
 jest.mock('axios');
 

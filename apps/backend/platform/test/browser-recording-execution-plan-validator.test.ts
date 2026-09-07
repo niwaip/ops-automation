@@ -1,4 +1,4 @@
-import { BrowserRecordingExecutionPlanValidatorService } from '../../../registry-release/release-manager/src/validator/browser-recording-execution-plan-validator.service';
+import { BrowserRecordingExecutionPlanValidatorService } from '../../registry-release/release-manager/src/validator/browser-recording-execution-plan-validator.service';
 
 describe('BrowserRecordingExecutionPlanValidatorService', () => {
   it('drops empty legacy loopDraft during publish compatibility normalization', () => {

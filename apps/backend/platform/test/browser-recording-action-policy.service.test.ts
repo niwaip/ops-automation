@@ -1,4 +1,4 @@
-import { BrowserRecordingActionPolicyService } from '../../../registry-release/release-manager/src/validator/browser-recording-action-policy.service';
+import { BrowserRecordingActionPolicyService } from '../../registry-release/release-manager/src/validator/browser-recording-action-policy.service';
 
 describe('BrowserRecordingActionPolicyService', () => {
   const service = new BrowserRecordingActionPolicyService();

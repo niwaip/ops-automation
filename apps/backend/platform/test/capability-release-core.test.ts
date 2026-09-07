@@ -26,7 +26,7 @@ import {
   ReleaseSupportAccessorDepsService,
 } from '@ops/release-manager/release';
 import { CapabilityReleaseService } from '@ops/release-manager/release';
-import { BridgeRecorderExportDTO } from '../../../registry-release/release-manager/src/interfaces';
+import { BridgeRecorderExportDTO } from '../../registry-release/release-manager/src/interfaces';
 
 jest.mock('axios');
 

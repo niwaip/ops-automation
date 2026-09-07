@@ -1,5 +1,5 @@
-import { CapabilityAttestationService } from '../../../registry-release/release-manager/src/attestation/capability-attestation.service';
-import { ContractLintService } from '../../../registry-release/release-manager/src/validator/contract-lint.service';
+import { CapabilityAttestationService } from '../../registry-release/release-manager/src/attestation/capability-attestation.service';
+import { ContractLintService } from '../../registry-release/release-manager/src/validator/contract-lint.service';
 
 describe('CapabilityAttestationService (Gate 5, §10.6)', () => {
   const prismaRows = (over: {

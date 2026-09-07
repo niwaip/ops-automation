@@ -1,19 +1,19 @@
 import axios from 'axios';
-import { BrowserRecordingActionPolicyService } from '../../../registry-release/release-manager/src/validator/browser-recording-action-policy.service';
-import { BrowserRecordingExecutionPlanValidatorService } from '../../../registry-release/release-manager/src/validator/browser-recording-execution-plan-validator.service';
-import { CapabilityReleaseBrowserRuntimeExecutorService } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-executor.service';
-import { CapabilityReleaseBrowserRuntimeLoopExecutorService } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-loop-executor.service';
-import { CapabilityReleaseBrowserRuntimeResultService } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-result.service';
-import { CapabilityReleaseBrowserRuntimeService } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime.service';
-import { CapabilityReleaseBrowserRuntimeStepExecutorService } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-step-executor.service';
-import { CapabilityReleaseBrowserRuntimeSupportService } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-support.service';
-import { BrowserPostStateReconcilerService } from '../../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-post-state-reconciler.service';
-import { BrowserRuntimeStepResultStateService } from '../../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-runtime-step-result-state.service';
-import { BrowserRunOutputMaterializerService } from '../../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-run-output-materializer.service';
-import { BrowserLegacyOutputAdapter } from '../../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-legacy-output.adapter';
-import { CapabilityReleaseDocumentRuntimeService } from '../../../registry-release/release-manager/src/publisher/capability-release-document-runtime.service';
-import { CapabilityReleaseRuntimeService, type CapabilityReleaseRuntimeAccessors } from '../../../registry-release/release-manager/src/publisher/capability-release-runtime.service';
-import { ReleaseRuntimeBindingService } from '../../../registry-release/release-manager/src/publisher/release-runtime-binding.service';
+import { BrowserRecordingActionPolicyService } from '../../registry-release/release-manager/src/validator/browser-recording-action-policy.service';
+import { BrowserRecordingExecutionPlanValidatorService } from '../../registry-release/release-manager/src/validator/browser-recording-execution-plan-validator.service';
+import { CapabilityReleaseBrowserRuntimeExecutorService } from '../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-executor.service';
+import { CapabilityReleaseBrowserRuntimeLoopExecutorService } from '../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-loop-executor.service';
+import { CapabilityReleaseBrowserRuntimeResultService } from '../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-result.service';
+import { CapabilityReleaseBrowserRuntimeService } from '../../registry-release/release-manager/src/publisher/capability-release-browser-runtime.service';
+import { CapabilityReleaseBrowserRuntimeStepExecutorService } from '../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-step-executor.service';
+import { CapabilityReleaseBrowserRuntimeSupportService } from '../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-support.service';
+import { BrowserPostStateReconcilerService } from '../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-post-state-reconciler.service';
+import { BrowserRuntimeStepResultStateService } from '../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-runtime-step-result-state.service';
+import { BrowserRunOutputMaterializerService } from '../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-run-output-materializer.service';
+import { BrowserLegacyOutputAdapter } from '../../registry-release/release-manager/src/publisher/browser-runtime-result/browser-legacy-output.adapter';
+import { CapabilityReleaseDocumentRuntimeService } from '../../registry-release/release-manager/src/publisher/capability-release-document-runtime.service';
+import { CapabilityReleaseRuntimeService, type CapabilityReleaseRuntimeAccessors } from '../../registry-release/release-manager/src/publisher/capability-release-runtime.service';
+import { ReleaseRuntimeBindingService } from '../../registry-release/release-manager/src/publisher/release-runtime-binding.service';
 
 jest.mock('axios');
 

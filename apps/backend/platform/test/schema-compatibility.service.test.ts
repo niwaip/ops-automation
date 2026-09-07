@@ -1,4 +1,4 @@
-import { SchemaCompatibilityService } from '../../../registry-release/release-manager/src/validator/schema-compatibility.service';
+import { SchemaCompatibilityService } from '../../registry-release/release-manager/src/validator/schema-compatibility.service';
 
 describe('SchemaCompatibilityService (§15.4 item 5)', () => {
   const service = new SchemaCompatibilityService();

@@ -1,7 +1,7 @@
-import { CapabilityReleaseTemporalSchemaService } from '../../../registry-release/release-manager/src/compiler/capability-release-temporal-schema.service';
-import { CapabilityReleasePublishValidatorService } from '../../../registry-release/release-manager/src/validator/capability-release-publish-validator.service';
-import { ContractLintService } from '../../../registry-release/release-manager/src/validator/contract-lint.service';
-import { SchemaCompatibilityService } from '../../../registry-release/release-manager/src/validator/schema-compatibility.service';
+import { CapabilityReleaseTemporalSchemaService } from '../../registry-release/release-manager/src/compiler/capability-release-temporal-schema.service';
+import { CapabilityReleasePublishValidatorService } from '../../registry-release/release-manager/src/validator/capability-release-publish-validator.service';
+import { ContractLintService } from '../../registry-release/release-manager/src/validator/contract-lint.service';
+import { SchemaCompatibilityService } from '../../registry-release/release-manager/src/validator/schema-compatibility.service';
 
 describe('Capability publish contract authority', () => {
   const oldSchema = {

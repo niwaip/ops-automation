@@ -1,5 +1,5 @@
 import { jsonSchemaValidator } from '@ops/backend-runtime-capability-contract';
-import { CapabilityReleaseTemporalSchemaService } from '../../../registry-release/release-manager/src/compiler/capability-release-temporal-schema.service';
+import { CapabilityReleaseTemporalSchemaService } from '../../registry-release/release-manager/src/compiler/capability-release-temporal-schema.service';
 
 describe('Temporal capability JSON Schema projection', () => {
   const service = new CapabilityReleaseTemporalSchemaService();

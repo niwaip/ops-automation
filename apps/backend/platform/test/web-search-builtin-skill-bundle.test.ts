@@ -5,7 +5,7 @@ import * as yaml from 'js-yaml';
 import { BuiltinSkillProvisioningService } from '@ops/skill-registry/builtin';
 
 describe('web search built-in skill bundle', () => {
-  const bundleDir = path.resolve(__dirname, '../../../../../builtin-skills/platform.search.web');
+  const bundleDir = path.resolve(__dirname, '../../../../builtin-skills/platform.search.web');
   const service = new BuiltinSkillProvisioningService({} as any, {} as any);
 
   it('ships a locked planner-visible domain handler bundle', () => {

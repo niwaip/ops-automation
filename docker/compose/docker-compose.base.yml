@@ -115,10 +115,10 @@ services:
       BROWSER_POST_STATE_RECONCILIATION_ENABLED: ${BROWSER_POST_STATE_RECONCILIATION_ENABLED:-true}
     command: >
       sh -c "corepack enable && pnpm --filter @ops/platform run build
-      && rm -rf /workspace/apps/backend/core/platform/dist/generated /workspace/apps/backend/core/platform/dist/src/generated
-      && mkdir -p /workspace/apps/backend/core/platform/dist/generated /workspace/apps/backend/core/platform/dist/src/generated
-      && cp -R /workspace/apps/backend/core/platform/src/generated/prisma /workspace/apps/backend/core/platform/dist/generated/prisma
-      && cp -R /workspace/apps/backend/core/platform/src/generated/prisma /workspace/apps/backend/core/platform/dist/src/generated/prisma
+      && rm -rf /workspace/apps/backend/platform/dist/generated /workspace/apps/backend/platform/dist/src/generated
+      && mkdir -p /workspace/apps/backend/platform/dist/generated /workspace/apps/backend/platform/dist/src/generated
+      && cp -R /workspace/apps/backend/platform/src/generated/prisma /workspace/apps/backend/platform/dist/generated/prisma
+      && cp -R /workspace/apps/backend/platform/src/generated/prisma /workspace/apps/backend/platform/dist/src/generated/prisma
       && pnpm --filter @ops/platform run start"
     ports:
       - '${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}'

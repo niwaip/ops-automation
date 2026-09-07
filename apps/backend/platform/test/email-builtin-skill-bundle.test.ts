@@ -8,7 +8,7 @@ describe('email built-in skill bundles', () => {
   const service = new BuiltinSkillProvisioningService({} as any, {} as any);
 
   it('validates platform.email.messages bundle lock and manifest', () => {
-    const bundleDir = path.resolve(__dirname, '../../../../../builtin-skills/platform.email.messages');
+    const bundleDir = path.resolve(__dirname, '../../../../builtin-skills/platform.email.messages');
     const manifestContent = fs.readFileSync(path.join(bundleDir, 'manifest.yaml'), 'utf8');
     const manifest = service.validateManifest(yaml.load(manifestContent));
     const workflow = JSON.parse(fs.readFileSync(path.join(bundleDir, 'workflow.json'), 'utf8'));
@@ -36,7 +36,7 @@ describe('email built-in skill bundles', () => {
   });
 
   it('validates platform.email.send bundle lock and manifest', () => {
-    const bundleDir = path.resolve(__dirname, '../../../../../builtin-skills/platform.email.send');
+    const bundleDir = path.resolve(__dirname, '../../../../builtin-skills/platform.email.send');
     const manifestContent = fs.readFileSync(path.join(bundleDir, 'manifest.yaml'), 'utf8');
     const manifest = service.validateManifest(yaml.load(manifestContent));
     const workflow = JSON.parse(fs.readFileSync(path.join(bundleDir, 'workflow.json'), 'utf8'));

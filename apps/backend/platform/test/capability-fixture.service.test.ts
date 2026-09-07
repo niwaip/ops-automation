@@ -1,4 +1,4 @@
-import { CapabilityFixtureService } from '../../../registry-release/release-manager/src/fixture/capability-fixture.service';
+import { CapabilityFixtureService } from '../../registry-release/release-manager/src/fixture/capability-fixture.service';
 
 describe('CapabilityFixtureService (§10.3)', () => {
   const createService = (over: {

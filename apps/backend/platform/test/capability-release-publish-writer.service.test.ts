@@ -1,4 +1,4 @@
-import { CapabilityReleasePublishWriterService } from '../../../registry-release/release-manager/src/publisher/capability-release-publish-writer.service';
+import { CapabilityReleasePublishWriterService } from '../../registry-release/release-manager/src/publisher/capability-release-publish-writer.service';
 
 describe('CapabilityReleasePublishWriterService', () => {
   it('marks release source status as published when finalizing a published skill', async () => {

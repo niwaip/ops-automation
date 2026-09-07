@@ -1,4 +1,4 @@
-import { ContractLintService } from '../../../registry-release/release-manager/src/validator/contract-lint.service';
+import { ContractLintService } from '../../registry-release/release-manager/src/validator/contract-lint.service';
 
 describe('ContractLintService (Gate 0, §10.1)', () => {
   const service = new ContractLintService();

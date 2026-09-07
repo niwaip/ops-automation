@@ -5,7 +5,7 @@ import * as yaml from 'js-yaml';
 import { BuiltinSkillProvisioningService } from '@ops/skill-registry/builtin';
 
 describe('PDF built-in skill bundles', () => {
-  const builtinRoot = path.resolve(__dirname, '../../../../../builtin-skills');
+  const builtinRoot = path.resolve(__dirname, '../../../../builtin-skills');
   const service = new BuiltinSkillProvisioningService({} as any, {} as any);
   const capabilities = [
     {

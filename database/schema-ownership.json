@@ -1,5 +1,5 @@
 {
-  "schemaSource": "apps/backend/core/platform/prisma/schema.prisma",
+  "schemaSource": "apps/backend/platform/prisma/schema.prisma",
   "generatedMirrors": ["apps/backend/execution-control/control-plane/prisma/schema.prisma"],
   "supplementalSources": [
     {

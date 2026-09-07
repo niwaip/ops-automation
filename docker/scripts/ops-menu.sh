@@ -342,7 +342,7 @@ print_migration_inventory() {
   printf '\n=== Database Migration Inventory ===\n'
 
   printf '\n[Current schema entrypoints]\n'
-  printf '  - Single authoritative migration sequence: %s\n' "$REPO_ROOT/apps/backend/core/platform/prisma/migrations"
+  printf '  - Single authoritative migration sequence: %s\n' "$REPO_ROOT/apps/backend/platform/prisma/migrations"
   printf '  - Shared domain repair SQL: %s\n' "$BROWSER_TEMPLATE_REPAIR_SQL"
 
   printf '\n[Placeholder migrations not applied automatically]\n'

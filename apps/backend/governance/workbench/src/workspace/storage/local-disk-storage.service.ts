@@ -9,11 +9,12 @@ export class LocalDiskStorageService implements StorageDriver {
   private readonly rootDir: string;
 
   constructor() {
-    // When running in container, process.cwd() is /workspace/apps/backend/core/platform or /workspace.
+    // When running in container, process.cwd() is /workspace/apps/backend/platform or /workspace.
     // Try multiple possible paths to locate /workspace/data/storage/workspaces or host-mounted path.
     const candidates = [
       process.env.WORKSPACE_STORAGE_ROOT,
       '/workspace/data/storage/workspaces',
+      path.resolve(process.cwd(), '../../../data/storage/workspaces'),
       path.resolve(process.cwd(), '../../../../data/storage/workspaces'),
       path.resolve(process.cwd(), 'data/storage/workspaces'),
     ].filter(Boolean) as string[];

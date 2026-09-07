@@ -1,8 +1,8 @@
-import { BrowserRecordingFlowNormalizerService } from '../../../registry-release/release-manager/src/compiler/browser-recording-flow-normalizer.service';
-import { BrowserRecordingRuntimeLoopPlannerService } from '../../../registry-release/release-manager/src/compiler/browser-recording-runtime-loop-planner.service';
-import { BrowserRecordingRuntimePlannerService } from '../../../registry-release/release-manager/src/compiler/browser-recording-runtime-planner.service';
-import { BrowserRecordingRuntimeStepBuilderService } from '../../../registry-release/release-manager/src/compiler/browser-recording-runtime-step-builder.service';
-import { CapabilityReleaseBrowserRecordingService } from '../../../registry-release/release-manager/src/compiler/capability-release-browser-recording.service';
+import { BrowserRecordingFlowNormalizerService } from '../../registry-release/release-manager/src/compiler/browser-recording-flow-normalizer.service';
+import { BrowserRecordingRuntimeLoopPlannerService } from '../../registry-release/release-manager/src/compiler/browser-recording-runtime-loop-planner.service';
+import { BrowserRecordingRuntimePlannerService } from '../../registry-release/release-manager/src/compiler/browser-recording-runtime-planner.service';
+import { BrowserRecordingRuntimeStepBuilderService } from '../../registry-release/release-manager/src/compiler/browser-recording-runtime-step-builder.service';
+import { CapabilityReleaseBrowserRecordingService } from '../../registry-release/release-manager/src/compiler/capability-release-browser-recording.service';
 
 describe('CapabilityReleaseBrowserRecordingService', () => {
   const createService = () => {

@@ -19,7 +19,7 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@/*": ["../../core/platform/src/*"],
+      "@/*": ["../../platform/src/*"],
       "@ops/identity-access": ["../../governance/identity-access/dist"],
       "@ops/organization": ["../../governance/organization/dist"]
     }
