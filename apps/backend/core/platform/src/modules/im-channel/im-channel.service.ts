@@ -48,6 +48,10 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit() {
+    await this.prisma.imChannelConnection.updateMany({
+      where: { channel: 'wechat', interactionMode: 'auto' },
+      data: { interactionMode: 'chat' },
+    });
     const enabled = await this.prisma.imChannelConnection.findMany({
       where: { enabled: true, channel: 'wechat' },
     });
@@ -64,12 +68,14 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
       where: { userId_channel: { userId, channel: 'wechat' } },
     });
     const attempt = this.provisioning.get(userId);
+    const rawMode = connection?.interactionMode;
+    const interactionMode = rawMode && rawMode !== 'auto' ? rawMode : 'chat';
     return {
       channel: 'wechat',
       configured: Boolean(connection?.encryptedCredential),
       enabled: connection?.enabled ?? false,
       status: attempt?.state ?? connection?.status ?? 'unconfigured',
-      interactionMode: connection?.interactionMode ?? 'auto',
+      interactionMode,
       providerAccountId: connection?.providerAccountId ?? undefined,
       lastConnectedAt: connection?.lastConnectedAt?.toISOString(),
       lastMessageAt: connection?.lastMessageAt?.toISOString(),
@@ -99,7 +105,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     this.provisioning.set(userId, attempt);
     await this.prisma.imChannelConnection.upsert({
       where: { userId_channel: { userId, channel: 'wechat' } },
-      create: { userId, channel: 'wechat', enabled: false, status: 'provisioning' },
+      create: { userId, channel: 'wechat', enabled: false, status: 'provisioning', interactionMode: 'chat' },
       update: { enabled: false, status: 'provisioning', lastError: null },
     });
     void this.pollProvisioning(attempt);
@@ -347,7 +353,8 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
       .trim();
     if (!text) return;
 
-    const request = this.resolveInteraction(text, configuredMode);
+    const effectiveMode = configuredMode === 'task' ? 'task' : 'chat';
+    const request = this.resolveInteraction(text, effectiveMode);
 
     if (request.isNewSession) {
       this.getSessionId(connectionId, true);
@@ -410,7 +417,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
 
   resolveInteraction(
     text: string,
-    configuredMode: InteractionMode
+    configuredMode: InteractionMode = 'chat'
   ): ImInteractionResolution {
     const raw = text.trim();
 
@@ -422,8 +429,8 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
         message: '',
         systemReplyText:
           '💡 快捷指令帮助：\n' +
-          '• `/t` 或 `/task <指令>`：任务执行模式（执行文件处理、搜索、自动化等）\n' +
-          '• `/c` 或 `/chat <问题>`：直接聊天模式（知识问答、自由闲聊）\n' +
+          '• `/c` 或 `/chat <问题>`：个人问答模式（默认，安全沙箱与自由问答）\n' +
+          '• `/t` 或 `/task <指令>`：工作任务模式（多步技能编排、自动化任务）\n' +
           '• `/n` 或 `/new [指令]`：重置并开启全新会话\n' +
           '• `/help`：查看指令帮助',
       };
@@ -459,7 +466,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
           mode: 'task',
           message: '',
           systemReplyText:
-            '🤖 已切换至【任务执行模式】。\n你可以直接向我发送任务指令（例如：`/t 拆分PDF文件`、`/t 查询北京天气`）。',
+            '🤖 已切换至【工作任务模式】。\n你可以直接向我发送任务指令（例如：`/t 拆分PDF文件`、`/t 查询北京天气`）。',
         };
       }
       return {
@@ -478,7 +485,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
           type: 'system_reply',
           mode: 'chat',
           message: '',
-          systemReplyText: '💬 已切换至【日常聊天模式】。\n接下来你可以和我自由对话、咨询问题。',
+          systemReplyText: '💬 已切换至【个人问答模式】。\n接下来你可以向我提问、咨询或进行日常交互。',
         };
       }
       return {
@@ -488,20 +495,11 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
       };
     }
 
-    // 5. Configured / Default mode
-    if (configuredMode !== 'auto') {
-      return {
-        type: 'ai',
-        mode: configuredMode,
-        message: raw,
-      };
-    }
-
-    const taskIntent =
-      /(天气|气温|预报|搜索|查询|查一下|打开网页|浏览|下载|生成|创建|导出|发送|整理|总结|翻译|执行|运行|审批|文件|报告|表格|PDF|PPT|计划|提醒)/i;
+    // 5. Configured / Default mode (微信通信默认统一调用个人模式 chat)
+    // 微信端所有未带前缀的常规消息，一律默认进入个人模式；工作任务需通过 /t 显式触发
     return {
       type: 'ai',
-      mode: taskIntent.test(raw) ? 'task' : 'chat',
+      mode: 'chat',
       message: raw,
     };
   }

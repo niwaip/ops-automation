@@ -135,4 +135,5 @@ export * from './userEmail';
 export * from './workspace';
 export * from './workbenchTodo';
 export * from './workbenchInbox';
+export * from './workbenchCoordination';
 

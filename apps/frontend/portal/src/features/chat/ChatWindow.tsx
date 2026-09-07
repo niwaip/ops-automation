@@ -184,6 +184,7 @@ const ChatWindow: React.FC = () => {
   const upsertNotification = useNotificationStore((state) => state.upsertNotification);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   // 本地流式内容状态，用于实时显示
   const [localStreamingContent, setLocalStreamingContent] = useState('');
 
@@ -197,9 +198,16 @@ const ChatWindow: React.FC = () => {
     });
   }, []);
 
-  // 自动滚动到底部
+  // 自动滚动到底部（优先仅平滑滚动消息容器本身，严防外层窗口或页面发生跳动）
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
   }, [messages, localStreamingContent]);
 
   // 发送消息
@@ -589,7 +597,7 @@ const ChatWindow: React.FC = () => {
         </div>
 
         {/* 消息列表 */}
-        <div className="chat-messages">
+        <div ref={messagesContainerRef} className="chat-messages">
           {!isLoading && messages.length === 0 && (
             <div className="chat-empty-state">
               <Empty

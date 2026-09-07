@@ -148,3 +148,7 @@ apps/backend/capabilities/document-domain/public/renders/*
 data/
 .claude/
 
+# Fonts and large assets
+*.otf
+*.ttf
+

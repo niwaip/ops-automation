@@ -20,6 +20,7 @@ import { UserConnectionModule } from './modules/user-connection/user-connection.
 import { WorkspaceModule } from './modules/workspace/workspace.module';
 import { WorkbenchTodoModule } from './modules/workbench-todo/workbench-todo.module';
 import { WorkbenchInboxModule } from './modules/workbench-inbox/workbench-inbox.module';
+import { WorkbenchCoordinationModule } from './modules/workbench-coordination/workbench-coordination.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { WorkbenchInboxModule } from './modules/workbench-inbox/workbench-inbox.
     WorkspaceModule,
     WorkbenchTodoModule,
     WorkbenchInboxModule,
+    WorkbenchCoordinationModule,
   ],
   providers: [
     // Global JWT guard - applied to all routes by default

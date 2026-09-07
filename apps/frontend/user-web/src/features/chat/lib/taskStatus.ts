@@ -1,7 +1,9 @@
 import type { ChatMessage } from '@ops/user-core';
 import { resolveTaskParts } from '@chat-web/lib/contentParts';
 
-export type ChatTaskStatus = NonNullable<NonNullable<ChatMessage['metadata']>['taskStatus']>;
+export type ChatTaskStatus =
+  | NonNullable<NonNullable<ChatMessage['metadata']>['taskStatus']>
+  | 'cancelled';
 
 export const terminalTaskStatuses = new Set<ChatTaskStatus>([
   'completed',
@@ -9,6 +11,7 @@ export const terminalTaskStatuses = new Set<ChatTaskStatus>([
   'pending_approval',
   'human_control',
   'failed',
+  'cancelled',
 ]);
 
 export const terminalExecutionStatuses = new Set([
@@ -22,7 +25,7 @@ export const terminalExecutionStatuses = new Set([
   'human_control',
 ]);
 
-export const getMessageStatusLabel = (status?: ChatTaskStatus): string | null => {
+export const getMessageStatusLabel = (status?: ChatTaskStatus | string): string | null => {
   switch (status) {
     case 'waiting_input':
       return '待补输入';
@@ -36,12 +39,14 @@ export const getMessageStatusLabel = (status?: ChatTaskStatus): string | null =>
       return '已完成';
     case 'failed':
       return '失败';
+    case 'cancelled':
+      return '已停止';
     default:
       return null;
   }
 };
 
-export const getStatusTagColor = (status?: ChatTaskStatus): string | undefined => {
+export const getStatusTagColor = (status?: ChatTaskStatus | string): string | undefined => {
   switch (status) {
     case 'waiting_input':
     case 'pending_approval':
@@ -54,6 +59,8 @@ export const getStatusTagColor = (status?: ChatTaskStatus): string | undefined =
       return 'success';
     case 'failed':
       return 'error';
+    case 'cancelled':
+      return 'default';
     default:
       return undefined;
   }
@@ -83,6 +90,14 @@ export const hasTerminalTaskOutcome = (message: ChatMessage): boolean => {
     return false;
   }
 
+  if (
+    executionStatus === 'cancelled' ||
+    message.content.includes('(任务已由用户手动停止)') ||
+    message.content.includes('任务已由用户手动停止')
+  ) {
+    return true;
+  }
+
   const normalizedResult = message.metadata?.normalizedResult;
   return Boolean(
     message.metadata?.taskStatus === 'completed' ||
@@ -103,8 +118,21 @@ export const hasTerminalTaskOutcome = (message: ChatMessage): boolean => {
 export const resolveMessageTaskStatus = (message: ChatMessage): ChatTaskStatus | undefined => {
   const metadataStatus = message.metadata?.taskStatus;
   const partsStatus = normalizeTaskStatus(resolveTaskParts(message.contentParts).taskStatus);
+  const executionStatus = message.metadata?.executionStatus?.trim();
+
+  // Cancelled status is strictly terminal
+  if (
+    executionStatus === 'cancelled' ||
+    (!message.isStreaming &&
+      (message.content.includes('(任务已由用户手动停止)') ||
+        message.content.includes('任务已由用户手动停止')))
+  ) {
+    return 'cancelled';
+  }
+
   const terminalStatus = [metadataStatus, partsStatus].find(
-    (status): status is ChatTaskStatus => Boolean(status && status !== 'running')
+    (status): status is NonNullable<NonNullable<ChatMessage['metadata']>['taskStatus']> =>
+      Boolean(status && status !== 'running')
   );
 
   if (terminalStatus) {
@@ -112,10 +140,11 @@ export const resolveMessageTaskStatus = (message: ChatMessage): ChatTaskStatus |
   }
 
   if (hasTerminalTaskOutcome(message)) {
-    const executionStatus = message.metadata?.executionStatus?.trim();
+    if (executionStatus === 'cancelled') {
+      return 'cancelled';
+    }
     if (
       executionStatus === 'failed' ||
-      executionStatus === 'cancelled' ||
       executionStatus === 'rolled_back' ||
       message.metadata?.errorMessage ||
       message.metadata?.failureReason
@@ -130,6 +159,18 @@ export const resolveMessageTaskStatus = (message: ChatMessage): ChatTaskStatus |
       return executionStatus as ChatTaskStatus;
     }
     return 'completed';
+  }
+
+  if (executionStatus === 'succeeded' || executionStatus === 'completed') {
+    return 'completed';
+  }
+  if (executionStatus === 'failed' || executionStatus === 'rolled_back') {
+    return 'failed';
+  }
+
+  // If message has finished streaming and was left with running status, clear it
+  if (!message.isStreaming && (metadataStatus === 'running' || partsStatus === 'running')) {
+    return undefined;
   }
 
   return metadataStatus || partsStatus;

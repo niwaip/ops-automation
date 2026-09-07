@@ -34,6 +34,7 @@ import { SaveWorkflowAction } from './workflow-save/SaveWorkflowAction';
 import { SaveToWorkspaceAction } from './workspace-save/SaveToWorkspaceAction';
 import { SaveToTodoAction } from './todo-save/SaveToTodoAction';
 import { MessageFeedbackActions } from './feedback/MessageFeedbackActions';
+import '../ChatMessage.css';
 import styles from '../pages/ChatPage.module.css';
 
 interface ChatMessageItemProps {
@@ -139,13 +140,43 @@ export const ChatMessageItem = memo(function ChatMessageItem({
         message.metadata?.skillUsed === 'skill-match')
   );
 
-  const shouldShowMessageContent = Boolean(
-    (hasRenderableContentParts ||
-      (plainContent &&
+  const isInteractiveTaskCard = Boolean(
+    hasTaskCard &&
+      (resolvedTaskStatus === 'waiting_input' ||
+        resolvedTaskStatus === 'pending_approval' ||
+        resolvedTaskStatus === 'human_control')
+  );
+
+  const hasRenderableContent = Boolean(
+    hasRenderableContentParts
+      ? message.contentParts?.some((part) => {
+          if (part.type === 'structured_result' || part.type === 'file_ref') {
+            return true;
+          }
+          if (part.type === 'deeplink' && message.metadata?.mode !== 'task') {
+            return true;
+          }
+          if (part.type === 'text' || part.type === 'markdown') {
+            const textValue = (part.type === 'text' ? part.text : part.markdown)?.trim();
+            return (
+              Boolean(textValue) &&
+              !hasDuplicatedTaskSummary &&
+              textValue !== message.metadata?.finalResult?.trim() &&
+              textValue !== message.metadata?.errorMessage?.trim()
+            );
+          }
+          return false;
+        })
+      : plainContent &&
         !hasDuplicatedTaskSummary &&
         plainContent !== message.metadata?.finalResult?.trim() &&
-        plainContent !== message.metadata?.errorMessage?.trim())) &&
-      !(message.metadata?.mode === 'task' && hasProgressLogs) &&
+        plainContent !== message.metadata?.errorMessage?.trim()
+  );
+
+  const shouldShowMessageContent = Boolean(
+    !isInteractiveTaskCard &&
+      hasRenderableContent &&
+      !(message.metadata?.mode === 'task' && hasProgressLogs && message.isStreaming) &&
       !(isToolExecutionTask && !hasRenderableContentParts)
   );
   const usage = message.metadata?.usage;
@@ -255,6 +286,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                   isStreaming={Boolean(message.isStreaming)}
                   renderStructuredResult={message.metadata?.mode !== 'task'}
                   renderDeeplink={message.metadata?.mode !== 'task'}
+                  textMode={message.role === 'assistant' ? 'markdown' : 'plain'}
                 />
               ) : (
                 <SharedMessageContentRenderer

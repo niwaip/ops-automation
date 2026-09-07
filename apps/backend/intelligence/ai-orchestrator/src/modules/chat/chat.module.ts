@@ -20,6 +20,7 @@ import { TaskFallbackPolicyService } from './task-fallback-policy.service';
 import { ChatTaskResumeService } from './chat-task-resume.service';
 import { ChatPlanningPresentationService } from './chat-planning-presentation.service';
 import { ScopedPlannerMemoryService } from './scoped-planner-memory.service';
+import { UserSandboxDispatcherService } from './user-sandbox-dispatcher.service';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { ScopedPlannerMemoryService } from './scoped-planner-memory.service';
     ChatTaskResumeService,
     ChatPlanningPresentationService,
     ScopedPlannerMemoryService,
+    UserSandboxDispatcherService,
   ],
 })
 export class ChatModule {}

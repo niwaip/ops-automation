@@ -11,11 +11,14 @@ export interface ChatUploadedFileDTO {
   workspaceNodeId?: string;
   workspaceId?: string;
   storagePath?: string;
+  filePath?: string;
+  extractedText?: string;
 }
 
 export interface ChatRequestDTO {
   message: string;
   clientMessageId?: string;
+  clientAssistantMessageId?: string;
   traceId?: string;
   idempotencyKey?: string;
   sessionId?: string;

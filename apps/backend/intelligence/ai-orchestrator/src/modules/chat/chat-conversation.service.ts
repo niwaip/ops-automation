@@ -140,6 +140,7 @@ export class ChatConversationService {
       rateLimit: response.rateLimit,
       ownerUserId,
       clientMessageId: body.clientMessageId,
+      clientAssistantMessageId: body.clientAssistantMessageId,
     });
     emit(this.buildSessionPatchEvent(sessionId, session));
   }
@@ -183,6 +184,7 @@ export class ChatConversationService {
       rateLimit: response.rateLimit,
       ownerUserId,
       clientMessageId: body.clientMessageId,
+      clientAssistantMessageId: body.clientAssistantMessageId,
     });
 
     return {
@@ -292,11 +294,20 @@ export class ChatConversationService {
     modelId?: string;
     ownerUserId?: string;
     clientMessageId?: string;
+    clientAssistantMessageId?: string;
   }): Promise<StreamEvent | null> {
     const normalizedUserContent = params.userContent.trim();
     const assistantMessage = this.buildTaskAssistantHistoryMessage(params.terminalEvent);
     if (!normalizedUserContent || !assistantMessage) {
       return null;
+    }
+
+    if (params.clientAssistantMessageId) {
+      assistantMessage.id = params.clientAssistantMessageId;
+      assistantMessage.metadata = {
+        ...(assistantMessage.metadata || {}),
+        clientMessageId: params.clientAssistantMessageId,
+      };
     }
 
     const nextSession = await this.sessionService.appendChatMessages(
@@ -347,7 +358,7 @@ export class ChatConversationService {
     ];
   }
 
-  private async persistConversation(params: {
+  async persistConversation(params: {
     sessionId: string;
     userContent: string;
     assistantContent: string;
@@ -358,12 +369,14 @@ export class ChatConversationService {
     rateLimit?: unknown;
     ownerUserId?: string;
     clientMessageId?: string;
+    clientAssistantMessageId?: string;
   }): Promise<NonNullable<ChatSessionData['session']> | undefined> {
     const assistantMetadata = this.buildChatAssistantMetadata({
       rawAssistantContent: params.rawAssistantContent,
       thinkingEnabled: params.thinkingEnabled,
       usage: params.usage,
       rateLimit: params.rateLimit,
+      clientMessageId: params.clientAssistantMessageId,
     });
     const nextSession = await this.sessionService.appendChatMessages(
       params.sessionId,
@@ -379,6 +392,7 @@ export class ChatConversationService {
           },
         },
         {
+          ...(params.clientAssistantMessageId ? { id: params.clientAssistantMessageId } : {}),
           role: 'assistant',
           content: params.assistantContent,
           timestamp: new Date().toISOString(),
@@ -399,11 +413,15 @@ export class ChatConversationService {
     thinkingEnabled: boolean;
     usage?: unknown;
     rateLimit?: unknown;
+    clientMessageId?: string;
   }): Record<string, unknown> {
     const metadata: Record<string, unknown> = {
       mode: 'chat',
       showThinking: params.thinkingEnabled,
     };
+    if (params.clientMessageId) {
+      metadata.clientMessageId = params.clientMessageId;
+    }
     const thoughtLogsSnapshot = params.thinkingEnabled
       ? this.extractThinkingBlocks(params.rawAssistantContent)
       : [];
@@ -419,7 +437,7 @@ export class ChatConversationService {
     return metadata;
   }
 
-  private buildSessionPatchEvent(
+  buildSessionPatchEvent(
     sessionId: string,
     session?: NonNullable<ChatSessionData['session']>
   ): StreamEvent {

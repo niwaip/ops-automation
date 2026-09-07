@@ -58,7 +58,7 @@ export const createNotificationStore = (): NotificationStore =>
               ? shouldMarkUnread
                 ? true
                 : existingItem.unread
-              : shouldMarkUnread,
+              : shouldMarkUnread || Boolean(notification.unread),
           };
         });
 

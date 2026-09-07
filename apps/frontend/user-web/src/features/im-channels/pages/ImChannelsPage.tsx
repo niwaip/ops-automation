@@ -111,20 +111,20 @@ const STATUS_CONFIG: Record<WechatChannelStatus['status'], StatusMeta> = {
 
 const SHORTCUT_COMMANDS = [
   {
-    cmd: '/t [任务内容]',
-    aliases: ['/task', '/任务'],
-    name: '强制任务模式',
-    tagColor: 'blue',
-    desc: '强制进入多步拓扑规划与技能编排，自动拆解步骤并调用自动化能力。',
-    example: '/t 打开网页获取热榜并总结',
-  },
-  {
     cmd: '/c [对话内容]',
     aliases: ['/chat', '/聊天'],
-    name: '直接问答模式',
+    name: '个人问答模式',
     tagColor: 'green',
-    desc: '跳过工具与技能规划，直接使用大模型进行自然对话问答。',
+    desc: '直接进入个人专属安全沙箱进行自由问答与日常交互，微信端默认采用该模式。',
     example: '/c 解释一下量子力学的叠加态',
+  },
+  {
+    cmd: '/t [任务内容]',
+    aliases: ['/task', '/任务'],
+    name: '工作任务模式',
+    tagColor: 'blue',
+    desc: '强制进入多步拓扑规划与企业技能编排，自动拆解步骤并调用自动化能力。',
+    example: '/t 打开网页获取热榜并总结',
   },
   {
     cmd: '/n',
@@ -456,13 +456,13 @@ export default function ImChannelsPage() {
                     <Select
                       size="small"
                       style={{ width: '100%', marginTop: 2 }}
-                      value={status?.interactionMode ?? 'auto'}
+                      value={status?.interactionMode ?? 'chat'}
                       loading={interactionMode.isLoading}
                       onChange={(mode) => interactionMode.mutate(mode)}
                       options={[
-                        { value: 'auto', label: '⚡️ 智能路由（推荐）' },
-                        { value: 'chat', label: '💬 仅日常问答' },
-                        { value: 'task', label: '🤖 始终任务规划' },
+                        { value: 'chat', label: '👤 个人模式（默认，安全沙箱与自由问答）' },
+                        { value: 'auto', label: '⚡️ 智能路由（按关键词自动分流）' },
+                        { value: 'task', label: '🤖 工作模式（始终执行任务规划）' },
                       ]}
                     />
                   </div>
@@ -638,7 +638,7 @@ export default function ImChannelsPage() {
                     marginBottom: 10,
                   }}
                 >
-                  在微信自聊窗口中，以短命令开头发送消息可精准控制单次会话模式：
+                  在微信自聊窗口中，发送普通文本默认直接进入个人模式；以短命令开头可精准切换会话模式：
                 </Paragraph>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {SHORTCUT_COMMANDS.map((item) => (

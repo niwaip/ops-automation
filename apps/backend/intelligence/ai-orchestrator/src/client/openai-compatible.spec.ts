@@ -290,4 +290,45 @@ describe('OpenAICompatibleClient', () => {
     const models = await client.listModels();
     expect(models).toEqual(['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash']);
   });
+
+  it('buffers and reassembles fragmented SSE chunks without dropping tokens', async () => {
+    const { EventEmitter } = require('events');
+    const client = new OpenAICompatibleClient({
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
+      apiKey: 'test-key',
+      model: 'gemini-3.7-flash',
+    });
+
+    const mockStream = new EventEmitter();
+    const postMock = jest.fn().mockResolvedValue({
+      data: mockStream,
+      headers: {},
+    });
+    (client as any).client.post = postMock;
+
+    const collectedChunks: string[] = [];
+    const streamPromise = client.chatCompletionStream(
+      [{ role: 'user', content: 'hello' }],
+      (chunk: string) => {
+        collectedChunks.push(chunk);
+      }
+    );
+
+    setImmediate(() => {
+      // Simulate fragmented packet:
+      mockStream.emit('data', Buffer.from('data: {"choices":[{"delta":{"content":"<!DOCTYPE html>\\n<meta'));
+      mockStream.emit(
+        'data',
+        Buffer.from(' name=\\"viewport\\" content=\\"width=device-width\\" />"}}]}\n\ndata: [DONE]\n\n')
+      );
+      mockStream.emit('end');
+    });
+
+    const result = await streamPromise;
+    expect(result.content).toBe('<!DOCTYPE html>\n<meta name="viewport" content="width=device-width" />');
+    expect(collectedChunks.join('')).toBe(
+      '<!DOCTYPE html>\n<meta name="viewport" content="width=device-width" />'
+    );
+  });
 });
+

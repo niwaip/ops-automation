@@ -14,6 +14,7 @@ import {
   CloudSyncOutlined,
   ApartmentOutlined,
   FolderOpenOutlined,
+  CloudServerOutlined,
 } from '@ant-design/icons';
 import { lazy } from 'react';
 import UserWebRedirectPage from '@/app/router/UserWebRedirectPage';
@@ -29,8 +30,10 @@ const RecorderPage = lazy(() => import('@/features/recorder/pages/RecorderPage')
 const RecorderDebugDetailPage = lazy(() => import('@/features/recorder/pages/RecorderDebugDetailPage'));
 const UserAdminPage = lazy(() => import('@/features/admin/users/pages/UserAdminPage'));
 const AIModelAdminPage = lazy(() => import('@/features/admin/models/pages/AIModelAdminPage'));
+const SandboxAdminPage = lazy(() => import('@/features/admin/sandboxes/pages/SandboxAdminPage'));
 const WorkspaceAdminPage = lazy(() => import('@/features/admin/workspace/pages/WorkspaceAdminPage'));
 const SkillAdminPage = lazy(() => import('@/features/admin/skills/pages/SkillAdminPage'));
+const OrgWorkflowAdminPage = lazy(() => import('@/features/admin/org-workflows/pages/OrgWorkflowAdminPage'));
 const BrowserSemanticRuleAdminPage = lazy(() => import('@/features/admin/browser-semantics/pages/BrowserSemanticRuleAdminPage'));
 const SystemToolAdminPage = lazy(() => import('@/features/admin/tools/pages/SystemToolAdminPage'));
 const SystemBackupAdminPage = lazy(() => import('@/features/admin/backup/pages/SystemBackupAdminPage'));
@@ -276,6 +279,12 @@ export const portalRouteEntries: PortalRouteEntry[] = [
           requiresAdmin: true,
         },
         {
+          key: '/admin/org-workflows',
+          label: '组织工作流编排',
+          icon: <ApartmentOutlined />,
+          requiresAdmin: true,
+        },
+        {
           key: '/admin/browser-semantic-rules',
           labelKey: 'browserSemanticRules',
           icon: <OrderedListOutlined />,
@@ -301,6 +310,12 @@ export const portalRouteEntries: PortalRouteEntry[] = [
           requiresAdmin: true,
         },
         {
+          key: '/admin/sandboxes',
+          label: '个人沙箱容器',
+          icon: <CloudServerOutlined />,
+          requiresAdmin: true,
+        },
+        {
           key: '/admin/backup',
           labelKey: 'backup',
           icon: <CloudSyncOutlined />,
@@ -308,6 +323,12 @@ export const portalRouteEntries: PortalRouteEntry[] = [
         },
       ],
     },
+  },
+  {
+    path: '/admin/sandboxes',
+    element: <SandboxAdminPage />,
+    requiresAdmin: true,
+    activeMenuKey: '/admin/sandboxes',
   },
   {
     path: '/admin/workspaces',
@@ -362,6 +383,12 @@ export const portalRouteEntries: PortalRouteEntry[] = [
     element: <TaskPoliciesPage />,
     requiresAdmin: true,
     activeMenuKey: '/admin/task-policies',
+  },
+  {
+    path: '/admin/org-workflows',
+    element: <OrgWorkflowAdminPage />,
+    requiresAdmin: true,
+    activeMenuKey: '/admin/org-workflows',
   },
   { path: '/report-templates', redirectTo: '/carbone-templates' },
   { path: '/report-templates/new', redirectTo: '/carbone-templates' },

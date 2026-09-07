@@ -16,7 +16,7 @@ interface UseWorkbenchInboxOptions {
 export function useWorkbenchInbox({ message, onTodoCreated }: UseWorkbenchInboxOptions) {
   const queryClient = useQueryClient();
   const [inboxDraft, setInboxDraft] = useState("");
-  const [inboxFilter, setInboxFilter] = useState<"all" | "unprocessed" | "clarified" | "converted">("all");
+  const [inboxFilter, setInboxFilter] = useState<"all" | "unprocessed" | "clarified" | "converted" | "archived">("all");
   const [clarifyingIds, setClarifyingIds] = useState<Record<string, boolean>>({});
 
   const queryParams = useMemo(() => {
@@ -36,10 +36,10 @@ export function useWorkbenchInbox({ message, onTodoCreated }: UseWorkbenchInboxO
 
   const inboxItems = useMemo(() => inboxData?.items ?? [], [inboxData]);
 
-  // 获取收件箱概览
+  // 获取收件箱概览（包含已归档条目以计算完整统计指标）
   const { data: allInboxData } = useQuery(
     ["workbench-inbox-summary"],
-    () => workbenchInboxApi.list({ pageSize: 100 }),
+    () => workbenchInboxApi.list({ pageSize: 100, includeArchived: true }),
     {
       staleTime: 15000,
     }
@@ -48,7 +48,7 @@ export function useWorkbenchInbox({ message, onTodoCreated }: UseWorkbenchInboxO
   const inboxSummary = useMemo(() => {
     const items = allInboxData?.items ?? inboxItems;
     return {
-      total: items.length,
+      total: items.filter((i) => i.status !== "archived" && i.status !== "discarded").length,
       unprocessed: items.filter((i) => i.status === "unprocessed").length,
       clarified: items.filter((i) => i.status === "clarified").length,
       converted: items.filter((i) => i.status === "converted").length,
@@ -153,6 +153,13 @@ export function useWorkbenchInbox({ message, onTodoCreated }: UseWorkbenchInboxO
     [updateStatusMutation]
   );
 
+  const handleUnarchiveItem = useCallback(
+    (id: string) => {
+      updateStatusMutation.mutate({ id, status: "unprocessed" });
+    },
+    [updateStatusMutation]
+  );
+
   // 删除收件箱条目
   const deleteMutation = useMutation(
     async (id: string) => {
@@ -219,6 +226,7 @@ export function useWorkbenchInbox({ message, onTodoCreated }: UseWorkbenchInboxO
     handleClarifyItem,
     handleConvertToTodo,
     handleArchiveItem,
+    handleUnarchiveItem,
     handleDeleteItem,
     handleSyncEmail,
   };

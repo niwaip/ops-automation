@@ -6,6 +6,9 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { STORAGE_DRIVER, type StorageDriver } from './storage/storage-driver.interface';
 import { WorkspaceContentIndexerService } from './workspace-content-indexer.service';
@@ -69,6 +72,10 @@ export class WorkspaceService {
       });
       this.logger.log(`Created personal workspace for user: ${userId}`);
     }
+    if (personal) {
+      await this.syncUserSandboxKnowledge(personal.id, userId);
+      personal = (await this.prisma.workspace.findUnique({ where: { id: personal.id } })) || personal;
+    }
 
     // 2. 公司公共盘 (Company Shared)
     let company = await this.prisma.workspace.findFirst({
@@ -119,6 +126,11 @@ export class WorkspaceService {
     departmentId?: string
   ): Promise<WorkspaceNodeDto[]> {
     await this.assertAccess(workspaceId, userId, departmentId, 'read');
+
+    // 若访问的是个人空间根目录，自动同步沙箱 /knowledge 目录下的新文件
+    if (!parentId) {
+      await this.syncUserSandboxKnowledge(workspaceId, userId);
+    }
 
     const nodes = await this.prisma.workspaceNode.findMany({
       where: {
@@ -725,5 +737,127 @@ export class WorkspaceService {
       createdAt: node.createdAt.toISOString(),
       updatedAt: node.updatedAt.toISOString(),
     };
+  }
+
+  /**
+   * 自动同步沙箱个人空间 (/knowledge) 中的持久化文件到 Web 资料空间
+   */
+  public async syncUserSandboxKnowledge(workspaceId: string, userId: string): Promise<void> {
+    try {
+      const workspace = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+      });
+      if (!workspace || workspace.type !== 'personal' || workspace.ownerUserId !== userId) {
+        return;
+      }
+
+      const candidates = [
+        process.env.SANDBOX_DATA_ROOT ? path.join(process.env.SANDBOX_DATA_ROOT, 'users', userId, 'knowledge') : null,
+        path.join('/workspace', 'data', 'users', userId, 'knowledge'),
+        path.resolve(process.cwd(), '../../../../data/users', userId, 'knowledge'),
+        path.resolve(process.cwd(), 'data/users', userId, 'knowledge'),
+      ].filter(Boolean) as string[];
+
+      let knowledgeDir: string | null = null;
+      for (const cand of candidates) {
+        if (fs.existsSync(cand)) {
+          knowledgeDir = cand;
+          break;
+        }
+      }
+
+      if (!knowledgeDir) return;
+
+      const entries = await fs.promises.readdir(knowledgeDir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (entry.name.startsWith('.') || entry.isDirectory() || entry.name === 'skills') {
+          continue;
+        }
+
+        const filePath = path.join(knowledgeDir, entry.name);
+        const stat = await fs.promises.stat(filePath);
+        if (!stat.isFile()) continue;
+
+        const existing = await this.prisma.workspaceNode.findFirst({
+          where: {
+            workspaceId,
+            parentId: null,
+            name: entry.name,
+          },
+        });
+
+        if (!existing) {
+          const buffer = await fs.promises.readFile(filePath);
+          const nodeId = randomUUID();
+          const storageKey = `personal/${workspaceId}/${nodeId}_${entry.name}`;
+
+          await this.storage.putFile(storageKey, buffer);
+          const mimeType = this.guessMimeType(entry.name);
+
+          await this.prisma.workspaceNode.create({
+            data: {
+              id: nodeId,
+              workspaceId,
+              parentId: null,
+              name: entry.name,
+              type: 'file',
+              fileSize: BigInt(stat.size),
+              mimeType,
+              storagePath: storageKey,
+              createdBy: userId,
+            },
+          });
+
+          await this.prisma.workspace.update({
+            where: { id: workspaceId },
+            data: { usedBytes: { increment: BigInt(stat.size) } },
+          });
+
+          this.contentIndexer
+            .extractText(buffer, entry.name, mimeType)
+            .then(async (text) => {
+              if (text) {
+                await this.contentIndexer.cacheExtractedText(storageKey, text);
+                await this.digestService.generateAndSaveDigest(nodeId, storageKey, entry.name, mimeType);
+              }
+            })
+            .catch(() => {});
+        } else if (existing.storagePath && BigInt(stat.size) !== existing.fileSize) {
+          const buffer = await fs.promises.readFile(filePath);
+          await this.storage.putFile(existing.storagePath, buffer);
+          const sizeDiff = BigInt(stat.size) - existing.fileSize;
+          await this.prisma.workspaceNode.update({
+            where: { id: existing.id },
+            data: {
+              fileSize: BigInt(stat.size),
+              updatedAt: new Date(),
+            },
+          });
+          await this.prisma.workspace.update({
+            where: { id: workspaceId },
+            data: { usedBytes: { increment: sizeDiff } },
+          });
+        }
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to sync sandbox knowledge for user ${userId}: ${err.message}`);
+    }
+  }
+
+  private guessMimeType(filename: string): string {
+    const ext = path.extname(filename).toLowerCase();
+    switch (ext) {
+      case '.md': return 'text/markdown';
+      case '.txt': return 'text/plain';
+      case '.docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case '.xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case '.pdf': return 'application/pdf';
+      case '.html': case '.htm': return 'text/html';
+      case '.json': return 'application/json';
+      case '.csv': return 'text/csv';
+      case '.py': return 'text/x-python';
+      default: return 'application/octet-stream';
+    }
   }
 }

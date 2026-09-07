@@ -106,10 +106,10 @@ const ExecutionCreateFormPanel: React.FC<ExecutionCreateFormPanelProps> = ({
     >
       {isSkillOptionsLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
-          <Spin tip="正在加载已发布技能..." />
+          <Spin tip="正在加载数字员工技能..." />
         </div>
       ) : isEmptySkillOptions ? (
-        <Empty description="当前没有已发布技能可发起执行" />
+        <Empty description="当前没有可用数字员工可发起任务" />
       ) : (
         <Form
           form={form}
@@ -127,14 +127,14 @@ const ExecutionCreateFormPanel: React.FC<ExecutionCreateFormPanelProps> = ({
             <Space direction="vertical" size={8} style={{ width: '100%' }}>
               <Form.Item
                 name="skillId"
-                label="技能"
-                rules={[{ required: true, message: '请选择一个技能' }]}
+                label="执行员工 / 技能"
+                rules={[{ required: true, message: '请选择一个执行员工或技能' }]}
                 style={{ marginBottom: 0 }}
               >
                 <Select
                   size="large"
                   showSearch
-                  placeholder="请选择已发布技能"
+                  placeholder="请选择数字员工或技能"
                   optionFilterProp="data-search"
                   optionLabelProp="data-label"
                   options={skillSelectOptions}

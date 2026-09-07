@@ -70,4 +70,71 @@ describe('NotificationService', () => {
       })
     );
   });
+
+  it('includes coordination notifications from workbench inbox items for user', async () => {
+    const executionService = {
+      list: jest.fn().mockResolvedValue({ data: [], total: 0, page: 1, pageSize: 100 }),
+    } as any;
+
+    const mockPrisma = {
+      workbenchInboxItem: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'inbox-item-1',
+            userId: 'user-test',
+            title: '[待我执行] 完成自动化测试报告审查',
+            rawContent: '请尽快审核并提交结论',
+            sourceType: 'chat',
+            sourceRefId: 'coord_123',
+            sourceSender: 'admin',
+            status: 'unprocessed',
+            createdAt: new Date('2026-09-05T14:12:00.000Z'),
+            updatedAt: new Date('2026-09-05T14:12:00.000Z'),
+            unifiedPayload: {
+              kind: 'coordination',
+              taskId: 'coord_123',
+              taskType: 'assignment',
+              status: 'pending',
+              initiator: { id: 'admin-id', username: 'admin' },
+              assignee: { id: 'user-test', username: 'test' },
+            },
+          },
+        ]),
+      },
+    } as any;
+
+    const service = new NotificationService(executionService, mockPrisma);
+    const result = await service.list(
+      { limit: 20 },
+      { id: 'user-test', username: 'test', role: 'employee' }
+    );
+
+    expect(mockPrisma.workbenchInboxItem.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-test',
+        status: { in: ['unprocessed', 'clarified'] },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toEqual(
+      expect.objectContaining({
+        id: 'coordination:inbox-item-1',
+        source: 'coordination',
+        sourceName: 'admin',
+        category: 'status_update',
+        severity: 'info',
+        unread: true,
+        requiresAction: true,
+        actionUrl: '/dashboard?tab=inbox',
+        metadata: expect.objectContaining({
+          title: '收到来自 @admin 的协同任务',
+          resultTitle: '[待我执行] 完成自动化测试报告审查',
+          resultSummary: '请尽快审核并提交结论',
+          taskType: 'assignment',
+        }),
+      })
+    );
+  });
 });

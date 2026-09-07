@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
-export const NOTIFICATION_SOURCE_VALUES = ['execution', 'report'] as const;
+export const NOTIFICATION_SOURCE_VALUES = ['execution', 'report', 'coordination'] as const;
 export type NotificationSource = (typeof NOTIFICATION_SOURCE_VALUES)[number];
 
 export const NOTIFICATION_SEVERITY_VALUES = ['success', 'error', 'warning', 'info'] as const;

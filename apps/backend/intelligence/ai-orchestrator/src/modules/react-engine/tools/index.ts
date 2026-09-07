@@ -17,6 +17,7 @@ export { ScriptTool } from './script.tool';
 export { WorkspaceSearchTool } from './workspace-search.tool';
 export { WorkspaceOutlineTool } from './workspace-outline.tool';
 export { WorkspaceReadTool } from './workspace-read.tool';
+export { CoordinationTaskTool } from './coordination-task.tool';
 
 import { SkillMatchTool } from './skill-match.tool';
 import { ParamCollectTool } from './param-collect.tool';
@@ -31,6 +32,7 @@ import { ScriptTool } from './script.tool';
 import { WorkspaceSearchTool } from './workspace-search.tool';
 import { WorkspaceOutlineTool } from './workspace-outline.tool';
 import { WorkspaceReadTool } from './workspace-read.tool';
+import { CoordinationTaskTool } from './coordination-task.tool';
 
 export const ALL_TOOLS = [
   SkillMatchTool,
@@ -46,4 +48,5 @@ export const ALL_TOOLS = [
   WorkspaceSearchTool,
   WorkspaceOutlineTool,
   WorkspaceReadTool,
+  CoordinationTaskTool,
 ];

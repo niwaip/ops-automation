@@ -16,7 +16,10 @@ import { ChatExecutionStreamService } from './chat-execution-stream.service';
 import { DeterministicTaskExecutionService } from './deterministic-task-execution.service';
 import { ChatConversationService } from './chat-conversation.service';
 import { SkillCacheService } from '../planner/skill/skill-cache.service';
-import { NO_MATCHING_SKILL_MESSAGE } from '../planner/skill/skill-match-policy';
+import {
+  NO_MATCHING_SKILL_MESSAGE,
+  formatNoMatchingSkillMessage,
+} from '../planner/skill/skill-match-policy';
 import type { WaitingInputSemantic } from './chat.types';
 import { ChatWaitingInputService } from './chat-waiting-input.service';
 import { PlanningDecisionShadowService } from './planning-decision-shadow.service';
@@ -426,7 +429,7 @@ export class ChatOrchestratorService {
         if (result.errorCode === 'CAPABILITY_NOT_FOUND') {
           yield {
             type: StreamEventType.RESULT,
-            content: NO_MATCHING_SKILL_MESSAGE,
+            content: formatNoMatchingSkillMessage(body.message),
             data: {
               code: 'CAPABILITY_NOT_FOUND',
               status: 'not_started',
@@ -480,7 +483,7 @@ export class ChatOrchestratorService {
       });
       yield {
         type: StreamEventType.RESULT,
-        content: NO_MATCHING_SKILL_MESSAGE,
+        content: formatNoMatchingSkillMessage(body.message),
         data: {
           code: 'CAPABILITY_NOT_FOUND',
           status: 'not_started',

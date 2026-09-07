@@ -1,4 +1,4 @@
-import { parseChatSlashCommand } from './chat-slash-command.util';
+import { parseChatSlashCommand, isWorkSlashCommand } from './chat-slash-command.util';
 
 describe('parseChatSlashCommand', () => {
   it('parses /t short command and switches to task mode', () => {
@@ -65,5 +65,70 @@ describe('parseChatSlashCommand', () => {
     expect(parsed.mode).toBe('task');
     expect(parsed.message).toBe('普通消息');
     expect(parsed.isCommandOnly).toBe(false);
+  });
+
+  describe('Personal mode work slash command restrictions', () => {
+    it('blocks /doc and its aliases (/workspace, /rag) in chat mode', () => {
+      const p1 = parseChatSlashCommand('/doc 研读SWE-CI架构', 'chat');
+      expect(p1.mode).toBe('chat');
+      expect(p1.isCommandOnly).toBe(true);
+      expect(p1.systemReply).toContain('个人模式下不能调用工作能力');
+      expect(p1.systemReply).toContain('/doc');
+
+      const p2 = parseChatSlashCommand('/workspace 搜索规范', 'chat');
+      expect(p2.isCommandOnly).toBe(true);
+      expect(p2.systemReply).toContain('个人模式下不能调用工作能力');
+
+      const p3 = parseChatSlashCommand('/rag 知识检索', 'chat');
+      expect(p3.isCommandOnly).toBe(true);
+      expect(p3.systemReply).toContain('个人模式下不能调用工作能力');
+    });
+
+    it('blocks /extract and /pdf in chat mode', () => {
+      const p1 = parseChatSlashCommand('/extract 提取文档', 'chat');
+      expect(p1.isCommandOnly).toBe(true);
+      expect(p1.systemReply).toContain('个人模式下不能调用工作能力');
+
+      const p2 = parseChatSlashCommand('/pdf 解析报告.pdf', 'chat');
+      expect(p2.isCommandOnly).toBe(true);
+      expect(p2.systemReply).toContain('个人模式下不能调用工作能力');
+    });
+
+    it('blocks /email in chat mode', () => {
+      const p = parseChatSlashCommand('/email 查询最新邮件', 'chat');
+      expect(p.isCommandOnly).toBe(true);
+      expect(p.systemReply).toContain('个人模式下不能调用工作能力');
+    });
+
+    it('blocks /t when attempting to call work slash command from chat mode', () => {
+      const p = parseChatSlashCommand('/t /doc 研读架构', 'chat');
+      expect(p.isCommandOnly).toBe(true);
+      expect(p.systemReply).toContain('个人模式下不能调用工作能力');
+    });
+
+    it('allows /doc in task mode', () => {
+      const p = parseChatSlashCommand('/doc 研读架构', 'task');
+      expect(p.mode).toBe('task');
+      expect(p.message).toBe('/doc 研读架构');
+      expect(p.isCommandOnly).toBe(false);
+    });
+
+    it('allows /search in chat mode', () => {
+      const p = parseChatSlashCommand('/search 2026 AI 新闻', 'chat');
+      expect(p.mode).toBe('chat');
+      expect(p.message).toBe('/search 2026 AI 新闻');
+      expect(p.isCommandOnly).toBe(false);
+    });
+
+    it('correctly identifies work slash commands using isWorkSlashCommand', () => {
+      expect(isWorkSlashCommand('/doc xxx')).toBe(true);
+      expect(isWorkSlashCommand('/workspace')).toBe(true);
+      expect(isWorkSlashCommand('/extract')).toBe(true);
+      expect(isWorkSlashCommand('/pdf sample.pdf')).toBe(true);
+      expect(isWorkSlashCommand('/email')).toBe(true);
+      expect(isWorkSlashCommand('/search xxx')).toBe(false);
+      expect(isWorkSlashCommand('/help')).toBe(false);
+      expect(isWorkSlashCommand('普通文本 /doc')).toBe(false);
+    });
   });
 });

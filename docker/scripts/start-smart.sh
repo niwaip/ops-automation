@@ -261,6 +261,11 @@ case "$compose_command" in
             echo "Creating docker network: $network_name"
             docker network create "$network_name" >/dev/null
         fi
+        sandbox_network_name="${SANDBOX_NETWORK_NAME:-ops-sandbox-network}"
+        if ! docker network inspect "$sandbox_network_name" >/dev/null 2>&1; then
+            echo "Creating docker network: $sandbox_network_name"
+            docker network create "$sandbox_network_name" >/dev/null
+        fi
         ;;
 esac
 

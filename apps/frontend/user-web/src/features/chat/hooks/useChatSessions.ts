@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatMessage, ChatProgressLog, ChatSession } from '@ops/user-core';
-import { buildPatchedMessage, dedupeThoughtTexts, mergeHistoryMessages } from '../lib/messageState';
+import {
+  areMessagesEquivalent,
+  buildPatchedMessage,
+  dedupeThoughtTexts,
+  mergeHistoryMessages,
+} from '../lib/messageState';
 import { parseMessageContent } from '../lib/messageContent';
 import { createChatSessionId } from '../lib/session';
 import {
@@ -57,7 +62,42 @@ export function useChatSessions({
     [selectedSessionId, sessions]
   );
 
-  const activeMessages = selectedSessionId ? sessionMessages[selectedSessionId] || [] : [];
+  const rawActiveMessages = selectedSessionId ? sessionMessages[selectedSessionId] || [] : [];
+  const activeMessages = useMemo(() => {
+    const seen = new Set<string>();
+    const deduped: ChatMessage[] = [];
+    for (const msg of rawActiveMessages) {
+      if (seen.has(msg.id)) {
+        continue;
+      }
+      if (msg.role === 'assistant') {
+        // Only look for duplicate assistant messages within the current turn
+        // (stop searching once we encounter a user message).
+        let dupIndex = -1;
+        for (let i = deduped.length - 1; i >= 0; i--) {
+          if (deduped[i].role === 'user') {
+            break;
+          }
+          if (deduped[i].role === 'assistant' && areMessagesEquivalent(deduped[i], msg)) {
+            dupIndex = i;
+            break;
+          }
+        }
+        if (dupIndex !== -1) {
+          const prev = deduped[dupIndex];
+          if (prev.isStreaming && !msg.isStreaming) {
+            deduped[dupIndex] = msg;
+            seen.delete(prev.id);
+            seen.add(msg.id);
+          }
+          continue;
+        }
+      }
+      seen.add(msg.id);
+      deduped.push(msg);
+    }
+    return deduped;
+  }, [rawActiveMessages]);
   const showSessionSidebar = !embedded && !isSessionListCollapsed;
 
   useEffect(() => {

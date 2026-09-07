@@ -7,7 +7,7 @@ import { notificationStore } from '../adapters/notifications/notificationStore';
 
 const ACTIVE_POLLING_INTERVAL_MS = 10000;
 const IDLE_POLLING_INTERVAL_MS = 60000;
-const NOTIFICATION_AUTO_POLLING_ENABLED = false;
+const NOTIFICATION_AUTO_POLLING_ENABLED = true;
 
 export function UserRuntimeEffects() {
   const isAuthenticated = useStore(authStore, (state) => state.isAuthenticated);

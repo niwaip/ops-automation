@@ -59,7 +59,7 @@ export function useExecutionListTableProps({
       pageSize,
       total,
       showSizeChanger: true,
-      showTotal: (count) => `共 ${count} 条执行记录`,
+      showTotal: (count) => `共 ${count} 项任务`,
       onChange: (nextPage, nextPageSize) => {
         setPage(nextPage);
         setPageSize(nextPageSize);

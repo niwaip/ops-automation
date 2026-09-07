@@ -61,7 +61,7 @@ describe('ImChannelService Commands & WeChat Typing', () => {
       const res = imChannelService.resolveInteraction('/t', 'auto');
       expect(res.type).toBe('system_reply');
       expect(res.mode).toBe('task');
-      expect(res.systemReplyText).toContain('任务执行模式');
+      expect(res.systemReplyText).toContain('工作任务模式');
     });
 
     it('resolves /c short command to chat mode with clean message', () => {
@@ -75,7 +75,7 @@ describe('ImChannelService Commands & WeChat Typing', () => {
       const res = imChannelService.resolveInteraction('/c', 'task');
       expect(res.type).toBe('system_reply');
       expect(res.mode).toBe('chat');
-      expect(res.systemReplyText).toContain('日常聊天模式');
+      expect(res.systemReplyText).toContain('个人问答模式');
     });
 
     it('resolves /n new session command and flags isNewSession', () => {
@@ -99,12 +99,27 @@ describe('ImChannelService Commands & WeChat Typing', () => {
       expect(res.systemReplyText).toContain('快捷指令帮助');
     });
 
-    it('classifies auto intent when no prefix is given', () => {
-      const taskRes = imChannelService.resolveInteraction('查询北京天气', 'auto');
-      expect(taskRes.mode).toBe('task');
+    it('defaults to chat mode (personal mode) when no prefix or mode is given', () => {
+      const defaultRes = imChannelService.resolveInteraction('查询北京天气');
+      expect(defaultRes.type).toBe('ai');
+      expect(defaultRes.mode).toBe('chat');
+      expect(defaultRes.message).toBe('查询北京天气');
 
-      const chatRes = imChannelService.resolveInteraction('今天过得怎么样', 'auto');
-      expect(chatRes.mode).toBe('chat');
+      const explicitChatRes = imChannelService.resolveInteraction('查询北京天气', 'chat');
+      expect(explicitChatRes.type).toBe('ai');
+      expect(explicitChatRes.mode).toBe('chat');
+    });
+
+    it('defaults regular messages to chat mode regardless of configured mode', () => {
+      const autoRes = imChannelService.resolveInteraction('查询北京天气', 'auto');
+      expect(autoRes.mode).toBe('chat');
+
+      const taskConfiguredRes = imChannelService.resolveInteraction('查询北京天气', 'task');
+      expect(taskConfiguredRes.mode).toBe('chat');
+
+      const explicitTaskRes = imChannelService.resolveInteraction('/t 查询北京天气', 'chat');
+      expect(explicitTaskRes.mode).toBe('task');
+      expect(explicitTaskRes.message).toBe('查询北京天气');
     });
   });
 

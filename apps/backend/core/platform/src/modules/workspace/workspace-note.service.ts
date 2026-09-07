@@ -127,6 +127,13 @@ export class WorkspaceNoteService {
     });
 
     if (existingFile) {
+      const createdRecently = Math.abs(now.getTime() - new Date(existingFile.createdAt).getTime()) < 300_000;
+      if (createdRecently && existingFile.fileSize === fileSize) {
+        this.logger.log(
+          `Duplicate note detected within 5 minutes for "${finalFileName}", returning existing node: ${existingFile.id}`
+        );
+        return this.toNodeDto(existingFile);
+      }
       const timeTag = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
       const nameWithoutExt = baseFileName.replace(/\.md$/i, '');
       finalFileName = `${nameWithoutExt}_${timeTag}.md`;
