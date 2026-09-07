@@ -1,5 +1,8 @@
-import { WorkbenchTodoParserService } from '../src/modules/workbench-todo/workbench-todo-parser.service';
-import { TodoPriority, TodoSourceType } from '../src/modules/workbench-todo/dto/workbench-todo.dto';
+import {
+  WorkbenchTodoParserService,
+  TodoPriority,
+  TodoSourceType,
+} from '@ops/workbench/todo';
 
 describe('WorkbenchTodoParserService', () => {
   let service: WorkbenchTodoParserService;

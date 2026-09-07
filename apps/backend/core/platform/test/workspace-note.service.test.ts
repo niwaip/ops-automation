@@ -1,11 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import axios from 'axios';
-import { WorkspaceNoteService } from '../src/modules/workspace/workspace-note.service';
-import { PrismaService } from '../src/prisma/prisma.service';
-import { STORAGE_DRIVER } from '../src/modules/workspace/storage/storage-driver.interface';
-import { WorkspaceContentIndexerService } from '../src/modules/workspace/workspace-content-indexer.service';
-import { WorkspaceDigestService } from '../src/modules/workspace/workspace-digest.service';
+import {
+  WorkspaceNoteService,
+  STORAGE_DRIVER,
+  WorkspaceContentIndexerService,
+  WorkspaceDigestService,
+} from '@ops/workbench/workspace';
+import { WORKBENCH_PRISMA } from '@ops/workbench';
 
 jest.mock('axios');
 
@@ -65,7 +67,7 @@ describe('WorkspaceNoteService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WorkspaceNoteService,
-        { provide: PrismaService, useValue: mockPrisma },
+        { provide: WORKBENCH_PRISMA, useValue: mockPrisma },
         { provide: STORAGE_DRIVER, useValue: mockStorage },
         { provide: WorkspaceContentIndexerService, useValue: mockIndexer },
         { provide: WorkspaceDigestService, useValue: mockDigest },

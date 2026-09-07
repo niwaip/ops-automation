@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { OrgWorkflowService } from '../src/modules/workbench-coordination/org-workflow.service';
-import { CoordinationTaskType } from '../src/modules/workbench-coordination/dto/workbench-coordination.dto';
+import {
+  OrgWorkflowService,
+  CoordinationTaskType,
+} from '@ops/workbench/coordination';
+import { WORKBENCH_PRISMA } from '@ops/workbench';
 
 describe('OrgWorkflowService', () => {
   let service: OrgWorkflowService;
@@ -51,6 +54,7 @@ describe('OrgWorkflowService', () => {
       providers: [
         OrgWorkflowService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: WORKBENCH_PRISMA, useValue: mockPrismaService },
       ],
     }).compile();
 
@@ -238,7 +242,7 @@ describe('OrgWorkflowService', () => {
   });
 
   it('should generate stage flow AI drafts for API and browser template modes', async () => {
-    const { StageFlowAiDraftService } = require('../src/modules/workbench-coordination/stage-flow-ai-draft.service');
+    const { StageFlowAiDraftService } = require('@ops/workbench/coordination');
     const aiService = new StageFlowAiDraftService(mockPrismaService as any);
 
     // Mode 1: API update flow

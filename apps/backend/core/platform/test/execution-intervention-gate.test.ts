@@ -1,4 +1,4 @@
-import { ExecutionInterventionGateService } from "../src/modules/workbench-inbox/interceptor/execution-intervention-gate.service";
+import { ExecutionInterventionGateService } from "@ops/workbench/inbox";
 
 describe("ExecutionInterventionGateService", () => {
   let gateService: ExecutionInterventionGateService;

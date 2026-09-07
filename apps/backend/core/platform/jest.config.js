@@ -8,6 +8,8 @@ module.exports = {
     '^@ops/identity-access/(.*)$': '<rootDir>/../../governance/identity-access/dist/$1',
     '^@ops/organization$': '<rootDir>/../../governance/organization/dist',
     '^@ops/organization/(.*)$': '<rootDir>/../../governance/organization/dist/$1',
+    '^@ops/workbench$': '<rootDir>/../../governance/workbench/dist',
+    '^@ops/workbench/(.*)$': '<rootDir>/../../governance/workbench/dist/$1',
     '^@ops/workflow-registry/(.*)$': '<rootDir>/../../registry-release/workflow-registry/dist/$1',
     '^@ops/skill-registry/(.*)$': '<rootDir>/../../registry-release/skill-registry/dist/$1',
     '^@ops/release-manager/(.*)$': '<rootDir>/../../registry-release/release-manager/dist/$1',

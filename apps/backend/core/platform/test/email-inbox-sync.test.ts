@@ -1,4 +1,4 @@
-import { EmailInboxSyncService } from "../src/modules/workbench-inbox/workflow/email-inbox-sync.service";
+import { EmailInboxSyncService } from "@ops/workbench/inbox";
 import axios from "axios";
 
 jest.mock("axios");

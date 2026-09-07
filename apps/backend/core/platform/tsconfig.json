@@ -23,6 +23,8 @@
       "@/*": ["src/*"],
       "@ops/identity-access": ["../../governance/identity-access/dist"],
       "@ops/organization": ["../../governance/organization/dist"],
+      "@ops/workbench": ["../../governance/workbench/dist"],
+      "@ops/workbench/*": ["../../governance/workbench/dist/*"],
       "@ops/workflow-registry/*": ["../../registry-release/workflow-registry/dist/*"],
       "@ops/skill-registry/*": ["../../registry-release/skill-registry/dist/*"],
       "@ops/release-manager/*": ["../../registry-release/release-manager/dist/*"],

@@ -6,7 +6,7 @@
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
   "scripts": {
-    "build": "rm -rf dist tsconfig*.tsbuildinfo && pnpm exec prisma generate --schema ./prisma/schema.prisma && pnpm --filter @ops/identity-access run build && pnpm --filter @ops/organization run build && pnpm --filter @ops/workflow-registry run build && pnpm --filter @ops/skill-registry run build && pnpm --filter @ops/release-manager run build && nest build",
+    "build": "rm -rf dist tsconfig*.tsbuildinfo && pnpm exec prisma generate --schema ./prisma/schema.prisma && pnpm --filter @ops/identity-access run build && pnpm --filter @ops/organization run build && pnpm --filter @ops/workflow-registry run build && pnpm --filter @ops/skill-registry run build && pnpm --filter @ops/release-manager run build && pnpm --filter @ops/workbench run build && nest build",
     "dev": "prisma generate && nest start --watch",
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",
@@ -23,6 +23,7 @@
     "@ops/workflow-registry": "workspace:*",
     "@ops/skill-registry": "workspace:*",
     "@ops/release-manager": "workspace:*",
+    "@ops/workbench": "workspace:*",
     "@ops/backend-release-manifest": "file:../../../../packages/backend-contracts/release-manifest",
     "@ops/backend-builtin-skill-contract": "file:../../../../packages/backend-contracts/builtin-skill-contract",
     "@ops/backend-runtime-capability-contract": "file:../../../../packages/backend-contracts/runtime-capability-contract",

@@ -1,11 +1,11 @@
-import { WorkbenchInboxIngestionService } from "../src/modules/workbench-inbox/workbench-inbox-ingestion.service";
-import { WorkbenchInboxService } from "../src/modules/workbench-inbox/workbench-inbox.service";
 import {
+  WorkbenchInboxIngestionService,
+  WorkbenchInboxService,
   InboxItemStatus,
   TodoPriority,
   TodoSourceType,
   TodoStatus,
-} from "../src/modules/workbench-inbox/dto/workbench-inbox.dto";
+} from "@ops/workbench/inbox";
 
 describe("WorkbenchInboxIngestionService", () => {
   let ingestionService: WorkbenchInboxIngestionService;

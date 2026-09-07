@@ -1,7 +1,11 @@
-import { TodoSyncPluginRegistry } from "../src/modules/workbench-todo/plugins/todo-sync-plugin.registry";
-import { MicrosoftTodoPlugin } from "../src/modules/workbench-todo/plugins/adapters/microsoft-todo.plugin";
-import { GoogleTasksPlugin } from "../src/modules/workbench-todo/plugins/adapters/google-tasks.plugin";
-import { TodoPriority, TodoStatus } from "../src/modules/workbench-todo/dto/workbench-todo.dto";
+import {
+  TodoSyncPluginRegistry,
+  MicrosoftTodoPlugin,
+  GoogleTasksPlugin,
+  TodoPriority,
+  TodoStatus,
+} from "@ops/workbench/todo";
+
 
 describe("TodoSyncPlugin Architecture & Adapters", () => {
   let registry: TodoSyncPluginRegistry;

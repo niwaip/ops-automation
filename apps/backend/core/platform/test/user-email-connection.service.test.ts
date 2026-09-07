@@ -1,4 +1,4 @@
-import { UserEmailConnectionService } from '../src/modules/user-connection/user-email-connection.service';
+import { UserEmailConnectionService } from '@ops/workbench/connection';
 
 describe('UserEmailConnectionService', () => {
   let service: UserEmailConnectionService;

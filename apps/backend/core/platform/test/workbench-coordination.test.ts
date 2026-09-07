@@ -1,14 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { WorkbenchInboxService } from '../src/modules/workbench-inbox/workbench-inbox.service';
+import { WorkbenchInboxService } from '@ops/workbench/inbox';
 import {
   CoordinationTaskPriority,
   CoordinationTaskStatus,
   CoordinationTaskType,
-} from '../src/modules/workbench-coordination/dto/workbench-coordination.dto';
-import { WorkbenchCoordinationService } from '../src/modules/workbench-coordination/workbench-coordination.service';
-import { MockHrService } from '../src/modules/workbench-coordination/mock-hr.service';
-import { OrgWorkflowService } from '../src/modules/workbench-coordination/org-workflow.service';
+  WorkbenchCoordinationService,
+  MockHrService,
+  OrgWorkflowService,
+  WORKBENCH_PRISMA,
+} from '@ops/workbench';
 
 describe('WorkbenchCoordinationService', () => {
   let service: WorkbenchCoordinationService;
@@ -40,6 +41,7 @@ describe('WorkbenchCoordinationService', () => {
         OrgWorkflowService,
         MockHrService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: WORKBENCH_PRISMA, useValue: mockPrisma },
         { provide: WorkbenchInboxService, useValue: mockInboxService },
       ],
     }).compile();

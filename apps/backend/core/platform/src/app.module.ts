@@ -14,15 +14,18 @@ import { IdentityAccessBridgeModule } from './governance/identity-access/identit
 import { OrganizationBridgeModule } from './governance/organization/organization-bridge.module';
 import { WorkflowRegistryBridgeModule } from './workflow-registry/platform/workflow-registry-bridge.module';
 import { SkillRegistryBridgeModule } from './skill-registry/platform/skill-registry-bridge.module';
+import { WorkbenchBridgeModule } from './governance/workbench/workbench-bridge.module';
 
 import { BuiltinSkillModule } from '@ops/skill-registry/builtin';
+import {
+  UserConnectionModule,
+  WorkspaceModule,
+  WorkbenchTodoModule,
+  WorkbenchInboxModule,
+  WorkbenchCoordinationModule,
+} from '@ops/workbench';
 import { SystemBackupModule } from './modules/system-backup/system-backup.module';
 import { ImChannelModule } from './modules/im-channel/im-channel.module';
-import { UserConnectionModule } from './modules/user-connection/user-connection.module';
-import { WorkspaceModule } from './modules/workspace/workspace.module';
-import { WorkbenchTodoModule } from './modules/workbench-todo/workbench-todo.module';
-import { WorkbenchInboxModule } from './modules/workbench-inbox/workbench-inbox.module';
-import { WorkbenchCoordinationModule } from './modules/workbench-coordination/workbench-coordination.module';
 
 @Module({
   imports: [
@@ -43,6 +46,7 @@ import { WorkbenchCoordinationModule } from './modules/workbench-coordination/wo
     OrganizationBridgeModule,
     WorkflowRegistryBridgeModule,
     SkillRegistryBridgeModule,
+    WorkbenchBridgeModule,
 
     // Governance modules
     AuthModule,
