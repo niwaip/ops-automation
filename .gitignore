@@ -84,6 +84,10 @@ docker/office-addin/runtime-certs/*
 *.generated.ts
 .generated/
 generated/
+*.node
+*.dylib
+*.so
+libquery_engine*
 vite.config.js
 vite.config.d.ts
 

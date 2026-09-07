@@ -143,7 +143,7 @@ const cleanTextContentForDisplay = (text?: string): string | undefined => {
       const trimmed = line.trim();
       if (!trimmed) return false;
       if (/^\+[0-9]+$/.test(trimmed)) return false;
-      if (/^[😂👍❤️🔥]+$/.test(trimmed)) return false;
+      if (/^(?:[😂👍🔥]|❤️)+$/u.test(trimmed)) return false;
       if (['换一换', '展开', '收起', '分享', '点赞', '收藏', '关注'].includes(trimmed)) return false;
       return true;
     })

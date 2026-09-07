@@ -50,23 +50,23 @@ export class UserSandboxDispatcherService {
         const destPath = path.join(userWorkspaceDir, file.fileName);
         if (file.filePath && fs.existsSync(file.filePath)) {
           fs.copyFileSync(file.filePath, destPath);
-          try { fs.chmodSync(destPath, 0o666); } catch {}
+          try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
 
           // 如果存在提取的文本文件，也一并同步为 .txt 与 .extracted.txt
           const extractedSrc = `${file.filePath}.extracted.txt`;
           if (fs.existsSync(extractedSrc)) {
             const destTxt = path.join(userWorkspaceDir, `${file.fileName}.txt`);
             fs.copyFileSync(extractedSrc, destTxt);
-            try { fs.chmodSync(destTxt, 0o666); } catch {}
+            try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
           }
         } else if (file.content) {
           fs.writeFileSync(destPath, Buffer.from(file.content, 'base64'));
-          try { fs.chmodSync(destPath, 0o666); } catch {}
+          try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
 
           if (file.extractedText) {
             const destTxt = path.join(userWorkspaceDir, `${file.fileName}.txt`);
             fs.writeFileSync(destTxt, file.extractedText, 'utf-8');
-            try { fs.chmodSync(destTxt, 0o666); } catch {}
+            try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
           }
         }
         this.logger.log(`Synced attached file [${file.fileName}] to user sandbox workspace: ${destPath}`);

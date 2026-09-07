@@ -13,6 +13,10 @@
 - `governance`
   - `src/governance/identity-access/*`
   - `src/governance/organization/*`
+  - `modules/workbench-inbox` (协同收件箱，暂存迁移中)
+  - `modules/workbench-todo` (协同待办，暂存迁移中)
+  - `modules/workbench-coordination` (协同协调，暂存迁移中)
+  - `modules/workspace` (工作区资料空间，暂存迁移中)
 - `registry-release`
   - `modules/skill`
   - `modules/execution-flow`
@@ -24,6 +28,7 @@
 - `core/platform` 只作为迁移期物理承载位置，不应被视为最终边界
 - 新增治理逻辑应按 `governance` 归属设计
 - 新增注册、模板、发布逻辑应按 `registry-release` 归属设计
+- 新增工作台与空间协同逻辑中长期归属于 `governance` 平面，严禁继续将新业务直接作为 `core/platform` 的本地模块开发
 - 评审时如果需求描述仍以“放到 platform 里”作为结论，应先追问真实所有权
 
 ## 当前边界文件

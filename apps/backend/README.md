@@ -35,6 +35,7 @@ target architecture described in `docs/project_architecture_redesign.md` and
 ## Freeze Rules
 
 - `core/platform` compatibility shells may forward, assemble, or expose stable facades, but must not absorb new core business implementation.
+- `workbench-*`（包括 `workbench-inbox`、`workbench-todo`、`workbench-coordination`）及 `workspace` 模块当前作为协同工作台能力暂存挂载于 `core/platform` 下，其中长期目标归属为 `governance/` 域。严禁继续向 `core/platform` 中注入新的业务实现。
 - `intelligence/ai-orchestrator/src/modules/planner/*` must remain focused on generic planning and delegation; new browser-domain internals must not be added there.
 - `execution-control/*` must not receive release compilation, template authoring, or capability-domain design-time logic.
 - New cross-service DTOs, manifests, and protocol types must not be added back into legacy paths when a `packages/backend-contracts/*` package is the logical target.
@@ -60,6 +61,7 @@ The target structure being introduced incrementally is:
 ## Ownership Guidance
 
 - New auth, user, organization, and policy logic belongs in `governance/*`.
+- New personal/team workspace, inbox, and GTD coordination logic belongs in `governance/*` (or a dedicated workspace domain), not `core/platform`.
 - New skill, workflow, template-registry, agent-catalog, and release compilation logic belongs in `registry-release/*` logical ownership.
 - New execution lifecycle, approval, takeover, session allocation, and runtime dispatch logic belongs in `execution-control/*`.
 - New browser and document domain semantics, templates, rendering, recording, export, and runtime bridges belong in `capabilities/*` logical ownership.

@@ -64,7 +64,9 @@ export class BrowserPhaseExecutor {
         url = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim() || url;
         sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim() || sessionId;
         break;
-      } catch {}
+      } catch {
+        // optional debug probe env file not found, use default
+      }
     }
     const payload = {
       sessionId,
@@ -756,7 +758,9 @@ export class BrowserPhaseExecutor {
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           return parsed as Record<string, unknown>;
         }
-      } catch {}
+      } catch {
+        // value is not a valid JSON string, fall through to undefined
+      }
     }
     return undefined;
   }

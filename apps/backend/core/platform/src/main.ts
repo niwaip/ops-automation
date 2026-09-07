@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import * as express from 'express';
 import { AppModule } from './app.module';
 
@@ -31,7 +31,8 @@ async function bootstrap() {
 
     const port = process.env.PLATFORM_PORT || process.env.AUTH_PORT || 3001;
     await app.listen(port, '0.0.0.0');
-    console.log(`[Platform Service] Running on port ${port} (IPv4)`);
+    const logger = new Logger('Bootstrap');
+    logger.log(`Platform Service running on port ${port} (IPv4)`);
   } catch (error) {
     // #region debug-point B:platform-bootstrap-failure
     await (() => {
@@ -44,7 +45,9 @@ async function bootstrap() {
           envText.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim() || debugServerUrl;
         debugSessionId =
           envText.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim() || debugSessionId;
-      } catch {}
+      } catch {
+        // optional debug probe env file not found, use default
+      }
       return fetch(debugServerUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

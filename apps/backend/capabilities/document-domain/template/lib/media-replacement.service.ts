@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Logger } from '@nestjs/common';
 
 interface ImageRelationship {
   rId: string;
@@ -9,6 +10,7 @@ interface ImageRelationship {
 }
 
 export class MediaReplacementService {
+  private readonly logger = new Logger(MediaReplacementService.name);
   async processMediaFiles(
     zip: JSZip,
     data: any,
@@ -90,7 +92,7 @@ export class MediaReplacementService {
         await this.addImageRelationship(zip, relationshipsPath, newImageName);
         await this.updateContentTypes(zip, imageExtension, imageContentType);
       } catch (error) {
-        console.warn(`Failed to process image ${i}:`, error);
+        this.logger.warn(`Failed to process image ${i}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
   }
@@ -100,7 +102,7 @@ export class MediaReplacementService {
       if (imageData.url) {
         const response = await fetch(imageData.url);
         if (!response.ok) {
-          console.warn(`Failed to fetch image from URL: ${imageData.url}`);
+          this.logger.warn(`Failed to fetch image from URL: ${imageData.url}`);
           return null;
         }
         const buffer = await response.arrayBuffer();
@@ -116,7 +118,7 @@ export class MediaReplacementService {
         return imageData.buffer;
       }
     } catch (error) {
-      console.warn('Error loading image buffer:', error);
+      this.logger.warn(`Error loading image buffer: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     return null;

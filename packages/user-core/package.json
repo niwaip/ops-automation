@@ -39,6 +39,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint src --ext .ts,.tsx",
+    "test": "node --test 'src/**/*.spec.ts'",
     "check:boundaries": "node ./scripts/check-boundaries.mjs"
   },
   "dependencies": {

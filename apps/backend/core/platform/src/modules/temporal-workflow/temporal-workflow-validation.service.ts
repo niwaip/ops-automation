@@ -116,7 +116,9 @@ export class TemporalWorkflowValidationService {
           const envContent = fs.readFileSync(envPath, 'utf8');
           debugServerUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim() || debugServerUrl;
           debugSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim() || debugSessionId;
-        } catch {}
+        } catch {
+          // optional debug probe env file not found, use default
+        }
         fetch(debugServerUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

@@ -1,28 +1,14 @@
-export {
-  EXECUTION_FLOW_CATEGORIES,
-  ExecutionFlowModule,
-  ExecutionFlowTemplateController,
-  ExecutionFlowTemplateService,
-} from '@ops/platform/dist/modules/execution-flow';
-export type {
-  CreateExecutionFlowTemplateDTO,
-  ExecutionFlowStep,
-  ExecutionFlowStepType,
-  ExecutionFlowTemplateDTO,
-  StepAnalysis,
-  UpdateExecutionFlowTemplateDTO,
-  ValidationResult,
-  WorkflowInputPolicy,
-  WorkflowParamPolicy,
-  WorkflowParamRequiredMode,
-} from '@ops/platform/dist/modules/execution-flow';
+export * from './interfaces';
+export * from './flow-template.ports';
+export { ExecutionFlowModule } from './execution-flow.module';
+export { ExecutionFlowTemplateController } from './execution-flow.controller';
+export { ExecutionFlowTemplateService } from './execution-flow-template.service';
+export { ExecutionFlowValidationFacadeService } from './execution-flow-validation-facade.service';
+export { ExecutionFlowValidationHttpService } from './execution-flow-validation-http.service';
+export { ExecutionFlowValidationService } from './execution-flow-validation.service';
 
-import type {
-  ExecutionFlowStep,
-} from '@ops/platform/dist/modules/execution-flow';
-import {
-  EXECUTION_FLOW_CATEGORIES as executionFlowCategories,
-} from '@ops/platform/dist/modules/execution-flow';
+import type { ExecutionFlowStep } from './interfaces';
+import { EXECUTION_FLOW_CATEGORIES as executionFlowCategories } from './interfaces';
 
 export function getExecutionFlowCategoryMeta(category: string): {
   label: string;

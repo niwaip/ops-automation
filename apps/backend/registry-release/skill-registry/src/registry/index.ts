@@ -1,46 +1,22 @@
-import type {
-  AIMatchResponse,
-  CreateSkillDTO,
-  GrantSkillDTO,
-  LLMUsage,
-  ParamsSchema,
-  SkillConfigDto,
-  SkillMatchResult,
-  SkillPermissionDTO,
-  SkillRuntimeMetadata,
-  SkillToolBinding,
-  SkillToolValidationMessage,
-  SkillToolValidationResult,
-  SkillValidationResult,
-} from '../../../../core/platform/src/modules/skill/interfaces';
-import { SkillModule as PlatformSkillModule } from '../../../../core/platform/src/modules/skill/skill.module';
-import { SkillService as PlatformSkillService } from '../../../../core/platform/src/modules/skill/skill.service';
-import { SkillController as PlatformSkillController } from '../../../../core/platform/src/modules/skill/skill.controller';
-import { SkillAccessService as PlatformSkillAccessService } from '../../../../core/platform/src/modules/skill/skill-access.service';
-import { SkillEnrichmentService as PlatformSkillEnrichmentService } from '../../../../core/platform/src/modules/skill/skill-enrichment.service';
-
+export * from './interfaces';
+export * from './skill-registry.ports';
+export * from './skill-match-policy';
+export { SkillAccessService } from './skill-access.service';
+export { SkillController } from './skill.controller';
+export { SkillEnrichmentService } from './skill-enrichment.service';
+export { SkillMatcherService } from './skill-matcher.service';
+export { SkillModule } from './skill.module';
+export { SkillService } from './skill.service';
+export { SkillToolBindingService } from './skill-tool-binding.service';
+export { SkillValidationService } from './skill-validation.service';
 export type {
-  AIMatchResponse,
-  CreateSkillDTO,
-  GrantSkillDTO,
-  LLMUsage,
-  ParamsSchema,
-  SkillConfigDto,
-  SkillMatchResult,
-  SkillPermissionDTO,
-  SkillRuntimeMetadata,
-  SkillToolBinding,
-  SkillToolValidationMessage,
-  SkillToolValidationResult,
-  SkillValidationResult,
-};
-export {
-  PlatformSkillAccessService as SkillAccessService,
-  PlatformSkillController as SkillController,
-  PlatformSkillEnrichmentService as SkillEnrichmentService,
-  PlatformSkillModule as SkillModule,
-  PlatformSkillService as SkillService,
-};
+  SkillValidationEmitter,
+  SkillValidationStreamEvent,
+} from './skill-validation.service';
+export { ToolCatalogController } from './tool-catalog.controller';
+export { ToolCatalogService } from './tool-catalog.service';
+
+import type { SkillConfigDto } from './interfaces';
 
 export function isActiveSkillConfig(
   skill: Pick<SkillConfigDto, 'isActive' | 'isPublished'>,

@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as express from 'express';
 import { AppModule } from './app.module';
@@ -35,7 +35,8 @@ async function bootstrap() {
   const port = process.env.PORT || process.env.AI_ORCHESTRATOR_PORT || 3007;
   await app.listen(port);
   const publicHost = getPublicHost();
-  console.log(`AI Orchestrator Service running on: http://${publicHost}:${port}`);
+  const logger = new Logger('Bootstrap');
+  logger.log(`AI Orchestrator Service running on: http://${publicHost}:${port}`);
 }
 
 bootstrap();

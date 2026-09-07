@@ -250,7 +250,7 @@ export const capabilityReleaseApi = {
       });
     };
 
-    while (true) {
+    for (;;) {
       const { value, done } = await reader.read();
       if (done) {
         break;
@@ -367,7 +367,7 @@ export const capabilityReleaseApi = {
       });
     };
 
-    while (true) {
+    for (;;) {
       const { value, done } = await reader.read();
       if (done) {
         break;

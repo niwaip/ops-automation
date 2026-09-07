@@ -59,7 +59,7 @@ const fixLocalhostLink = (url?: string): string | undefined => replaceLocalhostW
 const normalizeComparableText = (value?: string): string =>
   String(value || '')
     .replace(/<[^>]+>/g, ' ')
-    .replace(/[`*_#>\-\[\]\(\)!]/g, ' ')
+    .replace(/[`*_#>\-[\]()!]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();

@@ -9,11 +9,8 @@ import {
 } from '@ops/release-manager/release';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { PrismaService } from '../../prisma/prisma.service';
-import { SkillModule } from '../../modules/skill/skill.module';
-import { SkillService } from '../../modules/skill/skill.service';
-import { ToolCatalogService } from '../../modules/skill/tool-catalog.service';
-import { ExecutionFlowModule } from '../../modules/execution-flow/execution-flow.module';
-import { ExecutionFlowValidationFacadeService } from '../../modules/execution-flow/execution-flow-validation-facade.service';
+import { SkillModule, SkillService, ToolCatalogService } from '@ops/skill-registry/registry';
+import { ExecutionFlowModule, ExecutionFlowValidationFacadeService } from '@ops/workflow-registry/flow-template';
 import { TemporalWorkflowModule } from '../../modules/temporal-workflow/temporal-workflow.module';
 import { TemporalWorkflowService } from '../../modules/temporal-workflow/temporal-workflow.service';
 import { ActivityExecutionService } from '../../modules/temporal-workflow/runtime-bridge/temporal-activity-execution.service';

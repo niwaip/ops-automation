@@ -249,11 +249,15 @@ export class OrgWorkflowService implements OnModuleInit {
           let dsl: any = null;
           try {
             dsl = typeof tw.workflowDsl === 'string' ? JSON.parse(tw.workflowDsl) : tw.workflowDsl;
-          } catch {}
+          } catch (error) {
+            this.logger.warn(`Failed to parse workflowDsl for workflow ${tw.id}: ${(error as Error).message}`);
+          }
           let actDsl: any = null;
           try {
             actDsl = typeof tw.activityDsl === 'string' ? JSON.parse(tw.activityDsl) : tw.activityDsl;
-          } catch {}
+          } catch (error) {
+            this.logger.warn(`Failed to parse activityDsl for workflow ${tw.id}: ${(error as Error).message}`);
+          }
 
           const stageType = dsl?.stageType || undefined;
           results.push({
@@ -424,7 +428,9 @@ export class OrgWorkflowService implements OnModuleInit {
         let dsl: any = null;
         try {
           dsl = typeof w.workflowDsl === 'string' ? JSON.parse(w.workflowDsl) : w.workflowDsl;
-        } catch {}
+        } catch (error) {
+          this.logger.warn(`Failed to parse workflowDsl for workflow ${w.id}: ${(error as Error).message}`);
+        }
         if (dsl?.stageType) {
           toDeleteIds.push(w.id);
         }

@@ -45,7 +45,9 @@ export class CapabilityReleaseBrowserRuntimeSupportService {
           sessionId = resolvedSessionId;
         }
         break;
-      } catch {}
+      } catch {
+        // optional debug probe env file not found, use default
+      }
     }
     const payload = {
       sessionId,

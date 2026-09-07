@@ -249,7 +249,7 @@ export const hasBrowserExecutionEvidence = (input: {
       if (typeof phase.runtimeSessionId === 'string' && phase.runtimeSessionId.trim().length > 0) {
         return true;
       }
-      if (Boolean(extractBrowserExecutionResult(phase.output))) {
+      if (extractBrowserExecutionResult(phase.output)) {
         return true;
       }
       if (Array.isArray(phase.steps) && phase.steps.length > 0) {

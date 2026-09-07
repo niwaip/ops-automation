@@ -509,7 +509,9 @@ export class UserEmailConnectionService {
         resolved = true;
         try {
           activeSocket?.destroy();
-        } catch {}
+        } catch (error) {
+          this.logger.debug(`SMTP test socket cleanup ignored error: ${(error as Error).message}`);
+        }
         resolve({ success, message });
       };
 
@@ -631,7 +633,9 @@ export class UserEmailConnectionService {
         resolved = true;
         try {
           socket.destroy();
-        } catch {}
+        } catch (error) {
+          this.logger.debug(`IMAP test socket cleanup ignored error: ${(error as Error).message}`);
+        }
         resolve({ success, message });
       };
 

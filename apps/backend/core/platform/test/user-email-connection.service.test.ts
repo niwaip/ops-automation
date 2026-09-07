@@ -17,7 +17,7 @@ describe('UserEmailConnectionService', () => {
       encrypt: jest.fn((val) => `enc.${val}`),
       decrypt: jest.fn((val) => val.replace('enc.', '')),
     };
-    service = new UserEmailConnectionService(mockPrisma, mockCipher);
+    service = new UserEmailConnectionService(mockPrisma, mockCipher, {} as any);
   });
 
   it('returns configured: false when no memory exists', async () => {

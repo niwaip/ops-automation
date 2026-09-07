@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as express from 'express';
 import { AppModule } from './app.module';
@@ -14,7 +14,9 @@ const debugReport = (hypothesisId: string, msg: string, data: Record<string, unk
     const env = fs.readFileSync('.dbg/control-plane-reset.env', 'utf8');
     url = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || url;
     sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || sessionId;
-  } catch {}
+  } catch {
+    // optional debug probe env file not found, use defaults
+  }
   fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -116,8 +118,9 @@ async function bootstrap() {
     const publicBaseUrl = `http://${publicHost}:${port}`;
     debugReport('C', 'bootstrap-complete', { publicBaseUrl });
 
-    console.log(`[control-plane] API Gateway running on port ${port}`);
-    console.log(`[control-plane] Swagger docs available at ${publicBaseUrl}/api/docs`);
+    const logger = new Logger('Bootstrap');
+    logger.log(`API Gateway running on port ${port}`);
+    logger.log(`Swagger docs available at ${publicBaseUrl}/api/docs`);
   } catch (error) {
     debugReport('E', 'bootstrap-error', {
       name: error instanceof Error ? error.name : typeof error,

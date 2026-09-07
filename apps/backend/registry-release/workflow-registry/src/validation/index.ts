@@ -1,100 +1,31 @@
 export type {
   StepAnalysis,
   ValidationResult,
-} from '@ops/platform/dist/modules/execution-flow';
+} from '../flow-template';
 export {
   ExecutionFlowValidationFacadeService,
   ExecutionFlowValidationHttpService,
   ExecutionFlowValidationService,
-} from '@ops/platform/dist/modules/execution-flow';
-export {
-  ActivityValidationService,
-  TemporalActivityValidationFacadeService,
-  TemporalActivityValidationHttpService,
-  TemporalWorkflowValidationService,
-  TemporalWorkflowValidationFacadeService,
-  TemporalWorkflowValidationHttpService,
-} from '@ops/platform/dist/modules/temporal-workflow';
-export {
-  TemporalWorkflowArtifactValidationService,
-  TemporalWorkflowDslValidationService,
-} from '@ops/platform/dist/workflow-registry/validation/index';
-export {
-  DEFAULT_TEMPLATE_WORKFLOW_DSL,
-} from '@ops/platform/dist/modules/temporal-workflow';
-export type {
-  ActivityExecutionOptions,
-  ActivityFormData,
-  ActivityValidationResult,
-  BuiltinActivityDTO,
-  GenerateCodeResult,
-} from '@ops/platform/dist/modules/temporal-workflow';
-export type {
-  ActivityDefinition,
-  ActivityDsl,
-  AiWorkflowDraft,
-  AiWorkflowDraftSession,
-  AiWorkflowDraftSessionListItem,
-  AiWorkflowDraftSessionMessage,
-  BrowserDraftCommandInput,
-  BrowserLoopDraftLike,
-  BrowserLoopStopWhenDraftLike,
-  BrowserScriptCommand,
-  BrowserTemplateParamsSchema,
-  BrowserTemplateStepInput,
-  BrowserWorkflowActivityPhase,
-  BrowserWorkflowActivityPhaseGroup,
-  BrowserWorkflowActivityStep,
-  BrowserWorkflowDraft,
-  CarboneSkillMeta,
-  CarboneTemplateMeta,
-  CompileTemplateWorkflowDraftDTO,
-  CreateTemporalWorkflowDTO,
-  GenerateAiWorkflowDraftDTO,
-  GenerateAiWorkflowDraftSessionDTO,
-  GenerateBrowserWorkflowDraftDTO,
-  GenerateTemplateWorkflowDraftDTO,
-  RefineAiWorkflowDraftDTO,
-  RefineAiWorkflowDraftSessionDTO,
-  TemplateWorkflowAiAnalysis,
-  TemplateWorkflowDraft,
-  TemporalValidationResult,
-  TemporalWorkflowArtifactDTO,
-  TemporalWorkflowArtifactRef,
-  TemporalWorkflowDTO,
-  TemporalWorkflowSourceContext,
-  TemporalWorkflowSourceTemplate,
-  TemporalWorkflowValidationStatus,
-  UpdateTemporalWorkflowDTO,
-  WorkflowDsl,
-  WorkflowInputParamDefinition,
-  WorkflowInputParamSource,
-  WorkflowInputParamType,
-  WorkflowInputPolicy,
-  WorkflowLocalizedValueMap,
-  WorkflowParamPolicy,
-  WorkflowParamRequiredMode,
-  WorkflowQueryHandler,
-  WorkflowResultArtifact,
-  WorkflowResultBusinessSection,
-  WorkflowResultEnvelope,
-  WorkflowResultExecution,
-  WorkflowResultPresentation,
-  WorkflowResultTextFormat,
-  WorkflowResultTrigger,
-  WorkflowSignalHandler,
-  WorkflowStep,
-} from '@ops/platform/dist/modules/temporal-workflow';
+} from '../flow-template';
 
-import type {
-  ActivityValidationResult,
-} from '@ops/platform/dist/modules/temporal-workflow';
-import type {
-  TemporalValidationResult,
-} from '@ops/platform/dist/modules/temporal-workflow';
-import type {
-  ValidationResult,
-} from '@ops/platform/dist/modules/execution-flow';
+import type { ValidationResult } from '../flow-template';
+
+export interface TemporalValidationResult {
+  isValid?: boolean;
+  score?: number;
+  errors: string[];
+  warnings: string[];
+  [key: string]: any;
+}
+
+export interface ActivityValidationResult {
+  isValid?: boolean;
+  score?: number;
+  errors: string[];
+  warnings: string[];
+  suggestions: string[];
+  [key: string]: any;
+}
 
 export function isExecutionFlowValidationPassed(
   result: ValidationResult,
@@ -106,11 +37,11 @@ export function isExecutionFlowValidationPassed(
 export function collectTemporalValidationMessages(
   result: TemporalValidationResult,
 ): string[] {
-  return [...result.errors, ...result.warnings];
+  return [...(result.errors || []), ...(result.warnings || [])];
 }
 
 export function collectActivityValidationMessages(
   result: ActivityValidationResult,
 ): string[] {
-  return [...result.errors, ...result.warnings, ...result.suggestions];
+  return [...(result.errors || []), ...(result.warnings || []), ...(result.suggestions || [])];
 }

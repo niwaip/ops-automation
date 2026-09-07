@@ -1031,7 +1031,9 @@ export class ExecutionPlanNormalizationService {
           const env = fs.readFileSync('.dbg/gross-margin-review.env', 'utf8');
           u = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || u;
           s = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || s;
-        } catch {}
+        } catch {
+          // optional debug probe env file not found, use default
+        }
         fetch(u, {
           method: 'POST',
           body: JSON.stringify({

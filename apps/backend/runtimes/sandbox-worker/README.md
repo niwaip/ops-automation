@@ -1,13 +1,15 @@
 # sandbox-worker
 
-`sandbox-worker` 是运行时平面中的动态代码沙箱执行器，负责：
+`sandbox-worker` 是运行时平面中的核心组件，当前承担**双重复合职责**：
 
-- `POST /execute`
-- `POST /execute/stream`
-- `POST /validate-activity`
-- `POST /validate-workflow`
-- `POST /validate-workflow/stream`
-- `GET /health`
+1. **Temporal 核心工作流执行 (Temporal Worker)**：
+   - 监听 `SANDBOX_WORKER_TASK_QUEUE` 与校验队列；
+   - 负责运行 Python 端核心编排工作流：`AgentSessionWorkflow`、`ActivityValidationWorkflow`、`WorkflowValidationWorkflow` 以及活动 `execute_code_activity`。
+2. **动态代码沙箱执行器 (Sandbox HTTP API)**：
+   - `POST /execute` / `POST /execute/stream`：受控 Python 脚本动态执行；
+   - `POST /validate-activity`：Activity 校验与语法验证；
+   - `POST /validate-workflow` / `POST /validate-workflow/stream`：工作流合规性检验；
+   - `GET /health`：沙箱探针。
 
 当前目录是动态代码沙箱运行时的主实现目录。
 

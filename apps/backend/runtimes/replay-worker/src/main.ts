@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { getReplayEnginePort, getReplayEnginePublicBaseUrl } from './config/service-endpoints';
@@ -29,8 +29,9 @@ async function bootstrap() {
   await app.listen(port);
 
   const publicBaseUrl = getReplayEnginePublicBaseUrl();
-  console.log(`🚀 Replay Engine service running on port ${port}`);
-  console.log(`📚 API documentation available at ${publicBaseUrl}/api`);
+  const logger = new Logger('Bootstrap');
+  logger.log(`Replay Engine service running on port ${port}`);
+  logger.log(`API documentation available at ${publicBaseUrl}/api`);
 }
 
 bootstrap();

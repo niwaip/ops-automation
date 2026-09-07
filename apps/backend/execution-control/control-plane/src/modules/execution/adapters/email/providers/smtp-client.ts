@@ -1,5 +1,6 @@
 import * as tls from 'tls';
 import * as net from 'net';
+import { Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import type { EmailAddressInput, EmailConnectionConfig } from '../email-engine.types';
 
@@ -31,6 +32,8 @@ function formatAddressHeader(item: EmailAddressInput): string {
 }
 
 export class SmtpClient {
+  private static readonly logger = new Logger(SmtpClient.name);
+
   static async verify(config: EmailConnectionConfig): Promise<{ success: boolean; message: string }> {
     const host = config.smtpHost || 'localhost';
     const port = config.smtpPort || (config.smtpSecure ? 465 : 587);
@@ -48,7 +51,9 @@ export class SmtpClient {
         resolved = true;
         try {
           activeSocket?.destroy();
-        } catch {}
+        } catch (error) {
+          SmtpClient.logger.debug(`Socket destroy in verify ignored error: ${(error as Error).message}`);
+        }
         resolve({ success, message });
       };
 
@@ -202,7 +207,9 @@ export class SmtpClient {
         resolved = true;
         try {
           activeSocket?.destroy();
-        } catch {}
+        } catch (error) {
+          SmtpClient.logger.debug(`Socket destroy in sendEmail ignored error: ${(error as Error).message}`);
+        }
         if (err) {
           reject(err);
         } else {

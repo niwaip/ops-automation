@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
@@ -40,7 +40,8 @@ async function bootstrap() {
   const port = process.env.PORT || process.env.SESSION_BROKER_PORT || 3002;
   await app.listen(port, '0.0.0.0');
 
-  console.log(`[Session Broker Service] Running on port ${port} (IPv4)`);
+  const logger = new Logger('Bootstrap');
+  logger.log(`Session Broker Service running on port ${port} (IPv4)`);
 }
 
 bootstrap();

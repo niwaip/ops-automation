@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { Logger } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { join } from 'path';
@@ -9,6 +10,7 @@ import { AppModule } from './app.module';
 import { getPublicHost } from './config/service-endpoints';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
 
   // Office add-in 会携带大体积 base64 文档与完整参数 JSON，需放宽 body 限制
@@ -31,7 +33,7 @@ async function bootstrap() {
       app.use('/renders', express.static(dir));
       app.use('/api/renders', express.static(dir));
     } catch (e) {
-      console.warn(`Failed to mount render dir ${dir}:`, e);
+      logger.warn(`Failed to mount render dir ${dir}: ${e instanceof Error ? e.message : String(e)}`);
     }
   });
 
@@ -54,9 +56,9 @@ async function bootstrap() {
   await app.listen(port);
   const publicHost = getPublicHost();
   const publicBaseUrl = `http://${publicHost}:${port}`;
-  console.log(`Document Domain is running on: ${publicBaseUrl}`);
-  console.log(`API Documentation: ${publicBaseUrl}/api`);
-  console.log(`Studio UI: ${publicBaseUrl}/`);
+  logger.log(`Document Domain is running on: ${publicBaseUrl}`);
+  logger.log(`API Documentation: ${publicBaseUrl}/api`);
+  logger.log(`Studio UI: ${publicBaseUrl}/`);
 }
 
 bootstrap();

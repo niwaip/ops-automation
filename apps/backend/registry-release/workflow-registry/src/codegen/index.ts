@@ -1,6 +1,3 @@
-export { ActivityCodegenService, TemporalWorkflowCodegenService } from '@ops/platform/dist/modules/temporal-workflow';
-export { TemporalWorkflowCodegenOrchestrationService } from '@ops/platform/dist/workflow-registry/codegen/index';
-
 export interface WorkflowCodegenSummary {
   success: boolean;
   attempts?: number;

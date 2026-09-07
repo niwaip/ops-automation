@@ -5,13 +5,15 @@ import { OrganizationModule } from '@ops/organization';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { CapabilityReleaseModule } from '@ops/release-manager/release';
-import { SkillModule } from './modules/skill/skill.module';
-import { ExecutionFlowModule } from './modules/execution-flow/execution-flow.module';
+import { SkillModule } from '@ops/skill-registry/registry';
+import { ExecutionFlowModule } from '@ops/workflow-registry/flow-template';
 import { TemporalWorkflowModule } from './modules/temporal-workflow/temporal-workflow.module';
 import { ReleaseManagerRuntimeAdapterModule } from './release-manager/platform/release-manager-runtime-adapter.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { IdentityAccessBridgeModule } from './governance/identity-access/identity-access-bridge.module';
 import { OrganizationBridgeModule } from './governance/organization/organization-bridge.module';
+import { WorkflowRegistryBridgeModule } from './workflow-registry/platform/workflow-registry-bridge.module';
+import { SkillRegistryBridgeModule } from './skill-registry/platform/skill-registry-bridge.module';
 
 import { BuiltinSkillModule } from './modules/builtin-skill/builtin-skill.module';
 import { SystemBackupModule } from './modules/system-backup/system-backup.module';
@@ -39,6 +41,8 @@ import { WorkbenchCoordinationModule } from './modules/workbench-coordination/wo
     PrismaModule,
     IdentityAccessBridgeModule,
     OrganizationBridgeModule,
+    WorkflowRegistryBridgeModule,
+    SkillRegistryBridgeModule,
 
     // Governance modules
     AuthModule,

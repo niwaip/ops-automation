@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { getPublicHost } from './config/service-endpoints';
@@ -46,8 +46,9 @@ async function bootstrap() {
 
   const publicHost = getPublicHost();
   const publicBaseUrl = `http://${publicHost}:${port}`;
-  console.log(`Browser Worker Service running on port ${port}`);
-  console.log(`Swagger documentation available at ${publicBaseUrl}/api/docs`);
+  const logger = new Logger('Bootstrap');
+  logger.log(`Browser Worker Service running on port ${port}`);
+  logger.log(`Swagger documentation available at ${publicBaseUrl}/api/docs`);
 }
 
 bootstrap();

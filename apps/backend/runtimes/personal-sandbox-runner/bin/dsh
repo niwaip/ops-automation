@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+"""
+DeepSeek Harness (dsh) - Standardized Personal Mode CLI Runner
+Autonomous intelligence harness running inside the user sandbox container.
+"""
+
+import sys
+import os
+import argparse
+from pathlib import Path
+
+# 将模块包目录加入 Python 搜索路径
+current_dir = Path(__file__).resolve().parent
+src_dir = current_dir.parent / "src"
+if src_dir.exists() and str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
+lib_dir = Path("/opt/dsh/lib")
+if lib_dir.exists() and str(lib_dir) not in sys.path:
+    sys.path.insert(0, str(lib_dir))
+
+from dsh_modules.config import cmd_version, cmd_info, cmd_plugins
+from dsh_modules.skills import cmd_skills, read_skill
+from dsh_modules.runner import cmd_run, cmd_exec
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="dsh",
+        description="DeepSeek Harness (dsh) - Standardized Personal User Sandbox CLI"
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Harness commands")
+
+    parser_ver = subparsers.add_parser("version", help="Show harness version info")
+    parser_ver.set_defaults(func=cmd_version)
+
+    parser_info = subparsers.add_parser("info", help="Show sandbox status and runtime bindings")
+    parser_info.set_defaults(func=cmd_info)
+
+    parser_plugins = subparsers.add_parser("plugins", help="List certified system plugins")
+    parser_plugins.set_defaults(func=cmd_plugins)
+
+    parser_skills = subparsers.add_parser("skills", help="List certified design and PPT skills")
+    parser_skills.set_defaults(func=cmd_skills)
+
+    parser_skill = subparsers.add_parser("skill", help="Read or inspect a skill by name")
+    parser_skill.add_argument("skill_name", help="Name or ID of skill to inspect")
+    parser_skill.set_defaults(func=lambda args: print(read_skill(args.skill_name)))
+
+    parser_run = subparsers.add_parser("run", help="Run DeepSeek Harness on a prompt or task")
+    parser_run.add_argument("query", nargs="+", help="Prompt or task for DeepSeek Harness")
+    parser_run.add_argument("--web-search", "-s", action="store_true", help="Enable internet search retrieval")
+    parser_run.add_argument("--model", "-m", default="deepseek-chat", help="Model name (default: deepseek-chat)")
+    parser_run.add_argument("--session-id", default=None, help="Session identifier for multi-turn context")
+    parser_run.set_defaults(func=cmd_run)
+
+    parser_exec = subparsers.add_parser("exec", help="Execute shell command inside workspace")
+    parser_exec.add_argument("cmd", nargs="+", help="Shell command to run")
+    parser_exec.set_defaults(func=cmd_exec)
+
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(0)
+
+    args = parser.parse_args()
+    if hasattr(args, "func"):
+        args.func(args)
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()

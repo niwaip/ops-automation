@@ -21,12 +21,14 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO ops_application_reader;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
   users, organizations, departments, teams, team_memberships, org_memberships,
-  roles, user_roles, org_role_bindings, identity_provider_configs, audit_logs
+  roles, user_roles, org_role_bindings, identity_provider_configs, audit_logs,
+  workbench_inbox_items, workbench_todos, workspace_nodes, workspaces
 TO ops_governance_writer;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
   builtin_skills, builtin_skill_versions, builtin_skill_deployments,
   builtin_skill_permission_overrides, builtin_skill_audit_events,
+  builtin_skill_runtime_configs,
   capability_releases, capability_source_snapshots, capability_builds,
   capability_validations, capability_fixtures, capability_attestations,
   deployment_records, release_audit_events, skill_configs, skill_drafts,
@@ -35,8 +37,8 @@ TO ops_registry_writer;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
   executions, execution_steps, execution_events, execution_plans, execution_artifacts,
-  execution_result_refs, execution_phases, execution_phase_steps, execution_phase_artifacts,
-  execution_takeovers, execution_outbox, schedule_fires, skill_schedules,
+  execution_completion_claims, execution_result_refs, execution_phases, execution_phase_steps,
+  execution_phase_artifacts, execution_takeovers, execution_outbox, schedule_fires, skill_schedules,
   execution_flow_templates, temporal_workflows
 TO ops_execution_writer;
 
@@ -55,7 +57,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
   user_personalization_preferences, user_saved_skills, user_saved_skill_versions,
   user_workflow_aliases, scoped_memories, candidate_recipes, candidate_recipe_evaluations,
   planning_decisions, prompt_snapshots, llm_usage_ledger, routing_observations,
-  assistant_feedback_current, assistant_feedback_events
+  assistant_feedback_current, assistant_feedback_events,
+  task_capability_bindings, task_command_aliases, task_policy_audit_logs,
+  task_policy_proposals, task_policy_sets, task_recipes
 TO ops_experience_writer;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE activities TO ops_browser_semantics_writer;

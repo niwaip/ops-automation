@@ -477,6 +477,12 @@ importers:
       '@ops/release-manager':
         specifier: workspace:*
         version: link:../../registry-release/release-manager
+      '@ops/skill-registry':
+        specifier: workspace:*
+        version: link:../../registry-release/skill-registry
+      '@ops/workflow-registry':
+        specifier: workspace:*
+        version: link:../../registry-release/workflow-registry
       '@prisma/client':
         specifier: ^5.22.0
         version: 5.22.0(prisma@5.22.0)
@@ -1032,9 +1038,6 @@ importers:
       '@ops/organization':
         specifier: workspace:*
         version: link:../../governance/organization
-      '@ops/skill-registry':
-        specifier: workspace:*
-        version: link:../skill-registry
       class-transformer:
         specifier: ^0.5.1
         version: 0.5.1
@@ -1063,16 +1066,49 @@ importers:
 
   apps/backend/registry-release/skill-registry:
     dependencies:
+      '@nestjs/common':
+        specifier: ^10.3.0
+        version: 10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core':
+        specifier: ^10.3.0
+        version: 10.4.22(@nestjs/common@10.4.22)(@nestjs/platform-express@10.4.22)(@nestjs/websockets@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/jwt':
+        specifier: ^10.2.0
+        version: 10.2.0(@nestjs/common@10.4.22)
+      '@nestjs/passport':
+        specifier: ^10.0.3
+        version: 10.0.3(@nestjs/common@10.4.22)(passport@0.7.0)
       '@ops/backend-runtime-capability-contract':
         specifier: file:../../../../packages/backend-contracts/runtime-capability-contract
         version: file:packages/backend-contracts/runtime-capability-contract
-      '@ops/platform':
+      '@ops/identity-access':
         specifier: workspace:*
-        version: link:../../core/platform
+        version: link:../../governance/identity-access
+      '@ops/workflow-registry':
+        specifier: workspace:*
+        version: link:../workflow-registry
+      axios:
+        specifier: ^1.15.0
+        version: 1.15.0(debug@4.4.3)
+      class-transformer:
+        specifier: ^0.5.1
+        version: 0.5.1
+      class-validator:
+        specifier: ^0.14.0
+        version: 0.14.4
+      reflect-metadata:
+        specifier: ^0.2.1
+        version: 0.2.2
     devDependencies:
+      '@types/express':
+        specifier: ^4.17.21
+        version: 4.17.25
       '@types/node':
         specifier: ^20.10.0
         version: 20.19.37
+      '@types/passport-jwt':
+        specifier: ^4.0.1
+        version: 4.0.1
       typescript:
         specifier: ^5.3.0
         version: 5.9.3
@@ -1088,13 +1124,43 @@ importers:
 
   apps/backend/registry-release/workflow-registry:
     dependencies:
-      '@ops/platform':
+      '@nestjs/common':
+        specifier: ^10.3.0
+        version: 10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core':
+        specifier: ^10.3.0
+        version: 10.4.22(@nestjs/common@10.4.22)(@nestjs/platform-express@10.4.22)(@nestjs/websockets@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/jwt':
+        specifier: ^10.2.0
+        version: 10.2.0(@nestjs/common@10.4.22)
+      '@nestjs/passport':
+        specifier: ^10.0.3
+        version: 10.0.3(@nestjs/common@10.4.22)(passport@0.7.0)
+      '@ops/identity-access':
         specifier: workspace:*
-        version: link:../../core/platform
+        version: link:../../governance/identity-access
+      axios:
+        specifier: ^1.15.0
+        version: 1.15.0(debug@4.4.3)
+      class-transformer:
+        specifier: ^0.5.1
+        version: 0.5.1
+      class-validator:
+        specifier: ^0.14.0
+        version: 0.14.4
+      reflect-metadata:
+        specifier: ^0.2.1
+        version: 0.2.2
     devDependencies:
+      '@types/express':
+        specifier: ^4.17.21
+        version: 4.17.25
       '@types/node':
         specifier: ^20.10.0
         version: 20.19.37
+      '@types/passport-jwt':
+        specifier: ^4.0.1
+        version: 4.0.1
       typescript:
         specifier: ^5.3.0
         version: 5.9.3

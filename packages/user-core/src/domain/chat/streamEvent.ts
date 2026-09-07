@@ -217,7 +217,7 @@ export const buildTaskProgressLog = (
   normalizedResult: NormalizedChatExecutionResult | undefined
 ): ChatProgressLog | undefined => {
   if (event.type === StreamEventTypeValue.THOUGHT) {
-    const text = compactText(event.content.replace(/[🚀📥]/g, '').trim(), 100);
+    const text = compactText(event.content.replace(/[🚀📥]/gu, '').trim(), 100);
     return text ? { stage: 'thought', text } : undefined;
   }
 

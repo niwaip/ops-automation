@@ -1,4 +1,5 @@
-import { IsOptional, IsString, IsNumber, IsObject, IsDefined, IsBoolean } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsObject, IsDefined, IsBoolean, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class LaunchUserSandboxDto {
@@ -75,6 +76,16 @@ export class ExecUserSandboxDto {
   workDir?: string;
 }
 
+export class UserSandboxHistoryMessageDto {
+  @ApiProperty({ description: '角色 (user / assistant / system)', example: 'user' })
+  @IsString()
+  role!: string;
+
+  @ApiProperty({ description: '消息内容', example: '上海的天气' })
+  @IsString()
+  content!: string;
+}
+
 export class RunHarnessDto {
   @ApiProperty({ description: '用户唯一标识', example: 'user_12345' })
   @IsString()
@@ -99,9 +110,15 @@ export class RunHarnessDto {
   @IsString()
   sessionId?: string;
 
-  @ApiPropertyOptional({ description: '历史对话记录，用于保持会话上下文' })
+  @ApiPropertyOptional({
+    description: '历史对话记录，用于保持会话上下文',
+    type: [UserSandboxHistoryMessageDto],
+  })
   @IsOptional()
-  history?: Array<{ role: string; content: string }>;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UserSandboxHistoryMessageDto)
+  history?: UserSandboxHistoryMessageDto[];
 
   @ApiPropertyOptional({ description: '执行超时时间(毫秒)', default: 300000 })
   @IsOptional()
