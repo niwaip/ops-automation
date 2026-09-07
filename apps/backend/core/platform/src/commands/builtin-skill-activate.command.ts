@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
-import { BuiltinSkillRegistryService } from '../modules/builtin-skill/registry/builtin-skill-registry.service';
+import { BuiltinSkillRegistryService } from '@ops/skill-registry/builtin';
 
 async function bootstrap() {
   const args = process.argv.slice(2);
@@ -22,7 +22,7 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  const version = skill.versions.find(v => v.definitionVersion === targetVersion);
+  const version = skill.versions.find((v: any) => v.definitionVersion === targetVersion);
   if (!version) {
     console.error(`Version '${targetVersion}' not found for skill '${capabilityKey}'`);
     await app.close();

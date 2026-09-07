@@ -1,5 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  SKILL_REGISTRY_PRISMA,
+  SkillRegistryPrismaPort,
+} from '../../registry/skill-registry.ports';
 import { BuiltinSkillAuditService } from '../audit/builtin-skill-audit.service';
 import { BuiltinSkillRuntimeConfigCipher } from './builtin-skill-runtime-config.crypto';
 
@@ -207,7 +210,8 @@ const DEFINITIONS: Record<string, BuiltinSkillConfigDefinition[]> = {
 @Injectable()
 export class BuiltinSkillRuntimeConfigService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(SKILL_REGISTRY_PRISMA)
+    private readonly prisma: SkillRegistryPrismaPort,
     private readonly cipher: BuiltinSkillRuntimeConfigCipher,
     private readonly audit: BuiltinSkillAuditService
   ) {}
@@ -221,7 +225,7 @@ export class BuiltinSkillRuntimeConfigService {
     const rows = await this.prisma.builtinSkillRuntimeConfig.findMany({
       where: { builtinSkillId: skill.id },
     });
-    const byKey = new Map(rows.map((row) => [row.configKey, row]));
+    const byKey = new Map<string, any>(rows.map((row: any) => [row.configKey, row]));
     return {
       capabilityKey: skill.capabilityKey,
       fields: this.definitionsFor(skill.capabilityKey).map((definition) => ({
@@ -243,7 +247,7 @@ export class BuiltinSkillRuntimeConfigService {
     if (unknown.length)
       throw new BadRequestException(`Unsupported runtime config: ${unknown.join(', ')}`);
 
-    await this.prisma.$transaction(async (tx) => {
+    await (this.prisma as any).$transaction(async (tx: any) => {
       for (const [configKey, rawValue] of Object.entries(values || {})) {
         const value = rawValue?.trim();
         if (!value) {
@@ -279,7 +283,7 @@ export class BuiltinSkillRuntimeConfigService {
       where: { builtinSkillId: skill.id },
     });
     return Object.fromEntries(
-      rows.map((row) => [row.configKey, this.cipher.decrypt(row.encryptedValue)])
+      rows.map((row: any) => [row.configKey, this.cipher.decrypt(row.encryptedValue)])
     );
   }
 

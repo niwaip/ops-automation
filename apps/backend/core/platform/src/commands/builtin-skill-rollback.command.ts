@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
-import { BuiltinSkillRegistryService } from '../modules/builtin-skill/registry/builtin-skill-registry.service';
+import { BuiltinSkillRegistryService } from '@ops/skill-registry/builtin';
 
 async function bootstrap() {
   const args = process.argv.slice(2);

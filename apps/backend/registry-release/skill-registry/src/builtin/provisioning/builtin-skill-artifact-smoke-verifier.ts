@@ -1,6 +1,6 @@
-import axios from 'axios';
 import * as crypto from 'crypto';
-import { getCarboneServiceUrl } from '../../../config/service-endpoints';
+import axios from 'axios';
+import { getCarboneServiceUrl } from '../../registry/skill-registry.ports';
 
 export const ARTIFACT_SMOKE_HANDLER_KEYS = new Set([
   'document.markdown-artifact-writer',

@@ -1,5 +1,7 @@
-import { BuiltinSkillProvisioningService } from '../src/modules/builtin-skill/provisioning/builtin-skill-provisioning.service';
-import { BuiltinSkillPermissionService } from '../src/modules/builtin-skill/permissions/builtin-skill-permission.service';
+import {
+  BuiltinSkillProvisioningService,
+  BuiltinSkillPermissionService,
+} from '@ops/skill-registry/builtin';
 import { BuiltinSkillManifest } from '@ops/backend-builtin-skill-contract';
 
 describe('BuiltinSkill Platform Module Tests', () => {

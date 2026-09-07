@@ -1,4 +1,4 @@
-import { BuiltinSkillRegistryService } from '../src/modules/builtin-skill/registry/builtin-skill-registry.service';
+import { BuiltinSkillRegistryService } from '@ops/skill-registry/builtin';
 
 describe('Activation Gate (P3 item 4, §10.6)', () => {
   const createRegistry = (over: {

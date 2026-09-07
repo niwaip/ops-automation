@@ -1,11 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  SKILL_REGISTRY_PRISMA,
+  SkillRegistryPrismaPort,
+} from '../../registry/skill-registry.ports';
 
 @Injectable()
 export class BuiltinSkillAuditService {
   private readonly logger = new Logger(BuiltinSkillAuditService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(SKILL_REGISTRY_PRISMA)
+    private readonly prisma: SkillRegistryPrismaPort
+  ) {}
 
   async logEvent(params: {
     builtinSkillId: string;

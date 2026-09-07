@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { AppModule } from '../app.module';
-import { BuiltinSkillRegistryService } from '../modules/builtin-skill/registry/builtin-skill-registry.service';
+import { BuiltinSkillRegistryService } from '@ops/skill-registry/builtin';
 import { computeCanonicalDigest } from '@ops/backend-builtin-skill-contract';
 
 async function bootstrap() {
@@ -26,7 +26,7 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  const activeVersion = skill.versions.find(v => v.id === skill.activeVersionId);
+  const activeVersion = skill.versions.find((v: any) => v.id === skill.activeVersionId);
   if (!activeVersion) {
     console.error(`Active version not found for skill '${capabilityKey}'`);
     await app.close();

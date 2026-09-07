@@ -11,7 +11,7 @@ import {
 } from '@ops/backend-builtin-skill-contract';
 import { BuiltinSkillRegistryService } from '../registry/builtin-skill-registry.service';
 import { BuiltinSkillAuditService } from '../audit/builtin-skill-audit.service';
-import { getCarboneServiceUrl } from '../../../config/service-endpoints';
+import { getCarboneServiceUrl } from '../../registry/skill-registry.ports';
 import {
   ARTIFACT_SMOKE_HANDLER_KEYS,
   verifyBuiltinArtifactSmoke,

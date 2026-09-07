@@ -1,5 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  SKILL_REGISTRY_PRISMA,
+  SkillRegistryPrismaPort,
+} from '../../registry/skill-registry.ports';
 import { BuiltinSkillRegistryService } from '../registry/builtin-skill-registry.service';
 
 export interface AuthorizeInput {
@@ -20,7 +23,8 @@ export class BuiltinSkillPermissionService {
   private readonly logger = new Logger(BuiltinSkillPermissionService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(SKILL_REGISTRY_PRISMA)
+    private readonly prisma: SkillRegistryPrismaPort,
     private readonly registryService: BuiltinSkillRegistryService,
   ) {}
 
@@ -48,7 +52,7 @@ export class BuiltinSkillPermissionService {
     });
 
     const now = new Date();
-    const activeOverrides = overrides.filter(o => !o.expiresAt || o.expiresAt > now);
+    const activeOverrides = overrides.filter((o: any) => !o.expiresAt || o.expiresAt > now);
 
     const matchesPrincipal = (o: { principalType: string; principalId: string }) => {
       if (!o.principalType || o.principalType === 'org') return true;
@@ -59,31 +63,31 @@ export class BuiltinSkillPermissionService {
 
     // 1. Org-level Deny check
     if (input.orgId) {
-      const orgDeny = activeOverrides.find(o => o.orgId === input.orgId && o.effect === 'deny' && matchesPrincipal(o));
+      const orgDeny = activeOverrides.find((o: any) => o.orgId === input.orgId && o.effect === 'deny' && matchesPrincipal(o));
       if (orgDeny) return { authorized: false, reason: 'ORG_DENIED' };
     }
 
     // 2. User Deny (global or org-scoped)
     if (input.userId) {
-      const userDeny = activeOverrides.find(o => o.principalType === 'user' && o.principalId === input.userId && o.effect === 'deny' && (!o.orgId || o.orgId === input.orgId));
+      const userDeny = activeOverrides.find((o: any) => o.principalType === 'user' && o.principalId === input.userId && o.effect === 'deny' && (!o.orgId || o.orgId === input.orgId));
       if (userDeny) return { authorized: false, reason: 'USER_DENIED' };
     }
 
     // 3. Role Deny (global or org-scoped)
     if (input.roleIds && input.roleIds.length > 0) {
-      const roleDeny = activeOverrides.find(o => o.principalType === 'role' && input.roleIds!.includes(o.principalId) && o.effect === 'deny' && (!o.orgId || o.orgId === input.orgId));
+      const roleDeny = activeOverrides.find((o: any) => o.principalType === 'role' && input.roleIds!.includes(o.principalId) && o.effect === 'deny' && (!o.orgId || o.orgId === input.orgId));
       if (roleDeny) return { authorized: false, reason: 'ROLE_DENIED' };
     }
 
     // 4. User Allow
     if (input.userId) {
-      const userAllow = activeOverrides.find(o => o.principalType === 'user' && o.principalId === input.userId && o.effect === 'allow');
+      const userAllow = activeOverrides.find((o: any) => o.principalType === 'user' && o.principalId === input.userId && o.effect === 'allow');
       if (userAllow) return { authorized: true, reason: 'USER_ALLOWED' };
     }
 
     // 5. Role Allow
     if (input.roleIds && input.roleIds.length > 0) {
-      const roleAllow = activeOverrides.find(o => o.principalType === 'role' && input.roleIds!.includes(o.principalId) && o.effect === 'allow');
+      const roleAllow = activeOverrides.find((o: any) => o.principalType === 'role' && input.roleIds!.includes(o.principalId) && o.effect === 'allow');
       if (roleAllow) return { authorized: true, reason: 'ROLE_ALLOWED' };
     }
 

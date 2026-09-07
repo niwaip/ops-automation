@@ -3,7 +3,7 @@ import axios from 'axios';
 import * as net from 'net';
 import * as tls from 'tls';
 import { PrismaService } from '../../prisma/prisma.service';
-import { BuiltinSkillRuntimeConfigCipher } from '../builtin-skill/runtime-config/builtin-skill-runtime-config.crypto';
+import { BuiltinSkillRuntimeConfigCipher } from '@ops/skill-registry/builtin';
 import { MicrosoftOAuthService, DeviceCodeResponse } from './microsoft-oauth.service';
 import { SaveUserEmailDto, TestUserEmailDto } from './user-email-connection.dto';
 

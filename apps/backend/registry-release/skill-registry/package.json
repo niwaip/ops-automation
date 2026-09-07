@@ -7,6 +7,10 @@
     "./registry": {
       "types": "./dist/registry/index.d.ts",
       "default": "./dist/registry/index.js"
+    },
+    "./builtin": {
+      "types": "./dist/builtin/index.d.ts",
+      "default": "./dist/builtin/index.js"
     }
   },
   "scripts": {
@@ -18,6 +22,7 @@
     "@nestjs/core": "^10.3.0",
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/passport": "^10.0.3",
+    "@ops/backend-builtin-skill-contract": "file:../../../../packages/backend-contracts/builtin-skill-contract",
     "@ops/backend-runtime-capability-contract": "file:../../../../packages/backend-contracts/runtime-capability-contract",
     "@ops/identity-access": "workspace:*",
     "@ops/workflow-registry": "workspace:*",

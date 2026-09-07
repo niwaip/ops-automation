@@ -2,7 +2,7 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { BuiltinSkillProvisioningService } from '../src/modules/builtin-skill/provisioning/builtin-skill-provisioning.service';
+import { BuiltinSkillProvisioningService } from '@ops/skill-registry/builtin';
 
 describe('PDF built-in skill bundles', () => {
   const builtinRoot = path.resolve(__dirname, '../../../../../builtin-skills');

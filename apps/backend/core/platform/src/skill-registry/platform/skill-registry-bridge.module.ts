@@ -6,9 +6,11 @@ import {
 } from '@ops/skill-registry/registry';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { PrismaService } from '../../prisma/prisma.service';
-import { BuiltinSkillModule } from '../../modules/builtin-skill/builtin-skill.module';
-import { BuiltinSkillRegistryService } from '../../modules/builtin-skill/registry/builtin-skill-registry.service';
-import { BuiltinSkillRuntimeConfigService } from '../../modules/builtin-skill/runtime-config/builtin-skill-runtime-config.service';
+import {
+  BuiltinSkillModule,
+  BuiltinSkillRegistryService,
+  BuiltinSkillRuntimeConfigService,
+} from '@ops/skill-registry/builtin';
 
 @Global()
 @Module({

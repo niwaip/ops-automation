@@ -1,6 +1,5 @@
 import axios from 'axios';
-import { SkillConfigDto } from '../src/modules/skill/interfaces';
-import { SkillMatcherService } from '../src/modules/skill/skill-matcher.service';
+import { SkillConfigDto, SkillMatcherService } from '@ops/skill-registry/registry';
 
 jest.mock('axios');
 

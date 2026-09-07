@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { PrismaModule } from '../../prisma/prisma.module';
 import { BuiltinSkillAuditService } from './audit/builtin-skill-audit.service';
 import { BuiltinSkillRegistryService } from './registry/builtin-skill-registry.service';
 import { BuiltinSkillPermissionService } from './permissions/builtin-skill-permission.service';
@@ -11,7 +10,6 @@ import { BuiltinSkillRuntimeConfigService } from './runtime-config/builtin-skill
 import { BuiltinSkillController } from './builtin-skill.controller';
 
 @Module({
-  imports: [PrismaModule],
   controllers: [BuiltinSkillController],
   providers: [
     BuiltinSkillAuditService,

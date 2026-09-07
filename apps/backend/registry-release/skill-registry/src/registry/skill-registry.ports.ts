@@ -10,8 +10,18 @@ export interface SkillRegistryPrismaPort {
   skillConfig?: any;
   skillAccessRequest?: any;
   execution?: any;
+  builtinSkill?: any;
+  builtinSkillVersion?: any;
+  builtinSkillDeployment?: any;
+  builtinSkillAudit?: any;
+  builtinSkillConfig?: any;
+  builtinSkillPermission?: any;
+  builtinSkillPermissionOverride?: any;
+  builtinSkillRuntimeConfig?: any;
+  $queryRaw<T = any>(query: any, ...values: any[]): Promise<T>;
   $queryRawUnsafe<T = any>(query: string, ...values: any[]): Promise<T>;
   $executeRawUnsafe(query: string, ...values: any[]): Promise<number>;
+  $transaction?<T = any>(fn: any): Promise<T>;
   [key: string]: any;
 }
 

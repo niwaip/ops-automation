@@ -15,7 +15,7 @@ import { OrganizationBridgeModule } from './governance/organization/organization
 import { WorkflowRegistryBridgeModule } from './workflow-registry/platform/workflow-registry-bridge.module';
 import { SkillRegistryBridgeModule } from './skill-registry/platform/skill-registry-bridge.module';
 
-import { BuiltinSkillModule } from './modules/builtin-skill/builtin-skill.module';
+import { BuiltinSkillModule } from '@ops/skill-registry/builtin';
 import { SystemBackupModule } from './modules/system-backup/system-backup.module';
 import { ImChannelModule } from './modules/im-channel/im-channel.module';
 import { UserConnectionModule } from './modules/user-connection/user-connection.module';

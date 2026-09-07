@@ -1,5 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  SKILL_REGISTRY_PRISMA,
+  SkillRegistryPrismaPort,
+} from '../../registry/skill-registry.ports';
 import { BuiltinSkillPermissionService } from '../permissions/builtin-skill-permission.service';
 import { ExecutableCapabilityView } from '@ops/backend-builtin-skill-contract';
 import { computeContractDigest } from '@ops/backend-runtime-capability-contract';
@@ -9,7 +12,8 @@ export class BuiltinSkillCatalogProjectionService {
   private readonly logger = new Logger(BuiltinSkillCatalogProjectionService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(SKILL_REGISTRY_PRISMA)
+    private readonly prisma: SkillRegistryPrismaPort,
     private readonly permissionService: BuiltinSkillPermissionService,
   ) {}
 
@@ -28,11 +32,11 @@ export class BuiltinSkillCatalogProjectionService {
 
     for (const skill of builtinSkills) {
       if (!skill.activeVersionId) continue;
-      const activeVersion = skill.versions.find(v => v.id === skill.activeVersionId);
+      const activeVersion = skill.versions.find((v: any) => v.id === skill.activeVersionId);
       if (!activeVersion) continue;
 
       // Active version MUST have a healthy deployment record
-      const isHealthy = activeVersion.deployments.some(d => d.status === 'healthy' || d.status === 'deployed');
+      const isHealthy = activeVersion.deployments.some((d: any) => d.status === 'healthy' || d.status === 'deployed');
       if (!isHealthy) continue;
 
       const authResult = await this.permissionService.authorize({
@@ -129,7 +133,7 @@ export class BuiltinSkillCatalogProjectionService {
 
       // SkillPermission check if roleIds are present
       if (userContext?.roleIds && userContext.roleIds.length > 0 && published.permissions.length > 0) {
-        const isPermitted = published.permissions.some(p => userContext.roleIds!.includes(p.roleId));
+        const isPermitted = published.permissions.some((p: any) => userContext.roleIds!.includes(p.roleId));
         if (!isPermitted) continue;
       }
 
@@ -225,7 +229,7 @@ const release = healthyDeploymentRows.find(
 
     // Strict Version Resolution: Never silently fall back to active version if definitionVersion is specified!
     if (input.definitionVersion) {
-      targetVersion = skill.versions.find(v => v.definitionVersion === input.definitionVersion);
+      targetVersion = skill.versions.find((v: any) => v.definitionVersion === input.definitionVersion);
       if (!targetVersion) {
         return {
           found: false,
@@ -235,7 +239,7 @@ const release = healthyDeploymentRows.find(
         };
       }
     } else if (skill.activeVersionId) {
-      targetVersion = skill.versions.find(v => v.id === skill.activeVersionId);
+      targetVersion = skill.versions.find((v: any) => v.id === skill.activeVersionId);
     }
 
     if (!targetVersion) {
@@ -247,7 +251,7 @@ const release = healthyDeploymentRows.find(
       };
     }
 
-    const deployment = targetVersion.deployments.find(d => d.status === 'healthy' || d.status === 'deployed');
+    const deployment = targetVersion.deployments.find((d: any) => d.status === 'healthy' || d.status === 'deployed');
     const isHealthy = Boolean(deployment);
 
     const manifest = targetVersion.manifestJson as any;

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
-import { BuiltinSkillModule } from '../builtin-skill/builtin-skill.module';
+import { BuiltinSkillModule } from '@ops/skill-registry/builtin';
 import { MicrosoftOAuthService } from './microsoft-oauth.service';
 import {
   InternalUserEmailConnectionController,

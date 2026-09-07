@@ -1,4 +1,4 @@
-import { BuiltinSkillRegistryService } from '../src/modules/builtin-skill/registry/builtin-skill-registry.service';
+import { BuiltinSkillRegistryService } from '@ops/skill-registry/builtin';
 
 describe('BuiltinSkillRegistryService inventory', () => {
   it('returns active deployment details and keeps inactive skills visible', async () => {

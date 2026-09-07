@@ -1,11 +1,15 @@
 import {
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
+import {
+  SKILL_REGISTRY_PRISMA,
+  SkillRegistryPrismaPort,
+} from '../../registry/skill-registry.ports';
 import { BuiltinSkillManifest } from '@ops/backend-builtin-skill-contract';
 import { BuiltinSkillAuditService } from '../audit/builtin-skill-audit.service';
 
@@ -21,7 +25,8 @@ export class BuiltinSkillRegistryService {
   private readonly logger = new Logger(BuiltinSkillRegistryService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(SKILL_REGISTRY_PRISMA)
+    private readonly prisma: SkillRegistryPrismaPort,
     private readonly auditService: BuiltinSkillAuditService
   ) {}
 
@@ -45,9 +50,9 @@ export class BuiltinSkillRegistryService {
       orderBy: [{ category: 'asc' }, { capabilityKey: 'asc' }],
     });
 
-    return skills.map((skill) => {
+    return skills.map((skill: any) => {
       const activeVersion = skill.activeVersionId
-        ? skill.versions.find((version) => version.id === skill.activeVersionId) || null
+        ? skill.versions.find((version: any) => version.id === skill.activeVersionId) || null
         : null;
 
       return {
@@ -73,7 +78,7 @@ export class BuiltinSkillRegistryService {
               runtimeBuild: activeVersion.runtimeBuild,
               attestationId: activeVersion.attestationId,
               manifest: activeVersion.manifestJson,
-              deployments: activeVersion.deployments.map((deployment) => ({
+              deployments: activeVersion.deployments.map((deployment: any) => ({
                 environment: deployment.environment,
                 status: deployment.status,
                 smokeTestStatus: deployment.smokeTestStatus,
@@ -83,7 +88,7 @@ export class BuiltinSkillRegistryService {
               createdAt: activeVersion.createdAt,
             }
           : null,
-        versions: skill.versions.map((version) => ({
+        versions: skill.versions.map((version: any) => ({
           id: version.id,
           definitionVersion: version.definitionVersion,
           definitionDigest: version.definitionDigest,

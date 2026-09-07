@@ -1,4 +1,4 @@
-import { BuiltinSkillRegistryService } from '../src/modules/builtin-skill/registry/builtin-skill-registry.service';
+import { BuiltinSkillRegistryService } from '@ops/skill-registry/builtin';
 
 describe('Builtin skill bundle attestation', () => {
   it('binds a provisioned version to source, contract, runtime, and fixture digests', async () => {

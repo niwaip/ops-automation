@@ -3,7 +3,7 @@ import * as crypto from 'crypto';
 import {
   ARTIFACT_SMOKE_HANDLER_KEYS,
   verifyBuiltinArtifactSmoke,
-} from '../src/modules/builtin-skill/provisioning/builtin-skill-artifact-smoke-verifier';
+} from '@ops/skill-registry/builtin';
 
 describe('PDF artifact smoke verifier', () => {
   afterEach(() => jest.restoreAllMocks());
