@@ -135,7 +135,7 @@ export class UserSandboxDispatcherService {
         const fileList = body.files.map((f) => f.fileName).join(', ');
         promptForSandbox =
           `用户附加了文件：${fileList}。\n` +
-          `文件已放入当前沙箱 /workspace/ 目录下（包含原始文件及同名 .txt 提取文本，可直接使用 shell/cat/python 等命令操作与分析）。\n\n`;
+          `文件已放入当前沙箱 /workspace/ 目录下（可直接使用内置 read_file 工具或 python 原生读取分析）。\n\n`;
         for (const f of body.files) {
           if (f.extractedText) {
             const preview = f.extractedText.slice(0, 4000);
@@ -282,13 +282,7 @@ export class UserSandboxDispatcherService {
       }
 
       // 二次防御：彻底剔除可能意外残留在正文中的工具调用裸 JSON 与 XML 标签
-      cleanAnswer = cleanAnswer
-        .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '')
-        .replace(/<tool_call>[\s\S]*$/g, '')
-        .replace(/<｜DSML｜[\s\S]*?<\/｜DSML｜[^>]*>/g, '')
-        .replace(/<｜DSML｜[\s\S]*$/g, '')
-        .replace(/(?:```(?:json)?\s*)?\{\s*"(?:name|tool|action)"\s*:\s*"[^"]+"\s*,\s*"(?:arguments|parameters|params|action_input)"\s*:\s*\{[\s\S]*?\}\s*\}(?:\s*```)?/g, '')
-        .trim();
+      cleanAnswer = this.stripToolCallArtifacts(cleanAnswer);
 
       if (!cleanAnswer) {
         cleanAnswer = '已为您完成沙箱智能检索与数据分析，未获取到更多额外内容。';
@@ -329,6 +323,7 @@ export class UserSandboxDispatcherService {
         thinkingEnabled: Boolean(body.config?.thinking),
         ownerUserId: effectiveUserId,
         clientMessageId: body.clientMessageId,
+        clientAssistantMessageId: body.clientAssistantMessageId,
       });
 
       emit(this.chatConversationService.buildSessionPatchEvent(sessionId, session));
@@ -343,5 +338,56 @@ export class UserSandboxDispatcherService {
       });
       return false;
     }
+  }
+
+  private stripToolCallArtifacts(raw: string): string {
+    let res = (raw || '')
+      .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '')
+      .replace(/<tool_call>[\s\S]*$/g, '')
+      .replace(/<｜DSML｜[\s\S]*?<\/｜DSML｜[^>]*>/g, '')
+      .replace(/<｜DSML｜[\s\S]*$/g, '');
+
+    // 剔除可能残留的裸 JSON 工具调用（支持多层嵌套与未闭合截断）
+    const toolHeader = /\{\s*"(?:name|tool|action)"\s*:\s*"[^"]+"/;
+    let match: RegExpExecArray | null;
+    while ((match = toolHeader.exec(res)) !== null) {
+      const idx = match.index;
+      let inString = false;
+      let escape = false;
+      let depth = 0;
+      let endIdx = idx;
+      for (let i = idx; i < res.length; i++) {
+        const c = res[i];
+        if (escape) {
+          escape = false;
+          continue;
+        }
+        if (c === '\\') {
+          escape = true;
+          continue;
+        }
+        if (c === '"') {
+          inString = !inString;
+          continue;
+        }
+        if (!inString) {
+          if (c === '{') depth++;
+          else if (c === '}') {
+            depth--;
+            if (depth === 0) {
+              endIdx = i + 1;
+              break;
+            }
+          }
+        }
+      }
+      if (depth > 0) {
+        res = res.slice(0, idx).trim();
+        break;
+      } else {
+        res = (res.slice(0, idx) + res.slice(endIdx)).trim();
+      }
+    }
+    return res.replace(/```(?:json)?\s*```/g, '').replace(/\n{3,}/g, '\n\n').trim();
   }
 }

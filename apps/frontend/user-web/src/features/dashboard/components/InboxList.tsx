@@ -2,6 +2,7 @@ import {
   ArrowRightOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
+  CloseCircleOutlined,
   DeleteOutlined,
   DownOutlined,
   ExclamationCircleOutlined,
@@ -12,11 +13,13 @@ import {
   MailOutlined,
   RobotOutlined,
   ThunderboltOutlined,
+  UndoOutlined,
   UpOutlined,
 } from "@ant-design/icons";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { CoordinationActionModal } from "./CoordinationActionModal";
 import {
   Button,
   Card,
@@ -38,7 +41,7 @@ import inboxStyles from "./InboxList.module.css";
 
 interface InboxListProps {
   inboxItems: WorkbenchInboxItem[];
-  inboxFilter: "all" | "unprocessed" | "clarified" | "converted";
+  inboxFilter: "all" | "unprocessed" | "clarified" | "converted" | "archived";
   inboxSummary: {
     total: number;
     unprocessed: number;
@@ -49,13 +52,14 @@ interface InboxListProps {
   inboxDraft: string;
   clarifyingIds: Record<string, boolean>;
   isSyncingEmail?: boolean;
-  onFilterChange: (filter: "all" | "unprocessed" | "clarified" | "converted") => void;
+  onFilterChange: (filter: "all" | "unprocessed" | "clarified" | "converted" | "archived") => void;
   onDraftChange: (draft: string) => void;
   onQuickIngest: () => void;
   onSyncEmail?: () => void;
   onClarifyItem: (item: WorkbenchInboxItem) => void;
   onConvertToTodo: (id: string) => void;
   onArchiveItem: (id: string) => void;
+  onUnarchiveItem?: (id: string) => void;
   onDeleteItem: (id: string) => void;
 }
 
@@ -73,12 +77,16 @@ export function InboxList({
   onClarifyItem,
   onConvertToTodo,
   onArchiveItem,
+  onUnarchiveItem,
   onDeleteItem,
 }: InboxListProps) {
   const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isShaking, setIsShaking] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+  const [actionModalOpen, setActionModalOpen] = useState(false);
+  const [activeAction, setActiveAction] = useState<'approve' | 'reject' | 'complete'>('approve');
+  const [activeCoordItem, setActiveCoordItem] = useState<WorkbenchInboxItem | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const toggleExpand = (id: string) => {
@@ -243,12 +251,39 @@ export function InboxList({
 
   const renderMainContent = (item: WorkbenchInboxItem) => {
     const isExpanded = Boolean(expandedIds[item.id]);
+    const payload = (item.unifiedPayload || {}) as Record<string, any>;
+    const isCoordination = payload.kind === "coordination";
+    const params = payload.parameters || {};
+    const hasParams = isCoordination && Object.keys(params).length > 0;
+    const isLeave = payload.workflowId === 'hr.leave.request' || Boolean(params.leaveType);
     const content = item.rawContent || "";
     const linesCount = (content.match(/\n/g) || []).length + 1;
     const isLong = linesCount >= 5 || content.length > 180;
 
     return (
       <div className={inboxStyles["inbox-content-container"]}>
+        {hasParams ? (
+          <div className={inboxStyles["inbox-params-box"]}>
+            {isLeave ? (
+              <Space direction="vertical" size={3} style={{ width: "100%" }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <Tag color="blue">{params.leaveType || "请假"}</Tag>
+                  <span>时长：<strong>{params.durationHours || 4} 小时</strong></span>
+                </div>
+                <div>起止时间：{params.startTime} ~ {params.endTime}</div>
+                <div>请假事由：{params.reason || "无"}</div>
+                {params.handoverPerson ? <div>交接人：{params.handoverPerson}</div> : null}
+              </Space>
+            ) : (
+              <Space direction="vertical" size={3} style={{ width: "100%" }}>
+                {Object.entries(params).map(([k, v]) => (
+                  <div key={k}><strong>{k}：</strong>{String(v)}</div>
+                ))}
+              </Space>
+            )}
+          </div>
+        ) : null}
+
         <div
           className={`${inboxStyles["inbox-content-box"]} ${
             isLong && !isExpanded ? inboxStyles["inbox-content-collapsed"] : ""
@@ -358,6 +393,9 @@ export function InboxList({
         <Radio.Button value="converted">
           已转待办 ({inboxSummary.converted})
         </Radio.Button>
+        <Radio.Button value="archived">
+          已归档 ({inboxSummary.archived})
+        </Radio.Button>
       </Radio.Group>
 
       {/* 收件箱条目列表 (可滚动区域) */}
@@ -377,6 +415,17 @@ export function InboxList({
             const actionItem = clarification?.actionItem;
             const extra = (item.extra || item.unifiedPayload?.extra || {}) as Record<string, any>;
             const isIntervention = Boolean(extra.requiresHumanIntervention || item.title?.includes("需人工介入"));
+            const payload = (item.unifiedPayload || {}) as Record<string, any>;
+            const isReceipt = Boolean(
+              payload.isReceipt ||
+              payload.taskType === "receipt" ||
+              item.title?.startsWith("[协同回执]")
+            );
+            const isRejectReceipt = isReceipt && (payload.receiptAction === "reject" || item.title?.includes("已驳回"));
+            const isApproveReceipt = isReceipt && (payload.receiptAction === "approve" || item.title?.includes("已同意"));
+            const isCoordination = payload.kind === "coordination";
+            const isApproval = isCoordination && payload.taskType === "approval" && !isReceipt;
+            const isAssignment = isCoordination && !isApproval && !isReceipt;
 
             return (
               <List.Item key={item.id} style={{ padding: "8px 0", border: "none" }}>
@@ -385,7 +434,13 @@ export function InboxList({
                   style={{
                     width: "100%",
                     opacity: isConverted ? 0.72 : 1,
-                    borderLeft: isIntervention
+                    borderLeft: isReceipt
+                      ? isRejectReceipt
+                        ? "3px solid #ff4d4f"
+                        : "3px solid #52c41a"
+                      : isCoordination
+                      ? "3px solid #722ed1"
+                      : isIntervention
                       ? "3px solid #ff4d4f"
                       : item.confidence < 0.75
                       ? "3px solid #faad14"
@@ -397,13 +452,78 @@ export function InboxList({
                     <div className={inboxStyles["inbox-item-header"]}>
                       <div className={inboxStyles["inbox-item-title-wrapper"]}>
                         {renderStatusTag(item.status)}
+                        {isReceipt ? (
+                          <Tag
+                            color={isRejectReceipt ? "error" : isApproveReceipt ? "success" : "cyan"}
+                            style={{ marginRight: 4 }}
+                          >
+                            {isRejectReceipt
+                              ? "协同回执 · 已驳回"
+                              : isApproveReceipt
+                              ? "协同回执 · 已通过"
+                              : "协同回执 · 已办结"}
+                          </Tag>
+                        ) : isCoordination ? (
+                          <Tag color="purple" style={{ marginRight: 4 }}>
+                            {isApproval ? "审批承认" : "协同作业"}
+                          </Tag>
+                        ) : null}
+                        {item.sourceSender ? (
+                          <Tag color="blue" style={{ marginRight: 4 }}>
+                            @{item.sourceSender}
+                          </Tag>
+                        ) : null}
                         <Typography.Text strong className={inboxStyles["inbox-item-title"]}>
                           {item.title || "未命名收集条目"}
                         </Typography.Text>
                       </div>
 
                       {/* 右侧动作按钮 */}
-                      <Space size={4} className={inboxStyles["inbox-item-actions"]}>
+                      <Space size={4} wrap className={inboxStyles["inbox-item-actions"]}>
+                        {isCoordination && isApproval && !isConverted ? (
+                          <>
+                            <Button
+                              size="small"
+                              type="primary"
+                              style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
+                              icon={<CheckCircleOutlined />}
+                              onClick={() => {
+                                setActiveCoordItem(item);
+                                setActiveAction("approve");
+                                setActionModalOpen(true);
+                              }}
+                            >
+                              同意承认
+                            </Button>
+                            <Button
+                              size="small"
+                              danger
+                              icon={<CloseCircleOutlined />}
+                              onClick={() => {
+                                setActiveCoordItem(item);
+                                setActiveAction("reject");
+                                setActionModalOpen(true);
+                              }}
+                            >
+                              驳回
+                            </Button>
+                          </>
+                        ) : null}
+                        {isCoordination && isAssignment && !isConverted ? (
+                          <Button
+                            size="small"
+                            type="primary"
+                            style={{ backgroundColor: "#722ed1", borderColor: "#722ed1" }}
+                            icon={<CheckCircleOutlined />}
+                            onClick={() => {
+                              setActiveCoordItem(item);
+                              setActiveAction("complete");
+                              setActionModalOpen(true);
+                            }}
+                          >
+                            完成任务
+                          </Button>
+                        ) : null}
                         {isIntervention && extra.actionUrl ? (
                           <Button
                             size="small"
@@ -416,7 +536,17 @@ export function InboxList({
                           </Button>
                         ) : null}
 
-                        {!isConverted ? (
+                        {item.status === "archived" ? (
+                          <Tooltip title="恢复至待整理收件箱">
+                            <Button
+                              size="small"
+                              icon={<UndoOutlined />}
+                              onClick={() => onUnarchiveItem?.(item.id)}
+                            >
+                              恢复
+                            </Button>
+                          </Tooltip>
+                        ) : !isConverted ? (
                           <>
                             <Tooltip title="使用大模型对内容进行 5W1H 深度厘清并推断优先级/工作流">
                               <Button
@@ -424,7 +554,6 @@ export function InboxList({
                                 icon={isClarifying ? <LoadingOutlined spin /> : <RobotOutlined />}
                                 onClick={() => onClarifyItem(item)}
                                 disabled={isClarifying}
-                                className={styles["workbench-action-button"]}
                               >
                                 {item.status === "clarified" ? "重新整理" : "AI 智能整理"}
                               </Button>
@@ -441,7 +570,7 @@ export function InboxList({
                               </Button>
                             </Tooltip>
 
-                            <Tooltip title="归档此条目">
+                            <Tooltip title={isReceipt ? "已阅并归档 (从收集箱清理移出)" : "归档此条目 (从收集箱清理移出)"}>
                               <Button
                                 size="small"
                                 icon={<FolderOutlined />}
@@ -449,7 +578,15 @@ export function InboxList({
                               />
                             </Tooltip>
                           </>
-                        ) : null}
+                        ) : (
+                          <Tooltip title="归档已转待办条目 (从收集箱清理移出)">
+                            <Button
+                              size="small"
+                              icon={<FolderOutlined />}
+                              onClick={() => onArchiveItem(item.id)}
+                            />
+                          </Tooltip>
+                        )}
 
                         <Popconfirm
                           title="确定删除此条目吗？"
@@ -524,6 +661,34 @@ export function InboxList({
         />
       )}
     </div>
+
+    {activeCoordItem ? (
+      <CoordinationActionModal
+        open={actionModalOpen}
+        action={activeAction}
+        taskId={activeCoordItem.sourceRefId || activeCoordItem.id}
+        taskTitle={activeCoordItem.sourceTitle || activeCoordItem.title}
+        initiatorName={
+          (activeCoordItem.unifiedPayload as any)?.initiator?.username ||
+          activeCoordItem.sourceSender ||
+          undefined
+        }
+        workflowId={(activeCoordItem.unifiedPayload as any)?.workflowId}
+        parameters={(activeCoordItem.unifiedPayload as any)?.parameters}
+        rawContent={activeCoordItem.rawContent}
+        incomingAttachments={(activeCoordItem.unifiedPayload as any)?.attachments}
+        onClose={() => {
+          setActionModalOpen(false);
+          setActiveCoordItem(null);
+        }}
+        onSuccess={() => {
+          setActionModalOpen(false);
+          const itemId = activeCoordItem.id;
+          setActiveCoordItem(null);
+          onConvertToTodo(itemId);
+        }}
+      />
+    ) : null}
   </div>
   );
 }

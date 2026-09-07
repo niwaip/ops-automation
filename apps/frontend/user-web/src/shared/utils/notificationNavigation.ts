@@ -9,5 +9,8 @@ export const resolveNotificationActionPath = (
   if (source === 'report') {
     return `/reports/${sourceId}`;
   }
+  if (source === 'coordination') {
+    return actionUrl || '/dashboard?tab=inbox';
+  }
   return actionUrl;
 };

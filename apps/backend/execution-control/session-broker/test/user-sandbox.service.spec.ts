@@ -36,6 +36,7 @@ describe('UserSandboxService', () => {
       expect(paths.sharedSkills).toContain(path.join('data', 'shared', 'dsh-skills'));
       expect(fs.existsSync(paths.workspace)).toBe(true);
       expect(fs.existsSync(paths.knowledge)).toBe(true);
+      expect(fs.existsSync(path.join(paths.knowledge, 'skills'))).toBe(true);
       expect(fs.existsSync(paths.sharedPlugins)).toBe(true);
       expect(fs.existsSync(paths.sharedSkills)).toBe(true);
     });

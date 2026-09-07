@@ -185,6 +185,10 @@ export const areMessagesEquivalent = (
   localMessage: ChatMessage,
   remoteMessage: ChatMessage
 ): boolean => {
+  if (localMessage.id && remoteMessage.id && localMessage.id === remoteMessage.id) {
+    return true;
+  }
+
   if (localMessage.role !== remoteMessage.role) {
     return false;
   }
@@ -213,17 +217,37 @@ export const areMessagesEquivalent = (
 
   const localClientMessageId = localMessage.metadata?.clientMessageId;
   const remoteClientMessageId = remoteMessage.metadata?.clientMessageId;
-  if (localClientMessageId && remoteClientMessageId) {
-    return localClientMessageId === remoteClientMessageId;
+  if (localClientMessageId && remoteClientMessageId && localClientMessageId === remoteClientMessageId) {
+    return true;
   }
 
   const localExecutionId = resolveMessageExecutionId(localMessage);
   const remoteExecutionId = resolveMessageExecutionId(remoteMessage);
 
-  // An execution ID is the strongest identity signal. In particular, never
-  // merge adjacent task results just because they finished close together.
+  // An execution ID is a strong identity signal, but interactive executions
+  // span multiple turns (e.g. waiting_input prompt in turn 1, completed result in turn 2).
+  // Different execution lifecycle phases or distinct non-ephemeral messages are not equivalent.
   if (localExecutionId && remoteExecutionId) {
-    return localExecutionId === remoteExecutionId;
+    if (localExecutionId !== remoteExecutionId) {
+      return false;
+    }
+
+    const localStatus = resolveMessageTaskStatus(localMessage);
+    const remoteStatus = resolveMessageTaskStatus(remoteMessage);
+    const isInteractivePause = (status?: string) =>
+      status === 'waiting_input' || status === 'pending_approval' || status === 'human_control';
+
+    // If one message is an interactive prompt (waiting_input/pending_approval/human_control)
+    // and the other is an execution result or in progress, they are distinct turns.
+    if (
+      localStatus &&
+      remoteStatus &&
+      isInteractivePause(localStatus) !== isInteractivePause(remoteStatus)
+    ) {
+      return false;
+    }
+
+    return true;
   }
 
   // Streaming drafts can span longer than normal messages, but still need a

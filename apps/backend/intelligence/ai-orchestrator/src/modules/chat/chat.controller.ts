@@ -336,6 +336,7 @@ export class ChatController {
           modelId: body.modelId,
           ownerUserId: taskModeContext.context.userId,
           clientMessageId: body.clientMessageId,
+          clientAssistantMessageId: body.clientAssistantMessageId,
         });
         if (sessionPatchEvent) {
           emit(sessionPatchEvent as unknown as SseEventPayload);
@@ -483,6 +484,7 @@ export class ChatController {
         modelId: body.modelId,
         ownerUserId: taskModeContext.context.userId,
         clientMessageId: body.clientMessageId,
+        clientAssistantMessageId: body.clientAssistantMessageId,
       });
       if (sessionPatchEvent) {
         events.push(
@@ -524,6 +526,27 @@ export class ChatController {
       },
     };
     if (mode !== 'task') {
+      // 个人模式：优先调度用户专属安全沙箱 (DeepSeek Harness) 执行
+      const events: StreamEvent[] = [];
+      let resultAnswer = '';
+      const handledBySandbox = await this.userSandboxDispatcherService.dispatchPersonalSandbox(
+        body,
+        (event) => {
+          if (event.type === StreamEventType.RESULT && typeof event.content === 'string') {
+            resultAnswer = event.content;
+          }
+          events.push(event as unknown as StreamEvent);
+        },
+        userId
+      );
+
+      if (handledBySandbox && resultAnswer) {
+        return {
+          response: resultAnswer,
+          events,
+        };
+      }
+
       return this.chatConversationService.chat({ ...body, userId }, userId);
     }
 
@@ -583,6 +606,7 @@ export class ChatController {
         modelId: body.modelId,
         ownerUserId: userId,
         clientMessageId: body.clientMessageId,
+        clientAssistantMessageId: body.clientAssistantMessageId,
       });
       if (sessionPatch) events.push(sessionPatch);
     }

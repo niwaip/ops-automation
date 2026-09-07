@@ -93,7 +93,7 @@ export function ChatMessageList({
           ref={virtuosoRef}
           style={{ height: '100%', width: '100%' }}
           data={activeMessages}
-          computeItemKey={(index, message) => message.metadata?.clientMessageId || message.id || String(index)}
+          computeItemKey={(index, message) => message.id || `${message.role}-${index}`}
           followOutput={(isAtBottom) => (isAtBottom ? 'auto' : false)}
           initialTopMostItemIndex={initialIndexRef.current ?? undefined}
           overscan={800}
@@ -107,7 +107,7 @@ export function ChatMessageList({
                 }
               }
             }
-            const itemKey = message.metadata?.clientMessageId || message.id;
+            const itemKey = message.id || `${message.role}-${index}`;
             return (
               <div style={{ padding: '8px 24px', display: 'flow-root' }}>
                 <ChatMessageItem

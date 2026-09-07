@@ -177,6 +177,7 @@ export interface UploadedFileDescriptor {
 export interface ChatRequest {
   message: string;
   clientMessageId?: string;
+  clientAssistantMessageId?: string;
   sessionId?: string;
   userId?: string;
   executionId?: string;

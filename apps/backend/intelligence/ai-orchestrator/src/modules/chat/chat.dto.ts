@@ -18,6 +18,7 @@ export interface ChatUploadedFileDTO {
 export interface ChatRequestDTO {
   message: string;
   clientMessageId?: string;
+  clientAssistantMessageId?: string;
   traceId?: string;
   idempotencyKey?: string;
   sessionId?: string;

@@ -104,7 +104,7 @@ model ImChannelConnection {
   channel             ImChannelType      @default(wechat)
   enabled             Boolean            @default(false)
   status              ImConnectionStatus @default(unconfigured)
-  interactionMode     ImInteractionMode  @default(auto) @map("interaction_mode")
+  interactionMode     ImInteractionMode  @default(chat) @map("interaction_mode")
   providerAccountId   String?            @map("provider_account_id") @db.VarChar(255)
   providerOwnerUserId String?            @map("provider_owner_user_id") @db.VarChar(255)
   providerBaseUrl     String?            @map("provider_base_url") @db.VarChar(500)

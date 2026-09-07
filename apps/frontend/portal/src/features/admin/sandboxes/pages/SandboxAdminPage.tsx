@@ -254,7 +254,7 @@ export const SandboxAdminPage: React.FC = () => {
           title={
             <div>
               <div>工作区: {record.workspacePath} (rw)</div>
-              <div>知识库: {record.knowledgePath} (ro)</div>
+              <div>知识库: {record.knowledgePath} (rw)</div>
             </div>
           }
         >

@@ -70,6 +70,8 @@ export class WorkbenchInboxService {
 
     if (query.status) {
       where.status = query.status;
+    } else if (!query.includeArchived) {
+      where.status = { notIn: [InboxItemStatus.archived, InboxItemStatus.discarded] };
     }
 
     if (query.sourceType) {

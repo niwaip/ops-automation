@@ -294,6 +294,20 @@ export class UserSandboxService implements OnModuleInit, OnModuleDestroy {
     if (!fs.existsSync(localKnowledge)) {
       fs.mkdirSync(localKnowledge, { recursive: true });
     }
+    try {
+      fs.chmodSync(localKnowledge, 0o777);
+    } catch {
+      // 忽略 chmod 在部分环境下的非致命警告
+    }
+
+    // 确保个人空间下的自定义 skills 目录存在，并赋予读写权限
+    const localKnowledgeSkills = path.join(localKnowledge, 'skills');
+    if (!fs.existsSync(localKnowledgeSkills)) {
+      fs.mkdirSync(localKnowledgeSkills, { recursive: true });
+    }
+    try {
+      fs.chmodSync(localKnowledgeSkills, 0o777);
+    } catch {}
 
     // 自动确保管理员统一共享插件目录存在，并同步预置插件
     if (!fs.existsSync(localSharedPlugins)) {
@@ -402,7 +416,7 @@ export class UserSandboxService implements OnModuleInit, OnModuleDestroy {
       HostConfig: {
         Binds: [
           `${paths.workspace}:/workspace:rw`,
-          `${paths.knowledge}:/knowledge:ro`,
+          `${paths.knowledge}:/knowledge:rw`,
           `${paths.sharedPlugins}:/opt/dsh/plugins:ro`,
           `${paths.sharedSkills}:/opt/dsh/skills:ro`,
         ],
@@ -801,6 +815,8 @@ export class UserSandboxService implements OnModuleInit, OnModuleDestroy {
       'WORKSPACE=/workspace',
       'KNOWLEDGE_DIR=/knowledge',
       'DSH_PLUGIN_DIR=/opt/dsh/plugins',
+      'DSH_SKILL_DIR=/opt/dsh/skills',
+      'DSH_CUSTOM_SKILL_DIR=/knowledge/skills',
       'LANG=C.UTF-8',
       'LC_ALL=C.UTF-8',
       'PYTHONIOENCODING=utf-8',

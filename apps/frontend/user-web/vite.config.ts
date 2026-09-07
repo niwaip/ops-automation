@@ -40,14 +40,18 @@ const resolveWorkspacePath = (mountedPath: string, repoRelativePath: string): st
 };
 
 const resolveUserCoreRootEntry = (): string =>
-  resolveWorkspacePath('/packages/user-core', '../../../packages/user-core');
+  resolveWorkspacePath('/workspace/packages/user-core', '../../../packages/user-core');
 
 const resolveUserCoreSourceEntry = (): string =>
-  resolveWorkspacePath('/packages/user-core/src/index.ts', '../../../packages/user-core/src/index.ts');
+  resolveWorkspacePath(
+    '/workspace/packages/user-core/src/index.ts',
+    '../../../packages/user-core/src/index.ts'
+  );
 
 const resolveUserCoreEntry = (): string => {
-  if (!isDockerEnv) {
-    return resolveUserCoreSourceEntry();
+  const sourceEntry = resolveUserCoreSourceEntry();
+  if (existsSync(sourceEntry)) {
+    return sourceEntry;
   }
 
   const dockerDistEntry = resolveDependencyEntry('./node_modules/@ops/user-core/dist/index.js');
@@ -55,7 +59,7 @@ const resolveUserCoreEntry = (): string => {
     return dockerDistEntry;
   }
 
-  return resolveUserCoreSourceEntry();
+  return sourceEntry;
 };
 
 const resolveChatWebEntry = (): string => path.resolve(__dirname, '../shared/chat-web');
@@ -194,6 +198,11 @@ export default defineConfig({
         rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),
       },
       '/api/workbench-inbox': {
+        target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
+        changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),
+      },
+      '/api/workbench-coordination': {
         target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
         changeOrigin: true,
         rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),

@@ -196,4 +196,49 @@ describe('WorkspaceNoteService', () => {
       })
     );
   });
+
+  it('should return existing node if identical note was saved within 5 minutes (idempotency)', () => {
+    mockPrisma.workspace.findFirst.mockResolvedValue({
+      id: 'ws-personal-1',
+      name: '我的空间',
+      type: 'personal',
+      ownerUserId: 'user-1',
+      quotaBytes: BigInt(1000000),
+      usedBytes: BigInt(100),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const now = new Date();
+    // Simulate folder lookup returning null so it creates folder
+    mockPrisma.workspaceNode.findFirst
+      .mockResolvedValueOnce(null) // segment 1
+      .mockResolvedValueOnce(null) // segment 2
+      .mockResolvedValueOnce({
+        id: 'existing-node-id',
+        workspaceId: 'ws-personal-1',
+        name: '测试文档.md',
+        type: 'file',
+        fileSize: BigInt(Buffer.from(
+          service['buildStructuredMarkdown']({ title: '测试文档', content: '内容' }, now),
+          'utf-8'
+        ).length),
+        mimeType: 'text/markdown',
+        storagePath: 'path/to/existing',
+        createdBy: 'user-1',
+        createdAt: now,
+        updatedAt: now,
+      });
+
+    return service
+      .saveTextNote('user-1', {
+        title: '测试文档',
+        content: '内容',
+      })
+      .then((res) => {
+        expect(res.id).toBe('existing-node-id');
+        expect(res.name).toBe('测试文档.md');
+      });
+  });
 });
+

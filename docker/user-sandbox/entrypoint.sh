@@ -12,10 +12,14 @@ echo "Plugin Directory: ${DSH_PLUGIN_DIR:-/opt/dsh/plugins}"
 # 确保工作区目录可访问
 cd "${WORKSPACE:-/workspace}" 2>/dev/null || true
 
-# 检测个人知识库挂载状态
+# 检测个人知识库与自定义技能挂载状态
 if [ -d "${KNOWLEDGE_DIR:-/knowledge}" ]; then
   NOTE_COUNT=$(find "${KNOWLEDGE_DIR:-/knowledge}" -type f 2>/dev/null | wc -l | tr -d ' ')
-  echo "Knowledge space mounted: ${NOTE_COUNT} items available (read-only)."
+  echo "Knowledge space mounted: ${NOTE_COUNT} items available (read-write)."
+  if [ -d "${KNOWLEDGE_DIR:-/knowledge}/skills" ]; then
+    CUSTOM_COUNT=$(find "${KNOWLEDGE_DIR:-/knowledge}/skills" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+    echo "Custom skills: ${CUSTOM_COUNT} user skills registered."
+  fi
 else
   echo "Warning: Knowledge space not mounted at ${KNOWLEDGE_DIR:-/knowledge}"
 fi

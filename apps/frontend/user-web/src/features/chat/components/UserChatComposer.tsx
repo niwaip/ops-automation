@@ -9,25 +9,26 @@ import {
   RobotOutlined,
   SendOutlined,
   StopOutlined,
+  ThunderboltOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Button, Input, Select, Segmented, Switch, Tag, Tooltip, Upload, message as antdMessage } from 'antd';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Input, Select, Segmented, Space, Switch, Tag, Tooltip, Upload, message as antdMessage } from 'antd';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import type { AIModel, UploadedFileDescriptor } from '@ops/user-core';
 import { WorkspaceMentionDropdown } from './WorkspaceMentionDropdown';
+import { UserCoordinationMentionDropdown } from './UserCoordinationMentionDropdown';
+import { CoordinationTaskCardModal } from './CoordinationTaskCardModal';
+import { WorkflowSelectionDropdown, type WorkflowOptionItem } from './WorkflowSelectionDropdown';
+import type { CollaboratorUser } from '../../../api/workbenchCoordination';
+import { useChatComposerHistory } from '../hooks/useChatComposerHistory';
+import { useChatSpeechRecorder } from '../hooks/useChatSpeechRecorder';
 import { SlashCommandDropdown } from './SlashCommandDropdown';
 import { isWorkSlashCommand, type SlashCommandDefinition } from '../lib/slashCommands';
 import type { WorkspaceNode } from '../../../api/workspace';
 import { supportsNativeReasoning } from '@/shared/lib/aiModelReasoning';
 import { shouldSubmitChatComposerOnEnter } from '../lib/chatComposerKeyboard';
-import {
-  SPEECH_LANGUAGE_STORAGE_KEY,
-  normalizeSpeechLanguage,
-  mergeSpeechText,
-  uploadChatFile,
-  transcribeAudio,
-} from '../lib/chatComposerMedia';
+import { uploadChatFile } from '../lib/chatComposerMedia';
 
 import styles from '../pages/ChatPage.module.css';
 
@@ -87,15 +88,16 @@ export function UserChatComposer(props: UserChatComposerProps) {
     sentHistory = [],
   } = props;
 
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [speechSupported, setSpeechSupported] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [speechLanguage] = useState(() => {
-    if (typeof window === 'undefined') {
-      return 'zh-CN';
-    }
-    const saved = window.localStorage.getItem(SPEECH_LANGUAGE_STORAGE_KEY);
-    return normalizeSpeechLanguage(saved || navigator.language);
+  // Speech recorder hook
+  const {
+    isListening,
+    isTranscribing,
+    speechSupported,
+    handleSpeechToggle,
+  } = useChatSpeechRecorder({
+    draft,
+    onDraftChange,
+    onFocusInput: () => inputRef.current?.focus(),
   });
 
   // 工作空间全局检索状态（状态按钮，默认关闭）
@@ -103,186 +105,40 @@ export function UserChatComposer(props: UserChatComposerProps) {
 
   const inputRef = useRef<TextAreaRef | null>(null);
   const compositionActiveRef = useRef(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
 
-  // History navigation state
-  const [historyIndex, setHistoryIndex] = useState<number>(-1);
-  const savedDraftRef = useRef<string>('');
-  const isNavigatingHistoryRef = useRef<boolean>(false);
-
-  const effectiveHistory = useMemo(() => {
-    const list: string[] = [];
-    for (const item of sentHistory) {
-      const trimmed = (item || '').trim();
-      if (trimmed && list[list.length - 1] !== trimmed) {
-        list.push(trimmed);
-      }
-    }
-    return list;
-  }, [sentHistory]);
-
-  // Reset history cursor when history list changes (new message sent)
-  useEffect(() => {
-    setHistoryIndex(-1);
-  }, [effectiveHistory.length]);
-
-  const moveCaretToEnd = useCallback((el: HTMLTextAreaElement) => {
-    requestAnimationFrame(() => {
-      try {
-        const len = el.value.length;
-        el.setSelectionRange(len, len);
-      } catch {
-        // ignore
-      }
-    });
-  }, []);
-
-  const handleHistoryKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (
-        (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') ||
-        e.shiftKey ||
-        e.ctrlKey ||
-        e.metaKey ||
-        e.altKey
-      ) {
-        return;
-      }
-
-      // Only navigate when caret is at first/last line
-      const el = e.currentTarget;
-      const { selectionStart, value } = el;
-      const lines = value.split('\n');
-
-      if (e.key === 'ArrowUp') {
-        // Navigate back into history only if caret is on the first line
-        const firstLineEnd = lines[0]?.length ?? 0;
-        if (selectionStart > firstLineEnd) return;
-
-        const nextIndex = historyIndex + 1;
-        if (nextIndex >= effectiveHistory.length) return;
-        e.preventDefault();
-        isNavigatingHistoryRef.current = true;
-        if (historyIndex === -1) {
-          savedDraftRef.current = draft;
-        }
-        setHistoryIndex(nextIndex);
-        const nextText = effectiveHistory[effectiveHistory.length - 1 - nextIndex] ?? '';
-        onDraftChange(nextText);
-        moveCaretToEnd(el);
-      } else if (e.key === 'ArrowDown') {
-        if (historyIndex === -1) return;
-
-        // Navigate forward in history only if caret is on the last line
-        const lastLineStart = value.length - (lines[lines.length - 1]?.length ?? 0);
-        if (selectionStart < lastLineStart) return;
-
-        e.preventDefault();
-        isNavigatingHistoryRef.current = true;
-        const nextIndex = historyIndex - 1;
-        if (nextIndex < 0) {
-          setHistoryIndex(-1);
-          onDraftChange(savedDraftRef.current);
-        } else {
-          setHistoryIndex(nextIndex);
-          const nextText = effectiveHistory[effectiveHistory.length - 1 - nextIndex] ?? '';
-          onDraftChange(nextText);
-        }
-        moveCaretToEnd(el);
-      }
-    },
-    [draft, effectiveHistory, historyIndex, moveCaretToEnd, onDraftChange]
-  );
-
-  const stopListening = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
-  }, []);
-
-  useEffect(() => {
-    setSpeechSupported(typeof window !== 'undefined' && 'MediaRecorder' in window);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    window.localStorage.setItem(SPEECH_LANGUAGE_STORAGE_KEY, speechLanguage);
-  }, [speechLanguage]);
-
-  useEffect(
-    () => () => {
-      stopListening();
-      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-    },
-    [stopListening]
-  );
-
-  const handleSpeechToggle = useCallback(async () => {
-    if (isListening) {
-      stopListening();
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      mediaStreamRef.current = stream;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstart = () => {
-        setIsListening(true);
-        void antdMessage.info(`正在录音（${speechLanguage}），再次点击按钮停止并转写...`);
-      };
-
-      mediaRecorder.onstop = async () => {
-        setIsListening(false);
-        setIsTranscribing(true);
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-        mediaStreamRef.current = null;
-
-        try {
-          const text = await transcribeAudio(audioBlob, 'default');
-          if (!text.trim()) {
-            void antdMessage.warning('未识别到语音内容，请重试并靠近麦克风。');
-            return;
-          }
-          onDraftChange(mergeSpeechText(draft, text));
-          inputRef.current?.focus();
-        } catch (error: unknown) {
-          void antdMessage.error(error instanceof Error ? error.message : '语音识别失败');
-        } finally {
-          setIsTranscribing(false);
-          mediaRecorderRef.current = null;
-        }
-      };
-
-      mediaRecorder.start();
-    } catch (error) {
-      console.error('Failed to start MediaRecorder:', error);
-      void antdMessage.error('无法访问麦克风，请检查浏览器权限设置。');
-    }
-  }, [draft, isListening, onDraftChange, speechLanguage, stopListening]);
+  // History navigation hook
+  const {
+    resetHistoryIndex,
+    handleHistoryKeyDown,
+  } = useChatComposerHistory({
+    draft,
+    onDraftChange,
+    sentHistory,
+  });
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFileDescriptor[]>([]);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
 
-  // @ 选文件浮层状态
-  const [mentionOpen, setMentionOpen] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState('');
-  const [mentionIndex, setMentionIndex] = useState(0);
+  // # 选空间文件浮层状态
+  const [workspaceMentionOpen, setWorkspaceMentionOpen] = useState(false);
+  const [workspaceMentionQuery, setWorkspaceMentionQuery] = useState('');
+  const [workspaceMentionIndex, setWorkspaceMentionIndex] = useState(0);
   const [filteredMentionNodes, setFilteredMentionNodes] = useState<WorkspaceNode[]>([]);
+
+  // @ 选人员协同浮层状态
+  const [userMentionOpen, setUserMentionOpen] = useState(false);
+  const [userMentionQuery, setUserMentionQuery] = useState('');
+  const [userMentionIndex, setUserMentionIndex] = useState(0);
+  const [filteredUsers, setFilteredUsers] = useState<CollaboratorUser[]>([]);
+  const [lastMentionedUser, setLastMentionedUser] = useState<CollaboratorUser | null>(null);
+  const [cardModalOpen, setCardModalOpen] = useState(false);
+  const [selectedAssignee, setSelectedAssignee] = useState<CollaboratorUser | null>(null);
+
+  // @ 选人后敲空格唤起工作流流程选择卡片浮层状态
+  const [workflowSelectionOpen, setWorkflowSelectionOpen] = useState(false);
+  const [workflowSelectionUser, setWorkflowSelectionUser] = useState<string>('');
+  const [workflowSelectionIndex, setWorkflowSelectionIndex] = useState(0);
+  const [filteredWorkflowItems, setFilteredWorkflowItems] = useState<WorkflowOptionItem[]>([]);
 
   const handleSelectWorkspaceNode = useCallback(
     (node: WorkspaceNode) => {
@@ -307,21 +163,121 @@ export function UserChatComposer(props: UserChatComposerProps) {
         void antdMessage.success(`已引用工作空间文件: ${node.name}`);
       }
 
-      // 清除输入框内尾部的 @query
+      // 清除输入框内尾部的 #query
       const text = draft;
       const textarea = inputRef.current?.resizableTextArea?.textArea;
       const cursorPos = textarea?.selectionStart ?? text.length;
       const textBefore = text.slice(0, cursorPos);
       const textAfter = text.slice(cursorPos);
-      const newBefore = textBefore.replace(/[@＠]([^\s@＠]*)$/, '');
+      const newBefore = textBefore.replace(/[#＃]([^\s#＃]*)$/, '');
       onDraftChange(newBefore + textAfter);
-      setMentionOpen(false);
+      setWorkspaceMentionOpen(false);
 
       setTimeout(() => {
         textarea?.focus();
       }, 50);
     },
     [draft, onDraftChange, uploadedFiles]
+  );
+
+  const [cardInitialTemplateId, setCardInitialTemplateId] = useState<string>('general.coordination');
+  const [cardInitialValues, setCardInitialValues] = useState<Record<string, any>>({});
+
+  // 智能嗅探自然语言协同意图
+  const detectedWorkflowIntent = useMemo(() => {
+    if (!draft || !draft.includes('@')) return null;
+    const lower = draft.toLowerCase();
+    if (/请假|休假|事假|病假|年假|调休/i.test(lower)) {
+      return {
+        templateId: 'hr.leave.request',
+        name: '员工请假申请',
+        tag: 'HRMS 考勤',
+      };
+    }
+    if (/报销|发票|差旅|打车|支出/i.test(lower)) {
+      return {
+        templateId: 'oa.expense.claim',
+        name: '费用报销审批',
+        tag: '财务/ERP',
+      };
+    }
+    return null;
+  }, [draft]);
+
+  const handleSelectUser = useCallback(
+    (user: CollaboratorUser, mode: 'freeform' | 'card' = 'freeform') => {
+      if (!user || !user.username) return;
+      setLastMentionedUser(user);
+      setSelectedAssignee(user);
+      const text = draft;
+      const textarea = inputRef.current?.resizableTextArea?.textArea;
+      const cursorPos = textarea?.selectionStart ?? text.length;
+      const textBefore = text.slice(0, cursorPos);
+      const textAfter = text.slice(cursorPos);
+      // 注意：@ 选择用户后不要带空格，用户后续输入空格时才触发流程卡片选择
+      const newBefore = textBefore.replace(/[@＠]([^\s@＠]*)$/, `@${user.username}`);
+      onDraftChange(newBefore + textAfter);
+      setUserMentionOpen(false);
+
+      if (mode === 'card') {
+        const lower = text.toLowerCase();
+        if (/请假|休假|事假|病假|年假|调休/i.test(lower)) {
+          setCardInitialTemplateId('hr.leave.request');
+          setCardInitialValues({
+            leaveType: /病假/i.test(lower) ? '病假' : /年假/i.test(lower) ? '年假' : '事假',
+            durationHours: /下午|半天/i.test(lower) ? 4 : /一天|整天/i.test(lower) ? 8 : 4,
+            reason: text.replace(/[@＠][^\s@＠]+/g, '').trim() || '个人私事请假',
+          });
+        } else if (/报销|发票|支出/i.test(lower)) {
+          setCardInitialTemplateId('oa.expense.claim');
+          setCardInitialValues({});
+        } else {
+          setCardInitialTemplateId('general.coordination');
+          setCardInitialValues({});
+        }
+        setCardModalOpen(true);
+      } else {
+        const newPos = newBefore.length;
+        setTimeout(() => {
+          if (textarea) {
+            textarea.focus();
+            textarea.setSelectionRange(newPos, newPos);
+          }
+        }, 50);
+      }
+    },
+    [draft, onDraftChange]
+  );
+
+  const handleSelectWorkflow = useCallback(
+    (templateId: string, isModalAction?: boolean) => {
+      setWorkflowSelectionOpen(false);
+      const targetUser = lastMentionedUser || {
+        id: '',
+        username: workflowSelectionUser || '协同成员',
+        email: null,
+      };
+      setSelectedAssignee(targetUser);
+
+      const text = draft;
+      const lower = text.toLowerCase();
+      if (templateId === 'hr.leave.request' || /请假|休假|事假|病假|年假|调休/i.test(lower)) {
+        setCardInitialTemplateId('hr.leave.request');
+        setCardInitialValues({
+          leaveType: /病假/i.test(lower) ? '病假' : /年假/i.test(lower) ? '年假' : '事假',
+          durationHours: /下午|半天/i.test(lower) ? 4 : /一天|整天/i.test(lower) ? 8 : 4,
+          reason: text.replace(/[@＠][^\s@＠]+/g, '').trim() || '个人私事请假',
+        });
+      } else if (templateId === 'oa.expense.claim' || /报销|发票|支出/i.test(lower)) {
+        setCardInitialTemplateId('oa.expense.claim');
+        setCardInitialValues({});
+      } else {
+        setCardInitialTemplateId(isModalAction ? 'general.coordination' : templateId);
+        setCardInitialValues({});
+      }
+      setCardModalOpen(true);
+    },
+    [draft, lastMentionedUser, workflowSelectionUser]
   );
 
   // / 触发 Slash 命令浮层状态
@@ -387,23 +343,47 @@ export function UserChatComposer(props: UserChatComposerProps) {
     }
     const filesToSend = [...uploadedFiles];
     setUploadedFiles([]);
+
+    if (lastMentionedUser) {
+      setLastMentionedUser(null);
+    }
+
     if (chatMode === 'task' && workspaceSearchEnabled && trimmed && !trimmed.startsWith('/')) {
       onSend(filesToSend, `/doc ${trimmed}`);
       return;
     }
     onSend(filesToSend);
-  }, [chatMode, draft, onSend, uploadedFiles, workspaceSearchEnabled]);
+  }, [chatMode, draft, lastMentionedUser, onSend, uploadedFiles, workspaceSearchEnabled]);
 
   return (
     <div className={styles['user-chat-input-container']} style={{ position: 'relative' }}>
+      <UserCoordinationMentionDropdown
+        open={userMentionOpen}
+        searchQuery={userMentionQuery}
+        selectedIndex={userMentionIndex}
+        onHoverIndex={setUserMentionIndex}
+        onFilteredUsersChange={setFilteredUsers}
+        onSelectUser={handleSelectUser}
+        onClose={() => setUserMentionOpen(false)}
+      />
+      <WorkflowSelectionDropdown
+        open={workflowSelectionOpen}
+        username={workflowSelectionUser}
+        targetUser={lastMentionedUser}
+        selectedIndex={workflowSelectionIndex}
+        onHoverIndex={setWorkflowSelectionIndex}
+        onFilteredItemsChange={setFilteredWorkflowItems}
+        onSelectWorkflow={handleSelectWorkflow}
+        onClose={() => setWorkflowSelectionOpen(false)}
+      />
       <WorkspaceMentionDropdown
-        open={mentionOpen}
-        searchQuery={mentionQuery}
-        selectedIndex={mentionIndex}
-        onHoverIndex={setMentionIndex}
+        open={workspaceMentionOpen}
+        searchQuery={workspaceMentionQuery}
+        selectedIndex={workspaceMentionIndex}
+        onHoverIndex={setWorkspaceMentionIndex}
         onFilteredNodesChange={setFilteredMentionNodes}
         onSelect={handleSelectWorkspaceNode}
-        onClose={() => setMentionOpen(false)}
+        onClose={() => setWorkspaceMentionOpen(false)}
       />
       <SlashCommandDropdown
         open={slashOpen}
@@ -415,7 +395,53 @@ export function UserChatComposer(props: UserChatComposerProps) {
         onSelect={handleSelectSlashCommand}
         onClose={() => setSlashOpen(false)}
       />
+      <CoordinationTaskCardModal
+        open={cardModalOpen}
+        initialAssignee={selectedAssignee}
+        initialTemplateId={cardInitialTemplateId}
+        initialValues={cardInitialValues}
+        onClose={() => setCardModalOpen(false)}
+        onSuccess={(_task, markdownCard) => {
+          setCardModalOpen(false);
+          setSelectedAssignee(null);
+          if (markdownCard) {
+            onSend([], markdownCard);
+          }
+        }}
+      />
       <div className={styles['user-chat-input-shell']}>
+        {detectedWorkflowIntent && !workflowSelectionOpen ? (
+          <div
+            style={{
+              padding: '6px 14px',
+              background: 'linear-gradient(90deg, rgba(114, 46, 209, 0.08) 0%, rgba(22, 119, 255, 0.08) 100%)',
+              borderBottom: '1px solid rgba(114, 46, 209, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: 12,
+            }}
+          >
+            <Space size={8} align="center">
+              <ThunderboltOutlined style={{ color: '#722ed1', fontSize: 14 }} />
+              <span>
+                智能识别到工作流意图：<strong>{detectedWorkflowIntent.name}</strong>
+              </span>
+              <Tag color="purple" style={{ margin: 0, fontSize: 11 }}>
+                {detectedWorkflowIntent.tag}
+              </Tag>
+            </Space>
+            <Button
+              size="small"
+              type="primary"
+              ghost
+              style={{ height: 24, fontSize: 12, borderRadius: 12 }}
+              onClick={() => handleSelectWorkflow(detectedWorkflowIntent.templateId)}
+            >
+              一键带入参数填单 →
+            </Button>
+          </div>
+        ) : null}
         {uploadedFiles.length > 0 && (
           <div className={styles['user-chat-input-attachments-bar']}>
             {uploadedFiles.map((file, idx) => (
@@ -442,43 +468,66 @@ export function UserChatComposer(props: UserChatComposerProps) {
             autoSize={{ minRows: 2, maxRows: 6 }}
             value={draft}
             onChange={(event) => {
-              if (!isNavigatingHistoryRef.current) {
-                setHistoryIndex(-1);
-              }
-              isNavigatingHistoryRef.current = false;
+              resetHistoryIndex();
               const text = event.target.value;
               onDraftChange(text);
 
-              // 探测光标处是否有 @ 触发词（支持英文半角 @ 与中文全角 ＠）
+              // 1. 探测光标处是否有 @ 人员协同触发词（半角 @ 与全角 ＠，未输入空格）
               const cursorPos = event.target.selectionStart ?? text.length;
               const textBeforeCursor = text.slice(0, cursorPos);
               const atMatch = textBeforeCursor.match(/[@＠]([^\s@＠]*)$/);
               if (atMatch) {
-                setMentionOpen(true);
-                setMentionQuery(atMatch[1]);
-                setMentionIndex(0);
+                setUserMentionOpen(true);
+                setUserMentionQuery(atMatch[1]);
+                setUserMentionIndex(0);
+                setWorkflowSelectionOpen(false);
+                setWorkspaceMentionOpen(false);
                 setSlashOpen(false);
+                return;
+              }
+              setUserMentionOpen(false);
+
+              // 2. 探测光标处是否刚刚在 @username 后面输入了空格（触发流程选择卡片）
+              const atSpaceMatch = textBeforeCursor.match(/(?:^|\s)[@＠]([^\s@＠]+)\s$/);
+              if (atSpaceMatch) {
+                setWorkflowSelectionUser(atSpaceMatch[1]);
+                setWorkflowSelectionOpen(true);
+                setWorkflowSelectionIndex(0);
+                setWorkspaceMentionOpen(false);
+                setSlashOpen(false);
+                return;
+              }
+              setWorkflowSelectionOpen(false);
+
+              // 3. 探测光标处是否有 # 空间文件触发词（半角 # 与全角 ＃）
+              const hashMatch = textBeforeCursor.match(/[#＃]([^\s#＃]*)$/);
+              if (hashMatch) {
+                setWorkspaceMentionOpen(true);
+                setWorkspaceMentionQuery(hashMatch[1]);
+                setWorkspaceMentionIndex(0);
+                setSlashOpen(false);
+                return;
+              }
+              setWorkspaceMentionOpen(false);
+
+              // 4. 探测光标处是否有 / 或 、 技能触发词
+              const slashMatch = textBeforeCursor.match(/(?:^|\s)[/、]([^\s/、]*)$/);
+              if (slashMatch) {
+                setSlashOpen(true);
+                setSlashQuery(slashMatch[1]);
+                setSlashIndex(0);
               } else {
-                setMentionOpen(false);
-                // 探测光标处是否有 / 或 、 触发词
-                const slashMatch = textBeforeCursor.match(/(?:^|\s)[/、]([^\s/、]*)$/);
-                if (slashMatch) {
-                  setSlashOpen(true);
-                  setSlashQuery(slashMatch[1]);
-                  setSlashIndex(0);
-                } else {
-                  setSlashOpen(false);
-                }
+                setSlashOpen(false);
               }
             }}
             placeholder={
               workspaceSearchEnabled && enableWebSearch
-                ? '已开启联网与知识库检索，输入问题直接提问...（输入 / 唤起技能指令，@ 引用文件）'
+                ? '已开启联网与知识库检索，输入问题直接提问...（输入 / 唤起技能指令，# 关联文件，@ 协同成员）'
                 : workspaceSearchEnabled
-                  ? '已开启知识库检索，输入问题直接研读空间文档...（输入 / 唤起技能指令，@ 引用文件）'
+                  ? '已开启知识库检索，输入问题直接研读空间文档...（输入 / 唤起技能指令，# 关联文件，@ 协同成员）'
                   : enableWebSearch
-                    ? '已开启全网实时搜索，输入问题直接检索...（输入 / 唤起技能指令，@ 引用文件）'
-                    : placeholder || '输入消息，Enter 发送，Shift+Enter 换行（输入 / 唤起技能指令，@ 引用文件）'
+                    ? '已开启全网实时搜索，输入问题直接检索...（输入 / 唤起技能指令，# 关联文件，@ 协同成员）'
+                    : placeholder || '输入消息，Enter 发送，Shift+Enter 换行（输入 / 唤起技能指令，# 关联文件，@ 协同成员）'
             }
             className={styles['user-chat-input-textarea']}
             disabled={disabled || isTranscribing || isUploadingFile}
@@ -489,27 +538,83 @@ export function UserChatComposer(props: UserChatComposerProps) {
               compositionActiveRef.current = false;
             }}
             onKeyDown={(e) => {
-              if (mentionOpen && filteredMentionNodes.length > 0) {
+              if (userMentionOpen && Array.isArray(filteredUsers) && filteredUsers.length > 0) {
                 if (e.key === 'ArrowDown') {
                   e.preventDefault();
-                  setMentionIndex((prev) => (prev + 1) % filteredMentionNodes.length);
+                  setUserMentionIndex((prev) => (prev + 1) % filteredUsers.length);
                   return;
                 }
                 if (e.key === 'ArrowUp') {
                   e.preventDefault();
-                  setMentionIndex(
+                  setUserMentionIndex(
+                    (prev) => (prev - 1 + filteredUsers.length) % filteredUsers.length
+                  );
+                  return;
+                }
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  const targetUser = filteredUsers[userMentionIndex];
+                  if (targetUser) {
+                    handleSelectUser(targetUser, 'freeform');
+                  }
+                  return;
+                }
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setUserMentionOpen(false);
+                  return;
+                }
+              }
+
+              if (workflowSelectionOpen && filteredWorkflowItems.length > 0) {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setWorkflowSelectionIndex((prev) => (prev + 1) % filteredWorkflowItems.length);
+                  return;
+                }
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setWorkflowSelectionIndex(
+                    (prev) => (prev - 1 + filteredWorkflowItems.length) % filteredWorkflowItems.length
+                  );
+                  return;
+                }
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  const targetItem = filteredWorkflowItems[workflowSelectionIndex];
+                  if (targetItem) {
+                    handleSelectWorkflow(targetItem.id, targetItem.isModalAction);
+                  }
+                  return;
+                }
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setWorkflowSelectionOpen(false);
+                  return;
+                }
+              }
+
+              if (workspaceMentionOpen && filteredMentionNodes.length > 0) {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setWorkspaceMentionIndex((prev) => (prev + 1) % filteredMentionNodes.length);
+                  return;
+                }
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setWorkspaceMentionIndex(
                     (prev) => (prev - 1 + filteredMentionNodes.length) % filteredMentionNodes.length
                   );
                   return;
                 }
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  handleSelectWorkspaceNode(filteredMentionNodes[mentionIndex]);
+                  handleSelectWorkspaceNode(filteredMentionNodes[workspaceMentionIndex]);
                   return;
                 }
                 if (e.key === 'Escape') {
                   e.preventDefault();
-                  setMentionOpen(false);
+                  setWorkspaceMentionOpen(false);
                   return;
                 }
               }
@@ -541,7 +646,9 @@ export function UserChatComposer(props: UserChatComposerProps) {
 
               // Arrow-key history navigation (no modifier keys)
               if (
-                !mentionOpen &&
+                !userMentionOpen &&
+                !workflowSelectionOpen &&
+                !workspaceMentionOpen &&
                 !slashOpen &&
                 (e.key === 'ArrowUp' || e.key === 'ArrowDown') &&
                 !e.shiftKey &&
@@ -554,7 +661,9 @@ export function UserChatComposer(props: UserChatComposerProps) {
             }}
             onPressEnter={(event) => {
               if (
-                (mentionOpen && filteredMentionNodes.length > 0) ||
+                (userMentionOpen && Array.isArray(filteredUsers) && filteredUsers.length > 0) ||
+                (workflowSelectionOpen && filteredWorkflowItems.length > 0) ||
+                (workspaceMentionOpen && filteredMentionNodes.length > 0) ||
                 (slashOpen && filteredSlashCommands.length > 0)
               ) {
                 return;
@@ -692,6 +801,19 @@ export function UserChatComposer(props: UserChatComposerProps) {
                 })),
               ]}
             />
+            <Tooltip title="快捷发起协同流程卡片">
+              <Button
+                size="small"
+                icon={<ThunderboltOutlined style={{ color: '#722ed1' }} />}
+                onClick={() => {
+                  setSelectedAssignee(lastMentionedUser);
+                  setWorkflowSelectionOpen(true);
+                  setWorkflowSelectionUser(lastMentionedUser?.username || '协同成员');
+                }}
+                disabled={disabled}
+                className={styles['user-chat-input-icon-btn']}
+              />
+            </Tooltip>
             <Upload
               beforeUpload={(file) => {
                 void handleFileUpload(file as unknown as File);

@@ -82,6 +82,7 @@ export interface ConvertInboxToTodoPayload {
 
 export interface QueryWorkbenchInboxParams {
   status?: InboxItemStatus;
+  includeArchived?: boolean;
   sourceType?: TodoSourceType;
   minConfidence?: number;
   maxConfidence?: number;
@@ -112,6 +113,7 @@ export const workbenchInboxApi = {
     const query = new URLSearchParams();
     if (params) {
       if (params.status) query.append("status", params.status);
+      if (params.includeArchived) query.append("includeArchived", "true");
       if (params.sourceType) query.append("sourceType", params.sourceType);
       if (params.minConfidence !== undefined) query.append("minConfidence", String(params.minConfidence));
       if (params.maxConfidence !== undefined) query.append("maxConfidence", String(params.maxConfidence));

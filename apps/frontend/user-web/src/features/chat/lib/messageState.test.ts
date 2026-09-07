@@ -163,6 +163,47 @@ describe('areMessagesEquivalent', () => {
     expect(areMessagesEquivalent(ephemeralMsg, msg2)).toBe(true);
   });
 
+  it('correctly matches assistant message when remote has legacy mismatched clientMessageId but identical content within 2 minutes', () => {
+    const localMsg: ChatMessage = {
+      ...baseAssistantMsg,
+      id: 'local-assistant-id',
+      content: '生成pdf,保存到个人空间',
+      metadata: { mode: 'chat', clientMessageId: 'local-assistant-id' },
+    };
+    const remoteMsg: ChatMessage = {
+      ...baseAssistantMsg,
+      id: 'remote-server-id',
+      content: '生成pdf,保存到个人空间',
+      timestamp: '2026-07-20T12:00:30.000Z',
+      metadata: { mode: 'chat', clientMessageId: 'user-msg-id' },
+    };
+
+    expect(areMessagesEquivalent(localMsg, remoteMsg)).toBe(true);
+    const merged = mergeHistoryMessages([remoteMsg], [localMsg]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].id).toBe('remote-server-id');
+  });
+
+  it('correctly matches assistant message when matching clientAssistantMessageId is present', () => {
+    const localMsg: ChatMessage = {
+      ...baseAssistantMsg,
+      id: 'assistant-uuid-1',
+      content: '生成pdf完成',
+      metadata: { mode: 'chat', clientMessageId: 'assistant-uuid-1' },
+    };
+    const remoteMsg: ChatMessage = {
+      ...baseAssistantMsg,
+      id: 'assistant-uuid-1',
+      content: '生成pdf完成',
+      timestamp: '2026-07-20T12:00:10.000Z',
+      metadata: { mode: 'chat', clientMessageId: 'assistant-uuid-1' },
+    };
+
+    expect(areMessagesEquivalent(localMsg, remoteMsg)).toBe(true);
+    const merged = mergeHistoryMessages([remoteMsg], [localMsg]);
+    expect(merged).toHaveLength(1);
+  });
+
   it('does not merge nearby task messages from different executions', () => {
     const localMessage: ChatMessage = {
       ...baseAssistantMsg,
@@ -192,6 +233,42 @@ describe('areMessagesEquivalent', () => {
     };
 
     expect(areMessagesEquivalent(localMessage, remoteMessage)).toBe(true);
+  });
+
+  it('does not merge waiting_input message with completed message for the same execution', () => {
+    const waitingInputMsg: ChatMessage = {
+      ...baseAssistantMsg,
+      id: 'assistant-turn-1',
+      content: '已创建等待补充信息的执行单。请补充：城市',
+      metadata: { mode: 'task', taskStatus: 'waiting_input', executionId: 'execution-weather-1' },
+    };
+    const completedMsg: ChatMessage = {
+      ...baseAssistantMsg,
+      id: 'assistant-turn-2',
+      content: '上海今日天气晴，26℃',
+      timestamp: '2026-07-20T12:02:00.000Z',
+      metadata: { mode: 'task', taskStatus: 'completed', executionId: 'execution-weather-1' },
+    };
+
+    expect(areMessagesEquivalent(waitingInputMsg, completedMsg)).toBe(false);
+  });
+
+  it('does not merge pending_approval message with completed message for the same execution', () => {
+    const approvalMsg: ChatMessage = {
+      ...baseAssistantMsg,
+      id: 'assistant-turn-1',
+      content: '等待审批',
+      metadata: { mode: 'task', taskStatus: 'pending_approval', executionId: 'execution-deploy-1' },
+    };
+    const completedMsg: ChatMessage = {
+      ...baseAssistantMsg,
+      id: 'assistant-turn-2',
+      content: '部署已完成',
+      timestamp: '2026-07-20T12:05:00.000Z',
+      metadata: { mode: 'task', taskStatus: 'completed', executionId: 'execution-deploy-1' },
+    };
+
+    expect(areMessagesEquivalent(approvalMsg, completedMsg)).toBe(false);
   });
 
   it('requires matching outcome text for task messages without execution IDs', () => {

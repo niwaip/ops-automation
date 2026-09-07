@@ -89,7 +89,17 @@ export function NotificationPreviewPanel({ language }: NotificationPreviewPanelP
       ) : (
         <Space direction="vertical" size={8} style={{ width: '100%' }}>
           {previewNotifications.map((item) => {
+            const isCoordination = item.source === 'coordination';
+            const isApproval = item.metadata?.taskType === 'approval';
+            const sender = (item.metadata?.sender as string) || item.sourceName;
             const content = buildNotificationContent(item, language);
+            const title = isCoordination
+              ? (item.metadata?.title as string) || content.title
+              : content.title;
+            const description = isCoordination
+              ? (item.metadata?.resultTitle as string) || content.description
+              : content.description;
+
             return (
               <button
                 key={item.id}
@@ -114,22 +124,30 @@ export function NotificationPreviewPanel({ language }: NotificationPreviewPanelP
               >
                 <Space direction="vertical" size={6} style={{ width: '100%' }}>
                   <Space wrap size={[6, 6]}>
-                    <Typography.Text strong>{content.title}</Typography.Text>
-                    {isExecutionStatusValue(item.status) ? (
+                    <Typography.Text strong>{title}</Typography.Text>
+                    {isCoordination ? (
+                      <Tag color={isApproval ? 'orange' : 'cyan'}>
+                        {isApproval ? '审批承认' : '协同任务'}
+                      </Tag>
+                    ) : isExecutionStatusValue(item.status) ? (
                       <Tag color={EXECUTION_STATUS_COLORS[item.status]}>
                         {statusLabels[item.status]}
                       </Tag>
                     ) : null}
-                    <Tag color={getNotificationSeverityTagColor(item.severity)}>
-                      {getNotificationSeverityText(item.severity, language)}
-                    </Tag>
+                    {isCoordination && sender ? (
+                      <Tag color="geekblue">@{sender}</Tag>
+                    ) : (
+                      <Tag color={getNotificationSeverityTagColor(item.severity)}>
+                        {getNotificationSeverityText(item.severity, language)}
+                      </Tag>
+                    )}
                     {item.unread ? <Tag color="blue">未读</Tag> : null}
                   </Space>
                   <Typography.Text
                     type="secondary"
                     style={{ display: 'block', lineHeight: 1.6 }}
                   >
-                    {content.description}
+                    {description}
                   </Typography.Text>
                   <Typography.Text type="secondary">
                     {new Date(item.timestamp).toLocaleString()}

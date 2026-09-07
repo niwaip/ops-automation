@@ -1,0 +1,127 @@
+.workflow-dropdown {
+  position: absolute;
+  bottom: calc(100% - 2px);
+  left: 14px;
+  width: 500px;
+  max-width: calc(100% - 28px);
+  max-height: 400px;
+  background: var(--bg-card);
+  border-radius: var(--radius-md, 12px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.22), 0 4px 12px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--border-color);
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: workflowFadeIn 0.15s ease;
+}
+
+@keyframes workflowFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.workflow-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.workflow-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workflow-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 6px 0;
+  max-height: 290px;
+}
+
+.workflow-item {
+  padding: 10px 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-left: 3px solid transparent;
+  gap: 12px;
+}
+
+.workflow-item:hover,
+.workflow-item.is-selected {
+  background: var(--bg-hover);
+}
+
+.workflow-item.is-selected {
+  border-left-color: #722ed1;
+}
+
+.workflow-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.workflow-item-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workflow-item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.workflow-item-id {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.workflow-item-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.workflow-footer {
+  padding: 8px 14px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: monospace;
+  background: var(--bg-subtle, rgba(0, 0, 0, 0.06));
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-secondary);
+}

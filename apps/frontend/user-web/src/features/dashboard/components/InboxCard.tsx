@@ -45,6 +45,7 @@ export function InboxCard({
     handleClarifyItem,
     handleConvertToTodo,
     handleArchiveItem,
+    handleUnarchiveItem,
     handleDeleteItem,
     handleSyncEmail,
   } = useWorkbenchInbox({
@@ -141,6 +142,7 @@ export function InboxCard({
           onClarifyItem={handleClarifyItem}
           onConvertToTodo={(id) => handleConvertToTodo(id)}
           onArchiveItem={handleArchiveItem}
+          onUnarchiveItem={handleUnarchiveItem}
           onDeleteItem={handleDeleteItem}
         />
       </div>

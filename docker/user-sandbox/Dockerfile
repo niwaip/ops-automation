@@ -20,8 +20,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. 全局安装 pnpm 与 modsearch 联网套件
+# 2. 全局安装 pnpm、modsearch 与核心办公文档依赖库
 RUN npm install -g pnpm @liustack/modsearch || npm install -g --registry=https://registry.npmmirror.com pnpm @liustack/modsearch
+RUN pip3 install --no-cache-dir --break-system-packages fpdf2 python-docx openpyxl pypdf
 
 # 3. 创建集中式不可变系统插件库、技能库与默认配置
 RUN mkdir -p /opt/dsh/plugins /opt/dsh/skills /etc/dsh \
@@ -33,9 +34,10 @@ RUN groupadd -g 1001 sandbox \
 
 # 5. 创建用户工作区、知识空间挂载点与默认 DSH 配置
 RUN mkdir -p /workspace /knowledge /home/sandbox/.dsh \
-    && chown -R sandbox:sandbox /workspace /home/sandbox \
-    && chown root:root /knowledge /opt/dsh \
-    && chmod 755 /workspace /knowledge /opt/dsh/plugins /opt/dsh/skills
+    && chown -R sandbox:sandbox /workspace /knowledge /home/sandbox \
+    && chown root:root /opt/dsh \
+    && chmod 777 /workspace /knowledge \
+    && chmod 755 /opt/dsh/plugins /opt/dsh/skills
 
 # 写入管理员预置的不可变 DSH 基础配置模板（指向内部代理网关）
 RUN cat <<'EOF' > /home/sandbox/.dsh/config.json
@@ -43,7 +45,7 @@ RUN cat <<'EOF' > /home/sandbox/.dsh/config.json
   "managedBy": "Ops Automation Platform",
   "immutable": true,
   "pluginDirectories": ["/opt/dsh/plugins"],
-  "skillDirectories": ["/opt/dsh/skills"],
+  "skillDirectories": ["/knowledge/skills", "/opt/dsh/skills"],
   "model": {
     "provider": "deepseek",
     "useInternalProxy": true
@@ -58,6 +60,7 @@ ENV USER_MODE=personal \
     KNOWLEDGE_DIR=/knowledge \
     DSH_PLUGIN_DIR=/opt/dsh/plugins \
     DSH_SKILL_DIR=/opt/dsh/skills \
+    DSH_CUSTOM_SKILL_DIR=/knowledge/skills \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     PYTHONIOENCODING=utf-8 \

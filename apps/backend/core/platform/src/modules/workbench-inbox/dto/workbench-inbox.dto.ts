@@ -9,7 +9,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   InboxItemStatus,
   TodoPriority,
@@ -109,6 +109,11 @@ export class QueryInboxDto {
   @IsOptional()
   @IsEnum(InboxItemStatus)
   status?: InboxItemStatus;
+
+  @ApiPropertyOptional({ description: '是否包含已归档条目，默认 false 仅展示活跃收件箱' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  includeArchived?: boolean;
 
   @ApiPropertyOptional({ enum: TodoSourceType })
   @IsOptional()

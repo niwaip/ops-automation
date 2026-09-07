@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import axios from 'axios';
 import type { ApprovalStatus } from '../execution/contracts/approval-status';
 import type { ExecutionStatus } from '../execution/contracts/execution-status';
 import { ExecutionService } from '../execution/execution.service';
+import { PrismaService } from '../prisma/prisma.service';
 import type { AuthenticatedRequest } from '../auth/auth.middleware';
 import { getReportServiceUrl } from '../../config/service-endpoints';
 import {
@@ -56,7 +57,10 @@ interface ReportNotificationSource {
 export class NotificationService {
   private readonly reportServiceUrl = getReportServiceUrl();
 
-  constructor(private readonly executionService: ExecutionService) {}
+  constructor(
+    private readonly executionService: ExecutionService,
+    @Optional() private readonly prisma?: PrismaService
+  ) {}
 
   async list(
     query: NotificationListQueryDto,
@@ -65,15 +69,19 @@ export class NotificationService {
     const limit = Math.max(query.limit || 20, 1);
     const shouldIncludeExecution = !query.source || query.source === 'execution';
     const shouldIncludeReport = !query.source || query.source === 'report';
+    const shouldIncludeCoordination = !query.source || query.source === 'coordination';
 
-    const [executionItems, reportItems] = await Promise.all([
+    const [executionItems, reportItems, coordinationItems] = await Promise.all([
       shouldIncludeExecution
         ? this.listExecutionNotifications(limit, requester)
         : Promise.resolve([]),
       shouldIncludeReport ? this.listReportNotifications(limit) : Promise.resolve([]),
+      shouldIncludeCoordination
+        ? this.listCoordinationNotifications(limit, requester)
+        : Promise.resolve([]),
     ]);
 
-    const items = [...executionItems, ...reportItems].sort(
+    const items = [...executionItems, ...reportItems, ...coordinationItems].sort(
       (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime()
     );
 
@@ -85,6 +93,67 @@ export class NotificationService {
       items: filteredItems.slice(0, limit),
       total: filteredItems.length,
     };
+  }
+
+  private async listCoordinationNotifications(
+    limit: number,
+    requester?: AuthenticatedRequest['user'] | RequestUserContext
+  ): Promise<AppNotificationDto[]> {
+    if (!this.prisma || !requester?.id) {
+      return [];
+    }
+
+    try {
+      const inboxItems = await (this.prisma as any).workbenchInboxItem.findMany({
+        where: {
+          userId: requester.id,
+          status: {
+            in: ['unprocessed', 'clarified'],
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+      });
+
+      return (inboxItems || []).map((item: any) => {
+        const payload = (item.unifiedPayload as any) || {};
+        const isApproval = payload.taskType === 'approval';
+        const sender = item.sourceSender || payload.initiator?.username || '团队成员';
+        const category = isApproval ? 'pending_approval' : 'status_update';
+        const severity = isApproval ? 'warning' : 'info';
+        const timestamp = (item.createdAt || new Date()).toISOString();
+
+        return {
+          id: `coordination:${item.id}`,
+          dedupeKey: `coordination:${item.id}`,
+          source: 'coordination',
+          sourceId: item.sourceRefId || item.id,
+          sourceName: sender,
+          severity,
+          category,
+          status: item.status,
+          stateKey: `${item.status}:${item.updatedAt ? new Date(item.updatedAt).toISOString() : timestamp}`,
+          timestamp,
+          unread: item.status === 'unprocessed',
+          requiresAction: true,
+          actionUrl: `/dashboard?tab=inbox`,
+          metadata: {
+            inboxItemId: item.id,
+            taskId: item.sourceRefId || item.id,
+            title: `收到来自 @${sender} 的协同${isApproval ? '审批承认' : '任务'}`,
+            resultTitle: item.title,
+            resultSummary: item.rawContent,
+            approvalStatus: isApproval ? '待承认' : '待处理',
+            sender,
+            taskType: payload.taskType || (isApproval ? 'approval' : 'assignment'),
+            priority: payload.priority || 'medium',
+            attachments: payload.attachments || [],
+          },
+        } satisfies AppNotificationDto;
+      });
+    } catch {
+      return [];
+    }
   }
 
   private async listExecutionNotifications(

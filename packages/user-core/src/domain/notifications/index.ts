@@ -70,6 +70,53 @@ export const buildNotificationContent = (
     .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
     .join(isEnglish ? ' - ' : '：');
 
+  if (item.source === 'coordination') {
+    const isApproval = item.metadata?.taskType === 'approval';
+    const sender =
+      typeof item.metadata?.sender === 'string' && item.metadata.sender.trim()
+        ? item.metadata.sender.trim()
+        : (item.sourceName || '');
+    const customTitle =
+      typeof item.metadata?.title === 'string' && item.metadata.title.trim()
+        ? item.metadata.title.trim()
+        : isEnglish
+          ? (isApproval ? 'Approval Request' : 'Coordination Task')
+          : (isApproval ? `收到来自 @${sender || '同事'} 的审批承认请求` : `收到来自 @${sender || '同事'} 的协同任务`);
+    const taskTitle =
+      typeof item.metadata?.resultTitle === 'string' && item.metadata.resultTitle.trim()
+        ? item.metadata.resultTitle.trim()
+        : '';
+    const taskSummary =
+      typeof item.metadata?.resultSummary === 'string' && item.metadata.resultSummary.trim()
+        ? item.metadata.resultSummary.trim()
+        : '';
+
+    let descText = '';
+    if (taskTitle && taskSummary) {
+      if (taskTitle === taskSummary || taskTitle.includes(taskSummary)) {
+        descText = taskTitle;
+      } else if (taskSummary.includes(taskTitle)) {
+        descText = taskSummary;
+      } else {
+        descText = `${taskTitle}：${taskSummary}`;
+      }
+    } else {
+      descText = taskTitle || taskSummary;
+    }
+
+    const description = descText
+      ? descText
+      : isEnglish
+        ? `You received a coordination task${sender ? ` from @${sender}` : ''}. Please check in Inbox.`
+        : `您收到一条来自 ${sender ? `@${sender} 的` : ''}协同任务，请在 GTD 收集箱查看处理。`;
+
+    return {
+      title: customTitle,
+      description,
+      actionText: isEnglish ? 'Go to Inbox' : '前往收集箱',
+    };
+  }
+
   switch (item.category) {
     case 'completed':
       return {

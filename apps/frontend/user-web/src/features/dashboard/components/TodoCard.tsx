@@ -1,4 +1,5 @@
 import {
+  CheckCircleOutlined,
   ClockCircleOutlined,
   DeleteOutlined,
   PlayCircleOutlined,
@@ -20,9 +21,11 @@ import {
   Tooltip,
   Typography,
 } from "antd";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { WorkbenchTodoItem } from "@/api/workbenchTodo";
 import { formatMonthDayTime } from "@/shared/utils/dateText";
+import { CoordinationActionModal } from "./CoordinationActionModal";
 import styles from "../pages/DashboardPage.module.css";
 
 interface TodoCardProps {
@@ -60,6 +63,7 @@ export function TodoCard({
   onDeleteTodo,
 }: TodoCardProps) {
   const navigate = useNavigate();
+  const [activeCoordTodo, setActiveCoordTodo] = useState<WorkbenchTodoItem | null>(null);
 
   const renderPriorityTag = (priority: string) => {
     switch (priority) {
@@ -207,60 +211,106 @@ export function TodoCard({
               <Empty description="暂无匹配待办，可在上方输入添加，或在左侧「GTD 收集箱」将邮件或便签一键转为待办" />
             ) : (
               <List
-            dataSource={todos}
-            renderItem={(item) => {
-              const isCompleted = item.status === "completed";
-              return (
-                <List.Item key={item.id} style={{ padding: "8px 0", border: "none" }}>
-                  <div
-                    className={styles["workbench-todo-item"]}
-                    style={{
-                      width: "100%",
-                      borderLeft:
-                        item.priority === "urgent"
-                          ? "3px solid #ff4d4f"
-                          : item.priority === "high"
-                          ? "3px solid #fa8c16"
-                          : undefined,
-                    }}
-                  >
-                    <Space
-                      direction="vertical"
-                      size={6}
-                      style={{ width: "100%" }}
-                    >
-                      <div className={styles["workbench-todo-item-row"]}>
-                        <Checkbox
-                          checked={isCompleted}
-                          onChange={(e) => onToggleTodo(item.id, e.target.checked)}
-                          className={styles["workbench-todo-checkbox"]}
-                        >
-                          <Typography.Text
-                            delete={isCompleted}
-                            strong={!isCompleted}
-                            className={styles["workbench-todo-title"]}
-                          >
-                            {item.title}
-                          </Typography.Text>
-                        </Checkbox>
+                dataSource={todos}
+                renderItem={(item) => {
+                  const isCompleted = item.status === "completed";
+                  const contextData = (item.contextData || {}) as Record<string, any>;
+                  const isCoordination =
+                    item.sourceType === "chat" ||
+                    Boolean(contextData.sourceSender) ||
+                    contextData.unifiedPayload?.kind === "coordination";
+                  const coordPayload = (contextData.unifiedPayload || {}) as Record<string, any>;
+                  const isReceipt = Boolean(
+                    coordPayload.isReceipt ||
+                    coordPayload.taskType === "receipt" ||
+                    item.title?.startsWith("[协同回执]")
+                  );
+                  const isRejectReceipt = isReceipt && (coordPayload.receiptAction === "reject" || item.title?.includes("已驳回"));
+                  const isApproveReceipt = isReceipt && (coordPayload.receiptAction === "approve" || item.title?.includes("已同意"));
+                  const coordParams = coordPayload.parameters || {};
+                  const hasCoordParams = Object.keys(coordParams).length > 0;
+                  const isLeaveCoord =
+                    coordPayload.workflowId === "hr.leave.request" || Boolean(coordParams.leaveType);
 
-                        <Space size={6} className={styles["workbench-todo-actions"]}>
-                          {item.boundWorkflowId ? (
-                            <Tooltip title="一键执行关联工作流">
-                              <Button
-                                size="small"
-                                type="text"
-                                icon={<ThunderboltOutlined style={{ color: "#722ed1" }} />}
-                                onClick={() =>
-                                  onExecuteTodo
-                                    ? onExecuteTodo(item.id)
-                                    : navigate(`/executions/new?workflowId=${item.boundWorkflowId}`)
-                                }
+                  return (
+                    <List.Item key={item.id} style={{ padding: "8px 0", border: "none" }}>
+                      <div
+                        className={styles["workbench-todo-item"]}
+                        style={{
+                          width: "100%",
+                          borderLeft:
+                            item.priority === "urgent"
+                              ? "3px solid #ff4d4f"
+                              : item.priority === "high"
+                              ? "3px solid #fa8c16"
+                              : isReceipt
+                              ? isRejectReceipt
+                                ? "3px solid #ff4d4f"
+                                : "3px solid #52c41a"
+                              : isCoordination
+                              ? "3px solid #722ed1"
+                              : undefined,
+                        }}
+                      >
+                        <Space
+                          direction="vertical"
+                          size={6}
+                          style={{ width: "100%" }}
+                        >
+                          <div className={styles["workbench-todo-item-row"]}>
+                            <Checkbox
+                              checked={isCompleted}
+                              onChange={(e) => onToggleTodo(item.id, e.target.checked)}
+                              className={styles["workbench-todo-checkbox"]}
+                            >
+                              {isReceipt ? (
+                                <Tag
+                                  color={isRejectReceipt ? "error" : isApproveReceipt ? "success" : "cyan"}
+                                  style={{ marginRight: 4 }}
+                                >
+                                  {isRejectReceipt ? "已驳回" : isApproveReceipt ? "已通过" : "已办结"}
+                                </Tag>
+                              ) : null}
+                              <Typography.Text
+                                delete={isCompleted}
+                                strong={!isCompleted}
+                                className={styles["workbench-todo-title"]}
                               >
-                                执行工作流
-                              </Button>
-                            </Tooltip>
-                          ) : null}
+                                {item.title}
+                              </Typography.Text>
+                            </Checkbox>
+
+                            <Space size={6} className={styles["workbench-todo-actions"]}>
+                              {isCoordination && !isReceipt && !isCompleted ? (
+                                <Tooltip title="提交办理结果并向发起人同步回执">
+                                  <Button
+                                    size="small"
+                                    type="primary"
+                                    style={{ backgroundColor: "#722ed1", borderColor: "#722ed1" }}
+                                    icon={<CheckCircleOutlined />}
+                                    onClick={() => setActiveCoordTodo(item)}
+                                  >
+                                    反馈办理
+                                  </Button>
+                                </Tooltip>
+                              ) : null}
+
+                              {item.boundWorkflowId ? (
+                                <Tooltip title="一键执行关联工作流">
+                                  <Button
+                                    size="small"
+                                    type="text"
+                                    icon={<ThunderboltOutlined style={{ color: "#722ed1" }} />}
+                                    onClick={() =>
+                                       onExecuteTodo
+                                        ? onExecuteTodo(item.id)
+                                        : navigate(`/executions/new?workflowId=${item.boundWorkflowId}`)
+                                    }
+                                  >
+                                    执行工作流
+                                  </Button>
+                                </Tooltip>
+                              ) : null}
 
                           {onDeleteTodo ? (
                             <Popconfirm
@@ -280,6 +330,37 @@ export function TodoCard({
                         </Space>
                       </div>
 
+                      {hasCoordParams ? (
+                        <div
+                          style={{
+                            margin: "2px 0 4px 24px",
+                            background: "var(--bg-secondary, rgba(148, 163, 184, 0.08))",
+                            padding: "6px 10px",
+                            borderRadius: 6,
+                            border: "1px solid var(--border-color, rgba(148, 163, 184, 0.16))",
+                            fontSize: 12,
+                            color: "var(--text-primary)",
+                          }}
+                        >
+                          {isLeaveCoord ? (
+                            <Space direction="vertical" size={2} style={{ width: "100%" }}>
+                              <div>
+                                <Tag color="blue">{coordParams.leaveType || "请假"}</Tag>
+                                <span>时长：<strong>{coordParams.durationHours || 4} 小时</strong></span>
+                              </div>
+                              <div>起止：{coordParams.startTime} ~ {coordParams.endTime}</div>
+                              <div>事由：{coordParams.reason}</div>
+                            </Space>
+                          ) : (
+                            <Space direction="vertical" size={2} style={{ width: "100%" }}>
+                              {Object.entries(coordParams).map(([k, v]) => (
+                                <div key={k}><strong>{k}：</strong>{String(v)}</div>
+                              ))}
+                            </Space>
+                          )}
+                        </div>
+                      ) : null}
+
                       {item.description ? (
                         <Typography.Paragraph
                           type="secondary"
@@ -294,6 +375,9 @@ export function TodoCard({
                         <Space size={[6, 6]} wrap>
                           {renderPriorityTag(item.priority)}
                           {renderSourceTag(item.sourceType)}
+                          {(item.contextData as any)?.sourceSender ? (
+                            <Tag color="purple">来自 @{(item.contextData as any).sourceSender}</Tag>
+                          ) : null}
                           {renderDueDateTag(item.dueDate, isCompleted)}
                         </Space>
                       </div>
@@ -307,6 +391,30 @@ export function TodoCard({
       </div>
         </div>
       </div>
+
+      {activeCoordTodo ? (
+        <CoordinationActionModal
+          open={Boolean(activeCoordTodo)}
+          action="complete"
+          taskId={
+            activeCoordTodo.sourceRefId ||
+            (activeCoordTodo.contextData as any)?.inboxItemId ||
+            activeCoordTodo.id
+          }
+          taskTitle={activeCoordTodo.title}
+          initiatorName={(activeCoordTodo.contextData as any)?.sourceSender}
+          workflowId={(activeCoordTodo.contextData as any)?.unifiedPayload?.workflowId}
+          parameters={(activeCoordTodo.contextData as any)?.unifiedPayload?.parameters}
+          rawContent={activeCoordTodo.description || undefined}
+          incomingAttachments={(activeCoordTodo.contextData as any)?.unifiedPayload?.attachments}
+          onClose={() => setActiveCoordTodo(null)}
+          onSuccess={() => {
+            const id = activeCoordTodo.id;
+            setActiveCoordTodo(null);
+            onToggleTodo(id, true);
+          }}
+        />
+      ) : null}
     </Card>
   );
 }

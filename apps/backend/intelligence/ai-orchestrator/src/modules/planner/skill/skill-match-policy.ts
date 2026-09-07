@@ -5,6 +5,11 @@ export const NO_MATCHING_SKILL_MESSAGE =
 
 export function formatNoMatchingSkillMessage(userInput?: string): string {
   const text = (userInput || '').trim();
+  if (/^[@＠]/.test(text)) {
+    return (
+      '该请求为 `@` 人员协同指令。协同任务已作为固定工作流派发至目标成员的 GTD 收件箱，无需匹配 AI 技能。'
+    );
+  }
   if (/(ppt|演示文稿|幻灯片|presentation|slides?|做幻灯|生成ppt)/i.test(text)) {
     return (
       '当前工作模式下未匹配到企业级自动化技能。\n\n' +

@@ -11,6 +11,7 @@ import { SkillGrid } from '@/features/skills/components/SkillGrid';
 import { EmployeeToolbar } from '@/features/skills/components/EmployeeToolbar';
 import { usePublishedSkillList } from '@/features/skills/hooks/usePublishedSkillList';
 import { SavedWorkflowList } from '@/features/skills/saved-workflows/SavedWorkflowList';
+import { OrganizationWorkflowList } from '@/features/skills/components/OrganizationWorkflowList';
 
 function PublishedSkillsContent() {
   const {
@@ -157,7 +158,10 @@ function PublishedSkillsContent() {
 
 export function PublishedSkillListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') === 'my-workflows' ? 'my-workflows' : 'published';
+  const currentTab = searchParams.get('tab');
+  const activeTab = currentTab === 'org-workflows' || currentTab === 'my-workflows'
+    ? currentTab
+    : 'published';
 
   return (
     <AntdTabs
@@ -168,7 +172,7 @@ export function PublishedSkillListPage() {
           next.delete('tab');
           next.delete('skillId');
         } else {
-          next.set('tab', 'my-workflows');
+          next.set('tab', tab);
         }
         setSearchParams(next);
       }}
@@ -179,8 +183,13 @@ export function PublishedSkillListPage() {
           children: <PublishedSkillsContent />,
         },
         {
+          key: 'org-workflows',
+          label: '组织工作流 (企业标准流)',
+          children: <OrganizationWorkflowList />,
+        },
+        {
           key: 'my-workflows',
-          label: '专属工作流',
+          label: '专属工作流 (个人沉淀)',
           children: <SavedWorkflowList />,
         },
       ]}

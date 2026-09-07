@@ -159,7 +159,12 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
         type="text"
         size="small"
         icon={<BookOutlined />}
-        onClick={() => saveMutation.mutate()}
+        disabled={saveMutation.isLoading || Boolean(savedNodeId)}
+        onClick={() => {
+          if (!saveMutation.isLoading && !savedNodeId) {
+            saveMutation.mutate();
+          }
+        }}
         className="chat-action-btn chat-action-btn-icon"
         aria-label="保存到个人空间"
       />

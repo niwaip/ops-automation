@@ -67,7 +67,17 @@ export function NotificationsPage() {
           loading={!initialized && isFetching}
           dataSource={sortedItems}
           renderItem={(item) => {
+            const isCoordination = item.source === 'coordination';
+            const isApproval = item.metadata?.taskType === 'approval';
+            const sender = (item.metadata?.sender as string) || item.sourceName;
             const content = buildNotificationContent(item, language);
+            const title = isCoordination
+              ? (item.metadata?.title as string) || content.title
+              : content.title;
+            const description = isCoordination
+              ? (item.metadata?.resultTitle as string) || content.description
+              : content.description;
+
             return (
               <List.Item
                 key={item.id}
@@ -100,18 +110,27 @@ export function NotificationsPage() {
               >
                 <Space direction="vertical" size={6} style={{ width: '100%' }}>
                   <Space wrap size={8}>
-                    <Typography.Text strong>{content.title}</Typography.Text>
-                    {isExecutionStatusValue(item.status) ? (
+                    <Typography.Text strong>{title}</Typography.Text>
+                    {isCoordination ? (
+                      <Tag color={isApproval ? 'orange' : 'cyan'}>
+                        {isApproval ? '审批承认' : '协同任务'}
+                      </Tag>
+                    ) : isExecutionStatusValue(item.status) ? (
                       <Tag color={EXECUTION_STATUS_COLORS[item.status]}>
                         {statusLabels[item.status]}
                       </Tag>
                     ) : null}
-                    <Tag color={getNotificationSeverityTagColor(item.severity)}>
-                      {getNotificationSeverityText(item.severity, language)}
-                    </Tag>
-                    {item.requiresAction ? <Tag color="warning">待处理</Tag> : null}
+                    {isCoordination && sender ? (
+                      <Tag color="geekblue">@{sender}</Tag>
+                    ) : (
+                      <Tag color={getNotificationSeverityTagColor(item.severity)}>
+                        {getNotificationSeverityText(item.severity, language)}
+                      </Tag>
+                    )}
+                    {item.unread ? <Tag color="blue">未读</Tag> : null}
+                    {item.requiresAction && !isCoordination ? <Tag color="warning">待处理</Tag> : null}
                   </Space>
-                  <Typography.Text type="secondary">{content.description}</Typography.Text>
+                  <Typography.Text type="secondary">{description}</Typography.Text>
                   <Typography.Text type="secondary">
                     {new Date(item.timestamp).toLocaleString()}
                   </Typography.Text>
