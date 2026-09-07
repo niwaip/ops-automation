@@ -7,7 +7,7 @@ import { PassportModule } from '@nestjs/passport';
 import { CapabilityReleaseModule } from '@ops/release-manager/release';
 import { SkillModule } from '@ops/skill-registry/registry';
 import { ExecutionFlowModule } from '@ops/workflow-registry/flow-template';
-import { TemporalWorkflowModule } from './modules/temporal-workflow/temporal-workflow.module';
+import { TemporalWorkflowModule } from '@ops/workflow-registry/temporal';
 import { ReleaseManagerRuntimeAdapterModule } from './release-manager/platform/release-manager-runtime-adapter.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { IdentityAccessBridgeModule } from './governance/identity-access/identity-access-bridge.module';

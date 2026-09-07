@@ -6,7 +6,7 @@ import {
   EMAIL_MARK_READ_ACTIVITY_KEY,
   TODO_SYNC_EXTERNAL_ACTIVITY_KEY,
   EXECUTION_INTERVENTION_GATE_ACTIVITY_KEY,
-} from '../src/modules/temporal-workflow/builtin-activity.registry';
+} from '@ops/workflow-registry/temporal';
 
 describe('Workbench and Task Automation Activity Registration', () => {
   let registry: BuiltinActivityRegistry;

@@ -1,4 +1,4 @@
-import { FIXED_AI_STRUCTURED_TRANSFORM_ACTIVITY_CODE } from '../src/modules/temporal-workflow/fixed-activity-templates';
+import { FIXED_AI_STRUCTURED_TRANSFORM_ACTIVITY_CODE } from '@ops/workflow-registry/temporal/fixed-activity-templates';
 
 describe('legacy aiStructuredTransform Activity', () => {
   it('is feature-flagged and emits an auditable fallback event', () => {

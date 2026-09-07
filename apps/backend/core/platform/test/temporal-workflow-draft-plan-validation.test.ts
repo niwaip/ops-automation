@@ -1,4 +1,4 @@
-import { validateAiWorkflowDraftPlan } from '../src/modules/temporal-workflow/temporal-workflow-draft-plan-validation.helpers';
+import { validateAiWorkflowDraftPlan } from '@ops/workflow-registry/temporal/temporal-workflow-draft-plan-validation.helpers';
 
 const deps = {
   pickFirstNonEmptyString: (...values: unknown[]) =>

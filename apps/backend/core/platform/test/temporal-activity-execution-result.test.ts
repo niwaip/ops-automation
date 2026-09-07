@@ -1,6 +1,6 @@
 import {
   normalizeDocumentExecutionResult,
-} from '../src/modules/temporal-workflow/runtime-bridge/temporal-activity-execution-result.utils';
+} from '@ops/workflow-registry/temporal/runtime-bridge/temporal-activity-execution-result.utils';
 
 describe('Temporal Activity execution result normalization', () => {
   it('does not reinterpret a generic HTTP url as a document downloadUrl', () => {

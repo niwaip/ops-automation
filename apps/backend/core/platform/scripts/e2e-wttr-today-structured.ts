@@ -3,7 +3,7 @@ import * as http from 'node:http';
 import type {
   ActivityDsl,
   WorkflowDsl,
-} from '../src/modules/temporal-workflow/temporal-workflow.service';
+} from '@ops/workflow-registry/temporal/temporal-workflow.service';
 import { createTemporalWorkflowScriptService } from './temporal-workflow-script-harness';
 
 const WTTR_SAMPLE = {

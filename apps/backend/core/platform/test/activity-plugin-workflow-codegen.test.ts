@@ -1,7 +1,7 @@
-import { BuiltinActivityRegistry } from '../src/modules/temporal-workflow/builtin-activity.registry';
-import { buildDeterministicWorkflowCodeForWorkflow } from '../src/modules/temporal-workflow/temporal-workflow-deterministic-builder';
-import { TemporalWorkflowNormalizationService } from '../src/modules/temporal-workflow/temporal-workflow-normalization.service';
-import { TemporalWorkflowConfigService } from '../src/workflow-registry/workflow-template/temporal-workflow-config.service';
+import { BuiltinActivityRegistry } from '@ops/workflow-registry/temporal/builtin-activity.registry';
+import { buildDeterministicWorkflowCodeForWorkflow } from '@ops/workflow-registry/temporal/temporal-workflow-deterministic-builder';
+import { TemporalWorkflowNormalizationService } from '@ops/workflow-registry/temporal/temporal-workflow-normalization.service';
+import { TemporalWorkflowConfigService } from '@ops/workflow-registry/workflow-template/temporal-workflow-config.service';
 
 describe('Activity Plugin deterministic workflow compilation', () => {
   it('compiles HTTP to fixed Transform when instruction is empty and mappings are explicit', () => {

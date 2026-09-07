@@ -1,4 +1,4 @@
-import { compileDraftValidationContract } from '../src/modules/temporal-workflow/temporal-workflow-draft-validation.compiler';
+import { compileDraftValidationContract } from '@ops/workflow-registry/temporal/temporal-workflow-draft-validation.compiler';
 
 describe('compileDraftValidationContract', () => {
   it('anchors legacy envelope assertions below the only declared business field', () => {

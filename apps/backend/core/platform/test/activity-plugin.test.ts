@@ -1,7 +1,7 @@
-import { BuiltinActivityRegistry } from '../src/modules/temporal-workflow/builtin-activity.registry';
-import { ActivityPluginProbeService } from '../src/modules/temporal-workflow/activity-plugin/activity-plugin-probe.service';
-import { ActivityPluginRegistryService } from '../src/modules/temporal-workflow/activity-plugin/activity-plugin-registry.service';
-import { ActivityPluginSpecValidatorService } from '../src/modules/temporal-workflow/activity-plugin/activity-plugin-spec-validator.service';
+import { BuiltinActivityRegistry } from '@ops/workflow-registry/temporal/builtin-activity.registry';
+import { ActivityPluginProbeService } from '@ops/workflow-registry/temporal/activity-plugin/activity-plugin-probe.service';
+import { ActivityPluginRegistryService } from '@ops/workflow-registry/temporal/activity-plugin/activity-plugin-registry.service';
+import { ActivityPluginSpecValidatorService } from '@ops/workflow-registry/temporal/activity-plugin/activity-plugin-spec-validator.service';
 
 describe('Activity Plugin ABI and real probe', () => {
   const createServices = () => {

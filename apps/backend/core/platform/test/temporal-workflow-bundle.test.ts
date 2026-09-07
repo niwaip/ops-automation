@@ -1,12 +1,12 @@
 import { BadRequestException, StreamableFile } from '@nestjs/common';
 import { createHash } from 'crypto';
-import { TemporalWorkflowController } from '../src/modules/temporal-workflow/temporal-workflow.controller';
-import { TemporalWorkflowBundleService } from '../src/modules/temporal-workflow/temporal-workflow-bundle.service';
+import { TemporalWorkflowController } from '@ops/workflow-registry/temporal/temporal-workflow.controller';
+import { TemporalWorkflowBundleService } from '@ops/workflow-registry/temporal/temporal-workflow-bundle.service';
 import {
   createTarGzip,
   extractTarGzip,
-} from '../src/modules/temporal-workflow/temporal-workflow-bundle-tar.utils';
-import { TemporalWorkflowManagementService } from '../src/workflow-registry/workflow-template/temporal-workflow-management.service';
+} from '@ops/workflow-registry/temporal/temporal-workflow-bundle-tar.utils';
+import { TemporalWorkflowManagementService } from '@ops/workflow-registry/workflow-template/temporal-workflow-management.service';
 
 const workflowCode =
   'from temporalio import workflow\n\n@workflow.defn\nclass NewsWorkflow:\n    pass\n';

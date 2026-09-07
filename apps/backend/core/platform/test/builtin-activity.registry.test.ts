@@ -1,7 +1,7 @@
 import {
   AI_STRUCTURED_TRANSFORM_ACTIVITY_KEY,
   BuiltinActivityRegistry,
-} from '../src/modules/temporal-workflow/builtin-activity.registry';
+} from '@ops/workflow-registry/temporal/builtin-activity.registry';
 
 describe('BuiltinActivityRegistry model capability boundary', () => {
   let registry: BuiltinActivityRegistry;

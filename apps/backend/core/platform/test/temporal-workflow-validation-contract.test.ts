@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
-import { TemporalWorkflowValidationContractService } from '../src/workflow-registry/validation/temporal-workflow-validation-contract.service';
-import type { WorkflowDsl } from '../src/modules/temporal-workflow/temporal-workflow.types';
+import { TemporalWorkflowValidationContractService } from '@ops/workflow-registry/validation/temporal-workflow-validation-contract.service';
+import type { WorkflowDsl } from '@ops/workflow-registry/temporal/temporal-workflow.types';
 
 describe('TemporalWorkflowValidationContractService', () => {
   const service = new TemporalWorkflowValidationContractService();

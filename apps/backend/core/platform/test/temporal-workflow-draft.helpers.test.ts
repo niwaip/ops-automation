@@ -2,7 +2,7 @@ import {
   buildAnalyzeAiWorkflowDraftPrompt,
   buildAnalyzeAiWorkflowRefinementPrompt,
   buildRepairAiWorkflowDraftPlanPrompt,
-} from '../src/modules/temporal-workflow/temporal-workflow-draft.helpers';
+} from '@ops/workflow-registry/temporal/temporal-workflow-draft.helpers';
 
 const activityResources: any[] = [];
 
