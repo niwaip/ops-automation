@@ -1,17 +1,17 @@
 # sandbox-worker
 
-`sandbox-worker` 是运行时平面中的核心组件，当前承担**双重复合职责**：
+`sandbox-worker` 是平台物理执行运行时平面中的代码沙箱 HTTP API 网关（对外暴露端口 8090）。
 
-1. **Temporal 核心工作流执行 (Temporal Worker)**：
-   - 监听 `SANDBOX_WORKER_TASK_QUEUE` 与校验队列；
-   - 负责运行 Python 端核心编排工作流：`AgentSessionWorkflow`、`ActivityValidationWorkflow`、`WorkflowValidationWorkflow` 以及活动 `execute_code_activity`。
-2. **动态代码沙箱执行器 (Sandbox HTTP API)**：
-   - `POST /execute` / `POST /execute/stream`：受控 Python 脚本动态执行；
-   - `POST /validate-activity`：Activity 校验与语法验证；
+## 职责与定位
+
+1. **动态代码沙箱执行器 (Sandbox HTTP API)**：
+   - `POST /execute` / `POST /execute/stream`：受控 Python 脚本动态执行（支持流式实时日志）；
+   - `POST /validate-activity`：Activity 校验与语法验证（通过 Temporal Client 调度至 `temporal-worker` 执行）；
    - `POST /validate-workflow` / `POST /validate-workflow/stream`：工作流合规性检验；
-   - `GET /health`：沙箱探针。
-
-当前目录是动态代码沙箱运行时的主实现目录。
+   - `GET /health`：沙箱健康探针。
+2. **与 `temporal-worker` 的分工**：
+   - `sandbox-worker` 专注于对外 HTTP 接口与本地受控子进程代码执行，不直接轮询 Temporal 任务队列；
+   - 复杂的工作流执行与分布式 Activity 调度由独立的 `temporal-worker` 承接。
 
 当前阶段策略：
 

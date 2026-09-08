@@ -689,6 +689,32 @@ services:
     networks:
       - ops-network
 
+  temporal-worker:
+    build:
+      context: ../..
+      dockerfile: docker/temporal-worker/Dockerfile
+      args:
+        TEMPORAL_WORKER_PROJECT_PATH: ${TEMPORAL_WORKER_PROJECT_PATH:-apps/backend/runtimes/temporal-worker}
+    container_name: ops-temporal-worker
+    restart: unless-stopped
+    working_dir: /workspace/apps/backend/runtimes/temporal-worker
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+      - AUTH_SERVICE_URL=http://${PLATFORM_SERVICE_HOST:-platform}:${PLATFORM_PORT:-3001}
+      - AI_ORCHESTRATOR_URL=http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
+      - SANDBOX_WORKER_TASK_QUEUE=sandbox-worker-task-queue
+      - ACTIVITY_VALIDATION_TASK_QUEUE=activity-validation-task-queue
+      - CARBONE_SERVICE_URL=http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}
+      - CARBONE_EXTERNAL_URL=http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
+    volumes:
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - temporal
+    networks:
+      - ops-network
+
 volumes:
   postgres_data:
     driver: local

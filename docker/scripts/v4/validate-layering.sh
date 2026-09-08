@@ -71,6 +71,7 @@ carbone-engine
 sandbox-worker
 temporal
 temporal-ui
+temporal-worker
 EOF
 )
 
@@ -94,6 +95,7 @@ sandbox-worker
 session-broker
 temporal
 temporal-ui
+temporal-worker
 user-web
 EOF
 )

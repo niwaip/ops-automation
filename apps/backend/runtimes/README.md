@@ -6,21 +6,23 @@
 
 ---
 
-## 一、当前物理结构（As-Is）
+## 一、当前物理结构与两级分类体系
 
-物理文件系统中当前包含以下 4 个核心运行时模块：
+`runtimes/` 下划分两级执行实体：**平台基础设施级 Worker (`*-worker`)** 与 **租户环境专属 Runner (`*-runner`)**：
 
 ```text
 apps/backend/runtimes/
-├── browser-worker/          # 浏览器实时自动化操控与录制代理 (Node.js + Playwright)
-├── replay-worker/           # 动作回放、断点调试与人工接管引擎 (Node.js + CDP, @ops/replay-engine)
-├── sandbox-worker/          # [复合] Temporal 工作流执行器 + 系统级动态代码校验沙箱 (Python)
-├── personal-sandbox-runner/ # 用户个人专属隔离容器内的智能体引擎 (Python / dsh CLI)
+├── [平台级基础设施 Workers]
+│   ├── browser-worker/          # 浏览器实时自动化操控与录制代理 (Node.js + Playwright, 端口 3004)
+│   ├── replay-worker/           # 动作回放、断点调试与人工接管引擎 (Node.js + CDP, @ops/replay-engine)
+│   ├── temporal-worker/         # Temporal 工作流与 Activity 执行器 (Python 3.11)
+│   └── sandbox-worker/          # 动态代码执行与语法校验 HTTP API 网关 (Python 3.11, 端口 8090)
+│
+├── [租户专属环境 Runners]
+│   └── personal-sandbox-runner/ # 用户个人专属隔离容器内的智能体引擎 (Python / dsh CLI)
+│
 └── README.md
 ```
-
-> ⚠️ **关于 `temporal-worker` 目录的特别说明**：
-> 早期规划文档曾设想单独设立 `temporal-worker/` 目录。但在当前实际工程中，**Temporal Python Worker 与代码校验沙箱尚未在物理目录上拆开**，两者目前统一运行在 `sandbox-worker/` 进程内。详见下方说明。
 
 ---
 
@@ -44,22 +46,32 @@ apps/backend/runtimes/
   - 提供调试日志、快照提取与重试控制。
 - **协议与部署**：HTTP API，独立部署。
 
-### 3. `sandbox-worker/` (系统级工作流与代码沙箱)
-- **定位**：**【复合组件】** 承载平台的 Temporal 工作流执行与系统级动态 Python 代码沙箱
-- **技术栈**：Python 3.11 + `temporalio` SDK + aiohttp
+### 3. `temporal-worker/` (Temporal 工作流执行器)
+- **定位**：纯粹的 Temporal 核心工作流与活动执行器
+- **技术栈**：Python 3.11 + `temporalio` SDK
 - **主要职责**：
-  - **Temporal Worker 职责**：连接 `ops-temporal:7233`，监听任务队列并执行核心工作流（如 `AgentSessionWorkflow`、`ActivityValidationWorkflow`、`WorkflowValidationWorkflow` 以及 `execute_code_activity`）；
-  - **动态代码沙箱职责**：对外暴露 HTTP 接口（`POST /execute`、`POST /validate-activity`、`POST /validate-workflow` 等），为平台提供安全的受控代码执行与静态语义语法校验。
-- **协议与部署**：Temporal gRPC + HTTP（默认端口 `8090`），作为独立容器 `ops-sandbox-worker` 运行。
+  - 连接 `ops-temporal:7233`，监听 `sandbox-worker-task-queue` 与 `activity-validation-task-queue`；
+  - 负责执行核心工作流：`AgentSessionWorkflow`、`ActivityValidationWorkflow`、`WorkflowValidationWorkflow`；
+  - 负责执行核心活动：`execute_code_activity`。
+- **协议与部署**：Temporal gRPC Worker 进程，作为独立容器 `ops-temporal-worker` 运行。
 
-### 4. `personal-sandbox-runner/` (用户个人 Agent 引擎)
+### 4. `sandbox-worker/` (系统级代码沙箱 HTTP 网关)
+- **定位**：对外提供受控 Python 动态执行与语法/工作流校验的 HTTP API 服务
+- **技术栈**：Python 3.11 + aiohttp + `temporalio` Client
+- **主要职责**：
+  - `POST /execute` / `POST /execute/stream`：受控 Python 脚本动态执行与流式日志输出；
+  - `POST /validate-activity`：Activity 校验与语法验证（通过 Temporal Client 调度至 `temporal-worker` 执行）；
+  - `POST /validate-workflow` / `POST /validate-workflow/stream`：工作流校验；
+  - `GET /health`：健康探针。
+- **协议与部署**：HTTP（默认端口 `8090`），作为独立容器 `ops-sandbox-worker` 运行。
+
+### 5. `personal-sandbox-runner/` (用户个人 Agent 引擎)
 - **定位**：用户多租户隔离沙箱内部的自主智能体引擎（DeepSeek Harness / `dsh` CLI）
 - **技术栈**：Python 3.11 CLI 模块化架构
 - **主要职责**：
   - 预装在每个用户的私有容器（`ops-user-sandbox:*`）中，以普通权限用户（UID 1001）运行；
   - 提供意图嗅探、多轮 ReAct 工具调用循环（天气、实时检索、文档读写、终端命令执行）；
-  - 挂载并管理用户读写持久化的 `/workspace` 工作区与 `/knowledge` 个人空间；
-  - **与 `sandbox-worker` 的区别**：`sandbox-worker` 是平台公共的基础设施 Worker，而 `personal-sandbox-runner` 是每个终端用户专属沙箱内的客户端智能体核心。
+  - 挂载并管理用户读写持久化的 `/workspace` 工作区与 `/knowledge` 个人空间。
 - **协议与部署**：通过 `session-broker` 的 Dockerode 编排以 CLI 指令 (`dsh run ...`) 在容器内启动执行。
 
 ---
@@ -73,17 +85,3 @@ apps/backend/runtimes/
 | **`execution-control/control-plane`** | 执行生命周期、审批决策、干预门禁 | 流程状态机流转、审批中断、人工介入接管、输入补全 |
 | **`execution-control/session-broker`** | 会话管理、资源租约、容器生命周期 | 分配 Worker 槽位、创建/销毁用户沙箱、会话冻结与解冻 |
 | **`runtimes/*`** | 纯粹的动作执行与计算底座 | 跑工作流、执行代码、操纵浏览器、跑 dsh Agent |
-
----
-
-## 四、后续架构演进规划（To-Be）
-
-针对目前命名与职责交叉的问题，后续（方案 B）将按以下节奏进行解耦与规范：
-
-1. **分离 `temporal-worker` 与 `sandbox-worker`**：
-   - 将 `AgentSessionWorkflow` 与工作流调度剥离至专用的 `temporal-worker/`；
-   - 原 `sandbox-worker` 退化为纯粹的代码执行容器，更名为更具辨识度的 `code-sandbox-worker/`。
-2. **统一命名体系**：
-   - 全面理顺平台级 Worker 与租户级 Runner 的命名差异（例如平台端统一叫 `*-worker`，容器端内部引擎叫 `personal-agent-runner`）。
-3. **收敛跨运行时契约**：
-   - 运行时之间的 DTO 与事件契约统一通过 `packages/backend-contracts/*` 输出，杜绝深层相对路径跨域引用。
