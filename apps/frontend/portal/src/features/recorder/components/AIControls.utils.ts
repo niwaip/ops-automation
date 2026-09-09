@@ -421,3 +421,70 @@ export const PREDEFINED_COMMANDS: PredefinedCommand[] = [
     placeholder: '输入目标元素描述，如：导航菜单项',
   },
 ];
+
+export interface HistoryEntryExecutionStatusMeta {
+  type: 'success' | 'failed' | 'blocked' | 'info';
+  label: string;
+  defaultOpen: boolean;
+}
+
+export const getHistoryEntryExecutionStatusMeta = (
+  entry: CommandHistoryEntry
+): HistoryEntryExecutionStatusMeta => {
+  const isExplicitFailure = Boolean(
+    entry.result?.outcome?.status === 'failed' ||
+      entry.result?.status === 'error' ||
+      entry.result?.execution?.success === false
+  );
+
+  if (isExplicitFailure) {
+    const label =
+      entry.result?.outcome?.verification?.failureReason ||
+      entry.result?.message ||
+      '执行失败';
+    return {
+      type: 'failed',
+      label,
+      defaultOpen: true,
+    };
+  }
+
+  const isBlocked = Boolean(entry.result?.outcome?.status === 'blocked');
+  const hasCommands = Array.isArray(entry.commands) && entry.commands.length > 0;
+
+  if (isBlocked && !hasCommands) {
+    const label =
+      entry.result?.outcome?.verification?.failureReason ||
+      entry.result?.outcome?.summary?.nextHint ||
+      '操作受阻 / 未执行';
+    return {
+      type: 'blocked',
+      label,
+      defaultOpen: true,
+    };
+  }
+
+  if (hasCommands) {
+    const executedTools = entry.commands!.map((cmd) => cmd.tool).join(' / ');
+    return {
+      type: 'success',
+      label: `已执行: ${executedTools}`,
+      defaultOpen: false,
+    };
+  }
+
+  if (entry.result?.status === 'answer' || entry.result?.status === 'question') {
+    return {
+      type: 'info',
+      label: 'AI 建议 / 页面分析',
+      defaultOpen: false,
+    };
+  }
+
+  return {
+    type: 'info',
+    label: entry.result?.message || '已响应',
+    defaultOpen: false,
+  };
+};
+

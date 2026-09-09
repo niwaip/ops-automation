@@ -13,8 +13,10 @@ import {
   CodeOutlined,
   CopyOutlined,
   EyeOutlined,
+  InfoCircleOutlined,
   LinkOutlined,
   PlayCircleOutlined,
+  StopOutlined,
 } from '@ant-design/icons';
 import type {
   CommandHistoryEntry,
@@ -25,6 +27,7 @@ import {
   buildCompactHistoryBubbleText,
   buildLoopSummaryText,
   formatRecorderConfidence,
+  getHistoryEntryExecutionStatusMeta,
   getOutcomeKindLabel,
   getOutcomeStatusMeta,
   getVerificationMeta,
@@ -196,41 +199,30 @@ export const AIControlsHistoryList: React.FC<AIControlsHistoryListProps> = ({
                   {entry.result && (
                     <div style={{ marginTop: 8 }}>
                       {isReactChatMode ? (
-                        <Collapse
-                          size="small"
-                          ghost
-                          defaultActiveKey={
-                            entry.result.outcome?.status === 'failed' ||
-                            entry.result.status === 'error' ||
-                            entry.result.execution?.success === false
-                              ? ['detail']
-                              : []
-                          }
-                          items={[
-                            {
-                              key: 'detail',
-                              label: (
-                                <Space>
-                                  {entry.result.outcome?.status === 'failed' ||
-                                  entry.result.status === 'error' ||
-                                  entry.result.execution?.success === false ? (
-                                    <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
-                                  ) : (
-                                    <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                                  )}
-                                  <Text style={{ fontSize: 12 }}>
-                                    {entry.result.outcome?.status === 'failed' ||
-                                    entry.result.status === 'error' ||
-                                    entry.result.execution?.success === false
-                                      ? entry.result.outcome?.verification?.failureReason ||
-                                        entry.result.message ||
-                                        '执行失败'
-                                      : entry.commands && entry.commands.length > 0
-                                        ? `已执行: ${entry.commands.map((cmd) => cmd.tool).join(' / ')}`
-                                        : '执行成功'}
-                                  </Text>
-                                </Space>
-                              ),
+                        (() => {
+                          const statusMeta = getHistoryEntryExecutionStatusMeta(entry);
+                          return (
+                            <Collapse
+                              size="small"
+                              ghost
+                              defaultActiveKey={statusMeta.defaultOpen ? ['detail'] : []}
+                              items={[
+                                {
+                                  key: 'detail',
+                                  label: (
+                                    <Space>
+                                      {statusMeta.type === 'failed' ? (
+                                        <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
+                                      ) : statusMeta.type === 'blocked' ? (
+                                        <StopOutlined style={{ color: '#faad14' }} />
+                                      ) : statusMeta.type === 'info' ? (
+                                        <InfoCircleOutlined style={{ color: '#1890ff' }} />
+                                      ) : (
+                                        <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                                      )}
+                                      <Text style={{ fontSize: 12 }}>{statusMeta.label}</Text>
+                                    </Space>
+                                  ),
                               children: (
                                 <div style={{ marginTop: 4 }}>
                                   {entry.commands && entry.commands.length > 0 && (
@@ -412,6 +404,8 @@ export const AIControlsHistoryList: React.FC<AIControlsHistoryListProps> = ({
                             },
                           ]}
                         />
+                      );
+                    })()
                       ) : (
                         <Collapse
                           size="small"

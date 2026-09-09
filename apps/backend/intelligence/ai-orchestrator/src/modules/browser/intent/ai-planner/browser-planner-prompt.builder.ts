@@ -56,6 +56,10 @@ IMPORTANT for LOGIN / FORM operations:
 - For login submit, prefer a click intent such as {"tool":"click","params":{"rawTarget":"登录","roleHint":"button","semanticHint":"submit"}} after all fill steps
 - Keep literal credential values exactly as the user provided them
 
+IMPORTANT for DIRECT / UNANCHORED INPUT operations ("输入 xxx"):
+- When the user says "输入 <内容>" or "发送 <内容>" without naming a specific field, and the current page context has an active dialog, modal, or floating box (e.g. AI chat window, message prompt) with a textarea or input, plan a "fill" action into that textarea/input with the provided value.
+- If it is a chat/question input (such as an AI assistant dialog) with a visible "发送" or submit button, you should also plan a click on that submit button.
+
 IMPORTANT for PAGE CONTEXT / LOCATOR STABILITY:
 - Structured candidates may include action/input/field/row/region hierarchy
 - If the current browser context contains structured candidates, prefer params.candidateId or click intent params.rawTarget/roleHint/semanticHint over params.text
@@ -146,6 +150,7 @@ Rules:
 - Use "switch_latest_tab" when the user wants to切到最新标签页/最新页面.
 - Use "close_tab" when the user wants to关闭当前tab页/关闭当前页面/close tab.
 - When the user provides credentials such as 用户名/账号/密码, decompose the request into multiple steps and include "fill" steps before "click".
+- When user says "输入 <内容>" or "发送 <内容>" without naming a specific field, and the current page context has an active dialog, modal, or floating box (e.g. AI chat window) with a textarea/input, plan a "fill" action into that textarea/input, followed by a "click" on the submit/send button if available.
 - For login pages, prefer selectors like "用户名", "账号", "密码" for fill params.selector.
 - Do not output a single "click 登录" step for a full login request that includes credentials.
 - Preserve the execution order exactly: navigate -> fill fields -> submit -> post-login navigation.

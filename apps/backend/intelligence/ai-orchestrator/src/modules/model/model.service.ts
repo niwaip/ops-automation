@@ -448,7 +448,7 @@ export class ModelService implements OnModuleInit {
       return this.selectScopedDefaultModel('audio_transcription') || this.getDefaultModel();
     }
 
-    if (isAdmin && context?.mode === 'task') {
+    if (context?.mode === 'task') {
       return (
         this.selectScopedDefaultModel('admin_task') ||
         this.selectScopedDefaultModel('admin_chat') ||
