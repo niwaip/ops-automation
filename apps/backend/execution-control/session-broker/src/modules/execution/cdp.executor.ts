@@ -302,7 +302,15 @@ export class CdpExecutor implements OnModuleDestroy {
         return `[placeholder="${locator.value}"]`;
 
       case 'label':
-        return `label:has-text("${locator.value}")`;
+        if (
+          locator.value.startsWith('#') ||
+          locator.value.startsWith('.') ||
+          locator.value.startsWith('[') ||
+          locator.value.startsWith('/')
+        ) {
+          return locator.value;
+        }
+        return `internal:label="${locator.value}"`;
 
       case 'test-id':
         return `[data-testid="${locator.value}"]`;

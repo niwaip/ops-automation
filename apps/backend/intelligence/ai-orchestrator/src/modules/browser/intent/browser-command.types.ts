@@ -71,6 +71,7 @@ export interface BrowserCommandCandidate {
   elementId?: string;
   dataTestId?: string;
   text?: string;
+  title?: string;
   action?: string;
   field?: string;
   stableName?: string;

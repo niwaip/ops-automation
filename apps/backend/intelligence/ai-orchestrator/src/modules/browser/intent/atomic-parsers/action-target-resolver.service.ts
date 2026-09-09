@@ -15,6 +15,7 @@ export interface ActionResolverCandidate {
   elementId?: string;
   dataTestId?: string;
   text?: string;
+  title?: string;
   action?: string;
   field?: string;
   stableName?: string;
@@ -344,6 +345,7 @@ function getCandidateTokens(candidate: ActionResolverCandidate): string[] {
     candidate.stableName,
     candidate.label,
     candidate.text,
+    candidate.title,
     candidate.region?.name,
     candidate.row?.key,
     candidate.row?.text,

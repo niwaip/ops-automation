@@ -61,4 +61,42 @@ describe('resolveActionIntentToLocator', () => {
       resolutionMode: 'preferred-locator',
     });
   });
+
+  it('resolves icon button with title into role locator', () => {
+    const result = resolveActionIntentToLocator(
+      {
+        action: 'click',
+        rawTarget: '在线客服',
+        roleHint: 'button',
+        source: 'action-parser',
+      },
+      {
+        availableCandidates: [
+          {
+            candidateId: 'action_99',
+            kind: 'action',
+            label: '在线客服',
+            title: '在线客服',
+            summary: 'candidateId=action_99 | kind=action | role=button | title=在线客服',
+            role: 'button',
+            ref: 'e88',
+            preferredLocator: {
+              type: 'role',
+              value: 'button[name="在线客服"]',
+            },
+          },
+        ],
+      }
+    );
+
+    expect(result).toEqual({
+      locator: {
+        type: 'role',
+        value: 'button[name="在线客服"]',
+      },
+      matchedCandidateId: 'action_99',
+      confidence: expect.any(Number),
+      resolutionMode: 'preferred-locator',
+    });
+  });
 });

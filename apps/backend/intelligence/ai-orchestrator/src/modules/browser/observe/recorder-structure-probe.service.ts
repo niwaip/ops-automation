@@ -236,37 +236,64 @@ export class RecorderStructureProbeService {
 
       const buttons = uniqueElements(queryAllAcrossRoots('button, a, [role="button"], [role="link"], [data-ai-action]'))
         .filter(isVisible)
-        .map((element, index) => ({
-          index,
-          ref: getElementRef(element),
-          tagName: element.tagName.toLowerCase(),
-          text: toText(getDataAttr(element, 'aria-label') || element.textContent),
-          role: getDataAttr(element, 'role') || element.tagName.toLowerCase(),
-          href: element instanceof HTMLAnchorElement ? element.href : undefined,
-          dataTestId: getDataAttr(element, 'data-testid') || getDataAttr(element, 'data-test-id'),
-          action: getDatasetAttr(element, 'aiAction'),
-          region: getDatasetAttr(element, 'aiRegion'),
-          stableName: getDatasetAttr(element, 'aiStableName'),
-          visible: true,
-          disabled: 'disabled' in element ? Boolean(element.disabled) : undefined,
-          selected: getBooleanAttr(element, 'aria-selected'),
-          ariaSelected: getBooleanAttr(element, 'aria-selected'),
-          ariaPressed: getBooleanAttr(element, 'aria-pressed'),
-          dataState: getDataAttr(element, 'data-state'),
-          rowIndex: (() => {
-            const raw = getDatasetAttr(element, 'aiRowIndex');
-            const parsed = raw ? Number.parseInt(raw, 10) : NaN;
-            if (Number.isFinite(parsed)) return parsed;
-            const closestRow = element.closest && element.closest('[data-sys-row-index]');
-            if (closestRow) {
-              const sysParsed = Number.parseInt(closestRow.getAttribute('data-sys-row-index'), 10);
-              return Number.isFinite(sysParsed) ? sysParsed : undefined;
-            }
-            return undefined;
-          })(),
-          rowKey: getDatasetAttr(element, 'aiRowKey'),
-          rowText: getDatasetAttr(element, 'aiRowText'),
-        }))
+        .map((element, index) => {
+          const rawTitle = getDataAttr(element, 'title') || (element.getAttribute ? element.getAttribute('title') : undefined);
+          const svgEl = element.querySelector ? element.querySelector('svg, img, [class*="icon"]') : null;
+          const svgTitle = svgEl ? (
+            getDataAttr(svgEl, 'aria-label') ||
+            (svgEl.getAttribute ? svgEl.getAttribute('title') : undefined) ||
+            (svgEl.querySelector && svgEl.querySelector('title') ? svgEl.querySelector('title').textContent : undefined) ||
+            (svgEl instanceof HTMLImageElement ? svgEl.alt : undefined)
+          ) : undefined;
+          const classAttr = getDataAttr(element, 'class') || '';
+          const style = window.getComputedStyle ? window.getComputedStyle(element) : null;
+          const isFloating = Boolean(
+            style && (
+              style.position === 'fixed' ||
+              (style.position === 'absolute' && (parseInt(style.zIndex, 10) > 10 || (style.bottom && style.bottom !== 'auto')))
+            )
+          );
+          const buttonText = toText(
+            getDataAttr(element, 'aria-label') ||
+            element.textContent ||
+            rawTitle ||
+            svgTitle ||
+            (isFloating ? (classAttr.includes('chat') || classAttr.includes('kefu') ? '在线客服' : '悬浮按钮') : '')
+          );
+          return {
+            index,
+            ref: getElementRef(element),
+            tagName: element.tagName.toLowerCase(),
+            text: buttonText,
+            title: rawTitle ? toText(rawTitle) : (svgTitle ? toText(svgTitle) : undefined),
+            isFloating,
+            role: getDataAttr(element, 'role') || element.tagName.toLowerCase(),
+            href: element instanceof HTMLAnchorElement ? element.href : undefined,
+            dataTestId: getDataAttr(element, 'data-testid') || getDataAttr(element, 'data-test-id'),
+            action: getDatasetAttr(element, 'aiAction'),
+            region: getDatasetAttr(element, 'aiRegion'),
+            stableName: getDatasetAttr(element, 'aiStableName'),
+            visible: true,
+            disabled: 'disabled' in element ? Boolean(element.disabled) : undefined,
+            selected: getBooleanAttr(element, 'aria-selected'),
+            ariaSelected: getBooleanAttr(element, 'aria-selected'),
+            ariaPressed: getBooleanAttr(element, 'aria-pressed'),
+            dataState: getDataAttr(element, 'data-state'),
+            rowIndex: (() => {
+              const raw = getDatasetAttr(element, 'aiRowIndex');
+              const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+              if (Number.isFinite(parsed)) return parsed;
+              const closestRow = element.closest && element.closest('[data-sys-row-index]');
+              if (closestRow) {
+                const sysParsed = Number.parseInt(closestRow.getAttribute('data-sys-row-index'), 10);
+                return Number.isFinite(sysParsed) ? sysParsed : undefined;
+              }
+              return undefined;
+            })(),
+            rowKey: getDatasetAttr(element, 'aiRowKey'),
+            rowText: getDatasetAttr(element, 'aiRowText'),
+          };
+        })
         .filter(item => item.text);
 
       const rows = uniqueElements(queryAllAcrossRoots('[data-ai-row-key], tr, [role="row"], [data-ai-row-index]'))

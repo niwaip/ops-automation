@@ -198,7 +198,15 @@ export function buildSelectorFromLocator(type: string, value: string): string {
     case 'placeholder':
       return `[placeholder="${value}"]`;
     case 'label':
-      return `label:has-text("${value}")`;
+      if (
+        value.startsWith('#') ||
+        value.startsWith('.') ||
+        value.startsWith('[') ||
+        value.startsWith('/')
+      ) {
+        return value;
+      }
+      return `internal:label="${value}"`;
     case 'test-id':
       return `[data-testid="${value}"]`;
     default:

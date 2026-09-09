@@ -510,6 +510,8 @@ export class RecorderObservationService {
         ? item.stableName.trim()
         : undefined;
     const text = typeof item.text === 'string' && item.text.trim() ? item.text.trim() : undefined;
+    const title =
+      typeof item.title === 'string' && item.title.trim() ? item.title.trim() : undefined;
     const entityType =
       typeof item.entityType === 'string' && item.entityType.trim()
         ? item.entityType.trim()
@@ -562,6 +564,7 @@ export class RecorderObservationService {
       elementId,
       dataTestId,
       text,
+      title,
       action,
       field,
       stableName,
@@ -737,6 +740,7 @@ export class RecorderObservationService {
       item.primaryText,
       item.secondaryText,
       item.text,
+      item.title,
       item.placeholder,
       item.name,
       item.field,

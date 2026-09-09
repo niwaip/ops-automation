@@ -302,14 +302,24 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter, Playwright
 
   async generateLocator(
     targetRef: string,
-    options?: BrowserExecutionOptions
+    options?: BrowserExecutionOptions & { timeoutMs?: number }
   ): Promise<string | undefined> {
     const sessionId = options?.runtimeSessionId || 'default';
     await this.ensureSessionReady(sessionId);
-    const result = await this.execCli(sessionId, ['--raw', 'generate-locator', targetRef]);
-    this.cliRunner.assertNoCliError(result, 'Generate locator failed');
-    const locator = result.stdout.trim();
-    return locator || undefined;
+    // Use a fast probe timeout (default 2500ms) to avoid hanging 60s on obsolete target refs
+    const probeTimeoutMs = options?.timeoutMs ?? 2500;
+    try {
+      const result = await this.execCli(
+        sessionId,
+        ['--raw', 'generate-locator', targetRef],
+        probeTimeoutMs
+      );
+      this.cliRunner.assertNoCliError(result, 'Generate locator failed');
+      const locator = result.stdout.trim();
+      return locator || undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   // ── State Persistence (Checkpointing) ──

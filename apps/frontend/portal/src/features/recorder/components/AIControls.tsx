@@ -583,18 +583,52 @@ const AIControls: React.FC<AIControlsProps> = ({
       }
     }
 
-    // Add "parsing" status message
+    // Add progressive parsing status message
     const parsingId = 'parsing-' + Date.now();
     setHistory((prev) => [
       ...prev,
       {
         id: parsingId,
         type: 'system',
-        content: '⏳ 正在解析命令，请稍候...',
+        content: '⏳ 正在解析命令与生成动作...',
         timestamp: new Date(),
         backend: executionBackend,
       },
     ]);
+
+    const progressTimer1 = setTimeout(() => {
+      setHistory((prev) =>
+        prev.map((h) =>
+          h.id === parsingId ? { ...h, content: '⚡ 指令已解析，正在驱动浏览器执行动作...' } : h
+        )
+      );
+    }, 1800);
+
+    const progressTimer2 = setTimeout(() => {
+      setHistory((prev) =>
+        prev.map((h) =>
+          h.id === parsingId
+            ? { ...h, content: '🔍 页面已响应，正在同步新页面状态与元素定位...' }
+            : h
+        )
+      );
+    }, 4500);
+
+    const progressTimer3 = setTimeout(() => {
+      setHistory((prev) =>
+        prev.map((h) =>
+          h.id === parsingId
+            ? { ...h, content: '🧠 正在执行智能对齐与定位器收敛，请稍候...' }
+            : h
+        )
+      );
+    }, 10000);
+
+    const clearProgressTimers = () => {
+      clearTimeout(progressTimer1);
+      clearTimeout(progressTimer2);
+      clearTimeout(progressTimer3);
+    };
 
     if (isReactChatMode) {
       try {
@@ -668,6 +702,8 @@ const AIControls: React.FC<AIControlsProps> = ({
             backend: executionBackend,
           },
         ]);
+      } finally {
+        clearProgressTimers();
       }
       return;
     }
@@ -675,6 +711,7 @@ const AIControls: React.FC<AIControlsProps> = ({
       { userInput: userMessage, commandType: selectedCommand },
       {
         onSettled: () => {
+          clearProgressTimers();
           setHistory((prev) => prev.filter((h) => h.id !== parsingId));
         },
       }
