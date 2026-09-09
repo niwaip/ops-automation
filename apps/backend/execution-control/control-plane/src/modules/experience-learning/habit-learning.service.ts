@@ -120,7 +120,7 @@ export class HabitLearningService {
   }
 
   async listCandidates(limit = 100) {
-    const rows = await this.prisma.$queryRawUnsafe<Array<HabitCandidateRow & { userKey: string; workflowName: string | null }>>(
+    const rows = await this.prisma.$queryRawUnsafe<Array<HabitCandidateRow & { userKey: string; workflowName: string | null; planSnapshot: Record<string, unknown> | null }>>(
       `SELECT c.id,
               c.owner_user_id AS "ownerUserId",
               SUBSTRING(MD5(c.owner_user_id::text), 1, 12) AS "userKey",
@@ -136,10 +136,12 @@ export class HabitLearningService {
               c.source_run_id AS "sourceRunId",
               c.policy_version AS "policyVersion",
               s.name AS "workflowName",
+              v.plan_snapshot_json AS "planSnapshot",
               c.created_at AS "createdAt",
               c.updated_at AS "updatedAt"
          FROM user_habit_candidates c
          LEFT JOIN user_saved_skills s ON s.id = c.saved_skill_id
+         LEFT JOIN user_saved_skill_versions v ON v.id = s.active_version_id
         ORDER BY c.created_at DESC
         LIMIT $1`,
       Math.max(1, Math.min(limit, 200))

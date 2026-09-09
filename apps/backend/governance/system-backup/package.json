@@ -1,0 +1,38 @@
+{
+  "name": "@ops/system-backup",
+  "version": "1.0.0",
+  "private": true,
+  "description": "System disaster recovery, backup, and restore engine",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./ports": {
+      "types": "./dist/ports/index.d.ts",
+      "default": "./dist/ports/index.js"
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist tsconfig*.tsbuildinfo && (pnpm exec tsc -p tsconfig.json || tsc -p tsconfig.json)",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.3.0",
+    "@nestjs/core": "^10.3.0",
+    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/passport": "^10.0.3",
+    "@nestjs/swagger": "^7.3.0",
+    "@ops/identity-access": "workspace:*",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.0",
+    "reflect-metadata": "^0.2.1",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  }
+}

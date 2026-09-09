@@ -10,10 +10,11 @@ x-common-env: &common-env
   REDIS_PORT: 6379
   REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
   EXTERNAL_HOST: ${HOST_IP:-localhost}
-  PRISMA_QUERY_ENGINE_LIBRARY: ${PRISMA_QUERY_ENGINE_LIBRARY:-/workspace/node_modules/@prisma/engines/libquery_engine-linux-arm64-openssl-1.1.x.so.node}
-  PRISMA_SCHEMA_ENGINE_BINARY: ${PRISMA_SCHEMA_ENGINE_BINARY:-/workspace/node_modules/@prisma/engines/schema-engine-linux-arm64-openssl-1.1.x}
   PRISMA_GENERATE_SKIP_AUTOINSTALL: "true"
   COREPACK_NPM_REGISTRY: ${COREPACK_NPM_REGISTRY:-https://registry.npmmirror.com}
+  # Shared by the credential-writing platform service and every runtime that
+  # decrypts credentials immediately before invoking a capability.
+  USER_CREDENTIAL_ENCRYPTION_KEY: ${USER_CREDENTIAL_ENCRYPTION_KEY:-7fd6414a543574effddb645132638c2357ba2f12a57c09216bc45880f5271757}
 
 x-common-node-service: &common-node-service
   image: ${DOCKER_REGISTRY:-}node:20-bullseye
@@ -35,8 +36,6 @@ services:
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
-      PRISMA_QUERY_ENGINE_LIBRARY: ${PRISMA_QUERY_ENGINE_LIBRARY:-/workspace/node_modules/@prisma/engines/libquery_engine-linux-arm64-openssl-1.1.x.so.node}
-      PRISMA_SCHEMA_ENGINE_BINARY: ${PRISMA_SCHEMA_ENGINE_BINARY:-/workspace/node_modules/@prisma/engines/schema-engine-linux-arm64-openssl-1.1.x}
       PRISMA_GENERATE_SKIP_AUTOINSTALL: "true"
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
@@ -284,6 +283,7 @@ services:
 
   browser-worker:
     <<: *common-node-service
+    profiles: ['browser', 'full']
     container_name: ops-browser-worker
     command: >
       sh -c "corepack enable && if [ \"${BROWSER_WORKER_RUN_MODE:-prod}\" = \"dev\" ]; then pnpm --filter @ops/browser-worker run dev; else pnpm --filter @ops/browser-worker run build && node --enable-source-maps /workspace/apps/backend/runtimes/browser-worker/dist/main.js; fi"
@@ -328,6 +328,7 @@ services:
 
   browser-template:
     <<: *common-node-service
+    profiles: ['browser', 'full']
     container_name: ops-browser-template
     command: >
       sh -c "corepack enable && pnpm --filter @ops/browser-template exec prisma generate
@@ -339,9 +340,6 @@ services:
       && pnpm --filter @ops/browser-template run start"
     environment:
       <<: *common-env
-      PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+engines@6.19.3/node_modules/@prisma/engines/libquery_engine-linux-arm64-openssl-1.1.x.so.node
-      PRISMA_SCHEMA_ENGINE_BINARY: /workspace/node_modules/.pnpm/@prisma+engines@6.19.3/node_modules/@prisma/engines/schema-engine-linux-arm64-openssl-1.1.x
-      PRISMA_GENERATE_SKIP_AUTOINSTALL: "true"
       NODE_ENV: development
       DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?schema=browser_templates&connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
       DB_HOST: postgres
@@ -362,6 +360,7 @@ services:
 
   browser-semantics:
     <<: *common-node-service
+    profiles: ['browser', 'full']
     container_name: ops-browser-semantics
     command: >
       sh -c "corepack enable && pnpm --filter @ops/browser-semantics exec prisma generate
@@ -374,9 +373,6 @@ services:
       && pnpm --filter @ops/browser-semantics run start"
     environment:
       <<: *common-env
-      PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+engines@6.19.3/node_modules/@prisma/engines/libquery_engine-linux-arm64-openssl-1.1.x.so.node
-      PRISMA_SCHEMA_ENGINE_BINARY: /workspace/node_modules/.pnpm/@prisma+engines@6.19.3/node_modules/@prisma/engines/schema-engine-linux-arm64-openssl-1.1.x
-      PRISMA_GENERATE_SKIP_AUTOINSTALL: "true"
       NODE_ENV: development
       DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?schema=browser_semantics&connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
       REDIS_HOST: redis
@@ -401,6 +397,9 @@ services:
     container_name: ops-ai-orchestrator
     command: >
       sh -c "corepack enable && pnpm --filter @ops/ai-orchestrator run build
+      && rm -rf /workspace/apps/backend/intelligence/ai-orchestrator/dist/generated
+      && mkdir -p /workspace/apps/backend/intelligence/ai-orchestrator/dist/generated
+      && cp -R /workspace/apps/backend/intelligence/ai-orchestrator/src/generated/prisma /workspace/apps/backend/intelligence/ai-orchestrator/dist/generated/prisma
       && pnpm --filter @ops/ai-orchestrator run start"
     environment:
       <<: *common-env
@@ -445,8 +444,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      browser-semantics:
-        condition: service_started
     networks:
       - ops-network
       - ops-sandbox-network
@@ -454,6 +451,7 @@ services:
 
   report:
     <<: *common-node-service
+    profiles: ['document', 'doc', 'full']
     container_name: ops-report
     command: >
       sh -c "corepack enable && pnpm --filter @ops/report exec prisma generate
@@ -465,9 +463,6 @@ services:
       && pnpm --filter @ops/report run start"
     environment:
       <<: *common-env
-      PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+engines@6.19.3/node_modules/@prisma/engines/libquery_engine-linux-arm64-openssl-1.1.x.so.node
-      PRISMA_SCHEMA_ENGINE_BINARY: /workspace/node_modules/.pnpm/@prisma+engines@6.19.3/node_modules/@prisma/engines/schema-engine-linux-arm64-openssl-1.1.x
-      PRISMA_GENERATE_SKIP_AUTOINSTALL: "true"
       DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?schema=reports&connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
       PORT: ${REPORT_PORT:-3008}
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
@@ -495,6 +490,7 @@ services:
   # ============================================
   carbone-engine:
     <<: *common-node-service
+    profiles: ['document', 'doc', 'full']
     build:
       context: ${PROJECT_ROOT:?PROJECT_ROOT must be set}
       dockerfile: docker/carbone-engine/Dockerfile
@@ -505,9 +501,6 @@ services:
       && pnpm --filter carbone-engine run dev"
     environment:
       <<: *common-env
-      PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+engines@6.19.3/node_modules/@prisma/engines/libquery_engine-linux-arm64-openssl-1.1.x.so.node
-      PRISMA_SCHEMA_ENGINE_BINARY: /workspace/node_modules/.pnpm/@prisma+engines@6.19.3/node_modules/@prisma/engines/schema-engine-linux-arm64-openssl-1.1.x
-      PRISMA_GENERATE_SKIP_AUTOINSTALL: "true"
       DOCKER_ENV: true
       DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?schema=document_engine&connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
       PORT: ${CARBONE_ENGINE_PORT:-3009}
@@ -530,6 +523,7 @@ services:
   # ============================================
   portal:
     <<: *common-node-service
+    profiles: ['frontend', 'fe', 'full']
     container_name: ops-portal
     command: sh -c "corepack enable && pnpm --filter @ops/portal run dev --host 0.0.0.0 --port 5173"
     environment:
@@ -544,6 +538,7 @@ services:
       VITE_RECORDER_WS_URL: ws://${HOST_IP:-localhost}:${BROWSER_WORKER_PORT:-3004}
       VITE_CARBONE_API_URL: http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
       VITE_NOVNC_URL: http://${HOST_IP:-localhost}:${NOVNC_PORT:-6080}/vnc.html
+      COREPACK_NPM_REGISTRY: ${COREPACK_NPM_REGISTRY:-https://registry.npmmirror.com}
     ports:
       - '${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}'
     volumes:
@@ -553,15 +548,10 @@ services:
         condition: service_completed_successfully
       platform:
         condition: service_started
-      browser-worker:
-        condition: service_started
-      browser-template:
-        condition: service_started
-      carbone-engine:
-        condition: service_started
 
   user-web:
     <<: *common-node-service
+    profiles: ['frontend', 'fe', 'full']
     container_name: ops-user-web
     command: sh -c "corepack enable && pnpm --filter @ops/user-web run dev --host 0.0.0.0 --port 5174"
     environment:
@@ -572,6 +562,7 @@ services:
       VITE_CONTROL_PLANE_API_URL: http://${HOST_IP:-localhost}:${CONTROL_PLANE_PORT:-3003}/api
       VITE_AI_API_BASE_URL: /api/ai
       VITE_HOST_IP: ${HOST_IP:-localhost}
+      COREPACK_NPM_REGISTRY: ${COREPACK_NPM_REGISTRY:-https://registry.npmmirror.com}
     ports:
       - '${USER_WEB_PORT:-5174}:${USER_WEB_PORT:-5174}'
     volumes:
@@ -590,6 +581,7 @@ services:
   # Browser Chrome (noVNC + CDP + Codegen)
   # ============================================
   browser-chrome:
+    profiles: ['browser', 'full']
     build:
       context: ../..
       dockerfile: docker/browser-worker/Dockerfile
@@ -622,6 +614,7 @@ services:
   # Temporal Server & UI & Sandbox Worker
   # ============================================
   temporal:
+    profiles: ['temporal', 'workflow', 'full']
     image: ${DOCKER_REGISTRY:-}temporalio/auto-setup:1.22.0
     container_name: ops-temporal
     ports:
@@ -648,6 +641,7 @@ services:
       - ops-network
 
   temporal-ui:
+    profiles: ['temporal', 'workflow', 'full']
     image: ${DOCKER_REGISTRY:-}temporalio/ui:2.20.0
     container_name: ops-temporal-ui
     ports:
@@ -661,6 +655,7 @@ services:
       - ops-network
 
   sandbox-worker:
+    profiles: ['temporal', 'workflow', 'full']
     build:
       context: ../..
       dockerfile: docker/temporal/Dockerfile
@@ -690,6 +685,7 @@ services:
       - ops-network
 
   temporal-worker:
+    profiles: ['temporal', 'workflow', 'full']
     build:
       context: ../..
       dockerfile: docker/temporal-worker/Dockerfile

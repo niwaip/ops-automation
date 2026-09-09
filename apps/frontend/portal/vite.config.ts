@@ -140,6 +140,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/api/organizations': {
+        target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
       '/api/users': {
         target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
         changeOrigin: true,

@@ -13,10 +13,17 @@ export interface WorkspaceSummary {
   updatedAt: string;
 }
 
+export interface DepartmentItem {
+  id: string;
+  name: string;
+  workspaceId?: string;
+}
+
 export interface MyWorkspacesResponse {
   personal: WorkspaceSummary;
   company: WorkspaceSummary;
   department: WorkspaceSummary | null;
+  departments?: DepartmentItem[];
 }
 
 export interface WorkspaceFileDigest {
@@ -80,8 +87,13 @@ export interface SaveTextNoteDto {
 }
 
 export const workspaceApi = {
-  getMyWorkspaces: async (): Promise<MyWorkspacesResponse> => {
-    return await apiClient.get('/workspaces/my');
+  getMyWorkspaces: async (params?: { departmentId?: string }): Promise<MyWorkspacesResponse> => {
+    const query = new URLSearchParams();
+    if (params?.departmentId) query.append('departmentId', params.departmentId);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return await apiClient.get(`/workspaces/my${qs}`, {
+      headers: params?.departmentId ? { 'x-department-id': params.departmentId } : undefined,
+    });
   },
 
   saveTextNote: async (dto: SaveTextNoteDto): Promise<WorkspaceNode> => {

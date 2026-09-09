@@ -166,13 +166,26 @@ describe('TemporalWorkflowArtifactValidationService', () => {
     await service.validateSavedWorkflowArtifact(existing.id, {
       query: 'Temporal news',
       apiKey: 'secret-value',
+      deviceKey: 'bark-device-secret',
+      destinations: [
+        { access_key: 'nested-secret', label: 'primary' },
+        { credential: 'nested-credential', label: 'backup' },
+      ],
       __httpResponsePreview: 'true',
     });
 
     expect(validationFacade.validateWorkflowReal).toHaveBeenCalledWith(
       existing.generatedCode,
       'WebSearchWorkflow',
-      { query: 'Temporal news', apiKey: 'secret-value' },
+      {
+        query: 'Temporal news',
+        apiKey: 'secret-value',
+        deviceKey: 'bark-device-secret',
+        destinations: [
+          { access_key: 'nested-secret', label: 'primary' },
+          { credential: 'nested-credential', label: 'backup' },
+        ],
+      },
       existing.taskQueue,
       undefined
     );
@@ -189,7 +202,15 @@ describe('TemporalWorkflowArtifactValidationService', () => {
         validatedAt: null,
         validationResultJson: expect.objectContaining({
           success: false,
-          input: { query: 'Temporal news', apiKey: '[REDACTED]' },
+          input: {
+            query: 'Temporal news',
+            apiKey: '[REDACTED]',
+            deviceKey: '[REDACTED]',
+            destinations: [
+              { access_key: '[REDACTED]', label: 'primary' },
+              { credential: '[REDACTED]', label: 'backup' },
+            ],
+          },
           attemptedAt: expect.any(String),
           validatedAt: null,
         }),

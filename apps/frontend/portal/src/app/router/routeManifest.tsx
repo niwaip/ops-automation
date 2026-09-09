@@ -4,6 +4,7 @@ import {
   BugOutlined,
   FileTextOutlined,
   FileWordOutlined,
+  ChromeOutlined,
   MessageOutlined,
   OrderedListOutlined,
   PlayCircleOutlined,
@@ -15,6 +16,8 @@ import {
   ApartmentOutlined,
   FolderOpenOutlined,
   CloudServerOutlined,
+  GlobalOutlined,
+  BuildOutlined,
 } from '@ant-design/icons';
 import { lazy } from 'react';
 import UserWebRedirectPage from '@/app/router/UserWebRedirectPage';
@@ -28,7 +31,10 @@ const TemplateListPage = lazy(() => import('@/features/browser-templates/pages/T
 const TemplateDetailPage = lazy(() => import('@/features/browser-templates/pages/TemplateDetailPage'));
 const RecorderPage = lazy(() => import('@/features/recorder/pages/RecorderPage'));
 const RecorderDebugDetailPage = lazy(() => import('@/features/recorder/pages/RecorderDebugDetailPage'));
+const DepartmentAdminPage = lazy(() => import('@/features/admin/departments/pages/DepartmentAdminPage'));
 const UserAdminPage = lazy(() => import('@/features/admin/users/pages/UserAdminPage'));
+
+
 const AIModelAdminPage = lazy(() => import('@/features/admin/models/pages/AIModelAdminPage'));
 const SandboxAdminPage = lazy(() => import('@/features/admin/sandboxes/pages/SandboxAdminPage'));
 const WorkspaceAdminPage = lazy(() => import('@/features/admin/workspace/pages/WorkspaceAdminPage'));
@@ -137,7 +143,7 @@ export const portalRouteEntries: PortalRouteEntry[] = [
       key: '/admin/activities',
       group: 'root',
       labelKey: 'activities',
-      icon: <ThunderboltOutlined />,
+      icon: <BuildOutlined />,
       requiresAdmin: true,
     },
   },
@@ -192,7 +198,7 @@ export const portalRouteEntries: PortalRouteEntry[] = [
       key: '/sessions',
       group: 'root',
       labelKey: 'sessions',
-      icon: <MessageOutlined />,
+      icon: <ChromeOutlined />,
     },
   },
   { path: '/sessions/new', element: <SessionStartPage />, activeMenuKey: '/sessions' },
@@ -227,14 +233,9 @@ export const portalRouteEntries: PortalRouteEntry[] = [
   {
     path: '/reports',
     element: <ReportListPage />,
-    nav: {
-      key: '/reports',
-      group: 'root',
-      labelKey: 'reports',
-      icon: <FileTextOutlined />,
-    },
+    activeMenuKey: '/sessions',
   },
-  { path: '/reports/:id', element: <ReportDetailPage />, activeMenuKey: '/reports' },
+  { path: '/reports/:id', element: <ReportDetailPage />, activeMenuKey: '/sessions' },
   {
     path: '/admin/flows',
     element: <FlowsPage />,
@@ -248,9 +249,15 @@ export const portalRouteEntries: PortalRouteEntry[] = [
     },
   },
   {
+    path: '/admin/departments',
+    element: <DepartmentAdminPage />,
+    requiresAdmin: true,
+  },
+  {
     path: '/admin/users',
     element: <UserAdminPage />,
     requiresAdmin: true,
+
     nav: {
       key: '/admin',
       group: 'admin',
@@ -287,7 +294,7 @@ export const portalRouteEntries: PortalRouteEntry[] = [
         {
           key: '/admin/browser-semantic-rules',
           labelKey: 'browserSemanticRules',
-          icon: <OrderedListOutlined />,
+          icon: <GlobalOutlined />,
           requiresAdmin: true,
         },
         { key: '/admin/tools', labelKey: 'systemTools', icon: <ToolOutlined />, requiresAdmin: true },
@@ -301,12 +308,6 @@ export const portalRouteEntries: PortalRouteEntry[] = [
           key: '/admin/habit-learning',
           label: '习惯学习',
           icon: <MessageOutlined />,
-          requiresAdmin: true,
-        },
-        {
-          key: '/admin/task-policies',
-          label: '任务策略',
-          icon: <ApartmentOutlined />,
           requiresAdmin: true,
         },
         {
@@ -424,12 +425,47 @@ export const resolveActiveMenuKey = (pathname: string) => {
   return matchedRoute.activeMenuKey || matchedRoute.nav?.key || matchedRoute.path;
 };
 
-export const getDefaultOpenKeys = (pathname: string) => {
+const OPEN_KEYS_MAP: Record<string, string[]> = {
+  'sub-workflows': [
+    '/admin/org-workflows',
+    '/admin/flows',
+    '/admin/activities',
+    '/admin/temporal',
+    '/carbone-templates',
+  ],
+  'sub-templates': [
+    '/admin/skills',
+    '/admin/capabilities',
+  ],
+  'sub-browser': [
+    '/templates',
+    '/recorder',
+    '/admin/browser-semantic-rules',
+  ],
+  'sub-model-planning': [
+    '/admin/tools',
+    '/admin/prompt-debug',
+    '/admin/habit-learning',
+  ],
+  'sub-organization': [
+    '/admin/departments',
+    '/admin/users',
+    '/admin/workspaces',
+  ],
+  'sub-system': [
+    '/admin/models',
+    '/admin/sandboxes',
+    '/admin/backup',
+  ],
+  'sub-operations': ['/executions', '/sessions'],
+};
+
+export const getDefaultOpenKeys = (pathname: string): string[] => {
   const activeKey = resolveActiveMenuKey(pathname);
-  return activeKey.startsWith('/admin/') &&
-    !['/admin/activities', '/admin/temporal', '/admin/capabilities', '/admin/flows'].includes(
-      activeKey
-    )
-    ? ['/admin']
-    : [];
+  for (const [groupKey, items] of Object.entries(OPEN_KEYS_MAP)) {
+    if (items.includes(activeKey)) {
+      return [groupKey];
+    }
+  }
+  return [];
 };

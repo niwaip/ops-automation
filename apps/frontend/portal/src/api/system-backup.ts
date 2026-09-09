@@ -7,7 +7,9 @@ export type BackupModuleKey =
   | 'capabilityReleases'
   | 'browserTemplates'
   | 'executionFlowTemplates'
-  | 'userOrganizations';
+  | 'userOrganizations'
+  | 'taskPolicies'
+  | 'workspaces';
 
 export type BackupImportStrategy = 'merge_override' | 'skip_existing';
 
@@ -29,6 +31,8 @@ export interface SystemBackupArchive {
     browserTemplates?: any;
     executionFlowTemplates?: any;
     userOrganizations?: any;
+    taskPolicies?: any;
+    workspaces?: any;
   };
 }
 

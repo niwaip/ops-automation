@@ -53,9 +53,16 @@ export class WorkspaceController {
 
   @Get('my')
   @ApiOperation({ summary: '获取当前用户可见的工作空间（个人/部门/公司）' })
-  async getMyWorkspaces(@Request() req: any) {
-    const { userId, departmentId } = this.extractAuth(req);
-    return await this.workspaceService.getMyWorkspaces(userId, departmentId);
+  async getMyWorkspaces(
+    @Request() req: any,
+    @Query('departmentId') targetDeptId?: string,
+    @Query('userId') targetUserId?: string
+  ) {
+    const { userId, departmentId, userRoles } = this.extractAuth(req);
+    const isAdmin = userRoles.includes('admin');
+    const effectiveDeptId = (isAdmin && targetDeptId) ? targetDeptId : (targetDeptId || departmentId);
+    const effectiveUserId = (isAdmin && targetUserId) ? targetUserId : userId;
+    return await this.workspaceService.getMyWorkspaces(effectiveUserId, effectiveDeptId);
   }
 
   @Get('search')
@@ -68,12 +75,13 @@ export class WorkspaceController {
   @Get('search-content')
   @ApiOperation({ summary: '跨工作空间全文内容检索（Grep / Content Search）' })
   async searchContent(@Request() req: any, @Query() query: ContentSearchQueryDto) {
-    const { userId, departmentId } = this.extractAuth(req);
+    const { userId, departmentId, userRoles } = this.extractAuth(req);
     return await this.workspaceService.searchContent(
       userId,
       departmentId,
       query.q,
-      query.workspaceId
+      query.workspaceId,
+      userRoles
     );
   }
 
@@ -142,8 +150,14 @@ export class WorkspaceController {
     @Param('workspaceId') workspaceId: string,
     @Query('parentId') parentId?: string
   ) {
-    const { userId, departmentId } = this.extractAuth(req);
-    return await this.workspaceService.getNodes(workspaceId, parentId, userId, departmentId);
+    const { userId, departmentId, userRoles } = this.extractAuth(req);
+    return await this.workspaceService.getNodes(
+      workspaceId,
+      parentId,
+      userId,
+      userRoles,
+      departmentId
+    );
   }
 
   @Post(':workspaceId/folder')
@@ -193,11 +207,12 @@ export class WorkspaceController {
     @Param('nodeId') nodeId: string,
     @Res() res: Response
   ) {
-    const { userId, departmentId } = this.extractAuth(req);
+    const { userId, departmentId, userRoles } = this.extractAuth(req);
     const { buffer, fileName, mimeType } = await this.workspaceService.downloadFile(
       workspaceId,
       nodeId,
       userId,
+      userRoles,
       departmentId
     );
 

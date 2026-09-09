@@ -782,6 +782,9 @@ export class TemporalWorkflowCodegenService {
     lines.push(
       '37. 【任务调用兼容】：工作流支持作为自动化任务被任务规划器（如工作台待办 Todo）调用。如果 `params` 传入了 `todoId`，请在日志中输出任务标识 `workflow.logger.info(f"Task invocation for todo: {params.get(\'todoId\')}")`，便于审计跟踪。'
     );
+    lines.push(
+      '38. 【Python 3.11 统一环境与类型注解】：目标运行环境统一为 Python 3.11。代码开头第一行必须为 `from __future__ import annotations`，类型注解使用标准兼容格式，确保跨沙箱与各种执行环境无缝兼容。'
+    );
 
     if (workflowDsl.errorHandling?.type === 'saga') {
       lines.push('38. 【Saga 模式】：必须维护 compensations 列表，在失败时逆序执行补偿任务。');
@@ -921,7 +924,12 @@ export class TemporalWorkflowCodegenService {
       return null;
     }
 
-    return candidate;
+    let finalCode = candidate;
+    if (!finalCode.includes('from __future__ import annotations')) {
+      finalCode = `from __future__ import annotations\n\n${finalCode}`;
+    }
+
+    return finalCode;
   }
 
   /**

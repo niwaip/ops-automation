@@ -8,7 +8,7 @@ services:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-browser-worker
     working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && rm -rf /app/node_modules/* /app/node_modules/.[!.]* /app/node_modules/..?* 2>/dev/null || true && npm install --legacy-peer-deps --include=dev --ignore-scripts && npm run dev"
+    command: sh -c "corepack enable && pnpm run start"
     environment:
       NODE_ENV: development
       PORT: ${BROWSER_WORKER_PORT:-3004}
@@ -35,17 +35,7 @@ services:
       dockerfile: docker/carbone-engine/Dockerfile
     container_name: carbone-engine
     working_dir: /workspace/apps/backend/capabilities/document-domain
-    command: >
-      sh -c "i=0
-      && until [ $$i -ge 5 ]; do
-        npm install --workspaces=false --include=dev --package-lock=false && break;
-        i=$$((i+1));
-        echo 'npm install failed, retrying in 10s...';
-        sleep 10;
-      done
-      && [ $$i -lt 5 ]
-      && npm run build
-      && npm run start:prod"
+    command: sh -c "corepack enable && pnpm run start:prod"
     environment:
       NODE_ENV: production
       NPM_CONFIG_REGISTRY: https://registry.npmmirror.com

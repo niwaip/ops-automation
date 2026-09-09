@@ -9,7 +9,13 @@ import type {
   IdentityAccessUserSummaryRecord,
 } from '../adapters/user-management-repository';
 import { IDENTITY_ACCESS_USER_MANAGEMENT_REPOSITORY } from '../adapters/tokens';
-import type { UpdateUserRolesDto, UserDto, UserListResponse, UserQueryDto } from '../contracts';
+import type {
+  UpdateUserDepartmentDto,
+  UpdateUserRolesDto,
+  UserDto,
+  UserListResponse,
+  UserQueryDto,
+} from '../contracts';
 
 @Injectable()
 export class IdentityAccessUserService {
@@ -73,6 +79,26 @@ export class IdentityAccessUserService {
     return this.findOne(userId);
   }
 
+  async updateDepartment(
+    userId: string,
+    updateDto: UpdateUserDepartmentDto
+  ): Promise<UserDto> {
+    const user = await this.userManagementRepository.findUserById(userId);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.userManagementRepository.updateUserDepartment({
+      userId,
+      orgId: updateDto.orgId,
+      departmentId: updateDto.departmentId,
+      title: updateDto.title,
+    });
+
+    return this.findOne(userId);
+  }
+
   async deactivate(userId: string): Promise<UserDto> {
     const user = await this.userManagementRepository.setUserActive(userId, false);
     return this.toUserDto(user);
@@ -90,8 +116,12 @@ export class IdentityAccessUserService {
       email: user.email,
       role: user.role as 'employee' | 'admin' | 'agent',
       isActive: user.isActive,
+      department: user.department || null,
+      organization: user.organization || null,
+      title: user.title || null,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
   }
 }
+

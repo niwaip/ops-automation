@@ -25,6 +25,7 @@ import { configureSavedSkillExecution } from '../../saved-skill/saved-skill-runt
 import { ExecutionOutboxService } from '../outbox/execution-outbox.service';
 import { PlanRiskEvaluatorService } from '../risk/plan-risk-evaluator.service';
 import { RecorderCompositePlanCompilerService } from '../plan-runtime/recorder-composite-plan-compiler.service';
+import { RuntimeCredentialResolverService } from '../credentials/runtime-credential-resolver.service';
 
 interface RuntimeDefaultResolution {
   input: Record<string, unknown>;
@@ -90,6 +91,7 @@ export class ExecutionCreateService {
     @Optional() private readonly executionOutboxService?: ExecutionOutboxService,
     @Optional() private readonly planRiskEvaluator?: PlanRiskEvaluatorService,
     @Optional() private readonly recorderCompositePlanCompiler?: RecorderCompositePlanCompilerService,
+    @Optional() private readonly credentialResolver?: RuntimeCredentialResolverService,
   ) {}
 
   async create(
@@ -328,8 +330,12 @@ export class ExecutionCreateService {
         skillVersion: effectiveSkillVersion,
         status: requiresApproval ? EXECUTION_STATUS.PENDING_APPROVAL : EXECUTION_STATUS.QUEUED,
         runtimeType: executionRuntimeType,
-        inputJson: resolvedDto.input as never,
-        normalizedInputJson: normalizedInput as never,
+        inputJson: (this.credentialResolver
+          ? this.credentialResolver.maskInputForStorage((resolvedDto.input || {}) as Record<string, unknown>)
+          : resolvedDto.input) as never,
+        normalizedInputJson: (this.credentialResolver
+          ? this.credentialResolver.maskInputForStorage((normalizedInput || {}) as Record<string, unknown>)
+          : normalizedInput) as never,
         riskLevel:
           enforceRiskV2 && riskEvaluation
             ? riskEvaluation.riskLevel

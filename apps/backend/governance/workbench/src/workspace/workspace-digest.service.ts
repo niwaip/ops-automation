@@ -15,6 +15,23 @@ const STOP_WORDS = new Set([
   'which', 'will', 'can', 'has', 'have', 'more', 'about', 'such', 'into', 'then', 'than',
 ]);
 
+function cleanNullBytes<T>(obj: T): T {
+  if (typeof obj === 'string') {
+    return obj.replace(/\0/g, '') as unknown as T;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(cleanNullBytes) as unknown as T;
+  }
+  if (obj !== null && typeof obj === 'object') {
+    const res: any = {};
+    for (const key of Object.keys(obj)) {
+      res[key] = cleanNullBytes((obj as any)[key]);
+    }
+    return res;
+  }
+  return obj;
+}
+
 @Injectable()
 export class WorkspaceDigestService implements OnApplicationBootstrap {
   private readonly logger = new Logger(WorkspaceDigestService.name);
@@ -207,10 +224,12 @@ export class WorkspaceDigestService implements OnApplicationBootstrap {
       digest = this.extractDigestFromText(text, fileName, mimeType);
     }
 
+    const sanitizedDigest = cleanNullBytes(digest);
+
     // 1. 伴生落盘: ${storagePath}.digest.json
     try {
       const digestKey = `${storagePath}.digest.json`;
-      await this.storage.putFile(digestKey, Buffer.from(JSON.stringify(digest, null, 2), 'utf-8'));
+      await this.storage.putFile(digestKey, Buffer.from(JSON.stringify(sanitizedDigest, null, 2), 'utf-8'));
     } catch (err: any) {
       this.logger.warn(`Failed to write digest file for ${storagePath}: ${err.message}`);
     }
@@ -220,14 +239,14 @@ export class WorkspaceDigestService implements OnApplicationBootstrap {
       await this.prisma.workspaceNode.update({
         where: { id: nodeId },
         data: {
-          digestJson: digest as any,
+          digestJson: sanitizedDigest as any,
         },
       });
     } catch (err: any) {
       this.logger.warn(`Failed to update workspaceNode digestJson in DB: ${err.message}`);
     }
 
-    return digest;
+    return sanitizedDigest;
   }
 
   /**

@@ -1,6 +1,10 @@
-import React from 'react';
-import { Modal, Form, Select, Input, Button } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Modal, Form, Select, Input, Button, message } from 'antd';
 import { DEPLOY_ENV_OPTIONS, type DeploymentEnvironment } from '../utils/capabilitiesHelpers';
+import {
+  DeploymentSmokeInputEditor,
+  findMissingRequiredSmokeFields,
+} from './DeploymentSmokeInputEditor';
 
 export interface CapabilityDeployModalProps {
   visible: boolean;
@@ -9,8 +13,10 @@ export interface CapabilityDeployModalProps {
     environment: DeploymentEnvironment;
     strategy: 'hot_reload' | 'rolling_restart' | 'full_restart';
     configOverrides?: Record<string, unknown>;
+    smokeTestInput?: Record<string, unknown>;
   }) => void;
   loading: boolean;
+  sourcePayload?: Record<string, unknown> | null;
 }
 
 export const CapabilityDeployModal: React.FC<CapabilityDeployModalProps> = ({
@@ -18,11 +24,18 @@ export const CapabilityDeployModal: React.FC<CapabilityDeployModalProps> = ({
   onCancel,
   onDeploy,
   loading,
+  sourcePayload,
 }) => {
   const [form] = Form.useForm();
+  const [smokeInputDraft, setSmokeInputDraft] = useState('{}');
+
+  useEffect(() => {
+    if (!visible) setSmokeInputDraft('{}');
+  }, [visible]);
 
   const handleFinish = (values: any) => {
     let configOverrides: Record<string, unknown> | undefined;
+    let smokeTestInput: Record<string, unknown> | undefined;
     if (values.overridesDraft && values.overridesDraft.trim()) {
       try {
         configOverrides = JSON.parse(values.overridesDraft);
@@ -30,10 +43,24 @@ export const CapabilityDeployModal: React.FC<CapabilityDeployModalProps> = ({
         // error handling handled at parent level if needed
       }
     }
+    if (smokeInputDraft.trim()) {
+      try {
+        smokeTestInput = JSON.parse(smokeInputDraft);
+      } catch {
+        message.error('部署后验证输入格式不正确');
+        return;
+      }
+    }
+    const missingFields = findMissingRequiredSmokeFields(sourcePayload, smokeTestInput);
+    if (missingFields.length > 0) {
+      message.error(`请填写必填验证参数：${missingFields.join('、')}`);
+      return;
+    }
     onDeploy({
       environment: values.environment,
       strategy: values.strategy,
       configOverrides,
+      smokeTestInput,
     });
   };
 
@@ -69,6 +96,13 @@ export const CapabilityDeployModal: React.FC<CapabilityDeployModalProps> = ({
         </Form.Item>
         <Form.Item label="配置重写 JSON (可选)" name="overridesDraft">
           <Input.TextArea autoSize={{ minRows: 3, maxRows: 6 }} font-family="monospace" />
+        </Form.Item>
+        <Form.Item label="部署后验证输入（一次性）">
+          <DeploymentSmokeInputEditor
+            sourcePayload={sourcePayload}
+            draft={smokeInputDraft}
+            onChange={setSmokeInputDraft}
+          />
         </Form.Item>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <Button onClick={onCancel}>取消</Button>

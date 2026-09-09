@@ -102,7 +102,7 @@ export const SemanticRuleReleaseMode: typeof $Enums.SemanticRuleReleaseMode
 
 /**
  * ##  Prisma Client ʲˢ
- *
+ * 
  * Type-safe database client for TypeScript & Node.js
  * @example
  * ```
@@ -111,19 +111,19 @@ export const SemanticRuleReleaseMode: typeof $Enums.SemanticRuleReleaseMode
  * const semanticRuleDomains = await prisma.semanticRuleDomain.findMany()
  * ```
  *
- *
+ * 
  * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client).
  */
 export class PrismaClient<
   ClientOptions extends Prisma.PrismaClientOptions = Prisma.PrismaClientOptions,
-  const U = 'log' extends keyof ClientOptions ? ClientOptions['log'] extends Array<Prisma.LogLevel | Prisma.LogDefinition> ? Prisma.GetEvents<ClientOptions['log']> : never : never,
+  U = 'log' extends keyof ClientOptions ? ClientOptions['log'] extends Array<Prisma.LogLevel | Prisma.LogDefinition> ? Prisma.GetEvents<ClientOptions['log']> : never : never,
   ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs
 > {
   [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['other'] }
 
     /**
    * ##  Prisma Client ʲˢ
-   *
+   * 
    * Type-safe database client for TypeScript & Node.js
    * @example
    * ```
@@ -132,12 +132,12 @@ export class PrismaClient<
    * const semanticRuleDomains = await prisma.semanticRuleDomain.findMany()
    * ```
    *
-   *
+   * 
    * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client).
    */
 
   constructor(optionsArg ?: Prisma.Subset<ClientOptions, Prisma.PrismaClientOptions>);
-  $on<V extends U>(eventType: V, callback: (event: V extends 'query' ? Prisma.QueryEvent : Prisma.LogEvent) => void): PrismaClient;
+  $on<V extends U>(eventType: V, callback: (event: V extends 'query' ? Prisma.QueryEvent : Prisma.LogEvent) => void): void;
 
   /**
    * Connect with the database
@@ -149,13 +149,20 @@ export class PrismaClient<
    */
   $disconnect(): $Utils.JsPromise<void>;
 
+  /**
+   * Add a middleware
+   * @deprecated since 4.16.0. For new code, prefer client extensions instead.
+   * @see https://pris.ly/d/extensions
+   */
+  $use(cb: Prisma.Middleware): void
+
 /**
    * Executes a prepared raw query and returns the number of affected rows.
    * @example
    * ```
    * const result = await prisma.$executeRaw`UPDATE User SET cool = ${true} WHERE email = ${'user@email.com'};`
    * ```
-   *
+   * 
    * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/raw-database-access).
    */
   $executeRaw<T = unknown>(query: TemplateStringsArray | Prisma.Sql, ...values: any[]): Prisma.PrismaPromise<number>;
@@ -167,7 +174,7 @@ export class PrismaClient<
    * ```
    * const result = await prisma.$executeRawUnsafe('UPDATE User SET cool = $1 WHERE email = $2 ;', true, 'user@email.com')
    * ```
-   *
+   * 
    * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/raw-database-access).
    */
   $executeRawUnsafe<T = unknown>(query: string, ...values: any[]): Prisma.PrismaPromise<number>;
@@ -178,7 +185,7 @@ export class PrismaClient<
    * ```
    * const result = await prisma.$queryRaw`SELECT * FROM User WHERE id = ${1} OR email = ${'user@email.com'};`
    * ```
-   *
+   * 
    * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/raw-database-access).
    */
   $queryRaw<T = unknown>(query: TemplateStringsArray | Prisma.Sql, ...values: any[]): Prisma.PrismaPromise<T>;
@@ -190,7 +197,7 @@ export class PrismaClient<
    * ```
    * const result = await prisma.$queryRawUnsafe('SELECT * FROM User WHERE id = $1 OR email = $2;', 1, 'user@email.com')
    * ```
-   *
+   * 
    * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/raw-database-access).
    */
   $queryRawUnsafe<T = unknown>(query: string, ...values: any[]): Prisma.PrismaPromise<T>;
@@ -214,9 +221,7 @@ export class PrismaClient<
   $transaction<R>(fn: (prisma: Omit<PrismaClient, runtime.ITXClientDenyList>) => $Utils.JsPromise<R>, options?: { maxWait?: number, timeout?: number, isolationLevel?: Prisma.TransactionIsolationLevel }): $Utils.JsPromise<R>
 
 
-  $extends: $Extensions.ExtendsHook<"extends", Prisma.TypeMapCb<ClientOptions>, ExtArgs, $Utils.Call<Prisma.TypeMapCb<ClientOptions>, {
-    extArgs: ExtArgs
-  }>>
+  $extends: $Extensions.ExtendsHook<"extends", Prisma.TypeMapCb, ExtArgs>
 
       /**
    * `prisma.semanticRuleDomain`: Exposes CRUD operations for the **SemanticRuleDomain** model.
@@ -226,7 +231,7 @@ export class PrismaClient<
     * const semanticRuleDomains = await prisma.semanticRuleDomain.findMany()
     * ```
     */
-  get semanticRuleDomain(): Prisma.SemanticRuleDomainDelegate<ExtArgs, ClientOptions>;
+  get semanticRuleDomain(): Prisma.SemanticRuleDomainDelegate<ExtArgs>;
 
   /**
    * `prisma.semanticRuleSet`: Exposes CRUD operations for the **SemanticRuleSet** model.
@@ -236,7 +241,7 @@ export class PrismaClient<
     * const semanticRuleSets = await prisma.semanticRuleSet.findMany()
     * ```
     */
-  get semanticRuleSet(): Prisma.SemanticRuleSetDelegate<ExtArgs, ClientOptions>;
+  get semanticRuleSet(): Prisma.SemanticRuleSetDelegate<ExtArgs>;
 
   /**
    * `prisma.semanticRule`: Exposes CRUD operations for the **SemanticRule** model.
@@ -246,7 +251,7 @@ export class PrismaClient<
     * const semanticRules = await prisma.semanticRule.findMany()
     * ```
     */
-  get semanticRule(): Prisma.SemanticRuleDelegate<ExtArgs, ClientOptions>;
+  get semanticRule(): Prisma.SemanticRuleDelegate<ExtArgs>;
 
   /**
    * `prisma.semanticRuleRelease`: Exposes CRUD operations for the **SemanticRuleRelease** model.
@@ -256,7 +261,7 @@ export class PrismaClient<
     * const semanticRuleReleases = await prisma.semanticRuleRelease.findMany()
     * ```
     */
-  get semanticRuleRelease(): Prisma.SemanticRuleReleaseDelegate<ExtArgs, ClientOptions>;
+  get semanticRuleRelease(): Prisma.SemanticRuleReleaseDelegate<ExtArgs>;
 
   /**
    * `prisma.semanticRuleTargeting`: Exposes CRUD operations for the **SemanticRuleTargeting** model.
@@ -266,7 +271,7 @@ export class PrismaClient<
     * const semanticRuleTargetings = await prisma.semanticRuleTargeting.findMany()
     * ```
     */
-  get semanticRuleTargeting(): Prisma.SemanticRuleTargetingDelegate<ExtArgs, ClientOptions>;
+  get semanticRuleTargeting(): Prisma.SemanticRuleTargetingDelegate<ExtArgs>;
 
   /**
    * `prisma.semanticRuleHitLog`: Exposes CRUD operations for the **SemanticRuleHitLog** model.
@@ -276,7 +281,7 @@ export class PrismaClient<
     * const semanticRuleHitLogs = await prisma.semanticRuleHitLog.findMany()
     * ```
     */
-  get semanticRuleHitLog(): Prisma.SemanticRuleHitLogDelegate<ExtArgs, ClientOptions>;
+  get semanticRuleHitLog(): Prisma.SemanticRuleHitLogDelegate<ExtArgs>;
 
   /**
    * `prisma.semanticRuleErrorLog`: Exposes CRUD operations for the **SemanticRuleErrorLog** model.
@@ -286,7 +291,7 @@ export class PrismaClient<
     * const semanticRuleErrorLogs = await prisma.semanticRuleErrorLog.findMany()
     * ```
     */
-  get semanticRuleErrorLog(): Prisma.SemanticRuleErrorLogDelegate<ExtArgs, ClientOptions>;
+  get semanticRuleErrorLog(): Prisma.SemanticRuleErrorLogDelegate<ExtArgs>;
 }
 
 export namespace Prisma {
@@ -307,6 +312,7 @@ export namespace Prisma {
   export import PrismaClientRustPanicError = runtime.PrismaClientRustPanicError
   export import PrismaClientInitializationError = runtime.PrismaClientInitializationError
   export import PrismaClientValidationError = runtime.PrismaClientValidationError
+  export import NotFoundError = runtime.NotFoundError
 
   /**
    * Re-export of sql-template-tag
@@ -327,7 +333,7 @@ export namespace Prisma {
   export type DecimalJsLike = runtime.DecimalJsLike
 
   /**
-   * Metrics
+   * Metrics 
    */
   export type Metrics = runtime.Metrics
   export type Metric<T> = runtime.Metric<T>
@@ -345,21 +351,20 @@ export namespace Prisma {
   export import Exact = $Public.Exact
 
   /**
-   * Prisma Client JS version: 6.19.3
-   * Query Engine version: c2990dca591cba766e3b7ef5d9e8a84796e47ab7
+   * Prisma Client JS version: 5.22.0
+   * Query Engine version: 605197351a3c8bdd595af2d2a9bc3025bca48ea2
    */
   export type PrismaVersion = {
     client: string
   }
 
-  export const prismaVersion: PrismaVersion
+  export const prismaVersion: PrismaVersion 
 
   /**
    * Utility Types
    */
 
 
-  export import Bytes = runtime.Bytes
   export import JsonObject = runtime.JsonObject
   export import JsonArray = runtime.JsonArray
   export import JsonValue = runtime.JsonValue
@@ -369,15 +374,15 @@ export namespace Prisma {
 
   /**
    * Types of the values used to represent different kinds of `null` values when working with JSON fields.
-   *
+   * 
    * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
    */
   namespace NullTypes {
     /**
     * Type of `Prisma.DbNull`.
-    *
+    * 
     * You cannot use other instances of this class. Please use the `Prisma.DbNull` value.
-    *
+    * 
     * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
     */
     class DbNull {
@@ -387,9 +392,9 @@ export namespace Prisma {
 
     /**
     * Type of `Prisma.JsonNull`.
-    *
+    * 
     * You cannot use other instances of this class. Please use the `Prisma.JsonNull` value.
-    *
+    * 
     * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
     */
     class JsonNull {
@@ -399,9 +404,9 @@ export namespace Prisma {
 
     /**
     * Type of `Prisma.AnyNull`.
-    *
+    * 
     * You cannot use other instances of this class. Please use the `Prisma.AnyNull` value.
-    *
+    * 
     * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
     */
     class AnyNull {
@@ -412,21 +417,21 @@ export namespace Prisma {
 
   /**
    * Helper for filtering JSON entries that have `null` on the database (empty on the db)
-   *
+   * 
    * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
    */
   export const DbNull: NullTypes.DbNull
 
   /**
    * Helper for filtering JSON entries that have JSON `null` values (not empty on the db)
-   *
+   * 
    * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
    */
   export const JsonNull: NullTypes.JsonNull
 
   /**
    * Helper for filtering JSON entries that are `Prisma.DbNull` or `Prisma.JsonNull`
-   *
+   * 
    * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
    */
   export const AnyNull: NullTypes.AnyNull
@@ -614,7 +619,7 @@ export namespace Prisma {
   type AtLeast<O extends object, K extends string> = NoExpand<
     O extends unknown
     ? | (K extends keyof O ? { [P in K]: O[P] } & O : O)
-      | {[P in keyof O as P extends K ? P : never]-?: O[P]} & O
+      | {[P in keyof O as P extends K ? K : never]-?: O[P]} & O
     : never>;
 
   type _Strict<U, _U = U> = U extends unknown ? U & OptionalFlat<_Record<Exclude<Keys<_U>, keyof U>, never>> : never;
@@ -744,14 +749,11 @@ export namespace Prisma {
     db?: Datasource
   }
 
-  interface TypeMapCb<ClientOptions = {}> extends $Utils.Fn<{extArgs: $Extensions.InternalArgs }, $Utils.Record<string, any>> {
-    returns: Prisma.TypeMap<this['params']['extArgs'], ClientOptions extends { omit: infer OmitOptions } ? OmitOptions : {}>
+  interface TypeMapCb extends $Utils.Fn<{extArgs: $Extensions.InternalArgs, clientOptions: PrismaClientOptions }, $Utils.Record<string, any>> {
+    returns: Prisma.TypeMap<this['params']['extArgs'], this['params']['clientOptions']>
   }
 
-  export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> = {
-    globalOmitOptions: {
-      omit: GlobalOmitOptions
-    }
+  export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
       modelProps: "semanticRuleDomain" | "semanticRuleSet" | "semanticRule" | "semanticRuleRelease" | "semanticRuleTargeting" | "semanticRuleHitLog" | "semanticRuleErrorLog"
       txIsolationLevel: Prisma.TransactionIsolationLevel
@@ -808,10 +810,6 @@ export namespace Prisma {
           updateMany: {
             args: Prisma.SemanticRuleDomainUpdateManyArgs<ExtArgs>
             result: BatchPayload
-          }
-          updateManyAndReturn: {
-            args: Prisma.SemanticRuleDomainUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SemanticRuleDomainPayload>[]
           }
           upsert: {
             args: Prisma.SemanticRuleDomainUpsertArgs<ExtArgs>
@@ -883,10 +881,6 @@ export namespace Prisma {
             args: Prisma.SemanticRuleSetUpdateManyArgs<ExtArgs>
             result: BatchPayload
           }
-          updateManyAndReturn: {
-            args: Prisma.SemanticRuleSetUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SemanticRuleSetPayload>[]
-          }
           upsert: {
             args: Prisma.SemanticRuleSetUpsertArgs<ExtArgs>
             result: $Utils.PayloadToResult<Prisma.$SemanticRuleSetPayload>
@@ -956,10 +950,6 @@ export namespace Prisma {
           updateMany: {
             args: Prisma.SemanticRuleUpdateManyArgs<ExtArgs>
             result: BatchPayload
-          }
-          updateManyAndReturn: {
-            args: Prisma.SemanticRuleUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SemanticRulePayload>[]
           }
           upsert: {
             args: Prisma.SemanticRuleUpsertArgs<ExtArgs>
@@ -1031,10 +1021,6 @@ export namespace Prisma {
             args: Prisma.SemanticRuleReleaseUpdateManyArgs<ExtArgs>
             result: BatchPayload
           }
-          updateManyAndReturn: {
-            args: Prisma.SemanticRuleReleaseUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SemanticRuleReleasePayload>[]
-          }
           upsert: {
             args: Prisma.SemanticRuleReleaseUpsertArgs<ExtArgs>
             result: $Utils.PayloadToResult<Prisma.$SemanticRuleReleasePayload>
@@ -1104,10 +1090,6 @@ export namespace Prisma {
           updateMany: {
             args: Prisma.SemanticRuleTargetingUpdateManyArgs<ExtArgs>
             result: BatchPayload
-          }
-          updateManyAndReturn: {
-            args: Prisma.SemanticRuleTargetingUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SemanticRuleTargetingPayload>[]
           }
           upsert: {
             args: Prisma.SemanticRuleTargetingUpsertArgs<ExtArgs>
@@ -1179,10 +1161,6 @@ export namespace Prisma {
             args: Prisma.SemanticRuleHitLogUpdateManyArgs<ExtArgs>
             result: BatchPayload
           }
-          updateManyAndReturn: {
-            args: Prisma.SemanticRuleHitLogUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SemanticRuleHitLogPayload>[]
-          }
           upsert: {
             args: Prisma.SemanticRuleHitLogUpsertArgs<ExtArgs>
             result: $Utils.PayloadToResult<Prisma.$SemanticRuleHitLogPayload>
@@ -1253,10 +1231,6 @@ export namespace Prisma {
             args: Prisma.SemanticRuleErrorLogUpdateManyArgs<ExtArgs>
             result: BatchPayload
           }
-          updateManyAndReturn: {
-            args: Prisma.SemanticRuleErrorLogUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SemanticRuleErrorLogPayload>[]
-          }
           upsert: {
             args: Prisma.SemanticRuleErrorLogUpsertArgs<ExtArgs>
             result: $Utils.PayloadToResult<Prisma.$SemanticRuleErrorLogPayload>
@@ -1318,24 +1292,16 @@ export namespace Prisma {
     /**
      * @example
      * ```
-     * // Shorthand for `emit: 'stdout'`
+     * // Defaults to stdout
      * log: ['query', 'info', 'warn', 'error']
      * 
-     * // Emit as events only
+     * // Emit as events
      * log: [
-     *   { emit: 'event', level: 'query' },
-     *   { emit: 'event', level: 'info' },
-     *   { emit: 'event', level: 'warn' }
-     *   { emit: 'event', level: 'error' }
+     *   { emit: 'stdout', level: 'query' },
+     *   { emit: 'stdout', level: 'info' },
+     *   { emit: 'stdout', level: 'warn' }
+     *   { emit: 'stdout', level: 'error' }
      * ]
-     * 
-     * / Emit as events and log to stdout
-     * og: [
-     *  { emit: 'stdout', level: 'query' },
-     *  { emit: 'stdout', level: 'info' },
-     *  { emit: 'stdout', level: 'warn' }
-     *  { emit: 'stdout', level: 'error' }
-     * 
      * ```
      * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/logging#the-log-option).
      */
@@ -1350,35 +1316,8 @@ export namespace Prisma {
       timeout?: number
       isolationLevel?: Prisma.TransactionIsolationLevel
     }
-    /**
-     * Instance of a Driver Adapter, e.g., like one provided by `@prisma/adapter-planetscale`
-     */
-    adapter?: runtime.SqlDriverAdapterFactory | null
-    /**
-     * Global configuration for omitting model fields by default.
-     * 
-     * @example
-     * ```
-     * const prisma = new PrismaClient({
-     *   omit: {
-     *     user: {
-     *       password: true
-     *     }
-     *   }
-     * })
-     * ```
-     */
-    omit?: Prisma.GlobalOmitConfig
   }
-  export type GlobalOmitConfig = {
-    semanticRuleDomain?: SemanticRuleDomainOmit
-    semanticRuleSet?: SemanticRuleSetOmit
-    semanticRule?: SemanticRuleOmit
-    semanticRuleRelease?: SemanticRuleReleaseOmit
-    semanticRuleTargeting?: SemanticRuleTargetingOmit
-    semanticRuleHitLog?: SemanticRuleHitLogOmit
-    semanticRuleErrorLog?: SemanticRuleErrorLogOmit
-  }
+
 
   /* Types for Logging */
   export type LogLevel = 'info' | 'query' | 'warn' | 'error'
@@ -1387,15 +1326,10 @@ export namespace Prisma {
     emit: 'stdout' | 'event'
   }
 
-  export type CheckIsLogLevel<T> = T extends LogLevel ? T : never;
-
-  export type GetLogType<T> = CheckIsLogLevel<
-    T extends LogDefinition ? T['level'] : T
-  >;
-
-  export type GetEvents<T extends any[]> = T extends Array<LogLevel | LogDefinition>
-    ? GetLogType<T[number]>
-    : never;
+  export type GetLogType<T extends LogLevel | LogDefinition> = T extends LogDefinition ? T['emit'] extends 'event' ? T['level'] : never : never
+  export type GetEvents<T extends any> = T extends Array<LogLevel | LogDefinition> ?
+    GetLogType<T[0]> | GetLogType<T[1]> | GetLogType<T[2]> | GetLogType<T[3]>
+    : never
 
   export type QueryEvent = {
     timestamp: Date
@@ -1424,7 +1358,6 @@ export namespace Prisma {
     | 'createManyAndReturn'
     | 'update'
     | 'updateMany'
-    | 'updateManyAndReturn'
     | 'upsert'
     | 'delete'
     | 'deleteMany'
@@ -1435,6 +1368,25 @@ export namespace Prisma {
     | 'runCommandRaw'
     | 'findRaw'
     | 'groupBy'
+
+  /**
+   * These options are being passed into the middleware as "params"
+   */
+  export type MiddlewareParams = {
+    model?: ModelName
+    action: PrismaAction
+    args: any
+    dataPath: string[]
+    runInTransaction: boolean
+  }
+
+  /**
+   * The `T` type makes sure, that the `return proceed` is not forgotten in the middleware implementation
+   */
+  export type Middleware<T = any> = (
+    params: MiddlewareParams,
+    next: (params: MiddlewareParams) => $Utils.JsPromise<T>,
+  ) => $Utils.JsPromise<T>
 
   // tested in getLogLevel.test.ts
   export function getLogLevel(log: Array<LogLevel | LogDefinition>): LogLevel | undefined;
@@ -1769,16 +1721,6 @@ export namespace Prisma {
     updatedAt?: boolean
   }, ExtArgs["result"]["semanticRuleDomain"]>
 
-  export type SemanticRuleDomainSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    code?: boolean
-    name?: boolean
-    description?: boolean
-    enabled?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-  }, ExtArgs["result"]["semanticRuleDomain"]>
-
   export type SemanticRuleDomainSelectScalar = {
     id?: boolean
     code?: boolean
@@ -1789,7 +1731,6 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type SemanticRuleDomainOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "code" | "name" | "description" | "enabled" | "createdAt" | "updatedAt", ExtArgs["result"]["semanticRuleDomain"]>
   export type SemanticRuleDomainInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     ruleSets?: boolean | SemanticRuleDomain$ruleSetsArgs<ExtArgs>
     hitLogs?: boolean | SemanticRuleDomain$hitLogsArgs<ExtArgs>
@@ -1797,7 +1738,6 @@ export namespace Prisma {
     _count?: boolean | SemanticRuleDomainCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type SemanticRuleDomainIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
-  export type SemanticRuleDomainIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
 
   export type $SemanticRuleDomainPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "SemanticRuleDomain"
@@ -1820,12 +1760,12 @@ export namespace Prisma {
 
   type SemanticRuleDomainGetPayload<S extends boolean | null | undefined | SemanticRuleDomainDefaultArgs> = $Result.GetResult<Prisma.$SemanticRuleDomainPayload, S>
 
-  type SemanticRuleDomainCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<SemanticRuleDomainFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+  type SemanticRuleDomainCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<SemanticRuleDomainFindManyArgs, 'select' | 'include' | 'distinct'> & {
       select?: SemanticRuleDomainCountAggregateInputType | true
     }
 
-  export interface SemanticRuleDomainDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+  export interface SemanticRuleDomainDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
     [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SemanticRuleDomain'], meta: { name: 'SemanticRuleDomain' } }
     /**
      * Find zero or one SemanticRuleDomain that matches the filter.
@@ -1838,10 +1778,10 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUnique<T extends SemanticRuleDomainFindUniqueArgs>(args: SelectSubset<T, SemanticRuleDomainFindUniqueArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findUnique<T extends SemanticRuleDomainFindUniqueArgs>(args: SelectSubset<T, SemanticRuleDomainFindUniqueArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
 
     /**
-     * Find one SemanticRuleDomain that matches the filter or throw an error with `error.code='P2025'`
+     * Find one SemanticRuleDomain that matches the filter or throw an error with `error.code='P2025'` 
      * if no matches were found.
      * @param {SemanticRuleDomainFindUniqueOrThrowArgs} args - Arguments to find a SemanticRuleDomain
      * @example
@@ -1852,7 +1792,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUniqueOrThrow<T extends SemanticRuleDomainFindUniqueOrThrowArgs>(args: SelectSubset<T, SemanticRuleDomainFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findUniqueOrThrow<T extends SemanticRuleDomainFindUniqueOrThrowArgs>(args: SelectSubset<T, SemanticRuleDomainFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
 
     /**
      * Find the first SemanticRuleDomain that matches the filter.
@@ -1867,7 +1807,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirst<T extends SemanticRuleDomainFindFirstArgs>(args?: SelectSubset<T, SemanticRuleDomainFindFirstArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findFirst<T extends SemanticRuleDomainFindFirstArgs>(args?: SelectSubset<T, SemanticRuleDomainFindFirstArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
 
     /**
      * Find the first SemanticRuleDomain that matches the filter or
@@ -1883,7 +1823,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirstOrThrow<T extends SemanticRuleDomainFindFirstOrThrowArgs>(args?: SelectSubset<T, SemanticRuleDomainFindFirstOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findFirstOrThrow<T extends SemanticRuleDomainFindFirstOrThrowArgs>(args?: SelectSubset<T, SemanticRuleDomainFindFirstOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
 
     /**
      * Find zero or more SemanticRuleDomains that matches the filter.
@@ -1901,7 +1841,7 @@ export namespace Prisma {
      * const semanticRuleDomainWithIdOnly = await prisma.semanticRuleDomain.findMany({ select: { id: true } })
      * 
      */
-    findMany<T extends SemanticRuleDomainFindManyArgs>(args?: SelectSubset<T, SemanticRuleDomainFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+    findMany<T extends SemanticRuleDomainFindManyArgs>(args?: SelectSubset<T, SemanticRuleDomainFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "findMany">>
 
     /**
      * Create a SemanticRuleDomain.
@@ -1915,7 +1855,7 @@ export namespace Prisma {
      * })
      * 
      */
-    create<T extends SemanticRuleDomainCreateArgs>(args: SelectSubset<T, SemanticRuleDomainCreateArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    create<T extends SemanticRuleDomainCreateArgs>(args: SelectSubset<T, SemanticRuleDomainCreateArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "create">, never, ExtArgs>
 
     /**
      * Create many SemanticRuleDomains.
@@ -1943,7 +1883,7 @@ export namespace Prisma {
      * })
      * 
      * // Create many SemanticRuleDomains and only return the `id`
-     * const semanticRuleDomainWithIdOnly = await prisma.semanticRuleDomain.createManyAndReturn({
+     * const semanticRuleDomainWithIdOnly = await prisma.semanticRuleDomain.createManyAndReturn({ 
      *   select: { id: true },
      *   data: [
      *     // ... provide data here
@@ -1953,7 +1893,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends SemanticRuleDomainCreateManyAndReturnArgs>(args?: SelectSubset<T, SemanticRuleDomainCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+    createManyAndReturn<T extends SemanticRuleDomainCreateManyAndReturnArgs>(args?: SelectSubset<T, SemanticRuleDomainCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "createManyAndReturn">>
 
     /**
      * Delete a SemanticRuleDomain.
@@ -1967,7 +1907,7 @@ export namespace Prisma {
      * })
      * 
      */
-    delete<T extends SemanticRuleDomainDeleteArgs>(args: SelectSubset<T, SemanticRuleDomainDeleteArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    delete<T extends SemanticRuleDomainDeleteArgs>(args: SelectSubset<T, SemanticRuleDomainDeleteArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "delete">, never, ExtArgs>
 
     /**
      * Update one SemanticRuleDomain.
@@ -1984,7 +1924,7 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends SemanticRuleDomainUpdateArgs>(args: SelectSubset<T, SemanticRuleDomainUpdateArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    update<T extends SemanticRuleDomainUpdateArgs>(args: SelectSubset<T, SemanticRuleDomainUpdateArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "update">, never, ExtArgs>
 
     /**
      * Delete zero or more SemanticRuleDomains.
@@ -2020,36 +1960,6 @@ export namespace Prisma {
     updateMany<T extends SemanticRuleDomainUpdateManyArgs>(args: SelectSubset<T, SemanticRuleDomainUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Update zero or more SemanticRuleDomains and returns the data updated in the database.
-     * @param {SemanticRuleDomainUpdateManyAndReturnArgs} args - Arguments to update many SemanticRuleDomains.
-     * @example
-     * // Update many SemanticRuleDomains
-     * const semanticRuleDomain = await prisma.semanticRuleDomain.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more SemanticRuleDomains and only return the `id`
-     * const semanticRuleDomainWithIdOnly = await prisma.semanticRuleDomain.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends SemanticRuleDomainUpdateManyAndReturnArgs>(args: SelectSubset<T, SemanticRuleDomainUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
      * Create or update one SemanticRuleDomain.
      * @param {SemanticRuleDomainUpsertArgs} args - Arguments to update or create a SemanticRuleDomain.
      * @example
@@ -2066,7 +1976,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    upsert<T extends SemanticRuleDomainUpsertArgs>(args: SelectSubset<T, SemanticRuleDomainUpsertArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    upsert<T extends SemanticRuleDomainUpsertArgs>(args: SelectSubset<T, SemanticRuleDomainUpsertArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
 
 
     /**
@@ -2206,11 +2116,11 @@ export namespace Prisma {
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__SemanticRuleDomainClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__SemanticRuleDomainClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    ruleSets<T extends SemanticRuleDomain$ruleSetsArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleDomain$ruleSetsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-    hitLogs<T extends SemanticRuleDomain$hitLogsArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleDomain$hitLogsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-    errorLogs<T extends SemanticRuleDomain$errorLogsArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleDomain$errorLogsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    ruleSets<T extends SemanticRuleDomain$ruleSetsArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleDomain$ruleSetsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findMany"> | Null>
+    hitLogs<T extends SemanticRuleDomain$hitLogsArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleDomain$hitLogsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "findMany"> | Null>
+    errorLogs<T extends SemanticRuleDomain$errorLogsArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleDomain$errorLogsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "findMany"> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2238,7 +2148,7 @@ export namespace Prisma {
 
   /**
    * Fields of the SemanticRuleDomain model
-   */
+   */ 
   interface SemanticRuleDomainFieldRefs {
     readonly id: FieldRef<"SemanticRuleDomain", 'String'>
     readonly code: FieldRef<"SemanticRuleDomain", 'String'>
@@ -2260,10 +2170,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleDomainSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleDomain
-     */
-    omit?: SemanticRuleDomainOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleDomainInclude<ExtArgs> | null
@@ -2282,10 +2188,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleDomainSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleDomain
-     */
-    omit?: SemanticRuleDomainOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleDomainInclude<ExtArgs> | null
@@ -2303,10 +2205,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleDomain
      */
     select?: SemanticRuleDomainSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleDomain
-     */
-    omit?: SemanticRuleDomainOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -2356,10 +2254,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleDomainSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleDomain
-     */
-    omit?: SemanticRuleDomainOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleDomainInclude<ExtArgs> | null
@@ -2408,10 +2302,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleDomainSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleDomain
-     */
-    omit?: SemanticRuleDomainOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleDomainInclude<ExtArgs> | null
@@ -2455,10 +2345,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleDomainSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleDomain
-     */
-    omit?: SemanticRuleDomainOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleDomainInclude<ExtArgs> | null
@@ -2488,10 +2374,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleDomainSelectCreateManyAndReturn<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleDomain
-     */
-    omit?: SemanticRuleDomainOmit<ExtArgs> | null
-    /**
      * The data used to create many SemanticRuleDomains.
      */
     data: SemanticRuleDomainCreateManyInput | SemanticRuleDomainCreateManyInput[]
@@ -2506,10 +2388,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleDomain
      */
     select?: SemanticRuleDomainSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleDomain
-     */
-    omit?: SemanticRuleDomainOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -2536,36 +2414,6 @@ export namespace Prisma {
      * Filter which SemanticRuleDomains to update
      */
     where?: SemanticRuleDomainWhereInput
-    /**
-     * Limit how many SemanticRuleDomains to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * SemanticRuleDomain updateManyAndReturn
-   */
-  export type SemanticRuleDomainUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SemanticRuleDomain
-     */
-    select?: SemanticRuleDomainSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleDomain
-     */
-    omit?: SemanticRuleDomainOmit<ExtArgs> | null
-    /**
-     * The data used to update SemanticRuleDomains.
-     */
-    data: XOR<SemanticRuleDomainUpdateManyMutationInput, SemanticRuleDomainUncheckedUpdateManyInput>
-    /**
-     * Filter which SemanticRuleDomains to update
-     */
-    where?: SemanticRuleDomainWhereInput
-    /**
-     * Limit how many SemanticRuleDomains to update.
-     */
-    limit?: number
   }
 
   /**
@@ -2576,10 +2424,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleDomain
      */
     select?: SemanticRuleDomainSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleDomain
-     */
-    omit?: SemanticRuleDomainOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -2607,10 +2451,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleDomainSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleDomain
-     */
-    omit?: SemanticRuleDomainOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleDomainInclude<ExtArgs> | null
@@ -2628,10 +2468,6 @@ export namespace Prisma {
      * Filter which SemanticRuleDomains to delete
      */
     where?: SemanticRuleDomainWhereInput
-    /**
-     * Limit how many SemanticRuleDomains to delete.
-     */
-    limit?: number
   }
 
   /**
@@ -2642,10 +2478,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleSet
      */
     select?: SemanticRuleSetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleSet
-     */
-    omit?: SemanticRuleSetOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -2667,10 +2499,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleHitLogSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleHitLog
-     */
-    omit?: SemanticRuleHitLogOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleHitLogInclude<ExtArgs> | null
@@ -2691,10 +2519,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleErrorLogSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleErrorLog
-     */
-    omit?: SemanticRuleErrorLogOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleErrorLogInclude<ExtArgs> | null
@@ -2714,10 +2538,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleDomain
      */
     select?: SemanticRuleDomainSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleDomain
-     */
-    omit?: SemanticRuleDomainOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -2988,24 +2808,6 @@ export namespace Prisma {
     domain?: boolean | SemanticRuleDomainDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["semanticRuleSet"]>
 
-  export type SemanticRuleSetSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    domainId?: boolean
-    key?: boolean
-    name?: boolean
-    version?: boolean
-    status?: boolean
-    description?: boolean
-    basedOnRuleSetId?: boolean
-    changeSummary?: boolean
-    createdBy?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-    activatedAt?: boolean
-    archivedAt?: boolean
-    domain?: boolean | SemanticRuleDomainDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["semanticRuleSet"]>
-
   export type SemanticRuleSetSelectScalar = {
     id?: boolean
     domainId?: boolean
@@ -3023,7 +2825,6 @@ export namespace Prisma {
     archivedAt?: boolean
   }
 
-  export type SemanticRuleSetOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "domainId" | "key" | "name" | "version" | "status" | "description" | "basedOnRuleSetId" | "changeSummary" | "createdBy" | "createdAt" | "updatedAt" | "activatedAt" | "archivedAt", ExtArgs["result"]["semanticRuleSet"]>
   export type SemanticRuleSetInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     domain?: boolean | SemanticRuleDomainDefaultArgs<ExtArgs>
     rules?: boolean | SemanticRuleSet$rulesArgs<ExtArgs>
@@ -3034,9 +2835,6 @@ export namespace Prisma {
     _count?: boolean | SemanticRuleSetCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type SemanticRuleSetIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    domain?: boolean | SemanticRuleDomainDefaultArgs<ExtArgs>
-  }
-  export type SemanticRuleSetIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     domain?: boolean | SemanticRuleDomainDefaultArgs<ExtArgs>
   }
 
@@ -3071,12 +2869,12 @@ export namespace Prisma {
 
   type SemanticRuleSetGetPayload<S extends boolean | null | undefined | SemanticRuleSetDefaultArgs> = $Result.GetResult<Prisma.$SemanticRuleSetPayload, S>
 
-  type SemanticRuleSetCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<SemanticRuleSetFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+  type SemanticRuleSetCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<SemanticRuleSetFindManyArgs, 'select' | 'include' | 'distinct'> & {
       select?: SemanticRuleSetCountAggregateInputType | true
     }
 
-  export interface SemanticRuleSetDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+  export interface SemanticRuleSetDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
     [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SemanticRuleSet'], meta: { name: 'SemanticRuleSet' } }
     /**
      * Find zero or one SemanticRuleSet that matches the filter.
@@ -3089,10 +2887,10 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUnique<T extends SemanticRuleSetFindUniqueArgs>(args: SelectSubset<T, SemanticRuleSetFindUniqueArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findUnique<T extends SemanticRuleSetFindUniqueArgs>(args: SelectSubset<T, SemanticRuleSetFindUniqueArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
 
     /**
-     * Find one SemanticRuleSet that matches the filter or throw an error with `error.code='P2025'`
+     * Find one SemanticRuleSet that matches the filter or throw an error with `error.code='P2025'` 
      * if no matches were found.
      * @param {SemanticRuleSetFindUniqueOrThrowArgs} args - Arguments to find a SemanticRuleSet
      * @example
@@ -3103,7 +2901,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUniqueOrThrow<T extends SemanticRuleSetFindUniqueOrThrowArgs>(args: SelectSubset<T, SemanticRuleSetFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findUniqueOrThrow<T extends SemanticRuleSetFindUniqueOrThrowArgs>(args: SelectSubset<T, SemanticRuleSetFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
 
     /**
      * Find the first SemanticRuleSet that matches the filter.
@@ -3118,7 +2916,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirst<T extends SemanticRuleSetFindFirstArgs>(args?: SelectSubset<T, SemanticRuleSetFindFirstArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findFirst<T extends SemanticRuleSetFindFirstArgs>(args?: SelectSubset<T, SemanticRuleSetFindFirstArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
 
     /**
      * Find the first SemanticRuleSet that matches the filter or
@@ -3134,7 +2932,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirstOrThrow<T extends SemanticRuleSetFindFirstOrThrowArgs>(args?: SelectSubset<T, SemanticRuleSetFindFirstOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findFirstOrThrow<T extends SemanticRuleSetFindFirstOrThrowArgs>(args?: SelectSubset<T, SemanticRuleSetFindFirstOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
 
     /**
      * Find zero or more SemanticRuleSets that matches the filter.
@@ -3152,7 +2950,7 @@ export namespace Prisma {
      * const semanticRuleSetWithIdOnly = await prisma.semanticRuleSet.findMany({ select: { id: true } })
      * 
      */
-    findMany<T extends SemanticRuleSetFindManyArgs>(args?: SelectSubset<T, SemanticRuleSetFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+    findMany<T extends SemanticRuleSetFindManyArgs>(args?: SelectSubset<T, SemanticRuleSetFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findMany">>
 
     /**
      * Create a SemanticRuleSet.
@@ -3166,7 +2964,7 @@ export namespace Prisma {
      * })
      * 
      */
-    create<T extends SemanticRuleSetCreateArgs>(args: SelectSubset<T, SemanticRuleSetCreateArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    create<T extends SemanticRuleSetCreateArgs>(args: SelectSubset<T, SemanticRuleSetCreateArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "create">, never, ExtArgs>
 
     /**
      * Create many SemanticRuleSets.
@@ -3194,7 +2992,7 @@ export namespace Prisma {
      * })
      * 
      * // Create many SemanticRuleSets and only return the `id`
-     * const semanticRuleSetWithIdOnly = await prisma.semanticRuleSet.createManyAndReturn({
+     * const semanticRuleSetWithIdOnly = await prisma.semanticRuleSet.createManyAndReturn({ 
      *   select: { id: true },
      *   data: [
      *     // ... provide data here
@@ -3204,7 +3002,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends SemanticRuleSetCreateManyAndReturnArgs>(args?: SelectSubset<T, SemanticRuleSetCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+    createManyAndReturn<T extends SemanticRuleSetCreateManyAndReturnArgs>(args?: SelectSubset<T, SemanticRuleSetCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "createManyAndReturn">>
 
     /**
      * Delete a SemanticRuleSet.
@@ -3218,7 +3016,7 @@ export namespace Prisma {
      * })
      * 
      */
-    delete<T extends SemanticRuleSetDeleteArgs>(args: SelectSubset<T, SemanticRuleSetDeleteArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    delete<T extends SemanticRuleSetDeleteArgs>(args: SelectSubset<T, SemanticRuleSetDeleteArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "delete">, never, ExtArgs>
 
     /**
      * Update one SemanticRuleSet.
@@ -3235,7 +3033,7 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends SemanticRuleSetUpdateArgs>(args: SelectSubset<T, SemanticRuleSetUpdateArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    update<T extends SemanticRuleSetUpdateArgs>(args: SelectSubset<T, SemanticRuleSetUpdateArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "update">, never, ExtArgs>
 
     /**
      * Delete zero or more SemanticRuleSets.
@@ -3271,36 +3069,6 @@ export namespace Prisma {
     updateMany<T extends SemanticRuleSetUpdateManyArgs>(args: SelectSubset<T, SemanticRuleSetUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Update zero or more SemanticRuleSets and returns the data updated in the database.
-     * @param {SemanticRuleSetUpdateManyAndReturnArgs} args - Arguments to update many SemanticRuleSets.
-     * @example
-     * // Update many SemanticRuleSets
-     * const semanticRuleSet = await prisma.semanticRuleSet.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more SemanticRuleSets and only return the `id`
-     * const semanticRuleSetWithIdOnly = await prisma.semanticRuleSet.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends SemanticRuleSetUpdateManyAndReturnArgs>(args: SelectSubset<T, SemanticRuleSetUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
      * Create or update one SemanticRuleSet.
      * @param {SemanticRuleSetUpsertArgs} args - Arguments to update or create a SemanticRuleSet.
      * @example
@@ -3317,7 +3085,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    upsert<T extends SemanticRuleSetUpsertArgs>(args: SelectSubset<T, SemanticRuleSetUpsertArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    upsert<T extends SemanticRuleSetUpsertArgs>(args: SelectSubset<T, SemanticRuleSetUpsertArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
 
 
     /**
@@ -3457,14 +3225,14 @@ export namespace Prisma {
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__SemanticRuleSetClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__SemanticRuleSetClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    domain<T extends SemanticRuleDomainDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleDomainDefaultArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-    rules<T extends SemanticRuleSet$rulesArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleSet$rulesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-    releases<T extends SemanticRuleSet$releasesArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleSet$releasesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-    targetings<T extends SemanticRuleSet$targetingsArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleSet$targetingsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-    hitLogs<T extends SemanticRuleSet$hitLogsArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleSet$hitLogsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-    errorLogs<T extends SemanticRuleSet$errorLogsArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleSet$errorLogsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    domain<T extends SemanticRuleDomainDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleDomainDefaultArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    rules<T extends SemanticRuleSet$rulesArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleSet$rulesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "findMany"> | Null>
+    releases<T extends SemanticRuleSet$releasesArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleSet$releasesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "findMany"> | Null>
+    targetings<T extends SemanticRuleSet$targetingsArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleSet$targetingsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "findMany"> | Null>
+    hitLogs<T extends SemanticRuleSet$hitLogsArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleSet$hitLogsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "findMany"> | Null>
+    errorLogs<T extends SemanticRuleSet$errorLogsArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleSet$errorLogsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "findMany"> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3492,7 +3260,7 @@ export namespace Prisma {
 
   /**
    * Fields of the SemanticRuleSet model
-   */
+   */ 
   interface SemanticRuleSetFieldRefs {
     readonly id: FieldRef<"SemanticRuleSet", 'String'>
     readonly domainId: FieldRef<"SemanticRuleSet", 'String'>
@@ -3521,10 +3289,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleSetSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleSet
-     */
-    omit?: SemanticRuleSetOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleSetInclude<ExtArgs> | null
@@ -3543,10 +3307,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleSetSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleSet
-     */
-    omit?: SemanticRuleSetOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleSetInclude<ExtArgs> | null
@@ -3564,10 +3324,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleSet
      */
     select?: SemanticRuleSetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleSet
-     */
-    omit?: SemanticRuleSetOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -3617,10 +3373,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleSetSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleSet
-     */
-    omit?: SemanticRuleSetOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleSetInclude<ExtArgs> | null
@@ -3669,10 +3421,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleSetSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleSet
-     */
-    omit?: SemanticRuleSetOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleSetInclude<ExtArgs> | null
@@ -3716,10 +3464,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleSetSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleSet
-     */
-    omit?: SemanticRuleSetOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleSetInclude<ExtArgs> | null
@@ -3749,10 +3493,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleSetSelectCreateManyAndReturn<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleSet
-     */
-    omit?: SemanticRuleSetOmit<ExtArgs> | null
-    /**
      * The data used to create many SemanticRuleSets.
      */
     data: SemanticRuleSetCreateManyInput | SemanticRuleSetCreateManyInput[]
@@ -3771,10 +3511,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleSet
      */
     select?: SemanticRuleSetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleSet
-     */
-    omit?: SemanticRuleSetOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -3801,40 +3537,6 @@ export namespace Prisma {
      * Filter which SemanticRuleSets to update
      */
     where?: SemanticRuleSetWhereInput
-    /**
-     * Limit how many SemanticRuleSets to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * SemanticRuleSet updateManyAndReturn
-   */
-  export type SemanticRuleSetUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SemanticRuleSet
-     */
-    select?: SemanticRuleSetSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleSet
-     */
-    omit?: SemanticRuleSetOmit<ExtArgs> | null
-    /**
-     * The data used to update SemanticRuleSets.
-     */
-    data: XOR<SemanticRuleSetUpdateManyMutationInput, SemanticRuleSetUncheckedUpdateManyInput>
-    /**
-     * Filter which SemanticRuleSets to update
-     */
-    where?: SemanticRuleSetWhereInput
-    /**
-     * Limit how many SemanticRuleSets to update.
-     */
-    limit?: number
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SemanticRuleSetIncludeUpdateManyAndReturn<ExtArgs> | null
   }
 
   /**
@@ -3845,10 +3547,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleSet
      */
     select?: SemanticRuleSetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleSet
-     */
-    omit?: SemanticRuleSetOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -3876,10 +3574,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleSetSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleSet
-     */
-    omit?: SemanticRuleSetOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleSetInclude<ExtArgs> | null
@@ -3897,10 +3591,6 @@ export namespace Prisma {
      * Filter which SemanticRuleSets to delete
      */
     where?: SemanticRuleSetWhereInput
-    /**
-     * Limit how many SemanticRuleSets to delete.
-     */
-    limit?: number
   }
 
   /**
@@ -3911,10 +3601,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRule
      */
     select?: SemanticRuleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRule
-     */
-    omit?: SemanticRuleOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -3936,10 +3622,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleReleaseSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleRelease
-     */
-    omit?: SemanticRuleReleaseOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleReleaseInclude<ExtArgs> | null
@@ -3959,10 +3641,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleTargeting
      */
     select?: SemanticRuleTargetingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleTargeting
-     */
-    omit?: SemanticRuleTargetingOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -3984,10 +3662,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleHitLogSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleHitLog
-     */
-    omit?: SemanticRuleHitLogOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleHitLogInclude<ExtArgs> | null
@@ -4008,10 +3682,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleErrorLogSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleErrorLog
-     */
-    omit?: SemanticRuleErrorLogOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleErrorLogInclude<ExtArgs> | null
@@ -4031,10 +3701,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleSet
      */
     select?: SemanticRuleSetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleSet
-     */
-    omit?: SemanticRuleSetOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -4331,26 +3997,6 @@ export namespace Prisma {
     ruleSet?: boolean | SemanticRuleSetDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["semanticRule"]>
 
-  export type SemanticRuleSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    ruleSetId?: boolean
-    type?: boolean
-    name?: boolean
-    enabled?: boolean
-    priority?: boolean
-    stopOnMatch?: boolean
-    flags?: boolean
-    patterns?: boolean
-    outputs?: boolean
-    examples?: boolean
-    negativeExamples?: boolean
-    tags?: boolean
-    note?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-    ruleSet?: boolean | SemanticRuleSetDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["semanticRule"]>
-
   export type SemanticRuleSelectScalar = {
     id?: boolean
     ruleSetId?: boolean
@@ -4370,14 +4016,10 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type SemanticRuleOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "ruleSetId" | "type" | "name" | "enabled" | "priority" | "stopOnMatch" | "flags" | "patterns" | "outputs" | "examples" | "negativeExamples" | "tags" | "note" | "createdAt" | "updatedAt", ExtArgs["result"]["semanticRule"]>
   export type SemanticRuleInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     ruleSet?: boolean | SemanticRuleSetDefaultArgs<ExtArgs>
   }
   export type SemanticRuleIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    ruleSet?: boolean | SemanticRuleSetDefaultArgs<ExtArgs>
-  }
-  export type SemanticRuleIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     ruleSet?: boolean | SemanticRuleSetDefaultArgs<ExtArgs>
   }
 
@@ -4409,12 +4051,12 @@ export namespace Prisma {
 
   type SemanticRuleGetPayload<S extends boolean | null | undefined | SemanticRuleDefaultArgs> = $Result.GetResult<Prisma.$SemanticRulePayload, S>
 
-  type SemanticRuleCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<SemanticRuleFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+  type SemanticRuleCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<SemanticRuleFindManyArgs, 'select' | 'include' | 'distinct'> & {
       select?: SemanticRuleCountAggregateInputType | true
     }
 
-  export interface SemanticRuleDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+  export interface SemanticRuleDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
     [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SemanticRule'], meta: { name: 'SemanticRule' } }
     /**
      * Find zero or one SemanticRule that matches the filter.
@@ -4427,10 +4069,10 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUnique<T extends SemanticRuleFindUniqueArgs>(args: SelectSubset<T, SemanticRuleFindUniqueArgs<ExtArgs>>): Prisma__SemanticRuleClient<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findUnique<T extends SemanticRuleFindUniqueArgs>(args: SelectSubset<T, SemanticRuleFindUniqueArgs<ExtArgs>>): Prisma__SemanticRuleClient<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
 
     /**
-     * Find one SemanticRule that matches the filter or throw an error with `error.code='P2025'`
+     * Find one SemanticRule that matches the filter or throw an error with `error.code='P2025'` 
      * if no matches were found.
      * @param {SemanticRuleFindUniqueOrThrowArgs} args - Arguments to find a SemanticRule
      * @example
@@ -4441,7 +4083,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUniqueOrThrow<T extends SemanticRuleFindUniqueOrThrowArgs>(args: SelectSubset<T, SemanticRuleFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleClient<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findUniqueOrThrow<T extends SemanticRuleFindUniqueOrThrowArgs>(args: SelectSubset<T, SemanticRuleFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleClient<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
 
     /**
      * Find the first SemanticRule that matches the filter.
@@ -4456,7 +4098,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirst<T extends SemanticRuleFindFirstArgs>(args?: SelectSubset<T, SemanticRuleFindFirstArgs<ExtArgs>>): Prisma__SemanticRuleClient<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findFirst<T extends SemanticRuleFindFirstArgs>(args?: SelectSubset<T, SemanticRuleFindFirstArgs<ExtArgs>>): Prisma__SemanticRuleClient<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
 
     /**
      * Find the first SemanticRule that matches the filter or
@@ -4472,7 +4114,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirstOrThrow<T extends SemanticRuleFindFirstOrThrowArgs>(args?: SelectSubset<T, SemanticRuleFindFirstOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleClient<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findFirstOrThrow<T extends SemanticRuleFindFirstOrThrowArgs>(args?: SelectSubset<T, SemanticRuleFindFirstOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleClient<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
 
     /**
      * Find zero or more SemanticRules that matches the filter.
@@ -4490,7 +4132,7 @@ export namespace Prisma {
      * const semanticRuleWithIdOnly = await prisma.semanticRule.findMany({ select: { id: true } })
      * 
      */
-    findMany<T extends SemanticRuleFindManyArgs>(args?: SelectSubset<T, SemanticRuleFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+    findMany<T extends SemanticRuleFindManyArgs>(args?: SelectSubset<T, SemanticRuleFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "findMany">>
 
     /**
      * Create a SemanticRule.
@@ -4504,7 +4146,7 @@ export namespace Prisma {
      * })
      * 
      */
-    create<T extends SemanticRuleCreateArgs>(args: SelectSubset<T, SemanticRuleCreateArgs<ExtArgs>>): Prisma__SemanticRuleClient<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    create<T extends SemanticRuleCreateArgs>(args: SelectSubset<T, SemanticRuleCreateArgs<ExtArgs>>): Prisma__SemanticRuleClient<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "create">, never, ExtArgs>
 
     /**
      * Create many SemanticRules.
@@ -4532,7 +4174,7 @@ export namespace Prisma {
      * })
      * 
      * // Create many SemanticRules and only return the `id`
-     * const semanticRuleWithIdOnly = await prisma.semanticRule.createManyAndReturn({
+     * const semanticRuleWithIdOnly = await prisma.semanticRule.createManyAndReturn({ 
      *   select: { id: true },
      *   data: [
      *     // ... provide data here
@@ -4542,7 +4184,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends SemanticRuleCreateManyAndReturnArgs>(args?: SelectSubset<T, SemanticRuleCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+    createManyAndReturn<T extends SemanticRuleCreateManyAndReturnArgs>(args?: SelectSubset<T, SemanticRuleCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "createManyAndReturn">>
 
     /**
      * Delete a SemanticRule.
@@ -4556,7 +4198,7 @@ export namespace Prisma {
      * })
      * 
      */
-    delete<T extends SemanticRuleDeleteArgs>(args: SelectSubset<T, SemanticRuleDeleteArgs<ExtArgs>>): Prisma__SemanticRuleClient<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    delete<T extends SemanticRuleDeleteArgs>(args: SelectSubset<T, SemanticRuleDeleteArgs<ExtArgs>>): Prisma__SemanticRuleClient<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "delete">, never, ExtArgs>
 
     /**
      * Update one SemanticRule.
@@ -4573,7 +4215,7 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends SemanticRuleUpdateArgs>(args: SelectSubset<T, SemanticRuleUpdateArgs<ExtArgs>>): Prisma__SemanticRuleClient<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    update<T extends SemanticRuleUpdateArgs>(args: SelectSubset<T, SemanticRuleUpdateArgs<ExtArgs>>): Prisma__SemanticRuleClient<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "update">, never, ExtArgs>
 
     /**
      * Delete zero or more SemanticRules.
@@ -4609,36 +4251,6 @@ export namespace Prisma {
     updateMany<T extends SemanticRuleUpdateManyArgs>(args: SelectSubset<T, SemanticRuleUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Update zero or more SemanticRules and returns the data updated in the database.
-     * @param {SemanticRuleUpdateManyAndReturnArgs} args - Arguments to update many SemanticRules.
-     * @example
-     * // Update many SemanticRules
-     * const semanticRule = await prisma.semanticRule.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more SemanticRules and only return the `id`
-     * const semanticRuleWithIdOnly = await prisma.semanticRule.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends SemanticRuleUpdateManyAndReturnArgs>(args: SelectSubset<T, SemanticRuleUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
      * Create or update one SemanticRule.
      * @param {SemanticRuleUpsertArgs} args - Arguments to update or create a SemanticRule.
      * @example
@@ -4655,7 +4267,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    upsert<T extends SemanticRuleUpsertArgs>(args: SelectSubset<T, SemanticRuleUpsertArgs<ExtArgs>>): Prisma__SemanticRuleClient<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    upsert<T extends SemanticRuleUpsertArgs>(args: SelectSubset<T, SemanticRuleUpsertArgs<ExtArgs>>): Prisma__SemanticRuleClient<$Result.GetResult<Prisma.$SemanticRulePayload<ExtArgs>, T, "upsert">, never, ExtArgs>
 
 
     /**
@@ -4795,9 +4407,9 @@ export namespace Prisma {
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__SemanticRuleClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__SemanticRuleClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    ruleSet<T extends SemanticRuleSetDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleSetDefaultArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    ruleSet<T extends SemanticRuleSetDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleSetDefaultArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4825,7 +4437,7 @@ export namespace Prisma {
 
   /**
    * Fields of the SemanticRule model
-   */
+   */ 
   interface SemanticRuleFieldRefs {
     readonly id: FieldRef<"SemanticRule", 'String'>
     readonly ruleSetId: FieldRef<"SemanticRule", 'String'>
@@ -4856,10 +4468,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRule
-     */
-    omit?: SemanticRuleOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleInclude<ExtArgs> | null
@@ -4878,10 +4486,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRule
-     */
-    omit?: SemanticRuleOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleInclude<ExtArgs> | null
@@ -4899,10 +4503,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRule
      */
     select?: SemanticRuleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRule
-     */
-    omit?: SemanticRuleOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -4952,10 +4552,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRule
-     */
-    omit?: SemanticRuleOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleInclude<ExtArgs> | null
@@ -5004,10 +4600,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRule
-     */
-    omit?: SemanticRuleOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleInclude<ExtArgs> | null
@@ -5051,10 +4643,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRule
-     */
-    omit?: SemanticRuleOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleInclude<ExtArgs> | null
@@ -5084,10 +4672,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleSelectCreateManyAndReturn<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRule
-     */
-    omit?: SemanticRuleOmit<ExtArgs> | null
-    /**
      * The data used to create many SemanticRules.
      */
     data: SemanticRuleCreateManyInput | SemanticRuleCreateManyInput[]
@@ -5106,10 +4690,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRule
      */
     select?: SemanticRuleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRule
-     */
-    omit?: SemanticRuleOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -5136,40 +4716,6 @@ export namespace Prisma {
      * Filter which SemanticRules to update
      */
     where?: SemanticRuleWhereInput
-    /**
-     * Limit how many SemanticRules to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * SemanticRule updateManyAndReturn
-   */
-  export type SemanticRuleUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SemanticRule
-     */
-    select?: SemanticRuleSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRule
-     */
-    omit?: SemanticRuleOmit<ExtArgs> | null
-    /**
-     * The data used to update SemanticRules.
-     */
-    data: XOR<SemanticRuleUpdateManyMutationInput, SemanticRuleUncheckedUpdateManyInput>
-    /**
-     * Filter which SemanticRules to update
-     */
-    where?: SemanticRuleWhereInput
-    /**
-     * Limit how many SemanticRules to update.
-     */
-    limit?: number
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SemanticRuleIncludeUpdateManyAndReturn<ExtArgs> | null
   }
 
   /**
@@ -5180,10 +4726,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRule
      */
     select?: SemanticRuleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRule
-     */
-    omit?: SemanticRuleOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -5211,10 +4753,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRule
-     */
-    omit?: SemanticRuleOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleInclude<ExtArgs> | null
@@ -5232,10 +4770,6 @@ export namespace Prisma {
      * Filter which SemanticRules to delete
      */
     where?: SemanticRuleWhereInput
-    /**
-     * Limit how many SemanticRules to delete.
-     */
-    limit?: number
   }
 
   /**
@@ -5246,10 +4780,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRule
      */
     select?: SemanticRuleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRule
-     */
-    omit?: SemanticRuleOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -5483,21 +5013,6 @@ export namespace Prisma {
     ruleSet?: boolean | SemanticRuleSetDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["semanticRuleRelease"]>
 
-  export type SemanticRuleReleaseSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    ruleSetId?: boolean
-    releaseMode?: boolean
-    fromStatus?: boolean
-    toStatus?: boolean
-    releasedBy?: boolean
-    releaseNote?: boolean
-    targeting?: boolean
-    triggeredAt?: boolean
-    effectiveAt?: boolean
-    previousActiveRuleSetId?: boolean
-    ruleSet?: boolean | SemanticRuleSetDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["semanticRuleRelease"]>
-
   export type SemanticRuleReleaseSelectScalar = {
     id?: boolean
     ruleSetId?: boolean
@@ -5512,14 +5027,10 @@ export namespace Prisma {
     previousActiveRuleSetId?: boolean
   }
 
-  export type SemanticRuleReleaseOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "ruleSetId" | "releaseMode" | "fromStatus" | "toStatus" | "releasedBy" | "releaseNote" | "targeting" | "triggeredAt" | "effectiveAt" | "previousActiveRuleSetId", ExtArgs["result"]["semanticRuleRelease"]>
   export type SemanticRuleReleaseInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     ruleSet?: boolean | SemanticRuleSetDefaultArgs<ExtArgs>
   }
   export type SemanticRuleReleaseIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    ruleSet?: boolean | SemanticRuleSetDefaultArgs<ExtArgs>
-  }
-  export type SemanticRuleReleaseIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     ruleSet?: boolean | SemanticRuleSetDefaultArgs<ExtArgs>
   }
 
@@ -5546,12 +5057,12 @@ export namespace Prisma {
 
   type SemanticRuleReleaseGetPayload<S extends boolean | null | undefined | SemanticRuleReleaseDefaultArgs> = $Result.GetResult<Prisma.$SemanticRuleReleasePayload, S>
 
-  type SemanticRuleReleaseCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<SemanticRuleReleaseFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+  type SemanticRuleReleaseCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<SemanticRuleReleaseFindManyArgs, 'select' | 'include' | 'distinct'> & {
       select?: SemanticRuleReleaseCountAggregateInputType | true
     }
 
-  export interface SemanticRuleReleaseDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+  export interface SemanticRuleReleaseDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
     [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SemanticRuleRelease'], meta: { name: 'SemanticRuleRelease' } }
     /**
      * Find zero or one SemanticRuleRelease that matches the filter.
@@ -5564,10 +5075,10 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUnique<T extends SemanticRuleReleaseFindUniqueArgs>(args: SelectSubset<T, SemanticRuleReleaseFindUniqueArgs<ExtArgs>>): Prisma__SemanticRuleReleaseClient<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findUnique<T extends SemanticRuleReleaseFindUniqueArgs>(args: SelectSubset<T, SemanticRuleReleaseFindUniqueArgs<ExtArgs>>): Prisma__SemanticRuleReleaseClient<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
 
     /**
-     * Find one SemanticRuleRelease that matches the filter or throw an error with `error.code='P2025'`
+     * Find one SemanticRuleRelease that matches the filter or throw an error with `error.code='P2025'` 
      * if no matches were found.
      * @param {SemanticRuleReleaseFindUniqueOrThrowArgs} args - Arguments to find a SemanticRuleRelease
      * @example
@@ -5578,7 +5089,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUniqueOrThrow<T extends SemanticRuleReleaseFindUniqueOrThrowArgs>(args: SelectSubset<T, SemanticRuleReleaseFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleReleaseClient<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findUniqueOrThrow<T extends SemanticRuleReleaseFindUniqueOrThrowArgs>(args: SelectSubset<T, SemanticRuleReleaseFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleReleaseClient<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
 
     /**
      * Find the first SemanticRuleRelease that matches the filter.
@@ -5593,7 +5104,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirst<T extends SemanticRuleReleaseFindFirstArgs>(args?: SelectSubset<T, SemanticRuleReleaseFindFirstArgs<ExtArgs>>): Prisma__SemanticRuleReleaseClient<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findFirst<T extends SemanticRuleReleaseFindFirstArgs>(args?: SelectSubset<T, SemanticRuleReleaseFindFirstArgs<ExtArgs>>): Prisma__SemanticRuleReleaseClient<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
 
     /**
      * Find the first SemanticRuleRelease that matches the filter or
@@ -5609,7 +5120,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirstOrThrow<T extends SemanticRuleReleaseFindFirstOrThrowArgs>(args?: SelectSubset<T, SemanticRuleReleaseFindFirstOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleReleaseClient<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findFirstOrThrow<T extends SemanticRuleReleaseFindFirstOrThrowArgs>(args?: SelectSubset<T, SemanticRuleReleaseFindFirstOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleReleaseClient<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
 
     /**
      * Find zero or more SemanticRuleReleases that matches the filter.
@@ -5627,7 +5138,7 @@ export namespace Prisma {
      * const semanticRuleReleaseWithIdOnly = await prisma.semanticRuleRelease.findMany({ select: { id: true } })
      * 
      */
-    findMany<T extends SemanticRuleReleaseFindManyArgs>(args?: SelectSubset<T, SemanticRuleReleaseFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+    findMany<T extends SemanticRuleReleaseFindManyArgs>(args?: SelectSubset<T, SemanticRuleReleaseFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "findMany">>
 
     /**
      * Create a SemanticRuleRelease.
@@ -5641,7 +5152,7 @@ export namespace Prisma {
      * })
      * 
      */
-    create<T extends SemanticRuleReleaseCreateArgs>(args: SelectSubset<T, SemanticRuleReleaseCreateArgs<ExtArgs>>): Prisma__SemanticRuleReleaseClient<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    create<T extends SemanticRuleReleaseCreateArgs>(args: SelectSubset<T, SemanticRuleReleaseCreateArgs<ExtArgs>>): Prisma__SemanticRuleReleaseClient<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "create">, never, ExtArgs>
 
     /**
      * Create many SemanticRuleReleases.
@@ -5669,7 +5180,7 @@ export namespace Prisma {
      * })
      * 
      * // Create many SemanticRuleReleases and only return the `id`
-     * const semanticRuleReleaseWithIdOnly = await prisma.semanticRuleRelease.createManyAndReturn({
+     * const semanticRuleReleaseWithIdOnly = await prisma.semanticRuleRelease.createManyAndReturn({ 
      *   select: { id: true },
      *   data: [
      *     // ... provide data here
@@ -5679,7 +5190,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends SemanticRuleReleaseCreateManyAndReturnArgs>(args?: SelectSubset<T, SemanticRuleReleaseCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+    createManyAndReturn<T extends SemanticRuleReleaseCreateManyAndReturnArgs>(args?: SelectSubset<T, SemanticRuleReleaseCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "createManyAndReturn">>
 
     /**
      * Delete a SemanticRuleRelease.
@@ -5693,7 +5204,7 @@ export namespace Prisma {
      * })
      * 
      */
-    delete<T extends SemanticRuleReleaseDeleteArgs>(args: SelectSubset<T, SemanticRuleReleaseDeleteArgs<ExtArgs>>): Prisma__SemanticRuleReleaseClient<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    delete<T extends SemanticRuleReleaseDeleteArgs>(args: SelectSubset<T, SemanticRuleReleaseDeleteArgs<ExtArgs>>): Prisma__SemanticRuleReleaseClient<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "delete">, never, ExtArgs>
 
     /**
      * Update one SemanticRuleRelease.
@@ -5710,7 +5221,7 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends SemanticRuleReleaseUpdateArgs>(args: SelectSubset<T, SemanticRuleReleaseUpdateArgs<ExtArgs>>): Prisma__SemanticRuleReleaseClient<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    update<T extends SemanticRuleReleaseUpdateArgs>(args: SelectSubset<T, SemanticRuleReleaseUpdateArgs<ExtArgs>>): Prisma__SemanticRuleReleaseClient<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "update">, never, ExtArgs>
 
     /**
      * Delete zero or more SemanticRuleReleases.
@@ -5746,36 +5257,6 @@ export namespace Prisma {
     updateMany<T extends SemanticRuleReleaseUpdateManyArgs>(args: SelectSubset<T, SemanticRuleReleaseUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Update zero or more SemanticRuleReleases and returns the data updated in the database.
-     * @param {SemanticRuleReleaseUpdateManyAndReturnArgs} args - Arguments to update many SemanticRuleReleases.
-     * @example
-     * // Update many SemanticRuleReleases
-     * const semanticRuleRelease = await prisma.semanticRuleRelease.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more SemanticRuleReleases and only return the `id`
-     * const semanticRuleReleaseWithIdOnly = await prisma.semanticRuleRelease.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends SemanticRuleReleaseUpdateManyAndReturnArgs>(args: SelectSubset<T, SemanticRuleReleaseUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
      * Create or update one SemanticRuleRelease.
      * @param {SemanticRuleReleaseUpsertArgs} args - Arguments to update or create a SemanticRuleRelease.
      * @example
@@ -5792,7 +5273,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    upsert<T extends SemanticRuleReleaseUpsertArgs>(args: SelectSubset<T, SemanticRuleReleaseUpsertArgs<ExtArgs>>): Prisma__SemanticRuleReleaseClient<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    upsert<T extends SemanticRuleReleaseUpsertArgs>(args: SelectSubset<T, SemanticRuleReleaseUpsertArgs<ExtArgs>>): Prisma__SemanticRuleReleaseClient<$Result.GetResult<Prisma.$SemanticRuleReleasePayload<ExtArgs>, T, "upsert">, never, ExtArgs>
 
 
     /**
@@ -5932,9 +5413,9 @@ export namespace Prisma {
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__SemanticRuleReleaseClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__SemanticRuleReleaseClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    ruleSet<T extends SemanticRuleSetDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleSetDefaultArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    ruleSet<T extends SemanticRuleSetDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleSetDefaultArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -5962,7 +5443,7 @@ export namespace Prisma {
 
   /**
    * Fields of the SemanticRuleRelease model
-   */
+   */ 
   interface SemanticRuleReleaseFieldRefs {
     readonly id: FieldRef<"SemanticRuleRelease", 'String'>
     readonly ruleSetId: FieldRef<"SemanticRuleRelease", 'String'>
@@ -5988,10 +5469,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleReleaseSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleRelease
-     */
-    omit?: SemanticRuleReleaseOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleReleaseInclude<ExtArgs> | null
@@ -6010,10 +5487,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleReleaseSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleRelease
-     */
-    omit?: SemanticRuleReleaseOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleReleaseInclude<ExtArgs> | null
@@ -6031,10 +5504,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleRelease
      */
     select?: SemanticRuleReleaseSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleRelease
-     */
-    omit?: SemanticRuleReleaseOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -6084,10 +5553,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleReleaseSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleRelease
-     */
-    omit?: SemanticRuleReleaseOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleReleaseInclude<ExtArgs> | null
@@ -6136,10 +5601,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleReleaseSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleRelease
-     */
-    omit?: SemanticRuleReleaseOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleReleaseInclude<ExtArgs> | null
@@ -6183,10 +5644,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleReleaseSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleRelease
-     */
-    omit?: SemanticRuleReleaseOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleReleaseInclude<ExtArgs> | null
@@ -6216,10 +5673,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleReleaseSelectCreateManyAndReturn<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleRelease
-     */
-    omit?: SemanticRuleReleaseOmit<ExtArgs> | null
-    /**
      * The data used to create many SemanticRuleReleases.
      */
     data: SemanticRuleReleaseCreateManyInput | SemanticRuleReleaseCreateManyInput[]
@@ -6238,10 +5691,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleRelease
      */
     select?: SemanticRuleReleaseSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleRelease
-     */
-    omit?: SemanticRuleReleaseOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -6268,40 +5717,6 @@ export namespace Prisma {
      * Filter which SemanticRuleReleases to update
      */
     where?: SemanticRuleReleaseWhereInput
-    /**
-     * Limit how many SemanticRuleReleases to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * SemanticRuleRelease updateManyAndReturn
-   */
-  export type SemanticRuleReleaseUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SemanticRuleRelease
-     */
-    select?: SemanticRuleReleaseSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleRelease
-     */
-    omit?: SemanticRuleReleaseOmit<ExtArgs> | null
-    /**
-     * The data used to update SemanticRuleReleases.
-     */
-    data: XOR<SemanticRuleReleaseUpdateManyMutationInput, SemanticRuleReleaseUncheckedUpdateManyInput>
-    /**
-     * Filter which SemanticRuleReleases to update
-     */
-    where?: SemanticRuleReleaseWhereInput
-    /**
-     * Limit how many SemanticRuleReleases to update.
-     */
-    limit?: number
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SemanticRuleReleaseIncludeUpdateManyAndReturn<ExtArgs> | null
   }
 
   /**
@@ -6312,10 +5727,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleRelease
      */
     select?: SemanticRuleReleaseSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleRelease
-     */
-    omit?: SemanticRuleReleaseOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -6343,10 +5754,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleReleaseSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleRelease
-     */
-    omit?: SemanticRuleReleaseOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleReleaseInclude<ExtArgs> | null
@@ -6364,10 +5771,6 @@ export namespace Prisma {
      * Filter which SemanticRuleReleases to delete
      */
     where?: SemanticRuleReleaseWhereInput
-    /**
-     * Limit how many SemanticRuleReleases to delete.
-     */
-    limit?: number
   }
 
   /**
@@ -6378,10 +5781,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleRelease
      */
     select?: SemanticRuleReleaseSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleRelease
-     */
-    omit?: SemanticRuleReleaseOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -6638,22 +6037,6 @@ export namespace Prisma {
     ruleSet?: boolean | SemanticRuleSetDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["semanticRuleTargeting"]>
 
-  export type SemanticRuleTargetingSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    ruleSetId?: boolean
-    environments?: boolean
-    hosts?: boolean
-    tenantIds?: boolean
-    userIds?: boolean
-    skillIds?: boolean
-    pageTypes?: boolean
-    sampleRate?: boolean
-    enabled?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-    ruleSet?: boolean | SemanticRuleSetDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["semanticRuleTargeting"]>
-
   export type SemanticRuleTargetingSelectScalar = {
     id?: boolean
     ruleSetId?: boolean
@@ -6669,14 +6052,10 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type SemanticRuleTargetingOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "ruleSetId" | "environments" | "hosts" | "tenantIds" | "userIds" | "skillIds" | "pageTypes" | "sampleRate" | "enabled" | "createdAt" | "updatedAt", ExtArgs["result"]["semanticRuleTargeting"]>
   export type SemanticRuleTargetingInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     ruleSet?: boolean | SemanticRuleSetDefaultArgs<ExtArgs>
   }
   export type SemanticRuleTargetingIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    ruleSet?: boolean | SemanticRuleSetDefaultArgs<ExtArgs>
-  }
-  export type SemanticRuleTargetingIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     ruleSet?: boolean | SemanticRuleSetDefaultArgs<ExtArgs>
   }
 
@@ -6704,12 +6083,12 @@ export namespace Prisma {
 
   type SemanticRuleTargetingGetPayload<S extends boolean | null | undefined | SemanticRuleTargetingDefaultArgs> = $Result.GetResult<Prisma.$SemanticRuleTargetingPayload, S>
 
-  type SemanticRuleTargetingCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<SemanticRuleTargetingFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+  type SemanticRuleTargetingCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<SemanticRuleTargetingFindManyArgs, 'select' | 'include' | 'distinct'> & {
       select?: SemanticRuleTargetingCountAggregateInputType | true
     }
 
-  export interface SemanticRuleTargetingDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+  export interface SemanticRuleTargetingDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
     [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SemanticRuleTargeting'], meta: { name: 'SemanticRuleTargeting' } }
     /**
      * Find zero or one SemanticRuleTargeting that matches the filter.
@@ -6722,10 +6101,10 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUnique<T extends SemanticRuleTargetingFindUniqueArgs>(args: SelectSubset<T, SemanticRuleTargetingFindUniqueArgs<ExtArgs>>): Prisma__SemanticRuleTargetingClient<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findUnique<T extends SemanticRuleTargetingFindUniqueArgs>(args: SelectSubset<T, SemanticRuleTargetingFindUniqueArgs<ExtArgs>>): Prisma__SemanticRuleTargetingClient<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
 
     /**
-     * Find one SemanticRuleTargeting that matches the filter or throw an error with `error.code='P2025'`
+     * Find one SemanticRuleTargeting that matches the filter or throw an error with `error.code='P2025'` 
      * if no matches were found.
      * @param {SemanticRuleTargetingFindUniqueOrThrowArgs} args - Arguments to find a SemanticRuleTargeting
      * @example
@@ -6736,7 +6115,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUniqueOrThrow<T extends SemanticRuleTargetingFindUniqueOrThrowArgs>(args: SelectSubset<T, SemanticRuleTargetingFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleTargetingClient<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findUniqueOrThrow<T extends SemanticRuleTargetingFindUniqueOrThrowArgs>(args: SelectSubset<T, SemanticRuleTargetingFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleTargetingClient<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
 
     /**
      * Find the first SemanticRuleTargeting that matches the filter.
@@ -6751,7 +6130,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirst<T extends SemanticRuleTargetingFindFirstArgs>(args?: SelectSubset<T, SemanticRuleTargetingFindFirstArgs<ExtArgs>>): Prisma__SemanticRuleTargetingClient<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findFirst<T extends SemanticRuleTargetingFindFirstArgs>(args?: SelectSubset<T, SemanticRuleTargetingFindFirstArgs<ExtArgs>>): Prisma__SemanticRuleTargetingClient<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
 
     /**
      * Find the first SemanticRuleTargeting that matches the filter or
@@ -6767,7 +6146,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirstOrThrow<T extends SemanticRuleTargetingFindFirstOrThrowArgs>(args?: SelectSubset<T, SemanticRuleTargetingFindFirstOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleTargetingClient<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findFirstOrThrow<T extends SemanticRuleTargetingFindFirstOrThrowArgs>(args?: SelectSubset<T, SemanticRuleTargetingFindFirstOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleTargetingClient<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
 
     /**
      * Find zero or more SemanticRuleTargetings that matches the filter.
@@ -6785,7 +6164,7 @@ export namespace Prisma {
      * const semanticRuleTargetingWithIdOnly = await prisma.semanticRuleTargeting.findMany({ select: { id: true } })
      * 
      */
-    findMany<T extends SemanticRuleTargetingFindManyArgs>(args?: SelectSubset<T, SemanticRuleTargetingFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+    findMany<T extends SemanticRuleTargetingFindManyArgs>(args?: SelectSubset<T, SemanticRuleTargetingFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "findMany">>
 
     /**
      * Create a SemanticRuleTargeting.
@@ -6799,7 +6178,7 @@ export namespace Prisma {
      * })
      * 
      */
-    create<T extends SemanticRuleTargetingCreateArgs>(args: SelectSubset<T, SemanticRuleTargetingCreateArgs<ExtArgs>>): Prisma__SemanticRuleTargetingClient<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    create<T extends SemanticRuleTargetingCreateArgs>(args: SelectSubset<T, SemanticRuleTargetingCreateArgs<ExtArgs>>): Prisma__SemanticRuleTargetingClient<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "create">, never, ExtArgs>
 
     /**
      * Create many SemanticRuleTargetings.
@@ -6827,7 +6206,7 @@ export namespace Prisma {
      * })
      * 
      * // Create many SemanticRuleTargetings and only return the `id`
-     * const semanticRuleTargetingWithIdOnly = await prisma.semanticRuleTargeting.createManyAndReturn({
+     * const semanticRuleTargetingWithIdOnly = await prisma.semanticRuleTargeting.createManyAndReturn({ 
      *   select: { id: true },
      *   data: [
      *     // ... provide data here
@@ -6837,7 +6216,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends SemanticRuleTargetingCreateManyAndReturnArgs>(args?: SelectSubset<T, SemanticRuleTargetingCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+    createManyAndReturn<T extends SemanticRuleTargetingCreateManyAndReturnArgs>(args?: SelectSubset<T, SemanticRuleTargetingCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "createManyAndReturn">>
 
     /**
      * Delete a SemanticRuleTargeting.
@@ -6851,7 +6230,7 @@ export namespace Prisma {
      * })
      * 
      */
-    delete<T extends SemanticRuleTargetingDeleteArgs>(args: SelectSubset<T, SemanticRuleTargetingDeleteArgs<ExtArgs>>): Prisma__SemanticRuleTargetingClient<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    delete<T extends SemanticRuleTargetingDeleteArgs>(args: SelectSubset<T, SemanticRuleTargetingDeleteArgs<ExtArgs>>): Prisma__SemanticRuleTargetingClient<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "delete">, never, ExtArgs>
 
     /**
      * Update one SemanticRuleTargeting.
@@ -6868,7 +6247,7 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends SemanticRuleTargetingUpdateArgs>(args: SelectSubset<T, SemanticRuleTargetingUpdateArgs<ExtArgs>>): Prisma__SemanticRuleTargetingClient<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    update<T extends SemanticRuleTargetingUpdateArgs>(args: SelectSubset<T, SemanticRuleTargetingUpdateArgs<ExtArgs>>): Prisma__SemanticRuleTargetingClient<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "update">, never, ExtArgs>
 
     /**
      * Delete zero or more SemanticRuleTargetings.
@@ -6904,36 +6283,6 @@ export namespace Prisma {
     updateMany<T extends SemanticRuleTargetingUpdateManyArgs>(args: SelectSubset<T, SemanticRuleTargetingUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Update zero or more SemanticRuleTargetings and returns the data updated in the database.
-     * @param {SemanticRuleTargetingUpdateManyAndReturnArgs} args - Arguments to update many SemanticRuleTargetings.
-     * @example
-     * // Update many SemanticRuleTargetings
-     * const semanticRuleTargeting = await prisma.semanticRuleTargeting.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more SemanticRuleTargetings and only return the `id`
-     * const semanticRuleTargetingWithIdOnly = await prisma.semanticRuleTargeting.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends SemanticRuleTargetingUpdateManyAndReturnArgs>(args: SelectSubset<T, SemanticRuleTargetingUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
      * Create or update one SemanticRuleTargeting.
      * @param {SemanticRuleTargetingUpsertArgs} args - Arguments to update or create a SemanticRuleTargeting.
      * @example
@@ -6950,7 +6299,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    upsert<T extends SemanticRuleTargetingUpsertArgs>(args: SelectSubset<T, SemanticRuleTargetingUpsertArgs<ExtArgs>>): Prisma__SemanticRuleTargetingClient<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    upsert<T extends SemanticRuleTargetingUpsertArgs>(args: SelectSubset<T, SemanticRuleTargetingUpsertArgs<ExtArgs>>): Prisma__SemanticRuleTargetingClient<$Result.GetResult<Prisma.$SemanticRuleTargetingPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
 
 
     /**
@@ -7090,9 +6439,9 @@ export namespace Prisma {
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__SemanticRuleTargetingClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__SemanticRuleTargetingClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    ruleSet<T extends SemanticRuleSetDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleSetDefaultArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    ruleSet<T extends SemanticRuleSetDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleSetDefaultArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -7120,7 +6469,7 @@ export namespace Prisma {
 
   /**
    * Fields of the SemanticRuleTargeting model
-   */
+   */ 
   interface SemanticRuleTargetingFieldRefs {
     readonly id: FieldRef<"SemanticRuleTargeting", 'String'>
     readonly ruleSetId: FieldRef<"SemanticRuleTargeting", 'String'>
@@ -7147,10 +6496,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleTargetingSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleTargeting
-     */
-    omit?: SemanticRuleTargetingOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleTargetingInclude<ExtArgs> | null
@@ -7169,10 +6514,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleTargetingSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleTargeting
-     */
-    omit?: SemanticRuleTargetingOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleTargetingInclude<ExtArgs> | null
@@ -7190,10 +6531,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleTargeting
      */
     select?: SemanticRuleTargetingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleTargeting
-     */
-    omit?: SemanticRuleTargetingOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -7243,10 +6580,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleTargetingSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleTargeting
-     */
-    omit?: SemanticRuleTargetingOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleTargetingInclude<ExtArgs> | null
@@ -7295,10 +6628,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleTargetingSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleTargeting
-     */
-    omit?: SemanticRuleTargetingOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleTargetingInclude<ExtArgs> | null
@@ -7342,10 +6671,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleTargetingSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleTargeting
-     */
-    omit?: SemanticRuleTargetingOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleTargetingInclude<ExtArgs> | null
@@ -7375,10 +6700,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleTargetingSelectCreateManyAndReturn<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleTargeting
-     */
-    omit?: SemanticRuleTargetingOmit<ExtArgs> | null
-    /**
      * The data used to create many SemanticRuleTargetings.
      */
     data: SemanticRuleTargetingCreateManyInput | SemanticRuleTargetingCreateManyInput[]
@@ -7397,10 +6718,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleTargeting
      */
     select?: SemanticRuleTargetingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleTargeting
-     */
-    omit?: SemanticRuleTargetingOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -7427,40 +6744,6 @@ export namespace Prisma {
      * Filter which SemanticRuleTargetings to update
      */
     where?: SemanticRuleTargetingWhereInput
-    /**
-     * Limit how many SemanticRuleTargetings to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * SemanticRuleTargeting updateManyAndReturn
-   */
-  export type SemanticRuleTargetingUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SemanticRuleTargeting
-     */
-    select?: SemanticRuleTargetingSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleTargeting
-     */
-    omit?: SemanticRuleTargetingOmit<ExtArgs> | null
-    /**
-     * The data used to update SemanticRuleTargetings.
-     */
-    data: XOR<SemanticRuleTargetingUpdateManyMutationInput, SemanticRuleTargetingUncheckedUpdateManyInput>
-    /**
-     * Filter which SemanticRuleTargetings to update
-     */
-    where?: SemanticRuleTargetingWhereInput
-    /**
-     * Limit how many SemanticRuleTargetings to update.
-     */
-    limit?: number
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SemanticRuleTargetingIncludeUpdateManyAndReturn<ExtArgs> | null
   }
 
   /**
@@ -7471,10 +6754,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleTargeting
      */
     select?: SemanticRuleTargetingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleTargeting
-     */
-    omit?: SemanticRuleTargetingOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -7502,10 +6781,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleTargetingSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleTargeting
-     */
-    omit?: SemanticRuleTargetingOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleTargetingInclude<ExtArgs> | null
@@ -7523,10 +6798,6 @@ export namespace Prisma {
      * Filter which SemanticRuleTargetings to delete
      */
     where?: SemanticRuleTargetingWhereInput
-    /**
-     * Limit how many SemanticRuleTargetings to delete.
-     */
-    limit?: number
   }
 
   /**
@@ -7537,10 +6808,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleTargeting
      */
     select?: SemanticRuleTargetingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleTargeting
-     */
-    omit?: SemanticRuleTargetingOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -7827,29 +7094,6 @@ export namespace Prisma {
     ruleSet?: boolean | SemanticRuleHitLog$ruleSetArgs<ExtArgs>
   }, ExtArgs["result"]["semanticRuleHitLog"]>
 
-  export type SemanticRuleHitLogSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    domainId?: boolean
-    ruleSetId?: boolean
-    matchedRuleIds?: boolean
-    inputText?: boolean
-    normalizedInput?: boolean
-    pageUrl?: boolean
-    pageTitle?: boolean
-    pageType?: boolean
-    observationSummary?: boolean
-    availableCandidateIds?: boolean
-    normalizedSemantic?: boolean
-    parserOutput?: boolean
-    usedAiFallback?: boolean
-    finalExecutionSuccess?: boolean
-    failureReason?: boolean
-    traceId?: boolean
-    createdAt?: boolean
-    domain?: boolean | SemanticRuleDomainDefaultArgs<ExtArgs>
-    ruleSet?: boolean | SemanticRuleHitLog$ruleSetArgs<ExtArgs>
-  }, ExtArgs["result"]["semanticRuleHitLog"]>
-
   export type SemanticRuleHitLogSelectScalar = {
     id?: boolean
     domainId?: boolean
@@ -7871,16 +7115,11 @@ export namespace Prisma {
     createdAt?: boolean
   }
 
-  export type SemanticRuleHitLogOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "domainId" | "ruleSetId" | "matchedRuleIds" | "inputText" | "normalizedInput" | "pageUrl" | "pageTitle" | "pageType" | "observationSummary" | "availableCandidateIds" | "normalizedSemantic" | "parserOutput" | "usedAiFallback" | "finalExecutionSuccess" | "failureReason" | "traceId" | "createdAt", ExtArgs["result"]["semanticRuleHitLog"]>
   export type SemanticRuleHitLogInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     domain?: boolean | SemanticRuleDomainDefaultArgs<ExtArgs>
     ruleSet?: boolean | SemanticRuleHitLog$ruleSetArgs<ExtArgs>
   }
   export type SemanticRuleHitLogIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    domain?: boolean | SemanticRuleDomainDefaultArgs<ExtArgs>
-    ruleSet?: boolean | SemanticRuleHitLog$ruleSetArgs<ExtArgs>
-  }
-  export type SemanticRuleHitLogIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     domain?: boolean | SemanticRuleDomainDefaultArgs<ExtArgs>
     ruleSet?: boolean | SemanticRuleHitLog$ruleSetArgs<ExtArgs>
   }
@@ -7916,12 +7155,12 @@ export namespace Prisma {
 
   type SemanticRuleHitLogGetPayload<S extends boolean | null | undefined | SemanticRuleHitLogDefaultArgs> = $Result.GetResult<Prisma.$SemanticRuleHitLogPayload, S>
 
-  type SemanticRuleHitLogCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<SemanticRuleHitLogFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+  type SemanticRuleHitLogCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<SemanticRuleHitLogFindManyArgs, 'select' | 'include' | 'distinct'> & {
       select?: SemanticRuleHitLogCountAggregateInputType | true
     }
 
-  export interface SemanticRuleHitLogDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+  export interface SemanticRuleHitLogDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
     [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SemanticRuleHitLog'], meta: { name: 'SemanticRuleHitLog' } }
     /**
      * Find zero or one SemanticRuleHitLog that matches the filter.
@@ -7934,10 +7173,10 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUnique<T extends SemanticRuleHitLogFindUniqueArgs>(args: SelectSubset<T, SemanticRuleHitLogFindUniqueArgs<ExtArgs>>): Prisma__SemanticRuleHitLogClient<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findUnique<T extends SemanticRuleHitLogFindUniqueArgs>(args: SelectSubset<T, SemanticRuleHitLogFindUniqueArgs<ExtArgs>>): Prisma__SemanticRuleHitLogClient<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
 
     /**
-     * Find one SemanticRuleHitLog that matches the filter or throw an error with `error.code='P2025'`
+     * Find one SemanticRuleHitLog that matches the filter or throw an error with `error.code='P2025'` 
      * if no matches were found.
      * @param {SemanticRuleHitLogFindUniqueOrThrowArgs} args - Arguments to find a SemanticRuleHitLog
      * @example
@@ -7948,7 +7187,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUniqueOrThrow<T extends SemanticRuleHitLogFindUniqueOrThrowArgs>(args: SelectSubset<T, SemanticRuleHitLogFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleHitLogClient<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findUniqueOrThrow<T extends SemanticRuleHitLogFindUniqueOrThrowArgs>(args: SelectSubset<T, SemanticRuleHitLogFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleHitLogClient<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
 
     /**
      * Find the first SemanticRuleHitLog that matches the filter.
@@ -7963,7 +7202,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirst<T extends SemanticRuleHitLogFindFirstArgs>(args?: SelectSubset<T, SemanticRuleHitLogFindFirstArgs<ExtArgs>>): Prisma__SemanticRuleHitLogClient<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findFirst<T extends SemanticRuleHitLogFindFirstArgs>(args?: SelectSubset<T, SemanticRuleHitLogFindFirstArgs<ExtArgs>>): Prisma__SemanticRuleHitLogClient<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
 
     /**
      * Find the first SemanticRuleHitLog that matches the filter or
@@ -7979,7 +7218,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirstOrThrow<T extends SemanticRuleHitLogFindFirstOrThrowArgs>(args?: SelectSubset<T, SemanticRuleHitLogFindFirstOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleHitLogClient<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findFirstOrThrow<T extends SemanticRuleHitLogFindFirstOrThrowArgs>(args?: SelectSubset<T, SemanticRuleHitLogFindFirstOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleHitLogClient<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
 
     /**
      * Find zero or more SemanticRuleHitLogs that matches the filter.
@@ -7997,7 +7236,7 @@ export namespace Prisma {
      * const semanticRuleHitLogWithIdOnly = await prisma.semanticRuleHitLog.findMany({ select: { id: true } })
      * 
      */
-    findMany<T extends SemanticRuleHitLogFindManyArgs>(args?: SelectSubset<T, SemanticRuleHitLogFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+    findMany<T extends SemanticRuleHitLogFindManyArgs>(args?: SelectSubset<T, SemanticRuleHitLogFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "findMany">>
 
     /**
      * Create a SemanticRuleHitLog.
@@ -8011,7 +7250,7 @@ export namespace Prisma {
      * })
      * 
      */
-    create<T extends SemanticRuleHitLogCreateArgs>(args: SelectSubset<T, SemanticRuleHitLogCreateArgs<ExtArgs>>): Prisma__SemanticRuleHitLogClient<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    create<T extends SemanticRuleHitLogCreateArgs>(args: SelectSubset<T, SemanticRuleHitLogCreateArgs<ExtArgs>>): Prisma__SemanticRuleHitLogClient<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "create">, never, ExtArgs>
 
     /**
      * Create many SemanticRuleHitLogs.
@@ -8039,7 +7278,7 @@ export namespace Prisma {
      * })
      * 
      * // Create many SemanticRuleHitLogs and only return the `id`
-     * const semanticRuleHitLogWithIdOnly = await prisma.semanticRuleHitLog.createManyAndReturn({
+     * const semanticRuleHitLogWithIdOnly = await prisma.semanticRuleHitLog.createManyAndReturn({ 
      *   select: { id: true },
      *   data: [
      *     // ... provide data here
@@ -8049,7 +7288,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends SemanticRuleHitLogCreateManyAndReturnArgs>(args?: SelectSubset<T, SemanticRuleHitLogCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+    createManyAndReturn<T extends SemanticRuleHitLogCreateManyAndReturnArgs>(args?: SelectSubset<T, SemanticRuleHitLogCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "createManyAndReturn">>
 
     /**
      * Delete a SemanticRuleHitLog.
@@ -8063,7 +7302,7 @@ export namespace Prisma {
      * })
      * 
      */
-    delete<T extends SemanticRuleHitLogDeleteArgs>(args: SelectSubset<T, SemanticRuleHitLogDeleteArgs<ExtArgs>>): Prisma__SemanticRuleHitLogClient<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    delete<T extends SemanticRuleHitLogDeleteArgs>(args: SelectSubset<T, SemanticRuleHitLogDeleteArgs<ExtArgs>>): Prisma__SemanticRuleHitLogClient<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "delete">, never, ExtArgs>
 
     /**
      * Update one SemanticRuleHitLog.
@@ -8080,7 +7319,7 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends SemanticRuleHitLogUpdateArgs>(args: SelectSubset<T, SemanticRuleHitLogUpdateArgs<ExtArgs>>): Prisma__SemanticRuleHitLogClient<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    update<T extends SemanticRuleHitLogUpdateArgs>(args: SelectSubset<T, SemanticRuleHitLogUpdateArgs<ExtArgs>>): Prisma__SemanticRuleHitLogClient<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "update">, never, ExtArgs>
 
     /**
      * Delete zero or more SemanticRuleHitLogs.
@@ -8116,36 +7355,6 @@ export namespace Prisma {
     updateMany<T extends SemanticRuleHitLogUpdateManyArgs>(args: SelectSubset<T, SemanticRuleHitLogUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Update zero or more SemanticRuleHitLogs and returns the data updated in the database.
-     * @param {SemanticRuleHitLogUpdateManyAndReturnArgs} args - Arguments to update many SemanticRuleHitLogs.
-     * @example
-     * // Update many SemanticRuleHitLogs
-     * const semanticRuleHitLog = await prisma.semanticRuleHitLog.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more SemanticRuleHitLogs and only return the `id`
-     * const semanticRuleHitLogWithIdOnly = await prisma.semanticRuleHitLog.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends SemanticRuleHitLogUpdateManyAndReturnArgs>(args: SelectSubset<T, SemanticRuleHitLogUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
      * Create or update one SemanticRuleHitLog.
      * @param {SemanticRuleHitLogUpsertArgs} args - Arguments to update or create a SemanticRuleHitLog.
      * @example
@@ -8162,7 +7371,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    upsert<T extends SemanticRuleHitLogUpsertArgs>(args: SelectSubset<T, SemanticRuleHitLogUpsertArgs<ExtArgs>>): Prisma__SemanticRuleHitLogClient<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    upsert<T extends SemanticRuleHitLogUpsertArgs>(args: SelectSubset<T, SemanticRuleHitLogUpsertArgs<ExtArgs>>): Prisma__SemanticRuleHitLogClient<$Result.GetResult<Prisma.$SemanticRuleHitLogPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
 
 
     /**
@@ -8302,10 +7511,10 @@ export namespace Prisma {
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__SemanticRuleHitLogClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__SemanticRuleHitLogClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    domain<T extends SemanticRuleDomainDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleDomainDefaultArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-    ruleSet<T extends SemanticRuleHitLog$ruleSetArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleHitLog$ruleSetArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    domain<T extends SemanticRuleDomainDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleDomainDefaultArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    ruleSet<T extends SemanticRuleHitLog$ruleSetArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleHitLog$ruleSetArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findUniqueOrThrow"> | null, null, ExtArgs>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -8333,7 +7542,7 @@ export namespace Prisma {
 
   /**
    * Fields of the SemanticRuleHitLog model
-   */
+   */ 
   interface SemanticRuleHitLogFieldRefs {
     readonly id: FieldRef<"SemanticRuleHitLog", 'String'>
     readonly domainId: FieldRef<"SemanticRuleHitLog", 'String'>
@@ -8366,10 +7575,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleHitLogSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleHitLog
-     */
-    omit?: SemanticRuleHitLogOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleHitLogInclude<ExtArgs> | null
@@ -8388,10 +7593,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleHitLogSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleHitLog
-     */
-    omit?: SemanticRuleHitLogOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleHitLogInclude<ExtArgs> | null
@@ -8409,10 +7610,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleHitLog
      */
     select?: SemanticRuleHitLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleHitLog
-     */
-    omit?: SemanticRuleHitLogOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -8462,10 +7659,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleHitLogSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleHitLog
-     */
-    omit?: SemanticRuleHitLogOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleHitLogInclude<ExtArgs> | null
@@ -8514,10 +7707,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleHitLogSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleHitLog
-     */
-    omit?: SemanticRuleHitLogOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleHitLogInclude<ExtArgs> | null
@@ -8561,10 +7750,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleHitLogSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleHitLog
-     */
-    omit?: SemanticRuleHitLogOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleHitLogInclude<ExtArgs> | null
@@ -8594,10 +7779,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleHitLogSelectCreateManyAndReturn<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleHitLog
-     */
-    omit?: SemanticRuleHitLogOmit<ExtArgs> | null
-    /**
      * The data used to create many SemanticRuleHitLogs.
      */
     data: SemanticRuleHitLogCreateManyInput | SemanticRuleHitLogCreateManyInput[]
@@ -8616,10 +7797,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleHitLog
      */
     select?: SemanticRuleHitLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleHitLog
-     */
-    omit?: SemanticRuleHitLogOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -8646,40 +7823,6 @@ export namespace Prisma {
      * Filter which SemanticRuleHitLogs to update
      */
     where?: SemanticRuleHitLogWhereInput
-    /**
-     * Limit how many SemanticRuleHitLogs to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * SemanticRuleHitLog updateManyAndReturn
-   */
-  export type SemanticRuleHitLogUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SemanticRuleHitLog
-     */
-    select?: SemanticRuleHitLogSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleHitLog
-     */
-    omit?: SemanticRuleHitLogOmit<ExtArgs> | null
-    /**
-     * The data used to update SemanticRuleHitLogs.
-     */
-    data: XOR<SemanticRuleHitLogUpdateManyMutationInput, SemanticRuleHitLogUncheckedUpdateManyInput>
-    /**
-     * Filter which SemanticRuleHitLogs to update
-     */
-    where?: SemanticRuleHitLogWhereInput
-    /**
-     * Limit how many SemanticRuleHitLogs to update.
-     */
-    limit?: number
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SemanticRuleHitLogIncludeUpdateManyAndReturn<ExtArgs> | null
   }
 
   /**
@@ -8690,10 +7833,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleHitLog
      */
     select?: SemanticRuleHitLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleHitLog
-     */
-    omit?: SemanticRuleHitLogOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -8721,10 +7860,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleHitLogSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleHitLog
-     */
-    omit?: SemanticRuleHitLogOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleHitLogInclude<ExtArgs> | null
@@ -8742,10 +7877,6 @@ export namespace Prisma {
      * Filter which SemanticRuleHitLogs to delete
      */
     where?: SemanticRuleHitLogWhereInput
-    /**
-     * Limit how many SemanticRuleHitLogs to delete.
-     */
-    limit?: number
   }
 
   /**
@@ -8756,10 +7887,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleSet
      */
     select?: SemanticRuleSetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleSet
-     */
-    omit?: SemanticRuleSetOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -8775,10 +7902,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleHitLog
      */
     select?: SemanticRuleHitLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleHitLog
-     */
-    omit?: SemanticRuleHitLogOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -9153,41 +8276,6 @@ export namespace Prisma {
     ruleSet?: boolean | SemanticRuleErrorLog$ruleSetArgs<ExtArgs>
   }, ExtArgs["result"]["semanticRuleErrorLog"]>
 
-  export type SemanticRuleErrorLogSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    domainId?: boolean
-    ruleSetId?: boolean
-    source?: boolean
-    errorType?: boolean
-    errorCode?: boolean
-    errorMessage?: boolean
-    inputText?: boolean
-    normalizedInput?: boolean
-    traceId?: boolean
-    sessionId?: boolean
-    taskId?: boolean
-    stepId?: boolean
-    pageUrl?: boolean
-    pageTitle?: boolean
-    host?: boolean
-    pageType?: boolean
-    observationSummary?: boolean
-    candidateSummary?: boolean
-    matchedRuleIds?: boolean
-    normalizedSemantic?: boolean
-    parserOutput?: boolean
-    aiFallbackInput?: boolean
-    aiFallbackOutput?: boolean
-    screenshotUrl?: boolean
-    domSnippet?: boolean
-    locatorInfo?: boolean
-    consoleErrors?: boolean
-    metadata?: boolean
-    createdAt?: boolean
-    domain?: boolean | SemanticRuleDomainDefaultArgs<ExtArgs>
-    ruleSet?: boolean | SemanticRuleErrorLog$ruleSetArgs<ExtArgs>
-  }, ExtArgs["result"]["semanticRuleErrorLog"]>
-
   export type SemanticRuleErrorLogSelectScalar = {
     id?: boolean
     domainId?: boolean
@@ -9221,16 +8309,11 @@ export namespace Prisma {
     createdAt?: boolean
   }
 
-  export type SemanticRuleErrorLogOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "domainId" | "ruleSetId" | "source" | "errorType" | "errorCode" | "errorMessage" | "inputText" | "normalizedInput" | "traceId" | "sessionId" | "taskId" | "stepId" | "pageUrl" | "pageTitle" | "host" | "pageType" | "observationSummary" | "candidateSummary" | "matchedRuleIds" | "normalizedSemantic" | "parserOutput" | "aiFallbackInput" | "aiFallbackOutput" | "screenshotUrl" | "domSnippet" | "locatorInfo" | "consoleErrors" | "metadata" | "createdAt", ExtArgs["result"]["semanticRuleErrorLog"]>
   export type SemanticRuleErrorLogInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     domain?: boolean | SemanticRuleDomainDefaultArgs<ExtArgs>
     ruleSet?: boolean | SemanticRuleErrorLog$ruleSetArgs<ExtArgs>
   }
   export type SemanticRuleErrorLogIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    domain?: boolean | SemanticRuleDomainDefaultArgs<ExtArgs>
-    ruleSet?: boolean | SemanticRuleErrorLog$ruleSetArgs<ExtArgs>
-  }
-  export type SemanticRuleErrorLogIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     domain?: boolean | SemanticRuleDomainDefaultArgs<ExtArgs>
     ruleSet?: boolean | SemanticRuleErrorLog$ruleSetArgs<ExtArgs>
   }
@@ -9278,12 +8361,12 @@ export namespace Prisma {
 
   type SemanticRuleErrorLogGetPayload<S extends boolean | null | undefined | SemanticRuleErrorLogDefaultArgs> = $Result.GetResult<Prisma.$SemanticRuleErrorLogPayload, S>
 
-  type SemanticRuleErrorLogCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<SemanticRuleErrorLogFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+  type SemanticRuleErrorLogCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<SemanticRuleErrorLogFindManyArgs, 'select' | 'include' | 'distinct'> & {
       select?: SemanticRuleErrorLogCountAggregateInputType | true
     }
 
-  export interface SemanticRuleErrorLogDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+  export interface SemanticRuleErrorLogDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
     [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SemanticRuleErrorLog'], meta: { name: 'SemanticRuleErrorLog' } }
     /**
      * Find zero or one SemanticRuleErrorLog that matches the filter.
@@ -9296,10 +8379,10 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUnique<T extends SemanticRuleErrorLogFindUniqueArgs>(args: SelectSubset<T, SemanticRuleErrorLogFindUniqueArgs<ExtArgs>>): Prisma__SemanticRuleErrorLogClient<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findUnique<T extends SemanticRuleErrorLogFindUniqueArgs>(args: SelectSubset<T, SemanticRuleErrorLogFindUniqueArgs<ExtArgs>>): Prisma__SemanticRuleErrorLogClient<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
 
     /**
-     * Find one SemanticRuleErrorLog that matches the filter or throw an error with `error.code='P2025'`
+     * Find one SemanticRuleErrorLog that matches the filter or throw an error with `error.code='P2025'` 
      * if no matches were found.
      * @param {SemanticRuleErrorLogFindUniqueOrThrowArgs} args - Arguments to find a SemanticRuleErrorLog
      * @example
@@ -9310,7 +8393,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUniqueOrThrow<T extends SemanticRuleErrorLogFindUniqueOrThrowArgs>(args: SelectSubset<T, SemanticRuleErrorLogFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleErrorLogClient<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findUniqueOrThrow<T extends SemanticRuleErrorLogFindUniqueOrThrowArgs>(args: SelectSubset<T, SemanticRuleErrorLogFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleErrorLogClient<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
 
     /**
      * Find the first SemanticRuleErrorLog that matches the filter.
@@ -9325,7 +8408,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirst<T extends SemanticRuleErrorLogFindFirstArgs>(args?: SelectSubset<T, SemanticRuleErrorLogFindFirstArgs<ExtArgs>>): Prisma__SemanticRuleErrorLogClient<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findFirst<T extends SemanticRuleErrorLogFindFirstArgs>(args?: SelectSubset<T, SemanticRuleErrorLogFindFirstArgs<ExtArgs>>): Prisma__SemanticRuleErrorLogClient<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
 
     /**
      * Find the first SemanticRuleErrorLog that matches the filter or
@@ -9341,7 +8424,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirstOrThrow<T extends SemanticRuleErrorLogFindFirstOrThrowArgs>(args?: SelectSubset<T, SemanticRuleErrorLogFindFirstOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleErrorLogClient<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findFirstOrThrow<T extends SemanticRuleErrorLogFindFirstOrThrowArgs>(args?: SelectSubset<T, SemanticRuleErrorLogFindFirstOrThrowArgs<ExtArgs>>): Prisma__SemanticRuleErrorLogClient<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
 
     /**
      * Find zero or more SemanticRuleErrorLogs that matches the filter.
@@ -9359,7 +8442,7 @@ export namespace Prisma {
      * const semanticRuleErrorLogWithIdOnly = await prisma.semanticRuleErrorLog.findMany({ select: { id: true } })
      * 
      */
-    findMany<T extends SemanticRuleErrorLogFindManyArgs>(args?: SelectSubset<T, SemanticRuleErrorLogFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+    findMany<T extends SemanticRuleErrorLogFindManyArgs>(args?: SelectSubset<T, SemanticRuleErrorLogFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "findMany">>
 
     /**
      * Create a SemanticRuleErrorLog.
@@ -9373,7 +8456,7 @@ export namespace Prisma {
      * })
      * 
      */
-    create<T extends SemanticRuleErrorLogCreateArgs>(args: SelectSubset<T, SemanticRuleErrorLogCreateArgs<ExtArgs>>): Prisma__SemanticRuleErrorLogClient<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    create<T extends SemanticRuleErrorLogCreateArgs>(args: SelectSubset<T, SemanticRuleErrorLogCreateArgs<ExtArgs>>): Prisma__SemanticRuleErrorLogClient<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "create">, never, ExtArgs>
 
     /**
      * Create many SemanticRuleErrorLogs.
@@ -9401,7 +8484,7 @@ export namespace Prisma {
      * })
      * 
      * // Create many SemanticRuleErrorLogs and only return the `id`
-     * const semanticRuleErrorLogWithIdOnly = await prisma.semanticRuleErrorLog.createManyAndReturn({
+     * const semanticRuleErrorLogWithIdOnly = await prisma.semanticRuleErrorLog.createManyAndReturn({ 
      *   select: { id: true },
      *   data: [
      *     // ... provide data here
@@ -9411,7 +8494,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends SemanticRuleErrorLogCreateManyAndReturnArgs>(args?: SelectSubset<T, SemanticRuleErrorLogCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+    createManyAndReturn<T extends SemanticRuleErrorLogCreateManyAndReturnArgs>(args?: SelectSubset<T, SemanticRuleErrorLogCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "createManyAndReturn">>
 
     /**
      * Delete a SemanticRuleErrorLog.
@@ -9425,7 +8508,7 @@ export namespace Prisma {
      * })
      * 
      */
-    delete<T extends SemanticRuleErrorLogDeleteArgs>(args: SelectSubset<T, SemanticRuleErrorLogDeleteArgs<ExtArgs>>): Prisma__SemanticRuleErrorLogClient<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    delete<T extends SemanticRuleErrorLogDeleteArgs>(args: SelectSubset<T, SemanticRuleErrorLogDeleteArgs<ExtArgs>>): Prisma__SemanticRuleErrorLogClient<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "delete">, never, ExtArgs>
 
     /**
      * Update one SemanticRuleErrorLog.
@@ -9442,7 +8525,7 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends SemanticRuleErrorLogUpdateArgs>(args: SelectSubset<T, SemanticRuleErrorLogUpdateArgs<ExtArgs>>): Prisma__SemanticRuleErrorLogClient<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    update<T extends SemanticRuleErrorLogUpdateArgs>(args: SelectSubset<T, SemanticRuleErrorLogUpdateArgs<ExtArgs>>): Prisma__SemanticRuleErrorLogClient<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "update">, never, ExtArgs>
 
     /**
      * Delete zero or more SemanticRuleErrorLogs.
@@ -9478,36 +8561,6 @@ export namespace Prisma {
     updateMany<T extends SemanticRuleErrorLogUpdateManyArgs>(args: SelectSubset<T, SemanticRuleErrorLogUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Update zero or more SemanticRuleErrorLogs and returns the data updated in the database.
-     * @param {SemanticRuleErrorLogUpdateManyAndReturnArgs} args - Arguments to update many SemanticRuleErrorLogs.
-     * @example
-     * // Update many SemanticRuleErrorLogs
-     * const semanticRuleErrorLog = await prisma.semanticRuleErrorLog.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more SemanticRuleErrorLogs and only return the `id`
-     * const semanticRuleErrorLogWithIdOnly = await prisma.semanticRuleErrorLog.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends SemanticRuleErrorLogUpdateManyAndReturnArgs>(args: SelectSubset<T, SemanticRuleErrorLogUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
      * Create or update one SemanticRuleErrorLog.
      * @param {SemanticRuleErrorLogUpsertArgs} args - Arguments to update or create a SemanticRuleErrorLog.
      * @example
@@ -9524,7 +8577,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    upsert<T extends SemanticRuleErrorLogUpsertArgs>(args: SelectSubset<T, SemanticRuleErrorLogUpsertArgs<ExtArgs>>): Prisma__SemanticRuleErrorLogClient<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    upsert<T extends SemanticRuleErrorLogUpsertArgs>(args: SelectSubset<T, SemanticRuleErrorLogUpsertArgs<ExtArgs>>): Prisma__SemanticRuleErrorLogClient<$Result.GetResult<Prisma.$SemanticRuleErrorLogPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
 
 
     /**
@@ -9664,10 +8717,10 @@ export namespace Prisma {
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__SemanticRuleErrorLogClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__SemanticRuleErrorLogClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    domain<T extends SemanticRuleDomainDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleDomainDefaultArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-    ruleSet<T extends SemanticRuleErrorLog$ruleSetArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleErrorLog$ruleSetArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    domain<T extends SemanticRuleDomainDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleDomainDefaultArgs<ExtArgs>>): Prisma__SemanticRuleDomainClient<$Result.GetResult<Prisma.$SemanticRuleDomainPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    ruleSet<T extends SemanticRuleErrorLog$ruleSetArgs<ExtArgs> = {}>(args?: Subset<T, SemanticRuleErrorLog$ruleSetArgs<ExtArgs>>): Prisma__SemanticRuleSetClient<$Result.GetResult<Prisma.$SemanticRuleSetPayload<ExtArgs>, T, "findUniqueOrThrow"> | null, null, ExtArgs>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -9695,7 +8748,7 @@ export namespace Prisma {
 
   /**
    * Fields of the SemanticRuleErrorLog model
-   */
+   */ 
   interface SemanticRuleErrorLogFieldRefs {
     readonly id: FieldRef<"SemanticRuleErrorLog", 'String'>
     readonly domainId: FieldRef<"SemanticRuleErrorLog", 'String'>
@@ -9740,10 +8793,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleErrorLogSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleErrorLog
-     */
-    omit?: SemanticRuleErrorLogOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleErrorLogInclude<ExtArgs> | null
@@ -9762,10 +8811,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleErrorLogSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleErrorLog
-     */
-    omit?: SemanticRuleErrorLogOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleErrorLogInclude<ExtArgs> | null
@@ -9783,10 +8828,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleErrorLog
      */
     select?: SemanticRuleErrorLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleErrorLog
-     */
-    omit?: SemanticRuleErrorLogOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -9836,10 +8877,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleErrorLogSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleErrorLog
-     */
-    omit?: SemanticRuleErrorLogOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleErrorLogInclude<ExtArgs> | null
@@ -9888,10 +8925,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleErrorLogSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleErrorLog
-     */
-    omit?: SemanticRuleErrorLogOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleErrorLogInclude<ExtArgs> | null
@@ -9935,10 +8968,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleErrorLogSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleErrorLog
-     */
-    omit?: SemanticRuleErrorLogOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleErrorLogInclude<ExtArgs> | null
@@ -9968,10 +8997,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleErrorLogSelectCreateManyAndReturn<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleErrorLog
-     */
-    omit?: SemanticRuleErrorLogOmit<ExtArgs> | null
-    /**
      * The data used to create many SemanticRuleErrorLogs.
      */
     data: SemanticRuleErrorLogCreateManyInput | SemanticRuleErrorLogCreateManyInput[]
@@ -9990,10 +9015,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleErrorLog
      */
     select?: SemanticRuleErrorLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleErrorLog
-     */
-    omit?: SemanticRuleErrorLogOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -10020,40 +9041,6 @@ export namespace Prisma {
      * Filter which SemanticRuleErrorLogs to update
      */
     where?: SemanticRuleErrorLogWhereInput
-    /**
-     * Limit how many SemanticRuleErrorLogs to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * SemanticRuleErrorLog updateManyAndReturn
-   */
-  export type SemanticRuleErrorLogUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SemanticRuleErrorLog
-     */
-    select?: SemanticRuleErrorLogSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleErrorLog
-     */
-    omit?: SemanticRuleErrorLogOmit<ExtArgs> | null
-    /**
-     * The data used to update SemanticRuleErrorLogs.
-     */
-    data: XOR<SemanticRuleErrorLogUpdateManyMutationInput, SemanticRuleErrorLogUncheckedUpdateManyInput>
-    /**
-     * Filter which SemanticRuleErrorLogs to update
-     */
-    where?: SemanticRuleErrorLogWhereInput
-    /**
-     * Limit how many SemanticRuleErrorLogs to update.
-     */
-    limit?: number
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SemanticRuleErrorLogIncludeUpdateManyAndReturn<ExtArgs> | null
   }
 
   /**
@@ -10064,10 +9051,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleErrorLog
      */
     select?: SemanticRuleErrorLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleErrorLog
-     */
-    omit?: SemanticRuleErrorLogOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -10095,10 +9078,6 @@ export namespace Prisma {
      */
     select?: SemanticRuleErrorLogSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the SemanticRuleErrorLog
-     */
-    omit?: SemanticRuleErrorLogOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: SemanticRuleErrorLogInclude<ExtArgs> | null
@@ -10116,10 +9095,6 @@ export namespace Prisma {
      * Filter which SemanticRuleErrorLogs to delete
      */
     where?: SemanticRuleErrorLogWhereInput
-    /**
-     * Limit how many SemanticRuleErrorLogs to delete.
-     */
-    limit?: number
   }
 
   /**
@@ -10130,10 +9105,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleSet
      */
     select?: SemanticRuleSetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleSet
-     */
-    omit?: SemanticRuleSetOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -10149,10 +9120,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SemanticRuleErrorLog
      */
     select?: SemanticRuleErrorLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SemanticRuleErrorLog
-     */
-    omit?: SemanticRuleErrorLogOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -10373,7 +9340,7 @@ export namespace Prisma {
 
 
   /**
-   * Field references
+   * Field references 
    */
 
 
@@ -10458,13 +9425,6 @@ export namespace Prisma {
    * Reference to a field of type 'Json'
    */
   export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
-    
-
-
-  /**
-   * Reference to a field of type 'QueryMode'
-   */
-  export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
     
 
 
@@ -10588,7 +9548,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"SemanticRuleSet"> | Date | string
     activatedAt?: DateTimeNullableFilter<"SemanticRuleSet"> | Date | string | null
     archivedAt?: DateTimeNullableFilter<"SemanticRuleSet"> | Date | string | null
-    domain?: XOR<SemanticRuleDomainScalarRelationFilter, SemanticRuleDomainWhereInput>
+    domain?: XOR<SemanticRuleDomainRelationFilter, SemanticRuleDomainWhereInput>
     rules?: SemanticRuleListRelationFilter
     releases?: SemanticRuleReleaseListRelationFilter
     targetings?: SemanticRuleTargetingListRelationFilter
@@ -10638,7 +9598,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"SemanticRuleSet"> | Date | string
     activatedAt?: DateTimeNullableFilter<"SemanticRuleSet"> | Date | string | null
     archivedAt?: DateTimeNullableFilter<"SemanticRuleSet"> | Date | string | null
-    domain?: XOR<SemanticRuleDomainScalarRelationFilter, SemanticRuleDomainWhereInput>
+    domain?: XOR<SemanticRuleDomainRelationFilter, SemanticRuleDomainWhereInput>
     rules?: SemanticRuleListRelationFilter
     releases?: SemanticRuleReleaseListRelationFilter
     targetings?: SemanticRuleTargetingListRelationFilter
@@ -10706,7 +9666,7 @@ export namespace Prisma {
     note?: StringNullableFilter<"SemanticRule"> | string | null
     createdAt?: DateTimeFilter<"SemanticRule"> | Date | string
     updatedAt?: DateTimeFilter<"SemanticRule"> | Date | string
-    ruleSet?: XOR<SemanticRuleSetScalarRelationFilter, SemanticRuleSetWhereInput>
+    ruleSet?: XOR<SemanticRuleSetRelationFilter, SemanticRuleSetWhereInput>
   }
 
   export type SemanticRuleOrderByWithRelationInput = {
@@ -10749,7 +9709,7 @@ export namespace Prisma {
     note?: StringNullableFilter<"SemanticRule"> | string | null
     createdAt?: DateTimeFilter<"SemanticRule"> | Date | string
     updatedAt?: DateTimeFilter<"SemanticRule"> | Date | string
-    ruleSet?: XOR<SemanticRuleSetScalarRelationFilter, SemanticRuleSetWhereInput>
+    ruleSet?: XOR<SemanticRuleSetRelationFilter, SemanticRuleSetWhereInput>
   }, "id">
 
   export type SemanticRuleOrderByWithAggregationInput = {
@@ -10813,7 +9773,7 @@ export namespace Prisma {
     triggeredAt?: DateTimeFilter<"SemanticRuleRelease"> | Date | string
     effectiveAt?: DateTimeNullableFilter<"SemanticRuleRelease"> | Date | string | null
     previousActiveRuleSetId?: UuidNullableFilter<"SemanticRuleRelease"> | string | null
-    ruleSet?: XOR<SemanticRuleSetScalarRelationFilter, SemanticRuleSetWhereInput>
+    ruleSet?: XOR<SemanticRuleSetRelationFilter, SemanticRuleSetWhereInput>
   }
 
   export type SemanticRuleReleaseOrderByWithRelationInput = {
@@ -10846,7 +9806,7 @@ export namespace Prisma {
     triggeredAt?: DateTimeFilter<"SemanticRuleRelease"> | Date | string
     effectiveAt?: DateTimeNullableFilter<"SemanticRuleRelease"> | Date | string | null
     previousActiveRuleSetId?: UuidNullableFilter<"SemanticRuleRelease"> | string | null
-    ruleSet?: XOR<SemanticRuleSetScalarRelationFilter, SemanticRuleSetWhereInput>
+    ruleSet?: XOR<SemanticRuleSetRelationFilter, SemanticRuleSetWhereInput>
   }, "id">
 
   export type SemanticRuleReleaseOrderByWithAggregationInput = {
@@ -10899,7 +9859,7 @@ export namespace Prisma {
     enabled?: BoolFilter<"SemanticRuleTargeting"> | boolean
     createdAt?: DateTimeFilter<"SemanticRuleTargeting"> | Date | string
     updatedAt?: DateTimeFilter<"SemanticRuleTargeting"> | Date | string
-    ruleSet?: XOR<SemanticRuleSetScalarRelationFilter, SemanticRuleSetWhereInput>
+    ruleSet?: XOR<SemanticRuleSetRelationFilter, SemanticRuleSetWhereInput>
   }
 
   export type SemanticRuleTargetingOrderByWithRelationInput = {
@@ -10934,7 +9894,7 @@ export namespace Prisma {
     enabled?: BoolFilter<"SemanticRuleTargeting"> | boolean
     createdAt?: DateTimeFilter<"SemanticRuleTargeting"> | Date | string
     updatedAt?: DateTimeFilter<"SemanticRuleTargeting"> | Date | string
-    ruleSet?: XOR<SemanticRuleSetScalarRelationFilter, SemanticRuleSetWhereInput>
+    ruleSet?: XOR<SemanticRuleSetRelationFilter, SemanticRuleSetWhereInput>
   }, "id">
 
   export type SemanticRuleTargetingOrderByWithAggregationInput = {
@@ -10997,8 +9957,8 @@ export namespace Prisma {
     failureReason?: StringNullableFilter<"SemanticRuleHitLog"> | string | null
     traceId?: StringNullableFilter<"SemanticRuleHitLog"> | string | null
     createdAt?: DateTimeFilter<"SemanticRuleHitLog"> | Date | string
-    domain?: XOR<SemanticRuleDomainScalarRelationFilter, SemanticRuleDomainWhereInput>
-    ruleSet?: XOR<SemanticRuleSetNullableScalarRelationFilter, SemanticRuleSetWhereInput> | null
+    domain?: XOR<SemanticRuleDomainRelationFilter, SemanticRuleDomainWhereInput>
+    ruleSet?: XOR<SemanticRuleSetNullableRelationFilter, SemanticRuleSetWhereInput> | null
   }
 
   export type SemanticRuleHitLogOrderByWithRelationInput = {
@@ -11046,8 +10006,8 @@ export namespace Prisma {
     failureReason?: StringNullableFilter<"SemanticRuleHitLog"> | string | null
     traceId?: StringNullableFilter<"SemanticRuleHitLog"> | string | null
     createdAt?: DateTimeFilter<"SemanticRuleHitLog"> | Date | string
-    domain?: XOR<SemanticRuleDomainScalarRelationFilter, SemanticRuleDomainWhereInput>
-    ruleSet?: XOR<SemanticRuleSetNullableScalarRelationFilter, SemanticRuleSetWhereInput> | null
+    domain?: XOR<SemanticRuleDomainRelationFilter, SemanticRuleDomainWhereInput>
+    ruleSet?: XOR<SemanticRuleSetNullableRelationFilter, SemanticRuleSetWhereInput> | null
   }, "id">
 
   export type SemanticRuleHitLogOrderByWithAggregationInput = {
@@ -11132,8 +10092,8 @@ export namespace Prisma {
     consoleErrors?: JsonNullableFilter<"SemanticRuleErrorLog">
     metadata?: JsonNullableFilter<"SemanticRuleErrorLog">
     createdAt?: DateTimeFilter<"SemanticRuleErrorLog"> | Date | string
-    domain?: XOR<SemanticRuleDomainScalarRelationFilter, SemanticRuleDomainWhereInput>
-    ruleSet?: XOR<SemanticRuleSetNullableScalarRelationFilter, SemanticRuleSetWhereInput> | null
+    domain?: XOR<SemanticRuleDomainRelationFilter, SemanticRuleDomainWhereInput>
+    ruleSet?: XOR<SemanticRuleSetNullableRelationFilter, SemanticRuleSetWhereInput> | null
   }
 
   export type SemanticRuleErrorLogOrderByWithRelationInput = {
@@ -11205,8 +10165,8 @@ export namespace Prisma {
     consoleErrors?: JsonNullableFilter<"SemanticRuleErrorLog">
     metadata?: JsonNullableFilter<"SemanticRuleErrorLog">
     createdAt?: DateTimeFilter<"SemanticRuleErrorLog"> | Date | string
-    domain?: XOR<SemanticRuleDomainScalarRelationFilter, SemanticRuleDomainWhereInput>
-    ruleSet?: XOR<SemanticRuleSetNullableScalarRelationFilter, SemanticRuleSetWhereInput> | null
+    domain?: XOR<SemanticRuleDomainRelationFilter, SemanticRuleDomainWhereInput>
+    ruleSet?: XOR<SemanticRuleSetNullableRelationFilter, SemanticRuleSetWhereInput> | null
   }, "id">
 
   export type SemanticRuleErrorLogOrderByWithAggregationInput = {
@@ -12434,7 +11394,7 @@ export namespace Prisma {
     not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
   }
 
-  export type SemanticRuleDomainScalarRelationFilter = {
+  export type SemanticRuleDomainRelationFilter = {
     is?: SemanticRuleDomainWhereInput
     isNot?: SemanticRuleDomainWhereInput
   }
@@ -12582,7 +11542,7 @@ export namespace Prisma {
     gte?: number | IntFieldRefInput<$PrismaModel>
     not?: NestedIntFilter<$PrismaModel> | number
   }
-  export type JsonFilter<$PrismaModel = never> =
+  export type JsonFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<JsonFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonFilterBase<$PrismaModel>>, 'path'>>,
         Required<JsonFilterBase<$PrismaModel>>
@@ -12592,20 +11552,19 @@ export namespace Prisma {
   export type JsonFilterBase<$PrismaModel = never> = {
     equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
     path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
     string_contains?: string | StringFieldRefInput<$PrismaModel>
     string_starts_with?: string | StringFieldRefInput<$PrismaModel>
     string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
-  export type JsonNullableFilter<$PrismaModel = never> =
+  export type JsonNullableFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<JsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>,
         Required<JsonNullableFilterBase<$PrismaModel>>
@@ -12615,13 +11574,12 @@ export namespace Prisma {
   export type JsonNullableFilterBase<$PrismaModel = never> = {
     equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
     path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
     string_contains?: string | StringFieldRefInput<$PrismaModel>
     string_starts_with?: string | StringFieldRefInput<$PrismaModel>
     string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
@@ -12629,7 +11587,7 @@ export namespace Prisma {
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
 
-  export type SemanticRuleSetScalarRelationFilter = {
+  export type SemanticRuleSetRelationFilter = {
     is?: SemanticRuleSetWhereInput
     isNot?: SemanticRuleSetWhereInput
   }
@@ -12714,7 +11672,7 @@ export namespace Prisma {
     _min?: NestedIntFilter<$PrismaModel>
     _max?: NestedIntFilter<$PrismaModel>
   }
-  export type JsonWithAggregatesFilter<$PrismaModel = never> =
+  export type JsonWithAggregatesFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<JsonWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
         Required<JsonWithAggregatesFilterBase<$PrismaModel>>
@@ -12724,13 +11682,12 @@ export namespace Prisma {
   export type JsonWithAggregatesFilterBase<$PrismaModel = never> = {
     equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
     path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
     string_contains?: string | StringFieldRefInput<$PrismaModel>
     string_starts_with?: string | StringFieldRefInput<$PrismaModel>
     string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
@@ -12740,7 +11697,7 @@ export namespace Prisma {
     _min?: NestedJsonFilter<$PrismaModel>
     _max?: NestedJsonFilter<$PrismaModel>
   }
-  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
+  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
         Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>
@@ -12750,13 +11707,12 @@ export namespace Prisma {
   export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
     equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
     path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
     string_contains?: string | StringFieldRefInput<$PrismaModel>
     string_starts_with?: string | StringFieldRefInput<$PrismaModel>
     string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
@@ -12897,7 +11853,7 @@ export namespace Prisma {
     not?: NestedBoolNullableFilter<$PrismaModel> | boolean | null
   }
 
-  export type SemanticRuleSetNullableScalarRelationFilter = {
+  export type SemanticRuleSetNullableRelationFilter = {
     is?: SemanticRuleSetWhereInput | null
     isNot?: SemanticRuleSetWhereInput | null
   }
@@ -13807,7 +12763,7 @@ export namespace Prisma {
     gte?: number | FloatFieldRefInput<$PrismaModel>
     not?: NestedFloatFilter<$PrismaModel> | number
   }
-  export type NestedJsonFilter<$PrismaModel = never> =
+  export type NestedJsonFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<NestedJsonFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonFilterBase<$PrismaModel>>, 'path'>>,
         Required<NestedJsonFilterBase<$PrismaModel>>
@@ -13817,20 +12773,19 @@ export namespace Prisma {
   export type NestedJsonFilterBase<$PrismaModel = never> = {
     equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
     path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
     string_contains?: string | StringFieldRefInput<$PrismaModel>
     string_starts_with?: string | StringFieldRefInput<$PrismaModel>
     string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
-  export type NestedJsonNullableFilter<$PrismaModel = never> =
+  export type NestedJsonNullableFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<NestedJsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>,
         Required<NestedJsonNullableFilterBase<$PrismaModel>>
@@ -13840,13 +12795,12 @@ export namespace Prisma {
   export type NestedJsonNullableFilterBase<$PrismaModel = never> = {
     equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
     path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
     string_contains?: string | StringFieldRefInput<$PrismaModel>
     string_starts_with?: string | StringFieldRefInput<$PrismaModel>
     string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
@@ -15959,6 +14913,46 @@ export namespace Prisma {
   }
 
 
+
+  /**
+   * Aliases for legacy arg types
+   */
+    /**
+     * @deprecated Use SemanticRuleDomainCountOutputTypeDefaultArgs instead
+     */
+    export type SemanticRuleDomainCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = SemanticRuleDomainCountOutputTypeDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use SemanticRuleSetCountOutputTypeDefaultArgs instead
+     */
+    export type SemanticRuleSetCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = SemanticRuleSetCountOutputTypeDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use SemanticRuleDomainDefaultArgs instead
+     */
+    export type SemanticRuleDomainArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = SemanticRuleDomainDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use SemanticRuleSetDefaultArgs instead
+     */
+    export type SemanticRuleSetArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = SemanticRuleSetDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use SemanticRuleDefaultArgs instead
+     */
+    export type SemanticRuleArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = SemanticRuleDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use SemanticRuleReleaseDefaultArgs instead
+     */
+    export type SemanticRuleReleaseArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = SemanticRuleReleaseDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use SemanticRuleTargetingDefaultArgs instead
+     */
+    export type SemanticRuleTargetingArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = SemanticRuleTargetingDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use SemanticRuleHitLogDefaultArgs instead
+     */
+    export type SemanticRuleHitLogArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = SemanticRuleHitLogDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use SemanticRuleErrorLogDefaultArgs instead
+     */
+    export type SemanticRuleErrorLogArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = SemanticRuleErrorLogDefaultArgs<ExtArgs>
 
   /**
    * Batch Payload for updateMany & deleteMany & createMany

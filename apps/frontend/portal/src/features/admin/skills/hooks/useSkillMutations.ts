@@ -121,10 +121,9 @@ export function useSkillMutations(options: UseSkillMutationsOptions = {}) {
       },
       onSuccess: () => {
         message.success('授权申请已批准');
-        queryClient.invalidateQueries(['skill-access-requests', selectedSkillId]);
-        queryClient.invalidateQueries(['skill-access-requests', selectedSkillId, 'approved']);
-        queryClient.invalidateQueries(['skill-access-requests', selectedSkillId, 'rejected']);
-        queryClient.invalidateQueries(['skill-permissions', selectedSkillId]);
+        queryClient.invalidateQueries(['skill-access-requests']);
+        queryClient.invalidateQueries(['all-skill-access-requests']);
+        queryClient.invalidateQueries(['skill-permissions']);
       },
       onError: (error: any) => {
         const errorMessage = error?.response?.data?.message || error?.message || '批准授权申请失败';
@@ -147,9 +146,8 @@ export function useSkillMutations(options: UseSkillMutationsOptions = {}) {
       },
       onSuccess: () => {
         message.success('授权申请已拒绝');
-        queryClient.invalidateQueries(['skill-access-requests', selectedSkillId]);
-        queryClient.invalidateQueries(['skill-access-requests', selectedSkillId, 'approved']);
-        queryClient.invalidateQueries(['skill-access-requests', selectedSkillId, 'rejected']);
+        queryClient.invalidateQueries(['skill-access-requests']);
+        queryClient.invalidateQueries(['all-skill-access-requests']);
       },
       onError: (error: any) => {
         const errorMessage = error?.response?.data?.message || error?.message || '拒绝授权申请失败';

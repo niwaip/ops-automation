@@ -72,3 +72,25 @@ export class AddOrganizationMemberDto {
   @IsUUID('4', { each: true })
   teamIds?: string[];
 }
+
+export class UpdateDepartmentDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(255)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  code?: string;
+
+  @IsOptional()
+  @IsUUID()
+  parentId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  managerUserId?: string | null;
+}
+

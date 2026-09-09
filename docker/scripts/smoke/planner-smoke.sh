@@ -163,14 +163,11 @@ control_plane_list() {
 }
 
 main() {
-  log "Ensuring core layer is up"
+  log "Ensuring core and planner layers are up"
   ensure_network
-  run_compose docker-compose.core.yml up -d
+  run_compose dev up -d
   retry "platform running" 36 5 container_running "$PLATFORM_CONTAINER" || fail "platform container not ready"
   retry "control-plane running" 36 5 container_running "$CONTROL_PLANE_CONTAINER" || fail "control-plane container not ready"
-
-  log "Starting planner layer"
-  run_compose docker-compose.planner.yml up -d
   retry "ai-orchestrator running" 36 5 container_running "$AI_CONTAINER" || fail "ai-orchestrator container not ready"
 
   retry "admin login" 12 5 platform_login || fail "admin login unavailable"

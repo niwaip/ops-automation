@@ -88,6 +88,27 @@ export const AntdProvider: React.FC<{ children: React.ReactNode }> = ({ children
           colorBgContainer: theme === 'dark' ? '#1e293b' : '#ffffff',
           optionSelectedBg: theme === 'dark' ? '#243244' : '#eef2ff',
         },
+        Radio: {
+          colorBgContainer: theme === 'dark' ? '#1e293b' : '#ffffff',
+          buttonSolidCheckedBg: PRIMARY_COLOR,
+          buttonBg: theme === 'dark' ? '#1e293b' : '#ffffff',
+          buttonColor: theme === 'dark' ? '#cbd5e1' : '#1e293b',
+        },
+        Segmented: {
+          colorBgLayout: theme === 'dark' ? '#162033' : '#f1f5f9',
+          itemColor: theme === 'dark' ? '#cbd5e1' : '#64748b',
+          itemSelectedBg: theme === 'dark' ? '#312e81' : '#ffffff',
+          itemSelectedColor: theme === 'dark' ? '#ffffff' : '#1e293b',
+        },
+        Tag: {
+          colorBgContainer: theme === 'dark' ? '#273449' : '#fafafa',
+        },
+        Alert: {
+          colorInfoBg: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : '#e6f4ff',
+          colorSuccessBg: theme === 'dark' ? 'rgba(16, 185, 129, 0.15)' : '#f6ffed',
+          colorWarningBg: theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#fffbe6',
+          colorErrorBg: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : '#fff2f0',
+        },
       },
     }),
     [theme, language]

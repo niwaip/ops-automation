@@ -1,4 +1,15 @@
-import { Button, Empty, Input, Modal, Space, Table, Tag, Typography } from 'antd';
+import {
+  Button,
+  Empty,
+  Input,
+  Modal,
+  Space,
+  Table,
+  Tag,
+  Typography,
+  type TablePaginationConfig,
+} from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import { useEffect, useMemo, useState } from 'react';
 import type { ColumnsType } from 'antd/es/table';
 import type { SkillAccessRequestReviewDTO } from '@/api/skill';
@@ -25,6 +36,9 @@ interface SkillAccessRequestReviewTabProps {
   onReject?: (request: SkillAccessRequestReviewDTO, responseNote?: string) => void;
   enableReviewActions?: boolean;
   emptyText?: string;
+  showSkillColumn?: boolean;
+  searchable?: boolean;
+  pagination?: false | TablePaginationConfig;
 }
 
 export function SkillAccessRequestReviewTab({
@@ -36,7 +50,11 @@ export function SkillAccessRequestReviewTab({
   onReject,
   enableReviewActions = true,
   emptyText = '当前没有待处理的授权申请',
+  showSkillColumn = false,
+  searchable = false,
+  pagination = false,
 }: SkillAccessRequestReviewTabProps) {
+  const [keyword, setKeyword] = useState('');
   const [reviewTarget, setReviewTarget] = useState<SkillAccessRequestReviewDTO | null>(null);
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | null>(null);
   const [responseNote, setResponseNote] = useState('');
@@ -91,18 +109,54 @@ export function SkillAccessRequestReviewTab({
     }
   };
 
+  const filteredRequests = useMemo(() => {
+    if (!searchable || !keyword.trim()) {
+      return requests;
+    }
+    const q = keyword.trim().toLowerCase();
+    return requests.filter((req) => {
+      return (
+        req.requesterUsername?.toLowerCase().includes(q) ||
+        req.requesterEmail?.toLowerCase().includes(q) ||
+        req.skillName?.toLowerCase().includes(q) ||
+        req.reason?.toLowerCase().includes(q) ||
+        req.requesterRole?.toLowerCase().includes(q) ||
+        req.targetRoleName?.toLowerCase().includes(q)
+      );
+    });
+  }, [requests, searchable, keyword]);
+
   const columns: ColumnsType<SkillAccessRequestReviewDTO> = [
     {
       title: '申请人',
       key: 'requester',
-      width: 220,
+      width: 200,
       render: (_, record) => (
         <Space direction="vertical" size={2}>
           <Typography.Text strong>{record.requesterUsername}</Typography.Text>
-          <Typography.Text type="secondary">{record.requesterEmail || '未填写邮箱'}</Typography.Text>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {record.requesterEmail || '未填写邮箱'}
+          </Typography.Text>
         </Space>
       ),
     },
+    ...(showSkillColumn
+      ? [
+          {
+            title: '申请技能',
+            key: 'skill',
+            width: 180,
+            render: (_: unknown, record: SkillAccessRequestReviewDTO) => (
+              <Space direction="vertical" size={2}>
+                <Typography.Text strong>{record.skillName || record.skillId}</Typography.Text>
+                <Tag color="blue" style={{ width: 'fit-content', margin: 0, fontSize: 11 }}>
+                  ID: {record.skillId.slice(0, 8)}...
+                </Tag>
+              </Space>
+            ),
+          } satisfies ColumnsType<SkillAccessRequestReviewDTO>[number],
+        ]
+      : []),
     {
       title: '授权角色',
       key: 'role',
@@ -110,7 +164,7 @@ export function SkillAccessRequestReviewTab({
       render: (_, record) => (
         <Space size={[6, 6]} wrap>
           <Tag>{record.requesterRole || 'unknown'}</Tag>
-          <Typography.Text type="secondary">
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             授权至 {record.targetRoleName || record.requesterRole || '-'}
           </Typography.Text>
         </Space>
@@ -120,20 +174,27 @@ export function SkillAccessRequestReviewTab({
       title: '申请原因',
       dataIndex: 'reason',
       key: 'reason',
-      render: (value?: string | null) => value || <Typography.Text type="secondary">未填写</Typography.Text>,
+      render: (value?: string | null) =>
+        value ? (
+          <Typography.Text ellipsis={{ tooltip: value }} style={{ maxWidth: 220 }}>
+            {value}
+          </Typography.Text>
+        ) : (
+          <Typography.Text type="secondary">未填写</Typography.Text>
+        ),
     },
     {
       title: '提交时间',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 180,
+      width: 170,
       render: (value: string) => formatDateTime(value),
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      width: 100,
+      width: 90,
       render: (status: SkillAccessRequestReviewDTO['status']) => (
         <Tag
           color={
@@ -167,7 +228,7 @@ export function SkillAccessRequestReviewTab({
       title: '处理时间',
       dataIndex: 'processedAt',
       key: 'processedAt',
-      width: 180,
+      width: 170,
       render: (value?: string | null) =>
         value ? formatDateTime(value) : <Typography.Text type="secondary">待处理</Typography.Text>,
     },
@@ -176,7 +237,8 @@ export function SkillAccessRequestReviewTab({
           {
             title: '操作',
             key: 'actions',
-            width: 180,
+            width: 160,
+            fixed: 'right',
             render: (_: unknown, record: SkillAccessRequestReviewDTO) => (
               <Space size={8}>
                 <Button
@@ -212,16 +274,28 @@ export function SkillAccessRequestReviewTab({
 
   return (
     <>
+      {searchable && (
+        <div style={{ marginBottom: 14 }}>
+          <Input
+            placeholder="搜索申请人/邮箱/技能名/申请理由..."
+            allowClear
+            prefix={<SearchOutlined />}
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            style={{ maxWidth: 360 }}
+          />
+        </div>
+      )}
       <Table
         rowKey="id"
         loading={loading}
-        dataSource={requests}
+        dataSource={filteredRequests}
         columns={columns}
-        pagination={false}
+        pagination={pagination}
         locale={{
           emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyText} />,
         }}
-        scroll={{ x: 980 }}
+        scroll={{ x: 1080 }}
       />
 
       <Modal

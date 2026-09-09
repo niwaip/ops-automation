@@ -12,6 +12,7 @@ import type {
   CreateTeamDto,
   GetOrganizationStructureResponse,
   ListMyOrganizationsResponse,
+  UpdateDepartmentDto,
 } from '../contracts';
 
 @Injectable()
@@ -27,6 +28,11 @@ export class OrganizationService {
   ): Promise<CreateOrganizationResponse> {
     const created = await this.organizationRepository.createOrganization(dto, actorUserId);
     return { organization: created };
+  }
+
+  async listAllOrganizations(actorUserId?: string) {
+    const organizations = await this.organizationRepository.listAllOrganizations(actorUserId);
+    return { organizations };
   }
 
   async listMyOrganizations(userId: string): Promise<ListMyOrganizationsResponse> {
@@ -52,6 +58,23 @@ export class OrganizationService {
     return { department };
   }
 
+  async updateDepartment(
+    orgId: string,
+    deptId: string,
+    dto: UpdateDepartmentDto
+  ) {
+    const department = await this.organizationRepository.updateDepartment(orgId, deptId, dto);
+    return { department };
+  }
+
+  async deleteDepartment(
+    orgId: string,
+    deptId: string
+  ) {
+    await this.organizationRepository.deleteDepartment(orgId, deptId);
+    return { success: true };
+  }
+
   async createTeam(orgId: string, dto: CreateTeamDto): Promise<CreateTeamResponse> {
     const team = await this.organizationRepository.createTeam(orgId, dto);
     return { team };
@@ -71,4 +94,13 @@ export class OrganizationService {
       status: membership.status,
     };
   }
+
+  async removeMember(
+    orgId: string,
+    userId: string
+  ) {
+    await this.organizationRepository.removeMember(orgId, userId);
+    return { success: true };
+  }
 }
+

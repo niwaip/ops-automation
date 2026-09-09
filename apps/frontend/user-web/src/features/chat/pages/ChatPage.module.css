@@ -665,13 +665,12 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 8px 14px;
   border-top: 1px solid rgba(148, 163, 184, 0.12);
   background: rgba(255, 255, 255, 0.28);
   flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
-  -ms-overflow-style: none;
 }
 
 .user-chat-input-toolbar::-webkit-scrollbar {
@@ -681,6 +680,14 @@
 [data-theme="dark"] .user-chat-input-toolbar {
   border-top-color: rgba(148, 163, 184, 0.14);
   background: rgba(15, 23, 42, 0.44);
+}
+
+.user-chat-input-left-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
 }
 
 .user-chat-input-toolbar-spacer {
@@ -719,9 +726,10 @@
 .user-chat-input-actions-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
   margin-left: auto;
+  flex-wrap: nowrap;
 }
 
 .user-chat-input-icon-btn {
@@ -830,7 +838,7 @@
 }
 
 .user-chat-input-send-btn {
-  flex-shrink: 0;
+  flex-shrink: 0 !important;
   font-weight: 600;
   padding-inline: 14px !important;
   border-radius: 999px !important;
@@ -840,6 +848,7 @@
   gap: 6px !important;
   box-shadow: 0 2px 6px rgba(99, 102, 241, 0.28) !important;
   transition: all 0.2s ease !important;
+  margin-right: 2px;
 }
 
 .user-chat-input-send-btn:hover:not(:disabled) {
@@ -1153,7 +1162,10 @@
 
 .user-chat-input-model-select.ant-select-single {
   height: 32px;
-  min-width: 0;
+  width: 155px;
+  min-width: 110px;
+  max-width: 180px;
+  flex: 0 1 auto;
 }
 
 .user-chat-input-model-select .ant-select-selector {
@@ -1502,7 +1514,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-width: min(86%, 860px);
+  max-width: min(92%, 1080px);
 }
 
 .user-chat-message-stack.role-user {
@@ -1511,12 +1523,12 @@
 
 .user-chat-message-stack.role-assistant {
   align-items: flex-start;
-  width: min(88%, 860px);
+  width: min(94%, 1080px);
   min-width: min(100%, 560px);
 }
 
 .user-chat-message-stack.role-assistant.has-task-block {
-  width: min(88%, 860px) !important;
+  width: min(94%, 1080px) !important;
   min-width: min(100%, 560px) !important;
 }
 
@@ -2223,7 +2235,23 @@
   }
 
   .user-chat-input-model-select {
-    width: 164px !important;
-    min-width: 164px !important;
+    width: 140px !important;
+    min-width: 110px !important;
+  }
+}
+
+@media (max-width: 1080px) {
+  .user-chat-input-toolbar-spacer {
+    min-width: 4px;
+  }
+
+  .user-chat-input-controls {
+    gap: 6px;
+    padding: 0 6px;
+  }
+
+  .user-chat-input-model-select {
+    width: 120px !important;
+    min-width: 90px !important;
   }
 }

@@ -16,6 +16,7 @@ import { ExecutionFailureService } from './recovery/execution-failure.service';
 import { ExecutionFlowRunnerService } from './step-runner/flow/execution-flow-runner.service';
 import { ExecutionHumanControlService } from './human-control/execution-human-control.service';
 import { ExecutionInputResolutionService } from './human-control/execution-input-resolution.service';
+import { RuntimeCredentialResolverService } from './credentials/runtime-credential-resolver.service';
 import { ExecutionSubmitInputService } from './human-control/execution-submit-input.service';
 import { ExecutionPlanningService } from './step-runner/planning/execution-planning.service';
 import { ExecutionPlanNormalizationService } from './step-runner/planning/execution-plan-normalization.service';
@@ -140,6 +141,7 @@ import { CompletionClaimSynthesizerService } from './plan-runtime/completion-cla
     ContentRefResolverService,
     OpsReportProjectionService,
     RecorderCompositePlanCompilerService,
+    RuntimeCredentialResolverService,
   ],
   exports: [
     ExecutionService,
@@ -148,6 +150,7 @@ import { CompletionClaimSynthesizerService } from './plan-runtime/completion-cla
     DeterministicPlanFreezeService,
     DeterministicPlanSchedulerService,
     ExecutionOutboxService,
+    RuntimeCredentialResolverService,
   ],
 })
 export class ExecutionModule {}

@@ -63,6 +63,7 @@ export interface ListExecutionsRequest {
   pageSize?: number;
   status?: ExecutionStatus;
   skillId?: string;
+  id?: string;
 }
 
 export interface CleanupExecutionsBeforeDateRequest {

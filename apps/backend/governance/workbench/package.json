@@ -30,6 +30,10 @@
       "types": "./dist/connection/index.d.ts",
       "default": "./dist/connection/index.js"
     },
+    "./credentials": {
+      "types": "./dist/credentials/index.d.ts",
+      "default": "./dist/credentials/index.js"
+    },
     "./ports": {
       "types": "./dist/ports/index.d.ts",
       "default": "./dist/ports/index.js"

@@ -1,5 +1,92 @@
 import { RuntimeExecutionOrchestrator } from '../src/modules/execution/step-runner/runtime/runtime-execution.orchestrator';
 
+describe('RuntimeExecutionOrchestrator credential injection', () => {
+  it('resolves bound credentials immediately before a single runtime invocation', async () => {
+    const adapter = {
+      invokeStep: jest.fn().mockResolvedValue({ success: true, status: 'completed' }),
+    };
+    const registry = {
+      resolve: jest.fn().mockReturnValue(adapter),
+    };
+    const credentialResolver = {
+      resolveInputForRuntime: jest.fn().mockResolvedValue({
+        content: 'weather report',
+        deviceKey: 'decrypted-device-key',
+      }),
+    };
+    const orchestrator = new RuntimeExecutionOrchestrator(
+      registry as never,
+      credentialResolver as never
+    );
+
+    await orchestrator.executeStep({
+      requestId: 'execution-1:step-1',
+      executionId: 'execution-1',
+      stepId: 'step-1',
+      runtimeType: 'custom',
+      skillId: 'skill-1',
+      publishedSkillId: 'skill-1',
+      capabilityType: 'skill.runtime',
+      action: 'execute',
+      input: { content: 'weather report', deviceKey: '••••••••' },
+      traceContext: { userId: 'user-1' },
+    });
+
+    expect(credentialResolver.resolveInputForRuntime).toHaveBeenCalledWith(
+      'user-1',
+      'skill-1',
+      { content: 'weather report', deviceKey: '••••••••' }
+    );
+    expect(adapter.invokeStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          content: 'weather report',
+          deviceKey: 'decrypted-device-key',
+        },
+      })
+    );
+  });
+
+  it('resolves credentials for steps invoked through a runtime phase', async () => {
+    const adapter = {
+      invokeStep: jest.fn().mockResolvedValue({ success: true, status: 'completed' }),
+    };
+    const registry = {
+      resolve: jest.fn().mockReturnValue(adapter),
+    };
+    const credentialResolver = {
+      resolveInputForRuntime: jest.fn().mockResolvedValue({ password: 'decrypted-password' }),
+    };
+    const orchestrator = new RuntimeExecutionOrchestrator(
+      registry as never,
+      credentialResolver as never
+    );
+
+    await orchestrator.executePhase({
+      executionId: 'execution-1',
+      phaseKey: 'phase-login',
+      steps: [
+        {
+          requestId: 'execution-1:step-1',
+          executionId: 'execution-1',
+          stepId: 'step-1',
+          runtimeType: 'browser',
+          skillId: 'skill-1',
+          publishedSkillId: 'skill-1',
+          capabilityType: 'browser_step',
+          action: 'fill',
+          input: { password: '••••••••' },
+          traceContext: { userId: 'user-1' },
+        },
+      ],
+    });
+
+    expect(adapter.invokeStep).toHaveBeenCalledWith(
+      expect.objectContaining({ input: { password: 'decrypted-password' } })
+    );
+  });
+});
+
 describe('RuntimeExecutionOrchestrator.executePhase', () => {
   it('executes all step requests and returns completed result when all succeed', async () => {
     const adapter = {

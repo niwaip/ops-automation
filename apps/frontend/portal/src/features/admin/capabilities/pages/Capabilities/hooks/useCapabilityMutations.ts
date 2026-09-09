@@ -8,6 +8,7 @@ import type { DeploymentEnvironment } from '../utils/capabilitiesHelpers';
 
 export function useCapabilityMutations({
   selectedReleaseId,
+  deployTargetReleaseId,
   wizardReleaseId,
   createVisible,
   setSelectedReleaseId,
@@ -16,6 +17,7 @@ export function useCapabilityMutations({
   setCreateWizardStep,
   setDeployVisible,
   setDeployOverridesDraft,
+  setDeploySmokeInputDraft,
   setWizardValidationExecuted,
   setWizardAssistExplanation,
   setWizardValidationCasesDraft,
@@ -28,6 +30,7 @@ export function useCapabilityMutations({
   setAnalysisVisible,
 }: {
   selectedReleaseId: string | null;
+  deployTargetReleaseId: string | null;
   wizardReleaseId: string | null;
   createVisible: boolean;
   setSelectedReleaseId: (id: string | null) => void;
@@ -36,6 +39,7 @@ export function useCapabilityMutations({
   setCreateWizardStep: (step: number) => void;
   setDeployVisible: (visible: boolean) => void;
   setDeployOverridesDraft: (draft: string) => void;
+  setDeploySmokeInputDraft: (draft: string) => void;
   setWizardValidationExecuted: (executed: boolean) => void;
   setWizardAssistExplanation: (exp: string) => void;
   setWizardValidationCasesDraft: (fn: (prev: string) => string) => void;
@@ -73,6 +77,12 @@ export function useCapabilityMutations({
     ['capability-wizard-detail', wizardReleaseId],
     () => capabilityReleaseApi.getById(wizardReleaseId as string),
     { enabled: Boolean(wizardReleaseId && createVisible) }
+  );
+
+  const deployDetailQuery = useQuery(
+    ['capability-deploy-detail', deployTargetReleaseId],
+    () => capabilityReleaseApi.getById(deployTargetReleaseId as string),
+    { enabled: Boolean(deployTargetReleaseId) }
   );
 
   const refreshQueries = async (releaseId?: string) => {
@@ -190,12 +200,14 @@ export function useCapabilityMutations({
       environment,
       strategy,
       configOverrides,
+      smokeTestInput,
     }: {
       id: string;
       environment: DeploymentEnvironment;
       strategy: 'hot_reload' | 'rolling_restart' | 'full_restart';
       configOverrides?: Record<string, unknown>;
-    }) => capabilityReleaseApi.deploy(id, { environment, strategy, configOverrides }),
+      smokeTestInput?: Record<string, unknown>;
+    }) => capabilityReleaseApi.deploy(id, { environment, strategy, configOverrides, smokeTestInput }),
     {
       onSuccess: async (result, variables) => {
         message.success(`部署完成: ${result.deployment.status}`);
@@ -259,6 +271,9 @@ export function useCapabilityMutations({
         setWizardAssistExplanation(result.explanation);
         if (Object.keys(result.deployConfig || {}).length > 0) {
           setDeployOverridesDraft(JSON.stringify(result.deployConfig, null, 2));
+        }
+        if (Object.keys(result.testInput || {}).length > 0) {
+          setDeploySmokeInputDraft(JSON.stringify(result.testInput, null, 2));
         }
         if (result.testUserInput) {
           setWizardValidationCasesDraft((prev) =>
@@ -360,6 +375,7 @@ export function useCapabilityMutations({
     executionFlowOptionsQuery,
     detailQuery,
     wizardDetailQuery,
+    deployDetailQuery,
     refreshQueries,
     createMutation,
     validateStaticMutation,

@@ -8,6 +8,7 @@ export type SchemaField = {
   required: boolean;
   defaultValue?: unknown;
   enum?: Array<string | number>;
+  isSecret?: boolean;
 };
 
 export type ExecutionMode = 'immediate' | 'schedule';
@@ -201,6 +202,12 @@ export const getSchemaFields = (schema?: SkillParamsSchema): SchemaField[] => {
     required: requiredFields.has(name) || Boolean(config?.required),
     defaultValue: config?.default,
     enum: config?.enum,
+    isSecret: Boolean(
+      (config as any)?.isSecret ||
+      (config as any)?.['x-is-secret'] ||
+      (config as any)?.format === 'password' ||
+      /password|passwd|devicekey|device_key|secret|credential|token|apikey|api_key/i.test(name)
+    ),
   }));
 };
 

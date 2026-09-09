@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Card, Empty } from 'antd';
+import { Card, Empty, Alert, Button, Radio, Space, Tag } from 'antd';
 import {
   ThunderboltOutlined,
   ApiOutlined,
   RocketOutlined,
+  SafetyCertificateOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import {
   SkillConfigDTO,
@@ -27,6 +29,7 @@ import { SkillDetailModal } from '../components/SkillDetailModal';
 import { SkillEditModal } from '../components/SkillEditModal';
 import { SkillPermissionModal } from '../components/SkillPermissionModal';
 import { SkillValidationModal } from '../components/SkillValidationModal';
+import { SkillAccessRequestReviewTab } from '../components/SkillAccessRequestReviewTab';
 import { SkillListTable } from '../components/SkillListTable';
 import { SkillPageHeader } from '../components/SkillPageHeader';
 import type { SkillAdminPageProps } from '../types';
@@ -42,6 +45,7 @@ export const SkillAdminPage: React.FC<SkillAdminPageProps> = ({
     (searchParams.get('tab') as SkillAdminTabKey) || 'builtin'
   );
   const [builtinViewMode, setBuiltinViewMode] = useState<'grouped' | 'flat'>('grouped');
+  const [requestSubTab, setRequestSubTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
 
   // Modal visibility & targets
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -64,6 +68,11 @@ export const SkillAdminPage: React.FC<SkillAdminPageProps> = ({
     accessRequestsQuery,
     approvedAccessRequestsQuery,
     rejectedAccessRequestsQuery,
+    globalPendingAccessRequestsQuery,
+    globalApprovedAccessRequestsQuery,
+    globalRejectedAccessRequestsQuery,
+    pendingRequestsCount,
+    pendingRequestCountBySkillId,
     allSkills,
     builtinSkillByKey,
     builtinSkillsCount,
@@ -148,7 +157,7 @@ export const SkillAdminPage: React.FC<SkillAdminPageProps> = ({
     setSearchText(keyword);
 
     const tabParam = searchParams.get('tab') as SkillAdminTabKey;
-    if (['builtin', 'custom', 'llm', 'all'].includes(tabParam)) {
+    if (['builtin', 'custom', 'llm', 'all', 'requests'].includes(tabParam)) {
       setActiveTabKey(tabParam);
     }
 
@@ -232,8 +241,19 @@ export const SkillAdminPage: React.FC<SkillAdminPageProps> = ({
         icon: <RocketOutlined style={{ color: 'var(--success-color)' }} />,
         color: 'var(--success-color)',
       },
+      {
+        key: 'requests',
+        label: '待审批申请',
+        value: pendingRequestsCount,
+        icon: (
+          <SafetyCertificateOutlined
+            style={{ color: pendingRequestsCount > 0 ? '#ff4d4f' : '#10b981' }}
+          />
+        ),
+        color: pendingRequestsCount > 0 ? '#ff4d4f' : '#10b981',
+      },
     ];
-  }, [allSkills, builtinSkillsCount, customSkillsCount]);
+  }, [allSkills, builtinSkillsCount, customSkillsCount, pendingRequestsCount]);
 
   // Handlers
   const handleCreate = () => {
@@ -289,6 +309,51 @@ export const SkillAdminPage: React.FC<SkillAdminPageProps> = ({
     <div style={{ width: '100%', padding: '0 24px' }}>
       <OverviewStatGrid items={statItems} />
 
+      {pendingRequestsCount > 0 && activeTabKey !== 'requests' && (
+        <Alert
+          type="warning"
+          showIcon
+          icon={<SafetyCertificateOutlined style={{ fontSize: 16 }} />}
+          style={{
+            marginBottom: 16,
+            borderRadius: 12,
+          }}
+          message={
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 8,
+              }}
+            >
+              <span style={{ fontWeight: 500 }}>
+                当前有 <b>{pendingRequestsCount}</b> 个待处理的用户技能授权申请等待审批。
+              </span>
+              <Button
+                type="primary"
+                size="small"
+                style={{ backgroundColor: '#fa8c16', borderColor: '#fa8c16' }}
+                onClick={() => {
+                  setActiveTabKey('requests');
+                  setSearchParams(
+                    (prev) => {
+                      const next = new URLSearchParams(prev);
+                      next.set('tab', 'requests');
+                      return next;
+                    },
+                    { replace: true }
+                  );
+                }}
+              >
+                立即处理申请
+              </Button>
+            </div>
+          }
+        />
+      )}
+
       <Card
         styles={{ body: { padding: '20px 24px' } }}
         style={{
@@ -298,19 +363,21 @@ export const SkillAdminPage: React.FC<SkillAdminPageProps> = ({
           boxShadow: 'var(--shadow-md)',
         }}
       >
-        <SkillPageHeader
-          searchText={searchText}
-          onSearchChange={handleSearchChange}
-          displayedCount={displayedSkills.length}
-          activeTabKey={activeTabKey}
-          builtinViewMode={builtinViewMode}
-          onBuiltinViewModeChange={setBuiltinViewMode}
-          onRefresh={() => {
-            skillsQuery.refetch();
-            builtinSkillsQuery.refetch();
-          }}
-          onCreate={handleCreate}
-        />
+        {activeTabKey !== 'requests' && (
+          <SkillPageHeader
+            searchText={searchText}
+            onSearchChange={handleSearchChange}
+            displayedCount={displayedSkills.length}
+            activeTabKey={activeTabKey}
+            builtinViewMode={builtinViewMode}
+            onBuiltinViewModeChange={setBuiltinViewMode}
+            onRefresh={() => {
+              skillsQuery.refetch();
+              builtinSkillsQuery.refetch();
+            }}
+            onCreate={handleCreate}
+          />
+        )}
 
         <SkillAdminTabs
           activeKey={activeTabKey}
@@ -328,12 +395,103 @@ export const SkillAdminPage: React.FC<SkillAdminPageProps> = ({
           builtinSkillsCount={builtinSkillsCount}
           customSkillsCount={customSkillsCount}
           allSkillsCount={allSkills.length}
+          pendingRequestsCount={pendingRequestsCount}
+          requestsContent={
+            <div style={{ marginTop: 8 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 16,
+                  flexWrap: 'wrap',
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <Space size={8} align="center">
+                    <SafetyCertificateOutlined
+                      style={{ fontSize: 18, color: 'var(--primary-color)' }}
+                    />
+                    <span style={{ fontSize: 16, fontWeight: 600 }}>用户技能授权申请审批</span>
+                    <Tag color={pendingRequestsCount > 0 ? 'error' : 'success'}>
+                      {pendingRequestsCount > 0
+                        ? `${pendingRequestsCount} 条待处理`
+                        : '所有申请均已处理'}
+                    </Tag>
+                  </Space>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+                    集中审核用户对受限技能的使用申请，批准后将自动为申请人所在角色授予该技能权限。
+                  </div>
+                </div>
+                <Space>
+                  <Radio.Group
+                    value={requestSubTab}
+                    onChange={(e) => setRequestSubTab(e.target.value)}
+                    buttonStyle="solid"
+                    size="middle"
+                  >
+                    <Radio.Button value="pending">
+                      待审批 ({pendingRequestsCount})
+                    </Radio.Button>
+                    <Radio.Button value="approved">
+                      已批准 ({globalApprovedAccessRequestsQuery.data?.requests?.length || 0})
+                    </Radio.Button>
+                    <Radio.Button value="rejected">
+                      已驳回 ({globalRejectedAccessRequestsQuery.data?.requests?.length || 0})
+                    </Radio.Button>
+                  </Radio.Group>
+                  <Button
+                    icon={<ReloadOutlined />}
+                    onClick={() => {
+                      globalPendingAccessRequestsQuery.refetch();
+                      globalApprovedAccessRequestsQuery.refetch();
+                      globalRejectedAccessRequestsQuery.refetch();
+                    }}
+                  >
+                    刷新
+                  </Button>
+                </Space>
+              </div>
+
+              <SkillAccessRequestReviewTab
+                requests={
+                  requestSubTab === 'pending'
+                    ? globalPendingAccessRequestsQuery.data?.requests || []
+                    : requestSubTab === 'approved'
+                      ? globalApprovedAccessRequestsQuery.data?.requests || []
+                      : globalRejectedAccessRequestsQuery.data?.requests || []
+                }
+                loading={
+                  requestSubTab === 'pending'
+                    ? globalPendingAccessRequestsQuery.isLoading
+                    : requestSubTab === 'approved'
+                      ? globalApprovedAccessRequestsQuery.isLoading
+                      : globalRejectedAccessRequestsQuery.isLoading
+                }
+                processingRequestId={processingAccessRequestId}
+                processingAction={processingAccessRequestAction}
+                onApprove={handleApproveAccessRequest}
+                onReject={handleRejectAccessRequest}
+                enableReviewActions={requestSubTab === 'pending'}
+                showSkillColumn={true}
+                searchable={true}
+                pagination={{ pageSize: 10 }}
+                emptyText={
+                  requestSubTab === 'pending'
+                    ? '当前没有待处理的授权申请'
+                    : '暂无相关记录'
+                }
+              />
+            </div>
+          }
         >
           <SkillListTable
             dataSource={tableDataSource}
             loading={skillsQuery.isLoading || builtinSkillsQuery.isLoading}
             validatingSkillId={validatingSkillId}
             builtinSkillByKey={builtinSkillByKey}
+            pendingRequestCountBySkillId={pendingRequestCountBySkillId}
             onViewDetail={handleViewDetail}
             onValidate={handleValidate}
             onEdit={handleEdit}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -9,7 +9,12 @@ import {
 import {
   ArrowLeftOutlined,
   LoadingOutlined,
+  KeyOutlined,
 } from '@ant-design/icons';
+import { useQuery } from 'react-query';
+import { credentialApi } from '@/api/credentials';
+import { SkillCredentialModal } from '@/features/skills/components/SkillCredentialModal';
+import type { PublishedSkillCatalogItem } from '@/api/skill';
 import ExecutionCreateAiModal from '@/features/executions/create/components/ExecutionCreateAiModal';
 import ExecutionCreateFormPanel from '@/features/executions/create/components/ExecutionCreateFormPanel';
 import ExecutionCreateScheduleListCard from '@/features/executions/create/components/ExecutionCreateScheduleListCard';
@@ -29,6 +34,7 @@ import styles from './ExecutionCreatePage.module.css';
 
 const ExecutionCreatePage: React.FC = () => {
   const navigate = useNavigate();
+  const [credentialModalOpen, setCredentialModalOpen] = useState(false);
   const [form] = Form.useForm<ExecutionCreateFormValues>();
   const {
     initialSkillId,
@@ -44,6 +50,15 @@ const ExecutionCreatePage: React.FC = () => {
   } = useExecutionCreateSkillState({
     form,
   });
+  const credentialStatusQuery = useQuery(
+    ['skill-credential-status', selectedSkill?.id],
+    () => credentialApi.getSkillStatus(selectedSkill!.id),
+    { enabled: Boolean(selectedSkill?.id), staleTime: 10_000 }
+  );
+  const credentialModalSkill = useMemo<PublishedSkillCatalogItem | null>(
+    () => selectedSkill ? { ...selectedSkill, accessStatus: 'authorized' } : null,
+    [selectedSkill]
+  );
   const {
     aiGenerating,
     aiModalOpen,
@@ -81,6 +96,7 @@ const ExecutionCreatePage: React.FC = () => {
     schemaFields,
     selectedSkillDisplayName,
     selectedSkillVersion,
+    onCredentialsRequired: () => setCredentialModalOpen(true),
   });
   const formLoadingIndicator = <LoadingOutlined style={{ fontSize: 24 }} spin />;
   const {
@@ -150,6 +166,23 @@ const ExecutionCreatePage: React.FC = () => {
         />
       ))}
 
+      {credentialStatusQuery.data?.hasCredentialRequirements &&
+        !credentialStatusQuery.data.isFullyConfigured && (
+          <Alert
+            type="warning"
+            showIcon
+            icon={<KeyOutlined />}
+            style={{ marginBottom: 16 }}
+            message="执行前需要配置个人凭证"
+            description="该数字员工所需的 Key 或账号尚未绑定。系统不会使用部署验证凭证，也不会在缺少凭证时继续执行。"
+            action={
+              <Button type="primary" size="small" onClick={() => setCredentialModalOpen(true)}>
+                立即配置
+              </Button>
+            }
+          />
+        )}
+
       <div style={executionCreateContentGridStyle}>
         <ExecutionCreateFormPanel
           form={form}
@@ -186,6 +219,14 @@ const ExecutionCreatePage: React.FC = () => {
         </Space>
       </div>
       <ExecutionCreateAiModal {...aiModalProps} />
+      <SkillCredentialModal
+        skill={credentialModalSkill}
+        open={credentialModalOpen}
+        onClose={() => {
+          setCredentialModalOpen(false);
+          void credentialStatusQuery.refetch();
+        }}
+      />
     </div>
   );
 };

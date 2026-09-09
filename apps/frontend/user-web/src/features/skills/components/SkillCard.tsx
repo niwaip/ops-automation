@@ -2,6 +2,7 @@ import {
   CalendarOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
+  KeyOutlined,
   MessageOutlined,
   PlayCircleOutlined,
   RobotOutlined,
@@ -18,6 +19,7 @@ interface SkillCardProps {
   authorized: boolean;
   onPrimaryAction: (skill: PublishedSkillCatalogItem, authorized: boolean) => void;
   onChatCollaborate?: (skill: PublishedSkillCatalogItem) => void;
+  onConfigureCredentials?: (skill: PublishedSkillCatalogItem) => void;
   recentlyRequested: boolean;
   schedules: ScheduleDto[];
   skill: PublishedSkillCatalogItem;
@@ -59,6 +61,7 @@ export function SkillCard({
   authorized,
   onPrimaryAction,
   onChatCollaborate,
+  onConfigureCredentials,
   recentlyRequested,
   schedules,
   skill,
@@ -252,6 +255,18 @@ export function SkillCard({
                 ? '重新申请'
                 : '申请开通'}
         </Button>
+
+        {authorized && onConfigureCredentials && (
+          <Tooltip title="配置该数字员工专属运行凭据（如 Bark 密钥、系统账号密码）">
+            <Button
+              icon={<KeyOutlined />}
+              onClick={() => onConfigureCredentials(skill)}
+              className={styles['employee-secondary-action-btn']}
+            >
+              配置
+            </Button>
+          </Tooltip>
+        )}
 
         {authorized && onChatCollaborate && (
           <Tooltip title="进入智能协同，与该数字员工开展人机协同问答与任务委派">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, Space, Alert, Steps, Card, Form, Select, Button, Descriptions, Input } from 'antd';
 import { CapabilityReleaseDetail } from '@/api/capabilities';
+import { DeploymentSmokeInputEditor } from './components/DeploymentSmokeInputEditor';
 
 const { TextArea } = Input;
 
@@ -28,6 +29,8 @@ export interface CreateCapabilityReleaseWizardModalProps {
   wizardAssistMutationLoading: boolean;
   onWizardAssist: () => void;
   wizardHasSuccessfulStagingDeployment: boolean;
+  deploySmokeInputDraft: string;
+  setDeploySmokeInputDraft: (draft: string) => void;
   handleWizardDeploy: () => void;
   deployMutationLoading: boolean;
   publishMutationLoading: boolean;
@@ -46,6 +49,7 @@ export const CreateCapabilityReleaseWizardModal: React.FC<CreateCapabilityReleas
   createWizardStep,
   wizardReleaseId,
   wizardRelease,
+  wizardDetail,
   createForm,
   createSourceType: _createSourceType,
   SOURCE_TYPE_OPTIONS: _SOURCE_TYPE_OPTIONS,
@@ -63,6 +67,8 @@ export const CreateCapabilityReleaseWizardModal: React.FC<CreateCapabilityReleas
   wizardAssistMutationLoading,
   onWizardAssist,
   wizardHasSuccessfulStagingDeployment,
+  deploySmokeInputDraft,
+  setDeploySmokeInputDraft,
   handleWizardDeploy,
   deployMutationLoading,
   publishMutationLoading,
@@ -191,6 +197,13 @@ export const CreateCapabilityReleaseWizardModal: React.FC<CreateCapabilityReleas
                   AI 辅助设置
                 </Button>
               </Space>
+              <div style={{ marginTop: 12 }}>
+                <DeploymentSmokeInputEditor
+                  sourcePayload={wizardDetail?.currentSourceSnapshot?.sourcePayload}
+                  draft={deploySmokeInputDraft}
+                  onChange={setDeploySmokeInputDraft}
+                />
+              </div>
             </Card>
 
             <Space style={{ justifyContent: 'space-between', width: '100%' }}>

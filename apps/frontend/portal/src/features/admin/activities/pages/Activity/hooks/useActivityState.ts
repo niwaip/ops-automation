@@ -1,5 +1,6 @@
 import { useState, useReducer } from 'react';
-import type { ActivityDTO } from '@/api/activity';
+import type { ActivityDTO, CreateActivityDto } from '@/api/activity';
+import type { ActivityQuickFilter } from '../components/ActivityOverviewCards';
 import {
   realValidateReducer,
   initialRealValidateState,
@@ -8,9 +9,11 @@ import {
 
 export function useActivityState() {
   const [activeTab, setActiveTab] = useState<'custom' | 'builtin'>('custom');
+  const [activeFilter, setActiveFilter] = useState<ActivityQuickFilter>('all');
   const [searchText, setSearchText] = useState('');
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [editingActivity, setEditingActivity] = useState<ActivityDTO | null>(null);
+  const [initialDraft, setInitialDraft] = useState<Partial<CreateActivityDto> | null>(null);
   const [codeModalVisible, setCodeModalVisible] = useState(false);
   const [currentCode, setCurrentCode] = useState('');
   const [currentActivityName, setCurrentActivityName] = useState('');
@@ -37,12 +40,16 @@ export function useActivityState() {
   return {
     activeTab,
     setActiveTab,
+    activeFilter,
+    setActiveFilter,
     searchText,
     setSearchText,
     createModalVisible,
     setCreateModalVisible,
     editingActivity,
     setEditingActivity,
+    initialDraft,
+    setInitialDraft,
     codeModalVisible,
     setCodeModalVisible,
     currentCode,

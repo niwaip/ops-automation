@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { RuntimeAdapterRegistry } from '../../adapters/runtime-adapter.registry';
+import { RuntimeCredentialResolverService } from '../../credentials/runtime-credential-resolver.service';
 import {
   RuntimePhaseArtifact,
   RuntimePhaseInvokeRequest,
@@ -50,15 +51,19 @@ export class RuntimeExecutionOrchestrator {
   }
   // #endregion
 
-  constructor(private readonly runtimeAdapterRegistry: RuntimeAdapterRegistry) {}
+  constructor(
+    private readonly runtimeAdapterRegistry: RuntimeAdapterRegistry,
+    @Optional() private readonly credentialResolver?: RuntimeCredentialResolverService
+  ) {}
 
   async executeStep(request: RuntimeStepInvokeRequest): Promise<RuntimeStepInvokeResult> {
-    const adapter = this.runtimeAdapterRegistry.resolve(request);
-    if (request.runtimeSessionId && adapter.initializeSession) {
-      await adapter.initializeSession(request.runtimeSessionId);
+    const runtimeRequest = await this.resolveRuntimeCredentials(request);
+    const adapter = this.runtimeAdapterRegistry.resolve(runtimeRequest);
+    if (runtimeRequest.runtimeSessionId && adapter.initializeSession) {
+      await adapter.initializeSession(runtimeRequest.runtimeSessionId);
     }
 
-    return adapter.invokeStep(request);
+    return adapter.invokeStep(runtimeRequest);
   }
 
   async executePhase(request: RuntimePhaseInvokeRequest): Promise<RuntimePhaseInvokeResult> {
@@ -147,8 +152,9 @@ export class RuntimeExecutionOrchestrator {
         continue;
       }
 
-      const adapter = this.runtimeAdapterRegistry.resolve(step);
-      const runtimeSessionId = step.runtimeSessionId || undefined;
+      const runtimeStep = await this.resolveRuntimeCredentials(step);
+      const adapter = this.runtimeAdapterRegistry.resolve(runtimeStep);
+      const runtimeSessionId = runtimeStep.runtimeSessionId || undefined;
       const adapterRouteKey =
         adapter.routeKeys?.[0] || `${step.runtimeType}:${step.capabilityType}`;
       const sessionInitKey = runtimeSessionId ? `${adapterRouteKey}:${runtimeSessionId}` : null;
@@ -163,9 +169,9 @@ export class RuntimeExecutionOrchestrator {
         initializedSessions.add(sessionInitKey);
       }
 
-      const result = await adapter.invokeStep(step);
+      const result = await adapter.invokeStep(runtimeStep);
       stepResults.push(result);
-      this.capturePhaseVariable(step, result, phaseVariables);
+      this.capturePhaseVariable(runtimeStep, result, phaseVariables);
 
       if (!result.success) {
         const artifacts = this.collectPhaseArtifacts(
@@ -206,6 +212,27 @@ export class RuntimeExecutionOrchestrator {
       pageFingerprint: summary.pageFingerprint,
       artifacts,
       output: this.buildPhaseOutput(lastResult?.output, phaseVariables),
+    };
+  }
+
+  private async resolveRuntimeCredentials(
+    request: RuntimeStepInvokeRequest
+  ): Promise<RuntimeStepInvokeRequest> {
+    const userId = request.traceContext?.userId;
+    if (!this.credentialResolver || !userId) {
+      return request;
+    }
+
+    const skillId = request.publishedSkillId || request.skillId || undefined;
+    const resolvedInput = await this.credentialResolver.resolveInputForRuntime(
+      userId,
+      skillId || undefined,
+      request.input
+    );
+
+    return {
+      ...request,
+      input: resolvedInput,
     };
   }
 

@@ -67,7 +67,7 @@ ensure_network() {
 }
 
 run_core_compose() {
-  ./docker/start-smart.sh docker-compose.core.yml "$@"
+  ./docker/start-smart.sh dev "$@"
 }
 
 container_running() {

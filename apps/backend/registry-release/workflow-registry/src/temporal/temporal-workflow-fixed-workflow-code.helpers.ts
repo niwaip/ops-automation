@@ -52,7 +52,7 @@ function resolveWorkflowResultType(activityFn: string): string {
 function buildSharedResultSupportLines(): string[] {
   return [
     '    @staticmethod',
-    '    def _extract_summary(value: Any) -> str | None:',
+    '    def _extract_summary(value: Any):',
     '        if isinstance(value, str):',
     '            return value.strip() or None',
     '        if isinstance(value, dict):',
@@ -63,7 +63,7 @@ function buildSharedResultSupportLines(): string[] {
     '        return None',
     '',
     '    @staticmethod',
-    '    def _extract_detail_text(value: Any) -> str | None:',
+    '    def _extract_detail_text(value: Any):',
     '        if isinstance(value, str):',
     '            return value.strip() or None',
     '        if isinstance(value, dict):',

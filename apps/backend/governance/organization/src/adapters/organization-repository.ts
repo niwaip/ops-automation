@@ -3,7 +3,9 @@ import type {
   CreateDepartmentDto,
   CreateOrganizationDto,
   CreateTeamDto,
+  UpdateDepartmentDto,
 } from '../contracts';
+
 
 export interface OrganizationSummaryRecord {
   id: string;
@@ -97,13 +99,18 @@ export interface OrganizationStructureRecord {
 
 export interface OrganizationRepository {
   createOrganization(dto: CreateOrganizationDto, actorUserId: string): Promise<OrganizationSummaryRecord>;
+  listAllOrganizations(actorUserId?: string): Promise<OrganizationSummaryRecord[]>;
   listMyOrganizations(userId: string): Promise<OrganizationMembershipSummaryRecord[]>;
   getOrganizationStructure(orgId: string): Promise<OrganizationStructureRecord | null>;
   createDepartment(orgId: string, dto: CreateDepartmentDto): Promise<OrganizationDepartmentRecord>;
+  updateDepartment(orgId: string, deptId: string, dto: UpdateDepartmentDto): Promise<OrganizationDepartmentRecord>;
+  deleteDepartment(orgId: string, deptId: string): Promise<void>;
   createTeam(orgId: string, dto: CreateTeamDto): Promise<OrganizationTeamRecord>;
   addMember(
     orgId: string,
     dto: AddOrganizationMemberDto,
     actorUserId: string
   ): Promise<OrganizationMemberRecord>;
+  removeMember(orgId: string, userId: string): Promise<void>;
 }
+

@@ -1,18 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Switch, Select, Button, Space, Tabs, Row, Col } from 'antd';
-import { RobotOutlined, ThunderboltOutlined, SaveOutlined, CodeOutlined } from '@ant-design/icons';
-import type { ActivityDTO, CreateActivityDto } from '@/api/activity';
+import {
+  Modal,
+  Form,
+  Input,
+  Switch,
+  Select,
+  Button,
+  Space,
+  Tabs,
+  Row,
+  Col,
+  Alert,
+  message,
+  Typography,
+} from 'antd';
+import {
+  RobotOutlined,
+  ThunderboltOutlined,
+  SaveOutlined,
+  CodeOutlined,
+} from '@ant-design/icons';
+import { useQuery } from 'react-query';
+import { activityApi, type ActivityDTO, type CreateActivityDto } from '@/api/activity';
+import { skillApi, type SkillConfigDTO } from '@/api/skill';
 import { ActivityHandlerConfigForm } from './ActivityHandlerConfigForm';
 import { ActivityCodePreviewModal } from './ActivityCodePreviewModal';
-import { generatePythonCode } from '../utils/activityHelpers';
+import { generatePythonCode, skillToActivityDraft } from '../utils/activityHelpers';
 
 const { TextArea } = Input;
+const { Text } = Typography;
 
 export interface ActivityEditModalProps {
   visible: boolean;
   onCancel: () => void;
   onSubmit: (values: CreateActivityDto) => void;
   editingActivity: ActivityDTO | null;
+  initialDraft?: Partial<CreateActivityDto> | null;
   loading: boolean;
   onTestActivity?: (activity: ActivityDTO | CreateActivityDto) => void;
 }
@@ -22,6 +45,7 @@ export const ActivityEditModal: React.FC<ActivityEditModalProps> = ({
   onCancel,
   onSubmit,
   editingActivity,
+  initialDraft,
   loading,
   onTestActivity,
 }) => {
@@ -29,9 +53,20 @@ export const ActivityEditModal: React.FC<ActivityEditModalProps> = ({
   const [selectedHandler, setSelectedHandler] = useState<string>('script');
   const [codePreviewVisible, setCodePreviewVisible] = useState<boolean>(false);
   const [generatedCode, setGeneratedCode] = useState<string>('');
+  const [isGeneratingCode, setIsGeneratingCode] = useState<boolean>(false);
+  const [selectedSkillId, setSelectedSkillId] = useState<string | undefined>(undefined);
+
+  // Fetch all skills for "从技能库快速生成"
+  const skillsQuery = useQuery(['skills', 'list-for-activity'], skillApi.list, {
+    enabled: visible,
+    staleTime: 60_000,
+  });
+
+  const skillsList: SkillConfigDTO[] = skillsQuery.data?.skills || [];
 
   useEffect(() => {
     if (visible) {
+      setSelectedSkillId(undefined);
       if (editingActivity) {
         setSelectedHandler(editingActivity.handler || 'script');
         form.setFieldsValue({
@@ -43,12 +78,45 @@ export const ActivityEditModal: React.FC<ActivityEditModalProps> = ({
           isActive: editingActivity.isActive !== false,
           config: editingActivity.config || {},
         });
+        setGeneratedCode(editingActivity.generatedCode || '');
+      } else if (initialDraft) {
+        setSelectedHandler(initialDraft.handler || 'script');
+        form.setFieldsValue({
+          name: initialDraft.name || '',
+          fn: initialDraft.fn || '',
+          description: initialDraft.config?.description || '',
+          handler: initialDraft.handler || 'script',
+          timeout: initialDraft.timeout || '60s',
+          isActive: initialDraft.isActive !== false,
+          config: initialDraft.config || {},
+        });
+        setGeneratedCode(initialDraft.generatedCode || '');
       } else {
         setSelectedHandler('script');
         form.resetFields();
+        setGeneratedCode('');
       }
     }
-  }, [visible, editingActivity, form]);
+  }, [visible, editingActivity, initialDraft, form]);
+
+  const handleSelectSkill = (skillId: string) => {
+    setSelectedSkillId(skillId);
+    const skill = skillsList.find((s: SkillConfigDTO) => s.id === skillId);
+    if (!skill) return;
+
+    const draft = skillToActivityDraft(skill);
+    setSelectedHandler(draft.handler);
+    form.setFieldsValue({
+      name: draft.name,
+      fn: draft.fn,
+      description: draft.config?.description || '',
+      handler: draft.handler,
+      timeout: draft.timeout,
+      isActive: draft.isActive,
+      config: draft.config,
+    });
+    message.success(`已成功从技能 [${skill.name}] 导入并生成 Activity 配置草稿`);
+  };
 
   const handleFinish = (values: any) => {
     const rawConfig = values.config || {};
@@ -62,12 +130,38 @@ export const ActivityEditModal: React.FC<ActivityEditModalProps> = ({
         description: values.description || '',
       },
       isActive: values.isActive !== false,
+      generatedCode: generatedCode || undefined,
     });
   };
 
-  const handleGenerateCode = () => {
+  const handleGenerateCode = async () => {
     const values = form.getFieldsValue();
-    const mockFormData = {
+    setIsGeneratingCode(true);
+
+    try {
+      const res = await activityApi.generateCode({
+        name: values.name || 'SampleActivity',
+        fn: values.fn || 'sample_activity',
+        handler: values.handler || 'script',
+        timeout: values.timeout || '60s',
+        config: values.config || {},
+        isActive: values.isActive !== false,
+      });
+
+      if (res?.success && res.code) {
+        setGeneratedCode(res.code);
+        message.success('已通过 AI 代码生成引擎构建 Python Activity 代码');
+        setCodePreviewVisible(true);
+        return;
+      }
+    } catch (err) {
+      console.warn('Backend generateCode failed, fallback to local code generator:', err);
+    } finally {
+      setIsGeneratingCode(false);
+    }
+
+    // Local fallback generator
+    const localCode = generatePythonCode({
       name: values.name || 'SampleActivity',
       fn: values.fn || 'sample_activity',
       description: values.description || '',
@@ -82,11 +176,12 @@ export const ActivityEditModal: React.FC<ActivityEditModalProps> = ({
           config: values.config || {},
         },
       ],
-    };
-    const pythonCode = generatePythonCode(mockFormData);
-    setGeneratedCode(pythonCode);
+    });
+    setGeneratedCode(localCode);
     setCodePreviewVisible(true);
   };
+
+  const isCloneOrNew = !editingActivity;
 
   return (
     <>
@@ -95,7 +190,13 @@ export const ActivityEditModal: React.FC<ActivityEditModalProps> = ({
         title={
           <Space>
             <CodeOutlined style={{ color: 'var(--primary-color)' }} />
-            <span>{editingActivity ? '编辑 Activity 定义' : '新建 Activity 定义'}</span>
+            <span>
+              {editingActivity
+                ? `编辑 Activity: ${editingActivity.name}`
+                : initialDraft?.name
+                ? `克隆生成 Activity: ${initialDraft.name}`
+                : '新建 Activity 定义'}
+            </span>
           </Space>
         }
         onCancel={onCancel}
@@ -103,6 +204,47 @@ export const ActivityEditModal: React.FC<ActivityEditModalProps> = ({
         footer={null}
         destroyOnClose
       >
+        {isCloneOrNew && (
+          <Alert
+            message="快速生成与复用"
+            description={
+              <div style={{ marginTop: 6 }}>
+                <Space wrap align="center">
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    复制技能 (Skills) 快速生成对应工作单元：
+                  </Text>
+                  <Select
+                    showSearch
+                    placeholder="从已有技能库中选择技能一键生成..."
+                    style={{ minWidth: 280 }}
+                    value={selectedSkillId}
+                    onChange={handleSelectSkill}
+                    filterOption={(input, option) =>
+                      String(option?.label || '')
+                        .toLowerCase()
+                        .includes(input.toLowerCase())
+                    }
+                    options={skillsList.map((s: SkillConfigDTO) => ({
+                      label: `${s.name} (${s.triggerKeywords?.[0] || '技能'})`,
+                      value: s.id,
+                    }))}
+                    allowClear
+                  />
+                  {initialDraft && (
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      已预填克隆副本参数，可直接调整并保存。
+                    </Text>
+                  )}
+                </Space>
+              </div>
+            }
+            type="info"
+            showIcon
+            icon={<ThunderboltOutlined style={{ color: '#8b5cf6' }} />}
+            style={{ marginBottom: 16, borderRadius: 8 }}
+          />
+        )}
+
         <Form
           form={form}
           layout="vertical"
@@ -135,6 +277,7 @@ export const ActivityEditModal: React.FC<ActivityEditModalProps> = ({
                           label="Python 函数名 (fn)"
                           name="fn"
                           rules={[{ required: true, message: '请输入 Python 函数名' }]}
+                          tooltip="在 Temporal 工作流 worker 中注册的 python 异步函数名"
                         >
                           <Input placeholder="如：send_email_activity" />
                         </Form.Item>
@@ -143,7 +286,11 @@ export const ActivityEditModal: React.FC<ActivityEditModalProps> = ({
 
                     <Row gutter={16}>
                       <Col span={12}>
-                        <Form.Item label="处理器类型 (Handler)" name="handler" rules={[{ required: true }]}>
+                        <Form.Item
+                          label="处理器类型 (Handler)"
+                          name="handler"
+                          rules={[{ required: true }]}
+                        >
                           <Select
                             onChange={(val) => setSelectedHandler(val)}
                             options={[
@@ -168,7 +315,7 @@ export const ActivityEditModal: React.FC<ActivityEditModalProps> = ({
                     </Row>
 
                     <Form.Item label="描述说明" name="description">
-                      <TextArea rows={3} placeholder="描述该 Activity 的职责与使用场景..." />
+                      <TextArea rows={3} placeholder="描述该 Activity 的职责、上下游调用约定与使用场景..." />
                     </Form.Item>
                   </>
                 ),
@@ -192,9 +339,18 @@ export const ActivityEditModal: React.FC<ActivityEditModalProps> = ({
             }}
           >
             <Space>
-              <Button icon={<RobotOutlined />} onClick={handleGenerateCode}>
+              <Button
+                icon={<RobotOutlined spin={isGeneratingCode} />}
+                onClick={handleGenerateCode}
+                loading={isGeneratingCode}
+              >
                 AI 生成 Python 代码
               </Button>
+              {generatedCode && (
+                <Button icon={<CodeOutlined />} onClick={() => setCodePreviewVisible(true)}>
+                  查看当前生成代码
+                </Button>
+              )}
               {onTestActivity && (
                 <Button
                   icon={<ThunderboltOutlined />}
@@ -222,7 +378,14 @@ export const ActivityEditModal: React.FC<ActivityEditModalProps> = ({
         visible={codePreviewVisible}
         onCancel={() => setCodePreviewVisible(false)}
         code={generatedCode}
+        onSaveCode={(code) => {
+          setGeneratedCode(code);
+          message.success('代码已保存到当前 Activity 定义中，请点击【保存 Activity】提交。');
+          setCodePreviewVisible(false);
+        }}
       />
     </>
   );
 };
+
+export default ActivityEditModal;

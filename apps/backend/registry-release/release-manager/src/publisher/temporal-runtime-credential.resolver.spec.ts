@@ -17,17 +17,16 @@ const sourcePayload = {
 };
 
 describe('resolveTemporalRuntimeCredentials', () => {
-  it('uses snapshot default when input is not provided and no env override exists', () => {
+  it('does not expose a snapshot credential default to runtime users', () => {
     const resolution = resolveTemporalRuntimeCredentials(
       { query: 'deepseek' },
       sourcePayload,
       {}
     );
 
-    expect(resolution).toEqual({
-      input: { query: 'deepseek', apiKey: 'expired-snapshot-key' },
-      missing: [],
-    });
+    expect(resolution.input).toEqual({ query: 'deepseek' });
+    expect(resolution.missing).toEqual([]);
+    expect(findTemporalCredentialDefaults(sourcePayload)).toEqual(['apiKey']);
   });
 
   it('preserves user/workflow input value when provided', () => {
@@ -89,5 +88,27 @@ describe('resolveTemporalRuntimeCredentials', () => {
     expect(resolution.missing).toEqual([
       { field: 'apiKey', envKeys: ['TAVILY_API_KEY', 'SEARCH_API_KEY'] },
     ]);
+  });
+
+  it('rejects generated and masked device-key placeholders as missing credentials', () => {
+    const barkPayload = {
+      paramsSchema: {
+        required: ['deviceKey'],
+        properties: {
+          deviceKey: { type: 'string', description: 'Bark device key' },
+          content: { type: 'string' },
+        },
+      },
+    };
+
+    for (const deviceKey of ['test_deviceKey', '••••••••', '[REDACTED]']) {
+      const resolution = resolveTemporalRuntimeCredentials(
+        { deviceKey, content: 'deployment smoke' },
+        barkPayload,
+        {}
+      );
+      expect(resolution.input).toEqual({ content: 'deployment smoke' });
+      expect(resolution.missing).toEqual([{ field: 'deviceKey', envKeys: [] }]);
+    }
   });
 });

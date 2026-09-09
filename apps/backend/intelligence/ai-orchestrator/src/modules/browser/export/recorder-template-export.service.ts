@@ -76,6 +76,37 @@ interface OptionalManualInterventionPlan {
   takeoverReason: string;
 }
 
+import {
+  appendOptionalManualInterventionStepsForIndex,
+  appendInitialOptionalManualInterventionPrechecks,
+  appendOptionalManualInterventionCheckpoint,
+  buildOptionalManualInterventionPlan,
+} from './recorder-manual-intervention';
+import {
+  resolvePreferredBranchReadSelector,
+  resolveBranchReadSelectorFromCandidates,
+  buildFieldSelector,
+  scoreBranchFieldCandidate,
+  normalizeExportTemplateSteps,
+  dedupeSetupSteps,
+  buildSetupStepKey,
+  dedupeSetupCommands,
+  buildSetupCommandKey,
+  collectDedupedSetupItems,
+} from './recorder-template-normalizer';
+import {
+  resolveTemplateLocatorFromRecordedRef,
+  resolveTemplateLocatorFromSnapshotText,
+  parseTemplateLocatorFromSnapshotRef,
+  extractTurnExecutionIndex,
+  extractRecordedRef,
+  hasCoexistingGenericText,
+  countTextOccurrences,
+  escapeRegex,
+  normalize,
+  isGrossMarginHint,
+} from './recorder-template-locator';
+
 @Injectable()
 export class RecorderTemplateExportService {
   // Role sets are imported from browser-domain.constants.ts.
@@ -890,47 +921,19 @@ export class RecorderTemplateExportService {
     nextStepId: () => string,
     consumedManualInterventionIds: Set<string>
   ): void {
-    const interventions = (session.manualInterventions || []).filter(
-      (item) =>
-        item.behavior === 'optional_takeover_if_present' &&
-        item.startCommandIndex === commandIndex &&
-        !consumedManualInterventionIds.has(item.id)
+    appendOptionalManualInterventionStepsForIndex(
+      templateSteps,
+      session,
+      commandIndex,
+      nextStepId,
+      consumedManualInterventionIds
     );
-
-    interventions.forEach((item, interventionIndex) => {
-      const plan = this.buildOptionalManualInterventionPlan(item);
-      if (!plan) {
-        consumedManualInterventionIds.add(item.id);
-        return;
-      }
-      this.appendOptionalManualInterventionCheckpoint(
-        templateSteps,
-        item.label,
-        plan,
-        `manual_checkpoint_${commandIndex}_${interventionIndex}`,
-        nextStepId
-      );
-      consumedManualInterventionIds.add(item.id);
-    });
   }
 
   private buildOptionalManualInterventionPlan(
     item: Pick<RecorderManualInterventionRecord, 'label' | 'signal'>
   ): OptionalManualInterventionPlan | null {
-    const normalizedLabel = item.label.trim();
-    if (!normalizedLabel) {
-      return null;
-    }
-    return {
-      ...(item.signal ? { signal: item.signal } : {}),
-      ...(!item.signal
-        ? {
-            pattern: normalizedLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-          }
-        : {}),
-      description: `如果页面出现${normalizedLabel}提示，则暂停自动执行并等待人工介入`,
-      takeoverReason: `检测到${normalizedLabel}提示，请人工介入后继续执行`,
-    };
+    return buildOptionalManualInterventionPlan(item);
   }
 
   private appendInitialOptionalManualInterventionPrechecks(
@@ -938,23 +941,7 @@ export class RecorderTemplateExportService {
     session: SessionLike,
     nextStepId: () => string
   ): void {
-    const interventions = (session.manualInterventions || []).filter(
-      (item) => item.behavior === 'optional_takeover_if_present'
-    );
-
-    interventions.forEach((item, index) => {
-      const plan = this.buildOptionalManualInterventionPlan(item);
-      if (!plan?.signal?.precheckBeforeRecordedCommands) {
-        return;
-      }
-      this.appendOptionalManualInterventionCheckpoint(
-        templateSteps,
-        item.label,
-        plan,
-        `manual_precheck_${index}`,
-        nextStepId
-      );
-    });
+    appendInitialOptionalManualInterventionPrechecks(templateSteps, session, nextStepId);
   }
 
   private appendOptionalManualInterventionCheckpoint(
@@ -964,97 +951,14 @@ export class RecorderTemplateExportService {
     outputVarPrefix: string,
     nextStepId: () => string
   ): void {
-    if (plan.signal) {
-      const signalOutputVar = `${outputVarPrefix}_signal`;
-      const fallbackOutputVar = `${outputVarPrefix}_text`;
-      const selector = plan.signal.selector.trim();
-      const maxLength =
-        plan.signal.method === 'attribute' || plan.signal.method === 'visible' ? 128 : 12000;
-      templateSteps.push({
-        step_id: nextStepId(),
-        action: 'read_value',
-        locator: {
-          type: this.inferTemplateLocatorType(selector),
-          value: selector,
-        },
-        params: {
-          selector,
-          method: plan.signal.method,
-          ...(plan.signal.attribute ? { attribute: plan.signal.attribute } : {}),
-          max_length: maxLength,
-        },
-        output_var: signalOutputVar,
-        description: `读取${label}页面信号`,
-      });
-      if (plan.signal.fallbackPattern) {
-        templateSteps.push({
-          step_id: nextStepId(),
-          action: 'read_value',
-          locator: {
-            type: 'css',
-            value: 'body',
-          },
-          params: {
-            selector: 'body',
-            method: 'innerText',
-            max_length: 12000,
-          },
-          output_var: fallbackOutputVar,
-          description: `检查是否出现${label}提示`,
-        });
-      }
-      const expectedValue = (plan.signal.expectedValue || '').trim().toLowerCase();
-      const fallbackCondition = plan.signal.fallbackPattern
-        ? ` return !/${plan.signal.fallbackPattern}/i.test(String(ctx.${fallbackOutputVar} || "")); `
-        : ' return true; ';
-      templateSteps.push({
-        step_id: nextStepId(),
-        action: 'branch',
-        branch: {
-          condition_fn: `(ctx) => { const signalValue = String(ctx.${signalOutputVar} || "").trim().toLowerCase(); if (signalValue) { return signalValue !== ${JSON.stringify(expectedValue)}; }${fallbackCondition}}`,
-          on_match: 'continue',
-          on_mismatch: 'takeover',
-          takeover_reason: plan.takeoverReason,
-          description: plan.description,
-        },
-        description: plan.description,
-      });
-      return;
-    }
-
-    const pattern = plan.pattern;
-    if (!pattern) {
-      return;
-    }
-    templateSteps.push({
-      step_id: nextStepId(),
-      action: 'read_value',
-      locator: {
-        type: 'css',
-        value: 'body',
-      },
-      params: {
-        selector: 'body',
-        method: 'innerText',
-        max_length: 12000,
-      },
-      output_var: outputVarPrefix,
-      description: `检查是否出现${label}提示`,
-    });
-    templateSteps.push({
-      step_id: nextStepId(),
-      action: 'branch',
-      branch: {
-        condition_fn: `(ctx) => !/${pattern}/i.test(String(ctx.${outputVarPrefix} || ""))`,
-        on_match: 'continue',
-        on_mismatch: 'takeover',
-        takeover_reason: plan.takeoverReason,
-        description: plan.description,
-      },
-      description: plan.description,
-    });
+    appendOptionalManualInterventionCheckpoint(
+      templateSteps,
+      label,
+      plan,
+      outputVarPrefix,
+      nextStepId
+    );
   }
-
   toIndexedLoopItemTemplateLocator(
     locator: TemplateStepArtifactLike['locator'] | undefined,
     loopPendingKeyword?: string
@@ -1344,16 +1248,11 @@ export class RecorderTemplateExportService {
     outputVar?: string,
     branchIntent?: string
   ): string {
-    const candidateSelector = this.resolveBranchReadSelectorFromCandidates(
-      detailObservation.candidates || [],
-      [branchIntent, outputVar, ...(readSelectors || [])]
-    );
-    if (candidateSelector) {
-      return candidateSelector;
-    }
-    return (
-      readSelectors?.find((selector) => typeof selector === 'string' && selector.trim().length > 0) ||
-      'body'
+    return resolvePreferredBranchReadSelector(
+      detailObservation,
+      readSelectors,
+      outputVar,
+      branchIntent
     );
   }
 
@@ -1361,281 +1260,69 @@ export class RecorderTemplateExportService {
     candidates: BrowserCommandCandidate[],
     hints: Array<string | undefined>
   ): string | undefined {
-    const normalizedHints = hints.map((value) => this.normalize(value)).filter(Boolean);
-    const scoredCandidates = candidates
-      .filter((candidate) => candidate.kind === 'field')
-      .map((candidate) => ({
-        selector: this.buildFieldSelector(candidate),
-        score: this.scoreBranchFieldCandidate(candidate, normalizedHints),
-      }))
-      .filter(
-        (entry): entry is { selector: string; score: number } =>
-          typeof entry.selector === 'string' && entry.selector.trim().length > 0 && entry.score > 0
-      )
-      .sort((left, right) => right.score - left.score);
-
-    return scoredCandidates[0]?.selector;
+    return resolveBranchReadSelectorFromCandidates(candidates, hints);
   }
 
   private buildFieldSelector(candidate: BrowserCommandCandidate): string | undefined {
-    if (candidate.preferredLocator?.type === 'testid' && candidate.preferredLocator.value.trim()) {
-      return `[data-testid="${candidate.preferredLocator.value.trim()}"]`;
-    }
-    if (candidate.dataTestId?.trim()) {
-      return `[data-testid="${candidate.dataTestId.trim()}"]`;
-    }
-    if (candidate.elementId?.trim()) {
-      return `#${candidate.elementId.trim()}`;
-    }
-    if (candidate.preferredLocator?.type === 'css' && candidate.preferredLocator.value.trim()) {
-      return candidate.preferredLocator.value.trim();
-    }
-    return undefined;
+    return buildFieldSelector(candidate);
   }
 
   private scoreBranchFieldCandidate(
     candidate: BrowserCommandCandidate,
     hints: string[]
   ): number {
-    const values = [
-      candidate.field,
-      candidate.label,
-      candidate.text,
-      candidate.summary,
-      candidate.elementId,
-      candidate.dataTestId,
-      candidate.preferredLocator?.value,
-    ].map((value) => this.normalize(value));
-    let score = 0;
-
-    for (const hint of hints) {
-      if (!hint) {
-        continue;
-      }
-      if (this.isGrossMarginHint(hint) && values.some((value) => this.isGrossMarginHint(value))) {
-        score += 220;
-        continue;
-      }
-      if (values.some((value) => value.length > 0 && (value.includes(hint) || hint.includes(value)))) {
-        score += 60;
-      }
-    }
-
-    if (candidate.preferredLocator?.type === 'testid') {
-      score += 20;
-    } else if (candidate.dataTestId || candidate.elementId) {
-      score += 10;
-    }
-
-    return score;
+    return scoreBranchFieldCandidate(candidate, hints);
   }
 
   private normalizeExportTemplateSteps(
     templateSteps: TemplateStepArtifactLike[]
   ): TemplateStepArtifactLike[] {
-    const normalized: TemplateStepArtifactLike[] = [];
-    let setupBuffer: TemplateStepArtifactLike[] = [];
-
-    const flushSetupBuffer = () => {
-      if (setupBuffer.length === 0) {
-        return;
-      }
-      normalized.push(...this.dedupeSetupSteps(setupBuffer));
-      setupBuffer = [];
-    };
-
-    for (const step of templateSteps) {
-      if (step.action === 'navigate' || step.action === 'fill') {
-        setupBuffer.push(step);
-        continue;
-      }
-      flushSetupBuffer();
-      normalized.push(step);
-    }
-
-    flushSetupBuffer();
-    return normalized.map((step, index) => ({
-      ...step,
-      step_id: `step_${index + 1}`,
-    }));
+    return normalizeExportTemplateSteps(templateSteps);
   }
 
   private dedupeSetupSteps(steps: TemplateStepArtifactLike[]): TemplateStepArtifactLike[] {
-    const navigateStep = [...steps].reverse().find((step) => step.action === 'navigate');
-    const dedupedFills = this.collectDedupedSetupItems(
-      steps.filter((step) => step.action === 'fill'),
-      (step) => this.buildSetupStepKey(step)
-    );
-    return [...(navigateStep ? [navigateStep] : []), ...dedupedFills];
+    return dedupeSetupSteps(steps);
   }
 
   private buildSetupStepKey(step: TemplateStepArtifactLike): string | undefined {
-    if (step.action === 'navigate') {
-      const url = typeof step.params?.url === 'string' ? step.params.url.trim() : '';
-      return url ? `navigate:${url}` : undefined;
-    }
-    if (step.action === 'fill') {
-      const locatorType = typeof step.locator?.type === 'string' ? step.locator.type : '';
-      const locatorValue = typeof step.locator?.value === 'string' ? step.locator.value.trim() : '';
-      const value = typeof step.params?.value === 'string' ? step.params.value.trim() : '';
-      if (!locatorValue || !value) {
-        return undefined;
-      }
-      return `fill:${locatorType}:${locatorValue}:${value}`;
-    }
-    return undefined;
+    return buildSetupStepKey(step);
   }
 
   private dedupeSetupCommands(commands: BrowserCommand[]): BrowserCommand[] {
-    const navigateCommand = [...commands].reverse().find((command) => command.tool === 'navigate');
-    const dedupedFills = this.collectDedupedSetupItems(
-      commands.filter((command) => command.tool === 'fill'),
-      (command) => this.buildSetupCommandKey(command)
-    );
-    return [...(navigateCommand ? [navigateCommand] : []), ...dedupedFills];
+    return dedupeSetupCommands(commands);
   }
 
   private buildSetupCommandKey(command: BrowserCommand): string | undefined {
-    if (command.tool === 'navigate') {
-      const url = typeof command.params.url === 'string' ? command.params.url.trim() : '';
-      return url ? `navigate:${url}` : undefined;
-    }
-    if (command.tool === 'fill') {
-      const stableLocatorSignature =
-        typeof command.locator?.role === 'string' &&
-        command.locator.role.trim() &&
-        typeof command.locator?.name === 'string' &&
-        command.locator.name.trim()
-          ? `role:${command.locator.role.trim()}|name:${command.locator.name.trim()}`
-          : [
-              typeof command.locator?.strategy === 'string' ? command.locator.strategy : '',
-              typeof command.locator?.value === 'string' ? command.locator.value : '',
-              typeof command.params.target === 'string' ? command.params.target : '',
-              typeof command.params.selector === 'string' ? command.params.selector : '',
-            ]
-              .map((value) => value.trim())
-              .filter(Boolean)
-              .join('|');
-      const value = typeof command.params.value === 'string' ? command.params.value.trim() : '';
-      if (!stableLocatorSignature || !value) {
-        return undefined;
-      }
-      return `fill:${stableLocatorSignature}:${value}`;
-    }
-    return undefined;
+    return buildSetupCommandKey(command);
   }
 
   private collectDedupedSetupItems<T>(
     items: T[],
     keyBuilder: (item: T) => string | undefined
   ): T[] {
-    const lastIndexByKey = new Map<string, number>();
-    items.forEach((item, index) => {
-      const key = keyBuilder(item);
-      if (key) {
-        lastIndexByKey.set(key, index);
-      }
-    });
-    return items.filter((item, index) => {
-      const key = keyBuilder(item);
-      if (!key) {
-        return true;
-      }
-      return lastIndexByKey.get(key) === index;
-    });
+    return collectDedupedSetupItems(items, keyBuilder);
   }
 
   private resolveTemplateLocatorFromRecordedRef(
     command: BrowserCommand,
     session?: SessionLike
   ): TemplateStepArtifactLike['locator'] | undefined {
-    const ref = this.extractRecordedRef(command);
-    if (!ref || !session?.history?.length) {
-      return undefined;
-    }
-
-    const executionIndex = typeof command.executionIndex === 'number' ? command.executionIndex : undefined;
-
-    for (const turn of session.history) {
-      if (typeof executionIndex === 'number') {
-        const turnExecutionIndex = this.extractTurnExecutionIndex(turn);
-        if (turnExecutionIndex !== undefined && turnExecutionIndex > executionIndex) {
-          break;
-        }
-      }
-      const results = turn.execution?.results;
-      if (!Array.isArray(results)) {
-        continue;
-      }
-      for (const result of results) {
-        const content =
-          result &&
-          typeof result === 'object' &&
-          result.data &&
-          typeof result.data === 'object' &&
-          typeof (result.data as Record<string, unknown>).content === 'string'
-            ? ((result.data as Record<string, unknown>).content as string)
-            : '';
-        if (!content || !content.includes(`[ref=${ref}]`)) {
-          continue;
-        }
-        const locator = this.parseTemplateLocatorFromSnapshotRef(content, ref);
-        if (locator) {
-          return locator;
-        }
-      }
-    }
-
-    return undefined;
+    return resolveTemplateLocatorFromRecordedRef(command, session);
   }
 
   private extractTurnExecutionIndex(turn: unknown): number | undefined {
-    if (typeof turn !== 'object' || turn === null) return undefined;
-    const commands = (turn as { commands?: unknown }).commands;
-    if (!Array.isArray(commands)) return undefined;
-    for (const cmd of commands) {
-      if (cmd && typeof cmd === 'object' && typeof (cmd as { executionIndex?: unknown }).executionIndex === 'number') {
-        return (cmd as { executionIndex: number }).executionIndex;
-      }
-    }
-    return undefined;
+    return extractTurnExecutionIndex(turn);
   }
 
   private extractRecordedRef(command: BrowserCommand): string | undefined {
-    const target =
-      typeof command.params.target === 'string' && this.isEphemeralRuntimeHandle(command.params.target)
-        ? command.params.target.trim()
-        : '';
-    if (target) {
-      return target;
-    }
-    const locatorValue =
-      typeof command.locator?.value === 'string' && this.isEphemeralRuntimeHandle(command.locator.value)
-        ? command.locator.value.trim()
-        : '';
-    return locatorValue || undefined;
+    return extractRecordedRef(command);
   }
 
   private parseTemplateLocatorFromSnapshotRef(
     snapshotContent: string,
     ref: string
   ): TemplateStepArtifactLike['locator'] | undefined {
-    const escapedRef = ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const roleMatch = snapshotContent.match(
-      new RegExp(
-        `(?:-\\s*)?(${SNAPSHOT_ROLE_ALTERNATION})\\s+"([^"]+)"\\s+\\[ref=${escapedRef}\\]`,
-        'i'
-      )
-    );
-    if (roleMatch?.[1] && roleMatch[2]) {
-      const role = roleMatch[1].toLowerCase();
-      const name = roleMatch[2].trim().replace(/"/g, '\\"');
-      return {
-        type: 'role',
-        value: `${role}[name="${name}"]`,
-      };
-    }
-    return undefined;
+    return parseTemplateLocatorFromSnapshotRef(snapshotContent, ref);
   }
 
   private resolveTemplateLocatorFromSnapshotText(
@@ -1643,139 +1330,26 @@ export class RecorderTemplateExportService {
     command: BrowserCommand,
     session?: SessionLike
   ): TemplateStepArtifactLike['locator'] | undefined {
-    if (!text || !session?.history?.length) {
-      return undefined;
-    }
-
-    const executionIndex =
-      typeof command.executionIndex === 'number' ? command.executionIndex : undefined;
-    const escapedText = this.escapeRegex(text);
-    const refPattern = new RegExp(
-      `(?:-\\s*)?(${SNAPSHOT_ROLE_ALTERNATION})(\\s+"[^"]*")?\\s+\\[ref=(e\\d+)\\].*${escapedText}`,
-      'i'
-    );
-    const exactTextPattern = new RegExp(
-      `(?:-\\s*)?(${SNAPSHOT_ROLE_ALTERNATION})\\s+"${escapedText}"\\s+\\[ref=(e\\d+)\\]`,
-      'i'
-    );
-
-    let exactMatch: { role: string; ref: string; content: string } | undefined;
-    let prefixMatch: { role: string; ref: string; content: string } | undefined;
-
-    for (const turn of session.history) {
-      if (typeof executionIndex === 'number') {
-        const turnExecutionIndex = this.extractTurnExecutionIndex(turn);
-        if (turnExecutionIndex !== undefined && turnExecutionIndex > executionIndex) {
-          break;
-        }
-      }
-      const results = turn.execution?.results;
-      if (!Array.isArray(results)) continue;
-
-      for (const result of results) {
-        const content =
-          result && typeof result === 'object' && result.data && typeof result.data === 'object'
-            ? (result.data as Record<string, unknown>).content
-            : undefined;
-        if (typeof content !== 'string' || !content) continue;
-
-        if (!exactMatch) {
-          const m = content.match(exactTextPattern);
-          if (m?.[1] && m[2]) {
-            exactMatch = { role: m[1].toLowerCase(), ref: m[2], content };
-          }
-        }
-        if (!prefixMatch) {
-          for (const line of content.split('\n')) {
-            const m = line.match(refPattern);
-            if (m?.[1] && m[3]) {
-              prefixMatch = { role: m[1].toLowerCase(), ref: m[3], content };
-              break;
-            }
-          }
-        }
-        if (exactMatch) break;
-      }
-      if (exactMatch) break;
-    }
-
-    const match = exactMatch || prefixMatch;
-    if (!match) return undefined;
-
-    if (exactMatch && match.role !== 'generic' && match.role !== 'cell' && match.role !== 'row') {
-      // Extra guard: if the same text also exists as a `generic` (sidebar/menu) element
-      // in the same snapshot, the role-based locator (e.g. link[name="..."]) is
-      // unreliable — it refers to an ephemeral tab/header element that only exists
-      // after the user has visited that page once.  Prefer a text= locator so that
-      // the always-present menu item is used regardless of tab state.
-      if (this.hasCoexistingGenericText(match.content, text)) {
-        const ordinal = this.countTextOccurrences(match.content, text, match.ref);
-        return {
-          type: 'css',
-          value: `:nth-match(text=${text}, ${ordinal})`,
-        };
-      }
-
-      return {
-        type: 'role',
-        value: `${match.role}[name="${text.replace(/"/g, '\\"')}"]`,
-      };
-    }
-
-    const ordinal = this.countTextOccurrences(match.content, text, match.ref);
-    return {
-      type: 'css',
-      value: `:nth-match(text=${text}, ${ordinal})`,
-    };
+    return resolveTemplateLocatorFromSnapshotText(text, command, session);
   }
 
-  /**
-   * Returns true when the snapshot content contains a `generic` element whose
-   * text matches `text` in addition to whatever role was matched.
-   *
-   * This signals that the same label appears both in a structural widget (e.g. a
-   * sidebar menu item rendered as `generic`) and in a volatile context (e.g. a
-   * browser tab rendered as `link`).  In that case exporting a role-based locator
-   * would point at the volatile element and fail on fresh sessions.
-   */
   private hasCoexistingGenericText(snapshotContent: string, text: string): boolean {
-    const escapedText = this.escapeRegex(text);
-    // Matches lines like: `- generic [ref=eN] [cursor=pointer]: 营业商谈一览`
-    const genericPattern = new RegExp(
-      `(?:-\\s*)generic\\s+\\[ref=e\\d+\\][^\\n]*:\\s*${escapedText}\\s*$`,
-      'im'
-    );
-    return genericPattern.test(snapshotContent);
+    return hasCoexistingGenericText(snapshotContent, text);
   }
 
   private countTextOccurrences(snapshotContent: string, text: string, targetRef: string): number {
-    const escapedText = this.escapeRegex(text);
-    const linePattern = new RegExp(
-      `\\[ref=(e\\d+)\\][^\\n]*${escapedText}`,
-      'i'
-    );
-    let ordinal = 0;
-    const lines = snapshotContent.split('\n');
-    for (const line of lines) {
-      const m = line.match(linePattern);
-      if (!m) continue;
-      ordinal++;
-      if (m[1] === targetRef) {
-        return ordinal;
-      }
-    }
-    return ordinal || 1;
+    return countTextOccurrences(snapshotContent, text, targetRef);
   }
 
   private escapeRegex(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return escapeRegex(value);
   }
 
   private normalize(value: unknown): string {
-    return typeof value === 'string' ? value.trim().toLowerCase() : '';
+    return normalize(value);
   }
 
   private isGrossMarginHint(value: string): boolean {
-    return /(gross.?margin|profit.?margin|毛利率|粗利率)/i.test(value);
+    return isGrossMarginHint(value);
   }
 }

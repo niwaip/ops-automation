@@ -60,7 +60,11 @@ export const getAiOrchestratorUrl = (): string => {
 };
 
 export const getWorkflowValidationAgentUrl = (): string => {
-  const configured = readConfiguredUrl(process.env.WORKFLOW_VALIDATION_AGENT_URL);
+  const configured = readConfiguredUrl(
+    process.env.WORKFLOW_VALIDATION_AGENT_URL,
+    process.env.ACTIVITY_VALIDATION_AGENT_URL,
+    process.env.SANDBOX_WORKER_URL
+  );
   if (configured) {
     return configured;
   }

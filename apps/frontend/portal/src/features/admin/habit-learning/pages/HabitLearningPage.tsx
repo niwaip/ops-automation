@@ -1,4 +1,10 @@
-import { Alert, Card, message, Table, Tabs, Typography } from 'antd';
+import { Alert, Badge, message, Space, Tabs, Tag, Typography } from 'antd';
+import {
+  AppstoreOutlined,
+  CommentOutlined,
+  DashboardOutlined,
+  HistoryOutlined,
+} from '@ant-design/icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   habitLearningApi,
@@ -9,20 +15,10 @@ import {
   type RoutingDiagnostics,
 } from '@/api/habitLearning';
 import { HabitCandidatesPanel } from '../components/HabitCandidatesPanel';
+import { HabitFeedbackPanel } from '../components/HabitFeedbackPanel';
 import { HabitRunsPanel } from '../components/HabitRunsPanel';
 import { HabitStatusCards } from '../components/HabitStatusCards';
 import { RoutingDiagnosticsPanel } from '../components/RoutingDiagnosticsPanel';
-
-const reasonLabels: Record<string, string> = {
-  answer_incorrect: '回答内容不正确',
-  wrong_skill_or_workflow: '匹配错技能或工作流',
-  missing_step: '缺少执行步骤',
-  wrong_parameters: '参数或默认值错误',
-  wrong_output_format: '输出格式不符合预期',
-  execution_failed: '执行失败',
-  unsafe_or_unexpected_side_effect: '不安全或意外副作用',
-  other: '其他',
-};
 
 const HabitLearningPage: React.FC = () => {
   const [overview, setOverview] = useState<HabitLearningOverview>();
@@ -67,10 +63,10 @@ const HabitLearningPage: React.FC = () => {
     setRunning(true);
     try {
       await habitLearningApi.runNow();
-      void message.success('候选生成批次已完成');
+      void message.success('候选提炼批次已成功完成');
       await load();
     } catch {
-      void message.error('候选生成失败');
+      void message.error('候选提炼批次执行失败');
     } finally {
       setRunning(false);
     }
@@ -92,27 +88,62 @@ const HabitLearningPage: React.FC = () => {
     }
   };
 
+  const candidateCount = candidates.length || 0;
+
   return (
-    <div style={{ padding: 24 }}>
-      <Typography.Title level={3}>习惯学习</Typography.Title>
-      <Typography.Paragraph type="secondary">
-        固定流程优先；用户私有路由候选由 AI 审查后自动生效，Embedding 与 Rerank 保持禁用。
-      </Typography.Paragraph>
-      <Alert
-        showIcon
-        type={status?.activationEnabled ? 'success' : 'warning'}
-        message={status?.activationEnabled ? '用户路由 AI 自动审核已启用' : '用户路由自动生效已暂停'}
-        description="AI 复用保存工作流精确版本的审查结论，不需要管理员逐条审批，也不会执行第二次 Bark、邮件或发布；管理员仅负责观察、暂停和回滚。"
-        style={{ marginBottom: 16 }}
-      />
-      {isError ? <Alert showIcon type="error" message="无法加载习惯学习数据" style={{ marginBottom: 16 }} /> : null}
+    <div style={{ padding: '16px 24px', maxWidth: 1600, margin: '0 auto' }}>
+      {/* 紧凑单行页面头部 */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 16,
+          flexWrap: 'wrap',
+          gap: 8,
+        }}
+      >
+        <Space align="center" size="middle">
+          <Typography.Title level={4} style={{ margin: 0, color: 'var(--text-primary)' }}>
+            习惯学习与经验路由
+          </Typography.Title>
+          <Tag color={status?.activationEnabled ? 'success' : 'warning'}>
+            {status?.activationEnabled ? 'AI 自动审核已开启' : '自动生效已暂停'}
+          </Tag>
+        </Space>
+        <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+          已沉淀 <b>{status?.habitCounts?.active || 0}</b> 个生效习惯 · 0-Token 极速直通
+        </Typography.Text>
+      </div>
+
+      {isError ? (
+        <Alert
+          showIcon
+          type="error"
+          message="无法加载习惯学习数据，请检查服务连通性"
+          style={{ marginBottom: 16 }}
+        />
+      ) : null}
+
+      {/* 统一 Portal 风格的数据卡片 */}
       <HabitStatusCards overview={overview} status={status} />
+
       <Tabs
-        style={{ marginTop: 16 }}
+        style={{ marginTop: 8 }}
+        type="card"
         items={[
           {
             key: 'candidates',
-            label: '候选习惯',
+            label: (
+              <span>
+                <AppstoreOutlined /> 习惯卡片流
+                <Badge
+                  count={candidateCount}
+                  overflowCount={99}
+                  style={{ marginLeft: 8, backgroundColor: '#1677ff' }}
+                />
+              </span>
+            ),
             children: (
               <HabitCandidatesPanel
                 candidates={candidates}
@@ -123,32 +154,38 @@ const HabitLearningPage: React.FC = () => {
             ),
           },
           {
-            key: 'feedback',
-            label: '评价分析',
-            children: (
-              <Card title="负向评价原因">
-                <Table
-                  rowKey="reasonCode"
-                  loading={loading}
-                  pagination={false}
-                  dataSource={overview?.feedback.negativeReasons || []}
-                  columns={[
-                    { title: '原因', dataIndex: 'reasonCode', render: (value: string) => reasonLabels[value] || value },
-                    { title: '数量', dataIndex: 'count', width: 120 },
-                  ]}
-                />
-              </Card>
-            ),
-          },
-          {
             key: 'routing',
-            label: '路由诊断',
+            label: (
+              <span>
+                <DashboardOutlined /> 路由效益与诊断
+              </span>
+            ),
             children: <RoutingDiagnosticsPanel diagnostics={diagnostics} loading={loading} />,
           },
           {
+            key: 'feedback',
+            label: (
+              <span>
+                <CommentOutlined /> 用户评价与安全闭环
+              </span>
+            ),
+            children: <HabitFeedbackPanel overview={overview} loading={loading} />,
+          },
+          {
             key: 'runs',
-            label: '运行批次',
-            children: <HabitRunsPanel runs={runs} loading={loading} running={running} onRunNow={() => void runNow()} />,
+            label: (
+              <span>
+                <HistoryOutlined /> 离线调度记录
+              </span>
+            ),
+            children: (
+              <HabitRunsPanel
+                runs={runs}
+                loading={loading}
+                running={running}
+                onRunNow={() => void runNow()}
+              />
+            ),
           },
         ]}
       />

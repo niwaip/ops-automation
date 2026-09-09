@@ -19,10 +19,16 @@ import {
   BugOutlined,
   ClockCircleOutlined,
   DeleteOutlined,
+  EditOutlined,
   EyeOutlined,
-  PlusOutlined,
+  FileTextOutlined,
+  GlobalOutlined,
+  HistoryOutlined,
   ReloadOutlined,
+  RocketOutlined,
   SearchOutlined,
+  UserOutlined,
+  VideoCameraOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
@@ -30,12 +36,30 @@ import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { templateApi, type Template, type TemplateStatus } from '@/api/template';
 import { sessionApi } from '@/api/session';
 import { readTemplateWorkflowComposition } from '../lib/templateWorkflowComposition';
+import { TemplateOverviewCards } from '../components/TemplateOverviewCards';
 
 const { Option } = Select;
 const { Text, Title } = Typography;
 
 type TemplateRow = Template & {
   created_by_username?: string;
+};
+
+const renderStatusTag = (status: string) => {
+  switch (status) {
+    case 'PUBLISHED':
+      return <Tag color="success">已发布</Tag>;
+    case 'DRAFT':
+      return <Tag color="gold">草稿</Tag>;
+    case 'REVIEW':
+      return <Tag color="blue">待审核</Tag>;
+    case 'DEPRECATED':
+      return <Tag color="default">已废弃</Tag>;
+    case 'REVOKED':
+      return <Tag color="volcano">已撤销</Tag>;
+    default:
+      return <Tag>{status}</Tag>;
+  }
 };
 
 const TemplateListPage: React.FC = () => {
@@ -62,7 +86,6 @@ const TemplateListPage: React.FC = () => {
       });
       const enrichedTemplates: TemplateRow[] = (result.templates || []).map((template) => ({
         ...template,
-        // `created_by` in browser-template is a free-form provenance string, not a user FK.
         created_by_username: template.created_by?.trim() || '-',
       }));
 
@@ -85,7 +108,11 @@ const TemplateListPage: React.FC = () => {
 
   const handleDelete = (id: string) => {
     Modal.confirm({
-      title: t('common:confirmDelete'),
+      title: '确认删除执行模版？',
+      content: '删除后该执行模版将无法恢复，关联的快捷执行入口将失效。',
+      okText: '确认删除',
+      okType: 'danger',
+      cancelText: '取消',
       onOk: () => deleteMutation.mutate(id),
     });
   };
@@ -103,7 +130,7 @@ const TemplateListPage: React.FC = () => {
         );
 
       if (!sessions.length) {
-        void message.info('该模板暂无会话历史');
+        void message.info('该模版暂无执行会话历史');
         return;
       }
 
@@ -121,18 +148,23 @@ const TemplateListPage: React.FC = () => {
       key: `${step.step_id || index}`,
       label: (
         <Space>
-          <Tag color="blue">浏览器</Tag>
-          <Text>{`${index + 1}. ${step.action}`}</Text>
+          <Tag color="blue" icon={<GlobalOutlined />}>浏览器步骤</Tag>
+          <Text strong>{`${index + 1}. ${step.action}`}</Text>
+          {step.locator?.value ? (
+            <Text type="secondary" style={{ fontSize: 12 }}>({step.locator.value})</Text>
+          ) : step.description ? (
+            <Text type="secondary" style={{ fontSize: 12 }}>({step.description})</Text>
+          ) : null}
         </Space>
       ),
       children: (
         <Space direction="vertical" size={4} style={{ width: '100%' }}>
           {step.locator ? (
-            <Text type="secondary">locator: {JSON.stringify(step.locator)}</Text>
+            <Text type="secondary">定位器 (locator): {JSON.stringify(step.locator)}</Text>
           ) : null}
-          {step.params ? <Text type="secondary">params: {JSON.stringify(step.params)}</Text> : null}
-          {step.wait ? <Text type="secondary">wait: {JSON.stringify(step.wait)}</Text> : null}
-          {step.retry ? <Text type="secondary">retry: {JSON.stringify(step.retry)}</Text> : null}
+          {step.params ? <Text type="secondary">执行参数 (params): {JSON.stringify(step.params)}</Text> : null}
+          {step.wait ? <Text type="secondary">等待条件 (wait): {JSON.stringify(step.wait)}</Text> : null}
+          {step.retry ? <Text type="secondary">重试机制 (retry): {JSON.stringify(step.retry)}</Text> : null}
         </Space>
       ),
     }));
@@ -141,10 +173,10 @@ const TemplateListPage: React.FC = () => {
       key: `post:${step.id || index}`,
       label: (
         <Space>
-          <Tag color={step.type === 'llm_operation' ? 'purple' : 'cyan'}>
+          <Tag color={step.type === 'llm_operation' ? 'purple' : 'cyan'} icon={<RocketOutlined />}>
             {step.type === 'llm_operation' ? 'LLM 后处理' : '工作流后处理'}
           </Tag>
-          <Text>{`${browserItems.length + index + 1}. ${
+          <Text strong>{`${browserItems.length + index + 1}. ${
             step.type === 'llm_operation'
               ? step.processingMode === 'summary'
                 ? '内容总结'
@@ -157,10 +189,10 @@ const TemplateListPage: React.FC = () => {
         <Space direction="vertical" size={4} style={{ width: '100%' }}>
           <Text type="secondary">步骤 ID: {step.id}</Text>
           {step.sourceStepId ? (
-            <Text type="secondary">来源浏览器步骤: {step.sourceStepId}</Text>
+            <Text type="secondary">关联浏览器步骤: {step.sourceStepId}</Text>
           ) : null}
           <Text type="secondary">
-            执行位置: {step.type === 'llm_operation' ? '控制面 LLM Operation' : '控制面工作流'}
+            执行运行时: {step.type === 'llm_operation' ? '控制面 LLM Operation' : '控制面工作流'}
           </Text>
         </Space>
       ),
@@ -170,50 +202,78 @@ const TemplateListPage: React.FC = () => {
 
   const columns: ColumnsType<TemplateRow> = [
     {
-      title: t('template:templateName'),
+      title: '模版名称',
       dataIndex: 'name',
       key: 'name',
       sorter: true,
-    },
-    {
-      title: t('common:description'),
-      dataIndex: 'description',
-      key: 'description',
-      ellipsis: true,
-      render: (desc: string) => desc || '-',
+      render: (name: string, record) => (
+        <Space direction="vertical" size={2}>
+          <Space size={6} align="center">
+            <FileTextOutlined style={{ color: '#1677ff', fontSize: 15 }} />
+            <Text
+              strong
+              style={{ fontSize: 14, color: 'var(--text-primary)' }}
+            >
+              {name}
+            </Text>
+            {renderStatusTag(record.status)}
+          </Space>
+          {record.description ? (
+            <Text
+              type="secondary"
+              ellipsis={{ tooltip: record.description }}
+              style={{ fontSize: 12, maxWidth: 360 }}
+            >
+              {record.description}
+            </Text>
+          ) : null}
+        </Space>
+      ),
     },
     {
       title: '流程节点',
       key: 'logicalStepCount',
-      width: 92,
+      width: 170,
       render: (_, record) => {
         const processingCount =
           readTemplateWorkflowComposition(record.config || {})?.postProcessingSteps?.length || 0;
         return (
-          <Space size={4}>
-            <Tag color="blue">{record.steps?.length || 0}</Tag>
-            {processingCount > 0 ? <Tag color="purple">+{processingCount}</Tag> : null}
+          <Space size={6} wrap>
+            <Tag color="blue" icon={<GlobalOutlined />}>
+              {record.steps?.length || 0} 步骤
+            </Tag>
+            {processingCount > 0 ? (
+              <Tag color="purple" icon={<RocketOutlined />}>
+                +{processingCount} 后处理
+              </Tag>
+            ) : null}
           </Space>
         );
       },
     },
     {
-      title: t('template:createdBy'),
-      dataIndex: 'created_by_username',
-      key: 'created_by_username',
-      width: 100,
-      ellipsis: true,
+      title: '更新时间',
+      dataIndex: 'updated_at',
+      key: 'updated_at',
+      width: 170,
+      render: (_: any, record) => {
+        const dateStr = record.updated_at || record.created_at;
+        return dateStr ? (
+          <Space size={4} style={{ color: 'var(--text-secondary)' }}>
+            <ClockCircleOutlined style={{ fontSize: 12 }} />
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {new Date(dateStr).toLocaleString()}
+            </Text>
+          </Space>
+        ) : (
+          '-'
+        );
+      },
     },
     {
-      title: t('common:createdAt'),
-      dataIndex: 'created_at',
-      key: 'created_at',
-      render: (date: string) => new Date(date).toLocaleString(),
-    },
-    {
-      title: t('common:actions'),
+      title: '操作',
       key: 'actions',
-      width: 420,
+      width: 320,
       render: (_, record) => (
         <Space wrap onClick={(event) => event.stopPropagation()}>
           <Button
@@ -222,7 +282,7 @@ const TemplateListPage: React.FC = () => {
             icon={<EyeOutlined />}
             onClick={() => navigate(`/templates/${record.id}`)}
           >
-            编辑
+            详细
           </Button>
           <Button
             type="link"
@@ -235,7 +295,7 @@ const TemplateListPage: React.FC = () => {
           <Button
             type="link"
             size="small"
-            icon={<ClockCircleOutlined />}
+            icon={<HistoryOutlined />}
             loading={openingHistoryTemplateId === record.id}
             onClick={() => {
               void handleOpenLatestSession(record.id);
@@ -257,36 +317,85 @@ const TemplateListPage: React.FC = () => {
     },
   ];
 
-  const statusOptions: TemplateStatus[] = ['DRAFT', 'REVIEW', 'PUBLISHED', 'DEPRECATED', 'REVOKED'];
-
   return (
     <div>
-      <Title level={4}>{t('template:templateList')}</Title>
+      {/* 顶部标题区 */}
+      <div style={{ marginBottom: 16 }}>
+        <Space align="center" style={{ marginBottom: 4 }}>
+          <Title level={4} style={{ margin: 0 }}>
+            执行模版
+          </Title>
+          <Tag color="blue">RPA / 浏览器自动化</Tag>
+        </Space>
+        <div>
+          <Text type="secondary" style={{ fontSize: 13 }}>
+            基于浏览器自动化录制与编排的执行模版库，支持步骤参数配置、动态变量插值、LLM 智能后处理与会话执行回放
+          </Text>
+        </div>
+      </div>
 
-      <Card style={{ marginTop: 16 }}>
-        <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
-          <Space>
+      {/* 统计指标卡片 */}
+      <TemplateOverviewCards
+        templates={templatesQuery.data?.templates || []}
+        total={templatesQuery.data?.total}
+        selectedStatus={statusFilter}
+        onFilterStatus={(status) => {
+          setStatusFilter(status);
+          setPage(1);
+        }}
+      />
+
+      {/* 模版数据表格卡片 */}
+      <Card style={{ borderRadius: 14, boxShadow: 'var(--shadow-sm)' }}>
+        <Space
+          style={{
+            marginBottom: 16,
+            width: '100%',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
+          <Space wrap size={10}>
             <Input
-              placeholder={t('common:search')}
-              prefix={<SearchOutlined />}
+              placeholder="搜索模版名称或描述..."
+              prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
               value={searchText}
-              onChange={(event) => setSearchText(event.target.value)}
-              style={{ width: 200 }}
+              onChange={(event) => {
+                setSearchText(event.target.value);
+                setPage(1);
+              }}
+              style={{ width: 240, borderRadius: 8 }}
               allowClear
             />
             <Select
-              placeholder={t('template:filterByStatus')}
-              style={{ width: 150 }}
+              placeholder="全部状态"
+              style={{ width: 140 }}
               value={statusFilter}
-              onChange={(value) => setStatusFilter(value)}
+              onChange={(value) => {
+                setStatusFilter(value);
+                setPage(1);
+              }}
               allowClear
             >
-              {statusOptions.map((status) => (
-                <Option key={status} value={status}>
-                  {t(`template:status${status}`)}
-                </Option>
-              ))}
+              <Option value="PUBLISHED"><Tag color="success">已发布</Tag></Option>
+              <Option value="DRAFT"><Tag color="gold">草稿</Tag></Option>
+              <Option value="REVIEW"><Tag color="blue">待审核</Tag></Option>
+              <Option value="DEPRECATED"><Tag color="default">已废弃</Tag></Option>
+              <Option value="REVOKED"><Tag color="volcano">已撤销</Tag></Option>
             </Select>
+            {(searchText || statusFilter) && (
+              <Button
+                type="text"
+                onClick={() => {
+                  setSearchText('');
+                  setStatusFilter(undefined);
+                  setPage(1);
+                }}
+              >
+                重置筛选
+              </Button>
+            )}
           </Space>
           <Space>
             <Button
@@ -294,11 +403,18 @@ const TemplateListPage: React.FC = () => {
               onClick={() => {
                 void templatesQuery.refetch();
               }}
+              loading={templatesQuery.isFetching}
+              style={{ borderRadius: 8 }}
             >
               {t('common:refresh')}
             </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/recorder')}>
-              {t('template:createTemplate')}
+            <Button
+              type="primary"
+              icon={<VideoCameraOutlined />}
+              onClick={() => navigate('/recorder')}
+              style={{ borderRadius: 8 }}
+            >
+              录制新建模版
             </Button>
           </Space>
         </Space>
@@ -320,7 +436,7 @@ const TemplateListPage: React.FC = () => {
             pageSize,
             total: templatesQuery.data?.total || 0,
             showSizeChanger: true,
-            showTotal: (total) => t('common:pagination.total', { total }),
+            showTotal: (total) => `共 ${total} 个执行模版`,
             onChange: (newPage, newPageSize) => {
               setPage(newPage);
               setPageSize(newPageSize);
@@ -329,8 +445,26 @@ const TemplateListPage: React.FC = () => {
         />
       </Card>
 
+      {/* 详细抽屉 */}
       <Drawer
-        title="模板详情"
+        title={
+          <Space>
+            <FileTextOutlined style={{ color: '#1677ff' }} />
+            <span>执行模版详细 - {selectedTemplate?.name}</span>
+          </Space>
+        }
+        extra={
+          selectedTemplate ? (
+            <Button
+              type="primary"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => navigate(`/templates/${selectedTemplate.id}`)}
+            >
+              进入配置详情
+            </Button>
+          ) : null
+        }
         placement="right"
         width={720}
         open={detailDrawerVisible}
@@ -339,22 +473,41 @@ const TemplateListPage: React.FC = () => {
         {selectedTemplate ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Descriptions bordered size="small" column={1}>
-              <Descriptions.Item label="模板名称">{selectedTemplate.name}</Descriptions.Item>
-              <Descriptions.Item label="描述">
+              <Descriptions.Item label="模版名称">
+                <Text strong>{selectedTemplate.name}</Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="模版描述">
                 {selectedTemplate.description || '-'}
               </Descriptions.Item>
-              <Descriptions.Item label="模版编辑状态">
+              <Descriptions.Item label="运行状态">
                 <Space>
-                  <Tag color={selectedTemplate.status === 'DRAFT' ? 'gold' : 'green'}>
-                    {selectedTemplate.status}
-                  </Tag>
+                  {renderStatusTag(selectedTemplate.status)}
                   {selectedTemplate.status === 'DRAFT' ? (
-                    <Text type="secondary">当前可编辑版本；不等同于能力 Release 发布状态</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      当前为草稿可编辑版本；不等同于能力 Release 发布状态
+                    </Text>
+                  ) : null}
+                </Space>
+              </Descriptions.Item>
+              <Descriptions.Item label="流程节点数">
+                <Space size={6}>
+                  <Tag color="blue" icon={<GlobalOutlined />}>
+                    {selectedTemplate.steps?.length || 0} 个浏览器动作
+                  </Tag>
+                  {readTemplateWorkflowComposition(selectedTemplate.config || {})
+                    ?.postProcessingSteps?.length ? (
+                    <Tag color="purple" icon={<RocketOutlined />}>
+                      {
+                        readTemplateWorkflowComposition(selectedTemplate.config || {})
+                          ?.postProcessingSteps?.length
+                      }{' '}
+                      个后处理步骤
+                    </Tag>
                   ) : null}
                 </Space>
               </Descriptions.Item>
               <Descriptions.Item label="创建者">
-                {selectedTemplate.created_by_username || '-'}
+                <Tag icon={<UserOutlined />}>{selectedTemplate.created_by_username || '-'}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label="创建时间">
                 {selectedTemplate.created_at
@@ -367,11 +520,21 @@ const TemplateListPage: React.FC = () => {
                   : '-'}
               </Descriptions.Item>
             </Descriptions>
-            <Card title={`流程节点（${stepItems.length}）`} size="small">
+
+            <Card
+              title={
+                <Space>
+                  <span>流程步骤清单</span>
+                  <Tag color="blue">{stepItems.length}</Tag>
+                </Space>
+              }
+              size="small"
+              style={{ borderRadius: 10 }}
+            >
               {stepItems.length > 0 ? (
                 <Collapse items={stepItems} defaultActiveKey={[]} />
               ) : (
-                <Text type="secondary">暂无步骤</Text>
+                <Text type="secondary">暂无配置步骤</Text>
               )}
             </Card>
           </Space>

@@ -17,7 +17,7 @@
     "@ops/backend-ai-chat-protocol": "file:../../../packages/backend-contracts/ai-chat-protocol",
     "@ops/backend-execution-core": "file:../../../packages/backend-contracts/execution-core",
     "@ops/user-core": "file:../../../packages/user-core",
-    "@types/uuid": "^10.0.0",
+    "@types/uuid": "^9.0.8",
     "antd": "^5.12.0",
     "axios": "^1.6.2",
     "dayjs": "^1.11.10",
@@ -33,7 +33,7 @@
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
     "socket.io-client": "^4.7.2",
-    "uuid": "^13.0.0",
+    "uuid": "^9.0.1",
     "zustand": "^4.4.7"
   },
   "devDependencies": {

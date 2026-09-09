@@ -800,6 +800,11 @@ export class ListExecutionsDto {
   @IsOptional()
   @IsString()
   skillId?: string;
+
+  @ApiProperty({ description: 'Filter by execution ID or prefix', required: false })
+  @IsOptional()
+  @IsString()
+  id?: string;
 }
 
 export class SubmitInputDto {

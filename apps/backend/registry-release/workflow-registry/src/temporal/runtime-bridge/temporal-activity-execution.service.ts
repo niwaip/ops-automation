@@ -492,6 +492,11 @@ export class ActivityExecutionService {
         onLog(`已清理代码中的 markdown 标记`);
       }
 
+      // Ensure Python 3.7-3.9 compatibility for PEP 604 type unions (e.g. str | None)
+      if (!cleanCode.includes('from __future__ import annotations')) {
+        cleanCode = `from __future__ import annotations\n${cleanCode}`;
+      }
+
       // Write activity code
       await fs.writeFile(activityFilePath, cleanCode);
       onLog(`已写入活动代码到: ${activityFilePath}`);
@@ -502,6 +507,7 @@ export class ActivityExecutionService {
 
       // Create simple runner script
       const runnerScript = `
+from __future__ import annotations
 import json
 import json as json_module
 import sys

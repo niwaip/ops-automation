@@ -137,7 +137,7 @@ const getSeverityText = (notification: AppNotification, language: 'zh-CN' | 'en-
 
 const getSourceText = (notification: AppNotification, language: 'zh-CN' | 'en-US' | 'ja-JP') => {
   if (notification.source === 'execution') {
-    return language === 'en-US' ? 'Execution' : '执行管理';
+    return language === 'en-US' ? 'Execution History' : '执行历史';
   }
   return notification.source;
 };

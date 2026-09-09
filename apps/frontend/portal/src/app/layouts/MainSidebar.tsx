@@ -35,6 +35,8 @@ export const MainSidebar: React.FC = () => {
       collapsed={sidebarCollapsed}
       onCollapse={toggleSidebar}
       trigger={null}
+      width={230}
+      collapsedWidth={80}
       style={{
         overflow: 'auto',
         height: '100vh',

@@ -5,6 +5,8 @@
 
 set -euo pipefail
 
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
+
 SCRIPT_PATH="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
@@ -38,7 +40,7 @@ subtract_lines() {
 }
 
 layered_services="$(run_services compose/docker-compose.core.yml -f compose/docker-compose.planner.yml -f compose/docker-compose.runtime.yml -f compose/docker-compose.experience.yml)"
-base_services="$(run_services compose/docker-compose.base.yml)"
+base_services="$(run_services compose/docker-compose.base.yml --profile full)"
 
 missing_from_base="$(subtract_lines "$layered_services" "$base_services")"
 additional_in_base="$(subtract_lines "$base_services" "$layered_services")"

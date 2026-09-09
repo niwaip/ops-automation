@@ -36,14 +36,15 @@ export class PlatformIdentityAccessUserManagementRepository
       this.prisma.user.count({ where }),
     ]);
 
-    return { users, total };
+    return { users: users.map((u) => this.mapUserWithOrg(u)), total };
   }
 
   async findUserById(userId: string): Promise<IdentityAccessUserSummaryRecord | null> {
-    return this.prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: this.userSelect,
     });
+    return user ? this.mapUserWithOrg(user) : null;
   }
 
   async findRolesByNames(roleNames: string[]): Promise<IdentityAccessRoleSummaryRecord[]> {
@@ -74,15 +75,73 @@ export class PlatformIdentityAccessUserManagementRepository
     });
   }
 
+  async updateUserDepartment(input: {
+    userId: string;
+    orgId: string;
+    departmentId?: string | null;
+    title?: string | null;
+  }): Promise<void> {
+    await this.prisma.orgMembership.upsert({
+      where: {
+        userId_orgId: {
+          userId: input.userId,
+          orgId: input.orgId,
+        },
+      },
+      update: {
+        departmentId: input.departmentId || null,
+        title: input.title || null,
+        status: 'active',
+      },
+      create: {
+        userId: input.userId,
+        orgId: input.orgId,
+        departmentId: input.departmentId || null,
+        title: input.title || null,
+        status: 'active',
+      },
+    });
+
+    await this.prisma.user.update({
+      where: { id: input.userId },
+      data: { activeOrgId: input.orgId },
+    });
+  }
+
   async setUserActive(
     userId: string,
     isActive: boolean
   ): Promise<IdentityAccessUserSummaryRecord> {
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: userId },
       data: { isActive },
       select: this.userSelect,
     });
+    return this.mapUserWithOrg(updated);
+  }
+
+  private mapUserWithOrg(user: any): IdentityAccessUserSummaryRecord {
+    const primaryMembership = user.orgMemberships?.find((m: any) => m.status === 'active') || user.orgMemberships?.[0];
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive,
+      department: primaryMembership?.department ? {
+        id: primaryMembership.department.id,
+        name: primaryMembership.department.name,
+        code: primaryMembership.department.code,
+      } : null,
+      organization: primaryMembership?.organization ? {
+        id: primaryMembership.organization.id,
+        name: primaryMembership.organization.name,
+        code: primaryMembership.organization.code,
+      } : null,
+      title: primaryMembership?.title || null,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   }
 
   private readonly userSelect = {
@@ -93,5 +152,27 @@ export class PlatformIdentityAccessUserManagementRepository
     isActive: true,
     createdAt: true,
     updatedAt: true,
+    orgMemberships: {
+      where: { status: 'active' as const },
+      select: {
+        id: true,
+        title: true,
+        department: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+      },
+    },
   };
 }
+

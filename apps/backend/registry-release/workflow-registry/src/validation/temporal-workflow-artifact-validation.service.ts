@@ -24,6 +24,9 @@ type WorkflowValidationResult = {
   score: number;
 };
 
+const SENSITIVE_VALIDATION_INPUT_KEY =
+  /(?:api[-_]?key|device[-_]?key|access[-_]?key|private[-_]?key|client[-_]?secret|credential|token|secret|password|authorization|cookie|bearer)/i;
+
 @Injectable()
 export class TemporalWorkflowArtifactValidationService {
   constructor(
@@ -35,8 +38,14 @@ export class TemporalWorkflowArtifactValidationService {
 
   private redactValidationInput(input: Record<string, any>): Record<string, any> {
     return Object.entries(input).reduce<Record<string, any>>((acc, [key, value]) => {
-      if (/(api[-_]?key|token|secret|password|authorization|cookie)/i.test(key)) {
+      if (SENSITIVE_VALIDATION_INPUT_KEY.test(key)) {
         acc[key] = '[REDACTED]';
+      } else if (Array.isArray(value)) {
+        acc[key] = value.map((item) =>
+          item && typeof item === 'object' && !Array.isArray(item)
+            ? this.redactValidationInput(item)
+            : item
+        );
       } else if (value && typeof value === 'object' && !Array.isArray(value)) {
         acc[key] = this.redactValidationInput(value);
       } else {

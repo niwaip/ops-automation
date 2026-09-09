@@ -408,6 +408,16 @@ export type WorkbenchTodo = $Result.DefaultSelection<Prisma.$WorkbenchTodoPayloa
  * 
  */
 export type WorkbenchInboxItem = $Result.DefaultSelection<Prisma.$WorkbenchInboxItemPayload>
+/**
+ * Model UserCredential
+ * 
+ */
+export type UserCredential = $Result.DefaultSelection<Prisma.$UserCredentialPayload>
+/**
+ * Model UserSkillCredentialBinding
+ * 
+ */
+export type UserSkillCredentialBinding = $Result.DefaultSelection<Prisma.$UserSkillCredentialBindingPayload>
 
 /**
  * Enums
@@ -537,6 +547,17 @@ export const InboxItemStatus: {
 
 export type InboxItemStatus = (typeof InboxItemStatus)[keyof typeof InboxItemStatus]
 
+
+export const CredentialCategory: {
+  api_key: 'api_key',
+  device_key: 'device_key',
+  basic_auth: 'basic_auth',
+  bearer_token: 'bearer_token',
+  custom: 'custom'
+};
+
+export type CredentialCategory = (typeof CredentialCategory)[keyof typeof CredentialCategory]
+
 }
 
 export type UserRoleType = $Enums.UserRoleType
@@ -590,6 +611,10 @@ export const TodoSourceType: typeof $Enums.TodoSourceType
 export type InboxItemStatus = $Enums.InboxItemStatus
 
 export const InboxItemStatus: typeof $Enums.InboxItemStatus
+
+export type CredentialCategory = $Enums.CredentialCategory
+
+export const CredentialCategory: typeof $Enums.CredentialCategory
 
 /**
  * ##  Prisma Client ʲˢ
@@ -1503,6 +1528,26 @@ export class PrismaClient<
     * ```
     */
   get workbenchInboxItem(): Prisma.WorkbenchInboxItemDelegate<ExtArgs>;
+
+  /**
+   * `prisma.userCredential`: Exposes CRUD operations for the **UserCredential** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more UserCredentials
+    * const userCredentials = await prisma.userCredential.findMany()
+    * ```
+    */
+  get userCredential(): Prisma.UserCredentialDelegate<ExtArgs>;
+
+  /**
+   * `prisma.userSkillCredentialBinding`: Exposes CRUD operations for the **UserSkillCredentialBinding** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more UserSkillCredentialBindings
+    * const userSkillCredentialBindings = await prisma.userSkillCredentialBinding.findMany()
+    * ```
+    */
+  get userSkillCredentialBinding(): Prisma.UserSkillCredentialBindingDelegate<ExtArgs>;
 }
 
 export namespace Prisma {
@@ -2022,7 +2067,9 @@ export namespace Prisma {
     Workspace: 'Workspace',
     WorkspaceNode: 'WorkspaceNode',
     WorkbenchTodo: 'WorkbenchTodo',
-    WorkbenchInboxItem: 'WorkbenchInboxItem'
+    WorkbenchInboxItem: 'WorkbenchInboxItem',
+    UserCredential: 'UserCredential',
+    UserSkillCredentialBinding: 'UserSkillCredentialBinding'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -2038,7 +2085,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "user" | "imChannelConnection" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionResultRef" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "userSavedSkill" | "userWorkflowAlias" | "userSavedSkillVersion" | "assistantFeedbackEvent" | "assistantFeedbackCurrent" | "routingObservation" | "planningDecision" | "taskPolicySet" | "taskCommandAlias" | "taskRecipe" | "taskCapabilityBinding" | "taskPolicyProposal" | "taskPolicyAuditLog" | "executionCompletionClaim" | "promptSnapshot" | "llmUsageLedger" | "executionOutbox" | "scheduleFire" | "habitLearningRun" | "userHabitCandidate" | "userHabit" | "userPersonalizationPreference" | "scopedMemory" | "candidateRecipe" | "candidateRecipeEvaluation" | "habitGovernanceAudit" | "builtinSkill" | "builtinSkillRuntimeConfig" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent" | "workspace" | "workspaceNode" | "workbenchTodo" | "workbenchInboxItem"
+      modelProps: "user" | "imChannelConnection" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionResultRef" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "userSavedSkill" | "userWorkflowAlias" | "userSavedSkillVersion" | "assistantFeedbackEvent" | "assistantFeedbackCurrent" | "routingObservation" | "planningDecision" | "taskPolicySet" | "taskCommandAlias" | "taskRecipe" | "taskCapabilityBinding" | "taskPolicyProposal" | "taskPolicyAuditLog" | "executionCompletionClaim" | "promptSnapshot" | "llmUsageLedger" | "executionOutbox" | "scheduleFire" | "habitLearningRun" | "userHabitCandidate" | "userHabit" | "userPersonalizationPreference" | "scopedMemory" | "candidateRecipe" | "candidateRecipeEvaluation" | "habitGovernanceAudit" | "builtinSkill" | "builtinSkillRuntimeConfig" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent" | "workspace" | "workspaceNode" | "workbenchTodo" | "workbenchInboxItem" | "userCredential" | "userSkillCredentialBinding"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -7572,6 +7619,146 @@ export namespace Prisma {
           }
         }
       }
+      UserCredential: {
+        payload: Prisma.$UserCredentialPayload<ExtArgs>
+        fields: Prisma.UserCredentialFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.UserCredentialFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserCredentialPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.UserCredentialFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserCredentialPayload>
+          }
+          findFirst: {
+            args: Prisma.UserCredentialFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserCredentialPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.UserCredentialFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserCredentialPayload>
+          }
+          findMany: {
+            args: Prisma.UserCredentialFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserCredentialPayload>[]
+          }
+          create: {
+            args: Prisma.UserCredentialCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserCredentialPayload>
+          }
+          createMany: {
+            args: Prisma.UserCredentialCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.UserCredentialCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserCredentialPayload>[]
+          }
+          delete: {
+            args: Prisma.UserCredentialDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserCredentialPayload>
+          }
+          update: {
+            args: Prisma.UserCredentialUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserCredentialPayload>
+          }
+          deleteMany: {
+            args: Prisma.UserCredentialDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.UserCredentialUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.UserCredentialUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserCredentialPayload>
+          }
+          aggregate: {
+            args: Prisma.UserCredentialAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateUserCredential>
+          }
+          groupBy: {
+            args: Prisma.UserCredentialGroupByArgs<ExtArgs>
+            result: $Utils.Optional<UserCredentialGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.UserCredentialCountArgs<ExtArgs>
+            result: $Utils.Optional<UserCredentialCountAggregateOutputType> | number
+          }
+        }
+      }
+      UserSkillCredentialBinding: {
+        payload: Prisma.$UserSkillCredentialBindingPayload<ExtArgs>
+        fields: Prisma.UserSkillCredentialBindingFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.UserSkillCredentialBindingFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSkillCredentialBindingPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.UserSkillCredentialBindingFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSkillCredentialBindingPayload>
+          }
+          findFirst: {
+            args: Prisma.UserSkillCredentialBindingFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSkillCredentialBindingPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.UserSkillCredentialBindingFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSkillCredentialBindingPayload>
+          }
+          findMany: {
+            args: Prisma.UserSkillCredentialBindingFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSkillCredentialBindingPayload>[]
+          }
+          create: {
+            args: Prisma.UserSkillCredentialBindingCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSkillCredentialBindingPayload>
+          }
+          createMany: {
+            args: Prisma.UserSkillCredentialBindingCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.UserSkillCredentialBindingCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSkillCredentialBindingPayload>[]
+          }
+          delete: {
+            args: Prisma.UserSkillCredentialBindingDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSkillCredentialBindingPayload>
+          }
+          update: {
+            args: Prisma.UserSkillCredentialBindingUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSkillCredentialBindingPayload>
+          }
+          deleteMany: {
+            args: Prisma.UserSkillCredentialBindingDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.UserSkillCredentialBindingUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.UserSkillCredentialBindingUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserSkillCredentialBindingPayload>
+          }
+          aggregate: {
+            args: Prisma.UserSkillCredentialBindingAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateUserSkillCredentialBinding>
+          }
+          groupBy: {
+            args: Prisma.UserSkillCredentialBindingGroupByArgs<ExtArgs>
+            result: $Utils.Optional<UserSkillCredentialBindingGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.UserSkillCredentialBindingCountArgs<ExtArgs>
+            result: $Utils.Optional<UserSkillCredentialBindingCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -7741,6 +7928,8 @@ export namespace Prisma {
     imChannelConnections: number
     skillAccessRequests: number
     processedSkillAccessRequests: number
+    credentials: number
+    skillCredentialBindings: number
   }
 
   export type UserCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -7752,6 +7941,8 @@ export namespace Prisma {
     imChannelConnections?: boolean | UserCountOutputTypeCountImChannelConnectionsArgs
     skillAccessRequests?: boolean | UserCountOutputTypeCountSkillAccessRequestsArgs
     processedSkillAccessRequests?: boolean | UserCountOutputTypeCountProcessedSkillAccessRequestsArgs
+    credentials?: boolean | UserCountOutputTypeCountCredentialsArgs
+    skillCredentialBindings?: boolean | UserCountOutputTypeCountSkillCredentialBindingsArgs
   }
 
   // Custom InputTypes
@@ -7819,6 +8010,20 @@ export namespace Prisma {
    */
   export type UserCountOutputTypeCountProcessedSkillAccessRequestsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: SkillAccessRequestWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountCredentialsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: UserCredentialWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountSkillCredentialBindingsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: UserSkillCredentialBindingWhereInput
   }
 
 
@@ -8531,6 +8736,37 @@ export namespace Prisma {
 
 
   /**
+   * Count Type UserCredentialCountOutputType
+   */
+
+  export type UserCredentialCountOutputType = {
+    bindings: number
+  }
+
+  export type UserCredentialCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    bindings?: boolean | UserCredentialCountOutputTypeCountBindingsArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * UserCredentialCountOutputType without action
+   */
+  export type UserCredentialCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserCredentialCountOutputType
+     */
+    select?: UserCredentialCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * UserCredentialCountOutputType without action
+   */
+  export type UserCredentialCountOutputTypeCountBindingsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: UserSkillCredentialBindingWhereInput
+  }
+
+
+  /**
    * Models
    */
 
@@ -8771,6 +9007,8 @@ export namespace Prisma {
     imChannelConnections?: boolean | User$imChannelConnectionsArgs<ExtArgs>
     skillAccessRequests?: boolean | User$skillAccessRequestsArgs<ExtArgs>
     processedSkillAccessRequests?: boolean | User$processedSkillAccessRequestsArgs<ExtArgs>
+    credentials?: boolean | User$credentialsArgs<ExtArgs>
+    skillCredentialBindings?: boolean | User$skillCredentialBindingsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -8817,6 +9055,8 @@ export namespace Prisma {
     imChannelConnections?: boolean | User$imChannelConnectionsArgs<ExtArgs>
     skillAccessRequests?: boolean | User$skillAccessRequestsArgs<ExtArgs>
     processedSkillAccessRequests?: boolean | User$processedSkillAccessRequestsArgs<ExtArgs>
+    credentials?: boolean | User$credentialsArgs<ExtArgs>
+    skillCredentialBindings?: boolean | User$skillCredentialBindingsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UserIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -8835,6 +9075,8 @@ export namespace Prisma {
       imChannelConnections: Prisma.$ImChannelConnectionPayload<ExtArgs>[]
       skillAccessRequests: Prisma.$SkillAccessRequestPayload<ExtArgs>[]
       processedSkillAccessRequests: Prisma.$SkillAccessRequestPayload<ExtArgs>[]
+      credentials: Prisma.$UserCredentialPayload<ExtArgs>[]
+      skillCredentialBindings: Prisma.$UserSkillCredentialBindingPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -9223,6 +9465,8 @@ export namespace Prisma {
     imChannelConnections<T extends User$imChannelConnectionsArgs<ExtArgs> = {}>(args?: Subset<T, User$imChannelConnectionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ImChannelConnectionPayload<ExtArgs>, T, "findMany"> | Null>
     skillAccessRequests<T extends User$skillAccessRequestsArgs<ExtArgs> = {}>(args?: Subset<T, User$skillAccessRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "findMany"> | Null>
     processedSkillAccessRequests<T extends User$processedSkillAccessRequestsArgs<ExtArgs> = {}>(args?: Subset<T, User$processedSkillAccessRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "findMany"> | Null>
+    credentials<T extends User$credentialsArgs<ExtArgs> = {}>(args?: Subset<T, User$credentialsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserCredentialPayload<ExtArgs>, T, "findMany"> | Null>
+    skillCredentialBindings<T extends User$skillCredentialBindingsArgs<ExtArgs> = {}>(args?: Subset<T, User$skillCredentialBindingsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserSkillCredentialBindingPayload<ExtArgs>, T, "findMany"> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -9755,6 +9999,46 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: SkillAccessRequestScalarFieldEnum | SkillAccessRequestScalarFieldEnum[]
+  }
+
+  /**
+   * User.credentials
+   */
+  export type User$credentialsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserCredential
+     */
+    select?: UserCredentialSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserCredentialInclude<ExtArgs> | null
+    where?: UserCredentialWhereInput
+    orderBy?: UserCredentialOrderByWithRelationInput | UserCredentialOrderByWithRelationInput[]
+    cursor?: UserCredentialWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: UserCredentialScalarFieldEnum | UserCredentialScalarFieldEnum[]
+  }
+
+  /**
+   * User.skillCredentialBindings
+   */
+  export type User$skillCredentialBindingsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSkillCredentialBinding
+     */
+    select?: UserSkillCredentialBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSkillCredentialBindingInclude<ExtArgs> | null
+    where?: UserSkillCredentialBindingWhereInput
+    orderBy?: UserSkillCredentialBindingOrderByWithRelationInput | UserSkillCredentialBindingOrderByWithRelationInput[]
+    cursor?: UserSkillCredentialBindingWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: UserSkillCredentialBindingScalarFieldEnum | UserSkillCredentialBindingScalarFieldEnum[]
   }
 
   /**
@@ -89011,6 +89295,2008 @@ export namespace Prisma {
 
 
   /**
+   * Model UserCredential
+   */
+
+  export type AggregateUserCredential = {
+    _count: UserCredentialCountAggregateOutputType | null
+    _min: UserCredentialMinAggregateOutputType | null
+    _max: UserCredentialMaxAggregateOutputType | null
+  }
+
+  export type UserCredentialMinAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    orgId: string | null
+    name: string | null
+    category: $Enums.CredentialCategory | null
+    description: string | null
+    encryptedData: string | null
+    status: string | null
+    expiresAt: Date | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type UserCredentialMaxAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    orgId: string | null
+    name: string | null
+    category: $Enums.CredentialCategory | null
+    description: string | null
+    encryptedData: string | null
+    status: string | null
+    expiresAt: Date | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type UserCredentialCountAggregateOutputType = {
+    id: number
+    userId: number
+    orgId: number
+    name: number
+    category: number
+    description: number
+    encryptedData: number
+    maskedPreview: number
+    status: number
+    expiresAt: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type UserCredentialMinAggregateInputType = {
+    id?: true
+    userId?: true
+    orgId?: true
+    name?: true
+    category?: true
+    description?: true
+    encryptedData?: true
+    status?: true
+    expiresAt?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type UserCredentialMaxAggregateInputType = {
+    id?: true
+    userId?: true
+    orgId?: true
+    name?: true
+    category?: true
+    description?: true
+    encryptedData?: true
+    status?: true
+    expiresAt?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type UserCredentialCountAggregateInputType = {
+    id?: true
+    userId?: true
+    orgId?: true
+    name?: true
+    category?: true
+    description?: true
+    encryptedData?: true
+    maskedPreview?: true
+    status?: true
+    expiresAt?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type UserCredentialAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which UserCredential to aggregate.
+     */
+    where?: UserCredentialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserCredentials to fetch.
+     */
+    orderBy?: UserCredentialOrderByWithRelationInput | UserCredentialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: UserCredentialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserCredentials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserCredentials.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned UserCredentials
+    **/
+    _count?: true | UserCredentialCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: UserCredentialMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: UserCredentialMaxAggregateInputType
+  }
+
+  export type GetUserCredentialAggregateType<T extends UserCredentialAggregateArgs> = {
+        [P in keyof T & keyof AggregateUserCredential]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateUserCredential[P]>
+      : GetScalarType<T[P], AggregateUserCredential[P]>
+  }
+
+
+
+
+  export type UserCredentialGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: UserCredentialWhereInput
+    orderBy?: UserCredentialOrderByWithAggregationInput | UserCredentialOrderByWithAggregationInput[]
+    by: UserCredentialScalarFieldEnum[] | UserCredentialScalarFieldEnum
+    having?: UserCredentialScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: UserCredentialCountAggregateInputType | true
+    _min?: UserCredentialMinAggregateInputType
+    _max?: UserCredentialMaxAggregateInputType
+  }
+
+  export type UserCredentialGroupByOutputType = {
+    id: string
+    userId: string
+    orgId: string | null
+    name: string
+    category: $Enums.CredentialCategory
+    description: string | null
+    encryptedData: string
+    maskedPreview: JsonValue
+    status: string
+    expiresAt: Date | null
+    createdAt: Date
+    updatedAt: Date
+    _count: UserCredentialCountAggregateOutputType | null
+    _min: UserCredentialMinAggregateOutputType | null
+    _max: UserCredentialMaxAggregateOutputType | null
+  }
+
+  type GetUserCredentialGroupByPayload<T extends UserCredentialGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<UserCredentialGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof UserCredentialGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], UserCredentialGroupByOutputType[P]>
+            : GetScalarType<T[P], UserCredentialGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type UserCredentialSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    orgId?: boolean
+    name?: boolean
+    category?: boolean
+    description?: boolean
+    encryptedData?: boolean
+    maskedPreview?: boolean
+    status?: boolean
+    expiresAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+    bindings?: boolean | UserCredential$bindingsArgs<ExtArgs>
+    _count?: boolean | UserCredentialCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["userCredential"]>
+
+  export type UserCredentialSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    orgId?: boolean
+    name?: boolean
+    category?: boolean
+    description?: boolean
+    encryptedData?: boolean
+    maskedPreview?: boolean
+    status?: boolean
+    expiresAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["userCredential"]>
+
+  export type UserCredentialSelectScalar = {
+    id?: boolean
+    userId?: boolean
+    orgId?: boolean
+    name?: boolean
+    category?: boolean
+    description?: boolean
+    encryptedData?: boolean
+    maskedPreview?: boolean
+    status?: boolean
+    expiresAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type UserCredentialInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+    bindings?: boolean | UserCredential$bindingsArgs<ExtArgs>
+    _count?: boolean | UserCredentialCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type UserCredentialIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $UserCredentialPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "UserCredential"
+    objects: {
+      user: Prisma.$UserPayload<ExtArgs>
+      bindings: Prisma.$UserSkillCredentialBindingPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userId: string
+      orgId: string | null
+      name: string
+      category: $Enums.CredentialCategory
+      description: string | null
+      encryptedData: string
+      maskedPreview: Prisma.JsonValue
+      status: string
+      expiresAt: Date | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["userCredential"]>
+    composites: {}
+  }
+
+  type UserCredentialGetPayload<S extends boolean | null | undefined | UserCredentialDefaultArgs> = $Result.GetResult<Prisma.$UserCredentialPayload, S>
+
+  type UserCredentialCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<UserCredentialFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: UserCredentialCountAggregateInputType | true
+    }
+
+  export interface UserCredentialDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['UserCredential'], meta: { name: 'UserCredential' } }
+    /**
+     * Find zero or one UserCredential that matches the filter.
+     * @param {UserCredentialFindUniqueArgs} args - Arguments to find a UserCredential
+     * @example
+     * // Get one UserCredential
+     * const userCredential = await prisma.userCredential.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends UserCredentialFindUniqueArgs>(args: SelectSubset<T, UserCredentialFindUniqueArgs<ExtArgs>>): Prisma__UserCredentialClient<$Result.GetResult<Prisma.$UserCredentialPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one UserCredential that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {UserCredentialFindUniqueOrThrowArgs} args - Arguments to find a UserCredential
+     * @example
+     * // Get one UserCredential
+     * const userCredential = await prisma.userCredential.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends UserCredentialFindUniqueOrThrowArgs>(args: SelectSubset<T, UserCredentialFindUniqueOrThrowArgs<ExtArgs>>): Prisma__UserCredentialClient<$Result.GetResult<Prisma.$UserCredentialPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first UserCredential that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserCredentialFindFirstArgs} args - Arguments to find a UserCredential
+     * @example
+     * // Get one UserCredential
+     * const userCredential = await prisma.userCredential.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends UserCredentialFindFirstArgs>(args?: SelectSubset<T, UserCredentialFindFirstArgs<ExtArgs>>): Prisma__UserCredentialClient<$Result.GetResult<Prisma.$UserCredentialPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first UserCredential that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserCredentialFindFirstOrThrowArgs} args - Arguments to find a UserCredential
+     * @example
+     * // Get one UserCredential
+     * const userCredential = await prisma.userCredential.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends UserCredentialFindFirstOrThrowArgs>(args?: SelectSubset<T, UserCredentialFindFirstOrThrowArgs<ExtArgs>>): Prisma__UserCredentialClient<$Result.GetResult<Prisma.$UserCredentialPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more UserCredentials that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserCredentialFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all UserCredentials
+     * const userCredentials = await prisma.userCredential.findMany()
+     * 
+     * // Get first 10 UserCredentials
+     * const userCredentials = await prisma.userCredential.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const userCredentialWithIdOnly = await prisma.userCredential.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends UserCredentialFindManyArgs>(args?: SelectSubset<T, UserCredentialFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserCredentialPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a UserCredential.
+     * @param {UserCredentialCreateArgs} args - Arguments to create a UserCredential.
+     * @example
+     * // Create one UserCredential
+     * const UserCredential = await prisma.userCredential.create({
+     *   data: {
+     *     // ... data to create a UserCredential
+     *   }
+     * })
+     * 
+     */
+    create<T extends UserCredentialCreateArgs>(args: SelectSubset<T, UserCredentialCreateArgs<ExtArgs>>): Prisma__UserCredentialClient<$Result.GetResult<Prisma.$UserCredentialPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many UserCredentials.
+     * @param {UserCredentialCreateManyArgs} args - Arguments to create many UserCredentials.
+     * @example
+     * // Create many UserCredentials
+     * const userCredential = await prisma.userCredential.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends UserCredentialCreateManyArgs>(args?: SelectSubset<T, UserCredentialCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many UserCredentials and returns the data saved in the database.
+     * @param {UserCredentialCreateManyAndReturnArgs} args - Arguments to create many UserCredentials.
+     * @example
+     * // Create many UserCredentials
+     * const userCredential = await prisma.userCredential.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many UserCredentials and only return the `id`
+     * const userCredentialWithIdOnly = await prisma.userCredential.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends UserCredentialCreateManyAndReturnArgs>(args?: SelectSubset<T, UserCredentialCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserCredentialPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a UserCredential.
+     * @param {UserCredentialDeleteArgs} args - Arguments to delete one UserCredential.
+     * @example
+     * // Delete one UserCredential
+     * const UserCredential = await prisma.userCredential.delete({
+     *   where: {
+     *     // ... filter to delete one UserCredential
+     *   }
+     * })
+     * 
+     */
+    delete<T extends UserCredentialDeleteArgs>(args: SelectSubset<T, UserCredentialDeleteArgs<ExtArgs>>): Prisma__UserCredentialClient<$Result.GetResult<Prisma.$UserCredentialPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one UserCredential.
+     * @param {UserCredentialUpdateArgs} args - Arguments to update one UserCredential.
+     * @example
+     * // Update one UserCredential
+     * const userCredential = await prisma.userCredential.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends UserCredentialUpdateArgs>(args: SelectSubset<T, UserCredentialUpdateArgs<ExtArgs>>): Prisma__UserCredentialClient<$Result.GetResult<Prisma.$UserCredentialPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more UserCredentials.
+     * @param {UserCredentialDeleteManyArgs} args - Arguments to filter UserCredentials to delete.
+     * @example
+     * // Delete a few UserCredentials
+     * const { count } = await prisma.userCredential.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends UserCredentialDeleteManyArgs>(args?: SelectSubset<T, UserCredentialDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more UserCredentials.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserCredentialUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many UserCredentials
+     * const userCredential = await prisma.userCredential.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends UserCredentialUpdateManyArgs>(args: SelectSubset<T, UserCredentialUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one UserCredential.
+     * @param {UserCredentialUpsertArgs} args - Arguments to update or create a UserCredential.
+     * @example
+     * // Update or create a UserCredential
+     * const userCredential = await prisma.userCredential.upsert({
+     *   create: {
+     *     // ... data to create a UserCredential
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the UserCredential we want to update
+     *   }
+     * })
+     */
+    upsert<T extends UserCredentialUpsertArgs>(args: SelectSubset<T, UserCredentialUpsertArgs<ExtArgs>>): Prisma__UserCredentialClient<$Result.GetResult<Prisma.$UserCredentialPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of UserCredentials.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserCredentialCountArgs} args - Arguments to filter UserCredentials to count.
+     * @example
+     * // Count the number of UserCredentials
+     * const count = await prisma.userCredential.count({
+     *   where: {
+     *     // ... the filter for the UserCredentials we want to count
+     *   }
+     * })
+    **/
+    count<T extends UserCredentialCountArgs>(
+      args?: Subset<T, UserCredentialCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], UserCredentialCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a UserCredential.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserCredentialAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends UserCredentialAggregateArgs>(args: Subset<T, UserCredentialAggregateArgs>): Prisma.PrismaPromise<GetUserCredentialAggregateType<T>>
+
+    /**
+     * Group by UserCredential.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserCredentialGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends UserCredentialGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: UserCredentialGroupByArgs['orderBy'] }
+        : { orderBy?: UserCredentialGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, UserCredentialGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetUserCredentialGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the UserCredential model
+   */
+  readonly fields: UserCredentialFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for UserCredential.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__UserCredentialClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    bindings<T extends UserCredential$bindingsArgs<ExtArgs> = {}>(args?: Subset<T, UserCredential$bindingsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserSkillCredentialBindingPayload<ExtArgs>, T, "findMany"> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the UserCredential model
+   */ 
+  interface UserCredentialFieldRefs {
+    readonly id: FieldRef<"UserCredential", 'String'>
+    readonly userId: FieldRef<"UserCredential", 'String'>
+    readonly orgId: FieldRef<"UserCredential", 'String'>
+    readonly name: FieldRef<"UserCredential", 'String'>
+    readonly category: FieldRef<"UserCredential", 'CredentialCategory'>
+    readonly description: FieldRef<"UserCredential", 'String'>
+    readonly encryptedData: FieldRef<"UserCredential", 'String'>
+    readonly maskedPreview: FieldRef<"UserCredential", 'Json'>
+    readonly status: FieldRef<"UserCredential", 'String'>
+    readonly expiresAt: FieldRef<"UserCredential", 'DateTime'>
+    readonly createdAt: FieldRef<"UserCredential", 'DateTime'>
+    readonly updatedAt: FieldRef<"UserCredential", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * UserCredential findUnique
+   */
+  export type UserCredentialFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserCredential
+     */
+    select?: UserCredentialSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserCredentialInclude<ExtArgs> | null
+    /**
+     * Filter, which UserCredential to fetch.
+     */
+    where: UserCredentialWhereUniqueInput
+  }
+
+  /**
+   * UserCredential findUniqueOrThrow
+   */
+  export type UserCredentialFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserCredential
+     */
+    select?: UserCredentialSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserCredentialInclude<ExtArgs> | null
+    /**
+     * Filter, which UserCredential to fetch.
+     */
+    where: UserCredentialWhereUniqueInput
+  }
+
+  /**
+   * UserCredential findFirst
+   */
+  export type UserCredentialFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserCredential
+     */
+    select?: UserCredentialSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserCredentialInclude<ExtArgs> | null
+    /**
+     * Filter, which UserCredential to fetch.
+     */
+    where?: UserCredentialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserCredentials to fetch.
+     */
+    orderBy?: UserCredentialOrderByWithRelationInput | UserCredentialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for UserCredentials.
+     */
+    cursor?: UserCredentialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserCredentials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserCredentials.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of UserCredentials.
+     */
+    distinct?: UserCredentialScalarFieldEnum | UserCredentialScalarFieldEnum[]
+  }
+
+  /**
+   * UserCredential findFirstOrThrow
+   */
+  export type UserCredentialFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserCredential
+     */
+    select?: UserCredentialSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserCredentialInclude<ExtArgs> | null
+    /**
+     * Filter, which UserCredential to fetch.
+     */
+    where?: UserCredentialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserCredentials to fetch.
+     */
+    orderBy?: UserCredentialOrderByWithRelationInput | UserCredentialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for UserCredentials.
+     */
+    cursor?: UserCredentialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserCredentials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserCredentials.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of UserCredentials.
+     */
+    distinct?: UserCredentialScalarFieldEnum | UserCredentialScalarFieldEnum[]
+  }
+
+  /**
+   * UserCredential findMany
+   */
+  export type UserCredentialFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserCredential
+     */
+    select?: UserCredentialSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserCredentialInclude<ExtArgs> | null
+    /**
+     * Filter, which UserCredentials to fetch.
+     */
+    where?: UserCredentialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserCredentials to fetch.
+     */
+    orderBy?: UserCredentialOrderByWithRelationInput | UserCredentialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing UserCredentials.
+     */
+    cursor?: UserCredentialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserCredentials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserCredentials.
+     */
+    skip?: number
+    distinct?: UserCredentialScalarFieldEnum | UserCredentialScalarFieldEnum[]
+  }
+
+  /**
+   * UserCredential create
+   */
+  export type UserCredentialCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserCredential
+     */
+    select?: UserCredentialSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserCredentialInclude<ExtArgs> | null
+    /**
+     * The data needed to create a UserCredential.
+     */
+    data: XOR<UserCredentialCreateInput, UserCredentialUncheckedCreateInput>
+  }
+
+  /**
+   * UserCredential createMany
+   */
+  export type UserCredentialCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many UserCredentials.
+     */
+    data: UserCredentialCreateManyInput | UserCredentialCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * UserCredential createManyAndReturn
+   */
+  export type UserCredentialCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserCredential
+     */
+    select?: UserCredentialSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many UserCredentials.
+     */
+    data: UserCredentialCreateManyInput | UserCredentialCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserCredentialIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * UserCredential update
+   */
+  export type UserCredentialUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserCredential
+     */
+    select?: UserCredentialSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserCredentialInclude<ExtArgs> | null
+    /**
+     * The data needed to update a UserCredential.
+     */
+    data: XOR<UserCredentialUpdateInput, UserCredentialUncheckedUpdateInput>
+    /**
+     * Choose, which UserCredential to update.
+     */
+    where: UserCredentialWhereUniqueInput
+  }
+
+  /**
+   * UserCredential updateMany
+   */
+  export type UserCredentialUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update UserCredentials.
+     */
+    data: XOR<UserCredentialUpdateManyMutationInput, UserCredentialUncheckedUpdateManyInput>
+    /**
+     * Filter which UserCredentials to update
+     */
+    where?: UserCredentialWhereInput
+  }
+
+  /**
+   * UserCredential upsert
+   */
+  export type UserCredentialUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserCredential
+     */
+    select?: UserCredentialSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserCredentialInclude<ExtArgs> | null
+    /**
+     * The filter to search for the UserCredential to update in case it exists.
+     */
+    where: UserCredentialWhereUniqueInput
+    /**
+     * In case the UserCredential found by the `where` argument doesn't exist, create a new UserCredential with this data.
+     */
+    create: XOR<UserCredentialCreateInput, UserCredentialUncheckedCreateInput>
+    /**
+     * In case the UserCredential was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<UserCredentialUpdateInput, UserCredentialUncheckedUpdateInput>
+  }
+
+  /**
+   * UserCredential delete
+   */
+  export type UserCredentialDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserCredential
+     */
+    select?: UserCredentialSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserCredentialInclude<ExtArgs> | null
+    /**
+     * Filter which UserCredential to delete.
+     */
+    where: UserCredentialWhereUniqueInput
+  }
+
+  /**
+   * UserCredential deleteMany
+   */
+  export type UserCredentialDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which UserCredentials to delete
+     */
+    where?: UserCredentialWhereInput
+  }
+
+  /**
+   * UserCredential.bindings
+   */
+  export type UserCredential$bindingsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSkillCredentialBinding
+     */
+    select?: UserSkillCredentialBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSkillCredentialBindingInclude<ExtArgs> | null
+    where?: UserSkillCredentialBindingWhereInput
+    orderBy?: UserSkillCredentialBindingOrderByWithRelationInput | UserSkillCredentialBindingOrderByWithRelationInput[]
+    cursor?: UserSkillCredentialBindingWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: UserSkillCredentialBindingScalarFieldEnum | UserSkillCredentialBindingScalarFieldEnum[]
+  }
+
+  /**
+   * UserCredential without action
+   */
+  export type UserCredentialDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserCredential
+     */
+    select?: UserCredentialSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserCredentialInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model UserSkillCredentialBinding
+   */
+
+  export type AggregateUserSkillCredentialBinding = {
+    _count: UserSkillCredentialBindingCountAggregateOutputType | null
+    _min: UserSkillCredentialBindingMinAggregateOutputType | null
+    _max: UserSkillCredentialBindingMaxAggregateOutputType | null
+  }
+
+  export type UserSkillCredentialBindingMinAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    skillId: string | null
+    paramName: string | null
+    credentialId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type UserSkillCredentialBindingMaxAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    skillId: string | null
+    paramName: string | null
+    credentialId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type UserSkillCredentialBindingCountAggregateOutputType = {
+    id: number
+    userId: number
+    skillId: number
+    paramName: number
+    credentialId: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type UserSkillCredentialBindingMinAggregateInputType = {
+    id?: true
+    userId?: true
+    skillId?: true
+    paramName?: true
+    credentialId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type UserSkillCredentialBindingMaxAggregateInputType = {
+    id?: true
+    userId?: true
+    skillId?: true
+    paramName?: true
+    credentialId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type UserSkillCredentialBindingCountAggregateInputType = {
+    id?: true
+    userId?: true
+    skillId?: true
+    paramName?: true
+    credentialId?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type UserSkillCredentialBindingAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which UserSkillCredentialBinding to aggregate.
+     */
+    where?: UserSkillCredentialBindingWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserSkillCredentialBindings to fetch.
+     */
+    orderBy?: UserSkillCredentialBindingOrderByWithRelationInput | UserSkillCredentialBindingOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: UserSkillCredentialBindingWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserSkillCredentialBindings from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserSkillCredentialBindings.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned UserSkillCredentialBindings
+    **/
+    _count?: true | UserSkillCredentialBindingCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: UserSkillCredentialBindingMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: UserSkillCredentialBindingMaxAggregateInputType
+  }
+
+  export type GetUserSkillCredentialBindingAggregateType<T extends UserSkillCredentialBindingAggregateArgs> = {
+        [P in keyof T & keyof AggregateUserSkillCredentialBinding]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateUserSkillCredentialBinding[P]>
+      : GetScalarType<T[P], AggregateUserSkillCredentialBinding[P]>
+  }
+
+
+
+
+  export type UserSkillCredentialBindingGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: UserSkillCredentialBindingWhereInput
+    orderBy?: UserSkillCredentialBindingOrderByWithAggregationInput | UserSkillCredentialBindingOrderByWithAggregationInput[]
+    by: UserSkillCredentialBindingScalarFieldEnum[] | UserSkillCredentialBindingScalarFieldEnum
+    having?: UserSkillCredentialBindingScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: UserSkillCredentialBindingCountAggregateInputType | true
+    _min?: UserSkillCredentialBindingMinAggregateInputType
+    _max?: UserSkillCredentialBindingMaxAggregateInputType
+  }
+
+  export type UserSkillCredentialBindingGroupByOutputType = {
+    id: string
+    userId: string
+    skillId: string
+    paramName: string
+    credentialId: string
+    createdAt: Date
+    updatedAt: Date
+    _count: UserSkillCredentialBindingCountAggregateOutputType | null
+    _min: UserSkillCredentialBindingMinAggregateOutputType | null
+    _max: UserSkillCredentialBindingMaxAggregateOutputType | null
+  }
+
+  type GetUserSkillCredentialBindingGroupByPayload<T extends UserSkillCredentialBindingGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<UserSkillCredentialBindingGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof UserSkillCredentialBindingGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], UserSkillCredentialBindingGroupByOutputType[P]>
+            : GetScalarType<T[P], UserSkillCredentialBindingGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type UserSkillCredentialBindingSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    skillId?: boolean
+    paramName?: boolean
+    credentialId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+    credential?: boolean | UserCredentialDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["userSkillCredentialBinding"]>
+
+  export type UserSkillCredentialBindingSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    skillId?: boolean
+    paramName?: boolean
+    credentialId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+    credential?: boolean | UserCredentialDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["userSkillCredentialBinding"]>
+
+  export type UserSkillCredentialBindingSelectScalar = {
+    id?: boolean
+    userId?: boolean
+    skillId?: boolean
+    paramName?: boolean
+    credentialId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type UserSkillCredentialBindingInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+    credential?: boolean | UserCredentialDefaultArgs<ExtArgs>
+  }
+  export type UserSkillCredentialBindingIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+    credential?: boolean | UserCredentialDefaultArgs<ExtArgs>
+  }
+
+  export type $UserSkillCredentialBindingPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "UserSkillCredentialBinding"
+    objects: {
+      user: Prisma.$UserPayload<ExtArgs>
+      credential: Prisma.$UserCredentialPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userId: string
+      skillId: string
+      paramName: string
+      credentialId: string
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["userSkillCredentialBinding"]>
+    composites: {}
+  }
+
+  type UserSkillCredentialBindingGetPayload<S extends boolean | null | undefined | UserSkillCredentialBindingDefaultArgs> = $Result.GetResult<Prisma.$UserSkillCredentialBindingPayload, S>
+
+  type UserSkillCredentialBindingCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<UserSkillCredentialBindingFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: UserSkillCredentialBindingCountAggregateInputType | true
+    }
+
+  export interface UserSkillCredentialBindingDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['UserSkillCredentialBinding'], meta: { name: 'UserSkillCredentialBinding' } }
+    /**
+     * Find zero or one UserSkillCredentialBinding that matches the filter.
+     * @param {UserSkillCredentialBindingFindUniqueArgs} args - Arguments to find a UserSkillCredentialBinding
+     * @example
+     * // Get one UserSkillCredentialBinding
+     * const userSkillCredentialBinding = await prisma.userSkillCredentialBinding.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends UserSkillCredentialBindingFindUniqueArgs>(args: SelectSubset<T, UserSkillCredentialBindingFindUniqueArgs<ExtArgs>>): Prisma__UserSkillCredentialBindingClient<$Result.GetResult<Prisma.$UserSkillCredentialBindingPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one UserSkillCredentialBinding that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {UserSkillCredentialBindingFindUniqueOrThrowArgs} args - Arguments to find a UserSkillCredentialBinding
+     * @example
+     * // Get one UserSkillCredentialBinding
+     * const userSkillCredentialBinding = await prisma.userSkillCredentialBinding.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends UserSkillCredentialBindingFindUniqueOrThrowArgs>(args: SelectSubset<T, UserSkillCredentialBindingFindUniqueOrThrowArgs<ExtArgs>>): Prisma__UserSkillCredentialBindingClient<$Result.GetResult<Prisma.$UserSkillCredentialBindingPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first UserSkillCredentialBinding that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSkillCredentialBindingFindFirstArgs} args - Arguments to find a UserSkillCredentialBinding
+     * @example
+     * // Get one UserSkillCredentialBinding
+     * const userSkillCredentialBinding = await prisma.userSkillCredentialBinding.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends UserSkillCredentialBindingFindFirstArgs>(args?: SelectSubset<T, UserSkillCredentialBindingFindFirstArgs<ExtArgs>>): Prisma__UserSkillCredentialBindingClient<$Result.GetResult<Prisma.$UserSkillCredentialBindingPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first UserSkillCredentialBinding that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSkillCredentialBindingFindFirstOrThrowArgs} args - Arguments to find a UserSkillCredentialBinding
+     * @example
+     * // Get one UserSkillCredentialBinding
+     * const userSkillCredentialBinding = await prisma.userSkillCredentialBinding.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends UserSkillCredentialBindingFindFirstOrThrowArgs>(args?: SelectSubset<T, UserSkillCredentialBindingFindFirstOrThrowArgs<ExtArgs>>): Prisma__UserSkillCredentialBindingClient<$Result.GetResult<Prisma.$UserSkillCredentialBindingPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more UserSkillCredentialBindings that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSkillCredentialBindingFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all UserSkillCredentialBindings
+     * const userSkillCredentialBindings = await prisma.userSkillCredentialBinding.findMany()
+     * 
+     * // Get first 10 UserSkillCredentialBindings
+     * const userSkillCredentialBindings = await prisma.userSkillCredentialBinding.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const userSkillCredentialBindingWithIdOnly = await prisma.userSkillCredentialBinding.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends UserSkillCredentialBindingFindManyArgs>(args?: SelectSubset<T, UserSkillCredentialBindingFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserSkillCredentialBindingPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a UserSkillCredentialBinding.
+     * @param {UserSkillCredentialBindingCreateArgs} args - Arguments to create a UserSkillCredentialBinding.
+     * @example
+     * // Create one UserSkillCredentialBinding
+     * const UserSkillCredentialBinding = await prisma.userSkillCredentialBinding.create({
+     *   data: {
+     *     // ... data to create a UserSkillCredentialBinding
+     *   }
+     * })
+     * 
+     */
+    create<T extends UserSkillCredentialBindingCreateArgs>(args: SelectSubset<T, UserSkillCredentialBindingCreateArgs<ExtArgs>>): Prisma__UserSkillCredentialBindingClient<$Result.GetResult<Prisma.$UserSkillCredentialBindingPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many UserSkillCredentialBindings.
+     * @param {UserSkillCredentialBindingCreateManyArgs} args - Arguments to create many UserSkillCredentialBindings.
+     * @example
+     * // Create many UserSkillCredentialBindings
+     * const userSkillCredentialBinding = await prisma.userSkillCredentialBinding.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends UserSkillCredentialBindingCreateManyArgs>(args?: SelectSubset<T, UserSkillCredentialBindingCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many UserSkillCredentialBindings and returns the data saved in the database.
+     * @param {UserSkillCredentialBindingCreateManyAndReturnArgs} args - Arguments to create many UserSkillCredentialBindings.
+     * @example
+     * // Create many UserSkillCredentialBindings
+     * const userSkillCredentialBinding = await prisma.userSkillCredentialBinding.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many UserSkillCredentialBindings and only return the `id`
+     * const userSkillCredentialBindingWithIdOnly = await prisma.userSkillCredentialBinding.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends UserSkillCredentialBindingCreateManyAndReturnArgs>(args?: SelectSubset<T, UserSkillCredentialBindingCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserSkillCredentialBindingPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a UserSkillCredentialBinding.
+     * @param {UserSkillCredentialBindingDeleteArgs} args - Arguments to delete one UserSkillCredentialBinding.
+     * @example
+     * // Delete one UserSkillCredentialBinding
+     * const UserSkillCredentialBinding = await prisma.userSkillCredentialBinding.delete({
+     *   where: {
+     *     // ... filter to delete one UserSkillCredentialBinding
+     *   }
+     * })
+     * 
+     */
+    delete<T extends UserSkillCredentialBindingDeleteArgs>(args: SelectSubset<T, UserSkillCredentialBindingDeleteArgs<ExtArgs>>): Prisma__UserSkillCredentialBindingClient<$Result.GetResult<Prisma.$UserSkillCredentialBindingPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one UserSkillCredentialBinding.
+     * @param {UserSkillCredentialBindingUpdateArgs} args - Arguments to update one UserSkillCredentialBinding.
+     * @example
+     * // Update one UserSkillCredentialBinding
+     * const userSkillCredentialBinding = await prisma.userSkillCredentialBinding.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends UserSkillCredentialBindingUpdateArgs>(args: SelectSubset<T, UserSkillCredentialBindingUpdateArgs<ExtArgs>>): Prisma__UserSkillCredentialBindingClient<$Result.GetResult<Prisma.$UserSkillCredentialBindingPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more UserSkillCredentialBindings.
+     * @param {UserSkillCredentialBindingDeleteManyArgs} args - Arguments to filter UserSkillCredentialBindings to delete.
+     * @example
+     * // Delete a few UserSkillCredentialBindings
+     * const { count } = await prisma.userSkillCredentialBinding.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends UserSkillCredentialBindingDeleteManyArgs>(args?: SelectSubset<T, UserSkillCredentialBindingDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more UserSkillCredentialBindings.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSkillCredentialBindingUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many UserSkillCredentialBindings
+     * const userSkillCredentialBinding = await prisma.userSkillCredentialBinding.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends UserSkillCredentialBindingUpdateManyArgs>(args: SelectSubset<T, UserSkillCredentialBindingUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one UserSkillCredentialBinding.
+     * @param {UserSkillCredentialBindingUpsertArgs} args - Arguments to update or create a UserSkillCredentialBinding.
+     * @example
+     * // Update or create a UserSkillCredentialBinding
+     * const userSkillCredentialBinding = await prisma.userSkillCredentialBinding.upsert({
+     *   create: {
+     *     // ... data to create a UserSkillCredentialBinding
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the UserSkillCredentialBinding we want to update
+     *   }
+     * })
+     */
+    upsert<T extends UserSkillCredentialBindingUpsertArgs>(args: SelectSubset<T, UserSkillCredentialBindingUpsertArgs<ExtArgs>>): Prisma__UserSkillCredentialBindingClient<$Result.GetResult<Prisma.$UserSkillCredentialBindingPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of UserSkillCredentialBindings.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSkillCredentialBindingCountArgs} args - Arguments to filter UserSkillCredentialBindings to count.
+     * @example
+     * // Count the number of UserSkillCredentialBindings
+     * const count = await prisma.userSkillCredentialBinding.count({
+     *   where: {
+     *     // ... the filter for the UserSkillCredentialBindings we want to count
+     *   }
+     * })
+    **/
+    count<T extends UserSkillCredentialBindingCountArgs>(
+      args?: Subset<T, UserSkillCredentialBindingCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], UserSkillCredentialBindingCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a UserSkillCredentialBinding.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSkillCredentialBindingAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends UserSkillCredentialBindingAggregateArgs>(args: Subset<T, UserSkillCredentialBindingAggregateArgs>): Prisma.PrismaPromise<GetUserSkillCredentialBindingAggregateType<T>>
+
+    /**
+     * Group by UserSkillCredentialBinding.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserSkillCredentialBindingGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends UserSkillCredentialBindingGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: UserSkillCredentialBindingGroupByArgs['orderBy'] }
+        : { orderBy?: UserSkillCredentialBindingGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, UserSkillCredentialBindingGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetUserSkillCredentialBindingGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the UserSkillCredentialBinding model
+   */
+  readonly fields: UserSkillCredentialBindingFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for UserSkillCredentialBinding.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__UserSkillCredentialBindingClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    credential<T extends UserCredentialDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserCredentialDefaultArgs<ExtArgs>>): Prisma__UserCredentialClient<$Result.GetResult<Prisma.$UserCredentialPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the UserSkillCredentialBinding model
+   */ 
+  interface UserSkillCredentialBindingFieldRefs {
+    readonly id: FieldRef<"UserSkillCredentialBinding", 'String'>
+    readonly userId: FieldRef<"UserSkillCredentialBinding", 'String'>
+    readonly skillId: FieldRef<"UserSkillCredentialBinding", 'String'>
+    readonly paramName: FieldRef<"UserSkillCredentialBinding", 'String'>
+    readonly credentialId: FieldRef<"UserSkillCredentialBinding", 'String'>
+    readonly createdAt: FieldRef<"UserSkillCredentialBinding", 'DateTime'>
+    readonly updatedAt: FieldRef<"UserSkillCredentialBinding", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * UserSkillCredentialBinding findUnique
+   */
+  export type UserSkillCredentialBindingFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSkillCredentialBinding
+     */
+    select?: UserSkillCredentialBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSkillCredentialBindingInclude<ExtArgs> | null
+    /**
+     * Filter, which UserSkillCredentialBinding to fetch.
+     */
+    where: UserSkillCredentialBindingWhereUniqueInput
+  }
+
+  /**
+   * UserSkillCredentialBinding findUniqueOrThrow
+   */
+  export type UserSkillCredentialBindingFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSkillCredentialBinding
+     */
+    select?: UserSkillCredentialBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSkillCredentialBindingInclude<ExtArgs> | null
+    /**
+     * Filter, which UserSkillCredentialBinding to fetch.
+     */
+    where: UserSkillCredentialBindingWhereUniqueInput
+  }
+
+  /**
+   * UserSkillCredentialBinding findFirst
+   */
+  export type UserSkillCredentialBindingFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSkillCredentialBinding
+     */
+    select?: UserSkillCredentialBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSkillCredentialBindingInclude<ExtArgs> | null
+    /**
+     * Filter, which UserSkillCredentialBinding to fetch.
+     */
+    where?: UserSkillCredentialBindingWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserSkillCredentialBindings to fetch.
+     */
+    orderBy?: UserSkillCredentialBindingOrderByWithRelationInput | UserSkillCredentialBindingOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for UserSkillCredentialBindings.
+     */
+    cursor?: UserSkillCredentialBindingWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserSkillCredentialBindings from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserSkillCredentialBindings.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of UserSkillCredentialBindings.
+     */
+    distinct?: UserSkillCredentialBindingScalarFieldEnum | UserSkillCredentialBindingScalarFieldEnum[]
+  }
+
+  /**
+   * UserSkillCredentialBinding findFirstOrThrow
+   */
+  export type UserSkillCredentialBindingFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSkillCredentialBinding
+     */
+    select?: UserSkillCredentialBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSkillCredentialBindingInclude<ExtArgs> | null
+    /**
+     * Filter, which UserSkillCredentialBinding to fetch.
+     */
+    where?: UserSkillCredentialBindingWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserSkillCredentialBindings to fetch.
+     */
+    orderBy?: UserSkillCredentialBindingOrderByWithRelationInput | UserSkillCredentialBindingOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for UserSkillCredentialBindings.
+     */
+    cursor?: UserSkillCredentialBindingWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserSkillCredentialBindings from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserSkillCredentialBindings.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of UserSkillCredentialBindings.
+     */
+    distinct?: UserSkillCredentialBindingScalarFieldEnum | UserSkillCredentialBindingScalarFieldEnum[]
+  }
+
+  /**
+   * UserSkillCredentialBinding findMany
+   */
+  export type UserSkillCredentialBindingFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSkillCredentialBinding
+     */
+    select?: UserSkillCredentialBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSkillCredentialBindingInclude<ExtArgs> | null
+    /**
+     * Filter, which UserSkillCredentialBindings to fetch.
+     */
+    where?: UserSkillCredentialBindingWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserSkillCredentialBindings to fetch.
+     */
+    orderBy?: UserSkillCredentialBindingOrderByWithRelationInput | UserSkillCredentialBindingOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing UserSkillCredentialBindings.
+     */
+    cursor?: UserSkillCredentialBindingWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserSkillCredentialBindings from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserSkillCredentialBindings.
+     */
+    skip?: number
+    distinct?: UserSkillCredentialBindingScalarFieldEnum | UserSkillCredentialBindingScalarFieldEnum[]
+  }
+
+  /**
+   * UserSkillCredentialBinding create
+   */
+  export type UserSkillCredentialBindingCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSkillCredentialBinding
+     */
+    select?: UserSkillCredentialBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSkillCredentialBindingInclude<ExtArgs> | null
+    /**
+     * The data needed to create a UserSkillCredentialBinding.
+     */
+    data: XOR<UserSkillCredentialBindingCreateInput, UserSkillCredentialBindingUncheckedCreateInput>
+  }
+
+  /**
+   * UserSkillCredentialBinding createMany
+   */
+  export type UserSkillCredentialBindingCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many UserSkillCredentialBindings.
+     */
+    data: UserSkillCredentialBindingCreateManyInput | UserSkillCredentialBindingCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * UserSkillCredentialBinding createManyAndReturn
+   */
+  export type UserSkillCredentialBindingCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSkillCredentialBinding
+     */
+    select?: UserSkillCredentialBindingSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many UserSkillCredentialBindings.
+     */
+    data: UserSkillCredentialBindingCreateManyInput | UserSkillCredentialBindingCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSkillCredentialBindingIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * UserSkillCredentialBinding update
+   */
+  export type UserSkillCredentialBindingUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSkillCredentialBinding
+     */
+    select?: UserSkillCredentialBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSkillCredentialBindingInclude<ExtArgs> | null
+    /**
+     * The data needed to update a UserSkillCredentialBinding.
+     */
+    data: XOR<UserSkillCredentialBindingUpdateInput, UserSkillCredentialBindingUncheckedUpdateInput>
+    /**
+     * Choose, which UserSkillCredentialBinding to update.
+     */
+    where: UserSkillCredentialBindingWhereUniqueInput
+  }
+
+  /**
+   * UserSkillCredentialBinding updateMany
+   */
+  export type UserSkillCredentialBindingUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update UserSkillCredentialBindings.
+     */
+    data: XOR<UserSkillCredentialBindingUpdateManyMutationInput, UserSkillCredentialBindingUncheckedUpdateManyInput>
+    /**
+     * Filter which UserSkillCredentialBindings to update
+     */
+    where?: UserSkillCredentialBindingWhereInput
+  }
+
+  /**
+   * UserSkillCredentialBinding upsert
+   */
+  export type UserSkillCredentialBindingUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSkillCredentialBinding
+     */
+    select?: UserSkillCredentialBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSkillCredentialBindingInclude<ExtArgs> | null
+    /**
+     * The filter to search for the UserSkillCredentialBinding to update in case it exists.
+     */
+    where: UserSkillCredentialBindingWhereUniqueInput
+    /**
+     * In case the UserSkillCredentialBinding found by the `where` argument doesn't exist, create a new UserSkillCredentialBinding with this data.
+     */
+    create: XOR<UserSkillCredentialBindingCreateInput, UserSkillCredentialBindingUncheckedCreateInput>
+    /**
+     * In case the UserSkillCredentialBinding was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<UserSkillCredentialBindingUpdateInput, UserSkillCredentialBindingUncheckedUpdateInput>
+  }
+
+  /**
+   * UserSkillCredentialBinding delete
+   */
+  export type UserSkillCredentialBindingDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSkillCredentialBinding
+     */
+    select?: UserSkillCredentialBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSkillCredentialBindingInclude<ExtArgs> | null
+    /**
+     * Filter which UserSkillCredentialBinding to delete.
+     */
+    where: UserSkillCredentialBindingWhereUniqueInput
+  }
+
+  /**
+   * UserSkillCredentialBinding deleteMany
+   */
+  export type UserSkillCredentialBindingDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which UserSkillCredentialBindings to delete
+     */
+    where?: UserSkillCredentialBindingWhereInput
+  }
+
+  /**
+   * UserSkillCredentialBinding without action
+   */
+  export type UserSkillCredentialBindingDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserSkillCredentialBinding
+     */
+    select?: UserSkillCredentialBindingSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserSkillCredentialBindingInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -90447,6 +92733,37 @@ export namespace Prisma {
   export type WorkbenchInboxItemScalarFieldEnum = (typeof WorkbenchInboxItemScalarFieldEnum)[keyof typeof WorkbenchInboxItemScalarFieldEnum]
 
 
+  export const UserCredentialScalarFieldEnum: {
+    id: 'id',
+    userId: 'userId',
+    orgId: 'orgId',
+    name: 'name',
+    category: 'category',
+    description: 'description',
+    encryptedData: 'encryptedData',
+    maskedPreview: 'maskedPreview',
+    status: 'status',
+    expiresAt: 'expiresAt',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type UserCredentialScalarFieldEnum = (typeof UserCredentialScalarFieldEnum)[keyof typeof UserCredentialScalarFieldEnum]
+
+
+  export const UserSkillCredentialBindingScalarFieldEnum: {
+    id: 'id',
+    userId: 'userId',
+    skillId: 'skillId',
+    paramName: 'paramName',
+    credentialId: 'credentialId',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type UserSkillCredentialBindingScalarFieldEnum = (typeof UserSkillCredentialBindingScalarFieldEnum)[keyof typeof UserSkillCredentialBindingScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -90778,6 +93095,20 @@ export namespace Prisma {
    */
   export type ListEnumInboxItemStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'InboxItemStatus[]'>
     
+
+
+  /**
+   * Reference to a field of type 'CredentialCategory'
+   */
+  export type EnumCredentialCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CredentialCategory'>
+    
+
+
+  /**
+   * Reference to a field of type 'CredentialCategory[]'
+   */
+  export type ListEnumCredentialCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CredentialCategory[]'>
+    
   /**
    * Deep Input Types
    */
@@ -90809,6 +93140,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionListRelationFilter
     skillAccessRequests?: SkillAccessRequestListRelationFilter
     processedSkillAccessRequests?: SkillAccessRequestListRelationFilter
+    credentials?: UserCredentialListRelationFilter
+    skillCredentialBindings?: UserSkillCredentialBindingListRelationFilter
   }
 
   export type UserOrderByWithRelationInput = {
@@ -90834,6 +93167,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionOrderByRelationAggregateInput
     skillAccessRequests?: SkillAccessRequestOrderByRelationAggregateInput
     processedSkillAccessRequests?: SkillAccessRequestOrderByRelationAggregateInput
+    credentials?: UserCredentialOrderByRelationAggregateInput
+    skillCredentialBindings?: UserSkillCredentialBindingOrderByRelationAggregateInput
   }
 
   export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -90862,6 +93197,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionListRelationFilter
     skillAccessRequests?: SkillAccessRequestListRelationFilter
     processedSkillAccessRequests?: SkillAccessRequestListRelationFilter
+    credentials?: UserCredentialListRelationFilter
+    skillCredentialBindings?: UserSkillCredentialBindingListRelationFilter
   }, "id" | "username" | "email">
 
   export type UserOrderByWithAggregationInput = {
@@ -98061,6 +100398,168 @@ export namespace Prisma {
     updatedAt?: DateTimeWithAggregatesFilter<"WorkbenchInboxItem"> | Date | string
   }
 
+  export type UserCredentialWhereInput = {
+    AND?: UserCredentialWhereInput | UserCredentialWhereInput[]
+    OR?: UserCredentialWhereInput[]
+    NOT?: UserCredentialWhereInput | UserCredentialWhereInput[]
+    id?: UuidFilter<"UserCredential"> | string
+    userId?: UuidFilter<"UserCredential"> | string
+    orgId?: UuidNullableFilter<"UserCredential"> | string | null
+    name?: StringFilter<"UserCredential"> | string
+    category?: EnumCredentialCategoryFilter<"UserCredential"> | $Enums.CredentialCategory
+    description?: StringNullableFilter<"UserCredential"> | string | null
+    encryptedData?: StringFilter<"UserCredential"> | string
+    maskedPreview?: JsonFilter<"UserCredential">
+    status?: StringFilter<"UserCredential"> | string
+    expiresAt?: DateTimeNullableFilter<"UserCredential"> | Date | string | null
+    createdAt?: DateTimeFilter<"UserCredential"> | Date | string
+    updatedAt?: DateTimeFilter<"UserCredential"> | Date | string
+    user?: XOR<UserRelationFilter, UserWhereInput>
+    bindings?: UserSkillCredentialBindingListRelationFilter
+  }
+
+  export type UserCredentialOrderByWithRelationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    orgId?: SortOrderInput | SortOrder
+    name?: SortOrder
+    category?: SortOrder
+    description?: SortOrderInput | SortOrder
+    encryptedData?: SortOrder
+    maskedPreview?: SortOrder
+    status?: SortOrder
+    expiresAt?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    user?: UserOrderByWithRelationInput
+    bindings?: UserSkillCredentialBindingOrderByRelationAggregateInput
+  }
+
+  export type UserCredentialWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: UserCredentialWhereInput | UserCredentialWhereInput[]
+    OR?: UserCredentialWhereInput[]
+    NOT?: UserCredentialWhereInput | UserCredentialWhereInput[]
+    userId?: UuidFilter<"UserCredential"> | string
+    orgId?: UuidNullableFilter<"UserCredential"> | string | null
+    name?: StringFilter<"UserCredential"> | string
+    category?: EnumCredentialCategoryFilter<"UserCredential"> | $Enums.CredentialCategory
+    description?: StringNullableFilter<"UserCredential"> | string | null
+    encryptedData?: StringFilter<"UserCredential"> | string
+    maskedPreview?: JsonFilter<"UserCredential">
+    status?: StringFilter<"UserCredential"> | string
+    expiresAt?: DateTimeNullableFilter<"UserCredential"> | Date | string | null
+    createdAt?: DateTimeFilter<"UserCredential"> | Date | string
+    updatedAt?: DateTimeFilter<"UserCredential"> | Date | string
+    user?: XOR<UserRelationFilter, UserWhereInput>
+    bindings?: UserSkillCredentialBindingListRelationFilter
+  }, "id">
+
+  export type UserCredentialOrderByWithAggregationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    orgId?: SortOrderInput | SortOrder
+    name?: SortOrder
+    category?: SortOrder
+    description?: SortOrderInput | SortOrder
+    encryptedData?: SortOrder
+    maskedPreview?: SortOrder
+    status?: SortOrder
+    expiresAt?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: UserCredentialCountOrderByAggregateInput
+    _max?: UserCredentialMaxOrderByAggregateInput
+    _min?: UserCredentialMinOrderByAggregateInput
+  }
+
+  export type UserCredentialScalarWhereWithAggregatesInput = {
+    AND?: UserCredentialScalarWhereWithAggregatesInput | UserCredentialScalarWhereWithAggregatesInput[]
+    OR?: UserCredentialScalarWhereWithAggregatesInput[]
+    NOT?: UserCredentialScalarWhereWithAggregatesInput | UserCredentialScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"UserCredential"> | string
+    userId?: UuidWithAggregatesFilter<"UserCredential"> | string
+    orgId?: UuidNullableWithAggregatesFilter<"UserCredential"> | string | null
+    name?: StringWithAggregatesFilter<"UserCredential"> | string
+    category?: EnumCredentialCategoryWithAggregatesFilter<"UserCredential"> | $Enums.CredentialCategory
+    description?: StringNullableWithAggregatesFilter<"UserCredential"> | string | null
+    encryptedData?: StringWithAggregatesFilter<"UserCredential"> | string
+    maskedPreview?: JsonWithAggregatesFilter<"UserCredential">
+    status?: StringWithAggregatesFilter<"UserCredential"> | string
+    expiresAt?: DateTimeNullableWithAggregatesFilter<"UserCredential"> | Date | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"UserCredential"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"UserCredential"> | Date | string
+  }
+
+  export type UserSkillCredentialBindingWhereInput = {
+    AND?: UserSkillCredentialBindingWhereInput | UserSkillCredentialBindingWhereInput[]
+    OR?: UserSkillCredentialBindingWhereInput[]
+    NOT?: UserSkillCredentialBindingWhereInput | UserSkillCredentialBindingWhereInput[]
+    id?: UuidFilter<"UserSkillCredentialBinding"> | string
+    userId?: UuidFilter<"UserSkillCredentialBinding"> | string
+    skillId?: UuidFilter<"UserSkillCredentialBinding"> | string
+    paramName?: StringFilter<"UserSkillCredentialBinding"> | string
+    credentialId?: UuidFilter<"UserSkillCredentialBinding"> | string
+    createdAt?: DateTimeFilter<"UserSkillCredentialBinding"> | Date | string
+    updatedAt?: DateTimeFilter<"UserSkillCredentialBinding"> | Date | string
+    user?: XOR<UserRelationFilter, UserWhereInput>
+    credential?: XOR<UserCredentialRelationFilter, UserCredentialWhereInput>
+  }
+
+  export type UserSkillCredentialBindingOrderByWithRelationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    skillId?: SortOrder
+    paramName?: SortOrder
+    credentialId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    user?: UserOrderByWithRelationInput
+    credential?: UserCredentialOrderByWithRelationInput
+  }
+
+  export type UserSkillCredentialBindingWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    userId_skillId_paramName?: UserSkillCredentialBindingUserIdSkillIdParamNameCompoundUniqueInput
+    AND?: UserSkillCredentialBindingWhereInput | UserSkillCredentialBindingWhereInput[]
+    OR?: UserSkillCredentialBindingWhereInput[]
+    NOT?: UserSkillCredentialBindingWhereInput | UserSkillCredentialBindingWhereInput[]
+    userId?: UuidFilter<"UserSkillCredentialBinding"> | string
+    skillId?: UuidFilter<"UserSkillCredentialBinding"> | string
+    paramName?: StringFilter<"UserSkillCredentialBinding"> | string
+    credentialId?: UuidFilter<"UserSkillCredentialBinding"> | string
+    createdAt?: DateTimeFilter<"UserSkillCredentialBinding"> | Date | string
+    updatedAt?: DateTimeFilter<"UserSkillCredentialBinding"> | Date | string
+    user?: XOR<UserRelationFilter, UserWhereInput>
+    credential?: XOR<UserCredentialRelationFilter, UserCredentialWhereInput>
+  }, "id" | "userId_skillId_paramName">
+
+  export type UserSkillCredentialBindingOrderByWithAggregationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    skillId?: SortOrder
+    paramName?: SortOrder
+    credentialId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: UserSkillCredentialBindingCountOrderByAggregateInput
+    _max?: UserSkillCredentialBindingMaxOrderByAggregateInput
+    _min?: UserSkillCredentialBindingMinOrderByAggregateInput
+  }
+
+  export type UserSkillCredentialBindingScalarWhereWithAggregatesInput = {
+    AND?: UserSkillCredentialBindingScalarWhereWithAggregatesInput | UserSkillCredentialBindingScalarWhereWithAggregatesInput[]
+    OR?: UserSkillCredentialBindingScalarWhereWithAggregatesInput[]
+    NOT?: UserSkillCredentialBindingScalarWhereWithAggregatesInput | UserSkillCredentialBindingScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"UserSkillCredentialBinding"> | string
+    userId?: UuidWithAggregatesFilter<"UserSkillCredentialBinding"> | string
+    skillId?: UuidWithAggregatesFilter<"UserSkillCredentialBinding"> | string
+    paramName?: StringWithAggregatesFilter<"UserSkillCredentialBinding"> | string
+    credentialId?: UuidWithAggregatesFilter<"UserSkillCredentialBinding"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"UserSkillCredentialBinding"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"UserSkillCredentialBinding"> | Date | string
+  }
+
   export type UserCreateInput = {
     id?: string
     username: string
@@ -98083,6 +100582,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateInput = {
@@ -98107,6 +100608,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialUncheckedCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserUpdateInput = {
@@ -98131,6 +100634,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateInput = {
@@ -98155,6 +100660,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUncheckedUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateManyInput = {
@@ -106516,6 +109023,182 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type UserCredentialCreateInput = {
+    id?: string
+    orgId?: string | null
+    name: string
+    category: $Enums.CredentialCategory
+    description?: string | null
+    encryptedData: string
+    maskedPreview: JsonNullValueInput | InputJsonValue
+    status?: string
+    expiresAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutCredentialsInput
+    bindings?: UserSkillCredentialBindingCreateNestedManyWithoutCredentialInput
+  }
+
+  export type UserCredentialUncheckedCreateInput = {
+    id?: string
+    userId: string
+    orgId?: string | null
+    name: string
+    category: $Enums.CredentialCategory
+    description?: string | null
+    encryptedData: string
+    maskedPreview: JsonNullValueInput | InputJsonValue
+    status?: string
+    expiresAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    bindings?: UserSkillCredentialBindingUncheckedCreateNestedManyWithoutCredentialInput
+  }
+
+  export type UserCredentialUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    orgId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    category?: EnumCredentialCategoryFieldUpdateOperationsInput | $Enums.CredentialCategory
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedData?: StringFieldUpdateOperationsInput | string
+    maskedPreview?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    expiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutCredentialsNestedInput
+    bindings?: UserSkillCredentialBindingUpdateManyWithoutCredentialNestedInput
+  }
+
+  export type UserCredentialUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    orgId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    category?: EnumCredentialCategoryFieldUpdateOperationsInput | $Enums.CredentialCategory
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedData?: StringFieldUpdateOperationsInput | string
+    maskedPreview?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    expiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    bindings?: UserSkillCredentialBindingUncheckedUpdateManyWithoutCredentialNestedInput
+  }
+
+  export type UserCredentialCreateManyInput = {
+    id?: string
+    userId: string
+    orgId?: string | null
+    name: string
+    category: $Enums.CredentialCategory
+    description?: string | null
+    encryptedData: string
+    maskedPreview: JsonNullValueInput | InputJsonValue
+    status?: string
+    expiresAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type UserCredentialUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    orgId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    category?: EnumCredentialCategoryFieldUpdateOperationsInput | $Enums.CredentialCategory
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedData?: StringFieldUpdateOperationsInput | string
+    maskedPreview?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    expiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserCredentialUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    orgId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    category?: EnumCredentialCategoryFieldUpdateOperationsInput | $Enums.CredentialCategory
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedData?: StringFieldUpdateOperationsInput | string
+    maskedPreview?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    expiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserSkillCredentialBindingCreateInput = {
+    id?: string
+    skillId: string
+    paramName: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutSkillCredentialBindingsInput
+    credential: UserCredentialCreateNestedOneWithoutBindingsInput
+  }
+
+  export type UserSkillCredentialBindingUncheckedCreateInput = {
+    id?: string
+    userId: string
+    skillId: string
+    paramName: string
+    credentialId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type UserSkillCredentialBindingUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    paramName?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutSkillCredentialBindingsNestedInput
+    credential?: UserCredentialUpdateOneRequiredWithoutBindingsNestedInput
+  }
+
+  export type UserSkillCredentialBindingUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    paramName?: StringFieldUpdateOperationsInput | string
+    credentialId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserSkillCredentialBindingCreateManyInput = {
+    id?: string
+    userId: string
+    skillId: string
+    paramName: string
+    credentialId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type UserSkillCredentialBindingUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    paramName?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserSkillCredentialBindingUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    paramName?: StringFieldUpdateOperationsInput | string
+    credentialId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type UuidFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -106645,6 +109328,18 @@ export namespace Prisma {
     none?: SkillAccessRequestWhereInput
   }
 
+  export type UserCredentialListRelationFilter = {
+    every?: UserCredentialWhereInput
+    some?: UserCredentialWhereInput
+    none?: UserCredentialWhereInput
+  }
+
+  export type UserSkillCredentialBindingListRelationFilter = {
+    every?: UserSkillCredentialBindingWhereInput
+    some?: UserSkillCredentialBindingWhereInput
+    none?: UserSkillCredentialBindingWhereInput
+  }
+
   export type SortOrderInput = {
     sort: SortOrder
     nulls?: NullsOrder
@@ -106671,6 +109366,14 @@ export namespace Prisma {
   }
 
   export type SkillAccessRequestOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type UserCredentialOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type UserSkillCredentialBindingOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -111453,6 +114156,107 @@ export namespace Prisma {
     _max?: NestedEnumInboxItemStatusFilter<$PrismaModel>
   }
 
+  export type EnumCredentialCategoryFilter<$PrismaModel = never> = {
+    equals?: $Enums.CredentialCategory | EnumCredentialCategoryFieldRefInput<$PrismaModel>
+    in?: $Enums.CredentialCategory[] | ListEnumCredentialCategoryFieldRefInput<$PrismaModel>
+    notIn?: $Enums.CredentialCategory[] | ListEnumCredentialCategoryFieldRefInput<$PrismaModel>
+    not?: NestedEnumCredentialCategoryFilter<$PrismaModel> | $Enums.CredentialCategory
+  }
+
+  export type UserCredentialCountOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    orgId?: SortOrder
+    name?: SortOrder
+    category?: SortOrder
+    description?: SortOrder
+    encryptedData?: SortOrder
+    maskedPreview?: SortOrder
+    status?: SortOrder
+    expiresAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type UserCredentialMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    orgId?: SortOrder
+    name?: SortOrder
+    category?: SortOrder
+    description?: SortOrder
+    encryptedData?: SortOrder
+    status?: SortOrder
+    expiresAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type UserCredentialMinOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    orgId?: SortOrder
+    name?: SortOrder
+    category?: SortOrder
+    description?: SortOrder
+    encryptedData?: SortOrder
+    status?: SortOrder
+    expiresAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EnumCredentialCategoryWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.CredentialCategory | EnumCredentialCategoryFieldRefInput<$PrismaModel>
+    in?: $Enums.CredentialCategory[] | ListEnumCredentialCategoryFieldRefInput<$PrismaModel>
+    notIn?: $Enums.CredentialCategory[] | ListEnumCredentialCategoryFieldRefInput<$PrismaModel>
+    not?: NestedEnumCredentialCategoryWithAggregatesFilter<$PrismaModel> | $Enums.CredentialCategory
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumCredentialCategoryFilter<$PrismaModel>
+    _max?: NestedEnumCredentialCategoryFilter<$PrismaModel>
+  }
+
+  export type UserCredentialRelationFilter = {
+    is?: UserCredentialWhereInput
+    isNot?: UserCredentialWhereInput
+  }
+
+  export type UserSkillCredentialBindingUserIdSkillIdParamNameCompoundUniqueInput = {
+    userId: string
+    skillId: string
+    paramName: string
+  }
+
+  export type UserSkillCredentialBindingCountOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    skillId?: SortOrder
+    paramName?: SortOrder
+    credentialId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type UserSkillCredentialBindingMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    skillId?: SortOrder
+    paramName?: SortOrder
+    credentialId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type UserSkillCredentialBindingMinOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    skillId?: SortOrder
+    paramName?: SortOrder
+    credentialId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
   export type UserRoleCreateNestedManyWithoutUserInput = {
     create?: XOR<UserRoleCreateWithoutUserInput, UserRoleUncheckedCreateWithoutUserInput> | UserRoleCreateWithoutUserInput[] | UserRoleUncheckedCreateWithoutUserInput[]
     connectOrCreate?: UserRoleCreateOrConnectWithoutUserInput | UserRoleCreateOrConnectWithoutUserInput[]
@@ -111515,6 +114319,20 @@ export namespace Prisma {
     connect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
   }
 
+  export type UserCredentialCreateNestedManyWithoutUserInput = {
+    create?: XOR<UserCredentialCreateWithoutUserInput, UserCredentialUncheckedCreateWithoutUserInput> | UserCredentialCreateWithoutUserInput[] | UserCredentialUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: UserCredentialCreateOrConnectWithoutUserInput | UserCredentialCreateOrConnectWithoutUserInput[]
+    createMany?: UserCredentialCreateManyUserInputEnvelope
+    connect?: UserCredentialWhereUniqueInput | UserCredentialWhereUniqueInput[]
+  }
+
+  export type UserSkillCredentialBindingCreateNestedManyWithoutUserInput = {
+    create?: XOR<UserSkillCredentialBindingCreateWithoutUserInput, UserSkillCredentialBindingUncheckedCreateWithoutUserInput> | UserSkillCredentialBindingCreateWithoutUserInput[] | UserSkillCredentialBindingUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: UserSkillCredentialBindingCreateOrConnectWithoutUserInput | UserSkillCredentialBindingCreateOrConnectWithoutUserInput[]
+    createMany?: UserSkillCredentialBindingCreateManyUserInputEnvelope
+    connect?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+  }
+
   export type UserRoleUncheckedCreateNestedManyWithoutUserInput = {
     create?: XOR<UserRoleCreateWithoutUserInput, UserRoleUncheckedCreateWithoutUserInput> | UserRoleCreateWithoutUserInput[] | UserRoleUncheckedCreateWithoutUserInput[]
     connectOrCreate?: UserRoleCreateOrConnectWithoutUserInput | UserRoleCreateOrConnectWithoutUserInput[]
@@ -111569,6 +114387,20 @@ export namespace Prisma {
     connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutProcessorInput | SkillAccessRequestCreateOrConnectWithoutProcessorInput[]
     createMany?: SkillAccessRequestCreateManyProcessorInputEnvelope
     connect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+  }
+
+  export type UserCredentialUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<UserCredentialCreateWithoutUserInput, UserCredentialUncheckedCreateWithoutUserInput> | UserCredentialCreateWithoutUserInput[] | UserCredentialUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: UserCredentialCreateOrConnectWithoutUserInput | UserCredentialCreateOrConnectWithoutUserInput[]
+    createMany?: UserCredentialCreateManyUserInputEnvelope
+    connect?: UserCredentialWhereUniqueInput | UserCredentialWhereUniqueInput[]
+  }
+
+  export type UserSkillCredentialBindingUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<UserSkillCredentialBindingCreateWithoutUserInput, UserSkillCredentialBindingUncheckedCreateWithoutUserInput> | UserSkillCredentialBindingCreateWithoutUserInput[] | UserSkillCredentialBindingUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: UserSkillCredentialBindingCreateOrConnectWithoutUserInput | UserSkillCredentialBindingCreateOrConnectWithoutUserInput[]
+    createMany?: UserSkillCredentialBindingCreateManyUserInputEnvelope
+    connect?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
   }
 
   export type StringFieldUpdateOperationsInput = {
@@ -111717,6 +114549,34 @@ export namespace Prisma {
     deleteMany?: SkillAccessRequestScalarWhereInput | SkillAccessRequestScalarWhereInput[]
   }
 
+  export type UserCredentialUpdateManyWithoutUserNestedInput = {
+    create?: XOR<UserCredentialCreateWithoutUserInput, UserCredentialUncheckedCreateWithoutUserInput> | UserCredentialCreateWithoutUserInput[] | UserCredentialUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: UserCredentialCreateOrConnectWithoutUserInput | UserCredentialCreateOrConnectWithoutUserInput[]
+    upsert?: UserCredentialUpsertWithWhereUniqueWithoutUserInput | UserCredentialUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: UserCredentialCreateManyUserInputEnvelope
+    set?: UserCredentialWhereUniqueInput | UserCredentialWhereUniqueInput[]
+    disconnect?: UserCredentialWhereUniqueInput | UserCredentialWhereUniqueInput[]
+    delete?: UserCredentialWhereUniqueInput | UserCredentialWhereUniqueInput[]
+    connect?: UserCredentialWhereUniqueInput | UserCredentialWhereUniqueInput[]
+    update?: UserCredentialUpdateWithWhereUniqueWithoutUserInput | UserCredentialUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: UserCredentialUpdateManyWithWhereWithoutUserInput | UserCredentialUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: UserCredentialScalarWhereInput | UserCredentialScalarWhereInput[]
+  }
+
+  export type UserSkillCredentialBindingUpdateManyWithoutUserNestedInput = {
+    create?: XOR<UserSkillCredentialBindingCreateWithoutUserInput, UserSkillCredentialBindingUncheckedCreateWithoutUserInput> | UserSkillCredentialBindingCreateWithoutUserInput[] | UserSkillCredentialBindingUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: UserSkillCredentialBindingCreateOrConnectWithoutUserInput | UserSkillCredentialBindingCreateOrConnectWithoutUserInput[]
+    upsert?: UserSkillCredentialBindingUpsertWithWhereUniqueWithoutUserInput | UserSkillCredentialBindingUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: UserSkillCredentialBindingCreateManyUserInputEnvelope
+    set?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+    disconnect?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+    delete?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+    connect?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+    update?: UserSkillCredentialBindingUpdateWithWhereUniqueWithoutUserInput | UserSkillCredentialBindingUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: UserSkillCredentialBindingUpdateManyWithWhereWithoutUserInput | UserSkillCredentialBindingUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: UserSkillCredentialBindingScalarWhereInput | UserSkillCredentialBindingScalarWhereInput[]
+  }
+
   export type UserRoleUncheckedUpdateManyWithoutUserNestedInput = {
     create?: XOR<UserRoleCreateWithoutUserInput, UserRoleUncheckedCreateWithoutUserInput> | UserRoleCreateWithoutUserInput[] | UserRoleUncheckedCreateWithoutUserInput[]
     connectOrCreate?: UserRoleCreateOrConnectWithoutUserInput | UserRoleCreateOrConnectWithoutUserInput[]
@@ -111827,6 +114687,34 @@ export namespace Prisma {
     update?: SkillAccessRequestUpdateWithWhereUniqueWithoutProcessorInput | SkillAccessRequestUpdateWithWhereUniqueWithoutProcessorInput[]
     updateMany?: SkillAccessRequestUpdateManyWithWhereWithoutProcessorInput | SkillAccessRequestUpdateManyWithWhereWithoutProcessorInput[]
     deleteMany?: SkillAccessRequestScalarWhereInput | SkillAccessRequestScalarWhereInput[]
+  }
+
+  export type UserCredentialUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<UserCredentialCreateWithoutUserInput, UserCredentialUncheckedCreateWithoutUserInput> | UserCredentialCreateWithoutUserInput[] | UserCredentialUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: UserCredentialCreateOrConnectWithoutUserInput | UserCredentialCreateOrConnectWithoutUserInput[]
+    upsert?: UserCredentialUpsertWithWhereUniqueWithoutUserInput | UserCredentialUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: UserCredentialCreateManyUserInputEnvelope
+    set?: UserCredentialWhereUniqueInput | UserCredentialWhereUniqueInput[]
+    disconnect?: UserCredentialWhereUniqueInput | UserCredentialWhereUniqueInput[]
+    delete?: UserCredentialWhereUniqueInput | UserCredentialWhereUniqueInput[]
+    connect?: UserCredentialWhereUniqueInput | UserCredentialWhereUniqueInput[]
+    update?: UserCredentialUpdateWithWhereUniqueWithoutUserInput | UserCredentialUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: UserCredentialUpdateManyWithWhereWithoutUserInput | UserCredentialUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: UserCredentialScalarWhereInput | UserCredentialScalarWhereInput[]
+  }
+
+  export type UserSkillCredentialBindingUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<UserSkillCredentialBindingCreateWithoutUserInput, UserSkillCredentialBindingUncheckedCreateWithoutUserInput> | UserSkillCredentialBindingCreateWithoutUserInput[] | UserSkillCredentialBindingUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: UserSkillCredentialBindingCreateOrConnectWithoutUserInput | UserSkillCredentialBindingCreateOrConnectWithoutUserInput[]
+    upsert?: UserSkillCredentialBindingUpsertWithWhereUniqueWithoutUserInput | UserSkillCredentialBindingUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: UserSkillCredentialBindingCreateManyUserInputEnvelope
+    set?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+    disconnect?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+    delete?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+    connect?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+    update?: UserSkillCredentialBindingUpdateWithWhereUniqueWithoutUserInput | UserSkillCredentialBindingUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: UserSkillCredentialBindingUpdateManyWithWhereWithoutUserInput | UserSkillCredentialBindingUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: UserSkillCredentialBindingScalarWhereInput | UserSkillCredentialBindingScalarWhereInput[]
   }
 
   export type UserCreateNestedOneWithoutImChannelConnectionsInput = {
@@ -114449,6 +117337,94 @@ export namespace Prisma {
     set?: $Enums.InboxItemStatus
   }
 
+  export type UserCreateNestedOneWithoutCredentialsInput = {
+    create?: XOR<UserCreateWithoutCredentialsInput, UserUncheckedCreateWithoutCredentialsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutCredentialsInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type UserSkillCredentialBindingCreateNestedManyWithoutCredentialInput = {
+    create?: XOR<UserSkillCredentialBindingCreateWithoutCredentialInput, UserSkillCredentialBindingUncheckedCreateWithoutCredentialInput> | UserSkillCredentialBindingCreateWithoutCredentialInput[] | UserSkillCredentialBindingUncheckedCreateWithoutCredentialInput[]
+    connectOrCreate?: UserSkillCredentialBindingCreateOrConnectWithoutCredentialInput | UserSkillCredentialBindingCreateOrConnectWithoutCredentialInput[]
+    createMany?: UserSkillCredentialBindingCreateManyCredentialInputEnvelope
+    connect?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+  }
+
+  export type UserSkillCredentialBindingUncheckedCreateNestedManyWithoutCredentialInput = {
+    create?: XOR<UserSkillCredentialBindingCreateWithoutCredentialInput, UserSkillCredentialBindingUncheckedCreateWithoutCredentialInput> | UserSkillCredentialBindingCreateWithoutCredentialInput[] | UserSkillCredentialBindingUncheckedCreateWithoutCredentialInput[]
+    connectOrCreate?: UserSkillCredentialBindingCreateOrConnectWithoutCredentialInput | UserSkillCredentialBindingCreateOrConnectWithoutCredentialInput[]
+    createMany?: UserSkillCredentialBindingCreateManyCredentialInputEnvelope
+    connect?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+  }
+
+  export type EnumCredentialCategoryFieldUpdateOperationsInput = {
+    set?: $Enums.CredentialCategory
+  }
+
+  export type UserUpdateOneRequiredWithoutCredentialsNestedInput = {
+    create?: XOR<UserCreateWithoutCredentialsInput, UserUncheckedCreateWithoutCredentialsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutCredentialsInput
+    upsert?: UserUpsertWithoutCredentialsInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutCredentialsInput, UserUpdateWithoutCredentialsInput>, UserUncheckedUpdateWithoutCredentialsInput>
+  }
+
+  export type UserSkillCredentialBindingUpdateManyWithoutCredentialNestedInput = {
+    create?: XOR<UserSkillCredentialBindingCreateWithoutCredentialInput, UserSkillCredentialBindingUncheckedCreateWithoutCredentialInput> | UserSkillCredentialBindingCreateWithoutCredentialInput[] | UserSkillCredentialBindingUncheckedCreateWithoutCredentialInput[]
+    connectOrCreate?: UserSkillCredentialBindingCreateOrConnectWithoutCredentialInput | UserSkillCredentialBindingCreateOrConnectWithoutCredentialInput[]
+    upsert?: UserSkillCredentialBindingUpsertWithWhereUniqueWithoutCredentialInput | UserSkillCredentialBindingUpsertWithWhereUniqueWithoutCredentialInput[]
+    createMany?: UserSkillCredentialBindingCreateManyCredentialInputEnvelope
+    set?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+    disconnect?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+    delete?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+    connect?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+    update?: UserSkillCredentialBindingUpdateWithWhereUniqueWithoutCredentialInput | UserSkillCredentialBindingUpdateWithWhereUniqueWithoutCredentialInput[]
+    updateMany?: UserSkillCredentialBindingUpdateManyWithWhereWithoutCredentialInput | UserSkillCredentialBindingUpdateManyWithWhereWithoutCredentialInput[]
+    deleteMany?: UserSkillCredentialBindingScalarWhereInput | UserSkillCredentialBindingScalarWhereInput[]
+  }
+
+  export type UserSkillCredentialBindingUncheckedUpdateManyWithoutCredentialNestedInput = {
+    create?: XOR<UserSkillCredentialBindingCreateWithoutCredentialInput, UserSkillCredentialBindingUncheckedCreateWithoutCredentialInput> | UserSkillCredentialBindingCreateWithoutCredentialInput[] | UserSkillCredentialBindingUncheckedCreateWithoutCredentialInput[]
+    connectOrCreate?: UserSkillCredentialBindingCreateOrConnectWithoutCredentialInput | UserSkillCredentialBindingCreateOrConnectWithoutCredentialInput[]
+    upsert?: UserSkillCredentialBindingUpsertWithWhereUniqueWithoutCredentialInput | UserSkillCredentialBindingUpsertWithWhereUniqueWithoutCredentialInput[]
+    createMany?: UserSkillCredentialBindingCreateManyCredentialInputEnvelope
+    set?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+    disconnect?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+    delete?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+    connect?: UserSkillCredentialBindingWhereUniqueInput | UserSkillCredentialBindingWhereUniqueInput[]
+    update?: UserSkillCredentialBindingUpdateWithWhereUniqueWithoutCredentialInput | UserSkillCredentialBindingUpdateWithWhereUniqueWithoutCredentialInput[]
+    updateMany?: UserSkillCredentialBindingUpdateManyWithWhereWithoutCredentialInput | UserSkillCredentialBindingUpdateManyWithWhereWithoutCredentialInput[]
+    deleteMany?: UserSkillCredentialBindingScalarWhereInput | UserSkillCredentialBindingScalarWhereInput[]
+  }
+
+  export type UserCreateNestedOneWithoutSkillCredentialBindingsInput = {
+    create?: XOR<UserCreateWithoutSkillCredentialBindingsInput, UserUncheckedCreateWithoutSkillCredentialBindingsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutSkillCredentialBindingsInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type UserCredentialCreateNestedOneWithoutBindingsInput = {
+    create?: XOR<UserCredentialCreateWithoutBindingsInput, UserCredentialUncheckedCreateWithoutBindingsInput>
+    connectOrCreate?: UserCredentialCreateOrConnectWithoutBindingsInput
+    connect?: UserCredentialWhereUniqueInput
+  }
+
+  export type UserUpdateOneRequiredWithoutSkillCredentialBindingsNestedInput = {
+    create?: XOR<UserCreateWithoutSkillCredentialBindingsInput, UserUncheckedCreateWithoutSkillCredentialBindingsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutSkillCredentialBindingsInput
+    upsert?: UserUpsertWithoutSkillCredentialBindingsInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutSkillCredentialBindingsInput, UserUpdateWithoutSkillCredentialBindingsInput>, UserUncheckedUpdateWithoutSkillCredentialBindingsInput>
+  }
+
+  export type UserCredentialUpdateOneRequiredWithoutBindingsNestedInput = {
+    create?: XOR<UserCredentialCreateWithoutBindingsInput, UserCredentialUncheckedCreateWithoutBindingsInput>
+    connectOrCreate?: UserCredentialCreateOrConnectWithoutBindingsInput
+    upsert?: UserCredentialUpsertWithoutBindingsInput
+    connect?: UserCredentialWhereUniqueInput
+    update?: XOR<XOR<UserCredentialUpdateToOneWithWhereWithoutBindingsInput, UserCredentialUpdateWithoutBindingsInput>, UserCredentialUncheckedUpdateWithoutBindingsInput>
+  }
+
   export type NestedUuidFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -115078,6 +118054,23 @@ export namespace Prisma {
     _max?: NestedEnumInboxItemStatusFilter<$PrismaModel>
   }
 
+  export type NestedEnumCredentialCategoryFilter<$PrismaModel = never> = {
+    equals?: $Enums.CredentialCategory | EnumCredentialCategoryFieldRefInput<$PrismaModel>
+    in?: $Enums.CredentialCategory[] | ListEnumCredentialCategoryFieldRefInput<$PrismaModel>
+    notIn?: $Enums.CredentialCategory[] | ListEnumCredentialCategoryFieldRefInput<$PrismaModel>
+    not?: NestedEnumCredentialCategoryFilter<$PrismaModel> | $Enums.CredentialCategory
+  }
+
+  export type NestedEnumCredentialCategoryWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.CredentialCategory | EnumCredentialCategoryFieldRefInput<$PrismaModel>
+    in?: $Enums.CredentialCategory[] | ListEnumCredentialCategoryFieldRefInput<$PrismaModel>
+    notIn?: $Enums.CredentialCategory[] | ListEnumCredentialCategoryFieldRefInput<$PrismaModel>
+    not?: NestedEnumCredentialCategoryWithAggregatesFilter<$PrismaModel> | $Enums.CredentialCategory
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumCredentialCategoryFilter<$PrismaModel>
+    _max?: NestedEnumCredentialCategoryFilter<$PrismaModel>
+  }
+
   export type UserRoleCreateWithoutUserInput = {
     assignedAt?: Date | string
     role: RoleCreateNestedOneWithoutUserRolesInput
@@ -115369,6 +118362,74 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type UserCredentialCreateWithoutUserInput = {
+    id?: string
+    orgId?: string | null
+    name: string
+    category: $Enums.CredentialCategory
+    description?: string | null
+    encryptedData: string
+    maskedPreview: JsonNullValueInput | InputJsonValue
+    status?: string
+    expiresAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    bindings?: UserSkillCredentialBindingCreateNestedManyWithoutCredentialInput
+  }
+
+  export type UserCredentialUncheckedCreateWithoutUserInput = {
+    id?: string
+    orgId?: string | null
+    name: string
+    category: $Enums.CredentialCategory
+    description?: string | null
+    encryptedData: string
+    maskedPreview: JsonNullValueInput | InputJsonValue
+    status?: string
+    expiresAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    bindings?: UserSkillCredentialBindingUncheckedCreateNestedManyWithoutCredentialInput
+  }
+
+  export type UserCredentialCreateOrConnectWithoutUserInput = {
+    where: UserCredentialWhereUniqueInput
+    create: XOR<UserCredentialCreateWithoutUserInput, UserCredentialUncheckedCreateWithoutUserInput>
+  }
+
+  export type UserCredentialCreateManyUserInputEnvelope = {
+    data: UserCredentialCreateManyUserInput | UserCredentialCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type UserSkillCredentialBindingCreateWithoutUserInput = {
+    id?: string
+    skillId: string
+    paramName: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    credential: UserCredentialCreateNestedOneWithoutBindingsInput
+  }
+
+  export type UserSkillCredentialBindingUncheckedCreateWithoutUserInput = {
+    id?: string
+    skillId: string
+    paramName: string
+    credentialId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type UserSkillCredentialBindingCreateOrConnectWithoutUserInput = {
+    where: UserSkillCredentialBindingWhereUniqueInput
+    create: XOR<UserSkillCredentialBindingCreateWithoutUserInput, UserSkillCredentialBindingUncheckedCreateWithoutUserInput>
+  }
+
+  export type UserSkillCredentialBindingCreateManyUserInputEnvelope = {
+    data: UserSkillCredentialBindingCreateManyUserInput | UserSkillCredentialBindingCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
   export type UserRoleUpsertWithWhereUniqueWithoutUserInput = {
     where: UserRoleWhereUniqueInput
     update: XOR<UserRoleUpdateWithoutUserInput, UserRoleUncheckedUpdateWithoutUserInput>
@@ -115630,6 +118691,69 @@ export namespace Prisma {
     data: XOR<SkillAccessRequestUpdateManyMutationInput, SkillAccessRequestUncheckedUpdateManyWithoutProcessorInput>
   }
 
+  export type UserCredentialUpsertWithWhereUniqueWithoutUserInput = {
+    where: UserCredentialWhereUniqueInput
+    update: XOR<UserCredentialUpdateWithoutUserInput, UserCredentialUncheckedUpdateWithoutUserInput>
+    create: XOR<UserCredentialCreateWithoutUserInput, UserCredentialUncheckedCreateWithoutUserInput>
+  }
+
+  export type UserCredentialUpdateWithWhereUniqueWithoutUserInput = {
+    where: UserCredentialWhereUniqueInput
+    data: XOR<UserCredentialUpdateWithoutUserInput, UserCredentialUncheckedUpdateWithoutUserInput>
+  }
+
+  export type UserCredentialUpdateManyWithWhereWithoutUserInput = {
+    where: UserCredentialScalarWhereInput
+    data: XOR<UserCredentialUpdateManyMutationInput, UserCredentialUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type UserCredentialScalarWhereInput = {
+    AND?: UserCredentialScalarWhereInput | UserCredentialScalarWhereInput[]
+    OR?: UserCredentialScalarWhereInput[]
+    NOT?: UserCredentialScalarWhereInput | UserCredentialScalarWhereInput[]
+    id?: UuidFilter<"UserCredential"> | string
+    userId?: UuidFilter<"UserCredential"> | string
+    orgId?: UuidNullableFilter<"UserCredential"> | string | null
+    name?: StringFilter<"UserCredential"> | string
+    category?: EnumCredentialCategoryFilter<"UserCredential"> | $Enums.CredentialCategory
+    description?: StringNullableFilter<"UserCredential"> | string | null
+    encryptedData?: StringFilter<"UserCredential"> | string
+    maskedPreview?: JsonFilter<"UserCredential">
+    status?: StringFilter<"UserCredential"> | string
+    expiresAt?: DateTimeNullableFilter<"UserCredential"> | Date | string | null
+    createdAt?: DateTimeFilter<"UserCredential"> | Date | string
+    updatedAt?: DateTimeFilter<"UserCredential"> | Date | string
+  }
+
+  export type UserSkillCredentialBindingUpsertWithWhereUniqueWithoutUserInput = {
+    where: UserSkillCredentialBindingWhereUniqueInput
+    update: XOR<UserSkillCredentialBindingUpdateWithoutUserInput, UserSkillCredentialBindingUncheckedUpdateWithoutUserInput>
+    create: XOR<UserSkillCredentialBindingCreateWithoutUserInput, UserSkillCredentialBindingUncheckedCreateWithoutUserInput>
+  }
+
+  export type UserSkillCredentialBindingUpdateWithWhereUniqueWithoutUserInput = {
+    where: UserSkillCredentialBindingWhereUniqueInput
+    data: XOR<UserSkillCredentialBindingUpdateWithoutUserInput, UserSkillCredentialBindingUncheckedUpdateWithoutUserInput>
+  }
+
+  export type UserSkillCredentialBindingUpdateManyWithWhereWithoutUserInput = {
+    where: UserSkillCredentialBindingScalarWhereInput
+    data: XOR<UserSkillCredentialBindingUpdateManyMutationInput, UserSkillCredentialBindingUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type UserSkillCredentialBindingScalarWhereInput = {
+    AND?: UserSkillCredentialBindingScalarWhereInput | UserSkillCredentialBindingScalarWhereInput[]
+    OR?: UserSkillCredentialBindingScalarWhereInput[]
+    NOT?: UserSkillCredentialBindingScalarWhereInput | UserSkillCredentialBindingScalarWhereInput[]
+    id?: UuidFilter<"UserSkillCredentialBinding"> | string
+    userId?: UuidFilter<"UserSkillCredentialBinding"> | string
+    skillId?: UuidFilter<"UserSkillCredentialBinding"> | string
+    paramName?: StringFilter<"UserSkillCredentialBinding"> | string
+    credentialId?: UuidFilter<"UserSkillCredentialBinding"> | string
+    createdAt?: DateTimeFilter<"UserSkillCredentialBinding"> | Date | string
+    updatedAt?: DateTimeFilter<"UserSkillCredentialBinding"> | Date | string
+  }
+
   export type UserCreateWithoutImChannelConnectionsInput = {
     id?: string
     username: string
@@ -115651,6 +118775,8 @@ export namespace Prisma {
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutImChannelConnectionsInput = {
@@ -115674,6 +118800,8 @@ export namespace Prisma {
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialUncheckedCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutImChannelConnectionsInput = {
@@ -115713,6 +118841,8 @@ export namespace Prisma {
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutImChannelConnectionsInput = {
@@ -115736,6 +118866,8 @@ export namespace Prisma {
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUncheckedUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserRoleCreateWithoutRoleInput = {
@@ -115891,6 +119023,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutUserRolesInput = {
@@ -115914,6 +119048,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialUncheckedCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutUserRolesInput = {
@@ -115971,6 +119107,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutAssignedRolesInput = {
@@ -115994,6 +119132,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialUncheckedCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutAssignedRolesInput = {
@@ -116033,6 +119173,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutUserRolesInput = {
@@ -116056,6 +119198,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUncheckedUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type RoleUpsertWithoutUserRolesInput = {
@@ -116125,6 +119269,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAssignedRolesInput = {
@@ -116148,6 +119294,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUncheckedUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type DepartmentCreateWithoutOrganizationInput = {
@@ -116355,6 +119503,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutActiveOrgInput = {
@@ -116378,6 +119528,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialUncheckedCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutActiveOrgInput = {
@@ -117092,6 +120244,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutOrgMembershipsInput = {
@@ -117115,6 +120269,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialUncheckedCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutOrgMembershipsInput = {
@@ -117280,6 +120436,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutOrgMembershipsInput = {
@@ -117303,6 +120461,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUncheckedUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type OrganizationUpsertWithoutMembershipsInput = {
@@ -117669,6 +120829,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutAssignedOrgRolesInput = {
@@ -117692,6 +120854,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialUncheckedCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutAssignedOrgRolesInput = {
@@ -117846,6 +121010,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAssignedOrgRolesInput = {
@@ -117869,6 +121035,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUncheckedUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type OrganizationCreateWithoutIdentityProvidersInput = {
@@ -118349,6 +121517,8 @@ export namespace Prisma {
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
     imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutSkillAccessRequestsInput = {
@@ -118372,6 +121542,8 @@ export namespace Prisma {
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
     imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialUncheckedCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutSkillAccessRequestsInput = {
@@ -118400,6 +121572,8 @@ export namespace Prisma {
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
     imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
+    credentials?: UserCredentialCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutProcessedSkillAccessRequestsInput = {
@@ -118423,6 +121597,8 @@ export namespace Prisma {
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
     imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
+    credentials?: UserCredentialUncheckedCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutProcessedSkillAccessRequestsInput = {
@@ -118523,6 +121699,8 @@ export namespace Prisma {
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
     imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutSkillAccessRequestsInput = {
@@ -118546,6 +121724,8 @@ export namespace Prisma {
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
     imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUncheckedUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserUpsertWithoutProcessedSkillAccessRequestsInput = {
@@ -118580,6 +121760,8 @@ export namespace Prisma {
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
     imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
+    credentials?: UserCredentialUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutProcessedSkillAccessRequestsInput = {
@@ -118603,6 +121785,8 @@ export namespace Prisma {
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
     imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
+    credentials?: UserCredentialUncheckedUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type SkillConfigCreateWithoutToolBindingsInput = {
@@ -118768,6 +121952,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutChatSessionsInput = {
@@ -118791,6 +121977,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
     skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialUncheckedCreateNestedManyWithoutUserInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutChatSessionsInput = {
@@ -118858,6 +122046,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutChatSessionsInput = {
@@ -118881,6 +122071,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUncheckedUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type ChatSessionCreateWithoutMessagesInput = {
@@ -123319,6 +126511,358 @@ export namespace Prisma {
     data: XOR<WorkspaceNodeUpdateManyMutationInput, WorkspaceNodeUncheckedUpdateManyWithoutParentInput>
   }
 
+  export type UserCreateWithoutCredentialsInput = {
+    id?: string
+    username: string
+    passwordHash: string
+    email?: string | null
+    role?: $Enums.UserRoleType
+    ldapDn?: string | null
+    adSid?: string | null
+    externalId?: string | null
+    isActive?: boolean
+    lastLoginAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    userRoles?: UserRoleCreateNestedManyWithoutUserInput
+    assignedRoles?: UserRoleCreateNestedManyWithoutAssignerInput
+    orgMemberships?: OrgMembershipCreateNestedManyWithoutUserInput
+    assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
+    activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
+    chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
+    skillCredentialBindings?: UserSkillCredentialBindingCreateNestedManyWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutCredentialsInput = {
+    id?: string
+    username: string
+    passwordHash: string
+    email?: string | null
+    role?: $Enums.UserRoleType
+    ldapDn?: string | null
+    adSid?: string | null
+    externalId?: string | null
+    activeOrgId?: string | null
+    isActive?: boolean
+    lastLoginAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    userRoles?: UserRoleUncheckedCreateNestedManyWithoutUserInput
+    assignedRoles?: UserRoleUncheckedCreateNestedManyWithoutAssignerInput
+    orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
+    assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
+    chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedCreateNestedManyWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutCredentialsInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutCredentialsInput, UserUncheckedCreateWithoutCredentialsInput>
+  }
+
+  export type UserSkillCredentialBindingCreateWithoutCredentialInput = {
+    id?: string
+    skillId: string
+    paramName: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutSkillCredentialBindingsInput
+  }
+
+  export type UserSkillCredentialBindingUncheckedCreateWithoutCredentialInput = {
+    id?: string
+    userId: string
+    skillId: string
+    paramName: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type UserSkillCredentialBindingCreateOrConnectWithoutCredentialInput = {
+    where: UserSkillCredentialBindingWhereUniqueInput
+    create: XOR<UserSkillCredentialBindingCreateWithoutCredentialInput, UserSkillCredentialBindingUncheckedCreateWithoutCredentialInput>
+  }
+
+  export type UserSkillCredentialBindingCreateManyCredentialInputEnvelope = {
+    data: UserSkillCredentialBindingCreateManyCredentialInput | UserSkillCredentialBindingCreateManyCredentialInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type UserUpsertWithoutCredentialsInput = {
+    update: XOR<UserUpdateWithoutCredentialsInput, UserUncheckedUpdateWithoutCredentialsInput>
+    create: XOR<UserCreateWithoutCredentialsInput, UserUncheckedCreateWithoutCredentialsInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutCredentialsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutCredentialsInput, UserUncheckedUpdateWithoutCredentialsInput>
+  }
+
+  export type UserUpdateWithoutCredentialsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    username?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: EnumUserRoleTypeFieldUpdateOperationsInput | $Enums.UserRoleType
+    ldapDn?: NullableStringFieldUpdateOperationsInput | string | null
+    adSid?: NullableStringFieldUpdateOperationsInput | string | null
+    externalId?: NullableStringFieldUpdateOperationsInput | string | null
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userRoles?: UserRoleUpdateManyWithoutUserNestedInput
+    assignedRoles?: UserRoleUpdateManyWithoutAssignerNestedInput
+    orgMemberships?: OrgMembershipUpdateManyWithoutUserNestedInput
+    assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
+    activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
+    chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutCredentialsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    username?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: EnumUserRoleTypeFieldUpdateOperationsInput | $Enums.UserRoleType
+    ldapDn?: NullableStringFieldUpdateOperationsInput | string | null
+    adSid?: NullableStringFieldUpdateOperationsInput | string | null
+    externalId?: NullableStringFieldUpdateOperationsInput | string | null
+    activeOrgId?: NullableStringFieldUpdateOperationsInput | string | null
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userRoles?: UserRoleUncheckedUpdateManyWithoutUserNestedInput
+    assignedRoles?: UserRoleUncheckedUpdateManyWithoutAssignerNestedInput
+    orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
+    assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
+    chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserSkillCredentialBindingUpsertWithWhereUniqueWithoutCredentialInput = {
+    where: UserSkillCredentialBindingWhereUniqueInput
+    update: XOR<UserSkillCredentialBindingUpdateWithoutCredentialInput, UserSkillCredentialBindingUncheckedUpdateWithoutCredentialInput>
+    create: XOR<UserSkillCredentialBindingCreateWithoutCredentialInput, UserSkillCredentialBindingUncheckedCreateWithoutCredentialInput>
+  }
+
+  export type UserSkillCredentialBindingUpdateWithWhereUniqueWithoutCredentialInput = {
+    where: UserSkillCredentialBindingWhereUniqueInput
+    data: XOR<UserSkillCredentialBindingUpdateWithoutCredentialInput, UserSkillCredentialBindingUncheckedUpdateWithoutCredentialInput>
+  }
+
+  export type UserSkillCredentialBindingUpdateManyWithWhereWithoutCredentialInput = {
+    where: UserSkillCredentialBindingScalarWhereInput
+    data: XOR<UserSkillCredentialBindingUpdateManyMutationInput, UserSkillCredentialBindingUncheckedUpdateManyWithoutCredentialInput>
+  }
+
+  export type UserCreateWithoutSkillCredentialBindingsInput = {
+    id?: string
+    username: string
+    passwordHash: string
+    email?: string | null
+    role?: $Enums.UserRoleType
+    ldapDn?: string | null
+    adSid?: string | null
+    externalId?: string | null
+    isActive?: boolean
+    lastLoginAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    userRoles?: UserRoleCreateNestedManyWithoutUserInput
+    assignedRoles?: UserRoleCreateNestedManyWithoutAssignerInput
+    orgMemberships?: OrgMembershipCreateNestedManyWithoutUserInput
+    assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
+    activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
+    chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialCreateNestedManyWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutSkillCredentialBindingsInput = {
+    id?: string
+    username: string
+    passwordHash: string
+    email?: string | null
+    role?: $Enums.UserRoleType
+    ldapDn?: string | null
+    adSid?: string | null
+    externalId?: string | null
+    activeOrgId?: string | null
+    isActive?: boolean
+    lastLoginAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    userRoles?: UserRoleUncheckedCreateNestedManyWithoutUserInput
+    assignedRoles?: UserRoleUncheckedCreateNestedManyWithoutAssignerInput
+    orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
+    assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
+    chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    imChannelConnections?: ImChannelConnectionUncheckedCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
+    credentials?: UserCredentialUncheckedCreateNestedManyWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutSkillCredentialBindingsInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutSkillCredentialBindingsInput, UserUncheckedCreateWithoutSkillCredentialBindingsInput>
+  }
+
+  export type UserCredentialCreateWithoutBindingsInput = {
+    id?: string
+    orgId?: string | null
+    name: string
+    category: $Enums.CredentialCategory
+    description?: string | null
+    encryptedData: string
+    maskedPreview: JsonNullValueInput | InputJsonValue
+    status?: string
+    expiresAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutCredentialsInput
+  }
+
+  export type UserCredentialUncheckedCreateWithoutBindingsInput = {
+    id?: string
+    userId: string
+    orgId?: string | null
+    name: string
+    category: $Enums.CredentialCategory
+    description?: string | null
+    encryptedData: string
+    maskedPreview: JsonNullValueInput | InputJsonValue
+    status?: string
+    expiresAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type UserCredentialCreateOrConnectWithoutBindingsInput = {
+    where: UserCredentialWhereUniqueInput
+    create: XOR<UserCredentialCreateWithoutBindingsInput, UserCredentialUncheckedCreateWithoutBindingsInput>
+  }
+
+  export type UserUpsertWithoutSkillCredentialBindingsInput = {
+    update: XOR<UserUpdateWithoutSkillCredentialBindingsInput, UserUncheckedUpdateWithoutSkillCredentialBindingsInput>
+    create: XOR<UserCreateWithoutSkillCredentialBindingsInput, UserUncheckedCreateWithoutSkillCredentialBindingsInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutSkillCredentialBindingsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutSkillCredentialBindingsInput, UserUncheckedUpdateWithoutSkillCredentialBindingsInput>
+  }
+
+  export type UserUpdateWithoutSkillCredentialBindingsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    username?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: EnumUserRoleTypeFieldUpdateOperationsInput | $Enums.UserRoleType
+    ldapDn?: NullableStringFieldUpdateOperationsInput | string | null
+    adSid?: NullableStringFieldUpdateOperationsInput | string | null
+    externalId?: NullableStringFieldUpdateOperationsInput | string | null
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userRoles?: UserRoleUpdateManyWithoutUserNestedInput
+    assignedRoles?: UserRoleUpdateManyWithoutAssignerNestedInput
+    orgMemberships?: OrgMembershipUpdateManyWithoutUserNestedInput
+    assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
+    activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
+    chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutSkillCredentialBindingsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    username?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: EnumUserRoleTypeFieldUpdateOperationsInput | $Enums.UserRoleType
+    ldapDn?: NullableStringFieldUpdateOperationsInput | string | null
+    adSid?: NullableStringFieldUpdateOperationsInput | string | null
+    externalId?: NullableStringFieldUpdateOperationsInput | string | null
+    activeOrgId?: NullableStringFieldUpdateOperationsInput | string | null
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userRoles?: UserRoleUncheckedUpdateManyWithoutUserNestedInput
+    assignedRoles?: UserRoleUncheckedUpdateManyWithoutAssignerNestedInput
+    orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
+    assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
+    chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUncheckedUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserCredentialUpsertWithoutBindingsInput = {
+    update: XOR<UserCredentialUpdateWithoutBindingsInput, UserCredentialUncheckedUpdateWithoutBindingsInput>
+    create: XOR<UserCredentialCreateWithoutBindingsInput, UserCredentialUncheckedCreateWithoutBindingsInput>
+    where?: UserCredentialWhereInput
+  }
+
+  export type UserCredentialUpdateToOneWithWhereWithoutBindingsInput = {
+    where?: UserCredentialWhereInput
+    data: XOR<UserCredentialUpdateWithoutBindingsInput, UserCredentialUncheckedUpdateWithoutBindingsInput>
+  }
+
+  export type UserCredentialUpdateWithoutBindingsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    orgId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    category?: EnumCredentialCategoryFieldUpdateOperationsInput | $Enums.CredentialCategory
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedData?: StringFieldUpdateOperationsInput | string
+    maskedPreview?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    expiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutCredentialsNestedInput
+  }
+
+  export type UserCredentialUncheckedUpdateWithoutBindingsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    orgId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    category?: EnumCredentialCategoryFieldUpdateOperationsInput | $Enums.CredentialCategory
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedData?: StringFieldUpdateOperationsInput | string
+    maskedPreview?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    expiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type UserRoleCreateManyUserInput = {
     roleId: string
     assignedAt?: Date | string
@@ -123399,6 +126943,29 @@ export namespace Prisma {
     reason?: string | null
     responseNote?: string | null
     processedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type UserCredentialCreateManyUserInput = {
+    id?: string
+    orgId?: string | null
+    name: string
+    category: $Enums.CredentialCategory
+    description?: string | null
+    encryptedData: string
+    maskedPreview: JsonNullValueInput | InputJsonValue
+    status?: string
+    expiresAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type UserSkillCredentialBindingCreateManyUserInput = {
+    id?: string
+    skillId: string
+    paramName: string
+    credentialId: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -123657,6 +127224,77 @@ export namespace Prisma {
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     responseNote?: NullableStringFieldUpdateOperationsInput | string | null
     processedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserCredentialUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    orgId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    category?: EnumCredentialCategoryFieldUpdateOperationsInput | $Enums.CredentialCategory
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedData?: StringFieldUpdateOperationsInput | string
+    maskedPreview?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    expiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    bindings?: UserSkillCredentialBindingUpdateManyWithoutCredentialNestedInput
+  }
+
+  export type UserCredentialUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    orgId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    category?: EnumCredentialCategoryFieldUpdateOperationsInput | $Enums.CredentialCategory
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedData?: StringFieldUpdateOperationsInput | string
+    maskedPreview?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    expiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    bindings?: UserSkillCredentialBindingUncheckedUpdateManyWithoutCredentialNestedInput
+  }
+
+  export type UserCredentialUncheckedUpdateManyWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    orgId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
+    category?: EnumCredentialCategoryFieldUpdateOperationsInput | $Enums.CredentialCategory
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    encryptedData?: StringFieldUpdateOperationsInput | string
+    maskedPreview?: JsonNullValueInput | InputJsonValue
+    status?: StringFieldUpdateOperationsInput | string
+    expiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserSkillCredentialBindingUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    paramName?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    credential?: UserCredentialUpdateOneRequiredWithoutBindingsNestedInput
+  }
+
+  export type UserSkillCredentialBindingUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    paramName?: StringFieldUpdateOperationsInput | string
+    credentialId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserSkillCredentialBindingUncheckedUpdateManyWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    paramName?: StringFieldUpdateOperationsInput | string
+    credentialId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -124041,6 +127679,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutActiveOrgInput = {
@@ -124064,6 +127704,8 @@ export namespace Prisma {
     imChannelConnections?: ImChannelConnectionUncheckedUpdateManyWithoutUserNestedInput
     skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
     processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
+    credentials?: UserCredentialUncheckedUpdateManyWithoutUserNestedInput
+    skillCredentialBindings?: UserSkillCredentialBindingUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateManyWithoutActiveOrgInput = {
@@ -125769,6 +129411,42 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type UserSkillCredentialBindingCreateManyCredentialInput = {
+    id?: string
+    userId: string
+    skillId: string
+    paramName: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type UserSkillCredentialBindingUpdateWithoutCredentialInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    paramName?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutSkillCredentialBindingsNestedInput
+  }
+
+  export type UserSkillCredentialBindingUncheckedUpdateWithoutCredentialInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    paramName?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserSkillCredentialBindingUncheckedUpdateManyWithoutCredentialInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    paramName?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
 
 
   /**
@@ -125838,6 +129516,10 @@ export namespace Prisma {
      * @deprecated Use WorkspaceNodeCountOutputTypeDefaultArgs instead
      */
     export type WorkspaceNodeCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = WorkspaceNodeCountOutputTypeDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use UserCredentialCountOutputTypeDefaultArgs instead
+     */
+    export type UserCredentialCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = UserCredentialCountOutputTypeDefaultArgs<ExtArgs>
     /**
      * @deprecated Use UserDefaultArgs instead
      */
@@ -126154,6 +129836,14 @@ export namespace Prisma {
      * @deprecated Use WorkbenchInboxItemDefaultArgs instead
      */
     export type WorkbenchInboxItemArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = WorkbenchInboxItemDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use UserCredentialDefaultArgs instead
+     */
+    export type UserCredentialArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = UserCredentialDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use UserSkillCredentialBindingDefaultArgs instead
+     */
+    export type UserSkillCredentialBindingArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = UserSkillCredentialBindingDefaultArgs<ExtArgs>
 
   /**
    * Batch Payload for updateMany & deleteMany & createMany

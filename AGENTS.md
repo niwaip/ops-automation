@@ -18,17 +18,23 @@
 标准命令：
 
 ```bash
-# 启动开发栈
-./docker/start-smart.sh docker-compose.base.yml up -d
+# 启动默认轻量核心开发栈（6个后端核心服务+1个初始化容器，推荐日常使用）
+./docker/start-smart.sh dev up -d
 
-# 启动基础设施
-./docker/start-smart.sh docker-compose.yml up -d
+# 启动核心栈 + 浏览器自动化
+./docker/start-smart.sh dev:browser up -d
+
+# 启动全量环境（全部 19 个容器，冒烟或完整调试时使用）
+./docker/start-smart.sh full up -d
+
+# 启动纯基础设施（Postgres + Redis）
+./docker/start-smart.sh infra up -d
 
 # 启动测试环境
-./docker/start-smart.sh docker-compose.test.yml up --abort-on-container-exit carbone-engine-test
+./docker/start-smart.sh test up --abort-on-container-exit carbone-engine-test
 
 # 停止开发栈
-./docker/start-smart.sh docker-compose.base.yml down
+./docker/start-smart.sh dev down
 ```
 
 执行规则：

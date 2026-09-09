@@ -15,6 +15,14 @@ cleanup() {
 
 trap cleanup EXIT
 
+ENV_FILE="$(cd "$SCRIPT_DIR/.." && pwd)/.env"
+if [ -f "$ENV_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$ENV_FILE"
+    set +a
+fi
+
 add_unique_host() {
     local candidate="$1"
     local existing

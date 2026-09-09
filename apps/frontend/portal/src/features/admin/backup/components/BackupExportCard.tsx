@@ -20,6 +20,8 @@ import {
   FileTextOutlined,
   OrderedListOutlined,
   TeamOutlined,
+  AuditOutlined,
+  FolderOpenOutlined,
 } from '@ant-design/icons';
 import {
   BackupModuleKey,
@@ -74,10 +76,22 @@ const MODULE_OPTIONS: ModuleOption[] = [
     icon: <OrderedListOutlined style={{ color: '#eb2f96' }} />,
   },
   {
+    key: 'taskPolicies',
+    label: '任务策略与指令配方',
+    desc: '包含指令策略集、流程配方、命令别名与能力绑定',
+    icon: <AuditOutlined style={{ color: '#fa8c16' }} />,
+  },
+  {
+    key: 'workspaces',
+    label: '工作空间与知识文档',
+    desc: '包含项目工作空间隔离配置及关联文档资产',
+    icon: <FolderOpenOutlined style={{ color: '#1890ff' }} />,
+  },
+  {
     key: 'userOrganizations',
-    label: '用户与组织架构',
-    desc: '包含企业组织结构、部门体系、用户账号与角色权限',
-    icon: <TeamOutlined style={{ color: '#fa8c16' }} />,
+    label: '用户组织与凭据绑定',
+    desc: '包含企业组织结构、用户账号、角色权限与加密凭据映射',
+    icon: <TeamOutlined style={{ color: '#52c41a' }} />,
   },
 ];
 

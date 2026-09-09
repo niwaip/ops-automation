@@ -36,6 +36,7 @@ interface SkillListTableProps {
   loading?: boolean;
   validatingSkillId?: string | null;
   builtinSkillByKey: Map<string, BuiltinSkillInventoryDTO>;
+  pendingRequestCountBySkillId?: Map<string, number>;
   onViewDetail: (skill: SkillConfigDTO) => void;
   onValidate: (skill: SkillConfigDTO) => void;
   onEdit: (skill: SkillConfigDTO) => void;
@@ -52,6 +53,7 @@ export const SkillListTable: React.FC<SkillListTableProps> = ({
   loading = false,
   validatingSkillId,
   builtinSkillByKey,
+  pendingRequestCountBySkillId,
   onViewDetail,
   onValidate,
   onEdit,
@@ -104,6 +106,7 @@ export const SkillListTable: React.FC<SkillListTableProps> = ({
             </Space>
           );
         }
+        const pendingCount = !record.isGroup ? (pendingRequestCountBySkillId?.get(record.id) || 0) : 0;
         return (
           <Space direction="vertical" size={2}>
             <div
@@ -153,6 +156,23 @@ export const SkillListTable: React.FC<SkillListTableProps> = ({
                   }}
                 >
                   自定义
+                </Tag>
+              )}
+              {pendingCount > 0 && (
+                <Tag
+                  color="error"
+                  style={{
+                    margin: 0,
+                    fontSize: 11,
+                    lineHeight: '18px',
+                    padding: '0 6px',
+                    borderRadius: 4,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => onManagePermissions(record as SkillConfigDTO)}
+                >
+                  待审批 ({pendingCount})
                 </Tag>
               )}
             </div>
@@ -419,7 +439,7 @@ export const SkillListTable: React.FC<SkillListTableProps> = ({
                     )
                   }
                 >
-                  套件配置
+                  {record.groupKey === 'search' ? '检索通道配置' : '套件配置'}
                 </Button>
               )}
             </Space>
@@ -489,15 +509,21 @@ export const SkillListTable: React.FC<SkillListTableProps> = ({
                   : '只有已公开发布的 Skill 才能分配给普通用户'
               }
             >
-              <Button
-                type="link"
+              <Badge
+                count={pendingRequestCountBySkillId?.get(record.id) || 0}
                 size="small"
-                icon={<KeyOutlined />}
-                disabled={!record.isPublished}
-                onClick={() => onManagePermissions(record)}
+                offset={[-2, 4]}
               >
-                权限
-              </Button>
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<KeyOutlined />}
+                  disabled={!record.isPublished}
+                  onClick={() => onManagePermissions(record)}
+                >
+                  权限
+                </Button>
+              </Badge>
             </Tooltip>
             {record.isPublished ? (
               <Button
@@ -544,6 +570,7 @@ export const SkillListTable: React.FC<SkillListTableProps> = ({
       dataSource={dataSource}
       rowKey="id"
       loading={loading}
+      defaultExpandAllRows={true}
       pagination={{
         pageSize: 10,
         showSizeChanger: true,

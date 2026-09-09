@@ -1,17 +1,63 @@
-import { MessageOutlined, MailOutlined, SettingOutlined } from '@ant-design/icons';
-import { Space, Tabs, Typography } from 'antd';
-import { Suspense, lazy, useMemo } from 'react';
+import { MessageOutlined, MailOutlined, SettingOutlined, KeyOutlined } from '@ant-design/icons';
+import { Alert, Button, Space, Tabs, Typography } from 'antd';
+import { Component, Suspense, lazy, useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 const ImChannelsPage = lazy(() => import('../../im-channels/pages/ImChannelsPage'));
 const UserEmailSettingsPage = lazy(() => import('../../email/pages/UserEmailSettingsPage'));
+const UserCredentialVaultPanel = lazy(() => import('../components/UserCredentialVaultPanel'));
 
 const { Title, Text } = Typography;
+
+interface TabErrorBoundaryProps {
+  children: ReactNode;
+}
+interface TabErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class TabErrorBoundary extends Component<TabErrorBoundaryProps, TabErrorBoundaryState> {
+  constructor(props: TabErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): TabErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('Settings tab error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Alert
+          type="error"
+          showIcon
+          message="面板加载异常"
+          description={
+            <div style={{ marginTop: 8 }}>
+              <div style={{ marginBottom: 12 }}>{this.state.error?.message || '组件渲染失败'}</div>
+              <Button size="small" onClick={() => this.setState({ hasError: false, error: null })}>
+                重试加载
+              </Button>
+            </div>
+          }
+          style={{ margin: '24px 0', borderRadius: 8 }}
+        />
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab');
-  const activeKey = rawTab === 'email' ? 'email' : 'im';
+  const activeKey = rawTab === 'credentials' ? 'credentials' : rawTab === 'email' ? 'email' : 'im';
 
   const handleTabChange = (key: string) => {
     setSearchParams({ tab: key });
@@ -19,6 +65,22 @@ export function SettingsPage() {
 
   const tabItems = useMemo(
     () => [
+      {
+        key: 'credentials',
+        label: (
+          <Space>
+            <KeyOutlined />
+            <span>凭证与密钥中心</span>
+          </Space>
+        ),
+        children: (
+          <TabErrorBoundary>
+            <Suspense fallback={<div style={{ minHeight: 300, display: 'grid', placeItems: 'center' }}>加载中...</div>}>
+              <UserCredentialVaultPanel />
+            </Suspense>
+          </TabErrorBoundary>
+        ),
+      },
       {
         key: 'im',
         label: (
@@ -28,9 +90,11 @@ export function SettingsPage() {
           </Space>
         ),
         children: (
-          <Suspense fallback={<div style={{ minHeight: 300, display: 'grid', placeItems: 'center' }}>加载中...</div>}>
-            <ImChannelsPage />
-          </Suspense>
+          <TabErrorBoundary>
+            <Suspense fallback={<div style={{ minHeight: 300, display: 'grid', placeItems: 'center' }}>加载中...</div>}>
+              <ImChannelsPage />
+            </Suspense>
+          </TabErrorBoundary>
         ),
       },
       {
@@ -42,9 +106,11 @@ export function SettingsPage() {
           </Space>
         ),
         children: (
-          <Suspense fallback={<div style={{ minHeight: 300, display: 'grid', placeItems: 'center' }}>加载中...</div>}>
-            <UserEmailSettingsPage />
-          </Suspense>
+          <TabErrorBoundary>
+            <Suspense fallback={<div style={{ minHeight: 300, display: 'grid', placeItems: 'center' }}>加载中...</div>}>
+              <UserEmailSettingsPage />
+            </Suspense>
+          </TabErrorBoundary>
         ),
       },
     ],

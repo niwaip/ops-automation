@@ -24,20 +24,31 @@ export interface SkillTableRow extends SkillConfigDTO {
 
 export const BUILTIN_TOOLKIT_GROUPS: BuiltinToolkitGroup[] = [
   {
+    key: 'search',
+    name: '网络检索套件',
+    englishName: 'Web Search Toolkit',
+    icon: '🌐',
+    tagColor: 'cyan',
+    description: '提供公开互联网多通道实时网页与新闻检索服务，支持 Tavily、Firecrawl、Exa 及 DuckDuckGo 多服务商凭据与故障转移配置',
+    matcher: (skill) =>
+      skill.id.startsWith('platform.search.') ||
+      skill.id.includes('search') ||
+      skill.name.includes('联网搜索') ||
+      skill.name.includes('检索'),
+  },
+  {
     key: 'workspace',
     name: '知识空间套件',
     englishName: 'Knowledge & Workspace Toolkit',
     icon: '📚',
     tagColor: 'green',
-    description: '提供个人盘、部门盘与公司公共盘知识文档探索研读、关键词扫描定位、大纲速览及互联网实时搜索服务',
+    description: '提供个人盘、部门盘与公司公共盘知识文档探索研读、关键词扫描定位及大纲速览服务',
     matcher: (skill) =>
       skill.id.startsWith('platform.workspace.') ||
-      skill.id.startsWith('platform.search.') ||
       skill.id.includes('workspace') ||
       skill.name.includes('工作空间') ||
       skill.name.includes('知识') ||
-      skill.name.includes('文档探索') ||
-      skill.name.includes('联网搜索'),
+      skill.name.includes('文档探索'),
   },
   {
     key: 'email',

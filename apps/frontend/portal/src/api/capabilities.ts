@@ -447,6 +447,7 @@ export const capabilityReleaseApi = {
       environment?: 'dev' | 'test' | 'staging' | 'prod';
       strategy?: string;
       configOverrides?: Record<string, unknown>;
+      smokeTestInput?: Record<string, unknown>;
     }
   ): Promise<{ release: CapabilityRelease; deployment: DeploymentRecord }> => {
     return apiClient.post<{ release: CapabilityRelease; deployment: DeploymentRecord }>(

@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+export CHECKPOINT_DISABLE=1
+export PRISMA_TELEMETRY_INFORMATION=false
+
 REPO_ROOT="${PROJECT_ROOT:-/workspace}"
 APP_ROOT="$REPO_ROOT/apps/backend/execution-control/control-plane"
 STATE_DIR="$REPO_ROOT/.docker-state"

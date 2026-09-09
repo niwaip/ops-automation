@@ -17,6 +17,7 @@ import type {
   ContentSearchResultDto,
   WorkspaceNodeDto,
   WorkspaceSummaryDto,
+  DepartmentSummaryDto,
   RegenerateDigestDto,
   BatchRegenerateDigestDto,
   SaveTextNoteDto,
@@ -58,6 +59,7 @@ export class WorkspaceService {
     personal: WorkspaceSummaryDto;
     company: WorkspaceSummaryDto;
     department: WorkspaceSummaryDto | null;
+    departments?: DepartmentSummaryDto[];
   }> {
     // 1. 个人空间 (Personal Workspace)
     let personal = await this.prisma.workspace.findFirst({
@@ -93,15 +95,43 @@ export class WorkspaceService {
     }
 
     // 3. 部门共享空间 (Department Shared)
+    // 自动查找当前用户所属的全部部门关联
+    const memberships = await this.prisma.orgMembership.findMany({
+      where: {
+        userId,
+        status: 'active',
+        departmentId: { not: null },
+      },
+    });
+    const userDeptIds = memberships.map((m) => m.departmentId!).filter(Boolean);
+
+    // 获取组织全量部门备选
+    const allDepts = await this.prisma.department.findMany({
+      orderBy: { name: 'asc' },
+    });
+
+    // 确定当前请求优先使用的部门 ID
+    if (!departmentId) {
+      if (userDeptIds.length > 0) {
+        departmentId = userDeptIds[0];
+      } else if (allDepts.length > 0) {
+        // 管理员或未归属部门用户兜底使用现有部门
+        departmentId = allDepts[0].id;
+      }
+    }
+
     let department = null;
     if (departmentId) {
       department = await this.prisma.workspace.findFirst({
         where: { type: 'department', departmentId },
       });
       if (!department) {
+        const deptRecord = await this.prisma.department.findUnique({
+          where: { id: departmentId },
+        });
         department = await this.prisma.workspace.create({
           data: {
-            name: '部门共享',
+            name: deptRecord ? `${deptRecord.name}共享` : '部门共享',
             type: 'department',
             departmentId,
           },
@@ -110,10 +140,28 @@ export class WorkspaceService {
       }
     }
 
+    // 计算当前用户可见的部门列表：
+    // 若用户明确绑定了部门，则展示该用户归属的部门；若为管理员（或未绑定），则支持访问全量部门
+    const visibleDepts = userDeptIds.length > 0
+      ? allDepts.filter((d) => userDeptIds.includes(d.id))
+      : allDepts;
+    const targetDepts = visibleDepts.length > 0 ? visibleDepts : allDepts;
+
+    const deptWorkspaces = await this.prisma.workspace.findMany({
+      where: { type: 'department', departmentId: { in: targetDepts.map((d) => d.id) } },
+    });
+    const wsMap = new Map<string, string>(deptWorkspaces.map((w) => [w.departmentId!, w.id]));
+    const departmentsList: DepartmentSummaryDto[] = targetDepts.map((d) => ({
+      id: d.id,
+      name: d.name,
+      workspaceId: wsMap.get(d.id) || '',
+    }));
+
     return {
       personal: this.toWorkspaceSummary(personal),
       company: this.toWorkspaceSummary(company),
       department: department ? this.toWorkspaceSummary(department) : null,
+      departments: departmentsList,
     };
   }
 
@@ -124,9 +172,10 @@ export class WorkspaceService {
     workspaceId: string,
     parentId: string | null | undefined,
     userId: string,
+    userRoles: string[] = [],
     departmentId?: string
   ): Promise<WorkspaceNodeDto[]> {
-    await this.assertAccess(workspaceId, userId, departmentId, 'read');
+    await this.assertAccess(workspaceId, userId, departmentId, 'read', userRoles);
 
     // 若访问的是个人空间根目录，自动同步沙箱 /knowledge 目录下的新文件
     if (!parentId) {
@@ -274,9 +323,10 @@ export class WorkspaceService {
     workspaceId: string,
     nodeId: string,
     userId: string,
+    userRoles: string[] = [],
     departmentId?: string
   ): Promise<{ buffer: Buffer; fileName: string; mimeType: string }> {
-    await this.assertAccess(workspaceId, userId, departmentId, 'read');
+    await this.assertAccess(workspaceId, userId, departmentId, 'read', userRoles);
 
     const node = await this.prisma.workspaceNode.findFirst({
       where: { id: nodeId, workspaceId },
@@ -397,13 +447,15 @@ export class WorkspaceService {
     userId: string,
     departmentId: string | undefined,
     query: string,
-    workspaceId?: string
+    workspaceId?: string,
+    userRoles: string[] = []
   ): Promise<ContentSearchResultDto[]> {
     const q = (query || '').trim();
     if (!q || q.length < 2) {
       return [];
     }
 
+    const isAdmin = userRoles.includes('admin');
     const spaces = await this.getMyWorkspaces(userId, departmentId);
     const visibleWorkspaceIds = [
       spaces.personal.id,
@@ -413,7 +465,7 @@ export class WorkspaceService {
 
     let targetWorkspaceIds = visibleWorkspaceIds;
     if (workspaceId) {
-      if (!visibleWorkspaceIds.includes(workspaceId)) {
+      if (!visibleWorkspaceIds.includes(workspaceId) && !isAdmin) {
         throw new ForbiddenException('您无权检索指定工作空间的内容');
       }
       targetWorkspaceIds = [workspaceId];
@@ -597,7 +649,17 @@ export class WorkspaceService {
     }
 
     if (workspace.type === 'department') {
-      const belongsToDept = departmentId && workspace.departmentId === departmentId;
+      let belongsToDept = Boolean(departmentId && workspace.departmentId === departmentId);
+      if (!belongsToDept && userId && workspace.departmentId) {
+        const count = await this.prisma.orgMembership.count({
+          where: {
+            userId,
+            departmentId: workspace.departmentId,
+            status: 'active',
+          },
+        });
+        belongsToDept = count > 0;
+      }
       if (!belongsToDept && !isAdmin) {
         throw new ForbiddenException('您不属于该部门，无权访问该部门工作空间');
       }

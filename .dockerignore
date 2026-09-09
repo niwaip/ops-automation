@@ -1,8 +1,48 @@
+# Version control & metadata
 .git
+.github
+.DS_Store
+**/.DS_Store
+
+# Dependencies & package store (CRITICAL: prevents uploading ~3GB store to docker daemon)
 node_modules
 **/node_modules
+.pnpm-store
+
+# Build outputs & caches
+dist
 **/dist
+build
+out
+*.tsbuildinfo
+.turbo
+.cache
+
+# Runtime persisted data & state
+data
+.data
 apps/backend/var
+.docker-state
+.docker-workspace-bootstrap.lock
+
+# Debug, logs & test artifacts
+.dbg
+.playwright-cli
+.playwright-mcp
+.tmp
 **/.tmp
+temp
+logs
+*.log
 **/*.log
+npm-debug.log*
+pnpm-debug.log*
+coverage
+.nyc_output
+test-results
+
+# Documentation & IDE
 docs
+.idea
+.vscode
+.claude

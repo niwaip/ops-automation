@@ -16,11 +16,12 @@
   - 真实运行根目录已位于 `capabilities/browser-domain/semantics`
   - 负责浏览器语义规则的设计时管理、发布态查询与运行时解析
 - `recorder`
-  - 对应当前 `ai-orchestrator/modules/browser` 中的录制、观察、导出、会话与恢复编排
-  - 个别高频自然语言动作决策未来可继续外移到 `browser-nl-agent`
+  - 实体包位于 `capabilities/browser-domain/recorder` (`@ops/browser-recorder`)
+  - 承接录制基础常量、持久化定位解析器算法、执行计划 IR 规范与循环模型契约
+  - `ai-orchestrator` 作为上层应用宿主直接消费该包能力，消除原领域空壳
 - `runtime-facade`
-  - 表示浏览器域面对 `control-plane`、`browser-worker` 与其他执行链路的桥接接口
-  - 当前仍与 `recorder` 同处于 `ai-orchestrator/modules/browser` 的物理目录中
+  - 实体包位于 `capabilities/browser-domain/runtime-facade` (`@ops/browser-runtime-facade`)
+  - 定义浏览器域面对 `control-plane`、`browser-worker` 的执行控制器与接管和解契约规范
 
 ## 该能力域负责
 

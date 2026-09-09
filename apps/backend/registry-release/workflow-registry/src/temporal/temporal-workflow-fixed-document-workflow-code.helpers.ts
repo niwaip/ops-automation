@@ -42,7 +42,7 @@ function resolveWorkflowDisplayName(workflowDsl: WorkflowDsl, workflowClassName:
 function buildSharedDocumentResultSupportLines(): string[] {
   return [
     '    @staticmethod',
-    '    def _extract_summary(value: Any) -> str | None:',
+    '    def _extract_summary(value: Any):',
     '        if isinstance(value, str):',
     '            return value.strip() or None',
     '        if isinstance(value, dict):',
@@ -53,7 +53,7 @@ function buildSharedDocumentResultSupportLines(): string[] {
     '        return None',
     '',
     '    @staticmethod',
-    '    def _extract_detail_text(value: Any) -> str | None:',
+    '    def _extract_detail_text(value: Any):',
     '        if isinstance(value, str):',
     '            return value.strip() or None',
     '        if isinstance(value, dict):',

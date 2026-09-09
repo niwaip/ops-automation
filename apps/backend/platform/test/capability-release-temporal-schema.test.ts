@@ -245,6 +245,76 @@ describe('CapabilityReleaseTemporalSchemaService', () => {
     });
   });
 
+  it('applies one-time deploy validation input without changing the source snapshot', () => {
+    const { service } = createService();
+    const sourcePayload = {
+      paramsSchema: {
+        required: ['deviceKey', 'content'],
+        properties: {
+          deviceKey: { type: 'string' },
+          content: { type: 'string' },
+        },
+      },
+    };
+
+    const smokeInput = (service as any).buildSmokeTestInput(
+      { sourceType: 'temporal_workflow' },
+      { sourcePayload },
+      'staging',
+      { deviceKey: 'deploy-only-device-key', content: 'deployment smoke' }
+    );
+
+    expect(smokeInput).toEqual({
+      deviceKey: 'deploy-only-device-key',
+      content: 'deployment smoke',
+      smokeTest: true,
+      environment: 'staging',
+    });
+    expect(sourcePayload).not.toHaveProperty('smokeTestInput');
+    expect(sourcePayload).not.toHaveProperty('deviceKey');
+  });
+
+  it('does not reuse credential values persisted in source-level smoke input', () => {
+    const { service } = createService();
+    const smokeInput = (service as any).buildSmokeTestInput(
+      { sourceType: 'temporal_workflow' },
+      {
+        sourcePayload: {
+          workflowDsl: { inputParams: { deviceKey: { type: 'string' } } },
+          paramsSchema: {
+            required: ['deviceKey'],
+            properties: { deviceKey: { type: 'string' } },
+          },
+          smokeTestInput: { deviceKey: 'persisted-deploy-secret' },
+        },
+      },
+      'staging'
+    );
+
+    expect(smokeInput).not.toHaveProperty('deviceKey');
+  });
+
+  it('marks credentials required by the default validation scenario as required at deploy time', () => {
+    const { service } = createService();
+    const schema = (service as any).buildTemporalParamsSchema({
+      inputParams: {
+        deviceKey: { type: 'string', required: false },
+        content: { type: 'string', required: true },
+      },
+      validation: {
+        scenarios: [
+          {
+            id: 'push_default',
+            parameters: ['deviceKey', 'content'],
+            requiredParameters: ['deviceKey', 'content'],
+          },
+        ],
+      },
+    });
+
+    expect(schema.required).toEqual(['deviceKey', 'content']);
+  });
+
   it('prefers environment-specific fixed test input over global test input', () => {
     const { service } = createService();
 

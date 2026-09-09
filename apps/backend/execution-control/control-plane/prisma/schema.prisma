@@ -69,6 +69,8 @@ model User {
   imChannelConnections         ImChannelConnection[]
   skillAccessRequests          SkillAccessRequest[]  @relation("SkillAccessRequester")
   processedSkillAccessRequests SkillAccessRequest[]  @relation("SkillAccessProcessor")
+  credentials                  UserCredential[]
+  skillCredentialBindings      UserSkillCredentialBinding[]
 
   @@index([username])
   @@index([role])
@@ -1815,5 +1817,52 @@ model WorkbenchInboxItem {
   @@index([userId, status])
   @@index([userId, createdAt(sort: Desc)])
   @@map("workbench_inbox_items")
+}
+
+enum CredentialCategory {
+  api_key
+  device_key
+  basic_auth
+  bearer_token
+  custom
+}
+
+model UserCredential {
+  id            String             @id @default(uuid()) @db.Uuid
+  userId        String             @map("user_id") @db.Uuid
+  orgId         String?            @map("org_id") @db.Uuid
+  name          String             @db.VarChar(128)
+  category      CredentialCategory
+  description   String?            @db.VarChar(255)
+  encryptedData String             @map("encrypted_data") @db.Text
+  maskedPreview Json               @map("masked_preview")
+  status        String             @default("active") @db.VarChar(32)
+  expiresAt     DateTime?          @map("expires_at") @db.Timestamptz
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bindings      UserSkillCredentialBinding[]
+
+  @@index([userId, category])
+  @@index([orgId])
+  @@map("user_credentials")
+}
+
+model UserSkillCredentialBinding {
+  id           String         @id @default(uuid()) @db.Uuid
+  userId       String         @map("user_id") @db.Uuid
+  skillId      String         @map("skill_id") @db.Uuid
+  paramName    String         @map("param_name") @db.VarChar(64)
+  credentialId String         @map("credential_id") @db.Uuid
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credential   UserCredential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillId, paramName])
+  @@index([userId, skillId])
+  @@map("user_skill_credential_bindings")
 }
 

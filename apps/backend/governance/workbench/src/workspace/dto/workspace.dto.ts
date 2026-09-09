@@ -179,6 +179,19 @@ export interface WorkspaceSummaryDto {
   updatedAt: string;
 }
 
+export interface DepartmentSummaryDto {
+  id: string;
+  name: string;
+  workspaceId?: string;
+}
+
+export interface MyWorkspacesResponseDto {
+  personal: WorkspaceSummaryDto;
+  company: WorkspaceSummaryDto;
+  department: WorkspaceSummaryDto | null;
+  departments?: DepartmentSummaryDto[];
+}
+
 export interface WorkspaceFileDigest {
   summary: string;
   keyTopics: string[];

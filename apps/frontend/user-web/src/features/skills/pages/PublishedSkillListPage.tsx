@@ -3,15 +3,18 @@ import {
   ClockCircleOutlined,
 } from '@ant-design/icons';
 import { Button, Empty as AntdEmpty, Tabs as AntdTabs } from 'antd';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PublishedSkillOverview } from '@/features/skills/components/PublishedSkillOverview';
 import { PublishedSkillSectionCard } from '@/features/skills/components/PublishedSkillSectionCard';
 import { RequestAccessModal } from '@/features/skills/components/RequestAccessModal';
+import { SkillCredentialModal } from '@/features/skills/components/SkillCredentialModal';
 import { SkillGrid } from '@/features/skills/components/SkillGrid';
 import { EmployeeToolbar } from '@/features/skills/components/EmployeeToolbar';
 import { usePublishedSkillList } from '@/features/skills/hooks/usePublishedSkillList';
 import { SavedWorkflowList } from '@/features/skills/saved-workflows/SavedWorkflowList';
 import { OrganizationWorkflowList } from '@/features/skills/components/OrganizationWorkflowList';
+import type { PublishedSkillCatalogItem } from '@/api/skill';
 
 function PublishedSkillsContent() {
   const {
@@ -41,6 +44,7 @@ function PublishedSkillsContent() {
     toggleSection,
     totalVisibleCount,
   } = usePublishedSkillList();
+  const [credentialTarget, setCredentialTarget] = useState<PublishedSkillCatalogItem | null>(null);
 
   const showAuthorizedSection =
     authorizedSkills.length > 0 || (!hasActiveFilters && allAuthorizedSkillsCount > 0);
@@ -109,6 +113,7 @@ function PublishedSkillsContent() {
                 isLoading={isInitialLoading}
                 onPrimaryAction={handleSkillPrimaryAction}
                 onChatCollaborate={handleChatCollaborate}
+                onConfigureCredentials={setCredentialTarget}
                 recentlyRequestedSkillId={recentlyRequestedSkillId}
                 schedulesBySkillId={schedulesBySkillId}
                 skills={authorizedSkills}
@@ -151,6 +156,13 @@ function PublishedSkillsContent() {
         onSubmit={submitRequest}
         requestReason={requestReason}
         requestTarget={requestTarget}
+      />
+
+      {/* 7. Credential Configuration Modal */}
+      <SkillCredentialModal
+        skill={credentialTarget}
+        open={Boolean(credentialTarget)}
+        onClose={() => setCredentialTarget(null)}
       />
     </div>
   );

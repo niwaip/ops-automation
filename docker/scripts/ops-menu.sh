@@ -1,110 +1,82 @@
 #!/bin/bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DOCKER_DIR="$(dirname "$SCRIPT_DIR")"
-REPO_ROOT="$(dirname "$DOCKER_DIR")"
-SMART_SCRIPT="$SCRIPT_DIR/start-smart.sh"
+# ==============================================================================
+# Ops Automation CLI & Management Menu
+# ==============================================================================
+# Supports both:
+#   1. Non-interactive CLI commands:
+#      ops dev | ops full | ops stop | ops status | ops smoke | ops db check ...
+#   2. Interactive menu:
+#      ops (or bash ./docker/scripts/ops-menu.sh)
+# ==============================================================================
+
+# Resolve symlinks so the script works correctly even when invoked via symlink
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+DOCKER_DIR="$(cd -P "$SCRIPT_DIR/.." >/dev/null 2>&1 && pwd)"
+REPO_ROOT="$(cd -P "$DOCKER_DIR/.." >/dev/null 2>&1 && pwd)"
+
+# Ensure all operations run from the repository root
+cd "$REPO_ROOT"
+
+SMART_SCRIPT="$REPO_ROOT/docker/start-smart.sh"
 APPLY_LATEST_DB_SCHEMA_SCRIPT="$SCRIPT_DIR/apply-latest-db-schema.sh"
 EXPORT_INITIAL_DATA_SCRIPT="$SCRIPT_DIR/export-initial-data.sh"
+SMOKE_TEST_SCRIPT="$SCRIPT_DIR/smoke/core-smoke.sh"
+
+DOCKER_ENV_FILE="$DOCKER_DIR/.env"
+DOCKER_ENV_TEMPLATE="$DOCKER_DIR/env/.env.example"
+PLATFORM_SCHEMA="$REPO_ROOT/apps/backend/platform/prisma/schema.prisma"
+BROWSER_TEMPLATE_REPAIR_SQL="$REPO_ROOT/apps/backend/capabilities/browser-domain/templates/prisma/manual-sql/20260608_rebuild_templates_current_schema.sql"
+INITIAL_DATA_EXPORT_PATH_DEFAULT="$REPO_ROOT/docker/sql/exports/platform-initial-data-latest.sql"
+
 DEFAULT_ADMIN_PASSWORD="${DEFAULT_ADMIN_PASSWORD:-admin123}"
 DEFAULT_ADMIN_USERNAME="${DEFAULT_ADMIN_USERNAME:-admin}"
 DEFAULT_ADMIN_EMAIL="${DEFAULT_ADMIN_EMAIL:-admin@example.com}"
-DOCKER_ENV_FILE="$DOCKER_DIR/.env"
-DOCKER_ENV_TEMPLATE="$DOCKER_DIR/env/.env.example"
 
-BASE_COMPOSE="docker-compose.base.yml"
-INFRA_COMPOSE="docker-compose.yml"
-LEGACY_COMPAT_COMPOSES=(
-  "docker-compose.core.yml"
-  "docker-compose.planner.yml"
-  "docker-compose.runtime.yml"
-  "docker-compose.experience.yml"
-)
-
-PLATFORM_BASELINE_MIGRATION="20260608_init_platform_baseline"
-PLATFORM_SCHEMA="./prisma/schema.prisma"
-BROWSER_TEMPLATE_REPAIR_SQL="$REPO_ROOT/apps/backend/capabilities/browser-domain/templates/prisma/manual-sql/20260608_rebuild_templates_current_schema.sql"
-LEGACY_SQL_FILES=(
-  "$REPO_ROOT/docker/sql/migrations/001_init.sql"
-  "$REPO_ROOT/docker/sql/seed.sql"
-)
-PLACEHOLDER_MIGRATION_FILES=(
-  "$REPO_ROOT/apps/backend/capabilities/browser-domain/templates/prisma/migrations/0_baseline/migration.sql"
-  "$REPO_ROOT/apps/backend/capabilities/document-domain/report/prisma/migrations/0_baseline/migration.sql"
-  "$REPO_ROOT/apps/backend/runtimes/replay-worker/prisma/migrations/0_baseline/migration.sql"
-)
-PLATFORM_REQUIRED_TABLES=(
-  "users"
-  "roles"
-  "user_roles"
-  "organizations"
-  "departments"
-  "teams"
-  "org_memberships"
-  "team_memberships"
-  "org_role_bindings"
-  "identity_provider_configs"
-  "execution_flow_templates"
-  "skill_configs"
-  "skill_permissions"
-  "tool_catalogs"
-  "skill_tool_bindings"
-  "chat_sessions"
-  "chat_messages"
-  "executions"
-  "execution_phases"
-  "execution_phase_steps"
-  "execution_phase_artifacts"
-  "execution_takeovers"
-  "runtime_sessions"
-  "execution_steps"
-  "execution_events"
-  "audit_logs"
-  "activities"
-  "temporal_workflows"
-  "skill_schedules"
-)
-PLATFORM_REQUIRED_COLUMNS=(
-  "executions:current_phase_key"
-  "executions:current_phase_status"
-  "executions:takeover_status"
-  "executions:trigger_type"
-  "executions:schedule_id"
-)
-SCHEMA_STATUS_TABLES=(
-  "${PLATFORM_REQUIRED_TABLES[@]}"
-  "templates"
-)
-LEGACY_TABLES=(
-  "sessions"
-  "step_logs"
-  "ai_models"
-  "ai_agents"
-)
-INITIAL_DATA_EXPORT_PATH_DEFAULT="$REPO_ROOT/docker/sql/exports/platform-initial-data-latest.sql"
-
+# Logging helpers
 log() {
-  printf '[ops-menu] %s\n' "$1"
+  printf '[ops] %s\n' "$1"
 }
 
 log_ok() {
-  printf '  \033[32m[OK] %s\033[0m\n' "$1"
+  printf '  \033[32m[OK]\033[0m %s\n' "$1"
 }
 
 log_warn() {
-  printf '  \033[33m[WARN] %s\033[0m\n' "$1"
+  printf '  \033[33m[WARN]\033[0m %s\n' "$1"
 }
 
 log_err() {
-  printf '  \033[31m[ERR] %s\033[0m\n' "$1"
+  printf '  \033[31m[ERR]\033[0m %s\n' "$1"
+}
+
+log_info() {
+  printf '  \033[36m[INFO]\033[0m %s\n' "$1"
+}
+
+prompt_enter() {
+  read -r -p "Press Enter to continue..." _
+}
+
+confirm() {
+  local message="$1"
+  local answer
+  read -r -p "$message [y/N]: " answer
+  [[ "$answer" == "y" || "$answer" == "Y" ]]
 }
 
 sql_escape_literal() {
   printf "%s" "$1" | sed "s/'/''/g"
 }
 
-run_compose() {
+run_smart() {
   bash "$SMART_SCRIPT" "$@"
 }
 
@@ -120,104 +92,15 @@ set_env_value() {
   fi
 }
 
-prompt_enter() {
-  read -r -p "Press Enter to continue..." _
-}
-
-confirm() {
-  local message="$1"
-  local answer
-
-  read -r -p "$message [y/N]: " answer
-  [[ "$answer" == "y" || "$answer" == "Y" ]]
-}
-
-read_admin_password() {
-  local password confirm_password
-
-  read -r -s -p "Enter admin password (default: ${DEFAULT_ADMIN_PASSWORD}): " password
-  printf '\n'
-
-  if [[ -z "$password" ]]; then
-    ADMIN_PASSWORD_VALUE="$DEFAULT_ADMIN_PASSWORD"
-    return
-  fi
-
-  read -r -s -p "Confirm admin password: " confirm_password
-  printf '\n'
-
-  if [[ "$password" != "$confirm_password" ]]; then
-    log "Passwords do not match."
-    return 1
-  fi
-
-  ADMIN_PASSWORD_VALUE="$password"
-}
-
-read_host_ip() {
-  local ip_input
-
-  read -r -p "Enter host IP address: " ip_input
-
-  if [[ -z "$ip_input" ]]; then
-    log "Host IP is required."
-    return 1
-  fi
-
-  HOST_IP_VALUE="$ip_input"
-}
-
-generate_default_env() {
-  local source_file
-  local temp_file
-
-  read_host_ip || return 1
-
-  if [[ -f "$DOCKER_ENV_FILE" ]]; then
-    if ! confirm "docker/.env already exists. Overwrite it with refreshed defaults?"; then
-      log "Cancelled."
-      return 0
-    fi
-    source_file="$DOCKER_ENV_FILE"
-  elif [[ -f "$DOCKER_ENV_TEMPLATE" ]]; then
-    source_file="$DOCKER_ENV_TEMPLATE"
-  else
-    log "No docker env template found."
-    return 1
-  fi
-
-  temp_file="$(mktemp)"
-  cp "$source_file" "$temp_file"
-
-  set_env_value "$temp_file" "HOST_IP" "$HOST_IP_VALUE"
-  set_env_value "$temp_file" "SESSION_BROWSER_IMAGE" "ops-browser-chrome:local"
-  set_env_value "$temp_file" "OFFICE_ADDIN_PUBLIC_HOST" "$HOST_IP_VALUE"
-  set_env_value "$temp_file" "CARBONE_API_PUBLIC_HOST" "$HOST_IP_VALUE"
-  set_env_value "$temp_file" "OFFICE_ADDIN_TLS_HOSTS" "localhost,127.0.0.1,${HOST_IP_VALUE}"
-
-  if grep -q "^DEV_PUBLIC_HOST=" "$temp_file"; then
-    set_env_value "$temp_file" "DEV_PUBLIC_HOST" "$HOST_IP_VALUE"
-  fi
-
-  if grep -q "^VITE_HOST_IP=" "$temp_file"; then
-    set_env_value "$temp_file" "VITE_HOST_IP" "$HOST_IP_VALUE"
-  fi
-
-  mv "$temp_file" "$DOCKER_ENV_FILE"
-  rm -f "${DOCKER_ENV_FILE}.bak"
-  log "Generated docker/.env with host IP: ${HOST_IP_VALUE}"
-}
-
 get_db_params() {
-  local env_file="$DOCKER_ENV_FILE"
   POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-ops-postgres}"
   POSTGRES_USER="${POSTGRES_USER:-ops}"
   POSTGRES_DB="${POSTGRES_DB:-ops}"
 
-  if [[ -f "$env_file" ]]; then
+  if [[ -f "$DOCKER_ENV_FILE" ]]; then
     local pg_user pg_db
-    pg_user="$(grep -E '^POSTGRES_USER=' "$env_file" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
-    pg_db="$(grep -E '^POSTGRES_DB=' "$env_file" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    pg_user="$(grep -E '^POSTGRES_USER=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    pg_db="$(grep -E '^POSTGRES_DB=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
     pg_user="${pg_user%$'\r'}"
     pg_db="${pg_db%$'\r'}"
     pg_user="${pg_user%\"}"
@@ -251,16 +134,23 @@ column_exists() {
   [[ "${count:-0}" -gt 0 ]]
 }
 
-enum_exists() {
-  local enum_name="$1"
-  local count
-  count="$(psql_query "SELECT COUNT(*) FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace WHERE n.nspname='public' AND t.typname='${enum_name}'")"
-  [[ "${count:-0}" -gt 0 ]]
+run_psql_stdin() {
+  get_db_params
+  docker exec -i "$POSTGRES_CONTAINER" psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+}
+
+apply_sql_file() {
+  local file_path="$1"
+  if [[ ! -f "$file_path" ]]; then
+    log_warn "Skip missing SQL file: $file_path"
+    return 0
+  fi
+  log "Applying SQL file: $file_path"
+  run_psql_stdin < "$file_path"
 }
 
 wait_for_postgres() {
   get_db_params
-
   log "Waiting for postgres to be ready..."
   local retries=0
   until docker exec "$POSTGRES_CONTAINER" pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; do
@@ -273,251 +163,185 @@ wait_for_postgres() {
   done
 }
 
-run_psql_stdin() {
-  get_db_params
-  run_compose "$INFRA_COMPOSE" exec -T postgres \
-    psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f -
+# ==============================================================================
+# Service Lifecycle Operations
+# ==============================================================================
+
+start_stack() {
+  local profile="${1:-dev}"
+  log "Starting stack with preset: $profile ..."
+  run_smart "$profile" up -d
+  log_ok "Stack '$profile' started."
 }
 
-apply_sql_file() {
-  local file_path="$1"
+stop_services() {
+  log "Gracefully stopping all services and profiles..."
+  run_smart full down
+  log_ok "All services stopped."
+}
 
-  if [[ ! -f "$file_path" ]]; then
-    log_warn "Skip missing SQL file: $file_path"
-    return 0
+restart_core_services() {
+  log "Restarting core services..."
+  run_smart dev restart platform session-broker control-plane ai-orchestrator
+  log_ok "Core services restarted."
+}
+
+run_core_smoke() {
+  log "Running fast core smoke test..."
+  if [[ -f "$SMOKE_TEST_SCRIPT" ]]; then
+    bash "$SMOKE_TEST_SCRIPT"
+  else
+    log_err "Smoke test script not found: $SMOKE_TEST_SCRIPT"
+    return 1
   fi
-
-  log "Applying SQL file: $file_path"
-  run_psql_stdin < "$file_path"
 }
 
-stop_all_compose() {
-  local compose_file
-  for compose_file in "${LEGACY_COMPAT_COMPOSES[@]}"; do
-    run_compose "$compose_file" down || true
-  done
-  run_compose "$BASE_COMPOSE" down || true
-  run_compose "$INFRA_COMPOSE" down || true
-}
+# ==============================================================================
+# Status & Diagnostics
+# ==============================================================================
 
-start_infra() {
-  run_compose "$INFRA_COMPOSE" up -d
-  wait_for_postgres
-}
+probe_http_service() {
+  local service_name="$1"
+  local url="$2"
+  local expected_sub="${3:-}"
 
-start_core() {
-  run_compose "$BASE_COMPOSE" up -d
-}
-
-apply_shared_domain_schema_repairs() {
-  log "Applying shared domain schema repair SQL..."
-  # UUID id defaults are now fixed by the authoritative migration
-  # 20260802000000_fix_uuid_id_defaults — no manual repair needed here.
-  apply_sql_file "$BROWSER_TEMPLATE_REPAIR_SQL"
+  local response
+  response="$(no_proxy="*" curl -s -m 2 "$url" 2>/dev/null || echo "")"
+  if [[ -n "$response" ]]; then
+    if [[ -n "$expected_sub" ]]; then
+      if [[ "$response" == *"$expected_sub"* ]]; then
+        printf '  %-20s \033[32m[HEALTHY]\033[0m %s\n' "$service_name" "$url"
+      else
+        printf '  %-20s \033[33m[UP - UNEXPECTED]\033[0m %s\n' "$service_name" "$url"
+      fi
+    else
+      printf '  %-20s \033[32m[RESPONSIVE]\033[0m %s\n' "$service_name" "$url"
+    fi
+  else
+    printf '  %-20s \033[31m[UNREACHABLE]\033[0m %s\n' "$service_name" "$url"
+  fi
 }
 
 show_service_status() {
-  local env_file="$DOCKER_DIR/.env"
   local host_ip="localhost"
-
-  if [[ -f "$env_file" ]]; then
-    host_ip="$(grep -E '^HOST_IP=' "$env_file" | tail -1 | cut -d'=' -f2-)"
+  if [[ -f "$DOCKER_ENV_FILE" ]]; then
+    host_ip="$(grep -E '^HOST_IP=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
     host_ip="${host_ip:-localhost}"
   fi
 
-  printf '\n=== Docker Containers ===\n'
+  printf '\n\033[1m=== Running Containers ===\033[0m\n'
   docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E '^ops-|^NAMES' || true
 
-  printf '\n=== Common URLs ===\n'
-  printf 'Platform: http://%s:3001\n' "$host_ip"
-  printf 'Control Plane: http://%s:3003\n' "$host_ip"
-  printf 'AI Orchestrator: http://%s:3007\n' "$host_ip"
-  printf 'Portal: http://%s:5173\n' "$host_ip"
-  printf 'User Web: http://%s:5174\n' "$host_ip"
-  printf 'noVNC: http://%s:6080/vnc.html\n' "$host_ip"
-  printf 'Temporal UI: http://%s:8088\n' "$host_ip"
-}
+  printf '\n\033[1m=== HTTP Health Probes ===\033[0m\n'
+  probe_http_service "Control Plane" "http://127.0.0.1:3003/api/health" "healthy"
+  probe_http_service "Platform" "http://127.0.0.1:3001/auth/login" ""
+  probe_http_service "Session Broker" "http://127.0.0.1:3002/api" ""
+  probe_http_service "AI Orchestrator" "http://127.0.0.1:3007/api" ""
 
-print_migration_inventory() {
-  printf '\n=== Database Migration Inventory ===\n'
-
-  printf '\n[Current schema entrypoints]\n'
-  printf '  - Single authoritative migration sequence: %s\n' "$REPO_ROOT/apps/backend/platform/prisma/migrations"
-  printf '  - Shared domain repair SQL: %s\n' "$BROWSER_TEMPLATE_REPAIR_SQL"
-
-  printf '\n[Placeholder migrations not applied automatically]\n'
-  for sql_file in "${PLACEHOLDER_MIGRATION_FILES[@]}"; do
-    printf '  - %s\n' "$sql_file"
-  done
-
-  printf '\n[Legacy SQL entrypoints]\n'
-  for sql_file in "${LEGACY_SQL_FILES[@]}"; do
-    if [[ -f "$sql_file" ]]; then
-      log_warn "Legacy SQL kept only as deprecated stub: $sql_file"
-    else
-      log_warn "Legacy SQL file missing: $sql_file"
-    fi
-  done
-
+  printf '\n\033[1m=== Common Endpoints ===\033[0m\n'
+  printf '  - Platform API:      http://%s:3001\n' "$host_ip"
+  printf '  - Session Broker:    http://%s:3002\n' "$host_ip"
+  printf '  - Control Plane:     http://%s:3003\n' "$host_ip"
+  printf '  - AI Orchestrator:   http://%s:3007\n' "$host_ip"
+  printf '  - Carbone Engine:    http://%s:3030\n' "$host_ip"
+  printf '  - Browser noVNC:     http://%s:6080/vnc.html\n' "$host_ip"
+  printf '  - Temporal UI:       http://%s:8088\n' "$host_ip"
+  printf '  - Portal Web:        http://%s:5173\n' "$host_ip"
+  printf '  - User Web:          http://%s:5174\n' "$host_ip"
   printf '\n'
 }
 
-database_status_check() {
-  printf '\n=== Database Status Check ===\n'
+# ==============================================================================
+# Database Operations
+# ==============================================================================
 
+database_status_check() {
+  printf '\n\033[1m=== Database Status Check ===\033[0m\n'
   get_db_params
+
   if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${POSTGRES_CONTAINER}$"; then
     log_err "Postgres container '${POSTGRES_CONTAINER}' is not running. Start infra first."
     return 1
   fi
 
-  printf '\n[Migration History]\n'
+  printf '\n[1. Migration Status]\n'
   if table_exists "_prisma_migrations"; then
-    log_ok "_prisma_migrations table exists"
     local applied_count
     applied_count="$(psql_query "SELECT COUNT(*) FROM _prisma_migrations WHERE finished_at IS NOT NULL")"
-    printf '  Applied migrations: %s\n' "${applied_count:-0}"
-    printf '  Latest applied:\n'
-    psql_query "SELECT migration_name, finished_at FROM _prisma_migrations WHERE finished_at IS NOT NULL ORDER BY finished_at DESC LIMIT 8" \
+    log_ok "_prisma_migrations table exists (applied migrations: ${applied_count:-0})"
+    printf '  Latest applied migrations:\n'
+    psql_query "SELECT migration_name, finished_at FROM _prisma_migrations WHERE finished_at IS NOT NULL ORDER BY finished_at DESC LIMIT 5" \
       | while IFS='|' read -r name ts; do
-          [[ -n "$name" ]] && printf '    - %s  (%s)\n' "$name" "$ts"
+          [[ -n "$name" ]] && printf '    - %s (%s)\n' "$name" "$ts"
         done
   else
-    log_err "_prisma_migrations table NOT found"
+    log_err "_prisma_migrations table NOT found!"
   fi
 
-  printf '\n[Current schema tables]\n'
-  local tbl
-  for tbl in "${SCHEMA_STATUS_TABLES[@]}"; do
+  printf '\n[2. Core Schema Tables Check]\n'
+  local core_tables=(
+    "users" "roles" "user_roles" "chat_sessions" "chat_messages"
+    "executions" "execution_phases" "execution_steps" "im_channel_connections"
+    "task_policy_sets" "execution_flow_templates" "temporal_workflows"
+    "llm_operations" "skill_configs"
+  )
+  for tbl in "${core_tables[@]}"; do
     if table_exists "$tbl"; then
       log_ok "$tbl"
     else
-      log_err "$tbl  <- MISSING"
+      log_err "$tbl <- MISSING"
     fi
   done
 
-  printf '\n[Key columns]\n'
-  local entry
-  local col
-  for entry in "${PLATFORM_REQUIRED_COLUMNS[@]}"; do
-    tbl="${entry%%:*}"
-    col="${entry##*:}"
-    if column_exists "$tbl" "$col"; then
-      log_ok "${tbl}.${col}"
+  printf '\n[3. 88-Table Schema Ownership Verification]\n'
+  if [[ -f "$REPO_ROOT/database/scripts/validate-schema-ownership.mjs" ]]; then
+    if node "$REPO_ROOT/database/scripts/validate-schema-ownership.mjs" >/dev/null 2>&1; then
+      log_ok "All 88 tables match authoritative schema ownership definitions."
     else
-      log_err "${tbl}.${col}  <- MISSING"
+      log_warn "Schema ownership drift detected. Run 'pnpm run validate:schema-ownership' for details."
     fi
-  done
-
-  printf '\n[Shared domain objects]\n'
-  if table_exists "templates"; then
-    log_ok "templates"
-  else
-    log_err "templates  <- MISSING"
   fi
 
-  if enum_exists "templates_status_enum"; then
-    log_ok "templates_status_enum"
-  else
-    log_err "templates_status_enum  <- MISSING"
-  fi
-
-  if enum_exists "template_status"; then
-    log_warn "Legacy enum still present: template_status"
-  else
-    log_ok "Legacy enum absent: template_status"
-  fi
-
-  printf '\n[Legacy object checks]\n'
-  for tbl in "${LEGACY_TABLES[@]}"; do
-    if table_exists "$tbl"; then
-      log_warn "Legacy table still present: $tbl"
+  printf '\n[4. Migration Authority Check]\n'
+  if [[ -f "$REPO_ROOT/database/scripts/validate-migration-authority.mjs" ]]; then
+    if node "$REPO_ROOT/database/scripts/validate-migration-authority.mjs" >/dev/null 2>&1; then
+      log_ok "Migration sequence authority is fully validated."
     else
-      log_ok "Legacy table absent: $tbl"
+      log_warn "Migration sequence authority check reported warnings."
     fi
-  done
-
+  fi
   printf '\n'
 }
 
-reset_public_schema() {
-  printf '\n=== Reset Public Schema ===\n'
-  printf 'This will DROP and recreate the entire public schema.\n'
-  printf 'All current tables, data, views, functions, and migration history will be removed.\n\n'
-
-  if ! confirm "Continue with full database cleanup?"; then
-    log "Cancelled."
-    return 0
-  fi
-
-  start_infra
-
-  log "Dropping and recreating schema public..."
-  run_psql_stdin <<SQL
-DROP SCHEMA IF EXISTS public CASCADE;
-CREATE SCHEMA public;
-GRANT ALL ON SCHEMA public TO ${POSTGRES_USER};
-GRANT ALL ON SCHEMA public TO public;
-SQL
-
-  log_ok "Database schema reset complete."
+apply_shared_domain_schema_repairs() {
+  log "Applying shared domain schema repair SQL..."
+  apply_sql_file "$BROWSER_TEMPLATE_REPAIR_SQL"
 }
 
 apply_latest_database_schema() {
   printf '\n=== Apply Latest Database Schema ===\n'
-  start_infra
+  start_stack "infra"
+  wait_for_postgres
   bash "$APPLY_LATEST_DB_SCHEMA_SCRIPT"
   apply_shared_domain_schema_repairs
   database_status_check
 }
 
-seed_platform_data() {
-  printf '\n=== Import Seed Data ===\n'
-  start_infra
-  seed_platform_accounts_sql
-}
+reset_public_schema() {
+  printf '\n\033[31m=== CAUTION: Reset Public Schema ===\033[0m\n'
+  printf 'This will DROP and recreate the entire public schema.\n'
+  printf 'ALL TABLES, DATA, VIEWS, AND MIGRATION HISTORIES WILL BE PURGED.\n\n'
 
-export_initial_data() {
-  printf '\n=== Export Initial Data ===\n'
-  start_infra
-
-  local export_path
-  read -r -p "Export path [${INITIAL_DATA_EXPORT_PATH_DEFAULT}]: " export_path
-  export_path="${export_path:-$INITIAL_DATA_EXPORT_PATH_DEFAULT}"
-
-  bash "$EXPORT_INITIAL_DATA_SCRIPT" "$export_path"
-  log_ok "Initial data export complete."
-}
-
-reset_admin_password() {
-  read_admin_password || return 1
-  start_infra
-  ADMIN_PASSWORD="$ADMIN_PASSWORD_VALUE" seed_platform_accounts_sql
-  log "Admin password reset complete. Username: ${ADMIN_USERNAME:-$DEFAULT_ADMIN_USERNAME}"
-}
-
-full_initial_deployment() {
-  printf '\n=== Initial Full Deployment ===\n'
-  printf 'This workflow is only for initialization and rebuild scenarios.\n'
-  printf 'It will:\n'
-  printf '  1. Stop running compose stacks\n'
-  printf '  2. Reset the public schema\n'
-  printf '  3. Apply the latest baseline + incremental migrations\n'
-  printf '  4. Create default login account with SQL\n'
-  printf '  5. Export initial data snapshot\n'
-  printf '  6. Start core and peripheral services\n\n'
-
-  if ! confirm "Continue with initial full deployment?"; then
+  if ! confirm "Are you ABSOLUTELY sure you want to drop public schema?"; then
     log "Cancelled."
     return 0
   fi
 
-  log "Stopping running compose stacks..."
-  stop_all_compose
+  start_stack "infra"
+  wait_for_postgres
 
-  start_infra
-
-  log "Resetting database schema..."
+  log "Dropping and recreating schema public..."
+  get_db_params
   run_psql_stdin <<SQL
 DROP SCHEMA IF EXISTS public CASCADE;
 CREATE SCHEMA public;
@@ -525,24 +349,7 @@ GRANT ALL ON SCHEMA public TO ${POSTGRES_USER};
 GRANT ALL ON SCHEMA public TO public;
 SQL
 
-  log "Applying latest schema..."
-  bash "$APPLY_LATEST_DB_SCHEMA_SCRIPT"
-
-  apply_shared_domain_schema_repairs
-
-  seed_platform_accounts_sql
-
-  log "Exporting initial data snapshot..."
-  bash "$EXPORT_INITIAL_DATA_SCRIPT" "$INITIAL_DATA_EXPORT_PATH_DEFAULT"
-
-  log "Starting application services..."
-  start_core
-
-  log "Final database status check..."
-  database_status_check
-
-  log_ok "Initial full deployment complete."
-  log "Initial data export: ${INITIAL_DATA_EXPORT_PATH_DEFAULT}"
+  log_ok "Public schema has been completely reset."
 }
 
 seed_platform_accounts_sql() {
@@ -557,7 +364,8 @@ seed_platform_accounts_sql() {
   admin_email_sql="$(sql_escape_literal "$admin_email")"
   admin_password_sql="$(sql_escape_literal "$admin_password")"
 
-  log "Creating minimal platform accounts with SQL..."
+  log "Creating default platform roles and administrator account..."
+  get_db_params
   run_psql_stdin <<SQL
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -598,72 +406,337 @@ WHERE u.username = '${admin_username_sql}'
 ON CONFLICT (user_id, role_id) DO NOTHING;
 SQL
 
-  log_ok "SQL account initialization complete."
-  log "Admin login ensured. Username: ${admin_username} Password: ${admin_password}"
+  log_ok "Default accounts seeded. Username: ${admin_username} Password: ${admin_password}"
 }
+
+reset_admin_password() {
+  local password confirm_password
+  read -r -s -p "Enter new admin password: " password
+  printf '\n'
+  read -r -s -p "Confirm new admin password: " confirm_password
+  printf '\n'
+
+  if [[ "$password" != "$confirm_password" ]]; then
+    log_err "Passwords do not match."
+    return 1
+  fi
+
+  start_stack "infra"
+  wait_for_postgres
+  ADMIN_PASSWORD="$password" seed_platform_accounts_sql
+  log_ok "Admin password updated successfully."
+}
+
+export_initial_data() {
+  printf '\n=== Export Initial Data ===\n'
+  start_stack "infra"
+  wait_for_postgres
+
+  local export_path
+  read -r -p "Export path [${INITIAL_DATA_EXPORT_PATH_DEFAULT}]: " export_path
+  export_path="${export_path:-$INITIAL_DATA_EXPORT_PATH_DEFAULT}"
+
+  bash "$EXPORT_INITIAL_DATA_SCRIPT" "$export_path"
+  log_ok "Initial data export complete: $export_path"
+}
+
+# ==============================================================================
+# Environment Configuration
+# ==============================================================================
+
+generate_default_env() {
+  local ip_input
+  read -r -p "Enter host IP address (e.g. 192.168.1.100 or 127.0.0.1): " ip_input
+
+  if [[ -z "$ip_input" ]]; then
+    log_err "Host IP is required."
+    return 1
+  fi
+
+  local source_file
+  if [[ -f "$DOCKER_ENV_FILE" ]]; then
+    if ! confirm "docker/.env already exists. Refresh host values?"; then
+      log "Cancelled."
+      return 0
+    fi
+    source_file="$DOCKER_ENV_FILE"
+  elif [[ -f "$DOCKER_ENV_TEMPLATE" ]]; then
+    source_file="$DOCKER_ENV_TEMPLATE"
+  else
+    log_err "No template found at $DOCKER_ENV_TEMPLATE"
+    return 1
+  fi
+
+  local temp_file
+  temp_file="$(mktemp)"
+  cp "$source_file" "$temp_file"
+
+  set_env_value "$temp_file" "HOST_IP" "$ip_input"
+  set_env_value "$temp_file" "SESSION_BROWSER_IMAGE" "ops-browser-chrome:local"
+  set_env_value "$temp_file" "OFFICE_ADDIN_PUBLIC_HOST" "$ip_input"
+  set_env_value "$temp_file" "CARBONE_API_PUBLIC_HOST" "$ip_input"
+  set_env_value "$temp_file" "OFFICE_ADDIN_TLS_HOSTS" "localhost,127.0.0.1,${ip_input}"
+
+  mv "$temp_file" "$DOCKER_ENV_FILE"
+  rm -f "${DOCKER_ENV_FILE}.bak"
+  log_ok "Configured docker/.env with HOST_IP=${ip_input}"
+}
+
+# ==============================================================================
+# Global CLI Installation
+# ==============================================================================
+
+install_global_cli() {
+  local target_dir="$HOME/.local/bin"
+  local target_bin="$target_dir/ops"
+  local target_script="$SCRIPT_DIR/ops-menu.sh"
+
+  log "Installing global 'ops' CLI..."
+  mkdir -p "$target_dir"
+
+  cat <<EOF > "$target_bin"
+#!/usr/bin/env bash
+# Auto-generated wrapper for Ops Automation CLI
+exec "$target_script" "\$@"
+EOF
+
+  chmod +x "$target_bin"
+  log_ok "Global command installed at: $target_bin"
+
+  # Ensure repo root symlink exists
+  ln -sf "docker/scripts/ops-menu.sh" "$REPO_ROOT/ops"
+  log_ok "Project root symlink ensured at: $REPO_ROOT/ops"
+
+  if [[ ":$PATH:" != *":$target_dir:"* ]]; then
+    log_warn "$target_dir is not in your current PATH."
+    log_info "Add it to your shell configuration (e.g. ~/.zshrc):"
+    printf '  export PATH="\$HOME/.local/bin:\$PATH"\n'
+  else
+    log_info "You can now run 'ops' from any terminal directory!"
+  fi
+}
+
+uninstall_global_cli() {
+  local target_bin="$HOME/.local/bin/ops"
+  if [[ -f "$target_bin" ]]; then
+    rm -f "$target_bin"
+    log_ok "Removed global command: $target_bin"
+  else
+    log_info "Global command not found at $target_bin"
+  fi
+
+  if [[ -L "$REPO_ROOT/ops" ]]; then
+    rm -f "$REPO_ROOT/ops"
+    log_ok "Removed root symlink: $REPO_ROOT/ops"
+  fi
+}
+
+# ==============================================================================
+# Menus
+# ==============================================================================
 
 database_menu() {
   local choice
-
   while true; do
-    printf '\n========================================\n'
-    printf 'Database Init Menu\n'
-    printf '========================================\n'
-    printf '1. Database status check\n'
-    printf '2. Migration inventory check\n'
-    printf '3. Reset public schema (drop all tables)\n'
-    printf '4. Apply latest database schema\n'
-    printf '5. Create default login account (SQL)\n'
-    printf '6. Export initial data snapshot\n'
-    printf '7. Initial full deployment\n'
-    printf '0. Back\n'
-    read -r -p "Select: " choice
+    printf '\n============================================================\n'
+    printf '                  Database Operations Menu\n'
+    printf '============================================================\n'
+    printf ' 1) Database Status & 88-Table Authority Check\n'
+    printf ' 2) Apply Latest Database Schema & Migrations\n'
+    printf ' 3) Seed Platform Default Accounts (Admin/Employee/Agent)\n'
+    printf ' 4) Reset Admin Password\n'
+    printf ' 5) Export Initial Data Snapshot\n'
+    printf ' 6) Reset Public Schema (CAUTION: Drop All Tables)\n'
+    printf ' 0) Back to Main Menu\n'
+    printf '============================================================\n'
+    read -r -p "Select option [0-6]: " choice
 
     case "$choice" in
       1) database_status_check; prompt_enter ;;
-      2) print_migration_inventory; prompt_enter ;;
-      3) reset_public_schema; prompt_enter ;;
-      4) apply_latest_database_schema; prompt_enter ;;
-      5) seed_platform_data; prompt_enter ;;
-      6) export_initial_data; prompt_enter ;;
-      7) full_initial_deployment; prompt_enter ;;
-      0) return ;;
-      *) log "Invalid selection." ;;
+      2) apply_latest_database_schema; prompt_enter ;;
+      3) start_stack "infra"; wait_for_postgres; seed_platform_accounts_sql; prompt_enter ;;
+      4) reset_admin_password; prompt_enter ;;
+      5) export_initial_data; prompt_enter ;;
+      6) reset_public_schema; prompt_enter ;;
+      0) return 0 ;;
+      *) log_warn "Invalid selection: $choice" ;;
     esac
   done
 }
 
 print_header() {
-  printf '\n========================================\n'
-  printf 'Ops Automation Init Menu\n'
-  printf 'Repo: %s\n' "$REPO_ROOT"
-  printf 'Purpose: initialization deployment only\n'
-  printf '========================================\n'
+  printf '\n============================================================\n'
+  printf '              Ops Automation Management Menu\n'
+  printf '  Repo: %s\n' "$REPO_ROOT"
+  printf '  Stack: Lightweight Core (6 containers) + On-Demand Profiles\n'
+  printf '============================================================\n'
 }
 
-main_menu() {
+interactive_main_menu() {
   local choice
-
   while true; do
     print_header
-    printf '1. Initial full deployment\n'
-    printf '2. Database init menu\n'
-    printf '3. Generate default docker .env\n'
-    printf '4. Service status check\n'
-    printf '5. Reset admin password (SQL)\n'
-    printf '0. Exit\n'
-    read -r -p "Select: " choice
+    printf ' [Service Management]\n'
+    printf '  1) Start Core Stack (dev - 6 containers, recommended)\n'
+    printf '  2) Start with Browser Extension (dev:browser)\n'
+    printf '  3) Start with Temporal Workflow (dev:workflow)\n'
+    printf '  4) Start with Document Engine (dev:doc)\n'
+    printf '  5) Start with Frontend Web (dev:fe)\n'
+    printf '  6) Start Full Stack (full - 19 containers)\n'
+    printf '  7) Start Infra Only (postgres + redis)\n'
+    printf '  8) Restart Core Services\n'
+    printf '  9) Stop All Services (full down)\n\n'
+    printf ' [Status & Diagnostics]\n'
+    printf ' 10) Check Service Status & Health Probes\n'
+    printf ' 11) Run Core Smoke Test (4s fast check)\n\n'
+    printf ' [Database Operations]\n'
+    printf ' 12) Database Menu (Status, Migrations, Seed, Reset)\n\n'
+    printf ' [Configuration & Tooling]\n'
+    printf ' 13) Generate / Refresh docker/.env\n'
+    printf ' 14) Install Global "ops" Command to ~/.local/bin\n'
+    printf ' 15) Uninstall Global "ops" Command\n\n'
+    printf '  0) Exit\n'
+    printf '============================================================\n'
+    read -r -p "Select option [0-15]: " choice
 
     case "$choice" in
-      1) full_initial_deployment; prompt_enter ;;
-      2) database_menu ;;
-      3) generate_default_env; prompt_enter ;;
-      4) show_service_status; prompt_enter ;;
-      5) reset_admin_password; prompt_enter ;;
-      0) exit 0 ;;
-      *) log "Invalid selection." ;;
+      1)  start_stack "dev"; prompt_enter ;;
+      2)  start_stack "dev:browser"; prompt_enter ;;
+      3)  start_stack "dev:workflow"; prompt_enter ;;
+      4)  start_stack "dev:doc"; prompt_enter ;;
+      5)  start_stack "dev:fe"; prompt_enter ;;
+      6)  start_stack "full"; prompt_enter ;;
+      7)  start_stack "infra"; prompt_enter ;;
+      8)  restart_core_services; prompt_enter ;;
+      9)  stop_services; prompt_enter ;;
+      10) show_service_status; prompt_enter ;;
+      11) run_core_smoke; prompt_enter ;;
+      12) database_menu ;;
+      13) generate_default_env; prompt_enter ;;
+      14) install_global_cli; prompt_enter ;;
+      15) uninstall_global_cli; prompt_enter ;;
+      0)  log "Bye!"; exit 0 ;;
+      *)  log_warn "Invalid selection: $choice" ;;
     esac
   done
 }
 
-main_menu
+# ==============================================================================
+# CLI Entrypoint & Argument Dispatcher
+# ==============================================================================
+
+print_help() {
+  cat <<EOF
+Usage: ops [command]
+
+Service Lifecycle:
+  ops dev | up          Start lightweight core stack (6 containers, recommended)
+  ops full              Start full stack (all 19 containers)
+  ops browser           Start core + browser automation
+  ops workflow          Start core + temporal workflow
+  ops doc               Start core + carbone document engine
+  ops fe                Start core + frontend apps
+  ops infra             Start postgres + redis only
+  ops restart           Restart core backend services
+  ops stop | down       Gracefully stop all running containers
+
+Diagnostics & Testing:
+  ops ps | status       Check container and HTTP health probe status
+  ops smoke             Run live core smoke test (platform + control-plane)
+
+Database:
+  ops db check          Verify database migrations and 88-table schema ownership
+  ops db apply          Apply latest migrations and shared domain repairs
+  ops db seed           Seed default roles and admin account
+  ops db reset          Reset public schema (drops all tables)
+  ops db export [path]  Export snapshot of initial platform data
+
+Setup & Installation:
+  ops env               Configure docker/.env with host IP
+  ops install           Install 'ops' command into ~/.local/bin/ops
+  ops uninstall         Remove 'ops' command from ~/.local/bin/ops
+
+Run without arguments to launch the interactive TUI menu.
+EOF
+}
+
+dispatch_cli() {
+  local cmd="$1"
+  shift
+
+  case "$cmd" in
+    dev|up)
+      start_stack "dev"
+      ;;
+    full)
+      start_stack "full"
+      ;;
+    browser)
+      start_stack "dev:browser"
+      ;;
+    workflow)
+      start_stack "dev:workflow"
+      ;;
+    doc)
+      start_stack "dev:doc"
+      ;;
+    fe)
+      start_stack "dev:fe"
+      ;;
+    infra)
+      start_stack "infra"
+      ;;
+    restart)
+      restart_core_services
+      ;;
+    stop|down)
+      stop_services
+      ;;
+    ps|status)
+      show_service_status
+      ;;
+    smoke)
+      run_core_smoke
+      ;;
+    db)
+      local sub="${1:-check}"
+      case "$sub" in
+        check)  database_status_check ;;
+        apply)  apply_latest_database_schema ;;
+        seed)   start_stack "infra"; wait_for_postgres; seed_platform_accounts_sql ;;
+        reset)  reset_public_schema ;;
+        export) export_initial_data ;;
+        *)      database_menu ;;
+      esac
+      ;;
+    env)
+      generate_default_env
+      ;;
+    install)
+      install_global_cli
+      ;;
+    uninstall)
+      uninstall_global_cli
+      ;;
+    help|--help|-h)
+      print_help
+      ;;
+    *)
+      log_err "Unknown command: $cmd"
+      print_help
+      exit 1
+      ;;
+  esac
+}
+
+main() {
+  if [[ $# -gt 0 ]]; then
+    dispatch_cli "$@"
+  elif [ -t 0 ]; then
+    interactive_main_menu
+  else
+    print_help
+  fi
+}
+
+main "$@"

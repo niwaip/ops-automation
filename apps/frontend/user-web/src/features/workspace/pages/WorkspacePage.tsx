@@ -90,14 +90,20 @@ export function WorkspacePage() {
     return roles.includes('admin') || (currentUser as any)?.role === 'admin';
   }, [currentUser]);
 
+  const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
+
   // 1. 获取工作空间概况
   const {
     data: workspacesData,
     isLoading: isWsLoading,
     refetch: refetchWorkspaces,
-  } = useQuery<MyWorkspacesResponse>('my-workspaces', () => workspaceApi.getMyWorkspaces(), {
-    staleTime: 60000,
-  });
+  } = useQuery<MyWorkspacesResponse>(
+    ['my-workspaces', selectedDeptId],
+    () => workspaceApi.getMyWorkspaces({ departmentId: selectedDeptId || undefined }),
+    {
+      staleTime: 60000,
+    }
+  );
 
   const [activeTab, setActiveTab] = useState<'personal' | 'department' | 'company'>('personal');
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([{ id: null, name: '根目录' }]);
@@ -478,7 +484,7 @@ export function WorkspacePage() {
             >
               <div className={styles['workspace-nav-item-left']}>
                 <span className={styles['workspace-nav-icon']}><TeamOutlined /></span>
-                <span>部门共享</span>
+                <span>{workspacesData?.department?.name || '部门共享'}</span>
               </div>
               <Tag color="purple" bordered={false}>团队</Tag>
             </div>
@@ -561,6 +567,26 @@ export function WorkspacePage() {
           </div>
 
           <div className={styles['workspace-topbar-actions']}>
+            {activeTab === 'department' && workspacesData?.departments && workspacesData.departments.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 8 }}>
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>部门:</span>
+                <Select
+                  size="middle"
+                  style={{ minWidth: 140 }}
+                  value={currentWorkspace?.departmentId || selectedDeptId || workspacesData.departments[0]?.id}
+                  onChange={(deptId) => {
+                    setSelectedDeptId(deptId);
+                    setBreadcrumbs([{ id: null, name: '根目录' }]);
+                    setSearchKeyword('');
+                  }}
+                  options={workspacesData.departments.map((d) => ({
+                    value: d.id,
+                    label: d.name,
+                  }))}
+                />
+              </div>
+            )}
+
             <div style={{ display: 'flex', alignItems: 'center' }}>
               <Select
                 value={searchMode}
@@ -647,9 +673,11 @@ export function WorkspacePage() {
                         ? searchMode === 'content'
                           ? `未检索到正文包含 "${searchKeyword}" 的文档`
                           : `未找到与 "${searchKeyword}" 匹配的文件`
+                        : activeTab === 'department' && !currentWorkspace
+                        ? '当前尚未配置或关联任何部门共享盘'
                         : isReadOnly
                         ? '公共盘当前目录暂无文件'
-                        : '当前文件夹为空，点击右上角上传文件或新建文件夹'
+                        : '当前目录暂无文件或文件夹，点击右上角上传文件或新建文件夹'
                     }
                   />
                 </div>

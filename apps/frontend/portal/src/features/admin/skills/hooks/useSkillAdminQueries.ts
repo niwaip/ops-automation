@@ -63,6 +63,37 @@ export function useSkillAdminQueries(options: UseSkillAdminQueriesOptions = {}) 
     { enabled: permissionModalVisible && !!selectedSkill }
   );
 
+  // Global Access Requests queries for admin page badge, banner, and requests tab
+  const globalPendingAccessRequestsQuery = useQuery(
+    ['all-skill-access-requests', 'pending'],
+    () => skillApi.getAccessRequests(undefined, 'pending'),
+    { refetchInterval: 30000 }
+  );
+
+  const globalApprovedAccessRequestsQuery = useQuery(
+    ['all-skill-access-requests', 'approved'],
+    () => skillApi.getAccessRequests(undefined, 'approved'),
+    { staleTime: 60000 }
+  );
+
+  const globalRejectedAccessRequestsQuery = useQuery(
+    ['all-skill-access-requests', 'rejected'],
+    () => skillApi.getAccessRequests(undefined, 'rejected'),
+    { staleTime: 60000 }
+  );
+
+  const pendingRequestsCount = globalPendingAccessRequestsQuery.data?.requests?.length || 0;
+
+  const pendingRequestCountBySkillId = useMemo(() => {
+    const map = new Map<string, number>();
+    (globalPendingAccessRequestsQuery.data?.requests || []).forEach((req) => {
+      if (req.skillId) {
+        map.set(req.skillId, (map.get(req.skillId) || 0) + 1);
+      }
+    });
+    return map;
+  }, [globalPendingAccessRequestsQuery.data?.requests]);
+
   const allSkills = useMemo(
     () =>
       mergeSkillInventory(
@@ -113,6 +144,11 @@ export function useSkillAdminQueries(options: UseSkillAdminQueriesOptions = {}) 
     accessRequestsQuery,
     approvedAccessRequestsQuery,
     rejectedAccessRequestsQuery,
+    globalPendingAccessRequestsQuery,
+    globalApprovedAccessRequestsQuery,
+    globalRejectedAccessRequestsQuery,
+    pendingRequestsCount,
+    pendingRequestCountBySkillId,
     allSkills,
     builtinSkillByKey,
     builtinSkillsCount,

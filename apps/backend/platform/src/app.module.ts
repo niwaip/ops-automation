@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, Reflector } from '@nestjs/core';
 import { AuthModule, JwtAuthGuard, RbacGuard, UserModule } from '@ops/identity-access';
 import { OrganizationModule } from '@ops/organization';
 import { JwtModule } from '@nestjs/jwt';
@@ -15,17 +15,20 @@ import { OrganizationBridgeModule } from './governance/organization/organization
 import { WorkflowRegistryBridgeModule } from './workflow-registry/platform/workflow-registry-bridge.module';
 import { SkillRegistryBridgeModule } from './skill-registry/platform/skill-registry-bridge.module';
 import { WorkbenchBridgeModule } from './governance/workbench/workbench-bridge.module';
+import { ImGatewayBridgeModule } from './governance/im-gateway/im-gateway-bridge.module';
+import { SystemBackupBridgeModule } from './governance/system-backup/system-backup-bridge.module';
 
 import { BuiltinSkillModule } from '@ops/skill-registry/builtin';
 import {
   UserConnectionModule,
+  UserCredentialModule,
   WorkspaceModule,
   WorkbenchTodoModule,
   WorkbenchInboxModule,
   WorkbenchCoordinationModule,
 } from '@ops/workbench';
-import { SystemBackupModule } from './modules/system-backup/system-backup.module';
-import { ImChannelModule } from './modules/im-channel/im-channel.module';
+import { SystemBackupModule } from '@ops/system-backup';
+import { ImChannelModule } from '@ops/im-gateway';
 
 @Module({
   imports: [
@@ -48,6 +51,8 @@ import { ImChannelModule } from './modules/im-channel/im-channel.module';
     WorkflowRegistryBridgeModule,
     SkillRegistryBridgeModule,
     WorkbenchBridgeModule,
+    ImGatewayBridgeModule,
+    SystemBackupBridgeModule,
 
     // Governance modules
     AuthModule,
@@ -64,12 +69,14 @@ import { ImChannelModule } from './modules/im-channel/im-channel.module';
     SystemBackupModule,
     ImChannelModule,
     UserConnectionModule,
+    UserCredentialModule,
     WorkspaceModule,
     WorkbenchTodoModule,
     WorkbenchInboxModule,
     WorkbenchCoordinationModule,
   ],
   providers: [
+    Reflector,
     // Global JWT guard - applied to all routes by default
     {
       provide: APP_GUARD,

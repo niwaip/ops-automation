@@ -67,10 +67,19 @@ export class ChatPlanningPresentationService {
       `required_inputs: ${planDraft.required_inputs.map((item) => `${item.name}:${item.missing ? 'missing' : 'ready'}`).join(', ') || 'none'}`,
       `steps: ${planDraft.steps.map((step) => `${step.kind}:${step.title}`).join(' | ') || 'none'}`,
     ];
+    const latestMessages = Array.isArray(latest?.requestMessages)
+      ? (latest.requestMessages as Array<{ role: string; content: string }>)
+      : undefined;
+    const realSystemPrompt = latestMessages?.find((m) => m.role === 'system')?.content;
+    const realUserPrompt = latestMessages?.find((m) => m.role === 'user')?.content;
+    const plannerSnapshot = systemLines.join('\n');
+
     return {
       debugSource: 'planner',
-      systemPrompt: systemLines.join('\n'),
-      userPrompt: message,
+      systemPrompt: realSystemPrompt || '',
+      userPrompt: realUserPrompt || message,
+      rawUserMessage: message,
+      plannerSnapshot,
       systemPromptSectionKeys: [
         'planner_mode',
         'planner_summary',
@@ -79,9 +88,7 @@ export class ChatPlanningPresentationService {
       ],
       userPromptSectionKeys: ['user_message'],
       modelId: typeof latest?.modelId === 'string' ? latest.modelId : undefined,
-      llmRequestMessages: Array.isArray(latest?.requestMessages)
-        ? latest.requestMessages
-        : undefined,
+      llmRequestMessages: latestMessages,
       llmResponseText: typeof latest?.responseText === 'string' ? latest.responseText : undefined,
       llmCalls,
       notes,
@@ -123,6 +130,8 @@ export class ChatPlanningPresentationService {
       debugSource: promptDebug.debugSource,
       systemPrompt: promptDebug.systemPrompt,
       userPrompt: promptDebug.userPrompt,
+      rawUserMessage: promptDebug.rawUserMessage,
+      plannerSnapshot: promptDebug.plannerSnapshot,
       systemPromptSectionKeys: promptDebug.systemPromptSectionKeys,
       userPromptSectionKeys: promptDebug.userPromptSectionKeys,
       modelId: promptDebug.modelId,

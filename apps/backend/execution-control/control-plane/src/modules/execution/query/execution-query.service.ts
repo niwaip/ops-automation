@@ -94,8 +94,30 @@ export class ExecutionQueryService {
     const skip = (page - 1) * pageSize;
 
     const where: Record<string, unknown> = {};
+    const cleanId = dto.id?.trim().replace(/^#/, '');
+    if (cleanId) {
+      const isFullUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
+      if (isFullUuid) {
+        where.id = cleanId;
+      } else if (/^[0-9a-f-]+$/i.test(cleanId)) {
+        try {
+          const matching = await this.prisma.$queryRaw<{ id: string }[]>`
+            SELECT id FROM executions WHERE id::text ILIKE ${'%' + cleanId + '%'} LIMIT 100
+          `;
+          const ids = matching.map((r) => r.id);
+          where.id = { in: ids.length > 0 ? ids : ['00000000-0000-0000-0000-000000000000'] };
+        } catch {
+          // ignore fallback
+        }
+      }
+    }
+
     if (dto.status) {
-      where.status = dto.status;
+      const statuses = dto.status
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      where.status = statuses.length > 1 ? { in: statuses } : statuses[0];
     }
     if (dto.skillId) {
       where.skillId = dto.skillId;
