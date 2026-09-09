@@ -597,6 +597,9 @@ services:
       SCREEN_HEIGHT: 1080
       CODEGEN_API_PORT: ${CODEGEN_API_PORT:-3011}
     command: ['/start-recorder.sh']
+    volumes:
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/docker/scripts/entrypoint.sh:/entrypoint.sh
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/docker/scripts/start-recorder.sh:/start-recorder.sh
     healthcheck:
       test:
         [

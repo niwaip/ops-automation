@@ -246,31 +246,88 @@ export class RecorderStructureProbeService {
             (svgEl instanceof HTMLImageElement ? svgEl.alt : undefined)
           ) : undefined;
           const classAttr = getDataAttr(element, 'class') || '';
-          const style = window.getComputedStyle ? window.getComputedStyle(element) : null;
-          const isFloating = Boolean(
-            style && (
-              style.position === 'fixed' ||
-              (style.position === 'absolute' && (parseInt(style.zIndex, 10) > 10 || (style.bottom && style.bottom !== 'auto')))
-            )
+
+          const checkFloating = el => {
+            let cur = el;
+            while (cur && cur !== document.body && cur !== document.documentElement) {
+              const s = window.getComputedStyle ? window.getComputedStyle(cur) : null;
+              if (s) {
+                if (s.position === 'fixed') return true;
+                const z = parseInt(s.zIndex, 10);
+                if (s.position === 'absolute' && ((!isNaN(z) && z > 10) || (s.bottom && s.bottom !== 'auto'))) return true;
+              }
+              const cls = (cur.getAttribute && cur.getAttribute('class')) || '';
+              if (typeof cls === 'string' && (cls.includes('chat-widget') || cls.includes('floating'))) return true;
+              cur = cur.parentElement;
+            }
+            return false;
+          };
+          const isFloating = checkFloating(element);
+
+          const isChatTrigger = Boolean(
+            classAttr.includes('chat') ||
+            classAttr.includes('kefu') ||
+            (element.closest && element.closest('[class*="chat-widget"], [class*="chat-trigger"], [class*="floating"]'))
           );
-          const buttonText = toText(
-            getDataAttr(element, 'aria-label') ||
-            element.textContent ||
-            rawTitle ||
-            svgTitle ||
-            (isFloating ? (classAttr.includes('chat') || classAttr.includes('kefu') ? '在线客服' : '悬浮按钮') : '')
-          );
+
+          const elementTextContent = toText(element.textContent);
+          const isOnlyNumber = /^\d+$/.test(elementTextContent);
+          const iconAriaLabel = (() => {
+            const icon = element.querySelector ? element.querySelector('.anticon, [role="img"], [data-icon]') : null;
+            if (!icon) return undefined;
+            const dataIcon = getDataAttr(icon, 'data-icon');
+            const iconAria = getDataAttr(icon, 'aria-label');
+            if (iconAria && iconAria !== 'img') return iconAria;
+            if (dataIcon) {
+              const iconMap = {
+                bell: '消息通知',
+                'menu-fold': '折叠菜单',
+                'menu-unfold': '展开菜单',
+                close: '关闭',
+                setting: '设置',
+                user: '用户',
+              };
+              return iconMap[dataIcon] || dataIcon;
+            }
+            return undefined;
+          })();
+
+          let buttonText = getDataAttr(element, 'aria-label');
+          if (!buttonText && !isOnlyNumber && elementTextContent) {
+            buttonText = elementTextContent;
+          }
+          if (!buttonText && rawTitle) {
+            buttonText = rawTitle;
+          }
+          if (!buttonText && svgTitle) {
+            buttonText = svgTitle;
+          }
+          if (!buttonText && iconAriaLabel) {
+            buttonText = isOnlyNumber ? (iconAriaLabel + ' (' + elementTextContent + ')') : iconAriaLabel;
+          }
+          if (!buttonText && isChatTrigger) {
+            buttonText = '打开悬浮对话框';
+          } else if (!buttonText && isFloating) {
+            buttonText = '悬浮按钮';
+          } else if (!buttonText && isOnlyNumber) {
+            buttonText = elementTextContent;
+          }
+          buttonText = toText(buttonText);
+
+          const resolvedAction = getDatasetAttr(element, 'aiAction') || (isChatTrigger ? 'open-floating-chat' : undefined);
+          const resolvedTitle = rawTitle ? toText(rawTitle) : (svgTitle ? toText(svgTitle) : (isChatTrigger ? '打开悬浮对话框' : undefined));
+
           return {
             index,
             ref: getElementRef(element),
             tagName: element.tagName.toLowerCase(),
             text: buttonText,
-            title: rawTitle ? toText(rawTitle) : (svgTitle ? toText(svgTitle) : undefined),
+            title: resolvedTitle,
             isFloating,
             role: getDataAttr(element, 'role') || element.tagName.toLowerCase(),
             href: element instanceof HTMLAnchorElement ? element.href : undefined,
-            dataTestId: getDataAttr(element, 'data-testid') || getDataAttr(element, 'data-test-id'),
-            action: getDatasetAttr(element, 'aiAction'),
+            dataTestId: getDataAttr(element, 'data-testid') || getDataAttr(element, 'data-test-id') || (isChatTrigger ? 'floating-chat-trigger' : undefined),
+            action: resolvedAction,
             region: getDatasetAttr(element, 'aiRegion'),
             stableName: getDatasetAttr(element, 'aiStableName'),
             visible: true,

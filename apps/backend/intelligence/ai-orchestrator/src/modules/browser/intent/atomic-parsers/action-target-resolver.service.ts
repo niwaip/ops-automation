@@ -295,7 +295,13 @@ function scoreCandidate(
       textScore = Math.max(textScore, 120);
     } else if (rawTarget.includes(token) && token.length >= 3) {
       textScore = Math.max(textScore, 98);
+    } else if (isFloatingChatMatch(rawTarget, token)) {
+      textScore = Math.max(textScore, 125);
     }
+  }
+
+  if (hasFloatingChatActionSignals(candidate) && isFloatingChatTarget(rawTarget)) {
+    textScore = Math.max(textScore, 135);
   }
 
   score += textScore;
@@ -342,6 +348,7 @@ function scoreCandidate(
 function getCandidateTokens(candidate: ActionResolverCandidate): string[] {
   return [
     candidate.action,
+    candidate.dataTestId,
     candidate.stableName,
     candidate.label,
     candidate.text,
@@ -468,4 +475,42 @@ function hasStableLocator(candidate: ActionResolverCandidate): boolean {
 
 function getComparableCandidateText(candidate: ActionResolverCandidate): string {
   return normalizeText(candidate.text || candidate.label);
+}
+
+function isFloatingChatTarget(target: string): boolean {
+  if (!target) return false;
+  const t = target.toLowerCase();
+  return (
+    t.includes('悬浮') ||
+    t.includes('对话框') ||
+    t.includes('对话') ||
+    t.includes('聊天') ||
+    t.includes('chat') ||
+    t.includes('widget')
+  );
+}
+
+function isFloatingChatMatch(target: string, token: string): boolean {
+  if (!target || !token) return false;
+  const normTarget = target.replace(/^(?:打开|点击|查看|唤起|进入)/, '').trim();
+  const normToken = token.replace(/^(?:打开|点击|查看|唤起|进入)/, '').trim();
+  if (isFloatingChatTarget(normTarget) && isFloatingChatTarget(normToken)) {
+    return true;
+  }
+  return false;
+}
+
+function hasFloatingChatActionSignals(candidate: ActionResolverCandidate): boolean {
+  const action = (candidate.action || '').toLowerCase();
+  const testId = (candidate.dataTestId || '').toLowerCase();
+  const text = (candidate.text || '').toLowerCase();
+  const title = (candidate.title || '').toLowerCase();
+  return (
+    action.includes('chat') ||
+    action.includes('floating') ||
+    testId.includes('chat') ||
+    testId.includes('floating') ||
+    text.includes('悬浮对话框') ||
+    title.includes('悬浮对话框')
+  );
 }

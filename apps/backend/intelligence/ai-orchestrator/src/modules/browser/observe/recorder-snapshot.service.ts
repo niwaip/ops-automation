@@ -206,12 +206,18 @@ export class RecorderSnapshotService {
 
     const buttons = snapshotState.nodes
       .filter((node) => ACTION_ROLES.has(node.role))
-      .map((node, index) => ({
-        index,
-        ref: node.ref,
-        text: node.name || node.text || node.line,
-        role: node.role,
-      }));
+      .map((node, index) => {
+        const rawLine = node.line || '';
+        const isSyntaxMarkup = /\[(?:cursor=pointer|ref=|uid=)/i.test(rawLine);
+        const fallbackText = isSyntaxMarkup ? '' : rawLine;
+        return {
+          index,
+          ref: node.ref,
+          text: node.name || node.text || fallbackText,
+          role: node.role,
+        };
+      })
+      .filter((node) => Boolean(node.text));
 
     const headings = snapshotState.nodes
       .filter(

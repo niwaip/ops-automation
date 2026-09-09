@@ -99,4 +99,67 @@ describe('resolveActionIntentToLocator', () => {
       resolutionMode: 'preferred-locator',
     });
   });
+
+  it('resolves floating chat trigger button for "打开悬浮对话框" and "打开悬浮框"', () => {
+    const candidate = {
+      candidateId: 'action_chat',
+      kind: 'action' as const,
+      label: '打开悬浮对话框',
+      text: '打开悬浮对话框',
+      title: '打开悬浮对话框',
+      action: 'open-floating-chat',
+      dataTestId: 'floating-chat-trigger',
+      summary: 'candidateId=action_chat | kind=action | role=button | text=打开悬浮对话框',
+      role: 'button',
+      ref: 'e1257',
+      preferredLocator: {
+        type: 'css' as const,
+        value: '[data-testid="floating-chat-trigger"]',
+      },
+    };
+
+    const result1 = resolveActionIntentToLocator(
+      {
+        action: 'click',
+        rawTarget: '打开悬浮对话框',
+        roleHint: 'button',
+        source: 'action-parser',
+      },
+      {
+        availableCandidates: [candidate],
+      }
+    );
+
+    expect(result1).toEqual({
+      locator: {
+        type: 'css',
+        value: '[data-testid="floating-chat-trigger"]',
+      },
+      matchedCandidateId: 'action_chat',
+      confidence: expect.any(Number),
+      resolutionMode: 'preferred-locator',
+    });
+
+    const result2 = resolveActionIntentToLocator(
+      {
+        action: 'click',
+        rawTarget: '打开悬浮框',
+        roleHint: 'button',
+        source: 'action-parser',
+      },
+      {
+        availableCandidates: [candidate],
+      }
+    );
+
+    expect(result2).toEqual({
+      locator: {
+        type: 'css',
+        value: '[data-testid="floating-chat-trigger"]',
+      },
+      matchedCandidateId: 'action_chat',
+      confidence: expect.any(Number),
+      resolutionMode: 'preferred-locator',
+    });
+  });
 });

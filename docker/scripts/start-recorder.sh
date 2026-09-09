@@ -82,6 +82,7 @@ trap cleanup SIGTERM SIGINT
 
 if [ "$HEADLESS" != "true" ]; then
     echo "[1/5] Starting Xvfb on display :${DISPLAY_NUM}..."
+    rm -f /tmp/.X${DISPLAY_NUM}-lock /tmp/.X11-unix/X${DISPLAY_NUM}
     Xvfb :${DISPLAY_NUM} -screen 0 ${SCREEN_WIDTH}x${SCREEN_HEIGHT}x${SCREEN_DEPTH} \
         -ac +extension GLX +render -noreset &
     XVFB_PID=$!
@@ -124,6 +125,19 @@ fi
 INTERNAL_CDP_PORT=$((CHROME_DEBUG_PORT + 1))
 mkdir -p "${CHROME_PROFILE_PATH}"
 
+# Ensure managed policy disables save password prompts
+if mkdir -p /etc/chromium/policies/managed /etc/opt/chrome/policies/managed 2>/dev/null; then
+    cat << 'EOF' > /etc/chromium/policies/managed/no-password-management.json
+{
+  "PasswordManagerEnabled": false,
+  "AutoFillEnabled": false,
+  "AutofillAddressEnabled": false,
+  "AutofillCreditCardEnabled": false
+}
+EOF
+    cp /etc/chromium/policies/managed/no-password-management.json /etc/opt/chrome/policies/managed/no-password-management.json 2>/dev/null || true
+fi
+
 CHROME_COMMON_ARGS=(
     --no-sandbox
     --disable-dev-shm-usage
@@ -140,6 +154,7 @@ CHROME_COMMON_ARGS=(
     --safebrowsing-disable-download-protection
     --disable-features=TranslateUI,VizDisplayCompositor,HttpsUpgrades,HTTPS-FirstBalancedModeAutoEnable,HTTPS-FirstModeV2ForEngagedSites
     --disable-ipc-flooding-protection
+    --password-store=basic
     --remote-debugging-port=${INTERNAL_CDP_PORT}
     --remote-allow-origins=*
     --no-first-run
