@@ -148,18 +148,24 @@ export class BrowserCommandLoginService {
         selector: '用户名',
         description: '填写用户名',
         terms: effectiveProfile.usernameTerms,
+        otherTerms: [...effectiveProfile.passwordTerms, ...effectiveProfile.otpTerms],
+        submitTerms: [...effectiveProfile.submitIntentTerms, ...effectiveProfile.submitLabels],
       }),
       this.extractCredentialField(normalizedInput, {
         fieldKey: 'password',
         selector: '密码',
         description: '填写密码',
         terms: effectiveProfile.passwordTerms,
+        otherTerms: [...effectiveProfile.usernameTerms, ...effectiveProfile.otpTerms],
+        submitTerms: [...effectiveProfile.submitIntentTerms, ...effectiveProfile.submitLabels],
       }),
       this.extractCredentialField(normalizedInput, {
         fieldKey: 'otp',
         selector: '验证码',
         description: '填写验证码',
         terms: effectiveProfile.otpTerms,
+        otherTerms: [...effectiveProfile.usernameTerms, ...effectiveProfile.passwordTerms],
+        submitTerms: [...effectiveProfile.submitIntentTerms, ...effectiveProfile.submitLabels],
       }),
     ].filter((item): item is ExtractedCredentialField => Boolean(item));
 
@@ -379,6 +385,8 @@ export class BrowserCommandLoginService {
       selector: string;
       description: string;
       terms: string[];
+      otherTerms?: string[];
+      submitTerms?: string[];
     }
   ): ExtractedCredentialField | null {
     const pattern = this.buildCredentialFieldPattern(config.terms);
@@ -387,14 +395,24 @@ export class BrowserCommandLoginService {
     }
 
     const match = input.match(pattern);
-    const value = match?.[1]?.trim();
-    if (value) {
-      return {
-        fieldKey: config.fieldKey,
-        selector: config.selector,
-        value,
-        description: config.description,
-      };
+    const rawValue = match?.[1] || match?.[2];
+    if (rawValue) {
+      const isQuoted = Boolean(match?.[1]);
+      const value = isQuoted
+        ? rawValue.trim()
+        : this.cleanExtractedCredentialValue(rawValue, {
+            otherTerms: config.otherTerms,
+            submitTerms: config.submitTerms,
+          });
+
+      if (value) {
+        return {
+          fieldKey: config.fieldKey,
+          selector: config.selector,
+          value,
+          description: config.description,
+        };
+      }
     }
 
     return null;
@@ -407,9 +425,84 @@ export class BrowserCommandLoginService {
     }
 
     return new RegExp(
-      `(?:${alternation})\\s*(?:是|为|:|=)?\\s*([^\\s，。,；;]+)`,
+      `(?:${alternation})\\s*(?:是|为|:|=)?\\s*(?:["'“‘]([^"'”’]+)["'”’]|([^\\s，。,；;]+))`,
       'i'
     );
+  }
+
+  private cleanExtractedCredentialValue(
+    rawValue: string,
+    options?: {
+      otherTerms?: string[];
+      submitTerms?: string[];
+    }
+  ): string {
+    let value = rawValue.trim();
+
+    // 1. If wrapped in matching quotes, extract inner value literally
+    const quotedMatch = value.match(/^["'“‘](.+?)["'”’]$/);
+    if (quotedMatch && quotedMatch[1]) {
+      return quotedMatch[1].trim();
+    }
+    value = value.replace(/^["'“‘]+|["'”’]+$/g, '');
+
+    // 2. If another field keyword was appended without whitespace (e.g. "admin密码admin123")
+    if (options?.otherTerms?.length) {
+      const otherAlternation = this.buildTermAlternation(options.otherTerms);
+      if (otherAlternation) {
+        const nextFieldMatch = value.match(new RegExp(`^(.*?)(?:${otherAlternation})(?:.*)$`, 'i'));
+        if (nextFieldMatch && nextFieldMatch[1] && nextFieldMatch[1].trim().length > 0) {
+          value = nextFieldMatch[1].trim();
+        }
+      }
+    }
+
+    // 3. If submit/action keywords were directly attached to the value (e.g. "admin123登录", "admin123点击登录", "admin123进入")
+    const defaultChineseSubmitTerms = ['登录', '登入', '提交', '进入系统', '进入'];
+    const defaultEnglishSubmitTerms = ['submit', 'login', 'signin', 'log in', 'sign in', 'log on'];
+    const customSubmitTerms = options?.submitTerms || [];
+
+    const chineseSubmitTerms = Array.from(
+      new Set([
+        ...customSubmitTerms.filter((t) => /[\u4e00-\u9fa5]/.test(t)),
+        ...defaultChineseSubmitTerms,
+      ])
+    );
+    const englishSubmitTerms = Array.from(
+      new Set([
+        ...customSubmitTerms.filter((t) => !/[\u4e00-\u9fa5]/.test(t)),
+        ...defaultEnglishSubmitTerms,
+      ])
+    );
+
+    const chineseAlternation = this.buildTermAlternation(chineseSubmitTerms);
+    if (chineseAlternation) {
+      const chineseActionPattern = new RegExp(
+        `(?:(?:点击|单击|按|并|然后|接着|再|直接|确认|立即)\\s*)?(?:${chineseAlternation})$`,
+        'i'
+      );
+      const actionMatch = value.match(chineseActionPattern);
+      if (actionMatch && actionMatch.index !== undefined && actionMatch.index > 0) {
+        value = value.substring(0, actionMatch.index).trim();
+      }
+    }
+
+    const englishAlternation = this.buildTermAlternation(englishSubmitTerms);
+    if (englishAlternation) {
+      const englishActionPattern = new RegExp(
+        `(?<=\\d|[\\W_])(?:(?:click\\s*)?(?:${englishAlternation}))$`,
+        'i'
+      );
+      const actionMatch = value.match(englishActionPattern);
+      if (actionMatch && actionMatch.index !== undefined && actionMatch.index > 0) {
+        value = value.substring(0, actionMatch.index).trim();
+      }
+    }
+
+    // Strip trailing connectors like "并", "然后" if left at the end
+    value = value.replace(/(?:并|然后|接着|再)$/, '').trim();
+
+    return value;
   }
 
   private extractLoginSubmitTarget(input: string, profile: LoginProfile): string | undefined {
