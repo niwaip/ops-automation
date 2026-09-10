@@ -140,7 +140,7 @@ export class BuiltinActivityRegistry {
       fn: FIXED_STRUCTURED_TRANSFORM_ACTIVITY_FN,
       timeout: '90s',
       retryPolicy: { maxRetries: 2, backoffMs: 1000 },
-      handler: 'api',
+      handler: 'script',
       config: {
         supportedContentTypes: ['text', 'html', 'json'],
         supportedOutputModes: ['json', 'text'],
@@ -520,7 +520,7 @@ export class BuiltinActivityRegistry {
       fn: FIXED_CSV_PARSE_ACTIVITY_FN,
       timeout: '120s',
       retryPolicy: { maxRetries: 1, backoffMs: 1000 },
-      handler: 'api',
+      handler: 'script',
       config: {
         stepConfigKey: CSV_PARSE_STEP_CONFIG_KEY,
         defaultStepConfig: {
@@ -571,7 +571,7 @@ export class BuiltinActivityRegistry {
       fn: FIXED_JSON_TRANSFORM_ACTIVITY_FN,
       timeout: '30s',
       retryPolicy: { maxRetries: 1, backoffMs: 500 },
-      handler: 'api',
+      handler: 'script',
       config: {
         stepConfigKey: JSON_TRANSFORM_STEP_CONFIG_KEY,
         defaultStepConfig: {
@@ -615,7 +615,7 @@ export class BuiltinActivityRegistry {
       fn: FIXED_TEMPLATE_RENDER_ACTIVITY_FN,
       timeout: '30s',
       retryPolicy: { maxRetries: 1, backoffMs: 500 },
-      handler: 'api',
+      handler: 'script',
       config: {
         stepConfigKey: TEMPLATE_RENDER_STEP_CONFIG_KEY,
         defaultStepConfig: {
@@ -792,7 +792,7 @@ export class BuiltinActivityRegistry {
       fn: FIXED_WAIT_DELAY_ACTIVITY_FN,
       timeout: '86400s',
       retryPolicy: { maxRetries: 0 },
-      handler: 'api',
+      handler: 'script',
       config: {
         stepConfigKey: WAIT_DELAY_STEP_CONFIG_KEY,
         defaultStepConfig: {

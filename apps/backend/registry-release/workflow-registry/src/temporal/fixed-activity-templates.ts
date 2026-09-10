@@ -1056,34 +1056,60 @@ async def fileRead(input_data: Dict[str, Any]) -> Dict[str, Any]:
         bucket = str(input_data.get("bucket") or "").strip()
         if not bucket:
             raise ApplicationError("bucket 是必需的参数", non_retryable=True)
-        if protocol in ("s3", "minio"):
-            try:
-                import boto3
-            except ImportError:
-                raise ApplicationError(f"Protocol '{protocol}' requires 'boto3' library", non_retryable=True)
+        try:
+            import boto3
+        except ImportError:
+            raise ApplicationError(f"Protocol '{protocol}' requires 'boto3' library", non_retryable=True)
+        
+        endpoint_url = (
+            input_data.get("endpointUrl")
+            or os.getenv("S3_ENDPOINT_URL")
+            or (os.getenv("OSS_ENDPOINT_URL") if protocol == "oss" else None)
+        )
+        client_kwargs = {}
+        if endpoint_url:
+            client_kwargs["endpoint_url"] = str(endpoint_url).strip()
+        region = (
+            input_data.get("region")
+            or os.getenv("AWS_REGION")
+            or (os.getenv("OSS_REGION") if protocol == "oss" else None)
+        )
+        if region:
+            client_kwargs["region_name"] = str(region).strip()
+        access_key = (
+            input_data.get("accessKeyId")
+            or os.getenv("AWS_ACCESS_KEY_ID")
+            or (os.getenv("OSS_ACCESS_KEY_ID") if protocol == "oss" else None)
+        )
+        secret_key = (
+            input_data.get("secretAccessKey")
+            or os.getenv("AWS_SECRET_ACCESS_KEY")
+            or (os.getenv("OSS_ACCESS_KEY_SECRET") if protocol == "oss" else None)
+        )
+        if access_key and secret_key:
+            client_kwargs["aws_access_key_id"] = str(access_key).strip()
+            client_kwargs["aws_secret_access_key"] = str(secret_key).strip()
             
-            s3_client = boto3.client("s3")
-            try:
-                response = s3_client.get_object(Bucket=bucket, Key=path)
-                size = response.get("ContentLength", 0)
-                if size > max_size_kb * 1024:
-                    raise ApplicationError(f"S3 文件大小 ({size} bytes) 超过最大限制 ({max_size_kb} KB)", non_retryable=True)
-                raw_bytes = response["Body"].read()
-                if return_mode == "base64":
-                    import base64
-                    content = base64.b64encode(raw_bytes).decode("utf-8")
+        s3_client = boto3.client("s3", **client_kwargs)
+        try:
+            response = s3_client.get_object(Bucket=bucket, Key=path)
+            size = response.get("ContentLength", 0)
+            if size > max_size_kb * 1024:
+                raise ApplicationError(f"对象存储文件大小 ({size} bytes) 超过最大限制 ({max_size_kb} KB)", non_retryable=True)
+            raw_bytes = response["Body"].read()
+            if return_mode == "base64":
+                import base64
+                content = base64.b64encode(raw_bytes).decode("utf-8")
+            else:
+                text_content = raw_bytes.decode(encoding, errors="replace")
+                if return_mode == "lines":
+                    content = text_content.splitlines()
+                elif return_mode == "json":
+                    content = json.loads(text_content)
                 else:
-                    text_content = raw_bytes.decode(encoding, errors="replace")
-                    if return_mode == "lines":
-                        content = text_content.splitlines()
-                    elif return_mode == "json":
-                        content = json.loads(text_content)
-                    else:
-                        content = text_content
-            except Exception as exc:
-                raise ApplicationError(f"读取 S3 文件失败: {str(exc)}", non_retryable=False)
-        elif protocol == "oss":
-            raise ApplicationError("OSS 协议未配置，请使用 local 或 s3 存储", non_retryable=True)
+                    content = text_content
+        except Exception as exc:
+            raise ApplicationError(f"读取对象存储文件失败: {str(exc)}", non_retryable=False)
     else:
         raise ApplicationError(f"不支持的协议: {protocol}", non_retryable=True)
         
@@ -1162,23 +1188,56 @@ async def fileWrite(input_data: Dict[str, Any]) -> Dict[str, Any]:
             os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
         with open(path, "wb") as f:
             f.write(bytes_content)
-    elif protocol in ("s3", "minio"):
+    elif protocol in ("s3", "oss", "minio"):
         bucket = str(input_data.get("bucket") or "").strip()
         if not bucket:
             raise ApplicationError("bucket 是必需的参数", non_retryable=True)
         try:
             import boto3
-            s3_client = boto3.client("s3")
+        except ImportError:
+            raise ApplicationError(f"Protocol '{protocol}' requires 'boto3' library", non_retryable=True)
+            
+        endpoint_url = (
+            input_data.get("endpointUrl")
+            or os.getenv("S3_ENDPOINT_URL")
+            or (os.getenv("OSS_ENDPOINT_URL") if protocol == "oss" else None)
+        )
+        client_kwargs = {}
+        if endpoint_url:
+            client_kwargs["endpoint_url"] = str(endpoint_url).strip()
+        region = (
+            input_data.get("region")
+            or os.getenv("AWS_REGION")
+            or (os.getenv("OSS_REGION") if protocol == "oss" else None)
+        )
+        if region:
+            client_kwargs["region_name"] = str(region).strip()
+        access_key = (
+            input_data.get("accessKeyId")
+            or os.getenv("AWS_ACCESS_KEY_ID")
+            or (os.getenv("OSS_ACCESS_KEY_ID") if protocol == "oss" else None)
+        )
+        secret_key = (
+            input_data.get("secretAccessKey")
+            or os.getenv("AWS_SECRET_ACCESS_KEY")
+            or (os.getenv("OSS_ACCESS_KEY_SECRET") if protocol == "oss" else None)
+        )
+        if access_key and secret_key:
+            client_kwargs["aws_access_key_id"] = str(access_key).strip()
+            client_kwargs["aws_secret_access_key"] = str(secret_key).strip()
+            
+        s3_client = boto3.client("s3", **client_kwargs)
+        try:
             if not overwrite:
                 try:
                     s3_client.head_object(Bucket=bucket, Key=path)
-                    raise ApplicationError(f"S3文件已存在且不允许覆盖: {path}", non_retryable=True)
+                    raise ApplicationError(f"对象存储文件已存在且不允许覆盖: {path}", non_retryable=True)
                 except s3_client.exceptions.ClientError as e:
                     if e.response["Error"]["Code"] != "404":
                         raise
             s3_client.put_object(Bucket=bucket, Key=path, Body=bytes_content)
         except Exception as exc:
-            raise ApplicationError(f"写入 S3 失败: {str(exc)}", non_retryable=False)
+            raise ApplicationError(f"写入对象存储失败: {str(exc)}", non_retryable=False)
     else:
         raise ApplicationError(f"不支持的协议: {protocol}", non_retryable=True)
         
@@ -1696,7 +1755,29 @@ async def databaseQuery(input_data: Dict[str, Any]) -> Dict[str, Any]:
             cur.close()
             conn.close()
         elif db_type == "mysql":
-            raise ApplicationError("MySQL support is not fully configured", non_retryable=True)
+            try:
+                import pymysql
+                from pymysql.cursors import DictCursor
+                from urllib.parse import urlparse, unquote
+            except ImportError:
+                raise ApplicationError("MySQL 查询需要 'pymysql' 库", non_retryable=True)
+                
+            parsed = urlparse(conn_url)
+            conn = pymysql.connect(
+                host=parsed.hostname or "localhost",
+                port=parsed.port or 3306,
+                user=unquote(parsed.username or "") if parsed.username else None,
+                password=unquote(parsed.password or "") if parsed.password else None,
+                database=parsed.path.lstrip("/") if parsed.path else None,
+                cursorclass=DictCursor,
+                charset="utf8mb4",
+                connect_timeout=10,
+            )
+            cur = conn.cursor()
+            cur.execute(sql, params)
+            rows = cur.fetchmany(max_rows)
+            cur.close()
+            conn.close()
         elif db_type == "sqlite":
             import sqlite3
             db_path = conn_url.replace("sqlite://", "")
