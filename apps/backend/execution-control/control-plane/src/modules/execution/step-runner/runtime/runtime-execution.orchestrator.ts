@@ -1,6 +1,9 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { RuntimeAdapterRegistry } from '../../adapters/runtime-adapter.registry';
-import { RuntimeCredentialResolverService } from '../../credentials/runtime-credential-resolver.service';
+import {
+  RuntimeCredentialResolverService,
+  isMaskedPlaceholder,
+} from '../../credentials/runtime-credential-resolver.service';
 import {
   RuntimePhaseArtifact,
   RuntimePhaseInvokeRequest,
@@ -152,7 +155,10 @@ export class RuntimeExecutionOrchestrator {
         continue;
       }
 
-      const runtimeStep = await this.resolveRuntimeCredentials(step);
+      const runtimeStep = await this.resolveRuntimeCredentials(step, {
+        ...(metadataInput || {}),
+        ...phaseVariables,
+      });
       const adapter = this.runtimeAdapterRegistry.resolve(runtimeStep);
       const runtimeSessionId = runtimeStep.runtimeSessionId || undefined;
       const adapterRouteKey =
@@ -216,24 +222,186 @@ export class RuntimeExecutionOrchestrator {
   }
 
   private async resolveRuntimeCredentials(
-    request: RuntimeStepInvokeRequest
+    request: RuntimeStepInvokeRequest,
+    contextVariables?: Record<string, unknown>
   ): Promise<RuntimeStepInvokeRequest> {
-    const userId = request.traceContext?.userId;
-    if (!this.credentialResolver || !userId) {
-      return request;
+    const userId =
+      request.traceContext?.userId ||
+      (typeof contextVariables?.userId === 'string' ? contextVariables.userId : undefined);
+    const skillId = request.publishedSkillId || request.skillId || undefined;
+    let resolvedInput: Record<string, unknown> = { ...(request.input || {}) };
+    let resolvedCredentials: Record<string, unknown> = {};
+
+    if (this.credentialResolver && userId) {
+      const combinedInputForCreds: Record<string, unknown> = {
+        ...(contextVariables || {}),
+        ...resolvedInput,
+      };
+      resolvedCredentials = await this.credentialResolver.resolveInputForRuntime(
+        userId,
+        skillId || undefined,
+        combinedInputForCreds
+      );
+      for (const [k, v] of Object.entries(resolvedCredentials)) {
+        const existingVal = resolvedInput[k];
+        if (
+          existingVal === undefined ||
+          existingVal === null ||
+          (typeof existingVal === 'string' && isMaskedPlaceholder(existingVal))
+        ) {
+          resolvedInput[k] = v;
+        }
+      }
     }
 
-    const skillId = request.publishedSkillId || request.skillId || undefined;
-    const resolvedInput = await this.credentialResolver.resolveInputForRuntime(
-      userId,
-      skillId || undefined,
-      request.input
-    );
+    const variableMap: Record<string, unknown> = {
+      ...(contextVariables || {}),
+      ...resolvedCredentials,
+      ...resolvedInput,
+    };
+
+    resolvedInput = this.injectResolvedCredentialsDeep(resolvedInput, variableMap);
+    this.assertNoMaskedOrUnresolvedSecrets(resolvedInput, request);
 
     return {
       ...request,
       input: resolvedInput,
     };
+  }
+
+  private isSensitiveKey(name: string): boolean {
+    const lower = name.toLowerCase();
+    return (
+      lower.includes('devicekey') ||
+      lower.includes('device_key') ||
+      lower.includes('password') ||
+      lower.includes('passwd') ||
+      lower.includes('secret') ||
+      lower.includes('apikey') ||
+      lower.includes('api_key') ||
+      lower.includes('auth_token') ||
+      lower.includes('credential') ||
+      lower.includes('token')
+    );
+  }
+
+  private injectResolvedCredentialsDeep(
+    input: Record<string, unknown>,
+    variableMap: Record<string, unknown>
+  ): Record<string, unknown> {
+    const resolveString = (
+      val: string,
+      keyName?: string,
+      parentObj?: Record<string, unknown>
+    ): string => {
+      let result = val;
+      result = [
+        /\$\{\s*([^}]+?)\s*\}/g,
+        /\{\{\s*([^}]+?)\s*\}\}/g,
+      ].reduce((current, pattern) => {
+        return current.replace(pattern, (match, varName) => {
+          const trimmed = String(varName).trim();
+          const repl = variableMap[trimmed];
+          if (repl !== undefined && repl !== null && !isMaskedPlaceholder(String(repl))) {
+            return String(repl);
+          }
+          return match;
+        });
+      }, result);
+
+      if (isMaskedPlaceholder(result)) {
+        if (
+          keyName &&
+          variableMap[keyName] &&
+          !isMaskedPlaceholder(String(variableMap[keyName]))
+        ) {
+          return String(variableMap[keyName]);
+        }
+        const selector =
+          typeof parentObj?.selector === 'string' ? parentObj.selector.toLowerCase() : '';
+        const isPasswordSelector =
+          selector.includes('pass') ||
+          selector.includes('密') ||
+          selector.includes('credential') ||
+          selector.includes('secret');
+        if (isPasswordSelector || (keyName && this.isSensitiveKey(keyName))) {
+          for (const [k, v] of Object.entries(variableMap)) {
+            if (
+              this.isSensitiveKey(k) &&
+              typeof v === 'string' &&
+              !isMaskedPlaceholder(v) &&
+              v.trim().length > 0
+            ) {
+              return v;
+            }
+          }
+        }
+      }
+
+      return result;
+    };
+
+    const processValue = (
+      val: unknown,
+      keyName?: string,
+      parent?: Record<string, unknown>
+    ): unknown => {
+      if (typeof val === 'string') {
+        return resolveString(val, keyName, parent);
+      }
+      if (Array.isArray(val)) {
+        return val.map((item) => processValue(item, keyName, parent));
+      }
+      if (val && typeof val === 'object' && val !== null) {
+        const obj = val as Record<string, unknown>;
+        const newObj: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(obj)) {
+          newObj[k] = processValue(v, k, obj);
+        }
+        return newObj;
+      }
+      return val;
+    };
+
+    return processValue(input) as Record<string, unknown>;
+  }
+
+  private assertNoMaskedOrUnresolvedSecrets(
+    input: Record<string, unknown>,
+    request: RuntimeStepInvokeRequest
+  ): void {
+    const checkValue = (val: unknown, keyPath: string): void => {
+      if (typeof val === 'string') {
+        if (isMaskedPlaceholder(val)) {
+          throw new Error(
+            `Runtime credential for parameter at [${keyPath}] in step [${request.stepId}] is masked; bind an active credential before execution`
+          );
+        }
+        if (/\$\{(logincredential|password|secret|devicekey|apikey|token)[^}]*\}/i.test(val)) {
+          throw new Error(
+            `Missing runtime credential for parameter at [${keyPath}] in step [${request.stepId}]; please bind credential before execution`
+          );
+        }
+      } else if (Array.isArray(val)) {
+        val.forEach((item, index) => checkValue(item, `${keyPath}[${index}]`));
+      } else if (val && typeof val === 'object' && val !== null) {
+        for (const [k, v] of Object.entries(val as Record<string, unknown>)) {
+          checkValue(v, keyPath ? `${keyPath}.${k}` : k);
+        }
+      }
+    };
+
+    if (input.args && typeof input.args === 'object') {
+      const args = input.args as Record<string, unknown>;
+      if (args.text !== undefined) checkValue(args.text, 'args.text');
+      if (args.value !== undefined) checkValue(args.value, 'args.value');
+    }
+
+    for (const [k, v] of Object.entries(input)) {
+      if (this.isSensitiveKey(k)) {
+        checkValue(v, k);
+      }
+    }
   }
 
   private buildPhaseOutput(

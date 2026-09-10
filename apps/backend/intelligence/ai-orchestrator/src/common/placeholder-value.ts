@@ -53,5 +53,15 @@ export function isPlaceholderTextValue(value: string): boolean {
     return true;
   }
 
+  if (
+    /^[\u2022\u25cf*•]+$/.test(normalized) ||
+    normalized === '[redacted]' ||
+    normalized === 'redacted' ||
+    normalized === '[masked]' ||
+    normalized === 'masked'
+  ) {
+    return true;
+  }
+
   return PLACEHOLDER_TEXT_VALUES.has(normalized);
 }

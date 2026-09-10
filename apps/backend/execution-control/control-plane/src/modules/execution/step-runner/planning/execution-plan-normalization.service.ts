@@ -12,6 +12,7 @@ import {
   BrowserLoopWorkflowPlanLike,
   partitionBrowserTemplateStepsForLoopWorkflow,
 } from '../browser/browser-loop-workflow-plan.builder';
+import { isMaskedPlaceholder } from '../../credentials/runtime-credential-resolver.service';
 
 interface SkillSchemaPropertyLike {
   type?: string;
@@ -1394,9 +1395,16 @@ export class ExecutionPlanNormalizationService {
     resolvedInput: Record<string, unknown>
   ): unknown {
     if (typeof value === 'string') {
-      const resolvePlaceholder = (rawKey: string): string => {
-        const resolved = resolvedInput[rawKey.trim()];
-        return resolved === undefined || resolved === null ? '' : String(resolved);
+      const resolvePlaceholder = (match: string, rawKey: string): string => {
+        const key = rawKey.trim();
+        const resolved = resolvedInput[key];
+        if (resolved === undefined || resolved === null) {
+          return match;
+        }
+        if (typeof resolved === 'string' && isMaskedPlaceholder(resolved)) {
+          return match;
+        }
+        return String(resolved);
       };
 
       return [
@@ -1405,7 +1413,7 @@ export class ExecutionPlanNormalizationService {
         /\{([A-Za-z0-9_.\[\]-]+)\}/g,
       ].reduce(
         (current, pattern) =>
-          current.replace(pattern, (_match, key) => resolvePlaceholder(String(key))),
+          current.replace(pattern, (match, key) => resolvePlaceholder(match, String(key))),
         value
       );
     }

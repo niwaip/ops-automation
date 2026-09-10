@@ -208,13 +208,8 @@ export class RuntimeCredentialResolverService {
     );
   }
 
-  private isMaskedPlaceholder(value: string): boolean {
-    const normalized = value.trim();
-    return (
-      normalized === '••••••••' ||
-      normalized === '[redacted]' ||
-      normalized === '********'
-    );
+  isMaskedPlaceholder(value: string): boolean {
+    return isMaskedPlaceholder(value);
   }
 
   private async getDecryptedCredentialPayload(
@@ -271,3 +266,18 @@ export class RuntimeCredentialResolverService {
     return createHash('sha256').update(process.env.JWT_SECRET || 'ops_dev_credential_vault_secret_2026').digest();
   }
 }
+
+export function isMaskedPlaceholder(value: string): boolean {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return (
+    /^[\u2022\u25cf*•]+$/.test(normalized) ||
+    normalized === '[redacted]' ||
+    normalized === 'redacted' ||
+    normalized === '[masked]' ||
+    normalized === 'masked'
+  );
+}
+
