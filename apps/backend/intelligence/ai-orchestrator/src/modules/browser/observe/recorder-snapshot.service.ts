@@ -40,8 +40,23 @@ export class RecorderSnapshotService {
       return command;
     }
 
+    if (
+      command.locator?.strategy === 'css' ||
+      command.locator?.strategy === 'testid' ||
+      command.locator?.strategy === 'ref' ||
+      command.locator?.generatedBy === 'candidate-first'
+    ) {
+      return command;
+    }
+
     const targetCandidate = this.extractCommandTargetCandidate(command);
-    if (!targetCandidate || /^e\d+$/i.test(targetCandidate) || /^\d+_\d+$/.test(targetCandidate)) {
+    if (
+      !targetCandidate ||
+      /^e\d+$/i.test(targetCandidate) ||
+      /^\d+_\d+$/.test(targetCandidate) ||
+      /^(\[|\.|\#|[a-z0-9_-]+\[)/i.test(targetCandidate) ||
+      targetCandidate.includes(':has')
+    ) {
       return command;
     }
 

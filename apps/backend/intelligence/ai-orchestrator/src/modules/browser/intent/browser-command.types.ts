@@ -84,6 +84,10 @@ export interface BrowserCommandCandidate {
     name?: string;
     type?: string;
   };
+  container?: {
+    type: string;
+    name?: string;
+  };
   preferredLocator?: BrowserCommandCandidateLocator;
 }
 
@@ -99,6 +103,11 @@ export interface BrowserCommandContext {
   availableInputs?: string[];
   availableButtons?: string[];
   availableCandidates?: BrowserCommandCandidate[];
+  activeContainer?: {
+    type: string;
+    name?: string;
+    title?: string;
+  };
   controlHints?: string[];
   lastFailureContext?: BrowserCommandFailureContext;
 }

@@ -57,6 +57,7 @@ export interface RecorderDebugObservation {
   reuseEligibility?: 'fresh' | 'stale' | 'reobserve-required';
   staleReason?: string;
   capturedAt?: string;
+  activeContainer?: RecorderActiveContainerInfo;
   page?: RecorderObservationPageState;
   textState?: RecorderObservationTextState;
   interactiveState?: RecorderObservationInteractiveState;
@@ -440,6 +441,7 @@ export interface RecorderDebugSession {
   browserInitialized: boolean;
   currentPageUrl?: string;
   lastObservation?: RecorderDebugObservation;
+  activeContainer?: RecorderActiveContainerInfo;
   loopDraft?: RecorderLoopDraft;
   pendingLoopCaptureStartCommandIndex?: number;
   manualInterventions?: RecorderManualInterventionRecord[];
@@ -516,3 +518,11 @@ export interface RecorderDebugChatResponse {
   loopDraft?: RecorderLoopDraft;
   loopState?: RecorderLoopRuntimeStateLike;
 }
+
+export interface RecorderActiveContainerInfo {
+  type: 'floating-chat' | 'modal' | 'drawer' | 'dialog';
+  name?: string;
+  title?: string;
+  selector?: string;
+}
+

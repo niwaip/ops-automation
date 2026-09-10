@@ -19,6 +19,10 @@ export interface ActionResolverCandidate {
   action?: string;
   field?: string;
   stableName?: string;
+  container?: {
+    type: string;
+    name?: string;
+  };
   row?: {
     index?: number;
     key?: string;
@@ -36,6 +40,11 @@ export interface ActionTargetResolverContext {
   availableButtons?: string[];
   lastObservationText?: string;
   currentPageUrl?: string;
+  activeContainer?: {
+    type: string;
+    name?: string;
+    title?: string;
+  };
 }
 
 export interface ResolvedActionTarget {
@@ -56,12 +65,13 @@ export function resolveActionIntentToLocator(
     (candidate) => candidate.kind === 'action'
   );
 
-  const candidateMatch = resolveFromCandidates(intent, candidates);
+  const candidateMatch = resolveFromCandidates(intent, candidates, context);
   if (candidateMatch) {
     return candidateMatch;
   }
 
-  const fallbackTarget = normalizeOptionalText(intent.rawTarget);
+  const decomposed = decomposeTargetScope(intent.rawTarget);
+  const fallbackTarget = normalizeOptionalText(decomposed.innerTarget || intent.rawTarget);
   if (!isClearTextFallback(fallbackTarget)) {
     return null;
   }
@@ -78,7 +88,8 @@ export function resolveActionIntentToLocator(
 
 function resolveFromCandidates(
   intent: PendingActionIntent,
-  candidates: ActionResolverCandidate[]
+  candidates: ActionResolverCandidate[],
+  context?: ActionTargetResolverContext
 ): ResolvedActionTarget | null {
   if (candidates.length === 0) {
     return null;
@@ -97,7 +108,7 @@ function resolveFromCandidates(
   const scored = candidates
     .map((candidate) => ({
       candidate,
-      score: scoreCandidate(candidate, intent, candidates.length),
+      score: scoreCandidate(candidate, intent, candidates.length, context),
     }))
     .filter((item) => item.score > 0)
     .sort((left, right) => right.score - left.score);
@@ -232,20 +243,94 @@ function normalizePreferredLocator(
   return undefined;
 }
 
+export interface DecomposedTargetScope {
+  containerHint?: {
+    type: string;
+    name: string;
+  };
+  innerTarget: string;
+}
+
+export function decomposeTargetScope(rawTarget?: string): DecomposedTargetScope {
+  if (!rawTarget) {
+    return { innerTarget: '' };
+  }
+  const trimmed = rawTarget.trim();
+
+  const match = /^(?:在|点击|选择|切换到)?\s*(聊天框|悬浮框|悬浮对话框|对话框|浮窗|浮层|弹窗|模态框|抽屉|抽屉面板)\s*(?:里|内|中|的|上|里的|内的)?\s*(.+)$/i.exec(
+    trimmed
+  );
+
+  if (match && match[1] && match[2]) {
+    const containerWord = match[1].toLowerCase();
+    const remaining = match[2].trim();
+    if (remaining.length > 0) {
+      let containerType = 'modal';
+      if (/chat|聊天|悬浮|浮窗|浮层/.test(containerWord)) {
+        containerType = 'floating-chat';
+      } else if (/抽屉|drawer/.test(containerWord)) {
+        containerType = 'drawer';
+      }
+      return {
+        containerHint: {
+          type: containerType,
+          name: match[1],
+        },
+        innerTarget: remaining,
+      };
+    }
+  }
+
+  return { innerTarget: trimmed };
+}
+
 function scoreCandidate(
   candidate: ActionResolverCandidate,
   intent: PendingActionIntent,
-  candidateCount: number
+  candidateCount: number,
+  context?: ActionTargetResolverContext
 ): number {
   let score = 0;
   let textScore = 0;
 
-  const rawTarget = normalizeText(intent.rawTarget);
+  const decomposed = decomposeTargetScope(intent.rawTarget);
+  const effectiveRaw = decomposed.innerTarget || intent.rawTarget;
+  const rawTarget = normalizeText(effectiveRaw);
   const regionHint = normalizeText(intent.regionHint);
   const rowKey = normalizeText(intent.rowHint?.key);
   const rowText = normalizeText(intent.rowHint?.text);
   const role = normalizeText(candidate.role);
   const tokens = getCandidateTokens(candidate);
+
+  // Trigger guard:
+  // If this candidate is the external floating chat open trigger:
+  const isChatTriggerCandidate = hasFloatingChatActionSignals(candidate);
+  if (isChatTriggerCandidate) {
+    // 1. If user explicitly specified an inner target within the container (e.g. "聊天框的 个人模式"),
+    // never match the trigger button!
+    if (decomposed.containerHint) {
+      return -200;
+    }
+    // 2. If the chat window is already open in context, and user did not explicitly ask to open/expand it,
+    // prevent clicking the trigger button (which would close the chat window).
+    if (context?.activeContainer?.type === 'floating-chat') {
+      const isExplicitOpenAction = /^(?:打开|展开|唤起|进入)/.test(intent.rawTarget || '');
+      if (!isExplicitOpenAction) {
+        return -200;
+      }
+    }
+  }
+
+  // Active / Hint Container scoping bonus and penalty
+  const effectiveContainerType =
+    decomposed.containerHint?.type || context?.activeContainer?.type;
+  if (effectiveContainerType) {
+    if (candidate.container?.type === effectiveContainerType) {
+      score += 65;
+    } else if (candidate.container && candidate.container.type !== effectiveContainerType) {
+      score -= 40;
+    }
+  }
 
   if (intent.rowHint?.index) {
     if (candidate.row?.index === intent.rowHint.index) {
@@ -293,14 +378,14 @@ function scoreCandidate(
       textScore = Math.max(textScore, 145);
     } else if (token.includes(rawTarget)) {
       textScore = Math.max(textScore, 120);
-    } else if (rawTarget.includes(token) && token.length >= 3) {
+    } else if (rawTarget.includes(token) && token.length >= 2) {
       textScore = Math.max(textScore, 98);
-    } else if (isFloatingChatMatch(rawTarget, token)) {
+    } else if (!decomposed.containerHint && isFloatingChatMatch(rawTarget, token)) {
       textScore = Math.max(textScore, 125);
     }
   }
 
-  if (hasFloatingChatActionSignals(candidate) && isFloatingChatTarget(rawTarget)) {
+  if (isChatTriggerCandidate && !decomposed.containerHint && isFloatingChatTarget(rawTarget)) {
     textScore = Math.max(textScore, 135);
   }
 
@@ -317,6 +402,8 @@ function scoreCandidate(
   }
   if (role === 'button') {
     score += 12;
+  } else if (role === 'tab' || role === 'radio') {
+    score += 10;
   } else if (role === 'link') {
     score += 4;
   }
@@ -434,7 +521,8 @@ function normalizeText(value?: string): string {
     .replace(/承认する|承認する|承认|承認|approve/g, 'approve')
     .replace(/批准|审批通过|审批|通过/g, 'approve')
     .replace(/却下する|却下|拒绝|拒否|reject/g, 'reject')
-    .replace(/打开|进入|点击|单击|选择/g, '')
+    .replace(/打开|进入|点击|单击|选择|切换到|切换/g, '')
+    .replace(/模式|页签|选项|分段|tab/g, '')
     .replace(/按钮|按键|链接|入口|字段|输入框|文本框|区域|面板|模块|区块|部分/g, '')
     .replace(/[的"'\s:=|]/g, '')
     .trim();

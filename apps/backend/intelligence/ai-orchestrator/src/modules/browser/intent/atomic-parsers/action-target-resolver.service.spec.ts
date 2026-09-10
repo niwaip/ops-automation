@@ -162,4 +162,163 @@ describe('resolveActionIntentToLocator', () => {
       resolutionMode: 'preferred-locator',
     });
   });
+
+  it('correctly resolves "点击聊天框的 个人模式" to segmented item inside chat window and avoids trigger button', () => {
+    const triggerCandidate = {
+      candidateId: 'action_chat_trigger',
+      kind: 'action' as const,
+      label: '打开悬浮对话框',
+      text: '打开悬浮对话框',
+      title: '打开悬浮对话框',
+      action: 'open-floating-chat',
+      dataTestId: 'floating-chat-trigger',
+      summary: 'candidateId=action_chat_trigger | kind=action | role=button | text=打开悬浮对话框',
+      role: 'button',
+      preferredLocator: {
+        type: 'css' as const,
+        value: '[data-testid="floating-chat-trigger"]',
+      },
+    };
+
+    const personalModeCandidate = {
+      candidateId: 'action_mode_personal',
+      kind: 'action' as const,
+      label: '个人',
+      text: '个人',
+      role: 'tab',
+      container: {
+        type: 'floating-chat',
+        name: '聊天框',
+      },
+      summary: 'candidateId=action_mode_personal | kind=action | container=floating-chat | role=tab | text=个人',
+      preferredLocator: {
+        type: 'css' as const,
+        value: '[class*="chat-window"] .ant-segmented-item:has-text("个人")',
+      },
+    };
+
+    const workModeCandidate = {
+      candidateId: 'action_mode_work',
+      kind: 'action' as const,
+      label: '工作',
+      text: '工作',
+      role: 'tab',
+      container: {
+        type: 'floating-chat',
+        name: '聊天框',
+      },
+      summary: 'candidateId=action_mode_work | kind=action | container=floating-chat | role=tab | text=工作',
+      preferredLocator: {
+        type: 'css' as const,
+        value: '[class*="chat-window"] .ant-segmented-item:has-text("工作")',
+      },
+    };
+
+    const result = resolveActionIntentToLocator(
+      {
+        action: 'click',
+        rawTarget: '点击聊天框的 个人模式',
+        source: 'action-parser',
+      },
+      {
+        availableCandidates: [triggerCandidate, personalModeCandidate, workModeCandidate],
+      }
+    );
+
+    expect(result).not.toBeNull();
+    expect(result?.matchedCandidateId).toBe('action_mode_personal');
+    expect(result?.locator).toEqual({
+      type: 'css',
+      value: '[class*="chat-window"] .ant-segmented-item:has-text("个人")',
+    });
+  });
+
+  it('uses activeContainer context to resolve "点击个人模式" without container prefix and prevents trigger click', () => {
+    const triggerCandidate = {
+      candidateId: 'action_chat_trigger',
+      kind: 'action' as const,
+      label: '打开悬浮对话框',
+      text: '打开悬浮对话框',
+      title: '打开悬浮对话框',
+      action: 'open-floating-chat',
+      dataTestId: 'floating-chat-trigger',
+      summary: 'candidateId=action_chat_trigger | kind=action | role=button | text=打开悬浮对话框',
+      role: 'button',
+      preferredLocator: {
+        type: 'css' as const,
+        value: '[data-testid="floating-chat-trigger"]',
+      },
+    };
+
+    const personalModeCandidate = {
+      candidateId: 'action_mode_personal',
+      kind: 'action' as const,
+      label: '个人',
+      text: '个人',
+      role: 'tab',
+      container: {
+        type: 'floating-chat',
+        name: '聊天框',
+      },
+      summary: 'candidateId=action_mode_personal | kind=action | container=floating-chat | role=tab | text=个人',
+      preferredLocator: {
+        type: 'css' as const,
+        value: '[class*="chat-window"] .ant-segmented-item:has-text("个人")',
+      },
+    };
+
+    const result = resolveActionIntentToLocator(
+      {
+        action: 'click',
+        rawTarget: '点击个人模式',
+        source: 'action-parser',
+      },
+      {
+        availableCandidates: [triggerCandidate, personalModeCandidate],
+        activeContainer: {
+          type: 'floating-chat',
+          name: '聊天框',
+        },
+      }
+    );
+
+    expect(result).not.toBeNull();
+    expect(result?.matchedCandidateId).toBe('action_mode_personal');
+  });
+
+  it('prevents clicking external trigger when chat window is active and user asks for generic action', () => {
+    const triggerCandidate = {
+      candidateId: 'action_chat_trigger',
+      kind: 'action' as const,
+      label: '打开悬浮对话框',
+      text: '打开悬浮对话框',
+      title: '打开悬浮对话框',
+      action: 'open-floating-chat',
+      dataTestId: 'floating-chat-trigger',
+      summary: 'candidateId=action_chat_trigger | kind=action | role=button | text=打开悬浮对话框',
+      role: 'button',
+      preferredLocator: {
+        type: 'css' as const,
+        value: '[data-testid="floating-chat-trigger"]',
+      },
+    };
+
+    const result = resolveActionIntentToLocator(
+      {
+        action: 'click',
+        rawTarget: '点击聊天',
+        source: 'action-parser',
+      },
+      {
+        availableCandidates: [triggerCandidate],
+        activeContainer: {
+          type: 'floating-chat',
+          name: '聊天框',
+        },
+      }
+    );
+
+    // Because chat is already active and target is not an explicit "打开" command, trigger must not be clicked
+    expect(result?.matchedCandidateId).not.toBe('action_chat_trigger');
+  });
 });

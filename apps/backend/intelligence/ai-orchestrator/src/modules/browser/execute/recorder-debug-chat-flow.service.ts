@@ -131,6 +131,7 @@ export class RecorderDebugChatFlowService {
             availableButtons: input.availableButtons,
             availableCandidates: input.observation.candidates || [],
             controlHints: input.controlHints,
+            activeContainer: input.session.activeContainer || input.observation.activeContainer,
           },
         }));
 

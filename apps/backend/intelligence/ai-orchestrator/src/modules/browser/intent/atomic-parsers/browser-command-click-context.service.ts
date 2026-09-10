@@ -47,6 +47,7 @@ export class BrowserCommandClickContextService {
       availableButtons: context.availableButtons,
       currentPageUrl: context.currentPageUrl,
       lastObservationText: context.lastObservationText,
+      activeContainer: context.activeContainer,
     });
     if (!resolvedTarget) {
       return null;

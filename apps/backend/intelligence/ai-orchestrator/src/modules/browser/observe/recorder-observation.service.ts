@@ -527,6 +527,10 @@ export class RecorderObservationService {
       typeof item.priority === 'number' && Number.isFinite(item.priority)
         ? item.priority
         : undefined;
+    const container =
+      item.container && typeof item.container === 'object' && 'type' in item.container
+        ? (item.container as { type: string; name?: string })
+        : undefined;
     const explicitPreferredLocator = this.normalizeSemanticLocator(item.preferredLocator);
 
     return {
@@ -539,6 +543,7 @@ export class RecorderObservationService {
         ref,
         elementId,
         dataTestId,
+        container: container?.type,
         role,
         regionName,
         regionType,
@@ -554,6 +559,7 @@ export class RecorderObservationService {
         text,
         rowText,
       }),
+      container,
       source,
       entityType,
       entityId,
@@ -690,6 +696,7 @@ export class RecorderObservationService {
     ref?: string;
     elementId?: string;
     dataTestId?: string;
+    container?: string;
     role?: string;
     regionName?: string;
     regionType?: string;
@@ -707,6 +714,7 @@ export class RecorderObservationService {
       ['ref', input.ref],
       ['id', input.elementId],
       ['testid', input.dataTestId],
+      ['container', input.container],
       ['role', input.role],
       ['entityType', input.entityType],
       ['entityId', input.entityId],
