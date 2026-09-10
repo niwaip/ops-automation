@@ -947,7 +947,7 @@ export class ExecutionPlanNormalizationService {
     source: ExecutionParamSource
   ): void {
     Object.entries(properties || {}).forEach(([name, property]) => {
-      if (this.isRuntimeCredentialField(name)) {
+      if (this.isRuntimeCredentialField(name, property)) {
         return;
       }
       const normalizedDefault = this.executionInputResolutionService.normalizeSubmittedInputValue(
@@ -970,7 +970,7 @@ export class ExecutionPlanNormalizationService {
     properties: Record<string, SkillSchemaPropertyLike>
   ): void {
     Object.entries(policies || {}).forEach(([name, policy]) => {
-      if (this.isRuntimeCredentialField(name)) {
+      if (this.isRuntimeCredentialField(name, properties[name])) {
         return;
       }
       const normalizedDefault = this.executionInputResolutionService.normalizeSubmittedInputValue(
@@ -987,8 +987,29 @@ export class ExecutionPlanNormalizationService {
     });
   }
 
-  private isRuntimeCredentialField(name: string): boolean {
-    return /(?:api[_-]?key|access[_-]?token|refresh[_-]?token|authorization|secret)$/i.test(name);
+  private isRuntimeCredentialField(
+    name: string,
+    property?: SkillSchemaPropertyLike
+  ): boolean {
+    const rawProp = property as Record<string, unknown> | undefined;
+    if (
+      rawProp?.isSecret === true ||
+      rawProp?.format === 'password' ||
+      Boolean(rawProp?.credentialCategory)
+    ) {
+      return true;
+    }
+    const lower = name.toLowerCase();
+    return (
+      lower.includes('credential') ||
+      lower.includes('password') ||
+      lower.includes('passwd') ||
+      lower.includes('devicekey') ||
+      lower.includes('device_key') ||
+      /(?:api[_-]?key|access[_-]?token|refresh[_-]?token|authorization|secret)$/i.test(name) ||
+      (typeof rawProp?.description === 'string' &&
+        /(密码|口令|密钥|凭证|私钥|token)/i.test(rawProp.description))
+    );
   }
 
   private mapBrowserActivityCommands(

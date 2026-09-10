@@ -122,7 +122,13 @@ export class RuntimeCredentialResolverService {
               rawDefinition && typeof rawDefinition === 'object' && !Array.isArray(rawDefinition)
                 ? (rawDefinition as Record<string, unknown>)
                 : {};
+            const isSecret =
+              definition.isSecret === true ||
+              definition.format === 'password' ||
+              Boolean(definition.credentialCategory) ||
+              this.isSensitiveParamName(paramName);
             const hasUsableDefault =
+              !isSecret &&
               definition.default !== undefined &&
               definition.default !== null &&
               definition.default !== '';

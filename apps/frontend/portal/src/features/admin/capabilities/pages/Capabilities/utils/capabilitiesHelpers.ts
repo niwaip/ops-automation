@@ -505,7 +505,7 @@ export const inferBrowserWorkflowParamDefinition = (
       definition: {
         description: '登录用户名',
         required: true,
-        defaultValue: value,
+        defaultValue: undefined,
         source: 'inferred_from_template',
         type: 'string',
         exampleValue: value || 'test',
@@ -519,7 +519,7 @@ export const inferBrowserWorkflowParamDefinition = (
       definition: {
         description: '登录密码',
         required: true,
-        defaultValue: value,
+        defaultValue: undefined,
         source: 'inferred_from_template',
         type: 'string',
         exampleValue: value || 'test123',
@@ -644,7 +644,7 @@ export const buildBrowserWorkflowParamsSchema = (
           {
             type: definition?.type || 'string',
             description: desc,
-            default: definition?.defaultValue,
+            default: isSecret ? undefined : definition?.defaultValue,
             required: Boolean(definition?.required),
             ...(isSecret
               ? {

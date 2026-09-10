@@ -134,10 +134,12 @@ describe('ExecutionPlanNormalizationService', () => {
                 username: { type: 'string', default: 'template-user' },
                 password: { type: 'string', default: 'schema-secret' },
                 apiKey: { type: 'string', default: 'snapshot-api-key' },
+                targetEnv: { type: 'string', default: 'schema-staging' },
               },
             },
             inputPolicy: {
               params: {
+                targetEnv: { defaultValue: 'policy-prod' },
                 password: { defaultValue: 'policy-secret' },
                 apiKey: { defaultValue: 'policy-api-key' },
               },
@@ -149,12 +151,12 @@ describe('ExecutionPlanNormalizationService', () => {
       input: {
         username: 'template-user',
         retryCount: 1,
-        password: 'policy-secret',
+        targetEnv: 'policy-prod',
       },
       sources: {
         username: 'default',
         retryCount: 'default',
-        password: 'workflow_default',
+        targetEnv: 'workflow_default',
       },
     });
   });
