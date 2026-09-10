@@ -135,6 +135,10 @@ export const WorkflowInputParamsSection: React.FC<WorkflowInputParamsSectionProp
       return lang;
     };
 
+    const isSensitive =
+      /password|passwd|devicekey|device_key|secret|credential|token|apikey|api_key/i.test(key) ||
+      /(密码|口令|密钥|凭证|私钥|token)/i.test(param.description || '');
+
     return (
       <div
         key={key}
@@ -151,9 +155,19 @@ export const WorkflowInputParamsSection: React.FC<WorkflowInputParamsSectionProp
         }}
       >
         <Tooltip title={param.description || '未填写用途'}>
-          <Text strong ellipsis style={{ minWidth: 0, fontSize: 13, cursor: 'help' }}>
-            {visibleLabel}
-          </Text>
+          <Space size={4} style={{ minWidth: 0, overflow: 'hidden' }}>
+            <Text strong ellipsis style={{ minWidth: 0, fontSize: 13, cursor: 'help' }}>
+              {visibleLabel}
+            </Text>
+            {isSensitive && (
+              <Tag
+                color="warning"
+                style={{ margin: 0, fontSize: 11, paddingInline: 4, lineHeight: '18px' }}
+              >
+                凭据
+              </Tag>
+            )}
+          </Space>
         </Tooltip>
         <Checkbox
           checked={param.required === true}
@@ -215,6 +229,16 @@ export const WorkflowInputParamsSection: React.FC<WorkflowInputParamsSectionProp
                 style={{ width: '100%' }}
               />
             ))
+          ) : isSensitive ? (
+            <Input.Password
+              value={param.defaultValue || ''}
+              onChange={(event) =>
+                updateSingleWorkflowInputParam(key, { ...param, defaultValue: event.target.value })
+              }
+              placeholder="默认凭据值"
+              size="small"
+              style={{ width: '100%' }}
+            />
           ) : (
             <Input
               value={param.defaultValue || ''}

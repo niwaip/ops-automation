@@ -98,4 +98,47 @@ describe('RuntimeCredentialResolverService', () => {
       service.resolveInputForRuntime('user-1', 'skill-1', { content: 'hello' })
     ).rejects.toThrow('请先为当前 Skill 绑定用户凭证：deviceKey');
   });
+
+  it('correctly identifies loginCredential as sensitive and auto-injects password from basic_auth', async () => {
+    const prisma = {
+      userSkillCredentialBinding: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            paramName: 'loginCredential',
+            credential: {
+              category: 'basic_auth',
+              encryptedData: 'encrypted-login-credential',
+            },
+          },
+        ]),
+      },
+      skillConfig: {
+        findFirst: jest.fn().mockResolvedValue({
+          paramsSchema: {
+            properties: {
+              username: { type: 'string' },
+              loginCredential: { type: 'string', description: '登录密码' },
+            },
+            required: ['username', 'loginCredential'],
+          },
+        }),
+      },
+    };
+    const service = new RuntimeCredentialResolverService(prisma as never);
+    jest.spyOn(service as any, 'decryptPayload').mockReturnValue({
+      username: 'admin',
+      password: 'vault-password-456',
+    });
+
+    const result = await service.resolveInputForRuntime('user-1', 'skill-1', {
+      username: 'admin',
+      loginCredential: '••••••••',
+    });
+
+    expect(result).toEqual({
+      username: 'admin',
+      loginCredential: 'vault-password-456',
+    });
+  });
 });
+

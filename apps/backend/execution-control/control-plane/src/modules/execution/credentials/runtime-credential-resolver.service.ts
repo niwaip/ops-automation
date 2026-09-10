@@ -73,9 +73,16 @@ export class RuntimeCredentialResolverService {
                   if (b.credential.category === 'device_key') {
                     injectedVal = payload.deviceKey || payload.key || payload.token;
                   } else if (b.credential.category === 'basic_auth') {
-                    if (b.paramName.toLowerCase().includes('pass') || b.paramName === 'credential') {
+                    if (
+                      b.paramName.toLowerCase().includes('pass') ||
+                      b.paramName.toLowerCase().includes('credential') ||
+                      b.paramName.toLowerCase().includes('secret')
+                    ) {
                       injectedVal = payload.password;
-                    } else if (b.paramName.toLowerCase().includes('user')) {
+                    } else if (
+                      b.paramName.toLowerCase().includes('user') ||
+                      b.paramName.toLowerCase().includes('account')
+                    ) {
                       injectedVal = payload.username;
                     }
                   } else if (b.credential.category === 'api_key' || b.credential.category === 'bearer_token') {
@@ -189,7 +196,9 @@ export class RuntimeCredentialResolverService {
       lower.includes('secret') ||
       lower.includes('apikey') ||
       lower.includes('api_key') ||
-      lower === 'credential'
+      lower.includes('auth_token') ||
+      lower.includes('credential') ||
+      lower.includes('token')
     );
   }
 

@@ -75,7 +75,7 @@ export class UserSkillCredentialBindingService {
         prop.isSecret ||
         prop['x-is-secret'] ||
         prop.format === 'password' ||
-        this.isHeuristicSecretField(paramName)
+        this.isHeuristicSecretField(paramName, prop)
       );
 
       if (!isSecret) continue;
@@ -221,9 +221,16 @@ export class UserSkillCredentialBindingService {
               if (b.credential.category === 'device_key') {
                 injectedValue = payload.deviceKey || payload.key || payload.token;
               } else if (b.credential.category === 'basic_auth') {
-                if (b.paramName.toLowerCase().includes('pass') || b.paramName === 'credential') {
+                if (
+                  b.paramName.toLowerCase().includes('pass') ||
+                  b.paramName.toLowerCase().includes('credential') ||
+                  b.paramName.toLowerCase().includes('secret')
+                ) {
                   injectedValue = payload.password;
-                } else if (b.paramName.toLowerCase().includes('user')) {
+                } else if (
+                  b.paramName.toLowerCase().includes('user') ||
+                  b.paramName.toLowerCase().includes('account')
+                ) {
                   injectedValue = payload.username;
                 }
               } else if (b.credential.category === 'api_key' || b.credential.category === 'bearer_token') {
@@ -248,9 +255,9 @@ export class UserSkillCredentialBindingService {
     };
   }
 
-  private isHeuristicSecretField(paramName: string): boolean {
+  private isHeuristicSecretField(paramName: string, prop?: Record<string, any>): boolean {
     const lower = paramName.toLowerCase();
-    return (
+    const matchesName =
       lower.includes('devicekey') ||
       lower.includes('device_key') ||
       lower.includes('password') ||
@@ -259,8 +266,18 @@ export class UserSkillCredentialBindingService {
       lower.includes('apikey') ||
       lower.includes('api_key') ||
       lower.includes('auth_token') ||
-      lower === 'credential' ||
-      lower === 'token'
+      lower.includes('credential') ||
+      lower.includes('token');
+
+    if (matchesName) {
+      return true;
+    }
+
+    const desc = typeof prop?.description === 'string' ? prop.description : '';
+    const title = typeof prop?.title === 'string' ? prop.title : '';
+    const label = typeof prop?.displayName === 'string' ? prop.displayName : '';
+    return /(密码|口令|密钥|凭证|私钥|token|password|secret|credential)/i.test(
+      `${desc} ${title} ${label}`
     );
   }
 
@@ -278,13 +295,28 @@ export class UserSkillCredentialBindingService {
       return prop.credentialCategory;
     }
     const lower = paramName.toLowerCase();
-    if (lower.includes('devicekey') || lower.includes('device_key')) {
+    const desc = typeof prop.description === 'string' ? prop.description : '';
+    if (
+      lower.includes('devicekey') ||
+      lower.includes('device_key') ||
+      /设备密钥|device\s*key/i.test(desc)
+    ) {
       return 'device_key';
     }
-    if (lower.includes('pass') || lower.includes('username') || lower === 'credential') {
+    if (
+      lower.includes('pass') ||
+      lower.includes('username') ||
+      lower.includes('credential') ||
+      /(密码|口令|账户|用户名)/i.test(desc)
+    ) {
       return 'basic_auth';
     }
-    if (lower.includes('token') || lower.includes('apikey') || lower.includes('api_key')) {
+    if (
+      lower.includes('token') ||
+      lower.includes('apikey') ||
+      lower.includes('api_key') ||
+      /(密钥|token|api\s*key)/i.test(desc)
+    ) {
       return 'api_key';
     }
     return 'custom';

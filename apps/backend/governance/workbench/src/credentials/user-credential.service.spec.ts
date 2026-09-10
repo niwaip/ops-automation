@@ -131,4 +131,47 @@ describe('User Credential Vault & Digital Employee Binding', () => {
       expect(result.injectedParamNames).toContain('deviceKey');
     });
   });
+
+  describe('UserSkillCredentialBindingService.getSkillCredentialStatus', () => {
+    it('should identify loginCredential as a basic_auth credential requirement', async () => {
+      const mockPrisma: any = {
+        skillConfig: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'skill-login-ai',
+            name: '登录并且调用ai',
+            paramsSchema: {
+              type: 'object',
+              properties: {
+                startUrl: { type: 'string', description: '起始页面地址' },
+                username: { type: 'string', description: '登录用户名' },
+                loginCredential: { type: 'string', description: '登录密码' },
+                input6TextboxName: { type: 'string', description: '输入值' },
+              },
+              required: ['username', 'loginCredential'],
+            },
+          }),
+        },
+        userSkillCredentialBinding: {
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+      };
+
+      const vaultService = new UserCredentialVaultService(mockPrisma, crypto);
+      const bindingService = new UserSkillCredentialBindingService(mockPrisma, vaultService);
+
+      const status = await bindingService.getSkillCredentialStatus('user-1', 'skill-login-ai');
+
+      expect(status.hasCredentialRequirements).toBe(true);
+      expect(status.isFullyConfigured).toBe(false);
+      expect(status.fields).toHaveLength(1);
+      expect(status.fields[0]).toMatchObject({
+        paramName: 'loginCredential',
+        title: 'loginCredential',
+        description: '登录密码',
+        credentialCategory: 'basic_auth',
+        required: true,
+        boundCredential: null,
+      });
+    });
+  });
 });

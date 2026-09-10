@@ -66,10 +66,17 @@ export const NAV_STRUCTURE: (NavItemConfig | NavGroupConfig)[] = [
     requiresAdmin: false,
     children: [
       {
-        key: '/admin/org-workflows',
-        labelKey: 'orgWorkflows',
-        defaultLabel: '组织工作流',
-        icon: <ApartmentOutlined />,
+        key: '/admin/activities',
+        labelKey: 'activities',
+        defaultLabel: '工作单元',
+        icon: <BuildOutlined />,
+        requiresAdmin: true,
+      },
+      {
+        key: '/admin/temporal',
+        labelKey: 'temporal',
+        defaultLabel: '工作流',
+        icon: <ThunderboltOutlined />,
         requiresAdmin: true,
       },
       {
@@ -80,25 +87,11 @@ export const NAV_STRUCTURE: (NavItemConfig | NavGroupConfig)[] = [
         requiresAdmin: true,
       },
       {
-        key: '/admin/activities',
-        labelKey: 'activities',
-        defaultLabel: '工作单元',
-        icon: <BuildOutlined />,
+        key: '/admin/org-workflows',
+        labelKey: 'orgWorkflows',
+        defaultLabel: '组织工作流',
+        icon: <ApartmentOutlined />,
         requiresAdmin: true,
-      },
-      {
-        key: '/admin/temporal',
-        labelKey: 'temporal',
-        defaultLabel: '工作流引擎',
-        icon: <ThunderboltOutlined />,
-        requiresAdmin: true,
-      },
-      {
-        key: '/carbone-templates',
-        labelKey: 'carboneTemplates',
-        defaultLabel: '文本模版',
-        icon: <FileWordOutlined />,
-        requiresAdmin: false,
       },
     ],
   },
@@ -109,6 +102,13 @@ export const NAV_STRUCTURE: (NavItemConfig | NavGroupConfig)[] = [
     icon: <AppstoreOutlined />,
     requiresAdmin: false,
     children: [
+      {
+        key: '/carbone-templates',
+        labelKey: 'carboneTemplates',
+        defaultLabel: '文档模版',
+        icon: <FileWordOutlined />,
+        requiresAdmin: false,
+      },
       {
         key: '/admin/skills',
         labelKey: 'skills',
