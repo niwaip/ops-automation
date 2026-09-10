@@ -211,7 +211,7 @@ export function getDefaultPlaywrightConfig(): PlaywrightCliConfig {
     cliActionTimeoutMs: readTimeoutMs('PLAYWRIGHT_CLI_ACTION_TIMEOUT_MS', 60000),
     cliNavigationTimeoutMs: readTimeoutMs('PLAYWRIGHT_CLI_NAVIGATION_TIMEOUT_MS', 60000),
     cliProcessTimeoutMs: readTimeoutMs('PLAYWRIGHT_CLI_PROCESS_TIMEOUT_MS', 120000),
-    cliPageSettleTimeoutMs: readTimeoutMs('PLAYWRIGHT_CLI_PAGE_SETTLE_TIMEOUT_MS', 8000),
+    cliPageSettleTimeoutMs: readTimeoutMs('PLAYWRIGHT_CLI_PAGE_SETTLE_TIMEOUT_MS', 2500),
     chromeRemoteDebuggingHost: process.env.CHROME_REMOTE_DEBUGGING_HOST || 'browser-chrome',
     chromeRemoteDebuggingPort: Number(process.env.CHROME_REMOTE_DEBUGGING_PORT || '9222'),
   };

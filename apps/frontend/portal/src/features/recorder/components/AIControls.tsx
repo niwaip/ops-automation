@@ -599,30 +599,30 @@ const AIControls: React.FC<AIControlsProps> = ({
     const progressTimer1 = setTimeout(() => {
       setHistory((prev) =>
         prev.map((h) =>
-          h.id === parsingId ? { ...h, content: '⚡ 指令已解析，正在驱动浏览器执行动作...' } : h
+          h.id === parsingId ? { ...h, content: '⚡ 正在驱动浏览器执行动作...' } : h
         )
       );
-    }, 1800);
+    }, 1500);
 
     const progressTimer2 = setTimeout(() => {
       setHistory((prev) =>
         prev.map((h) =>
           h.id === parsingId
-            ? { ...h, content: '🔍 页面已响应，正在同步新页面状态与元素定位...' }
+            ? { ...h, content: '🔍 正在同步最新页面状态与元素定位...' }
             : h
         )
       );
-    }, 4500);
+    }, 4000);
 
     const progressTimer3 = setTimeout(() => {
       setHistory((prev) =>
         prev.map((h) =>
           h.id === parsingId
-            ? { ...h, content: '🧠 正在执行智能对齐与定位器收敛，请稍候...' }
+            ? { ...h, content: '⏳ 浏览器正在处理复杂页面响应，请稍候...' }
             : h
         )
       );
-    }, 10000);
+    }, 9000);
 
     const clearProgressTimers = () => {
       clearTimeout(progressTimer1);

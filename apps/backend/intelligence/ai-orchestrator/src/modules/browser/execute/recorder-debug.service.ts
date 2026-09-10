@@ -1,8 +1,9 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Optional } from '@nestjs/common';
 import { getBrowserWorkerUrl } from '../../../config/service-endpoints';
 import { BrowserSemanticsClient } from '../../../client/browser-semantics.client';
 import type { BrowserCommand, BrowserCommandCandidate } from '../intent';
 import { BrowserCommandService } from '../intent';
+import { RecorderTargetResolutionReuseService } from '../observe/recorder-target-resolution-reuse.service';
 import {
   ExecutionReconcileService,
   ReconcileAfterTakeoverRequest,
@@ -81,7 +82,9 @@ export class RecorderDebugService {
     private readonly recorderDebugObservationFacade: RecorderDebugObservationFacade,
     private readonly recorderObservationService: RecorderObservationService,
     private readonly recorderDebugRollbackService: RecorderDebugRollbackService,
-    private readonly recorderStateStoreService: RecorderStateStoreService
+    private readonly recorderStateStoreService: RecorderStateStoreService,
+    @Optional()
+    private readonly recorderTargetResolutionReuseService?: RecorderTargetResolutionReuseService
   ) {}
 
   async chat(request: RecorderDebugChatRequest): Promise<RecorderDebugChatResponse> {
@@ -266,6 +269,20 @@ export class RecorderDebugService {
           controlTokenState,
           executionIndex: (executionOutcome as { executionIndex?: number }).executionIndex,
         });
+
+        if (executionOutcome.execution?.success && parsed.commands?.length) {
+          this.recorderTargetResolutionReuseService?.recordSuccessfulIntentExecution({
+            message: effectiveMessage,
+            observation,
+            commands: parsed.commands,
+            explanation: parsed.explanation,
+          });
+        } else if (executionOutcome.execution && !executionOutcome.execution.success) {
+          this.recorderTargetResolutionReuseService?.invalidateIntentCache({
+            structuralKey: observation.structuralHash || session.currentPageUrl,
+            message: effectiveMessage,
+          });
+        }
       }
     } else if (flow.kind === 'observation') {
       const reply = await this.describePage(

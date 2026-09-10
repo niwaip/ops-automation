@@ -52,6 +52,7 @@ export interface RecorderDebugObservation {
   snapshotId?: string;
   snapshotVersion?: number;
   snapshotContentHash?: string;
+  structuralHash?: string;
   observationFingerprint?: string;
   reuseEligibility?: 'fresh' | 'stale' | 'reobserve-required';
   staleReason?: string;

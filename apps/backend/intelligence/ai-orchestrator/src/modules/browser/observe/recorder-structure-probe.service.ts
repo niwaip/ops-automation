@@ -13,6 +13,7 @@ interface RecorderProbeObservationLike {
   currentPageUrl?: string;
   title?: string;
   text?: string;
+  structuralHash?: string;
   inputs: Array<Record<string, unknown>>;
   buttons: Array<Record<string, unknown>>;
   rows?: Array<Record<string, unknown>>;
@@ -93,6 +94,9 @@ export class RecorderStructureProbeService {
         input.snapshotObservation?.links || []
       ),
       suggestedParameters: [],
+      ...(input.structure.structuralHash
+        ? { structuralHash: String(input.structure.structuralHash) }
+        : {}),
       ...(input.snapshotObservation?.snapshotPath
         ? { snapshotPath: input.snapshotObservation.snapshotPath }
         : {}),
@@ -447,9 +451,34 @@ export class RecorderStructureProbeService {
 
       const links = uniqueElements(queryAllAcrossRoots('a[href], [role="link"]'))
         .filter(isVisible)
+        .filter(element => {
+          const href = element.getAttribute ? (element.getAttribute('href') || '').trim() : '';
+          return href && href !== '#' && !href.startsWith('javascript:');
+        })
         .map(element => toText(getDataAttr(element, 'aria-label') || element.textContent))
         .filter(Boolean)
-        .slice(0, 150);
+        .slice(0, 30);
+
+      const simpleHash = str => {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+          hash = ((hash << 5) - hash) + str.charCodeAt(i);
+          hash |= 0;
+        }
+        return Math.abs(hash).toString(36);
+      };
+
+      const structuralSignature = [
+        window.location.pathname || '',
+        inputs.length,
+        buttons.length,
+        rows.length,
+        regions.length,
+        inputs.slice(0, 6).map(i => i.name || i.id || i.placeholder || i.tagName).join(','),
+        buttons.slice(0, 6).map(b => b.text || b.action || b.dataTestId).join(',')
+      ].join('::');
+
+      const structuralHash = simpleHash(structuralSignature);
 
       return {
         url: window.location.href,
@@ -460,6 +489,7 @@ export class RecorderStructureProbeService {
         regions,
         headings,
         links,
+        structuralHash,
         pageSemantics: (window).__AI_PAGE_SEMANTICS__ || undefined,
       };
     })())`;

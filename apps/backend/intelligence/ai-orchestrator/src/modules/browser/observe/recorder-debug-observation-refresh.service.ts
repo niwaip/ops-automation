@@ -79,6 +79,15 @@ export class RecorderDebugObservationRefreshService {
     loadSession: (sessionId: string) => Promise<TSession | null>;
     saveSession: (session: TSession) => Promise<void>;
   }): Promise<void> {
+    const lastObservation = input.session.lastObservation;
+    const capturedAt = lastObservation?.capturedAt || lastObservation?.page?.capturedAt;
+    if (capturedAt) {
+      const capturedAtMs = Date.parse(capturedAt);
+      if (Number.isFinite(capturedAtMs) && Date.now() - capturedAtMs < 3000) {
+        return;
+      }
+    }
+
     const refreshedObservation = await input.observePageSafely(
       input.session,
       input.session.lastObservation

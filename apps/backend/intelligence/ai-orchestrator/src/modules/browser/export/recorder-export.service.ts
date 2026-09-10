@@ -165,7 +165,12 @@ export class RecorderExportService {
               description: param.description,
               required: param.required,
               ...(param.exampleValue
-                ? { examples: [this.coerceSchemaDefault(param.exampleValue, inferredType)] }
+                ? {
+                    ...(param.required && param.name === 'url'
+                      ? {}
+                      : { default: this.coerceSchemaDefault(param.exampleValue, inferredType) }),
+                    examples: [this.coerceSchemaDefault(param.exampleValue, inferredType)],
+                  }
                 : {}),
               ...(param.source
                 ? {

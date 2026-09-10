@@ -153,14 +153,20 @@ export class BrowserExecutionPlannerService {
   }
 
   private async getActiveModel(): Promise<{ id: string } | null> {
-    const preferred = this.modelService.getPreferredDefaultModel({
-      mode: 'task',
-      userRoles: ['admin'],
-    });
+    const preferred =
+      typeof this.modelService?.getPreferredDefaultModel === 'function'
+        ? this.modelService.getPreferredDefaultModel({
+            mode: 'task',
+            userRoles: ['admin'],
+          })
+        : null;
     if (preferred) {
       return { id: preferred.id };
     }
-    const defaultModel = this.modelService.getDefaultModel();
+    const defaultModel =
+      typeof this.modelService?.getDefaultModel === 'function'
+        ? this.modelService.getDefaultModel()
+        : null;
     if (defaultModel) {
       return { id: defaultModel.id };
     }

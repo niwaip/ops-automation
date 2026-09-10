@@ -376,7 +376,7 @@ export function toTemplateLocatorFromDescription(
     return buildTemplateLocatorFromLabel(quotedLabelMatch[1].trim(), normalized);
   }
 
-  const buttonLabelMatch = normalized.match(/点击\s*([^\s,，。]{1,24})\s*(?:按钮|button)/i);
+  const buttonLabelMatch = normalized.match(/点击\s*([^,，。\n]{1,48}?)\s*(?:按钮|button)/i);
   if (buttonLabelMatch?.[1]) {
     const buttonLabel = buttonLabelMatch[1].trim();
     if (!/^(这|该|此|对应|下|上|右|左)$/.test(buttonLabel)) {

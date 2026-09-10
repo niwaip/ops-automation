@@ -42,16 +42,27 @@ export class PlaywrightNavigationHandler {
         await activePage.waitForLoadState('domcontentloaded').catch(() => {});
         await Promise.race([
           activePage.waitForLoadState('networkidle'),
-          activePage.waitForTimeout(2000)
+          activePage.waitForTimeout(1000)
         ]).catch(() => {});
 
-        // Wait up to 8s for SPA data hydration (article elements to appear)
+        // Wait up to 2.5s for SPA data hydration or content readiness
         const spaStart = Date.now();
         let articles = 0;
-        while (Date.now() - spaStart < 8000) {
-          articles = await activePage.evaluate(() => document.querySelectorAll('article').length).catch(() => 0);
+        while (Date.now() - spaStart < 2500) {
+          const status = await activePage.evaluate(() => {
+            const count = document.querySelectorAll('article').length;
+            const hasMainContent = Boolean(
+              document.querySelector('main, #root, #app, [role="main"], form, table') ||
+              (document.body && document.body.innerText && document.body.innerText.trim().length > 30)
+            );
+            return { count, hasMainContent };
+          }).catch(() => ({ count: 0, hasMainContent: false }));
+          articles = status.count;
           if (articles > 0) break;
-          await activePage.waitForTimeout(500).catch(() => {});
+          if (status.hasMainContent && (Date.now() - spaStart > 600)) {
+            break;
+          }
+          await activePage.waitForTimeout(200).catch(() => {});
         }
 
         // Self-heal: if articles still 0 and transient error visible, click retry button
@@ -158,9 +169,18 @@ export class PlaywrightNavigationHandler {
       const settleTimeout = this.config.cliPageSettleTimeoutMs;
       const script = `async page => {
         const activePage = ${activePageExpr};
-        await activePage.waitForLoadState('domcontentloaded', { timeout: ${settleTimeout} }).catch(() => {});
-        await activePage.waitForLoadState('networkidle', { timeout: ${settleTimeout} }).catch(() => {});
-        await activePage.waitForTimeout(300).catch(() => {});
+        await activePage.waitForLoadState('domcontentloaded', { timeout: Math.min(${settleTimeout}, 2500) }).catch(() => {});
+        await Promise.race([
+          activePage.waitForLoadState('networkidle', { timeout: 600 }),
+          activePage.waitForTimeout(350)
+        ]).catch(() => {});
+        await activePage.evaluate(() => new Promise(resolve => {
+          if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(() => setTimeout(resolve, 60));
+          } else {
+            setTimeout(resolve, 60);
+          }
+        })).catch(() => {});
         return 'settled';
       }`;
       await this.cliRunner.execCli(sessionId, ['run-code', script]);

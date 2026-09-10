@@ -61,6 +61,8 @@ describe('BrowserCommandService', () => {
         ? (optionsOrModelOverrides as CreateServiceOptions)
         : { modelOverrides: optionsOrModelOverrides as ModelOverrides | undefined };
     const modelService = {
+      getPreferredDefaultModel: jest.fn().mockReturnValue(null),
+      getDefaultModel: jest.fn().mockReturnValue(null),
       listModels: options?.modelOverrides?.listModels || jest.fn().mockResolvedValue([]),
       callModel: options?.modelOverrides?.callModel || jest.fn(),
     } as any;

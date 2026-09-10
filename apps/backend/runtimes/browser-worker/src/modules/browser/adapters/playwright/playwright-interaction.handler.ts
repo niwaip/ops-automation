@@ -702,8 +702,7 @@ export class PlaywrightInteractionHandler {
     const settleTimeout = this.config.cliPageSettleTimeoutMs;
     const script = `async page => {
       const activePage = ${activePageExpr};
-      await activePage.waitForLoadState('domcontentloaded', { timeout: ${settleTimeout} }).catch(() => {});
-      await activePage.waitForLoadState('networkidle', { timeout: ${settleTimeout} }).catch(() => {});
+      await activePage.waitForLoadState('domcontentloaded', { timeout: Math.min(${settleTimeout}, 1500) }).catch(() => {});
       const runWithin = async (scope, matchedIn) => {
         const locator = ${locatorExpr};
         const count = await locator.count().catch(() => 0);

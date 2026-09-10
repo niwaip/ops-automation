@@ -2,6 +2,7 @@ jest.mock(
   '@nestjs/common',
   () => ({
     Injectable: () => () => undefined,
+    Optional: () => () => undefined,
     Logger: class {
       log() {}
       error() {}
