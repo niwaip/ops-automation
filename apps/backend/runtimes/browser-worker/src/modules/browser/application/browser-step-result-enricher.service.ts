@@ -83,7 +83,14 @@ export class BrowserStepResultEnricherService {
       }
     }
     this.removeUnselectedInlineResults(output, input.dto.captureProfile);
-    const contentQualityFailed = contentQuality?.passed === false;
+    const mainContentRequested =
+      Boolean((input.dto.captureProfile as any)?.capture?.mainContent === true);
+    const isNavigationAction =
+      input.dto.action === 'goto' || input.dto.action === 'navigate';
+    const contentQualityFailed =
+      mainContentRequested &&
+      (isNavigationAction || Boolean((input.dto.captureProfile as any)?.quality)) &&
+      contentQuality?.passed === false;
     const postCheck = contentQuality
       ? {
           ...(postAction.postCheck || { inspected: true, evidence: [] }),

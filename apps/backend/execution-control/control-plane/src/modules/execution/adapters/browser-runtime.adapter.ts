@@ -108,14 +108,15 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
           ? (request.input.args as Record<string, unknown>)
           : undefined,
       captureProfile:
-        (request.input.captureProfile as Record<string, unknown>) ||
-        (request.input.capture_profile as Record<string, unknown>) ||
+        (request.input?.captureProfile as Record<string, unknown>) ||
+        (request.input?.capture_profile as Record<string, unknown>) ||
         (request.metadata?.captureProfile as Record<string, unknown>) ||
         (request.metadata?.capture_profile as Record<string, unknown>) ||
         {
           schemaVersion: 'capture-profile/v1',
-          profile: 'article',
-          capture: { screenshot: true, html: true, mainContent: true },
+          profile: 'application',
+          capture: { screenshot: true, html: true, snapshot: true, mainContent: false },
+          limits: { htmlBytes: 1_000_000, contentChars: 30_000, tableCells: 500 },
         },
     };
 
