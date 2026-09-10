@@ -72,12 +72,27 @@ start_chrome() {
         args="${CHROME_ARGS:-}"
     fi
 
+    # Ensure managed policy disables save password prompts
+    if mkdir -p /etc/chromium/policies/managed /etc/opt/chrome/policies/managed 2>/dev/null; then
+        cat << 'EOF' > /etc/chromium/policies/managed/no-password-management.json
+{
+  "PasswordManagerEnabled": false,
+  "AutoFillEnabled": false,
+  "AutofillAddressEnabled": false,
+  "AutofillCreditCardEnabled": false
+}
+EOF
+        cp /etc/chromium/policies/managed/no-password-management.json /etc/opt/chrome/policies/managed/no-password-management.json 2>/dev/null || true
+    fi
+
     for required_arg in \
         --ignore-certificate-errors \
         --allow-insecure-localhost \
         --disable-client-side-phishing-detection \
         --test-type \
-        --safebrowsing-disable-download-protection; do
+        --safebrowsing-disable-download-protection \
+        --disable-save-password-bubble \
+        --password-store=basic; do
         if ! echo " $args " | grep -q -- " ${required_arg} "; then
             args="$args ${required_arg}"
         fi

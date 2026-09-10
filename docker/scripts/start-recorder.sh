@@ -154,6 +154,7 @@ CHROME_COMMON_ARGS=(
     --safebrowsing-disable-download-protection
     --disable-features=TranslateUI,VizDisplayCompositor,HttpsUpgrades,HTTPS-FirstBalancedModeAutoEnable,HTTPS-FirstModeV2ForEngagedSites
     --disable-ipc-flooding-protection
+    --disable-save-password-bubble
     --password-store=basic
     --remote-debugging-port=${INTERNAL_CDP_PORT}
     --remote-allow-origins=*
