@@ -78,7 +78,7 @@ export class ChatRateLimiterGuard implements CanActivate {
     record.timestamps = record.timestamps.filter((t) => t > windowStart);
 
     if (record.timestamps.length >= options.limit) {
-      const oldestHit = record.timestamps[0];
+      const oldestHit = record.timestamps[0] ?? now;
       const resetInSeconds = Math.max(1, Math.ceil((oldestHit + options.windowMs - now) / 1000));
       if (res && typeof res.setHeader === 'function') {
         res.setHeader('Retry-After', resetInSeconds);

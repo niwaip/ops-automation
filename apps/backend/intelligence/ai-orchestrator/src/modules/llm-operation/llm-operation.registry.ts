@@ -61,7 +61,7 @@ export const LLM_OPERATION_TEMPLATES: { [K in LlmOperationIdV1]: LlmOperationTem
       const lengthMatch = instruction.match(
         /([0-9一二两三四五六七八九十百千]+)\s*(?:字|词|chars?|words?)(?:以内|左右|以下|内)?/i
       );
-      const limitNum = lengthMatch ? parseInt(lengthMatch[1], 10) || 500 : null;
+      const limitNum = lengthMatch && lengthMatch[1] ? parseInt(lengthMatch[1], 10) || 500 : null;
       const targetLen = limitNum ? Math.max(100, Math.floor(limitNum * 0.6)) : 300;
       const lengthNotice = lengthMatch
         ? `\n【硬性字数限制（最高优先级）】：用户明确要求【${lengthMatch[0]}】！全文总字数（含标题、标点和符号）必须严格少于 ${limitNum} 字！请将总结目标长度控制在 ${targetLen} 字以内，只保留 1 个简短总括和 3~4 条精炼要点，绝对不可展开长文！`
@@ -347,8 +347,8 @@ ${content}`,
       const lengthMatch = instruction.match(
         /([0-9一二两三四五六七八九十百千]+)\s*(?:字|词|chars?|words?)(?:以内|左右|以下|内)?/i
       );
-      const limitNum = lengthMatch ? parseInt(lengthMatch[1], 10) || 500 : null;
-      const lengthNotice = lengthMatch
+      const limitNum = lengthMatch && lengthMatch[1] ? parseInt(lengthMatch[1], 10) || 500 : null;
+      const lengthNotice = lengthMatch && limitNum
         ? `\n【极其严格的字数硬约束（最高优先级）】：用户明确要求【${lengthMatch[0]}】！全文中文字符数（含标题和标点）必须严格少于 ${limitNum} 字！请直接采用「1 句总括 + 3~4 条精炼要点（- ）」的简短形式，禁止保留多层小标题或冗长步骤，确保总字数控制在 ${Math.min(limitNum - 100, 300)} 字左右，绝对不可超长！`
         : '';
       return {

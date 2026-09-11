@@ -284,7 +284,7 @@ export class ModelProxyController {
   private extractBearerToken(authHeader?: string): string | null {
     if (!authHeader) return null;
     const match = authHeader.match(/^Bearer\s+(.+)$/i);
-    return match ? match[1].trim() : null;
+    return match && match[1] ? match[1].trim() : null;
   }
 
   private async resolveUpstreamCredentials(): Promise<{ apiKey?: string; baseUrl: string }> {

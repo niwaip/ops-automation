@@ -377,7 +377,7 @@ export class ChatResultNormalizerService {
       return `已为您查询邮箱，收件箱当前暂无符合条件的邮件。${executionId ? `\n\n执行单 ID: ${executionId}` : ''}`;
     }
 
-    if (items.length === 1) {
+    if (items.length === 1 && items[0]) {
       const item = items[0];
       const subject = item.subject || '（无主题）';
       const from =

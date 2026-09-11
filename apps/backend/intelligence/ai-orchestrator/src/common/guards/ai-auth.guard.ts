@@ -32,6 +32,7 @@ export function parseAndVerifyToken(token: string): AuthenticatedUser | null {
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [headerB64, payloadB64, sigB64] = parts;
+  if (!headerB64 || !payloadB64 || !sigB64) return null;
 
   const isProduction = process.env.NODE_ENV === 'production';
   const rawJwtSecret = process.env.JWT_SECRET;

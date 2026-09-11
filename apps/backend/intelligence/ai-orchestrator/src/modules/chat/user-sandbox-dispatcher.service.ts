@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { StreamEventType } from '../react-engine/interfaces';
+import type { StreamEvent } from '../react-engine/interfaces';
 import type { ChatRequestDTO, ChatUploadedFileDTO } from './chat.dto';
 import { ChatConversationService } from './chat-conversation.service';
 import { ChatMediaService } from './chat-media.service';
@@ -33,7 +34,7 @@ export class UserSandboxDispatcherService {
     for (const dir of candidateRoots) {
       if (fs.existsSync(dir)) return dir;
     }
-    const target = candidateRoots[0];
+    const target = candidateRoots[0] || path.join(process.cwd(), 'data/users', userId, 'workspace');
     try {
       fs.mkdirSync(target, { recursive: true });
     } catch {
@@ -98,7 +99,7 @@ export class UserSandboxDispatcherService {
    */
   async dispatchPersonalSandbox(
     body: ChatRequestDTO,
-    emit: (event: Record<string, unknown>) => void,
+    emit: (event: StreamEvent | Record<string, unknown>) => void,
     userId: string,
     abortSignal?: AbortSignal
   ): Promise<boolean> {
@@ -259,7 +260,7 @@ export class UserSandboxDispatcherService {
 
       if (rawOutput.includes('<<<DSH_FINAL_OUTPUT>>>')) {
         const parts = rawOutput.split('<<<DSH_FINAL_OUTPUT>>>');
-        telemetrySummary = parts[0].trim();
+        telemetrySummary = (parts[0] || '').trim();
         cleanAnswer = parts.slice(1).join('<<<DSH_FINAL_OUTPUT>>>').trim();
       } else {
         const lines = rawOutput.split('\n');

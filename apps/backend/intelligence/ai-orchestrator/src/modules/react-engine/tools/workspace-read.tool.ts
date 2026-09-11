@@ -101,7 +101,7 @@ export class WorkspaceReadTool extends BaseTool {
     try {
       const url = `${authUrl}/workspaces/${workspaceId}/nodes/${nodeId}/preview?startLine=${startLine}&endLine=${endLine}`;
       const res = await axios.get(url, { headers, timeout: 8000 });
-      const data = res.data;
+      const data = res.data as { fileName?: string; content?: string; totalLines?: number } | null | undefined;
 
       if (!data) {
         return {

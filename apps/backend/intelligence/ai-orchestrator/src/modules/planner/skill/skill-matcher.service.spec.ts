@@ -137,7 +137,7 @@ describe('SkillMatcherService deterministic explicit routing', () => {
 
   it('preserves provider unavailability as a retryable match outcome', async () => {
     const service = new SkillMatcherService({} as any);
-    (axios.isAxiosError as unknown as jest.Mock).mockReturnValueOnce(true);
+    ((axios as any).isAxiosError as unknown as jest.Mock).mockReturnValueOnce(true);
     (axios.post as jest.Mock).mockRejectedValueOnce({
       isAxiosError: true,
       response: {

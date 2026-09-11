@@ -196,7 +196,7 @@ export class ChatOrchestratorService {
     const isExplicitWebSearch =
       Boolean(
         body.config?.webSearch === true ||
-        body.config?.web_search_enabled === true ||
+        (body.config as any)?.web_search_enabled === true ||
         (context as any)?.webSearch === true ||
         (context as any)?.web_search_enabled === true ||
         /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|查一下|查找|查询|搜搜|查查)/i.test(planningRequest)
@@ -485,8 +485,8 @@ export class ChatOrchestratorService {
         await this.planningDecisionShadowService?.record(body.message, {
           authToken,
           user,
-          routeClass: 'native_task',
-          routeSource: 'native_llm',
+          routeClass: 'generated_plan',
+          routeSource: 'llm_topology',
           confidence: 1,
           reasonCodes: ['llm_native_execution'],
         });
@@ -900,7 +900,7 @@ export class ChatOrchestratorService {
     );
 
     const messageContent = this.chatMediaService
-      ? await this.chatMediaService.buildMessageContent(body.message, body.files)
+      ? await this.chatMediaService.buildMessageContent(body.message, body.files, { userId: context.userId })
       : body.message;
 
     const systemPrompt =

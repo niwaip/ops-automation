@@ -353,7 +353,7 @@ export class ChatConversationService {
     return this.buildSessionPatchEvent(params.sessionId, nextSession.session);
   }
 
-  private async buildConversationMessages(
+  async buildConversationMessages(
     sessionId: string,
     systemMessage: string,
     userContent: string | ContentBlock[],
@@ -656,11 +656,11 @@ export class ChatConversationService {
     return typeof value === 'string' && value.trim() ? value : undefined;
   }
 
-  private isThinkingEnabled(body: ChatRequestDTO): boolean {
+  isThinkingEnabled(body: ChatRequestDTO): boolean {
     return body.config?.thinking !== false;
   }
 
-  private async resolveReasoningConfig(
+  async resolveReasoningConfig(
     body: ChatRequestDTO,
     modelId: string
   ): Promise<ModelReasoningConfig> {
@@ -702,7 +702,7 @@ export class ChatConversationService {
     };
   }
 
-  private resolvePreferredChatModelId(body: ChatRequestDTO): string {
+  resolvePreferredChatModelId(body: ChatRequestDTO): string {
     if (body.modelId && body.modelId !== 'default') {
       return body.modelId;
     }
@@ -726,7 +726,7 @@ export class ChatConversationService {
     return `${basePrompt} 直接输出结论，不要输出思考过程、推理细节或 <think> 标签。`;
   }
 
-  private getVisibleChatContent(content: string, thinkingEnabled: boolean): string {
+  getVisibleChatContent(content: string, thinkingEnabled: boolean): string {
     return thinkingEnabled ? content : this.modelService.stripThinkingTags(content);
   }
 }

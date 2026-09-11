@@ -197,7 +197,7 @@ export class MultiNodeParameterBinderService {
       const deterministic = card && this.deterministicParamResolver
         ? this.deterministicParamResolver.resolve(
             userRequest,
-            { properties: recognizerProperties as any },
+            { properties: recognizerProperties as any, required: [] },
             card
           )
         : undefined;

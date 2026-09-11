@@ -3,6 +3,7 @@ export type PendingActionIntentSource =
   | 'candidate-parser'
   | 'context-parser'
   | 'pattern-parser'
+  | 'action-parser'
   | 'ai-parser'
   | 'ai-plan';
 

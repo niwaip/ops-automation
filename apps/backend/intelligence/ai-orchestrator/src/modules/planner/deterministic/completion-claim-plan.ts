@@ -21,10 +21,11 @@ export function attachCompletionClaims(
   recipe: MatchedRecipe | null | undefined
 ): void {
   if (!recipe) return;
-  const requested = new Set(
-    recipe.completionClaims?.length
+  const requested = new Set<string>(
+    (recipe.completionClaims?.length
       ? recipe.completionClaims
-      : recipe.steps.map((step) => ROLE_DEFAULT_CLAIMS[step.role]).filter(Boolean)
+      : recipe.steps.map((step) => ROLE_DEFAULT_CLAIMS[step.role]).filter((c): c is string => Boolean(c))
+    )
   );
   const claims: PlannedCompletionClaim[] = [];
   for (let index = 0; index < recipe.steps.length; index++) {
@@ -33,7 +34,7 @@ export function attachCompletionClaims(
     if (!node) continue;
     const defaultClaim = ROLE_DEFAULT_CLAIMS[step.role];
     const matchingClaims = [...requested].filter(
-      (claim) => claim === defaultClaim || claim.startsWith(`${step.role}.`)
+      (claim): claim is string => Boolean(claim && (claim === defaultClaim || claim.startsWith(`${step.role}.`)))
     );
     for (const claim of matchingClaims) {
       claims.push({

@@ -24,6 +24,8 @@ export interface LLMChatRequest {
   responseFormat?: 'json_object';
   /** Provider-side completion cap. Runtime budgets must be enforced before generation, not only after it. */
   maxOutputTokens?: number;
+  temperature?: number;
+  max_tokens?: number;
   promptCaching?: PromptCachingConfig;
   reasoning?: {
     enabled?: boolean;

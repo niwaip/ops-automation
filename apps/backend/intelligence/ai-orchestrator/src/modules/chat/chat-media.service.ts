@@ -259,9 +259,10 @@ export class ChatMediaService {
             continue;
           }
 
-          let workspaceId = segments[0];
-          if (['personal', 'company', 'department', 'workspaces'].includes(segments[0]) && segments.length >= 3) {
-            workspaceId = segments[1];
+          const firstSegment = segments[0] || '';
+          let workspaceId = firstSegment;
+          if (['personal', 'company', 'department', 'workspaces'].includes(firstSegment) && segments.length >= 3) {
+            workspaceId = segments[1] || '';
           }
 
           // Database ownership verification for workspace files
@@ -283,6 +284,7 @@ export class ChatMediaService {
             }
 
             const ws = rows[0];
+            if (!ws) continue;
             if (ws.type === 'personal') {
               if (!ws.owner_user_id || ws.owner_user_id !== contextUser.userId) {
                 this.logger.warn(
@@ -419,13 +421,13 @@ export class ChatMediaService {
   async buildMessageContent(
     message: string,
     files: ChatUploadedFileDTO[] | undefined,
-    contextUser: AuthenticatedUserContext
+    contextUser?: AuthenticatedUserContext
   ): Promise<string | ContentBlock[]> {
     if (!files?.length) {
       return message;
     }
 
-    const resolvedFiles = await this.resolveUploadedFiles(files, contextUser);
+    const resolvedFiles = await this.resolveUploadedFiles(files, contextUser || { userId: 'anonymous' });
     const contentBlocks: ContentBlock[] = [{ type: 'text', text: message }];
 
     for (const file of resolvedFiles) {

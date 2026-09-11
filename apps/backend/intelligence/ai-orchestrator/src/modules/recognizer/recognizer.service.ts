@@ -1011,10 +1011,10 @@ export class RecognizerService {
 
   private inferFieldValueFromExplicitPatterns(
     key: string,
-    input: string,
-    schema?: ParamSchemaProperty
+    schema: ParamSchemaProperty,
+    input: string
   ): unknown {
-    return inferFieldValueFromExplicitPatterns(key, input, schema);
+    return inferFieldValueFromExplicitPatterns(key, schema, input);
   }
 
   private markRequiredFields(

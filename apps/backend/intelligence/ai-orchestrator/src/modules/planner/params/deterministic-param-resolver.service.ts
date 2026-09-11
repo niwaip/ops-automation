@@ -37,6 +37,8 @@ export class DeterministicParamResolverService {
             summary: cardOrSkill.description || cardOrSkill.summary || '',
             goals: cardOrSkill.triggerKeywords || cardOrSkill.goals || [],
             kind: 'skill',
+            inputs: cardOrSkill.inputs || [],
+            outputs: cardOrSkill.outputs || [],
           },
           (schema.properties as any) || {}
         )
@@ -93,7 +95,7 @@ export class DeterministicParamResolverService {
     const policy = this.routingPolicy?.getSnapshot() || createBuiltinRoutingPolicySnapshot();
     const isSearchCapability =
       !card.id.includes('email') &&
-      card.category !== 'communication' &&
+      (card.category as any) !== 'communication' &&
       matchesCapabilityRole(
         [card.id, card.displayName, card.summary, card.goals, card.category],
         'search',

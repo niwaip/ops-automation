@@ -276,7 +276,7 @@ export class SkillMatcherService {
     // 1. Generic Slash Command Matcher (data-driven by skill triggers, aliases and IDs)
     const slashMatch = trimmedInput.match(/^[/、]([a-zA-Z0-9_-]+)\b/i);
     if (slashMatch) {
-      const command = slashMatch[1].toLowerCase();
+      const command = (slashMatch[1] || '').toLowerCase();
       const matchedSkill = availableSkills.find((s) => {
         const triggers = (s.triggerKeywords || []).map((t) =>
           String(t).toLowerCase().replace(/^[/、]/, '')
@@ -368,7 +368,7 @@ export class SkillMatcherService {
         (s) =>
           ['platform.search.web', 'platform.web_search', 'web_search', 'tavily_search'].includes(
             s.skillId.toLowerCase()
-          ) || s.category === 'search'
+          ) || (s as any).category === 'search'
       );
       if (!searchSkill && this.skillCacheService?.loadSkillById) {
         try {
@@ -402,8 +402,13 @@ export class SkillMatcherService {
   private resolveUnavailableCode(
     error: unknown
   ): 'SKILL_MATCH_MODEL_UNAVAILABLE' | 'SKILL_MATCH_SERVICE_UNAVAILABLE' {
-    if (!axios.isAxiosError(error)) return 'SKILL_MATCH_SERVICE_UNAVAILABLE';
-    const data = error.response?.data as { code?: string } | undefined;
+    const err = error as any;
+    const isAxios =
+      typeof (axios as any).isAxiosError === 'function'
+        ? (axios as any).isAxiosError(error)
+        : Boolean(err?.isAxiosError || err?.response);
+    if (!isAxios) return 'SKILL_MATCH_SERVICE_UNAVAILABLE';
+    const data = err?.response?.data;
     return data &&
       typeof data === 'object' &&
       'code' in data &&

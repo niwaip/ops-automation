@@ -18,6 +18,7 @@ type RecorderDebugPendingRiskConfirmationLike = {
 type RecorderDebugSessionLike = {
   currentPageUrl?: string;
   backend: string;
+  activeContainer?: any;
   pendingDisambiguation?: Parameters<
     RecorderDebugChatSupportService['resolvePendingDisambiguation']
   >[0];
@@ -29,6 +30,7 @@ type RecorderDebugObservationLike = {
   structuralHash?: string;
   page?: { url?: string };
   text?: string;
+  activeContainer?: any;
   inputs: Array<Record<string, unknown>>;
   buttons: Array<Record<string, unknown>>;
   candidates?: BrowserCommandCandidate[];
@@ -94,6 +96,7 @@ export class RecorderDebugChatFlowService {
         availableButtons: string[];
         availableCandidates: BrowserCommandCandidate[];
         controlHints: string[];
+        activeContainer?: any;
       };
     }) => Promise<ParseBrowserCommandResponse>;
   }): Promise<RecorderDebugChatFlowResolution> {
