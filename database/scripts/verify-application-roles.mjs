@@ -82,10 +82,12 @@ async function hasTableWrite(login, table) {
 }
 
 async function verifyWriterGroups() {
+  const uniqueGroupRoles = [...new Set(Object.values(writerGroupByOwner))];
   for (const [table, owner] of ownershipByTable) {
-    for (const [candidateOwner, groupRole] of Object.entries(writerGroupByOwner)) {
+    const tableGroupRole = writerGroupByOwner[owner];
+    for (const groupRole of uniqueGroupRoles) {
       if (!knownRoles.has(groupRole)) continue;
-      const shouldWrite = owner === candidateOwner;
+      const shouldWrite = groupRole === tableGroupRole;
       const canWrite = await hasTableWrite(groupRole, `public.${table}`);
       if (canWrite !== shouldWrite) {
         failures.push(

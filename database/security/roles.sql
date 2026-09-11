@@ -22,7 +22,8 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO ops_application_reader;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
   users, organizations, departments, teams, team_memberships, org_memberships,
   roles, user_roles, org_role_bindings, identity_provider_configs, audit_logs,
-  workbench_inbox_items, workbench_todos, workspace_nodes, workspaces
+  workbench_inbox_items, workbench_todos, workspace_nodes, workspaces,
+  user_credentials, user_skill_credential_bindings, im_channel_connections
 TO ops_governance_writer;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
