@@ -88,6 +88,14 @@ export async function executeEmailSend(
     }
   }
 
+  if (!subject && !textBody) {
+    return {
+      success: false,
+      errorCode: 'EMAIL_CONTENT_REQUIRED',
+      errorMessage: '邮件主题或正文内容不能为空',
+    };
+  }
+
   if (!subject) {
     if (textBody && textBody.length <= 20) {
       subject = textBody;

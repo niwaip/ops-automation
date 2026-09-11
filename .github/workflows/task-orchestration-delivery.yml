@@ -62,6 +62,7 @@ jobs:
           pnpm --filter @ops/ai-orchestrator test -- --runInBand
       - name: Validate Control Plane against PostgreSQL
         run: |
+          pnpm --filter @ops/platform exec prisma migrate deploy --schema "$GITHUB_WORKSPACE/apps/backend/platform/prisma/schema.prisma"
           pnpm --filter @ops/control-plane exec prisma generate
           pnpm --filter @ops/control-plane typecheck
           pnpm --filter @ops/control-plane test -- --runInBand

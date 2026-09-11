@@ -123,6 +123,31 @@ export async function executeEmailMessages(
     }
   }
 
+  const hasInferenceFields = Boolean(
+    prompt ||
+    rawSearchTerm ||
+    rawInput.folder ||
+    rawInput.unreadOnly !== undefined ||
+    rawInput.since ||
+    rawInput.until ||
+    rawInput.messageRef
+  );
+
+  const hasValidSelector = Boolean(
+    selector &&
+    typeof selector === 'object' &&
+    Object.keys(selector).length > 0 &&
+    ((selector as any).kind || (selector as any).messageRef)
+  );
+
+  if (!hasValidSelector && !hasInferenceFields) {
+    return {
+      success: false,
+      errorCode: 'EMAIL_SELECTOR_REQUIRED',
+      errorMessage: '邮件查询选择器（selector）不能为空',
+    };
+  }
+
   if (!selector || typeof selector !== 'object') {
     if (text) {
       selector = {

@@ -45,6 +45,7 @@ const MIGRATION_SQL_FILES = [
   '20260731110000_add_execution_step_output_schema_json/migration.sql',
   '20260731110000_add_skill_config_output_schema/migration.sql',
   '20260801120000_add_execution_step_input_schema_json/migration.sql',
+  '20260801125000_add_capability_release_foundation/migration.sql',
   '20260801130000_add_candidate_schema_and_build_diff/migration.sql',
   '20260801140000_add_attestation_and_fixture/migration.sql',
   '20260802000000_fix_uuid_id_defaults/migration.sql',
