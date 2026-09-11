@@ -55,10 +55,14 @@ jobs:
           pnpm --filter @ops/capability-sdk test
       - name: Validate AI Orchestrator
         run: |
+          pnpm --filter @ops/browser-recorder build
+          pnpm --filter @ops/browser-runtime-facade build
+          pnpm --filter @ops/ai-orchestrator exec prisma generate
           pnpm --filter @ops/ai-orchestrator typecheck
           pnpm --filter @ops/ai-orchestrator test -- --runInBand
       - name: Validate Control Plane against PostgreSQL
         run: |
+          pnpm --filter @ops/control-plane exec prisma generate
           pnpm --filter @ops/control-plane typecheck
           pnpm --filter @ops/control-plane test -- --runInBand
         env:
