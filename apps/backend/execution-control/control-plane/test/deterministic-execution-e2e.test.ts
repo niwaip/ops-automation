@@ -285,6 +285,48 @@ describe('Deterministic Plan Execution E2E Test', () => {
     });
     // Same for the markdown artifact writer used by the builtin-handler tests:
     // without a resolvable authoritative output schema, freeze fails closed.
+    const docSkill = await prisma.builtinSkill.upsert({
+      where: { capabilityKey: 'platform.document.markdown-artifact-writer' },
+      update: {},
+      create: {
+        capabilityKey: 'platform.document.markdown-artifact-writer',
+        displayName: 'Markdown Artifact Writer (e2e seed)',
+        description: 'e2e seed for deterministic plan freeze',
+        owner: 'platform-document',
+        category: 'artifact',
+        isEnabled: true,
+      },
+    });
+    await prisma.builtinSkillVersion.upsert({
+      where: {
+        builtinSkillId_definitionVersion: {
+          builtinSkillId: docSkill.id,
+          definitionVersion: '1.0.1',
+        },
+      },
+      update: {},
+      create: {
+        builtinSkillId: docSkill.id,
+        definitionVersion: '1.0.1',
+        apiVersion: 'platform.ops/v1alpha1',
+        definitionDigest: 'sha256:' + 'e2e-markdown-writer'.padEnd(64, '0'),
+        manifestJson: {
+          spec: {
+            contracts: {
+              output: {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    artifact: { type: 'object' },
+                    artifacts: { type: 'array' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
     await prisma.skillConfig.upsert({
       where: { name: 'platform.document.markdown-artifact-writer' },
       update: {
@@ -314,11 +356,9 @@ describe('Deterministic Plan Execution E2E Test', () => {
     await prisma.skillConfig.deleteMany({
       where: { name: { in: ['tavily_search', 'platform.document.markdown-artifact-writer'] } },
     });
-    // Remove the hermetic tavily_search builtin seed (versions cascade via
-    // onDelete: Cascade). Never touches markdown-artifact-writer, which
-    // resolves against the platform's own dev-DB rows.
+    // Remove hermetic seeds (versions cascade via onDelete: Cascade)
     await prisma.builtinSkill.deleteMany({
-      where: { capabilityKey: 'tavily_search' },
+      where: { capabilityKey: { in: ['tavily_search', 'platform.document.markdown-artifact-writer'] } },
     });
     await prisma.$disconnect();
   });
