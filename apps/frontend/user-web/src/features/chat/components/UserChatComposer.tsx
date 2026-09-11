@@ -681,103 +681,105 @@ export function UserChatComposer(props: UserChatComposerProps) {
           />
         </div>
         <div className={styles['user-chat-input-toolbar']}>
-          <Segmented
-            className={`${styles['user-chat-mode-switch']} ${styles[`mode-${chatMode}`] || ''}`}
-            size="small"
-            value={chatMode}
-            onChange={(value) => {
-              const nextMode = value as 'chat' | 'task';
-              if (nextMode === 'chat' && workspaceSearchEnabled) {
-                setWorkspaceSearchEnabled(false);
-              }
-              onChatModeChange(nextMode);
-            }}
-            options={[
-              {
-                label: (
-                  <span>
-                    {chatMode === 'chat' && <span className={styles['user-chat-mode-dot']} />}
-                    个人
-                  </span>
-                ),
-                value: 'chat',
-                icon: <UserOutlined />,
-              },
-              {
-                label: (
-                  <span>
-                    {chatMode === 'task' && <span className={styles['user-chat-mode-dot']} />}
-                    工作
-                  </span>
-                ),
-                value: 'task',
-                icon: <RobotOutlined />,
-              },
-            ]}
-          />
-          <div className={styles['user-chat-input-controls']}>
-            <div className={styles['user-chat-control-item']} title={thinkingHint}>
-              <span className={styles['user-chat-control-label']}>{thinkingLabel}</span>
-              {chatMode === 'chat' && nativeReasoningSupported ? (
-                <span className={styles['user-chat-control-badge']}>原生</span>
-              ) : null}
-              <Switch
-                size="small"
-                checked={enableThinking}
-                onChange={onEnableThinkingChange}
-                className={styles['user-chat-input-dot-switch']}
-              />
-            </div>
-            <div
-              className={styles['user-chat-control-item']}
-              title={
-                enableWebSearch
-                  ? '联网搜索：已开启（允许 AI 检索互联网公开资讯，点击关闭）'
-                  : '联网搜索：已关闭（可选开启，开启后允许 AI 检索互联网公开资讯）'
-              }
-            >
-              <span className={styles['user-chat-control-label']}>
-                <GlobalOutlined
-                  style={{
-                    marginRight: 4,
-                    color: enableWebSearch ? '#6366f1' : undefined,
-                  }}
+          <div className={styles['user-chat-input-left-group']}>
+            <Segmented
+              className={`${styles['user-chat-mode-switch']} ${styles[`mode-${chatMode}`] || ''}`}
+              size="small"
+              value={chatMode}
+              onChange={(value) => {
+                const nextMode = value as 'chat' | 'task';
+                if (nextMode === 'chat' && workspaceSearchEnabled) {
+                  setWorkspaceSearchEnabled(false);
+                }
+                onChatModeChange(nextMode);
+              }}
+              options={[
+                {
+                  label: (
+                    <span>
+                      {chatMode === 'chat' && <span className={styles['user-chat-mode-dot']} />}
+                      个人
+                    </span>
+                  ),
+                  value: 'chat',
+                  icon: <UserOutlined />,
+                },
+                {
+                  label: (
+                    <span>
+                      {chatMode === 'task' && <span className={styles['user-chat-mode-dot']} />}
+                      工作
+                    </span>
+                  ),
+                  value: 'task',
+                  icon: <RobotOutlined />,
+                },
+              ]}
+            />
+            <div className={styles['user-chat-input-controls']}>
+              <div className={styles['user-chat-control-item']} title={thinkingHint}>
+                <span className={styles['user-chat-control-label']}>{thinkingLabel}</span>
+                {chatMode === 'chat' && nativeReasoningSupported ? (
+                  <span className={styles['user-chat-control-badge']}>原生</span>
+                ) : null}
+                <Switch
+                  size="small"
+                  checked={enableThinking}
+                  onChange={onEnableThinkingChange}
+                  className={styles['user-chat-input-dot-switch']}
                 />
-                联网
-              </span>
-              <Switch
-                size="small"
-                checked={enableWebSearch}
-                onChange={onEnableWebSearchChange}
-                className={styles['user-chat-input-dot-switch']}
-              />
-            </div>
-            <div
-              className={styles['user-chat-control-item']}
-              style={chatMode === 'chat' ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
-              title={
-                chatMode === 'chat'
-                  ? '工作空间知识检索（/doc）为工作模式专属技能，个人模式下已禁用（个人沙箱已直接挂载 /knowledge）'
-                  : workspaceSearchEnabled
-                    ? '工作空间知识检索：已开启（提问将自动探查并研读空间文档，点击关闭）'
-                    : '工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）'
-              }
-            >
-              <span className={styles['user-chat-control-label']}>
-                {workspaceSearchEnabled && chatMode === 'task' ? (
-                  <FolderOpenOutlined style={{ marginRight: 4, color: '#6366f1' }} />
-                ) : (
-                  <FolderOutlined style={{ marginRight: 4 }} />
-                )}
-                知识
-              </span>
-              <Switch
-                size="small"
-                disabled={disabled || isTranscribing || isUploadingFile || chatMode === 'chat'}
-                checked={chatMode === 'task' && workspaceSearchEnabled}
-                onChange={setWorkspaceSearchEnabled}
-                className={styles['user-chat-input-dot-switch']}
-              />
+              </div>
+              <div
+                className={styles['user-chat-control-item']}
+                title={
+                  enableWebSearch
+                    ? '联网搜索：已开启（允许 AI 检索互联网公开资讯，点击关闭）'
+                    : '联网搜索：已关闭（可选开启，开启后允许 AI 检索互联网公开资讯）'
+                }
+              >
+                <span className={styles['user-chat-control-label']}>
+                  <GlobalOutlined
+                    style={{
+                      marginRight: 4,
+                      color: enableWebSearch ? '#6366f1' : undefined,
+                    }}
+                  />
+                  联网
+                </span>
+                <Switch
+                  size="small"
+                  checked={enableWebSearch}
+                  onChange={onEnableWebSearchChange}
+                  className={styles['user-chat-input-dot-switch']}
+                />
+              </div>
+              <div
+                className={styles['user-chat-control-item']}
+                style={chatMode === 'chat' ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
+                title={
+                  chatMode === 'chat'
+                    ? '工作空间知识检索（/doc）为工作模式专属技能，个人模式下已禁用（个人沙箱已直接挂载 /knowledge）'
+                    : workspaceSearchEnabled
+                      ? '工作空间知识检索：已开启（提问将自动探查并研读空间文档，点击关闭）'
+                      : '工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）'
+                }
+              >
+                <span className={styles['user-chat-control-label']}>
+                  {workspaceSearchEnabled && chatMode === 'task' ? (
+                    <FolderOpenOutlined style={{ marginRight: 4, color: '#6366f1' }} />
+                  ) : (
+                    <FolderOutlined style={{ marginRight: 4 }} />
+                  )}
+                  知识
+                </span>
+                <Switch
+                  size="small"
+                  disabled={disabled || isTranscribing || isUploadingFile || chatMode === 'chat'}
+                  checked={chatMode === 'task' && workspaceSearchEnabled}
+                  onChange={setWorkspaceSearchEnabled}
+                  className={styles['user-chat-input-dot-switch']}
+                />
+              </div>
             </div>
           </div>
           <div className={styles['user-chat-input-toolbar-spacer']} />
@@ -785,7 +787,6 @@ export function UserChatComposer(props: UserChatComposerProps) {
             <Select
               size="small"
               className={styles['user-chat-input-model-select']}
-              style={{ width: 205 }}
               value={selectedModel}
               placeholder="选择模型策略"
               onChange={onModelChange}

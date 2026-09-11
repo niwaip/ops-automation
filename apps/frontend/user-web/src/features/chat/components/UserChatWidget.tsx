@@ -19,8 +19,13 @@ export function UserChatWidget() {
           <Button
             onClick={() => setOpen(!open)}
             className={styles['chat-trigger-button']}
+            aria-label="打开悬浮对话框"
+            title="打开悬浮对话框"
+            data-testid="floating-chat-trigger"
+            data-ai-action="open-floating-chat"
             icon={
               <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <title>悬浮对话框</title>
                 <path d="M12 0C12 6.62742 17.3726 12 24 12C17.3726 12 12 17.3726 12 24C12 17.3726 6.62742 12 0 12C6.62742 12 12 6.62742 12 0Z" />
               </svg>
             }

@@ -34,6 +34,7 @@ import { useQuery, useMutation } from 'react-query';
 import { sessionApi, StepResult } from '@/api/session';
 import { templateApi } from '@/api/template';
 import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
+import { buildNovncAutoConnectUrl } from '@ops/user-core';
 
 const { Title, Text } = Typography;
 
@@ -143,7 +144,7 @@ const cleanTextContentForDisplay = (text?: string): string | undefined => {
       const trimmed = line.trim();
       if (!trimmed) return false;
       if (/^\+[0-9]+$/.test(trimmed)) return false;
-      if (/^[😂👍❤️🔥]+$/.test(trimmed)) return false;
+      if (/^(?:[😂👍🔥]|❤️)+$/u.test(trimmed)) return false;
       if (['换一换', '展开', '收起', '分享', '点赞', '收藏', '关注'].includes(trimmed)) return false;
       return true;
     })
@@ -462,7 +463,13 @@ const SessionDetailPage: React.FC = () => {
           extra={
             <Button
               type="link"
-              onClick={() => window.open(transformLocalhostUrl(session.endpoints!.novnc), '_blank')}
+              onClick={() =>
+                window.open(
+                  buildNovncAutoConnectUrl(transformLocalhostUrl(session.endpoints!.novnc)),
+                  '_blank',
+                  'noopener,noreferrer'
+                )
+              }
             >
               新窗口打开
             </Button>
@@ -478,7 +485,7 @@ const SessionDetailPage: React.FC = () => {
             }}
           >
             <iframe
-              src={`${transformLocalhostUrl(session.endpoints.novnc)}?autoconnect=true&resize=scale`}
+              src={buildNovncAutoConnectUrl(transformLocalhostUrl(session.endpoints.novnc))}
               style={{ width: '100%', height: '100%', border: 'none' }}
               title="noVNC"
             />
@@ -712,7 +719,11 @@ const SessionDetailPage: React.FC = () => {
                 type="link"
                 size="small"
                 onClick={() =>
-                  window.open(transformLocalhostUrl(session.endpoints!.novnc), '_blank')
+                  window.open(
+                    buildNovncAutoConnectUrl(transformLocalhostUrl(session.endpoints!.novnc)),
+                    '_blank',
+                    'noopener,noreferrer'
+                  )
                 }
               >
                 Open noVNC

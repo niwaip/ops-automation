@@ -20,6 +20,7 @@ export function useCapabilitiesState() {
     'hot_reload' | 'rolling_restart' | 'full_restart'
   >('rolling_restart');
   const [deployOverridesDraft, setDeployOverridesDraft] = useState('{}');
+  const [deploySmokeInputDraft, setDeploySmokeInputDraft] = useState('{}');
   const [createWizardStep, setCreateWizardStep] = useState(0);
   const [wizardReleaseId, setWizardReleaseId] = useState<string | null>(null);
   const [wizardValidationCasesDraft, setWizardValidationCasesDraft] = useState('');
@@ -89,6 +90,8 @@ export function useCapabilitiesState() {
     setDeployStrategy,
     deployOverridesDraft,
     setDeployOverridesDraft,
+    deploySmokeInputDraft,
+    setDeploySmokeInputDraft,
     createWizardStep,
     setCreateWizardStep,
     wizardReleaseId,

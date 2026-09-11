@@ -1,5 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { RuntimeAdapterRegistry } from '../../adapters/runtime-adapter.registry';
+import {
+  RuntimeCredentialResolverService,
+  isMaskedPlaceholder,
+  isMissingOrPlaceholder,
+} from '../../credentials/runtime-credential-resolver.service';
 import {
   RuntimePhaseArtifact,
   RuntimePhaseInvokeRequest,
@@ -17,12 +22,14 @@ export class RuntimeExecutionOrchestrator {
     data: Record<string, unknown>,
     runId = 'pre-fix'
   ): void {
+    const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
+    if (!debugUrl) return;
     const fs = require('fs') as typeof import('fs');
     const envPaths = [
       '/app/.dbg/workflow-branch-check.env',
       '/Users/chain/Documents/MyProject/ops-automation/.dbg/workflow-branch-check.env',
     ];
-    let url = 'http://host.docker.internal:7777/event';
+    let url = debugUrl;
     let sessionId = 'workflow-branch-check';
     for (const envPath of envPaths) {
       try {
@@ -30,7 +37,9 @@ export class RuntimeExecutionOrchestrator {
         url = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim() || url;
         sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim() || sessionId;
         break;
-      } catch {}
+      } catch {
+        // optional debug probe env file not found, use default
+      }
     }
     void fetch(url, {
       method: 'POST',
@@ -48,15 +57,19 @@ export class RuntimeExecutionOrchestrator {
   }
   // #endregion
 
-  constructor(private readonly runtimeAdapterRegistry: RuntimeAdapterRegistry) {}
+  constructor(
+    private readonly runtimeAdapterRegistry: RuntimeAdapterRegistry,
+    @Optional() private readonly credentialResolver?: RuntimeCredentialResolverService
+  ) {}
 
   async executeStep(request: RuntimeStepInvokeRequest): Promise<RuntimeStepInvokeResult> {
-    const adapter = this.runtimeAdapterRegistry.resolve(request);
-    if (request.runtimeSessionId && adapter.initializeSession) {
-      await adapter.initializeSession(request.runtimeSessionId);
+    const runtimeRequest = await this.resolveRuntimeCredentials(request);
+    const adapter = this.runtimeAdapterRegistry.resolve(runtimeRequest);
+    if (runtimeRequest.runtimeSessionId && adapter.initializeSession) {
+      await adapter.initializeSession(runtimeRequest.runtimeSessionId);
     }
 
-    return adapter.invokeStep(request);
+    return adapter.invokeStep(runtimeRequest);
   }
 
   async executePhase(request: RuntimePhaseInvokeRequest): Promise<RuntimePhaseInvokeResult> {
@@ -145,8 +158,12 @@ export class RuntimeExecutionOrchestrator {
         continue;
       }
 
-      const adapter = this.runtimeAdapterRegistry.resolve(step);
-      const runtimeSessionId = step.runtimeSessionId || undefined;
+      const runtimeStep = await this.resolveRuntimeCredentials(step, {
+        ...(metadataInput || {}),
+        ...phaseVariables,
+      });
+      const adapter = this.runtimeAdapterRegistry.resolve(runtimeStep);
+      const runtimeSessionId = runtimeStep.runtimeSessionId || undefined;
       const adapterRouteKey =
         adapter.routeKeys?.[0] || `${step.runtimeType}:${step.capabilityType}`;
       const sessionInitKey = runtimeSessionId ? `${adapterRouteKey}:${runtimeSessionId}` : null;
@@ -161,9 +178,9 @@ export class RuntimeExecutionOrchestrator {
         initializedSessions.add(sessionInitKey);
       }
 
-      const result = await adapter.invokeStep(step);
+      const result = await adapter.invokeStep(runtimeStep);
       stepResults.push(result);
-      this.capturePhaseVariable(step, result, phaseVariables);
+      this.capturePhaseVariable(runtimeStep, result, phaseVariables);
 
       if (!result.success) {
         const artifacts = this.collectPhaseArtifacts(
@@ -205,6 +222,273 @@ export class RuntimeExecutionOrchestrator {
       artifacts,
       output: this.buildPhaseOutput(lastResult?.output, phaseVariables),
     };
+  }
+
+  private async resolveRuntimeCredentials(
+    request: RuntimeStepInvokeRequest,
+    contextVariables?: Record<string, unknown>
+  ): Promise<RuntimeStepInvokeRequest> {
+    const userId =
+      request.traceContext?.userId ||
+      (typeof contextVariables?.userId === 'string' ? contextVariables.userId : undefined);
+    const skillId = request.publishedSkillId || request.skillId || undefined;
+    let resolvedInput: Record<string, unknown> = { ...(request.input || {}) };
+    let resolvedCredentials: Record<string, unknown> = {};
+
+    if (this.credentialResolver && userId) {
+      const combinedInputForCreds: Record<string, unknown> = {
+        ...(contextVariables || {}),
+        ...resolvedInput,
+      };
+      resolvedCredentials = await this.credentialResolver.resolveInputForRuntime(
+        userId,
+        skillId || undefined,
+        combinedInputForCreds
+      );
+      for (const [k, v] of Object.entries(resolvedCredentials)) {
+        const existingVal = resolvedInput[k];
+        if (isMissingOrPlaceholder(existingVal)) {
+          resolvedInput[k] = v;
+        }
+      }
+    }
+
+    const variableMap: Record<string, unknown> = {
+      ...(contextVariables || {}),
+      ...resolvedInput,
+      ...resolvedCredentials,
+    };
+
+    if (variableMap.username && !variableMap.userName) variableMap.userName = variableMap.username;
+    if (variableMap.username && !variableMap.user) variableMap.user = variableMap.username;
+    if (variableMap.username && !variableMap.account) variableMap.account = variableMap.username;
+    if (variableMap.password && !variableMap.loginCredential) variableMap.loginCredential = variableMap.password;
+    if (variableMap.loginCredential && !variableMap.password) variableMap.password = variableMap.loginCredential;
+
+    resolvedInput = this.injectResolvedCredentialsDeep(resolvedInput, variableMap);
+    this.assertNoMaskedOrUnresolvedSecrets(resolvedInput, request);
+
+    return {
+      ...request,
+      input: resolvedInput,
+    };
+  }
+
+  private isSensitiveKey(name: string): boolean {
+    const lower = name.toLowerCase();
+    return (
+      lower.includes('devicekey') ||
+      lower.includes('device_key') ||
+      lower.includes('password') ||
+      lower.includes('passwd') ||
+      lower.includes('secret') ||
+      lower.includes('apikey') ||
+      lower.includes('api_key') ||
+      lower.includes('auth_token') ||
+      lower.includes('credential') ||
+      lower.includes('token')
+    );
+  }
+
+  private isUsernameKey(name: string): boolean {
+    const lower = name.toLowerCase();
+    return (
+      lower.includes('username') ||
+      lower.includes('user_name') ||
+      lower === 'user' ||
+      lower.includes('account') ||
+      lower.includes('loginuser')
+    );
+  }
+
+  private injectResolvedCredentialsDeep(
+    input: Record<string, unknown>,
+    variableMap: Record<string, unknown>
+  ): Record<string, unknown> {
+    const resolveString = (
+      val: string,
+      keyName?: string,
+      parentObj?: Record<string, unknown>
+    ): string => {
+      let result = val;
+      result = [
+        /\$\{\s*([^}]+?)\s*\}/g,
+        /\{\{\s*([^}]+?)\s*\}\}/g,
+      ].reduce((current, pattern) => {
+        return current.replace(pattern, (match, varName) => {
+          const trimmed = String(varName).trim();
+          let repl = variableMap[trimmed];
+          if (repl === undefined || repl === null) {
+            const foundKey = Object.keys(variableMap).find(
+              (k) => k.toLowerCase() === trimmed.toLowerCase()
+            );
+            if (foundKey) {
+              repl = variableMap[foundKey];
+            }
+          }
+          if (repl === undefined || repl === null) {
+            const lower = trimmed.toLowerCase();
+            if (
+              lower === 'username' ||
+              lower === 'user' ||
+              lower === 'account' ||
+              lower === 'loginuser' ||
+              lower === 'loginusername'
+            ) {
+              repl =
+                variableMap.username ??
+                variableMap.userName ??
+                variableMap.user ??
+                variableMap.account;
+            } else if (
+              lower === 'password' ||
+              lower === 'logincredential' ||
+              lower === 'passwd' ||
+              lower === 'secret'
+            ) {
+              repl =
+                variableMap.password ??
+                variableMap.loginCredential ??
+                variableMap.passwd ??
+                variableMap.secret;
+            }
+          }
+          if (
+            repl !== undefined &&
+            repl !== null &&
+            !isMaskedPlaceholder(String(repl)) &&
+            !/^\$\{[^}]+\}$/.test(String(repl).trim())
+          ) {
+            return String(repl);
+          }
+          return match;
+        });
+      }, result);
+
+      const selector =
+        typeof parentObj?.selector === 'string' ? parentObj.selector.toLowerCase() : '';
+      const isUsernameSelector =
+        selector.includes('user') ||
+        selector.includes('账号') ||
+        selector.includes('用户名') ||
+        selector.includes('account');
+      const isUnresolvedUsername =
+        /^\$\{\s*(username|user|account|loginUser|loginUsername)\s*\}$/i.test(result.trim()) ||
+        isMaskedPlaceholder(result);
+
+      if (
+        (isUnresolvedUsername && (isUsernameSelector || (keyName && this.isUsernameKey(keyName)))) ||
+        (isUsernameSelector && isMissingOrPlaceholder(result))
+      ) {
+        const usernameVal =
+          variableMap.username ??
+          variableMap.userName ??
+          variableMap.user ??
+          variableMap.account;
+        if (
+          usernameVal !== undefined &&
+          usernameVal !== null &&
+          !isMissingOrPlaceholder(usernameVal)
+        ) {
+          return String(usernameVal);
+        }
+      }
+
+      if (isMaskedPlaceholder(result)) {
+        if (
+          keyName &&
+          variableMap[keyName] &&
+          !isMaskedPlaceholder(String(variableMap[keyName]))
+        ) {
+          return String(variableMap[keyName]);
+        }
+        const isPasswordSelector =
+          selector.includes('pass') ||
+          selector.includes('密') ||
+          selector.includes('credential') ||
+          selector.includes('secret');
+        if (isPasswordSelector || (keyName && this.isSensitiveKey(keyName))) {
+          for (const [k, v] of Object.entries(variableMap)) {
+            if (
+              this.isSensitiveKey(k) &&
+              typeof v === 'string' &&
+              !isMaskedPlaceholder(v) &&
+              v.trim().length > 0
+            ) {
+              return v;
+            }
+          }
+        }
+      }
+
+      return result;
+    };
+
+    const processValue = (
+      val: unknown,
+      keyName?: string,
+      parent?: Record<string, unknown>
+    ): unknown => {
+      if (typeof val === 'string') {
+        return resolveString(val, keyName, parent);
+      }
+      if (Array.isArray(val)) {
+        return val.map((item) => processValue(item, keyName, parent));
+      }
+      if (val && typeof val === 'object' && val !== null) {
+        const obj = val as Record<string, unknown>;
+        const newObj: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(obj)) {
+          newObj[k] = processValue(v, k, obj);
+        }
+        return newObj;
+      }
+      return val;
+    };
+
+    return processValue(input) as Record<string, unknown>;
+  }
+
+  private assertNoMaskedOrUnresolvedSecrets(
+    input: Record<string, unknown>,
+    request: RuntimeStepInvokeRequest
+  ): void {
+    const checkValue = (val: unknown, keyPath: string): void => {
+      if (typeof val === 'string') {
+        if (isMaskedPlaceholder(val)) {
+          throw new Error(
+            `Runtime credential for parameter at [${keyPath}] in step [${request.stepId}] is masked; bind an active credential before execution`
+          );
+        }
+        if (
+          /\$\{(logincredential|password|secret|devicekey|apikey|token|username|user|account)[^}]*\}/i.test(
+            val
+          )
+        ) {
+          throw new Error(
+            `Missing runtime credential for parameter at [${keyPath}] in step [${request.stepId}]; please bind credential before execution`
+          );
+        }
+      } else if (Array.isArray(val)) {
+        val.forEach((item, index) => checkValue(item, `${keyPath}[${index}]`));
+      } else if (val && typeof val === 'object' && val !== null) {
+        for (const [k, v] of Object.entries(val as Record<string, unknown>)) {
+          checkValue(v, keyPath ? `${keyPath}.${k}` : k);
+        }
+      }
+    };
+
+    if (input.args && typeof input.args === 'object') {
+      const args = input.args as Record<string, unknown>;
+      if (args.text !== undefined) checkValue(args.text, 'args.text');
+      if (args.value !== undefined) checkValue(args.value, 'args.value');
+    }
+
+    for (const [k, v] of Object.entries(input)) {
+      if (this.isSensitiveKey(k)) {
+        checkValue(v, k);
+      }
+    }
   }
 
   private buildPhaseOutput(

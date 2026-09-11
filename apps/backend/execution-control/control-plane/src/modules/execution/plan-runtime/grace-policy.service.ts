@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 export type LegacyGraceMode = 'reject_not_started' | 'allow_all' | 'reject_all';
 
@@ -44,6 +44,7 @@ const NOT_STARTED_STATUSES = new Set(['draft', 'queued']);
  */
 @Injectable()
 export class GracePolicyService {
+  private readonly logger = new Logger(GracePolicyService.name);
   private readonly config: GracePolicyConfig;
 
   constructor() {
@@ -91,8 +92,8 @@ export class GracePolicyService {
     if (raw) {
       const parsed = new Date(raw);
       if (!Number.isNaN(parsed.getTime())) return parsed;
-      console.warn(
-        '[GracePolicyService] Invalid LEGACY_GRACE_DEADLINE — grace gate left inactive until a valid ISO date is configured'
+      this.logger.warn(
+        'Invalid LEGACY_GRACE_DEADLINE — grace gate left inactive until a valid ISO date is configured'
       );
     }
     return undefined;

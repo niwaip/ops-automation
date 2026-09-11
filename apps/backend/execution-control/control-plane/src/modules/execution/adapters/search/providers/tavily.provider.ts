@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Logger } from '@nestjs/common';
 import {
   isAxiosErrorLike,
   SearchEngineProvider,
@@ -20,6 +21,7 @@ type TavilyApiResult = {
 };
 
 export class TavilyProvider implements SearchEngineProvider {
+  private readonly logger = new Logger(TavilyProvider.name);
   public readonly name = 'tavily';
   private readonly rotator = new KeyRotator('tavily');
 
@@ -116,7 +118,9 @@ export class TavilyProvider implements SearchEngineProvider {
       } catch (error: any) {
         lastError = error;
         const status = isAxiosErrorLike(error) ? error.response?.status : undefined;
-        console.log(`[TavilyProvider DEBUG] key=${apiKey?.slice(0, 8)} status=${status} data=${JSON.stringify(error?.response?.data)} msg=${error?.message}`);
+        this.logger.debug(
+          `key=${apiKey?.slice(0, 8)} status=${status} data=${JSON.stringify(error?.response?.data)} msg=${error?.message}`
+        );
         if (status === 401) {
           this.rotator.markFailure(apiKey, 'invalid');
         } else if (status === 429) {

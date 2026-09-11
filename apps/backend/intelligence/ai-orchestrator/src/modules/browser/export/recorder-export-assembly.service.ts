@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { readFileSync } from 'fs';
 import { ModelService } from '../../model/model.service';
 import { BrowserCommand } from '../intent';
 import { buildBrowserRecordingExecutionPlan } from './browser-recording-execution-plan';
@@ -246,24 +245,7 @@ export class RecorderExportAssemblyService {
       metadata,
       exportArtifactId,
     }) as ExportArtifactsLike['skillDraft']['publishPayload'];
-    // #region debug-point A:template-export-payload
-    this.reportTemplateExportDebug('A', 'assembled recorder export payload', {
-      runtimeSessionId: session.runtimeSessionId,
-      exportArtifactId,
-      parameters,
-      rawTemplateSteps: templateSteps,
-      parameterizedTemplateSteps,
-      publishExecutionPlanTemplateSteps:
-        (
-          (publishPayload?.apiEndpoints?.runtimeMetadata as Record<string, any> | undefined)
-            ?.executionPlan as Record<string, any> | undefined
-        )?.templateSteps ?? null,
-      publishExecutionFlow:
-        Array.isArray(publishPayload?.executionFlow) && publishPayload.executionFlow.length > 0
-          ? publishPayload.executionFlow
-          : null,
-    });
-    // #endregion
+
     const executionPlan = buildBrowserRecordingExecutionPlan({
       backend: session.backend,
       runtimeSessionId: session.runtimeSessionId,
@@ -646,61 +628,5 @@ export class RecorderExportAssemblyService {
     return takeoverReason.replace(/(?<![\d.])-?\d+(?:\.\d+)?(?=\s*%)/, placeholder);
   }
 
-  // #region debug-point shared:template-export-debug
-  private reportTemplateExportDebug(
-    hypothesisId: 'A' | 'B' | 'C' | 'D' | 'E',
-    msg: string,
-    data: Record<string, unknown>,
-    runId = 'pre-fix'
-  ): void {
-    let serverUrl = 'http://host.docker.internal:7777/event';
-    let sessionId = 'template-export-params';
-    for (const envPath of [
-      '/app/.dbg/template-export-params.env',
-      '/Users/chain/Documents/MyProject/ops-automation/.dbg/template-export-params.env',
-    ]) {
-      try {
-        const envContent = readFileSync(envPath, 'utf8');
-        const resolvedUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim();
-        const resolvedSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim();
-        if (resolvedUrl) {
-          serverUrl = resolvedUrl;
-        }
-        if (resolvedSessionId) {
-          sessionId = resolvedSessionId;
-        }
-        break;
-      } catch {
-        // Debug configuration is optional; try the next known location.
-      }
-    }
-    void fetch(serverUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId,
-        runId,
-        hypothesisId,
-        location: 'recorder-export-assembly.service',
-        msg: `[DEBUG] ${msg}`,
-        data,
-        ts: Date.now(),
-      }),
-    }).catch(() =>
-      fetch('http://host.docker.internal:7777/event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId,
-          runId,
-          hypothesisId,
-          location: 'recorder-export-assembly.service',
-          msg: `[DEBUG] ${msg}`,
-          data,
-          ts: Date.now(),
-        }),
-      }).catch(() => undefined)
-    );
-  }
-  // #endregion
+
 }

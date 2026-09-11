@@ -40,6 +40,14 @@ spec:
       - 实时资讯
       - 网络搜索
       - 网页搜索
+      - 行情
+      - 股市
+      - 股市行情
+      - 大盘
+      - 股价
+      - 汇率
+      - 金价
+      - 股票
     matchSummary: 在用户允许联网时检索公开互联网并返回带来源的结果
     runtimeType: workflow
     supportsArtifact: false

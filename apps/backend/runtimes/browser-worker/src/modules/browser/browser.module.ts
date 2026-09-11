@@ -4,6 +4,16 @@ import { TakeoverController } from './takeover.controller';
 import { BrowserService } from './browser.service';
 import { ChromeDevtoolsCliAdapter } from './adapters/chrome-devtools-cli.adapter';
 import { PlaywrightCliAdapter } from './adapters/playwright-cli.adapter';
+import {
+  PlaywrightCliRunner,
+  PlaywrightSessionManager,
+  PlaywrightStateManager,
+  PlaywrightNavigationHandler,
+  PlaywrightPageReader,
+  PlaywrightInteractionHandler,
+  PlaywrightInspectionHandler,
+  PlaywrightSearchHandler,
+} from './adapters/playwright';
 import { WorkerModule } from '../worker/worker.module';
 import { RecorderModule } from '../recorder/recorder.module';
 import { BrowserSessionService } from './application/browser-session.service';
@@ -25,12 +35,14 @@ import { CaptureProfileResolverService } from './content/capture-profile-resolve
 import { BrowserPageReadinessService } from './application/browser-page-readiness.service';
 import { BrowserContentQualityService } from './content/browser-content-quality.service';
 import { BrowserStepRecoveryService } from './application/browser-step-recovery.service';
+import { BrowserArtifactCleanupService } from './application/browser-artifact-cleanup.service';
 
 @Module({
   imports: [WorkerModule, RecorderModule],
   controllers: [BrowserController, TakeoverController],
   providers: [
     BrowserService,
+    BrowserArtifactCleanupService,
     BrowserSessionService,
     BrowserCommandService,
     BrowserParameterizationService,
@@ -50,6 +62,14 @@ import { BrowserStepRecoveryService } from './application/browser-step-recovery.
     BrowserContentQualityService,
     CaptureProfileResolverService,
     BrowserSessionRegistry,
+    PlaywrightCliRunner,
+    PlaywrightSessionManager,
+    PlaywrightStateManager,
+    PlaywrightNavigationHandler,
+    PlaywrightPageReader,
+    PlaywrightInteractionHandler,
+    PlaywrightInspectionHandler,
+    PlaywrightSearchHandler,
     PlaywrightCliAdapter,
     ChromeDevtoolsCliAdapter,
   ],

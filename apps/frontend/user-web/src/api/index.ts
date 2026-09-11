@@ -136,4 +136,5 @@ export * from './workspace';
 export * from './workbenchTodo';
 export * from './workbenchInbox';
 export * from './workbenchCoordination';
+export * from './credentials';
 

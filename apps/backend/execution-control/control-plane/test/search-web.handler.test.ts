@@ -240,4 +240,28 @@ describe('executeWebSearch', () => {
     expect(result.output?.provider).toBe('duckduckgo');
     expect(result.output?.warnings?.[0]).toContain("搜索通道 'tavily' 异常");
   });
+
+  it('fails when DuckDuckGo returns an anomaly bot challenge modal', async () => {
+    delete process.env.TAVILY_API_KEY;
+    process.env.DUCKDUCKGO_ENABLED = 'true';
+    process.env.SEARCH_PROVIDER_ORDER = 'duckduckgo';
+
+    const mockAnomalyHtml = `
+      <div id="lite_wrapper">
+        <div class="anomaly-modal__controls">
+          <form id="challenge-form">
+            <button name="challenge-submit">Submit</button>
+          </form>
+          <p>error-lite@duckduckgo.com</p>
+        </div>
+      </div>
+    `;
+    mockedPost.mockResolvedValueOnce({ data: mockAnomalyHtml });
+
+    const result = await executeWebSearch({ input: { query: 'DeepSeek' } } as any);
+
+    expect(result.success).toBe(false);
+    expect(result.errorCode).toBe('WEB_SEARCH_PROVIDER_ERROR');
+    expect(result.errorMessage).toContain('DuckDuckGo 触发反爬人机验证拦截');
+  });
 });

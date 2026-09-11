@@ -5,7 +5,9 @@ export function debugStudioRenderHypothesis(
   msg: string,
   data: Record<string, unknown> = {}
 ): void {
-  let url = 'http://127.0.0.1:7777/event';
+  const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
+  if (!debugUrl) return;
+  let url = debugUrl;
   let sessionId = 'signing-date-render';
 
   try {

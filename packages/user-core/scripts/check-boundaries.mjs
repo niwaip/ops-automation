@@ -41,7 +41,13 @@ const walk = async (dir) => {
       }
     }
 
-    if (restrictedGlobals.test(content)) {
+    const codeWithoutCommentsOrStrings = content
+      .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, "")
+      .replace(/(["`])(?:\\.|(?!\1)[^\\])*\1/g, "")
+      .replace(/'(?:\\.|[^'\\])*'/g, "")
+      .replace(/\/(?:\\.|[^\/\\])+\/[gimsuy]*/g, "");
+
+    if (restrictedGlobals.test(codeWithoutCommentsOrStrings)) {
       violations.push(`${path.relative(rootDir, fullPath)}: 禁止直接引用浏览器全局对象`);
     }
   }

@@ -1,39 +1,42 @@
-# 文档导航
+# 项目文档导航 (Documentation Hub)
 
-`docs/` 只保留当前项目仍有实际参考价值的资料，并按“当前基线 / 功能概要 / 操作手册 / 历史归档”组织。
+本目录集中收纳平台的**全局技术规范、架构全景说明、重塑背景与框架迁移历史**。
 
-当前项目基线：
+---
 
-- 架构与设计基线：`v4`
-- 后端目录现态：`apps/backend/README.md`
-- 前端入口现态：`apps/frontend/portal/docs/frontend-dev-entry.md`
+## 1. 核心必读（当前架构真相来源）
 
-## 当前优先阅读
+- **最新项目全景说明书**：[`PROJECT_OVERVIEW.md`](PROJECT_OVERVIEW.md)  
+  *涵盖 5 大物理机能平面划分、业务主链（意图 -> 两阶段规划 -> 统一能力 -> 发布门禁 -> 调度执行）、六大核心架构设计模式、技术栈以及工程红线。*
+- **项目架构重塑背景书**：[`project_architecture_redesign.md`](project_architecture_redesign.md)  
+  *详细阐述从旧单体分层向机能域驱动演进的根本原因、业务痛点与重塑原则。*
+- **产品化就绪度评估**：[`productization-readiness-assessment.md`](productization-readiness-assessment.md)  
+  *平台上线准入、各模块成熟度与就绪度基线。*
 
-- 产品化就绪度评估：[`productization-readiness-assessment.md`](file:///Users/chain/Documents/MyProject/ops-automation/docs/productization-readiness-assessment.md)
-- 设计总入口：[`design/README.md`](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/README.md)
-- 运维与验证手册：[`runbook/README.md`](file:///Users/chain/Documents/MyProject/ops-automation/docs/runbook/README.md)
-- 交付物与样例：[`artifacts/README.md`](file:///Users/chain/Documents/MyProject/ops-automation/docs/artifacts/README.md)
-- Skill 参考资料：`skills/temporal-developer/`
+---
 
-## 当前功能概要
+## 2. 规范基线与迁移历史
 
-- 浏览器录制模块：[`design/browser-recorder-module-overview.md`](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/browser-recorder-module-overview.md)
-- 浏览器模板生成与发布桥接：[`design/browser-template-generation-and-release-bridge-overview.md`](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/browser-template-generation-and-release-bridge-overview.md)
+- **系统设计基线 (`design/v4/`)**：
+  - [企业级平台系统设计总纲 (v4.0)](design/v4/Enterprise-Skill-Platform_Master_v4.0.md)
+  - [企业级平台项目描述 (v4.1)](design/v4/Enterprise-Skill-Platform_Project-Description_v4.1.md)
+- **技术框架迁移历史 (`design/archive/`)**：
+  - [ORM 统一重构：从 TypeORM 全面收敛至 Prisma](design/archive/ORM-Unification_TypeORM-to-Prisma_v1.0.md)
+  - [后端目录演进历史与结构变迁说明](design/archive/backend-directory-structure-plan.md)
+  - [页面语义理解与 React 兼容方案演进](design/archive/AI-Page-Understanding-and-React-Semantics-Compatibility-Plan_v1.0.md)
+  - [Office-Addin 结构重构方案说明](design/archive/Office-Addin-Structure-Refactor-Complete-Solution_v1.0.md)
 
-## 目录说明
+---
 
-- `design/`
-  当前设计文档入口。只保留系统描述、项目描述和功能概要；历史材料统一收敛到 `archive/` 与相关专题归档中。
-- `runbook/`
-  面向排障、验证和阶段性落地的操作文档。
-- `artifacts/`
-  存放样例产物、验证结果和 UI 检查素材。
-- `skills/`
-  存放面向运行时或开发者的 Skill 资料。
+## 3. 运维与验证
 
-## 整理原则
+- **运维与排障指南**：[`runbook/README.md`](runbook/README.md)
+- **样例交付物与模板**：[`artifacts/README.md`](artifacts/README.md)
 
-- 优先以代码现态为准，不再把旧规划文档当成当前真相来源。
-- 历史材料集中归档，不混入当前实施入口。
-- 无命名规则的草稿、重复副本、无明确归属的临时材料应及时清理。
+---
+
+## 4. 维护与清理原则
+
+- **单一真相来源**：一切以当前代码物理实现（`apps/backend/`、`apps/frontend/`）与 `PROJECT_OVERVIEW.md` 为准，不再保留任何阶段性草稿或过期实施计划。
+- **背景与历史沉淀**：框架迁移历史收敛于 `design/archive/`，背景动因收敛于 `project_architecture_redesign.md`。
+- **避免文档堆砌**：单次任务走查、临时对比笔记与已完成的阶段计划随重构落地即时清理。

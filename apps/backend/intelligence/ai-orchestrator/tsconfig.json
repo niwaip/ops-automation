@@ -6,7 +6,11 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@ops/backend-agent-profile": ["../../../../packages/backend-contracts/agent-profile/index.d.ts"]
+      "@ops/backend-agent-profile": ["../../../../packages/backend-contracts/agent-profile/index.d.ts"],
+      "@ops/browser-recorder": ["../../capabilities/browser-domain/recorder/dist"],
+      "@ops/browser-recorder/*": ["../../capabilities/browser-domain/recorder/dist/*"],
+      "@ops/browser-runtime-facade": ["../../capabilities/browser-domain/runtime-facade/dist"],
+      "@ops/browser-runtime-facade/*": ["../../capabilities/browser-domain/runtime-facade/dist/*"]
     },
     "isolatedModules": true,
     "noUnusedLocals": false,

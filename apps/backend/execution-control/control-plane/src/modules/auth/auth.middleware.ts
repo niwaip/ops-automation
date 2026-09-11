@@ -1,6 +1,7 @@
 import { Injectable, NestMiddleware, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request, Response, NextFunction } from 'express';
+import * as crypto from 'crypto';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -18,12 +19,26 @@ export interface AuthenticatedRequest extends Request {
  */
 const INTERNAL_ALLOWED_ROLES = new Set(['employee', 'manager']);
 
+const INSECURE_INTERNAL_SECRETS = new Set([
+  'ops_internal_shared_secret_change_me',
+  'ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa',
+  'ops-automation-jwt-secret-key-change-in-production',
+  'jwt_secret_key_change_in_production',
+  'secret',
+  'change_me',
+  'default_secret',
+]);
+
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
   constructor(private readonly jwtService: JwtService) {}
 
   async use(req: AuthenticatedRequest, _res: Response, next: NextFunction) {
-    const internalSecret = process.env.INTERNAL_API_SHARED_SECRET || process.env.JWT_SECRET;
+    const isProduction = process.env.NODE_ENV === 'production';
+    const internalSecret =
+      process.env.INTERNAL_API_SHARED_SECRET ||
+      process.env.INTERNAL_API_SECRET ||
+      (!isProduction ? process.env.JWT_SECRET : undefined);
     const internalAuth = req.headers['x-internal-auth'];
     const internalUserId = req.headers['x-user-id'];
     const internalUserRole = req.headers['x-user-role'];
@@ -32,11 +47,15 @@ export class AuthMiddleware implements NestMiddleware {
 
     if (
       internalSecret &&
+      (!isProduction || (!INSECURE_INTERNAL_SECRETS.has(internalSecret) && internalSecret.length >= 16)) &&
       typeof internalAuth === 'string' &&
-      internalAuth === internalSecret &&
+      internalAuth.length > 0 &&
       typeof internalUserId === 'string' &&
       internalUserId.trim()
     ) {
+      const provBuf = Buffer.from(internalAuth);
+      const expBuf = Buffer.from(internalSecret);
+      if (provBuf.length === expBuf.length && crypto.timingSafeEqual(provBuf, expBuf)) {
       // 安全限制：内部认证路径不接受调用方自封的超权限角色。
       // 即使请求头中传入 x-user-role: admin，也会被强制降级为 'employee'。
       const requestedRole =
@@ -58,6 +77,7 @@ export class AuthMiddleware implements NestMiddleware {
       };
       next();
       return;
+      }
     }
 
     const authorization = req.headers.authorization;

@@ -338,4 +338,139 @@ describe('BrowserCommandLoginService', () => {
       usedRuntimeProfile: false,
     });
   });
+
+  it('correctly separates password and submit action when concatenated without spaces', () => {
+    const result = service.parseLoginCommand(
+      '用 用户名 admin 密码 admin123登录',
+      {},
+      {
+        resolveUrl: (input) => `https://${input}`,
+        resolvePendingClickIntent: (_intent, _context, description) => ({
+          tool: 'click',
+          params: { text: '登录' },
+          description,
+        }),
+      }
+    );
+
+    expect(result).toEqual({
+      success: true,
+      commands: [
+        {
+          tool: 'fill',
+          params: {
+            selector: '用户名',
+            value: 'admin',
+          },
+          description: '填写用户名',
+        },
+        {
+          tool: 'fill',
+          params: {
+            selector: '密码',
+            value: 'admin123',
+          },
+          description: '填写密码',
+        },
+        {
+          tool: 'click',
+          params: {
+            text: '登录',
+          },
+          description: '点击登录',
+        },
+      ],
+      explanation: '将依次填写用户名和密码，点击 登录',
+    });
+  });
+
+  it('correctly separates fields and submit action when completely unspaced', () => {
+    const result = service.parseLoginCommand(
+      '用户名admin密码admin123登录',
+      {},
+      {
+        resolveUrl: (input) => `https://${input}`,
+        resolvePendingClickIntent: (_intent, _context, description) => ({
+          tool: 'click',
+          params: { text: '登录' },
+          description,
+        }),
+      }
+    );
+
+    expect(result).toEqual({
+      success: true,
+      commands: [
+        {
+          tool: 'fill',
+          params: {
+            selector: '用户名',
+            value: 'admin',
+          },
+          description: '填写用户名',
+        },
+        {
+          tool: 'fill',
+          params: {
+            selector: '密码',
+            value: 'admin123',
+          },
+          description: '填写密码',
+        },
+        {
+          tool: 'click',
+          params: {
+            text: '登录',
+          },
+          description: '点击登录',
+        },
+      ],
+      explanation: '将依次填写用户名和密码，点击 登录',
+    });
+  });
+
+  it('preserves quoted credentials even if they contain action terms', () => {
+    const result = service.parseLoginCommand(
+      '用户名 admin 密码 "admin123登录" 登录',
+      {},
+      {
+        resolveUrl: (input) => `https://${input}`,
+        resolvePendingClickIntent: (_intent, _context, description) => ({
+          tool: 'click',
+          params: { text: '登录' },
+          description,
+        }),
+      }
+    );
+
+    expect(result).toEqual({
+      success: true,
+      commands: [
+        {
+          tool: 'fill',
+          params: {
+            selector: '用户名',
+            value: 'admin',
+          },
+          description: '填写用户名',
+        },
+        {
+          tool: 'fill',
+          params: {
+            selector: '密码',
+            value: 'admin123登录',
+          },
+          description: '填写密码',
+        },
+        {
+          tool: 'click',
+          params: {
+            text: '登录',
+          },
+          description: '点击登录',
+        },
+      ],
+      explanation: '将依次填写用户名和密码，点击 登录',
+    });
+  });
 });

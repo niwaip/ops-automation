@@ -1,0 +1,17 @@
+# OpsPilot Codeowners
+# Global default
+* @chain
+
+# Security & Credentials
+apps/backend/**/guards/ @chain
+apps/backend/**/credentials/ @chain
+apps/backend/**/crypto/ @chain
+SECURITY.md @chain
+
+# Architecture & Contracts
+packages/backend-contracts/ @chain
+packages/user-core/ @chain
+
+# DevOps & Docker Infrastructure
+docker/ @chain
+.github/ @chain

@@ -59,6 +59,25 @@ export class BrowserCommandFieldFillService {
 
     const defaultResolved = this.resolveDefaultCandidate(fillIntent.remainder, fillIntent.regionHint, candidates);
     if (!defaultResolved) {
+      const directResolved = this.resolveDirectInputCandidate(fillIntent.remainder, fillIntent.regionHint, candidates);
+      if (directResolved) {
+        return {
+          status: 'success',
+          response: this.buildResponse(fillIntent.verb, directResolved.rawField, directResolved.value, directResolved.selector, directResolved.locator, {
+            fieldFill: {
+              status: 'success',
+              reason: 'field-fill-direct-input-candidate',
+              resolvedField: directResolved.candidate.label || directResolved.rawField,
+              resolvedCanonicalField: directResolved.candidate.field || directResolved.rawField,
+              resolvedRegion: directResolved.candidate.region,
+              selector: directResolved.selector,
+              value: directResolved.value,
+              usedRuntimeProfile: false,
+              matchedRuntimeRuleIds: [],
+            },
+          }),
+        };
+      }
       return { status: 'no_match' };
     }
 
@@ -243,6 +262,53 @@ export class BrowserCommandFieldFillService {
     }
 
     return null;
+  }
+
+  private resolveDirectInputCandidate(
+    remainder: string,
+    regionHint: string | undefined,
+    candidates: ParsedFieldFillCandidate[]
+  ): {
+    candidate: ParsedFieldFillCandidate;
+    rawField: string;
+    value: string;
+    selector: string;
+    locator?: Record<string, unknown>;
+  } | null {
+    const value = remainder.trim();
+    if (!value) {
+      return null;
+    }
+
+    // Look for prominent floating/dialog/chat textarea or input first
+    const floatingCandidate = candidates.find(
+      (c) =>
+        c.region === 'floating' ||
+        /(?:例如|总结|提问|聊天|chat|floating|对话|问答)/i.test(
+          `${c.label || ''} ${c.field || ''} ${c.summary || ''}`
+        )
+    );
+    const targetCandidate =
+      floatingCandidate ||
+      (regionHint ? candidates.find((c) => (c.region || '').includes(regionHint)) : null) ||
+      (candidates.length === 1 ? candidates[0] : null);
+
+    if (!targetCandidate) {
+      return null;
+    }
+
+    const built = this.buildSelectorFromCandidate(targetCandidate);
+    if (!built.selector) {
+      return null;
+    }
+
+    return {
+      candidate: targetCandidate,
+      rawField: targetCandidate.label || targetCandidate.summary || '输入框',
+      value,
+      selector: built.selector,
+      locator: built.locator,
+    };
   }
 
   private pickBestCandidate(

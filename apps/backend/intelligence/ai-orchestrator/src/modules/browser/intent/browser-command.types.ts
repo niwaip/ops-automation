@@ -71,6 +71,7 @@ export interface BrowserCommandCandidate {
   elementId?: string;
   dataTestId?: string;
   text?: string;
+  title?: string;
   action?: string;
   field?: string;
   stableName?: string;
@@ -82,6 +83,10 @@ export interface BrowserCommandCandidate {
   region?: {
     name?: string;
     type?: string;
+  };
+  container?: {
+    type: string;
+    name?: string;
   };
   preferredLocator?: BrowserCommandCandidateLocator;
 }
@@ -98,6 +103,11 @@ export interface BrowserCommandContext {
   availableInputs?: string[];
   availableButtons?: string[];
   availableCandidates?: BrowserCommandCandidate[];
+  activeContainer?: {
+    type: string;
+    name?: string;
+    title?: string;
+  };
   controlHints?: string[];
   lastFailureContext?: BrowserCommandFailureContext;
 }

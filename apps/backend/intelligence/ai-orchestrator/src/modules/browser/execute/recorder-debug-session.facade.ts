@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
-import type { RecorderDebugObservation } from './recorder-debug.types';
+import { getInternalServiceHeaders } from '../../../config/internal-service-auth';
+import type { RecorderActiveContainerInfo, RecorderDebugObservation } from './recorder-debug.types';
 import { RecorderDebugObservationRefreshService } from '../observe';
 import { RecorderDebugSessionCoordinatorService } from '../session';
 import { RecorderLoopService } from '../loop';
@@ -129,7 +130,7 @@ export class RecorderDebugSessionFacade {
         },
         {
           timeout: 60000,
-          headers: { 'Content-Type': 'application/json' },
+          headers: getInternalServiceHeaders(),
         }
       );
 
@@ -215,10 +216,12 @@ export class RecorderDebugSessionFacade {
     TSession extends {
       currentPageUrl?: string;
       lastObservation?: RecorderDebugObservation;
+      activeContainer?: RecorderActiveContainerInfo;
     },
   >(session: TSession, observation: RecorderDebugObservation): void {
     session.lastObservation = observation;
     session.currentPageUrl = observation.currentPageUrl || session.currentPageUrl;
+    session.activeContainer = observation.activeContainer;
   }
 
   applyRecorderControlTokensBeforeExecution<

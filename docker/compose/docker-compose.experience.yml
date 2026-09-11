@@ -7,18 +7,18 @@ services:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-portal
     working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    command: sh -c "corepack enable && pnpm run dev"
     environment:
       NODE_ENV: development
       DOCKER_ENV: true
       VITE_API_BASE_URL: /api
-      VITE_CONTROL_PLANE_API_URL: http://${HOST_IP:-localhost}:${CONTROL_PLANE_PORT:-3003}/api
+      VITE_CONTROL_PLANE_API_URL: /api
       VITE_HOST_IP: ${HOST_IP:-localhost}
       VITE_RECORDER_WS_URL: ws://${HOST_IP:-localhost}:${BROWSER_WORKER_PORT:-3004}
       VITE_CARBONE_API_URL: http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
       VITE_NOVNC_URL: http://${HOST_IP:-localhost}:${NOVNC_PORT:-6080}/vnc.html
     ports:
-      - "${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}"
+      - "${HOST_BIND_IP:-127.0.0.1}:${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}"
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/frontend/portal:/app
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/frontend/shared:/shared
@@ -33,17 +33,17 @@ services:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-user-web
     working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    command: sh -c "corepack enable && pnpm run dev"
     environment:
       NODE_ENV: development
       DOCKER_ENV: true
       USER_WEB_PORT: ${USER_WEB_PORT:-5174}
       VITE_API_BASE_URL: /api
-      VITE_CONTROL_PLANE_API_URL: http://${HOST_IP:-localhost}:${CONTROL_PLANE_PORT:-3003}/api
+      VITE_CONTROL_PLANE_API_URL: /api
       VITE_AI_API_BASE_URL: /api/ai
       VITE_HOST_IP: ${HOST_IP:-localhost}
     ports:
-      - "${USER_WEB_PORT:-5174}:${USER_WEB_PORT:-5174}"
+      - "${HOST_BIND_IP:-127.0.0.1}:${USER_WEB_PORT:-5174}:${USER_WEB_PORT:-5174}"
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/frontend/user-web:/app
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/frontend/shared:/shared

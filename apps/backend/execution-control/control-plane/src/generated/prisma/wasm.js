@@ -1308,6 +1308,31 @@ exports.Prisma.WorkbenchInboxItemScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.UserCredentialScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  orgId: 'orgId',
+  name: 'name',
+  category: 'category',
+  description: 'description',
+  encryptedData: 'encryptedData',
+  maskedPreview: 'maskedPreview',
+  status: 'status',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.UserSkillCredentialBindingScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  skillId: 'skillId',
+  paramName: 'paramName',
+  credentialId: 'credentialId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -1423,6 +1448,14 @@ exports.InboxItemStatus = exports.$Enums.InboxItemStatus = {
   discarded: 'discarded'
 };
 
+exports.CredentialCategory = exports.$Enums.CredentialCategory = {
+  api_key: 'api_key',
+  device_key: 'device_key',
+  basic_auth: 'basic_auth',
+  bearer_token: 'bearer_token',
+  custom: 'custom'
+};
+
 exports.Prisma.ModelName = {
   User: 'User',
   ImChannelConnection: 'ImChannelConnection',
@@ -1502,7 +1535,9 @@ exports.Prisma.ModelName = {
   Workspace: 'Workspace',
   WorkspaceNode: 'WorkspaceNode',
   WorkbenchTodo: 'WorkbenchTodo',
-  WorkbenchInboxItem: 'WorkbenchInboxItem'
+  WorkbenchInboxItem: 'WorkbenchInboxItem',
+  UserCredential: 'UserCredential',
+  UserSkillCredentialBinding: 'UserSkillCredentialBinding'
 };
 
 /**

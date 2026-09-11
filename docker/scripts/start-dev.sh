@@ -66,8 +66,8 @@ get_service_port() {
 get_service_dir() {
     case "$1" in
         "ai-orchestrator") echo "apps/backend/intelligence/ai-orchestrator" ;;
-        "platform") echo "apps/backend/core/platform" ;;
-        "auth") echo "apps/backend/core/platform" ;;
+        "platform") echo "apps/backend/platform" ;;
+        "auth") echo "apps/backend/platform" ;;
         "session-broker") echo "apps/backend/execution-control/session-broker" ;;
         "control-plane") echo "apps/backend/execution-control/control-plane" ;;
         "browser-worker") echo "apps/backend/runtimes/browser-worker" ;;

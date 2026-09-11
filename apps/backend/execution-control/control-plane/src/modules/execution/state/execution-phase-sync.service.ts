@@ -618,7 +618,7 @@ export class ExecutionPhaseSyncService {
           FROM capability_releases cr
           INNER JOIN capability_source_snapshots css
             ON css.id = cr.current_source_snapshot_id
-          WHERE cr.published_skill_id = $1::uuid
+          WHERE cr.published_skill_id::text = $1
           ORDER BY
             CASE WHEN cr.archived_at IS NULL THEN 0 ELSE 1 END,
             cr.updated_at DESC

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ControlPlaneClient } from '../../client/control-plane.client';
 import {
   CONTROL_PLANE_APPROVAL_STATUS,
@@ -28,6 +28,8 @@ import { ChatTaskResumeService } from './chat-task-resume.service';
 import { ChatPlanningPresentationService } from './chat-planning-presentation.service';
 import { ScopedPlannerMemoryService } from './scoped-planner-memory.service';
 import { formatFriendlyExecutionError } from './chat-error-formatter';
+import { ModelService } from '../model/model.service';
+import { ChatMediaService } from './chat-media.service';
 
 @Injectable()
 export class ChatOrchestratorService {
@@ -49,7 +51,9 @@ export class ChatOrchestratorService {
     private readonly taskFallbackPolicyService?: TaskFallbackPolicyService,
     taskResumeService?: ChatTaskResumeService,
     planningPresentation?: ChatPlanningPresentationService,
-    private readonly scopedPlannerMemoryService?: ScopedPlannerMemoryService
+    private readonly scopedPlannerMemoryService?: ScopedPlannerMemoryService,
+    @Optional() private readonly modelService?: ModelService,
+    @Optional() private readonly chatMediaService?: ChatMediaService
   ) {
     this.taskResumeService =
       taskResumeService ||
@@ -184,6 +188,20 @@ export class ChatOrchestratorService {
       content: '正在规划任务...',
     };
 
+    const planningRequest = this.planningPresentation.buildPlanningRequest(
+      body.message,
+      body.files
+    );
+
+    const isExplicitWebSearch =
+      Boolean(
+        body.config?.webSearch === true ||
+        body.config?.web_search_enabled === true ||
+        (context as any)?.webSearch === true ||
+        (context as any)?.web_search_enabled === true ||
+        /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|查一下|查找|查询|搜搜|查查)/i.test(planningRequest)
+      ) && !/邮件|email|收件箱/i.test(planningRequest);
+
     const plannerInput = {
       request: {
         user_input: body.message,
@@ -194,18 +212,14 @@ export class ChatOrchestratorService {
           uploadedFiles: body.files,
           system_collected: this.planningPresentation.buildUploadedFileParams(body.files),
           history: context.history,
-          web_search_enabled: body.config?.webSearch === true,
+          web_search_enabled: isExplicitWebSearch,
+          webSearch: isExplicitWebSearch,
         },
       },
       userId: context.userId,
       authToken,
       traceId,
     };
-
-    const planningRequest = this.planningPresentation.buildPlanningRequest(
-      body.message,
-      body.files
-    );
     const latestResult = await this.chatConversationService.getLatestCompletedTaskResult(
       body.sessionId || context.sessionId
     );
@@ -285,11 +299,6 @@ export class ChatOrchestratorService {
         type: StreamEventType.THOUGHT,
         content: '正在获取用户可用 Skill 列表并进行确定性多步骤任务拆分规划...',
       };
-
-      const isExplicitWebSearch =
-        body.config?.webSearch === true ||
-        (/搜索|联网搜索|查一下|最新|检索|全网|搜一下|搜搜/i.test(planningRequest) &&
-          !/邮件|email|收件箱/i.test(planningRequest));
 
       const availableSkills =
         (await this.skillCacheService?.loadAvailableSkills(
@@ -471,6 +480,21 @@ export class ChatOrchestratorService {
         };
         return;
       }
+
+      if (this.modelService && !this.isExternalSystemMutationRequest(body.message)) {
+        await this.planningDecisionShadowService?.record(body.message, {
+          authToken,
+          user,
+          routeClass: 'native_task',
+          routeSource: 'native_llm',
+          confidence: 1,
+          reasonCodes: ['llm_native_execution'],
+        });
+
+        yield* this.executeLlmNativeTask(body, context, resolvedModelId);
+        return;
+      }
+
       await this.planningDecisionShadowService?.record(body.message, {
         authToken,
         user,
@@ -832,6 +856,151 @@ export class ChatOrchestratorService {
       data: {
         errorCode: 'AUTH_LOGIN_REQUIRED',
         statusCode: 401,
+      },
+    };
+  }
+
+  private isExternalSystemMutationRequest(text: string): boolean {
+    const normalized = text.trim();
+    return (
+      /(?:调用|请求|触发|执行).*(?:接口|api|webhook|脚本|系统)/i.test(normalized) ||
+      /(?:发送|推送|发一条).*(?:到|至|给).*(?:钉钉|飞书|企业微信|slack|邮件|邮箱|sms|短信)/i.test(normalized) ||
+      /(?:修改|更新|删除|插入|写入|清空|drop|delete|insert|update).*(?:在|从|于)?.*(?:数据库|数据表|表结构|集群|服务器|k8s|pod)/i.test(normalized) ||
+      /(?:在|从|于)?.*(?:数据库|数据表|表结构|集群|服务器|k8s|pod).*(?:修改|更新|删除|插入|写入|清空|drop|delete|insert|update)/i.test(normalized) ||
+      /(?:重启|停止|启动|关闭|销毁).*(?:服务器|容器|pod|集群|实例|虚拟机)/i.test(normalized) ||
+      /(?:服务器|容器|pod|集群|实例|虚拟机).*(?:重启|停止|启动|关闭|销毁)/i.test(normalized)
+    );
+  }
+
+  private async *executeLlmNativeTask(
+    body: ChatRequestDTO,
+    context: ExecutionContext,
+    resolvedModelId?: string
+  ): AsyncGenerator<StreamEvent> {
+    yield {
+      type: StreamEventType.THOUGHT,
+      content: '任务属于原生模型能力范畴（无需调用外部工具），在工作模式受控环境中执行...',
+    };
+
+    if (!this.modelService) {
+      yield {
+        type: StreamEventType.ERROR,
+        content: '模型服务不可用，无法执行原生任务。',
+      };
+      return;
+    }
+
+    const modelId =
+      resolvedModelId ||
+      this.chatConversationService.resolvePreferredChatModelId(body);
+    const thinkingEnabled = this.chatConversationService.isThinkingEnabled(body);
+    const reasoningConfig = await this.chatConversationService.resolveReasoningConfig(
+      body,
+      modelId
+    );
+
+    const messageContent = this.chatMediaService
+      ? await this.chatMediaService.buildMessageContent(body.message, body.files)
+      : body.message;
+
+    const systemPrompt =
+      '你是一个专业的高级AI助手。当前运行在工作模式（受控生产模式）。针对无需调用外部工具的任务，请直接给出严谨、准确、结构清晰且高质量的完整回答或成果。';
+
+    const messages = await this.chatConversationService.buildConversationMessages(
+      body.sessionId || context.sessionId || 'default',
+      systemPrompt,
+      messageContent,
+      context.userId
+    );
+
+    let fullContent = '';
+    let responseUsage: any = undefined;
+    const queue: StreamEvent[] = [];
+    let resolveNext: (() => void) | null = null;
+    let isDone = false;
+    let streamError: unknown = null;
+
+    const pushEvent = (evt: StreamEvent) => {
+      queue.push(evt);
+      if (resolveNext) {
+        const fn = resolveNext;
+        resolveNext = null;
+        fn();
+      }
+    };
+
+    this.modelService
+      .callModelStreamWithMessages(
+        modelId,
+        messages,
+        (chunk: string) => {
+          fullContent += chunk;
+          pushEvent({
+            type: StreamEventType.OBSERVATION,
+            content: this.chatConversationService.getVisibleChatContent(fullContent, thinkingEnabled),
+            data: {
+              mode: 'task',
+              thinking: thinkingEnabled,
+              reasoning: reasoningConfig.enabled === true,
+            },
+          });
+        },
+        { reasoning: reasoningConfig }
+      )
+      .then((resp) => {
+        responseUsage = resp?.usage;
+        isDone = true;
+        if (resolveNext) {
+          const fn = resolveNext;
+          resolveNext = null;
+          fn();
+        }
+      })
+      .catch((err) => {
+        streamError = err;
+        isDone = true;
+        if (resolveNext) {
+          const fn = resolveNext;
+          resolveNext = null;
+          fn();
+        }
+      });
+
+    while (!isDone || queue.length > 0) {
+      if (queue.length === 0) {
+        await new Promise<void>((r) => {
+          resolveNext = r;
+        });
+      }
+      while (queue.length > 0) {
+        yield queue.shift()!;
+      }
+    }
+
+    if (streamError) {
+      const errMsg = streamError instanceof Error ? streamError.message : String(streamError);
+      yield {
+        type: StreamEventType.ERROR,
+        content: `执行原生模型任务失败: ${errMsg}`,
+      };
+      return;
+    }
+
+    const visibleContent = this.chatConversationService.getVisibleChatContent(
+      fullContent || '处理完成',
+      thinkingEnabled
+    );
+
+    yield {
+      type: StreamEventType.RESULT,
+      content: visibleContent,
+      data: {
+        code: 'NATIVE_TASK_COMPLETED',
+        status: 'completed',
+        executed: true,
+        hasBusinessResult: true,
+        executionMode: 'native_llm',
+        usage: responseUsage,
       },
     };
   }

@@ -1,5 +1,383 @@
 import { RuntimeExecutionOrchestrator } from '../src/modules/execution/step-runner/runtime/runtime-execution.orchestrator';
 
+describe('RuntimeExecutionOrchestrator credential injection', () => {
+  it('resolves bound credentials immediately before a single runtime invocation', async () => {
+    const adapter = {
+      invokeStep: jest.fn().mockResolvedValue({ success: true, status: 'completed' }),
+    };
+    const registry = {
+      resolve: jest.fn().mockReturnValue(adapter),
+    };
+    const credentialResolver = {
+      resolveInputForRuntime: jest.fn().mockResolvedValue({
+        content: 'weather report',
+        deviceKey: 'decrypted-device-key',
+      }),
+    };
+    const orchestrator = new RuntimeExecutionOrchestrator(
+      registry as never,
+      credentialResolver as never
+    );
+
+    await orchestrator.executeStep({
+      requestId: 'execution-1:step-1',
+      executionId: 'execution-1',
+      stepId: 'step-1',
+      runtimeType: 'custom',
+      skillId: 'skill-1',
+      publishedSkillId: 'skill-1',
+      capabilityType: 'skill.runtime',
+      action: 'execute',
+      input: { content: 'weather report', deviceKey: '••••••••' },
+      traceContext: { userId: 'user-1' },
+    });
+
+    expect(credentialResolver.resolveInputForRuntime).toHaveBeenCalledWith(
+      'user-1',
+      'skill-1',
+      { content: 'weather report', deviceKey: '••••••••' }
+    );
+    expect(adapter.invokeStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          content: 'weather report',
+          deviceKey: 'decrypted-device-key',
+        },
+      })
+    );
+  });
+
+  it('resolves credentials for steps invoked through a runtime phase', async () => {
+    const adapter = {
+      invokeStep: jest.fn().mockResolvedValue({ success: true, status: 'completed' }),
+    };
+    const registry = {
+      resolve: jest.fn().mockReturnValue(adapter),
+    };
+    const credentialResolver = {
+      resolveInputForRuntime: jest.fn().mockResolvedValue({ password: 'decrypted-password' }),
+    };
+    const orchestrator = new RuntimeExecutionOrchestrator(
+      registry as never,
+      credentialResolver as never
+    );
+
+    await orchestrator.executePhase({
+      executionId: 'execution-1',
+      phaseKey: 'phase-login',
+      steps: [
+        {
+          requestId: 'execution-1:step-1',
+          executionId: 'execution-1',
+          stepId: 'step-1',
+          runtimeType: 'browser',
+          skillId: 'skill-1',
+          publishedSkillId: 'skill-1',
+          capabilityType: 'browser_step',
+          action: 'fill',
+          input: { password: '••••••••' },
+          traceContext: { userId: 'user-1' },
+        },
+      ],
+    });
+
+    expect(adapter.invokeStep).toHaveBeenCalledWith(
+      expect.objectContaining({ input: { password: 'decrypted-password' } })
+    );
+  });
+
+  it('resolves ${loginCredential} template inside browser step args.text and args.value', async () => {
+    const adapter = {
+      invokeStep: jest.fn().mockResolvedValue({ success: true, status: 'completed' }),
+    };
+    const registry = {
+      resolve: jest.fn().mockReturnValue(adapter),
+    };
+    const credentialResolver = {
+      resolveInputForRuntime: jest.fn().mockResolvedValue({ loginCredential: 'admin123' }),
+    };
+    const orchestrator = new RuntimeExecutionOrchestrator(
+      registry as never,
+      credentialResolver as never
+    );
+
+    await orchestrator.executePhase({
+      executionId: 'execution-1',
+      phaseKey: 'phase-login',
+      steps: [
+        {
+          requestId: 'execution-1:step-1',
+          executionId: 'execution-1',
+          stepId: '1__command_04',
+          runtimeType: 'browser',
+          skillId: 'login-and-call-ai',
+          publishedSkillId: 'login-and-call-ai',
+          capabilityType: 'browser',
+          action: 'fill',
+          input: {
+            args: {
+              selector: 'role=textbox[name="请输入密码"]',
+              text: '${loginCredential}',
+              value: '${loginCredential}',
+            },
+          },
+          traceContext: { userId: 'user-1' },
+        },
+      ],
+    });
+
+    expect(adapter.invokeStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          loginCredential: 'admin123',
+          args: {
+            selector: 'role=textbox[name="请输入密码"]',
+            text: 'admin123',
+            value: 'admin123',
+          },
+        },
+      })
+    );
+  });
+
+  it('replaces masked password •••••••• in browser step args targeting password field with decrypted credential', async () => {
+    const adapter = {
+      invokeStep: jest.fn().mockResolvedValue({ success: true, status: 'completed' }),
+    };
+    const registry = {
+      resolve: jest.fn().mockReturnValue(adapter),
+    };
+    const credentialResolver = {
+      resolveInputForRuntime: jest.fn().mockResolvedValue({ loginCredential: 'admin123' }),
+    };
+    const orchestrator = new RuntimeExecutionOrchestrator(
+      registry as never,
+      credentialResolver as never
+    );
+
+    await orchestrator.executePhase({
+      executionId: 'execution-1',
+      phaseKey: 'phase-login',
+      steps: [
+        {
+          requestId: 'execution-1:step-1',
+          executionId: 'execution-1',
+          stepId: '1__command_04',
+          runtimeType: 'browser',
+          skillId: 'login-and-call-ai',
+          publishedSkillId: 'login-and-call-ai',
+          capabilityType: 'browser',
+          action: 'fill',
+          input: {
+            args: {
+              selector: 'role=textbox[name="请输入密码"]',
+              text: '••••••••',
+              value: '••••••••',
+            },
+          },
+          traceContext: { userId: 'user-1' },
+        },
+      ],
+    });
+
+    expect(adapter.invokeStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          loginCredential: 'admin123',
+          args: {
+            selector: 'role=textbox[name="请输入密码"]',
+            text: 'admin123',
+            value: 'admin123',
+          },
+        },
+      })
+    );
+  });
+
+  it('fails closed when browser step input has masked password and no bound credential exists', async () => {
+    const adapter = {
+      invokeStep: jest.fn().mockResolvedValue({ success: true, status: 'completed' }),
+    };
+    const registry = {
+      resolve: jest.fn().mockReturnValue(adapter),
+    };
+    const credentialResolver = {
+      resolveInputForRuntime: jest.fn().mockResolvedValue({}),
+    };
+    const orchestrator = new RuntimeExecutionOrchestrator(
+      registry as never,
+      credentialResolver as never
+    );
+
+    await expect(
+      orchestrator.executePhase({
+        executionId: 'execution-1',
+        phaseKey: 'phase-login',
+        steps: [
+          {
+            requestId: 'execution-1:step-1',
+            executionId: 'execution-1',
+            stepId: '1__command_04',
+            runtimeType: 'browser',
+            skillId: 'login-and-call-ai',
+            publishedSkillId: 'login-and-call-ai',
+            capabilityType: 'browser',
+            action: 'fill',
+            input: {
+              args: {
+                selector: 'role=textbox[name="请输入密码"]',
+                text: '••••••••',
+                value: '••••••••',
+              },
+            },
+            traceContext: { userId: 'user-1' },
+          },
+        ],
+      })
+    ).rejects.toThrow('Runtime credential for parameter at [args.text] in step [1__command_04] is masked');
+  });
+
+  it('fails closed when browser step has unresolved ${loginCredential} and no credential is bound', async () => {
+    const adapter = {
+      invokeStep: jest.fn().mockResolvedValue({ success: true, status: 'completed' }),
+    };
+    const registry = {
+      resolve: jest.fn().mockReturnValue(adapter),
+    };
+    const credentialResolver = {
+      resolveInputForRuntime: jest.fn().mockResolvedValue({}),
+    };
+    const orchestrator = new RuntimeExecutionOrchestrator(
+      registry as never,
+      credentialResolver as never
+    );
+
+    await expect(
+      orchestrator.executePhase({
+        executionId: 'execution-1',
+        phaseKey: 'phase-login',
+        steps: [
+          {
+            requestId: 'execution-1:step-1',
+            executionId: 'execution-1',
+            stepId: '1__command_04',
+            runtimeType: 'browser',
+            skillId: 'login-and-call-ai',
+            publishedSkillId: 'login-and-call-ai',
+            capabilityType: 'browser',
+            action: 'fill',
+            input: {
+              args: {
+                selector: 'role=textbox[name="请输入密码"]',
+                text: '${loginCredential}',
+                value: '${loginCredential}',
+              },
+            },
+            traceContext: { userId: 'user-1' },
+          },
+        ],
+      })
+    ).rejects.toThrow('Missing runtime credential for parameter at [args.text] in step [1__command_04]');
+  });
+
+  it('resolves ${username} template inside browser step args targeting username field', async () => {
+    const adapter = {
+      invokeStep: jest.fn().mockResolvedValue({ success: true, status: 'completed' }),
+    };
+    const registry = {
+      resolve: jest.fn().mockReturnValue(adapter),
+    };
+    const credentialResolver = {
+      resolveInputForRuntime: jest.fn().mockResolvedValue({ username: 'ops_admin', loginCredential: 'secret123' }),
+    };
+    const orchestrator = new RuntimeExecutionOrchestrator(
+      registry as never,
+      credentialResolver as never
+    );
+
+    await orchestrator.executePhase({
+      executionId: 'execution-1',
+      phaseKey: 'phase-login',
+      steps: [
+        {
+          requestId: 'execution-1:step-1',
+          executionId: 'execution-1',
+          stepId: '1__command_03',
+          runtimeType: 'browser',
+          skillId: 'login-and-call-ai',
+          publishedSkillId: 'login-and-call-ai',
+          capabilityType: 'browser',
+          action: 'fill',
+          input: {
+            args: {
+              selector: 'role=textbox[name="请输入账号"]',
+              text: '${username}',
+              value: '${username}',
+            },
+          },
+          traceContext: { userId: 'user-1' },
+        },
+      ],
+    });
+
+    expect(adapter.invokeStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          username: 'ops_admin',
+          args: {
+            selector: 'role=textbox[name="请输入账号"]',
+            text: 'ops_admin',
+            value: 'ops_admin',
+          },
+        }),
+      })
+    );
+  });
+
+  it('fails closed when browser step has unresolved ${username} and no credential is bound', async () => {
+    const adapter = {
+      invokeStep: jest.fn().mockResolvedValue({ success: true, status: 'completed' }),
+    };
+    const registry = {
+      resolve: jest.fn().mockReturnValue(adapter),
+    };
+    const credentialResolver = {
+      resolveInputForRuntime: jest.fn().mockResolvedValue({}),
+    };
+    const orchestrator = new RuntimeExecutionOrchestrator(
+      registry as never,
+      credentialResolver as never
+    );
+
+    await expect(
+      orchestrator.executePhase({
+        executionId: 'execution-1',
+        phaseKey: 'phase-login',
+        steps: [
+          {
+            requestId: 'execution-1:step-1',
+            executionId: 'execution-1',
+            stepId: '1__command_03',
+            runtimeType: 'browser',
+            skillId: 'login-and-call-ai',
+            publishedSkillId: 'login-and-call-ai',
+            capabilityType: 'browser',
+            action: 'fill',
+            input: {
+              args: {
+                selector: 'role=textbox[name="请输入账号"]',
+                text: '${username}',
+                value: '${username}',
+              },
+            },
+            traceContext: { userId: 'user-1' },
+          },
+        ],
+      })
+    ).rejects.toThrow('Missing runtime credential for parameter at [args.text] in step [1__command_03]');
+  });
+});
+
 describe('RuntimeExecutionOrchestrator.executePhase', () => {
   it('executes all step requests and returns completed result when all succeed', async () => {
     const adapter = {

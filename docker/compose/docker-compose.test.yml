@@ -14,7 +14,7 @@ services:
     environment:
       - PORT=3007
     ports:
-      - "13007:3007"
+      - "${HOST_BIND_IP:-127.0.0.1}:13007:3007"
     volumes:
       - ../mock-services/mock-ai-server.js:/app/server.js:ro
 
@@ -36,7 +36,7 @@ services:
       - AI_ORCHESTRATOR_URL=http://mock-ai-server:3007
       - AI_MODEL_ID=test-model-id
     ports:
-      - "13009:3009"
+      - "${HOST_BIND_IP:-127.0.0.1}:13009:3009"
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:

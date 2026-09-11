@@ -38,7 +38,7 @@ export class BrowserExecutionPlannerService {
     );
 
     try {
-      const response = await this.modelService.callModel(chatModel.id, prompt);
+      const response = await this.callModelWithFallback(chatModel.id, prompt);
       this.logger.debug(`AI raw response: ${response.content}`);
       const parsed = this.browserPlannerResponseParser.parseCommandResponse(response.content);
       if (!parsed) {
@@ -82,7 +82,7 @@ export class BrowserExecutionPlannerService {
     );
 
     try {
-      const response = await this.modelService.callModel(chatModel.id, prompt);
+      const response = await this.callModelWithFallback(chatModel.id, prompt);
       console.log(`[AI Planner Raw Response]:\n`, response.content);
       return this.browserPlannerResponseParser.parsePlanResponse(response.content);
     } catch (error: unknown) {
@@ -109,7 +109,7 @@ export class BrowserExecutionPlannerService {
     );
 
     try {
-      const response = await this.modelService.callModel(chatModel.id, prompt);
+      const response = await this.callModelWithFallback(chatModel.id, prompt);
       return this.browserPlannerResponseParser.parsePlanResponse(response.content);
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -118,7 +118,58 @@ export class BrowserExecutionPlannerService {
     }
   }
 
+  private async callModelWithFallback(
+    primaryModelId: string,
+    prompt: string
+  ): Promise<{ content: string }> {
+    try {
+      return await this.modelService.callModel(primaryModelId, prompt);
+    } catch (primaryError: unknown) {
+      const errorMsg = primaryError instanceof Error ? primaryError.message : 'Unknown error';
+      this.logger.warn(
+        `Primary planner model (${primaryModelId}) failed: ${errorMsg}. Attempting fallback models...`
+      );
+
+      const models = await this.modelService.listModels();
+      const fallbackCandidates = models.filter(
+        (m) => m.status === 'active' && m.id !== primaryModelId
+      );
+
+      for (const candidate of fallbackCandidates) {
+        try {
+          this.logger.log(`Attempting fallback planner model: ${candidate.name} (${candidate.id})`);
+          const response = await this.modelService.callModel(candidate.id, prompt);
+          this.logger.log(`Fallback planner model ${candidate.name} succeeded.`);
+          return response;
+        } catch (fallbackError: unknown) {
+          const fallbackMsg =
+            fallbackError instanceof Error ? fallbackError.message : 'Unknown error';
+          this.logger.warn(`Fallback planner model (${candidate.id}) failed: ${fallbackMsg}`);
+        }
+      }
+
+      throw primaryError;
+    }
+  }
+
   private async getActiveModel(): Promise<{ id: string } | null> {
+    const preferred =
+      typeof this.modelService?.getPreferredDefaultModel === 'function'
+        ? this.modelService.getPreferredDefaultModel({
+            mode: 'task',
+            userRoles: ['admin'],
+          })
+        : null;
+    if (preferred) {
+      return { id: preferred.id };
+    }
+    const defaultModel =
+      typeof this.modelService?.getDefaultModel === 'function'
+        ? this.modelService.getDefaultModel()
+        : null;
+    if (defaultModel) {
+      return { id: defaultModel.id };
+    }
     const models = await this.modelService.listModels();
     const chatModel = models.find((model) => model.status === 'active');
     return chatModel ? { id: chatModel.id } : null;

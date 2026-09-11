@@ -9,9 +9,11 @@ import {
   Patch,
   Post,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
+import { AiAdminGuard, Public } from '../../common/guards/ai-auth.guard';
 import { PromptDebugSettingsService } from '../debug-settings/prompt-debug-settings.service';
 import type {
   AIModelDTO,
@@ -86,6 +88,7 @@ export class ModelController {
   }
 
   @Get('models/admin')
+  @UseGuards(AiAdminGuard)
   @ApiOperation({ summary: 'List all models for admin (including inactive)' })
   async listModelsForAdmin(): Promise<{ models: AIModelDTO[] }> {
     const models = await this.modelService.listModelsForAdmin();
@@ -107,6 +110,7 @@ export class ModelController {
   }
 
   @Post('providers')
+  @UseGuards(AiAdminGuard)
   @ApiOperation({ summary: 'Create or register a provider config' })
   async createProviderConfig(@Body() body: CreateProviderConfigDTO): Promise<AIProviderConfigDTO> {
     return this.modelService.createProviderConfig(body);
@@ -123,6 +127,7 @@ export class ModelController {
   }
 
   @Patch('providers/:id')
+  @UseGuards(AiAdminGuard)
   @ApiOperation({ summary: 'Update a provider config' })
   async updateProviderConfig(
     @Param('id') id: string,
@@ -144,6 +149,7 @@ export class ModelController {
   }
 
   @Delete('providers/:id')
+  @UseGuards(AiAdminGuard)
   @ApiOperation({ summary: 'Delete a provider config' })
   async deleteProviderConfig(@Param('id') id: string): Promise<{ success: boolean }> {
     await this.modelService.deleteProviderConfig(id);
@@ -151,6 +157,7 @@ export class ModelController {
   }
 
   @Post('providers/:id/health')
+  @UseGuards(AiAdminGuard)
   @ApiOperation({ summary: 'Check health of a specific provider' })
   async checkProviderHealth(
     @Param('id') id: string
@@ -158,6 +165,7 @@ export class ModelController {
     return this.modelService.checkProviderHealth(id);
   }
 
+  @Public()
   @Post('model/call')
   @ApiOperation({ summary: 'Call AI model with a prompt (for skill matching)' })
   async callModel(
@@ -201,6 +209,7 @@ export class ModelController {
   }
 
   @Patch('debug-settings')
+  @UseGuards(AiAdminGuard)
   @ApiOperation({ summary: 'Update prompt debug settings' })
   async updateDebugSettings(
     @Body() body: { promptDebugEnabled?: boolean }
@@ -225,6 +234,7 @@ export class ModelController {
   }
 
   @Post('models')
+  @UseGuards(AiAdminGuard)
   @ApiOperation({ summary: 'Register a new AI model' })
   async createModel(@Body() body: CreateModelDTO): Promise<AIModelDTO> {
     return this.modelService.createModel(body);
@@ -241,6 +251,7 @@ export class ModelController {
   }
 
   @Patch('models/:id/enable')
+  @UseGuards(AiAdminGuard)
   @ApiOperation({ summary: 'Enable an AI model' })
   async enableModel(@Param('id') id: string): Promise<AIModelDTO> {
     const model = await this.modelService.getModel(id);
@@ -251,6 +262,7 @@ export class ModelController {
   }
 
   @Patch('models/:id/disable')
+  @UseGuards(AiAdminGuard)
   @ApiOperation({ summary: 'Disable an AI model' })
   async disableModel(@Param('id') id: string): Promise<AIModelDTO> {
     const model = await this.modelService.getModel(id);
@@ -261,6 +273,7 @@ export class ModelController {
   }
 
   @Patch('models/:id')
+  @UseGuards(AiAdminGuard)
   @ApiOperation({ summary: 'Update an AI model configuration' })
   async updateModel(
     @Param('id') id: string,
@@ -274,6 +287,7 @@ export class ModelController {
   }
 
   @Delete('models/:id')
+  @UseGuards(AiAdminGuard)
   @ApiOperation({ summary: 'Delete an AI model' })
   async deleteModel(@Param('id') id: string): Promise<{ success: boolean }> {
     const success = await this.modelService.deleteModel(id);
@@ -284,6 +298,7 @@ export class ModelController {
   }
 
   @Post('models/check-all')
+  @UseGuards(AiAdminGuard)
   @ApiOperation({ summary: 'Check health and connectivity of all registered AI models' })
   async checkAllModelsHealth(): Promise<{
     total: number;
@@ -306,6 +321,7 @@ export class ModelController {
   }
 
   @Post('models/:id/test-config')
+  @UseGuards(AiAdminGuard)
   @ApiOperation({ summary: 'Test model configuration using stored API key' })
   async testModelConfig(
     @Param('id') id: string
@@ -324,6 +340,7 @@ export class ModelController {
   }
 
   @Post('models/:id/test')
+  @UseGuards(AiAdminGuard)
   @ApiOperation({ summary: 'Test an AI model with a prompt' })
   async testModel(
     @Param('id') id: string,
@@ -346,6 +363,7 @@ export class ModelController {
   }
 
   @Post('models/:id/stream')
+  @UseGuards(AiAdminGuard)
   @ApiOperation({ summary: 'Test an AI model with streaming SSE response' })
   async testModelStream(
     @Param('id') id: string,
@@ -381,6 +399,7 @@ export class ModelController {
   }
 
   @Post('models/test-config')
+  @UseGuards(AiAdminGuard)
   @ApiOperation({ summary: 'Test a model configuration before creating' })
   @ApiConsumes('application/json')
   async testConfig(

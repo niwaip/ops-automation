@@ -144,7 +144,7 @@ function splitSqlStatements(sql: string): string[] {
 }
 
 async function applyMigrations(prisma: PrismaService): Promise<void> {
-  const migrationsDir = path.resolve(__dirname, '../../../core/platform/prisma/migrations');
+  const migrationsDir = path.resolve(__dirname, '../../../platform/prisma/migrations');
   for (const relativePath of MIGRATION_SQL_FILES) {
     const sqlPath = path.join(migrationsDir, relativePath);
     if (!fs.existsSync(sqlPath)) {

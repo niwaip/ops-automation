@@ -7,6 +7,35 @@ on:
     branches: [main, develop]
 
 jobs:
+  quality-gate:
+    name: Architecture & Complexity Quality Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8.12.0
+
+      - name: Check file complexity red line (AGENTS.md)
+        run: bash ./scripts/check-file-complexity.sh
+
+      - name: Validate database schema ownership (88 tables)
+        run: node database/scripts/validate-schema-ownership.mjs
+
+      - name: Validate V4 compose architecture layering
+        run: |
+          bash ./docker/scripts/v4/validate-layering.sh
+          bash ./docker/scripts/v4/validate-full-alignment.sh
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

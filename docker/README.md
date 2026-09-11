@@ -23,26 +23,24 @@ Docker 体系负责整个仓库的基础设施、后端服务及测试环境的�
 
 该脚本根据自身位置解析当前仓库根目录，并正确挂载代码。
 
-## 配置文件说明 (`docker/compose/`)
+## 配置文件与启动模式
 
-推荐日常只关注这几份：
+本项目推荐唯一的智能启动入口：`./docker/start-smart.sh`。底层开发栈统一基于 `docker-compose.base.yml`，并通过 **Compose Profiles** 按需挂载组件，告别过去全量拉起 19 个容器的臃肿模式：
 
-| 文件                       | 用途               | 主要服务                               |
-| -------------------------- | ------------------ | -------------------------------------- |
-| `docker-compose.base.yml`  | **默认开发栈**     | 基础设施 + 后端 + 前端 + browser chrome |
-| `docker-compose.yml`       | 仅基础设施         | postgres, redis                        |
-| `docker-compose.addin.yml` | Office Add-in 链路 | carbone-api, office-addin              |
-| `docker-compose.test.yml`  | 测试环境           | mock-ai-server, carbone-engine-test    |
-| `docker-compose.carbone.yml` | 独立 document-domain / carbone | carbone-engine                  |
+### 启动模式与 Profiles
 
-以下分层文件保留为兼容/调试用途，不作为默认入口：
+| 启动模式 | 典型命令 | 包含服务与职责 | 容器数 |
+| :--- | :--- | :--- | :--- |
+| **`dev`** (默认核心) | `./docker/start-smart.sh dev up -d` | 基础设施 (`postgres`, `redis`) + 核心控制 (`platform`, `session-broker`, `control-plane`, `ai-orchestrator`) + 瞬态初始化 (`workspace-deps-init`) | **6+1 个** |
+| **`dev:browser`** | `./docker/start-smart.sh dev:browser up -d` | 核心栈 + 浏览器自动化 (`browser-worker`, `browser-chrome`, `browser-template`, `browser-semantics`) | 11 个 |
+| **`dev:workflow`** | `./docker/start-smart.sh dev:workflow up -d` | 核心栈 + Temporal 工作流引擎 (`temporal`, `temporal-ui`, `sandbox-worker`, `temporal-worker`) | 11 个 |
+| **`dev:doc`** | `./docker/start-smart.sh dev:doc up -d` | 核心栈 + 文档渲染与报表 (`carbone-engine`, `report`) | 9 个 |
+| **`dev:fe`** | `./docker/start-smart.sh dev:fe up -d` | 核心栈 + 容器化前端 (`portal`, `user-web`) | 9 个 |
+| **`full`** | `./docker/start-smart.sh full up -d` | 全量开发环境（激活全部 Profiles，包含以上全部 19 个服务） | 19 个 |
+| **`infra`** | `./docker/start-smart.sh infra up -d` | 仅数据库与缓存 (`postgres`, `redis`) | 2 个 |
+| **`addin`** | `./docker/start-smart.sh addin up -d` | Office Add-in 专用栈 (`carbone-api`, `office-addin`) | 2 个 |
 
-- `docker-compose.core.yml`
-- `docker-compose.planner.yml`
-- `docker-compose.runtime.yml`
-- `docker-compose.experience.yml`
-
-旧的 `full` 模式保留为命令兼容别名，实际使用 `docker-compose.base.yml`，不再维护第二份全量配置。
+> **前端开发建议**：推荐前端（`portal` / `user-web`）在宿主机直接通过 `pnpm dev:portal` 或 `pnpm dev:user-web` 运行，享受毫秒级 Vite HMR，无需在 Docker 中常驻前端。日常后端仅需运行 `./docker/start-smart.sh dev up -d` 即可。
 
 ## 环境配置
 
@@ -60,6 +58,7 @@ cp env/.env.example .env
 - `DOCKER_REGISTRY`: 镜像源（国内推荐使用 `docker.1ms.run/`，不要带 `/library/`）
 - `HOST_IP`: 对外访问主机 IP（用于容器间及外部访问）
 - `PROJECT_ROOT`: 代码挂载根路径（`start-smart.sh` 会自动设置）
+- `USER_CREDENTIAL_ENCRYPTION_KEY`: 用户凭证 AES-256 密钥（64 位十六进制或 32 字节 Base64）；写入凭证的 `platform` 与执行凭证的 control-plane/dispatcher 必须使用同一个值，生产环境应显式配置并通过迁移流程轮换。
 
 Compose 配置不再为 `PROJECT_ROOT` 提供相对路径回退；绕过统一入口时会直接失败，避免在 `docker/` 下静默创建错误挂载目录。
 

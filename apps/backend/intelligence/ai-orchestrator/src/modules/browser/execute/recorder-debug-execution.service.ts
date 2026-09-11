@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
+import { getInternalServiceHeaders } from '../../../config/internal-service-auth';
 import { createHash } from 'crypto';
 import * as fs from 'fs/promises';
 import { getBrowserWorkerUrl } from '../../../config/service-endpoints';
@@ -213,7 +214,7 @@ export class RecorderDebugExecutionService {
       },
       {
         timeout: options?.timeoutMs || 120000,
-        headers: { 'Content-Type': 'application/json' },
+        headers: getInternalServiceHeaders(),
       }
     );
 

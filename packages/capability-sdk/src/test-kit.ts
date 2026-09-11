@@ -26,25 +26,26 @@ export function runCapabilityFixtures(
   const inputValidator = ajv.compile(manifest.contract.contracts.input.schema as AnySchema);
   const outputValidator = ajv.compile(manifest.contract.contracts.output.schema as AnySchema);
   const failures: FixtureFailure[] = [];
-  for (const fixture of fixtures) {
-    verify('input', fixture.input, fixture.expectInputValid ?? true, inputValidator);
-    if (fixture.output !== undefined) {
-      verify('output', fixture.output, fixture.expectOutputValid ?? true, outputValidator);
+  const verify = (
+    fixture: ContractFixture,
+    phase: 'input' | 'output',
+    value: unknown,
+    expected: boolean,
+    validator: typeof inputValidator
+  ) => {
+    const actual = Boolean(validator(value));
+    if (actual !== expected) {
+      failures.push({
+        fixture: fixture.name,
+        phase,
+        errors: (validator.errors || []).map((error) => `${error.instancePath} ${error.message}`),
+      });
     }
-    function verify(
-      phase: 'input' | 'output',
-      value: unknown,
-      expected: boolean,
-      validator: typeof inputValidator
-    ) {
-      const actual = Boolean(validator(value));
-      if (actual !== expected) {
-        failures.push({
-          fixture: fixture.name,
-          phase,
-          errors: (validator.errors || []).map((error) => `${error.instancePath} ${error.message}`),
-        });
-      }
+  };
+  for (const fixture of fixtures) {
+    verify(fixture, 'input', fixture.input, fixture.expectInputValid ?? true, inputValidator);
+    if (fixture.output !== undefined) {
+      verify(fixture, 'output', fixture.output, fixture.expectOutputValid ?? true, outputValidator);
     }
   }
   return { manifest: validateCapabilityPackManifest(manifest), failures };

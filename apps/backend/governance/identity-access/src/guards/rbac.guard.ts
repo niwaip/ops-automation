@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Optional,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RBAC_PERMISSION_READER } from '../adapters/tokens';
@@ -20,11 +21,15 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
 
 @Injectable()
 export class RbacGuard implements CanActivate {
+  private readonly reflector: Reflector;
+
   constructor(
-    private readonly reflector: Reflector,
     @Inject(RBAC_PERMISSION_READER)
-    private readonly permissionReader: RbacPermissionReader
-  ) {}
+    private readonly permissionReader: RbacPermissionReader,
+    @Optional() reflector?: Reflector
+  ) {
+    this.reflector = reflector ?? new Reflector();
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [

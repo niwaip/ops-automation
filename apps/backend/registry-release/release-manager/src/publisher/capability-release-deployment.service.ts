@@ -280,6 +280,7 @@ export class CapabilityReleaseDeploymentService {
             deploymentId,
             environment,
             userId,
+            dto.smokeTestInput,
             accessors
           );
         smokeValidationId = smokeResult.validationId;

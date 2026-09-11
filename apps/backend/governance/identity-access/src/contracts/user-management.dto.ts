@@ -20,3 +20,17 @@ export class UserQueryDto {
   @IsIn(['employee', 'admin', 'agent'])
   role?: string;
 }
+
+export class UpdateUserDepartmentDto {
+  @IsString()
+  orgId: string;
+
+  @IsOptional()
+  @IsString()
+  departmentId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  title?: string | null;
+}
+

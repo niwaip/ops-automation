@@ -1,11 +1,11 @@
 {
-  "schemaVersion": "1.0.0",
-  "bundleDigest": "sha256:c0a0a5511dc654565341ff4d9087513e650f205de32a567d07f15bb9fd5555e2",
-  "lockedAt": "2026-09-02T14:18:07.509Z",
-  "files": [
-    {
-      "path": "manifest.yaml",
-      "sha256": "c0a0a5511dc654565341ff4d9087513e650f205de32a567d07f15bb9fd5555e2"
-    }
-  ]
+  "capabilityKey": "platform.email.messages",
+  "definitionVersion": "1.0.0",
+  "definitionDigest": "sha256:b07b8410a1019b4297da52e29ff8e1afbfd1fae52b40d334ca65ec7ad5f1521e",
+  "fileHashes": {
+    "manifest.yaml": "sha256:dfee91220828364d703fc6624a03f8a718f34965d71b589fa2a8e07cadd88786",
+    "workflow.json": "sha256:10cf1ca2baf2955fd1f9840aa33d83045da176b97d5dad5ed87455ecf18a97d4",
+    "fixtures/smoke-input.json": "sha256:c092b81c89f56cbbf824f9fd50c6319d5129f5af85e776b28d08ada9254f4e95"
+  },
+  "createdAt": "2026-09-07T15:36:40.468Z"
 }

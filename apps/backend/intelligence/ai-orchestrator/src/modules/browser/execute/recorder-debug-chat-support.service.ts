@@ -64,7 +64,21 @@ export class RecorderDebugChatSupportService {
   }
 
   isObservationIntent(message: string): boolean {
-    return /(页面|结构|表单|参数|输入|按钮|字段|页面上有什么|需要输入什么)/i.test(message);
+    const trimmed = message.trim();
+    if (!trimmed) {
+      return false;
+    }
+    // Action commands starting with operational verbs should never be hijacked as observations
+    if (
+      /^(?:输入|点击|选择|勾选|提交|填写|清除|清空|滚动|刷新|返回|前进|打开|跳转|去到|访问)/i.test(
+        trimmed
+      )
+    ) {
+      return false;
+    }
+    return /(?:页面|结构|表单|参数|字段|页面上有什么|需要输入什么|有哪些输入)/i.test(
+      trimmed
+    );
   }
 
   isExportIntent(message: string): boolean {

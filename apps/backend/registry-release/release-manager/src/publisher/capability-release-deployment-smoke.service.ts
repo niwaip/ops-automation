@@ -13,11 +13,69 @@ import {
 import type { CapabilityReleaseDeploymentAccessors } from '../publisher/capability-release-deployment.service';
 import { CapabilityReleaseBrowserRecordingService } from '../compiler/capability-release-browser-recording.service';
 import { CapabilityReleaseTemporalSchemaService } from '../compiler/capability-release-temporal-schema.service';
+import { resolveTemporalRuntimeCredentials } from './temporal-runtime-credential.resolver';
 import {
   CapabilityBuildDTO,
   CapabilityReleaseDTO,
   CapabilitySourceSnapshotDTO,
 } from '../interfaces';
+
+const SENSITIVE_SMOKE_FIELD =
+  /(?:api[_-]?key|device[_-]?key|access[_-]?key|private[_-]?key|access[_-]?token|refresh[_-]?token|authorization|credential|password|secret|token)$/i;
+
+const asSmokeRecord = (value: unknown): Record<string, unknown> | undefined =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+
+const getDefaultScenarioRequiredFields = (sourcePayload: Record<string, unknown>): string[] => {
+  const workflowDsl = asSmokeRecord(sourcePayload.workflowDsl) || {};
+  const validation = asSmokeRecord(workflowDsl.validation) || {};
+  const scenarios = Array.isArray(validation.scenarios) ? validation.scenarios : [];
+  const defaultScenario = asSmokeRecord(scenarios[0]);
+  return Array.isArray(defaultScenario?.requiredParameters)
+    ? defaultScenario.requiredParameters.filter(
+        (item): item is string => typeof item === 'string' && item.trim().length > 0
+      )
+    : [];
+};
+
+const redactSmokeValue = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(redactSmokeValue);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+      key,
+      SENSITIVE_SMOKE_FIELD.test(key) ? '[REDACTED]' : redactSmokeValue(item),
+    ])
+  );
+};
+
+const collectSmokeSecrets = (
+  value: unknown,
+  secrets: string[] = []
+): string[] => {
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectSmokeSecrets(item, secrets));
+  } else if (value && typeof value === 'object') {
+    Object.entries(value as Record<string, unknown>).forEach(([key, item]) => {
+      if (SENSITIVE_SMOKE_FIELD.test(key) && typeof item === 'string' && item.length > 0) {
+        secrets.push(item);
+      } else {
+        collectSmokeSecrets(item, secrets);
+      }
+    });
+  }
+  return secrets;
+};
+
+const redactSmokeText = (value: string | null, secrets: string[]): string | null => {
+  if (value === null) return null;
+  return secrets.reduce(
+    (text, secret) => text.split(secret).join('[REDACTED]'),
+    value
+  );
+};
 
 @Injectable()
 export class CapabilityReleaseDeploymentSmokeService {
@@ -84,6 +142,7 @@ export class CapabilityReleaseDeploymentSmokeService {
     deploymentId: string,
     environment: string,
     userId: string | undefined,
+    oneTimeSmokeInput: Record<string, unknown> | undefined,
     accessors: CapabilityReleaseDeploymentAccessors
   ): Promise<{
     validationId: string;
@@ -109,11 +168,45 @@ export class CapabilityReleaseDeploymentSmokeService {
       const smokeInput = this.capabilityReleaseTemporalSchemaService.buildSmokeTestInput(
         release,
         snapshot,
-        environment
+        environment,
+        oneTimeSmokeInput
       );
       const templateId = this.resolveExecutionTemplateIdForRuntime(release, snapshot);
 
       if (release.sourceType === 'temporal_workflow') {
+        const effectiveParamsSchema =
+          this.capabilityReleaseTemporalSchemaService.resolveEffectiveTemporalParamsSchema(
+            snapshot.sourcePayload
+          );
+        const effectiveRequired = Array.isArray(effectiveParamsSchema.required)
+          ? effectiveParamsSchema.required.filter(
+              (item): item is string => typeof item === 'string' && item.trim().length > 0
+            )
+          : [];
+        const effectiveCredentialSource = {
+          ...snapshot.sourcePayload,
+          paramsSchema: {
+            ...effectiveParamsSchema,
+            required: Array.from(
+              new Set([
+                ...effectiveRequired,
+                ...getDefaultScenarioRequiredFields(snapshot.sourcePayload),
+              ])
+            ),
+          },
+        };
+        const credentialResolution = resolveTemporalRuntimeCredentials(
+          smokeInput,
+          effectiveCredentialSource,
+          {}
+        );
+        if (credentialResolution.missing.length > 0) {
+          throw new Error(
+            `部署后验证缺少一次性凭证: ${credentialResolution.missing
+              .map(({ field }) => field)
+              .join('、')}。请通过 smokeTestInput 提供；该输入仅用于本次部署验证，不会绑定给任何用户。`
+          );
+        }
         if (!build.generatedCode) {
           throw new Error('当前构建没有可执行代码，无法执行部署后 smoke test');
         }
@@ -121,7 +214,7 @@ export class CapabilityReleaseDeploymentSmokeService {
         const result = await this.temporalWorkflowService.validateWorkflowReal(
           build.generatedCode,
           fn,
-          smokeInput
+          credentialResolution.input
         );
         success = result.success;
         score = result.score;
@@ -168,6 +261,11 @@ export class CapabilityReleaseDeploymentSmokeService {
       } else {
         throw new Error('当前能力缺少可用模板标识，无法执行部署后 smoke test');
       }
+
+      const smokeSecrets = collectSmokeSecrets(oneTimeSmokeInput);
+      logs = logs.map((line) => redactSmokeText(line, smokeSecrets) || '');
+      resultSnapshot = redactSmokeValue(resultSnapshot) as Record<string, unknown> | null;
+      errorSummary = redactSmokeText(errorSummary, smokeSecrets);
 
       await this.finishSmokeValidation(
         validationId,

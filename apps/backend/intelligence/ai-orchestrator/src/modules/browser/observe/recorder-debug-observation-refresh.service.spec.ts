@@ -170,4 +170,37 @@ describe('RecorderDebugObservationRefreshService', () => {
       })
     );
   });
+
+  it('refreshObservationAfterExecution should skip observation when lastObservation was captured very recently (<3s)', async () => {
+    const service = new RecorderDebugObservationRefreshService();
+    const freshSession = {
+      sessionId: 'session-2',
+      currentPageUrl: 'https://example.com/fresh',
+      lastObservation: {
+        currentPageUrl: 'https://example.com/fresh',
+        capturedAt: new Date().toISOString(),
+        text: 'fresh',
+        inputs: [],
+        buttons: [],
+        headings: [],
+        links: [],
+        suggestedParameters: [],
+      },
+      executedCommands: [],
+    };
+    const observePageSafely = jest.fn();
+    const loadSession = jest.fn();
+    const saveSession = jest.fn();
+
+    await service.refreshObservationAfterExecution({
+      session: freshSession,
+      observePageSafely,
+      loadSession,
+      saveSession,
+    });
+
+    expect(observePageSafely).not.toHaveBeenCalled();
+    expect(loadSession).not.toHaveBeenCalled();
+    expect(saveSession).not.toHaveBeenCalled();
+  });
 });

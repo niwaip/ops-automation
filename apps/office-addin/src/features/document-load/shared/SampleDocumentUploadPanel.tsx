@@ -6,7 +6,8 @@ import {
   readFileAsBase64,
 } from '../../../shared/utils/office-file-upload';
 
-const UPLOAD_RENDER_LOOP_DEBUG_URL = 'http://127.0.0.1:7777/event';
+const UPLOAD_RENDER_LOOP_DEBUG_URL =
+  (typeof window !== 'undefined' && (window as any).__DEBUG_SERVER_URL__) || '';
 
 const reportUploadRenderLoop = (
   hypothesisId: 'D' | 'E',
@@ -14,6 +15,7 @@ const reportUploadRenderLoop = (
   msg: string,
   data: Record<string, unknown>
 ) => {
+  if (!UPLOAD_RENDER_LOOP_DEBUG_URL) return;
   void fetch(UPLOAD_RENDER_LOOP_DEBUG_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

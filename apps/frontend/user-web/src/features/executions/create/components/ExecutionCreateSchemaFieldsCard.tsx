@@ -65,6 +65,16 @@ const renderInputField = (field: SchemaField) => {
     return <Input.TextArea rows={6} placeholder="请输入 JSON 字符串" />;
   }
 
+  if (field.isSecret) {
+    return (
+      <Input.Password
+        placeholder={
+          field.description || '已关联数字员工凭证（留空则自动使用个人绑定的凭据，也可直接填写覆盖）'
+        }
+      />
+    );
+  }
+
   return <Input placeholder={field.description || `请输入 ${field.name}`} />;
 };
 

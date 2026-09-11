@@ -51,12 +51,14 @@ export class BrowserPhaseExecutor {
     data: Record<string, unknown>,
     runId = 'pre-fix'
   ): void {
+    const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
+    if (!debugUrl) return;
     const fs = require('fs') as typeof import('fs');
     const envPaths = [
       '/app/.dbg/phase-resume-no-effect.env',
       '/Users/chain/Documents/MyProject/ops-automation/.dbg/phase-resume-no-effect.env',
     ];
-    let url = 'http://host.docker.internal:7777/event';
+    let url = debugUrl;
     let sessionId = 'phase-resume-no-effect';
     for (const envPath of envPaths) {
       try {
@@ -64,7 +66,9 @@ export class BrowserPhaseExecutor {
         url = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim() || url;
         sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim() || sessionId;
         break;
-      } catch {}
+      } catch {
+        // optional debug probe env file not found, use default
+      }
     }
     const payload = {
       sessionId,
@@ -756,7 +760,9 @@ export class BrowserPhaseExecutor {
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           return parsed as Record<string, unknown>;
         }
-      } catch {}
+      } catch {
+        // value is not a valid JSON string, fall through to undefined
+      }
     }
     return undefined;
   }

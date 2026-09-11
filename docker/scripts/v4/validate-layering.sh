@@ -6,6 +6,8 @@
 
 set -euo pipefail
 
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
+
 SCRIPT_PATH="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
@@ -27,6 +29,7 @@ run_services() {
     /^Using env file:/ { next }
     /^Running: docker compose / { next }
     /^\[WARN\]/ { next }
+    /^Created \.env/ { next }
     NF == 0 { next }
     { print }
   '
@@ -71,6 +74,7 @@ carbone-engine
 sandbox-worker
 temporal
 temporal-ui
+temporal-worker
 EOF
 )
 
@@ -94,6 +98,7 @@ sandbox-worker
 session-broker
 temporal
 temporal-ui
+temporal-worker
 user-web
 EOF
 )

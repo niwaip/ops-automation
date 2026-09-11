@@ -277,6 +277,8 @@ export interface DeployCapabilityReleaseDTO {
   environment?: CapabilityDeploymentEnvironment;
   strategy?: 'hot_reload' | 'rolling_restart' | 'full_restart';
   configOverrides?: Record<string, unknown>;
+  /** One-time input for the post-deploy smoke test. Never becomes runtime/user configuration. */
+  smokeTestInput?: Record<string, unknown>;
 }
 
 export interface RollbackCapabilityReleaseDTO {

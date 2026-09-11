@@ -1,5 +1,5 @@
 const SENSITIVE_RUNTIME_FIELD =
-  /(?:api[_-]?key|access[_-]?token|refresh[_-]?token|authorization|secret)$/i;
+  /(?:api[_-]?key|device[_-]?key|access[_-]?key|private[_-]?key|access[_-]?token|refresh[_-]?token|authorization|credential|password|secret|token)$/i;
 const ENV_KEY = /^[A-Z][A-Z0-9_]*$/;
 
 type RuntimeEnvironment = Record<string, string | undefined>;
@@ -19,6 +19,11 @@ const readEnvKey = (value: unknown): string | undefined => {
   const normalized = value.trim();
   return ENV_KEY.test(normalized) ? normalized : undefined;
 };
+
+const isPlaceholderCredential = (value: unknown): boolean =>
+  typeof value === 'string' &&
+  (/^test[_-]/i.test(value.trim()) ||
+    /^(?:\[redacted\]|\*{4,}|•{4,})$/i.test(value.trim()));
 
 const resolveCredentialEnvKeys = (
   field: string,
@@ -48,9 +53,19 @@ const resolveCredentialEnvKeys = (
 };
 
 export const findTemporalCredentialDefaults = (
-  _sourcePayload: Record<string, unknown>
+  sourcePayload: Record<string, unknown>
 ): string[] => {
-  return [];
+  const paramsSchema = asRecord(sourcePayload.paramsSchema);
+  const properties = asRecord(paramsSchema?.properties) || {};
+  return Object.entries(properties).flatMap(([field, rawDefinition]) => {
+    const definition = asRecord(rawDefinition) || {};
+    return SENSITIVE_RUNTIME_FIELD.test(field) &&
+      definition.default !== undefined &&
+      definition.default !== null &&
+      definition.default !== ''
+      ? [field]
+      : [];
+  });
 };
 
 /**
@@ -77,12 +92,21 @@ export const resolveTemporalRuntimeCredentials = (
 
     // 1. If explicit value is provided in input (non-empty string or defined value), keep it
     const suppliedValue = result[field];
-    if (suppliedValue !== undefined && suppliedValue !== null && suppliedValue !== '') {
+    if (
+      suppliedValue !== undefined &&
+      suppliedValue !== null &&
+      suppliedValue !== '' &&
+      !(SENSITIVE_RUNTIME_FIELD.test(field) && isPlaceholderCredential(suppliedValue))
+    ) {
       continue;
+    }
+    if (isPlaceholderCredential(suppliedValue)) {
+      delete result[field];
     }
 
     // 2. If workflow snapshot definition provides a default value, use it directly (workflow-scoped)
     if (
+      !SENSITIVE_RUNTIME_FIELD.test(field) &&
       definition.default !== undefined &&
       definition.default !== null &&
       definition.default !== ''

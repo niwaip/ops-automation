@@ -1,8 +1,11 @@
 import { createHash } from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { Injectable } from '@nestjs/common';
 import { ArtifactRefDto } from '../../../dto/worker.dto';
+import { signArtifactToken } from './browser-artifact-token.util';
 
+@Injectable()
 export class BrowserArtifactRefFactory {
   private readonly artifactDir = path.resolve(
     process.env.PLAYWRIGHT_CLI_ARTIFACT_DIR ||
@@ -96,7 +99,8 @@ export class BrowserArtifactRefFactory {
 
   private publicArtifactUrl(name: string): string {
     const base = (process.env.BROWSER_WORKER_PUBLIC_BASE_URL || '').replace(/\/$/u, '');
-    const resource = `/browser/artifacts/${encodeURIComponent(name)}`;
+    const token = signArtifactToken(name);
+    const resource = `/browser/artifacts/${encodeURIComponent(name)}?token=${encodeURIComponent(token)}`;
     return base ? `${base}${resource}` : resource;
   }
 }

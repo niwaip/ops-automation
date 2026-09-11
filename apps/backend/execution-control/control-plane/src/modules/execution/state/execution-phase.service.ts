@@ -10,7 +10,9 @@ const reportLoopHistoryDebug = (
   msg: string,
   data: Record<string, unknown>
 ) => {
-  fetch('http://127.0.0.1:7777/event', {
+  const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
+  if (!debugUrl) return;
+  fetch(debugUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

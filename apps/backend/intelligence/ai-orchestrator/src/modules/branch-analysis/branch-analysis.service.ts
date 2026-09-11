@@ -127,15 +127,6 @@ export class BranchAnalysisService {
       fallbackPageContext.links?.length
     );
 
-    // #region debug-point approvals-export-500:load-context
-    this.reportDebugEvent('A', 'branch-analysis.service.ts:95', '[DEBUG] loadPageContext start', {
-      runtimeSessionId: input.runtimeSessionId,
-      browserWorkerUrl: this.browserWorkerUrl,
-      hasPageSignals: Boolean(input.pageSignals),
-      pageSignalUrl: input.pageSignals?.currentPageUrl,
-    });
-    // #endregion
-
     let inspectResponse;
     let readResponse;
     try {
@@ -158,38 +149,7 @@ export class BranchAnalysisService {
         }),
       ]);
     } catch (error) {
-      const axiosError = (error as any)?.response ? (error as any) : undefined;
-      // #region debug-point approvals-export-500:load-context-failed
-      this.reportDebugEvent(
-        'B',
-        'branch-analysis.service.ts:117',
-        '[DEBUG] loadPageContext failed',
-        {
-          runtimeSessionId: input.runtimeSessionId,
-          browserWorkerUrl: this.browserWorkerUrl,
-          errorMessage: error instanceof Error ? error.message : 'unknown error',
-          status: axiosError?.response?.status,
-          responseData: axiosError?.response?.data,
-          hasFallbackPageContext,
-        }
-      );
-      // #endregion
       if (hasFallbackPageContext) {
-        // #region debug-point approvals-export-500:load-context-fallback
-        this.reportDebugEvent(
-          'C',
-          'branch-analysis.service.ts:132',
-          '[DEBUG] loadPageContext fallback to pageSignals',
-          {
-            runtimeSessionId: input.runtimeSessionId,
-            pageUrl: fallbackPageContext.pageUrl,
-            hasPageText: Boolean(fallbackPageContext.pageText),
-            buttonCount: fallbackPageContext.buttons?.length || 0,
-            headingCount: fallbackPageContext.headings?.length || 0,
-            linkCount: fallbackPageContext.links?.length || 0,
-          }
-        );
-        // #endregion
         return fallbackPageContext;
       }
       throw error;
@@ -213,39 +173,7 @@ export class BranchAnalysisService {
     };
   }
 
-  // #region debug-point approvals-export-500:report-event
-  private reportDebugEvent(
-    hypothesisId: 'A' | 'B' | 'C' | 'D',
-    location: string,
-    msg: string,
-    data: Record<string, unknown>
-  ): void {
-    const isContainerRuntime =
-      process.env.DOCKER_ENV === 'true' ||
-      process.env.NODE_ENV === 'production' ||
-      process.env.BROWSER_WORKER_URL?.includes('browser-worker') ||
-      process.env.CONTROL_PLANE_URL?.includes('control-plane');
-    const debugServerUrl =
-      process.env.DEBUG_SERVER_URL?.trim() ||
-      (isContainerRuntime
-        ? 'http://host.docker.internal:7777/event'
-        : 'http://127.0.0.1:7777/event');
 
-    void fetch(debugServerUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: 'approvals-export-500',
-        runId: 'pre-fix',
-        hypothesisId,
-        location,
-        msg,
-        data,
-        ts: Date.now(),
-      }),
-    }).catch(() => {});
-  }
-  // #endregion
 
   private buildPrompt(input: AnalyzeBranchConditionDto, pageContext: BrowserPageContext): string {
     return [

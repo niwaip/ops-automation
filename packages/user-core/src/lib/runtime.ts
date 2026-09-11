@@ -24,7 +24,10 @@ export const normalizeRuntimeConfig = (env: RuntimeEnvSource): RuntimeConfigPort
   return {
     apiBaseUrl,
     websocketBaseUrl: readEnv(env, 'VITE_WEBSOCKET_BASE_URL') || deriveWebsocketBaseUrl(apiBaseUrl),
-    controlPlaneApiBaseUrl: readEnv(env, 'VITE_CONTROL_PLANE_API_URL') || undefined,
+    controlPlaneApiBaseUrl: (() => {
+      const val = readEnv(env, 'VITE_CONTROL_PLANE_API_URL')?.trim();
+      return !val || val === '/api' || val === apiBaseUrl ? undefined : val;
+    })(),
     aiApiBaseUrl: readEnv(env, 'VITE_AI_API_BASE_URL') || '/api/ai',
     hostIp,
     recorderWsUrl: readEnv(env, 'VITE_RECORDER_WS_URL') || `ws://${hostIp}:3004`,

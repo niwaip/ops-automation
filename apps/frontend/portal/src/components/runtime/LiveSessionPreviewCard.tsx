@@ -2,6 +2,7 @@ import React from 'react';
 import { Button, Card, Space, Tag } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
 import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
+import { buildNovncAutoConnectUrl } from '@ops/user-core';
 
 interface LiveSessionPreviewCardProps {
   novncUrl: string;
@@ -25,8 +26,8 @@ export const LiveSessionPreviewCard: React.FC<LiveSessionPreviewCardProps> = ({
     }
   }, [nextResolvedUrl]);
 
-  const iframeSrc = React.useMemo(
-    () => `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}autoconnect=true&resize=scale`,
+  const connectUrl = React.useMemo(
+    () => buildNovncAutoConnectUrl(resolvedUrl),
     [resolvedUrl]
   );
 
@@ -42,7 +43,7 @@ export const LiveSessionPreviewCard: React.FC<LiveSessionPreviewCardProps> = ({
       extra={
         <Button
           type="link"
-          onClick={() => window.open(resolvedUrl, '_blank', 'noopener,noreferrer')}
+          onClick={() => window.open(connectUrl, '_blank', 'noopener,noreferrer')}
         >
           新窗口打开
         </Button>
@@ -59,7 +60,7 @@ export const LiveSessionPreviewCard: React.FC<LiveSessionPreviewCardProps> = ({
         }}
       >
         <iframe
-          src={iframeSrc}
+          src={connectUrl}
           style={{ width: '100%', height: '100%', border: 'none' }}
           title="Live Browser Session"
           allow="fullscreen"

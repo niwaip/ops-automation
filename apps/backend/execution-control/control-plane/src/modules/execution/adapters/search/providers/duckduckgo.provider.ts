@@ -39,6 +39,9 @@ export class DuckDuckGoProvider implements SearchEngineProvider {
       );
 
       const html = typeof response.data === 'string' ? response.data : '';
+      if (/anomaly-modal|challenge-form|lite_wrapper.*error-lite/is.test(html)) {
+        throw new Error('DuckDuckGo 触发反爬人机验证拦截 (Bot Challenge)');
+      }
       const results = this.parseHtmlResults(html, maxResults);
 
       const warnings: string[] = ['使用 DuckDuckGo 免凭据公开通道检索'];

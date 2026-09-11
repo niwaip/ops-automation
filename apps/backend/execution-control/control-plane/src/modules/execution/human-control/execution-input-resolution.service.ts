@@ -5,6 +5,7 @@ import {
   ExecutionParamResolutionEntry,
   ExecutionRequiredInput,
 } from '../state/execution.dto';
+import { isMaskedPlaceholder } from '../credentials/runtime-credential-resolver.service';
 
 export interface ExecutionUsageSummary {
   prompt_tokens: number;
@@ -126,7 +127,8 @@ export class ExecutionInputResolutionService {
       return false;
     }
     if (typeof value === 'string') {
-      return value.trim().length > 0;
+      const trimmed = value.trim();
+      return trimmed.length > 0 && !this.isPlaceholderTextValue(trimmed);
     }
     if (Array.isArray(value)) {
       return value.some((item) => this.hasMeaningfulSubmittedInputValue(item));
@@ -429,7 +431,7 @@ export class ExecutionInputResolutionService {
       .replace(/\s+/g, '')
       .replace(/^[`"'“”‘’]+|[`"'“”‘’。．.,，；;：:、!！?？]+$/g, '');
 
-    if (!normalized) {
+    if (!normalized || isMaskedPlaceholder(value) || isMaskedPlaceholder(normalized)) {
       return true;
     }
 

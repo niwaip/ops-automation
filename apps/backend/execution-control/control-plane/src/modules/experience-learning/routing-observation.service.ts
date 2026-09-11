@@ -71,22 +71,33 @@ export class RoutingObservationService {
         candidateCount: number;
         matchScore: number | null;
         plannerInvoked: boolean;
+        plannerInputTokens: number | null;
+        contractStatus: string | null;
+        businessStatus: string | null;
+        errorCode: string | null;
+        selectedWorkflowName: string | null;
         routingPolicyVersion: string | null;
         routingPolicyDigest: string | null;
         createdAt: Date;
       }>>(
-        `SELECT id,
-                SUBSTRING(MD5(owner_user_id::text), 1, 12) AS "userKey",
-                route_source AS "routeSource",
-                match_method AS "matchMethod",
-                candidate_count AS "candidateCount",
-                match_score AS "matchScore",
-                planner_invoked AS "plannerInvoked",
-                routing_policy_version AS "routingPolicyVersion",
-                routing_policy_digest AS "routingPolicyDigest",
-                created_at AS "createdAt"
-           FROM routing_observations
-          ORDER BY created_at DESC
+        `SELECT o.id,
+                SUBSTRING(MD5(o.owner_user_id::text), 1, 12) AS "userKey",
+                o.route_source AS "routeSource",
+                o.match_method AS "matchMethod",
+                o.candidate_count AS "candidateCount",
+                o.match_score AS "matchScore",
+                o.planner_invoked AS "plannerInvoked",
+                o.planner_input_tokens AS "plannerInputTokens",
+                o.contract_status AS "contractStatus",
+                o.business_status AS "businessStatus",
+                o.error_code AS "errorCode",
+                s.name AS "selectedWorkflowName",
+                o.routing_policy_version AS "routingPolicyVersion",
+                o.routing_policy_digest AS "routingPolicyDigest",
+                o.created_at AS "createdAt"
+           FROM routing_observations o
+           LEFT JOIN user_saved_skills s ON s.id = o.selected_source_id
+          ORDER BY o.created_at DESC
           LIMIT 50`
       ),
     ]);

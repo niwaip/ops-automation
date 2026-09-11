@@ -1,5 +1,6 @@
 import * as tls from 'tls';
 import * as net from 'net';
+import { Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import type { EmailAddressInput, EmailConnectionConfig } from '../email-engine.types';
 
@@ -31,6 +32,8 @@ function formatAddressHeader(item: EmailAddressInput): string {
 }
 
 export class SmtpClient {
+  private static readonly logger = new Logger(SmtpClient.name);
+
   static async verify(config: EmailConnectionConfig): Promise<{ success: boolean; message: string }> {
     const host = config.smtpHost || 'localhost';
     const port = config.smtpPort || (config.smtpSecure ? 465 : 587);
@@ -38,6 +41,10 @@ export class SmtpClient {
     const pass = (config.authPassword || '').replace(/\s+/g, '');
     const isDirectTls = port === 465;
     const timeout = config.timeoutMs || 12000;
+    const allowInsecureTls = Boolean(
+      config.allowInsecureTls ?? (process.env.EMAIL_ALLOW_INSECURE_TLS === 'true')
+    );
+    const rejectUnauthorized = !allowInsecureTls;
 
     return new Promise((resolve) => {
       let resolved = false;
@@ -48,7 +55,9 @@ export class SmtpClient {
         resolved = true;
         try {
           activeSocket?.destroy();
-        } catch {}
+        } catch (error) {
+          SmtpClient.logger.debug(`Socket destroy in verify ignored error: ${(error as Error).message}`);
+        }
         resolve({ success, message });
       };
 
@@ -98,7 +107,7 @@ export class SmtpClient {
                 const tlsSocket = tls.connect({
                   socket: s,
                   host,
-                  rejectUnauthorized: false,
+                  rejectUnauthorized,
                   minVersion: 'TLSv1.2',
                 });
                 activeSocket = tlsSocket;
@@ -135,7 +144,7 @@ export class SmtpClient {
       };
 
       if (isDirectTls) {
-        const tlsSocket = tls.connect({ host, port, minVersion: 'TLSv1.2', rejectUnauthorized: false });
+        const tlsSocket = tls.connect({ host, port, minVersion: 'TLSv1.2', rejectUnauthorized });
         startSession(tlsSocket, true);
       } else {
         const netSocket = net.connect({ host, port });
@@ -154,6 +163,10 @@ export class SmtpClient {
     const pass = (config.authPassword || '').replace(/\s+/g, '');
     const isDirectTls = port === 465;
     const timeout = config.timeoutMs || 15000;
+    const allowInsecureTls = Boolean(
+      config.allowInsecureTls ?? (process.env.EMAIL_ALLOW_INSECURE_TLS === 'true')
+    );
+    const rejectUnauthorized = !allowInsecureTls;
     const deliveryId = `del_${uuidv4()}`;
 
     const recipients = [
@@ -202,7 +215,9 @@ export class SmtpClient {
         resolved = true;
         try {
           activeSocket?.destroy();
-        } catch {}
+        } catch (error) {
+          SmtpClient.logger.debug(`Socket destroy in sendEmail ignored error: ${(error as Error).message}`);
+        }
         if (err) {
           reject(err);
         } else {
@@ -263,7 +278,7 @@ export class SmtpClient {
                 const tlsSocket = tls.connect({
                   socket: s,
                   host,
-                  rejectUnauthorized: false,
+                  rejectUnauthorized,
                   minVersion: 'TLSv1.2',
                 });
                 activeSocket = tlsSocket;
@@ -318,7 +333,7 @@ export class SmtpClient {
       };
 
       if (isDirectTls) {
-        const tlsSocket = tls.connect({ host, port, minVersion: 'TLSv1.2', rejectUnauthorized: false });
+        const tlsSocket = tls.connect({ host, port, minVersion: 'TLSv1.2', rejectUnauthorized });
         startSession(tlsSocket, true);
       } else {
         const netSocket = net.connect({ host, port });

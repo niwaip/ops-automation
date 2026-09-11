@@ -12,6 +12,7 @@ import {
   BrowserLoopWorkflowPlanLike,
   partitionBrowserTemplateStepsForLoopWorkflow,
 } from '../browser/browser-loop-workflow-plan.builder';
+import { isMaskedPlaceholder } from '../../credentials/runtime-credential-resolver.service';
 
 interface SkillSchemaPropertyLike {
   type?: string;
@@ -947,7 +948,7 @@ export class ExecutionPlanNormalizationService {
     source: ExecutionParamSource
   ): void {
     Object.entries(properties || {}).forEach(([name, property]) => {
-      if (this.isRuntimeCredentialField(name)) {
+      if (this.isRuntimeCredentialField(name, property)) {
         return;
       }
       const normalizedDefault = this.executionInputResolutionService.normalizeSubmittedInputValue(
@@ -970,7 +971,7 @@ export class ExecutionPlanNormalizationService {
     properties: Record<string, SkillSchemaPropertyLike>
   ): void {
     Object.entries(policies || {}).forEach(([name, policy]) => {
-      if (this.isRuntimeCredentialField(name)) {
+      if (this.isRuntimeCredentialField(name, properties[name])) {
         return;
       }
       const normalizedDefault = this.executionInputResolutionService.normalizeSubmittedInputValue(
@@ -987,8 +988,29 @@ export class ExecutionPlanNormalizationService {
     });
   }
 
-  private isRuntimeCredentialField(name: string): boolean {
-    return /(?:api[_-]?key|access[_-]?token|refresh[_-]?token|authorization|secret)$/i.test(name);
+  private isRuntimeCredentialField(
+    name: string,
+    property?: SkillSchemaPropertyLike
+  ): boolean {
+    const rawProp = property as Record<string, unknown> | undefined;
+    if (
+      rawProp?.isSecret === true ||
+      rawProp?.format === 'password' ||
+      Boolean(rawProp?.credentialCategory)
+    ) {
+      return true;
+    }
+    const lower = name.toLowerCase();
+    return (
+      lower.includes('credential') ||
+      lower.includes('password') ||
+      lower.includes('passwd') ||
+      lower.includes('devicekey') ||
+      lower.includes('device_key') ||
+      /(?:api[_-]?key|access[_-]?token|refresh[_-]?token|authorization|secret)$/i.test(name) ||
+      (typeof rawProp?.description === 'string' &&
+        /(密码|口令|密钥|凭证|私钥|token)/i.test(rawProp.description))
+    );
   }
 
   private mapBrowserActivityCommands(
@@ -1024,14 +1046,20 @@ export class ExecutionPlanNormalizationService {
         if (!suspiciousAction && !suspiciousShape) {
           return;
         }
+        const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
+        if (!debugUrl) {
+          return;
+        }
         const fs = require('node:fs');
-        let u = 'http://127.0.0.1:7777/event';
+        let u = debugUrl;
         let s = 'gross-margin-review';
         try {
           const env = fs.readFileSync('.dbg/gross-margin-review.env', 'utf8');
           u = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || u;
           s = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || s;
-        } catch {}
+        } catch {
+          // optional debug probe env file not found, use default
+        }
         fetch(u, {
           method: 'POST',
           body: JSON.stringify({
@@ -1371,9 +1399,28 @@ export class ExecutionPlanNormalizationService {
     resolvedInput: Record<string, unknown>
   ): unknown {
     if (typeof value === 'string') {
-      const resolvePlaceholder = (rawKey: string): string => {
-        const resolved = resolvedInput[rawKey.trim()];
-        return resolved === undefined || resolved === null ? '' : String(resolved);
+      const resolvePlaceholder = (match: string, rawKey: string): string => {
+        const key = rawKey.trim();
+        const lower = key.toLowerCase();
+        let resolved =
+          resolvedInput[key] ??
+          Object.entries(resolvedInput).find(([k]) => k.toLowerCase() === lower)?.[1];
+        if (resolved === undefined || resolved === null) {
+          if (['username', 'user', 'account'].includes(lower)) {
+            resolved = resolvedInput.username ?? resolvedInput.userName ?? resolvedInput.user ?? resolvedInput.account;
+          } else if (['password', 'logincredential', 'secret'].includes(lower)) {
+            resolved = resolvedInput.password ?? resolvedInput.loginCredential ?? resolvedInput.passwd ?? resolvedInput.secret;
+          }
+        }
+        if (
+          resolved === undefined ||
+          resolved === null ||
+          (typeof resolved === 'string' &&
+            (isMaskedPlaceholder(resolved) || /^\$\{[^}]+\}$/.test(resolved.trim())))
+        ) {
+          return match;
+        }
+        return String(resolved);
       };
 
       return [
@@ -1382,7 +1429,7 @@ export class ExecutionPlanNormalizationService {
         /\{([A-Za-z0-9_.\[\]-]+)\}/g,
       ].reduce(
         (current, pattern) =>
-          current.replace(pattern, (_match, key) => resolvePlaceholder(String(key))),
+          current.replace(pattern, (match, key) => resolvePlaceholder(match, String(key))),
         value
       );
     }

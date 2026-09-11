@@ -12,7 +12,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ops_secret}
       POSTGRES_DB: ${POSTGRES_DB:-ops}
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+      - '${HOST_BIND_IP:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -30,7 +30,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secret}
     ports:
-      - '${REDIS_PORT:-6379}:6379'
+      - '${HOST_BIND_IP:-127.0.0.1}:${REDIS_PORT:-6379}:6379'
     volumes:
       - redis_data:/data
     healthcheck:
@@ -46,7 +46,7 @@ services:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-platform
     working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && rm -f tsconfig.tsbuildinfo && npx tsc && node dist/main.js"
+    command: sh -c "corepack enable && pnpm run start"
     environment:
       NODE_ENV: development
       DOCKER_ENV: true
@@ -63,9 +63,9 @@ services:
       TAVILY_API_KEY: ${TAVILY_API_KEY:-}
       SEARCH_API_KEY: ${SEARCH_API_KEY:-}
     ports:
-      - '${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}'
     volumes:
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/core/platform:/app
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/platform:/app
       - auth_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -79,7 +79,7 @@ services:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-control-plane
     working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmjs.org && npm install --legacy-peer-deps && pnpm exec prisma generate && npm run dev"
+    command: sh -c "corepack enable && pnpm run start"
     environment:
       NODE_ENV: development
       DOCKER_ENV: true
@@ -102,7 +102,7 @@ services:
       SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
       EXTERNAL_HOST: ${HOST_IP:-localhost}
     ports:
-      - '${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/execution-control/control-plane:/app
       - control_plane_node_modules:/app/node_modules
@@ -118,7 +118,7 @@ services:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-session-broker
     working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && rm -f tsconfig.tsbuildinfo && npx tsc && node dist/main.js"
+    command: sh -c "corepack enable && pnpm run start"
     environment:
       NODE_ENV: development
       DOCKER_ENV: true
@@ -129,7 +129,7 @@ services:
       PORT: ${SESSION_BROKER_PORT:-3002}
       EXTERNAL_HOST: ${HOST_IP:-localhost}
     ports:
-      - '${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/execution-control/session-broker:/app
       - session_broker_node_modules:/app/node_modules

@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Post, Query, Request } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { Public } from '../decorators';
+import { RateLimit, RateLimiterGuard } from '../guards';
 import {
   LoginDto,
   RefreshTokenDto,
@@ -11,22 +12,26 @@ import {
 import { IdentityAccessAuthService } from './identity-access-auth.service';
 
 @Controller('auth')
+@UseGuards(RateLimiterGuard)
 export class AuthController {
   constructor(private readonly authService: IdentityAccessAuthService) {}
 
   @Public()
+  @RateLimit(15, 60000, 'Too many login attempts. Please wait a minute.')
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 
   @Public()
+  @RateLimit(10, 60000, 'Too many registration attempts. Please wait a minute.')
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
   @Public()
+  @RateLimit(30, 60000)
   @Post('refresh')
   async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
     return this.authService.refresh(refreshTokenDto.refreshToken);

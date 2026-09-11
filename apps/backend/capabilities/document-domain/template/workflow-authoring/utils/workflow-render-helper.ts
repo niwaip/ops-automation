@@ -38,8 +38,10 @@ const logger = new Logger('WorkflowRenderHelper');
 
 // #region debug-point A:render-helper
 const debugReport = (hypothesisId: string, msg: string, data: Record<string, unknown> = {}) => {
+  const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
+  if (!debugUrl) return;
   const fs = require('fs');
-  let url = 'http://127.0.0.1:7777/event';
+  let url = debugUrl;
   let sessionId = 'signing-date-render';
   try {
     const env = fs.readFileSync('.dbg/signing-date-render.env', 'utf8');

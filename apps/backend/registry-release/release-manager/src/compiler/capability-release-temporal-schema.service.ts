@@ -18,6 +18,9 @@ const asRecord = (value: unknown): Record<string, unknown> | undefined => {
   return value as Record<string, unknown>;
 };
 
+const SENSITIVE_SMOKE_INPUT_FIELD =
+  /(?:api[_-]?key|device[_-]?key|access[_-]?key|private[_-]?key|access[_-]?token|refresh[_-]?token|authorization|credential|password|secret|token)$/i;
+
 @Injectable()
 export class CapabilityReleaseTemporalSchemaService {
   extractTemporalGoal(
@@ -140,6 +143,16 @@ export class CapabilityReleaseTemporalSchemaService {
     activityDsl?: Record<string, unknown>
   ): Record<string, unknown> {
     const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
+    const validation = this.parseJson<Record<string, unknown>>(workflowDsl.validation) || {};
+    const validationScenarios = Array.isArray(validation.scenarios) ? validation.scenarios : [];
+    const defaultValidationScenario = asRecord(validationScenarios[0]);
+    const defaultScenarioRequired = new Set(
+      Array.isArray(defaultValidationScenario?.requiredParameters)
+        ? defaultValidationScenario.requiredParameters.filter(
+            (item): item is string => typeof item === 'string' && item.trim().length > 0
+          )
+        : []
+    );
     const workflowInputPolicy = this.extractTemporalWorkflowInputPolicy(workflowDsl);
     const workflowInputPolicies = asRecord(workflowInputPolicy?.params) || {};
     const properties: Record<string, unknown> = {};
@@ -153,7 +166,9 @@ export class CapabilityReleaseTemporalSchemaService {
         typeof workflowPolicy.requiredMode === 'string'
           ? workflowPolicy.requiredMode.trim()
           : undefined;
-      const isRequired = requiredMode ? requiredMode === 'always' : Boolean(definition.required);
+      const isRequired = requiredMode
+        ? requiredMode === 'always'
+        : Boolean(definition.required) || defaultScenarioRequired.has(key);
       const description =
         typeof definition.description === 'string'
           ? definition.description.trim()
@@ -408,7 +423,8 @@ export class CapabilityReleaseTemporalSchemaService {
   buildSmokeTestInput(
     release: CapabilityReleaseDTO,
     snapshot: CapabilitySourceSnapshotDTO,
-    environment: string
+    environment: string,
+    oneTimeInput?: Record<string, unknown>
   ): Record<string, unknown> {
     const schema =
       release.sourceType === 'temporal_workflow'
@@ -466,9 +482,19 @@ export class CapabilityReleaseTemporalSchemaService {
 
     const fixedTestInput = this.resolveFixedTestInput(snapshot.sourcePayload, environment);
 
-    return {
+    const persistedSmokeInput = {
       ...suggestedInput,
       ...(fixedTestInput || {}),
+    };
+    for (const key of Object.keys(persistedSmokeInput)) {
+      if (SENSITIVE_SMOKE_INPUT_FIELD.test(key)) {
+        delete persistedSmokeInput[key];
+      }
+    }
+
+    return {
+      ...persistedSmokeInput,
+      ...(oneTimeInput || {}),
       smokeTest: true,
       environment,
     };

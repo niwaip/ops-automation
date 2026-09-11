@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from 'react-query';
 import { executionApi } from '@/api/execution';
 import { scheduleApi } from '@/api/schedules';
+import { credentialApi } from '@/api/credentials';
 import type { ExecutionCreateFormValues, SchemaField } from '@/features/executions/create/lib/executionCreate';
 import {
   buildExecutionScheduleCreateRequest,
@@ -19,6 +20,7 @@ interface UseExecutionCreateActionsOptions {
   schemaFields: SchemaField[];
   selectedSkillDisplayName: string;
   selectedSkillVersion?: string;
+  onCredentialsRequired?: () => void;
 }
 
 export function useExecutionCreateActions({
@@ -26,6 +28,7 @@ export function useExecutionCreateActions({
   schemaFields,
   selectedSkillDisplayName,
   selectedSkillVersion,
+  onCredentialsRequired,
 }: UseExecutionCreateActionsOptions) {
   const { message } = App.useApp();
   const navigate = useNavigate();
@@ -147,8 +150,14 @@ export function useExecutionCreateActions({
     }
   );
 
-  const handleSubmit = (values: ExecutionCreateFormValues) => {
+  const handleSubmit = async (values: ExecutionCreateFormValues) => {
     try {
+      const credentialStatus = await credentialApi.getSkillStatus(values.skillId);
+      if (credentialStatus.hasCredentialRequirements && !credentialStatus.isFullyConfigured) {
+        onCredentialsRequired?.();
+        void message.warning('请先配置该数字员工所需的个人凭证，再发起任务');
+        return;
+      }
       if (values.executionMode === 'schedule') {
         scheduleMutation.mutate(values);
         return;

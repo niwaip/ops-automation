@@ -5,7 +5,7 @@ on:
     paths:
       - 'apps/backend/execution-control/control-plane/**'
       - 'apps/backend/intelligence/ai-orchestrator/**'
-      - 'apps/backend/core/platform/prisma/**'
+      - 'apps/backend/platform/prisma/**'
       - 'packages/backend-contracts/planning-decision/**'
       - 'packages/backend-contracts/result-ref/**'
       - 'packages/capability-sdk/**'
@@ -20,7 +20,7 @@ on:
       - 'apps/backend/execution-control/control-plane/**'
       - 'apps/backend/intelligence/ai-orchestrator/**'
       - 'apps/backend/runtimes/browser-worker/**'
-      - 'apps/backend/core/platform/prisma/**'
+      - 'apps/backend/platform/prisma/**'
       - 'packages/backend-contracts/planning-decision/**'
       - 'packages/backend-contracts/result-ref/**'
       - 'packages/capability-sdk/**'
@@ -95,8 +95,8 @@ jobs:
           ROLE_POLICY_FIXTURE_CONFIRM: ci-only
       - name: Validate production migration histories on an empty database
         run: |
-          pnpm --filter @ops/platform exec prisma migrate deploy --schema "$GITHUB_WORKSPACE/apps/backend/core/platform/prisma/schema.prisma"
-          pnpm --filter @ops/platform exec prisma migrate status --schema "$GITHUB_WORKSPACE/apps/backend/core/platform/prisma/schema.prisma"
+          pnpm --filter @ops/platform exec prisma migrate deploy --schema "$GITHUB_WORKSPACE/apps/backend/platform/prisma/schema.prisma"
+          pnpm --filter @ops/platform exec prisma migrate status --schema "$GITHUB_WORKSPACE/apps/backend/platform/prisma/schema.prisma"
           pnpm --filter @ops/ai-orchestrator exec prisma validate --schema "$GITHUB_WORKSPACE/apps/backend/intelligence/ai-orchestrator/prisma/schema.prisma"
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/task_orchestration_access_policy

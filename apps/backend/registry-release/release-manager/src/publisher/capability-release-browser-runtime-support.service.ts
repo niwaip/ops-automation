@@ -24,6 +24,8 @@ export class CapabilityReleaseBrowserRuntimeSupportService {
     data: Record<string, unknown>,
     runId = 'pre-fix'
   ): void {
+    const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
+    if (!debugUrl) return;
     const localFs = require('fs') as typeof import('fs');
     const envPaths = [
       '/app/.dbg/gross-margin-branch.env',
@@ -31,7 +33,7 @@ export class CapabilityReleaseBrowserRuntimeSupportService {
       '/app/.dbg/approve-threshold-param.env',
       '/Users/chain/Documents/MyProject/ops-automation/.dbg/approve-threshold-param.env',
     ];
-    let serverUrl = 'http://host.docker.internal:7777/event';
+    let serverUrl = debugUrl;
     let sessionId = 'gross-margin-branch';
     for (const envPath of envPaths) {
       try {
@@ -45,7 +47,9 @@ export class CapabilityReleaseBrowserRuntimeSupportService {
           sessionId = resolvedSessionId;
         }
         break;
-      } catch {}
+      } catch {
+        // optional debug probe env file not found, use default
+      }
     }
     const payload = {
       sessionId,
@@ -60,14 +64,7 @@ export class CapabilityReleaseBrowserRuntimeSupportService {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-    })
-      .catch(() =>
-        fetch('http://host.docker.internal:7777/event', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        }).catch(() => undefined)
-      );
+    }).catch(() => undefined);
   }
 
   extractBrowserStepText(output?: Record<string, unknown>): string {

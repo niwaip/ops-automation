@@ -2,6 +2,7 @@ jest.mock(
   '@nestjs/common',
   () => ({
     Injectable: () => () => undefined,
+    Optional: () => () => undefined,
   }),
   { virtual: true }
 );
@@ -117,5 +118,55 @@ describe('RecorderDebugChatFlowService', () => {
     );
     expect(session.pendingDisambiguation).toBeUndefined();
     expect(session.pendingRiskConfirmation).toBeUndefined();
+  });
+
+  it('uses cached intent resolution without calling parseCommand when available', async () => {
+    const chatSupportService = new RecorderDebugChatSupportService(
+      new RecorderDisambiguationService()
+    );
+    const mockReuseService = {
+      tryResolveFromIntentCache: jest.fn().mockReturnValue({
+        success: true,
+        commands: [{ tool: 'click', params: { target: '#login-btn' }, description: '点击登录' }],
+        explanation: '[快速意图复用] 点击登录',
+        parserMetadata: { parserSource: 'intent-cache' },
+      }),
+    };
+
+    const service = new RecorderDebugChatFlowService(
+      chatSupportService,
+      new BrowserActionValidatorService(),
+      mockReuseService as any
+    );
+
+    const parseCommandSpy = jest.fn();
+    const session: any = {
+      backend: 'cli',
+      currentPageUrl: 'http://localhost/#login',
+    };
+
+    const result = await service.resolveFlow({
+      session,
+      observation: {
+        text: 'Login Page',
+        inputs: [],
+        buttons: [],
+        candidates: [],
+      },
+      effectiveMessage: '点击登录',
+      availableInputs: [],
+      availableButtons: [],
+      controlHints: [],
+      parseCommand: parseCommandSpy,
+    });
+
+    expect(result.kind).toBe('execute');
+    expect(result.parsed.commands).toEqual([
+      { tool: 'click', params: { target: '#login-btn' }, description: '点击登录' },
+    ]);
+    expect(parseCommandSpy).not.toHaveBeenCalled();
+    expect(mockReuseService.tryResolveFromIntentCache).toHaveBeenCalledWith(
+      expect.objectContaining({ message: '点击登录' })
+    );
   });
 });

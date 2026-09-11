@@ -30,6 +30,7 @@ CARBONE_CONTAINER="${CARBONE_CONTAINER:-carbone-engine}"
 TEMPORAL_CONTAINER="${TEMPORAL_CONTAINER:-ops-temporal}"
 TEMPORAL_UI_CONTAINER="${TEMPORAL_UI_CONTAINER:-ops-temporal-ui}"
 SANDBOX_CONTAINER="${SANDBOX_CONTAINER:-ops-sandbox-worker}"
+TEMPORAL_WORKER_CONTAINER="${TEMPORAL_WORKER_CONTAINER:-ops-temporal-worker}"
 
 log() {
   echo "[runtime-smoke] $*"
@@ -90,6 +91,7 @@ main() {
   retry "temporal running" 36 5 container_running "$TEMPORAL_CONTAINER" || fail "temporal not ready"
   retry "temporal-ui running" 36 5 container_running "$TEMPORAL_UI_CONTAINER" || fail "temporal-ui not ready"
   retry "sandbox-worker running" 36 5 container_running "$SANDBOX_CONTAINER" || fail "sandbox-worker not ready"
+  retry "temporal-worker running" 36 5 container_running "$TEMPORAL_WORKER_CONTAINER" || fail "temporal-worker not ready"
 
   log "Runtime smoke passed"
   log "Stop runtime with:"

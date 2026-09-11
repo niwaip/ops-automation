@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "build": "rm -rf dist && pnpm --filter @ops/skill-registry run build && (pnpm exec tsc -p tsconfig.json || tsc -p tsconfig.json)",
+    "build": "rm -rf dist && (pnpm exec tsc -p tsconfig.json || tsc -p tsconfig.json)",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest --runInBand"
   },
@@ -24,7 +24,6 @@
     "@ops/backend-runtime-capability-contract": "file:../../../../packages/backend-contracts/runtime-capability-contract",
     "@ops/identity-access": "workspace:*",
     "@ops/organization": "workspace:*",
-    "@ops/skill-registry": "workspace:*",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0"
   },

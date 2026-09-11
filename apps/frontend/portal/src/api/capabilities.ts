@@ -250,7 +250,7 @@ export const capabilityReleaseApi = {
       });
     };
 
-    while (true) {
+    for (;;) {
       const { value, done } = await reader.read();
       if (done) {
         break;
@@ -367,7 +367,7 @@ export const capabilityReleaseApi = {
       });
     };
 
-    while (true) {
+    for (;;) {
       const { value, done } = await reader.read();
       if (done) {
         break;
@@ -447,6 +447,7 @@ export const capabilityReleaseApi = {
       environment?: 'dev' | 'test' | 'staging' | 'prod';
       strategy?: string;
       configOverrides?: Record<string, unknown>;
+      smokeTestInput?: Record<string, unknown>;
     }
   ): Promise<{ release: CapabilityRelease; deployment: DeploymentRecord }> => {
     return apiClient.post<{ release: CapabilityRelease; deployment: DeploymentRecord }>(

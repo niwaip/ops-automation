@@ -19,6 +19,8 @@ import {
   ApartmentOutlined,
   BranchesOutlined,
   FileTextOutlined,
+  AuditOutlined,
+  FolderOpenOutlined,
 } from '@ant-design/icons';
 import { systemBackupApi } from '@/api/system-backup';
 import { BackupExportCard } from '../components/BackupExportCard';
@@ -59,11 +61,11 @@ export const SystemBackupAdminPage: React.FC = () => {
           <Space align="center" size={10}>
             <CloudSyncOutlined style={{ fontSize: 24, color: '#1677ff' }} />
             <Title level={3} style={{ margin: 0 }}>
-              数据备份与系统迁移 (Backup & Restore)
+              数据管理 (Data Management)
             </Title>
           </Space>
           <Paragraph type="secondary" style={{ marginTop: 6, marginBottom: 0 }}>
-            提供全系统资产（AI 模型、技能工具、工作流活动、发布工件、模板与组织权限）的结构化导出备份，并在不同环境间一键解析还原，支撑系统平滑迁移与高可用灾备。
+            提供全系统资产（AI 模型、技能工具、工作流活动、发布工件、模板算子、任务策略、工作空间与组织凭据）的结构化导出备份，并在不同环境间一键解析还原，支撑系统平滑迁移与高可用灾备。
           </Paragraph>
         </div>
 
@@ -81,7 +83,7 @@ export const SystemBackupAdminPage: React.FC = () => {
 
       {/* Top Assets Overview Bar */}
       <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
-        <Col xs={12} sm={8} md={4}>
+        <Col xs={12} sm={8} md={6} lg={3}>
           <Card size="small" style={{ borderRadius: 10 }}>
             <Statistic
               title={
@@ -97,7 +99,7 @@ export const SystemBackupAdminPage: React.FC = () => {
           </Card>
         </Col>
 
-        <Col xs={12} sm={8} md={4}>
+        <Col xs={12} sm={8} md={6} lg={3}>
           <Card size="small" style={{ borderRadius: 10 }}>
             <Statistic
               title={
@@ -113,7 +115,7 @@ export const SystemBackupAdminPage: React.FC = () => {
           </Card>
         </Col>
 
-        <Col xs={12} sm={8} md={4}>
+        <Col xs={12} sm={8} md={6} lg={3}>
           <Card size="small" style={{ borderRadius: 10 }}>
             <Statistic
               title={
@@ -129,7 +131,7 @@ export const SystemBackupAdminPage: React.FC = () => {
           </Card>
         </Col>
 
-        <Col xs={12} sm={8} md={4}>
+        <Col xs={12} sm={8} md={6} lg={3}>
           <Card size="small" style={{ borderRadius: 10 }}>
             <Statistic
               title={
@@ -145,7 +147,7 @@ export const SystemBackupAdminPage: React.FC = () => {
           </Card>
         </Col>
 
-        <Col xs={12} sm={8} md={4}>
+        <Col xs={12} sm={8} md={6} lg={3}>
           <Card size="small" style={{ borderRadius: 10 }}>
             <Statistic
               title={
@@ -161,16 +163,48 @@ export const SystemBackupAdminPage: React.FC = () => {
           </Card>
         </Col>
 
-        <Col xs={12} sm={8} md={4}>
+        <Col xs={12} sm={8} md={6} lg={3}>
           <Card size="small" style={{ borderRadius: 10 }}>
             <Statistic
               title={
                 <Space size={4}>
                   <FileTextOutlined style={{ color: '#eb2f96' }} />
-                  <Text type="secondary" style={{ fontSize: 12 }}>录制与执行模板</Text>
+                  <Text type="secondary" style={{ fontSize: 12 }}>模板与算子</Text>
                 </Space>
               }
               value={(summary?.counts?.browserTemplates ?? 0) + (summary?.counts?.executionFlowTemplates ?? 0)}
+              loading={loadingSummary}
+              valueStyle={{ fontWeight: 600, fontSize: 20 }}
+            />
+          </Card>
+        </Col>
+
+        <Col xs={12} sm={8} md={6} lg={3}>
+          <Card size="small" style={{ borderRadius: 10 }}>
+            <Statistic
+              title={
+                <Space size={4}>
+                  <AuditOutlined style={{ color: '#fa8c16' }} />
+                  <Text type="secondary" style={{ fontSize: 12 }}>任务策略配方</Text>
+                </Space>
+              }
+              value={summary?.counts?.taskPolicies ?? 0}
+              loading={loadingSummary}
+              valueStyle={{ fontWeight: 600, fontSize: 20 }}
+            />
+          </Card>
+        </Col>
+
+        <Col xs={12} sm={8} md={6} lg={3}>
+          <Card size="small" style={{ borderRadius: 10 }}>
+            <Statistic
+              title={
+                <Space size={4}>
+                  <FolderOpenOutlined style={{ color: '#1890ff' }} />
+                  <Text type="secondary" style={{ fontSize: 12 }}>工作空间文档</Text>
+                </Space>
+              }
+              value={summary?.counts?.workspaces ?? 0}
               loading={loadingSummary}
               valueStyle={{ fontWeight: 600, fontSize: 20 }}
             />

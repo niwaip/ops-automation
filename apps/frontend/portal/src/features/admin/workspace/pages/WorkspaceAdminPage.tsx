@@ -31,6 +31,7 @@ import {
   Popconfirm,
   Progress,
   Radio,
+  Select,
   Space,
   Table,
   Tabs,
@@ -43,6 +44,10 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from 'react-query';
+import { useNavigate } from 'react-router-dom';
+import { organizationApi } from '@/api/organization';
+import { userApi } from '@/api/auth';
+import { useAuthStore } from '@/shared/store/authStore';
 import {
   workspaceApi,
   type FilePreviewResponse,
@@ -88,12 +93,54 @@ function getFileIcon(node: WorkspaceNode) {
 }
 
 export function WorkspaceAdminPage() {
-  // 1. 获取工作空间概况（默认进入公司公共盘）
+  const navigate = useNavigate();
+  const authUser = useAuthStore((state) => state.user);
+
+  // 1. 获取组织与全量部门列表
+  const orgsQuery = useQuery('admin-organizations', () => organizationApi.listOrganizations());
+  const activeOrgId = orgsQuery.data?.[0]?.id || authUser?.organization?.id;
+
+  const structureQuery = useQuery(
+    ['admin-org-structure', activeOrgId],
+    () => organizationApi.getOrganizationStructure(activeOrgId!),
+    { enabled: !!activeOrgId }
+  );
+  const departments = structureQuery.data?.departments || [];
+
+  // 2. 获取全量用户列表（供个人工作台穿透切换）
+  const usersQuery = useQuery('admin-workspace-users', () => userApi.list({ page: 1 }));
+  const userList = usersQuery.data?.users || [];
+
+  // 选中的部门 ID 与用户 ID
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+  // 计算当前生效的部门 ID
+  const effectiveDepartmentId = useMemo(() => {
+    if (selectedDepartmentId) return selectedDepartmentId;
+    if (authUser?.department?.id && departments.some((d) => d.id === authUser.department?.id)) {
+      return authUser.department.id;
+    }
+    return departments.length > 0 ? departments[0].id : null;
+  }, [selectedDepartmentId, departments, authUser]);
+
+  // 计算当前生效的用户 ID
+  const effectiveUserId = useMemo(() => {
+    if (selectedUserId) return selectedUserId;
+    if (authUser?.id) return authUser.id;
+    return userList.length > 0 ? userList[0].id : null;
+  }, [selectedUserId, authUser, userList]);
+
+  // 3. 获取工作空间概况（支持传入目标部门与目标用户）
   const { data: workspacesData, refetch: refetchWorkspaces } = useQuery<MyWorkspacesResponse>(
-    'admin-my-workspaces',
-    () => workspaceApi.getMyWorkspaces(),
+    ['admin-my-workspaces', effectiveDepartmentId, effectiveUserId],
+    () =>
+      workspaceApi.getMyWorkspaces({
+        departmentId: effectiveDepartmentId || undefined,
+        userId: effectiveUserId || undefined,
+      }),
     {
-      staleTime: 60000,
+      staleTime: 30000,
     }
   );
 
@@ -436,7 +483,7 @@ export function WorkspaceAdminPage() {
         {currentWorkspace && (
           <Card
             size="small"
-            style={{ width: 280, background: '#fafafa', border: '1px solid #f0f0f0' }}
+            style={{ width: 320, background: '#fafafa', border: '1px solid #f0f0f0' }}
           >
             <div
               style={{
@@ -446,7 +493,13 @@ export function WorkspaceAdminPage() {
                 marginBottom: 4,
               }}
             >
-              <Text strong>{currentWorkspace.name}</Text>
+              <Text strong ellipsis style={{ maxWidth: 180 }}>
+                {activeTab === 'department'
+                  ? `${departments.find((d) => d.id === effectiveDepartmentId)?.name || '部门'} 共享盘`
+                  : activeTab === 'personal'
+                  ? `${userList.find((u) => u.id === effectiveUserId)?.username || '用户'} 个人盘`
+                  : currentWorkspace.name}
+              </Text>
               <Text type="secondary">
                 {formatBytes(currentWorkspace.usedBytes)} / {formatBytes(currentWorkspace.quotaBytes)}
               </Text>
@@ -465,6 +518,65 @@ export function WorkspaceAdminPage() {
         <Tabs
           activeKey={activeTab}
           onChange={handleTabChange}
+          tabBarExtraContent={
+            activeTab === 'department' ? (
+              <Space align="center" size={8}>
+                <Text type="secondary" style={{ fontSize: 13 }}>当前部门:</Text>
+                {departments.length === 0 ? (
+                  <Button
+                    size="small"
+                    type="link"
+                    onClick={() => navigate('/admin/departments')}
+                  >
+                    暂无部门，前往创建
+                  </Button>
+                ) : (
+                  <Select
+                    style={{ minWidth: 220 }}
+                    placeholder="选择部门共享盘"
+                    value={effectiveDepartmentId}
+                    onChange={(deptId) => {
+                      setSelectedDepartmentId(deptId);
+                      setBreadcrumbs([{ id: null, name: '根目录' }]);
+                      setSearchKeyword('');
+                      setSelectedRowKeys([]);
+                      setSelectedNodes([]);
+                    }}
+                    loading={structureQuery.isLoading}
+                    options={departments.map((d) => ({
+                      value: d.id,
+                      label: `${d.name}${d.code ? ` (${d.code})` : ''}`,
+                    }))}
+                  />
+                )}
+              </Space>
+            ) : activeTab === 'personal' ? (
+              <Space align="center" size={8}>
+                <Text type="secondary" style={{ fontSize: 13 }}>当前用户:</Text>
+                <Select
+                  showSearch
+                  style={{ minWidth: 220 }}
+                  placeholder="选择用户个人工作台"
+                  value={effectiveUserId}
+                  onChange={(uid) => {
+                    setSelectedUserId(uid);
+                    setBreadcrumbs([{ id: null, name: '根目录' }]);
+                    setSearchKeyword('');
+                    setSelectedRowKeys([]);
+                    setSelectedNodes([]);
+                  }}
+                  filterOption={(input, option) =>
+                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                  }
+                  loading={usersQuery.isLoading}
+                  options={userList.map((u) => ({
+                    value: u.id,
+                    label: `${u.username}${u.title ? ` (${u.title})` : ''}`,
+                  }))}
+                />
+              </Space>
+            ) : null
+          }
           items={[
             {
               key: 'company',
@@ -597,6 +709,22 @@ export function WorkspaceAdminPage() {
             style={{ margin: '14px 0 6px 0' }}
           />
         )}
+        {activeTab === 'department' && (
+          <Alert
+            type="info"
+            showIcon
+            message={`当前正在管理【${departments.find((d) => d.id === effectiveDepartmentId)?.name || '未选部门'}】共享工作空间。管理员可跨部门协助上传制度、管理目录及执行 AI 批量清洗。`}
+            style={{ margin: '14px 0 6px 0' }}
+          />
+        )}
+        {activeTab === 'personal' && (
+          <Alert
+            type="info"
+            showIcon
+            message={`当前正在管理员工【${userList.find((u) => u.id === effectiveUserId)?.username || '未选用户'}】个人工作空间。管理员可穿透协助排查、整理或转存私有文档。`}
+            style={{ margin: '14px 0 6px 0' }}
+          />
+        )}
 
         {/* 文件列表表格 */}
         <Table
@@ -621,9 +749,9 @@ export function WorkspaceAdminPage() {
               <Empty
                 description={
                   <span>
-                    暂无文件，点击上方
-                    <Text strong> 上传文档 </Text>
-                    添加公司级知识资产
+                    当前目录下暂无文件或子目录，点击上方
+                    <Text strong> 新建目录 </Text>或<Text strong> 上传文档 </Text>
+                    添加资产
                   </span>
                 }
               />

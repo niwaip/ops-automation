@@ -4,6 +4,17 @@ export interface IdentityAccessUserSummaryRecord {
   email: string | null;
   role: string;
   isActive: boolean;
+  department?: {
+    id: string;
+    name: string;
+    code?: string | null;
+  } | null;
+  organization?: {
+    id: string;
+    name: string;
+    code: string;
+  } | null;
+  title?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,5 +42,12 @@ export interface IdentityAccessUserManagementRepository {
     roles: IdentityAccessRoleSummaryRecord[];
     adminId: string;
   }): Promise<void>;
+  updateUserDepartment(input: {
+    userId: string;
+    orgId: string;
+    departmentId?: string | null;
+    title?: string | null;
+  }): Promise<void>;
   setUserActive(userId: string, isActive: boolean): Promise<IdentityAccessUserSummaryRecord>;
 }
+

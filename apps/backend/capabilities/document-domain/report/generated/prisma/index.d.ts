@@ -26,7 +26,7 @@ export type Report = $Result.DefaultSelection<Prisma.$ReportPayload>
 
 /**
  * ##  Prisma Client ʲˢ
- *
+ * 
  * Type-safe database client for TypeScript & Node.js
  * @example
  * ```
@@ -35,19 +35,19 @@ export type Report = $Result.DefaultSelection<Prisma.$ReportPayload>
  * const reportTemplates = await prisma.reportTemplate.findMany()
  * ```
  *
- *
+ * 
  * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client).
  */
 export class PrismaClient<
   ClientOptions extends Prisma.PrismaClientOptions = Prisma.PrismaClientOptions,
-  const U = 'log' extends keyof ClientOptions ? ClientOptions['log'] extends Array<Prisma.LogLevel | Prisma.LogDefinition> ? Prisma.GetEvents<ClientOptions['log']> : never : never,
+  U = 'log' extends keyof ClientOptions ? ClientOptions['log'] extends Array<Prisma.LogLevel | Prisma.LogDefinition> ? Prisma.GetEvents<ClientOptions['log']> : never : never,
   ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs
 > {
   [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['other'] }
 
     /**
    * ##  Prisma Client ʲˢ
-   *
+   * 
    * Type-safe database client for TypeScript & Node.js
    * @example
    * ```
@@ -56,12 +56,12 @@ export class PrismaClient<
    * const reportTemplates = await prisma.reportTemplate.findMany()
    * ```
    *
-   *
+   * 
    * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client).
    */
 
   constructor(optionsArg ?: Prisma.Subset<ClientOptions, Prisma.PrismaClientOptions>);
-  $on<V extends U>(eventType: V, callback: (event: V extends 'query' ? Prisma.QueryEvent : Prisma.LogEvent) => void): PrismaClient;
+  $on<V extends U>(eventType: V, callback: (event: V extends 'query' ? Prisma.QueryEvent : Prisma.LogEvent) => void): void;
 
   /**
    * Connect with the database
@@ -73,13 +73,20 @@ export class PrismaClient<
    */
   $disconnect(): $Utils.JsPromise<void>;
 
+  /**
+   * Add a middleware
+   * @deprecated since 4.16.0. For new code, prefer client extensions instead.
+   * @see https://pris.ly/d/extensions
+   */
+  $use(cb: Prisma.Middleware): void
+
 /**
    * Executes a prepared raw query and returns the number of affected rows.
    * @example
    * ```
    * const result = await prisma.$executeRaw`UPDATE User SET cool = ${true} WHERE email = ${'user@email.com'};`
    * ```
-   *
+   * 
    * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/raw-database-access).
    */
   $executeRaw<T = unknown>(query: TemplateStringsArray | Prisma.Sql, ...values: any[]): Prisma.PrismaPromise<number>;
@@ -91,7 +98,7 @@ export class PrismaClient<
    * ```
    * const result = await prisma.$executeRawUnsafe('UPDATE User SET cool = $1 WHERE email = $2 ;', true, 'user@email.com')
    * ```
-   *
+   * 
    * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/raw-database-access).
    */
   $executeRawUnsafe<T = unknown>(query: string, ...values: any[]): Prisma.PrismaPromise<number>;
@@ -102,7 +109,7 @@ export class PrismaClient<
    * ```
    * const result = await prisma.$queryRaw`SELECT * FROM User WHERE id = ${1} OR email = ${'user@email.com'};`
    * ```
-   *
+   * 
    * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/raw-database-access).
    */
   $queryRaw<T = unknown>(query: TemplateStringsArray | Prisma.Sql, ...values: any[]): Prisma.PrismaPromise<T>;
@@ -114,7 +121,7 @@ export class PrismaClient<
    * ```
    * const result = await prisma.$queryRawUnsafe('SELECT * FROM User WHERE id = $1 OR email = $2;', 1, 'user@email.com')
    * ```
-   *
+   * 
    * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/raw-database-access).
    */
   $queryRawUnsafe<T = unknown>(query: string, ...values: any[]): Prisma.PrismaPromise<T>;
@@ -138,9 +145,7 @@ export class PrismaClient<
   $transaction<R>(fn: (prisma: Omit<PrismaClient, runtime.ITXClientDenyList>) => $Utils.JsPromise<R>, options?: { maxWait?: number, timeout?: number, isolationLevel?: Prisma.TransactionIsolationLevel }): $Utils.JsPromise<R>
 
 
-  $extends: $Extensions.ExtendsHook<"extends", Prisma.TypeMapCb<ClientOptions>, ExtArgs, $Utils.Call<Prisma.TypeMapCb<ClientOptions>, {
-    extArgs: ExtArgs
-  }>>
+  $extends: $Extensions.ExtendsHook<"extends", Prisma.TypeMapCb, ExtArgs>
 
       /**
    * `prisma.reportTemplate`: Exposes CRUD operations for the **ReportTemplate** model.
@@ -150,7 +155,7 @@ export class PrismaClient<
     * const reportTemplates = await prisma.reportTemplate.findMany()
     * ```
     */
-  get reportTemplate(): Prisma.ReportTemplateDelegate<ExtArgs, ClientOptions>;
+  get reportTemplate(): Prisma.ReportTemplateDelegate<ExtArgs>;
 
   /**
    * `prisma.report`: Exposes CRUD operations for the **Report** model.
@@ -160,7 +165,7 @@ export class PrismaClient<
     * const reports = await prisma.report.findMany()
     * ```
     */
-  get report(): Prisma.ReportDelegate<ExtArgs, ClientOptions>;
+  get report(): Prisma.ReportDelegate<ExtArgs>;
 }
 
 export namespace Prisma {
@@ -181,6 +186,7 @@ export namespace Prisma {
   export import PrismaClientRustPanicError = runtime.PrismaClientRustPanicError
   export import PrismaClientInitializationError = runtime.PrismaClientInitializationError
   export import PrismaClientValidationError = runtime.PrismaClientValidationError
+  export import NotFoundError = runtime.NotFoundError
 
   /**
    * Re-export of sql-template-tag
@@ -201,7 +207,7 @@ export namespace Prisma {
   export type DecimalJsLike = runtime.DecimalJsLike
 
   /**
-   * Metrics
+   * Metrics 
    */
   export type Metrics = runtime.Metrics
   export type Metric<T> = runtime.Metric<T>
@@ -219,21 +225,20 @@ export namespace Prisma {
   export import Exact = $Public.Exact
 
   /**
-   * Prisma Client JS version: 6.19.3
-   * Query Engine version: c2990dca591cba766e3b7ef5d9e8a84796e47ab7
+   * Prisma Client JS version: 5.22.0
+   * Query Engine version: 605197351a3c8bdd595af2d2a9bc3025bca48ea2
    */
   export type PrismaVersion = {
     client: string
   }
 
-  export const prismaVersion: PrismaVersion
+  export const prismaVersion: PrismaVersion 
 
   /**
    * Utility Types
    */
 
 
-  export import Bytes = runtime.Bytes
   export import JsonObject = runtime.JsonObject
   export import JsonArray = runtime.JsonArray
   export import JsonValue = runtime.JsonValue
@@ -243,15 +248,15 @@ export namespace Prisma {
 
   /**
    * Types of the values used to represent different kinds of `null` values when working with JSON fields.
-   *
+   * 
    * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
    */
   namespace NullTypes {
     /**
     * Type of `Prisma.DbNull`.
-    *
+    * 
     * You cannot use other instances of this class. Please use the `Prisma.DbNull` value.
-    *
+    * 
     * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
     */
     class DbNull {
@@ -261,9 +266,9 @@ export namespace Prisma {
 
     /**
     * Type of `Prisma.JsonNull`.
-    *
+    * 
     * You cannot use other instances of this class. Please use the `Prisma.JsonNull` value.
-    *
+    * 
     * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
     */
     class JsonNull {
@@ -273,9 +278,9 @@ export namespace Prisma {
 
     /**
     * Type of `Prisma.AnyNull`.
-    *
+    * 
     * You cannot use other instances of this class. Please use the `Prisma.AnyNull` value.
-    *
+    * 
     * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
     */
     class AnyNull {
@@ -286,21 +291,21 @@ export namespace Prisma {
 
   /**
    * Helper for filtering JSON entries that have `null` on the database (empty on the db)
-   *
+   * 
    * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
    */
   export const DbNull: NullTypes.DbNull
 
   /**
    * Helper for filtering JSON entries that have JSON `null` values (not empty on the db)
-   *
+   * 
    * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
    */
   export const JsonNull: NullTypes.JsonNull
 
   /**
    * Helper for filtering JSON entries that are `Prisma.DbNull` or `Prisma.JsonNull`
-   *
+   * 
    * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
    */
   export const AnyNull: NullTypes.AnyNull
@@ -488,7 +493,7 @@ export namespace Prisma {
   type AtLeast<O extends object, K extends string> = NoExpand<
     O extends unknown
     ? | (K extends keyof O ? { [P in K]: O[P] } & O : O)
-      | {[P in keyof O as P extends K ? P : never]-?: O[P]} & O
+      | {[P in keyof O as P extends K ? K : never]-?: O[P]} & O
     : never>;
 
   type _Strict<U, _U = U> = U extends unknown ? U & OptionalFlat<_Record<Exclude<Keys<_U>, keyof U>, never>> : never;
@@ -613,14 +618,11 @@ export namespace Prisma {
     db?: Datasource
   }
 
-  interface TypeMapCb<ClientOptions = {}> extends $Utils.Fn<{extArgs: $Extensions.InternalArgs }, $Utils.Record<string, any>> {
-    returns: Prisma.TypeMap<this['params']['extArgs'], ClientOptions extends { omit: infer OmitOptions } ? OmitOptions : {}>
+  interface TypeMapCb extends $Utils.Fn<{extArgs: $Extensions.InternalArgs, clientOptions: PrismaClientOptions }, $Utils.Record<string, any>> {
+    returns: Prisma.TypeMap<this['params']['extArgs'], this['params']['clientOptions']>
   }
 
-  export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> = {
-    globalOmitOptions: {
-      omit: GlobalOmitOptions
-    }
+  export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
       modelProps: "reportTemplate" | "report"
       txIsolationLevel: Prisma.TransactionIsolationLevel
@@ -677,10 +679,6 @@ export namespace Prisma {
           updateMany: {
             args: Prisma.ReportTemplateUpdateManyArgs<ExtArgs>
             result: BatchPayload
-          }
-          updateManyAndReturn: {
-            args: Prisma.ReportTemplateUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$ReportTemplatePayload>[]
           }
           upsert: {
             args: Prisma.ReportTemplateUpsertArgs<ExtArgs>
@@ -752,10 +750,6 @@ export namespace Prisma {
             args: Prisma.ReportUpdateManyArgs<ExtArgs>
             result: BatchPayload
           }
-          updateManyAndReturn: {
-            args: Prisma.ReportUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$ReportPayload>[]
-          }
           upsert: {
             args: Prisma.ReportUpsertArgs<ExtArgs>
             result: $Utils.PayloadToResult<Prisma.$ReportPayload>
@@ -817,24 +811,16 @@ export namespace Prisma {
     /**
      * @example
      * ```
-     * // Shorthand for `emit: 'stdout'`
+     * // Defaults to stdout
      * log: ['query', 'info', 'warn', 'error']
      * 
-     * // Emit as events only
+     * // Emit as events
      * log: [
-     *   { emit: 'event', level: 'query' },
-     *   { emit: 'event', level: 'info' },
-     *   { emit: 'event', level: 'warn' }
-     *   { emit: 'event', level: 'error' }
+     *   { emit: 'stdout', level: 'query' },
+     *   { emit: 'stdout', level: 'info' },
+     *   { emit: 'stdout', level: 'warn' }
+     *   { emit: 'stdout', level: 'error' }
      * ]
-     * 
-     * / Emit as events and log to stdout
-     * og: [
-     *  { emit: 'stdout', level: 'query' },
-     *  { emit: 'stdout', level: 'info' },
-     *  { emit: 'stdout', level: 'warn' }
-     *  { emit: 'stdout', level: 'error' }
-     * 
      * ```
      * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/logging#the-log-option).
      */
@@ -849,30 +835,8 @@ export namespace Prisma {
       timeout?: number
       isolationLevel?: Prisma.TransactionIsolationLevel
     }
-    /**
-     * Instance of a Driver Adapter, e.g., like one provided by `@prisma/adapter-planetscale`
-     */
-    adapter?: runtime.SqlDriverAdapterFactory | null
-    /**
-     * Global configuration for omitting model fields by default.
-     * 
-     * @example
-     * ```
-     * const prisma = new PrismaClient({
-     *   omit: {
-     *     user: {
-     *       password: true
-     *     }
-     *   }
-     * })
-     * ```
-     */
-    omit?: Prisma.GlobalOmitConfig
   }
-  export type GlobalOmitConfig = {
-    reportTemplate?: ReportTemplateOmit
-    report?: ReportOmit
-  }
+
 
   /* Types for Logging */
   export type LogLevel = 'info' | 'query' | 'warn' | 'error'
@@ -881,15 +845,10 @@ export namespace Prisma {
     emit: 'stdout' | 'event'
   }
 
-  export type CheckIsLogLevel<T> = T extends LogLevel ? T : never;
-
-  export type GetLogType<T> = CheckIsLogLevel<
-    T extends LogDefinition ? T['level'] : T
-  >;
-
-  export type GetEvents<T extends any[]> = T extends Array<LogLevel | LogDefinition>
-    ? GetLogType<T[number]>
-    : never;
+  export type GetLogType<T extends LogLevel | LogDefinition> = T extends LogDefinition ? T['emit'] extends 'event' ? T['level'] : never : never
+  export type GetEvents<T extends any> = T extends Array<LogLevel | LogDefinition> ?
+    GetLogType<T[0]> | GetLogType<T[1]> | GetLogType<T[2]> | GetLogType<T[3]>
+    : never
 
   export type QueryEvent = {
     timestamp: Date
@@ -918,7 +877,6 @@ export namespace Prisma {
     | 'createManyAndReturn'
     | 'update'
     | 'updateMany'
-    | 'updateManyAndReturn'
     | 'upsert'
     | 'delete'
     | 'deleteMany'
@@ -929,6 +887,25 @@ export namespace Prisma {
     | 'runCommandRaw'
     | 'findRaw'
     | 'groupBy'
+
+  /**
+   * These options are being passed into the middleware as "params"
+   */
+  export type MiddlewareParams = {
+    model?: ModelName
+    action: PrismaAction
+    args: any
+    dataPath: string[]
+    runInTransaction: boolean
+  }
+
+  /**
+   * The `T` type makes sure, that the `return proceed` is not forgotten in the middleware implementation
+   */
+  export type Middleware<T = any> = (
+    params: MiddlewareParams,
+    next: (params: MiddlewareParams) => $Utils.JsPromise<T>,
+  ) => $Utils.JsPromise<T>
 
   // tested in getLogLevel.test.ts
   export function getLogLevel(log: Array<LogLevel | LogDefinition>): LogLevel | undefined;
@@ -1196,20 +1173,6 @@ export namespace Prisma {
     updatedAt?: boolean
   }, ExtArgs["result"]["reportTemplate"]>
 
-  export type ReportTemplateSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    name?: boolean
-    format?: boolean
-    templateFile?: boolean
-    sections?: boolean
-    globalConfig?: boolean
-    aiConfig?: boolean
-    notificationConfig?: boolean
-    createdBy?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-  }, ExtArgs["result"]["reportTemplate"]>
-
   export type ReportTemplateSelectScalar = {
     id?: boolean
     name?: boolean
@@ -1224,13 +1187,11 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type ReportTemplateOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "format" | "templateFile" | "sections" | "globalConfig" | "aiConfig" | "notificationConfig" | "createdBy" | "createdAt" | "updatedAt", ExtArgs["result"]["reportTemplate"]>
   export type ReportTemplateInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     reports?: boolean | ReportTemplate$reportsArgs<ExtArgs>
     _count?: boolean | ReportTemplateCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type ReportTemplateIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
-  export type ReportTemplateIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
 
   export type $ReportTemplatePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "ReportTemplate"
@@ -1255,12 +1216,12 @@ export namespace Prisma {
 
   type ReportTemplateGetPayload<S extends boolean | null | undefined | ReportTemplateDefaultArgs> = $Result.GetResult<Prisma.$ReportTemplatePayload, S>
 
-  type ReportTemplateCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<ReportTemplateFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+  type ReportTemplateCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<ReportTemplateFindManyArgs, 'select' | 'include' | 'distinct'> & {
       select?: ReportTemplateCountAggregateInputType | true
     }
 
-  export interface ReportTemplateDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+  export interface ReportTemplateDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
     [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['ReportTemplate'], meta: { name: 'ReportTemplate' } }
     /**
      * Find zero or one ReportTemplate that matches the filter.
@@ -1273,10 +1234,10 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUnique<T extends ReportTemplateFindUniqueArgs>(args: SelectSubset<T, ReportTemplateFindUniqueArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findUnique<T extends ReportTemplateFindUniqueArgs>(args: SelectSubset<T, ReportTemplateFindUniqueArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
 
     /**
-     * Find one ReportTemplate that matches the filter or throw an error with `error.code='P2025'`
+     * Find one ReportTemplate that matches the filter or throw an error with `error.code='P2025'` 
      * if no matches were found.
      * @param {ReportTemplateFindUniqueOrThrowArgs} args - Arguments to find a ReportTemplate
      * @example
@@ -1287,7 +1248,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUniqueOrThrow<T extends ReportTemplateFindUniqueOrThrowArgs>(args: SelectSubset<T, ReportTemplateFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findUniqueOrThrow<T extends ReportTemplateFindUniqueOrThrowArgs>(args: SelectSubset<T, ReportTemplateFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
 
     /**
      * Find the first ReportTemplate that matches the filter.
@@ -1302,7 +1263,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirst<T extends ReportTemplateFindFirstArgs>(args?: SelectSubset<T, ReportTemplateFindFirstArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findFirst<T extends ReportTemplateFindFirstArgs>(args?: SelectSubset<T, ReportTemplateFindFirstArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
 
     /**
      * Find the first ReportTemplate that matches the filter or
@@ -1318,7 +1279,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirstOrThrow<T extends ReportTemplateFindFirstOrThrowArgs>(args?: SelectSubset<T, ReportTemplateFindFirstOrThrowArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findFirstOrThrow<T extends ReportTemplateFindFirstOrThrowArgs>(args?: SelectSubset<T, ReportTemplateFindFirstOrThrowArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
 
     /**
      * Find zero or more ReportTemplates that matches the filter.
@@ -1336,7 +1297,7 @@ export namespace Prisma {
      * const reportTemplateWithIdOnly = await prisma.reportTemplate.findMany({ select: { id: true } })
      * 
      */
-    findMany<T extends ReportTemplateFindManyArgs>(args?: SelectSubset<T, ReportTemplateFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+    findMany<T extends ReportTemplateFindManyArgs>(args?: SelectSubset<T, ReportTemplateFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "findMany">>
 
     /**
      * Create a ReportTemplate.
@@ -1350,7 +1311,7 @@ export namespace Prisma {
      * })
      * 
      */
-    create<T extends ReportTemplateCreateArgs>(args: SelectSubset<T, ReportTemplateCreateArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    create<T extends ReportTemplateCreateArgs>(args: SelectSubset<T, ReportTemplateCreateArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "create">, never, ExtArgs>
 
     /**
      * Create many ReportTemplates.
@@ -1378,7 +1339,7 @@ export namespace Prisma {
      * })
      * 
      * // Create many ReportTemplates and only return the `id`
-     * const reportTemplateWithIdOnly = await prisma.reportTemplate.createManyAndReturn({
+     * const reportTemplateWithIdOnly = await prisma.reportTemplate.createManyAndReturn({ 
      *   select: { id: true },
      *   data: [
      *     // ... provide data here
@@ -1388,7 +1349,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends ReportTemplateCreateManyAndReturnArgs>(args?: SelectSubset<T, ReportTemplateCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+    createManyAndReturn<T extends ReportTemplateCreateManyAndReturnArgs>(args?: SelectSubset<T, ReportTemplateCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "createManyAndReturn">>
 
     /**
      * Delete a ReportTemplate.
@@ -1402,7 +1363,7 @@ export namespace Prisma {
      * })
      * 
      */
-    delete<T extends ReportTemplateDeleteArgs>(args: SelectSubset<T, ReportTemplateDeleteArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    delete<T extends ReportTemplateDeleteArgs>(args: SelectSubset<T, ReportTemplateDeleteArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "delete">, never, ExtArgs>
 
     /**
      * Update one ReportTemplate.
@@ -1419,7 +1380,7 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends ReportTemplateUpdateArgs>(args: SelectSubset<T, ReportTemplateUpdateArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    update<T extends ReportTemplateUpdateArgs>(args: SelectSubset<T, ReportTemplateUpdateArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "update">, never, ExtArgs>
 
     /**
      * Delete zero or more ReportTemplates.
@@ -1455,36 +1416,6 @@ export namespace Prisma {
     updateMany<T extends ReportTemplateUpdateManyArgs>(args: SelectSubset<T, ReportTemplateUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Update zero or more ReportTemplates and returns the data updated in the database.
-     * @param {ReportTemplateUpdateManyAndReturnArgs} args - Arguments to update many ReportTemplates.
-     * @example
-     * // Update many ReportTemplates
-     * const reportTemplate = await prisma.reportTemplate.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more ReportTemplates and only return the `id`
-     * const reportTemplateWithIdOnly = await prisma.reportTemplate.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends ReportTemplateUpdateManyAndReturnArgs>(args: SelectSubset<T, ReportTemplateUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
      * Create or update one ReportTemplate.
      * @param {ReportTemplateUpsertArgs} args - Arguments to update or create a ReportTemplate.
      * @example
@@ -1501,7 +1432,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    upsert<T extends ReportTemplateUpsertArgs>(args: SelectSubset<T, ReportTemplateUpsertArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    upsert<T extends ReportTemplateUpsertArgs>(args: SelectSubset<T, ReportTemplateUpsertArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "upsert">, never, ExtArgs>
 
 
     /**
@@ -1641,9 +1572,9 @@ export namespace Prisma {
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__ReportTemplateClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__ReportTemplateClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    reports<T extends ReportTemplate$reportsArgs<ExtArgs> = {}>(args?: Subset<T, ReportTemplate$reportsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    reports<T extends ReportTemplate$reportsArgs<ExtArgs> = {}>(args?: Subset<T, ReportTemplate$reportsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "findMany"> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1671,7 +1602,7 @@ export namespace Prisma {
 
   /**
    * Fields of the ReportTemplate model
-   */
+   */ 
   interface ReportTemplateFieldRefs {
     readonly id: FieldRef<"ReportTemplate", 'String'>
     readonly name: FieldRef<"ReportTemplate", 'String'>
@@ -1697,10 +1628,6 @@ export namespace Prisma {
      */
     select?: ReportTemplateSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the ReportTemplate
-     */
-    omit?: ReportTemplateOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: ReportTemplateInclude<ExtArgs> | null
@@ -1719,10 +1646,6 @@ export namespace Prisma {
      */
     select?: ReportTemplateSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the ReportTemplate
-     */
-    omit?: ReportTemplateOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: ReportTemplateInclude<ExtArgs> | null
@@ -1740,10 +1663,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the ReportTemplate
      */
     select?: ReportTemplateSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the ReportTemplate
-     */
-    omit?: ReportTemplateOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -1793,10 +1712,6 @@ export namespace Prisma {
      */
     select?: ReportTemplateSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the ReportTemplate
-     */
-    omit?: ReportTemplateOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: ReportTemplateInclude<ExtArgs> | null
@@ -1845,10 +1760,6 @@ export namespace Prisma {
      */
     select?: ReportTemplateSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the ReportTemplate
-     */
-    omit?: ReportTemplateOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: ReportTemplateInclude<ExtArgs> | null
@@ -1892,10 +1803,6 @@ export namespace Prisma {
      */
     select?: ReportTemplateSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the ReportTemplate
-     */
-    omit?: ReportTemplateOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: ReportTemplateInclude<ExtArgs> | null
@@ -1925,10 +1832,6 @@ export namespace Prisma {
      */
     select?: ReportTemplateSelectCreateManyAndReturn<ExtArgs> | null
     /**
-     * Omit specific fields from the ReportTemplate
-     */
-    omit?: ReportTemplateOmit<ExtArgs> | null
-    /**
      * The data used to create many ReportTemplates.
      */
     data: ReportTemplateCreateManyInput | ReportTemplateCreateManyInput[]
@@ -1943,10 +1846,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the ReportTemplate
      */
     select?: ReportTemplateSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the ReportTemplate
-     */
-    omit?: ReportTemplateOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -1973,36 +1872,6 @@ export namespace Prisma {
      * Filter which ReportTemplates to update
      */
     where?: ReportTemplateWhereInput
-    /**
-     * Limit how many ReportTemplates to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * ReportTemplate updateManyAndReturn
-   */
-  export type ReportTemplateUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the ReportTemplate
-     */
-    select?: ReportTemplateSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the ReportTemplate
-     */
-    omit?: ReportTemplateOmit<ExtArgs> | null
-    /**
-     * The data used to update ReportTemplates.
-     */
-    data: XOR<ReportTemplateUpdateManyMutationInput, ReportTemplateUncheckedUpdateManyInput>
-    /**
-     * Filter which ReportTemplates to update
-     */
-    where?: ReportTemplateWhereInput
-    /**
-     * Limit how many ReportTemplates to update.
-     */
-    limit?: number
   }
 
   /**
@@ -2013,10 +1882,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the ReportTemplate
      */
     select?: ReportTemplateSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the ReportTemplate
-     */
-    omit?: ReportTemplateOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -2044,10 +1909,6 @@ export namespace Prisma {
      */
     select?: ReportTemplateSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the ReportTemplate
-     */
-    omit?: ReportTemplateOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: ReportTemplateInclude<ExtArgs> | null
@@ -2065,10 +1926,6 @@ export namespace Prisma {
      * Filter which ReportTemplates to delete
      */
     where?: ReportTemplateWhereInput
-    /**
-     * Limit how many ReportTemplates to delete.
-     */
-    limit?: number
   }
 
   /**
@@ -2079,10 +1936,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the Report
      */
     select?: ReportSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Report
-     */
-    omit?: ReportOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -2103,10 +1956,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the ReportTemplate
      */
     select?: ReportTemplateSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the ReportTemplate
-     */
-    omit?: ReportTemplateOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -2332,21 +2181,6 @@ export namespace Prisma {
     template?: boolean | ReportTemplateDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["report"]>
 
-  export type ReportSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    templateId?: boolean
-    sessionId?: boolean
-    status?: boolean
-    resultFile?: boolean
-    aiAnalysis?: boolean
-    validationResults?: boolean
-    notifications?: boolean
-    error?: boolean
-    createdAt?: boolean
-    completedAt?: boolean
-    template?: boolean | ReportTemplateDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["report"]>
-
   export type ReportSelectScalar = {
     id?: boolean
     templateId?: boolean
@@ -2361,14 +2195,10 @@ export namespace Prisma {
     completedAt?: boolean
   }
 
-  export type ReportOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "templateId" | "sessionId" | "status" | "resultFile" | "aiAnalysis" | "validationResults" | "notifications" | "error" | "createdAt" | "completedAt", ExtArgs["result"]["report"]>
   export type ReportInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     template?: boolean | ReportTemplateDefaultArgs<ExtArgs>
   }
   export type ReportIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    template?: boolean | ReportTemplateDefaultArgs<ExtArgs>
-  }
-  export type ReportIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     template?: boolean | ReportTemplateDefaultArgs<ExtArgs>
   }
 
@@ -2395,12 +2225,12 @@ export namespace Prisma {
 
   type ReportGetPayload<S extends boolean | null | undefined | ReportDefaultArgs> = $Result.GetResult<Prisma.$ReportPayload, S>
 
-  type ReportCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<ReportFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+  type ReportCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<ReportFindManyArgs, 'select' | 'include' | 'distinct'> & {
       select?: ReportCountAggregateInputType | true
     }
 
-  export interface ReportDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+  export interface ReportDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
     [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Report'], meta: { name: 'Report' } }
     /**
      * Find zero or one Report that matches the filter.
@@ -2413,10 +2243,10 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUnique<T extends ReportFindUniqueArgs>(args: SelectSubset<T, ReportFindUniqueArgs<ExtArgs>>): Prisma__ReportClient<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findUnique<T extends ReportFindUniqueArgs>(args: SelectSubset<T, ReportFindUniqueArgs<ExtArgs>>): Prisma__ReportClient<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
 
     /**
-     * Find one Report that matches the filter or throw an error with `error.code='P2025'`
+     * Find one Report that matches the filter or throw an error with `error.code='P2025'` 
      * if no matches were found.
      * @param {ReportFindUniqueOrThrowArgs} args - Arguments to find a Report
      * @example
@@ -2427,7 +2257,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUniqueOrThrow<T extends ReportFindUniqueOrThrowArgs>(args: SelectSubset<T, ReportFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ReportClient<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findUniqueOrThrow<T extends ReportFindUniqueOrThrowArgs>(args: SelectSubset<T, ReportFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ReportClient<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
 
     /**
      * Find the first Report that matches the filter.
@@ -2442,7 +2272,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirst<T extends ReportFindFirstArgs>(args?: SelectSubset<T, ReportFindFirstArgs<ExtArgs>>): Prisma__ReportClient<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findFirst<T extends ReportFindFirstArgs>(args?: SelectSubset<T, ReportFindFirstArgs<ExtArgs>>): Prisma__ReportClient<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
 
     /**
      * Find the first Report that matches the filter or
@@ -2458,7 +2288,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirstOrThrow<T extends ReportFindFirstOrThrowArgs>(args?: SelectSubset<T, ReportFindFirstOrThrowArgs<ExtArgs>>): Prisma__ReportClient<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findFirstOrThrow<T extends ReportFindFirstOrThrowArgs>(args?: SelectSubset<T, ReportFindFirstOrThrowArgs<ExtArgs>>): Prisma__ReportClient<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
 
     /**
      * Find zero or more Reports that matches the filter.
@@ -2476,7 +2306,7 @@ export namespace Prisma {
      * const reportWithIdOnly = await prisma.report.findMany({ select: { id: true } })
      * 
      */
-    findMany<T extends ReportFindManyArgs>(args?: SelectSubset<T, ReportFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+    findMany<T extends ReportFindManyArgs>(args?: SelectSubset<T, ReportFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "findMany">>
 
     /**
      * Create a Report.
@@ -2490,7 +2320,7 @@ export namespace Prisma {
      * })
      * 
      */
-    create<T extends ReportCreateArgs>(args: SelectSubset<T, ReportCreateArgs<ExtArgs>>): Prisma__ReportClient<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    create<T extends ReportCreateArgs>(args: SelectSubset<T, ReportCreateArgs<ExtArgs>>): Prisma__ReportClient<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "create">, never, ExtArgs>
 
     /**
      * Create many Reports.
@@ -2518,7 +2348,7 @@ export namespace Prisma {
      * })
      * 
      * // Create many Reports and only return the `id`
-     * const reportWithIdOnly = await prisma.report.createManyAndReturn({
+     * const reportWithIdOnly = await prisma.report.createManyAndReturn({ 
      *   select: { id: true },
      *   data: [
      *     // ... provide data here
@@ -2528,7 +2358,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends ReportCreateManyAndReturnArgs>(args?: SelectSubset<T, ReportCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+    createManyAndReturn<T extends ReportCreateManyAndReturnArgs>(args?: SelectSubset<T, ReportCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "createManyAndReturn">>
 
     /**
      * Delete a Report.
@@ -2542,7 +2372,7 @@ export namespace Prisma {
      * })
      * 
      */
-    delete<T extends ReportDeleteArgs>(args: SelectSubset<T, ReportDeleteArgs<ExtArgs>>): Prisma__ReportClient<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    delete<T extends ReportDeleteArgs>(args: SelectSubset<T, ReportDeleteArgs<ExtArgs>>): Prisma__ReportClient<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "delete">, never, ExtArgs>
 
     /**
      * Update one Report.
@@ -2559,7 +2389,7 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends ReportUpdateArgs>(args: SelectSubset<T, ReportUpdateArgs<ExtArgs>>): Prisma__ReportClient<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    update<T extends ReportUpdateArgs>(args: SelectSubset<T, ReportUpdateArgs<ExtArgs>>): Prisma__ReportClient<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "update">, never, ExtArgs>
 
     /**
      * Delete zero or more Reports.
@@ -2595,36 +2425,6 @@ export namespace Prisma {
     updateMany<T extends ReportUpdateManyArgs>(args: SelectSubset<T, ReportUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Update zero or more Reports and returns the data updated in the database.
-     * @param {ReportUpdateManyAndReturnArgs} args - Arguments to update many Reports.
-     * @example
-     * // Update many Reports
-     * const report = await prisma.report.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more Reports and only return the `id`
-     * const reportWithIdOnly = await prisma.report.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends ReportUpdateManyAndReturnArgs>(args: SelectSubset<T, ReportUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
      * Create or update one Report.
      * @param {ReportUpsertArgs} args - Arguments to update or create a Report.
      * @example
@@ -2641,7 +2441,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    upsert<T extends ReportUpsertArgs>(args: SelectSubset<T, ReportUpsertArgs<ExtArgs>>): Prisma__ReportClient<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    upsert<T extends ReportUpsertArgs>(args: SelectSubset<T, ReportUpsertArgs<ExtArgs>>): Prisma__ReportClient<$Result.GetResult<Prisma.$ReportPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
 
 
     /**
@@ -2781,9 +2581,9 @@ export namespace Prisma {
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__ReportClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__ReportClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    template<T extends ReportTemplateDefaultArgs<ExtArgs> = {}>(args?: Subset<T, ReportTemplateDefaultArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    template<T extends ReportTemplateDefaultArgs<ExtArgs> = {}>(args?: Subset<T, ReportTemplateDefaultArgs<ExtArgs>>): Prisma__ReportTemplateClient<$Result.GetResult<Prisma.$ReportTemplatePayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2811,7 +2611,7 @@ export namespace Prisma {
 
   /**
    * Fields of the Report model
-   */
+   */ 
   interface ReportFieldRefs {
     readonly id: FieldRef<"Report", 'String'>
     readonly templateId: FieldRef<"Report", 'String'>
@@ -2837,10 +2637,6 @@ export namespace Prisma {
      */
     select?: ReportSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the Report
-     */
-    omit?: ReportOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: ReportInclude<ExtArgs> | null
@@ -2859,10 +2655,6 @@ export namespace Prisma {
      */
     select?: ReportSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the Report
-     */
-    omit?: ReportOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: ReportInclude<ExtArgs> | null
@@ -2880,10 +2672,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the Report
      */
     select?: ReportSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Report
-     */
-    omit?: ReportOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -2933,10 +2721,6 @@ export namespace Prisma {
      */
     select?: ReportSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the Report
-     */
-    omit?: ReportOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: ReportInclude<ExtArgs> | null
@@ -2985,10 +2769,6 @@ export namespace Prisma {
      */
     select?: ReportSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the Report
-     */
-    omit?: ReportOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: ReportInclude<ExtArgs> | null
@@ -3032,10 +2812,6 @@ export namespace Prisma {
      */
     select?: ReportSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the Report
-     */
-    omit?: ReportOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: ReportInclude<ExtArgs> | null
@@ -3065,10 +2841,6 @@ export namespace Prisma {
      */
     select?: ReportSelectCreateManyAndReturn<ExtArgs> | null
     /**
-     * Omit specific fields from the Report
-     */
-    omit?: ReportOmit<ExtArgs> | null
-    /**
      * The data used to create many Reports.
      */
     data: ReportCreateManyInput | ReportCreateManyInput[]
@@ -3087,10 +2859,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the Report
      */
     select?: ReportSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Report
-     */
-    omit?: ReportOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -3117,40 +2885,6 @@ export namespace Prisma {
      * Filter which Reports to update
      */
     where?: ReportWhereInput
-    /**
-     * Limit how many Reports to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * Report updateManyAndReturn
-   */
-  export type ReportUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the Report
-     */
-    select?: ReportSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the Report
-     */
-    omit?: ReportOmit<ExtArgs> | null
-    /**
-     * The data used to update Reports.
-     */
-    data: XOR<ReportUpdateManyMutationInput, ReportUncheckedUpdateManyInput>
-    /**
-     * Filter which Reports to update
-     */
-    where?: ReportWhereInput
-    /**
-     * Limit how many Reports to update.
-     */
-    limit?: number
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: ReportIncludeUpdateManyAndReturn<ExtArgs> | null
   }
 
   /**
@@ -3161,10 +2895,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the Report
      */
     select?: ReportSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Report
-     */
-    omit?: ReportOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -3192,10 +2922,6 @@ export namespace Prisma {
      */
     select?: ReportSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the Report
-     */
-    omit?: ReportOmit<ExtArgs> | null
-    /**
      * Choose, which related nodes to fetch as well
      */
     include?: ReportInclude<ExtArgs> | null
@@ -3213,10 +2939,6 @@ export namespace Prisma {
      * Filter which Reports to delete
      */
     where?: ReportWhereInput
-    /**
-     * Limit how many Reports to delete.
-     */
-    limit?: number
   }
 
   /**
@@ -3227,10 +2949,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the Report
      */
     select?: ReportSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Report
-     */
-    omit?: ReportOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -3335,7 +3053,7 @@ export namespace Prisma {
 
 
   /**
-   * Field references
+   * Field references 
    */
 
 
@@ -3357,13 +3075,6 @@ export namespace Prisma {
    * Reference to a field of type 'Json'
    */
   export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
-    
-
-
-  /**
-   * Reference to a field of type 'QueryMode'
-   */
-  export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
     
 
 
@@ -3498,7 +3209,7 @@ export namespace Prisma {
     error?: StringNullableFilter<"Report"> | string | null
     createdAt?: DateTimeFilter<"Report"> | Date | string
     completedAt?: DateTimeNullableFilter<"Report"> | Date | string | null
-    template?: XOR<ReportTemplateScalarRelationFilter, ReportTemplateWhereInput>
+    template?: XOR<ReportTemplateRelationFilter, ReportTemplateWhereInput>
   }
 
   export type ReportOrderByWithRelationInput = {
@@ -3531,7 +3242,7 @@ export namespace Prisma {
     error?: StringNullableFilter<"Report"> | string | null
     createdAt?: DateTimeFilter<"Report"> | Date | string
     completedAt?: DateTimeNullableFilter<"Report"> | Date | string | null
-    template?: XOR<ReportTemplateScalarRelationFilter, ReportTemplateWhereInput>
+    template?: XOR<ReportTemplateRelationFilter, ReportTemplateWhereInput>
   }, "id">
 
   export type ReportOrderByWithAggregationInput = {
@@ -3808,7 +3519,7 @@ export namespace Prisma {
     mode?: QueryMode
     not?: NestedStringNullableFilter<$PrismaModel> | string | null
   }
-  export type JsonFilter<$PrismaModel = never> =
+  export type JsonFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<JsonFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonFilterBase<$PrismaModel>>, 'path'>>,
         Required<JsonFilterBase<$PrismaModel>>
@@ -3818,20 +3529,19 @@ export namespace Prisma {
   export type JsonFilterBase<$PrismaModel = never> = {
     equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
     path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
     string_contains?: string | StringFieldRefInput<$PrismaModel>
     string_starts_with?: string | StringFieldRefInput<$PrismaModel>
     string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
-  export type JsonNullableFilter<$PrismaModel = never> =
+  export type JsonNullableFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<JsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>,
         Required<JsonNullableFilterBase<$PrismaModel>>
@@ -3841,13 +3551,12 @@ export namespace Prisma {
   export type JsonNullableFilterBase<$PrismaModel = never> = {
     equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
     path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
     string_contains?: string | StringFieldRefInput<$PrismaModel>
     string_starts_with?: string | StringFieldRefInput<$PrismaModel>
     string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
@@ -3965,7 +3674,7 @@ export namespace Prisma {
     _min?: NestedStringNullableFilter<$PrismaModel>
     _max?: NestedStringNullableFilter<$PrismaModel>
   }
-  export type JsonWithAggregatesFilter<$PrismaModel = never> =
+  export type JsonWithAggregatesFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<JsonWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
         Required<JsonWithAggregatesFilterBase<$PrismaModel>>
@@ -3975,13 +3684,12 @@ export namespace Prisma {
   export type JsonWithAggregatesFilterBase<$PrismaModel = never> = {
     equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
     path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
     string_contains?: string | StringFieldRefInput<$PrismaModel>
     string_starts_with?: string | StringFieldRefInput<$PrismaModel>
     string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
@@ -3991,7 +3699,7 @@ export namespace Prisma {
     _min?: NestedJsonFilter<$PrismaModel>
     _max?: NestedJsonFilter<$PrismaModel>
   }
-  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
+  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
         Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>
@@ -4001,13 +3709,12 @@ export namespace Prisma {
   export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
     equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
     path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
     string_contains?: string | StringFieldRefInput<$PrismaModel>
     string_starts_with?: string | StringFieldRefInput<$PrismaModel>
     string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
@@ -4043,7 +3750,7 @@ export namespace Prisma {
     not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
   }
 
-  export type ReportTemplateScalarRelationFilter = {
+  export type ReportTemplateRelationFilter = {
     is?: ReportTemplateWhereInput
     isNot?: ReportTemplateWhereInput
   }
@@ -4289,7 +3996,7 @@ export namespace Prisma {
     gte?: number | IntFieldRefInput<$PrismaModel>
     not?: NestedIntNullableFilter<$PrismaModel> | number | null
   }
-  export type NestedJsonFilter<$PrismaModel = never> =
+  export type NestedJsonFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<NestedJsonFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonFilterBase<$PrismaModel>>, 'path'>>,
         Required<NestedJsonFilterBase<$PrismaModel>>
@@ -4299,20 +4006,19 @@ export namespace Prisma {
   export type NestedJsonFilterBase<$PrismaModel = never> = {
     equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
     path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
     string_contains?: string | StringFieldRefInput<$PrismaModel>
     string_starts_with?: string | StringFieldRefInput<$PrismaModel>
     string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
-  export type NestedJsonNullableFilter<$PrismaModel = never> =
+  export type NestedJsonNullableFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<NestedJsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>,
         Required<NestedJsonNullableFilterBase<$PrismaModel>>
@@ -4322,13 +4028,12 @@ export namespace Prisma {
   export type NestedJsonNullableFilterBase<$PrismaModel = never> = {
     equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
     path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
     string_contains?: string | StringFieldRefInput<$PrismaModel>
     string_starts_with?: string | StringFieldRefInput<$PrismaModel>
     string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
     lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
@@ -4569,6 +4274,22 @@ export namespace Prisma {
   }
 
 
+
+  /**
+   * Aliases for legacy arg types
+   */
+    /**
+     * @deprecated Use ReportTemplateCountOutputTypeDefaultArgs instead
+     */
+    export type ReportTemplateCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ReportTemplateCountOutputTypeDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use ReportTemplateDefaultArgs instead
+     */
+    export type ReportTemplateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ReportTemplateDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use ReportDefaultArgs instead
+     */
+    export type ReportArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ReportDefaultArgs<ExtArgs>
 
   /**
    * Batch Payload for updateMany & deleteMany & createMany

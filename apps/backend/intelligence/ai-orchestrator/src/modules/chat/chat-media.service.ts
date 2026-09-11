@@ -1,14 +1,23 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger, Optional } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
 import type { ContentBlock } from '../../interfaces';
 import { ModelService } from '../model/model.service';
+import { StorageConfigService } from '../storage/storage-config.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { inspectBinaryMimeType } from '../../common/utils/mime-inspector.util';
 import type {
   ChatAudioTranscriptionResponseDTO,
   ChatUploadedFileDTO,
   ChatUploadFileResponseDTO,
 } from './chat.dto';
+
+export interface AuthenticatedUserContext {
+  userId?: string;
+  organizationId?: string | null;
+  role?: string;
+}
 
 @Injectable()
 export class ChatMediaService {
@@ -22,20 +31,110 @@ export class ChatMediaService {
       content: string;
       filePath?: string;
       extractedText?: string;
+      ownerUserId?: string | null;
+      organizationId?: string | null;
     }
   >();
 
-  constructor(private readonly modelService: ModelService) {}
+  constructor(
+    private readonly modelService: ModelService,
+    @Optional() private readonly storageConfigService?: StorageConfigService,
+    @Optional() private readonly prisma?: PrismaService
+  ) {}
+
+  /**
+   * Resolve and ensure the durable storage directory for chat uploads.
+   */
+  getUploadStorageDir(): string {
+    if (this.storageConfigService) {
+      const cfg = this.storageConfigService.getConfig();
+      if (cfg.localRoot && cfg.localRoot.trim()) {
+        const configuredRoot = cfg.localRoot.trim();
+        try {
+          if (!fs.existsSync(configuredRoot)) {
+            fs.mkdirSync(configuredRoot, { recursive: true });
+          }
+          return configuredRoot;
+        } catch {
+          // ignore fallback
+        }
+      }
+    }
+
+    const candidateRoots = [
+      process.env.CHAT_UPLOAD_STORAGE_ROOT,
+      process.env.WORKSPACE_STORAGE_ROOT ? path.join(process.env.WORKSPACE_STORAGE_ROOT, 'uploads') : '',
+      '/workspace/data/storage/uploads',
+      path.join(process.cwd(), 'data/storage/uploads'),
+      path.resolve(__dirname, '../../../../../../../data/storage/uploads'),
+    ].filter(Boolean) as string[];
+
+    const chosen =
+      candidateRoots.find((dir) => fs.existsSync(dir)) ||
+      candidateRoots[0] ||
+      path.join(process.cwd(), 'data/storage/uploads');
+
+    try {
+      if (!fs.existsSync(chosen)) {
+        fs.mkdirSync(chosen, { recursive: true });
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to create upload storage directory ${chosen}: ${err.message}`);
+    }
+
+    return chosen;
+  }
 
   /**
    * Hydrate upload references from the server-side store or workspace storage.
+   * FAILS CLOSED: Requires authenticated user context. Enforces ownership and tenant checks.
    */
-  resolveUploadedFiles(files?: ChatUploadedFileDTO[]): ChatUploadedFileDTO[] {
-    return (files || []).map((file) => {
+  async resolveUploadedFiles(
+    files: ChatUploadedFileDTO[] | undefined,
+    contextUser: AuthenticatedUserContext
+  ): Promise<ChatUploadedFileDTO[]> {
+    const VALID_FILE_ID_REGEX = /^[a-zA-Z0-9_-]{1,128}$/;
+    const resolved: ChatUploadedFileDTO[] = [];
+
+    // CRITICAL: Fail-closed if contextUser is missing or unauthenticated
+    if (!contextUser || (!contextUser.userId && contextUser.role !== 'admin')) {
+      this.logger.warn('resolveUploadedFiles rejected: missing authenticated user context');
+      return [];
+    }
+    const isAdmin = contextUser.role === 'admin';
+
+    for (const file of (files || [])) {
+      if (!file) continue;
+
+      // Reject path traversal attempts in fileId immediately
+      if (file.fileId && !VALID_FILE_ID_REGEX.test(file.fileId)) {
+        this.logger.warn(`Rejected invalid fileId: ${file.fileId}`);
+        continue;
+      }
+
       // 1. Check in-memory upload store
-      const storedFile = this.fileStore.get(file.fileId);
-      if (storedFile) {
-        return {
+      if (file.fileId && this.fileStore.has(file.fileId)) {
+        const storedFile = this.fileStore.get(file.fileId)!;
+        if (!isAdmin) {
+          const hasOwnerMatch = Boolean(
+            storedFile.ownerUserId &&
+            contextUser.userId &&
+            storedFile.ownerUserId === contextUser.userId
+          );
+          const hasOrgMatch = Boolean(
+            storedFile.organizationId &&
+            contextUser.organizationId &&
+            storedFile.organizationId === contextUser.organizationId
+          );
+          if (!hasOwnerMatch && !hasOrgMatch) {
+            this.logger.warn(
+              `Access denied to in-memory file ${file.fileId}: owned by ${storedFile.ownerUserId || 'unknown'}, org ${storedFile.organizationId || 'none'}, requested by user ${contextUser.userId}, org ${contextUser.organizationId || 'none'}`
+            );
+            continue;
+          }
+        }
+
+        resolved.push({
           ...file,
           fileId: file.fileId,
           fileName: storedFile.fileName,
@@ -44,12 +143,170 @@ export class ChatMediaService {
           content: storedFile.content,
           filePath: storedFile.filePath,
           extractedText: storedFile.extractedText,
-        };
+        });
+        continue;
       }
 
-      // 2. Check workspace file storage
-      if (file.source === 'workspace' || file.workspaceNodeId || file.storagePath || file.fileId) {
+      // 2. Check disk-backed upload storage with strict UUID, realpath, and tenant checks
+      if (file.fileId && VALID_FILE_ID_REGEX.test(file.fileId)) {
         try {
+          const uploadDir = path.resolve(this.getUploadStorageDir());
+          let realUploadDir = uploadDir;
+          try {
+            if (fs.existsSync(uploadDir)) {
+              realUploadDir = fs.realpathSync(uploadDir);
+            }
+          } catch {
+            // fallback
+          }
+
+          const metaPath = path.resolve(uploadDir, `${file.fileId}.meta.json`);
+
+          if (fs.existsSync(metaPath)) {
+            let realMetaPath = metaPath;
+            try {
+              realMetaPath = fs.realpathSync(metaPath);
+            } catch {
+              continue;
+            }
+
+            if (!realMetaPath.startsWith(realUploadDir + path.sep)) {
+              this.logger.warn(`Symlink or path traversal blocked for meta file: ${metaPath}`);
+              continue;
+            }
+
+            const meta = JSON.parse(fs.readFileSync(realMetaPath, 'utf-8'));
+
+            // Multi-tenant check against meta owner
+            if (!isAdmin) {
+              const hasOwnerMatch = Boolean(
+                meta.ownerUserId &&
+                contextUser.userId &&
+                meta.ownerUserId === contextUser.userId
+              );
+              const hasOrgMatch = Boolean(
+                meta.organizationId &&
+                contextUser.organizationId &&
+                meta.organizationId === contextUser.organizationId
+              );
+              if (!hasOwnerMatch && !hasOrgMatch) {
+                this.logger.warn(
+                  `Access denied to disk file ${file.fileId}: owned by ${meta.ownerUserId || 'unknown'}, org ${meta.organizationId || 'none'}, requested by user ${contextUser.userId}, org ${contextUser.organizationId || 'none'}`
+                );
+                continue;
+              }
+            }
+
+            let content = file.content;
+            let buf: Buffer | undefined;
+
+            if (meta.filePath && typeof meta.filePath === 'string') {
+              const resolvedFilePath = path.resolve(meta.filePath);
+              if (fs.existsSync(resolvedFilePath)) {
+                let realFilePath = resolvedFilePath;
+                try {
+                  realFilePath = fs.realpathSync(resolvedFilePath);
+                } catch {
+                  continue;
+                }
+                // CRITICAL: Ensure realFilePath is strictly contained within realUploadDir (symlink defense)
+                if (realFilePath.startsWith(realUploadDir + path.sep)) {
+                  buf = fs.readFileSync(realFilePath);
+                  content = buf.toString('base64');
+                } else {
+                  this.logger.warn(`Symlink escape or path traversal blocked for filePath: ${meta.filePath}`);
+                  continue;
+                }
+              } else {
+                this.logger.warn(`Target file does not exist: ${resolvedFilePath}`);
+              }
+            }
+
+            const item: ChatUploadedFileDTO = {
+              ...file,
+              fileId: file.fileId,
+              fileName: meta.fileName || file.fileName,
+              mimeType: meta.mimeType || file.mimeType,
+              size: meta.size || file.size || (buf ? buf.length : 0),
+              content,
+              filePath: meta.filePath,
+            };
+            this.fileStore.set(file.fileId, {
+              fileName: item.fileName,
+              mimeType: item.mimeType,
+              size: item.size,
+              content: content || '',
+              filePath: meta.filePath,
+              ownerUserId: meta.ownerUserId,
+              organizationId: meta.organizationId,
+            });
+            resolved.push(item);
+            continue;
+          }
+        } catch (err: any) {
+          this.logger.warn(`Failed to recover upload file from disk ${file.fileId}: ${err.message}`);
+        }
+      }
+
+      // 3. Check workspace file storage with strict realpath containment and DB ownership verification
+      if (file.source === 'workspace' && file.storagePath) {
+        try {
+          const normalizedStoragePath = path.normalize(file.storagePath).replace(/^(\.\.[/\\])+/, '');
+          const segments = normalizedStoragePath.split(/[/\\]/).filter(Boolean);
+
+          if (segments.length < 2) {
+            this.logger.warn(`Rejected invalid workspace storagePath structure: ${file.storagePath}`);
+            continue;
+          }
+
+          let workspaceId = segments[0];
+          if (['personal', 'company', 'department', 'workspaces'].includes(segments[0]) && segments.length >= 3) {
+            workspaceId = segments[1];
+          }
+
+          // Database ownership verification for workspace files
+          if (!isAdmin) {
+            if (!this.prisma) {
+              this.logger.warn(`Workspace access denied: PrismaService not available for ownership verification`);
+              continue;
+            }
+
+            const rows = await this.prisma.$queryRaw<
+              Array<{ id: string; type: string; owner_user_id: string | null; department_id: string | null }>
+            >`
+              SELECT id, type, owner_user_id, department_id FROM workspaces WHERE id::text = ${workspaceId} LIMIT 1
+            `;
+
+            if (!rows || rows.length === 0) {
+              this.logger.warn(`Workspace ${workspaceId} not found in database for storagePath: ${file.storagePath}`);
+              continue;
+            }
+
+            const ws = rows[0];
+            if (ws.type === 'personal') {
+              if (!ws.owner_user_id || ws.owner_user_id !== contextUser.userId) {
+                this.logger.warn(
+                  `Access denied to personal workspace ${workspaceId}: owned by ${ws.owner_user_id}, requested by user ${contextUser.userId}`
+                );
+                continue;
+              }
+            } else if (ws.type === 'company') {
+              if (!contextUser.organizationId) {
+                this.logger.warn(
+                  `Access denied to company workspace ${workspaceId}: caller has no organization context`
+                );
+                continue;
+              }
+            } else if (ws.type === 'department') {
+              if (!contextUser.userId) {
+                this.logger.warn(
+                  `Access denied to department workspace ${workspaceId}: caller has no user context`
+                );
+                continue;
+              }
+            }
+          }
+
           const candidateRoots = [
             process.env.WORKSPACE_STORAGE_ROOT,
             '/workspace/data/storage/workspaces',
@@ -57,34 +314,44 @@ export class ChatMediaService {
             path.resolve(__dirname, '../../../../../../../data/storage/workspaces'),
           ].filter(Boolean) as string[];
 
-          const rootDir = candidateRoots.find((dir) => fs.existsSync(dir)) || candidateRoots[0] || '/workspace/data/storage/workspaces';
-          let fullPath = file.storagePath ? path.join(rootDir, file.storagePath) : '';
-          if (!fullPath || !fs.existsSync(fullPath)) {
-            const targetId = file.workspaceNodeId || file.fileId;
-            const findFile = (dir: string): string | null => {
-              if (!fs.existsSync(dir)) return null;
-              const entries = fs.readdirSync(dir, { withFileTypes: true });
-              for (const entry of entries) {
-                const sub = path.join(dir, entry.name);
-                if (entry.isDirectory()) {
-                  const res = findFile(sub);
-                  if (res) return res;
-                } else if (
-                  entry.name.includes(targetId) &&
-                  !entry.name.endsWith('.digest.json') &&
-                  !entry.name.endsWith('.extracted.txt')
-                ) {
-                  return sub;
-                }
-              }
-              return null;
-            };
-            const found = findFile(rootDir);
-            if (found) fullPath = found;
+          const rootDir = path.resolve(
+            candidateRoots.find((dir) => fs.existsSync(dir)) ||
+            candidateRoots[0] ||
+            '/workspace/data/storage/workspaces'
+          );
+
+          let realRootDir = rootDir;
+          try {
+            if (fs.existsSync(rootDir)) {
+              realRootDir = fs.realpathSync(rootDir);
+            }
+          } catch {
+            // ignore
           }
 
-          if (fullPath && fs.existsSync(fullPath)) {
-            const buf = fs.readFileSync(fullPath);
+          const fullPath = path.resolve(rootDir, normalizedStoragePath);
+
+          // Path containment check
+          if (!fullPath.startsWith(rootDir + path.sep)) {
+            this.logger.warn(`Path traversal blocked in workspace storagePath: ${file.storagePath}`);
+            continue;
+          }
+
+          // Direct path lookup only - no recursive fuzzy directory scanning
+          if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+            let realFullPath = fullPath;
+            try {
+              realFullPath = fs.realpathSync(fullPath);
+            } catch {
+              continue;
+            }
+
+            if (!realFullPath.startsWith(realRootDir + path.sep)) {
+              this.logger.warn(`Symlink traversal blocked in workspace file: ${file.storagePath}`);
+              continue;
+            }
+
+            const buf = fs.readFileSync(realFullPath);
             let extractedText: string | undefined;
             const extractedPath = `${fullPath}.extracted.txt`;
             if (fs.existsSync(extractedPath)) {
@@ -113,34 +380,52 @@ export class ChatMediaService {
               content: hydratedItem.content!,
               filePath: fullPath,
               extractedText,
+              ownerUserId: contextUser.userId,
+              organizationId: contextUser.organizationId,
             });
 
-            return hydratedItem;
+            resolved.push(hydratedItem);
+            continue;
           }
         } catch (err: any) {
           this.logger.warn(`Failed to hydrate workspace file ${file.fileName}: ${err.message}`);
         }
       }
 
-      return {
+      // Drop unverified file references that attempt to access disk/storage without inline content or extractedText
+      if (file.storagePath || (!file.content && !file.extractedText)) {
+        this.logger.warn(
+          `Dropping unverified file reference: fileId=${file.fileId}, storagePath=${file.storagePath}`
+        );
+        continue;
+      }
+
+      // Allow raw inline content or extractedText provided directly by client without external storage reference
+      resolved.push({
+        ...file,
         fileId: file.fileId,
         fileName: file.fileName,
         mimeType: file.mimeType,
         size: file.size,
         content: file.content,
-      };
-    });
+        filePath: file.filePath,
+        extractedText: file.extractedText,
+      });
+    }
+
+    return resolved;
   }
 
   async buildMessageContent(
     message: string,
-    files?: ChatUploadedFileDTO[]
+    files: ChatUploadedFileDTO[] | undefined,
+    contextUser: AuthenticatedUserContext
   ): Promise<string | ContentBlock[]> {
     if (!files?.length) {
       return message;
     }
 
-    const resolvedFiles = this.resolveUploadedFiles(files);
+    const resolvedFiles = await this.resolveUploadedFiles(files, contextUser);
     const contentBlocks: ContentBlock[] = [{ type: 'text', text: message }];
 
     for (const file of resolvedFiles) {
@@ -224,17 +509,64 @@ export class ChatMediaService {
       .join('\n');
   }
 
-  uploadChatFile(file: Express.Multer.File): ChatUploadFileResponseDTO {
+  uploadChatFile(
+    file: Express.Multer.File,
+    user?: AuthenticatedUserContext
+  ): ChatUploadFileResponseDTO {
     if (!file) {
       throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
     }
 
     const fileId = `file-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const sanitizedFileName = path.basename(file.originalname || 'unnamed-file').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const uploadDir = path.resolve(this.getUploadStorageDir());
+    const diskFileName = `${fileId}-${sanitizedFileName}`;
+    const filePath = path.resolve(uploadDir, diskFileName);
+    const metaPath = path.resolve(uploadDir, `${fileId}.meta.json`);
+
+    let verifiedMime = file.mimetype;
+    if (file.buffer && file.buffer.length > 0) {
+      const inspected = inspectBinaryMimeType(file.buffer, file.originalname, file.mimetype);
+      verifiedMime = inspected.mimeType;
+    }
+
+    try {
+      if (file.buffer) {
+        fs.writeFileSync(filePath, file.buffer, { mode: 0o600 });
+        try {
+          fs.chmodSync(filePath, 0o600);
+        } catch {
+          // ignore
+        }
+        const meta = {
+          fileId,
+          fileName: file.originalname,
+          mimeType: verifiedMime,
+          size: file.size,
+          filePath,
+          ownerUserId: user?.userId || null,
+          organizationId: user?.organizationId || null,
+          createdAt: new Date().toISOString(),
+        };
+        fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), { mode: 0o600, encoding: 'utf-8' });
+        try {
+          fs.chmodSync(metaPath, 0o600);
+        } catch {
+          // ignore
+        }
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to persist uploaded file ${file.originalname} to disk: ${err.message}`);
+    }
+
     this.fileStore.set(fileId, {
       fileName: file.originalname,
-      mimeType: file.mimetype,
+      mimeType: verifiedMime,
       size: file.size,
-      content: file.buffer.toString('base64'),
+      content: file.buffer ? file.buffer.toString('base64') : '',
+      filePath,
+      ownerUserId: user?.userId || null,
+      organizationId: user?.organizationId || null,
     });
 
     if (this.fileStore.size > 100) {
@@ -242,11 +574,18 @@ export class ChatMediaService {
       keys.slice(0, keys.length - 100).forEach((key) => this.fileStore.delete(key));
     }
 
+    if (this.storageConfigService && file.buffer) {
+      this.storageConfigService
+        .saveFile(fileId, file.originalname, file.buffer, verifiedMime)
+        .catch((err) => this.logger.warn(`StorageConfigService saveFile warning: ${err.message}`));
+    }
+
     return {
       fileId,
       fileName: file.originalname,
-      mimeType: file.mimetype,
+      mimeType: verifiedMime,
       size: file.size,
+      filePath,
     };
   }
 

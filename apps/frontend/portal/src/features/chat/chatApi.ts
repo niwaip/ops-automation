@@ -105,7 +105,7 @@ export function streamChat(
       onComplete?.();
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Request aborted by user');
+        // Request aborted by user
         return;
       }
       onError?.(error instanceof Error ? error : new Error('Unknown error'));
@@ -127,7 +127,9 @@ export async function getAvailableModels(): Promise<AIModel[]> {
   try {
     return await coreChatApi.getAvailableModels();
   } catch (error) {
-    console.error('Failed to get models:', error);
+    if (import.meta.env.DEV) {
+      console.error('Failed to get models:', error);
+    }
     return [];
   }
 }
@@ -164,7 +166,9 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
       file,
     };
   } catch (error) {
-    console.error('Failed to upload file:', error);
+    if (import.meta.env.DEV) {
+      console.error('Failed to upload file:', error);
+    }
     throw error;
   }
 }
@@ -196,7 +200,9 @@ export async function transcribeAudio(file: Blob | File, modelId: string): Promi
 
     return payload.text;
   } catch (error) {
-    console.error('Failed to transcribe audio:', error);
+    if (import.meta.env.DEV) {
+      console.error('Failed to transcribe audio:', error);
+    }
     throw error;
   }
 }

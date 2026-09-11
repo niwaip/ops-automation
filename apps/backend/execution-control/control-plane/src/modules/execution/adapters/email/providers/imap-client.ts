@@ -94,6 +94,10 @@ export class ImapClient {
     const isOAuth = Boolean(accessToken || config.authType === 'xoauth2');
     const secure = config.imapSecure !== false && port === 993;
     const timeout = config.timeoutMs || 10000;
+    const allowInsecureTls = Boolean(
+      config.allowInsecureTls ?? (process.env.EMAIL_ALLOW_INSECURE_TLS === 'true')
+    );
+    const rejectUnauthorized = !allowInsecureTls;
 
     return new Promise((resolve) => {
       let resolved = false;
@@ -109,7 +113,7 @@ export class ImapClient {
       };
 
       const socket: net.Socket = secure
-        ? tls.connect({ host, port, minVersion: 'TLSv1.2', rejectUnauthorized: false })
+        ? tls.connect({ host, port, minVersion: 'TLSv1.2', rejectUnauthorized })
         : net.connect({ host, port });
 
       socket.setTimeout(timeout, () => {
@@ -157,6 +161,10 @@ export class ImapClient {
     const isOAuth = Boolean(accessToken || config.authType === 'xoauth2');
     const secure = config.imapSecure !== false && port === 993;
     const timeout = config.timeoutMs || 15000;
+    const allowInsecureTls = Boolean(
+      config.allowInsecureTls ?? (process.env.EMAIL_ALLOW_INSECURE_TLS === 'true')
+    );
+    const rejectUnauthorized = !allowInsecureTls;
     const limit = Math.min(input.limit || 20, 50);
 
     let folder = 'INBOX';
@@ -204,7 +212,7 @@ export class ImapClient {
       };
 
       const socket: net.Socket = secure
-        ? tls.connect({ host, port, minVersion: 'TLSv1.2', rejectUnauthorized: false })
+        ? tls.connect({ host, port, minVersion: 'TLSv1.2', rejectUnauthorized })
         : net.connect({ host, port });
 
       socket.setTimeout(timeout, () => {

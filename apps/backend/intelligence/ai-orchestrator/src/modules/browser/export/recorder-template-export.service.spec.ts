@@ -685,4 +685,55 @@ describe('RecorderTemplateExportService', () => {
       })
     );
   });
+
+  it('preserves CSS selector for fill actions and does not convert to label', () => {
+    const service = new RecorderTemplateExportService({} as any, new RecorderLoopService());
+
+    const stepId = service.buildTemplateStepFromRecordedCommand(
+      {
+        tool: 'fill',
+        params: { selector: '#password', value: 'secret123' },
+        description: '输入密码',
+      } as any,
+      'step_3'
+    );
+
+    expect(stepId?.locator).toEqual({
+      type: 'css',
+      value: '#password',
+    });
+
+    const stepAttr = service.buildTemplateStepFromRecordedCommand(
+      {
+        tool: 'fill',
+        params: { selector: 'input[name="password"]', value: 'secret123' },
+        description: '在密码框输入',
+      } as any,
+      'step_4'
+    );
+
+    expect(stepAttr?.locator).toEqual({
+      type: 'css',
+      value: 'input[name="password"]',
+    });
+  });
+
+  it('uses label locator for fill actions only when the selector is a text label', () => {
+    const service = new RecorderTemplateExportService({} as any, new RecorderLoopService());
+
+    const step = service.buildTemplateStepFromRecordedCommand(
+      {
+        tool: 'fill',
+        params: { selector: '用户名', value: 'admin' },
+        description: '输入用户名',
+      } as any,
+      'step_2'
+    );
+
+    expect(step?.locator).toEqual({
+      type: 'label',
+      value: '用户名',
+    });
+  });
 });
+

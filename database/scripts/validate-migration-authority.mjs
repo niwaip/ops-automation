@@ -4,7 +4,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const canonicalRoot = path.join(repositoryRoot, 'apps/backend/core/platform/prisma/migrations');
+const canonicalRoot = path.join(repositoryRoot, 'apps/backend/platform/prisma/migrations');
 const legacyAiRoot = path.join(
   repositoryRoot,
   'apps/backend/intelligence/ai-orchestrator/prisma/migrations'

@@ -86,13 +86,22 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     return { ...BROWSER_SESSION_PREFERENCES };
   }
 
+  private getInternalAuthHeaders(): Record<string, string> {
+    const secret =
+      process.env.INTERNAL_API_SHARED_SECRET ||
+      process.env.INTERNAL_API_SECRET ||
+      'ops_internal_shared_secret_change_me';
+    return { 'x-internal-auth': secret };
+  }
+
   async initializeSession(runtimeSessionId: string): Promise<void> {
     await axios.post<{ success: boolean; message: string }>(
       `${this.browserWorkerUrl}${BROWSER_WORKER_ENDPOINTS.INIT}`,
       {
         runtimeSessionId,
         sessionPreferences: this.resolveSessionPreferences(),
-      }
+      },
+      { headers: this.getInternalAuthHeaders() }
     );
   }
 
@@ -108,20 +117,22 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
           ? (request.input.args as Record<string, unknown>)
           : undefined,
       captureProfile:
-        (request.input.captureProfile as Record<string, unknown>) ||
-        (request.input.capture_profile as Record<string, unknown>) ||
+        (request.input?.captureProfile as Record<string, unknown>) ||
+        (request.input?.capture_profile as Record<string, unknown>) ||
         (request.metadata?.captureProfile as Record<string, unknown>) ||
         (request.metadata?.capture_profile as Record<string, unknown>) ||
         {
           schemaVersion: 'capture-profile/v1',
-          profile: 'article',
-          capture: { screenshot: true, html: true, mainContent: true },
+          profile: 'application',
+          capture: { screenshot: true, html: true, snapshot: true, mainContent: false },
+          limits: { htmlBytes: 1_000_000, contentChars: 30_000, tableCells: 500 },
         },
     };
 
     const response = await axios.post<LegacyBrowserExecuteStepResult>(
       `${this.browserWorkerUrl}${BROWSER_WORKER_ENDPOINTS.EXECUTE_STEP}`,
-      payload
+      payload,
+      { headers: this.getInternalAuthHeaders() }
     );
 
     const legacyResult = response.data;
@@ -169,7 +180,8 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
       {
         runtimeSessionId: input.runtimeSessionId,
         backend: input.backend || BROWSER_RUNTIME.DEFAULT_BACKEND,
-      }
+      },
+      { headers: this.getInternalAuthHeaders() }
     );
     return response.data;
   }
@@ -199,7 +211,8 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
         readyState: input.readyState,
         selectorExists: input.selectorExists,
         textIncludes: input.textIncludes,
-      }
+      },
+      { headers: this.getInternalAuthHeaders() }
     );
     return response.data;
   }

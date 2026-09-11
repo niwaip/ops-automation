@@ -14,8 +14,15 @@ import { ChatModule } from './modules/chat/chat.module';
 import { OrchestrationModule } from './modules/orchestration/orchestration.module';
 import { LlmOperationModule } from './modules/llm-operation/llm-operation.module';
 import { UserWorkflowReviewModule } from './modules/user-workflow-review/user-workflow-review.module';
+import { StorageConfigModule } from './modules/storage/storage-config.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
+
+import { APP_GUARD } from '@nestjs/core';
+import { AiAuthGuard } from './common/guards/ai-auth.guard';
+import { HealthController } from './modules/health/health.controller';
 
 @Module({
+  controllers: [HealthController],
   imports: [
     PrismaModule,
     ControlPlaneClientModule,
@@ -33,6 +40,14 @@ import { UserWorkflowReviewModule } from './modules/user-workflow-review/user-wo
     OrchestrationModule,
     LlmOperationModule,
     UserWorkflowReviewModule,
+    StorageConfigModule,
+    MetricsModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: AiAuthGuard,
+    },
   ],
 })
 export class AppModule {}

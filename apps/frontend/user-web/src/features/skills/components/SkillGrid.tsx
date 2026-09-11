@@ -10,6 +10,7 @@ interface SkillGridProps {
   isLoading: boolean;
   onPrimaryAction: (skill: PublishedSkillCatalogItem, authorized: boolean) => void;
   onChatCollaborate?: (skill: PublishedSkillCatalogItem) => void;
+  onConfigureCredentials?: (skill: PublishedSkillCatalogItem) => void;
   recentlyRequestedSkillId: string | null;
   schedulesBySkillId: Map<string, ScheduleDto[]>;
   skills: PublishedSkillCatalogItem[];
@@ -21,6 +22,7 @@ export function SkillGrid({
   isLoading,
   onPrimaryAction,
   onChatCollaborate,
+  onConfigureCredentials,
   recentlyRequestedSkillId,
   schedulesBySkillId,
   skills,
@@ -58,6 +60,7 @@ export function SkillGrid({
           authorized={authorized}
           onPrimaryAction={onPrimaryAction}
           onChatCollaborate={onChatCollaborate}
+          onConfigureCredentials={onConfigureCredentials}
           recentlyRequested={recentlyRequestedSkillId === skill.id && skill.accessStatus === 'requested'}
           schedules={schedulesBySkillId.get(skill.id) || []}
           skill={skill}

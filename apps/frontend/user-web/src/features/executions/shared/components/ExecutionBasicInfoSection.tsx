@@ -1,7 +1,10 @@
 import React from 'react';
 import { Button, Descriptions, Space, Typography } from 'antd';
 import { CopyOutlined, DownloadOutlined } from '@ant-design/icons';
-import { extractExecutionDownloadUrl } from '@ops/user-core';
+import {
+  extractExecutionDownloadUrl,
+  buildNovncAutoConnectUrl,
+} from '@ops/user-core';
 import type { ExecutionDto } from '@/api/execution';
 import ExecutionStatusTag from '@/features/executions/shared/components/ExecutionStatusTag';
 import { formatDateTime } from '@/features/executions/list/lib/listView';
@@ -98,7 +101,9 @@ const ExecutionBasicInfoSection: React.FC<ExecutionBasicInfoSectionProps> = ({
                   style={{ paddingInline: 0 }}
                   onClick={() =>
                     window.open(
-                      replaceLocalhostWithCurrentHost(runtimePreviewUrl),
+                      buildNovncAutoConnectUrl(
+                        replaceLocalhostWithCurrentHost(runtimePreviewUrl)
+                      ),
                       '_blank',
                       'noopener,noreferrer'
                     )

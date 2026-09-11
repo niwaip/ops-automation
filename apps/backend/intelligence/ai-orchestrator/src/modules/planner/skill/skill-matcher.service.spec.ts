@@ -220,4 +220,71 @@ describe('SkillMatcherService deterministic explicit routing', () => {
       expect.any(Object)
     );
   });
+
+  it('routes query to web search when web_search_enabled is set in context', async () => {
+    const service = new SkillMatcherService({} as any);
+    (axios.post as jest.Mock).mockResolvedValueOnce({ data: { match: null } });
+
+    const result = await service.matchSkill({
+      userInput: '今天的股市行情',
+      userId: 'user-1',
+      context: { web_search_enabled: true },
+      availableSkills: [
+        {
+          skillId: 'platform.search.web',
+          executableVersion: '1.0.3',
+          skillName: '内置联网搜索',
+          description: '检索公开互联网中的最新网页与新闻信息',
+          triggerKeywords: ['联网搜索', '搜索'],
+          paramsSchema: {
+            properties: {
+              query: { type: 'string', description: '检索词', required: true },
+            },
+            required: ['query'],
+          },
+        },
+      ],
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        skillId: 'platform.search.web',
+        confidence: 0.95,
+        matchReason: 'web_search_intent',
+      })
+    );
+  });
+
+  it('routes query to web search when generic search directive is present even without context flag', async () => {
+    const service = new SkillMatcherService({} as any);
+    (axios.post as jest.Mock).mockResolvedValueOnce({ data: { match: null } });
+
+    const result = await service.matchSkill({
+      userInput: '搜一下最新的科技进展',
+      userId: 'user-1',
+      availableSkills: [
+        {
+          skillId: 'platform.search.web',
+          executableVersion: '1.0.3',
+          skillName: '内置联网搜索',
+          description: '检索公开互联网中的最新网页与新闻信息',
+          triggerKeywords: ['全网检索'],
+          paramsSchema: {
+            properties: {
+              query: { type: 'string', description: '检索词', required: true },
+            },
+            required: ['query'],
+          },
+        },
+      ],
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        skillId: 'platform.search.web',
+        confidence: 0.95,
+        matchReason: 'web_search_intent',
+      })
+    );
+  });
 });

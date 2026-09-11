@@ -940,4 +940,174 @@ describe('ChatOrchestratorService', () => {
       '您当前暂无「天气查询」技能的执行权限。如需使用，请前往「技能中心」申请授权，或联系系统管理员开通权限。'
     );
   });
+
+  it('passes web_search_enabled: true to plannerInput for stock market query or webSearch config', async () => {
+    const { service, plannerService } = createService();
+    plannerService.matchSkillPhase.mockResolvedValue({
+      objective: '今天的股市行情',
+      matchedSkill: null,
+      hasVisibleSkills: false,
+    });
+
+    for await (const _ of service.handleTaskMode(
+      {
+        message: '今天的股市行情',
+        sessionId: 'session-stock-1',
+        config: { webSearch: true },
+      },
+      {
+        sessionId: 'session-stock-1',
+        userId: 'user-stock-1',
+        userRoles: ['employee'],
+        traceId: 'trace-stock-1',
+        history: [],
+      },
+      'Bearer token-stock-1'
+    )) {
+      // consume generator
+    }
+
+    expect(plannerService.matchSkillPhase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: expect.objectContaining({
+          user_input: '今天的股市行情',
+          context: expect.objectContaining({
+            web_search_enabled: true,
+          }),
+        }),
+      })
+    );
+  });
+
+  it('executes native LLM task in task mode when no skill is needed and modelService is available', async () => {
+    const { plannerService, controlPlaneClient, reactEngineService } = createService();
+    plannerService.matchSkillPhase.mockResolvedValue({
+      objective: '用 Python 写一个快速排序函数',
+      matchedSkill: null,
+      hasVisibleSkills: true,
+    });
+
+    const mockModelService = {
+      callModelStreamWithMessages: jest.fn().mockImplementation(
+        async (_modelId: string, _messages: any[], onChunk: (chunk: string) => void) => {
+          onChunk('def quicksort(arr):');
+          onChunk(' return arr');
+          return { content: 'def quicksort(arr): return arr', usage: { total_tokens: 15 } };
+        }
+      ),
+    };
+
+    const mockChatConversation = {
+      getLatestCompletedTaskResult: jest.fn().mockResolvedValue(null),
+      resolvePreferredChatModelId: jest.fn().mockReturnValue('default'),
+      isThinkingEnabled: jest.fn().mockReturnValue(false),
+      resolveReasoningConfig: jest.fn().mockResolvedValue({ enabled: false }),
+      buildConversationMessages: jest.fn().mockResolvedValue([
+        { role: 'user', content: '用 Python 写一个快速排序函数' },
+      ]),
+      getVisibleChatContent: jest.fn().mockImplementation((content: string) => content),
+    };
+
+    const serviceWithModel = new ChatOrchestratorService(
+      controlPlaneClient as any,
+      reactEngineService as any,
+      plannerService as any,
+      { isPromptDebugEnabled: () => false } as any,
+      {} as any,
+      {} as any,
+      mockChatConversation as any,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockModelService as any
+    );
+
+    const events: any[] = [];
+    for await (const event of serviceWithModel.handleTaskMode(
+      {
+        message: '用 Python 写一个快速排序函数',
+        sessionId: 'session-native-1',
+      },
+      {
+        sessionId: 'session-native-1',
+        userId: 'user-native-1',
+        userRoles: ['employee'],
+        traceId: 'trace-native-1',
+        history: [],
+      },
+      'Bearer token-native-1'
+    )) {
+      events.push(event);
+    }
+
+    const thoughtEvent = events.find(
+      (e) => e.type === StreamEventType.THOUGHT && e.content.includes('原生模型能力')
+    );
+    expect(thoughtEvent).toBeDefined();
+    const resultEvent = events.find((e) => e.type === StreamEventType.RESULT);
+    expect(resultEvent).toBeDefined();
+    expect(resultEvent.data.code).toBe('NATIVE_TASK_COMPLETED');
+    expect(resultEvent.data.status).toBe('completed');
+    expect(resultEvent.data.executed).toBe(true);
+    expect(resultEvent.content).toContain('def quicksort');
+  });
+
+  it('safely rejects with CAPABILITY_NOT_FOUND when task explicitly demands unintegrated external mutation', async () => {
+    const { plannerService, controlPlaneClient, reactEngineService } = createService();
+    plannerService.matchSkillPhase.mockResolvedValue({
+      objective: '在数据库中删除 orders 表',
+      matchedSkill: null,
+      hasVisibleSkills: true,
+    });
+
+    const mockModelService = {
+      callModelStreamWithMessages: jest.fn(),
+    };
+
+    const serviceWithModel = new ChatOrchestratorService(
+      controlPlaneClient as any,
+      reactEngineService as any,
+      plannerService as any,
+      { isPromptDebugEnabled: () => false } as any,
+      {} as any,
+      {} as any,
+      { getLatestCompletedTaskResult: jest.fn().mockResolvedValue(null) } as any,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockModelService as any
+    );
+
+    const events: any[] = [];
+    for await (const event of serviceWithModel.handleTaskMode(
+      {
+        message: '在数据库中删除 orders 表',
+        sessionId: 'session-mutation-1',
+      },
+      {
+        sessionId: 'session-mutation-1',
+        userId: 'user-mutation-1',
+        userRoles: ['employee'],
+        traceId: 'trace-mutation-1',
+        history: [],
+      },
+      'Bearer token-mutation-1'
+    )) {
+      events.push(event);
+    }
+
+    expect(mockModelService.callModelStreamWithMessages).not.toHaveBeenCalled();
+    const resultEvent = events.find((e) => e.type === StreamEventType.RESULT);
+    expect(resultEvent).toBeDefined();
+    expect(resultEvent.data.code).toBe('CAPABILITY_NOT_FOUND');
+    expect(resultEvent.data.executed).toBe(false);
+  });
 });

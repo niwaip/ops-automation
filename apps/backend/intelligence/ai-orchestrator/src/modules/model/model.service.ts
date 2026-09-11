@@ -23,6 +23,7 @@ import {
   ModelInvocationTelemetryService,
   type ModelInvocationContext,
 } from './model-invocation-telemetry.service';
+import { SecretCryptoUtil } from '../../common/crypto/secret-crypto.util';
 
 // Persistence file paths. Resolution order:
 //   1. AI_MODELS_DATA_DIR env var (explicit override, used by docker-compose.full.yml)
@@ -448,7 +449,7 @@ export class ModelService implements OnModuleInit {
       return this.selectScopedDefaultModel('audio_transcription') || this.getDefaultModel();
     }
 
-    if (isAdmin && context?.mode === 'task') {
+    if (context?.mode === 'task') {
       return (
         this.selectScopedDefaultModel('admin_task') ||
         this.selectScopedDefaultModel('admin_chat') ||
@@ -474,17 +475,64 @@ export class ModelService implements OnModuleInit {
   async onModuleInit() {
     this.logger.log('Initializing model service...');
 
-    // Ensure data directory exists
+    // Ensure data directory exists with restricted permissions (0700)
     if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
+      try {
+        fs.chmodSync(DATA_DIR, 0o700);
+      } catch {}
       this.logger.log(`Created data directory: ${DATA_DIR}`);
     }
+
+    // Run migration and permission enforcement on existing storage files
+    await this.migrateAndSecureFiles();
 
     // Load persisted provider configs first
     await this.loadPersistedProviders();
 
     // Load persisted models first
     await this.loadPersistedModels();
+  }
+
+  private async migrateAndSecureFiles(): Promise<void> {
+    const files = [
+      PROVIDER_API_KEYS_FILE,
+      API_KEYS_FILE,
+      PROVIDERS_FILE,
+      MODELS_FILE,
+    ];
+
+    for (const file of files) {
+      if (!fs.existsSync(file)) continue;
+
+      try {
+        fs.chmodSync(file, 0o600);
+      } catch {
+        // ignore
+      }
+
+      if (file === PROVIDER_API_KEYS_FILE || file === API_KEYS_FILE) {
+        try {
+          const raw = fs.readFileSync(file, 'utf-8');
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            let changed = false;
+            for (const item of list) {
+              if (item.apiKey && !SecretCryptoUtil.isEncrypted(item.apiKey)) {
+                item.apiKey = SecretCryptoUtil.encrypt(item.apiKey);
+                changed = true;
+              }
+            }
+            if (changed) {
+              SecretCryptoUtil.writeSecureJsonFile(file, list);
+              this.logger.log(`Migrated plaintext keys in ${file} to AES-256-GCM`);
+            }
+          }
+        } catch (e: any) {
+          this.logger.warn(`Failed to migrate keys in ${file}: ${e.message}`);
+        }
+      }
+    }
   }
 
   /**
@@ -519,7 +567,7 @@ export class ModelService implements OnModuleInit {
         const keys: PersistedApiKey[] = JSON.parse(data);
 
         for (const item of keys) {
-          this.apiKeys.set(item.id, item.apiKey);
+          this.apiKeys.set(item.id, SecretCryptoUtil.decrypt(item.apiKey));
         }
 
         this.logger.log(`Loaded ${keys.length} persisted API keys from file`);
@@ -565,7 +613,7 @@ export class ModelService implements OnModuleInit {
         const data = fs.readFileSync(PROVIDER_API_KEYS_FILE, 'utf-8');
         const keys: PersistedProviderApiKey[] = JSON.parse(data);
         for (const item of keys) {
-          this.providerApiKeys.set(item.id, item.apiKey);
+          this.providerApiKeys.set(item.id, SecretCryptoUtil.decrypt(item.apiKey));
         }
       }
     } catch (error: unknown) {
@@ -579,9 +627,9 @@ export class ModelService implements OnModuleInit {
    */
   private async persistModels(): Promise<void> {
     try {
-      // Ensure data directory exists
+      // Ensure data directory exists with restricted permissions (0700)
       if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
+        fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
         this.logger.log(`Created data directory: ${DATA_DIR}`);
       }
 
@@ -591,15 +639,15 @@ export class ModelService implements OnModuleInit {
         const apiKeyRef = this.apiKeyReferences.get(id);
         modelsData.push({ model, apiKeyRef });
       }
-      fs.writeFileSync(MODELS_FILE, JSON.stringify(modelsData, null, 2));
+      SecretCryptoUtil.writeSecureJsonFile(MODELS_FILE, modelsData);
       this.logger.log(`Wrote ${modelsData.length} models to ${MODELS_FILE}`);
 
-      // Persist API keys (only those with direct key input)
+      // Persist API keys (encrypted with AES-256-GCM, mode 0600)
       const keysData: PersistedApiKey[] = [];
       for (const [id, apiKey] of this.apiKeys) {
-        keysData.push({ id, apiKey });
+        keysData.push({ id, apiKey: SecretCryptoUtil.encrypt(apiKey) });
       }
-      fs.writeFileSync(API_KEYS_FILE, JSON.stringify(keysData, null, 2));
+      SecretCryptoUtil.writeSecureJsonFile(API_KEYS_FILE, keysData);
       this.logger.log(`Wrote ${keysData.length} API keys to ${API_KEYS_FILE}`);
 
       const providersData: PersistedProvider[] = [];
@@ -609,13 +657,13 @@ export class ModelService implements OnModuleInit {
           providersData.push({ provider, apiKeyRef });
         }
       }
-      fs.writeFileSync(PROVIDERS_FILE, JSON.stringify(providersData, null, 2));
+      SecretCryptoUtil.writeSecureJsonFile(PROVIDERS_FILE, providersData);
 
       const providerKeysData: PersistedProviderApiKey[] = [];
       for (const [id, apiKey] of this.providerApiKeys) {
-        providerKeysData.push({ id, apiKey });
+        providerKeysData.push({ id, apiKey: SecretCryptoUtil.encrypt(apiKey) });
       }
-      fs.writeFileSync(PROVIDER_API_KEYS_FILE, JSON.stringify(providerKeysData, null, 2));
+      SecretCryptoUtil.writeSecureJsonFile(PROVIDER_API_KEYS_FILE, providerKeysData);
 
       this.logger.log(
         `Persisted ${modelsData.length} models, ${keysData.length} model API keys and ${providersData.length} providers`

@@ -13,6 +13,13 @@ interface RecorderProbeObservationLike {
   currentPageUrl?: string;
   title?: string;
   text?: string;
+  structuralHash?: string;
+  activeContainer?: {
+    type: 'floating-chat' | 'modal' | 'drawer' | 'dialog';
+    name?: string;
+    title?: string;
+    selector?: string;
+  };
   inputs: Array<Record<string, unknown>>;
   buttons: Array<Record<string, unknown>>;
   rows?: Array<Record<string, unknown>>;
@@ -93,6 +100,12 @@ export class RecorderStructureProbeService {
         input.snapshotObservation?.links || []
       ),
       suggestedParameters: [],
+      ...(input.structure.activeContainer
+        ? { activeContainer: input.structure.activeContainer }
+        : {}),
+      ...(input.structure.structuralHash
+        ? { structuralHash: String(input.structure.structuralHash) }
+        : {}),
       ...(input.snapshotObservation?.snapshotPath
         ? { snapshotPath: input.snapshotObservation.snapshotPath }
         : {}),
@@ -194,6 +207,15 @@ export class RecorderStructureProbeService {
         }
       });
 
+      const getContainerInfo = el => {
+        const modal = el.closest ? el.closest('[role="dialog"], .ant-modal, .ant-drawer, [class*="chat-window"], [class*="chat-panel"]') : null;
+        if (!modal) return undefined;
+        const cls = ((modal.getAttribute && modal.getAttribute('class')) || '').toLowerCase();
+        if (cls.includes('chat')) return { type: 'floating-chat', name: '聊天框' };
+        if (cls.includes('drawer')) return { type: 'drawer', name: '抽屉面板' };
+        return { type: 'modal', name: '弹窗' };
+      };
+
       const inputs = uniqueElements(queryAllAcrossRoots('input, textarea, select, [contenteditable="true"]'))
         .filter(isVisible)
         .map((element, index) => ({
@@ -212,6 +234,7 @@ export class RecorderStructureProbeService {
           role: getDataAttr(element, 'role') || undefined,
           autocomplete: getDataAttr(element, 'autocomplete'),
           dataTestId: getDataAttr(element, 'data-testid') || getDataAttr(element, 'data-test-id'),
+          container: getContainerInfo(element),
           region: getDatasetAttr(element, 'aiRegion'),
           stableName: getDatasetAttr(element, 'aiStableName'),
           visible: true,
@@ -234,39 +257,169 @@ export class RecorderStructureProbeService {
           })(),
         }));
 
-      const buttons = uniqueElements(queryAllAcrossRoots('button, a, [role="button"], [role="link"], [data-ai-action]'))
+      const interactiveSelector = [
+        'button',
+        'a',
+        '[role="button"]',
+        '[role="link"]',
+        '[role="tab"]',
+        '[role="radio"]',
+        '[role="switch"]',
+        '[role="option"]',
+        '.ant-segmented-item',
+        'label.ant-radio-button-wrapper',
+        '[data-ai-action]',
+      ].join(', ');
+
+      const buttons = uniqueElements(queryAllAcrossRoots(interactiveSelector))
         .filter(isVisible)
-        .map((element, index) => ({
-          index,
-          ref: getElementRef(element),
-          tagName: element.tagName.toLowerCase(),
-          text: toText(getDataAttr(element, 'aria-label') || element.textContent),
-          role: getDataAttr(element, 'role') || element.tagName.toLowerCase(),
-          href: element instanceof HTMLAnchorElement ? element.href : undefined,
-          dataTestId: getDataAttr(element, 'data-testid') || getDataAttr(element, 'data-test-id'),
-          action: getDatasetAttr(element, 'aiAction'),
-          region: getDatasetAttr(element, 'aiRegion'),
-          stableName: getDatasetAttr(element, 'aiStableName'),
-          visible: true,
-          disabled: 'disabled' in element ? Boolean(element.disabled) : undefined,
-          selected: getBooleanAttr(element, 'aria-selected'),
-          ariaSelected: getBooleanAttr(element, 'aria-selected'),
-          ariaPressed: getBooleanAttr(element, 'aria-pressed'),
-          dataState: getDataAttr(element, 'data-state'),
-          rowIndex: (() => {
-            const raw = getDatasetAttr(element, 'aiRowIndex');
-            const parsed = raw ? Number.parseInt(raw, 10) : NaN;
-            if (Number.isFinite(parsed)) return parsed;
-            const closestRow = element.closest && element.closest('[data-sys-row-index]');
-            if (closestRow) {
-              const sysParsed = Number.parseInt(closestRow.getAttribute('data-sys-row-index'), 10);
-              return Number.isFinite(sysParsed) ? sysParsed : undefined;
+        .map((element, index) => {
+          const rawTitle = getDataAttr(element, 'title') || (element.getAttribute ? element.getAttribute('title') : undefined);
+          const svgEl = element.querySelector ? element.querySelector('svg, img, [class*="icon"]') : null;
+          const svgTitle = svgEl ? (
+            getDataAttr(svgEl, 'aria-label') ||
+            (svgEl.getAttribute ? svgEl.getAttribute('title') : undefined) ||
+            (svgEl.querySelector && svgEl.querySelector('title') ? svgEl.querySelector('title').textContent : undefined) ||
+            (svgEl instanceof HTMLImageElement ? svgEl.alt : undefined)
+          ) : undefined;
+          const classAttr = getDataAttr(element, 'class') || '';
+
+          const checkFloating = el => {
+            let cur = el;
+            while (cur && cur !== document.body && cur !== document.documentElement) {
+              const s = window.getComputedStyle ? window.getComputedStyle(cur) : null;
+              if (s) {
+                if (s.position === 'fixed') return true;
+                const z = parseInt(s.zIndex, 10);
+                if (s.position === 'absolute' && ((!isNaN(z) && z > 10) || (s.bottom && s.bottom !== 'auto'))) return true;
+              }
+              const cls = (cur.getAttribute && cur.getAttribute('class')) || '';
+              if (typeof cls === 'string' && (cls.includes('chat-widget') || cls.includes('floating'))) return true;
+              cur = cur.parentElement;
+            }
+            return false;
+          };
+          const isFloating = checkFloating(element);
+
+          const isInsideChatWindow = Boolean(
+            element.closest && element.closest('[class*="chat-window"], [class*="chat-panel"], [class*="chat-content"]')
+          );
+
+          const isChatTrigger = !isInsideChatWindow && Boolean(
+            getDataAttr(element, 'data-testid') === 'floating-chat-trigger' ||
+            getDataAttr(element, 'data-ai-action') === 'open-floating-chat' ||
+            classAttr.includes('chat-trigger') ||
+            (element.closest && element.closest('[class*="chat-widget-trigger"], [class*="chat-trigger"]'))
+          );
+
+          const isSegmented = Boolean(element.classList && element.classList.contains('ant-segmented-item'));
+          const isRadioWrapper = Boolean(element.classList && element.classList.contains('ant-radio-button-wrapper'));
+          const segmentedInput = (isSegmented || isRadioWrapper) ? element.querySelector('input') : null;
+          const isSelected = Boolean(
+            getBooleanAttr(element, 'aria-selected') ||
+            (element.classList ? (element.classList.contains('ant-segmented-item-selected') || element.classList.contains('ant-radio-button-wrapper-checked')) : false) ||
+            (segmentedInput ? Boolean(segmentedInput.checked) : false)
+          );
+          const resolvedRole = getDataAttr(element, 'role') || (isSegmented ? 'tab' : (isRadioWrapper ? 'radio' : element.tagName.toLowerCase()));
+
+          const elementTextContent = toText(element.textContent);
+          const isOnlyNumber = /^\d+$/.test(elementTextContent);
+          const iconAriaLabel = (() => {
+            const icon = element.querySelector ? element.querySelector('.anticon, [role="img"], [data-icon]') : null;
+            if (!icon) return undefined;
+            const dataIcon = getDataAttr(icon, 'data-icon');
+            const iconAria = getDataAttr(icon, 'aria-label');
+            if (iconAria && iconAria !== 'img') return iconAria;
+            if (dataIcon) {
+              const iconMap = {
+                bell: '消息通知',
+                'menu-fold': '折叠菜单',
+                'menu-unfold': '展开菜单',
+                close: '关闭',
+                setting: '设置',
+                user: '用户',
+              };
+              return iconMap[dataIcon] || dataIcon;
             }
             return undefined;
-          })(),
-          rowKey: getDatasetAttr(element, 'aiRowKey'),
-          rowText: getDatasetAttr(element, 'aiRowText'),
-        }))
+          })();
+
+          let buttonText = getDataAttr(element, 'aria-label');
+          if (!buttonText && isSegmented) {
+            const labelEl = element.querySelector ? element.querySelector('.ant-segmented-item-label') : null;
+            buttonText = toText(labelEl ? labelEl.textContent : element.textContent);
+          }
+          if (!buttonText && !isOnlyNumber && elementTextContent) {
+            buttonText = elementTextContent;
+          }
+          if (!buttonText && rawTitle) {
+            buttonText = rawTitle;
+          }
+          if (!buttonText && svgTitle) {
+            buttonText = svgTitle;
+          }
+          if (!buttonText && iconAriaLabel) {
+            buttonText = isOnlyNumber ? (iconAriaLabel + ' (' + elementTextContent + ')') : iconAriaLabel;
+          }
+          if (!buttonText && isChatTrigger) {
+            buttonText = '打开悬浮对话框';
+          } else if (!buttonText && isFloating) {
+            buttonText = '悬浮按钮';
+          } else if (!buttonText && isOnlyNumber) {
+            buttonText = elementTextContent;
+          }
+          buttonText = toText(buttonText);
+
+          const resolvedAction = getDatasetAttr(element, 'aiAction') || (isChatTrigger ? 'open-floating-chat' : undefined);
+          const resolvedTitle = rawTitle ? toText(rawTitle) : (svgTitle ? toText(svgTitle) : (isChatTrigger ? '打开悬浮对话框' : undefined));
+          const containerInfo = getContainerInfo(element);
+          const preferredLocator = (() => {
+            if (isSegmented && buttonText) {
+              const escaped = buttonText.replace(/"/g, '\\"');
+              if (containerInfo && containerInfo.type === 'floating-chat') {
+                return { type: 'css', value: '[class*="chat-window"] .ant-segmented-item:has-text("' + escaped + '")' };
+              }
+              return { type: 'css', value: '.ant-segmented-item:has-text("' + escaped + '")' };
+            }
+            return undefined;
+          })();
+
+          return {
+            index,
+            ref: getElementRef(element),
+            tagName: element.tagName.toLowerCase(),
+            text: buttonText,
+            title: resolvedTitle,
+            isFloating,
+            container: containerInfo,
+            preferredLocator,
+            role: resolvedRole,
+            href: element instanceof HTMLAnchorElement ? element.href : undefined,
+            dataTestId: getDataAttr(element, 'data-testid') || getDataAttr(element, 'data-test-id') || (isChatTrigger ? 'floating-chat-trigger' : undefined),
+            action: resolvedAction,
+            region: getDatasetAttr(element, 'aiRegion'),
+            stableName: getDatasetAttr(element, 'aiStableName'),
+            visible: true,
+            disabled: 'disabled' in element ? Boolean(element.disabled) : undefined,
+            selected: isSelected,
+            ariaSelected: isSelected,
+            ariaPressed: getBooleanAttr(element, 'aria-pressed'),
+            dataState: getDataAttr(element, 'data-state'),
+            rowIndex: (() => {
+              const raw = getDatasetAttr(element, 'aiRowIndex');
+              const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+              if (Number.isFinite(parsed)) return parsed;
+              const closestRow = element.closest && element.closest('[data-sys-row-index]');
+              if (closestRow) {
+                const sysParsed = Number.parseInt(closestRow.getAttribute('data-sys-row-index'), 10);
+                return Number.isFinite(sysParsed) ? sysParsed : undefined;
+              }
+              return undefined;
+            })(),
+            rowKey: getDatasetAttr(element, 'aiRowKey'),
+            rowText: getDatasetAttr(element, 'aiRowText'),
+          };
+        })
         .filter(item => item.text);
 
       const rows = uniqueElements(queryAllAcrossRoots('[data-ai-row-key], tr, [role="row"], [data-ai-row-index]'))
@@ -363,9 +516,52 @@ export class RecorderStructureProbeService {
 
       const links = uniqueElements(queryAllAcrossRoots('a[href], [role="link"]'))
         .filter(isVisible)
+        .filter(element => {
+          const href = element.getAttribute ? (element.getAttribute('href') || '').trim() : '';
+          return href && href !== '#' && !href.startsWith('javascript:');
+        })
         .map(element => toText(getDataAttr(element, 'aria-label') || element.textContent))
         .filter(Boolean)
-        .slice(0, 150);
+        .slice(0, 30);
+
+      const simpleHash = str => {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+          hash = ((hash << 5) - hash) + str.charCodeAt(i);
+          hash |= 0;
+        }
+        return Math.abs(hash).toString(36);
+      };
+
+      const structuralSignature = [
+        window.location.pathname || '',
+        inputs.length,
+        buttons.length,
+        rows.length,
+        regions.length,
+        inputs.slice(0, 6).map(i => i.name || i.id || i.placeholder || i.tagName).join(','),
+        buttons.slice(0, 6).map(b => b.text || b.action || b.dataTestId).join(',')
+      ].join('::');
+
+      const structuralHash = simpleHash(structuralSignature);
+
+      const activeContainer = (() => {
+        const chatWin = document.querySelector('[class*="chat-window"]:not([style*="display: none"]), [class*="chat-panel"]:not([style*="display: none"])');
+        if (chatWin && isVisible(chatWin)) {
+          return { type: 'floating-chat', name: '聊天框', selector: '.chat-window' };
+        }
+        const modal = document.querySelector('.ant-modal:not([style*="display: none"]), [role="dialog"]:not([aria-hidden="true"])');
+        if (modal && isVisible(modal)) {
+          const title = toText(modal.querySelector('.ant-modal-title, [class*="title"]')?.textContent);
+          return { type: 'modal', name: '弹窗', title: title || undefined, selector: '.ant-modal' };
+        }
+        const drawer = document.querySelector('.ant-drawer-open, [role="dialog"].ant-drawer');
+        if (drawer && isVisible(drawer)) {
+          const title = toText(drawer.querySelector('.ant-drawer-title, [class*="title"]')?.textContent);
+          return { type: 'drawer', name: '抽屉面板', title: title || undefined, selector: '.ant-drawer' };
+        }
+        return undefined;
+      })();
 
       return {
         url: window.location.href,
@@ -376,6 +572,8 @@ export class RecorderStructureProbeService {
         regions,
         headings,
         links,
+        activeContainer,
+        structuralHash,
         pageSemantics: (window).__AI_PAGE_SEMANTICS__ || undefined,
       };
     })())`;

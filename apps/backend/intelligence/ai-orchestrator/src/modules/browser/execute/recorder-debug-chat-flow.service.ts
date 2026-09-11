@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import {
   BrowserActionValidatorService,
   BrowserCommand,
@@ -6,6 +6,7 @@ import {
   ParseBrowserCommandResponse,
 } from '../intent';
 import { RecorderDebugChatSupportService } from './recorder-debug-chat-support.service';
+import { RecorderTargetResolutionReuseService } from '../observe/recorder-target-resolution-reuse.service';
 
 type RecorderDebugPendingRiskConfirmationLike = {
   commands: BrowserCommand[];
@@ -24,6 +25,9 @@ type RecorderDebugSessionLike = {
 };
 
 type RecorderDebugObservationLike = {
+  currentPageUrl?: string;
+  structuralHash?: string;
+  page?: { url?: string };
   text?: string;
   inputs: Array<Record<string, unknown>>;
   buttons: Array<Record<string, unknown>>;
@@ -68,7 +72,9 @@ export type RecorderDebugChatFlowResolution =
 export class RecorderDebugChatFlowService {
   constructor(
     private readonly recorderDebugChatSupportService: RecorderDebugChatSupportService,
-    private readonly browserActionValidatorService: BrowserActionValidatorService
+    private readonly browserActionValidatorService: BrowserActionValidatorService,
+    @Optional()
+    private readonly recorderTargetResolutionReuseService?: RecorderTargetResolutionReuseService
   ) {}
 
   async resolveFlow(input: {
@@ -100,6 +106,12 @@ export class RecorderDebugChatFlowService {
         input.session.pendingDisambiguation,
         input.effectiveMessage
       );
+    const cachedResolution = !shouldConfirmPendingRisk && !resolvedDisambiguation
+      ? this.recorderTargetResolutionReuseService?.tryResolveFromIntentCache({
+          message: input.effectiveMessage,
+          observation: input.observation as any,
+        })
+      : null;
     const parsed = shouldConfirmPendingRisk
       ? {
           success: true,
@@ -108,6 +120,7 @@ export class RecorderDebugChatFlowService {
             input.session.pendingRiskConfirmation?.explanation || '继续执行上一步高风险动作',
         }
       : resolvedDisambiguation ||
+        cachedResolution ||
         (await input.parseCommand({
           input: input.effectiveMessage,
           context: {
@@ -118,6 +131,7 @@ export class RecorderDebugChatFlowService {
             availableButtons: input.availableButtons,
             availableCandidates: input.observation.candidates || [],
             controlHints: input.controlHints,
+            activeContainer: input.session.activeContainer || input.observation.activeContainer,
           },
         }));
 

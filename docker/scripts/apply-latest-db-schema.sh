@@ -56,7 +56,7 @@ wait_for_postgres() {
 run_platform_job() {
   local command="$1"
   run_compose "$BASE_COMPOSE" run --rm --no-deps platform sh -c \
-    "bash /workspace/docker/scripts/bootstrap-workspace-deps.sh && cd apps/backend/core/platform && ${command}"
+    "bash /workspace/docker/scripts/bootstrap-workspace-deps.sh && cd apps/backend/platform && ${command}"
 }
 
 apply_latest_schema() {

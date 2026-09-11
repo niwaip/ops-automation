@@ -50,6 +50,7 @@ describe('RuntimeStepRequestFactory', () => {
     const request = factory.buildSkillRuntimeRequest({
       execution: {
         id: 'execution-2',
+        createdBy: 'user-1',
         skillId: 'skill-2',
         skillVersion: 'v4',
         riskLevel: 'L1',
@@ -88,6 +89,10 @@ describe('RuntimeStepRequestFactory', () => {
       policyContext: {
         riskLevel: 'L1',
         requiresApproval: false,
+      },
+      traceContext: {
+        userId: 'user-1',
+        actorType: 'user',
       },
       metadata: {
         capabilityVersion: 'v4',

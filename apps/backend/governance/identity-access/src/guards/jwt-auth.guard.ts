@@ -1,14 +1,31 @@
-import { Injectable, ExecutionContext, UnauthorizedException, CanActivate } from '@nestjs/common';
+import { Injectable, ExecutionContext, UnauthorizedException, CanActivate, Optional, Inject } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import * as crypto from 'crypto';
 import { IS_PUBLIC_KEY } from '../metadata/authz.constants';
+
+const INTERNAL_ALLOWED_ROLES = new Set(['employee', 'manager', 'admin']);
+
+const INSECURE_INTERNAL_SECRETS = new Set([
+  'ops_internal_shared_secret_change_me',
+  'ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa',
+  'ops-automation-jwt-secret-key-change-in-production',
+  'jwt_secret_key_change_in_production',
+  'secret',
+  'change_me',
+  'default_secret',
+]);
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
+  private readonly reflector: Reflector;
+
   constructor(
     private readonly jwtService: JwtService,
-    private readonly reflector: Reflector
-  ) {}
+    @Optional() reflector?: Reflector
+  ) {
+    this.reflector = reflector ?? new Reflector();
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -21,13 +38,11 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
-    const debugUrl =
-      process.env.DEBUG_SERVER_URL ||
-      (process.env.DOCKER_ENV
-        ? 'http://host.docker.internal:7777/event'
-        : 'http://127.0.0.1:7777/event');
-    const debugSessionId = process.env.DEBUG_SESSION_ID || 'draft-sessions-401';
-    const internalSecret = process.env.INTERNAL_API_SHARED_SECRET || process.env.JWT_SECRET;
+    const isProduction = process.env.NODE_ENV === 'production';
+    const internalSecret =
+      process.env.INTERNAL_API_SHARED_SECRET ||
+      process.env.INTERNAL_API_SECRET ||
+      (!isProduction ? process.env.JWT_SECRET : undefined);
     const internalAuth = request.headers['x-internal-auth'];
     const internalUserId = request.headers['x-user-id'];
     const internalUserRole = request.headers['x-user-role'];
@@ -35,88 +50,43 @@ export class JwtAuthGuard implements CanActivate {
 
     if (
       internalSecret &&
+      (!isProduction || (!INSECURE_INTERNAL_SECRETS.has(internalSecret) && internalSecret.length >= 16)) &&
       typeof internalAuth === 'string' &&
-      internalAuth === internalSecret
+      internalAuth.length > 0
     ) {
-      request.user = {
-        id:
-          typeof internalUserId === 'string' && internalUserId.trim()
-            ? internalUserId
-            : 'system',
-        username:
-          typeof internalUsername === 'string' && internalUsername.trim()
-            ? internalUsername
-            : 'system',
-        role:
+      const provBuf = Buffer.from(internalAuth);
+      const expBuf = Buffer.from(internalSecret);
+      if (provBuf.length === expBuf.length && crypto.timingSafeEqual(provBuf, expBuf)) {
+        const requestedRole =
           typeof internalUserRole === 'string' && internalUserRole.trim()
-            ? internalUserRole
-            : 'admin',
-        activeOrgId: null,
-      };
-      void fetch(debugUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: debugSessionId,
-          runId: 'pre-fix',
-          hypothesisId: 'A',
-          location: 'jwt-auth.guard.ts:40',
-          msg: '[DEBUG] internal auth accepted',
-          data: {
-            method: request.method,
-            url: request.url,
-            userId: request.user.id,
-            hasInternalAuth: true,
-          },
-          ts: Date.now(),
-        }),
-      }).catch(() => {});
-      return true;
+            ? internalUserRole.trim()
+            : 'employee';
+        const safeRole = INTERNAL_ALLOWED_ROLES.has(requestedRole) ? requestedRole : 'employee';
+
+        request.user = {
+          id:
+            typeof internalUserId === 'string' && internalUserId.trim()
+              ? internalUserId
+              : 'system',
+          username:
+            typeof internalUsername === 'string' && internalUsername.trim()
+              ? internalUsername
+              : 'system',
+          role: safeRole,
+          activeOrgId: null,
+        };
+        return true;
+      }
     }
 
     const authorization = request.headers.authorization;
 
     if (!authorization) {
-      void fetch(debugUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: debugSessionId,
-          runId: 'pre-fix',
-          hypothesisId: 'A',
-          location: 'jwt-auth.guard.ts:58',
-          msg: '[DEBUG] authorization header missing',
-          data: {
-            method: request.method,
-            url: request.url,
-            hasAuthorization: false,
-            hasInternalAuth: typeof internalAuth === 'string' && internalAuth.length > 0,
-          },
-          ts: Date.now(),
-        }),
-      }).catch(() => {});
       throw new UnauthorizedException('Authorization header is required');
     }
 
     const token = authorization.replace('Bearer ', '');
     if (!token) {
-      void fetch(debugUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: debugSessionId,
-          runId: 'pre-fix',
-          hypothesisId: 'A',
-          location: 'jwt-auth.guard.ts:65',
-          msg: '[DEBUG] bearer token empty after normalization',
-          data: {
-            method: request.method,
-            url: request.url,
-            authorizationPreview: String(authorization).slice(0, 20),
-          },
-          ts: Date.now(),
-        }),
-      }).catch(() => {});
       throw new UnauthorizedException('Token is required');
     }
 
@@ -133,39 +103,8 @@ export class JwtAuthGuard implements CanActivate {
         role: payload.role,
         activeOrgId: payload.activeOrgId ?? null,
       };
-      void fetch(debugUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: debugSessionId,
-          runId: 'pre-fix',
-          hypothesisId: 'A',
-          location: 'jwt-auth.guard.ts:81',
-          msg: '[DEBUG] jwt auth accepted',
-          data: {
-            method: request.method,
-            url: request.url,
-            userId: payload.sub,
-            role: payload.role,
-          },
-          ts: Date.now(),
-        }),
-      }).catch(() => {});
       return true;
     } catch {
-      void fetch(debugUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: debugSessionId,
-          runId: 'pre-fix',
-          hypothesisId: 'A',
-          location: 'jwt-auth.guard.ts:85',
-          msg: '[DEBUG] jwt verification failed',
-          data: { method: request.method, url: request.url, tokenLength: token.length },
-          ts: Date.now(),
-        }),
-      }).catch(() => {});
       throw new UnauthorizedException('Invalid or expired token');
     }
   }

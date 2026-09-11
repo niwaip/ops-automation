@@ -65,4 +65,55 @@ describe('BrowserStepResultEnricherService', () => {
       ])
     );
   });
+
+  it('does not fail an interactive application step when mainContent is false even if page has few characters', async () => {
+    const evidenceCollector = {
+      collect: jest.fn().mockResolvedValue({
+        artifacts: [{ type: 'browser_page_html', id: 'html-2' }],
+        warningCodes: [],
+      }),
+    };
+    const service = new BrowserStepResultEnricherService(
+      new BrowserPostActionStateService(),
+      evidenceCollector as any,
+      new BrowserContentExtractionService(),
+      new CaptureProfileResolverService(),
+      new BrowserContentQualityService()
+    );
+
+    const appProfile = {
+      schemaVersion: 'capture-profile/v1',
+      profile: 'application',
+      capture: { screenshot: true, html: true, snapshot: true, mainContent: false },
+      limits: { htmlBytes: 1_000_000, contentChars: 30_000, tableCells: 500 },
+    };
+
+    const result = await service.enrich({
+      dto: {
+        executionId: 'execution-2',
+        runtimeSessionId: 'session-2',
+        stepId: 'step-2',
+        action: 'goto',
+        target: 'http://192.168.100.143:5174/login',
+        captureProfile: appProfile,
+      },
+      result: {
+        success: true,
+        shouldTakeover: false,
+        output: {
+          html: '<html><body><div>OpsPilot AI Login</div></body></html>',
+        },
+      },
+      inspect: async () => ({
+        runtimeSessionId: 'session-2',
+        pageUrl: 'http://192.168.100.143:5174/login',
+        readyState: 'complete',
+      }),
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.executionState).toBe('completed');
+    expect(result.errorCode).toBeUndefined();
+    expect(result.warningCodes).not.toContain('CONTENT_QUALITY_FAILED');
+  });
 });

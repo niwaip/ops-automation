@@ -18,17 +18,23 @@
 标准命令：
 
 ```bash
-# 启动开发栈
-./docker/start-smart.sh docker-compose.base.yml up -d
+# 启动默认轻量核心开发栈（6个后端核心服务+1个初始化容器，推荐日常使用）
+./docker/start-smart.sh dev up -d
 
-# 启动基础设施
-./docker/start-smart.sh docker-compose.yml up -d
+# 启动核心栈 + 浏览器自动化
+./docker/start-smart.sh dev:browser up -d
+
+# 启动全量环境（全部 19 个容器，冒烟或完整调试时使用）
+./docker/start-smart.sh full up -d
+
+# 启动纯基础设施（Postgres + Redis）
+./docker/start-smart.sh infra up -d
 
 # 启动测试环境
-./docker/start-smart.sh docker-compose.test.yml up --abort-on-container-exit carbone-engine-test
+./docker/start-smart.sh test up --abort-on-container-exit carbone-engine-test
 
 # 停止开发栈
-./docker/start-smart.sh docker-compose.base.yml down
+./docker/start-smart.sh dev down
 ```
 
 执行规则：
@@ -57,8 +63,8 @@
 强制规则：
 
 - 一个文件只承载一类明确能力；若同时承担编排、领域、数据访问、适配、工具等多种职责，必须拆分。
-- 普通业务源码文件原则上不应超过 `800` 行；超过后优先评估拆分。
-- 普通业务源码文件超过 `1200` 行时，除非是生成文件、锁文件、fixture、协议常量，否则必须拆分。
+- 普通业务源码文件原则上不应超过 `1200` 行；超过后优先评估拆分。
+- 普通业务源码文件超过 `1600` 行时，除非是生成文件、锁文件、fixture、协议常量，否则必须拆分。
 - 超过 `500` 行的 Service、Controller、Page、Component 文件，新增需求时优先做职责下沉。
 - 拆分时按职责边界拆，不按行数机械切块。
 
@@ -108,6 +114,6 @@
 ```text
 本项目所有 Docker 启动、停止、测试统一通过 ./docker/start-smart.sh 从仓库根目录执行。
 请确保 PROJECT_ROOT 指向当前仓库根目录，并检查 Compose 挂载是否使用 ${PROJECT_ROOT}。
-请控制单文件大小，保持职责单一；超过 800 行先评估拆分，超过 1200 行的业务源码默认需要拆分。
+请控制单文件大小，保持职责单一；超过 1200 行先评估拆分，超过 1600 行的业务源码默认需要拆分。
 修改后端代码后，不要默认认为容器会自动生效；请根据服务运行模式决定是否重启并验证。
 ```

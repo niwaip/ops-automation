@@ -84,6 +84,10 @@ docker/office-addin/runtime-certs/*
 *.generated.ts
 .generated/
 generated/
+*.node
+*.dylib
+*.so
+libquery_engine*
 vite.config.js
 vite.config.d.ts
 
@@ -147,6 +151,8 @@ apps/backend/capabilities/document-domain/public/renders/*
 # Runtime data & local tools
 data/
 .claude/
+/ops
+docker/ops
 
 # Fonts and large assets
 *.otf

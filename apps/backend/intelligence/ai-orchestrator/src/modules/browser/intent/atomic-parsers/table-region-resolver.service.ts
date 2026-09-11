@@ -78,6 +78,17 @@ Response format:
   }
 
   private async getActiveModel(): Promise<{ id: string } | null> {
+    const preferred = this.modelService.getPreferredDefaultModel({
+      mode: 'task',
+      userRoles: ['admin'],
+    });
+    if (preferred) {
+      return { id: preferred.id };
+    }
+    const defaultModel = this.modelService.getDefaultModel();
+    if (defaultModel) {
+      return { id: defaultModel.id };
+    }
     const models = await this.modelService.listModels();
     const chatModel = models.find((model) => model.status === 'active');
     return chatModel ? { id: chatModel.id } : null;

@@ -42,6 +42,7 @@ describe('ExecutionPlanningService', () => {
           paramsSchema: {
             properties: {
               username: { type: 'string', default: 'flow-user' },
+              environment: { type: 'string', default: 'staging' },
               loginCredential: { type: 'string', default: 'secret' },
               retryCount: { type: 'number', default: 3 },
             },
@@ -54,12 +55,12 @@ describe('ExecutionPlanningService', () => {
     await expect(service.fetchSkillDefaultResolution('skill-1', 'Bearer token-1')).resolves.toEqual({
       input: {
         username: 'flow-user',
-        loginCredential: 'secret',
+        environment: 'staging',
         retryCount: 3,
       },
       sources: {
         username: 'default',
-        loginCredential: 'default',
+        environment: 'default',
         retryCount: 'default',
       },
     });
@@ -138,11 +139,15 @@ describe('ExecutionPlanningService', () => {
           paramsSchema: {
             properties: {
               username: { type: 'string', default: 'flow-user' },
+              environment: { type: 'string', default: 'staging' },
               loginCredential: { type: 'string', default: 'schema-secret' },
             },
           },
           inputPolicy: {
             params: {
+              environment: {
+                defaultValue: 'production',
+              },
               loginCredential: {
                 defaultValue: 'policy-secret',
               },
@@ -156,11 +161,11 @@ describe('ExecutionPlanningService', () => {
     await expect(service.fetchSkillDefaultResolution('skill-1', 'Bearer token-1')).resolves.toEqual({
       input: {
         username: 'flow-user',
-        loginCredential: 'policy-secret',
+        environment: 'production',
       },
       sources: {
         username: 'default',
-        loginCredential: 'workflow_default',
+        environment: 'workflow_default',
       },
     });
   });

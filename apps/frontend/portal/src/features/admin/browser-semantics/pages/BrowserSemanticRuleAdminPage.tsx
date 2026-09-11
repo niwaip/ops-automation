@@ -1,104 +1,48 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Drawer, Empty, Space, Tooltip, Typography, message, theme } from 'antd';
+import { Card, Drawer, Tabs, theme } from 'antd';
 import {
-  EditOutlined,
+  AppstoreOutlined,
+  BugOutlined,
   HistoryOutlined,
-  ReloadOutlined,
-  RobotOutlined,
-  RocketOutlined,
 } from '@ant-design/icons';
-import { useMutation, useQuery, useQueryClient } from 'react-query';
+import { useQuery, useQueryClient } from 'react-query';
 import {
   browserSemanticsApi,
   type GenerateSemanticRuleSetDraftResponse,
-  type SemanticRuleErrorLog,
   type SemanticRuleCategory,
-  type SemanticRuleValidationResult,
 } from '@/api/browser-semantics';
+import { BrowserSemanticHeader } from '../components/BrowserSemanticHeader';
+import { BrowserSemanticOverviewCards } from '../components/BrowserSemanticOverviewCards';
+import { BrowserSemanticPlayground } from '../components/BrowserSemanticPlayground';
+import { BrowserSemanticRulesListTab } from '../components/BrowserSemanticRulesListTab';
+import { BrowserSemanticErrorReviewTab } from '../components/BrowserSemanticErrorReviewTab';
+import { BrowserSemanticReleasesTab } from '../components/BrowserSemanticReleasesTab';
 import SemanticRuleCategoryReplaceModal from '../components/SemanticRuleCategoryReplaceModal';
 import SemanticRuleGenerationPreviewModal from '../components/SemanticRuleGenerationPreviewModal';
-import SemanticRuleReviewWorkspace from '../components/SemanticRuleReviewWorkspace';
-import SemanticRuleSetSidebar from '../components/SemanticRuleSetSidebar';
 import SemanticRuleSetDetailContent from '../components/SemanticRuleSetDetailContent';
 import SemanticRuleSetFormModal from '../components/SemanticRuleSetFormModal';
 import SemanticRuleSetRollbackModal from '../components/SemanticRuleSetRollbackModal';
+import { useBrowserSemanticMutations } from '../hooks/useBrowserSemanticMutations';
 import {
-  buildCreateSemanticRulePayloads,
   buildRuleFormValuesItemsFromRules,
   buildRuleSetFormValuesFromRuleSet,
-  buildUpdateRuleSetPayload,
   DEFAULT_DOMAIN_CODE,
   renderJsonText,
   type SemanticRuleFormValuesItem,
   type SemanticRuleSetFormValues,
 } from '../lib/ruleSetForm';
-import {
-  getActionLogMetadata,
-  getActionLogReasonLabel,
-  getActionLogStatusLabel,
-  getFieldFillLogMetadata,
-  getFieldFillLogReasonLabel,
-  getFieldFillLogStatusLabel,
-  getLoginLogMetadata,
-  getNavigationLogMetadata,
-  getNavigationLogReasonLabel,
-  getNavigationLogStatusLabel,
-  getReadLogMetadata,
-  getReadLogReasonLabel,
-  getReadLogStatusLabel,
-} from '../lib/semanticRulePresentation';
-
-const { Title } = Typography;
-
-const FIXED_RULE_REVIEW_CATEGORIES: SemanticRuleCategory[] = [
-  'LOGIN',
-  'NAVIGATION',
-  'FIELD_FILL',
-  'MENU_SELECTION',
-  'DETAIL_OPEN',
-  'READ_VALUE',
-  'ROW_ACTION',
-  'SEARCH',
-  'GENERIC_ALIAS',
-];
-
-const CATEGORY_LOG_PATTERNS: Record<SemanticRuleCategory, RegExp> = {
-  LOGIN: /(登录|log\s*in|signin|sign\s*in)/i,
-  NAVIGATION: /(打开|进入|访问|前往|navigate|go to|open|visit)/i,
-  FIELD_FILL: /(填写|输入|录入|填入|input|type|fill)/i,
-  MENU_SELECTION: /(菜单|选择|选中|勾选|select|choose|pick|list)/i,
-  DETAIL_OPEN: /(详情|明细|detail)/i,
-  READ_VALUE: /(读取|查看|获取|提取|read|extract|get value)/i,
-  ROW_ACTION: /(行|记录|row|delete|edit|update|remove)/i,
-  SEARCH: /(搜索|查询|search|filter)/i,
-  GENERIC_ALIAS: /.+/i,
-};
-
-const matchErrorLogsByCategory = (
-  logs: SemanticRuleErrorLog[],
-  category: SemanticRuleCategory | null
-) => {
-  if (!category) {
-    return logs;
-  }
-
-  const matcher = CATEGORY_LOG_PATTERNS[category];
-  const matched = logs.filter((log) =>
-    matcher.test(
-      [log.inputText, log.normalizedInput, log.errorMessage, log.observationSummary]
-        .filter(Boolean)
-        .join(' ')
-    )
-  );
-
-  return matched.length ? matched : logs;
-};
 
 const BrowserSemanticRuleAdminPage: React.FC = () => {
   const { token } = theme.useToken();
   const queryClient = useQueryClient();
   const domainCode = DEFAULT_DOMAIN_CODE;
+
+  // Tabs & selections
+  const [activeTab, setActiveTab] = useState<'rules' | 'errors' | 'releases'>('rules');
   const [selectedRuleSetId, setSelectedRuleSetId] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<SemanticRuleCategory | null>(null);
+
+  // Modals & drawers
   const [detailVisible, setDetailVisible] = useState(false);
   const [editorVisible, setEditorVisible] = useState(false);
   const [rollbackVisible, setRollbackVisible] = useState(false);
@@ -107,74 +51,15 @@ const BrowserSemanticRuleAdminPage: React.FC = () => {
   const [categoryReplaceInitialRules, setCategoryReplaceInitialRules] = useState<SemanticRuleFormValuesItem[]>([]);
   const [generationPreviewVisible, setGenerationPreviewVisible] = useState(false);
   const [generationTargetCategory, setGenerationTargetCategory] = useState<SemanticRuleCategory | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<SemanticRuleCategory | null>(null);
-  const [loginLogStatusFilter, setLoginLogStatusFilter] = useState('');
-  const [loginLogReasonFilter, setLoginLogReasonFilter] = useState('');
-  const [readLogStatusFilter, setReadLogStatusFilter] = useState('');
-  const [readLogReasonFilter, setReadLogReasonFilter] = useState('');
-  const [actionLogStatusFilter, setActionLogStatusFilter] = useState('');
-  const [actionLogReasonFilter, setActionLogReasonFilter] = useState('');
-  const [navigationLogStatusFilter, setNavigationLogStatusFilter] = useState('');
-  const [navigationLogReasonFilter, setNavigationLogReasonFilter] = useState('');
-  const [fieldFillLogStatusFilter, setFieldFillLogStatusFilter] = useState('');
-  const [fieldFillLogReasonFilter, setFieldFillLogReasonFilter] = useState('');
-  const isActionCategory =
-    selectedCategory === 'DETAIL_OPEN' ||
-    selectedCategory === 'ROW_ACTION' ||
-    selectedCategory === 'MENU_SELECTION';
-  const [hitLogTraceIdInput, setHitLogTraceIdInput] = useState('');
-  const [appliedHitLogTraceId, setAppliedHitLogTraceId] = useState('');
-  const [selectedReviewErrorLogIds, setSelectedReviewErrorLogIds] = useState<string[]>([]);
-  const [generationPreview, setGenerationPreview] = useState<
-    GenerateSemanticRuleSetDraftResponse | undefined
-  >();
+  const [generationPreview, setGenerationPreview] = useState<GenerateSemanticRuleSetDraftResponse | undefined>();
   const [editorInitialValues, setEditorInitialValues] = useState<SemanticRuleSetFormValues | null>(null);
-  const [validationResult, setValidationResult] = useState<SemanticRuleValidationResult | null>(null);
-  const [versionSidebarCollapsed, setVersionSidebarCollapsed] = useState(true);
 
+  // Queries
   const listQuery = useQuery(
     ['browser-semantics-rule-sets', domainCode],
-    () =>
-      browserSemanticsApi.listRuleSets({
-        domain_code: domainCode.trim() || undefined,
-      })
+    () => browserSemanticsApi.listRuleSets({ domain_code: domainCode.trim() || undefined })
   );
-  const reviewErrorLogsQuery = useQuery(
-    [
-      'browser-semantics-review-error-logs',
-      domainCode,
-      selectedCategory,
-      loginLogStatusFilter,
-      loginLogReasonFilter,
-      readLogStatusFilter,
-      readLogReasonFilter,
-      actionLogStatusFilter,
-      actionLogReasonFilter,
-      navigationLogStatusFilter,
-      navigationLogReasonFilter,
-      fieldFillLogStatusFilter,
-      fieldFillLogReasonFilter,
-    ],
-    () =>
-      browserSemanticsApi.listErrorLogs({
-        domain_code: domainCode.trim() || undefined,
-        login_status: selectedCategory === 'LOGIN' ? loginLogStatusFilter || undefined : undefined,
-        login_reason: selectedCategory === 'LOGIN' ? loginLogReasonFilter || undefined : undefined,
-        read_status: selectedCategory === 'READ_VALUE' ? readLogStatusFilter || undefined : undefined,
-        read_reason: selectedCategory === 'READ_VALUE' ? readLogReasonFilter || undefined : undefined,
-        action_status: isActionCategory ? actionLogStatusFilter || undefined : undefined,
-        action_reason: isActionCategory ? actionLogReasonFilter || undefined : undefined,
-        navigation_status:
-          selectedCategory === 'NAVIGATION' ? navigationLogStatusFilter || undefined : undefined,
-        navigation_reason:
-          selectedCategory === 'NAVIGATION' ? navigationLogReasonFilter || undefined : undefined,
-        field_fill_status:
-          selectedCategory === 'FIELD_FILL' ? fieldFillLogStatusFilter || undefined : undefined,
-        field_fill_reason:
-          selectedCategory === 'FIELD_FILL' ? fieldFillLogReasonFilter || undefined : undefined,
-      }),
-    { enabled: !!domainCode.trim() }
-  );
+
   const activeRuleSetQuery = useQuery(
     ['browser-semantics-active-rule-set-preview', domainCode],
     async () => {
@@ -192,61 +77,23 @@ const BrowserSemanticRuleAdminPage: React.FC = () => {
     () => browserSemanticsApi.getRuleSetById(selectedRuleSetId!),
     { enabled: !!selectedRuleSetId }
   );
+
+  const reviewErrorLogsQuery = useQuery(
+    ['browser-semantics-review-error-logs', domainCode],
+    () => browserSemanticsApi.listErrorLogs({ domain_code: domainCode.trim() || undefined }),
+    { enabled: !!domainCode.trim() }
+  );
+
   const hitLogsQuery = useQuery(
-    ['browser-semantics-rule-hit-logs', selectedRuleSetId, appliedHitLogTraceId],
-    () =>
-      browserSemanticsApi.listHitLogs({
-        rule_set_id: selectedRuleSetId!,
-        trace_id: appliedHitLogTraceId.trim() || undefined,
-      }),
+    ['browser-semantics-rule-hit-logs', selectedRuleSetId],
+    () => browserSemanticsApi.listHitLogs({ rule_set_id: selectedRuleSetId! }),
     { enabled: !!selectedRuleSetId }
   );
-  const errorLogsQuery = useQuery(
-    [
-      'browser-semantics-rule-error-logs',
-      selectedRuleSetId,
-      selectedCategory,
-      loginLogStatusFilter,
-      loginLogReasonFilter,
-      readLogStatusFilter,
-      readLogReasonFilter,
-      actionLogStatusFilter,
-      actionLogReasonFilter,
-      navigationLogStatusFilter,
-      navigationLogReasonFilter,
-      fieldFillLogStatusFilter,
-      fieldFillLogReasonFilter,
-    ],
-    () =>
-      browserSemanticsApi.listErrorLogs({
-        rule_set_id: selectedRuleSetId!,
-        login_status: selectedCategory === 'LOGIN' ? loginLogStatusFilter || undefined : undefined,
-        login_reason: selectedCategory === 'LOGIN' ? loginLogReasonFilter || undefined : undefined,
-        read_status: selectedCategory === 'READ_VALUE' ? readLogStatusFilter || undefined : undefined,
-        read_reason: selectedCategory === 'READ_VALUE' ? readLogReasonFilter || undefined : undefined,
-        action_status: isActionCategory ? actionLogStatusFilter || undefined : undefined,
-        action_reason: isActionCategory ? actionLogReasonFilter || undefined : undefined,
-        navigation_status:
-          selectedCategory === 'NAVIGATION' ? navigationLogStatusFilter || undefined : undefined,
-        navigation_reason:
-          selectedCategory === 'NAVIGATION' ? navigationLogReasonFilter || undefined : undefined,
-        field_fill_status:
-          selectedCategory === 'FIELD_FILL' ? fieldFillLogStatusFilter || undefined : undefined,
-        field_fill_reason:
-          selectedCategory === 'FIELD_FILL' ? fieldFillLogReasonFilter || undefined : undefined,
-      }),
-    { enabled: !!selectedRuleSetId }
-  );
+
   const selectedRuleSet = detailQuery.data;
-  const releasesQuery = useQuery(
-    ['browser-semantics-rule-releases', selectedRuleSet?.domain?.code, selectedRuleSet?.key],
-    () =>
-      browserSemanticsApi.listReleases({
-        domain_code: selectedRuleSet?.domain?.code,
-        key: selectedRuleSet?.key,
-      }),
-    { enabled: !!selectedRuleSet?.domain?.code && !!selectedRuleSet?.key }
-  );
+  const activeRuleSet = activeRuleSetQuery.data;
+  const reviewErrorLogs = reviewErrorLogsQuery.data || [];
+
   const rollbackCandidatesQuery = useQuery(
     ['browser-semantics-rollback-candidates', selectedRuleSet?.domain?.code, selectedRuleSet?.key],
     () =>
@@ -257,498 +104,10 @@ const BrowserSemanticRuleAdminPage: React.FC = () => {
     { enabled: !!selectedRuleSet?.domain?.code && !!selectedRuleSet?.key }
   );
 
-  const refreshQueries = async () => {
-    await queryClient.invalidateQueries(['browser-semantics-rule-sets']);
-    await queryClient.invalidateQueries(['browser-semantics-review-error-logs']);
-    await queryClient.invalidateQueries(['browser-semantics-active-rule-set-preview']);
-    await queryClient.invalidateQueries(['browser-semantics-rule-set-detail', selectedRuleSetId]);
-    await queryClient.invalidateQueries(['browser-semantics-rule-hit-logs', selectedRuleSetId]);
-    await queryClient.invalidateQueries(['browser-semantics-rule-error-logs', selectedRuleSetId]);
-    await queryClient.invalidateQueries(['browser-semantics-rule-releases']);
-    await queryClient.invalidateQueries(['browser-semantics-rollback-candidates']);
-  };
-
-  const promoteCanaryMutation = useMutation(
-    (ruleSetId: string) =>
-      browserSemanticsApi.promoteToCanary(ruleSetId, { release_note: 'Portal 手工发布为 CANARY' }),
-    {
-      onSuccess: async () => {
-        message.success('已发布为 CANARY');
-        await refreshQueries();
-      },
-      onError: (error: any) => {
-        message.error(error?.response?.data?.message || error?.message || '发布失败');
-      },
-    }
-  );
-
-  const promoteActiveMutation = useMutation(
-    (ruleSetId: string) =>
-      browserSemanticsApi.promoteToActive(ruleSetId, { release_note: 'Portal 手工发布为 ACTIVE' }),
-    {
-      onSuccess: async () => {
-        message.success('已发布为 ACTIVE');
-        await refreshQueries();
-      },
-      onError: (error: any) => {
-        message.error(error?.response?.data?.message || error?.message || '发布失败');
-      },
-    }
-  );
-
-  const updateMutation = useMutation(
-    ({
-      id,
-      values,
-    }: {
-      id: string;
-      values: SemanticRuleSetFormValues;
-    }) => browserSemanticsApi.updateRuleSet(id, buildUpdateRuleSetPayload(values)),
-    {
-      onSuccess: async (updatedRuleSet) => {
-        message.success(`规则集「${updatedRuleSet.name}」已更新`);
-        setEditorVisible(false);
-        setValidationResult(null);
-        await refreshQueries();
-      },
-      onError: (error: any) => {
-        message.error(error?.response?.data?.message || error?.message || '更新失败');
-      },
-    }
-  );
-  const rollbackMutation = useMutation(
-    ({
-      id,
-      target_rule_set_id,
-      reason,
-    }: {
-      id: string;
-      target_rule_set_id: string;
-      reason: string;
-    }) => browserSemanticsApi.rollbackRuleSet(id, { target_rule_set_id, reason }),
-    {
-      onSuccess: async () => {
-        message.success('已完成回滚');
-        setRollbackVisible(false);
-        await refreshQueries();
-      },
-      onError: (error: any) => {
-        message.error(error?.response?.data?.message || error?.message || '回滚失败');
-      },
-    }
-  );
-  const replaceCategoryMutation = useMutation(
-    ({
-      id,
-      category,
-      rules,
-    }: {
-      id: string;
-      category: SemanticRuleCategory;
-      rules: SemanticRuleFormValuesItem[];
-    }) =>
-      browserSemanticsApi.replaceRuleCategory(id, category, {
-        rules: buildCreateSemanticRulePayloads(rules, category),
-      }),
-    {
-      onSuccess: async () => {
-        message.success('已完成该类别规则替换');
-        setCategoryReplaceVisible(false);
-        setGenerationPreviewVisible(false);
-        setGenerationTargetCategory(null);
-        setValidationResult(null);
-        await refreshQueries();
-      },
-      onError: (error: any) => {
-        message.error(error?.response?.data?.message || error?.message || '类别规则替换失败');
-      },
-    }
-  );
-  const generateDraftMutation = useMutation(
-    async () => {
-      if (!selectedRuleSet) {
-        throw new Error('未找到当前规则集');
-      }
-
-      return browserSemanticsApi.generateRuleSetDraft({
-        domain_code: selectedRuleSet.domain?.code || domainCode,
-        rule_set_id: selectedRuleSet.id,
-        max_logs: 20,
-        created_by: 'portal_ai_review',
-      });
-    },
-    {
-      onSuccess: (draft) => {
-        setGenerationTargetCategory(null);
-        setGenerationPreview(draft);
-        setGenerationPreviewVisible(true);
-        if (draft.generated) {
-          message.success('已生成候选规则草案');
-          return;
-        }
-        message.warning(draft.reason || '未生成候选规则草案');
-      },
-      onError: (error: any) => {
-        message.error(error?.response?.data?.message || error?.message || '生成草案失败');
-      },
-    }
-  );
-  const generateCategoryDraftMutation = useMutation(
-    async ({
-      category,
-      errorLogIds,
-    }: {
-      category: SemanticRuleCategory;
-      errorLogIds?: string[];
-    }) => {
-      if (!selectedRuleSet) {
-        throw new Error('未找到当前规则集');
-      }
-
-      return browserSemanticsApi.generateRuleSetDraft({
-        domain_code: selectedRuleSet.domain?.code || domainCode,
-        rule_set_id: selectedRuleSet.id,
-        category,
-        error_log_ids: errorLogIds,
-        max_logs: 20,
-        created_by: 'portal_ai_review',
-      });
-    },
-    {
-      onSuccess: (draft, variables) => {
-        setGenerationTargetCategory(variables.category);
-        setGenerationPreview(draft);
-        setGenerationPreviewVisible(true);
-        if (draft.generated) {
-          message.success(
-            variables.errorLogIds?.length
-              ? `已基于筛选后的 ${variables.errorLogIds.length} 条样本生成 ${variables.category} 类候选规则草案`
-              : `已生成 ${variables.category} 类候选规则草案`
-          );
-          return;
-        }
-        message.warning(draft.reason || `未生成 ${variables.category} 类候选规则草案`);
-      },
-      onError: (error: any) => {
-        message.error(error?.response?.data?.message || error?.message || '分类草案生成失败');
-      },
-    }
-  );
-  const generateCreateDraftMutation = useMutation(
-    async () => {
-      const effectiveDomainCode = domainCode.trim() || DEFAULT_DOMAIN_CODE;
-
-      return browserSemanticsApi.generateRuleSetDraft({
-        domain_code: effectiveDomainCode,
-        error_log_ids: selectedReviewErrorLogIds.length ? selectedReviewErrorLogIds : undefined,
-        max_logs: 20,
-        created_by: 'portal_ai_review',
-      });
-    },
-    {
-      onSuccess: (draft) => {
-        setGenerationTargetCategory(null);
-        setGenerationPreview(draft);
-        setGenerationPreviewVisible(true);
-        if (draft.generated) {
-          message.success(
-            selectedReviewErrorLogIds.length
-              ? `已基于选中的 ${selectedReviewErrorLogIds.length} 条错误样本生成候选草案`
-              : '已基于最新错误样本生成候选草案'
-          );
-          return;
-        }
-        message.warning(draft.reason || '当前没有可用于生成的错误样本');
-      },
-      onError: (error: any) => {
-        message.error(error?.response?.data?.message || error?.message || 'AI 审查新建失败');
-      },
-    }
-  );
-  const commitDraftMutation = useMutation(
-    async () => {
-      if (!generationPreview?.generated) {
-        throw new Error('当前没有可提交的草案');
-      }
-
-      return browserSemanticsApi.commitRuleSetDraft({
-        generation_trace_id: generationPreview.generation_trace_id,
-        draft_rule_set: {
-          ...generationPreview.draft_rule_set,
-          based_on_rule_set_id: selectedRuleSet?.id,
-        },
-        based_on_rule_set_id: selectedRuleSet?.id,
-        source_error_log_ids: generationPreview.summary.source_error_log_ids,
-        review_notes: [
-          `portal review from rule set ${selectedRuleSet?.id || 'unknown'}`,
-          `sample_count=${generationPreview.summary.sample_count}`,
-          `rule_count=${generationPreview.summary.rule_count}`,
-          generationTargetCategory ? `category=${generationTargetCategory}` : undefined,
-        ].filter((value): value is string => Boolean(value)),
-      });
-    },
-    {
-      onSuccess: async (result) => {
-        message.success(`已创建 DRAFT 规则集「${result.rule_set.name}」`);
-        setGenerationPreviewVisible(false);
-        setGenerationTargetCategory(null);
-        setSelectedRuleSetId(result.rule_set.id);
-        setDetailVisible(true);
-        await refreshQueries();
-        await queryClient.invalidateQueries(['browser-semantics-rule-set-detail', result.rule_set.id]);
-      },
-      onError: (error: any) => {
-        message.error(error?.response?.data?.message || error?.message || '创建 DRAFT 失败');
-      },
-    }
-  );
   const rollbackCandidates = useMemo(
-    () =>
-      (rollbackCandidatesQuery.data || []).filter((candidate) => candidate.id !== selectedRuleSet?.id),
+    () => (rollbackCandidatesQuery.data || []).filter((c) => c.id !== selectedRuleSet?.id),
     [rollbackCandidatesQuery.data, selectedRuleSet?.id]
   );
-  const reviewErrorLogs = reviewErrorLogsQuery.data || [];
-  const activeRuleSet = activeRuleSetQuery.data;
-  const currentPreviewCategoryRules = useMemo(() => {
-    if (!generationTargetCategory || !selectedRuleSet) {
-      return [];
-    }
-
-    return selectedRuleSet.rules.filter(
-      (rule) => (rule.category || 'GENERIC_ALIAS') === generationTargetCategory
-    );
-  }, [generationTargetCategory, selectedRuleSet]);
-  const selectedRuleSetCategories = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          (selectedRuleSet?.rules || [])
-            .map((rule) => (rule.category || 'GENERIC_ALIAS') as SemanticRuleCategory)
-            .filter(Boolean)
-        )
-      ),
-    [selectedRuleSet]
-  );
-  const workspaceErrorLogs = errorLogsQuery.data?.length ? errorLogsQuery.data : reviewErrorLogs;
-  const matchedCategoryErrorLogs = useMemo(
-    () => matchErrorLogsByCategory(workspaceErrorLogs, selectedCategory),
-    [selectedCategory, workspaceErrorLogs]
-  );
-  const relatedCategoryErrorLogs = useMemo(
-    () => matchedCategoryErrorLogs.slice(0, 8),
-    [matchedCategoryErrorLogs]
-  );
-  const loginStatusDistribution = useMemo(() => {
-    if (selectedCategory !== 'LOGIN') {
-      return [];
-    }
-
-    const counts = new Map<string, number>();
-    for (const log of matchedCategoryErrorLogs) {
-      const status = getLoginLogMetadata(log)?.status;
-      if (!status) {
-        continue;
-      }
-      counts.set(status, (counts.get(status) || 0) + 1);
-    }
-
-    return Array.from(counts.entries())
-      .map(([label, count]) => ({ label, count }))
-      .sort((left, right) => right.count - left.count);
-  }, [matchedCategoryErrorLogs, selectedCategory]);
-  const loginReasonDistribution = useMemo(() => {
-    if (selectedCategory !== 'LOGIN') {
-      return [];
-    }
-
-    const counts = new Map<string, number>();
-    for (const log of matchedCategoryErrorLogs) {
-      const reason = getLoginLogMetadata(log)?.reason;
-      if (!reason) {
-        continue;
-      }
-      counts.set(reason, (counts.get(reason) || 0) + 1);
-    }
-
-    return Array.from(counts.entries())
-      .map(([label, count]) => ({ label, count }))
-      .sort((left, right) => right.count - left.count);
-  }, [matchedCategoryErrorLogs, selectedCategory]);
-  const readStatusDistribution = useMemo(() => {
-    if (selectedCategory !== 'READ_VALUE') {
-      return [];
-    }
-
-    const counts = new Map<string, number>();
-    for (const log of matchedCategoryErrorLogs) {
-      const status = getReadLogMetadata(log)?.status;
-      if (!status) {
-        continue;
-      }
-      counts.set(status, (counts.get(status) || 0) + 1);
-    }
-
-    return Array.from(counts.entries())
-      .map(([label, count]) => ({ label, count }))
-      .sort((left, right) => right.count - left.count);
-  }, [matchedCategoryErrorLogs, selectedCategory]);
-  const readReasonDistribution = useMemo(() => {
-    if (selectedCategory !== 'READ_VALUE') {
-      return [];
-    }
-
-    const counts = new Map<string, number>();
-    for (const log of matchedCategoryErrorLogs) {
-      const reason = getReadLogMetadata(log)?.reason;
-      if (!reason) {
-        continue;
-      }
-      counts.set(reason, (counts.get(reason) || 0) + 1);
-    }
-
-    return Array.from(counts.entries())
-      .map(([label, count]) => ({ label, count }))
-      .sort((left, right) => right.count - left.count);
-  }, [matchedCategoryErrorLogs, selectedCategory]);
-  const navigationStatusDistribution = useMemo(() => {
-    if (selectedCategory !== 'NAVIGATION') {
-      return [];
-    }
-
-    const counts = new Map<string, number>();
-    for (const log of matchedCategoryErrorLogs) {
-      const status = getNavigationLogMetadata(log)?.status;
-      if (!status) {
-        continue;
-      }
-      counts.set(status, (counts.get(status) || 0) + 1);
-    }
-
-    return Array.from(counts.entries())
-      .map(([label, count]) => ({ label, count }))
-      .sort((left, right) => right.count - left.count);
-  }, [matchedCategoryErrorLogs, selectedCategory]);
-  const navigationReasonDistribution = useMemo(() => {
-    if (selectedCategory !== 'NAVIGATION') {
-      return [];
-    }
-
-    const counts = new Map<string, number>();
-    for (const log of matchedCategoryErrorLogs) {
-      const reason = getNavigationLogMetadata(log)?.reason;
-      if (!reason) {
-        continue;
-      }
-      counts.set(reason, (counts.get(reason) || 0) + 1);
-    }
-
-    return Array.from(counts.entries())
-      .map(([label, count]) => ({ label, count }))
-      .sort((left, right) => right.count - left.count);
-  }, [matchedCategoryErrorLogs, selectedCategory]);
-  const actionStatusDistribution = useMemo(() => {
-    if (!isActionCategory) {
-      return [];
-    }
-
-    const counts = new Map<string, number>();
-    for (const log of matchedCategoryErrorLogs) {
-      const status = getActionLogMetadata(log)?.status;
-      if (!status) {
-        continue;
-      }
-      counts.set(status, (counts.get(status) || 0) + 1);
-    }
-
-    return Array.from(counts.entries())
-      .map(([label, count]) => ({ label, count }))
-      .sort((left, right) => right.count - left.count);
-  }, [isActionCategory, matchedCategoryErrorLogs]);
-  const actionReasonDistribution = useMemo(() => {
-    if (!isActionCategory) {
-      return [];
-    }
-
-    const counts = new Map<string, number>();
-    for (const log of matchedCategoryErrorLogs) {
-      const reason = getActionLogMetadata(log)?.reason;
-      if (!reason) {
-        continue;
-      }
-      counts.set(reason, (counts.get(reason) || 0) + 1);
-    }
-
-    return Array.from(counts.entries())
-      .map(([label, count]) => ({ label, count }))
-      .sort((left, right) => right.count - left.count);
-  }, [isActionCategory, matchedCategoryErrorLogs]);
-  const fieldFillStatusDistribution = useMemo(() => {
-    if (selectedCategory !== 'FIELD_FILL') {
-      return [];
-    }
-
-    const counts = new Map<string, number>();
-    for (const log of matchedCategoryErrorLogs) {
-      const status = getFieldFillLogMetadata(log)?.status;
-      if (!status) {
-        continue;
-      }
-      counts.set(status, (counts.get(status) || 0) + 1);
-    }
-
-    return Array.from(counts.entries())
-      .map(([label, count]) => ({ label, count }))
-      .sort((left, right) => right.count - left.count);
-  }, [matchedCategoryErrorLogs, selectedCategory]);
-  const fieldFillReasonDistribution = useMemo(() => {
-    if (selectedCategory !== 'FIELD_FILL') {
-      return [];
-    }
-
-    const counts = new Map<string, number>();
-    for (const log of matchedCategoryErrorLogs) {
-      const reason = getFieldFillLogMetadata(log)?.reason;
-      if (!reason) {
-        continue;
-      }
-      counts.set(reason, (counts.get(reason) || 0) + 1);
-    }
-
-    return Array.from(counts.entries())
-      .map(([label, count]) => ({ label, count }))
-      .sort((left, right) => right.count - left.count);
-  }, [matchedCategoryErrorLogs, selectedCategory]);
-  const relatedErrorLogsSourceLabel = [
-    errorLogsQuery.data?.length ? '当前选中规则集的错误日志' : '当前 domain 的全局错误样本',
-    selectedCategory === 'LOGIN' && loginLogStatusFilter ? `status=${loginLogStatusFilter}` : null,
-    selectedCategory === 'LOGIN' && loginLogReasonFilter ? `reason=${loginLogReasonFilter}` : null,
-    selectedCategory === 'READ_VALUE' && readLogStatusFilter
-      ? `状态=${getReadLogStatusLabel(readLogStatusFilter)}`
-      : null,
-    selectedCategory === 'READ_VALUE' && readLogReasonFilter
-      ? `原因=${getReadLogReasonLabel(readLogReasonFilter)}`
-      : null,
-    isActionCategory && actionLogStatusFilter
-      ? `状态=${getActionLogStatusLabel(actionLogStatusFilter)}`
-      : null,
-    isActionCategory && actionLogReasonFilter
-      ? `原因=${getActionLogReasonLabel(actionLogReasonFilter)}`
-      : null,
-    selectedCategory === 'NAVIGATION' && navigationLogStatusFilter
-      ? `状态=${getNavigationLogStatusLabel(navigationLogStatusFilter)}`
-      : null,
-    selectedCategory === 'NAVIGATION' && navigationLogReasonFilter
-      ? `原因=${getNavigationLogReasonLabel(navigationLogReasonFilter)}`
-      : null,
-    selectedCategory === 'FIELD_FILL' && fieldFillLogStatusFilter
-      ? `状态=${getFieldFillLogStatusLabel(fieldFillLogStatusFilter)}`
-      : null,
-    selectedCategory === 'FIELD_FILL' && fieldFillLogReasonFilter
-      ? `原因=${getFieldFillLogReasonLabel(fieldFillLogReasonFilter)}`
-      : null,
-  ]
-    .filter((value): value is string => Boolean(value))
-    .join(' / ');
 
   useEffect(() => {
     if (!selectedRuleSetId) {
@@ -756,232 +115,85 @@ const BrowserSemanticRuleAdminPage: React.FC = () => {
         setSelectedRuleSetId(activeRuleSet.id);
         return;
       }
-
       if (listQuery.data?.[0]?.id) {
         setSelectedRuleSetId(listQuery.data[0].id);
       }
     }
   }, [activeRuleSet?.id, listQuery.data, selectedRuleSetId]);
 
-  useEffect(() => {
-    setValidationResult(null);
-  }, [selectedRuleSetId]);
+  const refreshQueries = async () => {
+    await queryClient.invalidateQueries(['browser-semantics-rule-sets']);
+    await queryClient.invalidateQueries(['browser-semantics-review-error-logs']);
+    await queryClient.invalidateQueries(['browser-semantics-active-rule-set-preview']);
+    await queryClient.invalidateQueries(['browser-semantics-rule-set-detail', selectedRuleSetId]);
+    await queryClient.invalidateQueries(['browser-semantics-rule-hit-logs', selectedRuleSetId]);
+    await queryClient.invalidateQueries(['browser-semantics-rollback-candidates']);
+  };
 
-  useEffect(() => {
-    if (!selectedRuleSet) {
-      setSelectedCategory(null);
-      return;
-    }
+  // Mutations Hook
+  const {
+    promoteCanaryMutation,
+    promoteActiveMutation,
+    updateMutation,
+    rollbackMutation,
+    replaceCategoryMutation,
+    generateCategoryDraftMutation,
+    generateCreateDraftMutation,
+    commitDraftMutation,
+    validateMutation,
+  } = useBrowserSemanticMutations({
+    domainCode,
+    selectedRuleSet,
+    refreshQueries,
+    onEditorClose: () => {
+      setEditorVisible(false);
+    },
+    onRollbackClose: () => setRollbackVisible(false),
+    onCategoryReplaceClose: () => {
+      setCategoryReplaceVisible(false);
+      setCategoryReplaceTarget(null);
+    },
+    onGenerationPreviewOpen: (draft, category) => {
+      setGenerationTargetCategory(category || null);
+      setGenerationPreview(draft);
+      setGenerationPreviewVisible(true);
+    },
+    onGenerationPreviewClose: () => setGenerationPreviewVisible(false),
+    onNewDraftCreated: (newId) => setSelectedRuleSetId(newId),
+    onValidationSuccess: () => {},
+  });
 
-    if (!selectedCategory || !FIXED_RULE_REVIEW_CATEGORIES.includes(selectedCategory)) {
-      const preferredCategory =
-        FIXED_RULE_REVIEW_CATEGORIES.find((category) => selectedRuleSetCategories.includes(category)) ||
-        FIXED_RULE_REVIEW_CATEGORIES[0];
-      setSelectedCategory(preferredCategory);
-    }
-  }, [selectedCategory, selectedRuleSet, selectedRuleSetCategories]);
-
-  useEffect(() => {
-    if (selectedCategory !== 'LOGIN') {
-      setLoginLogStatusFilter('');
-      setLoginLogReasonFilter('');
-    }
-    if (selectedCategory !== 'READ_VALUE') {
-      setReadLogStatusFilter('');
-      setReadLogReasonFilter('');
-    }
-    if (!isActionCategory) {
-      setActionLogStatusFilter('');
-      setActionLogReasonFilter('');
-    }
-    if (selectedCategory !== 'NAVIGATION') {
-      setNavigationLogStatusFilter('');
-      setNavigationLogReasonFilter('');
-    }
-    if (selectedCategory !== 'FIELD_FILL') {
-      setFieldFillLogStatusFilter('');
-      setFieldFillLogReasonFilter('');
-    }
-  }, [isActionCategory, selectedCategory]);
-
-  useEffect(() => {
-    setSelectedReviewErrorLogIds((currentIds) =>
-      currentIds.filter((id) => reviewErrorLogs.some((log) => log.id === id))
-    );
-  }, [reviewErrorLogs]);
-
-  const safeEditorInitialValues = useMemo(() => {
-    if (editorInitialValues) {
-      return editorInitialValues;
-    }
-
-    if (selectedRuleSet) {
-      return buildRuleSetFormValuesFromRuleSet(selectedRuleSet);
-    }
-
-    return null;
-  }, [editorInitialValues, selectedRuleSet]);
-
-  const openEditModal = () => {
-    if (!selectedRuleSet) {
-      return;
-    }
+  const handleOpenEdit = () => {
+    if (!selectedRuleSet) return;
     setEditorInitialValues(buildRuleSetFormValuesFromRuleSet(selectedRuleSet));
     setEditorVisible(true);
   };
 
-  const openCategoryReplaceModal = (category: SemanticRuleCategory) => {
-    if (!selectedRuleSet) {
-      return;
-    }
-
-    const categoryRules = selectedRuleSet.rules.filter((rule) => (rule.category || 'GENERIC_ALIAS') === category);
+  const handleOpenCategoryReplace = (category: SemanticRuleCategory) => {
+    if (!selectedRuleSet) return;
+    const catRules = selectedRuleSet.rules.filter((r) => (r.category || 'GENERIC_ALIAS') === category);
     setCategoryReplaceTarget(category);
-    setCategoryReplaceInitialRules(buildRuleFormValuesItemsFromRules(categoryRules, category));
+    setCategoryReplaceInitialRules(buildRuleFormValuesItemsFromRules(catRules, category));
     setCategoryReplaceVisible(true);
   };
 
-  const handleGenerateCategoryDraft = (category: SemanticRuleCategory) => {
-    setGenerationTargetCategory(category);
-    const visibleErrorLogIds =
-      category === 'LOGIN'
-        ? matchedCategoryErrorLogs.map((log) => log.id).slice(0, 20)
-        : undefined;
-    generateCategoryDraftMutation.mutate({
-      category,
-      errorLogIds: visibleErrorLogIds?.length ? visibleErrorLogIds : undefined,
-    });
-  };
-
-  const validateMutation = useMutation(
-    async (ruleSetId: string) => browserSemanticsApi.validateRuleSet(ruleSetId),
-    {
-      onSuccess: (result) => {
-        setValidationResult(result);
-        if (result.valid) {
-          message.success('规则验证通过，允许继续发布');
-          return;
-        }
-
-        message.error(result.errors[0] || '规则验证失败');
-      },
-      onError: (error: any) => {
-        message.error(error?.response?.data?.message || error?.message || '规则验证失败');
-      },
-    }
-  );
-
-  const handleValidateSelectedRuleSet = () => {
-    if (!selectedRuleSet) {
-      message.error('当前没有可验证的规则集');
-      return;
-    }
-
-    validateMutation.mutate(selectedRuleSet.id);
-  };
-
-  const handlePublishCanary = () => {
-    if (!selectedRuleSet) {
-      message.error('当前没有可发布的规则集');
-      return;
-    }
-
-    if (!validationResult?.valid || validationResult.rule_set_id !== selectedRuleSet.id) {
-      message.warning('请先验证规则并确保验证通过');
-      return;
-    }
-
-    promoteCanaryMutation.mutate(selectedRuleSet.id);
-  };
-
-  const handlePublishActive = () => {
-    if (!selectedRuleSet) {
-      message.error('当前没有可发布的规则集');
-      return;
-    }
-
-    if (!validationResult?.valid || validationResult.rule_set_id !== selectedRuleSet.id) {
-      message.warning('请先验证规则并确保验证通过');
-      return;
-    }
-
-    promoteActiveMutation.mutate(selectedRuleSet.id);
-  };
-
-  const handleSubmitEditor = async (values: SemanticRuleSetFormValues) => {
-    try {
-      if (!selectedRuleSetId) {
-        message.error('未找到待编辑的规则集');
-        return;
-      }
-
-      updateMutation.mutate({ id: selectedRuleSetId, values });
-    } catch (error) {
-      if (error instanceof Error) {
-        message.error(error.message);
-      }
-    }
-  };
-
-  const handleSubmitRollback = async (values: { target_rule_set_id: string; reason: string }) => {
-    if (!selectedRuleSetId) {
-      message.error('未找到待回滚的规则集');
-      return;
-    }
-
-    rollbackMutation.mutate({
-      id: selectedRuleSetId,
-      target_rule_set_id: values.target_rule_set_id,
-      reason: values.reason,
-    });
-  };
-
-  const handleSubmitCategoryReplace = async (rules: SemanticRuleFormValuesItem[]) => {
-    try {
-      if (!selectedRuleSetId || !categoryReplaceTarget) {
-        message.error('未找到待替换的规则类别');
-        return;
-      }
-
-      replaceCategoryMutation.mutate({
-        id: selectedRuleSetId,
-        category: categoryReplaceTarget,
-        rules,
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        message.error(error.message);
-      }
-    }
-  };
-
   const handleApplyGeneratedCategoryDraft = async () => {
-    try {
-      if (!selectedRuleSetId || !generationTargetCategory || !generationPreview?.generated) {
-        message.error('当前没有可直接应用的分类草案');
-        return;
-      }
-
-      replaceCategoryMutation.mutate({
-        id: selectedRuleSetId,
-        category: generationTargetCategory,
-        rules: generationPreview.draft_rule_set.rules.map((rule) => ({
-          type: rule.type,
-          category: rule.category || generationTargetCategory,
-          name: rule.name,
-          enabled: rule.enabled ?? true,
-          priority: rule.priority,
-          stop_on_match: rule.stop_on_match ?? false,
-          flags: rule.flags || '',
-          patterns: Array.isArray(rule.patterns) ? rule.patterns.join('\n') : '',
-          outputs: renderJsonText(rule.outputs),
-        })),
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        message.error(error.message);
-      }
-    }
+    if (!selectedRuleSetId || !generationTargetCategory || !generationPreview?.generated) return;
+    replaceCategoryMutation.mutate({
+      id: selectedRuleSetId,
+      category: generationTargetCategory,
+      rules: generationPreview.draft_rule_set.rules.map((r) => ({
+        type: r.type,
+        category: r.category || generationTargetCategory,
+        name: r.name,
+        enabled: r.enabled ?? true,
+        priority: r.priority,
+        stop_on_match: r.stop_on_match ?? false,
+        flags: r.flags || '',
+        patterns: Array.isArray(r.patterns) ? r.patterns.join('\n') : '',
+        outputs: renderJsonText(r.outputs),
+      })),
+    });
   };
 
   return (
@@ -994,261 +206,216 @@ const BrowserSemanticRuleAdminPage: React.FC = () => {
     >
       <Card
         style={{
-          borderRadius: 24,
+          borderRadius: 16,
           border: `1px solid ${token.colorBorderSecondary}`,
           boxShadow: token.boxShadowSecondary,
           background: token.colorBgContainer,
         }}
         styles={{ body: { padding: 24 } }}
-        title={<Title level={3} style={{ margin: 0 }}>规则管理 / AI 审查</Title>}
-        extra={
-          <Space>
-            <Tooltip title="基于当前 domain 的最新错误日志生成新的候选规则集草案">
-              <Button
-                type="primary"
-                icon={<RobotOutlined />}
-                loading={generateCreateDraftMutation.isLoading}
-                disabled={!reviewErrorLogs.length}
-                onClick={() => generateCreateDraftMutation.mutate()}
-              >
-                AI 审查新建
-              </Button>
-            </Tooltip>
-            <Button icon={<ReloadOutlined />} onClick={() => refreshQueries()}>
-              刷新
-            </Button>
-          </Space>
-        }
       >
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: versionSidebarCollapsed ? '72px minmax(0, 1fr)' : '320px minmax(0, 1fr)',
-            gap: 16,
-            alignItems: 'start',
-          }}
-        >
-          <SemanticRuleSetSidebar
-            ruleSets={listQuery.data || []}
-            selectedRuleSetId={selectedRuleSetId}
-            activeRuleSetId={activeRuleSet?.id}
-            loading={listQuery.isLoading}
-            collapsed={versionSidebarCollapsed}
-            publishCanaryLoading={promoteCanaryMutation.isLoading}
-            publishActiveLoading={promoteActiveMutation.isLoading}
-            onToggleCollapse={() => setVersionSidebarCollapsed((current) => !current)}
-            onSelectRuleSet={(ruleSetId) => {
-              setSelectedRuleSetId(ruleSetId);
-              setSelectedCategory(null);
-            }}
-            onOpenDetail={(ruleSetId) => {
-              setSelectedRuleSetId(ruleSetId);
-              setDetailVisible(true);
-            }}
-            onPromoteCanary={(ruleSetId) => promoteCanaryMutation.mutate(ruleSetId)}
-            onPromoteActive={(ruleSetId) => promoteActiveMutation.mutate(ruleSetId)}
-          />
-          <SemanticRuleReviewWorkspace
-            currentRuleSet={selectedRuleSet}
-            selectedCategory={selectedCategory}
-            onSelectCategory={setSelectedCategory}
-            relatedErrorLogs={relatedCategoryErrorLogs}
-            relatedErrorLogCount={matchedCategoryErrorLogs.length}
-            loginStatusDistribution={loginStatusDistribution}
-            loginReasonDistribution={loginReasonDistribution}
-            readStatusDistribution={readStatusDistribution}
-            readReasonDistribution={readReasonDistribution}
-            actionStatusDistribution={actionStatusDistribution}
-            actionReasonDistribution={actionReasonDistribution}
-            navigationStatusDistribution={navigationStatusDistribution}
-            navigationReasonDistribution={navigationReasonDistribution}
-            fieldFillStatusDistribution={fieldFillStatusDistribution}
-            fieldFillReasonDistribution={fieldFillReasonDistribution}
-            relatedErrorLogsLoading={errorLogsQuery.isLoading || reviewErrorLogsQuery.isLoading}
-            relatedErrorLogsSourceLabel={relatedErrorLogsSourceLabel}
-            loginLogStatusFilter={loginLogStatusFilter}
-            loginLogReasonFilter={loginLogReasonFilter}
-            readLogStatusFilter={readLogStatusFilter}
-            readLogReasonFilter={readLogReasonFilter}
-            actionLogStatusFilter={actionLogStatusFilter}
-            actionLogReasonFilter={actionLogReasonFilter}
-            navigationLogStatusFilter={navigationLogStatusFilter}
-            navigationLogReasonFilter={navigationLogReasonFilter}
-            fieldFillLogStatusFilter={fieldFillLogStatusFilter}
-            fieldFillLogReasonFilter={fieldFillLogReasonFilter}
-            onLoginLogStatusFilterChange={setLoginLogStatusFilter}
-            onLoginLogReasonFilterChange={setLoginLogReasonFilter}
-            onReadLogStatusFilterChange={setReadLogStatusFilter}
-            onReadLogReasonFilterChange={setReadLogReasonFilter}
-            onActionLogStatusFilterChange={setActionLogStatusFilter}
-            onActionLogReasonFilterChange={setActionLogReasonFilter}
-            onNavigationLogStatusFilterChange={setNavigationLogStatusFilter}
-            onNavigationLogReasonFilterChange={setNavigationLogReasonFilter}
-            onFieldFillLogStatusFilterChange={setFieldFillLogStatusFilter}
-            onFieldFillLogReasonFilterChange={setFieldFillLogReasonFilter}
-            onRefreshErrorLogs={() => {
-              void errorLogsQuery.refetch();
-              void reviewErrorLogsQuery.refetch();
-            }}
-            onGenerateCategoryDraft={handleGenerateCategoryDraft}
-            generateCategoryLoading={generateCategoryDraftMutation.isLoading}
-            generatingCategory={generationTargetCategory}
-            onReplaceRuleCategory={openCategoryReplaceModal}
-            replaceCategoryLoading={replaceCategoryMutation.isLoading}
-            replacingCategory={categoryReplaceTarget}
-            onValidateRuleSet={handleValidateSelectedRuleSet}
-            validateLoading={validateMutation.isLoading}
-            validationResult={validationResult}
-            onPublishCanary={handlePublishCanary}
-            publishCanaryLoading={promoteCanaryMutation.isLoading}
-            onPublishActive={handlePublishActive}
-            publishActiveLoading={promoteActiveMutation.isLoading}
-            onOpenRollback={() => setRollbackVisible(true)}
-            rollbackDisabled={!rollbackCandidates.length}
-          />
-        </div>
+        <BrowserSemanticHeader
+          domainCode={domainCode}
+          selectedRuleSet={selectedRuleSet}
+          activeRuleSet={activeRuleSet}
+          onRefresh={refreshQueries}
+          onValidate={() => selectedRuleSet && validateMutation.mutate(selectedRuleSet.id)}
+          validateLoading={validateMutation.isLoading}
+          onGenerateCreateDraft={() => generateCreateDraftMutation.mutate(undefined)}
+          generateCreateDraftLoading={generateCreateDraftMutation.isLoading}
+          errorLogsCount={reviewErrorLogs.length}
+          onOpenReleases={() => setActiveTab('releases')}
+        />
+
+        <BrowserSemanticOverviewCards
+          selectedRuleSet={selectedRuleSet}
+          activeRuleSet={activeRuleSet}
+          hitLogsCount={hitLogsQuery.data?.length || 0}
+          errorLogsCount={reviewErrorLogs.length}
+          loading={listQuery.isLoading || detailQuery.isLoading}
+        />
+
+        <Tabs
+          activeKey={activeTab}
+          onChange={(k) => setActiveTab(k as 'rules' | 'errors' | 'releases')}
+          items={[
+            {
+              key: 'rules',
+              label: (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <AppstoreOutlined />
+                  规则集与操作别名库 ({selectedRuleSet?.rules?.length || 0})
+                </span>
+              ),
+              children: (
+                <div>
+                  <BrowserSemanticPlayground currentRuleSet={selectedRuleSet} />
+                  <BrowserSemanticRulesListTab
+                    currentRuleSet={selectedRuleSet}
+                    selectedCategory={selectedCategory}
+                    onSelectCategory={setSelectedCategory}
+                    onEditRuleSet={handleOpenEdit}
+                    onReplaceCategory={handleOpenCategoryReplace}
+                    onGenerateCategoryDraft={(cat) => generateCategoryDraftMutation.mutate({ category: cat })}
+                    generateCategoryLoading={generateCategoryDraftMutation.isLoading}
+                    generatingCategory={generationTargetCategory}
+                  />
+                </div>
+              ),
+            },
+            {
+              key: 'errors',
+              label: (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <BugOutlined />
+                  异常审计与 AI 自愈 ({reviewErrorLogs.length})
+                </span>
+              ),
+              children: (
+                <BrowserSemanticErrorReviewTab
+                  errorLogs={reviewErrorLogs}
+                  loading={reviewErrorLogsQuery.isLoading}
+                  onRefresh={() => reviewErrorLogsQuery.refetch()}
+                  onGenerateDraftFromErrors={(ids) => generateCreateDraftMutation.mutate(ids)}
+                  generateDraftLoading={generateCreateDraftMutation.isLoading}
+                />
+              ),
+            },
+            {
+              key: 'releases',
+              label: (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <HistoryOutlined />
+                  版本管理与发布历史 ({listQuery.data?.length || 0})
+                </span>
+              ),
+              children: (
+                <BrowserSemanticReleasesTab
+                  ruleSets={listQuery.data || []}
+                  activeRuleSetId={activeRuleSet?.id}
+                  selectedRuleSetId={selectedRuleSetId}
+                  loading={listQuery.isLoading}
+                  onSelectRuleSet={(id) => {
+                    setSelectedRuleSetId(id);
+                    setActiveTab('rules');
+                  }}
+                  onOpenDetail={(id) => {
+                    setSelectedRuleSetId(id);
+                    setDetailVisible(true);
+                  }}
+                  onPromoteCanary={(id) => promoteCanaryMutation.mutate(id)}
+                  onPromoteActive={(id) => promoteActiveMutation.mutate(id)}
+                  onOpenRollback={(id) => {
+                    setSelectedRuleSetId(id);
+                    setRollbackVisible(true);
+                  }}
+                  onValidateRuleSet={(id) => validateMutation.mutate(id)}
+                  publishCanaryLoading={promoteCanaryMutation.isLoading}
+                  publishActiveLoading={promoteActiveMutation.isLoading}
+                />
+              ),
+            },
+          ]}
+        />
       </Card>
 
-      <Drawer
-        title="规则集详情"
-        width={920}
-        open={detailVisible}
-        onClose={() => {
-          setDetailVisible(false);
-          setSelectedRuleSetId(null);
-          setHitLogTraceIdInput('');
-          setAppliedHitLogTraceId('');
-        }}
-      >
-        {detailQuery.isLoading ? (
-          <Card loading />
-        ) : !selectedRuleSet ? (
-          <Empty description="未找到规则集详情" />
-        ) : (
-          <SemanticRuleSetDetailContent
-            ruleSet={selectedRuleSet}
-            hitLogs={hitLogsQuery.data || []}
-            hitLogsLoading={hitLogsQuery.isLoading}
-            onRefreshHitLogs={() => {
-              void hitLogsQuery.refetch();
-            }}
-            hitLogTraceId={hitLogTraceIdInput}
-            onHitLogTraceIdChange={setHitLogTraceIdInput}
-            onApplyHitLogFilter={() => setAppliedHitLogTraceId(hitLogTraceIdInput.trim())}
-            onResetHitLogFilter={() => {
-              setHitLogTraceIdInput('');
-              setAppliedHitLogTraceId('');
-            }}
-            errorLogs={errorLogsQuery.data || []}
-            errorLogsLoading={errorLogsQuery.isLoading}
-            onRefreshErrorLogs={() => {
-              void errorLogsQuery.refetch();
-            }}
-            releases={releasesQuery.data || []}
-            releasesLoading={releasesQuery.isLoading}
-            onRefreshReleases={() => {
-              void releasesQuery.refetch();
-            }}
-            onGenerateCategoryDraft={handleGenerateCategoryDraft}
-            generatingCategory={generationTargetCategory}
-            generateCategoryLoading={generateCategoryDraftMutation.isLoading}
-            onReplaceRuleCategory={openCategoryReplaceModal}
-            replacingCategory={categoryReplaceTarget}
-            replaceCategoryLoading={replaceCategoryMutation.isLoading}
-            headerActions={
-              <Space wrap>
-                <Button icon={<EditOutlined />} onClick={openEditModal}>
-                  编辑规则集
-                </Button>
-                <Tooltip title={!rollbackCandidates.length ? '需要先有同 key 的其他版本规则集作为回滚目标' : ''}>
-                  <Button
-                    icon={<HistoryOutlined />}
-                    disabled={!rollbackCandidates.length}
-                    onClick={() => setRollbackVisible(true)}
-                  >
-                    回滚版本
-                  </Button>
-                </Tooltip>
-                <Tooltip title="基于当前规则集关联的错误日志生成 AI 候选草案，仅用于审核预览">
-                  <Button
-                    icon={<RobotOutlined />}
-                    loading={generateDraftMutation.isLoading}
-                    onClick={() => generateDraftMutation.mutate()}
-                  >
-                    AI 生成草案
-                  </Button>
-                </Tooltip>
-                <Button
-                  icon={<RocketOutlined />}
-                  disabled={selectedRuleSet.status === 'CANARY'}
-                  loading={promoteCanaryMutation.isLoading}
-                  onClick={() => promoteCanaryMutation.mutate(selectedRuleSet.id)}
-                >
-                  发布 Canary
-                </Button>
-                <Button
-                  type="primary"
-                  disabled={selectedRuleSet.status === 'ACTIVE' || selectedRuleSet.status === 'DRAFT'}
-                  loading={promoteActiveMutation.isLoading}
-                  onClick={() => promoteActiveMutation.mutate(selectedRuleSet.id)}
-                >
-                  发布 Active
-                </Button>
-              </Space>
-            }
-          />
-        )}
-      </Drawer>
-
-      {safeEditorInitialValues ? (
+      {editorInitialValues && (
         <SemanticRuleSetFormModal
           mode="edit"
           open={editorVisible}
-          title="编辑规则集"
+          title={`编辑规则集 / ${selectedRuleSet?.name || '-'}`}
           confirmLoading={updateMutation.isLoading}
-          initialValues={safeEditorInitialValues}
-          onCancel={() => setEditorVisible(false)}
-          onSubmit={handleSubmitEditor}
+          initialValues={editorInitialValues}
+          onCancel={() => {
+            setEditorVisible(false);
+          }}
+          onSubmit={async (values) => {
+            if (selectedRuleSetId) {
+              await updateMutation.mutateAsync({ id: selectedRuleSetId, values });
+            }
+          }}
         />
-      ) : null}
-      <SemanticRuleCategoryReplaceModal
-        open={categoryReplaceVisible}
-        category={categoryReplaceTarget}
-        initialRules={categoryReplaceInitialRules}
-        confirmLoading={replaceCategoryMutation.isLoading}
-        onCancel={() => setCategoryReplaceVisible(false)}
-        onSubmit={handleSubmitCategoryReplace}
-      />
+      )}
+
       <SemanticRuleSetRollbackModal
         open={rollbackVisible}
         loading={rollbackMutation.isLoading}
         currentRuleSet={selectedRuleSet}
         candidates={rollbackCandidates}
         onCancel={() => setRollbackVisible(false)}
-        onSubmit={handleSubmitRollback}
+        onSubmit={async (values) => {
+          if (selectedRuleSetId) {
+            await rollbackMutation.mutateAsync({
+              id: selectedRuleSetId,
+              target_rule_set_id: values.target_rule_set_id,
+              reason: values.reason,
+            });
+          }
+        }}
       />
+
+      <SemanticRuleCategoryReplaceModal
+        open={categoryReplaceVisible}
+        category={categoryReplaceTarget}
+        initialRules={categoryReplaceInitialRules}
+        confirmLoading={replaceCategoryMutation.isLoading}
+        onCancel={() => {
+          setCategoryReplaceVisible(false);
+          setCategoryReplaceTarget(null);
+        }}
+        onSubmit={async (rules) => {
+          if (selectedRuleSetId && categoryReplaceTarget) {
+            await replaceCategoryMutation.mutateAsync({
+              id: selectedRuleSetId,
+              category: categoryReplaceTarget,
+              rules,
+            });
+          }
+        }}
+      />
+
       <SemanticRuleGenerationPreviewModal
         open={generationPreviewVisible}
-        loading={
-          generateDraftMutation.isLoading ||
-          generateCreateDraftMutation.isLoading ||
-          generateCategoryDraftMutation.isLoading
-        }
+        loading={false}
         confirmLoading={commitDraftMutation.isLoading}
         applyLoading={replaceCategoryMutation.isLoading}
         draft={generationPreview}
         currentCategory={generationTargetCategory}
-        currentCategoryRules={currentPreviewCategoryRules}
-        applyActionLabel={
-          generationTargetCategory ? `直接替换 ${generationTargetCategory}` : undefined
-        }
-        onCancel={() => {
-          setGenerationPreviewVisible(false);
-          setGenerationTargetCategory(null);
-        }}
-        onApply={generationTargetCategory ? handleApplyGeneratedCategoryDraft : undefined}
-        onConfirm={() => commitDraftMutation.mutate()}
+        onCancel={() => setGenerationPreviewVisible(false)}
+        onConfirm={() => commitDraftMutation.mutate(generationPreview)}
+        onApply={handleApplyGeneratedCategoryDraft}
       />
+
+      <Drawer
+        title={`规则集结构详情 / ${selectedRuleSet?.name || '-'}`}
+        width={920}
+        open={detailVisible}
+        onClose={() => setDetailVisible(false)}
+      >
+        {selectedRuleSet && (
+          <SemanticRuleSetDetailContent
+            ruleSet={selectedRuleSet}
+            hitLogs={hitLogsQuery.data || []}
+            hitLogsLoading={hitLogsQuery.isLoading}
+            onRefreshHitLogs={() => hitLogsQuery.refetch()}
+            hitLogTraceId=""
+            onHitLogTraceIdChange={() => {}}
+            onApplyHitLogFilter={() => {}}
+            onResetHitLogFilter={() => {}}
+            errorLogs={reviewErrorLogs}
+            errorLogsLoading={reviewErrorLogsQuery.isLoading}
+            onRefreshErrorLogs={() => reviewErrorLogsQuery.refetch()}
+            releases={[]}
+            releasesLoading={false}
+            onRefreshReleases={() => {}}
+            onGenerateCategoryDraft={(cat) => generateCategoryDraftMutation.mutate({ category: cat })}
+            generatingCategory={generationTargetCategory}
+            generateCategoryLoading={generateCategoryDraftMutation.isLoading}
+            onReplaceRuleCategory={handleOpenCategoryReplace}
+            replacingCategory={categoryReplaceTarget}
+            replaceCategoryLoading={replaceCategoryMutation.isLoading}
+          />
+        )}
+      </Drawer>
     </div>
   );
 };

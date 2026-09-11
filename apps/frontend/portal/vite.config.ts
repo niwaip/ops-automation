@@ -140,6 +140,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/api/organizations': {
+        target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
       '/api/users': {
         target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
         changeOrigin: true,
@@ -239,6 +244,25 @@ export default defineConfig({
         ),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/browser-runtime/, '/browser'),
+        headers: {
+          'x-internal-auth':
+            readEnv('INTERNAL_API_SHARED_SECRET', 'INTERNAL_API_SECRET') ||
+            'ops_internal_shared_secret_change_me',
+        },
+      },
+      '/browser/artifacts': {
+        target: getProxyTarget(
+          'ops-browser-worker',
+          3004,
+          ['BROWSER_WORKER_HOST'],
+          ['BROWSER_WORKER_PORT']
+        ),
+        changeOrigin: true,
+        headers: {
+          'x-internal-auth':
+            readEnv('INTERNAL_API_SHARED_SECRET', 'INTERNAL_API_SECRET') ||
+            'ops_internal_shared_secret_change_me',
+        },
       },
       '/api/executions': {
         target: getProxyTarget(
@@ -250,6 +274,15 @@ export default defineConfig({
         changeOrigin: true,
       },
       '/api/schedules': {
+        target: getProxyTarget(
+          'ops-control-plane',
+          3003,
+          ['CONTROL_PLANE_HOST'],
+          ['CONTROL_PLANE_PORT']
+        ),
+        changeOrigin: true,
+      },
+      '/api/metrics': {
         target: getProxyTarget(
           'ops-control-plane',
           3003,

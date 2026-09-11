@@ -5,10 +5,11 @@ import {
   ApiOutlined,
   OrderedListOutlined,
   BulbOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { LlmOperationTab } from '../llm-operations/components/LlmOperationTab';
 
-export type SkillAdminTabKey = 'builtin' | 'custom' | 'llm' | 'all';
+export type SkillAdminTabKey = 'builtin' | 'custom' | 'llm' | 'all' | 'requests';
 
 interface SkillAdminTabsProps {
   activeKey: SkillAdminTabKey;
@@ -16,6 +17,8 @@ interface SkillAdminTabsProps {
   builtinSkillsCount: number;
   customSkillsCount: number;
   allSkillsCount: number;
+  pendingRequestsCount?: number;
+  requestsContent?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -25,6 +28,8 @@ export function SkillAdminTabs({
   builtinSkillsCount,
   customSkillsCount,
   allSkillsCount,
+  pendingRequestsCount = 0,
+  requestsContent,
   children,
 }: SkillAdminTabsProps) {
   return (
@@ -66,6 +71,23 @@ export function SkillAdminTabs({
             ),
           },
           {
+            key: 'requests',
+            label: (
+              <Space>
+                <SafetyCertificateOutlined />
+                <span>授权审批</span>
+                <Badge
+                  count={pendingRequestsCount}
+                  overflowCount={99}
+                  style={{
+                    backgroundColor:
+                      pendingRequestsCount > 0 ? '#ff4d4f' : 'var(--text-light)',
+                  }}
+                />
+              </Space>
+            ),
+          },
+          {
             key: 'llm',
             label: (
               <Space>
@@ -96,7 +118,8 @@ export function SkillAdminTabs({
         style={{ marginBottom: 16 }}
       />
 
-      {activeKey !== 'llm' && children}
+      {activeKey === 'requests' && requestsContent}
+      {activeKey !== 'llm' && activeKey !== 'requests' && children}
     </>
   );
 }

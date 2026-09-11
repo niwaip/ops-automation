@@ -90,8 +90,14 @@ export interface BatchRegenerateDigestResponse {
 }
 
 export const workspaceApi = {
-  getMyWorkspaces: async (): Promise<MyWorkspacesResponse> => {
-    return await apiClient.get('/workspaces/my');
+  getMyWorkspaces: async (params?: { departmentId?: string; userId?: string }): Promise<MyWorkspacesResponse> => {
+    const query = new URLSearchParams();
+    if (params?.departmentId) query.append('departmentId', params.departmentId);
+    if (params?.userId) query.append('userId', params.userId);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return await apiClient.get(`/workspaces/my${qs}`, {
+      headers: params?.departmentId ? { 'x-department-id': params.departmentId } : undefined,
+    });
   },
 
   getNodes: async (workspaceId: string, parentId?: string | null): Promise<WorkspaceNode[]> => {

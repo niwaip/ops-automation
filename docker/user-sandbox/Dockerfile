@@ -61,6 +61,7 @@ ENV USER_MODE=personal \
     DSH_PLUGIN_DIR=/opt/dsh/plugins \
     DSH_SKILL_DIR=/opt/dsh/skills \
     DSH_CUSTOM_SKILL_DIR=/knowledge/skills \
+    TZ=Asia/Shanghai \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     PYTHONIOENCODING=utf-8 \
@@ -71,7 +72,8 @@ WORKDIR /workspace
 
 # 7. 拷贝不可变 DSH 运行底座、管理员认证插件与技能模版库
 COPY docker/user-sandbox/dsh /usr/local/bin/dsh
-RUN chmod 755 /usr/local/bin/dsh
+COPY docker/user-sandbox/dsh_modules /usr/local/bin/dsh_modules
+RUN chmod 755 /usr/local/bin/dsh && chmod -R 755 /usr/local/bin/dsh_modules
 
 COPY docker/user-sandbox/plugins/ /opt/dsh/plugins/
 RUN chmod 755 /opt/dsh/plugins/*.py 2>/dev/null || true

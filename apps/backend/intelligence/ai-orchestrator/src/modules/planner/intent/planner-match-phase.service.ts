@@ -25,11 +25,15 @@ export class PlannerMatchPhaseService {
       typeof input.request.context?.target_skill_id === 'string'
         ? input.request.context.target_skill_id.trim()
         : '';
+    const webSearchEnabled =
+      input.request.context?.web_search_enabled === true ||
+      input.request.context?.webSearch === true ||
+      /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|查一下|查找|查询|搜搜|查查)/i.test(objective);
     const availableSkills = await this.loadAvailableSkills(
       input.authToken,
       input.traceId,
       targetSkillId || undefined,
-      input.request.context?.web_search_enabled === true
+      webSearchEnabled
     );
     let matchedSkill: SkillMatchResult | null = null;
     let failure: SkillMatchFailure | undefined;

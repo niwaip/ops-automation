@@ -22,10 +22,28 @@ export const getPhaseArtifactPayload = (
 export const getPhaseArtifactPath = (artifact: ExecutionPhaseArtifactDto): string | undefined => {
   const payload = getPhaseArtifactPayload(artifact);
   if (typeof payload?.snapshotPath === 'string' && payload.snapshotPath.trim()) {
-    return payload.snapshotPath;
+    return payload.snapshotPath.trim();
   }
   if (typeof payload?.artifactPath === 'string' && payload.artifactPath.trim()) {
-    return payload.artifactPath;
+    return payload.artifactPath.trim();
+  }
+  if (typeof payload?.path === 'string' && payload.path.trim()) {
+    return payload.path.trim();
+  }
+  const output = asRecord(payload?.output);
+  if (typeof output?.screenshotPath === 'string' && output.screenshotPath.trim()) {
+    return output.screenshotPath.trim();
+  }
+  const data = asRecord(output?.data);
+  if (typeof data?.screenshotPath === 'string' && data.screenshotPath.trim()) {
+    return data.screenshotPath.trim();
+  }
+  if (typeof data?.path === 'string' && data.path.trim()) {
+    return data.path.trim();
+  }
+  const snapshot = asRecord(output?.snapshot);
+  if (typeof snapshot?.path === 'string' && snapshot.path.trim()) {
+    return snapshot.path.trim();
   }
   return undefined;
 };
@@ -57,14 +75,32 @@ export const buildBrowserWorkerArtifactUrl = (
   if (!trimmedPath) {
     return undefined;
   }
-  if (/^https?:\/\//i.test(trimmedPath) || trimmedPath.startsWith('data:')) {
+  if (trimmedPath.startsWith('data:')) {
+    return trimmedPath;
+  }
+
+  // Preserve external full URLs that are not browser-worker artifacts
+  if (
+    /^https?:\/\//i.test(trimmedPath) &&
+    !/\/artifacts\//i.test(trimmedPath) &&
+    !/:(3004|9222)/.test(trimmedPath)
+  ) {
     return trimmedPath;
   }
 
   const fileName = trimmedPath.split('/').filter(Boolean).pop();
-  const browserWorkerBaseUrl = getBrowserWorkerBaseUrl(recorderWsUrl);
-  if (!fileName || !browserWorkerBaseUrl) {
+  if (!fileName) {
     return undefined;
+  }
+
+  if (typeof globalThis !== 'undefined' && 'location' in globalThis) {
+    return `/api/browser-runtime/artifacts/${encodeURIComponent(fileName)}`;
+  }
+
+  // Non-browser fallback (SSR/testing/node scripts)
+  const browserWorkerBaseUrl = getBrowserWorkerBaseUrl(recorderWsUrl);
+  if (!browserWorkerBaseUrl) {
+    return `/api/browser-runtime/artifacts/${encodeURIComponent(fileName)}`;
   }
 
   return `${browserWorkerBaseUrl}/browser/artifacts/${encodeURIComponent(fileName)}`;
@@ -92,18 +128,32 @@ export const extractWorkflowActivitySnapshotSources = (
   recorderWsUrl: string | undefined,
   phase: ExecutionPhaseDto
 ): string[] => {
-  const unique = new Set<string>();
+  const seenSnapshots = new Set<string>();
+  const results: string[] = [];
 
-  (phase.artifacts || [])
-    .filter((artifact) => artifact.artifactType === 'snapshot')
-    .forEach((artifact) => {
-      const src = getPhaseArtifactPreviewSrc(recorderWsUrl, artifact);
-      if (src) {
-        unique.add(src);
+  for (const artifact of phase.artifacts || []) {
+    if (
+      artifact.artifactType !== 'snapshot' &&
+      artifact.artifactType !== 'browser_page_screenshot'
+    ) {
+      continue;
+    }
+    const snapshotKey = artifact.snapshotId || artifact.id;
+    if (snapshotKey && seenSnapshots.has(snapshotKey)) {
+      continue;
+    }
+    const src = getPhaseArtifactPreviewSrc(recorderWsUrl, artifact);
+    if (src) {
+      if (snapshotKey) {
+        seenSnapshots.add(snapshotKey);
       }
-    });
+      if (!results.includes(src)) {
+        results.push(src);
+      }
+    }
+  }
 
-  return Array.from(unique);
+  return results;
 };
 
 export const extractPhaseStepUrl = (step: ExecutionPhaseStepDto): string | undefined => {
@@ -136,19 +186,29 @@ export const extractPhaseStepImageSources = (
   const output = asRecord(step.output);
   const artifactRecord = asRecord(output?.artifact);
   const snapshotRecord = asRecord(output?.snapshot);
+  const dataRecord = asRecord(output?.data);
   const candidatePaths = [
     typeof artifactRecord?.path === 'string' ? artifactRecord.path : undefined,
     typeof snapshotRecord?.path === 'string' ? snapshotRecord.path : undefined,
+    typeof dataRecord?.screenshotPath === 'string' ? dataRecord.screenshotPath : undefined,
+    typeof dataRecord?.path === 'string' ? dataRecord.path : undefined,
+    typeof output?.screenshotPath === 'string' ? output.screenshotPath : undefined,
   ];
 
-  for (const path of candidatePaths) {
-    const src = buildBrowserWorkerArtifactUrl(recorderWsUrl, path);
-    if (src) {
-      found.add(src);
+  // Only resolve candidate artifact paths if inline image is not already present
+  if (found.size === 0) {
+    for (const path of candidatePaths) {
+      if (path) {
+        const src = buildBrowserWorkerArtifactUrl(recorderWsUrl, path);
+        if (src) {
+          found.add(src);
+          break;
+        }
+      }
     }
   }
 
-  if (step.snapshotId) {
+  if (step.snapshotId && found.size === 0) {
     const matchedArtifact = artifacts.find((artifact) => artifact.snapshotId === step.snapshotId);
     const artifactSrc = matchedArtifact
       ? getPhaseArtifactPreviewSrc(recorderWsUrl, matchedArtifact)

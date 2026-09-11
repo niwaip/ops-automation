@@ -29,10 +29,23 @@ import {
   SystemBackupArchive,
   systemBackupApi,
   BackupImportResult,
+  BackupModuleKey,
 } from '@/api/system-backup';
 
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
+
+const MODULE_TITLE_MAP: Record<BackupModuleKey, string> = {
+  aiModels: 'AI 模型与智脑配置',
+  skills: '技能与工具注册表',
+  temporalWorkflows: '工作流与活动工件',
+  capabilityReleases: '能力发布中心版本',
+  browserTemplates: '浏览器录制模板',
+  executionFlowTemplates: '执行流模板与算子',
+  taskPolicies: '任务策略与指令配方',
+  workspaces: '工作空间与知识文档',
+  userOrganizations: '用户组织与凭据绑定',
+};
 
 interface BackupPreviewModalProps {
   visible: boolean;
@@ -190,31 +203,31 @@ export const BackupPreviewModal: React.FC<BackupPreviewModalProps> = ({
       {/* Summary Cards */}
       <Row gutter={12} style={{ marginBottom: 16 }}>
         <Col span={8}>
-          <Card size="small" style={{ borderRadius: 8, background: '#f6ffed', borderColor: '#b7eb8f' }}>
+          <Card size="small" style={{ borderRadius: 8, background: 'rgba(82, 196, 26, 0.08)', borderColor: 'rgba(82, 196, 26, 0.3)' }}>
             <Statistic
               title="待导入资产总量"
               value={previewData.summary.totalItems}
-              valueStyle={{ color: '#389e0d', fontWeight: 'bold' }}
+              valueStyle={{ color: '#52c41a', fontWeight: 'bold' }}
               suffix="项"
             />
           </Card>
         </Col>
         <Col span={8}>
-          <Card size="small" style={{ borderRadius: 8, background: '#e6f4ff', borderColor: '#91caff' }}>
+          <Card size="small" style={{ borderRadius: 8, background: 'rgba(22, 119, 255, 0.08)', borderColor: 'rgba(22, 119, 255, 0.3)' }}>
             <Statistic
               title="全新增量资产"
               value={previewData.summary.newItems}
-              valueStyle={{ color: '#0958d9', fontWeight: 'bold' }}
+              valueStyle={{ color: '#1677ff', fontWeight: 'bold' }}
               suffix="项"
             />
           </Card>
         </Col>
         <Col span={8}>
-          <Card size="small" style={{ borderRadius: 8, background: '#fffbe6', borderColor: '#ffe58f' }}>
+          <Card size="small" style={{ borderRadius: 8, background: 'rgba(250, 140, 22, 0.08)', borderColor: 'rgba(250, 140, 22, 0.3)' }}>
             <Statistic
               title="重名 / 已存在冲突"
               value={previewData.summary.conflictItems}
-              valueStyle={{ color: '#d46b08', fontWeight: 'bold' }}
+              valueStyle={{ color: '#fa8c16', fontWeight: 'bold' }}
               suffix="项"
             />
           </Card>
@@ -260,8 +273,8 @@ export const BackupPreviewModal: React.FC<BackupPreviewModalProps> = ({
           <Panel
             key={String(idx)}
             header={
-              <div style={{ display: 'flex', justifyContent: 'space-between', width: '95%' }}>
-                <Text strong>模块: {module.moduleKey}</Text>
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '95%', alignItems: 'center' }}>
+                <Text strong>{MODULE_TITLE_MAP[module.moduleKey] || module.moduleKey}</Text>
                 <Space size={8}>
                   <Tag color="blue">包含: {module.totalInBackup}</Tag>
                   <Tag color="green">新增: {module.newCount}</Tag>

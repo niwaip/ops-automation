@@ -89,8 +89,9 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
         (request.metadata?.capture_profile as Record<string, unknown>) ||
         {
           schemaVersion: 'capture-profile/v1',
-          profile: 'article',
-          capture: { screenshot: true, html: true, mainContent: true },
+          profile: 'application',
+          capture: { screenshot: true, html: true, snapshot: true, mainContent: false },
+          limits: { htmlBytes: 1_000_000, contentChars: 30_000, tableCells: 500 },
         };
       const metadata = {
         ...(request.metadata || {}),

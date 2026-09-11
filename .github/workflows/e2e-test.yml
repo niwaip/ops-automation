@@ -74,11 +74,11 @@ jobs:
       - name: Start services (background)
         run: |
           # Start all services in background
-          node apps/backend/core/platform/dist/main.js &
-          node apps/backend/sessions/session-broker/dist/main.js &
+          node apps/backend/platform/dist/main.js &
+          node apps/backend/execution-control/session-broker/dist/main.js &
           node apps/backend/capabilities/browser-domain/templates/dist/main.js &
-          node apps/backend/orchestration/ai-orchestrator/dist/main.js &
-          node apps/backend/runtime/replay-worker/dist/main.js &
+          node apps/backend/intelligence/ai-orchestrator/dist/main.js &
+          node apps/backend/runtimes/replay-worker/dist/main.js &
 
           # Wait for services to start
           sleep 10

@@ -8,8 +8,8 @@ services:
       dockerfile: Dockerfile.community
     container_name: carbone-api
     ports:
-      - "3100:3100"
-      - "3443:3443"
+      - "${HOST_BIND_IP:-127.0.0.1}:3100:3100"
+      - "${HOST_BIND_IP:-127.0.0.1}:3443:3443"
     volumes:
       - carbone_api_templates:/app/templates
       - ../office-addin/runtime-certs:/app/certs:ro
@@ -39,7 +39,7 @@ services:
       dockerfile: ../../docker/office-addin/Dockerfile.dev
     container_name: office-addin
     ports:
-      - "3000:3000"
+      - "${HOST_BIND_IP:-127.0.0.1}:3000:3000"
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/office-addin:/app
       - /app/node_modules

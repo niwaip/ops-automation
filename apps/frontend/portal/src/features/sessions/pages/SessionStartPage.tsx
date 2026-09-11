@@ -29,6 +29,7 @@ import { aiApi, RecognizeParamsResponse } from '@/api/ai';
 import { sessionApi, workerApi } from '@/api/session';
 import { runtimeConfig } from '@/shared/config/runtime';
 import { useAuthStore } from '@/shared/store/authStore';
+import { buildNovncAutoConnectUrl } from '@ops/user-core';
 
 const normalizeParamsSchema = (template?: Template) => {
   const properties = (template?.params_schema?.properties ?? {}) as Record<
@@ -73,7 +74,7 @@ const { TextArea } = Input;
 const { Option } = Select;
 const { Title, Text } = Typography;
 
-const NOVNC_URL = runtimeConfig.noVncUrl;
+const NOVNC_URL = buildNovncAutoConnectUrl(runtimeConfig.noVncUrl);
 
 const ACTION_DESCRIPTIONS: Record<string, string> = {
   navigate: '导航到URL',

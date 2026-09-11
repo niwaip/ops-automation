@@ -505,7 +505,7 @@ export const inferBrowserWorkflowParamDefinition = (
       definition: {
         description: '登录用户名',
         required: true,
-        defaultValue: value,
+        defaultValue: undefined,
         source: 'inferred_from_template',
         type: 'string',
         exampleValue: value || 'test',
@@ -519,7 +519,7 @@ export const inferBrowserWorkflowParamDefinition = (
       definition: {
         description: '登录密码',
         required: true,
-        defaultValue: value,
+        defaultValue: undefined,
         source: 'inferred_from_template',
         type: 'string',
         exampleValue: value || 'test123',
@@ -631,15 +631,31 @@ export const buildBrowserWorkflowParamsSchema = (
   return {
     type: 'object',
     properties: Object.fromEntries(
-      entries.map(([key, definition]) => [
-        key,
-        {
-          type: definition?.type || 'string',
-          description: definition?.description || '',
-          default: definition?.defaultValue,
-          required: Boolean(definition?.required),
-        },
-      ])
+      entries.map(([key, definition]) => {
+        const desc = definition?.description || '';
+        const isSecret =
+          /password|passwd|devicekey|device_key|secret|credential|token|apikey|api_key/i.test(key) ||
+          /(密码|口令|密钥|凭证|私钥|token)/i.test(desc);
+        const isBasicAuth =
+          /pass|credential|user|account/i.test(key) || /(密码|口令|账户|用户名)/i.test(desc);
+
+        return [
+          key,
+          {
+            type: definition?.type || 'string',
+            description: desc,
+            default: isSecret ? undefined : definition?.defaultValue,
+            required: Boolean(definition?.required),
+            ...(isSecret
+              ? {
+                  isSecret: true,
+                  format: 'password',
+                  credentialCategory: isBasicAuth ? 'basic_auth' : 'api_key',
+                }
+              : {}),
+          },
+        ];
+      })
     ),
     required: entries.filter(([, definition]) => Boolean(definition?.required)).map(([key]) => key),
   };

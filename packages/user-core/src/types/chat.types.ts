@@ -27,6 +27,8 @@ export type {
 export interface PromptDebugPayload {
   systemPrompt: string;
   userPrompt: string;
+  plannerSnapshot?: string;
+  rawUserMessage?: string;
   debugSource?: 'planner' | 'react-engine';
   systemPromptSectionKeys?: string[];
   systemPromptSectionSources?: string[];

@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Put, Query, Request } from '@nestjs/common';
 import { RequireAdmin, SkipRbac } from '../decorators';
-import { UpdateUserRolesDto, UserQueryDto } from '../contracts';
+import { UpdateUserDepartmentDto, UpdateUserRolesDto, UserQueryDto } from '../contracts';
 import { IdentityAccessUserService } from './identity-access-user.service';
 
 @Controller('users')
@@ -34,6 +34,15 @@ export class UserController {
   }
 
   @RequireAdmin()
+  @Put(':id/department')
+  async updateDepartment(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateUserDepartmentDto
+  ) {
+    return this.userService.updateDepartment(id, updateDto);
+  }
+
+  @RequireAdmin()
   @Put(':id/deactivate')
   async deactivate(@Param('id') id: string) {
     return this.userService.deactivate(id);
@@ -45,3 +54,4 @@ export class UserController {
     return this.userService.activate(id);
   }
 }
+

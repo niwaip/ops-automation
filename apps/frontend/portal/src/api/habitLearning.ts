@@ -53,6 +53,16 @@ export interface HabitCandidate {
   savedVersion?: number;
   evidenceJson: Record<string, unknown>;
   reviewJson?: Record<string, unknown>;
+  planSnapshot?: {
+    objective?: string;
+    nodes?: Array<{
+      nodeId?: string;
+      title?: string;
+      skillId?: string;
+      capabilityKey?: string;
+      dependsOn?: string[];
+    }>;
+  };
   createdAt: string;
 }
 
@@ -72,6 +82,11 @@ export interface RoutingDiagnostics {
     candidateCount: number;
     matchScore?: number;
     plannerInvoked: boolean;
+    plannerInputTokens?: number | null;
+    contractStatus?: string | null;
+    businessStatus?: string | null;
+    errorCode?: string | null;
+    selectedWorkflowName?: string | null;
     routingPolicyVersion?: string;
     routingPolicyDigest?: string;
     createdAt: string;

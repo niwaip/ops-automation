@@ -4,14 +4,20 @@ import {
   Body,
   Get,
   Param,
+  Query,
+  Req,
   BadRequestException,
   NotFoundException,
+  UnauthorizedException,
   Res,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import type { Response } from 'express';
+import * as crypto from 'crypto';
+import type { Request, Response } from 'express';
+import { Public } from '../../common/guards/internal-auth.guard';
+import { verifyArtifactToken } from './application/browser-artifact-token.util';
 import { BrowserService } from './browser.service';
 import {
   AssertBrowserStateDto,
@@ -164,14 +170,40 @@ export class BrowserController {
     return { schema };
   }
 
+  @Public()
   @Get('artifacts/:filename')
   @ApiOperation({ summary: 'Serve browser execution artifacts' })
   @ApiResponse({ status: 200, description: 'Artifact file content' })
+  @ApiResponse({ status: 401, description: 'Unauthorized access to artifact' })
   @ApiResponse({ status: 404, description: 'Artifact not found' })
-  async getArtifact(@Param('filename') filename: string, @Res() res: Response): Promise<void> {
+  async getArtifact(
+    @Param('filename') filename: string,
+    @Query('token') token: string | undefined,
+    @Req() req: Request,
+    @Res() res: Response
+  ): Promise<void> {
     const normalizedFilename = path.basename(filename || '').trim();
     if (!normalizedFilename || normalizedFilename !== filename) {
       throw new BadRequestException('Invalid artifact filename');
+    }
+
+    const isProduction = process.env.NODE_ENV === 'production';
+    const requireAuth = isProduction || process.env.ARTIFACT_REQUIRE_AUTH === 'true';
+
+    const hasValidToken = verifyArtifactToken(normalizedFilename, token);
+    const internalSecret = process.env.INTERNAL_API_SHARED_SECRET;
+    const provInternal = req.headers['x-internal-auth'];
+    const hasValidInternal = Boolean(
+      internalSecret &&
+      typeof provInternal === 'string' &&
+      provInternal.length === internalSecret.length &&
+      crypto.timingSafeEqual(Buffer.from(provInternal), Buffer.from(internalSecret))
+    );
+    const hasBearer = Boolean(req.headers['authorization']?.startsWith('Bearer '));
+
+    const isAuthorized = hasValidToken || hasValidInternal || hasBearer;
+    if (!isAuthorized && requireAuth) {
+      throw new UnauthorizedException('Valid artifact token or authorization required');
     }
 
     const artifactPath = path.join(this.artifactDir, normalizedFilename);

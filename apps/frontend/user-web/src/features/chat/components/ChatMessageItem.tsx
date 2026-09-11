@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import {
   ClockCircleOutlined,
   FolderOutlined,
@@ -8,7 +8,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { App, Avatar, Typography } from 'antd';
-import type { ChatMessage } from '@ops/user-core';
+import { resolveChatOutcomePresentation, type ChatMessage } from '@ops/user-core';
 import SharedChatMessageActions from '@chat-web/components/ChatMessageActions';
 import SharedContentPartsRenderer from '@chat-web/components/ContentPartsRenderer';
 import SharedMessageContentRenderer from '@chat-web/components/MessageContentRenderer';
@@ -83,15 +83,34 @@ export const ChatMessageItem = memo(function ChatMessageItem({
       taskParts.structuredResultData
   );
 
+  const presentation = resolveChatOutcomePresentation({
+    finalResult: message.metadata?.finalResult?.trim(),
+    finalSummary: message.metadata?.finalSummary?.trim(),
+    normalizedResult: message.metadata?.normalizedResult,
+    rawResult: message.metadata?.finalResultData ?? taskParts.structuredResultData,
+  });
+  const displayFinalResult = resolvedTaskStatus === 'completed' ? presentation.primaryText : undefined;
+
   const taskSummaryCandidates = [
+    displayFinalResult?.trim(),
     message.metadata?.finalSummary?.trim(),
     message.metadata?.normalizedResult?.summary?.trim(),
+    message.metadata?.normalizedResult?.detailText?.trim(),
     message.metadata?.resultTitle?.trim(),
     message.metadata?.finalResult?.trim(),
     message.metadata?.errorMessage?.trim(),
     message.metadata?.failureReason?.trim(),
     structuredResult?.trim(),
   ].filter((item): item is string => Boolean(item));
+
+  const isDuplicateTaskText = (textValue?: string): boolean => {
+    if (!textValue || !textValue.trim()) return false;
+    const normalized = normalizeComparableMessageText(textValue);
+    if (!normalized) return false;
+    return taskSummaryCandidates.some(
+      (candidate) => normalizeComparableMessageText(candidate) === normalized
+    );
+  };
   const contentThoughtLogs = message.role === 'assistant' ? parsedContent.thoughts : [];
   const persistedThoughtLogs = message.metadata?.thoughtLogsSnapshot || [];
   const progressThoughtLogs = (message.metadata?.progressLogs || [])
@@ -127,10 +146,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
     message.metadata?.mode === 'task' &&
       hasTaskCard &&
       plainContent &&
-      taskSummaryCandidates.some(
-        (item) =>
-          normalizeComparableMessageText(plainContent) === normalizeComparableMessageText(item)
-      )
+      isDuplicateTaskText(plainContent)
   );
   const isToolExecutionTask = Boolean(
     message.metadata?.mode === 'task' &&
@@ -158,8 +174,9 @@ export const ChatMessageItem = memo(function ChatMessageItem({
           }
           if (part.type === 'text' || part.type === 'markdown') {
             const textValue = (part.type === 'text' ? part.text : part.markdown)?.trim();
+            if (!textValue) return false;
+            if (hasTaskCard && isDuplicateTaskText(textValue)) return false;
             return (
-              Boolean(textValue) &&
               !hasDuplicatedTaskSummary &&
               textValue !== message.metadata?.finalResult?.trim() &&
               textValue !== message.metadata?.errorMessage?.trim()
@@ -169,9 +186,22 @@ export const ChatMessageItem = memo(function ChatMessageItem({
         })
       : plainContent &&
         !hasDuplicatedTaskSummary &&
+        !(hasTaskCard && isDuplicateTaskText(plainContent)) &&
         plainContent !== message.metadata?.finalResult?.trim() &&
         plainContent !== message.metadata?.errorMessage?.trim()
   );
+
+  const filteredContentParts = useMemo(() => {
+    if (!message.contentParts) return undefined;
+    if (!hasTaskCard) return message.contentParts;
+    return message.contentParts.filter((part) => {
+      if (part.type === 'text' || part.type === 'markdown') {
+        const textValue = (part.type === 'text' ? part.text : part.markdown)?.trim();
+        return Boolean(textValue && !isDuplicateTaskText(textValue));
+      }
+      return true;
+    });
+  }, [message.contentParts, hasTaskCard, taskSummaryCandidates]);
 
   const shouldShowMessageContent = Boolean(
     !isInteractiveTaskCard &&
@@ -282,7 +312,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
             <div className={styles['user-chat-message-content']}>
               {hasRenderableContentParts ? (
                 <SharedContentPartsRenderer
-                  parts={message.contentParts}
+                  parts={filteredContentParts}
                   isStreaming={Boolean(message.isStreaming)}
                   renderStructuredResult={message.metadata?.mode !== 'task'}
                   renderDeeplink={message.metadata?.mode !== 'task'}

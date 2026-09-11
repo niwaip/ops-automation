@@ -150,7 +150,13 @@ export class SkillMatcherService {
 
         if (!response.data.match) {
           return this.toMatchAttempt(
-            this.acceptFallbackMatch(effectiveUserInput, input.availableSkills)
+            await this.acceptFallbackMatch(
+              effectiveUserInput,
+              input.availableSkills,
+              sanitizedContext,
+              input.authToken,
+              input.traceId
+            )
           );
         }
 
@@ -168,12 +174,24 @@ export class SkillMatcherService {
           `Rejected low-confidence skill match '${matchedSkill?.skillName || 'unknown'}' (${matchedSkill?.confidence ?? 'missing'}); minimum is ${getSkillMatchMinConfidence()}`
         );
         return this.toMatchAttempt(
-          this.acceptFallbackMatch(input.userInput, input.availableSkills)
+          await this.acceptFallbackMatch(
+            input.userInput,
+            input.availableSkills,
+            sanitizedContext,
+            input.authToken,
+            input.traceId
+          )
         );
       } catch (error) {
         const message = error instanceof Error ? error.message : 'unknown';
         this.logger.warn(`Planner skill match API failed: ${message}`);
-        const deterministic = this.acceptFallbackMatch(input.userInput, input.availableSkills);
+        const deterministic = await this.acceptFallbackMatch(
+          input.userInput,
+          input.availableSkills,
+          input.context,
+          input.authToken,
+          input.traceId
+        );
         const unavailableCode = this.resolveUnavailableCode(error);
         return deterministic
           ? { status: 'matched', match: deterministic }
@@ -190,7 +208,15 @@ export class SkillMatcherService {
       }
     }
 
-    return { status: 'not_found', match: null };
+    return this.toMatchAttempt(
+      await this.acceptFallbackMatch(
+        input.userInput,
+        input.availableSkills,
+        input.context,
+        input.authToken,
+        input.traceId
+      )
+    );
   }
 
   fallbackSkillMatch(
@@ -320,12 +346,53 @@ export class SkillMatcherService {
     };
   }
 
-  private acceptFallbackMatch(
+  private async acceptFallbackMatch(
     userInput: string,
-    availableSkills: AvailableSkillDefinition[]
-  ): SkillMatchResult | null {
+    availableSkills: AvailableSkillDefinition[],
+    context?: Record<string, unknown>,
+    authToken?: string,
+    traceId?: string
+  ): Promise<SkillMatchResult | null> {
     const fallback = this.fallbackSkillMatch(userInput, availableSkills);
-    return fallback && isAcceptedSkillMatch(fallback.confidence) ? fallback : null;
+    if (fallback && isAcceptedSkillMatch(fallback.confidence)) {
+      return fallback;
+    }
+
+    const isWebSearchEnabled =
+      context?.web_search_enabled === true ||
+      context?.webSearch === true ||
+      /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|查一下|查找|查询|搜搜|查查)/i.test(userInput);
+
+    if (isWebSearchEnabled) {
+      let searchSkill = availableSkills.find(
+        (s) =>
+          ['platform.search.web', 'platform.web_search', 'web_search', 'tavily_search'].includes(
+            s.skillId.toLowerCase()
+          ) || s.category === 'search'
+      );
+      if (!searchSkill && this.skillCacheService?.loadSkillById) {
+        try {
+          searchSkill =
+            (await this.skillCacheService.loadSkillById(
+              'platform.search.web',
+              authToken,
+              traceId
+            )) || undefined;
+        } catch {
+          // best-effort lookup
+        }
+      }
+      if (searchSkill) {
+        return this.buildMatchResult(
+          searchSkill,
+          ['web_search'],
+          0.95,
+          'web_search_intent'
+        );
+      }
+    }
+
+    return null;
   }
 
   private toMatchAttempt(match: SkillMatchResult | null): SkillMatchAttempt {

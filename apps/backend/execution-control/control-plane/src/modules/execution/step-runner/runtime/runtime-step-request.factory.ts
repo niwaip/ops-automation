@@ -21,6 +21,7 @@ export class RuntimeStepRequestFactory {
     phaseMetadata?: RuntimeStepPhaseMetadata;
   }): RuntimeStepInvokeRequest {
     const executionId = input.execution.id as string;
+    const traceContext = this.buildTraceContext(input.execution);
 
     return {
       requestId: `${executionId}:${input.stepId}`,
@@ -36,6 +37,7 @@ export class RuntimeStepRequestFactory {
         target: input.url,
       },
       policyContext: this.buildPolicyContext(input.execution),
+      ...(traceContext ? { traceContext } : {}),
       metadata: {
         executionMode: input.executionMode,
         ...(input.phaseMetadata || {}),
@@ -57,6 +59,7 @@ export class RuntimeStepRequestFactory {
     }
 
     const executionId = input.execution.id as string;
+    const traceContext = this.buildTraceContext(input.execution);
     const includeExecutionStepMetadata = this.shouldIncludeExecutionStepMetadata(input.execution);
     const isBuiltin = capabilityId.startsWith('platform.');
 
@@ -81,6 +84,7 @@ export class RuntimeStepRequestFactory {
       action: isBuiltin ? 'run' : this.resolveExecutionAction(input.execution),
       input: this.resolveExecutionInput(input.execution),
       policyContext: this.buildPolicyContext(input.execution),
+      ...(traceContext ? { traceContext } : {}),
       metadata: {
         ...(capabilityVersion ? { capabilityVersion } : {}),
         ...(isBuiltin ? { builtinSkill: true, definitionVersion: capabilityVersion } : {}),
@@ -394,5 +398,13 @@ export class RuntimeStepRequestFactory {
       riskLevel: (execution.riskLevel as PolicyContext['riskLevel']) || 'L0',
       requiresApproval: (execution.requiresApproval as boolean) || false,
     };
+  }
+
+  private buildTraceContext(
+    execution: Record<string, unknown>
+  ): { userId: string; actorType: 'user' } | undefined {
+    return typeof execution.createdBy === 'string' && execution.createdBy.trim()
+      ? { userId: execution.createdBy, actorType: 'user' }
+      : undefined;
   }
 }
