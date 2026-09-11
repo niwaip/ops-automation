@@ -28,6 +28,7 @@ run_services() {
     /^Using env file:/ { next }
     /^Running: docker compose / { next }
     /^\[WARN\]/ { next }
+    /^Created \.env/ { next }
     NF == 0 { next }
     { print }
   ' | sort -u

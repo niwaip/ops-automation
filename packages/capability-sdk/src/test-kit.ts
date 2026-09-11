@@ -31,12 +31,12 @@ export function runCapabilityFixtures(
     if (fixture.output !== undefined) {
       verify('output', fixture.output, fixture.expectOutputValid ?? true, outputValidator);
     }
-    function verify(
+    const verify = (
       phase: 'input' | 'output',
       value: unknown,
       expected: boolean,
       validator: typeof inputValidator
-    ) {
+    ) => {
       const actual = Boolean(validator(value));
       if (actual !== expected) {
         failures.push({

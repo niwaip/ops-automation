@@ -141,7 +141,7 @@ read_network_name() {
 ensure_env_file() {
     if [ ! -f "$ENV_FILE" ] && [ -f "$DOCKER_DIR/env/.env.example" ]; then
         cp "$DOCKER_DIR/env/.env.example" "$ENV_FILE"
-        echo "Created .env from .env.example"
+        echo "Created .env from .env.example" >&2
     fi
 }
 

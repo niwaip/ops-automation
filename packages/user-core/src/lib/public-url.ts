@@ -24,10 +24,12 @@ export const replaceLocalhostWithHost = (
 export const buildNovncAutoConnectUrl = (rawUrl?: string): string => {
   if (!rawUrl) return '';
   const trimmed = rawUrl.trim();
-  if (!trimmed) return '';
   try {
-    const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
-    const parsed = new URL(trimmed, base);
+    const globalLocation =
+      typeof globalThis !== 'undefined' && 'location' in globalThis
+        ? (globalThis as unknown as { location: { origin: string } }).location.origin
+        : 'http://localhost';
+    const parsed = new URL(trimmed, globalLocation);
     if (!parsed.searchParams.has('autoconnect')) {
       parsed.searchParams.set('autoconnect', 'true');
     }

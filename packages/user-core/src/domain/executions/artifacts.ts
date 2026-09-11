@@ -93,9 +93,7 @@ export const buildBrowserWorkerArtifactUrl = (
     return undefined;
   }
 
-  // In browser runtime, always use the same-origin proxy to ensure authentication
-  // headers and avoid CORS or local port binding issues.
-  if (typeof window !== 'undefined' && window.location) {
+  if (typeof globalThis !== 'undefined' && 'location' in globalThis) {
     return `/api/browser-runtime/artifacts/${encodeURIComponent(fileName)}`;
   }
 
