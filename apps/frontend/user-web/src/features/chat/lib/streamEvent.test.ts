@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reduceChatStreamEvent } from '@ops/user-core';
-import { StreamEventType } from '@ops/user-core/types';
+import { reduceChatStreamEvent, StreamEventType } from '@ops/user-core';
 
 describe('reduceChatStreamEvent', () => {
   it('completes a ReAct task result without a control-plane execution id', () => {
