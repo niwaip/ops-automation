@@ -14,6 +14,7 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import axios from 'axios';
 import { ModelService } from './model.service';
+import { parseAndVerifySandboxToken } from '../../common/guards/ai-auth.guard';
 
 const DEFAULT_DEEPSEEK_ENDPOINT = 'https://api.deepseek.com';
 
@@ -38,12 +39,12 @@ export class ModelProxyController {
   ): Promise<void> {
     // 1. 鉴权：校验虚拟 Token
     const userToken = this.extractBearerToken(authHeader);
-    if (!userToken || !userToken.startsWith('sandbox-user-token-')) {
-      this.logger.warn(`Unauthorized sandbox model call attempt with token: ${userToken || 'none'}`);
+    const userId = userToken ? parseAndVerifySandboxToken(userToken) : null;
+    if (!userId) {
+      this.logger.warn('Unauthorized sandbox model call attempt');
       throw new HttpException('Invalid or missing sandbox user token', HttpStatus.UNAUTHORIZED);
     }
 
-    const userId = userToken.replace('sandbox-user-token-', '');
     this.logger.log(`Proxying model completion for user [${userId}], model: ${body.model || 'default'}`);
 
     // 2. 解析管理员配置的真实 API 密钥与端点，优先支持内部 ModelService 统一模型底座
@@ -267,7 +268,7 @@ export class ModelProxyController {
   @ApiOperation({ summary: 'List models via Proxy' })
   async listModels(@Headers('authorization') authHeader: string | undefined): Promise<Record<string, any>> {
     const userToken = this.extractBearerToken(authHeader);
-    if (!userToken || !userToken.startsWith('sandbox-user-token-')) {
+    if (!userToken || !parseAndVerifySandboxToken(userToken)) {
       throw new HttpException('Invalid or missing sandbox user token', HttpStatus.UNAUTHORIZED);
     }
 

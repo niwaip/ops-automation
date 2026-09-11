@@ -107,32 +107,22 @@ export class TemporalWorkflowValidationService {
     };
     // #region debug-point A:stream-debug-report
     const debugReport = (hypothesisId: string, msg: string, data: Record<string, unknown>) => {
-      (() => {
-        const fs = require('fs');
-        const envPath = '.dbg/document-render-aborted.env';
-        let debugServerUrl = 'http://127.0.0.1:7777/event';
-        let debugSessionId = 'document-render-aborted';
-        try {
-          const envContent = fs.readFileSync(envPath, 'utf8');
-          debugServerUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim() || debugServerUrl;
-          debugSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim() || debugSessionId;
-        } catch {
-          // optional debug probe env file not found, use default
-        }
-        fetch(debugServerUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: debugSessionId,
-            runId: 'pre-fix',
-            hypothesisId,
-            location: 'temporal-workflow-validation.service:validateWorkflowRealStreaming',
-            msg,
-            data,
-            ts: Date.now(),
-          }),
-        }).catch(() => {});
-      })();
+      const debugServerUrl = process.env.DEBUG_SERVER_URL?.trim();
+      if (!debugServerUrl) return;
+      const debugSessionId = process.env.DEBUG_SESSION_ID || 'document-render-aborted';
+      fetch(debugServerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: debugSessionId,
+          runId: 'pre-fix',
+          hypothesisId,
+          location: 'temporal-workflow-validation.service:validateWorkflowRealStreaming',
+          msg,
+          data,
+          ts: Date.now(),
+        }),
+      }).catch(() => {});
     };
     // #endregion
 

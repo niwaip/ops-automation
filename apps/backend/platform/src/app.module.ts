@@ -30,6 +30,8 @@ import {
 import { SystemBackupModule } from '@ops/system-backup';
 import { ImChannelModule } from '@ops/im-gateway';
 
+import { JwtSecretValidatorService } from './jwt-secret-validator.service';
+
 @Module({
   imports: [
     // Passport module for JWT authentication
@@ -77,6 +79,7 @@ import { ImChannelModule } from '@ops/im-gateway';
   ],
   providers: [
     Reflector,
+    JwtSecretValidatorService,
     // Global JWT guard - applied to all routes by default
     {
       provide: APP_GUARD,

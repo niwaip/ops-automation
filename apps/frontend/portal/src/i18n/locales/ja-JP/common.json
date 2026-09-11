@@ -35,6 +35,8 @@
   "browserSemanticRules": "セマンティックルール",
   "systemTools": "モデル原子機能",
   "backup": "データ管理",
+  "storage": "ストレージ管理",
+  "observability": "システム監視とトレース",
   "promptDebug": "プロンプトテスト",
   "taskPolicies": "タスクポリシー",
   "logout": "ログアウト",

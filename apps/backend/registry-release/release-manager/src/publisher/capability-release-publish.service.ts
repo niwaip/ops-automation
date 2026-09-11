@@ -492,12 +492,14 @@ export class CapabilityReleasePublishService {
     data: Record<string, unknown>,
     runId = 'pre-fix'
   ): void {
+    const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
+    if (!debugUrl) return;
     const localFs = require('fs') as typeof import('fs');
     const envPaths = [
       '/app/.dbg/runtime-loop-mismatch.env',
       '/Users/chain/Documents/MyProject/ops-automation/.dbg/runtime-loop-mismatch.env',
     ];
-    let serverUrl = 'http://host.docker.internal:7777/event';
+    let serverUrl = debugUrl;
     let sessionId = 'runtime-loop-mismatch';
     for (const envPath of envPaths) {
       try {
@@ -528,13 +530,6 @@ export class CapabilityReleasePublishService {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-    })
-      .catch(() =>
-        fetch('http://host.docker.internal:7777/event', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        }).catch(() => undefined)
-      );
+    }).catch(() => undefined);
   }
 }

@@ -1,5 +1,7 @@
 import React, { useEffect } from "react";
-import { Collapse, Drawer, Empty, Form, message, Space, Spin, Tag, Typography } from "antd";
+import { Button, Collapse, Drawer, Empty, Form, message, Space, Spin, Tag, Typography } from "antd";
+import { useNavigate } from "react-router-dom";
+import { BranchesOutlined, ExportOutlined } from "@ant-design/icons";
 import { useMutation, useQueryClient } from "react-query";
 import {
   executionApi,
@@ -7,6 +9,7 @@ import {
 } from "@/api/execution";
 import LiveSessionPreviewCard from "@/components/runtime/LiveSessionPreviewCard";
 import InlineRecoveryPanel from "@/features/executions/shared/InlineRecoveryPanel";
+import { ExecutionTraceTab } from "../../detail/components/ExecutionTraceTab";
 import { RECOVERY_COPY } from "@/features/executions/shared/recoveryOptions";
 import {
   getRuntimeSessionStatusLabel,
@@ -53,6 +56,7 @@ export const ExecutionDetailDrawer: React.FC<ExecutionDetailDrawerProps> = ({
   skillNameMap,
   onOpenAiTask,
 }) => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [resumeForm] = Form.useForm<ResumeFormValues>();
 
@@ -204,6 +208,34 @@ export const ExecutionDetailDrawer: React.FC<ExecutionDetailDrawerProps> = ({
           )}
         </div>
       }
+      extra={
+        selectedExecution ? (
+          <Space>
+            <Button
+              size="small"
+              icon={<BranchesOutlined />}
+              onClick={() => {
+                onClose();
+                navigate(`/executions/${selectedExecution.id}?tab=trace`);
+              }}
+            >
+              链路视图
+            </Button>
+            <Button
+              size="small"
+              type="primary"
+              ghost
+              icon={<ExportOutlined />}
+              onClick={() => {
+                onClose();
+                navigate(`/executions/${selectedExecution.id}`);
+              }}
+            >
+              完整详情页
+            </Button>
+          </Space>
+        ) : null
+      }
       placement="right"
       width={760}
       open={open}
@@ -282,6 +314,12 @@ export const ExecutionDetailDrawer: React.FC<ExecutionDetailDrawerProps> = ({
             selectedExecutionInput={selectedExecutionInput}
             selectedExecutionNormalizedResult={selectedExecutionNormalizedResult}
             effectiveSelectedResultJson={effectiveSelectedResultJson}
+          />
+
+          {/* 4.5 链路追踪与全生命周期耗时瀑布流 */}
+          <ExecutionTraceTab
+            execution={selectedExecution}
+            steps={selectedSteps}
           />
 
           {/* 5. 步骤执行流与现场输出 */}

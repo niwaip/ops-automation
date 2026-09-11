@@ -12,6 +12,7 @@ import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { SavedSkillModule } from './modules/saved-skill/saved-skill.module';
 import { AssistantFeedbackModule } from './modules/feedback/assistant-feedback.module';
 import { ExperienceLearningModule } from './modules/experience-learning/experience-learning.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ExperienceLearningModule } from './modules/experience-learning/experien
     SavedSkillModule,
     AssistantFeedbackModule,
     ExperienceLearningModule,
+    MetricsModule,
   ],
   providers: [JwtSecretGuard],
 })
@@ -41,6 +43,7 @@ export class AppModule implements NestModule {
         'auth/register',
         'auth/refresh',
         'health',
+        'metrics',
         'api/docs',
         'mcp/sse',
         'mcp/message'

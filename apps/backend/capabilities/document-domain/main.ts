@@ -45,8 +45,19 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
+  const corsOrigin = process.env.CORS_ORIGIN || process.env.CORS_ALLOWED_ORIGINS;
+  const isDev = process.env.NODE_ENV !== 'production';
+
   app.enableCors({
-    origin: true,
+    origin:
+      corsOrigin && corsOrigin !== '*'
+        ? corsOrigin.split(',').map((item) => item.trim()).filter(Boolean)
+        : (origin, callback) => {
+            if (!origin || isDev) {
+              return callback(null, true);
+            }
+            return callback(new Error('CORS origin denied by policy'), false);
+          },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });

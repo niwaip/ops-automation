@@ -69,6 +69,10 @@ ${skillsXml}
 
     try {
       const aiOrchestratorUrl = getAiOrchestratorUrl();
+      const internalSecret =
+        process.env.INTERNAL_API_SHARED_SECRET ||
+        process.env.INTERNAL_API_SECRET ||
+        'ops_internal_shared_secret_change_me';
       const response = await axios.post<{
         result: string;
         usage?: LLMUsage;
@@ -84,7 +88,12 @@ ${skillsXml}
           prompt,
           includeDebug: true,
         },
-        { timeout: this.modelTimeoutMs }
+        {
+          headers: {
+            ...(internalSecret ? { 'x-internal-auth': internalSecret } : {}),
+          },
+          timeout: this.modelTimeoutMs,
+        }
       );
 
       const aiResponse = this.parseAiMatchResponse(response.data.result, candidateSkills);

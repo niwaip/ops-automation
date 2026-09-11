@@ -440,6 +440,11 @@ export class UserEmailConnectionService {
 
     const checks: string[] = [];
     const details: { smtp?: boolean; imap?: boolean } = {};
+    const allowInsecureTls = Boolean(
+      (dto as any)?.allowInsecureTls ??
+      (dto as any)?.config?.allowInsecureTls ??
+      (process.env.EMAIL_ALLOW_INSECURE_TLS === 'true')
+    );
 
     if (smtpHost) {
       const smtpRes = await this.verifySmtp({
@@ -449,6 +454,7 @@ export class UserEmailConnectionService {
         user: emailAddress,
         pass: rawPassword || '',
         accessToken,
+        allowInsecureTls,
       });
 
       if (!smtpRes.success) {
@@ -470,6 +476,7 @@ export class UserEmailConnectionService {
         user: emailAddress,
         pass: rawPassword || '',
         accessToken,
+        allowInsecureTls,
       });
 
       if (!imapRes.success) {
@@ -497,9 +504,14 @@ export class UserEmailConnectionService {
     user: string;
     pass: string;
     accessToken?: string;
+    allowInsecureTls?: boolean;
   }): Promise<{ success: boolean; message: string }> {
     const cleanPass = opts.pass.replace(/\s+/g, '');
     const isDirectTls = opts.port === 465;
+    const allowInsecureTls = Boolean(
+      opts.allowInsecureTls ?? (process.env.EMAIL_ALLOW_INSECURE_TLS === 'true')
+    );
+    const rejectUnauthorized = !allowInsecureTls;
 
     return new Promise((resolve) => {
       let resolved = false;
@@ -559,7 +571,7 @@ export class UserEmailConnectionService {
                 const tlsSocket = tls.connect({
                   socket: s,
                   host: opts.host,
-                  rejectUnauthorized: false,
+                  rejectUnauthorized,
                   minVersion: 'TLSv1.2',
                 });
                 activeSocket = tlsSocket;
@@ -607,7 +619,7 @@ export class UserEmailConnectionService {
           host: opts.host,
           port: opts.port,
           minVersion: 'TLSv1.2',
-          rejectUnauthorized: false,
+          rejectUnauthorized,
         });
         startSession(tlsSocket, true);
       } else {
@@ -624,8 +636,13 @@ export class UserEmailConnectionService {
     user: string;
     pass: string;
     accessToken?: string;
+    allowInsecureTls?: boolean;
   }): Promise<{ success: boolean; message: string }> {
     const cleanPass = opts.pass.replace(/\s+/g, '');
+    const allowInsecureTls = Boolean(
+      opts.allowInsecureTls ?? (process.env.EMAIL_ALLOW_INSECURE_TLS === 'true')
+    );
+    const rejectUnauthorized = !allowInsecureTls;
 
     return new Promise((resolve) => {
       let resolved = false;
@@ -646,7 +663,7 @@ export class UserEmailConnectionService {
               host: opts.host,
               port: opts.port,
               minVersion: 'TLSv1.2',
-              rejectUnauthorized: false,
+              rejectUnauthorized,
             })
           : net.connect({ host: opts.host, port: opts.port });
 

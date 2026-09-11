@@ -90,8 +90,8 @@ describe('seedSystemLlmOperations', () => {
       type: 'object',
       additionalProperties: false,
     });
-    expect(manifest.maxInputTokens).toBe(8000);
-    expect(manifest.maxOutputTokens).toBe(4000);
+    expect(manifest.maxInputTokens).toBe(32000);
+    expect(manifest.maxOutputTokens).toBe(8000);
     expect((manifest.prompt as Record<string, string>).systemTemplate).toContain(
       '800 个中文字符以内'
     );

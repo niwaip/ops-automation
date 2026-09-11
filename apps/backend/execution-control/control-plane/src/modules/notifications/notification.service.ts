@@ -282,10 +282,17 @@ export class NotificationService {
   }
 
   private async listReportNotifications(limit: number): Promise<AppNotificationDto[]> {
+    const internalSecret =
+      process.env.INTERNAL_API_SHARED_SECRET ||
+      process.env.INTERNAL_API_SECRET ||
+      'ops_internal_shared_secret_change_me';
     const response = await axios.get<{ reports: ReportNotificationSource[] }>(
       `${this.reportServiceUrl}/reports`,
       {
         timeout: 30000,
+        headers: {
+          'x-internal-auth': internalSecret,
+        },
       }
     );
 

@@ -169,11 +169,6 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter, Playwright
         sessionId
       );
       const readiness = await this.waitForStandardPageReadiness(dto, sessionId);
-      const result =
-        this.normalizedArtifactsEnabled() ||
-        (process.env.BROWSER_CONTENT_EXTRACTION_ENABLED !== 'false' && Boolean(dto.captureProfile))
-          ? await this.enrichResultArtifacts(sessionId, rawResult).catch(() => rawResult)
-          : rawResult;
       const pageState = await this.inspectPageState(sessionId).catch(
         () =>
           ({
@@ -184,6 +179,34 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter, Playwright
       );
 
       const requiredReadinessFailed = !readiness.ready && readiness.required;
+      const isStepSuccess = !requiredReadinessFailed;
+
+      const decision = this.inspectionHandler.shouldCaptureScreenshot({
+        action: dto.action,
+        success: isStepSuccess,
+        pageState,
+        sessionId,
+        captureProfile: dto.captureProfile as Record<string, unknown> | undefined,
+      });
+
+      const result =
+        this.normalizedArtifactsEnabled() ||
+        (process.env.BROWSER_CONTENT_EXTRACTION_ENABLED !== 'false' && Boolean(dto.captureProfile))
+          ? await this.enrichResultArtifacts(sessionId, rawResult, {
+              captureScreenshot: decision.capture,
+            }).catch(() => rawResult)
+          : rawResult;
+
+      if (decision.capture && (result.screenshot || result.snapshot?.path)) {
+        this.inspectionHandler.updateLastSnapshotState(sessionId, {
+          url: pageState.pageUrl,
+          title: pageState.pageTitle,
+          scrollX: pageState.scrollX,
+          scrollY: pageState.scrollY,
+          bodyLength: pageState.bodyLength,
+          hasModal: pageState.hasModal,
+        });
+      }
       return {
         success: !requiredReadinessFailed,
         snapshotId: result.snapshot?.id,
@@ -533,9 +556,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter, Playwright
 
   async enrichResultArtifacts(
     sessionId: string,
-    result: CliActionResult
+    result: CliActionResult,
+    options?: { captureScreenshot?: boolean }
   ): Promise<CliActionResult> {
-    return this.inspectionHandler.enrichResultArtifacts(sessionId, result);
+    return this.inspectionHandler.enrichResultArtifacts(sessionId, result, options);
   }
 
   async settlePageAfterAction(sessionId: string): Promise<void> {

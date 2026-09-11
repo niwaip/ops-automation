@@ -36,6 +36,8 @@
   "browserSemanticRules": "Semantic Rules",
   "systemTools": "Model Atomic Capabilities",
   "backup": "Data Management",
+  "storage": "Storage Management",
+  "observability": "System Observability",
   "promptDebug": "Prompt Testing",
   "taskPolicies": "Task Policies",
   "logout": "Logout",

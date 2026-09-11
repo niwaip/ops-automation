@@ -50,8 +50,8 @@ instead of surfacing later as a ReAct fallback.
 ### Import current seed data
 
 ```bash
-cd apps/backend/core/platform
-npm run seed
+cd apps/backend/platform
+pnpm run seed
 ```
 
 Supported seed environment variables:
@@ -84,9 +84,9 @@ The platform and execution-control packages share one PostgreSQL database
 and one canonical `schema.prisma` (mirrored byte-for-byte in both packages).
 All schema changes live in ONE authoritative sequence:
 
-- `apps/backend/core/platform/prisma/migrations/`
+- `apps/backend/platform/prisma/migrations/`
 
-Applied via `prisma migrate deploy --schema apps/backend/core/platform/prisma/schema.prisma`
+Applied via `prisma migrate deploy --schema apps/backend/platform/prisma/schema.prisma`
 (`docker/scripts/apply-latest-db-schema-in-container.sh`). The former
 control-plane incremental SQL list and the manual UUID-defaults repair were
 folded into this sequence (`20260609000000_add_execution_phases` /

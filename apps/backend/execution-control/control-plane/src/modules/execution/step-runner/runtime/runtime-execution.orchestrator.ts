@@ -3,6 +3,7 @@ import { RuntimeAdapterRegistry } from '../../adapters/runtime-adapter.registry'
 import {
   RuntimeCredentialResolverService,
   isMaskedPlaceholder,
+  isMissingOrPlaceholder,
 } from '../../credentials/runtime-credential-resolver.service';
 import {
   RuntimePhaseArtifact,
@@ -21,12 +22,14 @@ export class RuntimeExecutionOrchestrator {
     data: Record<string, unknown>,
     runId = 'pre-fix'
   ): void {
+    const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
+    if (!debugUrl) return;
     const fs = require('fs') as typeof import('fs');
     const envPaths = [
       '/app/.dbg/workflow-branch-check.env',
       '/Users/chain/Documents/MyProject/ops-automation/.dbg/workflow-branch-check.env',
     ];
-    let url = 'http://host.docker.internal:7777/event';
+    let url = debugUrl;
     let sessionId = 'workflow-branch-check';
     for (const envPath of envPaths) {
       try {
@@ -244,11 +247,7 @@ export class RuntimeExecutionOrchestrator {
       );
       for (const [k, v] of Object.entries(resolvedCredentials)) {
         const existingVal = resolvedInput[k];
-        if (
-          existingVal === undefined ||
-          existingVal === null ||
-          (typeof existingVal === 'string' && isMaskedPlaceholder(existingVal))
-        ) {
+        if (isMissingOrPlaceholder(existingVal)) {
           resolvedInput[k] = v;
         }
       }
@@ -256,9 +255,15 @@ export class RuntimeExecutionOrchestrator {
 
     const variableMap: Record<string, unknown> = {
       ...(contextVariables || {}),
-      ...resolvedCredentials,
       ...resolvedInput,
+      ...resolvedCredentials,
     };
+
+    if (variableMap.username && !variableMap.userName) variableMap.userName = variableMap.username;
+    if (variableMap.username && !variableMap.user) variableMap.user = variableMap.username;
+    if (variableMap.username && !variableMap.account) variableMap.account = variableMap.username;
+    if (variableMap.password && !variableMap.loginCredential) variableMap.loginCredential = variableMap.password;
+    if (variableMap.loginCredential && !variableMap.password) variableMap.password = variableMap.loginCredential;
 
     resolvedInput = this.injectResolvedCredentialsDeep(resolvedInput, variableMap);
     this.assertNoMaskedOrUnresolvedSecrets(resolvedInput, request);
@@ -285,6 +290,17 @@ export class RuntimeExecutionOrchestrator {
     );
   }
 
+  private isUsernameKey(name: string): boolean {
+    const lower = name.toLowerCase();
+    return (
+      lower.includes('username') ||
+      lower.includes('user_name') ||
+      lower === 'user' ||
+      lower.includes('account') ||
+      lower.includes('loginuser')
+    );
+  }
+
   private injectResolvedCredentialsDeep(
     input: Record<string, unknown>,
     variableMap: Record<string, unknown>
@@ -301,13 +317,82 @@ export class RuntimeExecutionOrchestrator {
       ].reduce((current, pattern) => {
         return current.replace(pattern, (match, varName) => {
           const trimmed = String(varName).trim();
-          const repl = variableMap[trimmed];
-          if (repl !== undefined && repl !== null && !isMaskedPlaceholder(String(repl))) {
+          let repl = variableMap[trimmed];
+          if (repl === undefined || repl === null) {
+            const foundKey = Object.keys(variableMap).find(
+              (k) => k.toLowerCase() === trimmed.toLowerCase()
+            );
+            if (foundKey) {
+              repl = variableMap[foundKey];
+            }
+          }
+          if (repl === undefined || repl === null) {
+            const lower = trimmed.toLowerCase();
+            if (
+              lower === 'username' ||
+              lower === 'user' ||
+              lower === 'account' ||
+              lower === 'loginuser' ||
+              lower === 'loginusername'
+            ) {
+              repl =
+                variableMap.username ??
+                variableMap.userName ??
+                variableMap.user ??
+                variableMap.account;
+            } else if (
+              lower === 'password' ||
+              lower === 'logincredential' ||
+              lower === 'passwd' ||
+              lower === 'secret'
+            ) {
+              repl =
+                variableMap.password ??
+                variableMap.loginCredential ??
+                variableMap.passwd ??
+                variableMap.secret;
+            }
+          }
+          if (
+            repl !== undefined &&
+            repl !== null &&
+            !isMaskedPlaceholder(String(repl)) &&
+            !/^\$\{[^}]+\}$/.test(String(repl).trim())
+          ) {
             return String(repl);
           }
           return match;
         });
       }, result);
+
+      const selector =
+        typeof parentObj?.selector === 'string' ? parentObj.selector.toLowerCase() : '';
+      const isUsernameSelector =
+        selector.includes('user') ||
+        selector.includes('账号') ||
+        selector.includes('用户名') ||
+        selector.includes('account');
+      const isUnresolvedUsername =
+        /^\$\{\s*(username|user|account|loginUser|loginUsername)\s*\}$/i.test(result.trim()) ||
+        isMaskedPlaceholder(result);
+
+      if (
+        (isUnresolvedUsername && (isUsernameSelector || (keyName && this.isUsernameKey(keyName)))) ||
+        (isUsernameSelector && isMissingOrPlaceholder(result))
+      ) {
+        const usernameVal =
+          variableMap.username ??
+          variableMap.userName ??
+          variableMap.user ??
+          variableMap.account;
+        if (
+          usernameVal !== undefined &&
+          usernameVal !== null &&
+          !isMissingOrPlaceholder(usernameVal)
+        ) {
+          return String(usernameVal);
+        }
+      }
 
       if (isMaskedPlaceholder(result)) {
         if (
@@ -317,8 +402,6 @@ export class RuntimeExecutionOrchestrator {
         ) {
           return String(variableMap[keyName]);
         }
-        const selector =
-          typeof parentObj?.selector === 'string' ? parentObj.selector.toLowerCase() : '';
         const isPasswordSelector =
           selector.includes('pass') ||
           selector.includes('密') ||
@@ -377,7 +460,11 @@ export class RuntimeExecutionOrchestrator {
             `Runtime credential for parameter at [${keyPath}] in step [${request.stepId}] is masked; bind an active credential before execution`
           );
         }
-        if (/\$\{(logincredential|password|secret|devicekey|apikey|token)[^}]*\}/i.test(val)) {
+        if (
+          /\$\{(logincredential|password|secret|devicekey|apikey|token|username|user|account)[^}]*\}/i.test(
+            val
+          )
+        ) {
           throw new Error(
             `Missing runtime credential for parameter at [${keyPath}] in step [${request.stepId}]; please bind credential before execution`
           );

@@ -13,7 +13,6 @@ ENV DISPLAY=:99
 ENV SCREEN_WIDTH=1920
 ENV SCREEN_HEIGHT=1080
 ENV SCREEN_DEPTH=24
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 
 # Use Aliyun mirrors for better connectivity across arm64/x64 Ubuntu base images.
 RUN if [ -f /etc/apt/sources.list ]; then \

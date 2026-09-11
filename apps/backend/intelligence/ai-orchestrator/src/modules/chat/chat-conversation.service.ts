@@ -10,7 +10,7 @@ import { StreamEventType } from '../react-engine/interfaces';
 import type { StreamEvent } from '../react-engine/interfaces';
 import type { ExecutionContext } from '../react-engine/interfaces';
 import type { ChatRequestDTO, ChatResponseDTO } from './chat.dto';
-import { ChatMediaService } from './chat-media.service';
+import { ChatMediaService, type AuthenticatedUserContext } from './chat-media.service';
 
 interface ChatSessionListItem {
   id: string;
@@ -52,8 +52,13 @@ export class ChatConversationService {
   async streamChat(
     body: ChatRequestDTO,
     emit: (event: StreamEvent) => void,
-    ownerUserId?: string
+    userContext?: AuthenticatedUserContext | string
   ): Promise<void> {
+    const contextUser: AuthenticatedUserContext =
+      typeof userContext === 'string'
+        ? { userId: userContext }
+        : userContext || { userId: body.userId };
+    const ownerUserId = contextUser.userId;
     const modelId = this.resolvePreferredChatModelId(body);
     const sessionId = body.sessionId || 'default';
     const thinkingEnabled = this.isThinkingEnabled(body);
@@ -75,7 +80,8 @@ export class ChatConversationService {
 
     const messageContent = await this.chatMediaService.buildMessageContent(
       body.message,
-      body.files
+      body.files,
+      contextUser
     );
     const systemMessage = this.buildChatSystemMessage(
       thinkingEnabled,
@@ -145,7 +151,15 @@ export class ChatConversationService {
     emit(this.buildSessionPatchEvent(sessionId, session));
   }
 
-  async chat(body: ChatRequestDTO, ownerUserId?: string): Promise<ChatResponseDTO> {
+  async chat(
+    body: ChatRequestDTO,
+    userContext?: AuthenticatedUserContext | string
+  ): Promise<ChatResponseDTO> {
+    const contextUser: AuthenticatedUserContext =
+      typeof userContext === 'string'
+        ? { userId: userContext }
+        : userContext || { userId: body.userId };
+    const ownerUserId = contextUser.userId;
     const modelId = this.resolvePreferredChatModelId(body);
     const sessionId = body.sessionId || 'default';
     const thinkingEnabled = this.isThinkingEnabled(body);
@@ -159,7 +173,11 @@ export class ChatConversationService {
       };
     }
 
-    const userContent = await this.chatMediaService.buildMessageContent(body.message, body.files);
+    const userContent = await this.chatMediaService.buildMessageContent(
+      body.message,
+      body.files,
+      contextUser
+    );
     const messages = await this.buildConversationMessages(
       sessionId,
       this.buildChatSystemMessage(thinkingEnabled, Boolean(body.files?.length)),

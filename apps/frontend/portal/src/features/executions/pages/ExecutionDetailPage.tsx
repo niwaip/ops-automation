@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Alert,
   Button,
@@ -34,6 +34,7 @@ import { StepOutputViewer } from '@/features/executions/shared/StepOutputViewer'
 import { ExecutionStatusBanner } from '../list/components/ExecutionStatusBanner';
 import { extractExecutionDownloadUrl, resolveExecutionNormalizedResult } from '@ops/user-core';
 import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
+import { ExecutionTraceTab } from '../detail/components/ExecutionTraceTab';
 
 const { Title, Text } = Typography;
 
@@ -43,7 +44,11 @@ const formatDateTime = (val?: string) =>
 export const ExecutionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'steps' | 'result' | 'input' | 'meta'>('steps');
+  const [searchParams] = useSearchParams();
+  const queryTab = searchParams.get('tab') as 'steps' | 'trace' | 'result' | 'input' | 'meta' | null;
+  const [activeTab, setActiveTab] = useState<'steps' | 'trace' | 'result' | 'input' | 'meta'>(
+    queryTab && ['steps', 'trace', 'result', 'input', 'meta'].includes(queryTab) ? queryTab : 'steps'
+  );
 
   const { execution, isLoading, refetch, steps, isStepsLoading } =
     useExecutionDetailQueries(id);
@@ -287,6 +292,15 @@ export const ExecutionDetailPage: React.FC = () => {
                       })}
                     />
                   )}
+                </div>
+              ),
+            },
+            {
+              key: 'trace',
+              label: '链路追踪与耗时',
+              children: (
+                <div style={{ marginTop: 8 }}>
+                  <ExecutionTraceTab execution={execution} steps={steps} />
                 </div>
               ),
             },

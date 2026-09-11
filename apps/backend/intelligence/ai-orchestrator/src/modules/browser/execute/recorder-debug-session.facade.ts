@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
+import { getInternalServiceHeaders } from '../../../config/internal-service-auth';
 import type { RecorderActiveContainerInfo, RecorderDebugObservation } from './recorder-debug.types';
 import { RecorderDebugObservationRefreshService } from '../observe';
 import { RecorderDebugSessionCoordinatorService } from '../session';
@@ -129,7 +130,7 @@ export class RecorderDebugSessionFacade {
         },
         {
           timeout: 60000,
-          headers: { 'Content-Type': 'application/json' },
+          headers: getInternalServiceHeaders(),
         }
       );
 

@@ -7,6 +7,7 @@ export interface UserWorkspacePaths {
   knowledge: string;
   sharedPlugins: string;
   sharedSkills: string;
+  dshModules?: string;
 }
 
 export interface UserSandboxQuota {
@@ -129,6 +130,7 @@ export class UserSandboxStorageService {
     const hostKnowledge = path.join(hostUserRoot, 'knowledge');
     const hostSharedPlugins = path.join(this.hostProjectRoot, 'data', 'shared', 'dsh-plugins');
     const hostSharedSkills = path.join(this.hostProjectRoot, 'data', 'shared', 'dsh-skills');
+    const hostDshModules = path.join(this.hostProjectRoot, 'docker', 'user-sandbox', 'dsh_modules');
 
     const localUserRoot = path.join(this.localProjectRoot, 'data', 'users', sanitized);
     const localWorkspace = path.join(localUserRoot, 'workspace');
@@ -216,6 +218,7 @@ export class UserSandboxStorageService {
       knowledge: hostKnowledge,
       sharedPlugins: hostSharedPlugins,
       sharedSkills: hostSharedSkills,
+      dshModules: hostDshModules,
     };
   }
 

@@ -1046,8 +1046,12 @@ export class ExecutionPlanNormalizationService {
         if (!suspiciousAction && !suspiciousShape) {
           return;
         }
+        const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
+        if (!debugUrl) {
+          return;
+        }
         const fs = require('node:fs');
-        let u = 'http://127.0.0.1:7777/event';
+        let u = debugUrl;
         let s = 'gross-margin-review';
         try {
           const env = fs.readFileSync('.dbg/gross-margin-review.env', 'utf8');
@@ -1397,11 +1401,23 @@ export class ExecutionPlanNormalizationService {
     if (typeof value === 'string') {
       const resolvePlaceholder = (match: string, rawKey: string): string => {
         const key = rawKey.trim();
-        const resolved = resolvedInput[key];
+        const lower = key.toLowerCase();
+        let resolved =
+          resolvedInput[key] ??
+          Object.entries(resolvedInput).find(([k]) => k.toLowerCase() === lower)?.[1];
         if (resolved === undefined || resolved === null) {
-          return match;
+          if (['username', 'user', 'account'].includes(lower)) {
+            resolved = resolvedInput.username ?? resolvedInput.userName ?? resolvedInput.user ?? resolvedInput.account;
+          } else if (['password', 'logincredential', 'secret'].includes(lower)) {
+            resolved = resolvedInput.password ?? resolvedInput.loginCredential ?? resolvedInput.passwd ?? resolvedInput.secret;
+          }
         }
-        if (typeof resolved === 'string' && isMaskedPlaceholder(resolved)) {
+        if (
+          resolved === undefined ||
+          resolved === null ||
+          (typeof resolved === 'string' &&
+            (isMaskedPlaceholder(resolved) || /^\$\{[^}]+\}$/.test(resolved.trim())))
+        ) {
           return match;
         }
         return String(resolved);

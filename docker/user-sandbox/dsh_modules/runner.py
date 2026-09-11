@@ -14,7 +14,7 @@ from pathlib import Path
 from .config import WORKSPACE_DIR, KNOWLEDGE_DIR, CUSTOM_SKILL_DIR, SKILL_DIR, print_banner
 from .skills import get_available_skills, read_skill
 from .tools import scan_personal_knowledge, perform_web_search, read_workspace_file, execute_tool
-from .llm import call_model_proxy, parse_tool_calls, clean_output
+from .llm import call_model_proxy, parse_tool_calls, clean_output, is_promising_action
 
 
 def cmd_run(args):
@@ -170,7 +170,7 @@ def cmd_run(args):
         "【Autonomous Problem Solving & Design Instructions】:\n"
         "1. Deliverable Creation: When asked to create PPT, slides, dashboard, landing page, UI, or code, DO NOT invoke search or shell tools unless live external facts are specifically requested. Use the loaded design rules and DIRECTLY write the full working code!\n"
         "2. Real-time Accuracy: When asked for live news, real-time weather, or today's trends, refer to [Current System Timestamp] and autonomously invoke `weather` or `web_search`.\n"
-        "3. Tool Call Protocol: When invoking a tool, output strictly: <tool_call>{\"name\": \"...\", \"arguments\": {...}}</tool_call>. DO NOT output conversational filler or preliminary text before calling the tool. Ensure valid JSON syntax with properly escaped strings and closed curly braces `}}`.\n"
+        "3. Tool Call Protocol: When invoking a tool, output strictly: <tool_call>{\"name\": \"...\", \"arguments\": {...}}</tool_call>. CRITICAL: If you plan or promise to perform an action (e.g. '我换用关键词搜索...', '重新查询...', '接下来我来获取...'), you MUST output the <tool_call> tag in the SAME response! NEVER output conversational filler or empty action promises without the tool call tag. Ensure valid JSON syntax with properly escaped strings and closed curly braces `}}`.\n"
         "4. Deliverable Format: ONLY when the user explicitly requests PPT, slides, dashboard, landing page, UI, or HTML artifacts, generate single-file HTML/CSS/JS (inside ```html ``` code block). For normal questions (such as weather, Q&A, facts, data queries), answer directly in clean Markdown without generating unrequested HTML or artifacts.\n"
         "5. Direct & Proportional Response: Answer what the user asked directly and concisely. Do NOT proactively offer or generate unrequested HTML cards, files, or extra deliverables unless explicitly asked.\n"
         "6. Final Output: Output clean, beautifully structured, accurate Chinese Markdown. Never leave raw XML or tool_call tags in the final answer."
@@ -225,6 +225,20 @@ def cmd_run(args):
         for round_idx in range(max_rounds):
             tool_calls = parse_tool_calls(reply)
             if not tool_calls:
+                # 检查回复是否是模型“打算继续行动/换关键词重试”的口头承诺垫话（遗漏了 tool_call 标签）
+                if is_promising_action(reply) and round_idx < max_rounds - 1:
+                    print("⚡ [Harness Action Nudge] 检测到模型表达了后续执行意图但遗漏了工具标签，正在提醒模型执行工具...")
+                    messages.append({"role": "assistant", "content": reply})
+                    messages.append({
+                        "role": "user",
+                        "content": (
+                            "你刚才提出了具体的后续行动方案（例如换用关键词搜索），但尚未输出工具调用标签！\n"
+                            "请不要只输出口头承诺，请立刻输出具体的 <tool_call>{\"name\": \"web_search\", \"arguments\": {\"query\": \"具体关键词\"}}</tool_call> "
+                            "或其它对应工具标签来执行该操作！"
+                        )
+                    })
+                    reply = call_model_proxy(messages, args.model or "deepseek-chat")
+                    continue
                 break
 
             t = tool_calls[0]
@@ -259,10 +273,14 @@ def cmd_run(args):
         has_pending_tool_calls = bool(parse_tool_calls(reply))
         final_text = clean_output(reply)
 
-        # 检查是否仅留下了过渡性前导垫话（如“让我深入探索克隆下来的仓库内容...”）
+        # 检查是否仅留下了过渡性前导垫话（如“让我深入探索克隆下来的仓库内容...”或“我换用更精确的关键词搜索...”）
+        action_filler_keywords = [
+            "让我", "正在", "接下来", "探索", "获取", "抓取", "解析", "稍等", "深入", "克隆", "调用",
+            "换用", "重新搜索", "继续搜索", "我来搜索", "我将搜索", "来搜索", "关键词组合"
+        ]
         is_transitional_filler = (
-            len(final_text) < 80 and
-            any(kw in final_text for kw in ["让我", "正在", "接下来", "探索", "获取", "抓取", "解析", "稍等", "深入", "克隆", "调用"])
+            len(final_text) < 120 and
+            (any(kw in final_text for kw in action_filler_keywords) or is_promising_action(reply))
         )
 
         # 如果模型仍试图调用工具、内容为空或仅有过渡性短句，强制请求输出最终总结

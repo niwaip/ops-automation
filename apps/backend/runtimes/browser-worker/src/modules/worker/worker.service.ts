@@ -771,13 +771,8 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
     msg: string,
     data: Record<string, unknown>
   ): void {
-    const isContainerRuntime =
-      process.env.DOCKER_ENV === 'true' ||
-      process.env.NODE_ENV === 'production' ||
-      process.env.SESSION_BROKER_URL?.includes('session-broker');
-    const debugServerUrl =
-      process.env.DEBUG_SERVER_URL?.trim() ||
-      (isContainerRuntime ? 'http://host.docker.internal:7777/event' : 'http://127.0.0.1:7777/event');
+    const debugServerUrl = process.env.DEBUG_SERVER_URL?.trim();
+    if (!debugServerUrl) return;
     const debugSessionId = process.env.DEBUG_SESSION_ID?.trim() || 'browser-worker-runtime';
     const debugRunId = process.env.DEBUG_RUN_ID?.trim() || 'default';
 

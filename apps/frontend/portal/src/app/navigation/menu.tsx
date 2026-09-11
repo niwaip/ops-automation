@@ -23,10 +23,12 @@ import {
   GlobalOutlined,
   BugOutlined,
   CloudSyncOutlined,
+  DatabaseOutlined,
   HistoryOutlined,
   PlayCircleOutlined,
   ChromeOutlined,
   DeploymentUnitOutlined,
+  LineChartOutlined,
 } from '@ant-design/icons';
 import {
   getDefaultOpenKeys,
@@ -237,6 +239,13 @@ export const NAV_STRUCTURE: (NavItemConfig | NavGroupConfig)[] = [
         icon: <ChromeOutlined />,
         requiresAdmin: false,
       },
+      {
+        key: '/admin/observability',
+        labelKey: 'observability',
+        defaultLabel: '系统监控与链路',
+        icon: <LineChartOutlined />,
+        requiresAdmin: true,
+      },
     ],
   },
   {
@@ -265,6 +274,13 @@ export const NAV_STRUCTURE: (NavItemConfig | NavGroupConfig)[] = [
         labelKey: 'backup',
         defaultLabel: '数据管理',
         icon: <CloudSyncOutlined />,
+        requiresAdmin: true,
+      },
+      {
+        key: '/admin/storage',
+        labelKey: 'storage',
+        defaultLabel: '存储管理',
+        icon: <DatabaseOutlined />,
         requiresAdmin: true,
       },
     ],

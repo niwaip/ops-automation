@@ -41,6 +41,10 @@ export class SmtpClient {
     const pass = (config.authPassword || '').replace(/\s+/g, '');
     const isDirectTls = port === 465;
     const timeout = config.timeoutMs || 12000;
+    const allowInsecureTls = Boolean(
+      config.allowInsecureTls ?? (process.env.EMAIL_ALLOW_INSECURE_TLS === 'true')
+    );
+    const rejectUnauthorized = !allowInsecureTls;
 
     return new Promise((resolve) => {
       let resolved = false;
@@ -103,7 +107,7 @@ export class SmtpClient {
                 const tlsSocket = tls.connect({
                   socket: s,
                   host,
-                  rejectUnauthorized: false,
+                  rejectUnauthorized,
                   minVersion: 'TLSv1.2',
                 });
                 activeSocket = tlsSocket;
@@ -140,7 +144,7 @@ export class SmtpClient {
       };
 
       if (isDirectTls) {
-        const tlsSocket = tls.connect({ host, port, minVersion: 'TLSv1.2', rejectUnauthorized: false });
+        const tlsSocket = tls.connect({ host, port, minVersion: 'TLSv1.2', rejectUnauthorized });
         startSession(tlsSocket, true);
       } else {
         const netSocket = net.connect({ host, port });
@@ -159,6 +163,10 @@ export class SmtpClient {
     const pass = (config.authPassword || '').replace(/\s+/g, '');
     const isDirectTls = port === 465;
     const timeout = config.timeoutMs || 15000;
+    const allowInsecureTls = Boolean(
+      config.allowInsecureTls ?? (process.env.EMAIL_ALLOW_INSECURE_TLS === 'true')
+    );
+    const rejectUnauthorized = !allowInsecureTls;
     const deliveryId = `del_${uuidv4()}`;
 
     const recipients = [
@@ -270,7 +278,7 @@ export class SmtpClient {
                 const tlsSocket = tls.connect({
                   socket: s,
                   host,
-                  rejectUnauthorized: false,
+                  rejectUnauthorized,
                   minVersion: 'TLSv1.2',
                 });
                 activeSocket = tlsSocket;
@@ -325,7 +333,7 @@ export class SmtpClient {
       };
 
       if (isDirectTls) {
-        const tlsSocket = tls.connect({ host, port, minVersion: 'TLSv1.2', rejectUnauthorized: false });
+        const tlsSocket = tls.connect({ host, port, minVersion: 'TLSv1.2', rejectUnauthorized });
         startSession(tlsSocket, true);
       } else {
         const netSocket = net.connect({ host, port });

@@ -51,12 +51,14 @@ export class BrowserPhaseExecutor {
     data: Record<string, unknown>,
     runId = 'pre-fix'
   ): void {
+    const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
+    if (!debugUrl) return;
     const fs = require('fs') as typeof import('fs');
     const envPaths = [
       '/app/.dbg/phase-resume-no-effect.env',
       '/Users/chain/Documents/MyProject/ops-automation/.dbg/phase-resume-no-effect.env',
     ];
-    let url = 'http://host.docker.internal:7777/event';
+    let url = debugUrl;
     let sessionId = 'phase-resume-no-effect';
     for (const envPath of envPaths) {
       try {

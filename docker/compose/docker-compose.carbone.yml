@@ -26,7 +26,7 @@ services:
       - TMP_DIR=/tmp/carbone-preview
       - AI_ORCHESTRATOR_URL=http://ai-orchestrator:3007
     ports:
-      - "3009:3009"
+      - "${HOST_BIND_IP:-127.0.0.1}:3009:3009"
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/templates/document-engine:/workspace/apps/backend/var/templates/document-engine
@@ -56,7 +56,7 @@ services:
       - OUTPUTS_DIR=/workspace/apps/backend/var/outputs/document-engine
       - STORAGE_RENDER_DIR=/workspace/apps/backend/var/outputs/document-engine/renders
     ports:
-      - "3010:3009"
+      - "${HOST_BIND_IP:-127.0.0.1}:3010:3009"
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/templates/document-engine:/workspace/apps/backend/var/templates/document-engine

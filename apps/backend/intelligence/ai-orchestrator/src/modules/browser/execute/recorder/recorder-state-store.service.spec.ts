@@ -46,7 +46,10 @@ describe('RecorderStateStoreService', () => {
         { runtimeSessionId: 'rt-1', executionIndex: 5 },
         expect.objectContaining({
           timeout: expect.any(Number),
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-internal-auth': 'ops_internal_shared_secret_change_me',
+          },
         })
       );
       expect(meta).toEqual({

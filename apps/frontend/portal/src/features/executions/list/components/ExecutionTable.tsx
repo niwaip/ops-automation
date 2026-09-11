@@ -16,7 +16,9 @@ import {
   CloseCircleOutlined,
   ExclamationCircleOutlined,
   RightOutlined,
+  BranchesOutlined,
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 
 import type { ColumnsType } from 'antd/es/table';
 import type { ExecutionDto } from '@/api/execution';
@@ -76,6 +78,7 @@ export const ExecutionTable: React.FC<ExecutionTableProps> = ({
   onPageChange,
   onRowClick,
 }) => {
+  const navigate = useNavigate();
   const getSkillDisplayName = (skillId?: string) => {
     if (!skillId) return '-';
     return skillNameMap.get(skillId) || skillId;
@@ -316,7 +319,7 @@ export const ExecutionTable: React.FC<ExecutionTableProps> = ({
     {
       title: '操作',
       key: 'actions',
-      width: 140,
+      width: 175,
       fixed: 'right',
       render: (_, record) => {
         const isFailed = record.status === 'failed';
@@ -342,6 +345,16 @@ export const ExecutionTable: React.FC<ExecutionTableProps> = ({
                 审计详情
               </Button>
             )}
+            <Tooltip title="直接打开全屏链路追踪瀑布流">
+              <Button
+                type="text"
+                size="small"
+                icon={<BranchesOutlined style={{ color: '#1677ff' }} />}
+                onClick={() => navigate(`/executions/${record.id}?tab=trace`)}
+              >
+                链路
+              </Button>
+            </Tooltip>
           </Space>
         );
       },

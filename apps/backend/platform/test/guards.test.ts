@@ -9,26 +9,16 @@ describe('JwtAuthGuard', () => {
   let jwtService: jest.Mocked<JwtService>;
   let reflector: jest.Mocked<Reflector>;
 
-  beforeEach(async () => {
-    const mockJwtService = {
+  beforeEach(() => {
+    jwtService = {
       verifyAsync: jest.fn(),
-    };
+    } as any;
 
-    const mockReflector = {
+    reflector = {
       getAllAndOverride: jest.fn(),
-    };
+    } as any;
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        JwtAuthGuard,
-        { provide: JwtService, useValue: mockJwtService },
-        { provide: Reflector, useValue: mockReflector },
-      ],
-    }).compile();
-
-    guard = module.get(JwtAuthGuard);
-    jwtService = module.get(JwtService);
-    reflector = module.get(Reflector);
+    guard = new JwtAuthGuard(jwtService, reflector);
   });
 
   it('should allow access to public routes', async () => {

@@ -37,7 +37,7 @@ services:
       DOCUMENT_SEMANTIC_ARRAY_GROUP_THRESHOLD: ${DOCUMENT_SEMANTIC_ARRAY_GROUP_THRESHOLD:-2}
       EXTERNAL_HOST: ${HOST_IP:-localhost}
     ports:
-      - '${AI_ORCHESTRATOR_PORT:-3007}:${AI_ORCHESTRATOR_PORT:-3007}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${AI_ORCHESTRATOR_PORT:-3007}:${AI_ORCHESTRATOR_PORT:-3007}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/intelligence/ai-orchestrator:/app
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/cache/ai-orchestrator:/app/data

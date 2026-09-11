@@ -220,3 +220,21 @@ def clean_output(text: str) -> str:
     text = re.sub(r'</?(?:tool_call|tool_calls|｜DSML｜[^>]*)>', '', text)
     text = re.sub(r'<｜.*?｜>', '', text)
     return re.sub(r'\n{3,}', '\n\n', text).strip()
+
+
+def is_promising_action(text: str) -> bool:
+    """
+    Detects if the model's output is an intermediate action promise or continuation intent
+    (e.g., '微博页面需要登录，我换用更精确的关键词组合来搜索这个热搜话题的具体内容。')
+    without having emitted an actual executable tool call tag.
+    """
+    cleaned = clean_output(text).strip()
+    if not cleaned or len(cleaned) > 160:
+        return False
+
+    action_patterns = [
+        r"(?:我|让我|我们)?(?:换用|改用|换成|换个|重新|再次|继续|尝试)?(?:更精确|更准|更详细)?(?:的)?(?:关键词|词组|检索词)?(?:来|去)?(?:搜索|查询|检索|抓取|获取|查找|查)",
+        r"(?:我来|我将|我去|让我来|接下来|稍后|现在)?(?:搜索|查询|检索|查找|访问|抓取|查)(?:一下|这个|该|相关|看)",
+        r"需要登录[，,。]?(?:我|我们)?(?:换用|改用|换|重新|尝试)",
+    ]
+    return any(re.search(p, cleaned) for p in action_patterns)

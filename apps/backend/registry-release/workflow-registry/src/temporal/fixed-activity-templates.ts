@@ -99,17 +99,10 @@ async def documentRender(input_data: Dict[str, Any]) -> Dict[str, Any]:
     # #region debug-point B:debug-report
     def _debug_report(msg: str, data: Dict[str, Any], hypothesis_id: str = "B") -> None:
         try:
-            debug_server_url = "http://127.0.0.1:7777/event"
+            debug_server_url = os.environ.get("DEBUG_SERVER_URL", "").strip()
+            if not debug_server_url:
+                return
             debug_session_id = "document-render-aborted"
-            try:
-                with open(".dbg/document-render-aborted.env", "r", encoding="utf-8") as debug_env_file:
-                    for debug_line in debug_env_file.read().splitlines():
-                        if debug_line.startswith("DEBUG_SERVER_URL="):
-                            debug_server_url = debug_line.split("=", 1)[1].strip() or debug_server_url
-                        elif debug_line.startswith("DEBUG_SESSION_ID="):
-                            debug_session_id = debug_line.split("=", 1)[1].strip() or debug_session_id
-            except Exception:
-                pass
             urllib.request.urlopen(urllib.request.Request(
                 debug_server_url,
                 data=json.dumps({
@@ -335,17 +328,10 @@ async def httpRequest(input_data: Dict[str, Any]) -> Dict[str, Any]:
     # #region debug-point A:debug-report
     def _debug_report(msg: str, data: Dict[str, Any], hypothesis_id: str = "A") -> None:
         try:
-            debug_server_url = "http://127.0.0.1:7777/event"
+            debug_server_url = os.environ.get("DEBUG_SERVER_URL", "").strip()
+            if not debug_server_url:
+                return
             debug_session_id = "weather-empty-fields"
-            try:
-                with open(".dbg/weather-empty-fields.env", "r", encoding="utf-8") as debug_env_file:
-                    for debug_line in debug_env_file.read().splitlines():
-                        if debug_line.startswith("DEBUG_SERVER_URL="):
-                            debug_server_url = debug_line.split("=", 1)[1].strip() or debug_server_url
-                        elif debug_line.startswith("DEBUG_SESSION_ID="):
-                            debug_session_id = debug_line.split("=", 1)[1].strip() or debug_session_id
-            except Exception:
-                pass
             urllib.request.urlopen(urllib.request.Request(
                 debug_server_url,
                 data=json.dumps({
@@ -669,17 +655,10 @@ async def structuredTransform(input_data: Dict[str, Any]) -> Dict[str, Any]:
     # #region debug-point B:debug-report
     def _debug_report(msg: str, data: Dict[str, Any], hypothesis_id: str = "B") -> None:
         try:
-            debug_server_url = "http://127.0.0.1:7777/event"
+            debug_server_url = os.environ.get("DEBUG_SERVER_URL", "").strip()
+            if not debug_server_url:
+                return
             debug_session_id = "weather-empty-fields"
-            try:
-                with open(".dbg/weather-empty-fields.env", "r", encoding="utf-8") as debug_env_file:
-                    for debug_line in debug_env_file.read().splitlines():
-                        if debug_line.startswith("DEBUG_SERVER_URL="):
-                            debug_server_url = debug_line.split("=", 1)[1].strip() or debug_server_url
-                        elif debug_line.startswith("DEBUG_SESSION_ID="):
-                            debug_session_id = debug_line.split("=", 1)[1].strip() or debug_session_id
-            except Exception:
-                pass
             urllib.request.urlopen(urllib.request.Request(
                 debug_server_url,
                 data=json.dumps({

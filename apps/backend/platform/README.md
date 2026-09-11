@@ -1,48 +1,29 @@
-# core/platform 过渡说明
+# Platform 装配中心说明 (Composition Root & Database Authority)
 
-`apps/backend/core/platform` 不是目标态目录名，而是当前迁移期保留的遗留聚合壳。
+`apps/backend/platform` 现已完成从旧有的 `apps/backend/core/platform` 迁移，并正式确立为后端的**装配中心 (Composition Root)** 与**数据库权威治理源**。
 
-## 为什么现在看起来不合理
+## 一、定位与架构职责
 
-- `core` 与 `platform` 都过于宽泛，叠在一起后无法表达真实业务边界
-- 当前目录里同时混放了治理能力与设计时注册/发布能力
-- 如果继续沿这个名字扩展，新代码会默认把它当成长期“万能平台服务”
+- **零业务领域逻辑**：平台本身不再存放具体业务 Domain 逻辑，而是作为 NestJS 依赖注入装配根，将分散在各机能平面的微服务模块装配聚合。
+- **数据库 Schema 权威**：保留 PostgreSQL Prisma 权威模型定义 (`prisma/schema.prisma`) 与迁移序列 (`prisma/migrations/`)。
+- **统一路由与全局 Guard**：提供统一的全局中间件、JWT Guard、CORS 和 Swagger 入口。
 
-## 当前真实归属
+## 二、领域模块物理归位现状
 
-- `governance`
-  - `src/governance/identity-access/*`
-  - `src/governance/organization/*`
-  - `modules/workbench-inbox` (协同收件箱，暂存迁移中)
-  - `modules/workbench-todo` (协同待办，暂存迁移中)
-  - `modules/workbench-coordination` (协同协调，暂存迁移中)
-  - `modules/workspace` (工作区资料空间，暂存迁移中)
-- `registry-release`
-  - `modules/skill`
-  - `modules/execution-flow`
-  - `modules/temporal-workflow`
-  - `src/release-manager`
+原存在于单体内部的业务模块已全部物理下沉解耦至专属机能包：
 
-## 当前规则
+- **治理平面 (`governance/`)**：
+  - `@ops/identity-access`：认证、鉴权、RBAC
+  - `@ops/organization`：组织架构、部门
+  - `@ops/workbench`：工作台待办、协同收件箱 (GTD)、工作区协同
+  - `@ops/im-gateway`：外部 IM 通道与微信长连
+  - `@ops/system-backup`：系统配置与技能资产灾备引擎
+- **资产与发布平面 (`registry-release/`)**：
+  - `@ops/skill-registry`：技能注册中心
+  - `@ops/workflow-registry`：工作流与 Temporal 编排定义
+  - `@ops/release-manager`：资产编译、发布门禁与不可变清单 (Release Manifest)
 
-- `core/platform` 只作为迁移期物理承载位置，不应被视为最终边界
-- 新增治理逻辑应按 `governance` 归属设计
-- 新增注册、模板、发布逻辑应按 `registry-release` 归属设计
-- 新增工作台与空间协同逻辑中长期归属于 `governance` 平面，严禁继续将新业务直接作为 `core/platform` 的本地模块开发
-- 评审时如果需求描述仍以“放到 platform 里”作为结论，应先追问真实所有权
+## 三、开发红线
 
-## 当前边界文件
-
-- 治理侧总览：`src/governance-boundaries.md`
-- 注册发布侧：
-  - `src/modules/skill/README.md`
-  - `src/modules/execution-flow/README.md`
-  - `src/modules/temporal-workflow/README.md`
-  - `src/release-manager/platform/release-manager-runtime-adapter.module.ts`
-  - `../registry-release/release-manager/README.md`
-
-## 后续方向
-
-- 先完成治理侧与注册发布侧的边界冻结
-- 再按 `governance/*` 与 `registry-release/*` 做物理归位
-- 迁移稳定后，`core/platform` 应退场或只保留迁移说明壳
+1. 禁止在 `platform/src` 下直接新增具体的业务领域代码；新增能力必须归入对应机能平面包。
+2. `platform` 通过 `package.json` 中的 `workspace:*` 依赖各独立领域包，并通过依赖注入 Token 进行桥接。

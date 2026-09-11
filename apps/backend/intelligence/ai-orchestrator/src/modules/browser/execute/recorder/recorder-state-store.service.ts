@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
+import { getInternalServiceHeaders } from '../../../../config/internal-service-auth';
 import { getBrowserWorkerUrl } from '../../../../config/service-endpoints';
 import type { RecorderStateSnapshotMeta } from '../recorder-debug.types';
 
@@ -80,7 +81,7 @@ export class RecorderStateStoreService {
         },
         {
           timeout: this.requestTimeoutMs,
-          headers: { 'Content-Type': 'application/json' },
+          headers: getInternalServiceHeaders(),
         }
       );
       const meta: RecorderStateSnapshotMeta = {
@@ -163,7 +164,7 @@ export class RecorderStateStoreService {
         },
         {
           timeout: this.requestTimeoutMs,
-          headers: { 'Content-Type': 'application/json' },
+          headers: getInternalServiceHeaders(),
         }
       );
       // Update metadata with restore outcome (partial/reason) so callers can introspect
@@ -205,7 +206,7 @@ export class RecorderStateStoreService {
         },
         {
           timeout: this.requestTimeoutMs,
-          headers: { 'Content-Type': 'application/json' },
+          headers: getInternalServiceHeaders(),
         }
       );
       cleanedCount = response.data.cleanedCount;
@@ -233,7 +234,7 @@ export class RecorderStateStoreService {
         },
         {
           timeout: this.requestTimeoutMs,
-          headers: { 'Content-Type': 'application/json' },
+          headers: getInternalServiceHeaders(),
         }
       );
       cleanedCount = response.data.cleanedCount;

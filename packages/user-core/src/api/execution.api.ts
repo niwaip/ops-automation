@@ -166,7 +166,10 @@ const normalizeExecutionStep = (raw: ExecutionStepDto): ExecutionStepDto => ({
 
 const resolveExecutionPath = (runtimeConfig: RuntimeConfigPort, path: string): string => {
   const baseUrl = runtimeConfig.controlPlaneApiBaseUrl?.trim();
-  return baseUrl ? `${baseUrl.replace(/\/+$/, '')}${path}` : path;
+  if (!baseUrl || baseUrl === '/api' || baseUrl === runtimeConfig.apiBaseUrl) {
+    return path;
+  }
+  return `${baseUrl.replace(/\/+$/, '')}${path}`;
 };
 
 export const createExecutionApi = (client: ApiClient, runtimeConfig: RuntimeConfigPort) => ({

@@ -35,12 +35,14 @@ import { CaptureProfileResolverService } from './content/capture-profile-resolve
 import { BrowserPageReadinessService } from './application/browser-page-readiness.service';
 import { BrowserContentQualityService } from './content/browser-content-quality.service';
 import { BrowserStepRecoveryService } from './application/browser-step-recovery.service';
+import { BrowserArtifactCleanupService } from './application/browser-artifact-cleanup.service';
 
 @Module({
   imports: [WorkerModule, RecorderModule],
   controllers: [BrowserController, TakeoverController],
   providers: [
     BrowserService,
+    BrowserArtifactCleanupService,
     BrowserSessionService,
     BrowserCommandService,
     BrowserParameterizationService,

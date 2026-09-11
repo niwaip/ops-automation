@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import * as crypto from 'crypto';
 import {
   UserSandboxStatus,
   UserSandboxState,
@@ -25,6 +26,7 @@ const FORBIDDEN_ENV_PREFIXES = [
   'AUTH_SECRET',
   'INTERNAL_API_',
 ];
+const DEFAULT_INTERNAL_API_SHARED_SECRET = 'ops_internal_shared_secret_change_me';
 
 @Injectable()
 export class UserSandboxContainerService {
@@ -93,7 +95,12 @@ export class UserSandboxContainerService {
   sanitizeEnvironment(userId: string, options: UserSandboxLaunchOptions): string[] {
     const sanitized = this.storageService.sanitizeUserId(userId);
     const proxyBaseUrl = `http://${this.aiOrchestratorHost}:${this.aiOrchestratorPort}/ai/proxy/v1`;
-    const virtualUserToken = `sandbox-user-token-${sanitized}`;
+    const sharedSecret =
+      process.env.INTERNAL_API_SHARED_SECRET ||
+      process.env.INTERNAL_API_SECRET ||
+      DEFAULT_INTERNAL_API_SHARED_SECRET;
+    const signature = crypto.createHmac('sha256', sharedSecret).update(sanitized).digest('base64url');
+    const virtualUserToken = `sandbox-user-token-${sanitized}.${signature}`;
 
     const envList: string[] = [
       'USER_MODE=personal',
@@ -222,6 +229,7 @@ export class UserSandboxContainerService {
           `${paths.knowledge}:/knowledge:rw`,
           `${paths.sharedPlugins}:/opt/dsh/plugins:ro`,
           `${paths.sharedSkills}:/opt/dsh/skills:ro`,
+          ...(paths.dshModules ? [`${paths.dshModules}:/usr/local/bin/dsh_modules:ro`] : []),
         ],
         Memory: memoryLimitMb * 1024 * 1024,
         CpuQuota: cpuLimit * 100000,

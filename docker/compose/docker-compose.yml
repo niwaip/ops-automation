@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ops_secret}
       POSTGRES_DB: ${POSTGRES_DB:-ops}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${HOST_BIND_IP:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -29,7 +29,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secret}
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${HOST_BIND_IP:-127.0.0.1}:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:

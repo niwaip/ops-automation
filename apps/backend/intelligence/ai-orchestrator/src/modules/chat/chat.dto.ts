@@ -71,6 +71,7 @@ export interface ChatUploadFileResponseDTO {
   fileName: string;
   mimeType: string;
   size: number;
+  filePath?: string;
 }
 
 export interface ChatAudioTranscriptionResponseDTO {

@@ -241,6 +241,35 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),
       },
+      '/api/browser-runtime': {
+        target: getProxyTarget(
+          'ops-browser-worker',
+          3004,
+          ['BROWSER_WORKER_HOST'],
+          ['BROWSER_WORKER_PORT']
+        ),
+        changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/api\/browser-runtime/, '/browser'),
+        headers: {
+          'x-internal-auth':
+            readEnv('INTERNAL_API_SHARED_SECRET', 'INTERNAL_API_SECRET') ||
+            'ops_internal_shared_secret_change_me',
+        },
+      },
+      '/browser/artifacts': {
+        target: getProxyTarget(
+          'ops-browser-worker',
+          3004,
+          ['BROWSER_WORKER_HOST'],
+          ['BROWSER_WORKER_PORT']
+        ),
+        changeOrigin: true,
+        headers: {
+          'x-internal-auth':
+            readEnv('INTERNAL_API_SHARED_SECRET', 'INTERNAL_API_SECRET') ||
+            'ops_internal_shared_secret_change_me',
+        },
+      },
     },
   },
   build: {

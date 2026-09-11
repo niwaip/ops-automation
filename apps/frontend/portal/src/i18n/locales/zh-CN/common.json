@@ -36,6 +36,8 @@
   "browserSemanticRules": "语义规则",
   "systemTools": "模型原子能力",
   "backup": "数据管理",
+  "storage": "存储管理",
+  "observability": "系统监控与链路",
   "promptDebug": "Prompt 测试",
   "taskPolicies": "任务策略",
   "logout": "退出登录",

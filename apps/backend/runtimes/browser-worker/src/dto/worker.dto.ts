@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsBoolean, IsObject, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsObject, IsEnum, IsNumber } from 'class-validator';
 
 export class WorkerEndpointsDto {
   @ApiProperty({
@@ -233,6 +233,26 @@ export class BrowserPageStateDto {
   @IsOptional()
   @IsString()
   observedAt?: string;
+
+  @ApiProperty({ description: 'Horizontal scroll offset in pixels', required: false })
+  @IsOptional()
+  @IsNumber()
+  scrollX?: number;
+
+  @ApiProperty({ description: 'Vertical scroll offset in pixels', required: false })
+  @IsOptional()
+  @IsNumber()
+  scrollY?: number;
+
+  @ApiProperty({ description: 'Estimated length of visible page text for mutation tracking', required: false })
+  @IsOptional()
+  @IsNumber()
+  bodyLength?: number;
+
+  @ApiProperty({ description: 'Whether any modal dialog or popup is currently active', required: false })
+  @IsOptional()
+  @IsBoolean()
+  hasModal?: boolean;
 }
 
 export class ArtifactRefDto {

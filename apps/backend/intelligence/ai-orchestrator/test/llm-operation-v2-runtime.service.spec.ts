@@ -391,7 +391,7 @@ describe('LlmOperationV2RuntimeService', () => {
         realBudgetEnforcer.prepareInput(input, max, oversize)
       );
 
-      const longText = 'x'.repeat(10_000);
+      const longText = 'x'.repeat(150_000);
       const result = await service.execute({
         executionId: 'exec-1',
         stepId: 'step-1',

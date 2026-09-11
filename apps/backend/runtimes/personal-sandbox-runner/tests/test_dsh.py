@@ -13,7 +13,7 @@ if str(src_dir) not in sys.path:
 
 from dsh_modules.config import VERSION
 from dsh_modules.tools import CITY_PINYIN, normalize_search_query, execute_tool
-from dsh_modules.llm import parse_tool_calls, clean_output, extract_bare_json_tool_calls
+from dsh_modules.llm import parse_tool_calls, clean_output, extract_bare_json_tool_calls, is_promising_action
 
 
 class TestDshCoreModules(unittest.TestCase):
@@ -60,6 +60,19 @@ class TestDshCoreModules(unittest.TestCase):
     def test_execute_tool_fallback(self):
         res = execute_tool("unknown_test_tool", {"foo": "bar"})
         self.assertIn("未识别工具名称", res)
+
+    def test_is_promising_action(self):
+        # 常见行动口头承诺/待继续探索垫话（漏掉 tool_call 标签）
+        self.assertTrue(is_promising_action("微博页面需要登录，我换用更精确的关键词组合来搜索这个热搜话题的具体内容。"))
+        self.assertTrue(is_promising_action("我换用更精确的关键词组合来搜索这个热搜话题的具体内容。"))
+        self.assertTrue(is_promising_action("页面需要登录，我换用其他关键词重新搜索。"))
+        self.assertTrue(is_promising_action("好的，我来查一下。"))
+        self.assertTrue(is_promising_action("接下来我搜索一下10天不吃糖的具体健康影响。"))
+
+        # 真正已完成的最终内容或普通回答
+        self.assertFalse(is_promising_action("10天不吃糖身体的变化主要体现在血糖稳定、食欲减弱以及精神状态的改善。"))
+        self.assertFalse(is_promising_action("处理完成"))
+        self.assertFalse(is_promising_action(""))
 
 
 if __name__ == "__main__":

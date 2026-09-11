@@ -116,6 +116,7 @@ export interface CliSessionState {
   frozenReason?: string;
   preferLatestTab?: boolean;
   lastUrl?: string;
+  lastSnapshotState?: BrowserSnapshotState;
   lastSearchResults?: Array<{
     rank: number;
     text: string;
@@ -123,6 +124,16 @@ export interface CliSessionState {
     score?: number;
     host?: string;
   }>;
+}
+
+export interface BrowserSnapshotState {
+  url?: string;
+  title?: string;
+  scrollX?: number;
+  scrollY?: number;
+  bodyLength?: number;
+  hasModal?: boolean;
+  timestamp: number;
 }
 
 export interface CliBinary {
@@ -168,7 +179,11 @@ export interface PlaywrightCliContext {
   handleSimpleCommand(sessionId: string, command: string, args: string[]): Promise<CliActionResult>;
   generateLocator(targetRef: string, options?: { runtimeSessionId?: string }): Promise<string | undefined>;
   settlePageAfterAction(sessionId: string): Promise<void>;
-  enrichResultArtifacts(sessionId: string, result: CliActionResult): Promise<CliActionResult>;
+  enrichResultArtifacts(
+    sessionId: string,
+    result: CliActionResult,
+    options?: { captureScreenshot?: boolean }
+  ): Promise<CliActionResult>;
   resolveStateFilePath(sessionId: string, executionIndex: number): Promise<string>;
 }
 

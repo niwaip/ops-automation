@@ -82,6 +82,25 @@ const extractStringContent = (val: unknown): string | undefined => {
   return undefined;
 };
 
+const normalizeArtifactScreenshotUrl = (url: string): string => {
+  const trimmed = url.trim();
+  if (trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+  const artifactMatch = trimmed.match(/\/artifacts\/([^?#]+)/i);
+  if (artifactMatch?.[1]) {
+    return `/api/browser-runtime/artifacts/${encodeURIComponent(decodeURIComponent(artifactMatch[1]))}`;
+  }
+  if (/^https?:\/\//i.test(trimmed) && !/:(3004|9222)/.test(trimmed)) {
+    return trimmed;
+  }
+  const fileName = trimmed.split('/').filter(Boolean).pop();
+  if (fileName && /\.(png|jpe?g|gif|webp)$/i.test(fileName)) {
+    return `/api/browser-runtime/artifacts/${encodeURIComponent(fileName)}`;
+  }
+  return trimmed;
+};
+
 export const parseStepOutput = (
   rawOutput: Record<string, unknown> | null | undefined
 ): ParsedStepOutput => {
@@ -104,10 +123,10 @@ export const parseStepOutput = (
 
   // Use core extractor on both payload and rawOutput
   extractBrowserImageSources(rawOutput).forEach((src) => {
-    if (src) screenshotSet.add(src);
+    if (src) screenshotSet.add(normalizeArtifactScreenshotUrl(src));
   });
   extractBrowserImageSources(payload).forEach((src) => {
-    if (src) screenshotSet.add(src);
+    if (src) screenshotSet.add(normalizeArtifactScreenshotUrl(src));
   });
 
   // Extract from artifacts array
@@ -122,7 +141,17 @@ export const parseStepOutput = (
             /\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(art.url) ||
             (typeof art.mimeType === 'string' && art.mimeType.startsWith('image/')))
         ) {
-          screenshotSet.add(art.url);
+          screenshotSet.add(normalizeArtifactScreenshotUrl(art.url));
+        } else {
+          const metadata = isRecord(art.metadata) ? art.metadata : undefined;
+          const candidatePath =
+            (typeof art.path === 'string' && art.path.trim()) ||
+            (typeof metadata?.path === 'string' && metadata.path.trim()) ||
+            (typeof metadata?.screenshotPath === 'string' && metadata.screenshotPath.trim()) ||
+            (typeof metadata?.snapshotPath === 'string' && metadata.snapshotPath.trim());
+          if (candidatePath && /\.(png|jpe?g|gif|webp)$/i.test(candidatePath)) {
+            screenshotSet.add(normalizeArtifactScreenshotUrl(candidatePath));
+          }
         }
       }
     }
@@ -148,7 +177,7 @@ export const parseStepOutput = (
   if (directOutput) {
     nestedStepOutputs.push(directOutput);
     extractBrowserImageSources(directOutput).forEach((src) => {
-      if (src) screenshotSet.add(src);
+      if (src) screenshotSet.add(normalizeArtifactScreenshotUrl(src));
     });
     if (Array.isArray(directOutput.artifacts)) {
       checkArtifacts(directOutput.artifacts);
@@ -173,9 +202,23 @@ export const parseStepOutput = (
       }
       if (isRecord(stepItem.output)) {
         nestedStepOutputs.push(stepItem.output);
-        extractBrowserImageSources(stepItem.output).forEach((src) => {
-          if (src) screenshotSet.add(src);
-        });
+        const itemSources = extractBrowserImageSources(stepItem.output);
+        if (itemSources.length > 0) {
+          itemSources.forEach((src) => {
+            if (src) screenshotSet.add(normalizeArtifactScreenshotUrl(src));
+          });
+        } else {
+          const snap = isRecord(stepItem.output.snapshot) ? stepItem.output.snapshot : undefined;
+          const data = isRecord(stepItem.output.data) ? stepItem.output.data : undefined;
+          const stepPath =
+            (typeof snap?.path === 'string' && snap.path.trim()) ||
+            (typeof data?.screenshotPath === 'string' && data.screenshotPath.trim()) ||
+            (typeof data?.path === 'string' && data.path.trim()) ||
+            (typeof stepItem.output.screenshotPath === 'string' && stepItem.output.screenshotPath.trim());
+          if (stepPath && /\.(png|jpe?g|gif|webp)$/i.test(stepPath)) {
+            screenshotSet.add(normalizeArtifactScreenshotUrl(stepPath));
+          }
+        }
         if (Array.isArray(stepItem.output.artifacts)) {
           checkArtifacts(stepItem.output.artifacts);
         }

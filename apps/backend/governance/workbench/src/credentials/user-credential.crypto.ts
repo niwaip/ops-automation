@@ -111,7 +111,19 @@ export class UserCredentialCrypto {
       process.env.IM_CHANNEL_ENCRYPTION_KEY
     )?.trim();
 
+    const isProduction = process.env.NODE_ENV === 'production';
+    const insecureFallbackKeys = new Set([
+      'ops_dev_credential_vault_secret_2026',
+      'ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa',
+      'ops-automation-jwt-secret-key-change-in-production',
+      'jwt_secret_key_change_in_production',
+    ]);
+
     if (raw) {
+      if (isProduction && insecureFallbackKeys.has(raw)) {
+        this.logger.error('CRITICAL: Insecure USER_CREDENTIAL_ENCRYPTION_KEY configured in production!');
+        throw new Error('FATAL: USER_CREDENTIAL_ENCRYPTION_KEY must be a secure key in production');
+      }
       if (/^[0-9a-f]{64}$/i.test(raw)) {
         return Buffer.from(raw, 'hex');
       }
@@ -121,6 +133,14 @@ export class UserCredentialCrypto {
       } catch {
         // fallthrough
       }
+      if (raw.length >= 32) {
+        return createHash('sha256').update(raw).digest();
+      }
+    }
+
+    if (isProduction) {
+      this.logger.error('CRITICAL: USER_CREDENTIAL_ENCRYPTION_KEY is required in production environment!');
+      throw new Error('FATAL: USER_CREDENTIAL_ENCRYPTION_KEY must be set in production environment');
     }
 
     // Default stable derived key for development/staging environments

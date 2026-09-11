@@ -18,6 +18,7 @@ import {
   CloudServerOutlined,
   GlobalOutlined,
   BuildOutlined,
+  DatabaseOutlined,
 } from '@ant-design/icons';
 import { lazy } from 'react';
 import UserWebRedirectPage from '@/app/router/UserWebRedirectPage';
@@ -33,6 +34,8 @@ const RecorderPage = lazy(() => import('@/features/recorder/pages/RecorderPage')
 const RecorderDebugDetailPage = lazy(() => import('@/features/recorder/pages/RecorderDebugDetailPage'));
 const DepartmentAdminPage = lazy(() => import('@/features/admin/departments/pages/DepartmentAdminPage'));
 const UserAdminPage = lazy(() => import('@/features/admin/users/pages/UserAdminPage'));
+const StorageAdminPage = lazy(() => import('@/features/admin/storage/pages/StorageAdminPage'));
+const ObservabilityAdminPage = lazy(() => import('@/features/admin/observability/pages/ObservabilityAdminPage'));
 
 
 const AIModelAdminPage = lazy(() => import('@/features/admin/models/pages/AIModelAdminPage'));
@@ -322,6 +325,13 @@ export const portalRouteEntries: PortalRouteEntry[] = [
           icon: <CloudSyncOutlined />,
           requiresAdmin: true,
         },
+        {
+          key: '/admin/storage',
+          labelKey: 'storage',
+          label: '存储管理',
+          icon: <DatabaseOutlined />,
+          requiresAdmin: true,
+        },
       ],
     },
   },
@@ -366,6 +376,18 @@ export const portalRouteEntries: PortalRouteEntry[] = [
     element: <SystemBackupAdminPage />,
     requiresAdmin: true,
     activeMenuKey: '/admin/backup',
+  },
+  {
+    path: '/admin/storage',
+    element: <StorageAdminPage />,
+    requiresAdmin: true,
+    activeMenuKey: '/admin/storage',
+  },
+  {
+    path: '/admin/observability',
+    element: <ObservabilityAdminPage />,
+    requiresAdmin: true,
+    activeMenuKey: '/admin/observability',
   },
   {
     path: '/admin/prompt-debug',
@@ -456,8 +478,9 @@ const OPEN_KEYS_MAP: Record<string, string[]> = {
     '/admin/models',
     '/admin/sandboxes',
     '/admin/backup',
+    '/admin/storage',
   ],
-  'sub-operations': ['/executions', '/sessions'],
+  'sub-operations': ['/executions', '/sessions', '/admin/observability'],
 };
 
 export const getDefaultOpenKeys = (pathname: string): string[] => {

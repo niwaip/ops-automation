@@ -142,6 +142,7 @@ export interface EmailConnectionConfig {
   smtpSecure?: boolean;
   senderName?: string;
   timeoutMs?: number;
+  allowInsecureTls?: boolean;
 }
 
 export interface EmailProviderAdapter {

@@ -13,6 +13,7 @@ import { PlaywrightCliRunner } from './playwright-cli.runner';
 import { PlaywrightSessionManager } from './playwright-session.manager';
 import { PlaywrightPageReader } from './playwright-page-reader.handler';
 import {
+  BrowserSnapshotState,
   CliActionResult,
   CliExecResult,
   ELEMENT_NOT_FOUND_PATTERN,
@@ -201,10 +202,24 @@ export class PlaywrightInspectionHandler {
       const title = await activePage.title().catch(() => '');
       const url = activePage.url();
       const readyState = await activePage.evaluate(() => document.readyState).catch(() => '');
+      const metrics = await activePage.evaluate(() => {
+        const doc = document;
+        const body = doc.body;
+        return {
+          scrollX: Math.round(window.scrollX || window.pageXOffset || 0),
+          scrollY: Math.round(window.scrollY || window.pageYOffset || 0),
+          bodyLength: body ? (body.innerText || '').length : 0,
+          hasModal: Boolean(doc.querySelector('[role="dialog"], [role="alertdialog"], .ant-modal, .el-dialog, .modal, [aria-modal="true"]')),
+        };
+      }).catch(() => ({ scrollX: 0, scrollY: 0, bodyLength: 0, hasModal: false }));
       return JSON.stringify({
         pageUrl: url,
         pageTitle: title,
         readyState,
+        scrollX: metrics.scrollX,
+        scrollY: metrics.scrollY,
+        bodyLength: metrics.bodyLength,
+        hasModal: metrics.hasModal,
       });
     }`;
     const result = await this.cliRunner.execCli(sessionId, ['run-code', script]);
@@ -213,6 +228,10 @@ export class PlaywrightInspectionHandler {
     const pageUrl = typeof payload?.pageUrl === 'string' ? payload.pageUrl.trim() : '';
     const pageTitle = typeof payload?.pageTitle === 'string' ? payload.pageTitle.trim() : '';
     const readyState = typeof payload?.readyState === 'string' ? payload.readyState.trim() : '';
+    const scrollX = typeof payload?.scrollX === 'number' ? payload.scrollX : undefined;
+    const scrollY = typeof payload?.scrollY === 'number' ? payload.scrollY : undefined;
+    const bodyLength = typeof payload?.bodyLength === 'number' ? payload.bodyLength : undefined;
+    const hasModal = typeof payload?.hasModal === 'boolean' ? payload.hasModal : undefined;
     if (pageUrl) {
       session.lastUrl = pageUrl;
     }
@@ -223,6 +242,10 @@ export class PlaywrightInspectionHandler {
       pageFingerprint: this.buildPageFingerprint(pageUrl || session.lastUrl, pageTitle),
       readyState: readyState || undefined,
       observedAt: new Date().toISOString(),
+      scrollX,
+      scrollY,
+      bodyLength,
+      hasModal,
     };
   }
 
@@ -296,7 +319,10 @@ export class PlaywrightInspectionHandler {
 
   async enrichResultArtifacts(
     sessionId: string,
-    result: CliActionResult
+    result: CliActionResult,
+    options?: {
+      captureScreenshot?: boolean;
+    }
   ): Promise<CliActionResult> {
     const enriched: CliActionResult = { ...result };
 
@@ -329,7 +355,8 @@ export class PlaywrightInspectionHandler {
       }
     }
 
-    if (!enriched.screenshot && enriched.command !== 'screenshot') {
+    const shouldCaptureScreenshot = options?.captureScreenshot !== false;
+    if (shouldCaptureScreenshot && !enriched.screenshot && enriched.command !== 'screenshot') {
       const screenshot = await this.captureInlineScreenshot(sessionId).catch(() => undefined);
       if (screenshot?.base64) {
         enriched.screenshot = screenshot.base64;
@@ -347,6 +374,126 @@ export class PlaywrightInspectionHandler {
     }
 
     return enriched;
+  }
+
+  shouldCaptureScreenshot(params: {
+    action: string;
+    success?: boolean;
+    shouldTakeover?: boolean;
+    pageState?: BrowserPageStateDto;
+    sessionId: string;
+    captureProfile?: Record<string, unknown>;
+  }): { capture: boolean; reason: string } {
+    const profile = params.captureProfile;
+    const capture =
+      profile && typeof profile === 'object' && 'capture' in profile
+        ? (profile.capture as Record<string, unknown> | undefined)
+        : undefined;
+
+    if (capture?.screenshot === false) {
+      return { capture: false, reason: 'capture_profile_disabled' };
+    }
+
+    const rawPolicy =
+      (profile as Record<string, unknown> | undefined)?.screenshotPolicy ||
+      capture?.screenshotPolicy ||
+      process.env.BROWSER_SCREENSHOT_POLICY ||
+      'smart';
+    const policy = String(rawPolicy).trim().toLowerCase();
+
+    if (policy === 'all') {
+      return { capture: true, reason: 'policy_all' };
+    }
+
+    const normalizedAction = String(params.action || '').trim().toLowerCase();
+
+    // 1. Explicit screenshot or snapshot commands
+    if (normalizedAction === 'screenshot' || normalizedAction === 'snapshot') {
+      return { capture: true, reason: 'explicit_action' };
+    }
+
+    // 2. Step failure or takeover requested - preserve evidence!
+    if (params.success === false || params.shouldTakeover === true) {
+      return { capture: true, reason: 'failure_or_takeover' };
+    }
+
+    const session = this.sessionManager.getOrCreateSession(params.sessionId);
+    const lastState = session.lastSnapshotState;
+
+    // 3. First time observing the session
+    if (!lastState) {
+      return { capture: true, reason: 'initial_observation' };
+    }
+
+    const currentState = params.pageState;
+    if (!currentState) {
+      return { capture: false, reason: 'no_page_state' };
+    }
+
+    // 4. Navigation / URL change
+    const currentUrl = (currentState.pageUrl || '').trim();
+    const lastUrl = (lastState.url || '').trim();
+    if (currentUrl && lastUrl && currentUrl !== lastUrl) {
+      return { capture: true, reason: 'url_changed' };
+    }
+    if (normalizedAction === 'goto' || normalizedAction === 'navigate') {
+      return { capture: true, reason: 'navigation_action' };
+    }
+
+    // 5. Explicit scroll action
+    if (normalizedAction === 'scroll') {
+      return { capture: true, reason: 'scroll_action' };
+    }
+
+    // 6. Viewport scroll offset moved >= 40px
+    const currentScrollY = currentState.scrollY ?? 0;
+    const lastScrollY = lastState.scrollY ?? 0;
+    const currentScrollX = currentState.scrollX ?? 0;
+    const lastScrollX = lastState.scrollX ?? 0;
+    if (Math.abs(currentScrollY - lastScrollY) >= 40 || Math.abs(currentScrollX - lastScrollX) >= 40) {
+      return { capture: true, reason: 'viewport_scrolled' };
+    }
+
+    // 7. Modal dialog appeared or disappeared
+    if (typeof currentState.hasModal === 'boolean' && typeof lastState.hasModal === 'boolean') {
+      if (currentState.hasModal !== lastState.hasModal) {
+        return { capture: true, reason: 'modal_state_changed' };
+      }
+    } else if (currentState.hasModal === true && !lastState.hasModal) {
+      return { capture: true, reason: 'modal_appeared' };
+    }
+
+    // 8. Page title changed
+    const currentTitle = (currentState.pageTitle || (currentState as any).title || '').trim();
+    const lastTitle = (lastState.title || '').trim();
+    if (currentTitle && lastTitle && currentTitle !== lastTitle) {
+      return { capture: true, reason: 'title_changed' };
+    }
+
+    // 9. Substantial page body text change (e.g. content loaded via AJAX >= 80 chars)
+    const currentLen = currentState.bodyLength ?? 0;
+    const lastLen = lastState.bodyLength ?? 0;
+    if (currentLen > 0 && lastLen > 0 && Math.abs(currentLen - lastLen) >= 80) {
+      return { capture: true, reason: 'dom_content_mutated' };
+    }
+
+    return { capture: false, reason: 'no_significant_change' };
+  }
+
+  updateLastSnapshotState(
+    sessionId: string,
+    state: Partial<BrowserSnapshotState>
+  ): void {
+    const session = this.sessionManager.getOrCreateSession(sessionId);
+    session.lastSnapshotState = {
+      ...(session.lastSnapshotState || { timestamp: Date.now() }),
+      ...state,
+      timestamp: Date.now(),
+    };
+  }
+
+  getLastSnapshotState(sessionId: string): BrowserSnapshotState | undefined {
+    return this.sessionManager.getOrCreateSession(sessionId).lastSnapshotState;
   }
 
   shouldEnrichCommandResult(

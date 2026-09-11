@@ -69,6 +69,16 @@ describe('RecorderDebugService', () => {
     await expect((service as any).ensureBrowserReady(session)).rejects.toThrow(
       'browser worker unavailable'
     );
+    expect(axios.post).toHaveBeenCalledWith(
+      expect.stringContaining('/browser/init'),
+      expect.objectContaining({ runtimeSessionId: 'runtime-init-fail' }),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'x-internal-auth': 'ops_internal_shared_secret_change_me',
+        }),
+      })
+    );
     expect(browserSemanticsClient.createErrorLog).toHaveBeenCalledWith(
       expect.objectContaining({
         domain_code: 'browser_recorder',

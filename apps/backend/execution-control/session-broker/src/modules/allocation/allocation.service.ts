@@ -128,10 +128,21 @@ export class AllocationService implements OnModuleInit {
     );
   }
 
+  private getInternalAuthHeaders(): Record<string, string> {
+    const secret =
+      process.env.INTERNAL_API_SHARED_SECRET ||
+      process.env.INTERNAL_API_SECRET ||
+      'ops_internal_shared_secret_change_me';
+    return { 'x-internal-auth': secret };
+  }
+
   private async postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
     const response = await fetch(`${this.browserWorkerUrl}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getInternalAuthHeaders(),
+      },
       body: JSON.stringify(body),
     });
     const text = await response.text();
@@ -142,7 +153,11 @@ export class AllocationService implements OnModuleInit {
   }
 
   private async getJson<T>(path: string): Promise<T> {
-    const response = await fetch(`${this.browserWorkerUrl}${path}`);
+    const response = await fetch(`${this.browserWorkerUrl}${path}`, {
+      headers: {
+        ...this.getInternalAuthHeaders(),
+      },
+    });
     const text = await response.text();
     if (!response.ok) {
       throw new Error(text || `Request failed with status ${response.status}`);
@@ -153,6 +168,9 @@ export class AllocationService implements OnModuleInit {
   private async deleteJson(path: string): Promise<void> {
     const response = await fetch(`${this.browserWorkerUrl}${path}`, {
       method: 'DELETE',
+      headers: {
+        ...this.getInternalAuthHeaders(),
+      },
     });
     if (!response.ok) {
       const text = await response.text();

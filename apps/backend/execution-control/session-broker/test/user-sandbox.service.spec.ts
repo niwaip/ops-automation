@@ -55,7 +55,11 @@ describe('UserSandboxService', () => {
       });
 
       expect(sanitized).toContain('USER_MODE=personal');
-      expect(sanitized).toContain('DEEPSEEK_API_KEY=sandbox-user-token-test_user_unit');
+      expect(
+        sanitized.some((e: string) =>
+          /^DEEPSEEK_API_KEY=sandbox-user-token-test_user_unit\.[A-Za-z0-9_-]+$/u.test(e)
+        )
+      ).toBe(true);
       expect(sanitized.some((e: string) => e.startsWith('DEEPSEEK_BASE_URL='))).toBe(true);
       expect(sanitized).toContain('SAFE_CUSTOM_VAR=hello');
 

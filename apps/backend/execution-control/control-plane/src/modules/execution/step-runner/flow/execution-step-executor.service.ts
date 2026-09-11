@@ -239,11 +239,15 @@ export class ExecutionStepExecutorService {
         skillId:
           typeof execution.skillId === 'string' && execution.skillId.trim().length > 0
             ? execution.skillId
-            : undefined,
+            : typeof (step as any)?.capabilityId === 'string' && (step as any).capabilityId.trim().length > 0
+              ? (step as any).capabilityId.trim()
+              : undefined,
         publishedSkillId:
           typeof execution.skillId === 'string' && execution.skillId.trim().length > 0
             ? execution.skillId
-            : undefined,
+            : typeof (step as any)?.capabilityId === 'string' && (step as any).capabilityId.trim().length > 0
+              ? (step as any).capabilityId.trim()
+              : undefined,
         runtimeType: BROWSER_RUNTIME.TYPE,
         policyContext: hooks.buildBrowserPhasePolicyContext(execution),
         traceContext: hooks.buildBrowserPhaseTraceContext(execution),

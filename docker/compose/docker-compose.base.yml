@@ -57,7 +57,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ops_secret}
       POSTGRES_DB: ${POSTGRES_DB:-ops}
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+      - '${DB_BIND_IP:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -75,7 +75,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secret}
     ports:
-      - '${REDIS_PORT:-6379}:6379'
+      - '${DB_BIND_IP:-127.0.0.1}:${REDIS_PORT:-6379}:6379'
     volumes:
       - redis_data:/data
     healthcheck:
@@ -120,7 +120,7 @@ services:
       && cp -R /workspace/apps/backend/platform/src/generated/prisma /workspace/apps/backend/platform/dist/src/generated/prisma
       && pnpm --filter @ops/platform run start"
     ports:
-      - '${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -147,7 +147,7 @@ services:
       PROJECT_ROOT: ${PROJECT_ROOT}
       BROWSER_WORKER_URL: http://${BROWSER_WORKER_HOST:-browser-worker}:${BROWSER_WORKER_PORT:-3004}
     ports:
-      - '${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
@@ -202,7 +202,7 @@ services:
       PROXY_TIMEOUT_AI_MS: ${PROXY_TIMEOUT_AI_MS:-60000}
       PROXY_TIMEOUT_WORKER_MS: ${PROXY_TIMEOUT_WORKER_MS:-60000}
     ports:
-      - '${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -291,6 +291,7 @@ services:
       NODE_ENV: ${BROWSER_WORKER_NODE_ENV:-production}
       DOCKER_ENV: true
       PORT: ${BROWSER_WORKER_PORT:-3004}
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       CHROME_REMOTE_DEBUGGING_HOST: browser-chrome
       CHROME_REMOTE_DEBUGGING_PORT: ${CDP_PORT:-9222}
       CODEGEN_API_PORT: ${CODEGEN_API_PORT:-3011}
@@ -314,7 +315,7 @@ services:
       NETWORK_NAME: ${NETWORK_NAME:-ops-network}
       EXTERNAL_HOST: ${HOST_IP:-localhost}
     ports:
-      - '${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/browser-profiles:/backend-var/browser-profiles
@@ -349,7 +350,7 @@ services:
       DB_DATABASE: ${POSTGRES_DB:-ops}
       PORT: ${BROWSER_TEMPLATE_PORT:-3005}
     ports:
-      - '${BROWSER_TEMPLATE_PORT:-3005}:${BROWSER_TEMPLATE_PORT:-3005}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${BROWSER_TEMPLATE_PORT:-3005}:${BROWSER_TEMPLATE_PORT:-3005}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -383,7 +384,7 @@ services:
       BROWSER_SEMANTICS_AUTO_SEED: ${BROWSER_SEMANTICS_AUTO_SEED:-true}
       BROWSER_SEMANTICS_RUN_DEFAULT_SEED: ${BROWSER_SEMANTICS_RUN_DEFAULT_SEED:-false}
     ports:
-      - '${BROWSER_SEMANTICS_PORT:-3006}:${BROWSER_SEMANTICS_PORT:-3006}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${BROWSER_SEMANTICS_PORT:-3006}:${BROWSER_SEMANTICS_PORT:-3006}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -433,7 +434,7 @@ services:
       DOCUMENT_SEMANTIC_MISSING_THRESHOLD: ${DOCUMENT_SEMANTIC_MISSING_THRESHOLD:-4}
       DOCUMENT_SEMANTIC_ARRAY_GROUP_THRESHOLD: ${DOCUMENT_SEMANTIC_ARRAY_GROUP_THRESHOLD:-2}
     ports:
-      - '${AI_ORCHESTRATOR_PORT:-3007}:${AI_ORCHESTRATOR_PORT:-3007}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${AI_ORCHESTRATOR_PORT:-3007}:${AI_ORCHESTRATOR_PORT:-3007}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/var/cache/ai-orchestrator:/app/data
@@ -469,7 +470,7 @@ services:
       SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
       FILES_DIR: /workspace/apps/backend/capabilities/document-domain/report/files
     ports:
-      - '${REPORT_PORT:-3008}:${REPORT_PORT:-3008}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${REPORT_PORT:-3008}:${REPORT_PORT:-3008}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - report_files:/workspace/apps/backend/capabilities/document-domain/report/files
@@ -509,7 +510,7 @@ services:
       STORAGE_RENDER_DIR: /workspace/apps/backend/var/outputs/document-engine/renders
       CARBONE_EXTERNAL_URL: http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
     ports:
-      - '${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -533,14 +534,14 @@ services:
       PLATFORM_HOST: platform
       BROWSER_TEMPLATE_HOST: browser-template
       VITE_API_BASE_URL: /api
-      VITE_CONTROL_PLANE_API_URL: http://${HOST_IP:-localhost}:${CONTROL_PLANE_PORT:-3003}/api
+      VITE_CONTROL_PLANE_API_URL: /api
       VITE_HOST_IP: ${HOST_IP:-localhost}
       VITE_RECORDER_WS_URL: ws://${HOST_IP:-localhost}:${BROWSER_WORKER_PORT:-3004}
       VITE_CARBONE_API_URL: http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
       VITE_NOVNC_URL: http://${HOST_IP:-localhost}:${NOVNC_PORT:-6080}/vnc.html
       COREPACK_NPM_REGISTRY: ${COREPACK_NPM_REGISTRY:-https://registry.npmmirror.com}
     ports:
-      - '${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -559,12 +560,12 @@ services:
       DOCKER_ENV: true
       USER_WEB_PORT: ${USER_WEB_PORT:-5174}
       VITE_API_BASE_URL: /api
-      VITE_CONTROL_PLANE_API_URL: http://${HOST_IP:-localhost}:${CONTROL_PLANE_PORT:-3003}/api
+      VITE_CONTROL_PLANE_API_URL: /api
       VITE_AI_API_BASE_URL: /api/ai
       VITE_HOST_IP: ${HOST_IP:-localhost}
       COREPACK_NPM_REGISTRY: ${COREPACK_NPM_REGISTRY:-https://registry.npmmirror.com}
     ports:
-      - '${USER_WEB_PORT:-5174}:${USER_WEB_PORT:-5174}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${USER_WEB_PORT:-5174}:${USER_WEB_PORT:-5174}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -588,10 +589,10 @@ services:
     image: ${SESSION_BROWSER_IMAGE:-ops-browser-chrome:local}
     container_name: ops-browser-chrome
     ports:
-      - '${NOVNC_PORT:-6080}:8080'
-      - '${CDP_PORT:-9222}:9222'
-      - '${VNC_PORT:-5900}:5900'
-      - '${CODEGEN_API_PORT:-3011}:${CODEGEN_API_PORT:-3011}'
+      - '${HOST_BIND_IP:-127.0.0.1}:${NOVNC_PORT:-6080}:8080'
+      - '${HOST_BIND_IP:-127.0.0.1}:${CDP_PORT:-9222}:9222'
+      - '${HOST_BIND_IP:-127.0.0.1}:${VNC_PORT:-5900}:5900'
+      - '${HOST_BIND_IP:-127.0.0.1}:${CODEGEN_API_PORT:-3011}:${CODEGEN_API_PORT:-3011}'
     environment:
       SCREEN_WIDTH: 1920
       SCREEN_HEIGHT: 1080
@@ -621,10 +622,10 @@ services:
     image: ${DOCKER_REGISTRY:-}temporalio/auto-setup:1.22.0
     container_name: ops-temporal
     ports:
-      - '7233:7233'
-      - '7234:7234'
-      - '7235:7235'
-      - '7236:7236'
+      - '${HOST_BIND_IP:-127.0.0.1}:7233:7233'
+      - '${HOST_BIND_IP:-127.0.0.1}:7234:7234'
+      - '${HOST_BIND_IP:-127.0.0.1}:7235:7235'
+      - '${HOST_BIND_IP:-127.0.0.1}:7236:7236'
     environment:
       - DB=postgresql
       - POSTGRES_SEEDS=postgres
@@ -648,7 +649,7 @@ services:
     image: ${DOCKER_REGISTRY:-}temporalio/ui:2.20.0
     container_name: ops-temporal-ui
     ports:
-      - '8088:8080'
+      - '${HOST_BIND_IP:-127.0.0.1}:8088:8080'
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CORS_ORIGINS=http://${HOST_IP:-localhost}:8088,http://${HOST_IP:-localhost}:${PORTAL_PORT:-5173}
@@ -678,7 +679,7 @@ services:
       - CARBONE_SERVICE_URL=http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}
       - CARBONE_EXTERNAL_URL=http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
     ports:
-      - '8090:8090'
+      - '${HOST_BIND_IP:-127.0.0.1}:8090:8090'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
       - /var/run/docker.sock:/var/run/docker.sock

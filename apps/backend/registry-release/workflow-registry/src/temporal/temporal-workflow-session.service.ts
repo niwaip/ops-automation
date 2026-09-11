@@ -20,6 +20,18 @@ export interface TemporalWorkflowSessionSupport {
   }): Promise<AiWorkflowDraft>;
 }
 
+const reportDebugEvent = (
+  debugUrl: string | undefined,
+  body: Record<string, unknown>
+): { catch: (fn: () => void) => void } => {
+  if (!debugUrl) return { catch: () => {} };
+  return fetch(debugUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+};
+
 @Injectable()
 export class TemporalWorkflowSessionService {
   constructor(
@@ -32,14 +44,10 @@ export class TemporalWorkflowSessionService {
     support: TemporalWorkflowSessionSupport,
     userId?: string
   ): Promise<AiWorkflowDraftSession> {
-    const debugUrl =
-      process.env.DEBUG_SERVER_URL ||
-      (process.env.DOCKER_ENV
-        ? 'http://host.docker.internal:7777/event'
-        : 'http://127.0.0.1:7777/event');
+    const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
     const debugSessionId = process.env.DEBUG_SESSION_ID || 'draft-sessions-401';
     // #region debug-point B:create-session-enter
-    void fetch(debugUrl, {
+    reportDebugEvent(debugUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -60,7 +68,7 @@ export class TemporalWorkflowSessionService {
     const effectiveUserId = userId || (await this.resolveFallbackUserId());
     const draft = await support.generateAiWorkflowDraft(data);
     // #region debug-point C:draft-generated
-    void fetch(debugUrl, {
+    reportDebugEvent(debugUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -121,7 +129,7 @@ export class TemporalWorkflowSessionService {
       },
     });
     // #region debug-point D:session-persisted
-    void fetch(debugUrl, {
+    reportDebugEvent(debugUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -210,27 +218,19 @@ export class TemporalWorkflowSessionService {
   }
 
   async listAiDraftSessions(userId?: string): Promise<AiWorkflowDraftSessionListItem[]> {
-    const debugUrl =
-      process.env.DEBUG_SERVER_URL ||
-      (process.env.DOCKER_ENV
-        ? 'http://host.docker.internal:7777/event'
-        : 'http://127.0.0.1:7777/event');
+    const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
     const debugSessionId = process.env.DEBUG_SESSION_ID || 'draft-sessions-401';
     const effectiveUserId = userId || (await this.resolveFallbackUserId());
     // #region debug-point B:list-session-enter
-    void fetch(debugUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: debugSessionId,
-        runId: 'pre-fix',
-        hypothesisId: 'B',
-        location: 'temporal-workflow-session.service.ts:152',
-        msg: '[DEBUG] listAiDraftSessions entered',
-        data: { userId: userId || null, effectiveUserId },
-        ts: Date.now(),
-      }),
-    }).catch(() => {});
+    reportDebugEvent(debugUrl, {
+      sessionId: debugSessionId,
+      runId: 'pre-fix',
+      hypothesisId: 'B',
+      location: 'temporal-workflow-session.service.ts:152',
+      msg: '[DEBUG] listAiDraftSessions entered',
+      data: { userId: userId || null, effectiveUserId },
+      ts: Date.now(),
+    });
     // #endregion
     const sessions = await this.prisma.chatSession.findMany({
       where: {
@@ -242,7 +242,7 @@ export class TemporalWorkflowSessionService {
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
     // #region debug-point D:list-session-result
-    void fetch(debugUrl, {
+    reportDebugEvent(debugUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

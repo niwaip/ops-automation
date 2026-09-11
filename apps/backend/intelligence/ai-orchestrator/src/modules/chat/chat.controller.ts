@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -10,11 +11,15 @@ import {
   Req,
   Res,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
   UnauthorizedException,
 } from '@nestjs/common';
+import * as path from 'path';
 import { ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AiAuthGuard, verifyInternalSecret } from '../../common/guards/ai-auth.guard';
+import { ChatRateLimiterGuard, ChatRateLimit } from '../../common/guards/chat-rate-limiter.guard';
 import type { Request, Response } from 'express';
 import { getOrCreateTraceId } from '../../common/trace.util';
 import { StreamEventType } from '../react-engine/interfaces';
@@ -183,6 +188,8 @@ export class ChatController {
   }
 
   @Post('chat/stream')
+  @UseGuards(ChatRateLimiterGuard)
+  @ChatRateLimit(60, 60000, 'Chat stream limit exceeded. Please wait a moment.')
   @ApiOperation({ summary: 'AI chat with ReAct engine or simple mode (SSE stream)' })
   async chatStream(
     @Body() body: ChatRequestDTO,
@@ -223,8 +230,17 @@ export class ChatController {
       return;
     }
 
+    const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
+      req.headers.authorization
+    );
+    const userCtx = {
+      userId: resolvedUser.userId,
+      organizationId: resolvedUser.organizationId,
+      role: resolvedUser.userRoles?.includes('admin') ? 'admin' : undefined,
+    };
+
     const mode: 'chat' | 'task' = parsed.mode;
-    const resolvedFiles = this.chatMediaService.resolveUploadedFiles(body.files);
+    const resolvedFiles = await this.chatMediaService.resolveUploadedFiles(body.files, userCtx);
     body = {
       ...body,
       message: parsed.message,
@@ -275,7 +291,7 @@ export class ChatController {
                 emit(event as unknown as SseEventPayload);
               }
             },
-            resolvedUser.userId
+            userCtx
           );
         }
 
@@ -403,11 +419,17 @@ export class ChatController {
       },
     };
 
+    const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
+      req.headers.authorization
+    );
+    const userCtx = {
+      userId: resolvedUser.userId,
+      organizationId: resolvedUser.organizationId,
+      role: resolvedUser.userRoles?.includes('admin') ? 'admin' : undefined,
+    };
+
     if (mode === 'chat') {
-      const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
-        req.headers.authorization
-      );
-      const chatResponse = await this.chatConversationService.chat(body, resolvedUser.userId);
+      const chatResponse = await this.chatConversationService.chat(body, userCtx);
       return {
         ...chatResponse,
         events: chatResponse.events.map(
@@ -423,7 +445,7 @@ export class ChatController {
 
     const taskBody: ChatRequestDTO = {
       ...body,
-      files: this.chatMediaService.resolveUploadedFiles(body.files),
+      files: await this.chatMediaService.resolveUploadedFiles(body.files, userCtx),
     };
     const taskModeContext = await this.chatOrchestratorService.buildTaskModeContext(
       taskBody,
@@ -503,10 +525,9 @@ export class ChatController {
   @Post('internal/chat')
   @ApiOperation({ summary: 'Internal non-streaming chat for trusted channel gateways' })
   async internalChat(@Body() body: ChatRequestDTO, @Req() req: Request): Promise<ChatResponseDTO> {
-    const expected = process.env.INTERNAL_API_SHARED_SECRET;
     const supplied = req.headers['x-internal-auth'];
     const userId = req.headers['x-user-id'];
-    if (!expected || supplied !== expected || typeof userId !== 'string' || !userId.trim()) {
+    if (!verifyInternalSecret(typeof supplied === 'string' ? supplied : undefined) || typeof userId !== 'string' || !userId.trim()) {
       throw new UnauthorizedException('Invalid internal identity');
     }
     const parsed = parseChatSlashCommand(body.message, body.config?.mode || 'chat');
@@ -547,7 +568,17 @@ export class ChatController {
         };
       }
 
-      return this.chatConversationService.chat({ ...body, userId }, userId);
+      return this.chatConversationService.chat(
+        { ...body, userId },
+        {
+          userId,
+          organizationId:
+            typeof req.headers['x-organization-id'] === 'string'
+              ? req.headers['x-organization-id']
+              : undefined,
+          role: 'internal_service',
+        }
+      );
     }
 
     const traceId = getOrCreateTraceId(body.traceId);
@@ -555,7 +586,14 @@ export class ChatController {
     const taskBody: ChatRequestDTO = {
       ...body,
       userId,
-      files: this.chatMediaService.resolveUploadedFiles(body.files),
+      files: await this.chatMediaService.resolveUploadedFiles(body.files, {
+        userId,
+        organizationId:
+          typeof req.headers['x-organization-id'] === 'string'
+            ? req.headers['x-organization-id']
+            : undefined,
+        role: 'internal_service',
+      }),
     };
     const history = await this.chatConversationService.loadTaskHistory(sessionId);
     const taskModeContext = await this.chatOrchestratorService.buildTaskModeContext(
@@ -614,25 +652,76 @@ export class ChatController {
   }
 
   @Post('chat/upload')
+  @UseGuards(AiAuthGuard, ChatRateLimiterGuard)
+  @ChatRateLimit(30, 60000, 'Upload rate limit exceeded. Please wait a minute.')
   @ApiOperation({ summary: 'Upload file for chat' })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 200, description: 'File uploaded successfully' })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 20 * 1024 * 1024 },
+      fileFilter: (_req, file, callback) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const allowedExtensions = new Set([
+          '.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg',
+          '.mp3', '.wav', '.webm', '.ogg', '.m4a',
+          '.pdf', '.txt', '.md', '.csv', '.json', '.docx', '.xlsx',
+        ]);
+        if (!allowedExtensions.has(ext)) {
+          return callback(
+            new BadRequestException(`Unsupported file type extension: ${ext || 'none'}`),
+            false
+          );
+        }
+        callback(null, true);
+      },
+    })
+  )
   async uploadChatFile(
-    @UploadedFile() file: Express.Multer.File
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request & { user?: any }
   ): Promise<ChatUploadFileResponseDTO> {
-    return this.chatMediaService.uploadChatFile(file);
+    if (!file) {
+      throw new BadRequestException('No file uploaded or file rejected by policy');
+    }
+    const userCtx = req.user
+      ? {
+          userId: req.user.id || req.user.userId,
+          organizationId: req.user.organizationId,
+          role: req.user.role,
+        }
+      : undefined;
+    return this.chatMediaService.uploadChatFile(file, userCtx);
   }
 
   @Post('chat/audio/transcriptions')
+  @UseGuards(AiAuthGuard)
   @ApiOperation({ summary: 'Transcribe audio file using the selected model' })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 200, description: 'Audio transcribed successfully' })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 25 * 1024 * 1024 },
+      fileFilter: (_req, file, callback) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const allowedAudioExts = new Set(['.mp3', '.wav', '.webm', '.ogg', '.m4a', '.flac', '.aac']);
+        if (!allowedAudioExts.has(ext)) {
+          return callback(
+            new BadRequestException(`Only audio files are permitted for transcription: ${ext || 'none'}`),
+            false
+          );
+        }
+        callback(null, true);
+      },
+    })
+  )
   async transcribeAudio(
     @UploadedFile() file: Express.Multer.File,
     @Body('modelId') modelId: string
   ): Promise<ChatAudioTranscriptionResponseDTO> {
+    if (!file) {
+      throw new BadRequestException('No audio file uploaded or file rejected by policy');
+    }
     return this.chatMediaService.transcribeAudio(file, modelId);
   }
 }

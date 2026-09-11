@@ -21,6 +21,7 @@ import { ChatTaskResumeService } from './chat-task-resume.service';
 import { ChatPlanningPresentationService } from './chat-planning-presentation.service';
 import { ScopedPlannerMemoryService } from './scoped-planner-memory.service';
 import { UserSandboxDispatcherService } from './user-sandbox-dispatcher.service';
+import { StorageConfigModule } from '../storage/storage-config.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { UserSandboxDispatcherService } from './user-sandbox-dispatcher.service'
     ReActEngineModule,
     RecognizerModule,
     RedisModule,
+    StorageConfigModule,
   ],
   controllers: [ChatController],
   providers: [

@@ -185,8 +185,56 @@ export class UserSkillCredentialBindingService {
           try {
             const payload = await this.vaultService.getDecryptedPayload(userId, credId);
             const propertyPath = value.propertyPath || value.field || key;
-            resolved[key] = payload[propertyPath] !== undefined ? payload[propertyPath] : (payload[key] ?? payload);
+            let valResolved = payload[propertyPath];
+            if (valResolved === undefined) {
+              if (
+                key.toLowerCase().includes('pass') ||
+                key.toLowerCase().includes('credential') ||
+                key.toLowerCase().includes('secret')
+              ) {
+                valResolved = payload.password || payload.token || payload.key || payload.deviceKey;
+              } else if (
+                key.toLowerCase().includes('user') ||
+                key.toLowerCase().includes('account')
+              ) {
+                valResolved = payload.username || payload.user || payload.account;
+              } else {
+                valResolved = payload[key] ?? payload;
+              }
+            }
+            resolved[key] = valResolved !== undefined ? valResolved : payload;
             injectedParamNames.push(key);
+
+            const usernameVal = payload.username || payload.user || payload.account;
+            if (usernameVal !== undefined) {
+              if (this.isMissingOrPlaceholder(resolved.username)) {
+                resolved.username = usernameVal;
+                injectedParamNames.push('username');
+              }
+              if (this.isMissingOrPlaceholder(resolved.userName)) {
+                resolved.userName = usernameVal;
+                injectedParamNames.push('userName');
+              }
+              if (this.isMissingOrPlaceholder(resolved.user)) {
+                resolved.user = usernameVal;
+                injectedParamNames.push('user');
+              }
+              if (this.isMissingOrPlaceholder(resolved.account)) {
+                resolved.account = usernameVal;
+                injectedParamNames.push('account');
+              }
+            }
+            const passwordVal = payload.password || payload.passwd;
+            if (passwordVal !== undefined) {
+              if (this.isMissingOrPlaceholder(resolved.password)) {
+                resolved.password = passwordVal;
+                injectedParamNames.push('password');
+              }
+              if (this.isMissingOrPlaceholder(resolved.loginCredential)) {
+                resolved.loginCredential = passwordVal;
+                injectedParamNames.push('loginCredential');
+              }
+            }
           } catch (err: any) {
             this.logger.error(`Failed to resolve credential reference for param [${key}]: ${err.message}`);
             throw new BadRequestException(`解析凭证引用失败 [${key}]: ${err.message}`);
@@ -203,15 +251,10 @@ export class UserSkillCredentialBindingService {
       });
 
       for (const b of bindings) {
-        // If the parameter is not explicitly provided in input, inject from bound credential
         const currentValue = resolved[b.paramName];
-        const isEmpty =
-          currentValue === undefined ||
-          currentValue === null ||
-          (typeof currentValue === 'string' &&
-            (currentValue.trim() === '' || this.isMaskedPlaceholder(currentValue)));
+        const isEmpty = this.isMissingOrPlaceholder(currentValue);
 
-        if (isEmpty) {
+        if (b.credential) {
           try {
             const payload = await this.vaultService.getDecryptedPayload(userId, b.credentialId);
             let injectedValue = payload[b.paramName];
@@ -238,9 +281,41 @@ export class UserSkillCredentialBindingService {
               }
             }
 
-            if (injectedValue !== undefined) {
+            if (isEmpty && injectedValue !== undefined) {
               resolved[b.paramName] = injectedValue;
               injectedParamNames.push(b.paramName);
+            }
+
+            const usernameVal = payload.username || payload.user || payload.account;
+            if (usernameVal !== undefined) {
+              if (this.isMissingOrPlaceholder(resolved.username)) {
+                resolved.username = usernameVal;
+                injectedParamNames.push('username');
+              }
+              if (this.isMissingOrPlaceholder(resolved.userName)) {
+                resolved.userName = usernameVal;
+                injectedParamNames.push('userName');
+              }
+              if (this.isMissingOrPlaceholder(resolved.user)) {
+                resolved.user = usernameVal;
+                injectedParamNames.push('user');
+              }
+              if (this.isMissingOrPlaceholder(resolved.account)) {
+                resolved.account = usernameVal;
+                injectedParamNames.push('account');
+              }
+            }
+
+            const passwordVal = payload.password || payload.passwd;
+            if (passwordVal !== undefined) {
+              if (this.isMissingOrPlaceholder(resolved.password)) {
+                resolved.password = passwordVal;
+                injectedParamNames.push('password');
+              }
+              if (this.isMissingOrPlaceholder(resolved.loginCredential)) {
+                resolved.loginCredential = passwordVal;
+                injectedParamNames.push('loginCredential');
+              }
             }
           } catch (err: any) {
             this.logger.warn(`Failed to auto-inject bound credential for [${b.paramName}]: ${err.message}`);
@@ -282,12 +357,31 @@ export class UserSkillCredentialBindingService {
   }
 
   private isMaskedPlaceholder(value: string): boolean {
-    const normalized = value.trim();
+    if (typeof value !== 'string') return false;
+    const normalized = value.trim().toLowerCase();
     return (
-      normalized === '••••••••' ||
+      /^[\u2022\u25cf*•]+$/.test(normalized) ||
       normalized === '[redacted]' ||
-      normalized === '********'
+      normalized === 'redacted' ||
+      normalized === '[masked]' ||
+      normalized === 'masked'
     );
+  }
+
+  private isMissingOrPlaceholder(val: unknown): boolean {
+    if (val === undefined || val === null) {
+      return true;
+    }
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      return (
+        trimmed === '' ||
+        this.isMaskedPlaceholder(trimmed) ||
+        /^\$\{[^}]+\}$/.test(trimmed) ||
+        /^\{\{[^}]+\}\}$/.test(trimmed)
+      );
+    }
+    return false;
   }
 
   private inferCredentialCategory(paramName: string, prop: Record<string, any>): CredentialCategoryType {
