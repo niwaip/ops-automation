@@ -2,11 +2,18 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button, Collapse, Descriptions, Tag, Typography } from 'antd';
-import { DownOutlined, UpOutlined } from '@ant-design/icons';
+import {
+  CommentOutlined,
+  DownOutlined,
+  FileTextOutlined,
+  PaperClipOutlined,
+  UpOutlined,
+} from '@ant-design/icons';
 import { JsonPreview } from '@/features/executions/shared/components/JsonPreview';
 import { tryParseJsonValue } from '@/features/executions/shared/lib/common';
 import { beautifyText } from '@/features/executions/detail/lib/detailView';
 import { normalizeTabSeparatedTable } from '@chat-web/lib/tableNormalizer';
+import { HtmlPreviewBlock } from '@chat-web/components/HtmlPreviewBlock';
 
 const { Text } = Typography;
 
@@ -82,7 +89,46 @@ const INTERNAL_NOISE_KEYS = new Set([
   'workflowContext',
   'parentExecutionId',
   'sourceExecutionId',
+  'fileBase64',
+  'fileBase64A',
+  'fileBase64B',
+  'base64',
+  'fileContent',
+  'fileData',
+  'rawFile',
+  'rawBase64',
 ]);
+
+const isBase64String = (val: unknown): boolean =>
+  typeof val === 'string' &&
+  (val.startsWith('data:') ||
+    val.startsWith('UEsDB') ||
+    (val.length > 200 && /^[A-Za-z0-9+/=\r\n]+$/.test(val.slice(0, 100))));
+
+const isBinaryOrNoiseKey = (key: string, val: unknown): boolean =>
+  INTERNAL_NOISE_KEYS.has(key) ||
+  /base64/i.test(key) ||
+  key === 'fileContent' ||
+  key === 'fileData' ||
+  key === 'rawFile' ||
+  isBase64String(val);
+
+const sanitizeTechnicalValue = (val: unknown): unknown => {
+  if (typeof val === 'string' && isBase64String(val)) {
+    return `[二进制/Base64 数据，约 ${(val.length / 1024).toFixed(1)} KB]`;
+  }
+  if (val && typeof val === 'object') {
+    if (Array.isArray(val)) {
+      return val.map(sanitizeTechnicalValue);
+    }
+    const cleanObj: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(val as Record<string, unknown>)) {
+      cleanObj[k] = sanitizeTechnicalValue(v);
+    }
+    return cleanObj;
+  }
+  return val;
+};
 
 const shouldRenderFieldAsMarkdown = (key: string, value: string): boolean =>
   MARKDOWN_FIELD_KEY.test(key) || MARKDOWN_SYNTAX.test(value);
@@ -101,8 +147,17 @@ export const ExpandableMarkdownContent: React.FC<{
     [text]
   );
 
+  const hasHtmlArtifact = React.useMemo(
+    () => /```html[\s\S]*?(?:<!DOCTYPE html|<html|diff-ins|diff-del)/i.test(normalized),
+    [normalized]
+  );
+
   React.useEffect(() => {
     if (containerRef.current) {
+      if (hasHtmlArtifact) {
+        setIsOverflow(false);
+        return;
+      }
       const lineCount = (normalized.match(/\n/g) || []).length + 1;
       const isContentLong =
         containerRef.current.scrollHeight > maxCollapsedHeight + 10 ||
@@ -110,7 +165,7 @@ export const ExpandableMarkdownContent: React.FC<{
         normalized.length > 200;
       setIsOverflow(isContentLong);
     }
-  }, [normalized, maxCollapsedHeight, maxCollapsedLines]);
+  }, [normalized, maxCollapsedHeight, maxCollapsedLines, hasHtmlArtifact]);
 
   return (
     <div style={{ position: 'relative', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
@@ -175,6 +230,37 @@ export const ExpandableMarkdownContent: React.FC<{
                 }}
               />
             ),
+            code: ({
+              className,
+              children,
+              ...props
+            }: React.ComponentPropsWithoutRef<'code'> & { className?: string }) => {
+              const match = /language-(\w+)/.exec(className || '');
+              const codeText = String(children || '');
+              if (
+                match &&
+                match[1] === 'html' &&
+                (codeText.includes('<!DOCTYPE html') ||
+                  codeText.includes('<html') ||
+                  codeText.includes('class="slide') ||
+                  codeText.includes('presentation') ||
+                  codeText.includes('guizang') ||
+                  codeText.includes('diff-ins') ||
+                  codeText.includes('diff-del'))
+              ) {
+                return <HtmlPreviewBlock code={codeText.trim()} className={className} />;
+              }
+
+              return match ? (
+                <pre className={`code-block language-${match[1]}`}>
+                  <code {...props}>{children}</code>
+                </pre>
+              ) : (
+                <code className="inline-code" {...props}>
+                  {children}
+                </code>
+              );
+            },
           }}
         >
           {normalized}
@@ -327,21 +413,61 @@ const ArticleList: React.FC<{ articles: Array<Record<string, unknown>> }> = ({ a
   );
 };
 
+const getFriendlyFieldLabel = (key: string): { label: string; icon?: React.ReactNode } => {
+  switch (key) {
+    case 'fileNameA':
+      return { label: '比对基准版 (A)', icon: <FileTextOutlined style={{ color: '#1677ff' }} /> };
+    case 'fileNameB':
+      return { label: '比对修订版 (B)', icon: <FileTextOutlined style={{ color: '#52c41a' }} /> };
+    case 'fileName':
+      return { label: '输入文档', icon: <FileTextOutlined style={{ color: '#1677ff' }} /> };
+    case 'user_input':
+    case 'prompt':
+    case 'query':
+    case 'instruction':
+      return { label: '用户需求', icon: <CommentOutlined style={{ color: '#fa8c16' }} /> };
+    default:
+      return { label: key };
+  }
+};
+
+const isFileField = (key: string, val: unknown): boolean => {
+  if (typeof val !== 'string') return false;
+  const lowerKey = key.toLowerCase();
+  const lowerVal = val.toLowerCase();
+  return (
+    lowerKey.includes('file') ||
+    lowerKey.includes('doc') ||
+    /\.(docx?|pdf|xlsx?|pptx?|txt|csv|json)$/i.test(lowerVal)
+  );
+};
+
 const isSimpleKeyValueObject = (rec: Record<string, unknown>): boolean => {
-  const entries = Object.entries(rec);
-  if (entries.length === 0) return false;
-  return entries.every(
+  const visibleEntries = Object.entries(rec).filter(([k, v]) => !isBinaryOrNoiseKey(k, v));
+  if (visibleEntries.length === 0) return false;
+  return visibleEntries.every(
     ([, v]) =>
       v === null ||
       v === undefined ||
-      typeof v === 'string' ||
       typeof v === 'number' ||
-      typeof v === 'boolean'
+      typeof v === 'boolean' ||
+      (typeof v === 'string' && !isBase64String(v))
   );
 };
 
 const renderSimpleKeyValueObject = (rec: Record<string, unknown>) => {
-  const entries = Object.entries(rec);
+  const entries = Object.entries(rec).filter(([key, val]) => {
+    if (isBinaryOrNoiseKey(key, val)) return false;
+    if (
+      key === 'fileName' &&
+      (rec.fileNameA !== undefined || rec.fileNameB !== undefined) &&
+      (val === rec.fileNameA || val === rec.fileNameB)
+    ) {
+      return false;
+    }
+    return true;
+  });
+
   if (entries.length === 0) return null;
 
   return (
@@ -357,11 +483,18 @@ const renderSimpleKeyValueObject = (rec: Record<string, unknown>) => {
         {entries.map(([key, val]) => {
           const strVal = String(val ?? '-');
           const isUrl = typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'));
+          const { label, icon } = getFriendlyFieldLabel(key);
+          const isFile = isFileField(key, val);
 
           return (
             <Descriptions.Item
               key={key}
-              label={<Text strong style={{ color: 'var(--text-primary)' }}>{key}</Text>}
+              label={
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  {icon}
+                  <Text strong style={{ color: 'var(--text-primary)' }}>{label}</Text>
+                </span>
+              }
             >
               {isUrl ? (
                 <a
@@ -374,6 +507,21 @@ const renderSimpleKeyValueObject = (rec: Record<string, unknown>) => {
                 </a>
               ) : typeof val === 'boolean' ? (
                 <Tag color={val ? 'green' : 'default'}>{val ? 'true' : 'false'}</Tag>
+              ) : isFile ? (
+                <Tag
+                  color="blue"
+                  style={{
+                    fontSize: 13,
+                    padding: '2px 8px',
+                    borderRadius: 6,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <PaperClipOutlined />
+                  <span style={{ fontWeight: 500 }}>{strVal}</span>
+                </Tag>
               ) : (
                 <Text style={{ wordBreak: 'break-all' }}>{strVal}</Text>
               )}
@@ -509,14 +657,26 @@ const ExecutionPayloadContent: React.FC<ExecutionPayloadContentProps> = ({
     if (key === 'articles' || key === 'items') {
       return;
     }
-    if (INTERNAL_NOISE_KEYS.has(key)) {
-      technicalEntries.push([key, val]);
+    if (isBinaryOrNoiseKey(key, val)) {
+      technicalEntries.push([key, sanitizeTechnicalValue(val)]);
     } else {
       businessEntries.push([key, val]);
     }
   });
 
-  const markdownEntries = businessEntries.filter(
+  // Deduplicate redundant fileName when fileNameA/fileNameB are present
+  const filteredBusinessEntries = businessEntries.filter(([key, val]) => {
+    if (
+      key === 'fileName' &&
+      (resultRecord.fileNameA !== undefined || resultRecord.fileNameB !== undefined) &&
+      (val === resultRecord.fileNameA || val === resultRecord.fileNameB)
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  const markdownEntries = filteredBusinessEntries.filter(
     (entry): entry is [string, string] =>
       typeof entry[1] === 'string' &&
       Boolean(entry[1].trim()) &&
@@ -524,7 +684,7 @@ const ExecutionPayloadContent: React.FC<ExecutionPayloadContentProps> = ({
   );
 
   const markdownKeys = new Set(markdownEntries.map(([k]) => k));
-  const remainingBusinessEntries = businessEntries.filter(([k]) => !markdownKeys.has(k));
+  const remainingBusinessEntries = filteredBusinessEntries.filter(([k]) => !markdownKeys.has(k));
 
   const hasPrimaryArticles = Boolean(deepContent.articles && deepContent.articles.length > 0);
   const hasDeepText = Boolean(deepContent.text && markdownEntries.length === 0);
@@ -615,7 +775,8 @@ const ExecutionPayloadContent: React.FC<ExecutionPayloadContentProps> = ({
 
   // 5. Fallback: if it's a simple key-value object (like { startUrl: '...' })
   if (isSimpleKeyValueObject(resultRecord)) {
-    return renderSimpleKeyValueObject(resultRecord);
+    const rendered = renderSimpleKeyValueObject(resultRecord);
+    if (rendered) return rendered;
   }
 
   // 6. Complex JSON fallback - collapse by default

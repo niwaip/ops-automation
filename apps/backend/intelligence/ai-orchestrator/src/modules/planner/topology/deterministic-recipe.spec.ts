@@ -65,6 +65,47 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
       },
     } as any,
     {
+      id: 'platform.document.contract-comparator',
+      kind: 'skill',
+      displayName: '合同文档智能比对与红线审查',
+      summary: '对比两份合同文档，基于章节树对齐与字符级Diff生成左右并排对比的交互式HTML审查报告',
+      goals: ['合同比对', '合同对比', '文档比对', '合同红线', '红线审查'],
+      inputs: {
+        fileBase64A: 'string',
+        fileBase64B: 'string',
+      },
+      outputs: {
+        summary: 'string',
+        artifacts: 'json',
+      },
+      primaryOutput: 'summary',
+      category: 'comparison',
+      supportsArtifactOutput: true,
+      publishedSkillId: 'platform.document.contract-comparator',
+      executableVersion: '1.0.0',
+    } as any,
+    {
+      id: 'platform.document.contract-reviewer',
+      kind: 'skill',
+      displayName: '合同文档智能审查与合规诊断',
+      summary: '对单份合同协议进行条款树解析、合同类型识别、合规风险排查并生成交互式HTML审查报告',
+      goals: ['合同审查', '审查合同', '审核合同', '合同合规', '合同风控', '排查合同'],
+      inputs: {
+        fileBase64: 'string',
+        fileName: 'string',
+        text: 'string',
+      },
+      outputs: {
+        summary: 'string',
+        artifacts: 'json',
+      },
+      primaryOutput: 'summary',
+      category: 'workflow',
+      supportsArtifactOutput: true,
+      publishedSkillId: 'platform.document.contract-reviewer',
+      executableVersion: '1.0.0',
+    } as any,
+    {
       id: 'platform.web.extract',
       kind: 'skill',
       displayName: '打开网页获取正文',
@@ -540,5 +581,47 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
     // n1 must be the web search skill, NOT workspace.explorer
     expect(topology?.nodes[0]?.capabilityKey).toBe('platform.web_search');
     expect(topology?.nodes[0]?.capabilityKey).not.toBe('platform.workspace.explorer');
+  });
+
+  it('matches contract_compare recipe and selects contract comparator skill', () => {
+    const userRequest = '请帮我比对刚才上传的原版合同和法务修改版合同，重点分析违约金和工期变化。';
+    const matched = matcher.matchRecipe(userRequest);
+
+    expect(matched).not.toBeNull();
+    expect(matched?.recipeName).toBe('contract_compare');
+    expect(matched?.steps).toHaveLength(1);
+    expect(matched?.steps[0]?.role).toBe('contract_compare');
+
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
+      mockSkillCards,
+      mockLlmOpCards
+    );
+
+    expect(topology).not.toBeNull();
+    expect(topology?.nodes).toHaveLength(1);
+    expect(topology?.nodes[0]?.capabilityKey).toBe('platform.document.contract-comparator');
+    expect(topology?.finalOutputKind).toBe('artifact');
+  });
+
+  it('matches contract_review recipe and selects contract reviewer skill', () => {
+    const userRequest = '审查合同';
+    const matched = matcher.matchRecipe(userRequest);
+
+    expect(matched).not.toBeNull();
+    expect(matched?.recipeName).toBe('contract_review');
+    expect(matched?.steps).toHaveLength(1);
+    expect(matched?.steps[0]?.role).toBe('contract_review');
+
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
+      mockSkillCards,
+      mockLlmOpCards
+    );
+
+    expect(topology).not.toBeNull();
+    expect(topology?.nodes).toHaveLength(1);
+    expect(topology?.nodes[0]?.capabilityKey).toBe('platform.document.contract-reviewer');
+    expect(topology?.finalOutputKind).toBe('artifact');
   });
 });

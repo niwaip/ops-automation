@@ -1,6 +1,6 @@
 import { Card, Empty, Skeleton, Typography } from 'antd';
 import type { ChatMessage } from '@ops/user-core';
-import { type MutableRefObject, useEffect, useRef } from 'react';
+import React, { type MutableRefObject, useEffect, useRef } from 'react';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { ChatMessageItem } from './ChatMessageItem';
 import styles from '../pages/ChatPage.module.css';
@@ -24,7 +24,7 @@ const virtuosoComponents = {
   Footer: ListFooter,
 };
 
-export function ChatMessageList({
+export const ChatMessageList = React.memo(function ChatMessageList({
   actionLoadingByMessage,
   activeMessages,
   expandedThoughtMessageId,
@@ -129,4 +129,4 @@ export function ChatMessageList({
       )}
     </Card>
   );
-}
+});

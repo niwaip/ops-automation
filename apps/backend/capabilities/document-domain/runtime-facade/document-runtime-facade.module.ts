@@ -20,6 +20,25 @@ import { PdfInputDecoderService } from './pdf-operations/pdf-input-decoder.servi
 import { PdfMergeService } from './pdf-operations/pdf-merge.service';
 import { PdfOperationsController } from './pdf-operations/pdf-operations.controller';
 import { PdfSplitService } from './pdf-operations/pdf-split.service';
+import { ContractCompareController } from './contract-compare/contract-compare.controller';
+import { ContractCompareService } from './contract-compare/contract-compare.service';
+import { ContractAstParserService } from './contract-compare/contract-ast-parser.service';
+import { SectionAlignerService } from './contract-compare/section-aligner.service';
+import { CharDiffEngineService } from './contract-compare/char-diff-engine.service';
+import { ContractHtmlRendererService } from './contract-compare/contract-html-renderer.service';
+import { ContractReviewController } from './contract-review/contract-review.controller';
+import { ContractReviewService } from './contract-review/contract-review.service';
+import { ContractTypeClassifierService } from './contract-review/contract-type-classifier.service';
+import { ContractChecklistMatrixService } from './contract-review/contract-checklist-matrix.service';
+import { ContractReviewEngineService } from './contract-review/contract-review-engine.service';
+import { ContractReviewHtmlRendererService } from './contract-review/contract-review-html-renderer.service';
+import { ContractFormIntegrityScannerService } from './contract-review/contract-form-integrity-scanner.service';
+import { ContractLlmReviewService } from './contract-review/contract-llm-review.service';
+import {
+  ReviewFactExtractorService,
+  ReviewElementEvaluatorService,
+  ReviewElementsRegistryService,
+} from './contract-elements';
 
 @Module({
   imports: [PrismaModule],
@@ -29,6 +48,8 @@ import { PdfSplitService } from './pdf-operations/pdf-split.service';
     MarkdownArtifactController,
     DocumentContentExtractionController,
     PdfOperationsController,
+    ContractCompareController,
+    ContractReviewController,
   ],
   providers: [
     PreviewService,
@@ -46,6 +67,22 @@ import { PdfSplitService } from './pdf-operations/pdf-split.service';
     PdfMergeService,
     PdfSplitService,
     PdfCreateService,
+    ContractCompareService,
+    ContractAstParserService,
+    SectionAlignerService,
+    CharDiffEngineService,
+    ContractHtmlRendererService,
+    ContractReviewController,
+    ContractReviewService,
+    ContractTypeClassifierService,
+    ContractChecklistMatrixService,
+    ContractReviewEngineService,
+    ContractReviewHtmlRendererService,
+    ContractFormIntegrityScannerService,
+    ContractLlmReviewService,
+    ReviewFactExtractorService,
+    ReviewElementEvaluatorService,
+    ReviewElementsRegistryService,
   ],
   exports: [
     PreviewService,
@@ -63,6 +100,21 @@ import { PdfSplitService } from './pdf-operations/pdf-split.service';
     PdfMergeService,
     PdfSplitService,
     PdfCreateService,
+    ContractCompareService,
+    ContractAstParserService,
+    SectionAlignerService,
+    ContractReviewService,
+    ContractTypeClassifierService,
+    ContractChecklistMatrixService,
+    ContractReviewEngineService,
+    ContractReviewHtmlRendererService,
+    ContractFormIntegrityScannerService,
+    ContractLlmReviewService,
+    ReviewFactExtractorService,
+    ReviewElementEvaluatorService,
+    ReviewElementsRegistryService,
+    CharDiffEngineService,
+    ContractHtmlRendererService,
   ],
 })
 export class DocumentRuntimeFacadeModule {}

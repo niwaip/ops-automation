@@ -106,8 +106,22 @@ export function normalizeTabSeparatedTable(text: string): string {
     tableBuffer = [];
   };
 
+  let inCodeBlock = false;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+
+    if (line.trim().startsWith('```')) {
+      flushTableBuffer();
+      inCodeBlock = !inCodeBlock;
+      resultLines.push(line);
+      continue;
+    }
+
+    if (inCodeBlock) {
+      resultLines.push(line);
+      continue;
+    }
+
     const cells = splitTabularLine(line);
 
     if (cells) {

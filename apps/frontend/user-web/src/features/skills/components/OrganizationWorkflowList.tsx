@@ -189,8 +189,8 @@ export function OrganizationWorkflowList() {
       {/* 1. 顶部全景说明 */}
       <Card
         style={{
-          background: 'linear-gradient(135deg, #f0f5ff 0%, #f9f0ff 100%)',
-          borderColor: '#d6e4ff',
+          background: 'linear-gradient(135deg, rgba(22, 119, 255, 0.08) 0%, rgba(114, 46, 209, 0.08) 100%)',
+          borderColor: 'var(--border-color, #d6e4ff)',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -352,7 +352,7 @@ export function OrganizationWorkflowList() {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {(schemaDrawerWorkflow.processDefinition?.stages || []).map((stage, idx) => (
-                        <Card size="small" key={stage.id || idx} style={{ background: '#fafafa' }}>
+                        <Card size="small" key={stage.id || idx} style={{ background: 'var(--bg-hover, rgba(255, 255, 255, 0.04))', borderColor: 'var(--border-color)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                             <Typography.Text strong>
                               {idx + 1}. {stage.name}
@@ -380,7 +380,7 @@ export function OrganizationWorkflowList() {
                         <Typography.Text type="secondary">未绑定底层技术流</Typography.Text>
                       ) : (
                         (schemaDrawerWorkflow.assembledWorkflows || []).map((item) => (
-                          <Card size="small" key={item.refId} style={{ background: '#f6ffed' }}>
+                          <Card size="small" key={item.refId} style={{ background: 'rgba(82, 196, 26, 0.08)', borderColor: 'rgba(82, 196, 26, 0.25)' }}>
                             <Space>
                               <Tag color="green">{item.type}</Tag>
                               <strong>{item.name}</strong>
@@ -425,7 +425,7 @@ export function OrganizationWorkflowList() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {Object.entries(schemaDrawerWorkflow.paramsSchema.properties).map(
                         ([propKey, propDef]) => (
-                          <Card size="small" key={propKey} style={{ background: '#fafafa' }}>
+                          <Card size="small" key={propKey} style={{ background: 'var(--bg-hover, rgba(255, 255, 255, 0.04))', borderColor: 'var(--border-color)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                               <Typography.Text strong>
                                 {propDef.description || propKey} (<code>{propKey}</code>)

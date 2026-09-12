@@ -427,7 +427,7 @@ export class ExecutionPhaseSyncService {
     }
 
     return result.artifacts.map((artifact) => ({
-      artifactType: artifact.type,
+      artifactType: artifact.type || (artifact as any).artifactType || 'document',
       snapshotId: artifact.id || null,
       pageUrl: artifact.url || null,
       pageFingerprint: this.extractPageFingerprintFromArtifactMetadata(artifact.metadata) || null,

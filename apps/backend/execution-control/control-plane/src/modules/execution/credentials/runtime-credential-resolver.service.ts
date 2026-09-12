@@ -99,12 +99,19 @@ export class RuntimeCredentialResolverService {
 
         if (!skill) {
           try {
-            skill = await (this.prisma as any).builtinSkill?.findFirst({
+            const builtin = await (this.prisma as any).builtinSkill?.findFirst({
               where: skillIsUuid
                 ? { OR: [{ id: skillId }, { capabilityKey: skillId }] }
                 : { capabilityKey: skillId },
-              select: { id: true, paramsSchema: true },
+              include: { versions: { select: { manifestJson: true }, take: 1 } },
             });
+            if (builtin) {
+              const manifest = builtin.versions?.[0]?.manifestJson as any;
+              skill = {
+                id: builtin.id,
+                paramsSchema: manifest?.spec?.contracts?.input?.schema || {},
+              };
+            }
           } catch (err: any) {
             this.logger.warn(`Failed to query builtinSkill for skill [${skillId}]: ${err.message}`);
           }

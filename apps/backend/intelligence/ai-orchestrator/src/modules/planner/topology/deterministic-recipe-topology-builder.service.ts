@@ -41,6 +41,8 @@ export class DeterministicRecipeTopologyBuilderService {
     );
     const markdownWriterSkill = this.selectSkillForRole(skillCards, 'markdown_writer', policy, recipe.objective);
     const documentExtractorSkill = this.selectSkillForRole(skillCards, 'document_extract', policy, recipe.objective);
+    const contractCompareSkill = this.selectSkillForRole(skillCards, 'contract_compare', policy, recipe.objective);
+    const contractReviewSkill = this.selectSkillForRole(skillCards, 'contract_review', policy, recipe.objective);
     const webExtractorSkill = this.selectSkillForRole(skillCards, 'web_extract', policy, recipe.objective);
     const notifySkill = this.selectSkillForRole(skillCards, 'notify', policy, recipe.objective);
 
@@ -67,6 +69,10 @@ export class DeterministicRecipeTopologyBuilderService {
           capabilityKey = markdownWriterSkill?.id || markdownWriterSkill?.publishedSkillId;
         } else if (step.role === 'document_extract') {
           capabilityKey = documentExtractorSkill?.id || documentExtractorSkill?.publishedSkillId;
+        } else if (step.role === 'contract_compare') {
+          capabilityKey = contractCompareSkill?.id || contractCompareSkill?.publishedSkillId;
+        } else if (step.role === 'contract_review') {
+          capabilityKey = contractReviewSkill?.id || contractReviewSkill?.publishedSkillId;
         } else if (step.role === 'web_extract') {
           capabilityKey = webExtractorSkill?.id || webExtractorSkill?.publishedSkillId;
         } else if (step.role === 'notify') {
@@ -128,7 +134,14 @@ export class DeterministicRecipeTopologyBuilderService {
 
   private selectSkillForRole(
     skillCards: CompactCapabilityCardV1[],
-    role: 'search' | 'markdown_writer' | 'document_extract' | 'web_extract' | 'notify',
+    role:
+      | 'search'
+      | 'markdown_writer'
+      | 'document_extract'
+      | 'contract_compare'
+      | 'contract_review'
+      | 'web_extract'
+      | 'notify',
     policy: ReturnType<typeof createBuiltinRoutingPolicySnapshot>,
     userRequest?: string,
     requiresListOutput?: boolean
@@ -138,11 +151,15 @@ export class DeterministicRecipeTopologyBuilderService {
         ? 'markdownWriter'
         : role === 'document_extract'
           ? 'documentExtractor'
-          : role === 'web_extract'
-            ? 'webExtractor'
-          : role === 'notify'
-            ? 'notifier'
-          : 'search';
+          : role === 'contract_compare'
+            ? 'contractComparator'
+            : role === 'contract_review'
+              ? 'contractReviewer'
+              : role === 'web_extract'
+                ? 'webExtractor'
+            : role === 'notify'
+              ? 'notifier'
+            : 'search';
     const candidates = skillCards.filter((card) => {
       if (card.kind !== 'skill') return false;
       if (role === 'markdown_writer' && card.supportsArtifactOutput) return true;
@@ -157,7 +174,7 @@ export class DeterministicRecipeTopologyBuilderService {
       .map((card, index) => ({
         card,
         index,
-        score: this.scoreSkillContract(card, role, userRequest, requiresListOutput),
+        score: this.scoreSkillContract(card, role, policy, userRequest, requiresListOutput),
       }))
       .filter((candidate) => candidate.score > 0)
       .sort((left, right) => right.score - left.score || left.index - right.index)[0]?.card;
@@ -165,15 +182,39 @@ export class DeterministicRecipeTopologyBuilderService {
 
   private scoreSkillContract(
     card: CompactCapabilityCardV1,
-    role: 'search' | 'markdown_writer' | 'document_extract' | 'web_extract' | 'notify',
+    role:
+      | 'search'
+      | 'markdown_writer'
+      | 'document_extract'
+      | 'contract_compare'
+      | 'contract_review'
+      | 'web_extract'
+      | 'notify',
+    policy?: ReturnType<typeof createBuiltinRoutingPolicySnapshot>,
     userRequest?: string,
     requiresListOutput?: boolean
   ): number {
     const inputs = Object.entries(card.inputs || {});
     const outputs = Object.entries(card.outputs || {});
+    if (role === 'contract_compare' || role === 'contract_review') {
+      let score = 100;
+      if (userRequest) {
+        const candidateTexts = [card.displayName, card.summary, ...(card.goals || []), card.id];
+        score += calculateCapabilityIntentScore(userRequest, candidateTexts);
+      }
+      return score;
+    }
     if (role === 'markdown_writer') {
+      const isRoleMatch = policy
+        ? matchesCapabilityRole(
+            [card.displayName, card.id, card.summary, card.goals],
+            'markdownWriter',
+            policy
+          )
+        : false;
       return (
         (card.supportsArtifactOutput ? 100 : 0) +
+        (isRoleMatch ? 50 : 0) +
         (inputs.some(([name]) => /content|text|markdown|body/i.test(name)) ? 20 : 0)
       );
     }

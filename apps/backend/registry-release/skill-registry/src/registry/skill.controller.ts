@@ -21,6 +21,7 @@ import {
   Patch,
   Inject,
   Optional,
+  Logger,
 } from '@nestjs/common';
 import { JwtAuthGuard, Public, Roles, RolesGuard } from '@ops/identity-access';
 import { Response } from 'express';
@@ -33,6 +34,7 @@ import {
 } from './skill-registry.ports';
 import {
   CreateSkillDTO,
+  ParamsSchema,
   SkillConfigDto,
   SkillMatchResult,
   SkillPermissionDTO,
@@ -45,6 +47,8 @@ import {
 @Controller('skills')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class SkillController {
+  private readonly logger = new Logger(SkillController.name);
+
   constructor(
     private readonly skillService: SkillService,
     @Optional()
@@ -150,6 +154,80 @@ export class SkillController {
   async listPublishedSkillCatalog(@Request() req: any) {
     const userId = req.user.id;
     const skills = await this.skillService.listPublishedSkillCatalogForUser(userId);
+
+    if (this.builtinSkillRegistryService) {
+      try {
+        const builtinList = await this.builtinSkillRegistryService.listSkillInventory();
+        const existingIds = new Set(skills.map((s) => s.id));
+
+        for (const bSkill of builtinList) {
+          if (!bSkill.isEnabled) continue;
+          if (existingIds.has(bSkill.capabilityKey)) continue;
+
+          // Built-in skills should not appear in digital employees unless they require user configuration
+          if (!this.isBuiltinSkillUserConfigurable(bSkill)) {
+            continue;
+          }
+
+          const manifest = bSkill.activeVersion?.manifest as any;
+          const planner = manifest?.spec?.planner;
+          const inputSchema = manifest?.spec?.contracts?.input?.schema;
+          const outputSchema = manifest?.spec?.contracts?.output?.schema;
+          const handlerKey = manifest?.spec?.runtime?.handlerKey;
+
+          const rawProps = inputSchema?.properties || {};
+          const required = Array.isArray(inputSchema?.required) ? inputSchema.required : [];
+          const properties: ParamsSchema['properties'] = {};
+
+          for (const [key, val] of Object.entries(rawProps) as [string, any][]) {
+            const rawType =
+              val?.type === 'integer' || val?.type === 'number'
+                ? 'number'
+                : val?.type === 'boolean'
+                ? 'boolean'
+                : 'string';
+            properties[key] = {
+              type: rawType,
+              description: typeof val?.description === 'string' ? val.description : key,
+              required: required.includes(key),
+              ...(val?.enum ? { enum: val.enum } : {}),
+            };
+          }
+
+          skills.push({
+            id: bSkill.capabilityKey,
+            name: bSkill.displayName || bSkill.capabilityKey,
+            description: bSkill.description || planner?.matchSummary || '',
+            triggerKeywords: planner?.triggerKeywords || [],
+            paramsSchema: {
+              properties,
+              required,
+            },
+            executionFlowTemplateIds: [],
+            executionFlow: [],
+            tools: handlerKey ? [handlerKey] : [],
+            effectiveTools: handlerKey ? [handlerKey] : [],
+            apiEndpoints: {
+              runtimeMetadata: {
+                matchSummary: planner?.matchSummary,
+                sourceType: 'builtin_skill',
+                runtimeType: planner?.runtimeType || manifest?.spec?.workflow?.engine || 'workflow',
+                outputParams: outputSchema,
+                supportsArtifact: planner?.supportsArtifact || false,
+              },
+            },
+            isActive: true,
+            isPublished: true,
+            accessStatus: 'authorized',
+            accessRequest: null,
+            outputSchema,
+          });
+        }
+      } catch (err: any) {
+        this.logger.warn(`Failed to project builtin skills into published catalog: ${err.message}`);
+      }
+    }
+
     return { skills };
   }
 
@@ -401,5 +479,61 @@ export class SkillController {
     @Body() body: { tools: string[] }
   ): Promise<{ bindings: SkillToolBinding[]; validation: SkillToolValidationResult }> {
     return this.skillService.setSkillToolBindings(skillId, body.tools || []);
+  }
+
+  /**
+   * Checks whether a builtin skill requires user configuration (e.g. contract review rules or credentials).
+   * Builtin skills without user configuration must not appear in the Digital Employees roster.
+   */
+  private isBuiltinSkillUserConfigurable(bSkill: any): boolean {
+    const capabilityKey = bSkill.capabilityKey || bSkill.id || '';
+    const manifest = bSkill.activeVersion?.manifest as any;
+    const inputSchema = manifest?.spec?.contracts?.input?.schema;
+    const properties = inputSchema?.properties || {};
+
+    // 1. Explicit user configuration flag
+    if (
+      manifest?.spec?.userConfigurable === true ||
+      manifest?.spec?.requiresUserConfig === true ||
+      manifest?.metadata?.userConfigurable === true ||
+      bSkill.userConfigurable === true
+    ) {
+      return true;
+    }
+
+    // 2. Contract review rules configuration (dedicated rule modal in digital employees)
+    if (
+      capabilityKey === 'platform.document.contract-reviewer' ||
+      capabilityKey.endsWith('.contract-reviewer') ||
+      properties.customChecklistRules !== undefined ||
+      properties.customCheckpoints !== undefined
+    ) {
+      return true;
+    }
+
+    // 3. User credential requirements (requires user to bind persistent secrets/passwords/keys)
+    for (const [paramName, prop] of Object.entries(properties) as [string, any][]) {
+      if (
+        prop?.credentialRequired === true ||
+        prop?.['x-credential-required'] === true ||
+        prop?.['x-credential-category']
+      ) {
+        return true;
+      }
+      const lower = paramName.toLowerCase();
+      if (
+        (prop?.isSecret || prop?.['x-is-secret']) &&
+        (lower.includes('devicekey') ||
+          lower.includes('device_key') ||
+          lower.includes('apikey') ||
+          lower.includes('api_key') ||
+          lower.includes('auth_token') ||
+          lower.includes('credential'))
+      ) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }

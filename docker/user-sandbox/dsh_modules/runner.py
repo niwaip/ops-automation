@@ -283,8 +283,12 @@ def cmd_run(args):
             (any(kw in final_text for kw in action_filler_keywords) or is_promising_action(reply))
         )
 
+        # 只要文本中包含未执行的 DSML 或 tool 标记残留，绝对不能视为最终答复
+        has_raw_dsml = bool(re.search(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}', reply))
+        has_raw_tool = bool(re.search(r'<(?:tool_call|tool_calls)', reply))
+
         # 如果模型仍试图调用工具、内容为空或仅有过渡性短句，强制请求输出最终总结
-        if has_pending_tool_calls or not final_text or is_transitional_filler:
+        if has_pending_tool_calls or not final_text or is_transitional_filler or has_raw_dsml or has_raw_tool:
             messages.append({"role": "assistant", "content": reply})
             messages.append({
                 "role": "user",

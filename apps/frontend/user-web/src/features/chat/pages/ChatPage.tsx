@@ -240,6 +240,28 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     handleSend(files, contentOverride);
   }, [draft, handleSend]);
 
+  const handleToggleThought = useCallback((messageId: string) => {
+    setExpandedThoughtMessageId((current) => (current === messageId ? null : messageId));
+  }, []);
+
+  const handleApproveRef = useRef(handleApprove);
+  handleApproveRef.current = handleApprove;
+  const handleApproveExecution = useCallback((messageId: string, executionId: string) => {
+    void handleApproveRef.current(messageId, executionId);
+  }, []);
+
+  const handleRejectRef = useRef(handleReject);
+  handleRejectRef.current = handleReject;
+  const handleRejectExecution = useCallback((messageId: string, executionId: string) => {
+    void handleRejectRef.current(messageId, executionId);
+  }, []);
+
+  const handleRetryRef = useRef(handleRetry);
+  handleRetryRef.current = handleRetry;
+  const handleRetryExecution = useCallback((message: Parameters<typeof handleRetry>[0]) => {
+    void handleRetryRef.current(message);
+  }, []);
+
   useEffect(() => {
     const models = modelsQuery.data || [];
     setSelectedModel((current) => current || models[0]?.id || 'default');
@@ -461,16 +483,10 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             expandedThoughtMessageId={expandedThoughtMessageId}
             historyLoading={selectedSessionHistoryQuery.isLoading}
             messagesEndRef={messagesEndRef}
-            onToggleThought={(messageId) =>
-              setExpandedThoughtMessageId((current) => (current === messageId ? null : messageId))
-            }
-            onApproveExecution={(messageId, executionId) => {
-              void handleApprove(messageId, executionId);
-            }}
-            onRejectExecution={(messageId, executionId) => {
-              void handleReject(messageId, executionId);
-            }}
-            onRetry={handleRetry}
+            onToggleThought={handleToggleThought}
+            onApproveExecution={handleApproveExecution}
+            onRejectExecution={handleRejectExecution}
+            onRetry={handleRetryExecution}
           />
 
           <UserChatComposer

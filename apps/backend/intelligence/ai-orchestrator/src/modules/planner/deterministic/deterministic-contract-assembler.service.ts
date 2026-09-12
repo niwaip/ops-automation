@@ -164,6 +164,20 @@ export class DeterministicContractAssemblerService {
         expectedType,
         isArtifact: expectedType === 'artifact_ref',
       });
+
+      // Preserve companion narrative fields (e.g. summary) alongside primary output
+      for (const narrativeField of ['summary', 'markdown_content', 'content', 'text']) {
+        if (narrativeField !== primaryOutput && finalNode.outputContract[narrativeField]) {
+          const fieldType = finalNode.outputContract[narrativeField]!;
+          finalOutputs.push({
+            targetField: narrativeField,
+            fromNodeId: finalNodeId,
+            fromNodeOutput: narrativeField,
+            expectedType: fieldType,
+            isArtifact: false,
+          });
+        }
+      }
     } else {
       // Value-producing terminal capabilities may legitimately expose a
       // structured acknowledgement (for example { code, message }). Preserve

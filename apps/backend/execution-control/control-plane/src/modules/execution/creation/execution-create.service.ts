@@ -321,7 +321,7 @@ export class ExecutionCreateService {
       : planDraft?.risk_summary.requires_human_review || false;
     const execution = await this.prisma.execution.create({
       data: {
-        createdBy: userId,
+        createdBy: isUuid(userId) ? userId : '00000000-0000-0000-0000-000000000000',
         // executions.skill_id is a legacy FK-shaped UUID column. Built-in
         // capabilities use stable string keys (for example
         // platform.document.pdf-create), which remain authoritative in the
@@ -618,7 +618,7 @@ export class ExecutionCreateService {
     await this.prisma.$transaction(async (tx) => {
       const created = await tx.execution.create({
         data: {
-          createdBy: userId,
+          createdBy: isUuid(userId) ? userId : '00000000-0000-0000-0000-000000000000',
           skillId: isUuid(dto.skillId || dto.capabilityId || '')
             ? dto.skillId || dto.capabilityId
             : null,

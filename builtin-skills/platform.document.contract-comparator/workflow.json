@@ -1,0 +1,24 @@
+{
+  "workflowVersion": "v1",
+  "engine": "domain-handler",
+  "handlerKey": "document.contract.compare",
+  "steps": [
+    {
+      "stepId": "compare_contract_documents",
+      "action": "compare_documents",
+      "inputMapping": {
+        "fileBase64A": "$.input.fileBase64A",
+        "fileNameA": "$.input.fileNameA",
+        "textA": "$.input.textA",
+        "fileBase64B": "$.input.fileBase64B",
+        "fileNameB": "$.input.fileNameB",
+        "textB": "$.input.textB",
+        "diffGranularity": "$.input.diffGranularity",
+        "enableRiskAnalysis": "$.input.enableRiskAnalysis",
+        "myPosition": "$.input.myPosition",
+        "customChecklistRules": "$.input.customChecklistRules",
+        "customCheckpoints": "$.input.customCheckpoints"
+      }
+    }
+  ]
+}

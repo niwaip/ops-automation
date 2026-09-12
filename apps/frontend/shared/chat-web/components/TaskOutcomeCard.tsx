@@ -10,6 +10,7 @@ import { Button, Space } from 'antd';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { normalizeTabSeparatedTable } from '../lib/tableNormalizer';
+import { HtmlPreviewBlock } from './HtmlPreviewBlock';
 
 export interface SharedDisplayGroupItem {
   key: string;
@@ -386,6 +387,37 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
                 </div>
               ),
               a: renderMarkdownLink,
+              code: ({
+                className,
+                children,
+                ...props
+              }: React.ComponentPropsWithoutRef<'code'> & { className?: string }) => {
+                const match = /language-(\w+)/.exec(className || '');
+                const codeText = String(children || '');
+                if (
+                  match &&
+                  match[1] === 'html' &&
+                  (codeText.includes('<!DOCTYPE html') ||
+                    codeText.includes('<html') ||
+                    codeText.includes('class="slide') ||
+                    codeText.includes('presentation') ||
+                    codeText.includes('guizang') ||
+                    codeText.includes('diff-ins') ||
+                    codeText.includes('diff-del'))
+                ) {
+                  return <HtmlPreviewBlock code={codeText.trim()} className={className} />;
+                }
+
+                return match ? (
+                  <pre className={`code-block language-${match[1]}`}>
+                    <code {...props}>{children}</code>
+                  </pre>
+                ) : (
+                  <code className="inline-code" {...props}>
+                    {children}
+                  </code>
+                );
+              },
               img: ({ src, alt }: { src?: string; alt?: string }) => (
                 <img
                   src={src}
@@ -442,9 +474,40 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             remarkPlugins={[remarkGfm]}
             components={{
               a: renderMarkdownLink,
+              code: ({
+                className,
+                children,
+                ...props
+              }: React.ComponentPropsWithoutRef<'code'> & { className?: string }) => {
+                const match = /language-(\w+)/.exec(className || '');
+                const codeText = String(children || '');
+                if (
+                  match &&
+                  match[1] === 'html' &&
+                  (codeText.includes('<!DOCTYPE html') ||
+                    codeText.includes('<html') ||
+                    codeText.includes('class="slide') ||
+                    codeText.includes('presentation') ||
+                    codeText.includes('guizang') ||
+                    codeText.includes('diff-ins') ||
+                    codeText.includes('diff-del'))
+                ) {
+                  return <HtmlPreviewBlock code={codeText.trim()} className={className} />;
+                }
+
+                return match ? (
+                  <pre className={`code-block language-${match[1]}`}>
+                    <code {...props}>{children}</code>
+                  </pre>
+                ) : (
+                  <code className="inline-code" {...props}>
+                    {children}
+                  </code>
+                );
+              },
             }}
           >
-            {bodySummary}
+            {normalizeTabSeparatedTable(bodySummary)}
           </ReactMarkdown>
         </div>
       ) : null}

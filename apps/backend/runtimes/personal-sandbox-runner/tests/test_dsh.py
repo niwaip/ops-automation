@@ -45,6 +45,24 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertEqual(calls[0]["name"], "fetch_page")
         self.assertEqual(calls[0]["params"].get("url"), "https://example.com")
 
+    def test_parse_tool_calls_dsml_double_pipe(self):
+        raw = (
+            '<｜｜DSML｜｜ calls> '
+            '<｜｜DSML｜｜ invoke name="web_search"> '
+            '<｜｜DSML｜｜ parameter name="arguments" string="false">{"query": "2026年AI人工智能最新发展 大模型 进展"}</｜｜DSML｜｜ parameter> '
+            '</｜｜DSML｜｜ invoke> '
+            '<｜｜DSML｜｜ invoke name="web_search"> '
+            '<｜｜DSML｜｜ parameter name="arguments" string="false">{"query": "AI industry latest developments September 2026 frontier models"}</｜｜DSML｜｜ parameter> '
+            '</｜｜DSML｜｜ invoke> '
+            '</｜｜DSML｜｜ calls>'
+        )
+        calls = parse_tool_calls(raw)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0]["name"], "web_search")
+        self.assertEqual(calls[0]["params"].get("query"), "2026年AI人工智能最新发展 大模型 进展")
+        self.assertEqual(calls[1]["name"], "web_search")
+        self.assertEqual(calls[1]["params"].get("query"), "AI industry latest developments September 2026 frontier models")
+
     def test_clean_output(self):
         raw = (
             "这是回答正文。\n"
@@ -56,6 +74,17 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertNotIn("<tool_call>", cleaned)
         self.assertIn("这是回答正文。", cleaned)
         self.assertIn("这是回答结论。", cleaned)
+
+    def test_clean_output_dsml(self):
+        raw = (
+            '<｜｜DSML｜｜ calls> '
+            '<｜｜DSML｜｜ invoke name="web_search"> '
+            '<｜｜DSML｜｜ parameter name="arguments" string="false">{"query": "2026年AI人工智能最新发展 大模型 进展"}</｜｜DSML｜｜ parameter> '
+            '</｜｜DSML｜｜ invoke> '
+            '</｜｜DSML｜｜ calls>'
+        )
+        cleaned = clean_output(raw)
+        self.assertEqual(cleaned, "")
 
     def test_execute_tool_fallback(self):
         res = execute_tool("unknown_test_tool", {"foo": "bar"})

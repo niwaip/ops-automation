@@ -7,6 +7,7 @@ import { ModelService } from '../model/model.service';
 import { StorageConfigService } from '../storage/storage-config.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { inspectBinaryMimeType } from '../../common/utils/mime-inspector.util';
+import { fixFilenameEncoding } from '../../common/utils/filename-encoding.util';
 import type {
   ChatAudioTranscriptionResponseDTO,
   ChatUploadedFileDTO,
@@ -520,7 +521,10 @@ export class ChatMediaService {
     }
 
     const fileId = `file-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-    const sanitizedFileName = path.basename(file.originalname || 'unnamed-file').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const rawOriginalName = fixFilenameEncoding(file.originalname || 'unnamed-file');
+    const sanitizedFileName = path
+      .basename(rawOriginalName)
+      .replace(/[^\w.\-\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]/g, '_');
     const uploadDir = path.resolve(this.getUploadStorageDir());
     const diskFileName = `${fileId}-${sanitizedFileName}`;
     const filePath = path.resolve(uploadDir, diskFileName);
@@ -528,7 +532,7 @@ export class ChatMediaService {
 
     let verifiedMime = file.mimetype;
     if (file.buffer && file.buffer.length > 0) {
-      const inspected = inspectBinaryMimeType(file.buffer, file.originalname, file.mimetype);
+      const inspected = inspectBinaryMimeType(file.buffer, rawOriginalName, file.mimetype);
       verifiedMime = inspected.mimeType;
     }
 
@@ -542,7 +546,7 @@ export class ChatMediaService {
         }
         const meta = {
           fileId,
-          fileName: file.originalname,
+          fileName: rawOriginalName,
           mimeType: verifiedMime,
           size: file.size,
           filePath,
@@ -558,11 +562,11 @@ export class ChatMediaService {
         }
       }
     } catch (err: any) {
-      this.logger.warn(`Failed to persist uploaded file ${file.originalname} to disk: ${err.message}`);
+      this.logger.warn(`Failed to persist uploaded file ${rawOriginalName} to disk: ${err.message}`);
     }
 
     this.fileStore.set(fileId, {
-      fileName: file.originalname,
+      fileName: rawOriginalName,
       mimeType: verifiedMime,
       size: file.size,
       content: file.buffer ? file.buffer.toString('base64') : '',
@@ -578,13 +582,13 @@ export class ChatMediaService {
 
     if (this.storageConfigService && file.buffer) {
       this.storageConfigService
-        .saveFile(fileId, file.originalname, file.buffer, verifiedMime)
+        .saveFile(fileId, rawOriginalName, file.buffer, verifiedMime)
         .catch((err) => this.logger.warn(`StorageConfigService saveFile warning: ${err.message}`));
     }
 
     return {
       fileId,
-      fileName: file.originalname,
+      fileName: rawOriginalName,
       mimeType: verifiedMime,
       size: file.size,
       filePath,

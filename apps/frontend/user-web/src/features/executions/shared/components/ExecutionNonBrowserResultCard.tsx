@@ -7,6 +7,7 @@ import { JsonPreview } from '@/features/executions/shared/components/JsonPreview
 import { tryParseJsonValue } from '@/features/executions/shared/lib/common';
 import { beautifyText } from '@/features/executions/detail/lib/detailView';
 import { formatStructuredDataToMarkdown, normalizeTabSeparatedTable } from '@chat-web/lib/tableNormalizer';
+import { HtmlPreviewBlock } from '@chat-web/components/HtmlPreviewBlock';
 
 const { Text } = Typography;
 
@@ -67,14 +68,23 @@ const ExpandableMarkdownBody: React.FC<{ text: string }> = ({ text }) => {
     [text]
   );
 
+  const hasHtmlArtifact = React.useMemo(
+    () => /```html[\s\S]*?(?:<!DOCTYPE html|<html|diff-ins|diff-del)/i.test(normalized),
+    [normalized]
+  );
+
   React.useEffect(() => {
     if (containerRef.current) {
+      if (hasHtmlArtifact) {
+        setIsOverflow(false);
+        return;
+      }
       const lineCount = (normalized.match(/\n/g) || []).length + 1;
       const exceedsHeight = containerRef.current.scrollHeight > MAX_RESULT_COLLAPSED_HEIGHT + 10;
       const exceedsLines = lineCount > MAX_RESULT_COLLAPSED_LINES;
       setIsOverflow(exceedsHeight || exceedsLines || normalized.length > 500);
     }
-  }, [normalized]);
+  }, [normalized, hasHtmlArtifact]);
 
   return (
     <div style={{ position: 'relative', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
@@ -82,11 +92,11 @@ const ExpandableMarkdownBody: React.FC<{ text: string }> = ({ text }) => {
         ref={containerRef}
         className="chat-message-markdown"
         style={{
-          maxHeight: !isExpanded && isOverflow ? MAX_RESULT_COLLAPSED_HEIGHT : 'none',
+          maxHeight: !isExpanded && isOverflow && !hasHtmlArtifact ? MAX_RESULT_COLLAPSED_HEIGHT : 'none',
           overflow: 'hidden',
           position: 'relative',
           transition: 'max-height 0.25s ease',
-          paddingBottom: !isExpanded && isOverflow ? 44 : 0,
+          paddingBottom: !isExpanded && isOverflow && !hasHtmlArtifact ? 44 : 0,
           wordBreak: 'break-word',
           overflowWrap: 'anywhere',
         }}
@@ -140,6 +150,37 @@ const ExpandableMarkdownBody: React.FC<{ text: string }> = ({ text }) => {
                 }}
               />
             ),
+            code: ({
+              className,
+              children,
+              ...props
+            }: React.ComponentPropsWithoutRef<'code'> & { className?: string }) => {
+              const match = /language-(\w+)/.exec(className || '');
+              const codeText = String(children || '');
+              if (
+                match &&
+                match[1] === 'html' &&
+                (codeText.includes('<!DOCTYPE html') ||
+                  codeText.includes('<html') ||
+                  codeText.includes('class="slide') ||
+                  codeText.includes('presentation') ||
+                  codeText.includes('guizang') ||
+                  codeText.includes('diff-ins') ||
+                  codeText.includes('diff-del'))
+              ) {
+                return <HtmlPreviewBlock code={codeText.trim()} className={className} />;
+              }
+
+              return match ? (
+                <pre className={`code-block language-${match[1]}`}>
+                  <code {...props}>{children}</code>
+                </pre>
+              ) : (
+                <code className="inline-code" {...props}>
+                  {children}
+                </code>
+              );
+            },
           }}
         >
           {normalized}

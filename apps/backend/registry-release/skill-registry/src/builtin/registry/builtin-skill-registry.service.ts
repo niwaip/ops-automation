@@ -18,6 +18,10 @@ const ALIAS_MAP: Record<string, string> = {
   tavily_search: 'platform.search.web',
   web_search: 'platform.search.web',
   workspace_explorer: 'platform.workspace.explorer',
+  contract_comparator: 'platform.document.contract-comparator',
+  contract_compare: 'platform.document.contract-comparator',
+  contract_reviewer: 'platform.document.contract-reviewer',
+  contract_review: 'platform.document.contract-reviewer',
 };
 
 @Injectable()

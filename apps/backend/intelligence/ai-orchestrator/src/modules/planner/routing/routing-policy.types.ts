@@ -17,6 +17,8 @@ export const ROUTING_CAPABILITY_ROLES = [
   'search',
   'markdownWriter',
   'documentExtractor',
+  'contractComparator',
+  'contractReviewer',
   'webExtractor',
   'notifier',
 ] as const;

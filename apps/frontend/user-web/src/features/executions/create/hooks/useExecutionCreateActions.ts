@@ -15,6 +15,8 @@ import {
 import { formatLocalizedDateTime } from '@/shared/utils/dateText';
 import { summarizeCronExpression } from '@/shared/utils/scheduleText';
 
+import { getActiveCustomCheckpoints } from '@/features/skills/components/contractReviewRulesStorage';
+
 interface UseExecutionCreateActionsOptions {
   form: FormInstance;
   schemaFields: SchemaField[];
@@ -36,10 +38,42 @@ export function useExecutionCreateActions({
 
   const createMutation = useMutation(
     async (values: ExecutionCreateFormValues) => {
+      let normalizedInput = normalizeInputValues(values.input || {}, schemaFields);
+
+      // Auto-inject active contract review rules (org redlines + personal checkpoints)
+      const isContractSkill =
+        values.skillId === 'platform.document.contract-reviewer' ||
+        values.skillId?.includes('contract-reviewer') ||
+        selectedSkillDisplayName?.includes('合同');
+
+      if (isContractSkill) {
+        const rawCheckpoints = normalizedInput.customChecklistRules || normalizedInput.customCheckpoints;
+        if (!rawCheckpoints || (Array.isArray(rawCheckpoints) && rawCheckpoints.length === 0)) {
+          const activeCheckpoints = getActiveCustomCheckpoints({
+            contractType: typeof normalizedInput.contractType === 'string' ? normalizedInput.contractType : undefined,
+            position: typeof normalizedInput.myPosition === 'string' ? (normalizedInput.myPosition as any) : undefined,
+          });
+          if (activeCheckpoints.length > 0) {
+            normalizedInput = {
+              ...normalizedInput,
+              customChecklistRules: activeCheckpoints,
+              customCheckpoints: activeCheckpoints,
+            };
+          }
+        } else {
+          const rules = Array.isArray(rawCheckpoints) ? rawCheckpoints : [];
+          normalizedInput = {
+            ...normalizedInput,
+            customChecklistRules: normalizedInput.customChecklistRules || rules,
+            customCheckpoints: normalizedInput.customCheckpoints || rules,
+          };
+        }
+      }
+
       return executionApi.create({
         skillId: values.skillId,
         skillVersion: selectedSkillVersion,
-        input: normalizeInputValues(values.input || {}, schemaFields),
+        input: normalizedInput,
       });
     },
     {

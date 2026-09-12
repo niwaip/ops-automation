@@ -24,6 +24,7 @@ import {
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { builtinSkillApi, BuiltinSkillInventoryDTO } from '@/api/skill';
+import { ContractReviewerConfigPanel } from './ContractReviewerConfigPanel';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -150,6 +151,9 @@ export const BuiltinSkillRuntimeConfigDrawer: React.FC<{
     skill?.capabilityKey?.startsWith('platform.email') ||
     skill?.capabilityKey === 'email.messages' ||
     skill?.capabilityKey === 'email.send';
+  const isContractReviewer =
+    skill?.capabilityKey === 'platform.document.contract-reviewer' ||
+    skill?.capabilityKey?.includes('contract-reviewer');
 
   const handleClearField = (configKey: string) => {
     setClearingKeys((prev) => ({ ...prev, [configKey]: true }));
@@ -699,11 +703,20 @@ export const BuiltinSkillRuntimeConfigDrawer: React.FC<{
             updateMutation.mutate(changed);
           }}
         >
-          {isWebSearch
-            ? renderWebSearchConfig()
-            : isEmail
-            ? renderEmailConfig()
-            : renderGenericConfig()}
+          {isWebSearch ? (
+            renderWebSearchConfig()
+          ) : isEmail ? (
+            renderEmailConfig()
+          ) : isContractReviewer ? (
+            <ContractReviewerConfigPanel
+              form={form}
+              fields={fields}
+              onClearField={handleClearField}
+              clearingKeys={clearingKeys}
+            />
+          ) : (
+            renderGenericConfig()
+          )}
         </Form>
       )}
     </Drawer>

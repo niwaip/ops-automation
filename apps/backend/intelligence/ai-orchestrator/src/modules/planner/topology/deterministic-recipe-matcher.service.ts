@@ -21,6 +21,8 @@ export interface MatchedRecipe {
       | 'transform'
       | 'markdown_writer'
       | 'document_extract'
+      | 'contract_compare'
+      | 'contract_review'
       | 'web_extract'
       | 'generate'
       | 'notify';
@@ -61,11 +63,20 @@ export class DeterministicRecipeMatcherService {
       /生成\s*pdf|输出\s*pdf|导出\s*pdf|create\s*pdf|制作\s*pdf/i.test(userRequest);
     const hasPdfSplit = /拆分|拆页|分割|抽页|split/i.test(userRequest);
     const hasPdfMerge = /合并|拼接|merge/i.test(userRequest);
+    const hasContractCompare =
+      /(?:比对|对比|比较|diff|差异|变更点|红线)/i.test(userRequest) &&
+      /(?:合同|协议|文档|文件|条款|原版|修改版)/i.test(userRequest);
+    const hasContractReview =
+      !hasContractCompare &&
+      /(?:审查|审核|排查|风控|合规|诊断)/i.test(userRequest) &&
+      /(?:合同|协议|条款)/i.test(userRequest);
     const hasWeb = hasRoutingSignal(userRequest, 'webSource', policy);
     const hasDocumentExtract =
       !hasPdfExport &&
       !hasPdfSplit &&
       !hasPdfMerge &&
+      !hasContractCompare &&
+      !hasContractReview &&
       !hasWeb &&
       hasRoutingSignal(userRequest, 'documentSource', policy);
     const hasUncoveredAction = hasRoutingSignal(userRequest, 'uncoveredAction', policy);
@@ -182,6 +193,7 @@ export class DeterministicRecipeMatcherService {
       !hasSearch &&
       !hasMarkdownFile &&
       !hasDocumentExtract &&
+      !hasContractCompare &&
       !hasPdfSplit &&
       !hasPdfMerge &&
       !hasPdfExport &&
@@ -226,6 +238,28 @@ export class DeterministicRecipeMatcherService {
           },
         ],
         finalNodeRef: 'n2',
+        requiresExternalData: true,
+      };
+    }
+
+    if (hasContractCompare) {
+      this.logger.log(`Matched Recipe: contract_compare for request: "${userRequest}"`);
+      return {
+        recipeName: 'contract_compare',
+        objective: userRequest,
+        steps: [{ ref: 'n1', kind: 'skill', role: 'contract_compare', dependsOn: [] }],
+        finalNodeRef: 'n1',
+        requiresExternalData: true,
+      };
+    }
+
+    if (hasContractReview) {
+      this.logger.log(`Matched Recipe: contract_review for request: "${userRequest}"`);
+      return {
+        recipeName: 'contract_review',
+        objective: userRequest,
+        steps: [{ ref: 'n1', kind: 'skill', role: 'contract_review', dependsOn: [] }],
+        finalNodeRef: 'n1',
         requiresExternalData: true,
       };
     }

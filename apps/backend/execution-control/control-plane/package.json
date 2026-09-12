@@ -11,9 +11,9 @@
     "start": "node -e \"const fs=require('fs'); const main=['dist/main.js','dist/src/main.js','dist/apps/backend/execution-control/control-plane/src/main.js','dist/app/src/main.js'].find(f=>fs.existsSync(f)); if(!main){console.error('No main.js found in dist');process.exit(1);} require('./'+main);\"",
     "start:prod": "node -e \"const fs=require('fs'); const main=['dist/main.js','dist/src/main.js','dist/apps/backend/execution-control/control-plane/src/main.js','dist/app/src/main.js'].find(f=>fs.existsSync(f)); if(!main){console.error('No main.js found in dist');process.exit(1);} require('./'+main);\"",
     "start:worker": "node -e \"const fs=require('fs'); const main=['dist/worker-main.js','dist/src/worker-main.js','dist/apps/backend/execution-control/control-plane/src/worker-main.js','dist/app/src/worker-main.js'].find(f=>fs.existsSync(f)); if(!main){console.error('No worker-main.js found in dist');process.exit(1);} require('./'+main);\"",
-    "test": "jest",
+    "test": "prisma generate && jest",
     "test:unit": "jest --passWithNoTests",
-    "test:integration": "jest --passWithNoTests --config jest.integration.config.js",
+    "test:integration": "prisma generate && jest --passWithNoTests --config jest.integration.config.js",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit"
   },
