@@ -14,6 +14,7 @@ import ExecutionTakeoverRecoveryCard from '@/features/executions/shared/componen
 import SemanticOverviewCard from '@/features/executions/shared/components/SemanticOverviewCard';
 import { asRecord, tryParseJsonValue } from '@/features/executions/shared/lib/common';
 import { replaceLocalhostWithCurrentHost } from '@/shared/utils/publicUrl';
+import { HtmlPreviewBlock } from '@chat-web/components/HtmlPreviewBlock';
 
 const fixLocalhostLink = (url?: string): string | undefined =>
   replaceLocalhostWithCurrentHost(url);
@@ -32,18 +33,27 @@ const CollapsibleResultView: React.FC<{
   const [shouldTruncate, setShouldTruncate] = React.useState(false);
   const contentRef = React.useRef<HTMLDivElement>(null);
 
+  const hasHtmlArtifact = React.useMemo(
+    () => /```html[\s\S]*?(?:<!DOCTYPE html|<html|diff-ins|diff-del)/i.test(content),
+    [content]
+  );
+
   React.useEffect(() => {
     if (contentRef.current) {
+      if (hasHtmlArtifact) {
+        setShouldTruncate(false);
+        return;
+      }
       setShouldTruncate(contentRef.current.scrollHeight > maxCollapsedHeight + 15);
     }
-  }, [content, maxCollapsedHeight]);
+  }, [content, maxCollapsedHeight, hasHtmlArtifact]);
 
   return (
     <div style={{ marginTop: 6, position: 'relative' }}>
       <div
         ref={contentRef}
         style={{
-          maxHeight: expanded ? 'none' : `${maxCollapsedHeight}px`,
+          maxHeight: expanded || hasHtmlArtifact ? 'none' : `${maxCollapsedHeight}px`,
           overflow: 'hidden',
           transition: 'max-height 0.25s ease-in-out',
           position: 'relative',
@@ -58,6 +68,37 @@ const CollapsibleResultView: React.FC<{
                   <table>{children}</table>
                 </div>
               ),
+              code: ({
+                className,
+                children,
+                ...props
+              }: React.ComponentPropsWithoutRef<'code'> & { className?: string }) => {
+                const match = /language-(\w+)/.exec(className || '');
+                const codeText = String(children || '');
+                if (
+                  match &&
+                  match[1] === 'html' &&
+                  (codeText.includes('<!DOCTYPE html') ||
+                    codeText.includes('<html') ||
+                    codeText.includes('class="slide') ||
+                    codeText.includes('presentation') ||
+                    codeText.includes('guizang') ||
+                    codeText.includes('diff-ins') ||
+                    codeText.includes('diff-del'))
+                ) {
+                  return <HtmlPreviewBlock code={codeText.trim()} className={className} />;
+                }
+
+                return match ? (
+                  <pre className={`code-block language-${match[1]}`}>
+                    <code {...props}>{children}</code>
+                  </pre>
+                ) : (
+                  <code className="inline-code" {...props}>
+                    {children}
+                  </code>
+                );
+              },
             }}
           >
             {content}

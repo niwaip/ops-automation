@@ -63,6 +63,19 @@ export const BUILTIN_TOOLKIT_GROUPS: BuiltinToolkitGroup[] = [
       skill.name.includes('邮件'),
   },
   {
+    key: 'contract',
+    name: '合同法务审查套件',
+    englishName: 'Contract Legal & Review Toolkit',
+    icon: '⚖️',
+    tagColor: 'geekblue',
+    description: '提供企业商业合同智能审查、条款合规诊断、缺漏条款识别、法务修改建议与合同双版本智能比对红线标记服务',
+    matcher: (skill) =>
+      skill.id.includes('contract') ||
+      skill.name.includes('合同') ||
+      skill.name.includes('法务') ||
+      skill.name.includes('协议审查'),
+  },
+  {
     key: 'document',
     name: '文档编辑套件',
     englishName: 'Document Toolkit',
@@ -73,6 +86,10 @@ export const BUILTIN_TOOLKIT_GROUPS: BuiltinToolkitGroup[] = [
       !skill.id.includes('workspace') &&
       !skill.name.includes('工作空间') &&
       !skill.name.includes('探索') &&
+      !skill.id.includes('contract') &&
+      !skill.name.includes('合同') &&
+      !skill.name.includes('法务') &&
+      !skill.name.includes('协议审查') &&
       (skill.id.startsWith('platform.document.') ||
         skill.id.includes('pdf') ||
         skill.id.includes('document') ||

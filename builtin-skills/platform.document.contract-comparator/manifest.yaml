@@ -1,0 +1,127 @@
+apiVersion: platform.ops/v1alpha1
+kind: BuiltinWorkflowSkill
+metadata:
+  key: platform.document.contract-comparator
+  displayName: 合同文档智能比对与红线审查
+  description: 对比两份合同文档（Word、PDF或文本），基于章节树对齐与字符级Diff生成左右并排对比的交互式HTML审查报告
+  owner: platform-document
+  labels:
+    category: comparison
+    domain: document
+    format: multi-format
+spec:
+  definitionVersion: 1.0.1
+  lifecycle: experimental
+  defaultAccess:
+    mode: authenticated
+  planner:
+    enabled: true
+    triggerKeywords:
+      - 合同对比
+      - 合同比对
+      - 比较合同
+      - 检查合同修改
+      - 合同红线
+      - 文档比对
+      - 比较条款
+    matchSummary: 对比两份合同文档，生成包含左右差异高亮和法律风险解读的交互式单页 HTML 审查报告
+    runtimeType: workflow
+    supportsArtifact: true
+  contracts:
+    input:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        properties:
+          fileBase64A:
+            type: string
+          fileNameA:
+            type: string
+          textA:
+            type: string
+            description: 基准合同A的纯文本正文内容（注意：若已上传附件文件，此字段必须留空，禁止填入文件名）
+          fileBase64B:
+            type: string
+          fileNameB:
+            type: string
+          textB:
+            type: string
+            description: 比对合同B的纯文本正文内容（注意：若已上传附件文件，此字段必须留空，禁止填入文件名）
+          diffGranularity:
+            type: string
+            enum: [char, token]
+            default: char
+          enableRiskAnalysis:
+            type: boolean
+            default: true
+          myPosition:
+            type: string
+            description: 我方合同立场与角色（如：甲方、乙方、采购方、受托方）
+          customChecklistRules:
+            type: array
+            items:
+              type: object
+            description: 自定义审查要点与规则清单
+          customCheckpoints:
+            type: array
+            items:
+              type: object
+            description: 兼容旧版契约的自定义审查要点
+    output:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        x-primary-output: artifact
+        required:
+          - summary
+          - metrics
+          - alignedClauses
+          - artifact
+          - artifacts
+        properties:
+          summary:
+            type: string
+          metrics:
+            type: object
+          alignedClauses:
+            type: array
+            items:
+              type: object
+          htmlReport:
+            type: string
+          artifact:
+            type: object
+            x-value-type: artifact_ref
+            required: [type, name, url, mimeType, metadata]
+            properties:
+              type: { type: string }
+              id: { type: string }
+              name: { type: string }
+              url: { type: string }
+              mimeType: { type: string }
+              sizeBytes: { type: number }
+              metadata: { type: object }
+          artifacts:
+            type: array
+            items:
+              type: object
+  workflow:
+    engine: domain-handler
+    definitionRef: workflow.json
+  runtime:
+    adapterRoute: builtin:workflow
+    handlerKey: document.contract.compare
+    idempotency: enabled
+    timeoutSeconds: 60
+    retryPolicy:
+      maximumAttempts: 1
+  migration:
+    minimumPlatformVersion: 4.0.0
+    contractCompatibility: backward
+  smokeTest:
+    inputRef: fixtures/smoke-input.json
+    assertions:
+      - output.metrics.totalClauses greaterThan 0
+      - output.artifacts lengthGreaterThan 0

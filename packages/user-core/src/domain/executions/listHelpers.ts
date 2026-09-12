@@ -41,13 +41,29 @@ const extractInputText = (value?: Record<string, unknown>): string | undefined =
   return undefined;
 };
 
+const isBase64String = (value: unknown): boolean =>
+  typeof value === 'string' &&
+  (value.startsWith('data:') ||
+    value.startsWith('UEsDB') ||
+    (value.length > 200 && /^[A-Za-z0-9+/=\r\n]+$/.test(value.slice(0, 100))));
+
+const isNoiseOrBinaryInputKey = (key: string, value: unknown): boolean => {
+  if (!key || key.startsWith('__') || HIDDEN_INPUT_KEYS.has(key)) {
+    return true;
+  }
+  if (/base64/i.test(key) || key === 'fileContent' || key === 'fileData' || key === 'rawFile') {
+    return true;
+  }
+  return isBase64String(value);
+};
+
 const summarizeInputShape = (value?: Record<string, unknown>) => {
   if (!value || Object.keys(value).length === 0) {
     return '';
   }
 
   const keys = Object.keys(value).filter(
-    (key) => !key.startsWith('__') && !HIDDEN_INPUT_KEYS.has(key)
+    (key) => !isNoiseOrBinaryInputKey(key, value[key])
   );
   if (keys.length === 0) {
     return '';
@@ -72,8 +88,18 @@ export const extractExecutionDisplayInput = (
     return undefined;
   }
 
+  const hasFileNameA = Boolean(source.fileNameA);
+  const hasFileNameB = Boolean(source.fileNameB);
+
   const filteredEntries = Object.entries(source).filter(([key, value]) => {
-    if (!key || key.startsWith('__') || HIDDEN_INPUT_KEYS.has(key)) {
+    if (isNoiseOrBinaryInputKey(key, value)) {
+      return false;
+    }
+    if (
+      key === 'fileName' &&
+      (hasFileNameA || hasFileNameB) &&
+      (value === source.fileNameA || value === source.fileNameB)
+    ) {
       return false;
     }
     return value !== undefined;

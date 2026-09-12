@@ -117,7 +117,7 @@ function deriveRoutingSignals(value) {
         .map(normalizePlanningText)
         .filter(isDistinctiveSignal)
         .forEach((segment) => signals.add(segment));
-    let current = stripSuffixes(normalized, ROUTING_CONTAINER_SUFFIXES);
+    const current = stripSuffixes(normalized, ROUTING_CONTAINER_SUFFIXES);
     if (current && current !== normalized)
         signals.add(current);
     const withoutAction = stripSuffixes(current, ROUTING_ACTION_SUFFIXES);

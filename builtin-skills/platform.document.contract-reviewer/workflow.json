@@ -1,0 +1,20 @@
+{
+  "workflowVersion": "v1",
+  "engine": "domain-handler",
+  "handlerKey": "document.contract.review",
+  "steps": [
+    {
+      "stepId": "review_contract_document",
+      "action": "review_document",
+      "inputMapping": {
+        "fileBase64": "$.input.fileBase64",
+        "fileName": "$.input.fileName",
+        "text": "$.input.text",
+        "contractType": "$.input.contractType",
+        "myPosition": "$.input.myPosition",
+        "customChecklistRules": "$.input.customChecklistRules",
+        "customCheckpoints": "$.input.customCheckpoints"
+      }
+    }
+  ]
+}

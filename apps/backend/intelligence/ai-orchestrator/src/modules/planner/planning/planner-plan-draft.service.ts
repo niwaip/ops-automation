@@ -330,9 +330,14 @@ export class PlannerPlanDraftService {
   ): Record<string, unknown> | undefined {
     if (!context) return undefined;
     // Retain previous_result so recognizer LLM can extract parameters from detailText,
-    // but filter out bloated raw history.
+    // but filter out bloated raw history and massive binary file uploads.
     return Object.fromEntries(
-      Object.entries(context).filter(([key]) => key !== 'history')
+      Object.entries(context).filter(
+        ([key]) =>
+          key !== 'history' &&
+          !key.toLowerCase().includes('base64') &&
+          !['filecontent', 'filedata'].includes(key.toLowerCase())
+      )
     );
   }
 }

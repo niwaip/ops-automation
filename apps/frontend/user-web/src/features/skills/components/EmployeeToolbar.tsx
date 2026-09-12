@@ -2,6 +2,7 @@ import type { FC } from 'react';
 import { Button, Input, Select } from 'antd';
 import {
   ClearOutlined,
+  FileProtectOutlined,
   FilterOutlined,
   SearchOutlined,
   TeamOutlined,
@@ -17,6 +18,7 @@ interface EmployeeToolbarProps {
   filteredCount: number;
   hasActiveFilters: boolean;
   onClearFilters: () => void;
+  onOpenContractRules?: () => void;
 }
 
 const STATUS_OPTIONS = [
@@ -37,6 +39,7 @@ export const EmployeeToolbar: FC<EmployeeToolbarProps> = ({
   filteredCount,
   hasActiveFilters,
   onClearFilters,
+  onOpenContractRules,
 }) => {
   return (
     <div className={styles['employee-toolbar']}>
@@ -54,12 +57,26 @@ export const EmployeeToolbar: FC<EmployeeToolbarProps> = ({
           </div>
         </div>
 
-        <div className={styles['employee-toolbar-stats-text']}>
-          共 <strong>{totalCount}</strong> 位数字员工
-          {hasActiveFilters && (
-            <span>
-              {' '}(当前匹配 <strong>{filteredCount}</strong> 位)
-            </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className={styles['employee-toolbar-stats-text']}>
+            共 <strong>{totalCount}</strong> 位数字员工
+            {hasActiveFilters && (
+              <span>
+                {' '}(当前匹配 <strong>{filteredCount}</strong> 位)
+              </span>
+            )}
+          </div>
+          {onOpenContractRules && (
+            <Button
+              size="middle"
+              type="primary"
+              ghost
+              icon={<FileProtectOutlined style={{ color: '#1677ff' }} />}
+              onClick={onOpenContractRules}
+              style={{ borderRadius: 8, borderColor: '#1677ff', color: '#1677ff', fontWeight: 500 }}
+            >
+              ⚖️ 合同审查准则与要点
+            </Button>
           )}
         </div>
       </div>

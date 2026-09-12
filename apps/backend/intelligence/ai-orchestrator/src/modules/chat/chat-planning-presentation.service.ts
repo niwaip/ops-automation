@@ -11,8 +11,22 @@ export class ChatPlanningPresentationService {
   buildUploadedFileParams(
     files?: Array<{ fileName: string; mimeType: string; content?: string }>
   ): Record<string, unknown> {
-    const file = files?.find((candidate) => Boolean(candidate.content));
-    return file?.content ? { fileBase64: file.content, fileName: file.fileName } : {};
+    const validFiles = files?.filter((candidate) => Boolean(candidate.content)) || [];
+    const first = validFiles[0];
+    const second = validFiles[1];
+
+    const params: Record<string, unknown> = {};
+    if (first?.content) {
+      params.fileBase64 = first.content;
+      params.fileName = first.fileName;
+      params.fileBase64A = first.content;
+      params.fileNameA = first.fileName;
+    }
+    if (second?.content) {
+      params.fileBase64B = second.content;
+      params.fileNameB = second.fileName;
+    }
+    return params;
   }
 
   buildPlanningRequest(

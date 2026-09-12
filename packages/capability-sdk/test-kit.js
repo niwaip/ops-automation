@@ -13,20 +13,20 @@ function runCapabilityFixtures(manifest, fixtures) {
     const inputValidator = ajv.compile(manifest.contract.contracts.input.schema);
     const outputValidator = ajv.compile(manifest.contract.contracts.output.schema);
     const failures = [];
-    for (const fixture of fixtures) {
-        verify('input', fixture.input, fixture.expectInputValid ?? true, inputValidator);
-        if (fixture.output !== undefined) {
-            verify('output', fixture.output, fixture.expectOutputValid ?? true, outputValidator);
+    const verify = (fixture, phase, value, expected, validator) => {
+        const actual = Boolean(validator(value));
+        if (actual !== expected) {
+            failures.push({
+                fixture: fixture.name,
+                phase,
+                errors: (validator.errors || []).map((error) => `${error.instancePath} ${error.message}`),
+            });
         }
-        function verify(phase, value, expected, validator) {
-            const actual = Boolean(validator(value));
-            if (actual !== expected) {
-                failures.push({
-                    fixture: fixture.name,
-                    phase,
-                    errors: (validator.errors || []).map((error) => `${error.instancePath} ${error.message}`),
-                });
-            }
+    };
+    for (const fixture of fixtures) {
+        verify(fixture, 'input', fixture.input, fixture.expectInputValid ?? true, inputValidator);
+        if (fixture.output !== undefined) {
+            verify(fixture, 'output', fixture.output, fixture.expectOutputValid ?? true, outputValidator);
         }
     }
     return { manifest: (0, manifest_1.validateCapabilityPackManifest)(manifest), failures };

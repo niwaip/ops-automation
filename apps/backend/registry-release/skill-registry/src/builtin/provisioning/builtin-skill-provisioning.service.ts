@@ -299,6 +299,14 @@ export class BuiltinSkillProvisioningService {
           capabilityKey: 'platform.document.pdf-create',
           endpoint: '/internal/document/pdf/create/invoke',
         },
+        'document.contract.compare': {
+          capabilityKey: 'platform.document.contract-comparator',
+          endpoint: '/internal/document/contract-compare/invoke',
+        },
+        'document.contract.review': {
+          capabilityKey: 'platform.document.contract-reviewer',
+          endpoint: '/internal/document/contract-review/invoke',
+        },
       };
     const documentHandler = documentHandlerEndpoints[handlerKey];
     if (documentHandler) {

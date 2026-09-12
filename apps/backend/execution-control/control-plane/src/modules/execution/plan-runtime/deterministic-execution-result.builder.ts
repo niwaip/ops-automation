@@ -19,6 +19,15 @@ export function buildDeterministicExecutionResult(input: {
   const title = pickTopLevelTitle(input.finalOutputs, input.plan);
   const finishedAt = (input.finishedAt || new Date()).toISOString();
 
+  const isMarkdown = Boolean(
+    body &&
+      (/###|\*\*|```|\[.+\]\(.+\)|- \*\*/.test(body) ||
+        input.finalOutputs.some(
+          (o) => o.targetField === 'markdown_content' || o.fromNodeOutput === 'markdown_content'
+        ))
+  );
+  const format = isMarkdown ? 'markdown' : 'plain_text';
+
   return {
     execution: {
       executionId: input.executionId,
@@ -44,8 +53,8 @@ export function buildDeterministicExecutionResult(input: {
             detailText: body,
           }
         : {}),
-      summaryFormat: 'plain_text',
-      detailFormat: 'plain_text',
+      summaryFormat: format,
+      detailFormat: format,
     },
   };
 }

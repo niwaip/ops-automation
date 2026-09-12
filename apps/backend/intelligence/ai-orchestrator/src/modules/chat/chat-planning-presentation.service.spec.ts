@@ -19,6 +19,20 @@ describe('ChatPlanningPresentationService', () => {
     expect(service.buildUploadedFileParams(files)).toEqual({
       fileBase64: 'base64-payload',
       fileName: 'report.pdf',
+      fileBase64A: 'base64-payload',
+      fileNameA: 'report.pdf',
+    });
+    const twoFiles = [
+      { fileName: 'orig.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', content: 'base64-a' },
+      { fileName: 'revised.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', content: 'base64-b' },
+    ];
+    expect(service.buildUploadedFileParams(twoFiles)).toEqual({
+      fileBase64: 'base64-a',
+      fileName: 'orig.docx',
+      fileBase64A: 'base64-a',
+      fileNameA: 'orig.docx',
+      fileBase64B: 'base64-b',
+      fileNameB: 'revised.docx',
     });
     const request = service.buildPlanningRequest('总结附件', files);
     expect(request).toContain('用户已上传 PDF 附件');

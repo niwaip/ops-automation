@@ -732,9 +732,9 @@ export class DeterministicPlanSchedulerService {
     const isBuiltin = typeof capabilityId === 'string' && capabilityId.startsWith('platform.');
     const capabilityType = isBuiltin ? 'builtin' : 'skill.runtime';
 
-    const definitionVersion = frozenMeta.definitionVersion || capabilityVersion;
+    const definitionVersion = frozenMeta.definitionVersion || capabilityVersion || '1.0.0';
     const metadata: Record<string, any> = {
-      capabilityVersion,
+      capabilityVersion: capabilityVersion || definitionVersion,
       definitionVersion,
       idempotencyKey: stepIdempotencyKey,
     };

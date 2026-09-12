@@ -124,9 +124,11 @@ export class BuiltinSkillController {
         ? dto.roleIds
         : Array.isArray(user?.roles)
           ? user.roles
-          : isTrusted && req.headers['x-role-ids']
-            ? String(req.headers['x-role-ids']).split(',')
-            : undefined;
+          : typeof user?.role === 'string'
+            ? [user.role]
+            : isTrusted && req.headers['x-role-ids']
+              ? String(req.headers['x-role-ids']).split(',')
+              : undefined;
 
     const result = await this.catalogProjectionService.resolveCapability({
       capabilityKey: dto.capabilityKey,

@@ -3,7 +3,7 @@ import {
   ClockCircleOutlined,
 } from '@ant-design/icons';
 import { Button, Empty as AntdEmpty, Tabs as AntdTabs } from 'antd';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PublishedSkillOverview } from '@/features/skills/components/PublishedSkillOverview';
 import { PublishedSkillSectionCard } from '@/features/skills/components/PublishedSkillSectionCard';
@@ -14,6 +14,7 @@ import { EmployeeToolbar } from '@/features/skills/components/EmployeeToolbar';
 import { usePublishedSkillList } from '@/features/skills/hooks/usePublishedSkillList';
 import { SavedWorkflowList } from '@/features/skills/saved-workflows/SavedWorkflowList';
 import { OrganizationWorkflowList } from '@/features/skills/components/OrganizationWorkflowList';
+import { ContractReviewRulesModal } from '@/features/skills/components/ContractReviewRulesModal';
 import type { PublishedSkillCatalogItem } from '@/api/skill';
 
 function PublishedSkillsContent() {
@@ -45,6 +46,15 @@ function PublishedSkillsContent() {
     totalVisibleCount,
   } = usePublishedSkillList();
   const [credentialTarget, setCredentialTarget] = useState<PublishedSkillCatalogItem | null>(null);
+  const [rulesTarget, setRulesTarget] = useState<PublishedSkillCatalogItem | null>(null);
+
+  const contractSkill = useMemo(() => {
+    return (
+      authorizedSkills.find((s) => s.id.includes('contract') || s.name?.includes('合同')) ||
+      orderedUnauthorizedSkills.find((s) => s.id.includes('contract') || s.name?.includes('合同')) ||
+      null
+    );
+  }, [authorizedSkills, orderedUnauthorizedSkills]);
 
   const showAuthorizedSection =
     authorizedSkills.length > 0 || (!hasActiveFilters && allAuthorizedSkillsCount > 0);
@@ -70,6 +80,15 @@ function PublishedSkillsContent() {
         filteredCount={totalVisibleCount}
         hasActiveFilters={hasActiveFilters}
         onClearFilters={clearAllFilters}
+        onOpenContractRules={() =>
+          setRulesTarget(
+            contractSkill ||
+              ({
+                id: 'platform.document.contract-reviewer',
+                name: '合同文档智能审查与合规诊断',
+              } as any)
+          )
+        }
       />
 
       {/* 3. Global Filter Empty State */}
@@ -114,6 +133,7 @@ function PublishedSkillsContent() {
                 onPrimaryAction={handleSkillPrimaryAction}
                 onChatCollaborate={handleChatCollaborate}
                 onConfigureCredentials={setCredentialTarget}
+                onConfigureRules={setRulesTarget}
                 recentlyRequestedSkillId={recentlyRequestedSkillId}
                 schedulesBySkillId={schedulesBySkillId}
                 skills={authorizedSkills}
@@ -139,6 +159,7 @@ function PublishedSkillsContent() {
                 isLoading={isInitialLoading}
                 onPrimaryAction={handleSkillPrimaryAction}
                 onChatCollaborate={handleChatCollaborate}
+                onConfigureRules={setRulesTarget}
                 recentlyRequestedSkillId={recentlyRequestedSkillId}
                 schedulesBySkillId={schedulesBySkillId}
                 skills={orderedUnauthorizedSkills}
@@ -163,6 +184,13 @@ function PublishedSkillsContent() {
         skill={credentialTarget}
         open={Boolean(credentialTarget)}
         onClose={() => setCredentialTarget(null)}
+      />
+
+      {/* 8. Contract Review Rules & Checkpoints Modal */}
+      <ContractReviewRulesModal
+        skill={rulesTarget}
+        open={Boolean(rulesTarget)}
+        onClose={() => setRulesTarget(null)}
       />
     </div>
   );

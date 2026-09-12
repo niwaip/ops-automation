@@ -127,8 +127,8 @@ export const OrganizationWorkflowCard: React.FC<OrganizationWorkflowCardProps> =
         flexDirection: 'column',
         justifyContent: 'space-between',
         borderRadius: 12,
-        border: isAuthorized ? '1px solid #d9d9d9' : '1px dashed #ffa39e',
-        background: isAuthorized ? 'var(--bg-card)' : 'rgba(0, 0, 0, 0.01)',
+        border: isAuthorized ? '1px solid var(--border-color)' : '1px dashed rgba(255, 77, 79, 0.6)',
+        background: 'var(--bg-card)',
       }}
       styles={{ body: { display: 'flex', flexDirection: 'column', flex: 1, padding: 20 } }}
     >
@@ -141,7 +141,7 @@ export const OrganizationWorkflowCard: React.FC<OrganizationWorkflowCardProps> =
                 width: 44,
                 height: 44,
                 borderRadius: 8,
-                background: '#f5f5f5',
+                background: 'var(--bg-hover, rgba(255, 255, 255, 0.06))',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -189,8 +189,8 @@ export const OrganizationWorkflowCard: React.FC<OrganizationWorkflowCardProps> =
         {/* 流程定义动态步骤链 */}
         <div
           style={{
-            background: '#fafafa',
-            border: '1px solid #f0f0f0',
+            background: 'var(--bg-hover, rgba(255, 255, 255, 0.03))',
+            border: '1px solid var(--border-color)',
             padding: '12px 10px',
             borderRadius: 8,
             marginBottom: 16,
@@ -204,7 +204,7 @@ export const OrganizationWorkflowCard: React.FC<OrganizationWorkflowCardProps> =
       </div>
 
       {/* 底部操作栏 */}
-      <div style={{ display: 'flex', gap: 8, paddingTop: 12, borderTop: '1px solid #f0f0f0' }}>
+      <div style={{ display: 'flex', gap: 8, paddingTop: 12, borderTop: '1px solid var(--border-color)' }}>
         {isAuthorized ? (
           <Button
             type="primary"

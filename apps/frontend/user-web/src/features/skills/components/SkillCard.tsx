@@ -2,6 +2,7 @@ import {
   CalendarOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
+  FileProtectOutlined,
   KeyOutlined,
   MessageOutlined,
   PlayCircleOutlined,
@@ -20,6 +21,7 @@ interface SkillCardProps {
   onPrimaryAction: (skill: PublishedSkillCatalogItem, authorized: boolean) => void;
   onChatCollaborate?: (skill: PublishedSkillCatalogItem) => void;
   onConfigureCredentials?: (skill: PublishedSkillCatalogItem) => void;
+  onConfigureRules?: (skill: PublishedSkillCatalogItem) => void;
   recentlyRequested: boolean;
   schedules: ScheduleDto[];
   skill: PublishedSkillCatalogItem;
@@ -62,6 +64,7 @@ export function SkillCard({
   onPrimaryAction,
   onChatCollaborate,
   onConfigureCredentials,
+  onConfigureRules,
   recentlyRequested,
   schedules,
   skill,
@@ -89,6 +92,22 @@ export function SkillCard({
     ...(skill.tools || []),
     ...(skill.triggerKeywords || []),
   ].slice(0, 4);
+
+  const isContractReviewer =
+    skill.id === 'platform.document.contract-reviewer' ||
+    (skill as any).capabilityKey === 'platform.document.contract-reviewer' ||
+    skill.id?.toLowerCase().includes('contract-reviewer') ||
+    skill.id?.toLowerCase().includes('contract_reviewer') ||
+    skill.id?.toLowerCase().includes('contract-review') ||
+    skill.id?.toLowerCase().includes('contract_review') ||
+    (Boolean(skill.name?.includes('合同')) &&
+      (Boolean(skill.name?.includes('审查')) ||
+        Boolean(skill.name?.includes('审核')) ||
+        Boolean(skill.name?.includes('比对')) ||
+        Boolean(skill.name?.includes('法务')) ||
+        Boolean(skill.name?.includes('诊断')))) ||
+    Boolean(skill.tools?.some((t) => t?.toLowerCase().includes('contract') || t?.toLowerCase().includes('review'))) ||
+    Boolean(skill.triggerKeywords?.some((k) => k?.includes('合同') || k?.includes('审查')));
 
   return (
     <Card
@@ -140,6 +159,16 @@ export function SkillCard({
             {skill.publishedSourceType && (
               <Tag bordered={false} style={{ margin: 0, fontSize: 11, padding: '0 4px' }}>
                 {skill.publishedSourceType}
+              </Tag>
+            )}
+            {isContractReviewer && (
+              <Tag
+                color="geekblue"
+                bordered={false}
+                style={{ margin: 0, fontSize: 11, padding: '0 5px', cursor: 'pointer' }}
+                onClick={() => onConfigureRules?.(skill)}
+              >
+                ⚖️ 审查准则
               </Tag>
             )}
           </div>
@@ -264,6 +293,20 @@ export function SkillCard({
               className={styles['employee-secondary-action-btn']}
             >
               配置
+            </Button>
+          </Tooltip>
+        )}
+
+        {isContractReviewer && onConfigureRules && (
+          <Tooltip title="查阅该数字员工内置的法务审查准则，或自定义企业/个人专属审查要点">
+            <Button
+              type="default"
+              icon={<FileProtectOutlined style={{ color: '#1677ff' }} />}
+              onClick={() => onConfigureRules(skill)}
+              className={styles['employee-secondary-action-btn']}
+              style={{ borderColor: '#1677ff', color: '#1677ff', fontWeight: 500 }}
+            >
+              审查准则
             </Button>
           </Tooltip>
         )}

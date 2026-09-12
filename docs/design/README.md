@@ -4,6 +4,13 @@
 
 ---
 
+## 0. 领域功能设计
+
+- **合同法务审查套件功能设计**：[`Contract-Legal-Review-Toolkit-Functional-Design_v1.0.md`](Contract-Legal-Review-Toolkit-Functional-Design_v1.0.md)
+  *围绕合同智能比对、合规诊断、统一问题项、证据锚点、Legal Playbook 与后续法务工作流衔接的功能设计。*
+
+---
+
 ## 1. 核心总纲与项目描述 (`v4/`)
 
 - **系统设计总纲**：[`v4/Enterprise-Skill-Platform_Master_v4.0.md`](v4/Enterprise-Skill-Platform_Master_v4.0.md)  

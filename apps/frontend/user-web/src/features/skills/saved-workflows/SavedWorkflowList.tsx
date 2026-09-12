@@ -11,7 +11,7 @@ import {
 import { Alert, Button, Card, Empty, Input, Select } from 'antd';
 import { useQuery } from 'react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { savedSkillApi } from '@/api/savedSkills';
+import { savedSkillApi, type SavedSkill } from '@/api/savedSkills';
 import { scheduleApi } from '@/api/schedules';
 import styles from '../components/EmployeeManagement.module.css';
 import { PersonalizationControlCard } from './PersonalizationControlCard';
@@ -33,7 +33,12 @@ export function SavedWorkflowList() {
     refetchOnWindowFocus: false,
   });
 
-  const skills = skillsQuery.data?.skills || [];
+  const rawSkills = skillsQuery.data?.skills;
+  const skills: SavedSkill[] = Array.isArray(rawSkills)
+    ? rawSkills
+    : Array.isArray(skillsQuery.data)
+      ? (skillsQuery.data as any)
+      : [];
 
   const schedulesBySkillId = useMemo(() => {
     const result = new Map<string, NonNullable<typeof schedulesQuery.data>>();

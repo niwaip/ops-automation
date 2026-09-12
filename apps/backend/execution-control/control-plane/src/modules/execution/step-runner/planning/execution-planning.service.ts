@@ -46,26 +46,23 @@ export class ExecutionPlanningService {
     authToken?: string,
     requester?: { id: string; role?: string }
   ): Record<string, string> | undefined {
+    const headers: Record<string, string> = {};
+
     if (typeof authToken === 'string' && authToken.trim().length > 0) {
-      return {
-        Authorization: authToken,
-      };
+      headers.Authorization = authToken;
     }
 
-    if (
-      this.internalApiSharedSecret &&
-      typeof requester?.id === 'string' &&
-      requester.id.trim().length > 0
-    ) {
-      return {
-        'X-Internal-Secret': this.internalApiSharedSecret,
-        'X-Internal-Auth': this.internalApiSharedSecret,
-        'X-User-Id': requester.id,
-        'X-User-Role': requester.role || 'employee',
-      };
+    if (this.internalApiSharedSecret) {
+      headers['X-Internal-Secret'] = this.internalApiSharedSecret;
+      headers['X-Internal-Auth'] = this.internalApiSharedSecret;
     }
 
-    return undefined;
+    if (typeof requester?.id === 'string' && requester.id.trim().length > 0) {
+      headers['X-User-Id'] = requester.id;
+      headers['X-User-Role'] = requester.role || 'employee';
+    }
+
+    return Object.keys(headers).length > 0 ? headers : undefined;
   }
 
   async assertSkillAccessibleByUser(
@@ -95,6 +92,8 @@ export class ExecutionPlanningService {
             capabilityKey: skillId,
             definitionVersion: skillVersion,
             action: 'execute',
+            userId: requester?.id,
+            roleIds: requester?.role ? [requester.role] : undefined,
           },
           { headers, timeout: 10000 }
         );

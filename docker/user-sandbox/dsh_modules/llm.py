@@ -116,14 +116,27 @@ def extract_bare_json_tool_calls(text: str) -> list:
 def parse_tool_calls(text: str) -> list:
     """Parses tool calls from DSML, tool_call XML tags, or markdown code blocks"""
     tools = []
-    # 1. 解析 DSML invoke 格式
-    for m in re.finditer(r'<｜DSML｜invoke name="(?P<name>[^"]+)"[^>]*>(?P<body>.*?)(?:</｜DSML｜invoke>|</｜DSML｜>|$)', text, re.DOTALL):
-        params = {pm.group("pname"): pm.group("pval").strip() for pm in re.finditer(r'<｜DSML｜parameter name="(?P<pname>[^"]+)"[^>]*>(?P<pval>.*?)</｜DSML｜parameter>', m.group("body"), re.DOTALL)}
+    # 1. 解析 DSML / DSML calls 格式 (支持单竖线 ｜/| 与双竖线 ｜｜/||，支持空格、calls 外层容器与 arguments JSON 展开)
+    dsml_pattern = r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*invoke name="(?P<name>[^"]+)"[^>]*>(?P<body>.*?)(?:</[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*invoke>|</[｜|]{1,2}\s*DSML\s*[｜|]{1,2}>|$)'
+    for m in re.finditer(dsml_pattern, text, re.DOTALL):
+        params = {}
+        for pm in re.finditer(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*parameter name="(?P<pname>[^"]+)"[^>]*>(?P<pval>.*?)</[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*parameter>', m.group("body"), re.DOTALL):
+            pname = pm.group("pname").strip()
+            pval = pm.group("pval").strip()
+            if pname in ["arguments", "parameters", "params"]:
+                try:
+                    parsed_args = json.loads(pval)
+                    if isinstance(parsed_args, dict):
+                        params.update(parsed_args)
+                        continue
+                except Exception:
+                    pass
+            params[pname] = pval
         tools.append({"type": "dsml", "name": m.group("name"), "params": params, "raw": m.group(0)})
 
     # 2. 解析通用 <tool_call> ... (支持以 </tool_call> 或 </｜DSML｜> 闭合，并具备 JSON 语法容错)
     tool_call_matches = re.finditer(
-        r'<tool_call>(.*?)(?:</tool_call>|</｜DSML｜(?:invoke)?>|</tool_calls>|$)',
+        r'<tool_call>(.*?)(?:</tool_call>|</[｜|]{1,2}\s*DSML\s*[｜|]{1,2}(?:\s*invoke)?>|</tool_calls>|$)',
         text,
         re.DOTALL
     )
@@ -193,9 +206,10 @@ def parse_tool_calls(text: str) -> list:
 
 def clean_output(text: str) -> str:
     """Removes raw DSML, tool_call, bare tool JSON, and internal tags from final user output"""
-    text = re.sub(r'<｜DSML｜tool_calls>.*?</｜DSML｜tool_calls>', '', text, flags=re.DOTALL)
-    text = re.sub(r'<｜DSML｜invoke[^>]*>.*?(?:</｜DSML｜invoke>|</｜DSML｜>|$)', '', text, flags=re.DOTALL)
-    text = re.sub(r'<tool_call>.*?(?:</tool_call>|</｜DSML｜(?:invoke)?>|</tool_calls>|$)', '', text, flags=re.DOTALL)
+    text = re.sub(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*(?:calls|tool_calls)>.*?</[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*(?:calls|tool_calls)>', '', text, flags=re.DOTALL)
+    text = re.sub(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*invoke[^>]*>.*?(?:</[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*invoke>|</[｜|]{1,2}\s*DSML\s*[｜|]{1,2}>|$)', '', text, flags=re.DOTALL)
+    text = re.sub(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}[\s\S]*$', '', text)
+    text = re.sub(r'<tool_call>.*?(?:</tool_call>|</[｜|]{1,2}\s*DSML\s*[｜|]{1,2}(?:\s*invoke)?>|</tool_calls>|$)', '', text, flags=re.DOTALL)
 
     bare_tools = extract_bare_json_tool_calls(text)
     for bt in bare_tools:
@@ -217,8 +231,8 @@ def clean_output(text: str) -> str:
         text = re.sub(fp, '', text, flags=re.MULTILINE)
 
     text = re.sub(r'```(?:json)?\s*```', '', text)
-    text = re.sub(r'</?(?:tool_call|tool_calls|｜DSML｜[^>]*)>', '', text)
-    text = re.sub(r'<｜.*?｜>', '', text)
+    text = re.sub(r'</?(?:tool_call|tool_calls|[｜|]{1,2}\s*DSML\s*[｜|]{1,2}[^>]*)>', '', text)
+    text = re.sub(r'<[｜|]{1,2}[\s\S]*?[｜|]{1,2}>', '', text)
     return re.sub(r'\n{3,}', '\n\n', text).strip()
 
 

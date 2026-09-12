@@ -345,8 +345,11 @@ export class UserSandboxDispatcherService {
     let res = (raw || '')
       .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '')
       .replace(/<tool_call>[\s\S]*$/g, '')
-      .replace(/<｜DSML｜[\s\S]*?<\/｜DSML｜[^>]*>/g, '')
-      .replace(/<｜DSML｜[\s\S]*$/g, '');
+      .replace(/<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*(?:calls|tool_calls)>[\s\S]*?<\/[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*(?:calls|tool_calls)>/g, '')
+      .replace(/<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*invoke[\s\S]*?<\/[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*invoke>/g, '')
+      .replace(/<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}[\s\S]*$/g, '')
+      .replace(/<\/?(?:tool_call|tool_calls|[｜|]{1,2}\s*DSML\s*[｜|]{1,2}[^>]*)>/g, '')
+      .replace(/<[｜|]{1,2}[\s\S]*?[｜|]{1,2}>/g, '');
 
     // 剔除可能残留的裸 JSON 工具调用（支持多层嵌套与未闭合截断）
     const toolHeader = /\{\s*"(?:name|tool|action)"\s*:\s*"[^"]+"/;

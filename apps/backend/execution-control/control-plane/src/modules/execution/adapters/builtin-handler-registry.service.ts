@@ -59,6 +59,16 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
       '/internal/document/pdf/create/invoke',
       ['platform.document.pdf-create']
     );
+    this.registerDocumentDomainHandler(
+      'document.contract.compare',
+      '/internal/document/contract-compare/invoke',
+      ['platform.document.contract-comparator']
+    );
+    this.registerDocumentDomainHandler(
+      'document.contract.review',
+      '/internal/document/contract-review/invoke',
+      ['platform.document.contract-reviewer']
+    );
 
     // 2. Built-in Email Capabilities (email.messages, email.send, email.update)
     this.registerHandler('email.messages', executeEmailMessages);

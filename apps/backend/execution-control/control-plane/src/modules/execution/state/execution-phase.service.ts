@@ -659,7 +659,7 @@ export class ExecutionPhaseService {
             )
           `,
           phaseId,
-          artifact.artifactType,
+          artifact.artifactType || 'document',
           artifact.snapshotId || null,
           artifact.pageUrl || null,
           artifact.pageFingerprint || null,
@@ -729,7 +729,7 @@ export class ExecutionPhaseService {
             )
           `,
           phaseId,
-          artifact.artifactType,
+          artifact.artifactType || 'document',
           artifact.snapshotId || null,
           artifact.pageUrl || null,
           artifact.pageFingerprint || null,

@@ -33,11 +33,21 @@ export class JwtAuthGuard implements CanActivate {
       context.getClass(),
     ]);
 
+    const request = context.switchToHttp().getRequest();
+    const authenticated = await this.tryAuthenticate(request);
+
     if (isPublic) {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
+    if (!authenticated) {
+      throw new UnauthorizedException('Authorization header is required');
+    }
+
+    return true;
+  }
+
+  private async tryAuthenticate(request: any): Promise<boolean> {
     const isProduction = process.env.NODE_ENV === 'production';
     const internalSecret =
       process.env.INTERNAL_API_SHARED_SECRET ||
@@ -80,14 +90,13 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     const authorization = request.headers.authorization;
-
     if (!authorization) {
-      throw new UnauthorizedException('Authorization header is required');
+      return false;
     }
 
-    const token = authorization.replace('Bearer ', '');
+    const token = authorization.replace(/^Bearer\s+/i, '');
     if (!token) {
-      throw new UnauthorizedException('Token is required');
+      return false;
     }
 
     try {
@@ -105,7 +114,7 @@ export class JwtAuthGuard implements CanActivate {
       };
       return true;
     } catch {
-      throw new UnauthorizedException('Invalid or expired token');
+      return false;
     }
   }
 }

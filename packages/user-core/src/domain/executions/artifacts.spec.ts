@@ -10,15 +10,30 @@ import {
 describe('getPhaseArtifactPath', () => {
   it('extracts direct snapshotPath or artifactPath or path', () => {
     assert.equal(
-      getPhaseArtifactPath({ id: '1', artifactType: 'snapshot', payload: { snapshotPath: '/tmp/snap.png' } }),
+      getPhaseArtifactPath({
+        id: '1',
+        artifactType: 'snapshot',
+        payload: { snapshotPath: '/tmp/snap.png' },
+        createdAt: '2026-01-01T00:00:00.000Z',
+      }),
       '/tmp/snap.png'
     );
     assert.equal(
-      getPhaseArtifactPath({ id: '2', artifactType: 'snapshot', payload: { artifactPath: '/tmp/art.png' } }),
+      getPhaseArtifactPath({
+        id: '2',
+        artifactType: 'snapshot',
+        payload: { artifactPath: '/tmp/art.png' },
+        createdAt: '2026-01-01T00:00:00.000Z',
+      }),
       '/tmp/art.png'
     );
     assert.equal(
-      getPhaseArtifactPath({ id: '3', artifactType: 'snapshot', payload: { path: '/tmp/direct.png' } }),
+      getPhaseArtifactPath({
+        id: '3',
+        artifactType: 'snapshot',
+        payload: { path: '/tmp/direct.png' },
+        createdAt: '2026-01-01T00:00:00.000Z',
+      }),
       '/tmp/direct.png'
     );
   });
@@ -29,6 +44,7 @@ describe('getPhaseArtifactPath', () => {
         id: '4',
         artifactType: 'snapshot',
         payload: { output: { data: { screenshotPath: '/tmp/nested-data.png' } } },
+        createdAt: '2026-01-01T00:00:00.000Z',
       }),
       '/tmp/nested-data.png'
     );
@@ -37,6 +53,7 @@ describe('getPhaseArtifactPath', () => {
         id: '5',
         artifactType: 'snapshot',
         payload: { output: { snapshot: { path: '/tmp/nested-snap.png' } } },
+        createdAt: '2026-01-01T00:00:00.000Z',
       }),
       '/tmp/nested-snap.png'
     );

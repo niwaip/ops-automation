@@ -59,7 +59,8 @@ export function PersonalizationControlCard() {
     },
   });
   const state = query.data;
-  const habitsCount = state?.habits?.length || 0;
+  const habits = Array.isArray(state?.habits) ? state.habits : [];
+  const habitsCount = habits.length;
 
   return (
     <Card
@@ -90,7 +91,7 @@ export function PersonalizationControlCard() {
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>历史偏好推荐</Typography.Text>
             <Switch
               size="small"
-              checked={Boolean(state?.personalization.recommendationEnabled)}
+              checked={Boolean(state?.personalization?.recommendationEnabled)}
               loading={toggle.isLoading}
               onChange={(checked) => toggle.mutate(checked)}
             />
@@ -111,7 +112,7 @@ export function PersonalizationControlCard() {
       />
       <List
         size="small"
-        dataSource={state?.habits || []}
+        dataSource={habits}
         locale={{ emptyText: '暂无已识别的习惯偏好' }}
         renderItem={(habit) => (
           <List.Item

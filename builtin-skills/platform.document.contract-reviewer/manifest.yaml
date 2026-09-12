@@ -1,0 +1,135 @@
+apiVersion: platform.ops/v1alpha1
+kind: BuiltinWorkflowSkill
+metadata:
+  key: platform.document.contract-reviewer
+  displayName: 合同文档智能审查与合规诊断
+  description: 对单份合同协议（Word、PDF或文本）进行条款树解析、合同类型自动识别（或指定类型）、合规风险审查、缺失必备条款识别、修改红线建议，并生成交互式单页HTML审查报告
+  owner: platform-document
+  labels:
+    category: review
+    domain: contract
+    format: multi-format
+spec:
+  definitionVersion: 1.0.0
+  lifecycle: experimental
+  defaultAccess:
+    mode: authenticated
+  planner:
+    enabled: true
+    triggerKeywords:
+      - 审查合同
+      - 合同审查
+      - 审核合同
+      - 合同审核
+      - 排查合同
+      - 合同风控
+      - 合同合规
+      - 协议审查
+      - 检查合同
+      - 合规审查
+      - 审查协议
+      - 合同诊断
+    matchSummary: 智能审查合同协议，诊断合规风险、缺漏条款与不对等责任，并生成交互式单页 HTML 审查报告
+    runtimeType: workflow
+    supportsArtifact: true
+  contracts:
+    input:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        properties:
+          fileBase64:
+            type: string
+            description: 上传的合同文档 Base64 数据（Word .docx 或 PDF）
+          fileName:
+            type: string
+            description: 上传的合同文件名
+          text:
+            type: string
+            description: 合同文档纯文本正文内容（若已上传附件文件，此字段可留空）
+          contractType:
+            type: string
+            enum: [nda, software_development, procurement, employment, lease, general]
+            description: 合同类型（留空则基于条款智能自动识别分类）
+          myPosition:
+            type: string
+            description: 我方合同立场与角色（如：甲方、乙方、采购方、受托方、雇主、雇员、出租方、承租方），影响审查倾斜度与红线建议
+          customChecklistRules:
+            type: array
+            items:
+              type: object
+            description: 数字员工自定义配置的审查要点与规则清单
+          customCheckpoints:
+            type: array
+            items:
+              type: object
+            description: 兼容旧版契约的自定义审查要点
+    output:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: true
+        x-primary-output: artifact
+        required:
+          - summary
+          - metrics
+          - clauses
+          - missingClauses
+          - artifact
+          - artifacts
+        properties:
+          summary:
+            type: string
+          contractType:
+            type: string
+          contractTypeName:
+            type: string
+          myPosition:
+            type: string
+          metrics:
+            type: object
+          clauses:
+            type: array
+            items:
+              type: object
+          missingClauses:
+            type: array
+            items:
+              type: object
+          htmlReport:
+            type: string
+          artifact:
+            type: object
+            x-value-type: artifact_ref
+            required: [type, name, url, mimeType, metadata]
+            properties:
+              type: { type: string }
+              id: { type: string }
+              name: { type: string }
+              url: { type: string }
+              mimeType: { type: string }
+              sizeBytes: { type: number }
+              metadata: { type: object }
+          artifacts:
+            type: array
+            items:
+              type: object
+  workflow:
+    engine: domain-handler
+    definitionRef: workflow.json
+  runtime:
+    adapterRoute: builtin:workflow
+    handlerKey: document.contract.review
+    idempotency: enabled
+    timeoutSeconds: 60
+    retryPolicy:
+      maximumAttempts: 1
+  migration:
+    minimumPlatformVersion: 4.0.0
+    contractCompatibility: backward
+  smokeTest:
+    inputRef: fixtures/smoke-input.json
+    assertions:
+      - output.metrics.totalClauses greaterThan 0
+      - output.artifacts lengthGreaterThan 0

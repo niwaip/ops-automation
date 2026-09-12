@@ -8,12 +8,76 @@ import type { ScheduleDto } from '@/api/schedules';
 import {
   buildSchedulesBySkillId,
   buildUnauthorizedPublishedSkillCollections,
+  filterSkillsForDigitalEmployees,
   type PublishedSkillSectionKey,
   sortPublishedSkillsByName,
 } from '@/features/skills/lib/publishedSkillList';
 
 const PUBLISHED_SKILL_CATALOG_QUERY_KEY = ['user-web-published-skills-catalog'] as const;
 const PUBLISHED_SKILL_SCHEDULES_QUERY_KEY = ['user-web-published-skill-schedules'] as const;
+
+const BUILTIN_CONTRACT_REVIEWER: PublishedSkillCatalogItem = {
+  id: 'platform.document.contract-reviewer',
+  name: '合同文档智能审查与合规诊断',
+  description:
+    '对单份合同协议（Word、PDF或文本）进行条款树解析、合同类型自动识别（或指定类型）、合规风险审查、缺失必备条款识别、修改红线建议，并生成交互式单页HTML审查报告',
+  triggerKeywords: [
+    '审查合同',
+    '合同审查',
+    '审核合同',
+    '合同审核',
+    '排查合同',
+    '合同风控',
+    '合同合规',
+    '协议审查',
+    '检查合同',
+  ],
+  paramsSchema: {
+    properties: {
+      fileBase64: {
+        type: 'string',
+        description: '上传的合同文档 Base64 数据（Word .docx 或 PDF）',
+        required: false,
+      },
+      fileName: {
+        type: 'string',
+        description: '上传的合同文件名',
+        required: false,
+      },
+      text: {
+        type: 'string',
+        description: '合同文档纯文本正文内容（若已上传附件文件，此字段可留空）',
+        required: false,
+      },
+      contractType: {
+        type: 'string',
+        description: '合同类型（留空则基于条款智能自动识别分类）',
+        required: false,
+        enum: ['software_development', 'procurement', 'employment', 'lease', 'nda', 'general'],
+      },
+      myPosition: {
+        type: 'string',
+        description: '我方合同立场与角色（如：甲方、乙方、采购方、受托方、雇主、雇员、出租方、承租方），影响审查倾斜度与红线建议',
+        required: false,
+      },
+      customChecklistRules: {
+        type: 'json',
+        description: '数字员工自定义配置的审查要点与规则清单',
+        required: false,
+      },
+    },
+    required: [],
+  },
+  executionFlowTemplateIds: [],
+  tools: ['document_contract_review'],
+  effectiveTools: ['document_contract_review'],
+  isActive: true,
+  isPublished: true,
+  publishedReleaseVersion: 1,
+  publishedSourceType: 'builtin',
+  accessStatus: 'authorized',
+  accessRequest: null,
+};
 
 export const usePublishedSkillList = () => {
   const { message } = App.useApp();
@@ -83,10 +147,19 @@ export const usePublishedSkillList = () => {
     }
   );
 
-  const skills = useMemo(
-    () => sortPublishedSkillsByName(catalogQuery.data?.skills),
-    [catalogQuery.data?.skills]
-  );
+  const skills = useMemo(() => {
+    const raw = catalogQuery.data?.skills || [];
+    const hasContractReviewer = raw.some(
+      (s) =>
+        s.id === 'platform.document.contract-reviewer' ||
+        s.id.includes('contract-reviewer') ||
+        s.name.includes('合同文档智能审查') ||
+        s.name.includes('合同审查')
+    );
+    const combined = hasContractReviewer ? raw : [BUILTIN_CONTRACT_REVIEWER, ...raw];
+    const visible = filterSkillsForDigitalEmployees(combined);
+    return sortPublishedSkillsByName(visible);
+  }, [catalogQuery.data?.skills]);
   const authorizedSkills = useMemo(
     () => skills.filter((skill) => skill.accessStatus === 'authorized'),
     [skills]

@@ -205,6 +205,29 @@ const DEFINITIONS: Record<string, BuiltinSkillConfigDefinition[]> = {
       required: true,
     },
   ],
+  'platform.document.contract-reviewer': [
+    {
+      key: 'DEFAULT_CONTRACT_TYPE',
+      label: '默认合同业务类型',
+      description: '组织默认优先适用的合同类型（如 general, software_development, nda, procurement 等），留空为智能自动分类。',
+      secret: false,
+      required: false,
+    },
+    {
+      key: 'DEFAULT_POSITION',
+      label: '组织默认审查立场',
+      description: '审查时的倾斜立场：buyer（采购方/甲方）、seller（服务商/乙方）、neutral（中立客观）。',
+      secret: false,
+      required: false,
+    },
+    {
+      key: 'CUSTOM_CHECKLIST_RULES',
+      label: '企业专属审查要点与规则',
+      description: '企业法务部自定义的风控检查要点列表（包含标题、严重程度、审查准则及推荐修改话术）。',
+      secret: false,
+      required: false,
+    },
+  ],
 };
 
 @Injectable()
@@ -228,11 +251,23 @@ export class BuiltinSkillRuntimeConfigService {
     const byKey = new Map<string, any>(rows.map((row: any) => [row.configKey, row]));
     return {
       capabilityKey: skill.capabilityKey,
-      fields: this.definitionsFor(skill.capabilityKey).map((definition) => ({
-        ...definition,
-        configured: byKey.has(definition.key),
-        updatedAt: byKey.get(definition.key)?.updatedAt || null,
-      })),
+      fields: this.definitionsFor(skill.capabilityKey).map((definition) => {
+        const row = byKey.get(definition.key);
+        let value: string | undefined = undefined;
+        if (!definition.secret && row?.encryptedValue) {
+          try {
+            value = this.cipher.decrypt(row.encryptedValue);
+          } catch {
+            value = undefined;
+          }
+        }
+        return {
+          ...definition,
+          configured: byKey.has(definition.key),
+          value,
+          updatedAt: row?.updatedAt || null,
+        };
+      }),
     };
   }
 

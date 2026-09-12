@@ -39,15 +39,8 @@ export class BuiltinWorkflowRuntimeAdapter implements RuntimeAdapter {
       };
     }
 
-    const definitionVersion = request.metadata?.definitionVersion || (request as any).skillVersion;
-    if (!definitionVersion) {
-      return {
-        success: false,
-        status: 'failed',
-        errorCode: 'BUILTIN_SKILL_VERSION_MISSING',
-        errorMessage: `Builtin step invoke request for '${capabilityKey}' missing exact definitionVersion`,
-      };
-    }
+    const definitionVersion =
+      request.metadata?.definitionVersion || (request as any).skillVersion || '1.0.0';
 
     const idempotencyKey = `${request.executionId}:${request.stepId}:v${definitionVersion}`;
 

@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { Button } from 'antd';
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import { beautifyText } from '@/features/executions/detail/detailView';
+import { HtmlPreviewBlock } from '@chat-web/components/HtmlPreviewBlock';
 
 export interface ExpandableMarkdownContentProps {
   text: string;
@@ -31,15 +32,24 @@ export const ExpandableMarkdownContent: React.FC<ExpandableMarkdownContentProps>
     return beautifyText(text);
   }, [text]);
 
+  const hasHtmlArtifact = useMemo(
+    () => /```html[\s\S]*?(?:<!DOCTYPE html|<html|diff-ins|diff-del)/i.test(normalized),
+    [normalized]
+  );
+
   useEffect(() => {
     if (contentRef.current) {
+      if (hasHtmlArtifact) {
+        setIsOverflow(false);
+        return;
+      }
       // 10 lines is approx 240~260px
       const lineCount = (normalized.match(/\n/g) || []).length + 1;
       const exceedsHeight = contentRef.current.scrollHeight > maxCollapsedHeight + 10;
       const exceedsLines = lineCount > maxCollapsedLines;
       setIsOverflow(exceedsHeight || exceedsLines);
     }
-  }, [normalized, maxCollapsedHeight, maxCollapsedLines]);
+  }, [normalized, maxCollapsedHeight, maxCollapsedLines, hasHtmlArtifact]);
 
   if (!normalized.trim()) {
     return null;
@@ -59,7 +69,7 @@ export const ExpandableMarkdownContent: React.FC<ExpandableMarkdownContentProps>
         ref={contentRef}
         className="chat-message-markdown"
         style={{
-          maxHeight: !isExpanded && isOverflow ? maxCollapsedHeight : 'none',
+          maxHeight: !isExpanded && isOverflow && !hasHtmlArtifact ? maxCollapsedHeight : 'none',
           overflow: 'hidden',
           position: 'relative',
           transition: 'max-height 0.25s ease',
@@ -103,8 +113,29 @@ export const ExpandableMarkdownContent: React.FC<ExpandableMarkdownContentProps>
                 {children}
               </blockquote>
             ),
-            code: ({ inline, children }: { inline?: boolean; children?: React.ReactNode }) =>
-              inline ? (
+            code: ({
+              inline,
+              className,
+              children,
+              ...props
+            }: React.ComponentPropsWithoutRef<'code'> & { inline?: boolean; className?: string }) => {
+              const match = /language-(\w+)/.exec(className || '');
+              const codeText = String(children || '');
+              if (
+                match &&
+                match[1] === 'html' &&
+                (codeText.includes('<!DOCTYPE html') ||
+                  codeText.includes('<html') ||
+                  codeText.includes('class="slide') ||
+                  codeText.includes('presentation') ||
+                  codeText.includes('guizang') ||
+                  codeText.includes('diff-ins') ||
+                  codeText.includes('diff-del'))
+              ) {
+                return <HtmlPreviewBlock code={codeText.trim()} className={className} />;
+              }
+
+              return inline ? (
                 <code
                   style={{
                     padding: '2px 5px',
@@ -113,11 +144,13 @@ export const ExpandableMarkdownContent: React.FC<ExpandableMarkdownContentProps>
                     fontSize: 12,
                     fontFamily: 'monospace',
                   }}
+                  {...props}
                 >
                   {children}
                 </code>
               ) : (
                 <pre
+                  className={match ? `code-block language-${match[1]}` : undefined}
                   style={{
                     margin: '6px 0',
                     padding: '8px 12px',
@@ -128,9 +161,10 @@ export const ExpandableMarkdownContent: React.FC<ExpandableMarkdownContentProps>
                     fontFamily: 'monospace',
                   }}
                 >
-                  <code>{children}</code>
+                  <code {...props}>{children}</code>
                 </pre>
-              ),
+              );
+            },
             table: ({ children }: { children?: React.ReactNode }) => (
               <div style={{ overflowX: 'auto', margin: '8px 0' }}>
                 <table

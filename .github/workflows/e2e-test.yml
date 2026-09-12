@@ -68,8 +68,7 @@ jobs:
           PGPASSWORD: ops_secret
 
       - name: Build services
-        run: pnpm build || exit 0
-        continue-on-error: true
+        run: pnpm build
 
       - name: Start services (background)
         run: |
@@ -94,7 +93,7 @@ jobs:
 
       - name: Run E2E tests
         run: |
-          pnpm exec jest --config tests/integration/jest.config.js --coverage || exit 0
+          pnpm exec jest --config tests/integration/jest.config.js --coverage
         env:
           DATABASE_URL: postgresql://ops:ops_secret@localhost:5432/ops
           REDIS_URL: redis://localhost:6379
