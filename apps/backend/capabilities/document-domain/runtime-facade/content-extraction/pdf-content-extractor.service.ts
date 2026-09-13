@@ -297,6 +297,13 @@ export class PdfContentExtractorService {
     };
   }
 
+  private isPageTextSufficient(text: string): boolean {
+    const trimmed = text.trim();
+    if (trimmed.length < 25) return false;
+    const substantive = trimmed.replace(/[\s\d\.\-\/\(\)（）\:\：,，。;；"“”'‘’_—·]/g, '');
+    return substantive.length >= 15;
+  }
+
   private async extractDocument(
     document: PdfJsDocument,
     maxPages: number,
@@ -304,42 +311,39 @@ export class PdfContentExtractorService {
     includePages: boolean,
     input?: PdfContentExtractionInput
   ): Promise<DocumentContentExtractionResult> {
-    const pages: DocumentContentExtractionPage[] = [];
-    const textParts: string[] = [];
+    const pageRecords: Array<{
+      pageNumber: number;
+      text: string;
+      characterCount: number;
+      needsOcr: boolean;
+    }> = [];
     const warnings: string[] = [];
     const pageLimit = Math.min(document.numPages, maxPages);
-    let characterCount = 0;
-    let truncated = document.numPages > pageLimit;
 
     for (let pageNumber = 1; pageNumber <= pageLimit; pageNumber += 1) {
-      if (characterCount >= maxCharacters) {
-        truncated = true;
-        break;
-      }
       const page = await document.getPage(pageNumber);
       try {
         const content = await page.getTextContent({ includeMarkedContent: false });
         const fullPageText = this.joinTextItems(content.items);
-        const separatorLength = textParts.length > 0 ? 2 : 0;
-        const remaining = maxCharacters - characterCount - separatorLength;
-        if (remaining <= 0) {
-          truncated = true;
-          break;
-        }
-        const pageText = fullPageText.slice(0, remaining);
-        if (pageText.length < fullPageText.length) truncated = true;
-        characterCount += separatorLength + pageText.length;
-        textParts.push(pageText);
-        if (includePages) {
-          pages.push({ pageNumber, text: pageText, characterCount: pageText.length });
-        }
+        const hasText = this.isPageTextSufficient(fullPageText);
+        pageRecords.push({
+          pageNumber,
+          text: fullPageText,
+          characterCount: fullPageText.length,
+          needsOcr: !hasText,
+        });
       } finally {
-        page.cleanup();
+        if (typeof page.cleanup === 'function') {
+          page.cleanup();
+        }
       }
     }
 
-    const text = textParts.join('\n\n').trim();
-    if (!text) {
+    const pagesNeedingOcr = pageRecords.filter((r) => r.needsOcr);
+    const pagesWithText = pageRecords.filter((r) => !r.needsOcr);
+
+    // Case 1: All pages lack text -> Pure scanned document
+    if (pagesWithText.length === 0) {
       if (input?.ocr !== false) {
         this.logger.log(`PDF has no text layer. Attempting vision OCR on ${pageLimit} page(s)...`);
         const rasterized = await this.rasterizer.rasterizePages(document, pageLimit);
@@ -377,12 +381,83 @@ export class PdfContentExtractorService {
       }
       warnings.push('PDF 未包含可提取的文本层；如为扫描件，请在后续 OCR Skill 中处理。');
     }
+
+    // Case 2: Hybrid document (some pages have text, some are scanned)
+    let hybridOcrModel: string | undefined;
+    if (pagesNeedingOcr.length > 0 && pagesWithText.length > 0) {
+      const scannedPageNumbers = pagesNeedingOcr.map((p) => p.pageNumber);
+      if (input?.ocr !== false) {
+        this.logger.log(
+          `PDF has mixed text and scanned pages (${pagesNeedingOcr.length} scanned page(s): ${scannedPageNumbers.join(', ')} out of ${pageRecords.length}). Attempting vision OCR on scanned page(s)...`
+        );
+        const rasterized = await this.rasterizer.rasterizePages(document, pageLimit, undefined, scannedPageNumbers);
+        if (rasterized.length > 0) {
+          const ocrResult = await this.visionOcr.extractFromImages(
+            rasterized.map((r) => ({ pageNumber: r.pageNumber, imageBuffer: r.imageBuffer })),
+            {
+              maxCharacters,
+              modelId: input?.ocrModelId,
+              fileName: input?.fileName,
+            }
+          );
+          if (ocrResult.pages.length > 0) {
+            hybridOcrModel = ocrResult.modelUsed;
+            for (const ocrP of ocrResult.pages) {
+              const rec = pageRecords.find((r) => r.pageNumber === ocrP.pageNumber);
+              if (rec) {
+                rec.text = ocrP.text;
+                rec.characterCount = ocrP.characterCount;
+                rec.needsOcr = false;
+              }
+            }
+            warnings.push(
+              `PDF 包含混合图文版面，已对第 ${scannedPageNumbers.join(', ')} 页执行大模型视觉 OCR 补全 (${ocrResult.modelUsed || 'default'})。`
+            );
+          }
+        }
+      } else {
+        warnings.push(`PDF 第 ${scannedPageNumbers.join(', ')} 页缺少有效文本层，因 OCR 被关闭已跳过。`);
+      }
+    }
+
+    // Assemble final text parts and pages sequentially from pageRecords respecting maxCharacters
+    const pages: DocumentContentExtractionPage[] = [];
+    const textParts: string[] = [];
+    let characterCount = 0;
+    let truncated = document.numPages > pageLimit;
+
+    for (const rec of pageRecords) {
+      if (characterCount >= maxCharacters) {
+        truncated = true;
+        break;
+      }
+      const separatorLength = textParts.length > 0 ? 2 : 0;
+      const remaining = maxCharacters - characterCount - separatorLength;
+      if (remaining <= 0) {
+        truncated = true;
+        break;
+      }
+      const pageText = rec.text.length > remaining ? rec.text.slice(0, remaining) : rec.text;
+      if (pageText.length < rec.text.length) {
+        truncated = true;
+      }
+      characterCount += separatorLength + pageText.length;
+      textParts.push(pageText);
+      if (includePages) {
+        pages.push({ pageNumber: rec.pageNumber, text: pageText, characterCount: pageText.length });
+      }
+    }
+
+    const text = textParts.join('\n\n').trim();
+
     if (document.numPages > maxPages) {
       warnings.push(`PDF 共 ${document.numPages} 页，本次按 maxPages=${maxPages} 截断。`);
     }
     if (truncated && characterCount >= maxCharacters) {
       warnings.push(`提取文本达到 maxCharacters=${maxCharacters} 限制。`);
     }
+
+    const isHybrid = Boolean(hybridOcrModel);
 
     return {
       text,
@@ -393,7 +468,12 @@ export class PdfContentExtractorService {
       characterCount: text.length,
       truncated,
       warnings,
-      extraction: { format: 'pdf', method: 'embedded_text', ocrUsed: false },
+      extraction: {
+        format: 'pdf',
+        method: isHybrid ? 'hybrid' : 'embedded_text',
+        ocrUsed: isHybrid,
+        ocrModel: hybridOcrModel,
+      },
     };
   }
 

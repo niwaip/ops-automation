@@ -109,6 +109,8 @@ export interface ContractReviewMetrics {
   unfilledVariablesCount?: number;
   unfilledBlanksTotal?: number;
   llmReviewedCount?: number;
+  isTruncated?: boolean;
+  warnings?: string[];
 }
 
 export interface ContractReviewOutput {

@@ -74,7 +74,8 @@ export class DocumentVisionOcrService {
       let truncated = false;
       const textParts: string[] = [];
 
-      for (const p of rawPages) {
+      for (let idx = 0; idx < rawPages.length; idx++) {
+        const p = rawPages[idx];
         if (characterCount >= maxChars) {
           truncated = true;
           break;
@@ -87,7 +88,7 @@ export class DocumentVisionOcrService {
         }
 
         pages.push({
-          pageNumber: p.pageNumber,
+          pageNumber: pageImages[idx]?.pageNumber ?? p.pageNumber,
           text: pageText,
           characterCount: pageText.length,
         });

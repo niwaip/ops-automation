@@ -72,21 +72,31 @@ export class ContractCompareService {
     const fileNameB = fixFilenameEncoding(input.fileNameB || '比对合同_B');
 
     // 1. Parse both contracts to AST Clause trees
-    const [sourceClauses, targetClauses] = await Promise.all([
-      this.astParser.parseToAst({
-        base64: input.fileBase64A,
-        fileName: fileNameA,
-        text: input.textA,
-      }),
-      this.astParser.parseToAst({
-        base64: input.fileBase64B,
-        fileName: fileNameB,
-        text: input.textB,
-      }),
+    const parseDoc = async (base64?: string, fileName?: string, text?: string) => {
+      if (typeof (this.astParser as any).parseToAstDetailed === 'function') {
+        return (this.astParser as any).parseToAstDetailed({ base64, fileName, text });
+      }
+      const clauses = (await this.astParser.parseToAst({ base64, fileName, text })) || [];
+      return { clauses, metadata: { isTruncated: false } };
+    };
+
+    const [sourceResult, targetResult] = await Promise.all([
+      parseDoc(input.fileBase64A, fileNameA, input.textA),
+      parseDoc(input.fileBase64B, fileNameB, input.textB),
     ]);
 
-    if (sourceClauses.length === 0 && targetClauses.length === 0) {
-      throw new BadRequestException('Failed to extract readable clauses from provided documents.');
+    const sourceClauses = sourceResult.clauses;
+    const targetClauses = targetResult.clauses;
+
+    if (sourceClauses.length === 0) {
+      throw new BadRequestException(
+        `基准文档 (${fileNameA}) 未能提取出有效条款，比对中止。请核对文档内容或格式是否完整。`
+      );
+    }
+    if (targetClauses.length === 0) {
+      throw new BadRequestException(
+        `比对文档 (${fileNameB}) 未能提取出有效条款，比对中止。请核对文档内容或格式是否完整。`
+      );
     }
 
     // 2. Deterministic Section Alignment
@@ -135,6 +145,12 @@ export class ContractCompareService {
     }
 
     // 4. Compute Metrics
+    const isTruncated = Boolean(sourceResult.metadata?.isTruncated || targetResult.metadata?.isTruncated);
+    const combinedWarnings = [
+      ...(sourceResult.metadata?.warnings || []),
+      ...(targetResult.metadata?.warnings || []),
+    ];
+
     const metrics: ContractCompareMetrics = {
       totalClauses: alignedPairs.length,
       unchangedCount: alignedPairs.filter((p) => p.status === 'UNCHANGED').length,
@@ -145,6 +161,8 @@ export class ContractCompareService {
       mediumRiskCount: alignedPairs.filter((p) => p.aiInsight?.riskLevel === 'MEDIUM').length,
       sourceClauseCount: sourceClauses.length,
       targetClauseCount: targetClauses.length,
+      isTruncated,
+      warnings: combinedWarnings.length > 0 ? combinedWarnings : undefined,
     };
 
     // 5. Render Interactive HTML Report
@@ -169,10 +187,20 @@ export class ContractCompareService {
     const summaryLines = [
       `### 📋 合同智能比对与红线审查完成`,
       ``,
+    ];
+
+    if (isTruncated) {
+      summaryLines.push(
+        `> ⚠️ **部分审查警示**：比对文档因篇幅限制已执行截断，仅覆盖已提取前序章节，请留意后续未覆盖风险。`,
+        ``
+      );
+    }
+
+    summaryLines.push(
       `#### 📊 比对结果概览`,
       `- **条款变更统计**：对齐后共比对 **${metrics.totalClauses}** 项条款（基准版 ${sourceClauses.length} 条 / 修订版 ${targetClauses.length} 条 ｜ 文本修改 **${metrics.modifiedCount}** 项，新增 **${metrics.addedCount}** 项，删除 **${metrics.deletedCount}** 项，未变更 **${metrics.unchangedCount}** 项）`,
       `- **审查风险评级**：${metrics.highRiskCount > 0 ? `⚠️ **${metrics.highRiskCount} 项高风险变更，建议重点复核**${mediumRiskPairs.length > 0 ? `，${mediumRiskPairs.length} 项中风险条款` : ''}` : '✅ 未发现高风险变更'}`,
-    ];
+    );
 
     if (highRiskHighlights.length > 0) {
       summaryLines.push(

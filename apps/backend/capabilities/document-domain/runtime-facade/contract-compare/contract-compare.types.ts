@@ -75,6 +75,20 @@ export interface ContractCompareInput {
   idempotencyKey?: string;
 }
 
+export interface DocumentAstMetadata {
+  isTruncated?: boolean;
+  pageCount?: number;
+  extractedPageCount?: number;
+  characterCount?: number;
+  warnings?: string[];
+  format?: string;
+}
+
+export interface ContractAstParseResult {
+  clauses: ContractClauseNode[];
+  metadata: DocumentAstMetadata;
+}
+
 export interface ContractCompareMetrics {
   totalClauses: number;
   unchangedCount: number;
@@ -85,6 +99,8 @@ export interface ContractCompareMetrics {
   mediumRiskCount: number;
   sourceClauseCount?: number;
   targetClauseCount?: number;
+  isTruncated?: boolean;
+  warnings?: string[];
 }
 
 export interface ContractCompareOutput {

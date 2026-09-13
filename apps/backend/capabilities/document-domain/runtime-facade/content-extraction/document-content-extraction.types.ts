@@ -15,7 +15,7 @@ export interface DocumentContentExtractionResult {
   warnings: string[];
   extraction: {
     format: string;
-    method: 'embedded_text' | 'ocr_vision';
+    method: 'embedded_text' | 'ocr_vision' | 'hybrid';
     ocrUsed: boolean;
     ocrModel?: string;
   };

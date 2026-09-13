@@ -22,7 +22,8 @@ export class PdfPageRasterizerService {
       getPage: (pageNumber: number) => Promise<any>;
     },
     maxPages?: number,
-    scale?: number
+    scale?: number,
+    targetPages?: number[]
   ): Promise<RasterizedPage[]> {
     const effectiveScale =
       scale ?? (parseFloat(process.env.PDF_OCR_RASTER_SCALE || '') || 1.5);
@@ -31,12 +32,16 @@ export class PdfPageRasterizerService {
     const pageLimit = Math.min(document.numPages, effectiveMaxPages);
     const rasterized: RasterizedPage[] = [];
 
-    this.logger.log(`Rasterizing ${pageLimit} page(s) of PDF for vision OCR (scale=${effectiveScale})`);
+    const pageCountToProcess = targetPages ? targetPages.filter(p => p <= pageLimit).length : pageLimit;
+    this.logger.log(`Rasterizing ${pageCountToProcess} page(s) of PDF for vision OCR (scale=${effectiveScale})`);
 
     for (let pageNumber = 1; pageNumber <= pageLimit; pageNumber++) {
+      if (targetPages && !targetPages.includes(pageNumber)) {
+        continue;
+      }
       const page = await document.getPage(pageNumber);
       try {
-        const viewport = page.getViewport({ scale });
+        const viewport = page.getViewport({ scale: effectiveScale });
         const width = Math.max(1, Math.floor(viewport.width));
         const height = Math.max(1, Math.floor(viewport.height));
 

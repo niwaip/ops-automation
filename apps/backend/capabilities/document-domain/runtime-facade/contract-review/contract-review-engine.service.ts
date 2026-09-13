@@ -22,6 +22,7 @@ import {
   type ReviewSeverity,
 } from '../contract-elements';
 import { ContractAstParserService } from '../contract-compare/contract-ast-parser.service';
+import type { ContractClauseNode } from '../contract-compare/contract-compare.types';
 import { ContractFormIntegrityScannerService } from './contract-form-integrity-scanner.service';
 import {
   ContractLlmReviewService,
@@ -64,11 +65,26 @@ export class ContractReviewEngineService {
     const fileName = input.fileName || '未命名合同';
 
     // 1. Parse AST clauses from base64 or text
-    const astClauses = await this.astParser.parseToAst({
-      base64: input.fileBase64,
-      fileName,
-      text: input.text,
-    });
+    let astClauses: ContractClauseNode[] = [];
+    let isTruncated = false;
+    let warnings: string[] = [];
+
+    if (typeof (this.astParser as any).parseToAstDetailed === 'function') {
+      const astResult = await (this.astParser as any).parseToAstDetailed({
+        base64: input.fileBase64,
+        fileName,
+        text: input.text,
+      });
+      astClauses = astResult.clauses || [];
+      isTruncated = Boolean(astResult.metadata?.isTruncated);
+      warnings = astResult.metadata?.warnings || [];
+    } else {
+      astClauses = (await this.astParser.parseToAst({
+        base64: input.fileBase64,
+        fileName,
+        text: input.text,
+      })) || [];
+    }
 
     if (!astClauses || astClauses.length === 0) {
       throw new BadRequestException('未能从上传的文档中提取到有效的合同条款，请核对文档格式或内容。');
@@ -78,14 +94,11 @@ export class ContractReviewEngineService {
 
     // 2. Classify contract type & determine party position
     const typeInfo = this.classifier.classify(fileName, fullText, input.contractType);
-    const resolvedPosition: PartyPosition =
-      input.myPosition === 'party_a'
-        ? 'buyer'
-        : input.myPosition === 'party_b'
-          ? 'seller'
-          : input.myPosition === 'both'
-            ? 'neutral'
-            : input.myPosition || typeInfo.defaultPosition;
+    const resolvedPosition: PartyPosition = this.resolvePartyPosition(
+      input.myPosition,
+      fullText,
+      typeInfo.defaultPosition
+    );
 
     const effectiveCustomRules = input.customChecklistRules || input.customCheckpoints;
 
@@ -257,6 +270,8 @@ export class ContractReviewEngineService {
       unfilledVariablesCount: totalUnfilledVariables,
       unfilledBlanksTotal: totalUnfilledBlanks,
       llmReviewedCount,
+      isTruncated,
+      warnings: warnings.length > 0 ? warnings : undefined,
     };
 
     // 7. Group into Document-Faithful Chapter / Section Outline
@@ -349,6 +364,56 @@ export class ContractReviewEngineService {
     semantic: ClauseLlmReviewResult
   ): { evidenceQuote: string; charStart?: number; charEnd?: number } {
     return this.elementEvaluator.locateEvidenceForSemanticRisk(clauseText, semantic);
+  }
+
+  /**
+   * Intelligently resolves the party position by inspecting contract preamble definitions,
+   * decoupling Party A / Party B from rigid buyer/seller stereotypes.
+   */
+  public resolvePartyPosition(
+    positionInput?: PartyPositionInput,
+    contractText: string = '',
+    defaultPosition: PartyPosition = 'buyer'
+  ): PartyPosition {
+    if (!positionInput || positionInput === 'both') {
+      return positionInput === 'both' ? 'neutral' : defaultPosition;
+    }
+
+    if (positionInput === 'buyer' || positionInput === 'seller' || positionInput === 'neutral') {
+      return positionInput;
+    }
+
+    // Inspect preamble where parties are typically defined
+    const preamble = contractText.slice(0, 3000);
+
+    const isPartyA = positionInput === 'party_a';
+    const isPartyB = positionInput === 'party_b';
+
+    if (isPartyA) {
+      // Check if Party A is explicitly defined as seller/provider
+      if (/甲方\s*[（\(][^）\)]*(?:受托|卖方|供货|供方|出卖|开发|服务|承揽|接收方|劳动者|承租人)[^）\)]*[）\)]/i.test(preamble)) {
+        return 'seller';
+      }
+      // Check if Party A is explicitly defined as buyer/client
+      if (/甲方\s*[（\(][^）\)]*(?:委托|买方|采购|发包|客户|需方|透露方|披露方|用人单位|出租人)[^）\)]*[）\)]/i.test(preamble)) {
+        return 'buyer';
+      }
+      return 'buyer';
+    }
+
+    if (isPartyB) {
+      // Check if Party B is explicitly defined as buyer/client
+      if (/乙方\s*[（\(][^）\)]*(?:委托|买方|采购|发包|客户|需方|透露方|披露方|用人单位|出租人)[^）\)]*[）\)]/i.test(preamble)) {
+        return 'buyer';
+      }
+      // Check if Party B is explicitly defined as seller/provider
+      if (/乙方\s*[（\(][^）\)]*(?:受托|卖方|供货|供方|出卖|开发|服务|承揽|接收方|劳动者|承租人)[^）\)]*[）\)]/i.test(preamble)) {
+        return 'seller';
+      }
+      return 'seller';
+    }
+
+    return defaultPosition;
   }
 }
 

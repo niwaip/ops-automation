@@ -3,6 +3,7 @@ import { OpenAICompatibleClient } from '../../client/openai-compatible';
 import { PromptDebugSettingsService } from '../debug-settings/prompt-debug-settings.service';
 import { ModelController } from './model.controller';
 import { ModelService } from './model.service';
+import { ModelOcrService } from './model-ocr.service';
 
 describe('ModelController provider governance', () => {
   let controller: ModelController;
@@ -17,6 +18,12 @@ describe('ModelController provider governance', () => {
           useValue: {
             getSettings: jest.fn().mockReturnValue({ promptDebugEnabled: false }),
             updateSettings: jest.fn(),
+          },
+        },
+        {
+          provide: ModelOcrService,
+          useValue: {
+            performOcr: jest.fn(),
           },
         },
       ],

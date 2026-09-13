@@ -77,16 +77,32 @@ export class ContractLlmReviewService {
       const rawResult = response.data?.result || response.data?.content || '';
       if (rawResult) {
         const parsed = this.cleanAndParseJson(rawResult);
-        if (parsed && parsed.riskLevel) {
-          const validLevels: ReviewRiskLevel[] = ['HIGH', 'MEDIUM', 'LOW', 'PASS'];
-          const normalizedLevel = validLevels.includes(parsed.riskLevel)
-            ? (parsed.riskLevel as ReviewRiskLevel)
-            : 'PASS';
+        if (parsed) {
+          const parsedLevel = this.normalizeRiskLevel(parsed.riskLevel);
+          let finalLevel: ReviewRiskLevel;
+          let notice = '';
+
+          if (parsedLevel) {
+            finalLevel = parsedLevel;
+          } else {
+            // Security guard: never silently downgrade unknown/corrupted risk levels to PASS
+            if (input.matchedRules && input.matchedRules.length > 0) {
+              const hasHigh = input.matchedRules.some((r) => r.severity === 'HIGH');
+              const hasMed = input.matchedRules.some((r) => r.severity === 'MEDIUM');
+              finalLevel = hasHigh ? 'HIGH' : hasMed ? 'MEDIUM' : 'LOW';
+              notice = ' [模型评级异常，已按规则引擎校验等级]';
+            } else {
+              finalLevel = 'HIGH';
+              notice = ' [模型评级异常待人工复核]';
+            }
+          }
 
           return {
-            riskLevel: normalizedLevel,
-            riskSummary: parsed.riskSummary || '审查完毕',
-            legalAdvice: parsed.legalAdvice || '可按原条款保留。',
+            riskLevel: finalLevel,
+            riskSummary: (parsed.riskSummary || '审查完毕') + notice,
+            legalAdvice:
+              parsed.legalAdvice ||
+              (notice ? '模型返回了无法识别的风险级别，建议由法务人员人工复核该条款。' : '可按原条款保留。'),
             recommendedRevision:
               parsed.recommendedRevision && String(parsed.recommendedRevision).trim().length > 0
                 ? String(parsed.recommendedRevision).trim()
@@ -106,6 +122,37 @@ export class ContractLlmReviewService {
     }
 
     return this.reviewClauseRuleBasedFallback(input);
+  }
+
+  /**
+   * Normalizes risk levels supporting multi-lingual aliases and case-insensitive matching.
+   * Returns null if unrecognized.
+   */
+  public normalizeRiskLevel(rawLevel: any): ReviewRiskLevel | null {
+    if (!rawLevel || typeof rawLevel !== 'string') return null;
+    const clean = rawLevel.trim().toUpperCase();
+
+    if (clean === 'HIGH' || clean === 'MEDIUM' || clean === 'LOW' || clean === 'PASS') {
+      return clean as ReviewRiskLevel;
+    }
+
+    if (/^(CRITICAL|FATAL|SEVERE|RED|高|高风险|严重|高危)$/i.test(clean)) {
+      return 'HIGH';
+    }
+
+    if (/^(WARN|WARNING|MODERATE|YELLOW|中|中风险|警告|提示)$/i.test(clean)) {
+      return 'MEDIUM';
+    }
+
+    if (/^(INFO|MINOR|BLUE|低|低风险|关注|轻微)$/i.test(clean)) {
+      return 'LOW';
+    }
+
+    if (/^(PASSED|GREEN|OK|NONE|通过|合格|合规|无风险|正常)$/i.test(clean)) {
+      return 'PASS';
+    }
+
+    return null;
   }
 
   private cleanAndParseJson(text: string): any {

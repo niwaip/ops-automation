@@ -13,10 +13,25 @@ export interface RenderReportInput {
 @Injectable()
 export class ContractHtmlRendererService {
   /**
+   * Escape HTML special characters
+   */
+  public escapeHtml(text: string): string {
+    if (!text || typeof text !== 'string') return '';
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  /**
    * Render a fully self-contained, interactive HTML comparison report adhering to legal review visual hierarchy.
    */
   public renderHtmlReport(input: RenderReportInput): string {
     const { fileNameA, fileNameB, metrics, alignedPairs } = input;
+    const safeFileNameA = this.escapeHtml(fileNameA);
+    const safeFileNameB = this.escapeHtml(fileNameB);
 
     // 1. Resolve key change text for compact change table
     const resolveKeyChange = (pair: AlignedClausePair): string => {
@@ -45,8 +60,10 @@ export class ContractHtmlRendererService {
 
     const tocHtml = tocOverviewHtml + alignedPairs
       .map((pair, idx) => {
-        const title = pair.targetClause?.title || pair.sourceClause?.title || `条款 ${idx + 1}`;
-        const num = pair.targetClause?.clauseNumber || pair.sourceClause?.clauseNumber || '';
+        const rawTitle = pair.targetClause?.title || pair.sourceClause?.title || `条款 ${idx + 1}`;
+        const rawNum = pair.targetClause?.clauseNumber || pair.sourceClause?.clauseNumber || '';
+        const title = this.escapeHtml(rawTitle);
+        const num = this.escapeHtml(rawNum);
         let badge = '<span class="text-slate-400 text-[10px]">未变</span>';
 
         if (pair.status === 'MODIFIED') {
@@ -106,8 +123,10 @@ export class ContractHtmlRendererService {
                 ${riskPairs
                   .map((pair) => {
                     const idx = alignedPairs.indexOf(pair);
-                    const title = pair.targetClause?.title || pair.sourceClause?.title || pair.targetClause?.clauseNumber || `条款 ${idx + 1}`;
-                    const num = pair.targetClause?.clauseNumber || pair.sourceClause?.clauseNumber || '';
+                    const rawTitle = pair.targetClause?.title || pair.sourceClause?.title || pair.targetClause?.clauseNumber || `条款 ${idx + 1}`;
+                    const rawNum = pair.targetClause?.clauseNumber || pair.sourceClause?.clauseNumber || '';
+                    const title = this.escapeHtml(rawTitle);
+                    const num = this.escapeHtml(rawNum);
                     const isHigh = pair.aiInsight?.riskLevel === 'HIGH';
                     const riskBadge = isHigh
                       ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-[#FEF2F2] text-[#991B1B] border border-[#FCA5A5]">高风险</span>'
@@ -119,7 +138,7 @@ export class ContractHtmlRendererService {
                           ${num ? `${num}：` : ''}${title}
                         </td>
                         <td class="py-2.5 px-3 text-slate-700 leading-normal">
-                          ${resolveKeyChange(pair)}
+                          ${this.escapeHtml(resolveKeyChange(pair))}
                         </td>
                         <td class="py-2.5 px-3 text-center">
                           ${riskBadge}
@@ -154,8 +173,22 @@ export class ContractHtmlRendererService {
       ? `<span class="inline-flex items-center space-x-1 px-2.5 py-1 bg-[#FFFBEB] text-[#B45309] border border-[#FCD34D] rounded-md text-xs font-semibold">${ICONS.info}<span>${metrics.mediumRiskCount} 项中风险变更</span></span>`
       : `<span class="inline-flex items-center space-x-1 px-2.5 py-1 bg-[#F0FDF4] text-[#166534] border border-[#86EFAC] rounded-md text-xs font-medium">${ICONS.checkCircle}<span>未发现高/中风险变更</span></span>`;
 
+    const truncationBannerHtml = metrics.isTruncated
+      ? `
+        <div class="bg-[#FFFBEB] border-l-4 border-[#F59E0B] p-3 rounded-r-md text-xs text-[#B45309] flex items-start space-x-2.5">
+          <span class="text-base shrink-0">⚠️</span>
+          <div class="space-y-0.5">
+            <p class="font-bold text-[#92400E]">文档部分截断审查警示 (Partial Review Warning)</p>
+            <p class="text-slate-700">该比对文档超过单次处理页数或字符上限，系统仅对比对了前序内容（已提取部分）。后续未被提取的章节未纳入本次比对及风险审查范围，请留意潜在未覆盖风险。</p>
+            ${metrics.warnings && metrics.warnings.length > 0 ? `<ul class="list-disc list-inside text-[11px] text-slate-600 mt-1">${metrics.warnings.map((w) => `<li>${this.escapeHtml(w)}</li>`).join('')}</ul>` : ''}
+          </div>
+        </div>
+      `
+      : '';
+
     const executiveSummaryHtml = `
       <section id="summary" class="bg-white border border-[#E2E8F0] rounded-lg p-3.5 space-y-3">
+        ${truncationBannerHtml}
         <div class="flex items-center justify-between border-b border-[#E2E8F0] pb-2.5">
           <div class="flex items-center space-x-2">
             <span class="text-[#315A7D]">${ICONS.scales}</span>
@@ -194,8 +227,10 @@ export class ContractHtmlRendererService {
     // 5. Clause Cards HTML
     const clausesHtml = alignedPairs
       .map((pair, idx) => {
-        const title = pair.targetClause?.title || pair.sourceClause?.title || `条款 ${idx + 1}`;
-        const num = pair.targetClause?.clauseNumber || pair.sourceClause?.clauseNumber || '';
+        const rawTitle = pair.targetClause?.title || pair.sourceClause?.title || `条款 ${idx + 1}`;
+        const rawNum = pair.targetClause?.clauseNumber || pair.sourceClause?.clauseNumber || '';
+        const title = this.escapeHtml(rawTitle);
+        const num = this.escapeHtml(rawNum);
         const riskLevel = pair.aiInsight?.riskLevel || 'NONE';
         const isHigh = riskLevel === 'HIGH';
         const isMedium = riskLevel === 'MEDIUM';
@@ -227,8 +262,11 @@ export class ContractHtmlRendererService {
 
         let aiCard = '';
         if (hasSpecificInsight && pair.aiInsight) {
-          const shortText = pair.aiInsight.shortSummary || pair.aiInsight.summary;
+          const rawShortText = pair.aiInsight.shortSummary || pair.aiInsight.summary;
+          const shortText = this.escapeHtml(rawShortText);
           const hasDetails = Boolean(pair.aiInsight.legalAdvice || pair.aiInsight.summary.length > 25);
+          const safeSummary = this.escapeHtml(pair.aiInsight.summary);
+          const safeLegalAdvice = pair.aiInsight.legalAdvice ? this.escapeHtml(pair.aiInsight.legalAdvice) : '';
 
           aiCard = `
             <div class="mx-3 mt-2.5 p-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-md text-xs text-[#243041]">
@@ -248,16 +286,16 @@ export class ContractHtmlRendererService {
               </div>
               ${hasDetails ? `
                 <div id="adv-sec-${idx + 1}" class="${isHigh ? '' : 'hidden'} mt-2 pt-2 border-t border-[#E2E8F0] space-y-1.5 text-xs">
-                  <p><strong class="font-semibold text-slate-700">影响分析：</strong><span class="text-slate-800 leading-normal">${pair.aiInsight.summary}</span></p>
-                  ${pair.aiInsight.legalAdvice ? `<p><strong class="font-semibold text-[#315A7D]">法务建议：</strong><span class="text-[14px] text-[#243041] font-normal leading-relaxed">${pair.aiInsight.legalAdvice}</span></p>` : ''}
+                  <p><strong class="font-semibold text-slate-700">影响分析：</strong><span class="text-slate-800 leading-normal">${safeSummary}</span></p>
+                  ${safeLegalAdvice ? `<p><strong class="font-semibold text-[#315A7D]">法务建议：</strong><span class="text-[14px] text-[#243041] font-normal leading-relaxed">${safeLegalAdvice}</span></p>` : ''}
                 </div>
               ` : ''}
             </div>
           `;
         }
 
-        const rawSource = pair.sourceHtml || (pair.sourceClause ? pair.sourceClause.content.replace(/\n/g, '<br>') : '');
-        const rawTarget = pair.targetHtml || (pair.targetClause ? pair.targetClause.content.replace(/\n/g, '<br>') : '');
+        const rawSource = pair.sourceHtml || (pair.sourceClause ? this.escapeHtml(pair.sourceClause.content).replace(/\n/g, '<br>') : '');
+        const rawTarget = pair.targetHtml || (pair.targetClause ? this.escapeHtml(pair.targetClause.content).replace(/\n/g, '<br>') : '');
 
         const formattedSource = formatContractDiffHtml(rawSource);
         const formattedTarget = formatContractDiffHtml(rawTarget);
@@ -311,7 +349,7 @@ export class ContractHtmlRendererService {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>合同智能比对与红线审查报告 - ${fileNameA} vs ${fileNameB}</title>
+  <title>合同智能比对与红线审查报告 - ${safeFileNameA} vs ${safeFileNameB}</title>
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <style>
     @media print {
@@ -407,11 +445,11 @@ export class ContractHtmlRendererService {
         <div class="flex items-center space-x-6">
           <div class="flex items-center space-x-1.5">
             <span class="font-medium text-slate-500">基准合同 (A):</span>
-            <span class="font-mono bg-white px-2 py-0.5 rounded border border-[#E2E8F0] text-[#243041]">${fileNameA}</span>
+            <span class="font-mono bg-white px-2 py-0.5 rounded border border-[#E2E8F0] text-[#243041]">${safeFileNameA}</span>
           </div>
           <div class="flex items-center space-x-1.5">
             <span class="font-medium text-slate-500">比对合同 (B):</span>
-            <span class="font-mono bg-white px-2 py-0.5 rounded border border-[#E2E8F0] text-[#243041]">${fileNameB}</span>
+            <span class="font-mono bg-white px-2 py-0.5 rounded border border-[#E2E8F0] text-[#243041]">${safeFileNameB}</span>
           </div>
         </div>
         <div class="flex items-center space-x-3 text-xs">
@@ -445,14 +483,14 @@ export class ContractHtmlRendererService {
             <span class="text-[#315A7D]">${ICONS.document}</span>
             <span class="font-semibold text-[#243041]">基准版本 (Doc A - 原版)</span>
           </div>
-          <span class="font-mono text-[11px] text-slate-500 truncate max-w-[240px]">${fileNameA}</span>
+          <span class="font-mono text-[11px] text-slate-500 truncate max-w-[240px]">${safeFileNameA}</span>
         </div>
         <div class="flex items-center justify-between px-2">
           <div class="flex items-center space-x-2">
             <span class="text-[#315A7D]">${ICONS.document}</span>
             <span class="font-semibold text-[#243041]">修订版本 (Doc B - 待审)</span>
           </div>
-          <span class="font-mono text-[11px] text-slate-500 truncate max-w-[240px]">${fileNameB}</span>
+          <span class="font-mono text-[11px] text-slate-500 truncate max-w-[240px]">${safeFileNameB}</span>
         </div>
       </div>
 

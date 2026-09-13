@@ -90,6 +90,20 @@ export class ContractReviewHtmlRendererService {
     // 4. Render Right 40% Findings Workbench
     const findingsWorkbenchHtml = this.findingRenderer.renderFindingsWorkbench(findings, metrics);
 
+    // Truncation banner for partial review
+    const truncationBannerHtml = metrics.isTruncated
+      ? `
+        <div class="mb-4 bg-[#FFFBEB] border-l-4 border-[#F59E0B] p-3.5 rounded-r-md text-xs text-[#B45309] flex items-start space-x-2.5">
+          <span class="text-base shrink-0">⚠️</span>
+          <div class="space-y-0.5">
+            <p class="font-bold text-[#92400E]">文档部分截断审查警示 (Partial Review Warning)</p>
+            <p class="text-slate-700">本文档篇幅超过单次审查上限，系统仅对前序已提取部分完成合规审查。未被提取的后续章节未纳入本次体检范围，请留意潜在未覆盖风险。</p>
+            ${metrics.warnings && metrics.warnings.length > 0 ? `<ul class="list-disc list-inside mt-1 text-[11px] text-slate-600">${metrics.warnings.map((w: string) => `<li>${this.escapeHtml(w)}</li>`).join('')}</ul>` : ''}
+          </div>
+        </div>
+      `
+      : '';
+
     // 5. Render Outline Drawer List
     const outlineItemsHtml = chapters
       .map((ch) => {
@@ -309,6 +323,7 @@ export class ContractReviewHtmlRendererService {
 
   <!-- 2. Main 60:40 Grid Container -->
   <main class="max-w-[1680px] mx-auto px-4 pt-4">
+    ${truncationBannerHtml}
     <div class="grid grid-cols-1 lg:grid-cols-10 gap-6 items-start">
       
       <!-- Left Column: 60% Continuous Document Paper -->
