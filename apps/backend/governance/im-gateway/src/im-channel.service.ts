@@ -6,11 +6,17 @@ import {
   NotFoundException,
   OnModuleDestroy,
   OnModuleInit,
+  Optional,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 import { IM_GATEWAY_PRISMA, ImGatewayPrismaPort } from './ports';
 import { ImCredentialCipher } from './im-channel.crypto';
-import { WechatIlinkClient, WechatLoginResult } from './wechat-ilink.client';
+import { WechatIlinkClient, WechatLoginResult, WechatUploadMediaType } from './wechat-ilink.client';
+import { WechatMediaAdapter } from './wechat-media.adapter';
+import { WechatOutboundQueueService } from './wechat-outbound-queue.service';
+import { formatForWeChat, splitTextPreservingLines } from './wechat-formatter.util';
 
 type Credential = { token: string; baseUrl: string; ownerUserId: string };
 type InteractionMode = 'auto' | 'chat' | 'task';
@@ -23,6 +29,27 @@ type Provisioning = {
   controller: AbortController;
   error?: string;
 };
+
+export interface StagedFile {
+  fileId: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  content?: string;
+  extractedText?: string;
+}
+
+export interface OutboundFilePayload {
+  filePath: string;
+  fileName: string;
+  comment?: string;
+  mimeType?: string;
+}
+
+interface StagedMediaSession {
+  files: StagedFile[];
+  updatedAt: number;
+}
 
 export interface ImInteractionResolution {
   type: 'ai' | 'system_reply';
@@ -38,6 +65,10 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
   private readonly provisioning = new Map<string, Provisioning>();
   private readonly runtimes = new Map<string, AbortController>();
   private readonly sessionTokens = new Map<string, string>();
+  private readonly stagedMedia = new Map<string, StagedMediaSession>();
+  private static readonly STAGED_MEDIA_TTL_MS = 15 * 60 * 1000;
+  private readonly mediaAdapter: WechatMediaAdapter;
+  private readonly outboundQueue: WechatOutboundQueueService;
   private readonly maxActiveConnections = Number(
     process.env.IM_CHANNEL_MAX_ACTIVE_CONNECTIONS ?? 100
   );
@@ -45,8 +76,13 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(IM_GATEWAY_PRISMA) private readonly prisma: ImGatewayPrismaPort,
     private readonly cipher: ImCredentialCipher,
-    private readonly wechat: WechatIlinkClient
-  ) {}
+    private readonly wechat: WechatIlinkClient,
+    @Optional() mediaAdapter?: WechatMediaAdapter,
+    @Optional() outboundQueue?: WechatOutboundQueueService
+  ) {
+    this.mediaAdapter = mediaAdapter ?? new WechatMediaAdapter();
+    this.outboundQueue = outboundQueue ?? new WechatOutboundQueueService();
+  }
 
   async onModuleInit() {
     await this.prisma.imChannelConnection.updateMany({
@@ -62,6 +98,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
   onModuleDestroy() {
     for (const attempt of this.provisioning.values()) attempt.controller.abort();
     for (const runtime of this.runtimes.values()) runtime.abort();
+    this.stagedMedia.clear();
   }
 
   async getWechat(userId: string) {
@@ -159,6 +196,38 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     return { success: true };
   }
 
+  async sendTestFile(
+    userId: string,
+    fileName?: string,
+    content?: string
+  ): Promise<{ success: boolean; clientId: string }> {
+    const connection = await this.prisma.imChannelConnection.findUnique({
+      where: { userId_channel: { userId, channel: 'wechat' } },
+    });
+    if (!connection?.enabled || !connection.encryptedCredential) {
+      throw new BadRequestException('微信渠道未启用或未绑定');
+    }
+    const credential = JSON.parse(
+      this.cipher.decrypt(connection.encryptedCredential)
+    ) as Credential;
+
+    const fileBuf = Buffer.from(
+      content ||
+        `这是一份来自 OPS 智能运维平台的端对端微信多媒体测试文件。\n生成时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}\n连接ID: ${connection.id}\n状态: 微信文件通道双向通信正常！\n`
+    );
+    const name = fileName || 'ops-automation-test.txt';
+
+    const clientId = await this.wechat.sendMediaMessage(
+      credential.baseUrl,
+      credential.token,
+      credential.ownerUserId,
+      WechatUploadMediaType.FILE,
+      fileBuf,
+      { fileName: name }
+    );
+    return { success: true, clientId };
+  }
+
   private async pollProvisioning(attempt: Provisioning) {
     let baseUrl: string | undefined;
     try {
@@ -252,6 +321,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
   private async stopRuntime(connectionId: string, notifyProvider = false) {
     this.runtimes.get(connectionId)?.abort();
     this.runtimes.delete(connectionId);
+    this.stagedMedia.delete(connectionId);
     if (!notifyProvider) return;
     const connection = await this.prisma.imChannelConnection.findUnique({
       where: { id: connectionId },
@@ -287,6 +357,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
         data: { status: 'online', lastConnectedAt: new Date(), lastError: null },
       });
       let cursor = connection.updateCursor ?? '';
+      let consecutiveTimeouts = 0;
       while (!controller.signal.aborted) {
         const response = await this.wechat.getUpdates(
           credential.baseUrl,
@@ -294,8 +365,27 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
           cursor,
           controller.signal
         );
-        if (response?.ret === -14 || response?.errcode === -14)
-          throw new Error('微信登录凭据已失效');
+        if (response?.ret === -14 || response?.errcode === -14) {
+          consecutiveTimeouts++;
+          this.logger.warn(
+            `WeChat session timeout (-14) for ${connectionId}, attempting recovery via notifyStart (attempt ${consecutiveTimeouts}/5)...`
+          );
+          try {
+            await this.wechat.notifyStart(credential.baseUrl, credential.token);
+            this.logger.log(`WeChat session recovered successfully for ${connectionId}`);
+            consecutiveTimeouts = 0;
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            continue;
+          } catch (recoveryErr) {
+            if (consecutiveTimeouts >= 5) {
+              throw new Error('微信登录凭据已失效，多次自愈重试失败，请重新扫码');
+            }
+            const delay = Math.min(30000, 2000 * Math.pow(2, consecutiveTimeouts));
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            continue;
+          }
+        }
+        consecutiveTimeouts = 0;
         for (const message of Array.isArray(response?.msgs) ? response.msgs : [])
           await this.handleInbound(
             connection.userId,
@@ -347,18 +437,240 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`Rejected non-owner WeChat message for ${connectionId}`);
       return;
     }
-    const text = (Array.isArray(message?.item_list) ? message.item_list : [])
-      .map((item: any) => (item?.type === 1 ? item?.text_item?.text : ''))
-      .filter(Boolean)
-      .join('\n')
-      .trim();
-    if (!text) return;
+
+    // 1. Reset budget on new user inbound interaction
+    this.outboundQueue.resetBudget(connectionId);
+
+    // 2. Parse text, quotes, and download/decrypt media items
+    let text = '';
+    const incomingFiles: Array<{
+      fileId: string;
+      fileName: string;
+      mimeType: string;
+      size: number;
+      content?: string;
+      extractedText?: string;
+    }> = [];
+
+    for (const item of Array.isArray(message?.item_list) ? message.item_list : []) {
+      if (item?.type === 1 && item?.text_item?.text) {
+        const itemText = String(item.text_item.text);
+        const ref = item.ref_msg;
+        let quoted = '';
+        if (ref) {
+          const parts = [ref.title, ref.message_item?.text_item?.text].filter(Boolean);
+          if (parts.length > 0) quoted = `[引用: ${parts.join(' | ')}]\n`;
+        }
+        text += (text ? '\n' : '') + quoted + itemText;
+      } else if (item?.type === 3 && item?.voice_item?.text) {
+        text += (text ? '\n' : '') + String(item.voice_item.text);
+      } else if (item?.type === 2 && item?.image_item?.media) {
+        try {
+          const media = item.image_item.media;
+          const aesKey = this.mediaAdapter.parseAesKey(media);
+          if (aesKey && media.encrypt_query_param) {
+            const buffer = await this.mediaAdapter.downloadAndDecrypt(
+              media.encrypt_query_param,
+              aesKey
+            );
+            const ext = this.mediaAdapter.detectImageExtension(buffer);
+            const fileName = `image_${Date.now()}.${ext}`;
+            const mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+            incomingFiles.push({
+              fileId: randomUUID(),
+              fileName,
+              mimeType,
+              size: buffer.length,
+              content: buffer.toString('base64'),
+            });
+          }
+        } catch (mediaErr) {
+          this.logger.warn(`Failed to download WeChat image for ${connectionId}: ${mediaErr}`);
+        }
+      } else if (item?.type === 4 && item?.file_item?.media) {
+        try {
+          const media = item.file_item.media;
+          const aesKey = this.mediaAdapter.parseAesKey(media);
+          if (aesKey && media.encrypt_query_param) {
+            const buffer = await this.mediaAdapter.downloadAndDecrypt(
+              media.encrypt_query_param,
+              aesKey
+            );
+            const fileName = item.file_item.file_name || `file_${Date.now()}`;
+            const mimeType = this.mediaAdapter.detectMimeType(fileName, buffer);
+            let extractedText: string | undefined;
+            if (this.mediaAdapter.isTextFile(fileName)) {
+              try {
+                extractedText = buffer.toString('utf-8');
+              } catch {
+                // ignore text decode error
+              }
+            }
+            incomingFiles.push({
+              fileId: randomUUID(),
+              fileName,
+              mimeType,
+              size: buffer.length,
+              content: buffer.toString('base64'),
+              extractedText,
+            });
+          }
+        } catch (mediaErr) {
+          this.logger.warn(`Failed to download WeChat file for ${connectionId}: ${mediaErr}`);
+        }
+      } else if (item?.type === 5 && item?.video_item?.media) {
+        try {
+          const media = item.video_item.media;
+          const aesKey = this.mediaAdapter.parseAesKey(media);
+          if (aesKey && media.encrypt_query_param) {
+            const buffer = await this.mediaAdapter.downloadAndDecrypt(
+              media.encrypt_query_param,
+              aesKey
+            );
+            const fileName = `video_${Date.now()}.mp4`;
+            incomingFiles.push({
+              fileId: randomUUID(),
+              fileName,
+              mimeType: 'video/mp4',
+              size: buffer.length,
+              content: buffer.toString('base64'),
+            });
+          }
+        } catch (mediaErr) {
+          this.logger.warn(`Failed to download WeChat video for ${connectionId}: ${mediaErr}`);
+        }
+      }
+    }
+
+    const hasMediaInPayload = message?.item_list?.some(
+      (item) => item?.type === 2 || item?.type === 4 || item?.type === 5
+    );
+    if (!text && incomingFiles.length === 0 && hasMediaInPayload) {
+      await this.wechat.sendText(
+        credential.baseUrl,
+        credential.token,
+        credential.ownerUserId,
+        '抱歉，接收多媒体文件失败，请稍后重试。',
+        message?.context_token
+      );
+      return;
+    }
+
+    // 2.1 WeChat files/images staging:
+    // In WeChat, media and text are typically sent separately.
+    // When media arrives without text, stage it and prompt the user for their instruction.
+    if (!text.trim() && incomingFiles.length > 0) {
+      const now = Date.now();
+      const existing = this.stagedMedia.get(connectionId);
+      const isStillValid =
+        existing && now - existing.updatedAt < ImChannelService.STAGED_MEDIA_TTL_MS;
+      const mergedFiles = isStillValid
+        ? [...existing.files, ...incomingFiles]
+        : [...incomingFiles];
+      this.stagedMedia.set(connectionId, { files: mergedFiles, updatedAt: now });
+
+      let promptMessage = '';
+      if (mergedFiles.length === 1) {
+        const single = mergedFiles[0]!;
+        if (single.mimeType.startsWith('image/')) {
+          promptMessage =
+            '已收到图片，请发送你的处理指令（例如：“提取图片文字”、“分析图中错误”或提出你想问的问题）。';
+        } else {
+          promptMessage = `已收到文件【${single.fileName}】，请发送你的处理指令（例如：“总结文档核心内容”或提出你想问的问题）。`;
+        }
+      } else {
+        const imgCount = mergedFiles.filter((f) => f.mimeType.startsWith('image/')).length;
+        const fileCount = mergedFiles.length - imgCount;
+        const descParts: string[] = [];
+        if (imgCount > 0) descParts.push(`${imgCount} 张图片`);
+        if (fileCount > 0) descParts.push(`${fileCount} 个文件`);
+        promptMessage = `已暂存 ${descParts.join('和 ')}，请发送你的处理指令。`;
+      }
+
+      // Persist this media receipt into the chat session so Session Management reflects it immediately
+      const stagingSessionId = this.getSessionId(connectionId);
+      const mediaLabel = incomingFiles.some((f) => f.mimeType.startsWith('image/')) ? '图片' : '文件';
+      const fileNames = incomingFiles.map((f) => f.fileName).join(', ');
+      this.askAi(
+        userId,
+        stagingSessionId,
+        `[发送了${mediaLabel}: ${fileNames}]`,
+        'chat',
+        incomingFiles,
+        promptMessage
+      ).catch((err) => {
+        this.logger.warn(`Failed to persist staged media into session: ${err}`);
+      });
+
+      await this.wechat.sendText(
+        credential.baseUrl,
+        credential.token,
+        credential.ownerUserId,
+        promptMessage,
+        message?.context_token
+      );
+      await this.prisma.imChannelConnection.update({
+        where: { id: connectionId },
+        data: { lastMessageAt: new Date() },
+      });
+      return;
+    }
+
+    if (!text.trim()) return;
+
+    // Check /cancel or /取消 command specifically to discard staged media
+    if (/^\s*\/(?:cancel|取消)(?:\s+|$)/i.test(text.trim())) {
+      const hadStaged = this.stagedMedia.has(connectionId);
+      this.stagedMedia.delete(connectionId);
+      await this.wechat.sendText(
+        credential.baseUrl,
+        credential.token,
+        credential.ownerUserId,
+        hadStaged ? '已清空暂存的图片和文件。' : '当前没有待处理的暂存文件。',
+        message?.context_token
+      );
+      await this.prisma.imChannelConnection.update({
+        where: { id: connectionId },
+        data: { lastMessageAt: new Date() },
+      });
+      return;
+    }
+
+    // 3. Check /next or /继续 command specifically to flush queue
+    if (/^\s*\/(?:next|继续)(?:\s+|$)/i.test(text.trim())) {
+      const flushed = await this.flushPending(connectionId, credential);
+      await this.wechat.sendText(
+        credential.baseUrl,
+        credential.token,
+        credential.ownerUserId,
+        flushed > 0 ? `已为你补发 ${flushed} 条暂存消息。` : '当前没有暂存待发送的消息。',
+        message?.context_token
+      );
+      await this.prisma.imChannelConnection.update({
+        where: { id: connectionId },
+        data: { lastMessageAt: new Date() },
+      });
+      return;
+    }
+
+    // Incorporate any previously staged media with the incoming user instruction
+    const existingStaged = this.stagedMedia.get(connectionId);
+    if (existingStaged) {
+      if (Date.now() - existingStaged.updatedAt < ImChannelService.STAGED_MEDIA_TTL_MS) {
+        incomingFiles.unshift(...existingStaged.files);
+      }
+      this.stagedMedia.delete(connectionId);
+    }
+
+    // 4. For regular messages, flush any backlog before answering
+    await this.flushPending(connectionId, credential);
 
     const effectiveMode = configuredMode === 'task' ? 'task' : 'chat';
     const request = this.resolveInteraction(text, effectiveMode);
 
     if (request.isNewSession) {
       this.getSessionId(connectionId, true);
+      this.stagedMedia.delete(connectionId);
     }
 
     if (request.type === 'system_reply') {
@@ -393,9 +705,11 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
         .catch(() => {});
     }, 4500);
 
-    let reply = '';
+    let aiResult: { response: string; outboundFiles?: OutboundFilePayload[] } = {
+      response: '',
+    };
     try {
-      reply = await this.askAi(userId, sessionId, request.message, request.mode);
+      aiResult = await this.askAi(userId, sessionId, request.message, request.mode, incomingFiles);
     } finally {
       clearInterval(typingInterval);
       this.wechat
@@ -403,13 +717,36 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
         .catch(() => {});
     }
 
-    await this.wechat.sendText(
-      credential.baseUrl,
-      credential.token,
-      credential.ownerUserId,
-      reply,
-      message?.context_token
-    );
+    const replyText =
+      typeof aiResult === 'string'
+        ? aiResult
+        : (aiResult?.response ?? '');
+    await this.deliverReply(connectionId, credential, replyText, message?.context_token);
+
+    // Deliver outbound files if emitted by AI or matched via user direct send intent
+    const filesToSend: OutboundFilePayload[] = [
+      ...(typeof aiResult === 'object' && aiResult?.outboundFiles ? aiResult.outboundFiles : []),
+    ];
+    if (filesToSend.length === 0) {
+      const explicitFileMatch = request.message.match(
+        /(?:通过微信)?(?:发送|发|推送)(?:这个|个人空间|工作空间)?(?:文件|文档|报告)?(?:【?([^】\n，。！？ ]+)】?)(?:给我|到微信)?/i
+      );
+      if (explicitFileMatch && explicitFileMatch[1]) {
+        const candidateName = explicitFileMatch[1].trim();
+        const resolved = this.resolveUserFilePath(userId, candidateName);
+        if (resolved) {
+          filesToSend.push({
+            filePath: resolved,
+            fileName: path.basename(resolved),
+          });
+        }
+      }
+    }
+
+    for (const f of filesToSend) {
+      await this.deliverFile(connectionId, credential, userId, f, message?.context_token);
+    }
+
     await this.prisma.imChannelConnection.update({
       where: { id: connectionId },
       data: { lastMessageAt: new Date() },
@@ -433,6 +770,8 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
           '• `/c` 或 `/chat <问题>`：个人问答模式（默认，安全沙箱与自由问答）\n' +
           '• `/t` 或 `/task <指令>`：工作任务模式（多步技能编排、自动化任务）\n' +
           '• `/n` 或 `/new [指令]`：重置并开启全新会话\n' +
+          '• `/cancel` 或 `/取消`：清空已暂存的待处理图片或文件\n' +
+          '• `/next` 或 `/继续`：补发因频率限制暂存的消息\n' +
           '• `/help`：查看指令帮助',
       };
     }
@@ -505,12 +844,214 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  private async deliverReply(
+    connectionId: string,
+    credential: Credential,
+    replyText: string,
+    contextToken?: string
+  ): Promise<void> {
+    const formatted = formatForWeChat(replyText);
+    const chunks = splitTextPreservingLines(formatted, 1800);
+    for (const chunk of chunks) {
+      if (!chunk.trim()) continue;
+      if (!this.outboundQueue.isBudgetAvailable(connectionId)) {
+        this.outboundQueue.park(connectionId, {
+          kind: 'text',
+          text: chunk,
+          contextToken,
+        });
+        continue;
+      }
+      const sentCount = this.outboundQueue.recordSent(connectionId);
+      const warningSuffix = this.outboundQueue.buildQuotaWarningSuffix(sentCount);
+      const payload = chunk + warningSuffix;
+      await this.wechat.sendText(
+        credential.baseUrl,
+        credential.token,
+        credential.ownerUserId,
+        payload,
+        contextToken
+      );
+    }
+    const pending = this.outboundQueue.getPendingCount(connectionId);
+    if (pending > 0) {
+      this.logger.warn(
+        `Connection ${connectionId} has ${pending} outbound message(s) queued due to WeChat rate limit`
+      );
+    }
+  }
+
+  async flushPending(connectionId: string, credential: Credential): Promise<number> {
+    const items = this.outboundQueue.drainBatch(connectionId);
+    let count = 0;
+    for (const item of items) {
+      if (item.kind === 'text') {
+        const sentCount = this.outboundQueue.recordSent(connectionId);
+        const warning = this.outboundQueue.buildQuotaWarningSuffix(sentCount);
+        await this.wechat.sendText(
+          credential.baseUrl,
+          credential.token,
+          credential.ownerUserId,
+          item.text + warning,
+          item.contextToken
+        );
+        count++;
+      } else if (item.kind === 'media') {
+        this.outboundQueue.recordSent(connectionId);
+        await this.wechat.sendMediaMessage(
+          credential.baseUrl,
+          credential.token,
+          credential.ownerUserId,
+          item.mediaType,
+          item.buffer,
+          {
+            fileName: item.fileName,
+            contextToken: item.contextToken,
+          }
+        );
+        count++;
+      }
+    }
+    return count;
+  }
+
+  private getWechatMediaType(fileName: string): (typeof WechatUploadMediaType)[keyof typeof WechatUploadMediaType] {
+    const ext = path.extname(fileName).toLowerCase();
+    if (['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'].includes(ext)) {
+      return WechatUploadMediaType.IMAGE;
+    }
+    if (['.mp4', '.mov'].includes(ext)) {
+      return WechatUploadMediaType.VIDEO;
+    }
+    return WechatUploadMediaType.FILE;
+  }
+
+  private resolveUserFilePath(userId: string, targetPathOrName: string): string | null {
+    const sanitized = userId.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    const projectRoot =
+      Boolean(process.env.DOCKER_ENV) && fs.existsSync('/workspace')
+        ? '/workspace'
+        : process.env.PROJECT_ROOT || process.cwd();
+
+    const clean = targetPathOrName.trim().replace(/^['"]|['"]$/g, '');
+    const userRoot = path.join(projectRoot, 'data', 'users', sanitized);
+    const workspaceDir = path.join(userRoot, 'workspace');
+    const knowledgeDir = path.join(userRoot, 'knowledge');
+
+    if (clean.startsWith('/workspace/')) {
+      const rel = clean.slice('/workspace/'.length);
+      const full = path.join(workspaceDir, rel);
+      if (fs.existsSync(full) && fs.statSync(full).isFile()) return full;
+    }
+    if (clean.startsWith('/knowledge/')) {
+      const rel = clean.slice('/knowledge/'.length);
+      const full = path.join(knowledgeDir, rel);
+      if (fs.existsSync(full) && fs.statSync(full).isFile()) return full;
+    }
+
+    const inWorkspace = path.join(workspaceDir, clean);
+    if (fs.existsSync(inWorkspace) && fs.statSync(inWorkspace).isFile()) return inWorkspace;
+
+    const inKnowledge = path.join(knowledgeDir, clean);
+    if (fs.existsSync(inKnowledge) && fs.statSync(inKnowledge).isFile()) return inKnowledge;
+
+    for (const dir of [knowledgeDir, workspaceDir]) {
+      if (!fs.existsSync(dir)) continue;
+      try {
+        const files = fs.readdirSync(dir);
+        const found = files.find(
+          (f) =>
+            f === clean ||
+            path.parse(f).name === clean ||
+            f.toLowerCase() === clean.toLowerCase()
+        );
+        if (found) {
+          const full = path.join(dir, found);
+          if (fs.statSync(full).isFile()) return full;
+        }
+        const sub = files.find((f) => f.includes(clean) || clean.includes(path.parse(f).name));
+        if (sub) {
+          const full = path.join(dir, sub);
+          if (fs.statSync(full).isFile()) return full;
+        }
+      } catch {
+        // ignore read error
+      }
+    }
+
+    return null;
+  }
+
+  private async deliverFile(
+    connectionId: string,
+    credential: Credential,
+    userId: string,
+    fileInfo: OutboundFilePayload,
+    contextToken?: string
+  ): Promise<void> {
+    try {
+      const realPath = this.resolveUserFilePath(userId, fileInfo.filePath);
+      if (!realPath || !fs.existsSync(realPath)) {
+        this.logger.warn(`Outbound file not found on disk: ${fileInfo.filePath} for user ${userId}`);
+        await this.wechat.sendText(
+          credential.baseUrl,
+          credential.token,
+          credential.ownerUserId,
+          `⚠️ 未能找到待发送的文件【${fileInfo.fileName}】，请确认文件是否存在于个人空间中。`,
+          contextToken
+        );
+        return;
+      }
+
+      const buffer = fs.readFileSync(realPath);
+      const fileName = fileInfo.fileName || path.basename(realPath);
+      const mediaType = this.getWechatMediaType(fileName);
+
+      if (!this.outboundQueue.isBudgetAvailable(connectionId)) {
+        this.outboundQueue.park(connectionId, {
+          kind: 'media',
+          mediaType,
+          buffer,
+          fileName,
+          contextToken,
+        });
+        this.logger.log(`Queued outbound file ${fileName} for ${connectionId}`);
+        return;
+      }
+
+      this.outboundQueue.recordSent(connectionId);
+      await this.wechat.sendMediaMessage(
+        credential.baseUrl,
+        credential.token,
+        credential.ownerUserId,
+        mediaType,
+        buffer,
+        { fileName, contextToken }
+      );
+      this.logger.log(`Successfully delivered outbound file ${fileName} to user ${userId} via WeChat`);
+    } catch (err: any) {
+      this.logger.error(
+        `Failed to deliver outbound file ${fileInfo.fileName}: ${err.message}`,
+        err.stack
+      );
+      await this.wechat.sendText(
+        credential.baseUrl,
+        credential.token,
+        credential.ownerUserId,
+        `⚠️ 发送文件【${fileInfo.fileName}】失败: ${err.message}`,
+        contextToken
+      );
+    }
+  }
+
   private async askAi(
     userId: string,
     sessionId: string,
     message: string,
-    mode: 'chat' | 'task'
-  ): Promise<string> {
+    mode: 'chat' | 'task',
+    files?: any[],
+    systemReply?: string
+  ): Promise<{ response: string; outboundFiles?: OutboundFilePayload[] }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { role: true, activeOrgId: true },
@@ -526,11 +1067,22 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
           'x-user-roles': user?.role ?? 'employee',
           ...(user?.activeOrgId ? { 'x-organization-id': user.activeOrgId } : {}),
         },
-        body: JSON.stringify({ message, sessionId, config: { mode } }),
+        body: JSON.stringify({
+          message,
+          sessionId,
+          config: { mode, ...(systemReply ? { systemReply } : {}) },
+          ...(files && files.length > 0 ? { files } : {}),
+        }),
       }
     );
     if (!response.ok) throw new Error(`AI 服务调用失败（HTTP ${response.status}）`);
-    const payload = (await response.json()) as { response?: string };
-    return payload.response?.trim() || '任务已处理，但没有可返回的文本结果。';
+    const payload = (await response.json()) as {
+      response?: string;
+      outboundFiles?: OutboundFilePayload[];
+    };
+    return {
+      response: payload.response?.trim() || '任务已处理，但没有可返回的文本结果。',
+      outboundFiles: payload.outboundFiles,
+    };
   }
 }

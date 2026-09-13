@@ -390,5 +390,42 @@ describe('ModelService provider credential reuse', () => {
     const resolvedOcr = service.getPreferredDefaultModel({ mode: 'ocr' });
     expect(resolvedOcr?.id).toBe(ocrModel.id);
   });
+
+  it('correctly resolves default image_generation model with exclusivity enforcement', async () => {
+    // 1. Create first image generation model
+    const model1 = await service.createModel({
+      name: 'flux-schnell',
+      provider: 'openai',
+      api_endpoint: 'https://api.siliconflow.cn/v1',
+      api_key: 'sk-siliconflow-key',
+      config: {
+        default: false,
+        default_scope: { image_generation: true },
+      },
+    });
+
+    expect(service.selectScopedDefaultModel('image_generation')?.id).toBe(model1.id);
+    expect(service.getPreferredDefaultModel({ mode: 'image_generation' })?.id).toBe(model1.id);
+    expect(service.getResolvedApiKeyForModel(model1.id)).toBe('sk-siliconflow-key');
+
+    // 2. Create second image generation model with image_generation scope, should take over exclusivity
+    const model2 = await service.createModel({
+      name: 'wanx2.1-t2i-turbo',
+      provider: 'openai',
+      api_endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      api_key: 'sk-dashscope-key',
+      config: {
+        default: false,
+        default_scope: { image_generation: true },
+      },
+    });
+
+    expect(service.selectScopedDefaultModel('image_generation')?.id).toBe(model2.id);
+    expect(service.getResolvedApiKeyForModel(model2.id)).toBe('sk-dashscope-key');
+
+    // Model 1's image_generation scope should be stripped
+    const refreshedModel1 = await service.getModel(model1.id);
+    expect(refreshedModel1?.config.default_scope?.image_generation).toBe(false);
+  });
 });
 

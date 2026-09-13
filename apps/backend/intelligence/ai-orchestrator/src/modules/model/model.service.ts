@@ -78,7 +78,7 @@ interface PersistedProviderApiKey {
 }
 
 export interface ModelSelectionPolicyContext {
-  mode?: 'chat' | 'task' | 'audio_transcription' | 'ocr';
+  mode?: 'chat' | 'task' | 'audio_transcription' | 'ocr' | 'vision' | 'image_generation';
   userRoles?: string[];
 }
 
@@ -115,6 +115,7 @@ export class ModelService implements OnModuleInit {
       admin_task: defaultScope.admin_task === true,
       audio_transcription: defaultScope.audio_transcription === true,
       ocr: defaultScope.ocr === true,
+      image_generation: defaultScope.image_generation === true,
     };
 
     const routingPreferences =
@@ -198,6 +199,7 @@ export class ModelService implements OnModuleInit {
       (scope?.admin_task ? 3 : 0) +
       (scope?.audio_transcription ? 3 : 0) +
       (scope?.ocr ? 3 : 0) +
+      (scope?.image_generation ? 3 : 0) +
       (model.config.default === true ? 1 : 0)
     );
   }
@@ -330,7 +332,8 @@ export class ModelService implements OnModuleInit {
       !targetScope?.admin_chat &&
       !targetScope?.admin_task &&
       !targetScope?.audio_transcription &&
-      !targetScope?.ocr
+      !targetScope?.ocr &&
+      !targetScope?.image_generation
     ) {
       return;
     }
@@ -364,6 +367,10 @@ export class ModelService implements OnModuleInit {
         nextConfig.default_scope.ocr = false;
         changed = true;
       }
+      if (targetScope.image_generation && nextConfig.default_scope?.image_generation) {
+        nextConfig.default_scope.image_generation = false;
+        changed = true;
+      }
 
       if (changed) {
         this.models.set(modelId, {
@@ -375,8 +382,8 @@ export class ModelService implements OnModuleInit {
     }
   }
 
-  private selectScopedDefaultModel(
-    scope: 'global' | 'admin_chat' | 'admin_task' | 'audio_transcription' | 'ocr'
+  selectScopedDefaultModel(
+    scope: 'global' | 'admin_chat' | 'admin_task' | 'audio_transcription' | 'ocr' | 'image_generation'
   ): AIModelDTO | null {
     const activeModels = this.getActiveModelsWithClients();
     return activeModels.find((model) => model.config.default_scope?.[scope] === true) || null;
@@ -452,12 +459,23 @@ export class ModelService implements OnModuleInit {
     const userRoles = context?.userRoles || [];
     const isAdmin = userRoles.includes('admin');
 
+    if (context?.mode === 'image_generation') {
+      return (
+        this.selectScopedDefaultModel('image_generation') ||
+        this.getPreferredImageGenerationModel(context)
+      );
+    }
+
     if (context?.mode === 'audio_transcription') {
       return this.selectScopedDefaultModel('audio_transcription') || this.getDefaultModel();
     }
 
-    if (context?.mode === 'ocr') {
-      return this.selectScopedDefaultModel('ocr') || this.getDefaultModel();
+    if (context?.mode === 'ocr' || context?.mode === 'vision') {
+      return (
+        this.selectScopedDefaultModel('ocr') ||
+        this.getPreferredVisionModel(context) ||
+        this.getDefaultModel()
+      );
     }
 
     if (context?.mode === 'task') {
@@ -737,7 +755,7 @@ export class ModelService implements OnModuleInit {
       existing.hasCredential = existing.hasCredential || this.hasConfiguredCredential(model.id);
       existing.advancedModelCount += model.config.capability_tier === 'advanced' ? 1 : 0;
       const scopeKeys = (
-        ['global', 'admin_chat', 'admin_task', 'audio_transcription', 'ocr'] as const
+        ['global', 'admin_chat', 'admin_task', 'audio_transcription', 'ocr', 'image_generation'] as const
       ).filter((scope) => {
         return model.config.default_scope?.[scope] === true;
       });
@@ -966,7 +984,7 @@ export class ModelService implements OnModuleInit {
     return null;
   }
 
-  private resolveModelEntity(id: string): AIModelDTO | null {
+  resolveModelEntity(id: string): AIModelDTO | null {
     if (id === 'default') {
       return this.getDefaultModel();
     }
@@ -983,6 +1001,93 @@ export class ModelService implements OnModuleInit {
     }
 
     return null;
+  }
+
+  isVisionCapableModel(model: AIModelDTO | null | undefined): boolean {
+    if (!model || model.status !== 'active') {
+      return false;
+    }
+    if (model.config?.default_scope?.['ocr'] === true) {
+      return true;
+    }
+    const tags = (model.config?.routing_tags || []).map((t) => String(t).toLowerCase());
+    if (
+      tags.some((t) =>
+        t.includes('vision') || t.includes('multimodal') || t.includes('image') || t.includes('ocr')
+      )
+    ) {
+      return true;
+    }
+    const name = (model.name || '').toLowerCase();
+    const provider = (model.provider || '').toLowerCase();
+    if (provider === 'gemini' || name.includes('gemini')) {
+      return true;
+    }
+    if (
+      name.includes('vision') ||
+      name.includes('-vl') ||
+      name.includes('vl-') ||
+      name.includes('gpt-4o') ||
+      name.includes('claude-3') ||
+      name.includes('omni')
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  getPreferredVisionModel(context?: ModelSelectionPolicyContext): AIModelDTO | null {
+    // 1. Check if an OCR-scoped default model is configured and active
+    const ocrModel = this.selectScopedDefaultModel('ocr');
+    if (ocrModel && this.isVisionCapableModel(ocrModel) && this.clients.has(ocrModel.id)) {
+      return ocrModel;
+    }
+
+    // 2. Check if the default chat model is vision-capable
+    const defaultChat = this.getPreferredDefaultModel({
+      mode: 'chat',
+      userRoles: context?.userRoles,
+    });
+    if (defaultChat && this.isVisionCapableModel(defaultChat) && this.clients.has(defaultChat.id)) {
+      return defaultChat;
+    }
+
+    // 3. Search all active models with initialized clients for any vision-capable model
+    const activeModels = this.listActiveModelsForRouting();
+    const visionCandidate = activeModels.find(
+      (m) => this.isVisionCapableModel(m) && this.clients.has(m.id)
+    );
+    if (visionCandidate) {
+      return visionCandidate;
+    }
+
+    // 4. Fallback to general default model
+    return this.getDefaultModel();
+  }
+
+  getPreferredImageGenerationModel(context?: ModelSelectionPolicyContext): AIModelDTO | null {
+    // 1. Check if an image_generation-scoped default model is configured and active
+    const scopedModel = this.selectScopedDefaultModel('image_generation');
+    if (scopedModel) {
+      return scopedModel;
+    }
+
+    // 2. Search active models with routing tags or known image generation names
+    const activeModels = this.getActiveModelsWithClients();
+    const candidate = activeModels.find((m) => {
+      const tags = (m.config?.routing_tags || []).map((t) => String(t).toLowerCase());
+      const name = (m.name || '').toLowerCase();
+      return (
+        tags.includes('image_generation') ||
+        tags.includes('image') ||
+        name.includes('imagen') ||
+        name.includes('dall-e') ||
+        name.includes('flux') ||
+        name.includes('wanx') ||
+        name.includes('cogview')
+      );
+    });
+    return candidate || null;
   }
 
   private getActiveModelsWithClients(): AIModelDTO[] {
@@ -1389,6 +1494,33 @@ export class ModelService implements OnModuleInit {
       default:
         return null;
     }
+  }
+
+  /**
+   * Resolve plaintext API key for a model, checking direct keys, references, and provider keys
+   */
+  getResolvedApiKeyForModel(modelId: string): string | null {
+    const model = this.models.get(modelId);
+    if (!model) return null;
+    if (this.apiKeys.has(modelId)) {
+      return this.apiKeys.get(modelId) || null;
+    }
+    const ref = this.apiKeyReferences.get(modelId);
+    if (ref) {
+      const k = this.resolveApiKey(ref, modelId);
+      if (k) return k;
+    }
+    const providerConfig = this.getProviderConfigForModel(model);
+    if (providerConfig) {
+      if (this.providerApiKeys.has(providerConfig.id)) {
+        return this.providerApiKeys.get(providerConfig.id) || null;
+      }
+      const pRef = this.providerApiKeyReferences.get(providerConfig.id);
+      if (pRef) {
+        return this.resolveApiKey(pRef);
+      }
+    }
+    return null;
   }
 
   /**

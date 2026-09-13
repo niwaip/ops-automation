@@ -5,7 +5,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Avatar, Tag, message as antdMessage } from 'antd';
-import { UserOutlined, RobotOutlined, FileTextOutlined } from '@ant-design/icons';
+import { UserOutlined, RobotOutlined, FileTextOutlined, FileImageOutlined } from '@ant-design/icons';
 import { ChatMessage } from './types';
 import { useAuthStore } from '@/shared/store/authStore';
 import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
@@ -431,12 +431,21 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 
     return (
       <div className="chat-message-files">
-        {message.metadata.files.map((fileName, idx) => (
-          <div key={idx} className="chat-message-file">
-            <FileTextOutlined />
-            <span>{fileName}</span>
-          </div>
-        ))}
+        {message.metadata.files.map((file, idx) => {
+          const fileName =
+            typeof file === 'string'
+              ? file
+              : (file as { fileName?: string })?.fileName || (file as any)?.name || '附件';
+          const isImage =
+            /\.(jpe?g|png|gif|webp|svg|bmp)$/i.test(fileName) ||
+            (typeof file === 'object' && Boolean((file as any)?.mimeType?.startsWith('image/')));
+          return (
+            <div key={idx} className="chat-message-file">
+              {isImage ? <FileImageOutlined style={{ color: '#1890ff' }} /> : <FileTextOutlined />}
+              <span>{fileName}</span>
+            </div>
+          );
+        })}
       </div>
     );
   };

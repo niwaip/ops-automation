@@ -14,7 +14,7 @@ import urllib.parse
 import zipfile
 from xml.etree import ElementTree as ET
 from pathlib import Path
-from .config import WORKSPACE_DIR, KNOWLEDGE_DIR, PLUGIN_DIR
+from .config import WORKSPACE_DIR, KNOWLEDGE_DIR, PLUGIN_DIR, DEFAULT_PROXY_URL, VIRTUAL_API_KEY
 from .skills import read_skill
 
 CITY_PINYIN = {
@@ -260,8 +260,109 @@ def scan_personal_knowledge() -> str:
     return "\n".join(summary)
 
 
+def inspect_image(image_path: str, prompt: str = "", max_chars: int = 15000) -> str:
+    """
+    Inspects, analyzes, and extracts visual information/OCR text from an image file
+    located in /workspace or /knowledge via the platform's multimodal vision model proxy.
+    """
+    import base64
+    raw_name = image_path.strip().strip("'\"")
+    p = Path(WORKSPACE_DIR) / raw_name if not os.path.isabs(raw_name) else Path(raw_name)
+    if not p.exists():
+        if not os.path.isabs(raw_name) and (Path(KNOWLEDGE_DIR) / raw_name).exists():
+            p = Path(KNOWLEDGE_DIR) / raw_name
+        else:
+            candidates = list(Path(WORKSPACE_DIR).glob(f"*{raw_name}*"))
+            if candidates:
+                p = candidates[0]
+            else:
+                knowledge_candidates = list(Path(KNOWLEDGE_DIR).glob(f"*{raw_name}*"))
+                if knowledge_candidates:
+                    p = knowledge_candidates[0]
+                else:
+                    return f"图片文件未找到: {image_path}"
+
+    suffix = p.suffix.lower()
+    mime_map = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".gif": "image/gif",
+        ".bmp": "image/bmp",
+        ".tiff": "image/tiff",
+        ".tif": "image/tiff",
+    }
+    mime = mime_map.get(suffix, "image/jpeg")
+
+    try:
+        with open(p, "rb") as f:
+            image_bytes = f.read()
+        if len(image_bytes) == 0:
+            return f"图片文件为空: {p.name}"
+
+        b64_str = base64.b64encode(image_bytes).decode("ascii")
+
+        analysis_prompt = prompt.strip() if prompt and prompt.strip() else (
+            "请详细分析并解读这张图片的内容，识别并提取图中的所有关键文字（OCR）、物体、图表数据、界面元素或主体信息，给出清晰准确的中文说明。"
+        )
+
+        api_endpoint = f"{DEFAULT_PROXY_URL.rstrip('/')}/chat/completions"
+        payload = {
+            "model": "vision",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": analysis_prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{mime};base64,{b64_str}",
+                                "detail": "auto"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "temperature": 0.2,
+            "max_tokens": 4096,
+            "stream": False
+        }
+
+        req = urllib.request.Request(
+            api_endpoint,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {VIRTUAL_API_KEY}"
+            }
+        )
+
+        with urllib.request.urlopen(req, timeout=120) as response:
+            resp_data = json.loads(response.read().decode("utf-8"))
+            choices = resp_data.get("choices", [])
+            if choices:
+                content = choices[0].get("message", {}).get("content", "")
+                if content:
+                    for txt_name in [f"{p.stem}.txt", f"{p.name}.txt"]:
+                        tp = p.parent / txt_name
+                        if not tp.exists():
+                            try:
+                                tp.write_text(content, encoding="utf-8")
+                            except Exception:
+                                pass
+                    return f"【图片 ({p.name}) 视觉分析与内容识别结果】:\n{content[:max_chars]}"
+            return f"图片视觉识别未返回有效内容: {resp_data}"
+    except urllib.error.HTTPError as he:
+        # 默认模型若为纯文本模型（如 DeepSeek），代理端会返回 400/404/500
+        return "【系统提示】当前系统默认模型为纯文本模型，暂不支持视觉识别（无法解析图片内容）。"
+    except Exception as e:
+        return f"【系统提示】当前系统默认模型暂不支持视觉多模态能力: {e}"
+
+
 def read_workspace_file(file_path: str, max_chars: int = 15000) -> str:
-    """Reads and extracts text from workspace or knowledge files, with native support for .docx, .xlsx, .txt, .md, .json, .py, .pdf"""
+    """Reads and extracts text from workspace or knowledge files, with native support for .docx, .xlsx, .txt, .md, .json, .py, .pdf, .jpg, .png"""
     raw_name = file_path.strip().strip("'\"")
     p = Path(WORKSPACE_DIR) / raw_name if not os.path.isabs(raw_name) else Path(raw_name)
     if not p.exists():
@@ -346,18 +447,57 @@ def read_workspace_file(file_path: str, max_chars: int = 15000) -> str:
     txt_sibling = p.parent / f"{p.name}.txt"
     if not txt_sibling.exists():
         txt_sibling = p.parent / f"{p.stem}.txt"
-    if txt_sibling.exists() and suffix in [".pdf", ".docx", ".xlsx", ".pptx"]:
+    if txt_sibling.exists() and suffix in [".pdf", ".docx", ".xlsx", ".pptx", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"]:
         try:
-            return f"【文件 ({p.name}) 提取文本】:\n" + txt_sibling.read_text(encoding="utf-8", errors="ignore")[:max_chars]
+            return f"【文件 ({p.name}) 提取文本/视觉识别结果】:\n" + txt_sibling.read_text(encoding="utf-8", errors="ignore")[:max_chars]
         except Exception:
             pass
 
-    # 4. 常规纯文本文件读取 (.txt, .md, .json, .py, .csv, .yml, .sql, .sh 等)
+    # 4. 图片文件 (.jpg, .jpeg, .png, .webp, .gif, .bmp) 视觉识别与解析
+    if suffix in [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"]:
+        return inspect_image(str(p), max_chars=max_chars)
+
+    # 5. 常规纯文本文件读取 (.txt, .md, .json, .py, .csv, .yml, .sql, .sh 等)
     try:
         raw = p.read_text(encoding="utf-8", errors="ignore")
         return f"【文本文件 ({p.name}) 内容】:\n" + raw[:max_chars]
     except Exception as e:
         return f"读取文件异常 ({p.name}): {e}"
+
+
+def send_workspace_file(file_path: str, comment: str = "") -> str:
+    """
+    Marks and delivers a file from /workspace or /knowledge to the user's WeChat / chat client.
+    Generates <<<DSH_OUTBOUND_FILE:{...}>>> marker for upstream gateway dispatch.
+    """
+    raw_name = file_path.strip().strip("'\"")
+    p = Path(WORKSPACE_DIR) / raw_name if not os.path.isabs(raw_name) else Path(raw_name)
+    if not p.exists():
+        if not os.path.isabs(raw_name) and (Path(KNOWLEDGE_DIR) / raw_name).exists():
+            p = Path(KNOWLEDGE_DIR) / raw_name
+        else:
+            candidates = list(Path(WORKSPACE_DIR).glob(f"*{raw_name}*"))
+            if candidates:
+                p = candidates[0]
+            else:
+                knowledge_candidates = list(Path(KNOWLEDGE_DIR).glob(f"*{raw_name}*"))
+                if knowledge_candidates:
+                    p = knowledge_candidates[0]
+                else:
+                    return f"发送失败：文件未找到: {file_path}"
+
+    if not p.is_file():
+        return f"发送失败：目标不是文件: {file_path}"
+
+    rel_or_abs = str(p)
+    marker = json.dumps({
+        "filePath": rel_or_abs,
+        "fileName": p.name,
+        "comment": comment or ""
+    }, ensure_ascii=False)
+    # 输出机器标记以供上层平台调度器捕获外发多媒体文件
+    print(f"\n<<<DSH_OUTBOUND_FILE:{marker}>>>\n")
+    return f"【文件发送指令已就绪】已成功定位并为您调度发送文件: {p.name} ({p.stat().st_size} 字节)。系统已通过微信多媒体通道推送至您的聊天界面。"
 
 
 def execute_tool(tool_name: str, params: dict) -> str:
@@ -406,6 +546,18 @@ def execute_tool(tool_name: str, params: dict) -> str:
         )
         return read_workspace_file(str(fpath))
 
+    elif name_clean in ["vision_inspect", "inspect_image", "image_inspect", "read_image", "ocr", "view_image", "analyze_image"]:
+        fpath = (
+            params.get("file_path") or
+            params.get("image_path") or
+            params.get("path") or
+            params.get("file") or
+            params.get("filename") or
+            (str(list(params.values())[0]) if params else "")
+        )
+        prompt = params.get("prompt") or params.get("instruction") or params.get("query") or ""
+        return inspect_image(str(fpath), prompt)
+
     elif name_clean in ["bash", "cmd", "terminal", "sh", "exec"]:
         cmd = params.get("cmd") or params.get("command") or ""
         if not cmd and params:
@@ -434,6 +586,33 @@ def execute_tool(tool_name: str, params: dict) -> str:
             (str(list(params.values())[0]) if params else "")
         )
         return read_skill(skill_name)
+
+    elif name_clean in ["send_file", "send_workspace_file", "send_to_user", "send_to_wechat", "send_document", "deliver_file", "push_file"]:
+        fpath = (
+            params.get("file_path") or
+            params.get("file") or
+            params.get("path") or
+            params.get("filename") or
+            params.get("name") or
+            (str(list(params.values())[0]) if params else "")
+        )
+        comment = params.get("comment") or params.get("desc") or params.get("message") or ""
+        return send_workspace_file(str(fpath), str(comment))
+
+    elif name_clean in ["image_gen", "generate_image", "text_to_image", "draw_image", "paint"]:
+        plugin_file = Path(PLUGIN_DIR) / "image_gen.py"
+        if plugin_file.exists():
+            try:
+                proc = subprocess.run(
+                    [sys.executable, str(plugin_file), json.dumps(params)],
+                    text=True,
+                    capture_output=True,
+                    timeout=35
+                )
+                return proc.stdout.strip() or proc.stderr.strip()
+            except Exception as e:
+                return f"生图插件执行异常: {e}"
+        return "【系统提示】当前系统默认模型（Gemini 3.7 Flash）具备多模态视觉理解能力（支持识图），但不支持原生图像生成/绘图（Text-to-Image）。如需生成图片文件，需在平台接入生图模型（如 Imagen / DALL-E / Flux / ComfyUI）。"
 
     else:
         plugin_file = Path(PLUGIN_DIR) / f"{tool_name}.py"

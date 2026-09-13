@@ -625,4 +625,61 @@ describe('ChatConversationService', () => {
       expect(result?.summaryText).toBe('x'.repeat(100));
     });
   });
+
+  describe('files metadata persistence', () => {
+    it('persists attached files in user message metadata during persistConversation', async () => {
+      const { service, sessionService } = createService();
+      sessionService.appendChatMessages.mockResolvedValue({
+        session: {
+          id: 'session-files-1',
+          title: '文件测试',
+          status: 'active',
+          createdAt: '2026-07-01T00:00:00.000Z',
+          updatedAt: '2026-07-01T00:00:02.000Z',
+        },
+        history: [],
+      });
+
+      await service.persistConversation({
+        sessionId: 'session-files-1',
+        userContent: '请分析图片',
+        assistantContent: '图片已分析',
+        rawAssistantContent: '图片已分析',
+        thinkingEnabled: false,
+        files: [
+          {
+            fileId: 'fid-123',
+            fileName: 'test.jpg',
+            mimeType: 'image/jpeg',
+            size: 1024,
+            source: 'upload',
+          },
+        ],
+      });
+
+      expect(sessionService.appendChatMessages).toHaveBeenCalledWith(
+        'session-files-1',
+        expect.arrayContaining([
+          expect.objectContaining({
+            role: 'user',
+            content: '请分析图片',
+            metadata: expect.objectContaining({
+              mode: 'chat',
+              files: [
+                expect.objectContaining({
+                  fileId: 'fid-123',
+                  fileName: 'test.jpg',
+                  mimeType: 'image/jpeg',
+                  size: 1024,
+                  source: 'upload',
+                }),
+              ],
+            }),
+          }),
+        ]),
+        expect.anything()
+      );
+    });
+  });
 });
+

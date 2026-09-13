@@ -10,6 +10,27 @@ interface MessageContentRendererProps {
   isStreaming?: boolean;
 }
 
+const safeUrlTransform = (url?: string): string => {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('./') ||
+    trimmed.startsWith('../') ||
+    trimmed.startsWith('data:image/') ||
+    trimmed.startsWith('blob:')
+  ) {
+    return trimmed;
+  }
+  try {
+    const parsed = new URL(trimmed, 'http://dummy.local');
+    if (['http:', 'https:', 'mailto:', 'tel:'].includes(parsed.protocol)) {
+      return trimmed;
+    }
+  } catch {}
+  return '';
+};
+
 const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
   content,
   mode,
@@ -27,6 +48,7 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
     <div className="chat-message-markdown">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        urlTransform={safeUrlTransform}
         components={{
           code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'> & { className?: string }) => {
             const match = /language-(\w+)/.exec(className || '');
@@ -51,6 +73,65 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
               <code className="inline-code" {...props}>
                 {children}
               </code>
+            );
+          },
+          img: ({ src, alt, ...props }: React.ComponentPropsWithoutRef<'img'>) => {
+            let finalSrc = src || '';
+            if (finalSrc.startsWith('/workspace/') || finalSrc.startsWith('workspace/')) {
+              const fileName = finalSrc.split('/').pop();
+              if (fileName) {
+                finalSrc = `/api/ai/chat/workspace-files/default/${encodeURIComponent(fileName)}`;
+              }
+            }
+
+            return (
+              <span style={{ display: 'block', margin: '12px 0', maxWidth: '100%' }}>
+                <img
+                  src={finalSrc}
+                  alt={alt || 'AI 生成图片'}
+                  loading="lazy"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '520px',
+                    objectFit: 'contain',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+                    display: 'block',
+                    cursor: 'zoom-in',
+                    border: '1px solid var(--border-color, #e5e7eb)',
+                    background: 'var(--bg-card, #ffffff)',
+                  }}
+                  onClick={() => {
+                    if (finalSrc && typeof window !== 'undefined') {
+                      if (finalSrc.startsWith('data:image/')) {
+                        const w = window.open('');
+                        if (w) {
+                          w.document.write(
+                            `<!DOCTYPE html><html><head><title>${alt || '图片查看器'}</title><style>body{margin:0;background:#0f172a;display:flex;justify-content:center;align-items:center;min-height:100vh;}</style></head><body><img src="${finalSrc}" style="max-width:96vw;max-height:96vh;object-fit:contain;box-shadow:0 8px 32px rgba(0,0,0,0.6);border-radius:8px;" /></body></html>`
+                          );
+                          w.document.close();
+                        }
+                      } else {
+                        window.open(finalSrc, '_blank');
+                      }
+                    }
+                  }}
+                  {...props}
+                />
+                {alt && alt !== 'AI 生成图片' && (
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: '12px',
+                      color: 'var(--text-secondary, #64748b)',
+                      marginTop: '6px',
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    📷 {alt}
+                  </span>
+                )}
+              </span>
             );
           },
           a: ({ href, children, onClick, ...props }: React.ComponentPropsWithoutRef<'a'>) => {

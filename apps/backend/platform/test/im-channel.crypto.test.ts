@@ -1,4 +1,4 @@
-import { ImCredentialCipher } from '../src/modules/im-channel/im-channel.crypto';
+import { ImCredentialCipher } from '@ops/im-gateway';
 
 describe('ImCredentialCipher', () => {
   const previousKey = process.env.IM_CHANNEL_ENCRYPTION_KEY;

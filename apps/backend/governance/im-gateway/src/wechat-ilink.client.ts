@@ -1,9 +1,26 @@
-import { Injectable } from '@nestjs/common';
-import { randomBytes, randomUUID } from 'crypto';
+import { Injectable, Optional } from '@nestjs/common';
+import { createHash, randomBytes, randomUUID } from 'crypto';
+import { WechatMediaAdapter } from './wechat-media.adapter';
+import { sanitizeWeChatText, splitTextPreservingLines } from './wechat-formatter.util';
 
 const QR_BASE_URL = 'https://ilinkai.weixin.qq.com/';
 const PROTOCOL_VERSION = '2.4.6';
 const CLIENT_VERSION = (2 << 16) | (4 << 8) | 6;
+
+export const WechatUploadMediaType = {
+  IMAGE: 1,
+  VIDEO: 2,
+  FILE: 3,
+  VOICE: 4,
+} as const;
+
+export const WechatMessageItemType = {
+  TEXT: 1,
+  IMAGE: 2,
+  VOICE: 3,
+  FILE: 4,
+  VIDEO: 5,
+} as const;
 
 export interface WechatLoginResult {
   status:
@@ -24,6 +41,12 @@ export interface WechatLoginResult {
 
 @Injectable()
 export class WechatIlinkClient {
+  private readonly mediaAdapter: WechatMediaAdapter;
+
+  constructor(@Optional() mediaAdapter?: WechatMediaAdapter) {
+    this.mediaAdapter = mediaAdapter ?? new WechatMediaAdapter();
+  }
+
   async beginLogin(signal?: AbortSignal): Promise<{ qrcode: string; qrcodeUrl: string }> {
     const response = await this.request(
       'POST',
@@ -163,6 +186,174 @@ export class WechatIlinkClient {
     }
   }
 
+  async getUploadUrl(
+    baseUrl: string,
+    token: string,
+    req: {
+      filekey: string;
+      mediaType: number;
+      toUserId: string;
+      rawSize: number;
+      rawFileMd5: string;
+      fileSize: number;
+      aesKeyHex: string;
+      noNeedThumb?: boolean;
+    }
+  ): Promise<{ upload_param?: string; thumb_upload_param?: string; upload_full_url?: string }> {
+    return this.request('POST', baseUrl, 'ilink/bot/getuploadurl', {
+      token,
+      body: {
+        filekey: req.filekey,
+        media_type: req.mediaType,
+        to_user_id: req.toUserId,
+        rawsize: req.rawSize,
+        rawfilemd5: req.rawFileMd5,
+        filesize: req.fileSize,
+        no_need_thumb: req.noNeedThumb ?? true,
+        aeskey: req.aesKeyHex,
+        base_info: this.baseInfo(),
+      },
+    });
+  }
+
+  async sendMediaMessage(
+    baseUrl: string,
+    token: string,
+    toUserId: string,
+    mediaType: 1 | 2 | 3 | 4,
+    buffer: Buffer,
+    options: {
+      fileName?: string;
+      cdnBaseUrl?: string;
+      contextToken?: string;
+    } = {}
+  ): Promise<string> {
+    const clientId = randomBytes(16).toString('hex');
+    const rawSize = buffer.length;
+    const rawMd5 = createHash('md5').update(buffer).digest('hex');
+
+    // 1. Generate 16-byte random AES key
+    const aesKey = randomBytes(16);
+    const aesKeyHex = aesKey.toString('hex');
+    const encryptedSize = Math.ceil((rawSize + 1) / 16) * 16;
+
+    // 2. Request upload parameters from iLink
+    const uploadResp = await this.getUploadUrl(baseUrl, token, {
+      filekey: clientId,
+      mediaType,
+      toUserId,
+      rawSize,
+      rawFileMd5: rawMd5,
+      fileSize: encryptedSize,
+      aesKeyHex,
+      noNeedThumb: true,
+    });
+
+    const uploadUrl = uploadResp.upload_full_url;
+    let uploadParam = uploadResp.upload_param;
+    if (!uploadParam && uploadUrl) {
+      try {
+        uploadParam = new URL(uploadUrl).searchParams.get('encrypted_query_param') ?? undefined;
+      } catch {
+        // ignore URL parsing error
+      }
+    }
+
+    if (!uploadParam && !uploadUrl) {
+      throw new Error('微信服务端未返回有效上传凭证');
+    }
+
+    // 3. Upload encrypted buffer to WeChat CDN
+    const encryptQueryParam = await this.mediaAdapter.uploadToCdn({
+      buffer,
+      uploadParam: uploadParam || '',
+      aesKey,
+      filekey: clientId,
+      cdnBaseUrl: options.cdnBaseUrl,
+      uploadUrl,
+    });
+
+    // 4. Construct CDNMedia reference (Base64 of the 32-character hex key)
+    const aesKeyBase64 = Buffer.from(aesKeyHex).toString('base64');
+    const cdnMedia = {
+      encrypt_query_param: encryptQueryParam,
+      aes_key: aesKeyBase64,
+      encrypt_type: 1,
+    };
+
+    // 5. Construct item_list based on media type
+    let itemList: any[];
+    switch (mediaType) {
+      case WechatUploadMediaType.IMAGE:
+        itemList = [
+          {
+            type: WechatMessageItemType.IMAGE,
+            image_item: {
+              media: cdnMedia,
+              aeskey: cdnMedia.aes_key,
+              url: cdnMedia.encrypt_query_param,
+              mid_size: encryptedSize,
+            },
+          },
+        ];
+        break;
+      case WechatUploadMediaType.VIDEO:
+        itemList = [
+          {
+            type: WechatMessageItemType.VIDEO,
+            video_item: {
+              media: cdnMedia,
+              video_size: encryptedSize,
+            },
+          },
+        ];
+        break;
+      case WechatUploadMediaType.FILE:
+        itemList = [
+          {
+            type: WechatMessageItemType.FILE,
+            file_item: {
+              media: cdnMedia,
+              file_name: options.fileName ?? 'file',
+              len: String(rawSize),
+            },
+          },
+        ];
+        break;
+      case WechatUploadMediaType.VOICE:
+        itemList = [
+          {
+            type: WechatMessageItemType.VOICE,
+            voice_item: {
+              media: cdnMedia,
+            },
+          },
+        ];
+        break;
+      default:
+        throw new Error(`不支持的微信媒体类型: ${mediaType}`);
+    }
+
+    // 6. Send message through iLink gateway
+    await this.request('POST', baseUrl, 'ilink/bot/sendmessage', {
+      token,
+      body: {
+        msg: {
+          from_user_id: '',
+          to_user_id: toUserId,
+          client_id: clientId,
+          message_type: 2,
+          message_state: 2,
+          item_list: itemList,
+          ...(options.contextToken ? { context_token: options.contextToken } : {}),
+        },
+        base_info: this.baseInfo(),
+      },
+    });
+
+    return clientId;
+  }
+
   async sendText(
     baseUrl: string,
     token: string,
@@ -170,7 +361,10 @@ export class WechatIlinkClient {
     text: string,
     contextToken?: string
   ): Promise<void> {
-    for (let offset = 0; offset < text.length; offset += 1800) {
+    const sanitized = sanitizeWeChatText(text);
+    const chunks = splitTextPreservingLines(sanitized, 1800);
+    for (const chunk of chunks) {
+      if (!chunk.trim()) continue;
       await this.request('POST', baseUrl, 'ilink/bot/sendmessage', {
         token,
         body: {
@@ -180,7 +374,7 @@ export class WechatIlinkClient {
             client_id: `ops-wechat-${randomUUID()}`,
             message_type: 2,
             message_state: 2,
-            item_list: [{ type: 1, text_item: { text: text.slice(offset, offset + 1800) } }],
+            item_list: [{ type: 1, text_item: { text: chunk } }],
             ...(contextToken ? { context_token: contextToken } : {}),
           },
           base_info: this.baseInfo(),

@@ -1,5 +1,4 @@
-import { ImChannelService } from '../src/modules/im-channel/im-channel.service';
-import { WechatIlinkClient } from '../src/modules/im-channel/wechat-ilink.client';
+import { ImChannelService, WechatIlinkClient } from '@ops/im-gateway';
 
 describe('ImChannelService Commands & WeChat Typing', () => {
   let imChannelService: ImChannelService;

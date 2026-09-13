@@ -250,7 +250,59 @@ export function WorkspaceDocumentPreviewModal({
             {fileType === 'markdown' && viewMode === 'rendered' && (
               <div style={{ lineHeight: 1.7, fontSize: 14, wordBreak: 'break-word' }}>
                 {rawText ? (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{rawText}</ReactMarkdown>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    urlTransform={(url) => {
+                      if (!url) return '';
+                      const trimmed = url.trim();
+                      if (
+                        trimmed.startsWith('/') ||
+                        trimmed.startsWith('./') ||
+                        trimmed.startsWith('../') ||
+                        trimmed.startsWith('data:image/') ||
+                        trimmed.startsWith('blob:')
+                      ) {
+                        return trimmed;
+                      }
+                      try {
+                        const parsed = new URL(trimmed, 'http://dummy.local');
+                        if (['http:', 'https:', 'mailto:', 'tel:'].includes(parsed.protocol)) {
+                          return trimmed;
+                        }
+                      } catch {}
+                      return '';
+                    }}
+                    components={{
+                      img: ({ src, alt, ...props }) => (
+                        <span style={{ display: 'block', margin: '16px 0', textAlign: 'center' }}>
+                          <img
+                            src={src}
+                            alt={alt || '文档图片'}
+                            style={{
+                              maxWidth: '100%',
+                              maxHeight: '520px',
+                              objectFit: 'contain',
+                              borderRadius: '8px',
+                              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                              border: '1px solid #e5e7eb',
+                              cursor: 'zoom-in',
+                            }}
+                            onClick={() => {
+                              if (src) window.open(src, '_blank');
+                            }}
+                            {...props}
+                          />
+                          {alt && (
+                            <span style={{ display: 'block', fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
+                              📷 {alt}
+                            </span>
+                          )}
+                        </span>
+                      ),
+                    }}
+                  >
+                    {rawText}
+                  </ReactMarkdown>
                 ) : (
                   <Empty description="暂无内容" />
                 )}

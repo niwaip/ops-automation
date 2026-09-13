@@ -1,4 +1,4 @@
-import { WechatIlinkClient } from '../src/modules/im-channel/wechat-ilink.client';
+import { WechatIlinkClient } from '@ops/im-gateway';
 
 describe('WechatIlinkClient', () => {
   afterEach(() => jest.restoreAllMocks());
