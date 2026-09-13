@@ -146,9 +146,20 @@ export function hasExplicitCapabilityInvocation(
     const compact = compactText(text);
     if (!normalized || isUuid(normalized) || GENERIC_ASCII_TOKENS.has(normalized)) continue;
 
-    if (compact.length >= 4 && compactRequest.includes(compact)) return true;
+    // Full exact match: user sent solely the capability name or simple command like "运行[SkillName]" / "执行[SkillName]"
+    if (
+      compact.length >= 4 &&
+      (compactRequest === compact ||
+        compactRequest === `运行${compact}` ||
+        compactRequest === `执行${compact}` ||
+        compactRequest === `调用${compact}` ||
+        compactRequest === `使用${compact}`)
+    ) {
+      return true;
+    }
 
     const invocationAliases = [
+      compact,
       ...extractDistinctiveAsciiTokens(normalized),
       stripGenericSuffix(compact),
     ].filter((alias) => alias.length >= 2);
@@ -170,7 +181,7 @@ export function hasExplicitCapabilityInvocation(
       }
 
       if (
-        /(?:最后|然后|并且|再)?\s*(?:用|使用|通过|调用|借助|using|use|via)\s*$/.test(prefix) ||
+        /(?:最后|然后|并且|再)?\s*(?:用|使用|通过|调用|借助|运行|执行|using|use|via|run)\s*$/.test(prefix) ||
         /(?:最后|然后|并且|再)\s*$/.test(prefix) ||
         (suffix.length === 0 && alias.length >= 4)
       ) {

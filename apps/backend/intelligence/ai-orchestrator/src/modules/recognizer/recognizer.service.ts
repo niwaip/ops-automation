@@ -929,6 +929,20 @@ export class RecognizerService {
         continue;
       }
 
+      // Prevent semantic signal from assigning a value that was already claimed by another field (e.g. partyA address vs partyB address)
+      if (
+        typeof inferred === 'string' &&
+        inferred.trim().length > 0 &&
+        Object.entries(params).some(
+          ([otherKey, otherVal]) =>
+            otherKey !== key &&
+            typeof otherVal === 'string' &&
+            otherVal.includes(inferred.trim())
+        )
+      ) {
+        continue;
+      }
+
       const normalized = this.normalizeRecognizedValue(key, inferred, schema.type, schema);
       if (
         normalized !== undefined &&

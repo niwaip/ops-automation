@@ -21,10 +21,12 @@ export class PlannerMatchPhaseService {
 
   async matchSkillPhase(input: PlannerGeneratePlanInput): Promise<PlannerMatchPhaseResult> {
     const objective = input.request.user_input.trim();
+    const rawTargetSkillId =
+      input.request.context?.target_skill_id ||
+      input.request.context?.skillId ||
+      input.request.context?.targetSkillId;
     const targetSkillId =
-      typeof input.request.context?.target_skill_id === 'string'
-        ? input.request.context.target_skill_id.trim()
-        : '';
+      typeof rawTargetSkillId === 'string' ? rawTargetSkillId.trim() : '';
     const webSearchEnabled =
       input.request.context?.web_search_enabled === true ||
       input.request.context?.webSearch === true ||

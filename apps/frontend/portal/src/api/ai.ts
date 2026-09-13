@@ -20,6 +20,12 @@ export type ModelProvider =
 
 export type ModelCapabilityTier = 'standard' | 'advanced';
 
+export interface ModelPricing {
+  input_price_per_1k: number;
+  output_price_per_1k: number;
+  currency: string;
+}
+
 export interface AIModelConfig {
   display_name?: string;
   description?: string;
@@ -32,6 +38,7 @@ export interface AIModelConfig {
     admin_chat?: boolean;
     admin_task?: boolean;
     audio_transcription?: boolean;
+    ocr?: boolean;
   };
   routing_preferences?: {
     prefer_for_code?: boolean;
@@ -46,15 +53,19 @@ export interface AIModel {
   api_endpoint: string;
   providerConfigId?: string;
   config: AIModelConfig;
+  pricing?: ModelPricing;
   status: 'active' | 'inactive';
   hasApiKey?: boolean;
-  created_at: Date;
-  updated_at: Date;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AIModelListResponse {
   models: AIModel[];
-  total: number;
+}
+
+export interface AIModelDetailResponse {
+  model: AIModel;
 }
 
 export interface CreateAIModelRequest {
@@ -87,7 +98,7 @@ export interface AIProviderSummary {
   activeModelCount: number;
   hasCredential: boolean;
   advancedModelCount: number;
-  defaultScopes: Array<'global' | 'admin_chat' | 'admin_task' | 'audio_transcription'>;
+  defaultScopes: Array<'global' | 'admin_chat' | 'admin_task' | 'audio_transcription' | 'ocr'>;
 }
 
 export interface AIProviderSummaryResponse {

@@ -50,6 +50,7 @@ services:
       - VITE_HOST_IP=${HOST_IP:-localhost}
       - VITE_AI_ORCHESTRATOR_URL=https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:${OFFICE_ADDIN_PORT:-3000}/proxy/ai-orchestrator
       - VITE_AI_ORCHESTRATOR_PROXY_TARGET=http://${HOST_IP:-localhost}:${AI_ORCHESTRATOR_PORT:-3007}
+      - INTERNAL_API_SHARED_SECRET=${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       - NODE_ENV=development
       - DOCKER=true
     networks:

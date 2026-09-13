@@ -3,6 +3,7 @@ import type {
   DocumentBlock,
   ReviewChapterGroup,
 } from './contract-review.types';
+import { getLegalHierarchyIndentEm } from '../contract-compare/contract-markdown-formatter.util';
 
 export class ContractReviewHtmlDocumentRenderer {
   /**
@@ -157,11 +158,12 @@ export class ContractReviewHtmlDocumentRenderer {
       .map((b, blockIdx) => {
         // 1. Bilingual Pair Block
         if (b.type === 'bilingual_pair') {
+          const indent = getLegalHierarchyIndentEm(b.prefix || b.primaryText || '');
           const primaryText = b.primaryHtml || this.formatInlineBlanks(this.escapeHtml(b.primaryText || ''), clause);
           const secondaryText = b.secondaryHtml || this.formatInlineBlanks(this.escapeHtml(b.secondaryText || ''), clause);
 
           return `
-          <div class="bilingual-pair mb-2.5" data-block-id="${b.id || blockIdx}">
+          <div class="bilingual-pair mb-2.5" data-block-id="${b.id || blockIdx}" style="${indent > 0 ? `padding-left: ${indent}em; ` : ''}line-height: 1.7;">
             <div class="lang-primary text-sm leading-relaxed text-[#202833] flex items-start gap-2">
               ${b.prefix ? `<span class="font-mono text-xs text-[#667085] font-semibold shrink-0 select-none">${this.escapeHtml(b.prefix)}</span>` : ''}
               <div class="flex-1 select-text">${primaryText}</div>
@@ -237,9 +239,10 @@ export class ContractReviewHtmlDocumentRenderer {
 
         // 5. List Item Block
         if (b.type === 'list_item') {
+          const indent = getLegalHierarchyIndentEm(b.prefix || b.primaryText || '');
           const content = b.primaryHtml || this.formatInlineBlanks(this.escapeHtml(b.primaryText || ''), clause);
           return `
-          <div class="list-item flex items-start gap-2 mb-1.5 pl-2">
+          <div class="list-item flex items-start gap-2 mb-2" style="padding-left: ${Math.max(0.5, indent)}em; line-height: 1.7;">
             ${
               b.prefix
                 ? `<span class="font-mono text-xs font-semibold text-[#667085] shrink-0 select-none">${this.escapeHtml(b.prefix)}</span>`
@@ -253,9 +256,10 @@ export class ContractReviewHtmlDocumentRenderer {
         }
 
         // 6. Standard Paragraph Block
+        const indent = getLegalHierarchyIndentEm(b.prefix || b.primaryText || '');
         const pContent = b.primaryHtml || this.formatInlineBlanks(this.escapeHtml(b.primaryText || ''), clause);
         return `
-        <p class="paragraph mb-2 text-sm leading-relaxed text-[#202833] select-text ${b.alignment === 'center' ? 'text-center font-bold' : ''} ${b.isBold ? 'font-semibold' : ''}">
+        <p class="paragraph mb-2 text-sm leading-relaxed text-[#202833] select-text ${b.alignment === 'center' ? 'text-center font-bold' : ''} ${b.isBold ? 'font-semibold' : ''}" style="${indent > 0 ? `padding-left: ${indent}em; ` : ''}line-height: 1.7;">
           ${b.prefix ? `<span class="font-mono text-xs font-semibold text-[#667085] mr-1.5 select-none">${this.escapeHtml(b.prefix)}</span>` : ''}${pContent}
         </p>
         `;
@@ -264,13 +268,38 @@ export class ContractReviewHtmlDocumentRenderer {
   }
 
   private renderParagraphText(text: string, clause: ClauseReviewItem): string {
-    const paragraphs = (text || '').split(/\n\n+/);
-    return paragraphs
+    const rawParagraphs = (text || '').split(/\n\n+/);
+    return rawParagraphs
       .map((p) => {
         const trimmed = p.trim();
         if (!trimmed) return '';
-        const formatted = this.formatInlineBlanks(this.escapeHtml(trimmed), clause);
-        return `<p class="paragraph mb-2.5 text-sm leading-relaxed text-[#202833] select-text">${formatted}</p>`;
+        const lines = trimmed.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+        const mergedItems: string[] = [];
+        let currentItem = '';
+
+        for (const line of lines) {
+          const isItemStart = /^(\d+(?:\.\d+)+|[（\(](?:[0-9一二三四五六七八九十a-zA-Z]+)[）\)]|[一二三四五六七八九十]+[、\.]|[0-9a-zA-Z][)）\.、]|#{1,6}\s+|[-—_*]{3,})/.test(line);
+          if (isItemStart || !currentItem) {
+            if (currentItem) mergedItems.push(currentItem);
+            currentItem = line;
+          } else {
+            const prevChar = currentItem.slice(-1);
+            const nextChar = line.slice(0, 1);
+            const isCjk = /[\u4e00-\u9fa5\u3040-\u30ff]/.test(prevChar) || /[\u4e00-\u9fa5\u3040-\u30ff]/.test(nextChar);
+            currentItem += (isCjk ? '' : ' ') + line;
+          }
+        }
+        if (currentItem) mergedItems.push(currentItem);
+
+        const formattedLines = mergedItems.map((item) => {
+          const indent = getLegalHierarchyIndentEm(item);
+          const formatted = this.formatInlineBlanks(this.escapeHtml(item), clause);
+          if (indent > 0) {
+            return `<div class="clause-hierarchical-line" style="padding-left: ${indent}em; margin-bottom: 0.375rem; line-height: 1.7;">${formatted}</div>`;
+          }
+          return `<div class="clause-hierarchical-line" style="margin-bottom: 0.375rem; line-height: 1.7;">${formatted}</div>`;
+        });
+        return `<div class="paragraph mb-2.5 text-sm leading-relaxed text-[#202833] select-text">${formattedLines.join('')}</div>`;
       })
       .join('\n');
   }
@@ -282,8 +311,11 @@ export class ContractReviewHtmlDocumentRenderer {
   private formatInlineBlanks(escapedText: string, clause: ClauseReviewItem): string {
     if (!escapedText) return '';
 
+    // 防御性清理可能残留的双重转义字符实体（如 &amp;#160; 或 &#160;），替换为标准 HTML 不换行空格
+    const sanitizedText = escapedText.replace(/&amp;#160;|&amp;nbsp;|&#160;|&nbsp;/g, '&nbsp;');
+
     // 1. Highlight blanks: consecutive underlines, empty brackets, or unfilled markers
-    let formatted = escapedText.replace(
+    let formatted = sanitizedText.replace(
       /([_＿]{2,}|\[[_＿\s]+\]|\[待填[^\]]*\]|&lt;待填[^&]*&gt;|\{[^}]+\})/g,
       '<span class="inline-blank px-1 py-0.2 bg-[#FEF3C7] text-[#9A6700] border-b border-[#F59E0B] rounded-xs font-mono text-xs font-semibold select-all" title="待填报要素/空白">$1</span>'
     );

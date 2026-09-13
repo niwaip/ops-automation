@@ -87,6 +87,25 @@ const summarizeHints = (runtimeMetadata?: SkillRuntimeMetadata, limit = 12): str
     hints.push(fallbackStrategy ? `${parameter} -> 缺失时：${fallbackStrategy}` : parameter);
   });
 
+  const workflowInputPolicy = runtimeMetadata?.workflowInputPolicy as
+    | { params?: Record<string, { defaultValue?: unknown }> }
+    | undefined;
+  if (workflowInputPolicy?.params && typeof workflowInputPolicy.params === 'object') {
+    for (const [paramName, policy] of Object.entries(workflowInputPolicy.params)) {
+      if (
+        policy &&
+        policy.defaultValue !== undefined &&
+        policy.defaultValue !== null &&
+        policy.defaultValue !== '' &&
+        policy.defaultValue !== 0
+      ) {
+        hints.push(
+          `${paramName} -> 预设默认值：${JSON.stringify(policy.defaultValue)}（若用户未显式修改则使用该预设，若涉及我方主体则表明该角色为本方）`
+        );
+      }
+    }
+  }
+
   return hints;
 };
 

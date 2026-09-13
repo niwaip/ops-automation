@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Form, Select, Input, Button, message } from 'antd';
 import { DEPLOY_ENV_OPTIONS, type DeploymentEnvironment } from '../utils/capabilitiesHelpers';
 import {
+  buildDefaultSmokeTestInput,
   DeploymentSmokeInputEditor,
   findMissingRequiredSmokeFields,
 } from './DeploymentSmokeInputEditor';
@@ -30,8 +31,18 @@ export const CapabilityDeployModal: React.FC<CapabilityDeployModalProps> = ({
   const [smokeInputDraft, setSmokeInputDraft] = useState('{}');
 
   useEffect(() => {
-    if (!visible) setSmokeInputDraft('{}');
-  }, [visible]);
+    if (!visible) {
+      setSmokeInputDraft('{}');
+    } else if (sourcePayload) {
+      const defaults = buildDefaultSmokeTestInput(
+        sourcePayload,
+        form.getFieldValue('environment') || 'staging'
+      );
+      if (Object.keys(defaults).length > 0) {
+        setSmokeInputDraft(JSON.stringify(defaults, null, 2));
+      }
+    }
+  }, [visible, sourcePayload, form]);
 
   const handleFinish = (values: any) => {
     let configOverrides: Record<string, unknown> | undefined;
@@ -51,7 +62,19 @@ export const CapabilityDeployModal: React.FC<CapabilityDeployModalProps> = ({
         return;
       }
     }
-    const missingFields = findMissingRequiredSmokeFields(sourcePayload, smokeTestInput);
+    const defaultSmokeInput = buildDefaultSmokeTestInput(
+      sourcePayload,
+      values.environment || 'staging'
+    );
+    const effectiveSmokeInput = {
+      ...defaultSmokeInput,
+      ...(smokeTestInput || {}),
+    };
+    const missingFields = findMissingRequiredSmokeFields(
+      sourcePayload,
+      effectiveSmokeInput,
+      values.environment
+    );
     if (missingFields.length > 0) {
       message.error(`请填写必填验证参数：${missingFields.join('、')}`);
       return;
@@ -60,7 +83,7 @@ export const CapabilityDeployModal: React.FC<CapabilityDeployModalProps> = ({
       environment: values.environment,
       strategy: values.strategy,
       configOverrides,
-      smokeTestInput,
+      smokeTestInput: effectiveSmokeInput,
     });
   };
 
@@ -100,6 +123,7 @@ export const CapabilityDeployModal: React.FC<CapabilityDeployModalProps> = ({
         <Form.Item label="部署后验证输入（一次性）">
           <DeploymentSmokeInputEditor
             sourcePayload={sourcePayload}
+            environment={form.getFieldValue('environment') || 'staging'}
             draft={smokeInputDraft}
             onChange={setSmokeInputDraft}
           />

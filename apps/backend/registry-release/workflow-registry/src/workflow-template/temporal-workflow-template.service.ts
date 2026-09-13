@@ -103,23 +103,41 @@ export class TemporalWorkflowTemplateService {
       templateAssetManifest,
       paramSeeds.length
     );
-    const inputParamsArray = paramSeeds.map((param) => ({
-      key: param.key,
-      value: '',
-      required: param.required,
-    }));
+    const inputParamsArray = paramSeeds.map((param) => {
+      const defaultValue = param.defaultValue ?? param.exampleValue;
+      return {
+        key: param.key,
+        value: defaultValue != null && defaultValue !== '' ? String(defaultValue) : '',
+        required: param.required,
+      };
+    });
     const inputParams = paramSeeds.reduce<Record<string, WorkflowInputParamDefinition>>(
       (acc, item) => {
         const renderPath = normalizeWorkflowInputRenderPath(item.renderPath);
+        const rawDefaultValue = item.defaultValue ?? item.exampleValue;
+        let resolvedDefaultValue: string | number | boolean = '';
+        if (rawDefaultValue !== undefined && rawDefaultValue !== null && rawDefaultValue !== '') {
+          if (item.type === 'number' || item.type === 'integer') {
+            const parsed = Number(rawDefaultValue);
+            resolvedDefaultValue = Number.isFinite(parsed) ? parsed : rawDefaultValue;
+          } else if (item.type === 'boolean') {
+            resolvedDefaultValue =
+              typeof rawDefaultValue === 'boolean'
+                ? rawDefaultValue
+                : String(rawDefaultValue).toLowerCase() === 'true';
+          } else {
+            resolvedDefaultValue = String(rawDefaultValue);
+          }
+        }
         acc[item.key] = {
           required: item.required,
-          defaultValue: '',
+          defaultValue: resolvedDefaultValue,
           localizedDefaultValue: undefined,
           localizedVariants: item.localizedVariants,
           description: analysis.inputParamDescriptions?.[item.key]?.trim() || item.description,
           source: 'inferred_from_template',
           type: item.type,
-          exampleValue: item.exampleValue,
+          exampleValue: item.exampleValue ?? item.defaultValue,
           displayName: item.displayName,
           groupLabel: item.groupLabel,
           paramKind: item.paramKind,

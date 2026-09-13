@@ -276,11 +276,15 @@ export class ContractHtmlRendererService {
           `
           : '<div class="pl-3 bg-slate-50/50 rounded flex items-center justify-center text-slate-400 italic text-xs p-4">[ 修订版中该条款已被删除 ]</div>';
 
+        const isUnchanged =
+          pair.status === 'UNCHANGED' ||
+          (pair.similarity >= 0.999 && !pair.diffTokens?.some((t) => t.type !== 'equal'));
+
         return `
           <div id="sec-${idx + 1}" class="clause-card bg-white border border-[#E2E8F0] rounded-lg overflow-hidden transition" data-status="${pair.status.toLowerCase()}" data-risk="${riskDataAttr}">
             <div class="bg-[#F8FAFC] px-3.5 py-2.5 border-b border-[#E2E8F0] flex items-center justify-between text-xs cursor-pointer select-none hover:bg-slate-100/60 transition" onclick="toggleClause('sec-${idx + 1}')">
               <div class="flex items-center space-x-2">
-                <span id="chevron-sec-${idx + 1}" class="text-slate-400 inline-block transform transition-transform duration-200">${ICONS.chevronDown}</span>
+                <span id="chevron-sec-${idx + 1}" class="text-slate-400 inline-block transform transition-transform duration-200" style="${isUnchanged ? 'transform: rotate(-90deg);' : ''}">${ICONS.chevronDown}</span>
                 <span class="text-[17px] font-semibold text-[#243041] tracking-tight">${num ? `${num} ` : ''}${title}</span>
                 ${statusTag}
                 ${riskBadge}
@@ -290,7 +294,7 @@ export class ContractHtmlRendererService {
                 <span class="text-xs text-[#315A7D] font-medium hover:underline">折叠/展开</span>
               </div>
             </div>
-            <div id="content-sec-${idx + 1}" class="clause-content">
+            <div id="content-sec-${idx + 1}" class="clause-content" style="${isUnchanged ? 'display: none;' : ''}">
               ${aiCard}
               <div class="grid grid-cols-2 gap-3 p-3.5 text-[#243041] bg-white">
                 ${leftColumnHtml}
@@ -312,7 +316,9 @@ export class ContractHtmlRendererService {
   <style>
     @media print {
       .no-print { display: none !important; }
+      .clause-content { display: block !important; }
       body { background: #fff !important; color: #000 !important; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.03); }
@@ -382,13 +388,13 @@ export class ContractHtmlRendererService {
         <span id="filter-counter" class="text-xs font-semibold text-[#315A7D] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md" style="display: none;"></span>
 
         <button onclick="toggleAllClauses()" id="btn-toggle-all" class="px-2.5 py-1 text-slate-600 hover:text-[#243041] bg-slate-100 hover:bg-slate-200 rounded-md text-xs font-medium transition border border-slate-200" title="一键收起/展开全部条款正文">
-          <span id="label-toggle-all">收起全部条款</span>
+          <span id="label-toggle-all">${metrics.unchangedCount > 0 ? '展开全部条款' : '收起全部条款'}</span>
         </button>
 
         <button onclick="toggleFullscreen()" class="p-1.5 text-slate-600 hover:text-[#243041] hover:bg-slate-100 rounded-md transition" title="全屏查看">
           ${ICONS.fullscreen}
         </button>
-        <button onclick="window.print()" class="px-2.5 py-1 bg-[#315A7D] hover:bg-[#284966] text-white text-xs font-medium rounded-md transition flex items-center space-x-1">
+        <button onclick="printReport()" class="px-2.5 py-1 bg-[#315A7D] hover:bg-[#284966] text-white text-xs font-medium rounded-md transition flex items-center space-x-1" title="调用系统打印或另存为 PDF 报告">
           ${ICONS.print}
           <span class="hidden sm:inline">打印报告</span>
         </button>
@@ -529,13 +535,39 @@ export class ContractHtmlRendererService {
     }
 
     function toggleAllClauses() {
-      allCollapsed = !allCollapsed;
       const contents = document.querySelectorAll('.clause-content');
       const chevrons = document.querySelectorAll('[id^="chevron-sec-"]');
-      contents.forEach(c => c.style.display = allCollapsed ? 'none' : '');
-      chevrons.forEach(ch => ch.style.transform = allCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)');
+      const hasHidden = Array.from(contents).some(c => c.style.display === 'none');
+      const shouldExpand = hasHidden;
+      contents.forEach(c => { c.style.display = shouldExpand ? '' : 'none'; });
+      chevrons.forEach(ch => { ch.style.transform = shouldExpand ? 'rotate(0deg)' : 'rotate(-90deg)'; });
       const label = document.getElementById('label-toggle-all');
-      if (label) label.textContent = allCollapsed ? '展开全部条款' : '收起全部条款';
+      if (label) label.textContent = shouldExpand ? '收起全部条款' : '展开全部条款';
+    }
+
+    function printReport() {
+      try {
+        window.focus();
+        window.print();
+      } catch (err) {
+        console.warn('Direct print failed, attempting fallback:', err);
+        try {
+          const printWin = window.open('', '_blank');
+          if (printWin) {
+            printWin.document.open();
+            printWin.document.write(document.documentElement.outerHTML);
+            printWin.document.close();
+            printWin.focus();
+            setTimeout(() => {
+              try { printWin.print(); } catch (e) {}
+            }, 350);
+          } else {
+            alert('打印受宿主安全策略限制，请点击右上角【新窗口】打开后再尝试打印或另存为 PDF。');
+          }
+        } catch (e2) {
+          alert('打印受宿主安全策略限制，请点击右上角【新窗口】打开后再尝试打印或另存为 PDF。');
+        }
+      }
     }
 
     function jumpToClause(secId) {

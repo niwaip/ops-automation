@@ -1,15 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { Form, message } from 'antd';
 import { useSearchParams } from 'react-router-dom';
-import type { CapabilitySourceType } from '@/api/capabilities';
+import type { CapabilitySourceType, CapabilityRelease } from '@/api/capabilities';
 import { ListSectionHeader } from '@/components/page/PageScaffold';
 import { CreateCapabilityReleaseWizardModal } from './Capabilities/CreateCapabilityReleaseWizardModal';
 import { CapabilityDetailDrawer } from './Capabilities/CapabilityDetailDrawer';
 import {
-  getNextStepHint,
   getSourceTypeLabel,
   statusColor,
   buildBrowserRecordingSourcePayload,
+  resolvePipelineInfo,
   SOURCE_TYPE_OPTIONS,
   DEPLOY_ENV_OPTIONS,
 } from './Capabilities/utils/capabilitiesHelpers';
@@ -19,7 +19,10 @@ import { CapabilityListTable } from './Capabilities/components/CapabilityListTab
 import { CapabilityDeployModal } from './Capabilities/components/CapabilityDeployModal';
 import { CapabilityOverviewCards, CapabilityQuickTab } from './Capabilities/components/CapabilityOverviewCards';
 import { CapabilityFilterToolbar } from './Capabilities/components/CapabilityFilterToolbar';
-import { findMissingRequiredSmokeFields } from './Capabilities/components/DeploymentSmokeInputEditor';
+import {
+  buildDefaultSmokeTestInput,
+  findMissingRequiredSmokeFields,
+} from './Capabilities/components/DeploymentSmokeInputEditor';
 
 export interface CapabilitiesPageProps {
   mode?: 'manager' | 'studio';
@@ -63,37 +66,18 @@ export const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'mana
   const filteredReleases = useMemo(() => {
     let list = [...releases];
 
-    // 1. 快捷分段工作流筛选
-    if (activeQuickTab === 'deployed') {
-      list = list.filter(
-        (r) =>
-          r.deploymentStatus === 'deployed' ||
-          r.deploymentStatus === 'succeeded' ||
-          r.status === 'published' ||
-          r.status === 'deployed' ||
-          Boolean(r.publishedSkillId)
-      );
-    } else if (activeQuickTab === 'pending') {
-      list = list.filter(
-        (r) =>
-          r.approvalStatus === 'pending_approval' ||
-          r.status === 'draft' ||
-          r.status === 'draft_ready' ||
-          r.approvalStatus === 'pending'
-      );
+    // 1. 快捷分段流水线筛选
+    if (activeQuickTab === 'pending_deploy') {
+      list = list.filter((r) => {
+        const info = resolvePipelineInfo(r);
+        return info.stage === 'configured' || info.stage === 'deploying';
+      });
+    } else if (activeQuickTab === 'pending_publish') {
+      list = list.filter((r) => resolvePipelineInfo(r).stage === 'deployed_pending');
+    } else if (activeQuickTab === 'published') {
+      list = list.filter((r) => resolvePipelineInfo(r).stage === 'published');
     } else if (activeQuickTab === 'failed') {
-      list = list.filter(
-        (r) =>
-          r.status === 'build_failed' ||
-          r.status === 'validation_failed' ||
-          r.status === 'deploy_failed' ||
-          r.deploymentStatus === 'deploy_failed' ||
-          r.deploymentStatus === 'failed'
-      );
-    } else if (activeQuickTab === 'browser') {
-      list = list.filter((r) => r.sourceType === 'browser_recording');
-    } else if (activeQuickTab === 'temporal') {
-      list = list.filter((r) => r.sourceType === 'temporal_workflow');
+      list = list.filter((r) => resolvePipelineInfo(r).stage === 'failed');
     }
 
     // 2. 源类型下拉筛选
@@ -105,13 +89,15 @@ export const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'mana
     if (state.searchText.trim()) {
       const keyword = state.searchText.toLowerCase().trim();
       list = list.filter((release) => {
-        const nextStepHint = getNextStepHint(release);
+        const pipelineInfo = resolvePipelineInfo(release);
         return (
           release.id.toLowerCase().includes(keyword) ||
           String(release.sourceName || '').toLowerCase().includes(keyword) ||
           release.sourceType.toLowerCase().includes(keyword) ||
           release.status.toLowerCase().includes(keyword) ||
-          nextStepHint.label.toLowerCase().includes(keyword)
+          pipelineInfo.stepTitle.toLowerCase().includes(keyword) ||
+          pipelineInfo.badgeText.toLowerCase().includes(keyword) ||
+          pipelineInfo.actionPrompt.toLowerCase().includes(keyword)
         );
       });
     }
@@ -187,6 +173,18 @@ export const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'mana
     setSearchParams({ releaseId: id, mode: drawerMode });
   };
 
+  const handleOpenWizardForRelease = (record: CapabilityRelease, step?: number) => {
+    const info = resolvePipelineInfo(record);
+    const targetStep = step !== undefined ? step : info.primaryAction.stepTarget;
+
+    state.setWizardReleaseId(record.id);
+    state.setCreateWizardStep(targetStep);
+    if (targetStep === 1) {
+      state.setDeploySmokeInputDraft('{}');
+    }
+    state.setCreateVisible(true);
+  };
+
   const handleCreateSubmit = async (values: any) => {
     if (values.sourceType === 'browser_recording') {
       const sourceWorkflow = temporalWorkflowMap.get(values.sourceId);
@@ -240,6 +238,7 @@ export const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'mana
         filteredReleases={filteredReleases}
         isLoading={mutations.releasesQuery.isLoading}
         onSelectRelease={handleSelectRelease}
+        onOpenWizard={handleOpenWizardForRelease}
         onOpenDeployModal={(id) => {
           state.setDeployTargetReleaseId(id);
           state.setDeployVisible(true);
@@ -295,9 +294,20 @@ export const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'mana
             }
             const wizardSourcePayload =
               mutations.wizardDetailQuery.data?.release?.currentSourceSnapshot?.sourcePayload;
+
+            const defaultSmokeInput = buildDefaultSmokeTestInput(
+              wizardSourcePayload,
+              state.deployEnvironment
+            );
+            const effectiveSmokeInput = {
+              ...defaultSmokeInput,
+              ...(smokeTestInput || {}),
+            };
+
             const missingFields = findMissingRequiredSmokeFields(
               wizardSourcePayload,
-              smokeTestInput
+              effectiveSmokeInput,
+              state.deployEnvironment
             );
             if (missingFields.length > 0) {
               message.error(`请填写必填验证参数：${missingFields.join('、')}`);
@@ -307,7 +317,7 @@ export const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'mana
               id: state.wizardReleaseId,
               environment: state.deployEnvironment,
               strategy: state.deployStrategy,
-              smokeTestInput,
+              smokeTestInput: effectiveSmokeInput,
             });
           }
         }}
@@ -327,7 +337,34 @@ export const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'mana
         realValidateMutationLoading={mutations.realValidateMutation.isLoading}
         handleWizardValidate={() => {
           if (state.wizardReleaseId) {
-            mutations.realValidateMutation.mutate({ id: state.wizardReleaseId });
+            let smokeTestInput: Record<string, unknown> | undefined;
+            try {
+              smokeTestInput = JSON.parse(state.deploySmokeInputDraft || '{}');
+            } catch {
+              // ignore
+            }
+            const wizardSourcePayload =
+              mutations.wizardDetailQuery.data?.release?.currentSourceSnapshot?.sourcePayload;
+
+            const defaultSmokeInput = buildDefaultSmokeTestInput(
+              wizardSourcePayload,
+              state.deployEnvironment
+            );
+            const effectiveSmokeInput = {
+              ...defaultSmokeInput,
+              ...(smokeTestInput || {}),
+            };
+
+            const naturalCases = state.wizardValidationCasesDraft
+              ?.split('\n')
+              .map((c) => c.trim())
+              .filter(Boolean);
+
+            mutations.realValidateMutation.mutate({
+              id: state.wizardReleaseId,
+              input: effectiveSmokeInput,
+              testCases: naturalCases && naturalCases.length > 0 ? naturalCases : undefined,
+            });
           }
         }}
       />

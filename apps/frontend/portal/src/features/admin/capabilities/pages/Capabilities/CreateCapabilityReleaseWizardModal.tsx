@@ -1,9 +1,10 @@
-import React from 'react';
-import { Modal, Space, Alert, Steps, Card, Form, Select, Button, Descriptions, Input } from 'antd';
+import React, { useMemo } from 'react';
+import { Modal, Space, Alert, Steps, Card, Form, Select, Button, Descriptions, Input, Collapse, Typography } from 'antd';
 import { CapabilityReleaseDetail } from '@/api/capabilities';
 import { DeploymentSmokeInputEditor } from './components/DeploymentSmokeInputEditor';
 
 const { TextArea } = Input;
+const { Text, Paragraph } = Typography;
 
 export interface CreateCapabilityReleaseWizardModalProps {
   visible: boolean;
@@ -80,6 +81,24 @@ export const CreateCapabilityReleaseWizardModal: React.FC<CreateCapabilityReleas
   realValidateMutationLoading,
   handleWizardValidate,
 }) => {
+  const latestValidation = wizardDetail?.validations?.[0];
+
+  const artifacts: any[] = useMemo(() => {
+    if (!latestValidation?.resultSnapshot) return [];
+    const snap = latestValidation.resultSnapshot as any;
+    if (Array.isArray(snap.artifacts)) return snap.artifacts;
+    if (Array.isArray(snap.result?.artifacts)) return snap.result.artifacts;
+    if (snap.result?.businessData?.result?.downloadUrl) {
+      return [
+        {
+          name: snap.result.businessData.result.fileName || '已生成文档工件',
+          downloadUrl: snap.result.businessData.result.downloadUrl,
+        },
+      ];
+    }
+    return [];
+  }, [latestValidation]);
+
   return (
     <Modal title="创建流程发布向导" open={visible} onCancel={onCancel} footer={null} width={960}>
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -200,6 +219,7 @@ export const CreateCapabilityReleaseWizardModal: React.FC<CreateCapabilityReleas
               <div style={{ marginTop: 12 }}>
                 <DeploymentSmokeInputEditor
                   sourcePayload={wizardDetail?.currentSourceSnapshot?.sourcePayload}
+                  environment={deployEnvironment}
                   draft={deploySmokeInputDraft}
                   onChange={setDeploySmokeInputDraft}
                 />
@@ -241,18 +261,104 @@ export const CreateCapabilityReleaseWizardModal: React.FC<CreateCapabilityReleas
 
         {createWizardStep === 3 && (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            <Card size="small" title="真实校验" style={{ borderRadius: 12 }}>
-              <TextArea
-                rows={4}
-                value={wizardValidationCasesDraft}
-                onChange={(e) => setWizardValidationCasesDraft(e.target.value)}
-                placeholder="自然语言测试用例（每行一条）"
+            {latestValidation && (
+              <Alert
+                type={latestValidation.success ? 'success' : 'error'}
+                showIcon
+                message={
+                  latestValidation.success
+                    ? `真实校验通过（得分：${latestValidation.score} 分）`
+                    : `真实校验未通过（得分：${latestValidation.score} 分）`
+                }
+                description={
+                  <div>
+                    {latestValidation.success ? (
+                      <div>
+                        <div>工作流端到端执行完成，结果符合预期。</div>
+                        {artifacts.length > 0 && (
+                          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <Text strong>产出文档工件：</Text>
+                            {artifacts.map((art, idx) => (
+                              <Button
+                                key={idx}
+                                type="primary"
+                                size="small"
+                                href={art.downloadUrl}
+                                target="_blank"
+                              >
+                                📥 下载 {art.name || art.label || '文档工件'}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#cf1322', marginBottom: 6 }}>
+                          {latestValidation.errorSummary || '校验执行发生异常'}
+                        </div>
+                        {latestValidation.logs && latestValidation.logs.length > 0 && (
+                          <div
+                            style={{
+                              maxHeight: 140,
+                              overflowY: 'auto',
+                              background: 'rgba(0, 0, 0, 0.04)',
+                              padding: '6px 10px',
+                              borderRadius: 4,
+                              fontFamily: 'monospace',
+                              fontSize: 12,
+                            }}
+                          >
+                            {latestValidation.logs.map((log, idx) => (
+                              <div key={idx}>{log}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                }
+              />
+            )}
+
+            <Card size="small" title="端到端真实校验参数" style={{ borderRadius: 12 }}>
+              <Paragraph type="secondary" style={{ fontSize: 13, marginBottom: 12 }}>
+                系统将使用已配置的业务输入参数向运行环境发起真实调用，检验完整业务逻辑并渲染目标结果。
+              </Paragraph>
+              <DeploymentSmokeInputEditor
+                sourcePayload={wizardDetail?.currentSourceSnapshot?.sourcePayload}
+                environment={deployEnvironment}
+                draft={deploySmokeInputDraft}
+                onChange={setDeploySmokeInputDraft}
               />
             </Card>
+
+            <Collapse
+              ghost
+              items={[
+                {
+                  key: 'nl',
+                  label: '可选：通过自然语言用例驱动智能体验证 (Prompt Driven)',
+                  children: (
+                    <TextArea
+                      rows={3}
+                      value={wizardValidationCasesDraft}
+                      onChange={(e) => setWizardValidationCasesDraft(e.target.value)}
+                      placeholder="例如：为甲方公司生成一份保密期限为3年的保密协议（每行一条）"
+                    />
+                  ),
+                },
+              ]}
+            />
+
             <Space style={{ justifyContent: 'space-between', width: '100%' }}>
               <Button onClick={onCancel}>完成并关闭</Button>
-              <Button type="primary" loading={realValidateMutationLoading} onClick={handleWizardValidate}>
-                开始真实校验
+              <Button
+                type="primary"
+                loading={realValidateMutationLoading}
+                onClick={handleWizardValidate}
+              >
+                {latestValidation?.success ? '重新开始真实校验' : '开始真实校验'}
               </Button>
             </Space>
           </Space>

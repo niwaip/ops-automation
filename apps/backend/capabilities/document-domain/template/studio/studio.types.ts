@@ -23,6 +23,8 @@ export interface TemplateResponse {
   elementGroups?: Record<string, number[]>;
   ignoredGroups?: string[];
   savedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
   templateConfig?: any;
   configSavedAt?: string;
   skillId?: string;

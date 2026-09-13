@@ -356,4 +356,39 @@ describe('ModelService provider credential reuse', () => {
     expect(matching.find((c) => c.id === local1.id)?.name).toBe('oMLX 27B Mini');
     expect(matching.find((c) => c.id === local2.id)?.name).toBe('LM Studio 本地');
   });
+
+  it('correctly resolves default OCR model with fallback to global default', async () => {
+    // 1. Create a global default model
+    const globalModel = await service.createModel({
+      name: 'general-vision-model',
+      provider: 'openai',
+      api_endpoint: 'https://api.openai.com/v1',
+      api_key: 'sk-test-key-1',
+      config: {
+        default: true,
+        default_scope: { global: true, ocr: false },
+      },
+    });
+
+    // When no OCR scoped model exists, mode 'ocr' resolves to global default
+    const resolvedDefault = service.getPreferredDefaultModel({ mode: 'ocr' });
+    expect(resolvedDefault?.id).toBe(globalModel.id);
+
+    // 2. Create an explicit OCR model
+    const ocrModel = await service.createModel({
+      name: 'specialized-ocr-model',
+      provider: 'openai',
+      api_endpoint: 'https://api.openai.com/v1',
+      api_key: 'sk-test-key-2',
+      config: {
+        default: false,
+        default_scope: { global: false, ocr: true },
+      },
+    });
+
+    // Now mode 'ocr' resolves to the specialized OCR model
+    const resolvedOcr = service.getPreferredDefaultModel({ mode: 'ocr' });
+    expect(resolvedOcr?.id).toBe(ocrModel.id);
+  });
 });
+

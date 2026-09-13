@@ -12,7 +12,15 @@ export function listStudioTemplateMetasFromFiles(templatesDir: string): Template
 
   for (const file of files) {
     if (file.endsWith('.json') && !file.startsWith('skill_')) {
-      const meta = JSON.parse(fs.readFileSync(path.join(templatesDir, file), 'utf-8'));
+      const filePath = path.join(templatesDir, file);
+      const meta = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      try {
+        const stat = fs.statSync(filePath);
+        meta.createdAt = meta.createdAt || stat.birthtime?.toISOString() || stat.ctime?.toISOString();
+        meta.updatedAt = meta.updatedAt || meta.savedAt || stat.mtime?.toISOString();
+      } catch {
+        // ignore fs stat error
+      }
       templates.push(meta);
     }
   }
@@ -51,6 +59,8 @@ export async function getStudioTemplateMetaWithDbFallback(
       rawSuggestions: dbMeta.rawSuggestions ?? fileMeta.rawSuggestions,
       savedAt: dbMeta.savedAt || fileMeta.savedAt,
       verifyResult: dbMeta.verifyResult ?? fileMeta.verifyResult,
+      createdAt: dbMeta.createdAt || fileMeta.createdAt,
+      updatedAt: dbMeta.updatedAt || fileMeta.updatedAt || dbMeta.savedAt || fileMeta.savedAt,
     };
   } catch {
     return dbMeta;

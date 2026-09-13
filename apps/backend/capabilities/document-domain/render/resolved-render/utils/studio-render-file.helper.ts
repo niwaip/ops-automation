@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, StreamableFile } from '@nestjs/common';
 import type { Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
+import { sanitizeOpenXmlPackageBuffer } from '../../../template/lib/file';
 
 type FilePreviewService = {
   generatePreview: (
@@ -27,7 +28,7 @@ export function getStudioRenderContentType(format: string): string {
   }
 }
 
-export function streamStoredRenderFile(input: {
+export async function streamStoredRenderFile(input: {
   id: string;
   metaDir: string;
   fileDir: string;
@@ -36,7 +37,7 @@ export function streamStoredRenderFile(input: {
   missingMetaMessage: string;
   missingFileMessage: string;
   getContentType: (format: string) => string;
-}): StreamableFile {
+}): Promise<void> {
   const metaPath = path.join(input.metaDir, `${input.id}.json`);
   if (!fs.existsSync(metaPath)) {
     throw new HttpException(input.missingMetaMessage, HttpStatus.NOT_FOUND);
@@ -55,7 +56,26 @@ export function streamStoredRenderFile(input: {
     `${input.disposition}; filename*=UTF-8''${encodedFileName}`
   );
 
-  return new StreamableFile(fs.createReadStream(filePath));
+  const formatLower = String(meta.format || '').toLowerCase();
+  if (['docx', 'xlsx', 'pptx'].includes(formatLower)) {
+    let buffer = fs.readFileSync(filePath);
+    if (buffer.includes(Buffer.from('webextension'))) {
+      buffer = Buffer.from(await sanitizeOpenXmlPackageBuffer(buffer, formatLower));
+      try {
+        fs.writeFileSync(filePath, buffer);
+      } catch (err) {
+        console.warn('Failed to heal file on disk:', err);
+      }
+    }
+    input.res.setHeader('Content-Length', buffer.length);
+    input.res.end(buffer);
+    return;
+  }
+
+  const fileStat = fs.statSync(filePath);
+  input.res.setHeader('Content-Length', fileStat.size);
+  const stream = fs.createReadStream(filePath);
+  stream.pipe(input.res);
 }
 
 export async function loadTemplateHtmlPreview(input: {

@@ -17,5 +17,9 @@ export const getAiOrchestratorUrl = (): string => {
     return configured;
   }
 
-  return isContainerRuntime() ? 'http://ai-orchestrator:3007' : 'http://localhost:3007';
+  const host =
+    process.env.AI_ORCHESTRATOR_HOST?.trim() ||
+    (isContainerRuntime() ? 'ai-orchestrator' : 'localhost');
+  const port = process.env.AI_ORCHESTRATOR_PORT?.trim() || '3007';
+  return `http://${host}:${port}`;
 };

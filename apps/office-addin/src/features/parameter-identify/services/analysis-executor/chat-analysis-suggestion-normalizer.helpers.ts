@@ -286,6 +286,76 @@ function buildFallbackSuggestedNameWithArrayPath(
   return fallbackLeaf.startsWith('d.') ? fallbackLeaf : `d.${fallbackLeaf}`;
 }
 
+function sanitizeChatSampleValue(
+  rawSampleValue: string | undefined,
+  originalText: string | undefined,
+  matchedCandidateSample: string | undefined
+): string | undefined {
+  const candidate = (rawSampleValue || '').trim();
+  const cleanOriginal = (originalText || '').trim();
+  const cleanMatched = (matchedCandidateSample || '').trim();
+
+  const hasMultiLabelNoise = (text: string): boolean => {
+    const labelMatches = text.match(/[^\s：:，。；;、\r\n]{1,10}[：:]/gu) || [];
+    return labelMatches.length >= 2;
+  };
+
+  // If candidate sample has multi-label noise (like "地址：... 签字：... 盖章：")
+  if (candidate && hasMultiLabelNoise(candidate)) {
+    if (cleanMatched && !hasMultiLabelNoise(cleanMatched)) {
+      return cleanMatched;
+    }
+    if (
+      cleanOriginal &&
+      !hasMultiLabelNoise(cleanOriginal) &&
+      cleanOriginal !== '无' &&
+      !cleanOriginal.startsWith('[')
+    ) {
+      return cleanOriginal;
+    }
+    const segments = candidate
+      .split(/(?=[^\s：:，。；;、\r\n]{1,10}[：:])/u)
+      .map((s) => s.replace(/^[^\s：:，。；;、\r\n]{1,10}[：:]\s*/u, '').trim())
+      .filter(Boolean);
+    if (segments.length > 0) {
+      const match = cleanOriginal
+        ? segments.find((s) => s.includes(cleanOriginal) || cleanOriginal.includes(s))
+        : undefined;
+      return match || segments[0];
+    }
+  }
+
+  // If candidate sample is empty or punctuation only
+  if (!candidate || /^[-—_~·\s\t\r\n：:，。；;、]+$/.test(candidate)) {
+    if (cleanMatched && !hasMultiLabelNoise(cleanMatched)) {
+      return cleanMatched;
+    }
+    if (
+      cleanOriginal &&
+      !hasMultiLabelNoise(cleanOriginal) &&
+      cleanOriginal !== '无' &&
+      !cleanOriginal.startsWith('[')
+    ) {
+      return cleanOriginal;
+    }
+  }
+
+  return (
+    candidate ||
+    cleanMatched ||
+    (cleanOriginal !== '无' && !cleanOriginal.startsWith('[') ? cleanOriginal : undefined)
+  );
+}
+
+function cleanDescriptionNoise(description: string | undefined): string | undefined {
+  if (!description) {
+    return undefined;
+  }
+  return description
+    .replace(/[（(][^）)]*样本中混入[^）)]*[）)]/gu, '')
+    .trim();
+}
+
 export function normalizeChatSuggestions(
   value: unknown,
   request: StructuredAnalyzeRequest
@@ -391,27 +461,33 @@ export function normalizeChatSuggestions(
       const candidateId =
         normalizeTextValue(details.candidateId) || normalizeTextValue(record.candidateId);
       const matchedCandidate = candidateId ? wordSectionCandidateMap.get(candidateId) : undefined;
-      const sampleValue =
+      const rawOriginalText =
+        normalizeTextValue(record.originalText) ||
+        fallbackValue ||
+        (suggestionType === 'loop' ? arrayPath || 'd.rows' : '');
+      const rawSampleValue =
         normalizeTextValue(details.sampleValue) ||
         getRecordString(record, ['sampleValue', 'sample', '示例值', '样本值']) ||
         normalizeTextValue(matchedCandidate?.sampleValue);
+      const sampleValue = sanitizeChatSampleValue(
+        rawSampleValue,
+        rawOriginalText,
+        normalizeTextValue(matchedCandidate?.sampleValue)
+      );
 
       return {
         id: String(record.id || `chat-suggestion-${index}`),
         type: suggestionType,
         elementPath: normalizeTextValue(record.elementPath) || fallbackAddress || displayPosition,
         suggestedName: normalizedSuggestedName,
-        originalText:
-          normalizeTextValue(record.originalText) ||
-          fallbackValue ||
-          (suggestionType === 'loop' ? arrayPath || 'd.rows' : ''),
+        originalText: rawOriginalText,
         confidence: clampConfidence(record.confidence),
         applied: Boolean(record.applied ?? false),
         context,
         details: {
           source: 'ai',
           description:
-            normalizeTextValue(details.description) ||
+            cleanDescriptionNoise(normalizeTextValue(details.description)) ||
             (request.host === 'excel'
               ? buildExcelFallbackDescription(fallbackLabel, variablePath, suggestionType)
               : buildDetailedFallbackDescription(fallbackLabel, suggestionType)) ||

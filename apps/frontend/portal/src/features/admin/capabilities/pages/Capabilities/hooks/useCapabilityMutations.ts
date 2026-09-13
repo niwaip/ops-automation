@@ -4,6 +4,7 @@ import { capabilityReleaseApi } from '@/api/capabilities';
 import { temporalWorkflowApi } from '@/api/temporal';
 import { executionFlowApi } from '@/api/flows';
 import { skillApi } from '@/api/skill';
+import { buildDefaultSmokeTestInput } from '../components/DeploymentSmokeInputEditor';
 import type { DeploymentEnvironment } from '../utils/capabilitiesHelpers';
 
 export function useCapabilityMutations({
@@ -97,6 +98,13 @@ export function useCapabilityMutations({
     onSuccess: async (result) => {
       message.success('Capability Release 已创建');
       const createdId = result.release.release.id;
+      const sourcePayload = result.release.currentSourceSnapshot?.sourcePayload;
+      if (sourcePayload) {
+        const defaults = buildDefaultSmokeTestInput(sourcePayload, 'staging');
+        if (Object.keys(defaults).length > 0) {
+          setDeploySmokeInputDraft(JSON.stringify(defaults, null, 2));
+        }
+      }
       setWizardReleaseId(createdId);
       setCreateWizardStep(1);
       await refreshQueries(createdId);

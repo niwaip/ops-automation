@@ -369,6 +369,7 @@ export function takeWordRecognitionBatch(options: {
   unsentNormalIds: string[];
   candidateById: Map<string, TemplateFieldCandidate>;
   acceptedIds: Set<string>;
+  batchSize?: number;
 }): TemplateFieldCandidate[] {
   return takeWordRecognitionBatchForRecognition(options);
 }

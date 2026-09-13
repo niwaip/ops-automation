@@ -103,6 +103,44 @@ describe('ContractCompareService Suite', () => {
       expect(art2?.title).toBe('交付周期与延期违约责任');
       expect(art2?.content).toContain('2.1 乙方应于90个工作日');
     });
+
+    it('should decode XML entities like &#160; and format tabs and signing lines without garbling', async () => {
+      const JSZip = require('jszip');
+      const zip = new JSZip();
+      const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:r><w:t>第一条 签署条款</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:r><w:t>甲方：测试公司</w:t></w:r>
+      <w:r><w:tab/></w:r>
+      <w:r><w:t>乙方：服务公司</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:r><w:t>签字：</w:t></w:r>
+      <w:r><w:rPr><w:u w:val="single"/></w:rPr><w:t>&#160;&#160;&#160;&#160;&#160;&#160;</w:t></w:r>
+      <w:r><w:tab/></w:r>
+      <w:r><w:t>签字：</w:t></w:r>
+      <w:r><w:rPr><w:u w:val="single"/></w:rPr><w:t>&#160;&#160;&#160;&#160;&#160;&#160;</w:t></w:r>
+    </w:p>
+  </w:body>
+</w:document>`;
+      zip.file('word/document.xml', documentXml);
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+
+      const clauses = await astParser.parseDocxOpenXml(buffer);
+      expect(clauses.length).toBeGreaterThanOrEqual(1);
+      const signClause = clauses.find((c) => c.content.includes('签字'));
+      expect(signClause).toBeDefined();
+      expect(signClause?.content).not.toContain('&#160;');
+      expect(signClause?.blocks?.[0]?.primaryHtml).not.toContain('&amp;#160;');
+      expect(signClause?.blocks?.[0]?.primaryHtml).not.toContain('&#160;');
+      // Should format tabs with whitespace and signing lines with underline
+      expect(signClause?.content).toContain('甲方：测试公司');
+      expect(signClause?.content).toContain('乙方：服务公司');
+    });
   });
 
   describe('SectionAlignerService', () => {
@@ -226,6 +264,35 @@ describe('ContractCompareService Suite', () => {
         expect(result.htmlReport).toContain('合同文档智能比对与红线审查报告');
         expect(result.summary).toContain('```html');
         expect(result.summary).toContain('### ⚖️ 合同智能差异比对与风险研判完成');
+      }
+    });
+
+    it('should compare real .pdf test files from tests/contract directory', async () => {
+      const fs = require('fs');
+      const path = require('path');
+
+      const pdfPathA = path.resolve(process.cwd(), 'tests/contract/contract_v1_baseline.pdf');
+      const pdfPathB = path.resolve(process.cwd(), 'tests/contract/contract_v2_revised.pdf');
+
+      if (fs.existsSync(pdfPathA) && fs.existsSync(pdfPathB)) {
+        const fileBase64A = fs.readFileSync(pdfPathA).toString('base64');
+        const fileBase64B = fs.readFileSync(pdfPathB).toString('base64');
+
+        const result = await compareService.compareContracts({
+          fileBase64A,
+          fileNameA: 'contract_v1_baseline.pdf',
+          fileBase64B,
+          fileNameB: 'contract_v2_revised.pdf',
+          idempotencyKey: 'pdf-real-fixture-test',
+        });
+
+        expect(result.metrics.totalClauses).toBeGreaterThan(3);
+        expect(result.metrics.modifiedCount).toBeGreaterThan(0);
+        expect(result.metrics.highRiskCount).toBeGreaterThanOrEqual(1);
+        expect(result.artifacts).toHaveLength(1);
+        expect(result.htmlReport).toContain('合同文档智能比对与红线审查报告');
+        expect(result.htmlReport).toContain('contract_v1_baseline.pdf');
+        expect(result.htmlReport).toContain('contract_v2_revised.pdf');
       }
     });
 
@@ -977,6 +1044,59 @@ describe('ContractCompareService Suite', () => {
         fs.mkdirSync(outDir, { recursive: true });
         fs.writeFileSync(path.join(outDir, 'demo_diff.html'), result.htmlReport || '', 'utf8');
       }
+    });
+
+    it('should collapse 100% unchanged clauses by default and keep modified clauses expanded', () => {
+      const mockPairs: any[] = [
+        {
+          id: 'c1',
+          status: 'UNCHANGED',
+          sourceClause: { clauseNumber: '第 1 条', title: '定义条款', content: '双方一致同意相关定义。' },
+          targetClause: { clauseNumber: '第 1 条', title: '定义条款', content: '双方一致同意相关定义。' },
+          similarity: 1.0,
+        },
+        {
+          id: 'c2',
+          status: 'MODIFIED',
+          sourceClause: { clauseNumber: '第 2 条', title: '付款条款', content: '30日内支付。' },
+          targetClause: { clauseNumber: '第 2 条', title: '付款条款', content: '60日内支付。' },
+          similarity: 0.8,
+        },
+      ];
+
+      const html = htmlRenderer.renderHtmlReport({
+        fileNameA: 'docA',
+        fileNameB: 'docB',
+        metrics: {
+          totalClauses: 2,
+          modifiedCount: 1,
+          addedCount: 0,
+          deletedCount: 0,
+          unchangedCount: 1,
+          highRiskCount: 0,
+          mediumRiskCount: 0,
+        },
+        alignedPairs: mockPairs,
+      });
+
+      // Clause 1 is UNCHANGED -> content has display: none and chevron rotated
+      expect(html).toContain('id="content-sec-1" class="clause-content" style="display: none;"');
+      expect(html).toContain('id="chevron-sec-1" class="text-slate-400 inline-block transform transition-transform duration-200" style="transform: rotate(-90deg);"');
+
+      // Clause 2 is MODIFIED -> content is expanded
+      expect(html).toContain('id="content-sec-2" class="clause-content" style=""');
+      expect(html).toContain('id="chevron-sec-2" class="text-slate-400 inline-block transform transition-transform duration-200" style=""');
+
+      // Toggle-all button defaults to "展开全部条款" when unchanged clauses exist
+      expect(html).toContain('展开全部条款');
+
+      // Print button calls printReport()
+      expect(html).toContain('onclick="printReport()"');
+      expect(html).toContain('function printReport()');
+
+      // @media print forces all clause contents visible
+      expect(html).toContain('.clause-content { display: block !important; }');
+      expect(html).toContain('print-color-adjust: exact');
     });
   });
 });

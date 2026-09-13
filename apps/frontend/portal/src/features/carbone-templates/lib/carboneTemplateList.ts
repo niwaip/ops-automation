@@ -108,3 +108,109 @@ export const getScalarParameters = (parameters?: SkillParameter[]): ParameterRow
     })
     .map((parameter) => toParameterRow(parameter, String(parameter?.name || '')))
     .sort((a, b) => a.fieldName.localeCompare(b.fieldName, 'zh-Hans-CN'));
+
+export const formatFileSize = (bytes?: number): string => {
+  if (bytes == null || bytes <= 0) return '-';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+export const formatTemplateDate = (date?: string): string => {
+  if (!date) return '-';
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '-';
+    return d.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+  } catch {
+    return date;
+  }
+};
+
+export const getLatestTemplateId = (templates: CarboneTemplate[]): string | null => {
+  let latestId: string | null = null;
+  let maxTime = -1;
+  for (const t of templates) {
+    const timeStr = t.updatedAt || t.createdAt;
+    if (timeStr) {
+      const time = new Date(timeStr).getTime();
+      if (!isNaN(time) && time > maxTime) {
+        maxTime = time;
+        latestId = t.id;
+      }
+    }
+  }
+  return latestId;
+};
+
+export type TemplateSuggestionRow = {
+  key: string;
+  suggestedName: string;
+  type: string;
+  chapter: string;
+  originalText: string;
+  sampleValue: string;
+  description: string;
+  applied: boolean;
+};
+
+export const getTemplateSuggestionRows = (
+  template?: CarboneTemplate | null
+): TemplateSuggestionRow[] => {
+  if (!template) return [];
+
+  const rawList = Array.isArray(template.suggestions) ? template.suggestions : [];
+  if (rawList.length > 0) {
+    return rawList.map((item, index) => {
+      const details = item?.details || {};
+      return {
+        key: `sug_${index}_${item?.suggestedName || item?.id || index}`,
+        suggestedName: String(item?.suggestedName || '-'),
+        type: String(item?.type || 'variable'),
+        chapter: String(details?.chapter || '-'),
+        originalText: String(item?.originalText || '-'),
+        sampleValue: formatExampleValue(details?.sampleValue),
+        description: String(details?.description || '-'),
+        applied: Boolean(item?.applied !== false),
+      };
+    });
+  }
+
+  // Fallback to variables array if suggestions are not populated
+  const variables = Array.isArray(template.variables) ? template.variables : [];
+  return variables.map((varName, index) => ({
+    key: `var_${index}_${varName}`,
+    suggestedName: varName,
+    type: varName.includes('[]') ? 'loop' : 'variable',
+    chapter: '-',
+    originalText: '-',
+    sampleValue: '-',
+    description: '-',
+    applied: true,
+  }));
+};
+
+export const formatJsonString = (data: unknown): string => {
+  if (!data) return '';
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      return data;
+    }
+  }
+  try {
+    return JSON.stringify(data, null, 2);
+  } catch {
+    return String(data);
+  }
+};

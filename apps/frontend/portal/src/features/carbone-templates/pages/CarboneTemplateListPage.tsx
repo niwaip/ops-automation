@@ -2,9 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Card,
-  Descriptions,
-  Drawer,
-  Empty,
   Input,
   Modal,
   Space,
@@ -22,18 +19,20 @@ import {
   FileWordOutlined,
   PlusOutlined,
   SyncOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import { carboneAPI, type CarboneSkill, type CarboneTemplate } from '@/api/carbone';
 import {
   extractSkillOverview,
-  getArrayParameterGroups,
-  getScalarParameters,
+  formatFileSize,
+  formatTemplateDate,
+  getLatestTemplateId,
+  isDraftDocumentTemplate,
   OFFICE_ADDIN_DOWNLOAD_URL,
   OFFICE_ADDIN_TASKPANE_URL,
-  type ParameterRow,
-  isDraftDocumentTemplate,
   truncateText,
 } from '@/features/carbone-templates/lib/carboneTemplateList';
+import { CarboneTemplateDetailDrawer } from '../components/CarboneTemplateDetailDrawer';
 
 const { Title, Text } = Typography;
 
@@ -160,103 +159,135 @@ const CarboneTemplateListPage: React.FC = () => {
     }
   };
 
-  const parameterColumns = [
-    {
-      title: '字段',
-      dataIndex: 'fieldName',
-      key: 'fieldName',
-      render: (value: string) => <code>{value}</code>,
-    },
-    {
-      title: '类型',
-      dataIndex: 'dataType',
-      key: 'dataType',
-      width: 90,
-      render: (value: string) => <Tag>{value}</Tag>,
-    },
-    {
-      title: '示例值',
-      dataIndex: 'exampleText',
-      key: 'exampleText',
-      ellipsis: true,
-    },
-    {
-      title: '必填',
-      dataIndex: 'required',
-      key: 'required',
-      width: 90,
-      render: (value: boolean) => (value ? <Tag color="red">是</Tag> : <Tag>否</Tag>),
-    },
-    {
-      title: '用途',
-      dataIndex: 'usage',
-      key: 'usage',
-      ellipsis: true,
-    },
-  ];
+  const latestTemplateId = useMemo(() => getLatestTemplateId(templates), [templates]);
 
   const columns = useMemo(
     () => [
       {
-        title: '模板',
+        title: '模板文件 / 标识',
         dataIndex: 'fileName',
         key: 'fileName',
         render: (name: string, record: CarboneTemplate) => {
-          const skill = record.skillId ? skillMap[record.skillId] : undefined;
-          const overview = extractSkillOverview(skill);
+          const isLatest = record.id === latestTemplateId;
           return (
             <Space direction="vertical" size={4}>
-              <Space>
+              <Space wrap>
                 {getFormatIcon(record.format)}
-                <Text strong>{name}</Text>
-                {record.skillId ? <Tag color="success">已关联 Skill</Tag> : <Tag>无 Skill</Tag>}
+                <Text strong style={{ fontSize: 14 }}>{name}</Text>
+                {isLatest && (
+                  <Tag color="magenta" style={{ fontWeight: 600 }}>
+                    最新
+                  </Tag>
+                )}
+                <Tag color="geekblue">{record.format.toUpperCase()}</Tag>
+                {record.size ? <Tag>{formatFileSize(record.size)}</Tag> : null}
               </Space>
-              {overview.businessType && <Text type="secondary">{overview.businessType}</Text>}
+              <Space size={12} wrap>
+                <Text
+                  type="secondary"
+                  copyable={{ text: record.id }}
+                  style={{ fontSize: 12 }}
+                >
+                  模板ID: {record.id.slice(0, 8)}...
+                </Text>
+                {record.skillId ? (
+                  <Text
+                    type="secondary"
+                    copyable={{ text: record.skillId }}
+                    style={{ fontSize: 12 }}
+                  >
+                    Skill: {record.skillId.slice(0, 8)}...
+                  </Text>
+                ) : (
+                  <Tag style={{ fontSize: 11 }}>无关联Skill</Tag>
+                )}
+              </Space>
             </Space>
           );
         },
       },
       {
-        title: 'Skill 类型',
+        title: 'Skill 类型与场景',
         key: 'skillType',
-        render: (_: unknown, record: CarboneTemplate) => {
-          const skill = record.skillId ? skillMap[record.skillId] : undefined;
-          const overview = extractSkillOverview(skill);
-          return overview.templateType ? (
-            <Tag color="blue">{overview.templateType}</Tag>
-          ) : (
-            <Text type="secondary">未定义</Text>
-          );
-        },
-      },
-      {
-        title: '用途摘要',
-        key: 'purpose',
+        width: 240,
         render: (_: unknown, record: CarboneTemplate) => {
           const skill = record.skillId ? skillMap[record.skillId] : undefined;
           const overview = extractSkillOverview(skill);
           return (
             <Space direction="vertical" size={2}>
-              <Text>{truncateText(overview.mainScene || overview.businessType || '', 84)}</Text>
-              {overview.businessType && overview.mainScene ? (
-                <Text type="secondary">{overview.businessType}</Text>
-              ) : null}
+              {overview.templateType ? (
+                <Tag color="blue">{overview.templateType}</Tag>
+              ) : (
+                <Text type="secondary" style={{ fontSize: 12 }}>未定义类型</Text>
+              )}
+              <Text style={{ fontSize: 12 }}>
+                {truncateText(overview.mainScene || overview.businessType || '-', 50)}
+              </Text>
             </Space>
           );
         },
       },
       {
-        title: '更新时间',
+        title: '参数与变量',
+        key: 'variableStats',
+        width: 180,
+        render: (_: unknown, record: CarboneTemplate) => {
+          const varCount = record.variables?.length ?? record.suggestions?.length ?? 0;
+          const loopCount = record.loops?.length ?? 0;
+          const paramCount = record.parameterCount;
+
+          return (
+            <Space direction="vertical" size={4} wrap>
+              <Tag color="cyan">{varCount} 个变量</Tag>
+              {loopCount > 0 && <Tag color="purple">{loopCount} 个循环表</Tag>}
+              {paramCount != null && paramCount > 0 && (
+                <Tag color="geekblue">{paramCount} 个提取项</Tag>
+              )}
+            </Space>
+          );
+        },
+      },
+      {
+        title: '更新 / 创建时间',
         dataIndex: 'updatedAt',
         key: 'updatedAt',
-        render: (date: string) => (date ? new Date(date).toLocaleString() : '-'),
+        width: 210,
+        sorter: (a: CarboneTemplate, b: CarboneTemplate) => {
+          const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+          const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+          return timeA - timeB;
+        },
+        defaultSortOrder: 'descend' as const,
+        render: (_: unknown, record: CarboneTemplate) => {
+          const isLatest = record.id === latestTemplateId;
+          const displayUpdated = formatTemplateDate(record.updatedAt || record.createdAt);
+          const displayCreated = record.createdAt ? formatTemplateDate(record.createdAt) : null;
+
+          return (
+            <Space direction="vertical" size={2}>
+              <Space size={4}>
+                <ClockCircleOutlined style={{ color: isLatest ? '#eb2f96' : '#8c8c8c' }} />
+                <Text strong={isLatest} style={{ color: isLatest ? '#c41d7f' : undefined }}>
+                  {displayUpdated}
+                </Text>
+              </Space>
+              {displayCreated && displayCreated !== displayUpdated && (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  创建于: {displayCreated}
+                </Text>
+              )}
+            </Space>
+          );
+        },
       },
       {
         title: '操作',
         key: 'actions',
+        width: 220,
         render: (_: unknown, record: CarboneTemplate) => (
           <Space>
             <Button
+              size="small"
               icon={<EditOutlined />}
               onClick={(event) => {
                 event.stopPropagation();
@@ -266,6 +297,7 @@ const CarboneTemplateListPage: React.FC = () => {
               重命名
             </Button>
             <Button
+              size="small"
               icon={<DownloadOutlined />}
               onClick={(event) => {
                 event.stopPropagation();
@@ -275,6 +307,7 @@ const CarboneTemplateListPage: React.FC = () => {
               下载
             </Button>
             <Button
+              size="small"
               icon={<DeleteOutlined />}
               danger
               onClick={(event) => {
@@ -288,47 +321,40 @@ const CarboneTemplateListPage: React.FC = () => {
         ),
       },
     ],
-    [skillMap]
+    [skillMap, latestTemplateId]
   );
-
-  const scalarParameters = getScalarParameters(selectedSkill?.parameters);
-  const arrayParameterGroups = getArrayParameterGroups(selectedSkill?.parameters);
-  const selectedOverview = extractSkillOverview(selectedSkill);
 
   return (
     <div style={{ padding: '24px' }}>
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         <Card>
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: 16,
-                flexWrap: 'wrap',
-              }}
-            >
-              <div>
-                <Title level={4} style={{ marginBottom: 8 }}>
-                  文档模版
-                </Title>
-                <Text type="secondary">
-                  统一管理通过 Office Add-in 生成并保存的 Word、Excel、PPT 模板。旧的
-                  `report-templates` 创建入口已合并到这里。
-                </Text>
-              </div>
-              <Space wrap>
-                <Button
-                  icon={<DownloadOutlined />}
-                  onClick={() =>
-                    window.open(OFFICE_ADDIN_DOWNLOAD_URL, '_blank', 'noopener,noreferrer')
-                  }
-                >
-                  下载 Add-in
-                </Button>
-              </Space>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: 16,
+              flexWrap: 'wrap',
+            }}
+          >
+            <div>
+              <Title level={4} style={{ marginBottom: 8 }}>
+                文档模版
+              </Title>
+              <Text type="secondary">
+                统一管理通过 Office Add-in 生成并保存的 Word、Excel、PPT 模板。点击行可查看模板提取变量、AI指南参数与JSON数据示例。
+              </Text>
             </div>
-          </Space>
+            <Space wrap>
+              <Button
+                icon={<DownloadOutlined />}
+                onClick={() =>
+                  window.open(OFFICE_ADDIN_DOWNLOAD_URL, '_blank', 'noopener,noreferrer')
+                }
+              >
+                下载 Add-in
+              </Button>
+            </Space>
+          </div>
         </Card>
 
         <Card>
@@ -345,10 +371,13 @@ const CarboneTemplateListPage: React.FC = () => {
               <Title level={4} style={{ marginBottom: 4 }}>
                 模板列表
               </Title>
-              <Text type="secondary">仅展示 Carbone Studio 已保存的模板与关联 Skill。</Text>
+              <Text type="secondary">
+                共 {templates.length} 份模板，默认按最新更新时间倒序排列。
+              </Text>
             </div>
             <Space wrap>
               <Button
+                type="primary"
                 icon={<PlusOutlined />}
                 onClick={() =>
                   window.open(OFFICE_ADDIN_TASKPANE_URL, '_blank', 'noopener,noreferrer')
@@ -366,7 +395,7 @@ const CarboneTemplateListPage: React.FC = () => {
             columns={columns}
             rowKey="id"
             loading={loading}
-            pagination={{ pageSize: 10 }}
+            pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 份模板` }}
             onRow={(record) => ({
               onClick: () => {
                 void handleViewDetail(record);
@@ -377,118 +406,13 @@ const CarboneTemplateListPage: React.FC = () => {
         </Card>
       </Space>
 
-      <Drawer
-        title={selectedTemplate?.fileName || '模板详情'}
-        placement="right"
-        width={860}
+      <CarboneTemplateDetailDrawer
         open={detailDrawerVisible}
         onClose={() => setDetailDrawerVisible(false)}
-        styles={{ body: { background: 'var(--bg-primary, #f5f7fb)' } }}
-        extra={
-          selectedTemplate ? (
-            <Space>
-              {selectedSkill ? (
-                <Button
-                  onClick={() =>
-                    window.open(carboneAPI.getDownloadSkillUrl(selectedSkill.id), '_blank')
-                  }
-                >
-                  下载 Skill
-                </Button>
-              ) : null}
-              <Button
-                type="primary"
-                onClick={() =>
-                  window.open(carboneAPI.getDownloadTemplateUrl(selectedTemplate.id), '_blank')
-                }
-              >
-                下载模板
-              </Button>
-            </Space>
-          ) : undefined
-        }
-      >
-        {selectedTemplate && (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <Card
-              size="small"
-              style={{
-                borderRadius: 20,
-                border: '1px solid var(--bg-secondary, #e5e7eb)',
-                boxShadow: 'var(--shadow-lg, 0 12px 32px rgba(15,23,42,0.08))',
-              }}
-            >
-              <Descriptions column={1} size="small" bordered>
-                <Descriptions.Item label="Skill 类型">
-                  {selectedOverview.templateType ? (
-                    <Tag color="blue">{selectedOverview.templateType}</Tag>
-                  ) : (
-                    '未定义'
-                  )}
-                </Descriptions.Item>
-                <Descriptions.Item label="业务类型">
-                  {selectedOverview.businessType || '-'}
-                </Descriptions.Item>
-                <Descriptions.Item label="主要场景">
-                  {selectedOverview.mainScene || '-'}
-                </Descriptions.Item>
-                <Descriptions.Item label="更新时间">
-                  {selectedTemplate.updatedAt
-                    ? new Date(selectedTemplate.updatedAt).toLocaleString()
-                    : '-'}
-                </Descriptions.Item>
-                <Descriptions.Item label="循环配置">
-                  {(selectedTemplate.loops?.length ?? 0) > 0 ? (
-                    <Space wrap>
-                      {selectedTemplate.loops?.map((loop, index) => (
-                        <Tag key={index} color="purple">
-                          {loop.arrayPath}
-                        </Tag>
-                      ))}
-                    </Space>
-                  ) : (
-                    '无'
-                  )}
-                </Descriptions.Item>
-              </Descriptions>
-            </Card>
-
-            {!selectedSkill ? (
-              <Card size="small">
-                <Empty description="此模板暂无可用的 Skill 信息" />
-              </Card>
-            ) : (
-              <>
-                {scalarParameters.length > 0 && (
-                  <Card size="small" title="基础参数">
-                    <Table<ParameterRow>
-                      size="small"
-                      pagination={false}
-                      rowKey="key"
-                      columns={parameterColumns}
-                      dataSource={scalarParameters}
-                      scroll={{ x: 760 }}
-                    />
-                  </Card>
-                )}
-
-                {arrayParameterGroups.map((group) => (
-                  <Card key={group.arrayPath} size="small" title={`数组参数 · ${group.arrayPath}`}>
-                    <Table<ParameterRow>
-                      size="small"
-                      pagination={false}
-                      rowKey="key"
-                      columns={parameterColumns}
-                      dataSource={group.fields}
-                      scroll={{ x: 760 }}
-                    />
-                  </Card>
-                ))}
-              </>
-            )}
-          </Space>
-        )}
-      </Drawer>
+        template={selectedTemplate}
+        skill={selectedSkill}
+        isLatest={selectedTemplate?.id === latestTemplateId}
+      />
 
       <Modal
         title="重命名模板"

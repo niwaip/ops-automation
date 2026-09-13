@@ -298,7 +298,17 @@ export class TemporalWorkflowNormalizationService {
         }
 
         if (definition?.defaultValue !== undefined && definition.defaultValue !== '') {
-          policy.defaultValue = definition.defaultValue;
+          if (definition.type === 'number' || definition.type === 'integer') {
+            const parsed = Number(definition.defaultValue);
+            policy.defaultValue = Number.isFinite(parsed) ? parsed : definition.defaultValue;
+          } else if (definition.type === 'boolean') {
+            policy.defaultValue =
+              typeof definition.defaultValue === 'boolean'
+                ? definition.defaultValue
+                : String(definition.defaultValue).toLowerCase() === 'true';
+          } else {
+            policy.defaultValue = definition.defaultValue;
+          }
         }
 
         acc[trimmedKey] = policy;

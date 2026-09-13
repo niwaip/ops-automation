@@ -99,4 +99,93 @@ describe('PdfContentExtractorService', () => {
     expect(result.extraction.format).toBe('pptx');
     expect(result.pageCount).toBe(1);
   });
+
+  describe('Scanned PDF and OCR Vision Fallback', () => {
+    const PDFDocument = require('pdfkit');
+    const { createCanvas } = require('@napi-rs/canvas');
+
+    const createScannedPdfBase64 = async (textOnImage: string): Promise<string> => {
+      return new Promise((resolve) => {
+        const canvas = createCanvas(400, 300);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 400, 300);
+        ctx.fillStyle = '#000000';
+        ctx.font = '20px sans-serif';
+        ctx.fillText(textOnImage, 30, 60);
+        const png = canvas.toBuffer('image/png');
+
+        const doc = new PDFDocument({ size: [400, 300], margin: 0 });
+        const chunks: Buffer[] = [];
+        doc.on('data', (c: Buffer) => chunks.push(c));
+        doc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
+        doc.image(png, 0, 0, { width: 400, height: 300 });
+        doc.end();
+      });
+    };
+
+    it('falls back to vision OCR when a scanned PDF has no embedded text layer', async () => {
+      const scannedPdfBase64 = await createScannedPdfBase64('第一条 合同目的与合作范围');
+
+      const mockRasterizer = {
+        rasterizePages: jest.fn().mockResolvedValue([
+          { pageNumber: 1, imageBuffer: Buffer.from('fake-png'), width: 400, height: 300 },
+        ]),
+      };
+
+      const mockVisionOcr = {
+        extractFromImages: jest.fn().mockResolvedValue({
+          text: '第一条 合同目的与合作范围\n双方经友好协商达成如下协议。',
+          pages: [
+            {
+              pageNumber: 1,
+              text: '第一条 合同目的与合作范围\n双方经友好协商达成如下协议。',
+              characterCount: 28,
+            },
+          ],
+          modelUsed: 'gemini-3.7-flash-high',
+          characterCount: 28,
+          truncated: false,
+        }),
+      };
+
+      const customService = new PdfContentExtractorService(
+        mockRasterizer as any,
+        mockVisionOcr as any
+      );
+
+      const result = await customService.extract({ fileBase64: scannedPdfBase64 });
+
+      expect(mockRasterizer.rasterizePages).toHaveBeenCalled();
+      expect(mockVisionOcr.extractFromImages).toHaveBeenCalled();
+      expect(result.text).toContain('第一条 合同目的与合作范围');
+      expect(result.extraction.ocrUsed).toBe(true);
+      expect(result.extraction.method).toBe('ocr_vision');
+      expect(result.extraction.ocrModel).toBe('gemini-3.7-flash-high');
+    });
+
+    it('skips OCR when ocr is explicitly set to false', async () => {
+      const scannedPdfBase64 = await createScannedPdfBase64('扫描件测试');
+
+      const mockRasterizer = { rasterizePages: jest.fn() };
+      const mockVisionOcr = { extractFromImages: jest.fn() };
+
+      const customService = new PdfContentExtractorService(
+        mockRasterizer as any,
+        mockVisionOcr as any
+      );
+
+      const result = await customService.extract({
+        fileBase64: scannedPdfBase64,
+        ocr: false,
+      });
+
+      expect(mockRasterizer.rasterizePages).not.toHaveBeenCalled();
+      expect(mockVisionOcr.extractFromImages).not.toHaveBeenCalled();
+      expect(result.text).toBe('');
+      expect(result.extraction.ocrUsed).toBe(false);
+      expect(result.warnings.some((w) => w.includes('未包含可提取的文本层'))).toBe(true);
+    });
+  });
 });
+

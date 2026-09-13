@@ -598,4 +598,51 @@ describe('MultiNodeParameterBinderService', () => {
       })
     );
   });
+
+  it('automatically projects document metadata fields (such as fileName and downloadUrl) from previousResultData into root nodes', async () => {
+    const reviewerCard = {
+      id: 'contract-reviewer',
+      kind: 'skill',
+      displayName: '合同审查',
+      inputs: {
+        fileName: 'string',
+        fileUrl: 'string',
+        myPosition: 'string',
+      },
+      outputs: { report: 'string' },
+    } as unknown as CompactCapabilityCardV1;
+
+    const binder = new MultiNodeParameterBinderService(
+      new NodeOutputBindingResolverService(),
+      { recognizeParams: jest.fn().mockResolvedValue({ params: {}, confidence: 1 }) } as any
+    );
+
+    const result = await binder.bindParameters(
+      '审查合同',
+      [{ ref: 'n1', capabilityKey: 'contract-reviewer', dependsOn: [] }],
+      new Map([['contract-reviewer', reviewerCard]]),
+      undefined,
+      {
+        previousResultData: {
+          result: {
+            fileName: '保密合同_202609121550.docx',
+            downloadUrl: 'http://192.168.100.143:3009/studio/download/b19a51ab-b321-431b-a6fe-43b204c1265d',
+          },
+        },
+      }
+    );
+
+    expect(result.planInputs.n1?.fileName).toBe('保密合同_202609121550.docx');
+    expect(result.planInputs.n1?.fileUrl).toBe(
+      'http://192.168.100.143:3009/studio/download/b19a51ab-b321-431b-a6fe-43b204c1265d'
+    );
+    expect(result.nodeBindings.n1?.fileName).toEqual({
+      source: 'literal',
+      value: '保密合同_202609121550.docx',
+    });
+    expect(result.nodeBindings.n1?.fileUrl).toEqual({
+      source: 'literal',
+      value: 'http://192.168.100.143:3009/studio/download/b19a51ab-b321-431b-a6fe-43b204c1265d',
+    });
+  });
 });

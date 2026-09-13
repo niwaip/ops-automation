@@ -314,17 +314,22 @@ export function UserChatComposer(props: UserChatComposerProps) {
     [chatMode, draft, onDraftChange]
   );
 
+  const activeUploadsCountRef = useRef(0);
   const handleFileUpload = useCallback(async (file: File) => {
+    activeUploadsCountRef.current += 1;
     setIsUploadingFile(true);
     try {
       const uploaded = await uploadChatFile(file);
       setUploadedFiles((prev) => [...prev, uploaded]);
-      void antdMessage.success(`已添加附件: ${file.name}`);
     } catch (err: unknown) {
       console.error('File upload failed:', err);
       void antdMessage.error(err instanceof Error ? err.message : '附件上传失败');
     } finally {
-      setIsUploadingFile(false);
+      activeUploadsCountRef.current -= 1;
+      if (activeUploadsCountRef.current <= 0) {
+        activeUploadsCountRef.current = 0;
+        setIsUploadingFile(false);
+      }
     }
     return false;
   }, []);
@@ -816,12 +821,13 @@ export function UserChatComposer(props: UserChatComposerProps) {
               />
             </Tooltip>
             <Upload
+              multiple
               beforeUpload={(file) => {
                 void handleFileUpload(file as unknown as File);
                 return false;
               }}
               showUploadList={false}
-              disabled={disabled || isTranscribing || isUploadingFile}
+              disabled={disabled || isTranscribing}
             >
               <Tooltip title="添加本地附件">
                 <Button

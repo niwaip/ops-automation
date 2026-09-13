@@ -48,9 +48,9 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
     code.includes('diff-del') ||
     code.includes('基准合同 (A)');
 
-  // Default contract compare to collapsed state to avoid dominating chat viewport
+  // Default HTML preview to expanded state in chat
   const [isExpanded, setIsExpanded] = useState<boolean>(
-    defaultExpanded !== undefined ? defaultExpanded : !isContractCompare
+    defaultExpanded !== undefined ? defaultExpanded : true
   );
 
   const displayTitle = isContractReview
@@ -238,7 +238,7 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
         <div>
           <iframe
             ref={iframeRef}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
             allowFullScreen
             style={{
               width: '100%',
@@ -310,7 +310,7 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
       >
         <iframe
           srcDoc={code}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
           allowFullScreen
           style={{
             width: '100%',

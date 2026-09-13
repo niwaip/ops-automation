@@ -625,10 +625,20 @@ export class CapabilityReleaseBuildValidationService {
             throw new Error('当前构建没有可执行代码，请先完成代码生成');
           }
           const fn = dto.fn || accessors.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
+          const baseInput = this.capabilityReleaseTemporalSchemaService.buildSmokeTestInput(
+            release,
+            snapshot,
+            'staging'
+          );
+          const userFlatInput = dto.input ? this.flattenPayload(dto.input) : {};
+          const effectiveInput = {
+            ...baseInput,
+            ...userFlatInput,
+          };
           const result = await this.temporalWorkflowService.validateWorkflowReal(
             build.generatedCode,
             fn,
-            dto.input
+            effectiveInput
           );
           success = result.success;
           score = result.score;
@@ -637,6 +647,7 @@ export class CapabilityReleaseBuildValidationService {
             result: result.result ?? null,
             error: result.error ?? null,
             fn,
+            input: effectiveInput,
           };
           errorSummary = result.error || null;
         }
@@ -789,10 +800,20 @@ export class CapabilityReleaseBuildValidationService {
           runtime: 'temporal_workflow',
           fn,
         });
+        const baseInput = this.capabilityReleaseTemporalSchemaService.buildSmokeTestInput(
+          release,
+          snapshot,
+          'staging'
+        );
+        const userFlatInput = dto.input ? this.flattenPayload(dto.input) : {};
+        const effectiveInput = {
+          ...baseInput,
+          ...userFlatInput,
+        };
         const result = await this.temporalWorkflowService.validateWorkflowRealStreaming(
           build.generatedCode,
           fn,
-          dto.input as Record<string, any> | undefined,
+          effectiveInput as Record<string, any> | undefined,
           undefined,
           undefined,
           (log: string) => {
@@ -808,6 +829,7 @@ export class CapabilityReleaseBuildValidationService {
           error: result.error ?? null,
           traceback: result.traceback ?? null,
           fn,
+          input: effectiveInput,
         };
         errorSummary = result.error || null;
       } else if (release.sourceType === 'browser_recording') {
@@ -1337,5 +1359,21 @@ export class CapabilityReleaseBuildValidationService {
       }
     }
     return value as T;
+  }
+
+  private flattenPayload(
+    obj: Record<string, unknown>,
+    prefix = '',
+    res: Record<string, unknown> = {}
+  ): Record<string, unknown> {
+    for (const [k, v] of Object.entries(obj)) {
+      const key = prefix ? `${prefix}.${k}` : k;
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        this.flattenPayload(v as Record<string, unknown>, key, res);
+      } else {
+        res[key] = v;
+      }
+    }
+    return res;
   }
 }

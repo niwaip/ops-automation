@@ -108,9 +108,17 @@ export class ContractReviewHtmlRendererService {
                 ? 'bg-[#D97706]'
                 : 'bg-slate-300';
 
+            const clauseDisplay =
+              c.clauseNumber &&
+              !c.title.startsWith(c.clauseNumber) &&
+              c.clauseNumber !== '正文' &&
+              c.clauseNumber !== '前言'
+                ? `${c.clauseNumber} ${c.title}`
+                : c.title || c.clauseNumber;
+
             return `
             <a href="#clause-node-${c.clauseIndex}" onclick="jumpToClauseNode(${c.clauseIndex}, event)" class="toc-link block px-2 py-1 rounded text-[11px] text-slate-600 hover:bg-[#294766]/5 hover:text-[#294766] transition truncate flex items-center justify-between cursor-pointer" data-clause-index="${c.clauseIndex}">
-              <span class="truncate pl-1">· ${this.escapeHtml(c.title || c.clauseNumber)}</span>
+              <span class="truncate pl-1">· ${this.escapeHtml(clauseDisplay)}</span>
               <span class="w-1.5 h-1.5 rounded-full ${riskColor} shrink-0 ml-1"></span>
             </a>`;
           })
@@ -676,8 +684,22 @@ export class ContractReviewHtmlRendererService {
     const chapterMap = new Map<string, ReviewChapterGroup>();
     let chIdx = 1;
     for (const c of clauses) {
-      const chNum = c.chapterNumber || '第一章';
-      const chTitle = c.chapterTitle || '合同约定条款';
+      const isPreamble = c.clauseIndex === 0 || c.clauseNumber === '前言';
+      const isAnnex = c.clauseNumber?.includes('附件') || c.title?.includes('附件');
+      const chNum = isPreamble
+        ? c.chapterNumber && c.chapterNumber !== '正文'
+          ? c.chapterNumber
+          : '前言'
+        : isAnnex
+        ? c.chapterNumber || '附件'
+        : c.chapterNumber || '正文';
+      const chTitle = isPreamble
+        ? c.chapterTitle && c.chapterTitle !== '合同正文条款'
+          ? c.chapterTitle
+          : '合同引言与签约主体'
+        : isAnnex
+        ? c.chapterTitle || '合同附件与补充协议'
+        : c.chapterTitle || '合同正文条款';
       const key = `${chNum}__${chTitle}`;
       if (!chapterMap.has(key)) {
         chapterMap.set(key, {

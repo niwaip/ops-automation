@@ -173,6 +173,26 @@ export class MultiNodeParameterBinderService {
           }
         }
 
+        // A root Skill node may consume exact metadata fields (such as fileName, downloadUrl,
+        // fileUrl) from the latest completed execution snapshot.
+        if (node.dependsOn.length === 0 && (systemInputs?.previousResultData || systemInputs?.taskContext)) {
+          const exactVal = this.findFieldValueInPreviousResult(
+            systemInputs.previousResultData ?? systemInputs.taskContext,
+            paramName
+          );
+          if (exactVal !== undefined) {
+            const normalized = this.normalizeBySchema(exactVal, rawProperty);
+            if (normalized !== undefined) {
+              nodeInputs[paramName] = normalized;
+              bindings[paramName] = { source: 'literal', value: normalized } as ValueBindingV1;
+              notes.push(
+                `参数 '${node.ref}.${paramName}' 已从上一次完成执行的结果快照中自动绑定值 '${normalized}'。`
+              );
+              continue;
+            }
+          }
+        }
+
         // Optional content on a standard generation Operation is contextual,
         // not a value that should trigger another model call merely to infer
         // whether it exists. Required content still follows normal recognition
@@ -477,5 +497,63 @@ export class MultiNodeParameterBinderService {
 
   private isSensitiveFieldName(fieldName: string): boolean {
     return /api[_-]?key|token|secret|password|credential|authorization/i.test(fieldName);
+  }
+
+  private findFieldValueInPreviousResult(
+    sourceData: unknown,
+    fieldName: string,
+    depth = 0
+  ): unknown {
+    if (depth > 5 || !sourceData || typeof sourceData !== 'object') {
+      return undefined;
+    }
+    const record = sourceData as Record<string, unknown>;
+
+    if (Object.prototype.hasOwnProperty.call(record, fieldName)) {
+      const val = record[fieldName];
+      if (val !== undefined && val !== null && val !== '') {
+        if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
+          return val;
+        }
+      }
+    }
+
+    if (fieldName === 'fileName' && Object.prototype.hasOwnProperty.call(record, 'filename')) {
+      const val = record.filename;
+      if (typeof val === 'string' && val.trim().length > 0) return val;
+    }
+    if (fieldName === 'filename' && Object.prototype.hasOwnProperty.call(record, 'fileName')) {
+      const val = record.fileName;
+      if (typeof val === 'string' && val.trim().length > 0) return val;
+    }
+    if (fieldName === 'fileUrl' && Object.prototype.hasOwnProperty.call(record, 'downloadUrl')) {
+      const val = record.downloadUrl;
+      if (typeof val === 'string' && val.trim().length > 0) return val;
+    }
+    if (fieldName === 'downloadUrl' && Object.prototype.hasOwnProperty.call(record, 'fileUrl')) {
+      const val = record.fileUrl;
+      if (typeof val === 'string' && val.trim().length > 0) return val;
+    }
+
+    for (const [k, child] of Object.entries(record)) {
+      if (
+        [
+          'input',
+          'inputs',
+          'inputJson',
+          'resolvedInputJson',
+          'commands',
+          'params',
+          'args',
+          'variables',
+          '__promptDebug',
+        ].includes(k)
+      ) {
+        continue;
+      }
+      const found = this.findFieldValueInPreviousResult(child, fieldName, depth + 1);
+      if (found !== undefined) return found;
+    }
+    return undefined;
   }
 }

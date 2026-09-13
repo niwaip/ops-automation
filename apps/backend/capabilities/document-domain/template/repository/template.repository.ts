@@ -170,6 +170,11 @@ export class TemplateRepository {
         : this.extractLoops(meta.templateConfig ?? meta.config, suggestions);
     const templateConfig = meta.templateConfig ?? meta.config ?? null;
     const createdAt = meta.createdAt ? new Date(meta.createdAt) : new Date();
+    const updatedAt = meta.updatedAt
+      ? new Date(meta.updatedAt)
+      : meta.savedAt
+        ? new Date(meta.savedAt)
+        : undefined;
     const type =
       meta.type === 'marked_template' ? TemplateType.marked_template : TemplateType.template;
 
@@ -205,6 +210,7 @@ export class TemplateRepository {
         | Prisma.NullTypes.DbNull,
       hasValidFile: typeof meta.hasValidFile === 'boolean' ? meta.hasValidFile : null,
       createdAt,
+      ...(updatedAt ? { updatedAt } : {}),
     };
   }
 
@@ -226,6 +232,8 @@ export class TemplateRepository {
     skill?: { id: string; parameters: unknown } | null;
     suggestions?: unknown;
     rawSuggestions?: unknown;
+    createdAt?: Date | null;
+    updatedAt?: Date | null;
   }): TemplateResponse {
     const resolvedLoops =
       Array.isArray(template.loops) && template.loops.length > 0
@@ -270,6 +278,10 @@ export class TemplateRepository {
         ? (template.verifyResult as TemplateResponse['verifyResult'])
         : undefined,
       skillId: template.skill?.id,
+      createdAt: template.createdAt ? template.createdAt.toISOString() : undefined,
+      updatedAt: (template.updatedAt || template.markingsSavedAt || template.createdAt)
+        ? (template.updatedAt || template.markingsSavedAt || template.createdAt)!.toISOString()
+        : undefined,
     };
   }
 

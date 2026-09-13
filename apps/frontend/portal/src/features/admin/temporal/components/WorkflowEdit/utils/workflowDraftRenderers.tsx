@@ -127,7 +127,10 @@ export const renderDraftContractCard = (draft: AiWorkflowDraft) => {
   const sampleInputPayload = inputEntries.reduce<Record<string, string>>((acc, [key, value]) => {
     const description = String(value.description || '').trim();
     const fallback = value.required ? `<required:${key}>` : `<optional:${key}>`;
-    acc[key] = value.defaultValue || (description ? `<${description}>` : fallback);
+    acc[key] =
+      (value.defaultValue !== undefined && value.defaultValue !== ''
+        ? String(value.defaultValue)
+        : '') || (description ? `<${description}>` : fallback);
     return acc;
   }, {});
   const sampleOutputPayload = outputEntries.reduce<Record<string, string>>(
@@ -144,7 +147,12 @@ export const renderDraftContractCard = (draft: AiWorkflowDraft) => {
     entries: Array<
       [
         string,
-        { description?: string; required?: boolean; defaultValue?: string; sourceStep?: string },
+        {
+          description?: string;
+          required?: boolean;
+          defaultValue?: string | number | boolean;
+          sourceStep?: string;
+        },
       ]
     >,
     color: string,

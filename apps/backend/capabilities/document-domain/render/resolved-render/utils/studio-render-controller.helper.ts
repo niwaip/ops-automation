@@ -27,7 +27,11 @@ type ExecuteResolvedRenderDeps = {
   engine: {
     render: (buffer: Buffer, data: Record<string, any>, fileName: string) => Promise<Buffer>;
   };
-  generateOutputFileName: (templateName: string, format: string) => string;
+  generateOutputFileName: (
+    templateName: string,
+    format: string,
+    data?: Record<string, any>
+  ) => string;
   syncRenderOutputToDb: (meta: Record<string, any>, filePath: string) => Promise<void>;
   debugReport: (hypothesisId: string, msg: string, data?: Record<string, unknown>) => void;
   logger: {
@@ -35,18 +39,85 @@ type ExecuteResolvedRenderDeps = {
   };
 };
 
-function formatOutputTimestamp(date: Date): string {
+export function extractPartyAName(data?: Record<string, any>): string | undefined {
+  if (!data || typeof data !== 'object') return undefined;
+
+  const raw =
+    data.partyA?.name ||
+    data['partyA.name'] ||
+    (typeof data.partyA === 'string' ? data.partyA : undefined) ||
+    data.firstParty?.name ||
+    data['firstParty.name'] ||
+    (typeof data.firstParty === 'string' ? data.firstParty : undefined) ||
+    data.client?.name ||
+    data['client.name'] ||
+    (typeof data.client === 'string' ? data.client : undefined) ||
+    data.customer?.name ||
+    data['customer.name'] ||
+    (typeof data.customer === 'string' ? data.customer : undefined) ||
+    data['甲方'] ||
+    data['甲方名称'] ||
+    data['甲方公司名称'];
+
+  if (typeof raw === 'string') {
+    const cleaned = raw.replace(/[\\/:*?"<>|\r\n\t]/g, '').trim();
+    if (cleaned.length > 0) {
+      return cleaned;
+    }
+  }
+  return undefined;
+}
+
+export function extractDocumentVersion(data?: Record<string, any>): string {
+  if (!data || typeof data !== 'object') return 'v1';
+
+  const raw =
+    data.version ||
+    data.docVersion ||
+    data.contractVersion ||
+    data['version'] ||
+    data['版本'];
+
+  if (raw !== undefined && raw !== null) {
+    const str = String(raw).replace(/[\\/:*?"<>|\r\n\t]/g, '').trim();
+    if (str.length > 0) {
+      return /^\d/.test(str) ? `v${str}` : str;
+    }
+  }
+  return 'v1';
+}
+
+export function formatCreationDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${year}${month}${day}${hours}${minutes}`;
+  return `${year}${month}${day}`;
 }
 
-export function generateStudioRenderOutputFileName(templateName: string, format: string): string {
-  const baseName = templateName.replace(/\.[^/.]+$/, '');
-  return `${baseName}_${formatOutputTimestamp(new Date())}.${format}`;
+export function generateStudioRenderOutputFileName(
+  templateName: string,
+  format: string,
+  data?: Record<string, any>
+): string {
+  const baseName = templateName
+    .replace(/\.[^/.]+$/, '')
+    .replace(/[\\/:*?"<>|\r\n\t]/g, '')
+    .trim();
+  const partyA = extractPartyAName(data);
+  const version = extractDocumentVersion(data);
+  const creationDate = formatCreationDate(new Date());
+
+  const parts = [baseName || 'document'];
+  if (partyA) {
+    parts.push(partyA);
+  }
+  if (version) {
+    parts.push(version);
+  }
+  parts.push(creationDate);
+
+  const cleanFormat = format.replace(/^\./, '').trim();
+  return `${parts.join('_')}.${cleanFormat}`;
 }
 
 export async function resolveStudioRenderTarget(
@@ -179,7 +250,8 @@ export async function executeResolvedRender(
     const outputFormat = input.outputFormat || meta.format;
     const outputFileName = deps.generateOutputFileName(
       input.outputName || meta.fileName,
-      outputFormat
+      outputFormat,
+      normalizedData
     );
     const outputPath = path.join(deps.outputsDir, `${outputId}.${outputFormat}`);
     fs.writeFileSync(outputPath, outputBuffer);

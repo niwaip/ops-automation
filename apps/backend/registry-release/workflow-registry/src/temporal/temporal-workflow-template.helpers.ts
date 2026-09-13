@@ -12,6 +12,7 @@ export interface TemplateWorkflowParamSeed {
   key: string;
   required: boolean;
   type: WorkflowInputParamType;
+  defaultValue?: string | number | boolean;
   exampleValue?: string | number | boolean;
   description: string;
   displayName?: string;
@@ -193,18 +194,40 @@ export function buildTemplateWorkflowParamSeeds(args: {
         existing.localizedVariants,
         suggestionMeta?.localizedVariants
       );
+      const rawSampleValue =
+        parameter?.defaultValue ??
+        parameter?.example ??
+        field?.defaultValue ??
+        field?.example ??
+        suggestionMeta?.sampleValue;
+      const resolvedDefaultValue = normalizeWorkflowExampleValue(
+        rawSampleValue,
+        parameter?.dataType ?? field?.type,
+        buildWorkflowSemanticHint
+      );
+      if (existing.defaultValue === undefined && resolvedDefaultValue !== undefined) {
+        existing.defaultValue = resolvedDefaultValue;
+      }
       if (existing.exampleValue === undefined) {
-        existing.exampleValue = normalizeWorkflowExampleValue(
-          parameter?.example,
-          parameter?.dataType,
-          buildWorkflowSemanticHint
-        );
+        existing.exampleValue = resolvedDefaultValue;
       }
       if (!existing.renderPath) {
         existing.renderPath = normalizeWorkflowInputRenderPath(resolvedRenderPathsByKey.get(key));
       }
       continue;
     }
+
+    const rawSampleValue =
+      parameter?.defaultValue ??
+      parameter?.example ??
+      field?.defaultValue ??
+      field?.example ??
+      suggestionMeta?.sampleValue;
+    const resolvedDefaultValue = normalizeWorkflowExampleValue(
+      rawSampleValue,
+      parameter?.dataType ?? field?.type,
+      buildWorkflowSemanticHint
+    );
 
     paramMap.set(key, {
       key,
@@ -214,11 +237,8 @@ export function buildTemplateWorkflowParamSeeds(args: {
         key,
         buildWorkflowSemanticHint
       ),
-      exampleValue: normalizeWorkflowExampleValue(
-        parameter?.example,
-        parameter?.dataType,
-        buildWorkflowSemanticHint
-      ),
+      defaultValue: resolvedDefaultValue,
+      exampleValue: resolvedDefaultValue,
       description,
       displayName,
       groupLabel: pickFirstNonEmptyString(
@@ -259,10 +279,19 @@ export function buildTemplateWorkflowParamSeeds(args: {
           String(binding.fieldId || '').trim() || bilingualBaseKeyByVariant.get(rawKey) || rawKey;
         const field = manifestFieldMap.get(binding.fieldId);
         const suggestionMeta = suggestionMetaByKey.get(key);
+        const rawSampleValue =
+          field?.defaultValue ?? field?.example ?? suggestionMeta?.sampleValue;
+        const resolvedDefaultValue = normalizeWorkflowExampleValue(
+          rawSampleValue,
+          field?.type,
+          buildWorkflowSemanticHint
+        );
         return {
           key,
           required: binding.required !== false && field?.required !== false,
           type: normalizeWorkflowInputParamType(field?.type, key, buildWorkflowSemanticHint),
+          defaultValue: resolvedDefaultValue,
+          exampleValue: resolvedDefaultValue,
           description: resolveTemplateWorkflowParamLabel(
             suggestionMeta?.description,
             field?.description,
@@ -295,10 +324,18 @@ export function buildTemplateWorkflowParamSeeds(args: {
     }
     seen.add(key);
     const suggestionMeta = suggestionMetaByKey.get(key);
+    const rawSampleValue = suggestionMeta?.sampleValue;
+    const resolvedDefaultValue = normalizeWorkflowExampleValue(
+      rawSampleValue,
+      'string',
+      buildWorkflowSemanticHint
+    );
     acc.push({
       key,
       required: true,
       type: 'string' as WorkflowInputParamType,
+      defaultValue: resolvedDefaultValue,
+      exampleValue: resolvedDefaultValue,
       description: resolveTemplateWorkflowParamLabel(
         suggestionMeta?.description,
         `模板参数 ${key}`
@@ -457,6 +494,7 @@ function buildTemplateSuggestionMetaMap(
     description?: string;
     groupLabel?: string;
     localizedVariants?: string[];
+    sampleValue?: string;
   }
 > {
   const suggestions = Array.isArray(template.suggestions) ? template.suggestions : [];
@@ -466,6 +504,7 @@ function buildTemplateSuggestionMetaMap(
       displayName?: string;
       description?: string;
       groupLabel?: string;
+      sampleValue?: string;
       localizedVariants: string[];
       hasBaseVariant: boolean;
       displayNamePriority: number;
@@ -490,12 +529,17 @@ function buildTemplateSuggestionMetaMap(
       details.significance,
       details.description
     );
+    const nextSampleValue = details.sampleValue || suggestion?.originalText;
     const existing = aggregated.get(key) || {
       localizedVariants: [],
       hasBaseVariant: false,
       displayNamePriority: Number.POSITIVE_INFINITY,
       descriptionPriority: Number.POSITIVE_INFINITY,
     };
+
+    if (nextSampleValue && !existing.sampleValue) {
+      existing.sampleValue = String(nextSampleValue).trim();
+    }
 
     if (nextDisplayName && (priority < existing.displayNamePriority || !existing.displayName)) {
       existing.displayName = nextDisplayName;
@@ -531,6 +575,7 @@ function buildTemplateSuggestionMetaMap(
         displayName: value.displayName,
         description: value.description,
         groupLabel: value.groupLabel,
+        sampleValue: value.sampleValue,
         localizedVariants: normalizeLocalizedVariantsForDisplay(
           value.localizedVariants,
           value.hasBaseVariant,

@@ -278,7 +278,20 @@ export const WordWriteAPI = {
                         blankText,
                         startPos - extendedStart
                       ) || blankInExtended.items[0];
-                    targetRange.insertText(replacement, Word.InsertLocation.replace);
+                    const inserted = targetRange.insertText(replacement, Word.InsertLocation.replace);
+                    const isUnderlineOrBlank =
+                      /^[_\s\u00A0\u3000]+$/.test(blankText) || blankText.includes('_');
+                    if (isUnderlineOrBlank) {
+                      inserted.font.underline = Word.UnderlineType.single;
+                    }
+                    const remainingText = fullText.substring(endPos);
+                    const hasFollowingLabel =
+                      /^[ \t]*(?:乙方|丙方|住所地|地址|签字|盖章|法定代表人|授权代表|电话|传真|开户行|账号|日期)[:：]/.test(
+                        remainingText
+                      );
+                    if (hasFollowingLabel) {
+                      inserted.insertText('\t', Word.InsertLocation.after);
+                    }
                     await context.sync();
                     console.log(
                       `[DEBUG] ✓ 已替换（扩展定位）: "${blankText.substring(0, 10)}..." → "${replacement}"`
@@ -296,7 +309,20 @@ export const WordWriteAPI = {
                   blankText,
                   startPos
                 ) || searchResults.items[0];
-              targetRange.insertText(replacement, Word.InsertLocation.replace);
+              const inserted = targetRange.insertText(replacement, Word.InsertLocation.replace);
+              const isUnderlineOrBlank =
+                /^[_\s\u00A0\u3000]+$/.test(blankText) || blankText.includes('_');
+              if (isUnderlineOrBlank) {
+                inserted.font.underline = Word.UnderlineType.single;
+              }
+              const remainingText = fullText.substring(endPos);
+              const hasFollowingLabel =
+                /^[ \t]*(?:乙方|丙方|住所地|地址|签字|盖章|法定代表人|授权代表|电话|传真|开户行|账号|日期)[:：]/.test(
+                  remainingText
+                );
+              if (hasFollowingLabel) {
+                inserted.insertText('\t', Word.InsertLocation.after);
+              }
               await context.sync();
               console.log(
                 `[DEBUG] ✓ 已替换（直接）: "${blankText.substring(0, 10)}..." → "${replacement}"`

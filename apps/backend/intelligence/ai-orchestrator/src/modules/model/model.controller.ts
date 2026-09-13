@@ -26,13 +26,15 @@ import type {
   UpdateProviderConfigDTO,
 } from '../../interfaces';
 import { ModelService } from './model.service';
+import { ModelOcrService } from './model-ocr.service';
 
 @ApiTags('AI-Models')
 @Controller('ai')
 export class ModelController {
   constructor(
     private readonly modelService: ModelService,
-    private readonly promptDebugSettingsService: PromptDebugSettingsService
+    private readonly promptDebugSettingsService: PromptDebugSettingsService,
+    private readonly modelOcrService: ModelOcrService
   ) {}
 
   private scorePromptTestModel(model: AIModelDTO): number {
@@ -200,6 +202,25 @@ export class ModelController {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       throw new HttpException(`Model call failed: ${errorMsg}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  @Public()
+  @Post('model/ocr')
+  @ApiOperation({ summary: 'Perform multimodal OCR extraction on document images' })
+  async performOcr(
+    @Body()
+    body: {
+      images: string[];
+      modelId?: string;
+      prompt?: string;
+      systemPrompt?: string;
+    }
+  ) {
+    return this.modelOcrService.performOcr(body.images || [], {
+      modelId: body.modelId,
+      prompt: body.prompt,
+      systemPrompt: body.systemPrompt,
+    });
   }
 
   @Get('debug-settings')

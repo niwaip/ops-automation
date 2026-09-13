@@ -9,22 +9,49 @@ export class ChatPlanningPresentationService {
   constructor(private readonly promptDebugSettings: PromptDebugSettingsService) {}
 
   buildUploadedFileParams(
-    files?: Array<{ fileName: string; mimeType: string; content?: string }>
+    files?: Array<{ fileName: string; mimeType: string; content?: string; url?: string; downloadUrl?: string; fileUrl?: string }>
   ): Record<string, unknown> {
-    const validFiles = files?.filter((candidate) => Boolean(candidate.content)) || [];
+    const validFiles =
+      files?.filter(
+        (candidate) =>
+          Boolean(candidate.content) ||
+          Boolean(candidate.fileName) ||
+          Boolean((candidate as any).url) ||
+          Boolean((candidate as any).downloadUrl)
+      ) || [];
     const first = validFiles[0];
     const second = validFiles[1];
 
     const params: Record<string, unknown> = {};
-    if (first?.content) {
-      params.fileBase64 = first.content;
-      params.fileName = first.fileName;
-      params.fileBase64A = first.content;
-      params.fileNameA = first.fileName;
+    if (first) {
+      if (first.content) {
+        params.fileBase64 = first.content;
+        params.fileBase64A = first.content;
+      }
+      if (first.fileName) {
+        params.fileName = first.fileName;
+        params.fileNameA = first.fileName;
+      }
+      const urlA = (first as any).url || (first as any).downloadUrl || (first as any).fileUrl;
+      if (urlA) {
+        params.fileUrl = urlA;
+        params.fileUrlA = urlA;
+        params.downloadUrl = urlA;
+        params.downloadUrlA = urlA;
+      }
     }
-    if (second?.content) {
-      params.fileBase64B = second.content;
-      params.fileNameB = second.fileName;
+    if (second) {
+      if (second.content) {
+        params.fileBase64B = second.content;
+      }
+      if (second.fileName) {
+        params.fileNameB = second.fileName;
+      }
+      const urlB = (second as any).url || (second as any).downloadUrl || (second as any).fileUrl;
+      if (urlB) {
+        params.fileUrlB = urlB;
+        params.downloadUrlB = urlB;
+      }
     }
     return params;
   }

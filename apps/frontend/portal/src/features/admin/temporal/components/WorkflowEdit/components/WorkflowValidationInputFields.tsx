@@ -74,12 +74,22 @@ export const buildInitialWorkflowValidationValues = (
   const initialAllowedKeys = initialScenario ? new Set(initialScenario.parameters) : undefined;
   const values = Object.entries(definitions || {}).reduce<Record<string, string>>(
     (acc, [key, definition]) => {
+      const candidate =
+        definition.defaultValue !== undefined && definition.defaultValue !== ''
+          ? definition.defaultValue
+          : definition.exampleValue !== undefined && definition.exampleValue !== ''
+            ? definition.exampleValue
+            : definition.localizedDefaultValue
+              ? Object.values(definition.localizedDefaultValue).find(
+                  (v) => v !== undefined && v !== null && String(v).trim() !== ''
+                )
+              : '';
       if (
         (!initialAllowedKeys || definition.required || initialAllowedKeys.has(key)) &&
-        definition.defaultValue !== undefined &&
-        definition.defaultValue !== ''
+        candidate !== undefined &&
+        candidate !== ''
       ) {
-        acc[key] = String(definition.defaultValue);
+        acc[key] = String(candidate);
       } else {
         acc[key] = '';
       }

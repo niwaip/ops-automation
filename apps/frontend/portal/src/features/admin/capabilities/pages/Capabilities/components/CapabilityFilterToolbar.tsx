@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Button,
   Input,
@@ -13,13 +13,13 @@ import {
   PlusOutlined,
   CloseCircleOutlined,
   CheckCircleOutlined,
-  ExclamationCircleOutlined,
-  GlobalOutlined,
-  ApartmentOutlined,
+  ClockCircleOutlined,
+  SendOutlined,
   ClearOutlined,
 } from '@ant-design/icons';
 import type { CapabilitySourceType, CapabilityRelease } from '@/api/capabilities';
 import type { CapabilityQuickTab } from './CapabilityOverviewCards';
+import { resolvePipelineInfo } from '../utils/capabilitiesHelpers';
 
 interface CapabilityFilterToolbarProps {
   searchText: string;
@@ -48,41 +48,40 @@ export const CapabilityFilterToolbar: React.FC<CapabilityFilterToolbarProps> = (
   onOpenCreateModal,
   isStudioMode = false,
 }) => {
-  const deployedCount = releases.filter(
-    (r) =>
-      r.deploymentStatus === 'deployed' ||
-      r.deploymentStatus === 'succeeded' ||
-      r.status === 'published' ||
-      r.status === 'deployed' ||
-      Boolean(r.publishedSkillId)
-  ).length;
+  const stats = useMemo(() => {
+    let pendingDeploy = 0;
+    let pendingPublish = 0;
+    let published = 0;
+    let failed = 0;
 
-  const pendingCount = releases.filter(
-    (r) =>
-      r.approvalStatus === 'pending_approval' ||
-      r.status === 'draft' ||
-      r.status === 'draft_ready' ||
-      r.approvalStatus === 'pending'
-  ).length;
+    for (const r of releases) {
+      const info = resolvePipelineInfo(r);
+      if (info.stage === 'failed') {
+        failed++;
+      } else if (info.stage === 'published') {
+        published++;
+      } else if (info.stage === 'deployed_pending') {
+        pendingPublish++;
+      } else {
+        pendingDeploy++;
+      }
+    }
 
-  const failedCount = releases.filter(
-    (r) =>
-      r.status === 'build_failed' ||
-      r.status === 'validation_failed' ||
-      r.status === 'deploy_failed' ||
-      r.deploymentStatus === 'deploy_failed' ||
-      r.deploymentStatus === 'failed'
-  ).length;
-
-  const browserCount = releases.filter((r) => r.sourceType === 'browser_recording').length;
-  const temporalCount = releases.filter((r) => r.sourceType === 'temporal_workflow').length;
+    return {
+      total: releases.length,
+      pendingDeploy,
+      pendingPublish,
+      published,
+      failed,
+    };
+  }, [releases]);
 
   const segmentedOptions = [
     {
       label: (
         <Space size={6} style={{ padding: '2px 4px' }}>
           <span>全部流程</span>
-          <Badge count={releases.length} overflowCount={999} style={{ backgroundColor: '#8c8c8c' }} />
+          <Badge count={stats.total} overflowCount={999} style={{ backgroundColor: '#8c8c8c' }} />
         </Space>
       ),
       value: 'all' as CapabilityQuickTab,
@@ -90,56 +89,48 @@ export const CapabilityFilterToolbar: React.FC<CapabilityFilterToolbarProps> = (
     {
       label: (
         <Space size={6} style={{ padding: '2px 4px' }}>
-          <CheckCircleOutlined style={{ color: '#52c41a' }} />
-          <span>已上线/部署</span>
-          <Badge count={deployedCount} overflowCount={999} style={{ backgroundColor: '#52c41a' }} />
+          <ClockCircleOutlined style={{ color: '#fa8c16' }} />
+          <span>待部署验证</span>
+          {stats.pendingDeploy > 0 && (
+            <Badge count={stats.pendingDeploy} overflowCount={999} style={{ backgroundColor: '#fa8c16' }} />
+          )}
         </Space>
       ),
-      value: 'deployed' as CapabilityQuickTab,
+      value: 'pending_deploy' as CapabilityQuickTab,
     },
     {
       label: (
         <Space size={6} style={{ padding: '2px 4px' }}>
-          <ExclamationCircleOutlined style={{ color: '#fa8c16' }} />
-          <span>待审批/草稿</span>
-          {pendingCount > 0 ? (
-            <Badge count={pendingCount} overflowCount={999} style={{ backgroundColor: '#fa8c16' }} />
-          ) : null}
+          <SendOutlined style={{ color: '#13c2c2' }} />
+          <span>待发布技能</span>
+          {stats.pendingPublish > 0 && (
+            <Badge count={stats.pendingPublish} overflowCount={999} style={{ backgroundColor: '#13c2c2' }} />
+          )}
         </Space>
       ),
-      value: 'pending' as CapabilityQuickTab,
+      value: 'pending_publish' as CapabilityQuickTab,
+    },
+    {
+      label: (
+        <Space size={6} style={{ padding: '2px 4px' }}>
+          <CheckCircleOutlined style={{ color: '#52c41a' }} />
+          <span>已发布上线</span>
+          <Badge count={stats.published} overflowCount={999} style={{ backgroundColor: '#52c41a' }} />
+        </Space>
+      ),
+      value: 'published' as CapabilityQuickTab,
     },
     {
       label: (
         <Space size={6} style={{ padding: '2px 4px' }}>
           <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
           <span>异常待排障</span>
-          {failedCount > 0 ? (
-            <Badge count={failedCount} overflowCount={999} style={{ backgroundColor: '#ff4d4f' }} />
-          ) : null}
+          {stats.failed > 0 && (
+            <Badge count={stats.failed} overflowCount={999} style={{ backgroundColor: '#ff4d4f' }} />
+          )}
         </Space>
       ),
       value: 'failed' as CapabilityQuickTab,
-    },
-    {
-      label: (
-        <Space size={6} style={{ padding: '2px 4px' }}>
-          <GlobalOutlined style={{ color: '#13c2c2' }} />
-          <span>浏览器录制</span>
-          <Badge count={browserCount} overflowCount={999} style={{ backgroundColor: '#13c2c2' }} />
-        </Space>
-      ),
-      value: 'browser' as CapabilityQuickTab,
-    },
-    {
-      label: (
-        <Space size={6} style={{ padding: '2px 4px' }}>
-          <ApartmentOutlined style={{ color: '#722ed1' }} />
-          <span>编排型工作流</span>
-          <Badge count={temporalCount} overflowCount={999} style={{ backgroundColor: '#722ed1' }} />
-        </Space>
-      ),
-      value: 'temporal' as CapabilityQuickTab,
     },
   ];
 

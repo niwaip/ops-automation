@@ -3,14 +3,85 @@
  * into clean typography while preserving character-level <ins> and <del> tags intact.
  */
 
+/**
+ * Computes legal hierarchy indentation (in em) based on legal numbering patterns:
+ * - 3.1, 4.2: 1.5em (退两格)
+ * - 3.1.1, 4.1.2: 3.0em (再退两格)
+ * - 3.1.1.1: 4.5em (再退两格)
+ * - (1), （1）, (一), （一）, 1): 3.0em
+ */
+export function getLegalHierarchyIndentEm(rawLine: string): number {
+  if (!rawLine) return 0;
+  // Strip any inline HTML tags (<ins...>, <del...>, <strong...>, <span...>, <mark...>) to inspect bare text prefix
+  const plain = rawLine.replace(/<[^>]+>/g, '').trim();
+
+  // Tier 4: e.g. 3.1.1.1 or 1.2.3.4 (4 numbering levels)
+  if (/^\d+\.\d+\.\d+\.\d+/.test(plain)) {
+    return 4.5;
+  }
+  // Tier 3: e.g. 3.1.1, 4.1.2, 3.1.4 (3 numbering levels) -> 退两格 (约 3.0em)
+  if (/^\d+\.\d+\.\d+/.test(plain)) {
+    return 3.0;
+  }
+  // Tier 2: e.g. 3.1, 4.1, 1.2 (2 numbering levels) -> 基础缩进 1.5em (退两格)
+  if (/^\d+\.\d+(?!\.)/.test(plain)) {
+    return 1.5;
+  }
+  // Bracketed or parenthesized list items: (1), （1）, (一), （一）, 1), a) -> 3.0em
+  if (
+    /^[(（](?:[0-9一二三四五六七八九十a-zA-Z]+)[)）]/.test(plain) ||
+    /^[0-9a-zA-Z][)）]/.test(plain)
+  ) {
+    return 3.0;
+  }
+
+  return 0;
+}
+
+/**
+ * Splits HTML by linebreaks while maintaining balance of <ins> and <del> tags across lines.
+ */
+function splitHtmlPreservingDiffTags(html: string): string[] {
+  const rawSegments = html.split(/(?:<br\s*\/?>|\r?\n)/i);
+  const result: string[] = [];
+  let openTag: string | null = null;
+
+  for (const seg of rawSegments) {
+    let current = seg;
+    if (openTag) {
+      current = openTag + current;
+    }
+
+    // Check if current segment opened <ins> or <del> without closing
+    const insOpens = (current.match(/<ins\b[^>]*>/gi) || []).length;
+    const insCloses = (current.match(/<\/ins>/gi) || []).length;
+    const delOpens = (current.match(/<del\b[^>]*>/gi) || []).length;
+    const delCloses = (current.match(/<\/del>/gi) || []).length;
+
+    if (insOpens > insCloses) {
+      current += '</ins>';
+      openTag = '<ins class="diff-ins">';
+    } else if (delOpens > delCloses) {
+      current += '</del>';
+      openTag = '<del class="diff-del">';
+    } else {
+      openTag = null;
+    }
+
+    result.push(current);
+  }
+
+  return result;
+}
+
 export function formatContractDiffHtml(html: string): string {
   if (!html || !html.trim()) return '';
 
-  // Split by line breaks (<br>, <br/>, or \n)
-  const lines = html.split(/(?:<br\s*\/?>|\r?\n)/i);
+  // Split by line breaks preserving diff tags
+  const lines = splitHtmlPreservingDiffTags(html);
 
   const formattedLines = lines.map((line) => {
-    let trimmed = line.trim();
+    const trimmed = line.trim();
     if (!trimmed) return '';
 
     // Check horizontal rule: ---, ***, ___ (possibly wrapped in del/ins)
@@ -36,8 +107,14 @@ export function formatContractDiffHtml(html: string): string {
       }
     }
 
-    // Normal line: format inline markdown (bold, list item, etc.)
-    return convertInlineMarkdown(trimmed);
+    // Normal line: compute hierarchical indentation and format inline markdown
+    const indent = getLegalHierarchyIndentEm(trimmed);
+    const formatted = convertInlineMarkdown(trimmed);
+
+    if (indent > 0) {
+      return `<div class="clause-hierarchical-line" style="padding-left: ${indent}em; margin-bottom: 0.25rem; line-height: 1.7;">${formatted}</div>`;
+    }
+    return `<div class="clause-hierarchical-line" style="margin-bottom: 0.25rem; line-height: 1.7;">${formatted}</div>`;
   });
 
   // Filter consecutive empty lines
@@ -55,7 +132,7 @@ export function formatContractDiffHtml(html: string): string {
     }
   }
 
-  return result.join('<br>');
+  return result.join('');
 }
 
 /**

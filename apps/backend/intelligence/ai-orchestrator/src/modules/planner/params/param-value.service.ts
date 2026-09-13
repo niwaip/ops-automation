@@ -75,28 +75,37 @@ export class ParamValueService {
     return this.hasMeaningfulRequiredInputValue(value) ? 1 : 0;
   }
 
-  normalizeOptionalDefaultValue(value: unknown, expectedType?: string): unknown {
+  normalizeOptionalDefaultValue(value: unknown, expectedType?: string, paramName?: string): unknown {
     const normalized = this.normalizeMeaningfulInputValue(value);
     if (normalized === undefined || typeof expectedType !== 'string') {
       return normalized;
     }
 
     const type = expectedType.toLowerCase();
+    let resolvedValue = normalized;
     if ((type === 'integer' || type === 'int') && typeof normalized === 'string') {
       const numeric = Number(normalized);
-      return Number.isInteger(numeric) ? numeric : undefined;
-    }
-    if (type === 'number' && typeof normalized === 'string') {
+      resolvedValue = Number.isInteger(numeric) ? numeric : undefined;
+    } else if (type === 'number' && typeof normalized === 'string') {
       const numeric = Number(normalized);
-      return Number.isFinite(numeric) ? numeric : undefined;
-    }
-    if (type === 'boolean' && typeof normalized === 'string') {
+      resolvedValue = Number.isFinite(numeric) ? numeric : undefined;
+    } else if (type === 'boolean' && typeof normalized === 'string') {
       if (normalized.toLowerCase() === 'true') return true;
       if (normalized.toLowerCase() === 'false') return false;
       return undefined;
     }
 
-    return normalized;
+    if (
+      paramName &&
+      (type === 'number' || type === 'integer' || type === 'int') &&
+      typeof resolvedValue === 'number' &&
+      resolvedValue <= 0 &&
+      /(?:^|\.)(?:year|month|day)$/i.test(paramName)
+    ) {
+      return undefined;
+    }
+
+    return resolvedValue;
   }
 
   extractArrayGroupKey(name: string, type?: string): string | undefined {

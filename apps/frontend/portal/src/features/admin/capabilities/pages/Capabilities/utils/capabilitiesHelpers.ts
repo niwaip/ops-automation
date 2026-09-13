@@ -84,52 +84,151 @@ export const getValidationTypeLabel = (value: string) => {
   return value;
 };
 
-export const getNextStepHint = (release: CapabilityRelease): { label: string; color: string } => {
-  if (
-    release.deploymentStatus === 'succeeded' ||
+export type CapabilityPipelineStage =
+  | 'configured'        // 1. 已创建/配置，待部署验证
+  | 'deploying'         // 2. 部署中
+  | 'deployed_pending'  // 3. 部署验证成功，待发布为技能
+  | 'published'         // 4. 技能已发布上线
+  | 'failed';           // 异常状态
+
+export interface CapabilityPipelineInfo {
+  stage: CapabilityPipelineStage;
+  currentStep: number; // 1 | 2 | 3
+  stepTitle: string;
+  badgeText: string;
+  badgeColor: 'orange' | 'processing' | 'cyan' | 'success' | 'error';
+  actionPrompt: string;
+  primaryAction: {
+    key: 'deploy' | 'publish' | 'validate' | 'retry';
+    label: string;
+    stepTarget: number; // wizard step to open: 1=deploy, 2=publish, 3=validate
+  };
+}
+
+export const resolvePipelineInfo = (release: CapabilityRelease): CapabilityPipelineInfo => {
+  const isFailed =
+    release.status === 'build_failed' ||
+    release.status === 'validation_failed' ||
+    release.status === 'deploy_failed' ||
+    release.deploymentStatus === 'deploy_failed' ||
+    release.deploymentStatus === 'failed';
+
+  if (isFailed) {
+    return {
+      stage: 'failed',
+      currentStep: 2,
+      stepTitle: '部署/校验失败',
+      badgeText: '部署/校验失败',
+      badgeColor: 'error',
+      actionPrompt: '上一轮部署或验证未通过，建议重新部署或排查参数',
+      primaryAction: {
+        key: 'retry',
+        label: '重新部署',
+        stepTarget: 1,
+      },
+    };
+  }
+
+  const isDeploying =
+    release.status === 'deploying' ||
+    release.deploymentStatus === 'deploying' ||
+    release.deploymentStatus === 'running';
+
+  if (isDeploying) {
+    return {
+      stage: 'deploying',
+      currentStep: 2,
+      stepTitle: '正在部署',
+      badgeText: '正在部署...',
+      badgeColor: 'processing',
+      actionPrompt: '后台正在拉起容器环境并执行验证测试...',
+      primaryAction: {
+        key: 'deploy',
+        label: '查看部署',
+        stepTarget: 1,
+      },
+    };
+  }
+
+  const isPublished =
+    Boolean(release.publishedSkillId) ||
+    release.status === 'published';
+
+  if (isPublished) {
+    return {
+      stage: 'published',
+      currentStep: 3,
+      stepTitle: '已发布上线',
+      badgeText: '已发布上线',
+      badgeColor: 'success',
+      actionPrompt: '技能已在线运行，支持真实验证与重部署',
+      primaryAction: {
+        key: 'validate',
+        label: '真实验证',
+        stepTarget: 3,
+      },
+    };
+  }
+
+  const isDeployed =
     release.deploymentStatus === 'deployed' ||
-    release.status === 'deployed'
-  )
-    return { label: '观察运行/回滚', color: 'green' };
-  if (release.status === 'deploying' || release.deploymentStatus === 'deploying')
-    return { label: '正在部署...', color: 'processing' };
-  if (release.status === 'build_failed') return { label: '重新绑定工件', color: 'red' };
-  if (release.status === 'validation_failed') return { label: '重新校验', color: 'volcano' };
-  if (release.status === 'deploy_failed') return { label: '重新部署', color: 'magenta' };
-  if (release.status === 'rolled_back') return { label: '确认回滚结果', color: 'orange' };
+    release.deploymentStatus === 'succeeded' ||
+    release.status === 'deployed';
 
-  if (release.sourceType === 'temporal_workflow' && release.latestSuccessfulValidationId) {
-    return { label: '部署 / 发布 Skill', color: 'blue' };
-  }
-  if (release.sourceType === 'browser_recording' && release.latestSuccessfulValidationId) {
-    return { label: '发布 Browser Skill', color: 'cyan' };
-  }
-  if (release.publishedSkillId) {
+  if (isDeployed) {
     return {
-      label: release.sourceType === 'browser_recording' ? '部署浏览器能力' : '代码部署',
-      color: 'blue',
+      stage: 'deployed_pending',
+      currentStep: 2,
+      stepTitle: '部署就绪·待发布',
+      badgeText: '部署就绪·待发布',
+      badgeColor: 'cyan',
+      actionPrompt: '测试环境部署与验证通过，可一键发布为技能',
+      primaryAction: {
+        key: 'publish',
+        label: '发布为 Skill',
+        stepTarget: 2,
+      },
     };
   }
-  if (release.approvalStatus === 'approved') return { label: '发布 Skill', color: 'cyan' };
-  if (release.currentSkillDraftId) return { label: '发布 Skill', color: 'gold' };
-  if (release.latestSuccessfulValidationId) {
-    return {
-      label: release.sourceType === 'browser_recording' ? '发布 Browser Skill' : '发布 Skill',
-      color: 'lime',
-    };
-  }
-  if (release.currentBuildId || release.latestSuccessfulBuildId)
-    return { label: 'Sandbox 校验', color: 'purple' };
-  if (release.sourceType === 'browser_recording')
-    return { label: '准备浏览器回放校验', color: 'default' };
 
-  return { label: '绑定 Workflow 工件', color: 'default' };
+  // Otherwise: newly configured / draft / not started
+  return {
+    stage: 'configured',
+    currentStep: 1,
+    stepTitle: '待部署验证',
+    badgeText: '待部署验证',
+    badgeColor: 'orange',
+    actionPrompt: '源配置已就绪，请在 staging 执行部署与验证',
+    primaryAction: {
+      key: 'deploy',
+      label: '去部署验证',
+      stepTarget: 1,
+    },
+  };
 };
 
-export const canEnterReleaseCenter = (release: CapabilityRelease): boolean =>
-  Boolean(release.publishedSkillId) ||
-  ['published', 'deployed', 'rolled_back'].includes(release.status) ||
-  ['running', 'succeeded', 'deployed', 'rolled_back'].includes(release.deploymentStatus);
+export const formatRelativeTime = (isoString?: string | null): string => {
+  if (!isoString) return '-';
+  const time = new Date(isoString).getTime();
+  if (isNaN(time)) return '-';
+  const now = Date.now();
+  const diffSec = Math.floor((now - time) / 1000);
+  if (diffSec < 60) return '刚刚';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} 分钟前`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour} 小时前`;
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 7) return `${diffDay} 天前`;
+  return new Date(time).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+};
+
+export const getNextStepHint = (release: CapabilityRelease): { label: string; color: string } => {
+  const info = resolvePipelineInfo(release);
+  return { label: info.badgeText, color: info.badgeColor };
+};
+
+export const canEnterReleaseCenter = (_release: CapabilityRelease): boolean => true;
 
 export const flattenSnapshotPayload = (
   value: unknown,

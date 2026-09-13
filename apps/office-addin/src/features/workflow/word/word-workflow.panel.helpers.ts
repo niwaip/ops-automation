@@ -11,7 +11,7 @@ export const WORD_TECHNICAL_SERVICE_DEBUG_KEYWORDS = [
   'Number of the Bank account designated by Party B is as follows',
 ];
 
-export const WORD_SECTION_RECOGNITION_BATCH_SIZE = 6;
+export const WORD_SECTION_RECOGNITION_BATCH_SIZE = 12;
 export const WORD_SECTION_RECOGNITION_MAX_ROUNDS = 5;
 
 export type SampleUploadState = {

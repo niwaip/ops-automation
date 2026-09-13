@@ -501,6 +501,103 @@ export class XmlPreprocessor {
   }
 
   /**
+   * 针对合同常见同行多列（如同一段中包含两方签署、两处签字或盖章）进行防挤压间隔保护
+   * 避免客户提供的既有模板在变量替换后左右两列粘连
+   */
+  ensureMultiColumnSpacing(xml: string): string {
+    if (!xml.includes('<w:p') && !xml.includes('<w:r')) {
+      return xml;
+    }
+
+    const columnStartLabels = [
+      '甲方',
+      '地址',
+      '住所地',
+      '签字',
+      '签署',
+      '盖章',
+      '法定代表人',
+      '授权代表',
+      '委托代理人',
+      '联系电话',
+      '电话',
+      '传真',
+      '开户银行',
+      '开户行',
+      '银行账号',
+      '账号',
+    ];
+
+    const columnSecondLabels = [
+      '乙方',
+      '丙方',
+      '丁方',
+      '地址',
+      '住所地',
+      '签字',
+      '签署',
+      '盖章',
+      '法定代表人',
+      '授权代表',
+      '委托代理人',
+      '联系电话',
+      '电话',
+      '传真',
+      '开户银行',
+      '开户行',
+      '银行账号',
+      '账号',
+      '日期',
+    ];
+    const secondPattern = columnSecondLabels.join('|');
+
+    const r1 =
+      '<w:r\\b[^>]*>(?:<w:rPr>[\\s\\S]*?<\\/w:rPr>)?<w:t[^>]*>\\{[cdt]\\.[^}]+\\}<\\/w:t><\\/w:r>';
+    const r2 =
+      '(?:\\s*<w:r\\b[^>]*>(?:<w:rPr>[\\s\\S]*?<\\/w:rPr>)?<w:t(?:\\/>|><\\/w:t>)<\\/w:r>)*';
+    const r3 =
+      '\\s*<w:r\\b[^>]*>(?:<w:rPr>[\\s\\S]*?<\\/w:rPr>)?<w:t[^>]*>(?:' + secondPattern + ')[:：]';
+    const crossRunRegex = new RegExp('(' + r1 + ')(' + r2 + ')(' + r3 + ')', 'g');
+
+    return xml.replace(/<w:p\b[\s\S]*?<\/w:p>/g, (pXml) => {
+      // 提取段落纯文本判断是否是多列签名/签署类段落
+      const plainText = (pXml.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g) || [])
+        .map((t) => t.replace(/<[^>]+>/g, ''))
+        .join('')
+        .trim();
+
+      const isColumnParagraph = columnStartLabels.some((label) => plainText.startsWith(label));
+      if (!isColumnParagraph) {
+        return pXml;
+      }
+
+      // 如果段落中已有制表符，说明已经有列分隔，不重复追加
+      if (pXml.includes('<w:tab/>')) {
+        return pXml;
+      }
+
+      let updatedPXml = pXml.replace(
+        crossRunRegex,
+        (_match, p1, p2, p3) => `${p1}<w:r><w:tab/></w:r>${p2}${p3}`
+      );
+
+      // 处理在同一个 <w:t> 内紧跟的情况：{d.xxx}乙方：
+      const sameNodeRegex = new RegExp(
+        '(\\{[cdt]\\.[^}]+\\})([ \\t]*)((' + secondPattern + ')[:：])',
+        'g'
+      );
+      updatedPXml = updatedPXml.replace(sameNodeRegex, (match, varPart, spaces, labelPart) => {
+        if (spaces && spaces.length >= 2) {
+          return match;
+        }
+        return `${varPart}</w:t></w:r><w:r><w:tab/></w:r><w:r><w:t xml:space="preserve">${labelPart}`;
+      });
+
+      return updatedPXml;
+    });
+  }
+
+  /**
    * 完整预处理流程
    */
   process(xml: string): {
@@ -513,7 +610,10 @@ export class XmlPreprocessor {
     // 2. 预处理标记
     processed = this.preprocessMarkers(processed);
 
-    // 3. 检测问题
+    // 3. 针对客户既有模板的同行多列签名防坍塌排版优化
+    processed = this.ensureMultiColumnSpacing(processed);
+
+    // 4. 检测问题
     const issues = this.detectIssues(processed);
 
     return { xml: processed, issues };

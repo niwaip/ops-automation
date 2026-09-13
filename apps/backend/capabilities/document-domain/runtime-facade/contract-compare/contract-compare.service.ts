@@ -18,6 +18,7 @@ import { CharDiffEngineService } from './char-diff-engine.service';
 import { ContractHtmlRendererService } from './contract-html-renderer.service';
 import { fixFilenameEncoding } from '../filename-encoding.util';
 import { ReviewElementEvaluatorService } from '../contract-elements';
+import { resolveCompareDocumentPayloads } from '../document-payload-resolver.helper';
 
 function findWorkspaceRoot(startDir: string): string {
   let current = startDir;
@@ -65,12 +66,7 @@ export class ContractCompareService {
    * Main execution: compare two contracts and generate a side-by-side interactive HTML report
    */
   public async compareContracts(input: ContractCompareInput): Promise<ContractCompareOutput> {
-    const hasDocA = Boolean(input.fileBase64A || input.textA);
-    const hasDocB = Boolean(input.fileBase64B || input.textB);
-
-    if (!hasDocA || !hasDocB) {
-      throw new BadRequestException('Both contract A and contract B (fileBase64 or text) must be provided.');
-    }
+    await resolveCompareDocumentPayloads(input, undefined, undefined, this.logger);
 
     const fileNameA = fixFilenameEncoding(input.fileNameA || '基准合同_A');
     const fileNameB = fixFilenameEncoding(input.fileNameB || '比对合同_B');

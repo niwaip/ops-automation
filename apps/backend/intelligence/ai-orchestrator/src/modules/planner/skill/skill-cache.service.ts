@@ -89,7 +89,8 @@ export class SkillCacheService {
             contractRef: cap.contractRef,
             contractDigest: cap.contractDigest,
             runtimeHints: cap.runtimeHints,
-            triggerKeywords: cap.runtimeHints?.triggerKeywords,
+            triggerKeywords:
+              cap.triggerKeywords || cap.runtimeHints?.triggerKeywords || [],
             apiEndpoints: {
               runtimeMetadata: {
                 sourceType: 'builtin_skill',

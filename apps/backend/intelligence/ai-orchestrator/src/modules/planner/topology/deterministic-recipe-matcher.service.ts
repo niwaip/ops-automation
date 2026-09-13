@@ -65,11 +65,11 @@ export class DeterministicRecipeMatcherService {
     const hasPdfMerge = /合并|拼接|merge/i.test(userRequest);
     const hasContractCompare =
       /(?:比对|对比|比较|diff|差异|变更点|红线)/i.test(userRequest) &&
-      /(?:合同|协议|文档|文件|条款|原版|修改版)/i.test(userRequest);
+      /(?:合同|协议|文档|文件|条款|原版|修改版|附件|材料|版本|pdf|docx?)/i.test(userRequest);
     const hasContractReview =
       !hasContractCompare &&
-      /(?:审查|审核|排查|风控|合规|诊断)/i.test(userRequest) &&
-      /(?:合同|协议|条款)/i.test(userRequest);
+      /(?:审查|审核|排查|风控|合规|诊断|风险|评估|分析)/i.test(userRequest) &&
+      /(?:合同|协议|条款|文档|文件|附件|材料|版本|pdf|docx?)/i.test(userRequest);
     const hasWeb = hasRoutingSignal(userRequest, 'webSource', policy);
     const hasDocumentExtract =
       !hasPdfExport &&

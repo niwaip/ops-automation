@@ -8,12 +8,12 @@ export class ExplicitSkillIntentService {
     userRequest: string,
     skillCards: CompactCapabilityCardV1[],
   ): CompactCapabilityCardV1[] {
+    const cleanRequest = userRequest.replace(/\[系统上下文：[^\]]*\]/g, '').trim();
     return skillCards.filter((card) =>
-      hasExplicitCapabilityInvocation(userRequest, [
+      hasExplicitCapabilityInvocation(cleanRequest, [
         card.displayName,
         card.id,
         card.publishedSkillId,
-        card.goals,
       ]),
     );
   }

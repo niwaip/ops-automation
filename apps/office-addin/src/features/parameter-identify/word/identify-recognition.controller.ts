@@ -161,6 +161,7 @@ export function createWordIdentifyRecognitionController(
       return;
     } finally {
       options.setIsRecognizing(false);
+      options.setRecognitionProgressText?.(null);
     }
     options.setRecognitionRevision(options.sampleUploadState.revision);
     options.setRecognitionLanguageSignature(options.languageSignature);

@@ -257,6 +257,37 @@ describe('RuntimeCredentialResolverService', () => {
       loginCredential: 'secret_password_789',
     });
   });
+
+  it('does not throw when an optional sensitive parameter like PDF password is not bound', async () => {
+    const prisma = {
+      userSkillCredentialBinding: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      skillConfig: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'platform.document.pdf-content-extractor',
+          paramsSchema: {
+            properties: {
+              fileBase64: { type: 'string', description: '文件内容' },
+              fileName: { type: 'string', description: '文件名' },
+              password: { type: 'string', description: 'PDF 解密密码' },
+            },
+            required: ['fileBase64'],
+          },
+        }),
+      },
+    };
+    const service = new RuntimeCredentialResolverService(prisma as never);
+
+    const result = await service.resolveInputForRuntime(
+      TEST_USER_ID,
+      'platform.document.pdf-content-extractor',
+      { fileBase64: 'base64data' }
+    );
+
+    expect(result).toEqual({ fileBase64: 'base64data' });
+  });
 });
+
 
 

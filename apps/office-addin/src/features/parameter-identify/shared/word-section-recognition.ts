@@ -11,6 +11,7 @@ export type WordRecognitionBatchOptions = {
   unsentNormalIds: string[];
   candidateById: Map<string, TemplateFieldCandidate>;
   acceptedIds: Set<string>;
+  batchSize?: number;
 };
 
 function normalizeCompareLookupText(value: unknown): string {
@@ -334,9 +335,10 @@ function tryAddPeerCandidate(
   batch: TemplateFieldCandidate[],
   batchCandidateIds: Set<string>,
   options: WordRecognitionBatchOptions,
-  sourceQueues: string[][]
+  sourceQueues: string[][],
+  batchSize: number
 ): void {
-  if (batch.length >= 6) {
+  if (batch.length >= batchSize) {
     return;
   }
 
@@ -358,13 +360,14 @@ export function takeWordRecognitionBatchForRecognition(
 ): TemplateFieldCandidate[] {
   const batch: TemplateFieldCandidate[] = [];
   const batchCandidateIds = new Set<string>();
+  const batchSize = Math.max(1, options.batchSize ?? 12);
   const sourceQueues =
     options.retryLoopIds.length > 0 || options.unsentLoopIds.length > 0
       ? [options.retryLoopIds, options.unsentLoopIds]
       : [options.retryNormalIds, options.unsentNormalIds];
 
   sourceQueues.forEach((queue) => {
-    while (batch.length < 6 && queue.length > 0) {
+    while (batch.length < batchSize && queue.length > 0) {
       const candidateId = String(queue.shift() || '');
       const candidate = tryAddBatchCandidate(candidateId, batch, batchCandidateIds, options);
       if (!candidate) {
@@ -372,7 +375,7 @@ export function takeWordRecognitionBatchForRecognition(
       }
 
       // Keep bilingual pairs in the same prompt whenever there is still room in the batch.
-      tryAddPeerCandidate(candidate, batch, batchCandidateIds, options, sourceQueues);
+      tryAddPeerCandidate(candidate, batch, batchCandidateIds, options, sourceQueues, batchSize);
     }
   });
 

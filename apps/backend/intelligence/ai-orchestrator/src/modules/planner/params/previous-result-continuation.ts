@@ -81,6 +81,18 @@ export function projectPreviousResultIntoRecognition(
     projectedFields.push(fieldName);
   }
 
+  const metadataCandidates = ['fileName', 'filename', 'downloadUrl', 'fileUrl'];
+  for (const fieldName of metadataCandidates) {
+    if (schema.properties?.[fieldName] && !hasMeaningfulValue(params[fieldName])) {
+      const exactValue = findExactFieldValue(structuredData, fieldName);
+      const normalized = normalizeForType(exactValue, schema.properties[fieldName]?.type);
+      if (normalized !== undefined) {
+        params[fieldName] = normalized;
+        projectedFields.push(fieldName);
+      }
+    }
+  }
+
   const unresolved = requiredFields.filter((fieldName) => !hasMeaningfulValue(params[fieldName]));
   if (unresolved.length === 1) {
     const fieldName = unresolved[0];

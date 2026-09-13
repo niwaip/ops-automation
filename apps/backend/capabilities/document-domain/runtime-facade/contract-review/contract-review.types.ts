@@ -24,6 +24,10 @@ export interface BuiltinContractReviewInput {
   myPosition?: PartyPositionInput;
   customCheckpoints?: CustomCheckpointDto[];
   customChecklistRules?: CustomCheckpointDto[]; // Standard manifest parameter name
+  downloadUrl?: string;
+  fileUrl?: string;
+  url?: string;
+  taskContext?: any;
   idempotencyKey?: string;
 }
 

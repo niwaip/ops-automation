@@ -40,7 +40,12 @@ export async function executeWordRecognitionSections(
     ].join('\n')
   );
 
-  for (const section of options.selectedRecognitionSections) {
+  const totalSections = options.selectedRecognitionSections.length;
+  for (let sectionIndex = 0; sectionIndex < totalSections; sectionIndex++) {
+    const section = options.selectedRecognitionSections[sectionIndex];
+    options.setRecognitionProgressText?.(
+      `正在识别章节 (${sectionIndex + 1}/${totalSections}): ${section.sectionTitle}...`
+    );
     const detectedSection = options.detectedSectionMap.get(section.sectionKey);
     const excerpt = options.buildWordSectionExcerpt(
       args.templateDocumentIr,
@@ -112,6 +117,9 @@ export async function executeWordRecognitionSections(
       roundIndex <= options.wordSectionRecognitionMaxRounds;
       roundIndex += 1
     ) {
+      options.setRecognitionProgressText?.(
+        `正在识别章节 (${sectionIndex + 1}/${totalSections}): ${section.sectionTitle} (批次 ${roundIndex})...`
+      );
       const currentBatch = options.takeWordRecognitionBatch({
         retryLoopIds,
         unsentLoopIds,
@@ -119,6 +127,7 @@ export async function executeWordRecognitionSections(
         unsentNormalIds,
         candidateById,
         acceptedIds: acceptedCandidateIds,
+        batchSize: options.wordSectionRecognitionBatchSize,
       });
       if (currentBatch.length === 0) {
         break;
@@ -164,7 +173,7 @@ export async function executeWordRecognitionSections(
           apiBaseUrl: options.apiBaseUrl,
           useMultiStage: options.useMultiStage,
           requestedKind: options.analysisExecutor,
-          thinking: roundIndex > 1 ? true : options.analysisThinkingEnabled,
+          thinking: options.analysisThinkingEnabled,
           aiOrchestratorBaseUrl: options.aiOrchestratorBaseUrl,
           aiOrchestratorAuthToken: options.aiOrchestratorAuthToken,
         });
@@ -381,6 +390,8 @@ export async function executeWordRecognitionSections(
       ].join('\n')
     );
   }
+
+  options.setRecognitionProgressText?.(null);
 
   options.addDebugLog(
     'info',
