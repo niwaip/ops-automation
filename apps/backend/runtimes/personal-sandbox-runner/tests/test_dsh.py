@@ -103,6 +103,22 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertFalse(is_promising_action("处理完成"))
         self.assertFalse(is_promising_action(""))
 
+    def test_parse_tool_calls_image_gen(self):
+        raw = '<tool_call>{"name": "image_gen", "arguments": {"prompt": "cyberpunk neon cat", "aspect_ratio": "16:9"}}</tool_call>'
+        calls = parse_tool_calls(raw)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["name"], "image_gen")
+        self.assertEqual(calls[0]["params"].get("prompt"), "cyberpunk neon cat")
+        self.assertEqual(calls[0]["params"].get("aspect_ratio"), "16:9")
+
+    def test_execute_tool_image_gen_unsupported(self):
+        # 当系统默认模型为纯文本时，应优雅提示不支持，绝不抛未捕获异常，且不要求配置 apikey
+        res = execute_tool("image_gen", {"prompt": "画一只可爱的猫咪"})
+        self.assertTrue("不支持" in res or "纯文本模型" in res)
+        self.assertNotIn("Traceback", res)
+        self.assertNotIn("apiKey", res)
+
 
 if __name__ == "__main__":
     unittest.main()
+

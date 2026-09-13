@@ -43,7 +43,7 @@ export class UserSandboxDispatcherService {
     return target;
   }
 
-  private syncFilesToSandboxWorkspace(userId: string, files?: ChatUploadedFileDTO[]): void {
+  syncFilesToSandboxWorkspace(userId: string, files?: ChatUploadedFileDTO[]): void {
     if (!files || files.length === 0) return;
     try {
       const userWorkspaceDir = this.getWorkspaceDir(userId);
@@ -136,7 +136,7 @@ export class UserSandboxDispatcherService {
         const fileList = body.files.map((f) => f.fileName).join(', ');
         promptForSandbox =
           `用户附加了文件：${fileList}。\n` +
-          `文件已放入当前沙箱 /workspace/ 目录下（可直接使用内置 read_file 工具或 python 原生读取分析）。\n\n`;
+          `文件已放入当前沙箱 /workspace/ 目录下（可直接使用内置 read_file / vision_inspect 工具进行内容解析或视觉识别）。\n\n`;
         for (const f of body.files) {
           if (f.extractedText) {
             const preview = f.extractedText.slice(0, 4000);
@@ -282,8 +282,32 @@ export class UserSandboxDispatcherService {
         cleanAnswer = answerLines.join('\n').trim() || rawOutput;
       }
 
-      // 二次防御：彻底剔除可能意外残留在正文中的工具调用裸 JSON 与 XML 标签
+      // 解析并提取沙箱外发文件标记（如 <<<DSH_OUTBOUND_FILE:...>>>）
+      const outboundFiles: Array<{ filePath: string; fileName: string; comment?: string }> = [];
+      const outboundMarkerRegex = /<<<DSH_OUTBOUND_FILE:([\s\S]*?)>>>/g;
+      let m: RegExpExecArray | null;
+      while ((m = outboundMarkerRegex.exec(rawOutput)) !== null) {
+        try {
+          const parsed = JSON.parse(m[1].trim());
+          if (parsed && typeof parsed.filePath === 'string') {
+            outboundFiles.push({
+              filePath: parsed.filePath,
+              fileName: parsed.fileName || parsed.filePath.split('/').pop() || 'file',
+              comment: parsed.comment,
+            });
+          }
+        } catch {
+          // 忽略非法 JSON 标记
+        }
+      }
+
+      // 二次防御：彻底剔除可能意外残留在正文中的工具调用裸 JSON 与 XML 标签及外发文件标记
       cleanAnswer = this.stripToolCallArtifacts(cleanAnswer);
+      cleanAnswer = cleanAnswer.replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '').trim();
+      telemetrySummary = telemetrySummary.replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '').trim();
+
+      // 自动解析沙箱生成/外发的图片文件，转换为内联 Markdown 图片直接呈现在聊天界面
+      cleanAnswer = this.embedWorkspaceImagesInAnswer(effectiveUserId, cleanAnswer, outboundFiles);
 
       if (!cleanAnswer) {
         cleanAnswer = '已为您完成沙箱智能检索与数据分析，未获取到更多额外内容。';
@@ -311,6 +335,7 @@ export class UserSandboxDispatcherService {
             durationMs: harnessResult.durationMs,
             exitCode: harnessResult.exitCode,
           },
+          outboundFiles: outboundFiles.length > 0 ? outboundFiles : undefined,
         },
       });
 
@@ -325,6 +350,7 @@ export class UserSandboxDispatcherService {
         ownerUserId: effectiveUserId,
         clientMessageId: body.clientMessageId,
         clientAssistantMessageId: body.clientAssistantMessageId,
+        files: body.files,
       });
 
       emit(this.chatConversationService.buildSessionPatchEvent(sessionId, session));
@@ -393,5 +419,110 @@ export class UserSandboxDispatcherService {
       }
     }
     return res.replace(/```(?:json)?\s*```/g, '').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  /**
+   * 获取用户沙箱工作区中的文件物理路径
+   */
+  getWorkspaceFilePath(userId: string, fileName: string): string | null {
+    const cleanName = path.basename(fileName);
+    const userWorkspaceDir = this.getWorkspaceDir(userId);
+    const primaryPath = path.join(userWorkspaceDir, cleanName);
+    if (fs.existsSync(primaryPath)) {
+      return primaryPath;
+    }
+
+    // 兜底搜索 candidate user workspaces（如当 userId 为 default 或跨模式时）
+    const candidateRoots = [
+      '/workspace/data/users',
+      path.join(process.cwd(), 'data/users'),
+      path.resolve(__dirname, '../../../../../../../data/users'),
+    ];
+    for (const root of candidateRoots) {
+      if (fs.existsSync(root)) {
+        try {
+          const subdirs = fs.readdirSync(root);
+          for (const sub of subdirs) {
+            const candidate = path.join(root, sub, 'workspace', cleanName);
+            if (fs.existsSync(candidate)) {
+              return candidate;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 将沙箱工作区生成或提及的图片转换为 Markdown 图片链接，直接呈现在聊天界面
+   */
+  private embedWorkspaceImagesInAnswer(
+    userId: string,
+    text: string,
+    outboundFiles: Array<{ filePath: string; fileName: string; comment?: string }>
+  ): string {
+    let result = text;
+    const handledFiles = new Set<string>();
+    const imageExts = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg']);
+
+    const getFileUrl = (fileName: string): string | null => {
+      try {
+        const cleanName = path.basename(fileName);
+        const filePath = this.getWorkspaceFilePath(userId, cleanName);
+        if (!filePath) return null;
+        const ext = path.extname(cleanName).toLowerCase();
+        if (!imageExts.has(ext)) return null;
+        return `/api/ai/chat/workspace-files/${encodeURIComponent(userId)}/${encodeURIComponent(cleanName)}`;
+      } catch (err: any) {
+        this.logger.warn(`Failed to resolve workspace image ${fileName}: ${err.message}`);
+        return null;
+      }
+    };
+
+    // 1. 如果文本中已包含 ![](/workspace/...) 或 ![](filename)
+    result = result.replace(
+      /!\[(.*?)\]\((?:(?:\/workspace\/)?([a-zA-Z0-9_\-.]+\.(?:png|jpg|jpeg|webp|gif|svg)))\)/gi,
+      (match, alt, fileName) => {
+        const fileUrl = getFileUrl(fileName);
+        if (fileUrl) {
+          handledFiles.add(path.basename(fileName));
+          return `![${alt || fileName}](${fileUrl})`;
+        }
+        return match;
+      }
+    );
+
+    // 2. 检查 outboundFiles 中未渲染的图片文件
+    for (const f of outboundFiles) {
+      const cleanName = path.basename(f.fileName || f.filePath);
+      if (handledFiles.has(cleanName)) continue;
+      const ext = path.extname(cleanName).toLowerCase();
+      if (imageExts.has(ext)) {
+        const fileUrl = getFileUrl(cleanName);
+        if (fileUrl) {
+          handledFiles.add(cleanName);
+          result += `\n\n![${f.comment || cleanName}](${fileUrl})\n`;
+        }
+      }
+    }
+
+    // 3. 检查正文中可能提到的 /workspace/xxx.(png|jpg|jpeg|webp|gif|svg)
+    const mentionedMatches = result.match(/\/workspace\/([a-zA-Z0-9_\-.]+\.(?:png|jpg|jpeg|webp|gif|svg))/gi);
+    if (mentionedMatches) {
+      for (const m of mentionedMatches) {
+        const cleanName = path.basename(m);
+        if (handledFiles.has(cleanName)) continue;
+        const fileUrl = getFileUrl(cleanName);
+        if (fileUrl) {
+          handledFiles.add(cleanName);
+          result += `\n\n![${cleanName}](${fileUrl})\n`;
+        }
+      }
+    }
+
+    return result;
   }
 }

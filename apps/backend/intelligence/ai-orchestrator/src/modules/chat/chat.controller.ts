@@ -16,6 +16,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as path from 'path';
+import * as fs from 'fs';
 import { ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AiAuthGuard, verifyInternalSecret, Public } from '../../common/guards/ai-auth.guard';
@@ -102,6 +103,24 @@ export class ChatController {
     );
   }
 
+  private resolveUserIdFromRequest(
+    req: Request,
+    identityUserId?: string
+  ): string | undefined {
+    if (identityUserId) return identityUserId;
+    const supplied = req.headers['x-internal-auth'];
+    const userId = req.headers['x-user-id'];
+    if (
+      typeof supplied === 'string' &&
+      verifyInternalSecret(supplied) &&
+      typeof userId === 'string' &&
+      userId.trim()
+    ) {
+      return userId.trim();
+    }
+    return undefined;
+  }
+
   @Get('chat/sessions')
   @ApiOperation({ summary: 'List chat sessions' })
   @ApiResponse({ status: 200, description: 'Chat sessions loaded successfully' })
@@ -109,8 +128,9 @@ export class ChatController {
     const identity = await this.chatOrchestratorService.resolveAuthenticatedUser(
       req.headers.authorization
     );
-    if (!identity.userId) throw new UnauthorizedException('Login required');
-    const sessions = await this.chatConversationService.listSessions(identity.userId);
+    const userId = this.resolveUserIdFromRequest(req, identity.userId);
+    if (!userId) throw new UnauthorizedException('Login required');
+    const sessions = await this.chatConversationService.listSessions(userId);
     return { sessions };
   }
 
@@ -124,8 +144,9 @@ export class ChatController {
     const identity = await this.chatOrchestratorService.resolveAuthenticatedUser(
       req.headers.authorization
     );
-    if (!identity.userId) throw new UnauthorizedException('Login required');
-    await this.chatConversationService.deleteSession(sessionId, identity.userId);
+    const userId = this.resolveUserIdFromRequest(req, identity.userId);
+    if (!userId) throw new UnauthorizedException('Login required');
+    await this.chatConversationService.deleteSession(sessionId, userId);
     return { success: true };
   }
 
@@ -139,8 +160,9 @@ export class ChatController {
     const identity = await this.chatOrchestratorService.resolveAuthenticatedUser(
       req.headers.authorization
     );
-    if (!identity.userId) throw new UnauthorizedException('Login required');
-    const messages = await this.chatConversationService.getChatHistory(sessionId, identity.userId);
+    const userId = this.resolveUserIdFromRequest(req, identity.userId);
+    if (!userId) throw new UnauthorizedException('Login required');
+    const messages = await this.chatConversationService.getChatHistory(sessionId, userId);
     return { messages };
   }
 
@@ -370,6 +392,7 @@ export class ChatController {
           ownerUserId: taskModeContext.context.userId,
           clientMessageId: body.clientMessageId,
           clientAssistantMessageId: body.clientAssistantMessageId,
+          files: body.files,
         });
         if (sessionPatchEvent) {
           emit(sessionPatchEvent as unknown as SseEventPayload);
@@ -525,6 +548,7 @@ export class ChatController {
         ownerUserId: taskModeContext.context.userId,
         clientMessageId: body.clientMessageId,
         clientAssistantMessageId: body.clientAssistantMessageId,
+        files: body.files,
       });
       if (sessionPatchEvent) {
         events.push(
@@ -549,6 +573,26 @@ export class ChatController {
       throw new UnauthorizedException('Invalid internal identity');
     }
     const parsed = parseChatSlashCommand(body.message, body.config?.mode || 'chat');
+    if ((body.config as any)?.systemReply) {
+      const reply = String((body.config as any).systemReply);
+      await this.chatConversationService.persistConversation({
+        sessionId: body.sessionId || 'default',
+        userContent: body.message || '[已上传附件]',
+        assistantContent: reply,
+        rawAssistantContent: reply,
+        thinkingEnabled: false,
+        ownerUserId: userId,
+        clientMessageId: body.clientMessageId,
+        files: body.files,
+      });
+      if (body.files && body.files.length > 0) {
+        this.userSandboxDispatcherService.syncFilesToSandboxWorkspace(userId, body.files);
+      }
+      return {
+        response: reply,
+        events: [],
+      };
+    }
     if (parsed.isCommandOnly && parsed.systemReply) {
       return {
         response: parsed.systemReply,
@@ -564,26 +608,40 @@ export class ChatController {
         mode,
       },
     };
-    if (mode !== 'task') {
-      // 个人模式：优先调度用户专属安全沙箱 (DeepSeek Harness) 执行
-      const events: StreamEvent[] = [];
-      let resultAnswer = '';
-      const handledBySandbox = await this.userSandboxDispatcherService.dispatchPersonalSandbox(
-        body,
-        (event) => {
-          if (event.type === StreamEventType.RESULT && typeof event.content === 'string') {
-            resultAnswer = event.content;
-          }
-          events.push(event as unknown as StreamEvent);
-        },
-        userId
-      );
+    const isInternalServiceOrAddin =
+      body.sessionId?.startsWith('office-') ||
+      (body.config as any)?.source === 'office-addin' ||
+      (body.config as any)?.bypassSandbox === true;
 
-      if (handledBySandbox && resultAnswer) {
-        return {
-          response: resultAnswer,
-          events,
-        };
+    if (mode !== 'task') {
+      if (!isInternalServiceOrAddin) {
+        // 个人模式：优先调度用户专属安全沙箱 (DeepSeek Harness) 执行
+        const events: StreamEvent[] = [];
+        let resultAnswer = '';
+        let outboundFiles: any[] | undefined = undefined;
+        const handledBySandbox = await this.userSandboxDispatcherService.dispatchPersonalSandbox(
+          body,
+          (event) => {
+            if (event.type === StreamEventType.RESULT) {
+              if (typeof event.content === 'string') {
+                resultAnswer = event.content;
+              }
+              if ((event as any).data?.outboundFiles) {
+                outboundFiles = (event as any).data.outboundFiles;
+              }
+            }
+            events.push(event as unknown as StreamEvent);
+          },
+          userId
+        );
+
+        if (handledBySandbox && resultAnswer) {
+          return {
+            response: resultAnswer,
+            events,
+            outboundFiles,
+          };
+        }
       }
 
       return this.chatConversationService.chat(
@@ -663,6 +721,7 @@ export class ChatController {
         ownerUserId: userId,
         clientMessageId: body.clientMessageId,
         clientAssistantMessageId: body.clientAssistantMessageId,
+        files: body.files,
       });
       if (sessionPatch) events.push(sessionPatch);
     }
@@ -741,5 +800,89 @@ export class ChatController {
       throw new BadRequestException('No audio file uploaded or file rejected by policy');
     }
     return this.chatMediaService.transcribeAudio(file, modelId);
+  }
+
+  @Get('chat/workspace-files/:userId/:fileName')
+  @Public()
+  @ApiOperation({ summary: 'Serve workspace file generated in user sandbox (e.g. AI images)' })
+  async serveWorkspaceFile(
+    @Param('userId') userId: string,
+    @Param('fileName') fileName: string,
+    @Res() res: Response
+  ): Promise<void> {
+    const rawUserId = String(userId || '').trim();
+    const rawFileName = String(fileName || '').trim();
+
+    // 防御路径穿越
+    if (!rawUserId || !rawFileName || rawUserId.includes('..') || rawFileName.includes('..')) {
+      throw new BadRequestException('Invalid userId or fileName parameter');
+    }
+
+    let safeFileName = path.basename(rawFileName);
+    try {
+      safeFileName = path.basename(decodeURIComponent(rawFileName));
+    } catch {
+      // ignore
+    }
+
+    const filePath = this.userSandboxDispatcherService.getWorkspaceFilePath(rawUserId, safeFileName);
+    if (!filePath || !fs.existsSync(filePath)) {
+      res.status(404).send('File not found in workspace');
+      return;
+    }
+
+    const ext = path.extname(safeFileName).toLowerCase();
+    let mime = 'application/octet-stream';
+    if (ext === '.png') mime = 'image/png';
+    else if (ext === '.jpg' || ext === '.jpeg') mime = 'image/jpeg';
+    else if (ext === '.webp') mime = 'image/webp';
+    else if (ext === '.gif') mime = 'image/gif';
+    else if (ext === '.svg') mime = 'image/svg+xml';
+    else if (ext === '.pdf') mime = 'application/pdf';
+    else if (ext === '.txt') mime = 'text/plain; charset=utf-8';
+    else if (ext === '.json') mime = 'application/json';
+
+    // 智能嗅探文件魔数（解决如生成 JPEG 但命名为 .png 的情况）
+    try {
+      const fd = fs.openSync(filePath, 'r');
+      const header = Buffer.alloc(12);
+      fs.readSync(fd, header, 0, 12, 0);
+      fs.closeSync(fd);
+      if (header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff) {
+        mime = 'image/jpeg';
+      } else if (
+        header[0] === 0x89 &&
+        header[1] === 0x50 &&
+        header[2] === 0x4e &&
+        header[3] === 0x47
+      ) {
+        mime = 'image/png';
+      } else if (
+        header[0] === 0x52 &&
+        header[1] === 0x49 &&
+        header[2] === 0x46 &&
+        header[3] === 0x46 &&
+        header[8] === 0x57 &&
+        header[9] === 0x45 &&
+        header[10] === 0x42 &&
+        header[11] === 0x50
+      ) {
+        mime = 'image/webp';
+      } else if (
+        header[0] === 0x47 &&
+        header[1] === 0x49 &&
+        header[2] === 0x46 &&
+        header[3] === 0x38
+      ) {
+        mime = 'image/gif';
+      }
+    } catch {
+      // ignore sniff error
+    }
+
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    const stream = fs.createReadStream(filePath);
+    stream.pipe(res);
   }
 }

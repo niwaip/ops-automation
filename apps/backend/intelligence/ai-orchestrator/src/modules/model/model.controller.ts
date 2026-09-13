@@ -44,12 +44,13 @@ export class ModelController {
       : [];
     const hasAudioInput = inputModes.includes('audio');
     const isAudioTranscriptionDefault = defaultScope.audio_transcription === true;
+    const isImageGenDefault = defaultScope.image_generation === true;
 
     return (
       (defaultScope.admin_task ? 100 : 0) +
       (defaultScope.global ? 90 : 0) +
       (defaultScope.admin_chat ? 80 : 0) +
-      (!isAudioTranscriptionDefault ? 40 : 0) +
+      (!isAudioTranscriptionDefault && !isImageGenDefault ? 40 : 0) +
       (!hasAudioInput ? 20 : 0) +
       (model.config?.capability_tier === 'advanced' ? 10 : 0)
     );

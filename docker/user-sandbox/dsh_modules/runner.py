@@ -57,7 +57,7 @@ def cmd_run(args):
         except Exception:
             pass
 
-    # 扩展的 PPT / 前端原型设计 / PDF / Excel / Word / 内部沟通 / 文档协作意图嗅探
+    # 扩展的 PPT / 前端原型设计 / PDF / Excel / Word / 内部沟通 / 文档协作 / 图像生成意图嗅探
     ppt_keywords = ["ppt", "slides", "幻灯片", "演示文稿", "deck", "汇报", "讲义"]
     design_keywords = ["设计", "前端", "原型", "landing", "saas", "dashboard", "看板", "ui", "页面", "品味", "审美"]
     pdf_keywords = ["pdf", "导出pdf", "生成pdf", "转成pdf", "转pdf", "doc转pdf", "docx转pdf"]
@@ -65,6 +65,8 @@ def cmd_run(args):
     docx_keywords = ["docx", "word", "合同", "生成word", "导出word", "word文档"]
     comms_keywords = ["周报", "月报", "3p", "故障通报", "复盘报告", "系统维护", "发布公告", "维护通知", "内部通告"]
     coauthor_keywords = ["技术方案", "prd", "需求文档", "设计方案", "起草提案", "决策文档", "架构方案"]
+    send_keywords = ["通过微信发送", "发送微信", "发到微信", "发我微信", "微信发我", "微信发送", "发给我", "推送给我", "发送给用户", "发我一份", "发到我微信", "发送文件", "发文件"]
+    image_keywords = ["画一张", "画图", "生成图片", "生图", "画个", "设计logo", "设计海报", "做个海报", "以图生图", "修改图片", "重绘", "换背景", "换成", "戴上", "画", "绘画", "插画", "绘制", "生成图", "文生图", "图生图", "image_gen"]
 
     skill_context = ""
     is_ppt_intent = any(k in prompt.lower() for k in ppt_keywords)
@@ -74,6 +76,8 @@ def cmd_run(args):
     is_docx_intent = any(k in prompt.lower() for k in docx_keywords)
     is_comms_intent = any(k in prompt.lower() for k in comms_keywords)
     is_coauthor_intent = any(k in prompt.lower() for k in coauthor_keywords)
+    is_send_intent = any(k in prompt.lower() for k in send_keywords)
+    is_image_intent = any(k in prompt.lower() for k in image_keywords)
 
     # 上下文短确认探测 (用户回复 "1" 或 "生成" 且上轮涉及 PDF 制作)
     if not is_pdf_intent and prompt.strip() in ["1", "1.", "一是", "第一个", "确认", "生成", "导出"]:
@@ -85,7 +89,10 @@ def cmd_run(args):
                 is_pdf_intent = True
                 break
 
-    if is_ppt_intent:
+    if is_image_intent:
+        print("🎨 [Harness Skill Sniffer] 检测到图像创作/修图意图，正在加载图像创作规范 (image-gen)...")
+        skill_context = read_skill("image-gen")
+    elif is_ppt_intent:
         print("🎨 [Harness Skill Sniffer] 检测到 PPT / 演示文稿生成意图，正在加载设计引擎 (guizang-ppt)...")
         skill_context = read_skill("guizang-ppt")
     elif is_pdf_intent:
@@ -163,9 +170,17 @@ def cmd_run(args):
         "   Call format: <tool_call>{\"name\": \"scan_knowledge\", \"arguments\": {}}</tool_call>\n"
         "7. `read_skill`: Read professional design, PPT presentation, and productivity templates (/knowledge/skills or /opt/dsh/skills).\n"
         "   Available system skills: `xlsx` (Excel spreadsheet creation with formulas & styles), `docx` (Word document & contract processing), `pdf` (offline PDF document/report generation), `internal-comms` (3P updates, post-mortems, maintenance notices), `doc-coauthoring` (collaborative technical spec & PRD workflow), `skill-creator` (develop new custom skills), `theme-factory` (design themes & color palettes), `guizang-ppt` (magazine-style HTML slides), `html-ppt`, `frontend-design`, `dashboard`, `saas-landing`, `web-prototype`, `taste-skill`, `pptx`, `slides`, plus any custom skills in /knowledge/skills.\n"
-        "   Call format: <tool_call>{\"name\": \"read_skill\", \"arguments\": {\"skill_name\": \"guizang-ppt\"}}</tool_call>\n\n"
+        "   Call format: <tool_call>{\"name\": \"read_skill\", \"arguments\": {\"skill_name\": \"guizang-ppt\"}}</tool_call>\n"
+        "8. `vision_inspect`: Inspect, analyze, and read visual content from any image file (.jpg, .png, .webp, .jpeg) in /workspace or /knowledge using the system model. If the system default model is a text-only model without vision capability, it will report that vision is unsupported.\n"
+        "   Call format: <tool_call>{\"name\": \"vision_inspect\", \"arguments\": {\"file_path\": \"图片文件名或路径\", \"prompt\": \"分析指令（可选）\"}}</tool_call>\n"
+        "9. `image_gen`: Generate or edit images using the system default model. If the system default model is a text-only model without image generation capability, it will politely report that the default model does not support it. NEVER prompt the user to configure API keys.\n"
+        "   Call format: <tool_call>{\"name\": \"image_gen\", \"arguments\": {\"prompt\": \"详细生图提示词\", \"aspect_ratio\": \"16:9\", \"output_filename\": \"图片名.png\", \"input_image\": \"可选参考图\"}}</tool_call>\n"
+        "10. `send_file`: Deliver/push any file from /workspace or /knowledge directly to the user's WeChat / chat client.\n"
+        "   Call format: <tool_call>{\"name\": \"send_file\", \"arguments\": {\"file_path\": \"文件名或路径\", \"comment\": \"可选备注说明\"}}</tool_call>\n\n"
         "【Personal Space & Custom Skills Instructions】:\n"
         "- Saving Deliverables to Personal Space: /knowledge is fully read-write and persistent across sandbox restarts. When the user asks to save documents, reports, summaries, or artifacts to '个人空间' (Personal Space), write them directly to /knowledge/ (e.g. `/knowledge/系统运维报告书.docx` or `/knowledge/outputs/...`). Do NOT say that /knowledge is read-only.\n"
+        "- Sending Files to User / WeChat: The user sandbox IS fully integrated with WeChat outbound file delivery! Whenever the user asks to send, push, export, or deliver a file or document to them or to WeChat (e.g. '通过微信发送...给我', '发给我', '推送文件到微信'), ALWAYS call the `send_file` tool to send it. NEVER claim that the sandbox cannot send files or lacks WeChat integration!\n"
+        "- Vision and Image Generation: Always use the system default model through internal proxy. Never prompt or ask the user to configure an API key. If the tool indicates that the current default model is text-only and does not support vision or image generation, directly and politely tell the user that the system default model is a text-only model and does not support vision/image generation.\n"
         "- Custom Skills: When developing custom skills using `skill-creator`, save them into `/knowledge/skills/<skill-name>/SKILL.md` (and optional scripts/templates in the same folder). dsh will automatically detect and load them via `read_skill`!\n\n"
         "【Autonomous Problem Solving & Design Instructions】:\n"
         "1. Deliverable Creation: When asked to create PPT, slides, dashboard, landing page, UI, or code, DO NOT invoke search or shell tools unless live external facts are specifically requested. Use the loaded design rules and DIRECTLY write the full working code!\n"
@@ -178,12 +193,17 @@ def cmd_run(args):
 
     user_parts = [f"[User Request]:\n{prompt}"]
 
-    # 自动探测并注入用户在 prompt 中提及的工作区附加文件内容（如 docx, xlsx, txt 等）
+    # 自动探测并注入用户在 prompt 中提及的工作区附加文件内容（如 docx, xlsx, txt, 图片等）
     file_context = ""
     if os.path.exists(WORKSPACE_DIR):
         for item in sorted(Path(WORKSPACE_DIR).iterdir()):
             if item.is_file() and not item.name.startswith("."):
-                if item.name in prompt or (len(item.stem) >= 3 and item.stem in prompt):
+                is_mentioned = (
+                    item.name in prompt or
+                    (len(item.stem) >= 3 and item.stem in prompt) or
+                    (item.suffix.lower() in [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"] and any(k in prompt for k in ["图", "看", "照", "分析", "识别", "这", "image", "pic", "photo"]))
+                )
+                if is_mentioned:
                     extracted = read_workspace_file(item.name)
                     if extracted and not extracted.startswith("文件未找到"):
                         file_context += f"\n\n[Attached File Content - {item.name}]:\n{extracted[:15000]}"
@@ -197,6 +217,8 @@ def cmd_run(args):
             f"[Loaded Design Skill & Style Guide]:\n{skill_context[:3500]}\n\n"
             "【注意】：当前设计规范已为你成功加载就绪，你无需再调用任何工具。请直接根据以上规范生成高质量、美观单文件 HTML 幻灯片代码（保存在 ```html ``` 代码块中）。"
         )
+    if is_send_intent:
+        user_parts.append("[Delivery Intent]: 检测到用户要求通过即时通讯（微信）接收文件。沙箱已集成微信文件外发通道，请直接调用 `send_file` 工具将对应文件推送给用户，严禁声明无法发送！")
     if search_context:
         user_parts.append(f"[Live Retrieved Information]:\n{search_context}")
     elif is_search_intent:
@@ -222,6 +244,7 @@ def cmd_run(args):
 
         # 智能自主 ReAct 工具调用循环 (设计任务最多 1 轮以确保快速产出，研究分析任务支持最多 5 轮)
         max_rounds = 1 if (is_ppt_intent or is_design_intent) else 5
+        outbound_files_collected = []
         for round_idx in range(max_rounds):
             tool_calls = parse_tool_calls(reply)
             if not tool_calls:
@@ -258,9 +281,20 @@ def cmd_run(args):
             tool_res = execute_tool(t_name, t_params)
             print("✓ 工具执行完成，正在分析并综合归纳...")
 
-            messages.append({"role": "assistant", "content": reply})
+            # 抓取工具执行中的外发文件标记
+            for m in re.findall(r'<<<DSH_OUTBOUND_FILE:(.*?)>>>', tool_res):
+                outbound_files_collected.append(m.strip())
+
             next_tip = "请继续推进并输出最终成果（制作PPT/网页请提供完整HTML代码）。"
-            if (is_ppt_intent or is_design_intent) and round_idx >= 1:
+            if t_name.lower() in ["send_file", "send_workspace_file", "send_to_user", "send_to_wechat"]:
+                messages.append({"role": "assistant", "content": reply})
+                messages.append({
+                    "role": "user",
+                    "content": f"[Tool Execution Result - {t_name}]:\n{tool_res}\n\n文件已成功标记并推送至即时通讯通道。请直接回复用户，告知文件已通过微信发送，请其查收即可。无需再调用任何其他工具。"
+                })
+                reply = call_model_proxy(messages, args.model or "deepseek-chat")
+                break
+            elif (is_ppt_intent or is_design_intent) and round_idx >= 1:
                 next_tip = "参考材料已完备。请立刻根据设计规范生成完整可运行的 HTML 代码（置于 ```html 代码块中）并详细说明。"
             messages.append({
                 "role": "user",
@@ -340,6 +374,9 @@ def cmd_run(args):
                     json.dump(existing_history[-20:], f, ensure_ascii=False, indent=2)
             except Exception:
                 pass
+
+        for m in outbound_files_collected:
+            print(f"\n<<<DSH_OUTBOUND_FILE:{m}>>>")
 
         print("\n<<<DSH_FINAL_OUTPUT>>>\n" + final_text)
 

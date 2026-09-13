@@ -9,7 +9,7 @@ import { ChatSessionData, SessionService } from '../redis/session.service';
 import { StreamEventType } from '../react-engine/interfaces';
 import type { StreamEvent } from '../react-engine/interfaces';
 import type { ExecutionContext } from '../react-engine/interfaces';
-import type { ChatRequestDTO, ChatResponseDTO } from './chat.dto';
+import type { ChatRequestDTO, ChatResponseDTO, ChatUploadedFileDTO } from './chat.dto';
 import { ChatMediaService, type AuthenticatedUserContext } from './chat-media.service';
 
 interface ChatSessionListItem {
@@ -147,6 +147,7 @@ export class ChatConversationService {
       ownerUserId,
       clientMessageId: body.clientMessageId,
       clientAssistantMessageId: body.clientAssistantMessageId,
+      files: body.files,
     });
     emit(this.buildSessionPatchEvent(sessionId, session));
   }
@@ -203,6 +204,7 @@ export class ChatConversationService {
       ownerUserId,
       clientMessageId: body.clientMessageId,
       clientAssistantMessageId: body.clientAssistantMessageId,
+      files: body.files,
     });
 
     return {
@@ -313,6 +315,7 @@ export class ChatConversationService {
     ownerUserId?: string;
     clientMessageId?: string;
     clientAssistantMessageId?: string;
+    files?: Array<ChatUploadedFileDTO | string>;
   }): Promise<StreamEvent | null> {
     const normalizedUserContent = params.userContent.trim();
     const assistantMessage = this.buildTaskAssistantHistoryMessage(params.terminalEvent);
@@ -328,6 +331,8 @@ export class ChatConversationService {
       };
     }
 
+    const fileMetadata = this.formatFileMetadata(params.files);
+
     const nextSession = await this.sessionService.appendChatMessages(
       params.sessionId,
       [
@@ -339,6 +344,7 @@ export class ChatConversationService {
           metadata: {
             mode: 'task',
             ...(params.clientMessageId ? { clientMessageId: params.clientMessageId } : {}),
+            ...(fileMetadata.length > 0 ? { files: fileMetadata } : {}),
           },
         },
         assistantMessage,
@@ -388,6 +394,7 @@ export class ChatConversationService {
     ownerUserId?: string;
     clientMessageId?: string;
     clientAssistantMessageId?: string;
+    files?: Array<ChatUploadedFileDTO | string>;
   }): Promise<NonNullable<ChatSessionData['session']> | undefined> {
     const assistantMetadata = this.buildChatAssistantMetadata({
       rawAssistantContent: params.rawAssistantContent,
@@ -396,6 +403,7 @@ export class ChatConversationService {
       rateLimit: params.rateLimit,
       clientMessageId: params.clientAssistantMessageId,
     });
+    const fileMetadata = this.formatFileMetadata(params.files);
     const nextSession = await this.sessionService.appendChatMessages(
       params.sessionId,
       [
@@ -407,6 +415,7 @@ export class ChatConversationService {
           metadata: {
             mode: 'chat',
             ...(params.clientMessageId ? { clientMessageId: params.clientMessageId } : {}),
+            ...(fileMetadata.length > 0 ? { files: fileMetadata } : {}),
           },
         },
         {
@@ -424,6 +433,32 @@ export class ChatConversationService {
       }
     );
     return nextSession.session;
+  }
+
+  private formatFileMetadata(
+    files?: Array<ChatUploadedFileDTO | string>
+  ): Array<Record<string, unknown>> {
+    if (!files || !Array.isArray(files) || files.length === 0) return [];
+    return files
+      .map((f) => {
+        if (typeof f === 'string') {
+          return { fileName: f };
+        }
+        if (f && typeof f === 'object') {
+          return {
+            fileId: f.fileId,
+            fileName: f.fileName,
+            mimeType: f.mimeType,
+            size: f.size,
+            source: f.source || 'upload',
+            ...(f.workspaceNodeId ? { workspaceNodeId: f.workspaceNodeId } : {}),
+            ...(f.workspaceId ? { workspaceId: f.workspaceId } : {}),
+            ...(f.storagePath ? { storagePath: f.storagePath } : {}),
+          };
+        }
+        return null;
+      })
+      .filter((item): item is Record<string, unknown> => Boolean(item));
   }
 
   private buildChatAssistantMetadata(params: {
@@ -703,8 +738,40 @@ export class ChatConversationService {
   }
 
   resolvePreferredChatModelId(body: ChatRequestDTO): string {
+    const hasImages = body.files?.some(
+      (f: any) =>
+        (typeof f?.mimeType === 'string' && f.mimeType.toLowerCase().startsWith('image/')) ||
+        (typeof f?.fileName === 'string' && /\.(jpe?g|png|webp|gif|bmp|tiff?)$/i.test(f.fileName))
+    );
+
     if (body.modelId && body.modelId !== 'default') {
-      return body.modelId;
+      const explicitModel =
+        typeof this.modelService.resolveModelEntity === 'function'
+          ? this.modelService.resolveModelEntity(body.modelId)
+          : null;
+      const isVision =
+        typeof this.modelService.isVisionCapableModel === 'function'
+          ? this.modelService.isVisionCapableModel(explicitModel)
+          : true;
+      if (!hasImages || !explicitModel || isVision) {
+        return body.modelId;
+      }
+      this.logger.warn(
+        `Requested model ${body.modelId} (${explicitModel.name}) does not support vision/images, falling back to a vision-capable model.`
+      );
+    }
+
+    if (hasImages) {
+      const visionModel =
+        typeof this.modelService.getPreferredVisionModel === 'function'
+          ? this.modelService.getPreferredVisionModel({
+              mode: 'chat',
+              userRoles: body.userRoles,
+            })
+          : null;
+      if (visionModel) {
+        return visionModel.id;
+      }
     }
 
     const preferredModel = this.modelService.getPreferredDefaultModel({

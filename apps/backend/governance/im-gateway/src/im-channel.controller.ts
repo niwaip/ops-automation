@@ -27,6 +27,13 @@ export class ImChannelController {
   setInteractionMode(@Request() req: any, @Body() body: SetImInteractionModeDto) {
     return this.service.setInteractionMode(req.user.id, body.interactionMode);
   }
+  @Post('wechat/test-file')
+  sendTestFile(
+    @Request() req: any,
+    @Body() body?: { fileName?: string; content?: string }
+  ) {
+    return this.service.sendTestFile(req.user.id, body?.fileName, body?.content);
+  }
   @Delete('wechat') remove(@Request() req: any) {
     return this.service.removeWechat(req.user.id);
   }

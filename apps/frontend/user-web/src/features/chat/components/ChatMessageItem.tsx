@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react';
 import {
   ClockCircleOutlined,
+  FileImageOutlined,
   FolderOutlined,
   LoadingOutlined,
   PaperClipOutlined,
@@ -276,6 +277,9 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                     : null;
                 const workspaceId = typeof file === 'object' ? (file as any)?.workspaceId : null;
                 const canPreview = Boolean(isWs && fileId);
+                const isImage =
+                  /\.(jpe?g|png|gif|webp|svg|bmp)$/i.test(fileName) ||
+                  (typeof file === 'object' && Boolean((file as any)?.mimeType?.startsWith('image/')));
                 return (
                   <div
                     key={idx}
@@ -294,6 +298,8 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                   >
                     {isWs ? (
                       <FolderOutlined className={styles['user-chat-attachment-icon']} style={{ color: 'var(--primary-color)' }} />
+                    ) : isImage ? (
+                      <FileImageOutlined className={styles['user-chat-attachment-icon']} style={{ color: 'var(--primary-color, #1890ff)' }} />
                     ) : (
                       <PaperClipOutlined className={styles['user-chat-attachment-icon']} />
                     )}

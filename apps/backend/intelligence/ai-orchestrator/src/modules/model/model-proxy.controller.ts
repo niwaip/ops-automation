@@ -51,8 +51,38 @@ export class ModelProxyController {
     const { apiKey, baseUrl } = await this.resolveUpstreamCredentials();
     const isStream = Boolean(body.stream);
 
-    // 如果未配置独立原生 DeepSeek API Key，无缝委托给平台已初始化的模型客户端（例如 Bailian/DeepSeek-V4/Flash）
-    let client = this.modelService.getClient(body.model);
+    // 检查是否包含多模态图片或显式请求视觉能力
+    const hasImageContent =
+      Array.isArray(body.messages) &&
+      body.messages.some((msg: any) =>
+        Array.isArray(msg?.content) &&
+        msg.content.some(
+          (b: any) =>
+            b?.type === 'image_url' ||
+            (typeof b?.image_url === 'object' && Boolean(b.image_url?.url))
+        )
+      );
+    const isVisionRequested =
+      body.model === 'vision' ||
+      body.model === 'ocr' ||
+      hasImageContent;
+
+    let client = null;
+    if (isVisionRequested) {
+      const visionModel = this.modelService.getPreferredVisionModel();
+      if (visionModel) {
+        client = this.modelService.getClient(visionModel.id);
+      }
+    }
+    if (!client && body.model) {
+      client = this.modelService.getClient(body.model);
+    }
+    if (!client) {
+      const defaultChat = this.modelService.getPreferredDefaultModel({ mode: 'chat' });
+      if (defaultChat) {
+        client = this.modelService.getClient(defaultChat.id);
+      }
+    }
     if (!client) {
       client =
         this.modelService.getClient('deepseek-v4-flash-0731') ||
@@ -60,7 +90,7 @@ export class ModelProxyController {
         this.modelService.getClient('default');
     }
 
-    if (!apiKey && client) {
+    if ((!apiKey || isVisionRequested) && client) {
       this.logger.log(`Using platform-managed model client for sandbox proxy (${body.model || 'default'})`);
       try {
         if (isStream) {
@@ -96,13 +126,16 @@ export class ModelProxyController {
             this.logger.warn(
               `Primary model [${body.model}] stream failed (${primaryErr.message}). Attempting fallback to platform resilient model...`
             );
-            const fallbackKeys = [
-              'deepseek-v4-flash-0731',
-              'deepseek-v4-flash',
-              'gemini-3.7-flash',
-              'bc660c37-bf55-411b-91cd-8e732b0301f0',
-              'default',
-            ];
+            const fallbackKeys = isVisionRequested
+              ? ['gemini-3.7-flash-high', 'gemini-3.7-flash', 'default']
+              : [
+                  'deepseek-v4-flash-0731',
+                  'deepseek-v4-flash',
+                  'gemini-3.7-flash-high',
+                  'gemini-3.7-flash',
+                  'bc660c37-bf55-411b-91cd-8e732b0301f0',
+                  'default',
+                ];
             for (const fbKey of fallbackKeys) {
               const fbClient = this.modelService.getClient(fbKey);
               if (fbClient && fbClient !== client) {
@@ -142,7 +175,16 @@ export class ModelProxyController {
             this.logger.warn(
               `Primary model [${body.model}] failed (${primaryErr.message}). Attempting fallback to platform resilient model...`
             );
-            const fallbackKeys = ['deepseek-v4-flash-0731', 'deepseek-v4-flash', 'gemini-3.7-flash', 'bc660c37-bf55-411b-91cd-8e732b0301f0', 'default'];
+            const fallbackKeys = isVisionRequested
+              ? ['gemini-3.7-flash-high', 'gemini-3.7-flash', 'default']
+              : [
+                  'deepseek-v4-flash-0731',
+                  'deepseek-v4-flash',
+                  'gemini-3.7-flash-high',
+                  'gemini-3.7-flash',
+                  'bc660c37-bf55-411b-91cd-8e732b0301f0',
+                  'default',
+                ];
             let fallbackSucceeded = false;
             for (const fbKey of fallbackKeys) {
               const fbClient = this.modelService.getClient(fbKey);
@@ -279,6 +321,92 @@ export class ModelProxyController {
         { id: 'deepseek-reasoner', object: 'model', owned_by: 'deepseek' },
       ],
     };
+  }
+
+  /**
+   * 代理图像生成 (Images Generations) 请求
+   * 默认优先选用系统配置了【文生图】(image_generation) 角色的模型
+   */
+  @Post('images/generations')
+  @ApiOperation({ summary: 'Image Generations Proxy for Sandboxes' })
+  async imageGenerations(
+    @Headers('authorization') authHeader: string | undefined,
+    @Body() body: Record<string, any>,
+    @Req() req: Request,
+    @Res() res: Response
+  ): Promise<void> {
+    // 1. 鉴权：校验虚拟 Token
+    const userToken = this.extractBearerToken(authHeader);
+    const userId = userToken ? parseAndVerifySandboxToken(userToken) : null;
+    if (!userId) {
+      this.logger.warn('Unauthorized sandbox image-generation call attempt');
+      throw new HttpException('Invalid or missing sandbox user token', HttpStatus.UNAUTHORIZED);
+    }
+
+    this.logger.log(`Proxying image generation for user [${userId}]`);
+
+    // 2. 解析系统配置的【文生图】角色模型
+    const imageModel =
+      this.modelService.selectScopedDefaultModel('image_generation') ||
+      this.modelService.getPreferredImageGenerationModel();
+
+    if (!imageModel) {
+      this.logger.warn('No active image generation model configured with [image_generation] scope');
+      res.status(HttpStatus.NOT_FOUND).json({
+        error: {
+          message: '当前系统尚未配置活跃的【文生图】模型角色。请在平台「模型配置」中添加生图模型，并将其勾选为【文生图】默认角色。',
+          type: 'model_not_configured',
+          code: 'IMAGE_GENERATION_MODEL_UNCONFIGURED',
+        },
+      });
+      return;
+    }
+
+    // 3. 解析该模型的 API Key 与 Endpoint
+    const apiKey = this.modelService.getResolvedApiKeyForModel(imageModel.id);
+    const baseUrl = imageModel.api_endpoint;
+
+    if (!apiKey) {
+      this.logger.error(`No API key found for configured image generation model [${imageModel.name}]`);
+      res.status(HttpStatus.SERVICE_UNAVAILABLE).json({
+        error: {
+          message: `文生图模型 [${imageModel.name}] 未配置有效 API Key。`,
+          type: 'authentication_error',
+          code: 'IMAGE_GENERATION_KEY_MISSING',
+        },
+      });
+      return;
+    }
+
+    const cleanBase = baseUrl.replace(/\/+$/, '');
+    const targetUrl = cleanBase.endsWith('/images/generations')
+      ? cleanBase
+      : `${cleanBase}/images/generations`;
+
+    try {
+      this.logger.log(
+        `Forwarding image generation request to: ${targetUrl}, upstream model: ${body.model || imageModel.name}`
+      );
+      const payload = {
+        ...body,
+        model: body.model || imageModel.name,
+      };
+
+      const upstreamResponse = await axios.post(targetUrl, payload, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 120000,
+      });
+
+      res.status(upstreamResponse.status).json(upstreamResponse.data);
+    } catch (err: any) {
+      const status = err.response?.status || HttpStatus.INTERNAL_SERVER_ERROR;
+      const errorData = err.response?.data || { message: err.message };
+      this.logger.error(`Upstream image generation call failed (${status}): ${JSON.stringify(errorData)}`);
+      res.status(status).json(errorData);
+    }
   }
 
   private extractBearerToken(authHeader?: string): string | null {

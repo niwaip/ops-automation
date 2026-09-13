@@ -77,7 +77,13 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
   // 一键异步保存 Mutation，无需用户干预
   const saveMutation = useMutation(
     async () => {
-      const summaryText = message.metadata?.finalSummary?.trim() || plainContent;
+      let summaryText = message.metadata?.finalSummary?.trim() || plainContent;
+      if (plainContent.includes('![') && !summaryText.includes('![')) {
+        const imgMatches = plainContent.match(/!\[.*?\]\(.*?\)/g);
+        if (imgMatches && imgMatches.length > 0) {
+          summaryText = `${summaryText}\n\n${imgMatches.join('\n\n')}`;
+        }
+      }
       const dto: SaveTextNoteDto = {
         title: defaultTitle,
         content: summaryText,

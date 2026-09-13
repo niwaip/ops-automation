@@ -32,11 +32,19 @@ export interface ChatRequestDTO {
   approvedToolNames?: string[];
 }
 
+export interface OutboundFileInfo {
+  filePath: string;
+  fileName: string;
+  comment?: string;
+  mimeType?: string;
+}
+
 export interface ChatResponseDTO {
   sessionId?: string;
   response: string;
   events: StreamEvent[];
   metadata?: Record<string, unknown>;
+  outboundFiles?: OutboundFileInfo[];
 }
 
 export interface ChatHistoryMessageDTO {

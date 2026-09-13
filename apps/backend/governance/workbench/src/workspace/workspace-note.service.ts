@@ -7,6 +7,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 import axios from 'axios';
 import { WORKBENCH_PRISMA, WorkbenchPrismaPort, getAiOrchestratorUrl } from '../ports';
 import { STORAGE_DRIVER, type StorageDriver } from './storage/storage-driver.interface';
@@ -163,6 +165,13 @@ export class WorkspaceNoteService {
       where: { id: workspace.id },
       data: { usedBytes: nextUsedBytes },
     });
+
+    // 自动关联同步正文中引用的沙箱生成图片至相同工作区目录
+    try {
+      await this.syncReferencedImagesToWorkspace(userId, workspace, currentParentId, dto.content);
+    } catch (err: any) {
+      this.logger.warn(`Failed to sync companion images: ${err.message}`);
+    }
 
     // 8. 异步触发纯文本索引与卡片提取
     this.contentIndexer
@@ -342,7 +351,7 @@ export class WorkspaceNoteService {
         '  "title": "高度凝练、结构清晰的中文文档标题（不超过 30 个字，包含关键实体与事件，如：2026-09-04 上海实时气温与午后阵雨出行指南）",',
         '  "tags": ["3~6个精准分类标签，如天气预报、生活出行、上海等"],',
         '  "summary": "150~250字的高浓度业务与运维执行摘要",',
-        '  "refinedContent": "清洗去噪、层级分明的结构化 Markdown 正文（包含核心结论、关键细节与实操建议，不要包含一级标题，使用 ## 与 ### 分块）"',
+        '  "refinedContent": "清洗去噪、层级分明的结构化 Markdown 正文（包含核心结论、关键细节与实操建议，不要包含一级标题，使用 ## 与 ### 分块。若原文包含图片语法 ![...](...)，请务必在正文相应位置原样保留完整的图片引用语法，严禁丢弃图片！）"',
         '}',
       ].filter(Boolean).join('\n\n');
 
@@ -368,7 +377,18 @@ export class WorkspaceNoteService {
         ? parsed.tags.map(String).slice(0, 6)
         : (dto.tags || ['AI沉淀', '知识候选']);
       const refinedSummary = String(parsed.summary || '').trim();
-      const refinedBody = String(parsed.refinedContent).trim();
+      let refinedBody = String(parsed.refinedContent).trim();
+
+      // 提取原文中的所有图片标签，确保 AI 提炼时绝不丢失任何视觉素材
+      const imageTags: string[] = [];
+      const imgMatchRegex = /!\[(.*?)\]\((.*?)\)/g;
+      let m: RegExpExecArray | null;
+      while ((m = imgMatchRegex.exec(rawContent)) !== null) {
+        imageTags.push(m[0]);
+      }
+      if (imageTags.length > 0 && !refinedBody.includes('![')) {
+        refinedBody = `${imageTags.join('\n\n')}\n\n${refinedBody}`;
+      }
 
       const now = new Date();
       const frontMatterLines = [
@@ -513,5 +533,125 @@ export class WorkspaceNoteService {
       createdAt: node.createdAt.toISOString(),
       updatedAt: node.updatedAt.toISOString(),
     };
+  }
+
+  /**
+   * 自动同步并保存正文中引用的沙箱生成图片到工作空间
+   */
+  public async syncReferencedImagesToWorkspace(
+    userId: string,
+    workspace: any,
+    parentId: string | null,
+    content: string
+  ): Promise<void> {
+    try {
+      const imageRegex = /!\[(.*?)\]\((.*?)\)/g;
+      let match: RegExpExecArray | null;
+      const foundFiles = new Set<string>();
+
+      while ((match = imageRegex.exec(content)) !== null) {
+        const src = match[2];
+        const fileMatch = src.match(/(?:workspace-files\/[^/]+\/|\/workspace\/|^)([a-zA-Z0-9_\-.]+\.(?:png|jpg|jpeg|webp|gif|svg))/i);
+        if (fileMatch && fileMatch[1]) {
+          foundFiles.add(fileMatch[1]);
+        }
+      }
+
+      const directMatches = content.match(/\/workspace\/([a-zA-Z0-9_\-.]+\.(?:png|jpg|jpeg|webp|gif|svg))/gi);
+      if (directMatches) {
+        for (const dm of directMatches) {
+          foundFiles.add(path.basename(dm));
+        }
+      }
+
+      if (foundFiles.size === 0) return;
+
+      for (const fileName of foundFiles) {
+        const existing = await this.prisma.workspaceNode.findFirst({
+          where: {
+            workspaceId: workspace.id,
+            parentId,
+            name: fileName,
+          },
+        });
+        if (existing) continue;
+
+        const candidateRoots = [
+          path.join('/workspace/data/users', userId, 'workspace', fileName),
+          path.join(process.cwd(), 'data/users', userId, 'workspace', fileName),
+        ];
+
+        let physicalPath: string | null = null;
+        for (const p of candidateRoots) {
+          if (fs.existsSync(p)) {
+            physicalPath = p;
+            break;
+          }
+        }
+
+        if (!physicalPath) {
+          const globalRoots = ['/workspace/data/users', path.join(process.cwd(), 'data/users')];
+          for (const gRoot of globalRoots) {
+            if (fs.existsSync(gRoot)) {
+              try {
+                const uDirs = fs.readdirSync(gRoot);
+                for (const u of uDirs) {
+                  const cand = path.join(gRoot, u, 'workspace', fileName);
+                  if (fs.existsSync(cand)) {
+                    physicalPath = cand;
+                    break;
+                  }
+                }
+              } catch {}
+            }
+            if (physicalPath) break;
+          }
+        }
+
+        if (!physicalPath) continue;
+
+        const imgBuffer = fs.readFileSync(physicalPath);
+        const imgSize = BigInt(imgBuffer.length);
+        const imgNodeId = randomUUID();
+        const imgStorageKey = `${workspace.type}/${workspace.id}/${imgNodeId}_${fileName}`;
+
+        await this.storage.putFile(imgStorageKey, imgBuffer);
+
+        const ext = path.extname(fileName).toLowerCase();
+        const mimeType =
+          ext === '.png'
+            ? 'image/png'
+            : ext === '.jpg' || ext === '.jpeg'
+            ? 'image/jpeg'
+            : ext === '.webp'
+            ? 'image/webp'
+            : ext === '.gif'
+            ? 'image/gif'
+            : 'application/octet-stream';
+
+        await this.prisma.workspaceNode.create({
+          data: {
+            id: imgNodeId,
+            workspaceId: workspace.id,
+            parentId,
+            name: fileName,
+            type: 'file',
+            fileSize: imgSize,
+            mimeType,
+            storagePath: imgStorageKey,
+            createdBy: userId,
+          },
+        });
+
+        await this.prisma.workspace.update({
+          where: { id: workspace.id },
+          data: { usedBytes: BigInt(workspace.usedBytes) + imgSize },
+        });
+
+        this.logger.log(`Automatically archived companion image to workspace: ${fileName} (${imgNodeId})`);
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to auto-sync referenced images to workspace: ${err.message}`);
+    }
   }
 }
