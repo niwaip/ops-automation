@@ -180,7 +180,7 @@ describe('ExecutionQueryService', () => {
     ]);
   });
 
-  it('lists executions with requester scoping and latest runtime sessions', async () => {
+  it.each([undefined, 'summary'] as const)('lists executions with requester scoping and latest runtime sessions (view=%s)', async (view) => {
     const prisma = {
       execution: {
         findMany: jest
@@ -205,7 +205,7 @@ describe('ExecutionQueryService', () => {
       {} as never
     );
 
-    const result = await service.list({ page: 2, pageSize: 2, status: 'running' }, { id: 'user-1' });
+    const result = await service.list({ page: 2, pageSize: 2, status: 'running', view }, { id: 'user-1' });
 
     expect(prisma.execution.findMany).toHaveBeenCalledWith({
       where: {

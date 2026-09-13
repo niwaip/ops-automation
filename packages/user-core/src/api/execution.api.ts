@@ -59,6 +59,8 @@ export interface SubmitInputRequest {
 }
 
 export interface ListExecutionsRequest {
+  /** Bounded list metadata; open execution detail for inputs and full results. */
+  view?: 'summary';
   page?: number;
   pageSize?: number;
   status?: ExecutionStatus;

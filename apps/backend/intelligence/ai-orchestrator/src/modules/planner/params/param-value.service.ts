@@ -82,7 +82,7 @@ export class ParamValueService {
     }
 
     const type = expectedType.toLowerCase();
-    let resolvedValue = normalized;
+    let resolvedValue: unknown = normalized;
     if ((type === 'integer' || type === 'int') && typeof normalized === 'string') {
       const numeric = Number(normalized);
       resolvedValue = Number.isInteger(numeric) ? numeric : undefined;

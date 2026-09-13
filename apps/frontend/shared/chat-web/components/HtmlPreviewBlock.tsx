@@ -48,9 +48,9 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
     code.includes('diff-del') ||
     code.includes('基准合同 (A)');
 
-  // Default HTML preview to expanded state in chat
+  // Reports can execute scripts and load large assets. Mount only on demand.
   const [isExpanded, setIsExpanded] = useState<boolean>(
-    defaultExpanded !== undefined ? defaultExpanded : true
+    defaultExpanded !== undefined ? defaultExpanded : false
   );
 
   const displayTitle = isContractReview
