@@ -268,8 +268,8 @@ export class ChatController {
 
         const isInternalServiceOrAddin =
           body.sessionId?.startsWith('office-') ||
-          body.config?.source === 'office-addin' ||
-          body.config?.bypassSandbox === true;
+          (body.config as any)?.source === 'office-addin' ||
+          (body.config as any)?.bypassSandbox === true;
 
         if (!isInternalServiceOrAddin) {
           // 优先调度用户独立安全沙箱 (DeepSeek Harness) 执行

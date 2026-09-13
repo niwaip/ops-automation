@@ -53,10 +53,10 @@ describe('param-default-and-date specifications', () => {
       });
 
       expect(input).toBeDefined();
-      expect(input.name).toBe('confidentiality.durationYears');
-      expect(input.value).toBe(3);
-      expect(input.source).toBe('workflow_default');
-      expect(input.missing).toBe(false);
+      expect(input!.name).toBe('confidentiality.durationYears');
+      expect(input!.value).toBe(3);
+      expect(input!.source).toBe('workflow_default');
+      expect(input!.missing).toBe(false);
     });
 
     it('applies workflow policy defaultValue for pre-set party (e.g. partyB.name)', () => {
@@ -92,10 +92,10 @@ describe('param-default-and-date specifications', () => {
       });
 
       expect(input).toBeDefined();
-      expect(input.name).toBe('partyB.name');
-      expect(input.value).toBe('富士通 ( 中国 ) 信息系統有限公司');
-      expect(input.source).toBe('workflow_default');
-      expect(input.missing).toBe(false);
+      expect(input!.name).toBe('partyB.name');
+      expect(input!.value).toBe('富士通 ( 中国 ) 信息系統有限公司');
+      expect(input!.source).toBe('workflow_default');
+      expect(input!.missing).toBe(false);
     });
 
     it('filters out dummy 0 for date component fields so dummy default does not suppress missing status', () => {
@@ -131,9 +131,9 @@ describe('param-default-and-date specifications', () => {
       });
 
       expect(input).toBeDefined();
-      expect(input.name).toBe('agreement.signDate.year');
-      expect(input.value).toBeUndefined();
-      expect(input.missing).toBe(true);
+      expect(input!.name).toBe('agreement.signDate.year');
+      expect(input!.value).toBeUndefined();
+      expect(input!.missing).toBe(true);
     });
   });
 

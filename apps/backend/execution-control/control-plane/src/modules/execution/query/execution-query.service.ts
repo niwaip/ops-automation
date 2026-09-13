@@ -13,6 +13,7 @@ import {
   mapExecutionStepToDto,
   mapExecutionToDto,
 } from '../state/execution.mapper';
+import { mapExecutionListSummary } from './execution-list-summary.mapper';
 import { ensureExecutionPermission } from '../shared/execution-permission.util';
 
 interface RequestUserContext {
@@ -157,7 +158,7 @@ export class ExecutionQueryService {
 
     return {
       data: executions.map((execution) =>
-        mapExecutionToDto({
+        (dto.view === 'summary' ? mapExecutionListSummary : mapExecutionToDto)({
           ...execution,
           runtimeSessionId: runtimeSessionIdByExecutionId.get(execution.id) || null,
         })

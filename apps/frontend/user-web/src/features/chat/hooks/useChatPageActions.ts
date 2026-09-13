@@ -189,7 +189,7 @@ export function useChatPageActions({
             url: (f as any).storagePath,
           }));
 
-          let workflowId = isLeave
+          const workflowId = isLeave
             ? 'hr.leave.request'
             : isExpense
               ? 'oa.expense.claim'

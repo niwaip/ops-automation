@@ -166,6 +166,9 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     () => chatApi.getChatHistory(selectedSessionId!),
     {
       enabled: Boolean(selectedSessionId && remoteSessionIds.has(selectedSessionId)),
+      // useChatSessions owns the bounded history cache; do not retain a second
+      // full payload for every previously visited session in React Query.
+      cacheTime: 0,
       refetchOnWindowFocus: false,
       refetchInterval: selectedSessionNeedsRefresh && !isStreaming ? CHAT_SESSION_STREAMING_POLL_INTERVAL : false,
     }
@@ -239,6 +242,21 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     }
     handleSend(files, contentOverride);
   }, [draft, handleSend]);
+
+  const handleChatModeChange = useCallback(
+    (nextMode: 'chat' | 'task') => {
+      if (nextMode === chatMode) {
+        return;
+      }
+      setChatMode(nextMode);
+      useChatStore.getState().setChatMode(nextMode);
+      setPendingExecutionId(null);
+      clearError();
+      // 切换模式时开启新的对话，避免跨模式历史上下文污染与 Token 暴增
+      handleCreateSession();
+    },
+    [chatMode, clearError, handleCreateSession]
+  );
 
   const handleToggleThought = useCallback((messageId: string) => {
     setExpandedThoughtMessageId((current) => (current === messageId ? null : messageId));
@@ -497,7 +515,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             onRunInBackground={handleRunInBackground}
             onNewSession={handleCreateSession}
             chatMode={chatMode}
-            onChatModeChange={setChatMode}
+            onChatModeChange={handleChatModeChange}
             enableThinking={enableThinking}
             onEnableThinkingChange={setEnableThinking}
             enableWebSearch={enableWebSearch}

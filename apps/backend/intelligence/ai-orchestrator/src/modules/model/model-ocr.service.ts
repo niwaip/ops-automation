@@ -103,7 +103,9 @@ export class ModelOcrService {
 
     for (let i = 0; i < images.length; i++) {
       const pageNumber = i + 1;
-      const dataUri = this.normalizeImageDataUri(images[i]);
+      const image = images[i];
+      if (!image) continue;
+      const dataUri = this.normalizeImageDataUri(image);
 
       const userContent: ContentBlock[] = [
         {

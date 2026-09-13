@@ -20,7 +20,7 @@ export interface ChatStoreState {
   clearDraftContext: () => void;
 }
 
-export const useChatStore = create<ChatStoreState>((set) => ({
+export const useChatStore = create<ChatStoreState>((set, get) => ({
   currentSession: null,
   isOpen: false,
   chatMode: 'task',
@@ -43,7 +43,13 @@ export const useChatStore = create<ChatStoreState>((set) => ({
   },
   setCurrentSession: (currentSession) => set({ currentSession }),
   setOpen: (isOpen) => set({ isOpen }),
-  setChatMode: (chatMode) => set({ chatMode }),
+  setChatMode: (chatMode) => {
+    const prevMode = get().chatMode;
+    if (prevMode !== chatMode) {
+      const nextSession = get().createSession();
+      set({ chatMode, currentSession: nextSession, draftExecutionId: null });
+    }
+  },
   setDraftMessage: (draftMessage) => set({ draftMessage }),
   setDraftExecutionId: (draftExecutionId) => set({ draftExecutionId }),
   openWithPrompt: (draftMessage, chatMode = 'task', draftExecutionId = null) =>

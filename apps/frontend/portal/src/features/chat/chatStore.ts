@@ -198,9 +198,18 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+    const currentSession = get().currentSession;
+    const currentMessages = get().messages;
+    const existingSessions = get().sessions;
+
+    let nextSessions = [newSession, ...existingSessions];
+    if (currentSession && currentMessages.length === 0) {
+      nextSessions = [newSession, ...existingSessions.filter((s) => s.id !== currentSession.id)];
+    }
+
     set({
       currentSession: newSession,
-      sessions: [newSession, ...get().sessions],
+      sessions: nextSessions,
       messages: [],
       draftExecutionId: null,
     });
@@ -368,12 +377,19 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
   },
 
   setChatMode: (mode) => {
+    const currentMode = get().chatMode;
+    if (currentMode === mode) {
+      return;
+    }
     set({ chatMode: mode });
+    get().createSession();
   },
 
   toggleChatMode: () => {
     const currentMode = get().chatMode;
-    set({ chatMode: currentMode === 'chat' ? 'task' : 'chat' });
+    const nextMode = currentMode === 'chat' ? 'task' : 'chat';
+    set({ chatMode: nextMode });
+    get().createSession();
   },
 
   setEnableThinking: (enabled) => {
