@@ -309,12 +309,11 @@ export class StudioRenderController {
 
   @Get('download/:id')
   @ApiOperation({ summary: 'Download rendered document' })
-  @Header('Content-Type', 'application/octet-stream')
   async downloadDocument(
     @Param('id') id: string,
-    @Res({ passthrough: true }) res: Response
-  ): Promise<StreamableFile> {
-    return streamStoredRenderFile({
+    @Res() res: Response
+  ): Promise<void> {
+    await streamStoredRenderFile({
       id,
       metaDir: this.studio.outputsDir,
       fileDir: this.studio.outputsDir,
@@ -328,12 +327,11 @@ export class StudioRenderController {
 
   @Get('download-template/:id')
   @ApiOperation({ summary: 'Download marked template file' })
-  @Header('Content-Type', 'application/octet-stream')
   async downloadTemplate(
     @Param('id') id: string,
-    @Res({ passthrough: true }) res: Response
-  ): Promise<StreamableFile> {
-    return streamStoredRenderFile({
+    @Res() res: Response
+  ): Promise<void> {
+    await streamStoredRenderFile({
       id,
       metaDir: this.studio.templatesDir,
       fileDir: this.studio.templatesDir,
@@ -360,9 +358,9 @@ export class StudioRenderController {
   @ApiOperation({ summary: 'Preview rendered file for popup' })
   async previewRenderedFile(
     @Param('id') id: string,
-    @Res({ passthrough: true }) res: Response
-  ): Promise<StreamableFile> {
-    return streamStoredRenderFile({
+    @Res() res: Response
+  ): Promise<void> {
+    await streamStoredRenderFile({
       id,
       metaDir: this.studio.outputsDir,
       fileDir: this.studio.outputsDir,

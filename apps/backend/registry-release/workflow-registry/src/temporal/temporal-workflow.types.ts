@@ -178,7 +178,7 @@ export type WorkflowLocalizedValueMap = Record<string, string | number | boolean
 export interface WorkflowInputParamDefinition {
   description?: string;
   required?: boolean;
-  defaultValue?: string;
+  defaultValue?: string | number | boolean;
   enum?: Array<string | number>;
   localizedDefaultValue?: WorkflowLocalizedValueMap;
   localizedVariants?: string[];
@@ -632,6 +632,8 @@ export interface CarboneTemplateMeta {
       significance?: string;
       chapter?: string;
       displayPosition?: string;
+      sampleValue?: string;
+      defaultValue?: string;
     };
   }>;
   templateAssetManifest?: {
@@ -646,6 +648,8 @@ export interface CarboneTemplateMeta {
       description?: string;
       required?: boolean;
       type?: string;
+      defaultValue?: any;
+      example?: any;
     }>;
     renderPlan?: {
       version?: number;

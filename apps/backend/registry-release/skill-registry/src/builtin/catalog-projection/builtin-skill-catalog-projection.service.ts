@@ -192,6 +192,11 @@ const release = healthyDeploymentRows.find(
         publishedReleaseStatus: release ? 'published' : undefined,
         publishedDeploymentStatus: release ? 'deployed' : undefined,
         publishedReleaseVersion: releaseVersion,
+        runtimeHints: {
+          triggerKeywords: Array.isArray((published as any).triggerKeywords)
+            ? (published as any).triggerKeywords
+            : [],
+        },
       });
     }
 

@@ -88,6 +88,7 @@ export interface CreateWordIdentifyRecognitionControllerOptions {
   setUnderstandingCacheStatus: (status: 'hit' | 'miss' | null) => void;
   setUnderstandingCacheUpdatedAt: (updatedAt: number | null) => void;
   setIsRecognizing: (value: boolean) => void;
+  setRecognitionProgressText?: (text: string | null) => void;
   setRecognitionResult: (result: any) => void;
   setSectionGenerationResults: (results: WordSectionGenerationResultLike[]) => void;
   setSuggestions: (suggestions: AISuggestion[]) => void;
@@ -160,6 +161,7 @@ export interface CreateWordIdentifyRecognitionControllerOptions {
     unsentNormalIds: string[];
     candidateById: Map<string, TemplateFieldCandidate>;
     acceptedIds: Set<string>;
+    batchSize?: number;
   }) => TemplateFieldCandidate[];
   buildWordSectionSubset: (
     section: CompareCandidateSectionLike,

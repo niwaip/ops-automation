@@ -57,6 +57,7 @@ export function useWordWorkflowPanelState() {
   const [isHighlightingCandidates, setIsHighlightingCandidates] = useState(false);
   const [isClearingHighlights, setIsClearingHighlights] = useState(false);
   const [isRecognizing, setIsRecognizing] = useState(false);
+  const [recognitionProgressText, setRecognitionProgressText] = useState<string | null>(null);
   const [isUnderstanding, setIsUnderstanding] = useState(false);
   const [, setCompareHighlightSummary] = useState<string | null>(null);
   const [compareCacheStatus, setCompareCacheStatus] = useState<'hit' | 'miss' | null>(null);
@@ -137,6 +138,8 @@ export function useWordWorkflowPanelState() {
     setIsClearingHighlights,
     isRecognizing,
     setIsRecognizing,
+    recognitionProgressText,
+    setRecognitionProgressText,
     isUnderstanding,
     setIsUnderstanding,
     setCompareHighlightSummary,

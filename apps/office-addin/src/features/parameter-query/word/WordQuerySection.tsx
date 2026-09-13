@@ -41,6 +41,7 @@ interface WordQuerySectionProps {
   onChangeAnalysisThinkingEnabled: (enabled: boolean) => void;
   recognitionBlocked: boolean;
   isRecognizing: boolean;
+  recognitionProgressText?: string | null;
   isUnderstanding: boolean;
   recognitionReady: boolean;
   totalSuggestionCount: number;
@@ -89,6 +90,7 @@ export const WordQuerySection: React.FC<WordQuerySectionProps> = ({
   onChangeAnalysisThinkingEnabled,
   recognitionBlocked,
   isRecognizing,
+  recognitionProgressText,
   isUnderstanding,
   recognitionReady,
   totalSuggestionCount,
@@ -350,7 +352,7 @@ export const WordQuerySection: React.FC<WordQuerySectionProps> = ({
                             disabled={recognitionBlocked || isRecognizing || isUnderstanding}
                           >
                             {isRecognizing
-                              ? '生成中...'
+                              ? recognitionProgressText || '生成中...'
                               : recognitionReady
                                 ? '重新生成参数'
                                 : '生成参数'}
@@ -376,6 +378,21 @@ export const WordQuerySection: React.FC<WordQuerySectionProps> = ({
                       <span className="analysis-source-badge source-ai">候选池</span>
                     </div>
                   </div>
+                  {isRecognizing && recognitionProgressText && (
+                    <div
+                      className="word-step-note"
+                      style={{
+                        margin: '8px 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '8px 12px',
+                      }}
+                    >
+                      <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                      <span>{recognitionProgressText}</span>
+                    </div>
+                  )}
                   {!compareSectionsCollapsed && (
                     <div className="analysis-pair-results">
                       <div className="word-compare-section-list">

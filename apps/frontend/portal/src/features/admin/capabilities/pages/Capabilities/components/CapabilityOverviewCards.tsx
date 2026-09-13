@@ -1,17 +1,24 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, Col, Row, Space, Typography, Tag } from 'antd';
 import {
   RocketOutlined,
   CheckCircleOutlined,
-  ExclamationCircleOutlined,
+  ClockCircleOutlined,
+  SendOutlined,
   CloseCircleOutlined,
 } from '@ant-design/icons';
 import { OVERVIEW_STAT_CARD_STYLE } from '@/components/page/PageScaffold';
 import type { CapabilityRelease } from '@/api/capabilities';
+import { resolvePipelineInfo } from '../utils/capabilitiesHelpers';
 
 const { Text } = Typography;
 
-export type CapabilityQuickTab = 'all' | 'deployed' | 'pending' | 'failed' | 'browser' | 'temporal';
+export type CapabilityQuickTab =
+  | 'all'
+  | 'pending_deploy'
+  | 'pending_publish'
+  | 'published'
+  | 'failed';
 
 interface CapabilityOverviewCardsProps {
   releases: CapabilityRelease[];
@@ -24,69 +31,96 @@ export const CapabilityOverviewCards: React.FC<CapabilityOverviewCardsProps> = (
   activeTab,
   onSelectTab,
 }) => {
-  const total = releases.length;
+  const stats = useMemo(() => {
+    let pendingDeploy = 0;
+    let pendingPublish = 0;
+    let published = 0;
+    let failed = 0;
 
-  const deployedCount = releases.filter(
-    (r) =>
-      r.deploymentStatus === 'deployed' ||
-      r.deploymentStatus === 'succeeded' ||
-      r.status === 'published' ||
-      r.status === 'deployed' ||
-      Boolean(r.publishedSkillId)
-  ).length;
+    for (const r of releases) {
+      const info = resolvePipelineInfo(r);
+      if (info.stage === 'failed') {
+        failed++;
+      } else if (info.stage === 'published') {
+        published++;
+      } else if (info.stage === 'deployed_pending') {
+        pendingPublish++;
+      } else {
+        pendingDeploy++;
+      }
+    }
 
-  const pendingCount = releases.filter(
-    (r) =>
-      r.approvalStatus === 'pending_approval' ||
-      r.status === 'draft' ||
-      r.status === 'draft_ready' ||
-      r.approvalStatus === 'pending'
-  ).length;
-
-  const failedCount = releases.filter(
-    (r) =>
-      r.status === 'build_failed' ||
-      r.status === 'validation_failed' ||
-      r.status === 'deploy_failed' ||
-      r.deploymentStatus === 'deploy_failed' ||
-      r.deploymentStatus === 'failed'
-  ).length;
-
-  const deployedRate = total > 0 ? Math.round((deployedCount / total) * 100) : 100;
+    return {
+      total: releases.length,
+      pendingDeploy,
+      pendingPublish,
+      published,
+      failed,
+    };
+  }, [releases]);
 
   const cards = [
     {
       key: 'all' as CapabilityQuickTab,
-      label: '全量流程发布资产',
-      value: total,
-      extra: <Text type="secondary" style={{ fontSize: 12 }}>覆盖编排/录制/模板资产</Text>,
+      label: '全量流程资产',
+      value: stats.total,
+      extra: <Text type="secondary" style={{ fontSize: 12 }}>编排 / 录制 / 模板全量</Text>,
       color: '#1890ff',
       activeColor: 'rgba(24, 144, 255, 0.12)',
       icon: <RocketOutlined style={{ color: '#1890ff', fontSize: 20 }} />,
     },
     {
-      key: 'deployed' as CapabilityQuickTab,
-      label: '已发布上线 / 部署就绪',
-      value: `${deployedCount} (${deployedRate}%)`,
-      extra: deployedCount > 0 ? <Tag color="success">在线运行中</Tag> : undefined,
+      key: 'pending_deploy' as CapabilityQuickTab,
+      label: '待部署验证',
+      value: stats.pendingDeploy,
+      extra:
+        stats.pendingDeploy > 0 ? (
+          <Tag color="warning">Step 1 · 待测试部署</Tag>
+        ) : (
+          <Text type="secondary" style={{ fontSize: 12 }}>暂无待部署</Text>
+        ),
+      color: '#fa8c16',
+      activeColor: 'rgba(250, 140, 22, 0.12)',
+      icon: <ClockCircleOutlined style={{ color: '#fa8c16', fontSize: 20 }} />,
+    },
+    {
+      key: 'pending_publish' as CapabilityQuickTab,
+      label: '部署就绪·待发布',
+      value: stats.pendingPublish,
+      extra:
+        stats.pendingPublish > 0 ? (
+          <Tag color="cyan">Step 2 · 待发布为技能</Tag>
+        ) : (
+          <Text type="secondary" style={{ fontSize: 12 }}>暂无待发布</Text>
+        ),
+      color: '#13c2c2',
+      activeColor: 'rgba(19, 194, 194, 0.12)',
+      icon: <SendOutlined style={{ color: '#13c2c2', fontSize: 20 }} />,
+    },
+    {
+      key: 'published' as CapabilityQuickTab,
+      label: '已发布上线',
+      value: stats.published,
+      extra:
+        stats.published > 0 ? (
+          <Tag color="success">在线运行中</Tag>
+        ) : (
+          <Text type="secondary" style={{ fontSize: 12 }}>尚未发布技能</Text>
+        ),
       color: '#52c41a',
       activeColor: 'rgba(82, 196, 26, 0.12)',
       icon: <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 20 }} />,
     },
     {
-      key: 'pending' as CapabilityQuickTab,
-      label: '待审批 / 草稿待发',
-      value: pendingCount,
-      extra: pendingCount > 0 ? <Tag color="warning">需审核发布</Tag> : undefined,
-      color: '#fa8c16',
-      activeColor: 'rgba(250, 140, 22, 0.12)',
-      icon: <ExclamationCircleOutlined style={{ color: '#fa8c16', fontSize: 20 }} />,
-    },
-    {
       key: 'failed' as CapabilityQuickTab,
-      label: '异常与校验失败',
-      value: failedCount,
-      extra: failedCount > 0 ? <Tag color="error">需人工排障</Tag> : undefined,
+      label: '异常与排障',
+      value: stats.failed,
+      extra:
+        stats.failed > 0 ? (
+          <Tag color="error">需人工排障</Tag>
+        ) : (
+          <Text type="secondary" style={{ fontSize: 12 }}>运行状态健康</Text>
+        ),
       color: '#ff4d4f',
       activeColor: 'rgba(255, 77, 79, 0.12)',
       icon: <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 20 }} />,
@@ -94,14 +128,14 @@ export const CapabilityOverviewCards: React.FC<CapabilityOverviewCardsProps> = (
   ];
 
   return (
-    <Row gutter={14} style={{ marginBottom: 16 }}>
+    <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
       {cards.map((card) => {
         const isSelected = activeTab === card.key;
         return (
-          <Col xs={24} sm={12} md={6} key={card.key}>
+          <Col xs={24} sm={12} md={8} style={{ flex: '1 1 180px' }} key={card.key}>
             <div
               onClick={() => onSelectTab(activeTab === card.key ? 'all' : card.key)}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: 'pointer', height: '100%' }}
             >
               <Card
                 size="small"
@@ -111,6 +145,7 @@ export const CapabilityOverviewCards: React.FC<CapabilityOverviewCardsProps> = (
                   background: isSelected ? card.activeColor : 'var(--bg-card)',
                   transform: isSelected ? 'translateY(-2px)' : undefined,
                   transition: 'all 0.2s ease',
+                  height: '100%',
                 }}
                 styles={{ body: { padding: '14px 16px', textAlign: 'center' } }}
               >

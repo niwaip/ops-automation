@@ -15,8 +15,9 @@ export interface DocumentContentExtractionResult {
   warnings: string[];
   extraction: {
     format: string;
-    method: 'embedded_text';
-    ocrUsed: false;
+    method: 'embedded_text' | 'ocr_vision';
+    ocrUsed: boolean;
+    ocrModel?: string;
   };
 }
 
@@ -27,4 +28,6 @@ export interface PdfContentExtractionInput {
   maxPages?: number;
   maxCharacters?: number;
   includePages?: boolean;
+  ocr?: boolean;
+  ocrModelId?: string;
 }

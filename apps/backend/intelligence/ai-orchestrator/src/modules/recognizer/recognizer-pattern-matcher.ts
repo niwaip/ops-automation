@@ -214,11 +214,52 @@ export function inferFieldValueFromExplicitPatterns(
     if (explicitNumber !== undefined) {
       return explicitNumber;
     }
+    const hasToday = /(?:签订日|签署日|日期|签署时间|签订时间|合同日期)?\s*(?:为|是|:)?\s*(?:今天|今日|即日|当天)/.test(userInput);
+    if (hasToday) {
+      const now = new Date();
+      if (/(?:^|\.)year$/i.test(key) || hasAliasKeyword(aliases, ['年份', '签订年份', '签署年份'])) {
+        return now.getFullYear();
+      }
+      if (/(?:^|\.)month$/i.test(key) || hasAliasKeyword(aliases, ['月份', '签订月份', '签署月份'])) {
+        return now.getMonth() + 1;
+      }
+      if (/(?:^|\.)day$/i.test(key) || hasAliasKeyword(aliases, ['日号', '签订日', '签署日', '签订日期'])) {
+        return now.getDate();
+      }
+    }
   }
 
   if (expectedType === 'date') {
-    return extractFirstLabeledValue(userInput, aliases, 'date');
+    const explicitDate = extractFirstLabeledValue(userInput, aliases, 'date');
+    if (explicitDate !== undefined) {
+      return explicitDate;
+    }
+    if (/(?:签订日|签署日|日期|签署时间|签订时间|合同日期)?\s*(?:为|是|:)?\s*(?:今天|今日|即日|当天)/.test(userInput)) {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
   }
+
+  if (expectedType === 'string') {
+    const partyMatch = userInput.match(
+      /(?:和|与|跟)\s*(?:(?:位于|在)?\s*([^，。；\n]{2,60}?)\s*的\s*)?([^，。；\n]{2,40}?(?:公司|企业|集团|工作室|有限合伙|网|中心))\s*(?:，|,|\s)*(?:关于|签订|签署)/
+    );
+    const isWeArePartyB = /(?:我们是乙方|我方为乙方|我方是乙方|作为乙方|做为乙方)/.test(userInput);
+    if (partyMatch && isWeArePartyB) {
+      const counterpartAddress = partyMatch[1]?.trim();
+      const counterpartName = partyMatch[2]?.trim();
+      if (key === 'partyA.name' || hasExactAliasKeyword(aliases, ['甲方公司法定全称', '甲方公司名称', '甲方名称'])) {
+        return counterpartName;
+      }
+      if (counterpartAddress && (key === 'partyA.address' || hasExactAliasKeyword(aliases, ['甲方注册或经营地址', '甲方地址']))) {
+        return counterpartAddress;
+      }
+    }
+  }
+
   if (expectedType === 'string' && shouldSkipBroadScalarAliasExtraction(aliases)) {
     return undefined;
   }

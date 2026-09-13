@@ -454,7 +454,11 @@ export const normalizeWorkflowInputParamMap = (
         defaultValue:
           value?.defaultValue === undefined || value?.defaultValue === null
             ? ''
-            : String(value.defaultValue),
+            : value.type === 'number' || value.type === 'integer'
+              ? (Number.isFinite(Number(value.defaultValue)) ? Number(value.defaultValue) : value.defaultValue)
+              : typeof value.defaultValue === 'boolean'
+                ? value.defaultValue
+                : String(value.defaultValue),
         enum: enumValues && enumValues.length > 0 ? enumValues : undefined,
         localizedDefaultValue:
           localizedDefaultValue && Object.keys(localizedDefaultValue).length > 0
@@ -630,7 +634,12 @@ export const withNormalizedWorkflowInputParams = (
       acc[key] = {
         ...definition,
         required,
-        defaultValue: String(policyDefaultValue),
+        defaultValue:
+          definition.type === 'number' || definition.type === 'integer'
+            ? (Number.isFinite(Number(policyDefaultValue)) ? Number(policyDefaultValue) : String(policyDefaultValue))
+            : typeof policyDefaultValue === 'boolean'
+              ? policyDefaultValue
+              : String(policyDefaultValue),
         localizedDefaultValue: undefined,
       };
       return acc;

@@ -8,6 +8,7 @@ import type {
   TemplateWorkflowService,
 } from '../../workflow-authoring/template-workflow.service';
 import { buildStudioWorkflowMetaDocument } from './studio-workflow-config.helper';
+import { sanitizeOpenXmlPackageBuffer } from '../../lib/file';
 
 type SaveTemplateFullDeps = {
   templatesDir: string;
@@ -70,7 +71,7 @@ export async function saveStoredTemplateFull(
       ? templateName
       : `${templateName}.${format}`;
 
-    if (isNewTemplate && body.documentContent) {
+    if (body.documentContent) {
       const templatePath = path.join(deps.templatesDir, `${templateId}.${format}`);
       let templateBuffer: Buffer;
       if (body.documentContent.startsWith('base64:')) {
@@ -82,6 +83,7 @@ export async function saveStoredTemplateFull(
           templateBuffer = Buffer.from(body.documentContent, 'utf-8');
         }
       }
+      templateBuffer = await sanitizeOpenXmlPackageBuffer(templateBuffer, format);
       fs.writeFileSync(templatePath, templateBuffer);
     }
 

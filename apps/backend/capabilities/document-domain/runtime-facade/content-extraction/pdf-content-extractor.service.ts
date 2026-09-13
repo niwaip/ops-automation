@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, PayloadTooLargeException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, PayloadTooLargeException } from '@nestjs/common';
 import * as path from 'path';
 import type {
   DocumentContentExtractionPage,
@@ -6,6 +6,8 @@ import type {
   PdfContentExtractionInput,
 } from './document-content-extraction.types';
 import { ensurePdfJsTextRuntime } from './pdfjs-text-runtime.compat';
+import { PdfPageRasterizerService } from './pdf-page-rasterizer.service';
+import { DocumentVisionOcrService } from './document-vision-ocr.service';
 
 import * as mammoth from 'mammoth';
 import JSZip from 'jszip';
@@ -24,6 +26,9 @@ const PDFJS_STANDARD_FONT_DATA_URL = `${path.dirname(
 interface PdfJsTextItem {
   str?: unknown;
   hasEOL?: boolean;
+  transform?: number[];
+  width?: number;
+  height?: number;
 }
 
 interface PdfJsPage {
@@ -55,6 +60,13 @@ const importEsm = new Function('specifier', 'return import(specifier)') as (
 
 @Injectable()
 export class PdfContentExtractorService {
+  private readonly logger = new Logger(PdfContentExtractorService.name);
+
+  constructor(
+    private readonly rasterizer: PdfPageRasterizerService = new PdfPageRasterizerService(),
+    private readonly visionOcr: DocumentVisionOcrService = new DocumentVisionOcrService()
+  ) {}
+
   async extract(input: PdfContentExtractionInput): Promise<DocumentContentExtractionResult> {
     const bytes = this.decodeBytes(input.fileBase64);
     const maxPages = this.boundedInteger(
@@ -132,7 +144,7 @@ export class PdfContentExtractorService {
     let document: PdfJsDocument | undefined;
     try {
       document = await Promise.race([loadingTask.promise, passwordRejected]);
-      return await this.extractDocument(document, maxPages, maxCharacters, includePages);
+      return await this.extractDocument(document, maxPages, maxCharacters, includePages, input);
     } catch (error) {
       throw this.mapPdfError(error);
     } finally {
@@ -289,7 +301,8 @@ export class PdfContentExtractorService {
     document: PdfJsDocument,
     maxPages: number,
     maxCharacters: number,
-    includePages: boolean
+    includePages: boolean,
+    input?: PdfContentExtractionInput
   ): Promise<DocumentContentExtractionResult> {
     const pages: DocumentContentExtractionPage[] = [];
     const textParts: string[] = [];
@@ -327,6 +340,41 @@ export class PdfContentExtractorService {
 
     const text = textParts.join('\n\n').trim();
     if (!text) {
+      if (input?.ocr !== false) {
+        this.logger.log(`PDF has no text layer. Attempting vision OCR on ${pageLimit} page(s)...`);
+        const rasterized = await this.rasterizer.rasterizePages(document, pageLimit);
+        if (rasterized.length > 0) {
+          const ocrResult = await this.visionOcr.extractFromImages(
+            rasterized.map((r) => ({ pageNumber: r.pageNumber, imageBuffer: r.imageBuffer })),
+            {
+              maxCharacters,
+              modelId: input?.ocrModelId,
+              fileName: input?.fileName,
+            }
+          );
+          if (ocrResult.text.trim()) {
+            return {
+              text: ocrResult.text,
+              pages: includePages ? ocrResult.pages : [],
+              metadata: await this.extractMetadata(document),
+              pageCount: document.numPages,
+              extractedPageCount: ocrResult.pages.length,
+              characterCount: ocrResult.characterCount,
+              truncated: ocrResult.truncated || document.numPages > pageLimit,
+              warnings: [
+                ...warnings,
+                `PDF 未包含文本层，已通过大模型视觉 OCR 识别完成 (${ocrResult.modelUsed || 'default'})。`,
+              ],
+              extraction: {
+                format: 'pdf',
+                method: 'ocr_vision',
+                ocrUsed: true,
+                ocrModel: ocrResult.modelUsed,
+              },
+            };
+          }
+        }
+      }
       warnings.push('PDF 未包含可提取的文本层；如为扫描件，请在后续 OCR Skill 中处理。');
     }
     if (document.numPages > maxPages) {
@@ -387,11 +435,70 @@ export class PdfContentExtractorService {
 
   private joinTextItems(items: PdfJsTextItem[]): string {
     let text = '';
+    let lastY: number | null = null;
+    let lastX: number | null = null;
+    let lastWidth: number | null = null;
+
     for (const item of items) {
-      if (typeof item?.str !== 'string' || !item.str) continue;
-      text += item.str;
-      text += item.hasEOL ? '\n' : ' ';
+      if (typeof item?.str !== 'string') continue;
+      const str = item.str;
+      const currentY =
+        Array.isArray(item.transform) && typeof item.transform[5] === 'number'
+          ? item.transform[5]
+          : null;
+      const currentX =
+        Array.isArray(item.transform) && typeof item.transform[4] === 'number'
+          ? item.transform[4]
+          : null;
+      const width = typeof item.width === 'number' ? item.width : 0;
+
+      // Line break detection:
+      // 1. item.hasEOL is explicitly true (even if str is empty)
+      // 2. Y-coordinate changed by more than line threshold (> 4pt)
+      const isNewLine =
+        Boolean(item.hasEOL) ||
+        (lastY !== null && currentY !== null && Math.abs(currentY - lastY) > 4);
+
+      if (isNewLine) {
+        if (!text.endsWith('\n')) {
+          text += '\n';
+        }
+        lastY = currentY;
+        lastX = currentX;
+        lastWidth = width;
+        if (str) {
+          text += str;
+        }
+        continue;
+      }
+
+      if (!str) continue;
+
+      // On the same horizontal line:
+      if (text.length > 0 && !text.endsWith('\n') && !text.endsWith(' ') && !str.startsWith(' ')) {
+        const prevChar = text.slice(-1);
+        const nextChar = str[0];
+        const isPrevAscii = /[a-zA-Z0-9]/.test(prevChar);
+        const isNextAscii = /[a-zA-Z0-9]/.test(nextChar);
+        const gap =
+          lastX !== null && lastWidth !== null && currentX !== null
+            ? currentX - (lastX + lastWidth)
+            : 0;
+
+        // Insert space only between ASCII words or large tabular gaps, never within Chinese phrases
+        if ((isPrevAscii && isNextAscii) || gap > 12) {
+          text += ' ';
+        }
+      }
+
+      text += str;
+      if (currentY !== null) lastY = currentY;
+      if (currentX !== null) {
+        lastX = currentX;
+        lastWidth = width;
+      }
     }
+
     return text
       .replace(/[ \t]+\n/g, '\n')
       .replace(/[ \t]{2,}/g, ' ')

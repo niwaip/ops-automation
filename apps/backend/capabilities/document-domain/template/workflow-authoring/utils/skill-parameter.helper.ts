@@ -222,6 +222,13 @@ export function generateExtractionHint(
     name: `查找内容中的名称信息，如当事人名称、项目名称等`,
   };
 
+  if (/(?:signature|sign)/i.test(name) || /签字|签名/.test(name)) {
+    return '查找签署人姓名、法定代表人或授权代表签字；若为线下手写签字可留空或填入签署人姓名';
+  }
+  if (/(?:seal|stamp)/i.test(name) || /盖章|公章|印章/.test(name)) {
+    return '查找印章名称（如公司公章、合同专用章）或盖章说明；若为线下盖章可留空或填入印章主体名称';
+  }
+
   if (hints[fieldType]) return hints[fieldType];
 
   return `在内容中查找"${originalText}"位置对应的文本，提取该位置的值`;
@@ -370,6 +377,11 @@ export function sanitizeSkillExampleSource(value: unknown): string {
   // Ignore Carbone markers when deriving skill examples. They are template syntax,
   // not business sample values.
   if (/^\{[#/d][^}]*\}$/.test(normalized) || /\{[#/d][^}]*\}/.test(normalized)) {
+    return '';
+  }
+
+  // Filter out literal placeholder words like "签字", "盖章", "签名"
+  if (/^[(（]?(?:签字|盖章|签名|印章)[)）]?$/.test(normalized)) {
     return '';
   }
 

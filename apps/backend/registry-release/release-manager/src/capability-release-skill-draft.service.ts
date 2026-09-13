@@ -81,7 +81,10 @@ export class CapabilityReleaseSkillDraftService {
     const triggerKeywords = collectDistinctStrings(
       payload.triggerKeywords,
       executionFlowKeys,
-      baseName
+      baseName,
+      release.sourceName,
+      release.sourceName ? release.sourceName.replace(/(?:生成|工作流|流程)$/, '') : undefined,
+      baseName ? baseName.replace(/(?:Workflow|GenerationWorkflow)$/i, '') : undefined
     );
     const description =
       release.sourceType === 'temporal_workflow'

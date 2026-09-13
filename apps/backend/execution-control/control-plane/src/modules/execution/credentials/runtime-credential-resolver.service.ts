@@ -226,18 +226,51 @@ export class RuntimeCredentialResolverService {
             }
           }
         }
+        const requiredList: string[] = Array.isArray((skill?.paramsSchema as any)?.required)
+          ? (skill.paramsSchema as any).required
+          : [];
+
         const missingCredentialFields = Object.entries(properties).flatMap(
           ([paramName, rawDefinition]) => {
-            if (!this.isSensitiveParamName(paramName)) return [];
             const definition =
               rawDefinition && typeof rawDefinition === 'object' && !Array.isArray(rawDefinition)
                 ? (rawDefinition as Record<string, unknown>)
                 : {};
-            const isSecret =
-              definition.isSecret === true ||
-              definition.format === 'password' ||
+
+            const isExplicitCredential =
+              definition.credentialRequired === true ||
+              (definition as any)['x-credential-required'] === true ||
               Boolean(definition.credentialCategory) ||
-              this.isSensitiveParamName(paramName);
+              Boolean((definition as any)['x-credential-category']) ||
+              definition.isSecret === true ||
+              Boolean((definition as any)['x-is-secret']);
+
+            const lowerName = paramName.toLowerCase();
+            const isDedicatedCredentialName =
+              lowerName.includes('devicekey') ||
+              lowerName.includes('device_key') ||
+              lowerName.includes('apikey') ||
+              lowerName.includes('api_key') ||
+              lowerName.includes('auth_token') ||
+              lowerName.includes('credential');
+
+            const isRequiredField =
+              requiredList.includes(paramName) ||
+              definition.required === true;
+
+            // Only demand user vault credential binding if:
+            // 1. Explicitly configured as credential (credentialCategory, credentialRequired, isSecret), OR
+            // 2. Dedicated external credential key (deviceKey, apiKey, auth_token, credential), OR
+            // 3. Sensitive parameter (e.g. password, passwd) AND explicitly required by the schema.
+            // Optional parameters (e.g. PDF decryption password for normal unencrypted documents) MUST NOT block execution.
+            const isCredentialRequirement =
+              isExplicitCredential ||
+              isDedicatedCredentialName ||
+              (this.isSensitiveParamName(paramName) && isRequiredField);
+
+            if (!isCredentialRequirement) return [];
+
+            const isSecret = isExplicitCredential || this.isSensitiveParamName(paramName);
             const hasUsableDefault =
               !isSecret &&
               definition.default !== undefined &&

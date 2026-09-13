@@ -305,9 +305,20 @@ export const useWorkflowSaveAndValidate = ({
   const handleValidate = () => {
     const formValues = form.getFieldsValue();
     const workflowName = formValues.name || workflowDsl.name;
+    const synchronizedInputPolicy = buildSynchronizedWorkflowInputPolicy(
+      workflowDsl.inputParams,
+      workflowDsl.inputPolicy
+    );
     setValidationResult(null);
     setValidateModalVisible(true);
-    validateMutation.mutate({ workflowDsl: { ...workflowDsl, name: workflowName }, activityDsl });
+    validateMutation.mutate({
+      workflowDsl: {
+        ...workflowDsl,
+        name: workflowName,
+        ...(synchronizedInputPolicy ? { inputPolicy: synchronizedInputPolicy } : {}),
+      },
+      activityDsl,
+    });
   };
 
   const handleGenerateCode = async (errorContext?: string) => {

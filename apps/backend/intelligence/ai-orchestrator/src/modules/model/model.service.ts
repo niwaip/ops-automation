@@ -78,7 +78,7 @@ interface PersistedProviderApiKey {
 }
 
 export interface ModelSelectionPolicyContext {
-  mode?: 'chat' | 'task' | 'audio_transcription';
+  mode?: 'chat' | 'task' | 'audio_transcription' | 'ocr';
   userRoles?: string[];
 }
 
@@ -114,6 +114,7 @@ export class ModelService implements OnModuleInit {
       admin_chat: defaultScope.admin_chat === true,
       admin_task: defaultScope.admin_task === true,
       audio_transcription: defaultScope.audio_transcription === true,
+      ocr: defaultScope.ocr === true,
     };
 
     const routingPreferences =
@@ -196,6 +197,7 @@ export class ModelService implements OnModuleInit {
       (scope?.admin_chat ? 3 : 0) +
       (scope?.admin_task ? 3 : 0) +
       (scope?.audio_transcription ? 3 : 0) +
+      (scope?.ocr ? 3 : 0) +
       (model.config.default === true ? 1 : 0)
     );
   }
@@ -327,7 +329,8 @@ export class ModelService implements OnModuleInit {
       !targetScope?.global &&
       !targetScope?.admin_chat &&
       !targetScope?.admin_task &&
-      !targetScope?.audio_transcription
+      !targetScope?.audio_transcription &&
+      !targetScope?.ocr
     ) {
       return;
     }
@@ -357,6 +360,10 @@ export class ModelService implements OnModuleInit {
         nextConfig.default_scope.audio_transcription = false;
         changed = true;
       }
+      if (targetScope.ocr && nextConfig.default_scope?.ocr) {
+        nextConfig.default_scope.ocr = false;
+        changed = true;
+      }
 
       if (changed) {
         this.models.set(modelId, {
@@ -369,7 +376,7 @@ export class ModelService implements OnModuleInit {
   }
 
   private selectScopedDefaultModel(
-    scope: 'global' | 'admin_chat' | 'admin_task' | 'audio_transcription'
+    scope: 'global' | 'admin_chat' | 'admin_task' | 'audio_transcription' | 'ocr'
   ): AIModelDTO | null {
     const activeModels = this.getActiveModelsWithClients();
     return activeModels.find((model) => model.config.default_scope?.[scope] === true) || null;
@@ -447,6 +454,10 @@ export class ModelService implements OnModuleInit {
 
     if (context?.mode === 'audio_transcription') {
       return this.selectScopedDefaultModel('audio_transcription') || this.getDefaultModel();
+    }
+
+    if (context?.mode === 'ocr') {
+      return this.selectScopedDefaultModel('ocr') || this.getDefaultModel();
     }
 
     if (context?.mode === 'task') {
@@ -726,7 +737,7 @@ export class ModelService implements OnModuleInit {
       existing.hasCredential = existing.hasCredential || this.hasConfiguredCredential(model.id);
       existing.advancedModelCount += model.config.capability_tier === 'advanced' ? 1 : 0;
       const scopeKeys = (
-        ['global', 'admin_chat', 'admin_task', 'audio_transcription'] as const
+        ['global', 'admin_chat', 'admin_task', 'audio_transcription', 'ocr'] as const
       ).filter((scope) => {
         return model.config.default_scope?.[scope] === true;
       });

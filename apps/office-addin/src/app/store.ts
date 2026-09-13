@@ -360,7 +360,7 @@ export const useAppStore = create<AppState>((set) => ({
   setAiOrchestratorBaseUrl: (url) => set({ aiOrchestratorBaseUrl: url }),
   analysisExecutor: 'studio',
   setAnalysisExecutor: (analysisExecutor) => set({ analysisExecutor }),
-  analysisThinkingEnabled: true,
+  analysisThinkingEnabled: false,
   setAnalysisThinkingEnabled: (analysisThinkingEnabled) => set({ analysisThinkingEnabled }),
   aiOrchestratorAuthToken: '',
   setAiOrchestratorAuthToken: (aiOrchestratorAuthToken) => set({ aiOrchestratorAuthToken }),

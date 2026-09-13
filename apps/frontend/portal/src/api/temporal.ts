@@ -72,7 +72,7 @@ export interface WorkflowInputPolicy {
 export interface WorkflowInputParamDefinition {
   description?: string;
   required?: boolean;
-  defaultValue?: string;
+  defaultValue?: string | number | boolean;
   enum?: Array<string | number>;
   localizedDefaultValue?: WorkflowLocalizedValueMap;
   localizedVariants?: string[];

@@ -303,4 +303,79 @@ describe('FileHandler', () => {
     expect(sheet2Xml).toContain('<c r="B4" t="s"><v>5</v></c>');
     expect(sheet2Xml).toContain('<c r="B12" t="s"><v>6</v></c>');
   });
+
+  it('sanitizes webextensions and strips directory entries on docx render', async () => {
+    const templateZip = new JSZip();
+    templateZip.file('word/document.xml', '<w:document><w:body><w:p><w:r><w:t>{d.name}</w:t></w:r></w:p></w:body></w:document>');
+    templateZip.file('word/webextensions/taskpanes.xml', '<wetp:taskpanes/>');
+    templateZip.file('word/webextensions/webextension1.xml', '<we:webextension/>');
+    templateZip.file(
+      '_rels/.rels',
+      '<?xml version="1.0" encoding="UTF-8"?><Relationships><Relationship Id="rId1" Type="http://schemas.microsoft.com/office/2011/relationships/webextensiontaskpanes" Target="word/webextensions/taskpanes.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'
+    );
+    templateZip.file(
+      '[Content_Types].xml',
+      '<?xml version="1.0" encoding="UTF-8"?><Types><Override PartName="/word/webextensions/taskpanes.xml" ContentType="application/vnd.ms-office.webextensiontaskpanes+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'
+    );
+
+    const template = await templateZip.generateAsync({ type: 'nodebuffer' });
+    const handler = new FileHandler();
+    const output = await handler.renderTemplate(template, { name: '测试公司' }, 'preview.docx');
+
+    const outputZip = await JSZip.loadAsync(output);
+    const fileKeys = Object.keys(outputZip.files);
+
+    // Verify all webextensions removed
+    expect(fileKeys.some((k) => k.includes('webextension'))).toBe(false);
+
+    // Verify no empty directory entries
+    expect(fileKeys.some((k) => k.endsWith('/'))).toBe(false);
+
+    // Verify relations cleaned
+    const relsXml = await outputZip.file('_rels/.rels')!.async('text');
+    expect(relsXml).not.toContain('webextension');
+    expect(relsXml).toContain('word/document.xml');
+
+    // Verify content types cleaned
+    const ctXml = await outputZip.file('[Content_Types].xml')!.async('text');
+    expect(ctXml).not.toContain('webextension');
+    expect(ctXml).toContain('word/document.xml');
+
+    // Verify rendered content
+    const docXml = await outputZip.file('word/document.xml')!.async('text');
+    expect(docXml).toContain('测试公司');
+  });
+
+  it('sanitizes standalone OpenXML buffer removing webextensions and empty dirs', async () => {
+    const { sanitizeOpenXmlPackageBuffer } = require('./file');
+    const dirtyZip = new JSZip();
+    dirtyZip.file('word/document.xml', '<w:document><w:body><w:p><w:r><w:t>Hello</w:t></w:r></w:p></w:body></w:document>');
+    dirtyZip.file(
+      '_rels/.rels',
+      '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.microsoft.com/office/2011/relationships/webextensiontaskpanes" Target="word/webextensions/taskpanes.xml"/></Relationships>'
+    );
+    dirtyZip.file(
+      '[Content_Types].xml',
+      '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/webextensions/taskpanes.xml" ContentType="application/vnd.ms-office.webextensiontaskpanes+xml"/></Types>'
+    );
+    dirtyZip.file('word/webextensions/taskpanes.xml', '<taskpanes/>');
+    dirtyZip.folder('word/emptyDir');
+
+    const dirtyBuf = await dirtyZip.generateAsync({ type: 'nodebuffer' });
+    const cleanedBuf = await sanitizeOpenXmlPackageBuffer(dirtyBuf, 'docx');
+
+    const cleanedZip = await JSZip.loadAsync(cleanedBuf);
+    const keys = Object.keys(cleanedZip.files);
+
+    expect(keys.some((k) => k.includes('webextension'))).toBe(false);
+    expect(keys.some((k) => k.endsWith('/'))).toBe(false);
+
+    const rels = await cleanedZip.file('_rels/.rels')!.async('text');
+    expect(rels).not.toContain('webextension');
+    expect(rels).toContain('word/document.xml');
+
+    const ct = await cleanedZip.file('[Content_Types].xml')!.async('text');
+    expect(ct).not.toContain('webextension');
+  });
 });
+

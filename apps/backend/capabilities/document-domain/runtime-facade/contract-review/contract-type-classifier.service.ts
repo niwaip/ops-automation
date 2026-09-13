@@ -95,40 +95,75 @@ export class ContractTypeClassifierService {
         return this.typeMetadata.lease;
     }
 
+    const titleAndHeader = `${fileName} ${contentSnippet.slice(0, 300)}`.toLowerCase();
     const combined = `${fileName} ${contentSnippet.slice(0, 1500)}`.toLowerCase();
 
-    // 2. NDA Patterns
+    // 2. High-priority specific transaction types matching Title / Header / FileName
     if (
-      /保密协议|保密承诺|保密合同|保密条款|保密信息|保密义务|nondisclosure|non-disclosure|nda\b/i.test(
-        combined
-      ) &&
-      !/软件开发.*保密|采购.*保密/i.test(fileName)
+      /软件开发|定制开发|定制研发|系统集成|软件定制|技术开发|技术研发|平台开发|代码交付|源代码|开发及联调|运维平台.*研发/i.test(
+        titleAndHeader
+      ) ||
+      /软件开发|定制开发|定制研发|系统集成|软件定制/i.test(fileName)
+    ) {
+      return this.typeMetadata.software_development;
+    }
+
+    if (
+      /采购主协议|采购合同|采购协议|买卖合同|订购合同|供货协议|设备采购/i.test(titleAndHeader) ||
+      /采购|供货|买卖/i.test(fileName)
+    ) {
+      return this.typeMetadata.procurement;
+    }
+
+    if (
+      /劳动合同|聘用协议|员工入职|竞业限制|劳务派遣/i.test(titleAndHeader) ||
+      /劳动|聘用|竞业/i.test(fileName)
+    ) {
+      return this.typeMetadata.employment;
+    }
+
+    if (
+      /租赁合同|租赁协议|房屋租赁|商铺租赁|厂房租赁/i.test(titleAndHeader) ||
+      /租赁|租房/i.test(fileName)
+    ) {
+      return this.typeMetadata.lease;
+    }
+
+    // 3. Genuine NDA matching title or standalone NDA contract
+    if (
+      /保密协议|保密承诺书?|保密合同|保密协议书|nondisclosure|non-disclosure|\bnda\b/i.test(
+        titleAndHeader
+      ) ||
+      /保密协议|保密承诺|保密合同|\bnda\b/i.test(fileName)
     ) {
       return this.typeMetadata.nda;
     }
 
-    // 3. Software Development / System Integration
+    // 4. Secondary fallback checking broader combined text
     if (
-      /软件开发|定制开发|定制研发|系统集成|软件定制|技术开发|技术研发|平台开发|代码交付|源代码|开发及联调|运维平台.*研发/i.test(
+      /软件开发|定制开发|定制研发|系统集成|软件定制|技术开发|技术研发|平台开发|代码交付|源代码|开发及联调/i.test(
         combined
       )
     ) {
       return this.typeMetadata.software_development;
     }
 
-    // 4. Procurement / Purchase
     if (/采购主协议|采购合同|采购协议|买卖合同|订购合同|供货协议|设备采购/i.test(combined)) {
       return this.typeMetadata.procurement;
     }
 
-    // 5. Labor / Employment
     if (/劳动合同|聘用协议|员工入职|竞业限制|保密及竞业|劳务派遣/i.test(combined)) {
       return this.typeMetadata.employment;
     }
 
-    // 6. Lease
     if (/租赁合同|租赁协议|房屋租赁|商铺租赁|厂房租赁/i.test(combined)) {
       return this.typeMetadata.lease;
+    }
+
+    if (
+      /保密协议|保密承诺|保密合同|nondisclosure|non-disclosure|\bnda\b/i.test(combined)
+    ) {
+      return this.typeMetadata.nda;
     }
 
     // Fallback: General commercial contract

@@ -344,5 +344,35 @@ export function buildBatchApplyItems(items: AISuggestion[]): BatchApplyItem[] {
     });
   });
 
+  result.sort((a, b) => {
+    const getSortPosition = (item: BatchApplyItem) => {
+      const anchor = item.suggestion.details?.wordAnchor as
+        | { paragraphIndex?: number; start?: number }
+        | undefined;
+      if (typeof anchor?.paragraphIndex === 'number' && typeof anchor?.start === 'number') {
+        return { paragraphIndex: anchor.paragraphIndex, start: anchor.start };
+      }
+      const underline = item.suggestion.underlineInfo;
+      if (
+        typeof underline?.paragraphIndex === 'number' &&
+        typeof underline?.position?.start === 'number'
+      ) {
+        return { paragraphIndex: underline.paragraphIndex, start: underline.position.start };
+      }
+      return null;
+    };
+
+    const posA = getSortPosition(a);
+    const posB = getSortPosition(b);
+    if (!posA || !posB) {
+      return 0;
+    }
+    if (posA.paragraphIndex === posB.paragraphIndex) {
+      // 同一段落内逆序替换（从右向左，startPos 降序），确保前序字符位置与搜索匹配数不被提前消耗
+      return posB.start - posA.start;
+    }
+    return posA.paragraphIndex - posB.paragraphIndex;
+  });
+
   return result;
 }

@@ -56,6 +56,10 @@ export default {
         changeOrigin: true,
         secure: false,
         rewrite: (pathValue: string) => pathValue.replace(/^\/proxy\/ai-orchestrator/, ''),
+        headers: {
+          'x-internal-auth':
+            process.env.INTERNAL_API_SHARED_SECRET || 'ops_internal_shared_secret_change_me',
+        },
       },
     },
   },

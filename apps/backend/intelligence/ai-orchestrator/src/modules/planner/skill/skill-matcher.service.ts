@@ -47,10 +47,12 @@ export class SkillMatcherService {
     context?: Record<string, unknown>;
     modelId?: string;
   }): Promise<SkillMatchAttempt> {
+    const rawTargetSkillId =
+      input.context?.target_skill_id ||
+      input.context?.skillId ||
+      input.context?.targetSkillId;
     const targetSkillId =
-      typeof input.context?.target_skill_id === 'string'
-        ? input.context.target_skill_id.trim()
-        : '';
+      typeof rawTargetSkillId === 'string' ? rawTargetSkillId.trim() : '';
     if (targetSkillId) {
       const targetedSkill = input.availableSkills.find((skill) => skill.skillId === targetSkillId);
       if (targetedSkill) {
@@ -223,7 +225,11 @@ export class SkillMatcherService {
     userInput: string,
     availableSkills: AvailableSkillDefinition[]
   ): SkillMatchResult | null {
-    const normalizedInput = userInput.toLowerCase();
+    const cleanInput = userInput
+      .replace(/\[系统上下文：[^\]]*\]/g, '')
+      .replace(/\(附件:[^)]*\)/g, '')
+      .trim();
+    const normalizedInput = (cleanInput || userInput).toLowerCase();
 
     let bestScore = 0;
     let bestSkill: AvailableSkillDefinition | undefined;
@@ -272,7 +278,11 @@ export class SkillMatcherService {
     userInput: string,
     availableSkills: AvailableSkillDefinition[]
   ): { skill: AvailableSkillDefinition; matchedKeywords: string[] } | null {
-    const trimmedInput = userInput.trim();
+    const cleanInput = userInput
+      .replace(/\[系统上下文：[^\]]*\]/g, '')
+      .replace(/\(附件:[^)]*\)/g, '')
+      .trim();
+    const trimmedInput = cleanInput || userInput.trim();
     // 1. Generic Slash Command Matcher (data-driven by skill triggers, aliases and IDs)
     const slashMatch = trimmedInput.match(/^[/、]([a-zA-Z0-9_-]+)\b/i);
     if (slashMatch) {

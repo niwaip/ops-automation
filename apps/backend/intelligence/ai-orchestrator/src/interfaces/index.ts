@@ -97,6 +97,7 @@ export interface ModelDefaultScopeConfig {
   admin_chat?: boolean;
   admin_task?: boolean;
   audio_transcription?: boolean;
+  ocr?: boolean;
 }
 
 export interface ModelRoutingPreferenceConfig {
@@ -160,7 +161,7 @@ export interface AIProviderSummaryDTO {
   activeModelCount: number;
   hasCredential: boolean;
   advancedModelCount: number;
-  defaultScopes: Array<'global' | 'admin_chat' | 'admin_task' | 'audio_transcription'>;
+  defaultScopes: Array<'global' | 'admin_chat' | 'admin_task' | 'audio_transcription' | 'ocr'>;
 }
 
 export interface AIProviderConfigDTO {

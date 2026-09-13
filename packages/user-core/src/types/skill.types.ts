@@ -5,6 +5,8 @@ export interface SkillParamProperty {
   default?: string | number | boolean | Record<string, unknown>;
   enum?: Array<string | number>;
   extractionPrompt?: string;
+  isSecret?: boolean;
+  'x-is-secret'?: boolean;
 }
 
 export interface SkillParamsSchema {

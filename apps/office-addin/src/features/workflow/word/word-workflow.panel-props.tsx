@@ -114,6 +114,7 @@ export function buildWordQuerySectionProps(args: {
   setAnalysisThinkingEnabled: (enabled: boolean) => void;
   recognitionBlocked: boolean;
   isRecognizing: boolean;
+  recognitionProgressText?: string | null;
   isUnderstanding: boolean;
   recognitionReady: boolean;
   totalSuggestionCount: number;
@@ -186,6 +187,7 @@ export function buildWordQuerySectionProps(args: {
     setAnalysisThinkingEnabled,
     recognitionBlocked,
     isRecognizing,
+    recognitionProgressText,
     isUnderstanding,
     recognitionReady,
     totalSuggestionCount,
@@ -247,6 +249,7 @@ export function buildWordQuerySectionProps(args: {
     onChangeAnalysisThinkingEnabled: setAnalysisThinkingEnabled,
     recognitionBlocked,
     isRecognizing,
+    recognitionProgressText,
     isUnderstanding,
     recognitionReady,
     totalSuggestionCount,

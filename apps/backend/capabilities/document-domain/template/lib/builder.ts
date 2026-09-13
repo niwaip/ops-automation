@@ -79,10 +79,110 @@ export class Builder {
     // 处理数组索引 [i]
     if (cleanPath.includes('[i]')) {
       const normalizedPath = cleanPath.replace(/\[i\]/g, `[${context.loopIndex || 0}]`);
-      return this.evaluateNormalizedPath(normalizedPath, dataSource);
+      const directVal = this.evaluateNormalizedPath(normalizedPath, dataSource);
+      if (directVal !== undefined) return directVal;
+      return this.resolveAliasPath(normalizedPath, dataSource);
     }
 
-    return this.evaluateNormalizedPath(cleanPath, dataSource);
+    const directVal = this.evaluateNormalizedPath(cleanPath, dataSource);
+    if (directVal !== undefined) return directVal;
+    return this.resolveAliasPath(cleanPath, dataSource);
+  }
+
+  /**
+   * 针对客户模板常见字段与 AI 抽取字段名称差异进行别名映射
+   * 保证即使数据字段名有细微偏差（如 contract.signDate vs signingDate），也能精准命中
+   */
+  private resolveAliasPath(cleanPath: string, data: any): any {
+    if (!data || typeof data !== 'object') {
+      return undefined;
+    }
+
+    // 1. 签订日期: signingDate.* <-> signDate.* <-> contract.signDate.*
+    if (cleanPath.startsWith('signingDate.')) {
+      const sub = cleanPath.slice('signingDate.'.length);
+      const val =
+        this.evaluateNormalizedPath(`signDate.${sub}`, data) ??
+        this.evaluateNormalizedPath(`contract.signDate.${sub}`, data) ??
+        this.evaluateNormalizedPath(`contract.signingDate.${sub}`, data);
+      if (val !== undefined) return val;
+    } else if (cleanPath.startsWith('signDate.')) {
+      const sub = cleanPath.slice('signDate.'.length);
+      const val =
+        this.evaluateNormalizedPath(`signingDate.${sub}`, data) ??
+        this.evaluateNormalizedPath(`contract.signDate.${sub}`, data);
+      if (val !== undefined) return val;
+    } else if (cleanPath.startsWith('contract.signDate.')) {
+      const sub = cleanPath.slice('contract.signDate.'.length);
+      const val =
+        this.evaluateNormalizedPath(`signingDate.${sub}`, data) ??
+        this.evaluateNormalizedPath(`signDate.${sub}`, data);
+      if (val !== undefined) return val;
+    }
+
+    // 2. 印章公章: seal.stamp1 / seal.stamp2 <-> partyA.seal / partyB.seal
+    if (cleanPath === 'seal.stamp1' || cleanPath === 'seal.partyA') {
+      const val =
+        this.evaluateNormalizedPath('partyA.seal', data) ??
+        this.evaluateNormalizedPath('seal.stamp1', data);
+      if (val !== undefined) return val;
+    } else if (cleanPath === 'seal.stamp2' || cleanPath === 'seal.partyB') {
+      const val =
+        this.evaluateNormalizedPath('partyB.seal', data) ??
+        this.evaluateNormalizedPath('seal.stamp2', data);
+      if (val !== undefined) return val;
+    } else if (cleanPath === 'partyA.seal') {
+      const val =
+        this.evaluateNormalizedPath('seal.stamp1', data) ??
+        this.evaluateNormalizedPath('seal.partyA', data);
+      if (val !== undefined) return val;
+    } else if (cleanPath === 'partyB.seal') {
+      const val =
+        this.evaluateNormalizedPath('seal.stamp2', data) ??
+        this.evaluateNormalizedPath('seal.partyB', data);
+      if (val !== undefined) return val;
+    }
+
+    // 3. 签字人: signature.signer / signer2 <-> partyA.signature / partyB.signature / signature.name
+    if (cleanPath === 'signature.signer' || cleanPath === 'signature.partyA') {
+      const val =
+        this.evaluateNormalizedPath('partyA.signature', data) ??
+        this.evaluateNormalizedPath('signature.name', data) ??
+        this.evaluateNormalizedPath('partyA.signer', data);
+      if (val !== undefined) return val;
+    } else if (cleanPath === 'signature.signer2' || cleanPath === 'signature.partyB') {
+      const val =
+        this.evaluateNormalizedPath('partyB.signature', data) ??
+        this.evaluateNormalizedPath('signature.signer2', data) ??
+        this.evaluateNormalizedPath('partyB.signer', data);
+      if (val !== undefined) return val;
+    } else if (cleanPath === 'partyA.signature') {
+      const val =
+        this.evaluateNormalizedPath('signature.signer', data) ??
+        this.evaluateNormalizedPath('signature.name', data);
+      if (val !== undefined) return val;
+    } else if (cleanPath === 'partyB.signature') {
+      const val = this.evaluateNormalizedPath('signature.signer2', data);
+      if (val !== undefined) return val;
+    }
+
+    // 4. 附件: attachment.* <-> appendix.* <-> annex.*
+    if (cleanPath.startsWith('attachment.')) {
+      const sub = cleanPath.slice('attachment.'.length);
+      const val =
+        this.evaluateNormalizedPath(`appendix.${sub}`, data) ??
+        this.evaluateNormalizedPath(`annex.${sub}`, data) ??
+        this.evaluateNormalizedPath('appendix.title', data);
+      if (val !== undefined) return val;
+    } else if (cleanPath.startsWith('appendix.')) {
+      const sub = cleanPath.slice('appendix.'.length);
+      const val =
+        this.evaluateNormalizedPath(`attachment.${sub}`, data) ??
+        this.evaluateNormalizedPath(`annex.${sub}`, data);
+      if (val !== undefined) return val;
+    }
+
+    return undefined;
   }
 
   /**
@@ -313,6 +413,29 @@ export class Builder {
       const markerString = `{${marker.name}}`;
       const value = this.evaluatePath(marker.name, data);
       const formattedValue = this.formatterPipeline.apply(value, marker.formatters);
+
+      if (formattedValue === undefined || formattedValue === null || formattedValue === '') {
+        // 若该变量所在的 Run 包含下划线 <w:u 格式（如合同中的填空占位），在值为空时保留不换行空格下划线
+        // 避免下划线直接塌陷消失或年月日的字迹挤压。使用原生 Unicode 不换行空格（\u00A0）并保留 xml:space="preserve"，
+        // 避免输出 XML 实体字面量 &#160; 导致后续 HTML 渲染产生二次转义乱码。
+        const escapedMarker = markerString.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const underlineMarkerPattern = new RegExp(
+          '(<w:r\\b[^>]*>(?:<w:rPr>[\\s\\S]*?<w:u\\b[\\s\\S]*?<\\/w:rPr>)[\\s\\S]*?<w:t[^>]*>)' +
+            escapedMarker +
+            '(<\\/w:t>[\\s\\S]*?<\\/w:r>)',
+          'g'
+        );
+        resultXml = resultXml.replace(
+          underlineMarkerPattern,
+          (_match, prefix, suffix) => {
+            const preservedPrefix = prefix.includes('xml:space=')
+              ? prefix
+              : prefix.replace('<w:t', '<w:t xml:space="preserve"');
+            return `${preservedPrefix}\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0${suffix}`;
+          }
+        );
+      }
+
       const replacement = this.escapeXmlText(String(formattedValue ?? ''));
       resultXml = resultXml.split(markerString).join(replacement);
     }
@@ -352,6 +475,9 @@ export class Builder {
 
     // 替换简单变量
     processedXml = this.replaceVariables(processedXml, parsed.markers, data, options);
+
+    // 清理可能导致 Word 严格模式报错的空文本标签
+    processedXml = processedXml.replace(/<w:t><\/w:t>/g, '<w:t/>');
 
     return {
       xml: processedXml,

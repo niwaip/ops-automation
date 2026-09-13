@@ -3,28 +3,15 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { fixFilenameEncoding } from '../filename-encoding.util';
+import { resolveReviewDocumentPayload, WORKSPACE_ROOT } from '../document-payload-resolver.helper';
 import type {
   BuiltinContractReviewInput,
   ContractReviewOutput,
 } from './contract-review.types';
 import { ContractReviewEngineService } from './contract-review-engine.service';
 import { ContractReviewHtmlRendererService } from './contract-review-html-renderer.service';
-import { fixFilenameEncoding } from '../filename-encoding.util';
 
-function findWorkspaceRoot(startDir: string): string {
-  let current = startDir;
-  for (let i = 0; i < 6; i++) {
-    if (fs.existsSync(path.join(current, 'pnpm-lock.yaml')) || fs.existsSync(path.join(current, '.git'))) {
-      return current;
-    }
-    const parent = path.dirname(current);
-    if (parent === current) break;
-    current = parent;
-  }
-  return startDir;
-}
-
-const WORKSPACE_ROOT = process.env.PROJECT_ROOT || findWorkspaceRoot(process.cwd());
 const BASE_OUTPUT_DIR =
   process.env.STORAGE_RENDER_DIR ||
   process.env.MEDIA_STORAGE_PATH ||
@@ -43,6 +30,8 @@ export class ContractReviewService {
   ) {}
 
   async reviewContract(input: BuiltinContractReviewInput): Promise<ContractReviewOutput> {
+    await resolveReviewDocumentPayload(input, undefined, undefined, this.logger);
+
     const fileName = fixFilenameEncoding(input.fileName || '审查合同文档.docx');
     this.logger.log(`Starting contract review for "${fileName}", position=${input.myPosition || 'auto'}`);
 

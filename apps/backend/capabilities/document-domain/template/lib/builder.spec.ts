@@ -83,4 +83,19 @@ describe('Builder', () => {
     expect(result.xml).toContain('</w:tr><w:tr>');
     expect(result.xml).not.toContain('人民元280,000円系统集成与部署');
   });
+
+  it('preserves underline blanks with Unicode NBSP instead of raw &#160; entity', () => {
+    const builder = new Builder();
+    const xml = [
+      '<w:p>',
+      '<w:r><w:t>签字：</w:t></w:r>',
+      '<w:r><w:rPr><w:u w:val="single"/></w:rPr><w:t>{d.partyA.signature}</w:t></w:r>',
+      '</w:p>',
+    ].join('');
+
+    const result = builder.buildXML(xml, { 'partyA.signature': '' });
+    expect(result.xml).not.toContain('&#160;');
+    expect(result.xml).toContain('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0');
+    expect(result.xml).toContain('xml:space="preserve"');
+  });
 });

@@ -276,8 +276,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
     abortCurrentStreaming();
   };
 
+  const activeUploadsCountRef = useRef(0);
   // 处理文件上传
   const handleFileUpload = async (file: RcFile) => {
+    activeUploadsCountRef.current += 1;
     setUploading(true);
     try {
       const uploaded = await uploadFile(file as unknown as File);
@@ -285,7 +287,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
     } catch (error) {
       console.error('Upload failed:', error);
     } finally {
-      setUploading(false);
+      activeUploadsCountRef.current -= 1;
+      if (activeUploadsCountRef.current <= 0) {
+        activeUploadsCountRef.current = 0;
+        setUploading(false);
+      }
     }
     return false; // 阻止默认上传行为
   };
@@ -463,9 +469,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
           />
 
           <Upload
+            multiple
             beforeUpload={handleFileUpload}
             showUploadList={false}
-            disabled={disabled || uploading}
+            disabled={disabled}
           >
             <Button
               type="text"

@@ -13,7 +13,9 @@ import { DocumentSkillRenderEntryController } from './render-entry/document-skil
 import { MarkdownArtifactController } from './markdown-artifact/markdown-artifact.controller';
 import { MarkdownArtifactService } from './markdown-artifact/markdown-artifact.service';
 import { DocumentContentExtractionController } from './content-extraction/document-content-extraction.controller';
+import { DocumentVisionOcrService } from './content-extraction/document-vision-ocr.service';
 import { PdfContentExtractorService } from './content-extraction/pdf-content-extractor.service';
+import { PdfPageRasterizerService } from './content-extraction/pdf-page-rasterizer.service';
 import { PdfArtifactStorageService } from './pdf-operations/pdf-artifact-storage.service';
 import { PdfCreateService } from './pdf-operations/pdf-create.service';
 import { PdfInputDecoderService } from './pdf-operations/pdf-input-decoder.service';
@@ -61,6 +63,8 @@ import {
     TemplateWorkflowService,
     StudioSkillRenderDataService,
     MarkdownArtifactService,
+    PdfPageRasterizerService,
+    DocumentVisionOcrService,
     PdfContentExtractorService,
     PdfArtifactStorageService,
     PdfInputDecoderService,
@@ -94,6 +98,8 @@ import {
     TemplateWorkflowService,
     StudioSkillRenderDataService,
     MarkdownArtifactService,
+    PdfPageRasterizerService,
+    DocumentVisionOcrService,
     PdfContentExtractorService,
     PdfArtifactStorageService,
     PdfInputDecoderService,

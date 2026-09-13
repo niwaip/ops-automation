@@ -127,6 +127,42 @@ describe('Contract Review System', () => {
       expect(result.artifact?.url).toContain('.html');
     });
 
+    it('should automatically resolve document payload from taskContext references when fileBase64 and text are absent', async () => {
+      mockAstParser.parseToAst.mockResolvedValue([
+        {
+          clauseNumber: '第一条',
+          title: '保密信息',
+          content: '本协议项下的保密信息包括甲方披露的商业秘密。',
+        },
+      ]);
+
+      const result = await reviewService.reviewContract({
+        taskContext: {
+          references: [
+            {
+              kind: 'session_result',
+              semanticType: 'document',
+              detailText: '保密协议已成功生成\n* **下载链接**：http://192.168.100.143:3009/studio/download/b19a51ab-b321-431b-a6fe-43b204c1265d',
+              structuredData: {
+                result: {
+                  fileName: '保密合同_202609121550.docx',
+                  downloadUrl: 'http://192.168.100.143:3009/studio/download/b19a51ab-b321-431b-a6fe-43b204c1265d',
+                },
+              },
+            },
+          ],
+        },
+      });
+
+      expect(result).toBeDefined();
+      expect(result.contractType).toBe('nda');
+      expect(mockAstParser.parseToAst).toHaveBeenCalled();
+      const calledArg = mockAstParser.parseToAst.mock.calls[mockAstParser.parseToAst.mock.calls.length - 1][0];
+      expect(calledArg.base64).toBeDefined();
+      expect(calledArg.base64.length).toBeGreaterThan(0);
+      expect(calledArg.fileName).toBe('保密合同_202609121550.docx');
+    });
+
     it('should not falsely report missing exception clause when contract already has an explicit exception clause', async () => {
       mockAstParser.parseToAst.mockResolvedValue([
         {
@@ -844,6 +880,40 @@ describe('Contract Review System', () => {
       const isDistinctCovered = evaluator.isCoveredByExistingFindings(distinctSemantic, existingFindings);
       expect(isDistinctCovered).toBe(false);
     });
+
+    it('should review real .pdf contract file from tests/contract directory end-to-end', async () => {
+      const fs = require('fs');
+      const path = require('path');
+      const { ContractAstParserService } = require('../contract-compare/contract-ast-parser.service');
+
+      const pdfPath = path.resolve(process.cwd(), 'tests/contract/contract_v1_baseline.pdf');
+      if (fs.existsSync(pdfPath)) {
+        const fileBase64 = fs.readFileSync(pdfPath).toString('base64');
+        const realParser = new ContractAstParserService();
+        const realEngine = new ContractReviewEngineService(
+          realParser,
+          classifier,
+          checklistMatrix,
+          formScanner,
+          llmReview
+        );
+        const realReviewService = new ContractReviewService(realEngine, htmlRenderer);
+
+        const result = await realReviewService.reviewContract({
+          fileName: 'contract_v1_baseline.pdf',
+          fileBase64,
+          myPosition: 'buyer',
+        });
+
+        expect(result.contractType).toBe('software_development');
+        expect(result.clauses.length).toBeGreaterThan(3);
+        expect(result.artifacts).toBeDefined();
+        expect(result.artifacts!.length).toBeGreaterThanOrEqual(1);
+        expect(result.htmlReport).toContain('合同文档智能深度审查报告');
+        expect(result.htmlReport).toContain('contract_v1_baseline.pdf');
+      }
+    });
   });
 });
+
 

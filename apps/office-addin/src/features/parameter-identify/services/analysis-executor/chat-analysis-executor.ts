@@ -59,6 +59,8 @@ export class ChatAnalysisExecutor implements StructuredAnalysisExecutor {
           sessionId: request.chatSessionId || `office-addin-analysis-${Date.now()}`,
           config: {
             mode: 'chat',
+            source: 'office-addin',
+            bypassSandbox: true,
             thinking: this.options.thinking !== false,
           },
         }),

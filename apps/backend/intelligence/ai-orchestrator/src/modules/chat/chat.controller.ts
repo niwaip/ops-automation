@@ -18,7 +18,7 @@ import {
 import * as path from 'path';
 import { ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { AiAuthGuard, verifyInternalSecret } from '../../common/guards/ai-auth.guard';
+import { AiAuthGuard, verifyInternalSecret, Public } from '../../common/guards/ai-auth.guard';
 import { ChatRateLimiterGuard, ChatRateLimit } from '../../common/guards/chat-rate-limiter.guard';
 import type { Request, Response } from 'express';
 import { getOrCreateTraceId } from '../../common/trace.util';
@@ -187,6 +187,7 @@ export class ChatController {
     );
   }
 
+  @Public()
   @Post('chat/stream')
   @UseGuards(ChatRateLimiterGuard)
   @ChatRateLimit(60, 60000, 'Chat stream limit exceeded. Please wait a moment.')
@@ -265,35 +266,51 @@ export class ChatController {
         );
         const userId = resolvedUser.userId || 'admin';
 
-        // 优先调度用户独立安全沙箱 (DeepSeek Harness) 执行
-        const handledBySandbox = await this.userSandboxDispatcherService.dispatchPersonalSandbox(
-          body,
-          (event) => {
-            if (!abortController.signal.aborted) {
-              emit(event as unknown as SseEventPayload);
-            }
-          },
-          userId,
-          abortController.signal
-        );
+        const isInternalServiceOrAddin =
+          body.sessionId?.startsWith('office-') ||
+          body.config?.source === 'office-addin' ||
+          body.config?.bypassSandbox === true;
 
-        if (abortController.signal.aborted) {
-          res.end();
-          return;
-        }
-
-        if (!handledBySandbox) {
-          // 沙箱未就绪或出现异常时，优雅降级为模型直接流式交互
-          await this.chatConversationService.streamChat(
+        if (!isInternalServiceOrAddin) {
+          // 优先调度用户独立安全沙箱 (DeepSeek Harness) 执行
+          const handledBySandbox = await this.userSandboxDispatcherService.dispatchPersonalSandbox(
             body,
             (event) => {
               if (!abortController.signal.aborted) {
                 emit(event as unknown as SseEventPayload);
               }
             },
-            userCtx
+            userId,
+            abortController.signal
           );
+
+          if (abortController.signal.aborted) {
+            res.end();
+            return;
+          }
+
+          if (handledBySandbox) {
+            if (!abortController.signal.aborted) {
+              emit({
+                type: 'done',
+                content: 'Stream completed',
+              });
+            }
+            res.end();
+            return;
+          }
         }
+
+        // 沙箱未就绪、出现异常或为内部插件/服务分析调用时，直接进行模型流式交互
+        await this.chatConversationService.streamChat(
+          body,
+          (event) => {
+            if (!abortController.signal.aborted) {
+              emit(event as unknown as SseEventPayload);
+            }
+          },
+          userCtx
+        );
 
         if (!abortController.signal.aborted) {
           emit({
@@ -384,6 +401,7 @@ export class ChatController {
     return { success: true, message: 'Chat execution stopped successfully' };
   }
 
+  @Public()
   @Post('chat')
   @ApiOperation({ summary: 'Simple AI chat (non-streaming)' })
   async chat(

@@ -293,7 +293,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "/Users/chain/Documents/MyProject/ops-automation/apps/backend/capabilities/browser-domain/semantics/generated/prisma",
+      "value": "/workspace/apps/backend/capabilities/browser-domain/semantics/generated/prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -302,12 +302,12 @@ const config = {
     "binaryTargets": [
       {
         "fromEnvVar": null,
-        "value": "darwin-arm64",
+        "value": "linux-arm64-openssl-1.1.x",
         "native": true
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "/Users/chain/Documents/MyProject/ops-automation/apps/backend/capabilities/browser-domain/semantics/prisma/schema.prisma",
+    "sourceFilePath": "/workspace/apps/backend/capabilities/browser-domain/semantics/prisma/schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {

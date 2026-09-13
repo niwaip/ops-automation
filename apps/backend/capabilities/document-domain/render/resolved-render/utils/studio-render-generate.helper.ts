@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { sanitizeOpenXmlPackageBuffer } from '../../../template/lib/file';
 
 type GenerateTemplateLogger = {
   debug: (message: string) => void;
@@ -90,6 +91,7 @@ export async function generateStudioTemplateFromContent(
     let persistedTemplatePath = templateFilePath;
 
     if (hasValidFile && templateBuffer.length > 0) {
+      templateBuffer = await sanitizeOpenXmlPackageBuffer(templateBuffer, format);
       fs.writeFileSync(templateFilePath, templateBuffer);
     } else {
       deps.logger.debug('Saving metadata only (no valid docx file)');

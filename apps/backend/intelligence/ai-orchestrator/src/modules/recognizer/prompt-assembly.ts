@@ -59,6 +59,8 @@ function buildStaticContractSection(): string {
     '4. 缺失字段处理：如果用户要求“直接生成”“端对端”“不要追问”，但当前输入仍缺少关键字段，仍然只返回已确认字段；缺失字段交由后续多轮问询补齐。抽取英文或混合语言句子时，只保留字段本身的值，不要把 is、are、in bilingual layout、contract、please generate 等说明性残句带入字段值。',
     '5. 枚举字段：只能返回 Schema enum 中的一个精确值。用户没有明确表达可映射的枚举含义时省略该字段；禁止把完整任务、搜索词或自然语言片段复制到枚举字段。默认值由运行时补齐，不要自行输出默认值。',
     '6. 输出格式：返回纯 JSON 对象，顶层只保留本轮新识别或被用户明确修正的参数键值。不要输出 params、confidence、field_confidences、uncertain_fields、notes、explanation。如果本轮没有任何新增或更正的参数，返回空对象 {}。',
+    '7. 签约主体角色映射规则（甲方 vs 乙方）：根据用户自然语言判断签约双方角色。若用户表述“我们是乙方”、“我方为乙方”或“对方是甲方”，或在合同模板中乙方已具备预设默认主体时，用户提及的签约合作对方（例如“和 [经营或注册地址] 的 [某合作企业名称] 签订保密协议”）必须提取为甲方（partyA.name/address），严禁错位识别为乙方（partyB）；若用户说明“我们是甲方”或“对方是乙方”，合作对方提取为乙方；若用户明确指定某方为甲方/乙方，严格遵从。',
+    '8. 相对日期换算与拆解：用户输入提及“今天”、“今日”、“即日”、“本日”、“当天”等相对日期词汇时，必须结合[当前系统基准时间]换算为实际年月日。若参数定义将日期拆解为单独的数值字段（如 agreement.signDate.year, agreement.signDate.month, agreement.signDate.day 等包含 year/month/day 的 number 字段），必须分别填入换算后的对应年份数字、月份数字和日号数字（例如当前为 2026年9月12日 时，输出纯数字 year: 2026, month: 9, day: 12）；若参数为标准日期字段，输出为 YYYY-MM-DD 格式。',
   ].join('\n');
 }
 
@@ -117,6 +119,15 @@ function buildDynamicUserContextSection(
   guideContext?: DocumentGuideContext
 ): string {
   const sections: string[] = [];
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const currentDay = now.getDate();
+  const currentDateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`;
+  sections.push(
+    `[当前系统基准时间]\n当前日期：${currentDateStr}（年份: ${currentYear}，月份: ${currentMonth}，日号: ${currentDay}）`
+  );
+
   const context =
     dto.context && typeof dto.context === 'object'
       ? (dto.context as Record<string, unknown>)

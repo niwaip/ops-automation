@@ -604,6 +604,26 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
     expect(topology?.finalOutputKind).toBe('artifact');
   });
 
+  it('matches contract_compare recipe for "比较附件，给出风险分析"', () => {
+    const userRequest = '比较附件，给出风险分析\n[系统上下文：用户已上传 PDF 附件 (contract_v2_revised.pdf, contract_v1_baseline.pdf)]';
+    const matched = matcher.matchRecipe(userRequest);
+
+    expect(matched).not.toBeNull();
+    expect(matched?.recipeName).toBe('contract_compare');
+    expect(matched?.steps).toHaveLength(1);
+    expect(matched?.steps[0]?.role).toBe('contract_compare');
+
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
+      mockSkillCards,
+      mockLlmOpCards
+    );
+
+    expect(topology).not.toBeNull();
+    expect(topology?.nodes).toHaveLength(1);
+    expect(topology?.nodes[0]?.capabilityKey).toBe('platform.document.contract-comparator');
+  });
+
   it('matches contract_review recipe and selects contract reviewer skill', () => {
     const userRequest = '审查合同';
     const matched = matcher.matchRecipe(userRequest);

@@ -17,7 +17,7 @@
     "dev": "prisma generate --schema template/prisma/schema.prisma && ts-node-dev --project tsconfig.json --respawn --transpile-only main.ts",
     "start": "node dist/backend/capabilities/document-domain/main.js",
     "start:prod": "node dist/backend/capabilities/document-domain/main.js",
-    "test": "jest",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:e2e": "prisma generate --schema template/prisma/schema.prisma && node scripts/run-legacy-document-engine-e2e.js",
     "migrate:sidecar-to-db": "node scripts/migrate-sidecar-to-db.js",
     "typecheck": "tsc --noEmit -p tsconfig.json"
@@ -37,6 +37,7 @@
     "express": "^4.18.0",
     "jszip": "^3.10.1",
     "mammoth": "^1.6.0",
+    "@napi-rs/canvas": "0.1.100",
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.15.0",
     "pdfjs-dist": "5.4.530",

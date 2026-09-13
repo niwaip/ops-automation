@@ -157,12 +157,12 @@ export class ParamRecognizerService {
         const hasValue = this.hasMeaningfulRequiredInputValue(effectiveNormalizedRawValue);
 
         const normalizedWorkflowDefaultValue =
-          !required && workflowPolicy?.defaultValue !== undefined
-            ? this.normalizeOptionalDefaultValue(workflowPolicy.defaultValue, schema.type)
+          workflowPolicy?.defaultValue !== undefined
+            ? this.normalizeOptionalDefaultValue(workflowPolicy.defaultValue, schema.type, name)
             : undefined;
         const normalizedSchemaDefaultValue =
           allowSchemaStrategyFallback && !required && normalizedWorkflowDefaultValue === undefined
-            ? this.normalizeOptionalDefaultValue(schema.default, schema.type)
+            ? this.normalizeOptionalDefaultValue(schema.default, schema.type, name)
             : undefined;
         const candidateDefaultValue =
           normalizedWorkflowDefaultValue !== undefined
@@ -171,7 +171,7 @@ export class ParamRecognizerService {
         const normalizedDefaultValue = isParamEnumValueAllowed(candidateDefaultValue, schemaEnum)
           ? candidateDefaultValue
           : undefined;
-        const canUseDefault = !required && !hasValue && normalizedDefaultValue !== undefined;
+        const canUseDefault = !hasValue && normalizedDefaultValue !== undefined;
         const value = hasValue
           ? effectiveNormalizedRawValue
           : canUseDefault
@@ -336,8 +336,12 @@ export class ParamRecognizerService {
     return this.paramValueService.countMeaningfulRequiredInputItems(value);
   }
 
-  private normalizeOptionalDefaultValue(value: unknown, expectedType?: string): unknown {
-    return this.paramValueService.normalizeOptionalDefaultValue(value, expectedType);
+  private normalizeOptionalDefaultValue(
+    value: unknown,
+    expectedType?: string,
+    paramName?: string
+  ): unknown {
+    return this.paramValueService.normalizeOptionalDefaultValue(value, expectedType, paramName);
   }
 
   private decorateArrayGroupCompletenessDescription(

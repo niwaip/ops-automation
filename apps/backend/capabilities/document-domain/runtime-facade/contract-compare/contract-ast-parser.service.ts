@@ -4,6 +4,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as mammoth from 'mammoth';
 import * as JSZip from 'jszip';
 import type { ContractClauseNode, DocumentBlock } from './contract-compare.types';
+import { PdfContentExtractorService } from '../content-extraction/pdf-content-extractor.service';
+import { buildDocumentBlocksFromText } from './contract-text-block-parser.util';
 
 function findWorkspaceRoot(startDir: string): string {
   let current = startDir;
@@ -29,12 +31,16 @@ interface NumberingDefinitions {
 export class ContractAstParserService {
   private readonly logger = new Logger(ContractAstParserService.name);
 
+  constructor(
+    private readonly pdfExtractor: PdfContentExtractorService = new PdfContentExtractorService()
+  ) {}
+
   // Universal Legal Document Numbering Grammars (Language-neutral, structure-driven)
   private readonly TIER1_CHAPTER_REGEX =
-    /^\s*(?:第[一二三四五六七八九十百千万\d]+[编章节篇部]|[一二三四五六七八九十]+[、\s]+[^\n]{2,30}$|(?:CHAPTER|PART|TITLE|SECTION)\s+(?:[IVXLCDM\d]+|[A-Z]|\d+)\b)/i;
+    /^\s*(?:第\s*[一二三四五六七八九十百千万\d]+\s*[编章节篇部]|[一二三四五六七八九十]+\s*[、\s]+\s*[^\n]{2,30}$|(?:CHAPTER|PART|TITLE|SECTION)\s+(?:[IVXLCDM\d]+|[A-Z]|\d+)\b)/i;
 
   private readonly TIER2_ARTICLE_REGEX =
-    /^\s*(?:第[一二三四五六七八九十百千万\d]+条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)/i;
+    /^\s*(?:第\s*[一二三四五六七八九十百千万\d]+\s*条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)/i;
 
   private readonly ANNEX_BOUNDARY_REGEX =
     /^(?:附件|附录|付属文書|Exhibit|Schedule|Annex|Appendix)\s*[一二三四五六七八九十\d\w]*/i;
@@ -46,8 +52,8 @@ export class ContractAstParserService {
     if (!text) return '';
     return text
       .replace(/^#{1,6}\s+/, '')
-      .replace(/^\*\*|\*\*$/g, '')
-      .replace(/^__|_/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/__/g, '')
       .replace(/^[\*\-]\s+/, '')
       .trim();
   }
@@ -60,12 +66,15 @@ export class ContractAstParserService {
     fileName?: string;
     text?: string;
   }): Promise<ContractClauseNode[]> {
-    // 1. Authoritative binary base64 takes precedence over text (e.g. uploaded docx/doc)
+    // 1. Authoritative binary base64 takes precedence over text (e.g. uploaded docx/doc/pdf)
     if (input.base64 && input.base64.trim()) {
       const buffer = Buffer.from(input.base64, 'base64');
       const isDocx =
         input.fileName?.toLowerCase().endsWith('.docx') ||
         (buffer.length > 4 && buffer[0] === 0x50 && buffer[1] === 0x4b); // PK zip magic header
+      const isPdf =
+        input.fileName?.toLowerCase().endsWith('.pdf') ||
+        (buffer.length > 4 && buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46); // %PDF
 
       if (isDocx) {
         try {
@@ -89,6 +98,19 @@ export class ContractAstParserService {
             return this.parseTextToClauses(buffer.toString('utf8'));
           }
         }
+      } else if (isPdf) {
+        try {
+          const extraction = await this.pdfExtractor.extract({
+            fileBase64: input.base64,
+            fileName: input.fileName || 'contract.pdf',
+          });
+          if (extraction?.text && extraction.text.trim()) {
+            return this.parseTextToClauses(extraction.text);
+          }
+        } catch (err) {
+          this.logger.warn(`PDF extraction failed: ${(err as Error).message}`);
+        }
+        return [];
       } else {
         return this.parseTextToClauses(buffer.toString('utf8'));
       }
@@ -107,6 +129,9 @@ export class ContractAstParserService {
             const isDocx =
               resolvedPath.toLowerCase().endsWith('.docx') ||
               (buffer.length > 4 && buffer[0] === 0x50 && buffer[1] === 0x4b);
+            const isPdf =
+              resolvedPath.toLowerCase().endsWith('.pdf') ||
+              (buffer.length > 4 && buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46);
             if (isDocx) {
               try {
                 const openXmlClauses = await this.parseDocxOpenXml(buffer);
@@ -118,6 +143,19 @@ export class ContractAstParserService {
               }
               const { value: html } = await mammoth.convertToHtml({ buffer });
               return this.parseHtmlToClauses(html);
+            } else if (isPdf) {
+              try {
+                const extraction = await this.pdfExtractor.extract({
+                  fileBase64: buffer.toString('base64'),
+                  fileName: path.basename(resolvedPath),
+                });
+                if (extraction?.text && extraction.text.trim()) {
+                  return this.parseTextToClauses(extraction.text);
+                }
+              } catch (err) {
+                this.logger.warn(`PDF candidate extraction failed for ${resolvedPath}: ${(err as Error).message}`);
+              }
+              return [];
             } else {
               return this.parseTextToClauses(buffer.toString('utf8'));
             }
@@ -137,9 +175,17 @@ export class ContractAstParserService {
    * Helper: try to locate a file on disk by name or relative path
    */
   private resolveFileOnDisk(filename: string): string | null {
+    const outputsDir =
+      process.env.OUTPUTS_DIR ||
+      path.resolve(WORKSPACE_ROOT, 'apps', 'backend', 'var', 'outputs', 'document-engine');
     const searchCandidates = [
       path.resolve(process.cwd(), filename),
       path.resolve(WORKSPACE_ROOT, filename),
+      path.resolve(outputsDir, filename),
+      path.resolve(outputsDir, `${filename}.docx`),
+      path.resolve(outputsDir, `${filename}.pdf`),
+      path.resolve(outputsDir, 'renders', filename),
+      path.resolve(outputsDir, 'renders', `${filename}.docx`),
       path.resolve(WORKSPACE_ROOT, 'tests', 'contract', filename),
       path.resolve(WORKSPACE_ROOT, 'apps', 'backend', 'intelligence', 'ai-orchestrator', 'data', 'storage', 'uploads', filename),
     ];
@@ -147,6 +193,18 @@ export class ContractAstParserService {
     for (const candidate of searchCandidates) {
       if (fs.existsSync(candidate)) {
         return candidate;
+      }
+    }
+
+    if (fs.existsSync(outputsDir)) {
+      try {
+        const files = fs.readdirSync(outputsDir);
+        const match = files.find((f) => f.includes(filename) || f.endsWith(`-${filename}`));
+        if (match) {
+          return path.join(outputsDir, match);
+        }
+      } catch {
+        // ignore
       }
     }
 
@@ -354,9 +412,9 @@ export class ContractAstParserService {
 
     const clauses: ContractClauseNode[] = [];
     let currentClause: ContractClauseNode | null = null;
-    let clauseIndex = 1;
-    let currentDivisionNum = '正文';
-    let currentDivisionTitle = '合同正文条款';
+    let clauseIndex = 0;
+    let currentDivisionNum = '前言';
+    let currentDivisionTitle = '合同引言与签约主体';
 
     const pushClause = (
       title: string,
@@ -365,8 +423,11 @@ export class ContractAstParserService {
       chNum?: string,
       chTitle?: string
     ) => {
-      if (currentClause && currentClause.content.trim()) {
-        currentClause.content = currentClause.content.trim();
+      if (currentClause && (currentClause.content.trim() || (currentClause.blocks && currentClause.blocks.length > 0))) {
+        const isPreamble = currentClause.clauseNumber === '前言' || currentClause.id === 'clause-0';
+        const parsed = buildDocumentBlocksFromText(currentClause.content, isPreamble);
+        currentClause.content = parsed.content || currentClause.content.trim();
+        currentClause.blocks = parsed.blocks;
         clauses.push(currentClause);
       }
       currentClause = {
@@ -374,6 +435,7 @@ export class ContractAstParserService {
         clauseNumber: clauseNum,
         title,
         content: '',
+        blocks: [],
         level,
         chapterNumber: chNum || currentDivisionNum,
         chapterTitle: chTitle || currentDivisionTitle,
@@ -409,7 +471,6 @@ export class ContractAstParserService {
         const chNum = cleanLine.split(/\s+/)[0];
         currentDivisionNum = chNum;
         currentDivisionTitle = cleanLine;
-        pushClause(cleanLine, chNum, 1, chNum, cleanLine);
         continue;
       }
 
@@ -422,6 +483,10 @@ export class ContractAstParserService {
             !/[。！？；]$/.test(cleanLine));
 
       if (isNumberedArticle) {
+        if (currentDivisionNum === '前言') {
+          currentDivisionNum = '正文';
+          currentDivisionTitle = '合同正文条款';
+        }
         let heading = cleanLine.replace(/[:：\s]+$/, '');
         const cleanNext = this.cleanMarkdownFormatting(nextLine);
         if (
@@ -435,28 +500,31 @@ export class ContractAstParserService {
         }
 
         const matchArt = heading.match(
-          /^\s*(第[一二三四五六七八九十百千万\d]+条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)\s*(.*)$/i
+          /^\s*(第\s*[一二三四五六七八九十百千万\d]+\s*条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)\s*(.*)$/i
         );
         let cNum = `第 ${clauseIndex} 条`;
         let cleanTitle = heading;
 
         if (matchArt) {
-          cNum = matchArt[1].trim();
+          cNum = matchArt[1].replace(/\s+/g, '');
           cleanTitle = matchArt[2]?.trim() || matchArt[1].trim();
         }
 
-        pushClause(cleanTitle, cNum, 2);
+        pushClause(cleanTitle, cNum, 2, currentDivisionNum, currentDivisionTitle);
       } else {
         if (!currentClause) {
-          pushClause('合同引言与主体信息', '前言', 2);
+          pushClause('合同引言与主体信息', '前言', 2, '前言', '合同引言与签约主体');
         }
         currentClause!.content += (currentClause!.content ? '\n' : '') + line;
       }
     }
 
     const finalTextClause = currentClause as ContractClauseNode | null;
-    if (finalTextClause && finalTextClause.content.trim()) {
-      finalTextClause.content = finalTextClause.content.trim();
+    if (finalTextClause && (finalTextClause.content.trim() || (finalTextClause.blocks && finalTextClause.blocks.length > 0))) {
+      const isPreamble = finalTextClause.clauseNumber === '前言' || finalTextClause.id === 'clause-0';
+      const parsed = buildDocumentBlocksFromText(finalTextClause.content, isPreamble);
+      finalTextClause.content = parsed.content || finalTextClause.content.trim();
+      finalTextClause.blocks = parsed.blocks;
       clauses.push(finalTextClause);
     }
 
@@ -633,7 +701,7 @@ export class ContractAstParserService {
             let tM: RegExpExecArray | null;
             let cellText = '';
             while ((tM = tRegex.exec(cM[1])) !== null) {
-              cellText += tM[1];
+              cellText += this.decodeXmlEntities(tM[1]);
             }
             cells.push(cellText.trim());
           }
@@ -654,12 +722,24 @@ export class ContractAstParserService {
           const rInner = rM[1];
           const isU = /<w:u(?:\s|\/|>)/.test(rInner);
           const isB = /<w:b(?:\s|\/|>)/.test(rInner);
+          const hasTab = /<w:tab(?:\s|\/|>)/.test(rInner);
+          const hasBr = /<w:br(?:\s|\/|>)/.test(rInner);
           const tRegex = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g;
           let tM: RegExpExecArray | null;
           let rText = '';
           while ((tM = tRegex.exec(rInner)) !== null) {
-            rText += tM[1];
+            rText += this.decodeXmlEntities(tM[1]);
           }
+
+          if (hasTab) {
+            text += '    ';
+            html += '&nbsp;&nbsp;&nbsp;&nbsp;';
+          }
+          if (hasBr) {
+            text += '\n';
+            html += '<br/>';
+          }
+
           if (!rText) continue;
 
           text += rText;
@@ -668,7 +748,12 @@ export class ContractAstParserService {
 
           const escaped = this.escapeHtml(rText);
           if (isU) {
-            if (/^[_—\s]+$/.test(rText) || rText.trim().length === 0) {
+            const isBlankOnly = /^[_—\s\u00A0]+$/.test(rText) || rText.trim().length === 0;
+            const isSigningContext = /签字|盖章|签署|署名|代表/i.test(inner);
+            if (isBlankOnly && isSigningContext) {
+              // 签署落款栏空白横线：渲染为规整的签字下划线，避免误判为待填写风险空白
+              html += `<span class="contract-sign-underline inline-block min-w-[80px] border-b border-slate-700 mx-1 select-none">&nbsp;</span>`;
+            } else if (isBlankOnly) {
               html += `<span class="contract-unfilled-blank border-b-2 border-dashed border-red-400 bg-red-50/70 text-red-600 px-1.5 py-0.2 rounded text-[10px] font-mono select-none" title="⚠️ 空白待填项（尚未填写）">[待填写空白]</span>`;
             } else {
               html += `<span class="contract-fill-in underline underline-offset-4 decoration-blue-600 decoration-2 font-medium text-slate-900 bg-blue-50/60 px-1 py-0.2 rounded-xs" title="用户填写项/自定义参数">${escaped}</span>`;
@@ -685,7 +770,7 @@ export class ContractAstParserService {
           const tRegex = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g;
           let tM: RegExpExecArray | null;
           while ((tM = tRegex.exec(inner)) !== null) {
-            text += tM[1];
+            text += this.decodeXmlEntities(tM[1]);
           }
           html = this.escapeHtml(text);
         }
@@ -755,7 +840,13 @@ export class ContractAstParserService {
             this.ANNEX_BOUNDARY_REGEX.test(elClean) ||
             /^[-—_*]{3,}$/.test(el.text.trim());
 
-          if (
+          const isSigningOrPartyLine = (t: string) =>
+            /^(?:甲方|乙方|丙方|地址|签字|盖章|签署|法定代表人|授权代表|签约时间|签订日期|日期)[:：]/.test(t.trim());
+          const isPartyOrSigningRow = isSigningOrPartyLine(prevClean) || isSigningOrPartyLine(elClean);
+
+          if (isPartyOrSigningRow) {
+            // 签署主体与签署落款栏按行独立呈现，不作为正文断句拼接合并
+          } else if (
             !isPrevHeadingOrSeparator &&
             !isElHeadingOrSeparator &&
             !/[。！？；:：\.\?!]$/.test(prev.text) &&
@@ -786,7 +877,9 @@ export class ContractAstParserService {
       chNum?: string,
       chTitle?: string
     ) => {
-      if (curClause) rawClauses.push(curClause);
+      if (curClause && (curClause.content.trim() || (curClause.blocks && curClause.blocks.length > 0))) {
+        rawClauses.push(curClause);
+      }
       curClause = {
         id: `clause-${clauseCounter++}`,
         clauseNumber: cNum,
@@ -832,7 +925,6 @@ export class ContractAstParserService {
         }
         currentChapterNumber = chNum;
         currentChapterTitle = chTitle;
-        createClause(chTitle, chNum, 1, chNum, chTitle);
         continue;
       }
 
@@ -1038,7 +1130,10 @@ export class ContractAstParserService {
       curClause!.content += `\n${el.fullText}`;
     }
 
-    if (curClause) rawClauses.push(curClause);
+    const finalCurClause = curClause as ContractClauseNode | null;
+    if (finalCurClause && (finalCurClause.content.trim() || (finalCurClause.blocks && finalCurClause.blocks.length > 0))) {
+      rawClauses.push(finalCurClause);
+    }
 
     // Merge empty placeholder clauses (e.g. 其他约定事项 having only 9 chars before 合同附则)
     const finalClauses: ContractClauseNode[] = [];
@@ -1099,6 +1194,25 @@ export class ContractAstParserService {
     });
 
     return finalClauses;
+  }
+
+  private decodeXmlEntities(text: string): string {
+    if (!text) return '';
+    return text
+      .replace(/&#(\d+);/g, (_, dec) => {
+        const code = parseInt(dec, 10);
+        return isNaN(code) ? _ : String.fromCodePoint(code);
+      })
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+        const code = parseInt(hex, 16);
+        return isNaN(code) ? _ : String.fromCodePoint(code);
+      })
+      .replace(/&nbsp;/g, '\u00A0')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&');
   }
 
   private escapeHtml(text: string): string {

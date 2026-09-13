@@ -227,7 +227,7 @@ export class CapabilityReleaseTemporalSchemaService {
             }
           : {}),
         ...(renderPath ? { renderPath } : {}),
-        ...(!isRequired && effectiveDefaultValue !== undefined
+        ...(effectiveDefaultValue !== undefined
           ? { default: effectiveDefaultValue }
           : {}),
         extractionPrompt: description,

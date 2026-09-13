@@ -63,6 +63,7 @@ export const DEFAULT_SCOPE_OPTIONS = [
   { label: '管理员 AI', value: 'admin_chat' },
   { label: '管理员任务', value: 'admin_task' },
   { label: '语音识别', value: 'audio_transcription' },
+  { label: 'OCR识别', value: 'ocr' },
 ];
 
 export const ROUTING_TAG_OPTIONS = [
@@ -79,6 +80,7 @@ export const SCOPE_TAG_META: Record<string, { label: string; color: string }> = 
   admin_chat: { label: '管理员 AI', color: 'purple' },
   admin_task: { label: '管理员任务', color: 'magenta' },
   audio_transcription: { label: '语音识别', color: 'orange' },
+  ocr: { label: 'OCR识别', color: 'cyan' },
 };
 
 export function mapConfigToFormValues(config?: AIModelConfig) {
@@ -127,6 +129,7 @@ export function buildConfigFromValues(values: Record<string, unknown>): AIModelC
       admin_chat: defaultScopes.includes('admin_chat'),
       admin_task: defaultScopes.includes('admin_task'),
       audio_transcription: defaultScopes.includes('audio_transcription'),
+      ocr: defaultScopes.includes('ocr'),
     },
     routing_preferences: {
       prefer_for_code: values.prefer_for_code === true,

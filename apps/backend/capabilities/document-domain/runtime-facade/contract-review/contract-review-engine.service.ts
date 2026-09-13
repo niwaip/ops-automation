@@ -264,8 +264,22 @@ export class ContractReviewEngineService {
     const chapterMap = new Map<string, ReviewChapterGroup>();
     let chIdx = 1;
     for (const c of reviewedClauses) {
-      const chNum = c.chapterNumber || (c.clauseIndex === 0 ? '前言' : '正文');
-      const chTitle = c.chapterTitle || (c.clauseIndex === 0 ? '合同引言与签约主体' : '合同正文条款');
+      const isPreamble = c.clauseIndex === 0 || c.clauseNumber === '前言';
+      const isAnnex = c.clauseNumber?.includes('附件') || c.title?.includes('附件');
+      const chNum = isPreamble
+        ? c.chapterNumber && c.chapterNumber !== '正文'
+          ? c.chapterNumber
+          : '前言'
+        : isAnnex
+        ? c.chapterNumber || '附件'
+        : c.chapterNumber || '正文';
+      const chTitle = isPreamble
+        ? c.chapterTitle && c.chapterTitle !== '合同正文条款'
+          ? c.chapterTitle
+          : '合同引言与签约主体'
+        : isAnnex
+        ? c.chapterTitle || '合同附件与补充协议'
+        : c.chapterTitle || '合同正文条款';
       const key = `${chNum}__${chTitle}`;
       if (!chapterMap.has(key)) {
         chapterMap.set(key, {

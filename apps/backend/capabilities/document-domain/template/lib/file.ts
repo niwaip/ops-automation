@@ -6,6 +6,7 @@ import { Builder } from './builder';
 import { XmlPreprocessor } from './xml-preprocessor';
 import { XlsxSharedStringsService } from './xlsx-shared-strings.service';
 import { MediaReplacementService } from './media-replacement.service';
+import { generateStudioRenderOutputFileName } from '../../render/resolved-render/utils/studio-render-controller.helper';
 
 export interface TemplateInfo {
   format: 'docx' | 'xlsx' | 'pptx' | 'html';
@@ -136,7 +137,61 @@ export class FileHandler {
     }
 
     await this.mediaReplacementService.processMediaFiles(zip, data, format);
-    return zip.generateAsync({ type: 'nodebuffer' });
+    await this.sanitizeOpenXmlPackage(zip, format);
+
+    // Remove empty directory entries (e.g. 'word/', 'xl/') which cause Word OpenXML strict schema errors
+    const fileKeys = Object.keys(zip.files);
+    for (const key of fileKeys) {
+      if ((zip.files[key] as any)?.dir || key.endsWith('/')) {
+        delete zip.files[key];
+      }
+    }
+
+    return zip.generateAsync({
+      type: 'nodebuffer',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 },
+    });
+  }
+
+  /**
+   * 清理 OpenXML 包中的开发态残留与冗余项（如 Word Add-in 任务窗格 WebExtension）
+   */
+  private async sanitizeOpenXmlPackage(zip: JSZip, format: TemplateFormat): Promise<void> {
+    if (format !== 'docx' && format !== 'xlsx' && format !== 'pptx') {
+      return;
+    }
+
+    const fileKeys = Object.keys(zip.files);
+    const hasWebExtensions = fileKeys.some((k) => k.includes('webextension'));
+
+    if (hasWebExtensions) {
+      for (const key of fileKeys) {
+        if (key.includes('webextension')) {
+          delete zip.files[key];
+        }
+      }
+
+      // 清理 _rels/.rels 中的 webextension 关系引用
+      const rootRels = await this.getOptionalFileContent(zip, '_rels/.rels');
+      if (rootRels) {
+        const cleanedRootRels = rootRels.replace(
+          /<Relationship[^>]+Type="[^"]*webextension[^"]*"[^>]*\/>\s*/gi,
+          ''
+        );
+        this.setFileContent(zip, '_rels/.rels', cleanedRootRels);
+      }
+
+      // 清理 [Content_Types].xml 中的 webextension 覆盖声明
+      const contentTypes = await this.getOptionalFileContent(zip, '[Content_Types].xml');
+      if (contentTypes) {
+        const cleanedContentTypes = contentTypes.replace(
+          /<Override[^>]+PartName="[^"]*webextension[^"]*"[^>]*\/>\s*/gi,
+          ''
+        );
+        this.setFileContent(zip, '[Content_Types].xml', cleanedContentTypes);
+      }
+    }
   }
 
   saveDocument(buffer: Buffer, outputPath: string): string {
@@ -144,9 +199,12 @@ export class FileHandler {
     return outputPath;
   }
 
-  generateOutputFileName(templateName: string, format: string): string {
-    const baseName = templateName.replace(/\.[^/.]+$/, '');
-    return `${baseName}_${Date.now()}.${format}`;
+  generateOutputFileName(
+    templateName: string,
+    format: string,
+    data?: Record<string, any>
+  ): string {
+    return generateStudioRenderOutputFileName(templateName, format, data);
   }
 
   private async parseTemplateInfo(
@@ -222,3 +280,75 @@ export class FileHandler {
     return files;
   }
 }
+
+/**
+ * 彻底清洗并规整 OpenXML 二进制包：剔除任务窗格 WebExtension、清除非法空目录条目，并使用标准 DEFLATE 压缩
+ */
+export async function sanitizeOpenXmlPackageBuffer(
+  buffer: Buffer,
+  format?: string
+): Promise<Buffer> {
+  const normFormat = format?.toLowerCase();
+  if (normFormat && normFormat !== 'docx' && normFormat !== 'xlsx' && normFormat !== 'pptx') {
+    return buffer;
+  }
+
+  // 必须是有效 ZIP 包（前4字节为 PK\x03\x04）
+  if (!buffer || buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+    return buffer;
+  }
+
+  try {
+    const JSZip = require('jszip');
+    const zip = new JSZip();
+    await zip.loadAsync(buffer);
+
+    const fileKeys = Object.keys(zip.files);
+    const hasWebExtensions = fileKeys.some((k: string) => k.includes('webextension'));
+
+    if (hasWebExtensions) {
+      for (const key of fileKeys) {
+        if (key.includes('webextension')) {
+          delete zip.files[key];
+        }
+      }
+
+      const rootRelsFile = zip.file('_rels/.rels');
+      if (rootRelsFile) {
+        const rootRels = await rootRelsFile.async('text');
+        const cleanedRootRels = rootRels.replace(
+          /<Relationship[^>]+Type="[^"]*webextension[^"]*"[^>]*\/>\s*/gi,
+          ''
+        );
+        zip.file('_rels/.rels', cleanedRootRels);
+      }
+
+      const contentTypesFile = zip.file('[Content_Types].xml');
+      if (contentTypesFile) {
+        const contentTypes = await contentTypesFile.async('text');
+        const cleanedContentTypes = contentTypes.replace(
+          /<Override[^>]+PartName="[^"]*webextension[^"]*"[^>]*\/>\s*/gi,
+          ''
+        );
+        zip.file('[Content_Types].xml', cleanedContentTypes);
+      }
+    }
+
+    // 剔除空目录条目（如 'word/', 'xl/' 等），避免触发 Word 严格 XML 规范校验失败
+    for (const key of Object.keys(zip.files)) {
+      if ((zip.files[key] as any)?.dir || key.endsWith('/')) {
+        delete zip.files[key];
+      }
+    }
+
+    return await zip.generateAsync({
+      type: 'nodebuffer',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 },
+    });
+  } catch (error) {
+    console.warn('[sanitizeOpenXmlPackageBuffer] Failed to sanitize package buffer:', error);
+    return buffer;
+  }
+}
+

@@ -61,6 +61,7 @@ export function buildWordSectionAnalysisChatPrompt(request: StructuredAnalyzeReq
    - \`originalText\` 不要强制等于 \`anchorText\`；优先填写该参数对应的样本值、槽位文本或被替换片段，只有确实缺少这些线索时才回退为 \`anchorText\`。
    - \`fieldType\` 请根据语境推断（如 text/number/date/currency）。
    - \`description\` 和 \`significance\` 需简明扼要说明该填空位的业务含义。
+   - 若返回 \`sampleValue\`，必须仅为该槽位自身的纯净取值，严禁将相邻段落或同一行其他标签（如“地址：... 签字：... 盖章：”）串联打包作为 sampleValue。
 7. 去重与抗干扰：
    - 如果多个候选对应同一个业务含义，请为它们分配相同的基准路径。
    - 只处理 candidates 中列出的项，不要从 chapterContext 自行新增参数。

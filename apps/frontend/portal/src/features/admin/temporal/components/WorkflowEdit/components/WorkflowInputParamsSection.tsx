@@ -212,7 +212,9 @@ export const WorkflowInputParamsSection: React.FC<WorkflowInputParamsSectionProp
                 value={
                   param.localizedDefaultValue?.[lang] === undefined ||
                   param.localizedDefaultValue?.[lang] === null
-                    ? ''
+                    ? (normalizedLocalizedVariants.length === 1 || lang === 'zh'
+                        ? (param.defaultValue !== undefined && param.defaultValue !== null ? String(param.defaultValue) : '')
+                        : '')
                     : String(param.localizedDefaultValue?.[lang])
                 }
                 onChange={(event) =>
@@ -231,7 +233,7 @@ export const WorkflowInputParamsSection: React.FC<WorkflowInputParamsSectionProp
             ))
           ) : isSensitive ? (
             <Input.Password
-              value={param.defaultValue || ''}
+              value={param.defaultValue !== undefined && param.defaultValue !== null ? String(param.defaultValue) : ''}
               onChange={(event) =>
                 updateSingleWorkflowInputParam(key, { ...param, defaultValue: event.target.value })
               }
@@ -241,10 +243,17 @@ export const WorkflowInputParamsSection: React.FC<WorkflowInputParamsSectionProp
             />
           ) : (
             <Input
-              value={param.defaultValue || ''}
-              onChange={(event) =>
-                updateSingleWorkflowInputParam(key, { ...param, defaultValue: event.target.value })
-              }
+              value={param.defaultValue !== undefined && param.defaultValue !== null ? String(param.defaultValue) : ''}
+              onChange={(event) => {
+                const raw = event.target.value;
+                const nextVal =
+                  (param.type === 'number' || param.type === 'integer') &&
+                  raw.trim() !== '' &&
+                  Number.isFinite(Number(raw))
+                    ? Number(raw)
+                    : raw;
+                updateSingleWorkflowInputParam(key, { ...param, defaultValue: nextVal });
+              }}
               placeholder="默认值"
               size="small"
               style={{ width: '100%' }}
