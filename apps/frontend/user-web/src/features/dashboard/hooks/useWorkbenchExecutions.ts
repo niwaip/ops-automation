@@ -73,8 +73,8 @@ interface UseWorkbenchExecutionsOptions {
 export function useWorkbenchExecutions({
   handledExecutions,
 }: UseWorkbenchExecutionsOptions) {
-  const executionsQuery = useQuery(['dashboard-executions'], () =>
-    executionApi.list({ page: 1, pageSize: 100 }),
+  const executionsQuery = useQuery(['dashboard-executions', 'summary'], () =>
+    executionApi.list({ page: 1, pageSize: 100, view: 'summary' }),
     {
       staleTime: 30000,
       keepPreviousData: true,

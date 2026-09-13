@@ -37,6 +37,9 @@ const UsageSummary: React.FC<{ usage?: SharedLLMUsage }> = ({ usage }) => {
   }
 
   const reasoningTokens = completion_tokens_details?.reasoning_tokens;
+  const isReasoningIncluded =
+    Boolean(reasoningTokens) && total_tokens === prompt_tokens + completion_tokens;
+  const reasoningPrefix = isReasoningIncluded ? '含推理' : '+推理';
 
   return (
     <div className="chat-message-usage">
@@ -47,7 +50,7 @@ const UsageSummary: React.FC<{ usage?: SharedLLMUsage }> = ({ usage }) => {
         </span>
         <span className="chat-usage-detail">
           输入:{prompt_tokens} 输出:{completion_tokens}
-          {reasoningTokens ? ` (含推理:${reasoningTokens})` : ''}
+          {reasoningTokens ? ` (${reasoningPrefix}:${reasoningTokens})` : ''}
         </span>
       </Space>
     </div>

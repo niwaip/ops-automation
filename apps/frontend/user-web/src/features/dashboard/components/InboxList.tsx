@@ -17,8 +17,7 @@ import {
   UpOutlined,
 } from "@ant-design/icons";
 import { useEffect, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { InboxContentPreview } from "./InboxContentPreview";
 import { CoordinationActionModal } from "./CoordinationActionModal";
 import {
   Button,
@@ -289,31 +288,7 @@ export function InboxList({
             isLong && !isExpanded ? inboxStyles["inbox-content-collapsed"] : ""
           }`}
         >
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              h1: ({ children }) => <div className={inboxStyles["inbox-md-h1"]}>{children}</div>,
-              h2: ({ children }) => <div className={inboxStyles["inbox-md-h2"]}>{children}</div>,
-              h3: ({ children }) => <div className={inboxStyles["inbox-md-h3"]}>{children}</div>,
-              p: ({ children }) => <p className={inboxStyles["inbox-md-p"]}>{children}</p>,
-              ul: ({ children }) => <ul className={inboxStyles["inbox-md-list"]}>{children}</ul>,
-              ol: ({ children }) => <ol className={inboxStyles["inbox-md-list"]}>{children}</ol>,
-              li: ({ children }) => <li className={inboxStyles["inbox-md-li"]}>{children}</li>,
-              code: ({ children }) => <code className={inboxStyles["inbox-md-code"]}>{children}</code>,
-              a: ({ href, children }) => (
-                <a
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={inboxStyles["inbox-md-link"]}
-                >
-                  {children}
-                </a>
-              ),
-            }}
-          >
-            {content || "暂无详细内容"}
-          </ReactMarkdown>
+          <InboxContentPreview content={content} expanded={isExpanded || !isLong} />
           {isLong && !isExpanded ? <div className={inboxStyles["inbox-content-fade"]} /> : null}
         </div>
 

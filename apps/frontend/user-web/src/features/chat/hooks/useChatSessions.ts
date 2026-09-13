@@ -8,6 +8,7 @@ import {
 } from '../lib/messageState';
 import { parseMessageContent } from '../lib/messageContent';
 import { createChatSessionId } from '../lib/session';
+import { pruneChatHistories } from '../lib/historyCache';
 import {
   getSessionSortTime,
   isSameSession,
@@ -38,6 +39,7 @@ export function useChatSessions({
   );
   const [sessionMessages, setSessionMessages] = useState<Record<string, ChatMessage[]>>({});
   const sessionMessagesRef = useRef<Record<string, ChatMessage[]>>({});
+  const syncedHistoryIdsRef = useRef(new Set<string>());
 
   const remoteSessionIds = useMemo(
     () => new Set(remoteSessions.map((session) => session.id)),
@@ -102,7 +104,12 @@ export function useChatSessions({
 
   useEffect(() => {
     sessionMessagesRef.current = sessionMessages;
-  }, [sessionMessages]);
+    const pruned = pruneChatHistories(sessionMessages, selectedSessionId, syncedHistoryIdsRef.current);
+    if (pruned !== sessionMessages) {
+      sessionMessagesRef.current = pruned;
+      setSessionMessages(pruned);
+    }
+  }, [selectedSessionId, sessionMessages]);
 
   useEffect(() => {
     if (embedded) {
@@ -174,6 +181,7 @@ export function useChatSessions({
     sessionId: string,
     updater: (messages: ChatMessage[]) => ChatMessage[]
   ) => {
+    syncedHistoryIdsRef.current.delete(sessionId);
     setSessionMessages((current) => ({
       ...current,
       [sessionId]: updater(current[sessionId] || []),
@@ -197,6 +205,11 @@ export function useChatSessions({
       return;
     }
 
+    // Only histories loaded without local edits can be safely fetched again later.
+    if (!sessionMessagesRef.current[sessionId]?.length) {
+      syncedHistoryIdsRef.current.add(sessionId);
+    }
+
     setSessionMessages((current) => {
       const existing = current[sessionId] || [];
       if (history.length === 0 && existing.length > 0) {
@@ -210,6 +223,7 @@ export function useChatSessions({
   }, []);
 
   const snapshotMessageThoughts = useCallback((sessionId: string, messageId: string) => {
+    syncedHistoryIdsRef.current.delete(sessionId);
     setSessionMessages((current) => {
       const currentMessages = current[sessionId] || [];
       const nextMessages = currentMessages.map((message) => {
@@ -298,7 +312,14 @@ export function useChatSessions({
       updatedAt: now,
       modelId: selectedModel,
     };
-    setDraftSessions((current) => [nextSession, ...current]);
+    setDraftSessions((current) => {
+      const currentSelectedId = selectedSessionId;
+      const currentMessages = currentSelectedId ? sessionMessagesRef.current[currentSelectedId] || [] : [];
+      if (currentSelectedId && currentMessages.length === 0) {
+        return [nextSession, ...current.filter((s) => s.id !== currentSelectedId)];
+      }
+      return [nextSession, ...current];
+    });
     setSelectedSessionId(nextSession.id);
     setSessionMessages((current) => ({
       ...current,
@@ -306,7 +327,7 @@ export function useChatSessions({
     }));
     setCurrentSession(nextSession);
     return nextSession;
-  }, [selectedModel, setCurrentSession]);
+  }, [selectedModel, selectedSessionId, setCurrentSession]);
 
   const ensureSession = useCallback((now: string): ChatSession => {
     if (selectedSession) {
@@ -316,6 +337,7 @@ export function useChatSessions({
   }, [createDraftSession, selectedSession]);
 
   const deleteSession = useCallback((sessionId: string) => {
+    syncedHistoryIdsRef.current.delete(sessionId);
     setDraftSessions((current) => current.filter((session) => session.id !== sessionId));
     setSessionOverrides((current) => {
       const next = { ...current };
