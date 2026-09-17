@@ -1412,3 +1412,260 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/*  待办看板 & 协同流转统一高质感按钮（全面适配 Light / Dark 模式）          */
+/* -------------------------------------------------------------------------- */
+
+/* 1. 次级动作按钮（如「详细」） */
+.workbench-todo-action-btn {
+  height: 26px !important;
+  border-radius: 6px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: var(--bg-hover, #f1f5f9) !important;
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.3)) !important;
+  color: var(--text-primary, #334155) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+.workbench-todo-action-btn:hover {
+  background: #ffffff !important;
+  border-color: #1677ff !important;
+  color: #1677ff !important;
+  box-shadow: 0 2px 4px rgba(22, 119, 255, 0.15) !important;
+}
+
+[data-theme='dark'] .workbench-todo-action-btn {
+  background: rgba(30, 41, 59, 0.85) !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  color: rgba(226, 232, 240, 0.92) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-theme='dark'] .workbench-todo-action-btn:hover {
+  background: rgba(51, 65, 85, 0.95) !important;
+  border-color: #3b82f6 !important;
+  color: #60a5fa !important;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25) !important;
+}
+
+/* 2. 发送 / 重新发送主按钮（Primary Send） */
+.workbench-todo-send-btn {
+  height: 26px !important;
+  border-radius: 6px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%) !important;
+  border: 1px solid #0958d9 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(22, 119, 255, 0.25) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.workbench-todo-send-btn:hover {
+  background: linear-gradient(135deg, #4096ff 0%, #1677ff 100%) !important;
+  border-color: #1677ff !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 8px rgba(22, 119, 255, 0.35) !important;
+}
+
+[data-theme='dark'] .workbench-todo-send-btn {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  border-color: #1e40af !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35) !important;
+}
+
+[data-theme='dark'] .workbench-todo-send-btn:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.45) !important;
+}
+
+/* 3. 审批 / 办理流转按钮（Purple Flow） */
+.workbench-todo-flow-btn {
+  height: 26px !important;
+  border-radius: 6px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: linear-gradient(135deg, #722ed1 0%, #531dab 100%) !important;
+  border: 1px solid #531dab !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(114, 46, 209, 0.25) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.workbench-todo-flow-btn:hover {
+  background: linear-gradient(135deg, #9254de 0%, #722ed1 100%) !important;
+  border-color: #722ed1 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 8px rgba(114, 46, 209, 0.35) !important;
+}
+
+[data-theme='dark'] .workbench-todo-flow-btn {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%) !important;
+  border-color: #5b21b6 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.35) !important;
+}
+
+[data-theme='dark'] .workbench-todo-flow-btn:hover {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+  border-color: #6d28d9 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(139, 92, 246, 0.45) !important;
+}
+
+/* 4. 撤回按钮（Recall） */
+.workbench-todo-recall-btn {
+  height: 26px !important;
+  border-radius: 6px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #d46b08 !important;
+  border: 1px solid #ffd591 !important;
+  background: rgba(255, 247, 230, 0.7) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.workbench-todo-recall-btn:hover {
+  color: #d4380d !important;
+  border-color: #ffbb96 !important;
+  background: rgba(255, 247, 230, 1) !important;
+  box-shadow: 0 2px 4px rgba(212, 107, 8, 0.15) !important;
+}
+
+[data-theme='dark'] .workbench-todo-recall-btn {
+  color: #faad14 !important;
+  border-color: rgba(250, 173, 20, 0.4) !important;
+  background: rgba(250, 173, 20, 0.12) !important;
+}
+
+[data-theme='dark'] .workbench-todo-recall-btn:hover {
+  color: #ffd666 !important;
+  border-color: rgba(250, 173, 20, 0.6) !important;
+  background: rgba(250, 173, 20, 0.22) !important;
+  box-shadow: 0 2px 6px rgba(250, 173, 20, 0.25) !important;
+}
+
+/* 5. 催办按钮（Remind） */
+.workbench-todo-remind-btn {
+  height: 26px !important;
+  border-radius: 6px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #1677ff !important;
+  border: 1px solid rgba(22, 119, 255, 0.3) !important;
+  background: rgba(22, 119, 255, 0.06) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.workbench-todo-remind-btn:hover {
+  color: #0958d9 !important;
+  border-color: #1677ff !important;
+  background: rgba(22, 119, 255, 0.12) !important;
+  box-shadow: 0 2px 4px rgba(22, 119, 255, 0.15) !important;
+}
+
+[data-theme='dark'] .workbench-todo-remind-btn {
+  color: #60a5fa !important;
+  border-color: rgba(96, 165, 250, 0.35) !important;
+  background: rgba(59, 130, 246, 0.15) !important;
+}
+
+[data-theme='dark'] .workbench-todo-remind-btn:hover {
+  color: #93c5fd !important;
+  border-color: #60a5fa !important;
+  background: rgba(59, 130, 246, 0.25) !important;
+}
+
+/* 6. 驳回按钮（Reject） */
+.workbench-todo-reject-btn {
+  height: 26px !important;
+  border-radius: 6px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 7. 归档小按钮（Archive） */
+.workbench-todo-archive-btn {
+  height: 26px !important;
+  width: 26px !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-tertiary, #94a3b8) !important;
+  transition: all 0.2s ease !important;
+}
+
+.workbench-todo-archive-btn:hover {
+  color: var(--text-primary, #0f172a) !important;
+  background: var(--bg-hover, rgba(148, 163, 184, 0.12)) !important;
+}
+
+[data-theme='dark'] .workbench-todo-archive-btn {
+  color: rgba(148, 163, 184, 0.7) !important;
+}
+
+[data-theme='dark'] .workbench-todo-archive-btn:hover {
+  color: #f8fafc !important;
+  background: rgba(148, 163, 184, 0.15) !important;
+}
+
+/* 8. 附件下载按钮（Download） */
+.workbench-todo-download-btn {
+  height: 26px !important;
+  border-radius: 6px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%) !important;
+  border: 1px solid #0958d9 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(22, 119, 255, 0.2) !important;
+  transition: all 0.2s ease !important;
+}
+
+.workbench-todo-download-btn:hover {
+  background: linear-gradient(135deg, #4096ff 0%, #1677ff 100%) !important;
+  border-color: #1677ff !important;
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] .workbench-todo-download-btn {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  border-color: #1e40af !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3) !important;
+}

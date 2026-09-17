@@ -37,8 +37,8 @@ export function useWorkbenchInbox({ message, onTodoCreated, defaultFilter }: Use
   });
 
   const queryParams = useMemo(() => {
-    if (inboxFilter === "all" || inboxFilter === "intervention") return {};
-    if (inboxFilter === "clarified_archived") return { includeArchived: true, pageSize: 100 };
+    if (inboxFilter === "intervention") return {};
+    if (inboxFilter === "all" || inboxFilter === "clarified_archived") return { includeArchived: true, pageSize: 100 };
     return { status: inboxFilter as InboxItemStatus };
   }, [inboxFilter]);
 
@@ -58,6 +58,9 @@ export function useWorkbenchInbox({ message, onTodoCreated, defaultFilter }: Use
     if (inboxFilter === "clarified_archived") {
       return raw.filter((i) => i.status === "clarified" || i.status === "archived" || archivedInboxIds.has(i.id));
     }
+    if (inboxFilter === "all") {
+      return raw.filter((i) => i.status !== "converted" && i.status !== "discarded");
+    }
     return raw.filter((i) => i.status !== "converted" && !archivedInboxIds.has(i.id));
   }, [inboxData, inboxFilter, archivedInboxIds]);
 
@@ -72,12 +75,17 @@ export function useWorkbenchInbox({ message, onTodoCreated, defaultFilter }: Use
 
   const inboxSummary = useMemo(() => {
     const items = allInboxData?.items ?? inboxItems;
+    const unprocessed = items.filter((i) => i.status === "unprocessed" && !archivedInboxIds.has(i.id)).length;
+    const clarified = items.filter((i) => i.status === "clarified" && !archivedInboxIds.has(i.id)).length;
+    const archived = items.filter((i) => i.status === "archived" || archivedInboxIds.has(i.id)).length;
+    const converted = items.filter((i) => i.status === "converted" && !archivedInboxIds.has(i.id)).length;
+    const total = unprocessed + clarified + archived;
     return {
-      total: items.filter((i) => i.status !== "archived" && i.status !== "discarded" && i.status !== "converted" && !archivedInboxIds.has(i.id)).length,
-      unprocessed: items.filter((i) => i.status === "unprocessed" && !archivedInboxIds.has(i.id)).length,
-      clarified: items.filter((i) => i.status === "clarified" && !archivedInboxIds.has(i.id)).length,
-      converted: items.filter((i) => i.status === "converted" && !archivedInboxIds.has(i.id)).length,
-      archived: items.filter((i) => i.status === "archived" || archivedInboxIds.has(i.id)).length,
+      total,
+      unprocessed,
+      clarified,
+      converted,
+      archived,
     };
   }, [allInboxData, inboxItems, archivedInboxIds]);
 

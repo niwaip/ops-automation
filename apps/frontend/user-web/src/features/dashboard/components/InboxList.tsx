@@ -19,7 +19,7 @@ import {
   UndoOutlined,
   UpOutlined,
 } from "@ant-design/icons";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "react-query";
 import { InboxContentPreview } from "./InboxContentPreview";
 import {
@@ -51,6 +51,10 @@ import type { WorkbenchInboxFilter } from "../hooks/useWorkbenchInbox";
 import { InterventionList } from "./InterventionList";
 import { InboxTaskDetailModal } from "./InboxTaskDetailModal";
 import { classifyWorkflowNode } from "../lib/coordinationNodeClassifier";
+import {
+  applyOptimisticCoordinationSend,
+  rollbackOptimisticCoordinationSend,
+} from "../lib/coordinationOptimistic";
 import { formatMonthDayTime } from "../../../shared/utils/dateText";
 import styles from "../pages/DashboardPage.module.css";
 import inboxStyles from "./InboxList.module.css";
@@ -122,7 +126,23 @@ export function InboxList({
   const queryClient = useQueryClient();
   const [quickSendingId, setQuickSendingId] = useState<string | null>(null);
   const [detailModalItem, setDetailModalItem] = useState<WorkbenchInboxItem | null>(null);
+  const [optimisticSentIds, setOptimisticSentIds] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const displayInboxItems: WorkbenchInboxItem[] = useMemo(() => {
+    if (optimisticSentIds.size === 0) return inboxItems;
+    return inboxItems.filter((i: WorkbenchInboxItem) => !optimisticSentIds.has(i.id));
+  }, [inboxItems, optimisticSentIds]);
+
+  const displaySummary = useMemo(() => {
+    if (optimisticSentIds.size === 0) return inboxSummary;
+    const sentCount = optimisticSentIds.size;
+    return {
+      ...inboxSummary,
+      unprocessed: Math.max(0, inboxSummary.unprocessed - sentCount),
+      total: Math.max(0, inboxSummary.total - sentCount),
+    };
+  }, [inboxSummary, optimisticSentIds]);
 
   const handleQuickCoordAction = async (item: WorkbenchInboxItem) => {
     try {
@@ -151,6 +171,18 @@ export function InboxList({
           ? 'complete'
           : 'approve';
 
+      // 立即执行乐观 UI 迁移：条目瞬间离开「待整理」，直接进入「已发事项」！
+      if (nodeSemantics.cardActionType === 'send' || actionType === 'approve' || actionType === 'complete') {
+        setOptimisticSentIds((prev) => new Set(prev).add(item.id));
+        applyOptimisticCoordinationSend(queryClient, item, user);
+      }
+
+      void message.success(
+        nodeSemantics.cardActionType === 'send'
+          ? `已提交送审！系统正在进行智能合规诊断，已自动迁移至「已发事项」。`
+          : `已成功处理「${nodeSemantics.displayTitle || item.title}」，已自动迁移至「已发事项」！`
+      );
+
       await workbenchCoordinationApi.submitAction(item.id, {
         action: actionType,
         comment:
@@ -162,12 +194,6 @@ export function InboxList({
             ? '事项已完成，快捷提交流转。'
             : '审核通过，快捷流转至下一节点。',
       });
-
-      void message.success(
-        nodeSemantics.cardActionType === 'send'
-          ? `已提交送审！系统正在进行智能合规诊断，您可在「已发事项」中跟踪流转进展。`
-          : `已成功处理「${nodeSemantics.displayTitle || item.title}」，流程已流转至下一阶段！`
-      );
 
       const triggerRefresh = () => {
         void queryClient.invalidateQueries(['workbench-inbox']);
@@ -182,6 +208,12 @@ export function InboxList({
       setTimeout(triggerRefresh, 4000);
       setTimeout(triggerRefresh, 8000);
     } catch (err: any) {
+      setOptimisticSentIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+      rollbackOptimisticCoordinationSend(queryClient, item, user);
       void message.error(err?.message || '操作失败，您可点击「详细」进行处理');
     } finally {
       setQuickSendingId(null);
@@ -722,12 +754,12 @@ export function InboxList({
             ),
             value: "intervention",
           },
-          { label: `待整理 (${inboxSummary.unprocessed})`, value: "unprocessed" },
+          { label: `待整理 (${displaySummary.unprocessed})`, value: "unprocessed" },
           {
-            label: `已厘清/归档 (${inboxSummary.clarified + inboxSummary.archived})`,
+            label: `已厘清/归档 (${displaySummary.clarified + displaySummary.archived})`,
             value: "clarified_archived",
           },
-          { label: `全部 (${inboxSummary.total})`, value: "all" },
+          { label: `全部 (${displaySummary.total})`, value: "all" },
         ]}
       />
 
@@ -745,15 +777,15 @@ export function InboxList({
             getExecutionDisplayTime={getExecutionDisplayTime}
             getSkillDisplayName={getSkillDisplayName}
           />
-        ) : inboxItems.length === 0 ? (
+        ) : displayInboxItems.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description="收件箱暂无此状态条目 (Inbox Zero)"
           />
         ) : (
-          <List
-          dataSource={inboxItems}
-          renderItem={(item) => {
+          <List<WorkbenchInboxItem>
+          dataSource={displayInboxItems}
+          renderItem={(item: WorkbenchInboxItem) => {
             const isConverted = item.status === "converted";
             const clarification = item.aiClarification;
             const actionItem = clarification?.actionItem;
@@ -768,8 +800,6 @@ export function InboxList({
             const isRejectReceipt = isReceipt && (payload.receiptAction === "reject" || item.title?.includes("已驳回"));
             const isApproveReceipt = isReceipt && (payload.receiptAction === "approve" || item.title?.includes("已同意"));
             const isCoordination = payload.kind === "coordination";
-            const isApproval = isCoordination && payload.taskType === "approval" && !isReceipt;
-            const isAssignment = isCoordination && !isApproval && !isReceipt;
             const isWorkflowItem =
               isCoordination ||
               isReceipt ||
@@ -868,190 +898,198 @@ export function InboxList({
                       </div>
 
                       {/* 右侧动作按钮：发起/初稿确认显示“发送”，审批节点显示“同意”，作业节点显示“流转” */}
+                      {/* 右侧动作按钮 */}
                       <Space size={4} wrap className={inboxStyles["inbox-item-actions"]}>
-                        {/* 1. 需重修 / 已驳回任务：无论状态是否已转待办，卡片右侧都保证提供「重新编辑并发送」与「详细」 */}
-                        {nodeSemantics.isRevisionRequired ? (
+                        {item.status === "archived" ? (
+                          /* 已归档条目：严格只读，仅提供「详细」查看与「恢复」按钮，绝不展示任何业务流转操作按钮（归档/发送/同意/转任务等） */
                           <>
-                            <Tooltip title="当前任务已被驳回或需重修，请打开详情修改业务要件或替换附件后再重新提交">
+                            <Tooltip title="查看流程历程、业务要件与成果文档（已归档只读）">
+                              <Button
+                                size="small"
+                                className={styles['workbench-todo-action-btn']}
+                                icon={<EyeOutlined style={{ fontSize: 12 }} />}
+                                onClick={() => {
+                                  setDetailModalItem(item);
+                                }}
+                              >
+                                详细
+                              </Button>
+                            </Tooltip>
+                            <Tooltip title="恢复至待整理收件箱">
+                              <Button
+                                size="small"
+                                className={styles['workbench-todo-action-btn']}
+                                icon={<UndoOutlined />}
+                                onClick={() => onUnarchiveItem?.(item.id)}
+                              >
+                                恢复
+                              </Button>
+                            </Tooltip>
+                          </>
+                        ) : (
+                          /* 未归档条目：根据流程节点与任务类型展示相应动作 */
+                          <>
+                            {/* 1. 需重修 / 已驳回任务：无论状态是否已转待办，卡片右侧都保证提供「重新编辑并发送」与「详细」 */}
+                            {nodeSemantics.isRevisionRequired ? (
+                              <>
+                                <Tooltip title="当前任务已被驳回或需重修，请打开详情修改业务要件或替换附件后再重新提交">
+                                  <Button
+                                    size="small"
+                                    type="primary"
+                                    danger
+                                    icon={<EditOutlined style={{ fontSize: 12 }} />}
+                                    style={{
+                                      fontWeight: 500,
+                                      borderRadius: 6,
+                                      height: 26,
+                                      padding: "0 10px",
+                                    }}
+                                    onClick={() => {
+                                      setDetailModalItem(item);
+                                    }}
+                                  >
+                                    重新编辑并发送
+                                  </Button>
+                                </Tooltip>
+                                <Tooltip title="查看驳回批注与修改意见，核验材料后重新提交">
+                                  <Button
+                                    size="small"
+                                    icon={<EyeOutlined />}
+                                    onClick={() => {
+                                      setDetailModalItem(item);
+                                    }}
+                                  >
+                                    详细
+                                  </Button>
+                                </Tooltip>
+                              </>
+                            ) : nodeSemantics.isProcessTask ? (
+                              /* 2. 正常流程任务：未转待办时展示快捷流转按钮，且始终展示「详细」按钮 */
+                              <>
+                                {!isConverted ? (
+                                  <Popconfirm
+                                    title={
+                                      nodeSemantics.cardActionType === "send"
+                                        ? "确认提交合同并送审？"
+                                        : nodeSemantics.isApprovalNode
+                                        ? "确认审批通过并流转？"
+                                        : "确认办理完成并提交流转？"
+                                    }
+                                    description={
+                                      nodeSemantics.cardActionType === "send"
+                                        ? "提交后系统将开展智能合规审查与风险诊断，并通过后自动流转至法务专员/下一环节审批。您可在「已发事项」中跟踪最新流转进度。"
+                                        : nodeSemantics.isApprovalNode
+                                        ? "审批通过后将自动流转至下一节点继续流转，审批意见与协同记录将同步归档。"
+                                        : "办理完成后将提交流转至后续处理或归档节点。"
+                                    }
+                                    okText={nodeSemantics.cardActionText}
+                                    cancelText="取消"
+                                    onConfirm={() => handleQuickCoordAction(item)}
+                                    disabled={quickSendingId === item.id}
+                                  >
+                                    <Tooltip
+                                      title={
+                                        nodeSemantics.cardActionType === "send"
+                                          ? "快捷指令：一键确认初稿并发送至下一节点"
+                                          : nodeSemantics.isApprovalNode
+                                          ? "快捷指令：一键审核通过并流转至下一节点"
+                                          : "快捷指令：一键办结并提交流转"
+                                      }
+                                    >
+                                      <Button
+                                        size="small"
+                                        type="primary"
+                                        loading={quickSendingId === item.id}
+                                        icon={
+                                          nodeSemantics.cardActionType === "send" ? (
+                                            <SendOutlined style={{ fontSize: 12 }} />
+                                          ) : (
+                                            <CheckCircleOutlined style={{ fontSize: 12 }} />
+                                          )
+                                        }
+                                        className={
+                                          nodeSemantics.cardActionType === "send"
+                                            ? styles["workbench-todo-send-btn"]
+                                            : styles["workbench-todo-flow-btn"]
+                                        }
+                                      >
+                                        {nodeSemantics.cardActionText}
+                                      </Button>
+                                    </Tooltip>
+                                  </Popconfirm>
+                                ) : null}
+                                <Tooltip title="查看流程进度、结构化参数与附件详情">
+                                  <Button
+                                    size="small"
+                                    className={styles['workbench-todo-action-btn']}
+                                    icon={<EyeOutlined style={{ fontSize: 12 }} />}
+                                    onClick={() => {
+                                      setDetailModalItem(item);
+                                    }}
+                                  >
+                                    详细
+                                  </Button>
+                                </Tooltip>
+                              </>
+                            ) : null}
+
+                            {isIntervention && extra.actionUrl ? (
                               <Button
                                 size="small"
                                 type="primary"
                                 danger
-                                icon={<EditOutlined style={{ fontSize: 12 }} />}
-                                style={{
-                                  fontWeight: 500,
-                                  borderRadius: 6,
-                                  height: 26,
-                                  padding: "0 10px",
-                                }}
-                                onClick={() => {
-                                  setDetailModalItem(item);
-                                }}
-                              >
-                                重新编辑并发送
-                              </Button>
-                            </Tooltip>
-                            <Tooltip title="查看驳回批注与修改意见，核验材料后重新提交">
-                              <Button
-                                size="small"
                                 icon={<EyeOutlined />}
-                                onClick={() => {
-                                  setDetailModalItem(item);
-                                }}
+                                onClick={() => navigate(extra.actionUrl)}
                               >
-                                详细
+                                前往处理
                               </Button>
-                            </Tooltip>
-                          </>
-                        ) : nodeSemantics.isProcessTask ? (
-                          /* 2. 正常流程任务：未转待办时展示快捷流转按钮，且始终展示「详细」按钮 */
-                          <>
-                            {!isConverted ? (
-                              <Popconfirm
-                                title={
-                                  nodeSemantics.cardActionType === "send"
-                                    ? "确认提交合同并送审？"
-                                    : nodeSemantics.isApprovalNode
-                                    ? "确认审批通过并流转？"
-                                    : "确认办理完成并提交流转？"
-                                }
-                                description={
-                                  nodeSemantics.cardActionType === "send"
-                                    ? "提交后系统将开展智能合规审查与风险诊断，并通过后自动流转至法务专员/下一环节审批。您可在「已发事项」中跟踪最新流转进度。"
-                                    : nodeSemantics.isApprovalNode
-                                    ? "审批通过后将自动流转至下一节点继续流转，审批意见与协同记录将同步归档。"
-                                    : "办理完成后将提交流转至后续处理或归档节点。"
-                                }
-                                okText={nodeSemantics.cardActionText}
-                                cancelText="取消"
-                                onConfirm={() => handleQuickCoordAction(item)}
-                                disabled={quickSendingId === item.id}
-                              >
-                                <Tooltip
-                                  title={
-                                    nodeSemantics.cardActionType === "send"
-                                      ? "快捷指令：一键确认初稿并发送至下一节点"
-                                      : nodeSemantics.isApprovalNode
-                                      ? "快捷指令：一键审核通过并流转至下一节点"
-                                      : "快捷指令：一键办结并提交流转"
-                                  }
-                                >
+                            ) : null}
+
+                            {!isConverted && !nodeSemantics.isRevisionRequired ? (
+                              <>
+                                <Tooltip title="转为正式任务，进入行动待办看板排期执行">
                                   <Button
                                     size="small"
-                                    type="primary"
-                                    loading={quickSendingId === item.id}
-                                    icon={
-                                      nodeSemantics.cardActionType === "send" ? (
-                                        <SendOutlined style={{ fontSize: 12 }} />
-                                      ) : (
-                                        <CheckCircleOutlined style={{ fontSize: 12 }} />
-                                      )
-                                    }
-                                    style={
-                                      nodeSemantics.cardActionType === "send"
-                                        ? {
-                                            background: "linear-gradient(135deg, #1677ff 0%, #0958d9 100%)",
-                                            borderColor: "#0958d9",
-                                            boxShadow: "0 2px 4px rgba(22, 119, 255, 0.25)",
-                                            fontWeight: 500,
-                                            borderRadius: 6,
-                                            height: 26,
-                                            padding: "0 10px",
-                                          }
-                                        : isAssignment
-                                        ? {
-                                            background: "linear-gradient(135deg, #722ed1 0%, #531dab 100%)",
-                                            borderColor: "#531dab",
-                                            boxShadow: "0 2px 4px rgba(114, 46, 209, 0.25)",
-                                            fontWeight: 500,
-                                            borderRadius: 6,
-                                            height: 26,
-                                            padding: "0 10px",
-                                          }
-                                        : undefined
-                                    }
+                                    className={styles['workbench-todo-action-btn']}
+                                    icon={<ArrowRightOutlined style={{ fontSize: 12 }} />}
+                                    onClick={() => onConvertToTodo(item.id)}
                                   >
-                                    {nodeSemantics.cardActionText}
+                                    转任务
                                   </Button>
                                 </Tooltip>
+
+                                <Tooltip title={isReceipt ? "已阅并归档 (从收集箱清理移出)" : "归档此条目 (从收集箱清理移出)"}>
+                                  <Button
+                                    size="small"
+                                    type="text"
+                                    className={styles['workbench-todo-archive-btn']}
+                                    icon={<FolderOutlined style={{ fontSize: 13 }} />}
+                                    onClick={() => onArchiveItem(item.id)}
+                                  />
+                                </Tooltip>
+                              </>
+                            ) : (
+                              <Tooltip title="归档已转任务条目 (从收集箱清理移出)">
+                                <Button
+                                  size="small"
+                                  icon={<FolderOutlined />}
+                                  onClick={() => onArchiveItem(item.id)}
+                                />
+                              </Tooltip>
+                            )}
+
+                            {!isWorkflowItem ? (
+                              <Popconfirm
+                                title="确定删除此条目吗？"
+                                onConfirm={() => onDeleteItem(item.id)}
+                                okText="删除"
+                                cancelText="取消"
+                              >
+                                <Button size="small" type="text" danger icon={<DeleteOutlined />} />
                               </Popconfirm>
                             ) : null}
-                            <Tooltip title="查看流程进度、结构化参数与附件详情">
-                              <Button
-                                size="small"
-                                icon={<EyeOutlined />}
-                                onClick={() => {
-                                  setDetailModalItem(item);
-                                }}
-                              >
-                                详细
-                              </Button>
-                            </Tooltip>
                           </>
-                        ) : null}
-                        {isIntervention && extra.actionUrl ? (
-                          <Button
-                            size="small"
-                            type="primary"
-                            danger
-                            icon={<EyeOutlined />}
-                            onClick={() => navigate(extra.actionUrl)}
-                          >
-                            前往处理
-                          </Button>
-                        ) : null}
-
-                        {item.status === "archived" ? (
-                          <Tooltip title="恢复至待整理收件箱">
-                            <Button
-                              size="small"
-                              icon={<UndoOutlined />}
-                              onClick={() => onUnarchiveItem?.(item.id)}
-                            >
-                              恢复
-                            </Button>
-                          </Tooltip>
-                        ) : !isConverted && !nodeSemantics.isRevisionRequired ? (
-                          <>
-                            <Tooltip title="转为正式任务，进入行动待办看板排期执行">
-                              <Button
-                                size="small"
-                                type={isCoordination ? "default" : "primary"}
-                                icon={<ArrowRightOutlined />}
-                                onClick={() => onConvertToTodo(item.id)}
-                              >
-                                转任务
-                              </Button>
-                            </Tooltip>
-
-                            <Tooltip title={isReceipt ? "已阅并归档 (从收集箱清理移出)" : "归档此条目 (从收集箱清理移出)"}>
-                              <Button
-                                size="small"
-                                icon={<FolderOutlined />}
-                                onClick={() => onArchiveItem(item.id)}
-                              />
-                            </Tooltip>
-                          </>
-                        ) : (
-                          <Tooltip title="归档已转任务条目 (从收集箱清理移出)">
-                            <Button
-                              size="small"
-                              icon={<FolderOutlined />}
-                              onClick={() => onArchiveItem(item.id)}
-                            />
-                          </Tooltip>
                         )}
-
-                        {!isWorkflowItem ? (
-                          <Popconfirm
-                            title="确定删除此条目吗？"
-                            onConfirm={() => onDeleteItem(item.id)}
-                            okText="删除"
-                            cancelText="取消"
-                          >
-                            <Button size="small" type="text" danger icon={<DeleteOutlined />} />
-                          </Popconfirm>
-                        ) : null}
                       </Space>
                     </div>
 
@@ -1118,15 +1156,17 @@ export function InboxList({
       )}
     </div>
 
-    <InboxTaskDetailModal
-      open={Boolean(detailModalItem)}
-      item={detailModalItem}
-      onClose={() => setDetailModalItem(null)}
-      onOpenInAi={handleOpenTaskInAiChat}
-      onSuccess={() => {
-        setDetailModalItem(null);
-      }}
-    />
+    {detailModalItem ? (
+      <InboxTaskDetailModal
+        open={Boolean(detailModalItem)}
+        item={detailModalItem}
+        onClose={() => setDetailModalItem(null)}
+        onOpenInAi={handleOpenTaskInAiChat}
+        onSuccess={() => {
+          setDetailModalItem(null);
+        }}
+      />
+    ) : null}
   </div>
   );
 }

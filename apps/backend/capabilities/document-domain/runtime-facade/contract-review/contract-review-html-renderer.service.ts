@@ -324,15 +324,15 @@ export class ContractReviewHtmlRendererService {
   <!-- 2. Main 60:40 Grid Container -->
   <main class="max-w-[1680px] mx-auto px-4 pt-4">
     ${truncationBannerHtml}
-    <div class="grid grid-cols-1 lg:grid-cols-10 gap-6 items-start">
+    <div class="grid grid-cols-1 md:grid-cols-10 gap-6 items-start">
       
       <!-- Left Column: 60% Continuous Document Paper -->
-      <section class="lg:col-span-6 min-w-0" aria-label="合同底稿区">
+      <section class="md:col-span-6 min-w-0" aria-label="合同底稿区">
         ${documentPaperHtml}
       </section>
 
       <!-- Right Column: 40% Inspection Workbench Desk (Sticky & Scrollable) -->
-      <aside class="lg:col-span-4 sticky top-[56px] max-h-[calc(100vh-4.5rem)] overflow-y-auto pr-1" aria-label="审查检查台">
+      <aside class="md:col-span-4 sticky top-[56px] max-h-[calc(100vh-4.5rem)] overflow-y-auto pr-1" aria-label="审查检查台">
         ${findingsWorkbenchHtml}
       </aside>
 

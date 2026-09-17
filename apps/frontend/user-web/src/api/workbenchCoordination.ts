@@ -298,4 +298,15 @@ export const workbenchCoordinationApi = {
   archiveTask: async (taskId: string): Promise<{ success: boolean; taskId: string }> => {
     return await apiClient.post(`/workbench-coordination/tasks/${taskId}/archive`);
   },
+
+  /**
+   * 撤回协同任务并退回发起人待办
+   */
+  recallTask: async (
+    taskId: string,
+    comment?: string
+  ): Promise<{ success: boolean; taskId: string; status: string; message: string; unifiedPayload?: any }> => {
+    return await apiClient.post(`/workbench-coordination/tasks/${taskId}/recall`, { comment });
+  },
 };
+

@@ -152,18 +152,50 @@ const extractStepUserContent = (
   const isGeneric = (val: string) =>
     ['success', 'ok', 'true', '200'].includes(val.trim().toLowerCase());
 
+  // Unwrap inline payload if present (very common in Temporal workflow activities)
+  const payload = (outputJson.inline && typeof outputJson.inline === 'object' && !Array.isArray(outputJson.inline)
+    ? outputJson.inline
+    : outputJson) as Record<string, unknown>;
+
+  const htmlReport =
+    typeof payload.htmlReport === 'string' && payload.htmlReport.trim()
+      ? payload.htmlReport.trim()
+      : undefined;
+
   // 1. presentation.detailText — best human summary if meaningful
-  const presentation = outputJson.presentation as Record<string, unknown> | undefined;
+  const presentation = (outputJson.presentation || payload.presentation) as Record<string, unknown> | undefined;
   const detailText =
     typeof presentation?.detailText === 'string' &&
     presentation.detailText.trim() &&
     !isGeneric(presentation.detailText)
       ? presentation.detailText.trim()
       : undefined;
-  if (detailText) return { text: detailText, isMarkdown: true };
+  if (detailText) {
+    if (htmlReport && !detailText.includes(htmlReport.slice(0, 50))) {
+      return { text: `${detailText}\n\n\`\`\`html\n${htmlReport}\n\`\`\``, isMarkdown: true };
+    }
+    return { text: detailText, isMarkdown: true };
+  }
 
-  // 2. result field
-  const resultRaw = outputJson.result;
+  // 2. check unwrapped payload fields (summary, detailText, content, text, markdown_content)
+  for (const field of ['summary', 'detailText', 'markdown_content', 'content', 'text', 'formatted_output', 'chatSummary']) {
+    if (typeof payload[field] === 'string' && (payload[field] as string).trim()) {
+      const val = (payload[field] as string).trim();
+      if (!isGeneric(val)) {
+        if (htmlReport && !val.includes(htmlReport.slice(0, 50))) {
+          return { text: `${val}\n\n\`\`\`html\n${htmlReport}\n\`\`\``, isMarkdown: true };
+        }
+        return { text: val, isMarkdown: true };
+      }
+    }
+  }
+
+  if (htmlReport) {
+    return { text: `\`\`\`html\n${htmlReport}\n\`\`\``, isMarkdown: true };
+  }
+
+  // 3. result field (both in outputJson and payload)
+  const resultRaw = payload.result !== undefined ? payload.result : outputJson.result;
   if (resultRaw !== undefined && resultRaw !== null) {
     if (typeof resultRaw === 'string' && resultRaw.trim()) {
       const trimmed = resultRaw.trim();
@@ -223,7 +255,7 @@ const extractStepUserContent = (
     }
   }
 
-  // 3. Direct top-level fields
+  // 4. Direct top-level fields
   for (const field of ['markdown_content', 'content', 'text', 'searchResults']) {
     if (field === 'searchResults' && Array.isArray(outputJson.searchResults)) {
       const items = outputJson.searchResults as Array<Record<string, unknown>>;
@@ -439,17 +471,20 @@ const ExecutionNonBrowserDetailSections: React.FC<ExecutionDetailSectionsProps> 
                 }}
               />
 
-              {/* 中间步骤结果 — 默认收起，包含可折叠控制的精简内容 */}
-              {steps && steps.length > 1 ? (
+              {/* 中间步骤结果 — 包含可折叠控制的精简内容 */}
+              {steps && steps.length > 0 ? (
                 <Collapse
                   ghost
                   size="small"
+                  defaultActiveKey={steps.length === 1 ? ['step-results'] : undefined}
                   items={[{
                     key: 'step-results',
                     label: (
                       <Text style={{ fontSize: 13, fontWeight: 600 }}>
                         {isEnglish
-                          ? `Step-by-step results (${steps.length} steps)`
+                          ? `Execution steps (${steps.length} step${steps.length > 1 ? 's' : ''})`
+                          : steps.length === 1
+                          ? `执行步骤与现场详情（1 步）`
                           : `中间步骤结果（${steps.length} 步）`}
                       </Text>
                     ),

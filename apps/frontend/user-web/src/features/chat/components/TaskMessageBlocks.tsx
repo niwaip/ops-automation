@@ -1,5 +1,5 @@
 import { Button, Space } from 'antd';
-import { EyeOutlined, FolderOutlined } from '@ant-design/icons';
+import { DownloadOutlined, EyeOutlined, FolderOutlined } from '@ant-design/icons';
 import type { ChatMessage, ChatProgressLog } from '@ops/user-core';
 import {
   isCompletionOnlyResultText,
@@ -9,6 +9,7 @@ import {
 import { findDeeplinkByLabel, resolveTaskParts } from '@chat-web/lib/contentParts';
 import SharedTaskOutcomeCard from '@chat-web/components/TaskOutcomeCard';
 import SharedTaskProgressCard from '@chat-web/components/TaskProgressCard';
+import { replaceLocalhostWithCurrentHost } from '@/shared/utils/publicUrl';
 import {
   getMessageStatusLabel,
   resolveMessageExecutionId,
@@ -184,7 +185,13 @@ export function TaskOutcomeBlock({
         executionStatus={getMessageStatusLabel(status) || null}
         executionId={executionId}
         skillName={message.metadata?.skillUsed}
-        downloadUrl={message.metadata?.downloadUrl || partDownloadUrl}
+        downloadUrl={
+          replaceLocalhostWithCurrentHost(
+            message.metadata?.downloadUrl ||
+              partDownloadUrl ||
+              (artifacts && artifacts[0] ? artifacts[0].downloadUrl || artifacts[0].url : undefined)
+          )
+        }
         temporalLink={message.metadata?.temporalLink || partDetailUrl}
         executionDetailLink={executionId ? `/executions/${executionId}` : undefined}
         browserExecutionMode={false}
@@ -228,15 +235,16 @@ export function TaskOutcomeBlock({
         }}
       />
 
-      {/* 结果/产物列表 — 默认收起 (Collapsible Div) */}
+      {/* 结果/产物列表 */}
       {shouldShowArtifactActions && artifacts.length > 0 ? (
-        <details className={styles['user-chat-outcome-details']} style={{ marginTop: 8 }}>
+        <details className={styles['user-chat-outcome-details']} style={{ marginTop: 8 }} open>
           <summary style={{ cursor: 'pointer', userSelect: 'none' }}>
             {`查看相关结果与产物链接 (${artifacts.length} 项)`}
           </summary>
           <Space wrap className={styles['user-chat-outcome-actions']} style={{ marginTop: 8 }}>
             {artifacts.map((artifact, index) => {
-              const href = artifact.downloadUrl || artifact.url;
+              const rawHref = artifact.downloadUrl || artifact.url;
+              const href = replaceLocalhostWithCurrentHost(rawHref) || rawHref;
               if (!href) {
                 return null;
               }
@@ -269,8 +277,16 @@ export function TaskOutcomeBlock({
                 );
               }
               return (
-                <Button key={`${href}-${index}`} size="small" href={href} target="_blank">
-                  {artifact.label || artifact.name || `结果项 ${index + 1}`}
+                <Button
+                  key={`${href}-${index}`}
+                  size="small"
+                  type="primary"
+                  ghost
+                  icon={<DownloadOutlined />}
+                  href={href}
+                  target="_blank"
+                >
+                  {artifact.label || artifact.name || `下载结果文档 ${index + 1}`}
                 </Button>
               );
             })}

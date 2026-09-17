@@ -26,16 +26,21 @@ export function LoginLanguagePicker() {
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: 16 }}>
-      <Dropdown menu={menu} placement="bottom" trigger={['click']}>
-        <Button
-          type="text"
-          icon={<GlobalOutlined />}
-          style={{ color: 'var(--text-secondary)', borderRadius: 8, fontWeight: 500, fontSize: 13 }}
-        >
-          {language === 'zh-CN' ? '简体中文' : language === 'en-US' ? 'English' : '日本語'}
-        </Button>
-      </Dropdown>
-    </div>
+    <Dropdown menu={menu} placement="bottom" trigger={['click']}>
+      <Button
+        type="text"
+        icon={<GlobalOutlined />}
+        style={{
+          color: 'var(--text-secondary)',
+          borderRadius: 10,
+          height: 36,
+          fontWeight: 500,
+          fontSize: 13,
+          padding: '0 12px',
+        }}
+      >
+        {language === 'zh-CN' ? '简体中文' : language === 'en-US' ? 'English' : '日本語'}
+      </Button>
+    </Dropdown>
   );
 }

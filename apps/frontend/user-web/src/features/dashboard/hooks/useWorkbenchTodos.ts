@@ -9,6 +9,7 @@ import {
 import { workbenchInboxApi } from '../../../api/workbenchInbox';
 import { workbenchCoordinationApi } from '../../../api/workbenchCoordination';
 import { useAuthStore } from '@/shared/store/authStore';
+import { applyOptimisticCoordinationRecall } from '../lib/coordinationOptimistic';
 
 export type WorkbenchTodoTab = 'pending' | 'today' | 'sent' | 'ended' | 'all' | 'overdue';
 
@@ -65,25 +66,20 @@ export const isAssignedToOtherItem = (
   const coordPayload = (contextData.unifiedPayload || {}) as Record<string, any>;
   const currentStage = coordPayload.currentStage || (item as any).currentStage || '';
 
-  // 1. 如果当前处于发起人初稿确认/核对发送阶段，属于经办人自己的待办操作，绝不是外发等待他人事项
-  if (
-    currentStage === 'initiator_confirm' ||
-    currentStage === 'draft_submission' ||
-    coordPayload.approverRule === 'initiator'
-  ) {
-    return false;
-  }
-
-  // 2. 如果任务已处于办结、完成、已归档终态，绝不是外发等待他人事项
+  // 1. 如果任务已处于办结、完成、已归档终态，绝不是外发等待他人事项
   const extSync = coordPayload.externalSyncResult || (item as any).externalSyncResult || {};
+  const isArchivedSync =
+    Boolean(extSync.detail?.archiveId) ||
+    (Boolean(extSync.trackingNumber) && !extSync.trackingNumber.includes('-REV-'));
   if (
     item.status === 'completed' ||
     item.status === 'cancelled' ||
     coordPayload.status === 'completed' ||
     coordPayload.status === 'archived' ||
-    Boolean(extSync.trackingNumber) ||
-    Boolean(extSync.detail?.archiveId) ||
+    isArchivedSync ||
     Boolean(contextData.isArchived) ||
+    Boolean(coordPayload.isRecalled) ||
+    Boolean(contextData.isRecalled) ||
     currentStage === 'final_receipt'
   ) {
     return false;
@@ -92,13 +88,33 @@ export const isAssignedToOtherItem = (
   const isInitiated = isItemInitiatedByMe(item, currentUsername, currentUserId);
   if (!isInitiated) return false;
 
+  // 2. 核心机制：如果已外发流转（inTransit 或 asyncExecution 正在运行，或处于智能审查阶段），
+  // 说明经办人已点击「发送」，该事项已被外发流转，立刻进入「已发事项」！
+  if (
+    coordPayload.inTransit ||
+    coordPayload.isSent ||
+    coordPayload.asyncExecution?.status === 'running' ||
+    currentStage === 'contract_review_execution'
+  ) {
+    return true;
+  }
+
+  // 3. 如果当前处于发起人初稿确认/核对发送阶段，属于经办人自己的待办操作，绝不是外发等待他人事项
+  if (
+    currentStage === 'initiator_confirm' ||
+    currentStage === 'draft_submission' ||
+    coordPayload.approverRule === 'initiator'
+  ) {
+    return false;
+  }
+
   const assigneeUsername = coordPayload.assignee?.username;
   const assigneeId = coordPayload.assignee?.id;
   if (!assigneeUsername && !assigneeId) {
     return currentStage !== 'initiator_confirm' && currentStage !== 'draft_submission';
   }
 
-  // 2. 如果用户名相同（忽略大小写），说明是当前用户本人
+  // 4. 如果用户名相同（忽略大小写），说明是当前用户本人
   if (assigneeUsername && currentUsername && assigneeUsername.toLowerCase() === currentUsername.toLowerCase()) {
     return false;
   }
@@ -109,9 +125,11 @@ export const isAssignedToOtherItem = (
   if (assigneeUsername && currentUsername && assigneeUsername.toLowerCase() !== currentUsername.toLowerCase()) {
     return true;
   }
+
   if (assigneeId && currentUserId && assigneeId !== currentUserId) {
     return true;
   }
+
   return false;
 };
 
@@ -122,7 +140,7 @@ interface UseWorkbenchTodosOptions {
 export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const currentUsername = user?.username || 'admin';
+  const currentUsername = user?.username || '';
   const currentUserId = user?.id;
 
   const [todoDraft, setTodoDraft] = useState('');
@@ -231,11 +249,13 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
       );
 
       const extSync = (c.externalSyncResult || (c.unifiedPayload as any)?.externalSyncResult || {}) as Record<string, any>;
-      const hasTrackingNumber = Boolean(extSync.trackingNumber || extSync.detail?.archiveId);
+      const isArchivedSync =
+        Boolean(extSync.detail?.archiveId) ||
+        (Boolean(extSync.trackingNumber) && !extSync.trackingNumber.includes('-REV-'));
       const isTerminalCompleted =
         c.status === 'completed' ||
-        (c.status === 'approved' && hasTrackingNumber) ||
-        hasTrackingNumber ||
+        (c.status === 'approved' && isArchivedSync) ||
+        isArchivedSync ||
         currentStage === 'final_receipt';
 
       const isTerminalArchived =
@@ -333,9 +353,11 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
       }
 
       // 仅当条目已外发转派给他人（已发事项）或已明确归档时才汇总，未转任务且仍由本人处理的条目严格留在 GTD 收集箱
+      // 但若该事项已被撤回 (isRecalled)，则必须回到行动待办与看板中供用户重新编辑/重新发送
       const isAssignedToOther = isAssignedToOtherItem(item as any, currentUsername, currentUserId);
       const isEnded = item.status === 'archived' || item.status === 'discarded';
-      if (!isAssignedToOther && !isEnded) {
+      const isRecalled = Boolean(payload.isRecalled) || Boolean((item as any).isRecalled);
+      if (!isAssignedToOther && !isEnded && !isRecalled) {
         continue;
       }
 
@@ -371,6 +393,7 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
           sourceSender: item.sourceSender || currentUsername,
           unifiedPayload: payload,
           isInitiatedByMe: true,
+          isRecalled: isRecalled,
         },
       });
     }
@@ -378,6 +401,9 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
     for (const item of merged) {
       const isRealTodo = !item.id.startsWith('coord_') && !item.id.startsWith('inbox_');
       const cData = (item.contextData || {}) as Record<string, any>;
+      const isRecalled = Boolean(cData.isRecalled) || Boolean(cData.unifiedPayload?.isRecalled);
+      if (isRecalled) continue;
+
       if (isRealTodo) {
         if (archivedIds.has(item.id) || Boolean(cData.isArchived)) {
           item.status = 'cancelled';
@@ -404,15 +430,17 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
   const todoSummary = useMemo(() => {
     const now = new Date().getTime();
 
-    // 待办：待办库中进行中的直接作业（排除未经转任务的收集箱/协同临时条目）
-    const pending = allItems.filter(
-      (i) =>
-        !i.id.startsWith('inbox_') &&
-        !i.id.startsWith('coord_') &&
-        (i.status === 'pending' || i.status === 'in_progress') &&
-        !archivedIds.has(i.id) &&
-        !Boolean((i.contextData as any)?.isArchived)
-    ).length;
+    // 待办：待办库中进行中的直接作业（排除未经转任务的收集箱/协同临时条目，但被撤回返回待办的事项除外）
+    const pending = allItems.filter((i) => {
+      const cData = (i.contextData || {}) as Record<string, any>;
+      const isRecalled = Boolean(cData.isRecalled) || Boolean(cData.unifiedPayload?.isRecalled);
+      const isDirectTodo = !i.id.startsWith('inbox_') && !i.id.startsWith('coord_');
+      if (!isDirectTodo && !isRecalled) return false;
+      if (i.status !== 'pending' && i.status !== 'in_progress') return false;
+      if (archivedIds.has(i.id) && !isRecalled) return false;
+      if (Boolean(cData.isArchived)) return false;
+      return true;
+    }).length;
 
     // 今日待办：兼容旧字段，与 pending 待办保持一致
     const today = pending;
@@ -421,7 +449,13 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
     const sent = allItems.filter((i) => {
       const cData = (i.contextData || {}) as Record<string, any>;
       const payload = (cData.unifiedPayload || {}) as Record<string, any>;
+      const isRecalled = Boolean(cData.isRecalled) || Boolean(payload.isRecalled);
+      if (isRecalled) return false;
+
       const extSync = payload.externalSyncResult || (i as any).externalSyncResult || {};
+      const isArchivedSync =
+        Boolean(extSync.detail?.archiveId) ||
+        (Boolean(extSync.trackingNumber) && !extSync.trackingNumber.includes('-REV-'));
       const isCoord =
         i.id.startsWith('coord_') ||
         i.id.startsWith('inbox_') ||
@@ -431,7 +465,7 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
       if (!isCoord) return false;
       if (i.status === 'completed' || i.status === 'cancelled') return false;
       if (payload.status === 'completed' || payload.status === 'archived') return false;
-      if (Boolean(extSync.trackingNumber) || Boolean(extSync.detail?.archiveId)) return false;
+      if (isArchivedSync) return false;
       if (archivedIds.has(i.id) || Boolean(cData.isArchived)) return false;
 
       return isAssignedToOtherItem(i, currentUsername, currentUserId);
@@ -445,19 +479,24 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
         !Boolean((i.contextData as any)?.isArchived)
     ).length;
 
-    // 已结束：包含已完成 (completed) 和已归档/已撤回 (cancelled) 的所有事项
+    // 已结束：包含已完成 (completed) 和已归档/已废弃 (cancelled) 的所有事项（被撤回回退到待办的事项严格排除）
     const ended = allItems.filter((i) => {
       const cData = (i.contextData || {}) as Record<string, any>;
       const payload = (cData.unifiedPayload || {}) as Record<string, any>;
+      const isRecalled = Boolean(cData.isRecalled) || Boolean(payload.isRecalled);
+      if (isRecalled) return false;
+
       const extSync = payload.externalSyncResult || (i as any).externalSyncResult || {};
-      const hasTrackingNumber = Boolean(extSync.trackingNumber || extSync.detail?.archiveId);
+      const isArchivedSync =
+        Boolean(extSync.detail?.archiveId) ||
+        (Boolean(extSync.trackingNumber) && !extSync.trackingNumber.includes('-REV-'));
 
       return (
         i.status === 'completed' ||
         i.status === 'cancelled' ||
         payload.status === 'completed' ||
         payload.status === 'archived' ||
-        hasTrackingNumber ||
+        isArchivedSync ||
         archivedIds.has(i.id) ||
         Boolean(cData.isArchived)
       );
@@ -535,21 +574,29 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
     switch (activeTab) {
       case 'today':
       case 'pending':
-        // 待办：进行中的直接作业（排除未经转任务的收集箱/协同临时条目）
-        return allItems.filter(
-          (i) =>
-            !i.id.startsWith('inbox_') &&
-            !i.id.startsWith('coord_') &&
-            (i.status === 'pending' || i.status === 'in_progress') &&
-            !archivedIds.has(i.id) &&
-            !Boolean((i.contextData as any)?.isArchived)
-        );
+        // 待办：进行中的直接作业（排除未经转任务的收集箱/协同临时条目，但被撤回返回待办的事项除外）
+        return allItems.filter((i) => {
+          const cData = (i.contextData || {}) as Record<string, any>;
+          const isRecalled = Boolean(cData.isRecalled) || Boolean(cData.unifiedPayload?.isRecalled);
+          const isDirectTodo = !i.id.startsWith('inbox_') && !i.id.startsWith('coord_');
+          if (!isDirectTodo && !isRecalled) return false;
+          if (i.status !== 'pending' && i.status !== 'in_progress') return false;
+          if (archivedIds.has(i.id) && !isRecalled) return false;
+          if (Boolean(cData.isArchived)) return false;
+          return true;
+        });
       case 'sent':
         // 已发事项：单独管理当前用户发起且外发流转给他人处理的事项
         return allItems.filter((i) => {
           const cData = (i.contextData || {}) as Record<string, any>;
           const payload = (cData.unifiedPayload || {}) as Record<string, any>;
+          const isRecalled = Boolean(cData.isRecalled) || Boolean(payload.isRecalled);
+          if (isRecalled) return false;
+
           const extSync = payload.externalSyncResult || (i as any).externalSyncResult || {};
+          const isArchivedSync =
+            Boolean(extSync.detail?.archiveId) ||
+            (Boolean(extSync.trackingNumber) && !extSync.trackingNumber.includes('-REV-'));
           const isCoord =
             i.id.startsWith('coord_') ||
             i.id.startsWith('inbox_') ||
@@ -559,25 +606,30 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
           if (!isCoord) return false;
           if (i.status === 'completed' || i.status === 'cancelled') return false;
           if (payload.status === 'completed' || payload.status === 'archived') return false;
-          if (Boolean(extSync.trackingNumber) || Boolean(extSync.detail?.archiveId)) return false;
+          if (isArchivedSync) return false;
           if (archivedIds.has(i.id) || Boolean(cData.isArchived)) return false;
 
           return isAssignedToOtherItem(i, currentUsername, currentUserId);
         });
       case 'ended':
-        // 已结束：包含完成和归档的
+        // 已结束：包含完成和归档的（被撤回回退到待办的事项严格排除）
         return allItems.filter((i) => {
           const cData = (i.contextData || {}) as Record<string, any>;
           const payload = (cData.unifiedPayload || {}) as Record<string, any>;
+          const isRecalled = Boolean(cData.isRecalled) || Boolean(payload.isRecalled);
+          if (isRecalled) return false;
+
           const extSync = payload.externalSyncResult || (i as any).externalSyncResult || {};
-          const hasTrackingNumber = Boolean(extSync.trackingNumber || extSync.detail?.archiveId);
+          const isArchivedSync =
+            Boolean(extSync.detail?.archiveId) ||
+            (Boolean(extSync.trackingNumber) && !extSync.trackingNumber.includes('-REV-'));
 
           return (
             i.status === 'completed' ||
             i.status === 'cancelled' ||
             payload.status === 'completed' ||
             payload.status === 'archived' ||
-            hasTrackingNumber ||
+            isArchivedSync ||
             archivedIds.has(i.id) ||
             Boolean(cData.isArchived)
           );
@@ -664,11 +716,7 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
         return await workbenchInboxApi.updateStatus(inboxId, completed ? 'archived' : 'unprocessed');
       }
       if (id.startsWith('coord_')) {
-        const taskId = id.replace('coord_', '');
-        return await workbenchCoordinationApi.submitAction(taskId, {
-          action: completed ? 'complete' : 'reject',
-          comment: completed ? '事项已标记办结' : '重新激活事项',
-        });
+        throw new Error('流程任务需通过具体业务节点审批/流转处理，不能直接勾选关闭');
       }
       return await workbenchTodoApi.update(id, {
         status: completed ? 'completed' : 'pending',
@@ -767,54 +815,39 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
     [allItems, archiveMutation]
   );
 
-  // 撤回我发起的事项
+  // 撤回我发起的事项（终止下游流转，退回发起人待办）
   const recallMutation = useMutation(
     async (item: WorkbenchTodoItem) => {
       const id = item.id;
       const contextData = (item.contextData || {}) as Record<string, any>;
-      const inboxItemId =
-        contextData.inboxItemId || (id.startsWith('inbox_') ? id.replace('inbox_', '') : null);
       const taskId =
         contextData.taskId ||
         (contextData.unifiedPayload as any)?.taskId ||
-        (id.startsWith('coord_') ? id.replace('coord_', '') : null);
+        (id.startsWith('coord_') ? id.replace('coord_', '') : null) ||
+        contextData.inboxItemId ||
+        (id.startsWith('inbox_') ? id.replace('inbox_', '') : null) ||
+        item.sourceRefId ||
+        id;
 
-      if (taskId) {
-        try {
-          await workbenchCoordinationApi.archiveTask(taskId);
-        } catch {
-          await workbenchCoordinationApi.submitAction(taskId, {
-            action: 'reject',
-            comment: '发起人主动撤回协同事项',
-          }).catch(() => {});
-        }
-      }
-
-      if (inboxItemId) {
-        try {
-          await workbenchInboxApi.updateStatus(inboxItemId, 'archived');
-        } catch (e) {
-          console.warn('Failed to archive inbox item upon recall:', e);
-        }
-      }
-
-      if (!id.startsWith('inbox_') && !id.startsWith('coord_')) {
-        await workbenchTodoApi.update(id, {
-          status: 'cancelled',
-        }).catch(() => {});
-      }
+      return await workbenchCoordinationApi.recallTask(taskId);
     },
     {
       onSuccess: () => {
+        setActiveTab('pending');
         void queryClient.invalidateQueries(['workbench-todos']);
         void queryClient.invalidateQueries(['workbench-todos-summary']);
         void queryClient.invalidateQueries(['workbench-inbox']);
         void queryClient.invalidateQueries(['workbench-inbox-summary']);
         void queryClient.invalidateQueries(['workbench-inbox-summary-for-todos']);
         void queryClient.invalidateQueries(['workbench-coordination-sent-tasks']);
-        void message.success('已成功撤回该发起事项，已归入「已结束」');
+        void message.success('已成功撤回该发起事项，已退回至您的「待办」');
       },
       onError: (err: any) => {
+        void queryClient.invalidateQueries(['workbench-todos']);
+        void queryClient.invalidateQueries(['workbench-todos-summary']);
+        void queryClient.invalidateQueries(['workbench-inbox']);
+        void queryClient.invalidateQueries(['workbench-inbox-summary']);
+        void queryClient.invalidateQueries(['workbench-coordination-sent-tasks']);
         void message.error(`撤回失败: ${err?.message || '未知错误'}`);
       },
     }
@@ -823,20 +856,34 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
   const handleRecallTodo = useCallback(
     (item: WorkbenchTodoItem) => {
       const cData = (item.contextData || {}) as Record<string, any>;
+      const taskId =
+        cData.taskId ||
+        (cData.unifiedPayload as any)?.taskId ||
+        (item.id.startsWith('coord_') ? item.id.replace('coord_', '') : null) ||
+        item.sourceRefId ||
+        item.id;
+      const inboxItemId = cData.inboxItemId;
+
+      // 确保从本地已归档列表中剔除，恢复为待办看板条目
       setArchivedIds((prev) => {
         const next = new Set(prev);
-        next.add(item.id);
-        if (item.sourceRefId) next.add(item.sourceRefId);
-        if (cData.taskId) next.add(cData.taskId);
-        if (cData.inboxItemId) next.add(cData.inboxItemId);
+        next.delete(item.id);
+        if (item.sourceRefId) next.delete(item.sourceRefId);
+        if (cData.taskId) next.delete(cData.taskId);
+        if (cData.inboxItemId) next.delete(cData.inboxItemId);
         try {
           localStorage.setItem('ops_archived_workbench_ids', JSON.stringify(Array.from(next)));
         } catch (_) {}
         return next;
       });
+
+      // 0ms 乐观迁移：立即从「已发事项」移出并推入「待办」
+      applyOptimisticCoordinationRecall(queryClient, taskId, inboxItemId);
+      setActiveTab('pending');
+
       recallMutation.mutate(item);
     },
-    [recallMutation]
+    [recallMutation, queryClient]
   );
 
   // 催办事项

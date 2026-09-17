@@ -1,6 +1,6 @@
 import type { WorkbenchInboxItem } from '../../../api/workbenchInbox';
 
-export type WorkflowNodeType = 'initiation' | 'approval' | 'archive' | 'general';
+export type WorkflowNodeType = 'initiation' | 'approval' | 'archive' | 'general' | 'flow';
 export type TaskCategory = 'process' | 'personal';
 
 export interface WorkflowNodeSemantics {
@@ -136,32 +136,80 @@ export function classifyWorkflowNode(
   const isInitiatorMe = isCurrentMe(initiatorUsername, initiatorId);
   const isAssigneeMe = isCurrentMe(assigneeUsername, assigneeId);
 
+  const isInTransit = Boolean(
+    payload.inTransit ||
+    payload.isSent ||
+    payload.asyncExecution?.status === 'running' ||
+    currentStage === 'contract_review_execution'
+  );
+
   // 2. 发起 / 初稿确认节点判定 (Initiator Confirmation Node)
-  // 当阶段为初稿确认、或approverRule为initiator、或需重修、或发起人与承办人为同一人且处于起草确认阶段
+  // 当未处于外发流转中且阶段为初稿确认、或approverRule为initiator、或需重修、或已撤回、或发起人与承办人为同一人且处于起草确认阶段
   const isInitiatorConfirmStage =
-    currentStage === 'initiator_confirm' ||
-    currentStage === 'draft_submission' ||
-    payload.approverRule === 'initiator' ||
-    payload.stage?.approverRule === 'initiator' ||
-    rawTitle.includes('待担当确认') ||
-    rawTitle.includes('担当确认') ||
-    rawTitle.includes('初稿确认') ||
-    rawTitle.includes('待发送') ||
-    isRevisionRequired ||
-    (initiatorUsername && assigneeUsername && initiatorUsername === assigneeUsername && !rawTitle.includes('法务') && !rawTitle.includes('审批'));
+    !isInTransit &&
+    (currentStage === 'initiator_confirm' ||
+      currentStage === 'draft_submission' ||
+      payload.approverRule === 'initiator' ||
+      payload.stage?.approverRule === 'initiator' ||
+      payload.isRecalled ||
+      rawTitle.includes('已撤回') ||
+      rawTitle.includes('待担当确认') ||
+      rawTitle.includes('担当确认') ||
+      rawTitle.includes('初稿确认') ||
+      rawTitle.includes('待发送') ||
+      isRevisionRequired ||
+      (initiatorUsername && assigneeUsername && initiatorUsername === assigneeUsername && !rawTitle.includes('法务') && !rawTitle.includes('审批')));
+
+  // 2.1 若已外发流转（如后台正在进行智能合规审查），展示「已发送/审查中」语义
+  if (isProcessTask && isInTransit) {
+    const cleanCoreTitle = rawTitle
+      .replace(/^【(?:已驳回|需重修|待发送|已发送|已撤回)】\s*/g, '')
+      .replace(/^\[(?:已驳回|需重修|待发送|已发送|已撤回|待担当确认|待初稿确认)\]\s*/g, '')
+      .replace(/^\[协同回执\]\s*@\S+\s*(?:已驳回退回担当重修:\s*|已驳回:\s*|已同意:\s*|已办结:\s*)?/g, '')
+      .trim();
+
+    const isAutoReview =
+      currentStage === 'contract_review_execution' ||
+      payload.asyncExecution?.status === 'running';
+
+    return {
+      taskCategory: 'process',
+      isProcessTask: true,
+      isRevisionRequired: false,
+      nodeType: 'flow',
+      isInitiatorNode: true,
+      isApprovalNode: false,
+      isArchiveNode: false,
+      statusTagText: isAutoReview ? '智能审查中' : '流转中',
+      statusTagColor: 'processing',
+      categoryTagText: isAutoReview ? '流程任务 · 智能审查中' : '流程任务 · 已外发流转',
+      categoryTagColor: 'geekblue',
+      operatorDisplayText: isAssigneeMe || isInitiatorMe ? '经办: 我 (已外发)' : (assigneeUsername ? `经办: @${assigneeUsername}` : undefined),
+      operatorIsMe: isAssigneeMe || isInitiatorMe,
+      displayTitle: `[已发送] ${cleanCoreTitle}`,
+      cardActionText: '流转中',
+      cardActionType: 'flow',
+      modalTitle: '流程流转进度与要件详情',
+      modalSubmitText: '已在流转中',
+      allowReject: false,
+    };
+  }
 
   if (isProcessTask && isInitiatorConfirmStage) {
+    const isRecalled = Boolean(payload.isRecalled || rawTitle.includes('已撤回'));
     // 标题清洗：彻底剥离各种历史前缀与重复标签，使标题展示整洁专业
     const cleanCoreTitle = rawTitle
-      .replace(/^【(?:已驳回|需重修|待发送)】\s*/g, '')
-      .replace(/^\[(?:已驳回|需重修|待发送|待担当确认|待初稿确认)\]\s*/g, '')
+      .replace(/^【(?:已驳回|需重修|待发送|已发送|已撤回)】\s*/g, '')
+      .replace(/^\[(?:已驳回|需重修|待发送|已发送|已撤回|待担当确认|待初稿确认)\]\s*/g, '')
       .replace(/^\[协同回执\]\s*@\S+\s*(?:已驳回退回担当重修:\s*|已驳回:\s*|已同意:\s*|已办结:\s*)?/g, '')
-      .replace(/^【(?:已驳回|需重修|待发送)】\s*/g, '')
-      .replace(/^\[(?:已驳回|需重修|待发送)\]\s*/g, '')
+      .replace(/^【(?:已驳回|需重修|待发送|已发送|已撤回)】\s*/g, '')
+      .replace(/^\[(?:已驳回|需重修|待发送|已发送|已撤回)\]\s*/g, '')
       .trim();
 
     const displayTitle = isRevisionRequired
       ? `[需重修] ${cleanCoreTitle}`
+      : isRecalled
+      ? `[已撤回] ${cleanCoreTitle}`
       : `[待发送] ${cleanCoreTitle}`;
 
     return {
@@ -174,21 +222,37 @@ export function classifyWorkflowNode(
       isArchiveNode: false,
       statusTagText: isRevisionRequired
         ? '需重修'
+        : isRecalled
+        ? '已撤回'
         : item.status === 'unprocessed'
         ? '未确认'
         : item.status === 'converted'
         ? '已转待办'
         : '已确认',
-      statusTagColor: isRevisionRequired ? 'error' : item.status === 'unprocessed' ? 'gold' : 'processing',
-      categoryTagText: isRevisionRequired ? '流程任务 · 需重修' : '流程任务 · 待发送',
-      categoryTagColor: isRevisionRequired ? 'error' : 'geekblue',
+      statusTagColor: isRevisionRequired
+        ? 'error'
+        : isRecalled
+        ? 'warning'
+        : item.status === 'unprocessed'
+        ? 'gold'
+        : 'processing',
+      categoryTagText: isRevisionRequired
+        ? '流程任务 · 需重修'
+        : isRecalled
+        ? '流程任务 · 已撤回待发'
+        : '流程任务 · 待发送',
+      categoryTagColor: isRevisionRequired ? 'error' : isRecalled ? 'orange' : 'geekblue',
       operatorDisplayText: isAssigneeMe || isInitiatorMe ? '经办: 我' : (assigneeUsername ? `经办: @${assigneeUsername}` : undefined),
       operatorIsMe: isAssigneeMe || isInitiatorMe,
       displayTitle,
-      cardActionText: isRevisionRequired ? '重新发送' : '发送',
+      cardActionText: isRevisionRequired || isRecalled ? '重新发送' : '发送',
       cardActionType: 'send',
-      modalTitle: isRevisionRequired ? '重修核验与重新发送' : '初稿核对与发送',
-      modalSubmitText: isRevisionRequired ? '重新发送' : '发送',
+      modalTitle: isRevisionRequired
+        ? '重修核验与重新发送'
+        : isRecalled
+        ? '撤回核验与重新发送'
+        : '初稿核对与发送',
+      modalSubmitText: isRevisionRequired || isRecalled ? '重新发送' : '发送',
       allowReject: false,
     };
   }

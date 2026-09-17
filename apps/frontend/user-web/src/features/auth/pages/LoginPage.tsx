@@ -4,11 +4,12 @@ import { PasswordLoginForm } from '../components/PasswordLoginForm';
 import { SsoCallbackHandler } from '../components/SsoCallbackHandler';
 import { LoginLanguagePicker } from '../components/LoginLanguagePicker';
 import { LoginCardShell } from '../components/LoginCardShell';
+import { ThemeToggle } from '../../../app/layouts/header/ThemeToggle';
 import { BrandHeader } from '../components/BrandHeader';
 import { useSsoFlow } from '../hooks/useSsoFlow';
 
 /**
- * 登录页入口：渲染品牌卡片骨架，分发密码表单 / SSO 回调 / 语言选择。
+ * 登录页入口：渲染品牌卡片骨架，分发密码表单 / SSO 回调 / 语言选择与主题切换。
  * 各关注点已下沉至 `components/*` 与 `hooks/*`，此文件仅负责组装。
  */
 export function LoginPage() {
@@ -18,6 +19,7 @@ export function LoginPage() {
 
   return (
     <div
+      className="login-page-bg"
       style={{
         minHeight: '100vh',
         display: 'flex',
@@ -35,7 +37,18 @@ export function LoginPage() {
         <BrandHeader isDark={isDark} />
         <div style={{ padding: '24px 32px 32px' }}>
           <PasswordLoginForm ssoPending={ssoPending} />
-          <LoginLanguagePicker />
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: 8,
+              marginTop: 16,
+            }}
+          >
+            <LoginLanguagePicker />
+            <ThemeToggle />
+          </div>
         </div>
       </LoginCardShell>
     </div>

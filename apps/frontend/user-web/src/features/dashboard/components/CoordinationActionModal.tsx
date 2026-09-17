@@ -76,6 +76,16 @@ export const formatParamValue = (key: string, val: any) => {
     if (val === 'initiator_confirm') return '第 2 阶段 · 业务担当初稿确认';
     if (val === 'legal_review') return '第 4 阶段 · 法务合规核准';
   }
+  if (typeof val === 'boolean') {
+    return val ? '是' : '否';
+  }
+  if (typeof val === 'object') {
+    try {
+      return JSON.stringify(val);
+    } catch {
+      return '[Object]';
+    }
+  }
   return String(val);
 };
 
@@ -137,6 +147,13 @@ export function CoordinationActionModal({
       user?.id
     );
   }, [taskId, taskTitle, initiatorName, taskType, workflowId, editedParams, user?.username, user?.id]);
+
+  const isSubmitter = useMemo(() => {
+    return Boolean(
+      (initiatorName && user?.username && initiatorName.toLowerCase() === user.username.toLowerCase()) ||
+      nodeSemantics.isInitiatorNode
+    );
+  }, [initiatorName, user?.username, nodeSemantics.isInitiatorNode]);
 
   useEffect(() => {
     const isInitNode =
@@ -204,9 +221,11 @@ export function CoordinationActionModal({
       ...prev,
       counterpartyName: candidateCompany,
       counterpartyAddress: prev.counterpartyAddress || oldVal,
-      contractTitle: prev.contractTitle?.includes(oldVal)
-        ? prev.contractTitle.replace(oldVal, candidateCompany)
-        : `${candidateCompany} - 商业保密协议 (NDA)`,
+      contractTitle: prev.contractTitle
+        ? (prev.contractTitle.includes(oldVal)
+            ? prev.contractTitle.replace(oldVal, candidateCompany)
+            : `${prev.contractTitle} (${candidateCompany})`)
+        : `${candidateCompany} - ${prev.contractType || '合同协议'}`,
     }));
     message.success(`已一键校正：企业主体修正为「${candidateCompany}」，地址修正为「${oldVal}」`);
   };
@@ -235,6 +254,14 @@ export function CoordinationActionModal({
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
   }
+
+  const businessAttachments = useMemo(() => {
+    return allAttachments.filter((att) => {
+      const name = att.name?.toLowerCase() || '';
+      const isHtml = name.endsWith('.html') || name.endsWith('.htm') || att.mimeType === 'text/html';
+      return !isHtml;
+    });
+  }, [allAttachments]);
 
   const getModalTitle = () => {
     if (nodeSemantics.isInitiatorNode) {
@@ -401,7 +428,8 @@ export function CoordinationActionModal({
           {getOkText()}
         </Button>,
       ].filter(Boolean)}
-      width={520}
+      width={720}
+      style={{ top: 20, maxWidth: '96vw' }}
       destroyOnClose
     >
       {/* 任务基础信息 */}
@@ -515,7 +543,7 @@ export function CoordinationActionModal({
           }}
           title={<span style={{ fontSize: 13, fontWeight: 600 }}>📋 业务表单详情</span>}
           extra={
-            !isLeave ? (
+            !isLeave && isSubmitter ? (
               <Button
                 type="link"
                 size="small"
@@ -524,6 +552,10 @@ export function CoordinationActionModal({
               >
                 {isEditingParams ? '完成编辑' : '手动修正要件'}
               </Button>
+            ) : !isSubmitter && !isLeave ? (
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                仅提交者可修正
+              </span>
             ) : null
           }
         >
@@ -688,9 +720,9 @@ export function CoordinationActionModal({
         </Button>
       </div>
 
-      {/* 附带材料与生成文档（支持即时下载与修订版上传替换） */}
+      {/* 附带材料与生成文档（排除 HTML 报告文件，仅保留业务文档） */}
       <CoordinationFileReplacer
-        originalAttachments={allAttachments}
+        originalAttachments={businessAttachments}
         replacementFile={replacementFile}
         onReplacementChange={setReplacementFile}
         disabled={isSubmitting}

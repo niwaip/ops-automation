@@ -2,17 +2,15 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
-  EditOutlined,
   EyeOutlined,
   RobotOutlined,
-  SaveOutlined,
   SendOutlined,
   UploadOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Card, Descriptions, Input, Modal, Space, Tag, Typography, Upload, message } from 'antd';
+import { Alert, Button, Card, Input, Modal, Space, Tag, Typography, Upload, message } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQueryClient } from 'react-query';
 import { useAuthStore } from '@/shared/store/authStore';
 import { workbenchInboxApi, type WorkbenchInboxItem } from '../../../api/workbenchInbox';
@@ -22,8 +20,13 @@ import {
 } from '../../../api/workbenchCoordination';
 import { CoordinationFileReplacer } from './CoordinationFileReplacer';
 import { classifyWorkflowNode } from '../lib/coordinationNodeClassifier';
-import { PARAM_LABEL_MAP, formatParamValue } from './CoordinationActionModal';
+import {
+  applyOptimisticCoordinationSend,
+  rollbackOptimisticCoordinationSend,
+} from '../lib/coordinationOptimistic';
 import { formatMonthDayTime } from '../../../shared/utils/dateText';
+import { ComplianceAuditCard, extractAuditReportFromTask } from './ComplianceAuditCard';
+import { BusinessParametersCard } from './BusinessParametersCard';
 
 interface InboxTaskDetailModalProps {
   open: boolean;
@@ -50,7 +53,6 @@ export function InboxTaskDetailModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [initialParams, setInitialParams] = useState<Record<string, any>>({});
   const [editedParams, setEditedParams] = useState<Record<string, any>>({});
-  const [isEditingParams, setIsEditingParams] = useState(false);
   const loadedItemIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -66,30 +68,40 @@ export function InboxTaskDetailModal({
         const rawP = (item.unifiedPayload as any)?.parameters || {};
         setEditedParams({ ...rawP });
         setInitialParams({ ...rawP });
-        const semantics = classifyWorkflowNode(item, user?.username, user?.id);
-        setIsEditingParams(Boolean(semantics.isRevisionRequired));
       }
     } else if (!open) {
       loadedItemIdRef.current = null;
     }
   }, [open, item?.id, item?.sourceRefId, user?.username, user?.id]);
 
-  if (!item) return null;
-
-  const payload = (item.unifiedPayload || {}) as Record<string, any>;
+  const payload = (item?.unifiedPayload || {}) as Record<string, any>;
   const params = editedParams;
   const isCoordination = payload.kind === 'coordination';
-  const nodeSemantics = classifyWorkflowNode(item, user?.username, user?.id);
+  const nodeSemantics = item
+    ? classifyWorkflowNode(item, user?.username, user?.id)
+    : ({ isProcessTask: false, isRevisionRequired: false, isInitiatorNode: false, cardActionType: 'detail' } as any);
+  const isArchived = Boolean(
+    item?.status === 'archived' ||
+    (item as any)?.isArchived ||
+    payload.status === 'archived' ||
+    payload.status === 'completed' ||
+    (item as any)?.status === 'completed' ||
+    payload.metadata?.archiveId
+  );
   const isActionable =
-    ((isCoordination || nodeSemantics.isProcessTask) && item.status !== 'converted') ||
-    nodeSemantics.isRevisionRequired;
+    Boolean(item) &&
+    !isArchived &&
+    item?.status !== 'converted' &&
+    item?.status !== 'discarded' &&
+    ((isCoordination || nodeSemantics.isProcessTask) ||
+      nodeSemantics.isRevisionRequired);
   const isAssignment = isCoordination && payload.taskType !== 'approval';
-  const hasParams = (isCoordination || nodeSemantics.isProcessTask) && Object.keys(params).length > 0;
+  const hasParams = Boolean(item) && (isCoordination || nodeSemantics.isProcessTask) && Object.keys(params).length > 0;
 
   const extractRollbackReason = (): string | undefined => {
     if (payload.metadata?.rollbackReason) return payload.metadata.rollbackReason;
     if (payload.rollbackReason) return payload.rollbackReason;
-    if ((item as any).rollbackReason) return (item as any).rollbackReason;
+    if ((item as any)?.rollbackReason) return (item as any).rollbackReason;
 
     // 从 actions 列表中查找最近一次驳回记录
     if (Array.isArray(payload.actions)) {
@@ -98,7 +110,7 @@ export function InboxTaskDetailModal({
     }
 
     // 从 item.rawContent 或 (item as any).description 中提取处理意见
-    const textToSearch = `${item.rawContent || ''}\n${(item as any).description || ''}`;
+    const textToSearch = `${item?.rawContent || ''}\n${(item as any)?.description || ''}`;
     const commentMatch = textToSearch.match(/处理意见[：:]\s*([^\n\r]+)/);
     if (commentMatch && commentMatch[1]?.trim()) {
       return commentMatch[1].trim();
@@ -158,7 +170,7 @@ export function InboxTaskDetailModal({
   };
 
   const candidateCompany = looksLikeAddress(params.counterpartyName)
-    ? findCompanyCandidate(params.remarks || item.rawContent)
+    ? findCompanyCandidate(params.remarks || item?.rawContent)
     : null;
 
   const handleApplyAutoCorrection = () => {
@@ -168,9 +180,11 @@ export function InboxTaskDetailModal({
       ...prev,
       counterpartyName: candidateCompany,
       counterpartyAddress: prev.counterpartyAddress || oldVal,
-      contractTitle: prev.contractTitle?.includes(oldVal)
-        ? prev.contractTitle.replace(oldVal, candidateCompany)
-        : `${candidateCompany} - 商业保密协议 (NDA)`,
+      contractTitle: prev.contractTitle
+        ? (prev.contractTitle.includes(oldVal)
+            ? prev.contractTitle.replace(oldVal, candidateCompany)
+            : `${prev.contractTitle} (${candidateCompany})`)
+        : `${candidateCompany} - ${prev.contractType || '合同协议'}`,
     }));
     message.success(`已一键校正：企业主体修正为「${candidateCompany}」，地址修正为「${oldVal}」`);
   };
@@ -190,13 +204,40 @@ export function InboxTaskDetailModal({
     const docName =
       params.fileName ||
       params.contractFileName ||
-      (params.contractTitle ? `${params.contractTitle}.docx` : `${item.title}.docx`);
+      (params.contractTitle ? `${params.contractTitle}.docx` : item?.title ? `${item.title}.docx` : '合同文档.docx');
     allAttachments.push({
       name: docName,
       url: directUrl,
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
   }
+
+  const initiatorUsername = payload.initiator?.username;
+  const initiatorId = payload.initiator?.id;
+  const isSubmitter = Boolean(
+    (initiatorUsername && user?.username && initiatorUsername.toLowerCase() === user.username.toLowerCase()) ||
+    (initiatorId && user?.id && initiatorId === user.id) ||
+    (item?.sourceSender && user?.username && item.sourceSender.toLowerCase() === user.username.toLowerCase()) ||
+    nodeSemantics.isInitiatorNode
+  );
+
+  const { auditReport, cleanedRawContent, htmlAttachment } = useMemo(() => {
+    return extractAuditReportFromTask(
+      item?.rawContent,
+      payload.reviewReport,
+      allAttachments
+    );
+  }, [item?.rawContent, payload.reviewReport, allAttachments]);
+
+  const businessAttachments = useMemo(() => {
+    return allAttachments.filter((att) => {
+      const name = att.name?.toLowerCase() || '';
+      const isHtml = name.endsWith('.html') || name.endsWith('.htm') || att.mimeType === 'text/html';
+      return !isHtml;
+    });
+  }, [allAttachments]);
+
+  if (!item) return null;
 
   const handleSubmit = async (action: 'approve' | 'reject' | 'complete') => {
     if (action === 'reject' && !comment.trim()) {
@@ -281,6 +322,10 @@ export function InboxTaskDetailModal({
         return;
       }
 
+      if (nodeSemantics.cardActionType === 'send' || action === 'approve' || action === 'complete') {
+        applyOptimisticCoordinationSend(queryClient, item, user);
+      }
+
       await workbenchCoordinationApi.submitAction(taskId, {
         action,
         comment: finalComment,
@@ -292,13 +337,13 @@ export function InboxTaskDetailModal({
         message.success(
           replacementFile
             ? `已成功提交重修材料「${item.title}」，已附带最新修订版附件提交流程！`
-            : `已成功重新提交「${item.title}」！系统正在进行智能审查与合规诊断，完成后将自动流转至下一审批环节。`
+            : `已成功重新提交「${item.title}」！系统正在进行智能审查与合规诊断，已自动迁移至「已发事项」。`
         );
       } else if (nodeSemantics.cardActionType === 'send') {
         message.success(
           replacementFile
             ? `已成功提交合同送审「${item.title}」，已附带最新修订版文件提交流程！`
-            : `已成功提交送审！系统正在进行智能合规诊断与风险复核，通过后将自动流转至法务审批。`
+            : `已成功提交送审！系统正在进行智能合规诊断与风险复核，已自动迁移至「已发事项」。`
         );
       } else if (action === 'approve') {
         message.success(
@@ -332,6 +377,9 @@ export function InboxTaskDetailModal({
       setTimeout(triggerRefresh, 4000);
       setTimeout(triggerRefresh, 8000);
     } catch (err: any) {
+      if (nodeSemantics.cardActionType === 'send' || action === 'approve' || action === 'complete') {
+        rollbackOptimisticCoordinationSend(queryClient, item, user);
+      }
       message.error(err?.message || '操作失败，请重试');
     } finally {
       setIsSubmitting(false);
@@ -348,7 +396,8 @@ export function InboxTaskDetailModal({
       }
       open={open}
       onCancel={onClose}
-      width={680}
+      width={880}
+      style={{ top: 20, maxWidth: '96vw' }}
       footer={[
         <Button key="close" onClick={onClose} disabled={isSubmitting}>
           关闭
@@ -411,6 +460,11 @@ export function InboxTaskDetailModal({
             {nodeSemantics.displayTitle || item.title}
           </Typography.Title>
           <Space size={6} wrap align="center">
+            {isArchived ? (
+              <Tag color="default" icon={<CheckCircleOutlined />}>
+                已归档 (只读)
+              </Tag>
+            ) : null}
             {nodeSemantics.isInitiatorNode || (item.sourceSender && item.sourceSender.toLowerCase() === (user?.username || '').toLowerCase()) ? (
               <Tag color="green" icon={<UserOutlined />}>
                 来自自己
@@ -436,8 +490,8 @@ export function InboxTaskDetailModal({
           </Space>
         </div>
 
-        {/* 需重修/已驳回专属引导 Alert */}
-        {nodeSemantics.isRevisionRequired ? (
+        {/* 需重修/已驳回专属引导 Alert (已归档任务不显示重修引导) */}
+        {nodeSemantics.isRevisionRequired && !isArchived ? (
           <Alert
             type="error"
             showIcon
@@ -459,7 +513,7 @@ export function InboxTaskDetailModal({
                   <div style={{ color: '#cf1322', fontWeight: 600, marginBottom: 4 }}>
                     📌 驳回批注与修改意见：
                   </div>
-                  <div style={{ color: '#1f1f1f', whiteSpace: 'pre-wrap', fontWeight: 500 }}>
+                  <div style={{ color: 'var(--text-primary, #1f1f1f)', whiteSpace: 'pre-wrap', fontWeight: 500 }}>
                     {rollbackReason || '审核人员提出了修改意见，请根据批注调整表单要素或替换附件。'}
                   </div>
                 </div>
@@ -472,173 +526,108 @@ export function InboxTaskDetailModal({
           />
         ) : null}
 
-        {/* 结构化业务要件表单 */}
+        {/* 结构化业务要件表单（提取核心关键要件、支持展开折叠、仅提交者可修改） */}
         {hasParams ? (
-          <Card
-            size="small"
-            title={<span style={{ fontSize: 13, fontWeight: 600 }}>📋 业务表单要件详情</span>}
-            extra={
-              isActionable ? (
-                <Button
-                  type="link"
-                  size="small"
-                  icon={isEditingParams ? <SaveOutlined /> : <EditOutlined />}
-                  onClick={() => setIsEditingParams(!isEditingParams)}
-                >
-                  {isEditingParams ? '完成编辑' : '手动修正要件'}
-                </Button>
-              ) : null
+          <BusinessParametersCard
+            parameters={params}
+            isSubmitter={isSubmitter}
+            isActionable={isActionable}
+            defaultEditing={Boolean(nodeSemantics.isRevisionRequired && isSubmitter)}
+            candidateCompany={candidateCompany}
+            onApplyAutoCorrection={handleApplyAutoCorrection}
+            onChange={(key, val) =>
+              setEditedParams((prev) => ({
+                ...prev,
+                [key]: val,
+              }))
             }
-            styles={{ body: { padding: '10px 14px' } }}
-            style={{
-              background: 'var(--bg-secondary, rgba(148, 163, 184, 0.06))',
-              borderColor: 'var(--border-color, rgba(148, 163, 184, 0.16))',
-            }}
-          >
-            {/* 企业主体纠偏智能提示 */}
-            {candidateCompany && candidateCompany !== params.counterpartyName ? (
-              <div
-                style={{
-                  background: 'rgba(250, 173, 20, 0.09)',
-                  border: '1px solid rgba(250, 173, 20, 0.35)',
-                  borderRadius: 6,
-                  padding: '8px 12px',
-                  marginBottom: 12,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 10,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div style={{ fontSize: 12, color: 'var(--text-primary)' }}>
-                  ⚠️ 检测到「相对方企业主体」被识别为地址（
-                  <span style={{ color: '#d46b08', fontWeight: 600 }}>{params.counterpartyName}</span>
-                  ），真实企业名称应为「
-                  <span style={{ color: '#1677ff', fontWeight: 600 }}>{candidateCompany}</span>」
-                </div>
-                <Button
-                  size="small"
-                  type="primary"
-                  style={{ background: '#fa8c16', borderColor: '#fa8c16', fontSize: 12 }}
-                  onClick={handleApplyAutoCorrection}
-                >
-                  ⚡ 一键纠偏为「{candidateCompany}」
-                </Button>
-              </div>
-            ) : null}
-
-            {isEditingParams ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {Object.entries(params)
-                  .filter(([key]) => !['downloadUrl', 'fileUrl', 'contractUrl', 'fileName', 'executionId', 'contractFileName'].includes(key))
-                  .map(([key, val]) => (
-                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ width: 110, fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0 }}>
-                        {PARAM_LABEL_MAP[key] || key}：
-                      </span>
-                      <Input
-                        size="small"
-                        value={String(val ?? '')}
-                        onChange={(e) =>
-                          setEditedParams((prev) => ({
-                            ...prev,
-                            [key]: e.target.value,
-                          }))
-                        }
-                        style={{ flex: 1 }}
-                      />
-                    </div>
-                  ))}
-              </div>
-            ) : (
-              <Descriptions size="small" column={1} bordered={false}>
-                {Object.entries(params)
-                  .filter(([key]) => !['downloadUrl', 'fileUrl', 'contractUrl', 'fileName', 'executionId', 'contractFileName'].includes(key))
-                  .map(([key, val]) => (
-                    <Descriptions.Item
-                      key={key}
-                      label={<span style={{ color: 'var(--text-secondary)' }}>{PARAM_LABEL_MAP[key] || key}</span>}
-                    >
-                      <strong>{formatParamValue(key, val)}</strong>
-                    </Descriptions.Item>
-                  ))}
-              </Descriptions>
-            )}
-          </Card>
+          />
         ) : null}
 
-        {/* 原始文本诉求（若已在结构化参数中展示，则不重复显示） */}
-        {item.rawContent &&
-        item.rawContent !== item.title &&
-        (!hasParams || !Object.values(params).some((val) => typeof val === 'string' && val.trim() === item.rawContent?.trim())) ? (
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
-              原始提交说明
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                lineHeight: 1.6,
-                padding: '8px 12px',
-                borderRadius: 6,
-                background: 'var(--bg-secondary, rgba(148, 163, 184, 0.05))',
-                border: '1px solid var(--border-color, rgba(148, 163, 184, 0.12))',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-              }}
-            >
-              {item.rawContent}
-            </div>
-          </div>
+        {/* 流程自动生成的合同合规审查报告与 HTML 诊断交互文件（聚合展示，支持直接预览，无替换文档按钮） */}
+        {auditReport || htmlAttachment ? (
+          <ComplianceAuditCard
+            reportData={auditReport}
+            htmlAttachment={htmlAttachment}
+          />
         ) : null}
 
-        {/* 附件材料与替换附件（支持下载核验与本地修订版上传替换） */}
-        <CoordinationFileReplacer
-          originalAttachments={allAttachments}
-          replacementFile={replacementFile}
-          onReplacementChange={setReplacementFile}
-          disabled={isSubmitting || !isActionable}
-        />
-
-        {/* 留言 / 审批与流转说明 */}
-        <div>
+        {/* 原始提交说明 / 流转附言（已剥离合规审查报告大段文本，保持经办附言清爽干净） */}
+        {cleanedRawContent &&
+        cleanedRawContent !== item.title &&
+        (!hasParams || !Object.values(params).some((val) => typeof val === 'string' && val.trim() === cleanedRawContent?.trim())) ? (
           <div
             style={{
               fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              marginBottom: 6,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
+              lineHeight: 1.6,
+              padding: '8px 12px',
+              borderRadius: 6,
+              background: 'var(--bg-secondary, rgba(148, 163, 184, 0.05))',
+              border: '1px solid var(--border-color, rgba(148, 163, 184, 0.12))',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
             }}
           >
-            <Space size={6}>
-              <span>💬 留言 / 流转说明</span>
-            </Space>
-            {!isActionable ? (
-              <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 400 }}>
-                (当前任务已归档或转待办，仅供查阅)
-              </span>
-            ) : null}
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+              📌 经办流转说明 / 原始提交附言
+            </div>
+            <div
+              style={{ fontSize: 13, lineHeight: 1.6 }}
+              dangerouslySetInnerHTML={{
+                __html: cleanedRawContent
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                  .replace(/\n/g, '<br />'),
+              }}
+            />
           </div>
-          <Input.TextArea
-            rows={3}
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder={
-              !isActionable
-                ? '暂无附加流转留言'
-                : nodeSemantics.isRevisionRequired
-                ? '请输入重发理由说明、修改批注或流转留言（若未更改参数与附件，可在此填写说明理由后重新发送）...'
-                : '请输入流转留言、审批意见或修改批注（如已在上方替换附件，可在此简要备注修改要点）...'
-            }
+        ) : null}
+
+        {/* 业务成果交付文档（排除 HTML 报告后的主合同文件，支持下载查验与本地修订版上传替换） */}
+        {(businessAttachments.length > 0 || replacementFile || nodeSemantics.cardActionType === 'send') ? (
+          <CoordinationFileReplacer
+            originalAttachments={businessAttachments}
+            replacementFile={replacementFile}
+            onReplacementChange={setReplacementFile}
             disabled={isSubmitting || !isActionable}
-            maxLength={500}
-            showCount={isActionable}
           />
-        </div>
+        ) : null}
+
+        {/* 留言 / 审批与流转说明 */}
+        {isActionable ? (
+          <div>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--text-primary)',
+                marginBottom: 6,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <Space size={6}>
+                <span>💬 留言 / 流转说明</span>
+              </Space>
+            </div>
+            <Input.TextArea
+              rows={3}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder={
+                nodeSemantics.isRevisionRequired
+                  ? '请输入重发理由说明、修改批注或流转留言（若未更改参数与附件，可在此填写说明理由后重新发送）...'
+                  : '请输入流转留言、审批意见或修改批注（如已在上方替换附件，可在此简要备注修改要点）...'
+              }
+              disabled={isSubmitting}
+              maxLength={500}
+              showCount
+            />
+          </div>
+        ) : null}
 
         {/* 补充佐证附件（可选） */}
         {isActionable ? (

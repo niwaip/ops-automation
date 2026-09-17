@@ -11,7 +11,7 @@ import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { WORKBENCH_PRISMA, WorkbenchPrismaPort } from '../ports';
 import { InboxItemStatus, TodoSourceType } from '../inbox/dto/workbench-inbox.dto';
-import { TodoStatus } from '../todo/dto/workbench-todo.dto';
+import { TodoPriority, TodoStatus } from '../todo/dto/workbench-todo.dto';
 import { WorkbenchInboxService } from '../inbox/workbench-inbox.service';
 import { MockHrService } from './mock-hr.service';
 import {
@@ -35,12 +35,14 @@ import {
   CollaboratorUserDto,
   UUID_REGEX,
 } from './coordination-collaborator.service';
+import { CoordinationLifecycleService } from './coordination-lifecycle.service';
 
 export { CollaboratorUserDto };
 
 @Injectable()
 export class WorkbenchCoordinationService implements OnModuleInit {
   private readonly logger = new Logger(WorkbenchCoordinationService.name);
+  private readonly lifecycleService: CoordinationLifecycleService;
 
   constructor(
     @Inject(WORKBENCH_PRISMA)
@@ -58,7 +60,13 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       prisma,
       orgWorkflowService
     )
-  ) {}
+  ) {
+    this.lifecycleService = new CoordinationLifecycleService(
+      this.prisma,
+      (id) => this.resolveUser(id),
+      (taskId) => this.findTargetInboxItem(taskId)
+    );
+  }
 
   async onModuleInit() {
     try {
@@ -699,10 +707,10 @@ export class WorkbenchCoordinationService implements OnModuleInit {
             payload.parameters?.contractTitle ||
             targetItem.sourceTitle ||
             targetItem.title,
-          trackingNumber: ext.trackingNumber || 'LEGAL-ARC-502563',
+          trackingNumber: ext.trackingNumber || `LEGAL-ARC-${Date.now().toString().slice(-6)}`,
           archiveId: detail.archiveId,
           initiator: payload.initiator,
-          operator: { username: payload.sourceSender || 'law01' },
+          operator: { username: payload.sourceSender || payload.assignee?.username || 'system' },
           parameters: payload.parameters,
           reviewReport: payload.reviewReport,
           actions: payload.actions,
@@ -725,51 +733,17 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       };
     }
 
-    // 防重复提交与幂等性保护：若该协同任务已处于终态或该阶段已记录流转操作，直接返回当前状态
-    // 注意：需重修/已驳回的任务允许承办人修改后重新提交，不受 hasAlreadyActed 与历史 rejected 状态拦截
+    // 防重复提交与终态保护：仅当条目已归档/废弃，或者已经流转完毕（converted）且处于终态已办结时才拦截
     const isTerminalCompleted =
       targetItem.status === InboxItemStatus.archived ||
       targetItem.status === InboxItemStatus.discarded ||
-      (!isRevisionRequired && (
-        payload.status === CoordinationTaskStatus.approved ||
-        payload.status === CoordinationTaskStatus.completed ||
-        payload.status === CoordinationTaskStatus.rejected
-      ));
+      (!isRevisionRequired &&
+        !payload.isRecalled &&
+        targetItem.status === InboxItemStatus.converted &&
+        (payload.status === CoordinationTaskStatus.completed || payload.status === CoordinationTaskStatus.approved));
 
-    const hasAlreadyActed = !isRevisionRequired && Array.isArray(payload.actions) && payload.actions.length > 0;
-    if (isTerminalCompleted || hasAlreadyActed) {
-      this.logger.warn(`协同任务 ${taskId} 已完成流转处理 (status: ${payload.status || targetItem.status})，同步归档未完结条目`);
-      if (targetItem.status === InboxItemStatus.unprocessed) {
-        await this.prisma.workbenchInboxItem.update({
-          where: { id: targetItem.id },
-          data: {
-            status: InboxItemStatus.archived,
-            updatedAt: new Date(),
-          },
-        });
-      }
-
-      // 同步将关联的待办标记为已完成
-      try {
-        await this.prisma.workbenchTodo?.updateMany?.({
-          where: {
-            OR: [
-              targetItem.convertedTodoId ? { id: targetItem.convertedTodoId } : undefined,
-              { sourceRefId: taskId },
-              { sourceRefId: targetItem.sourceRefId },
-              UUID_REGEX.test(taskId) ? { id: taskId } : undefined,
-            ].filter(Boolean) as any,
-          },
-          data: {
-            status: TodoStatus.completed,
-            completedAt: new Date(),
-            updatedAt: new Date(),
-          },
-        });
-      } catch (todoErr) {
-        this.logger.warn(`Failed to mark todo completed for terminal task ${taskId}:`, todoErr);
-      }
-
+    if (isTerminalCompleted) {
+      this.logger.warn(`协同任务 ${taskId} 已完成流转处理 (status: ${payload.status || targetItem.status})`);
       return {
         taskId,
         status: payload.status || CoordinationTaskStatus.approved,
@@ -797,12 +771,21 @@ export class WorkbenchCoordinationService implements OnModuleInit {
     const shouldRunAsync = hasAutomationAhead && dto.sync !== true;
 
     if (shouldRunAsync) {
+      const cleanTitle = (targetItem.sourceTitle || targetItem.title || '')
+        .replace(/^【(?:已驳回|需重修|待发送|已发送)】\s*/g, '')
+        .replace(/^\[(?:已驳回|需重修|待发送|已发送|待担当确认|待初稿确认)\]\s*/g, '')
+        .trim();
+
+      const nextStage = stages[currentStageIndex + 1];
       const asyncRunningPayload = {
         ...payload,
         status: CoordinationTaskStatus.pending,
+        currentStage: nextStage?.id || payload.currentStage,
+        inTransit: true,
+        isSent: true,
         asyncExecution: {
           status: 'running',
-          currentStage: payload.currentStage,
+          currentStage: nextStage?.id || payload.currentStage,
           startedAt: new Date().toISOString(),
         },
       };
@@ -810,12 +793,14 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       await this.prisma.workbenchInboxItem.update({
         where: { id: targetItem.id },
         data: {
+          title: cleanTitle ? `[已发送] ${cleanTitle}` : targetItem.title,
+          status: InboxItemStatus.converted,
           unifiedPayload: asyncRunningPayload as any,
           updatedAt: new Date(),
         },
       });
 
-      // 如果存在关联待办任务，更新状态为处理中
+      // 如果存在关联待办任务，更新状态为已完成（离开待办看板，进入已发事项）
       try {
         await this.prisma.workbenchTodo?.updateMany?.({
           where: {
@@ -826,7 +811,8 @@ export class WorkbenchCoordinationService implements OnModuleInit {
             ].filter(Boolean) as any,
           },
           data: {
-            status: TodoStatus.in_progress,
+            status: TodoStatus.completed,
+            completedAt: new Date(),
             updatedAt: new Date(),
           },
         });
@@ -868,6 +854,13 @@ export class WorkbenchCoordinationService implements OnModuleInit {
     const payload = (targetItem.unifiedPayload || {}) as Record<string, any>;
     const initiator = payload.initiator || {};
     const assignee = payload.assignee || {};
+
+    // 核心安全拦截：若该事项在后台异步执行开始前已被撤回，则立即终止
+    const initialFreshItem = await this.findTargetInboxItem(targetItem.id || taskId);
+    if (Boolean((initialFreshItem?.unifiedPayload as any)?.isRecalled)) {
+      this.logger.log(`[AsyncRunner] Task ${taskId} has been recalled; aborting before execution.`);
+      return;
+    }
 
     const operator = await this.resolveUser(operatorUserId);
     const operatorId = operator?.id || operatorUserId;
@@ -957,6 +950,13 @@ export class WorkbenchCoordinationService implements OnModuleInit {
             this.resolveStageApprover(wId, sId, initId || operatorId),
           prisma: this.prisma,
         });
+
+        // 核心安全拦截：若自动化审查执行期间发起人已撤回该任务，立即终止后续流转，不可覆盖撤回状态
+        const freshItemAfterTransition = await this.findTargetInboxItem(targetItem.id || taskId);
+        if (Boolean((freshItemAfterTransition?.unifiedPayload as any)?.isRecalled)) {
+          this.logger.log(`[AsyncRunner] Task ${taskId} was recalled during stage transition; aborting.`);
+          return;
+        }
 
         if (stageTransition?.handled) {
           nextStatus = stageTransition.nextStatus;
@@ -1162,6 +1162,13 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       nextTargetTitle = cleanTitle ? `[已发送] ${cleanTitle}` : targetItem.title;
     }
 
+    // 核心安全拦截：若已被撤回，终止最终写回，确保保留撤回至待办的状态
+    const finalFreshItem = await this.findTargetInboxItem(targetItem.id || taskId);
+    if (Boolean((finalFreshItem?.unifiedPayload as any)?.isRecalled)) {
+      this.logger.log(`[AsyncRunner] Task ${taskId} has been recalled; skipping final status update and todo completion.`);
+      return;
+    }
+
     // 2. 更新原经办人收件箱条目为已转待办或已流转
     await this.prisma.workbenchInboxItem.update({
       where: { id: targetItem.id },
@@ -1240,7 +1247,11 @@ export class WorkbenchCoordinationService implements OnModuleInit {
     }
 
     // 4. 若该阶段已达成归档（产生归档单号/存证编号），自动触发「流程管理空间」建档入库
-    if (externalSyncResult?.trackingNumber || externalSyncResult?.detail?.archiveId) {
+    const isArchiveStage = Boolean(
+      externalSyncResult?.detail?.archiveId ||
+      (externalSyncResult?.trackingNumber && !externalSyncResult.trackingNumber.includes('-REV-'))
+    );
+    if (isArchiveStage) {
       try {
         await this.workspaceService?.archiveWorkflowDeliverables?.({
           workflowId: payload.workflowId || externalSyncResult.detail?.workflowId,
@@ -1254,7 +1265,7 @@ export class WorkbenchCoordinationService implements OnModuleInit {
           trackingNumber: externalSyncResult.trackingNumber,
           archiveId: externalSyncResult.detail?.archiveId,
           initiator: payload.initiator,
-          operator: { username: operator?.username || 'law01' },
+          operator: { username: operator?.username || payload.assignee?.username || payload.sourceSender || 'system' },
           parameters: payload.parameters,
           reviewReport: payload.reviewReport || externalSyncResult.reviewReport,
           actions: updatedActions,
@@ -1369,24 +1380,29 @@ export class WorkbenchCoordinationService implements OnModuleInit {
         item.status === InboxItemStatus.archived ||
         item.status === InboxItemStatus.discarded;
 
+      const isArchivedSync =
+        Boolean(extSync.detail?.archiveId) ||
+        (Boolean(extSync.trackingNumber) && !extSync.trackingNumber.includes('-REV-'));
+
       const isTerminalCompleted =
         payload.status === 'completed' ||
-        Boolean(extSync.trackingNumber) ||
-        Boolean(extSync.detail?.archiveId) ||
+        isArchivedSync ||
         payload.currentStage === 'final_receipt';
 
-      const taskStatus =
-        item.status === InboxItemStatus.discarded || payload.status === 'rejected'
-          ? 'cancelled'
-          : isTerminalArchived
-          ? isTerminalCompleted || payload.status === 'approved'
-            ? 'completed'
-            : 'cancelled'
-          : isTerminalCompleted
+      const isRecalled = Boolean(payload.isRecalled);
+      const taskStatus = isRecalled
+        ? 'pending'
+        : item.status === InboxItemStatus.discarded || payload.status === 'rejected'
+        ? 'cancelled'
+        : isTerminalArchived
+        ? isTerminalCompleted || payload.status === 'approved'
           ? 'completed'
-          : payload.status || 'pending';
+          : 'cancelled'
+        : isTerminalCompleted
+        ? 'completed'
+        : payload.status || 'pending';
 
-      const isEndedStatus = taskStatus === 'completed' || taskStatus === 'cancelled';
+      const isEndedStatus = !isRecalled && (taskStatus === 'completed' || taskStatus === 'cancelled');
       const workflowKey = payload.workflowId
         ? `${payload.workflowId}::${cleanTitle.trim()}::${isEndedStatus ? 'ended' : 'active'}`
         : null;
@@ -1427,64 +1443,13 @@ export class WorkbenchCoordinationService implements OnModuleInit {
    * 归档协同任务及其关联的所有收件箱与待办条目
    */
   async archiveTask(userId: string, taskId: string) {
-    const cleanId = taskId.replace(/^(?:coord_)+/, '');
-    const isTaskIdUuid = UUID_REGEX.test(taskId);
-    const isCleanIdUuid = UUID_REGEX.test(cleanId);
+    return this.lifecycleService.archiveTask(userId, taskId);
+  }
 
-    const relatedRefIds = new Set<string>([taskId, `coord_${cleanId}`, cleanId]);
-
-    const targetItems = await this.prisma.workbenchInboxItem.findMany({
-      where: {
-        OR: [
-          { sourceRefId: { in: Array.from(relatedRefIds) } },
-          isTaskIdUuid ? { id: taskId } : undefined,
-          isCleanIdUuid ? { id: cleanId } : undefined,
-        ].filter(Boolean) as any,
-      },
-      select: { id: true, sourceRefId: true, unifiedPayload: true },
-    });
-
-    const idsToArchive = new Set<string>(targetItems.map((i) => i.id));
-    if (isTaskIdUuid) idsToArchive.add(taskId);
-    if (isCleanIdUuid) idsToArchive.add(cleanId);
-
-    for (const item of targetItems) {
-      if (item.sourceRefId) relatedRefIds.add(item.sourceRefId);
-      const p = (item.unifiedPayload || {}) as any;
-      if (p?.metadata?.parentTaskId) relatedRefIds.add(p.metadata.parentTaskId);
-    }
-
-    await this.prisma.workbenchInboxItem.updateMany({
-      where: {
-        OR: [
-          { id: { in: Array.from(idsToArchive) } },
-          { sourceRefId: { in: Array.from(relatedRefIds) } },
-        ],
-      },
-      data: {
-        status: InboxItemStatus.archived,
-        updatedAt: new Date(),
-      },
-    });
-
-    try {
-      await this.prisma.workbenchTodo.updateMany({
-        where: {
-          OR: [
-            { sourceRefId: { in: Array.from(relatedRefIds) } },
-            isTaskIdUuid ? { id: taskId } : undefined,
-          ].filter(Boolean) as any,
-        },
-        data: {
-          status: TodoStatus.cancelled,
-          updatedAt: new Date(),
-        },
-      });
-    } catch {
-      // 兼容非 UUID 主键查询
-    }
-
-    this.logger.log(`Coordination task ${taskId} archived by user ${userId}`);
-    return { success: true, taskId };
+  /**
+   * 发起人撤回协同事项至待办（终止下游处理，重置回经办人待办状态，绝不关闭归档）
+   */
+  async recallTask(userId: string, taskId: string, comment?: string) {
+    return this.lifecycleService.recallTask(userId, taskId, comment);
   }
 }

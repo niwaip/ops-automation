@@ -62,7 +62,7 @@ export function PasswordLoginForm({ ssoPending }: PasswordLoginFormProps) {
             border: 'none',
           }}
         >
-          {t('btn_login', '登录并进入用户工作台')}
+          {t('btn_login', '登录并进入企业 AI 中台')}
         </Button>
         <Button
           block

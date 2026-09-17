@@ -8,6 +8,7 @@ import {
   EyeOutlined,
   FileWordOutlined,
   InboxOutlined,
+  LoadingOutlined,
   PlayCircleOutlined,
   PlusOutlined,
   RobotOutlined,
@@ -44,6 +45,7 @@ import { useAuthStore } from "@/shared/store/authStore";
 import { useChatStore } from "../../chat/chatStore";
 import { isItemInitiatedByMe, type WorkbenchTodoTab } from "../hooks/useWorkbenchTodos";
 import { classifyWorkflowNode } from "../lib/coordinationNodeClassifier";
+import { applyOptimisticCoordinationSend } from "../lib/coordinationOptimistic";
 import styles from "../pages/DashboardPage.module.css";
 
 interface TodoCardProps {
@@ -90,7 +92,7 @@ export function TodoCard({
   onRemindTodo,
 }: TodoCardProps) {
   const { user } = useAuthStore();
-  const currentUsername = user?.username || "admin";
+  const currentUsername = user?.username || "";
   const currentUserId = user?.id;
 
   const queryClient = useQueryClient();
@@ -117,7 +119,9 @@ export function TodoCard({
         detailModalTodo.id,
       sourceTitle: detailModalTodo.sourceTitle || detailModalTodo.title,
       sourceSender: contextData.sourceSender,
-      status: 'unprocessed',
+      status: (detailModalTodo.status === 'completed' || detailModalTodo.status === 'cancelled')
+        ? 'archived'
+        : (contextData.inboxStatus || 'unprocessed'),
       confidence: 1.0,
       unifiedPayload: {
         kind: 'coordination',
@@ -135,11 +139,13 @@ export function TodoCard({
           contextData.taskType ||
           'approval',
         status:
-          unifiedPayload.status ||
-          contextData.status ||
-          (detailModalTodo.title?.includes('[需重修]') || detailModalTodo.title?.includes('已驳回')
-            ? 'revision_required'
-            : 'pending'),
+          (detailModalTodo.status === 'completed' || detailModalTodo.status === 'cancelled')
+            ? 'archived'
+            : (unifiedPayload.status ||
+               contextData.status ||
+               (detailModalTodo.title?.includes('[需重修]') || detailModalTodo.title?.includes('已驳回')
+                 ? 'revision_required'
+                 : 'pending')),
         rollbackReason:
           unifiedPayload.rollbackReason ||
           unifiedPayload.metadata?.rollbackReason ||
@@ -216,6 +222,21 @@ export function TodoCard({
           : nodeSemantics.isApprovalNode
           ? 'approve'
           : 'complete';
+
+      if (nodeSemantics.cardActionType === 'send') {
+        const inboxItemLike = {
+          id: contextData.inboxItemId || taskId,
+          title: item.title,
+          sourceTitle: item.sourceTitle,
+          rawContent: item.description,
+          unifiedPayload: coordPayload,
+          status: 'unprocessed',
+        };
+        applyOptimisticCoordinationSend(queryClient, inboxItemLike as any, {
+          id: currentUserId,
+          username: currentUsername,
+        });
+      }
 
       await workbenchCoordinationApi.submitAction(taskId, {
         action: actionType,
@@ -445,12 +466,19 @@ export function TodoCard({
                     coordPayload.workflowId === "hr.leave.request" || Boolean(coordParams.leaveType);
 
                   const isInitiatedByMe = isItemInitiatedByMe(item, currentUsername, currentUserId);
-                  const assigneeName = coordPayload.assignee?.username || "处理担当";
+                  const isSentInTransit = Boolean(
+                    coordPayload.inTransit ||
+                    coordPayload.isSent ||
+                    coordPayload.asyncExecution?.status === 'running' ||
+                    coordPayload.currentStage === 'contract_review_execution'
+                  );
+                  const assigneeName = isSentInTransit
+                    ? "系统智能审查 / 法务审核"
+                    : coordPayload.assignee?.username || "处理担当";
                   const isAssignedToOther = Boolean(
                     !isCompleted &&
                     isInitiatedByMe &&
-                    coordPayload.assignee?.username &&
-                    coordPayload.assignee.username !== currentUsername
+                    ((coordPayload.assignee?.username && coordPayload.assignee.username !== currentUsername) || isSentInTransit)
                   );
                   // 仅在「已发事项」或「全部」Tab中展示外发流转给他人等待办理的撤回与催办
                   // 在未完成/今日待办/收件箱中属于「自己的作业」，绝不展示撤回催办
@@ -496,61 +524,103 @@ export function TodoCard({
                           style={{ width: "100%" }}
                         >
                           <div className={styles["workbench-todo-item-row"]}>
-                            <Checkbox
-                              checked={isCompleted}
-                              onChange={(e) => onToggleTodo(item.id, e.target.checked)}
-                              className={styles["workbench-todo-checkbox"]}
-                            >
-                              {/* 任务主分类：流程任务 vs 普通任务 */}
-                              <Tag
-                                color={nodeSemantics.isProcessTask ? "blue" : "default"}
-                                bordered={false}
-                                style={{
-                                  marginRight: 4,
-                                  fontWeight: 600,
-                                  fontSize: 11,
-                                  borderRadius: 4,
-                                }}
+                            {nodeSemantics.isProcessTask || isCoordination || isReceipt ? (
+                              <div
+                                className={styles["workbench-todo-checkbox"]}
+                                style={{ cursor: "default" }}
                               >
-                                {nodeSemantics.isProcessTask ? "流程任务" : "普通任务"}
-                              </Tag>
-
-                              {isReceipt ? (
+                                {/* 任务主分类：流程任务 */}
                                 <Tag
-                                  color={isRejectReceipt ? "error" : isApproveReceipt ? "success" : "cyan"}
-                                  style={{ marginRight: 4 }}
+                                  color="blue"
+                                  bordered={false}
+                                  style={{
+                                    marginRight: 4,
+                                    fontWeight: 600,
+                                    fontSize: 11,
+                                    borderRadius: 4,
+                                  }}
                                 >
-                                  {isRejectReceipt ? "已驳回" : isApproveReceipt ? "已通过" : "已办结"}
+                                  流程任务
                                 </Tag>
-                              ) : (isCompleted && Boolean(extSync.trackingNumber || extSync.detail?.archiveId)) ? (
-                                <Tag color="green" style={{ marginRight: 4 }}>
-                                  已办结
-                                </Tag>
-                              ) : isArchived ? (
-                                <Tag color="default" style={{ marginRight: 4 }}>
-                                  已归档
-                                </Tag>
-                              ) : isCompleted ? (
-                                <Tag color="success" style={{ marginRight: 4 }}>
-                                  已完成
-                                </Tag>
-                              ) : nodeSemantics.isProcessTask ? (
-                                <Tag color={nodeSemantics.categoryTagColor} style={{ marginRight: 4 }}>
-                                  {nodeSemantics.categoryTagText}
-                                </Tag>
-                              ) : null}
-                              <Typography.Text
-                                delete={isCompleted}
-                                strong={!isCompleted}
-                                className={styles["workbench-todo-title"]}
+
+                                {isReceipt ? (
+                                  <Tag
+                                    color={isRejectReceipt ? "error" : isApproveReceipt ? "success" : "cyan"}
+                                    style={{ marginRight: 4 }}
+                                  >
+                                    {isRejectReceipt ? "已驳回" : isApproveReceipt ? "已通过" : "已办结"}
+                                  </Tag>
+                                ) : isSentInTransit ? (
+                                  <Tag color="processing" icon={<LoadingOutlined spin />} style={{ marginRight: 4 }}>
+                                    智能审查中
+                                  </Tag>
+                                ) : (isCompleted && Boolean(extSync.trackingNumber || extSync.detail?.archiveId)) ? (
+                                  <Tag color="green" style={{ marginRight: 4 }}>
+                                    已办结
+                                  </Tag>
+                                ) : isArchived ? (
+                                  <Tag color="default" style={{ marginRight: 4 }}>
+                                    已归档
+                                  </Tag>
+                                ) : isCompleted ? (
+                                  <Tag color="success" style={{ marginRight: 4 }}>
+                                    已完成
+                                  </Tag>
+                                ) : (
+                                  <Tag color={nodeSemantics.categoryTagColor} style={{ marginRight: 4 }}>
+                                    {nodeSemantics.categoryTagText}
+                                  </Tag>
+                                )}
+                                <Typography.Text
+                                  strong={!isCompleted}
+                                  className={styles["workbench-todo-title"]}
+                                >
+                                  {nodeSemantics.displayTitle || item.title}
+                                </Typography.Text>
+                              </div>
+                            ) : (
+                              <Checkbox
+                                checked={isCompleted}
+                                onChange={(e) => onToggleTodo(item.id, e.target.checked)}
+                                className={styles["workbench-todo-checkbox"]}
                               >
-                                {nodeSemantics.displayTitle || item.title}
-                              </Typography.Text>
-                            </Checkbox>
+                                {/* 任务主分类：普通任务 */}
+                                <Tag
+                                  color="default"
+                                  bordered={false}
+                                  style={{
+                                    marginRight: 4,
+                                    fontWeight: 600,
+                                    fontSize: 11,
+                                    borderRadius: 4,
+                                  }}
+                                >
+                                  普通任务
+                                </Tag>
+
+                                {isArchived ? (
+                                  <Tag color="default" style={{ marginRight: 4 }}>
+                                    已归档
+                                  </Tag>
+                                ) : isCompleted ? (
+                                  <Tag color="success" style={{ marginRight: 4 }}>
+                                    已完成
+                                  </Tag>
+                                ) : null}
+
+                                <Typography.Text
+                                  delete={isCompleted}
+                                  strong={!isCompleted}
+                                  className={styles["workbench-todo-title"]}
+                                >
+                                  {nodeSemantics.displayTitle || item.title}
+                                </Typography.Text>
+                              </Checkbox>
+                            )}
 
                             <Space size={6} className={styles["workbench-todo-actions"]}>
-                              {/* 1. 需重修/已驳回状态任务：展示「重新编辑并发送」与「详细」按钮 */}
-                              {nodeSemantics.isRevisionRequired ? (
+                              {/* 1. 需重修/已驳回状态任务：展示「重新编辑并发送」与「详细」按钮 (已结束任务仅允许查看详情) */}
+                              {nodeSemantics.isRevisionRequired && !isCompleted ? (
                                 <>
                                   <Tooltip title="当前任务已被驳回或需重修，请打开详情修改业务要件或替换附件后再重新提交">
                                     <Button
@@ -574,15 +644,7 @@ export function TodoCard({
                                   <Tooltip title="查看驳回原因、核验材料并重新编辑提交流程">
                                     <Button
                                       size="small"
-                                      style={{
-                                        borderRadius: 6,
-                                        height: 26,
-                                        padding: '0 10px',
-                                        color: 'var(--text-secondary, #475569)',
-                                        borderColor: 'rgba(148, 163, 184, 0.35)',
-                                        background: 'var(--bg-container, #ffffff)',
-                                        fontWeight: 500,
-                                      }}
+                                      className={styles['workbench-todo-action-btn']}
                                       icon={<EyeOutlined style={{ fontSize: 12 }} />}
                                       onClick={() => {
                                         setDetailModalTodo(item);
@@ -597,40 +659,35 @@ export function TodoCard({
                                 <>
                                   <Popconfirm
                                     title="确定撤回此发起事项？"
-                                    description="撤回后将终止后续流转，并自动归入「已结束」。"
+                                    description="撤回后将终止后续流转，并将事项退回至您的「待办」，您可重新编辑并再次发送。"
                                     onConfirm={() => onRecallTodo?.(item)}
                                     okText="确认撤回"
                                     cancelText="取消"
                                   >
                                     <Button
                                       size="small"
-                                      icon={<RollbackOutlined />}
-                                      style={{ color: "#d46b08", borderColor: "#ffd591" }}
+                                      icon={<RollbackOutlined style={{ fontSize: 12 }} />}
+                                      className={styles['workbench-todo-recall-btn']}
                                     >
                                       撤回
                                     </Button>
                                   </Popconfirm>
-                                  <Tooltip title={`向当前处理担当 @${assigneeName} 发送催办提醒`}>
-                                    <Button
-                                      size="small"
-                                      icon={<BellOutlined style={{ color: "#1677ff" }} />}
-                                      onClick={() => onRemindTodo?.(item)}
-                                    >
-                                      催办
-                                    </Button>
-                                  </Tooltip>
+                                  {!isSentInTransit ? (
+                                    <Tooltip title={`向当前处理担当 @${assigneeName} 发送催办提醒`}>
+                                      <Button
+                                        size="small"
+                                        icon={<BellOutlined style={{ fontSize: 12 }} />}
+                                        className={styles['workbench-todo-remind-btn']}
+                                        onClick={() => onRemindTodo?.(item)}
+                                      >
+                                        催办
+                                      </Button>
+                                    </Tooltip>
+                                  ) : null}
                                   <Tooltip title="查看流转进度与要件详情">
                                     <Button
                                       size="small"
-                                      style={{
-                                        borderRadius: 6,
-                                        height: 26,
-                                        padding: '0 10px',
-                                        color: 'var(--text-secondary, #475569)',
-                                        borderColor: 'rgba(148, 163, 184, 0.35)',
-                                        background: 'var(--bg-container, #ffffff)',
-                                        fontWeight: 500,
-                                      }}
+                                      className={styles['workbench-todo-action-btn']}
                                       icon={<EyeOutlined style={{ fontSize: 12 }} />}
                                       onClick={() => {
                                         setDetailModalTodo(item);
@@ -677,26 +734,10 @@ export function TodoCard({
                                           size="small"
                                           type="primary"
                                           loading={quickSendingId === item.id}
-                                          style={
+                                          className={
                                             nodeSemantics.cardActionType === 'send'
-                                              ? {
-                                                  background: 'linear-gradient(135deg, #1677ff 0%, #0958d9 100%)',
-                                                  borderColor: '#0958d9',
-                                                  boxShadow: '0 2px 4px rgba(22, 119, 255, 0.25)',
-                                                  fontWeight: 500,
-                                                  borderRadius: 6,
-                                                  height: 26,
-                                                  padding: '0 10px',
-                                                }
-                                              : {
-                                                  background: 'linear-gradient(135deg, #722ed1 0%, #531dab 100%)',
-                                                  borderColor: '#531dab',
-                                                  boxShadow: '0 2px 4px rgba(114, 46, 209, 0.25)',
-                                                  fontWeight: 500,
-                                                  borderRadius: 6,
-                                                  height: 26,
-                                                  padding: '0 10px',
-                                                }
+                                              ? styles['workbench-todo-send-btn']
+                                              : styles['workbench-todo-flow-btn']
                                           }
                                           icon={
                                             nodeSemantics.cardActionType === 'send' ? (
@@ -715,15 +756,7 @@ export function TodoCard({
                                   <Tooltip title="查看要件详情、查验文档或进行详细处理与流转">
                                     <Button
                                       size="small"
-                                      style={{
-                                        borderRadius: 6,
-                                        height: 26,
-                                        padding: '0 10px',
-                                        color: 'var(--text-secondary, #475569)',
-                                        borderColor: 'rgba(148, 163, 184, 0.35)',
-                                        background: 'var(--bg-container, #ffffff)',
-                                        fontWeight: 500,
-                                      }}
+                                      className={styles['workbench-todo-action-btn']}
                                       icon={<EyeOutlined style={{ fontSize: 12 }} />}
                                       onClick={() => {
                                         setDetailModalTodo(item);
@@ -738,12 +771,7 @@ export function TodoCard({
                                       <Button
                                         size="small"
                                         danger
-                                        style={{
-                                          borderRadius: 6,
-                                          height: 26,
-                                          padding: '0 10px',
-                                          fontWeight: 500,
-                                        }}
+                                        className={styles['workbench-todo-reject-btn']}
                                         icon={<CloseCircleOutlined style={{ fontSize: 12 }} />}
                                         onClick={() => {
                                           setDetailModalTodo(item);
@@ -769,15 +797,7 @@ export function TodoCard({
                                     <Button
                                       size="small"
                                       type="text"
-                                      style={{
-                                        borderRadius: 6,
-                                        height: 26,
-                                        width: 26,
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: 'var(--text-tertiary, #94a3b8)',
-                                      }}
+                                      className={styles['workbench-todo-archive-btn']}
                                       icon={<InboxOutlined style={{ fontSize: 14 }} />}
                                     />
                                   </Tooltip>
@@ -940,19 +960,12 @@ export function TodoCard({
                                 <Button
                                   size="small"
                                   type="primary"
-                                  ghost
-                                  icon={<DownloadOutlined />}
+                                  icon={<DownloadOutlined style={{ fontSize: 12 }} />}
                                   href={replaceLocalhostWithCurrentHost(effectiveDownloadUrl)}
                                   target="_blank"
                                   download={effectiveDocName}
                                   onClick={(e) => e.stopPropagation()}
-                                  style={{
-                                    borderRadius: 6,
-                                    height: 26,
-                                    padding: '0 10px',
-                                    fontSize: 12,
-                                    fontWeight: 500,
-                                  }}
+                                  className={styles['workbench-todo-download-btn']}
                                 >
                                   下载
                                 </Button>

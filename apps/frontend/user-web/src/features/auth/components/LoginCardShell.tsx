@@ -38,6 +38,7 @@ export function LoginCardShell({ isDark, children }: LoginCardShellProps) {
         }}
       />
       <div
+        className="login-card-shell"
         style={{
           width: '100%',
           maxWidth: 440,

@@ -412,16 +412,16 @@ ${summaryItems.join('\n')}
     const externalSystem = ext.externalSystem || '法务电子合同库 & 存证归档中心';
 
     const params = opts.parameters || {};
-    const ourParty = params.ourParty || '富士通';
-    const ourRole = params.ourRole || '乙方';
-    const counterpartyName = params.counterpartyName || detail.counterpartyName || '豆包有限公司';
-    const counterpartyRole = params.counterpartyRole || '甲方';
-    const counterpartyAddress = params.counterpartyAddress || '北京市东城区王府井大街1000号';
-    const signDate = params.signDate || '2026-09-17';
+    const ourParty = params.ourParty || params.ourCompany || '我方主体';
+    const ourRole = params.ourRole || '承办方';
+    const counterpartyName = params.counterpartyName || detail.counterpartyName || '合作企业';
+    const counterpartyRole = params.counterpartyRole || '相对方';
+    const counterpartyAddress = params.counterpartyAddress || '-';
+    const signDate = params.signDate || new Date().toISOString().split('T')[0];
     const remarks = params.remarks || '无特殊批注';
 
-    const initiatorName = opts.initiator?.username || 'admin';
-    const operatorName = opts.operator?.username || 'law01';
+    const initiatorName = opts.initiator?.username || '系统发起人';
+    const operatorName = opts.operator?.username || '协同经办人';
 
     return `# 业务协同流程办结与电子存证备案凭证
 
@@ -495,14 +495,14 @@ ${summaryItems.join('\n')}
 
         if (isFinished) {
           await this.archiveWorkflowDeliverables({
-            workflowId: payload.workflowId || detail.workflowId || 'legal.nda.generation_and_review_flow',
-            workflowName: detail.workflowName || payload.workflowName || '商业保密协议 (NDA) 闭环流',
-            category: '合规法务',
+            workflowId: payload.workflowId || detail.workflowId || 'generic_workflow',
+            workflowName: detail.workflowName || payload.workflowName || '业务协同流转流程',
+            category: '流程归档',
             taskTitle: detail.contractTitle || payload.parameters?.contractTitle || item.sourceTitle || item.title,
-            trackingNumber: ext.trackingNumber || 'LEGAL-ARC-502563',
-            archiveId: detail.archiveId || 'ARC_1789615502563',
+            trackingNumber: ext.trackingNumber || `TRACK-${Date.now().toString().slice(-6)}`,
+            archiveId: detail.archiveId || `ARC_${Date.now()}`,
             initiator: payload.initiator,
-            operator: { username: 'law01' },
+            operator: { username: payload.sourceSender || payload.assignee?.username || 'system' },
             parameters: payload.parameters,
             reviewReport: payload.reviewReport,
             actions: payload.actions,

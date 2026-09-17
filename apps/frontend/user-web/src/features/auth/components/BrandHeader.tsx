@@ -1,9 +1,13 @@
+import { useTranslation } from 'react-i18next';
+
 interface BrandHeaderProps {
   isDark: boolean;
 }
 
 /** 登录卡片顶部的 Logo + 标题 + 标语。 */
 export function BrandHeader({ isDark }: BrandHeaderProps) {
+  const { t } = useTranslation('auth');
+
   return (
     <div
       style={{
@@ -74,10 +78,10 @@ export function BrandHeader({ isDark }: BrandHeaderProps) {
       </div>
       <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ color: 'var(--text-primary)', fontSize: 18, fontWeight: 600 }}>
-          构建新一代自动化运维体验
+          {t('brand_title', '新一代企业级 AI 中台')}
         </div>
         <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-          智能编排 · 高效执行 · 安全认证
+          {t('brand_subtitle', '智能编排 · 流程协同 · 业务赋能')}
         </div>
       </div>
     </div>

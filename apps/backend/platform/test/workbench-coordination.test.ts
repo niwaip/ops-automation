@@ -42,6 +42,14 @@ describe('WorkbenchCoordinationService', () => {
       findFirst: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
+    },
+    workbenchTodo: {
+      create: jest.fn(),
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
     },
     execution: {
       create: jest.fn().mockImplementation((args) =>
@@ -1249,6 +1257,89 @@ describe('WorkbenchCoordinationService', () => {
           }),
         })
       );
+    });
+
+    it('should recall sent coordination task back to pending todo without ending it', async () => {
+      const mockTaskId = 'coord_recall_test_1';
+      mockPrisma.workbenchInboxItem.findFirst.mockResolvedValue({
+        id: 'inbox_item_recall_1',
+        title: '[已发送] 腾讯科技 - 战略合作保密协议 (NDA)',
+        sourceTitle: '腾讯科技 - 战略合作保密协议 (NDA)',
+        sourceRefId: mockTaskId,
+        userId: 'u-initiator-1',
+        sourceSender: 'business_owner',
+        status: 'converted',
+        unifiedPayload: {
+          taskId: mockTaskId,
+          workflowId: 'legal.nda.generation_and_review_flow',
+          currentStage: 'contract_review_execution',
+          status: 'pending',
+          inTransit: true,
+          isSent: true,
+          initiator: { id: 'u-initiator-1', username: 'business_owner' },
+          assignee: { id: 'u-law01-uuid', username: 'law01' },
+          parameters: {
+            contractTitle: '腾讯科技 - 战略合作保密协议 (NDA)',
+          },
+        },
+      });
+
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'u-initiator-1',
+        username: 'business_owner',
+      });
+      mockPrisma.user.findFirst.mockResolvedValue({
+        id: 'u-initiator-1',
+        username: 'business_owner',
+      });
+
+      (mockPrisma as any).workbenchInboxItem.updateMany.mockResolvedValue({ count: 1 });
+      (mockPrisma as any).workbenchTodo.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.workbenchInboxItem.update.mockResolvedValue({});
+
+      const recallResult = await service.recallTask('u-initiator-1', mockTaskId, '发现合作金额填错，撤回修正');
+
+      expect(recallResult.success).toBe(true);
+      expect(recallResult.status).toBe('pending');
+      expect(recallResult.message).toContain('已返回您的「待办」');
+
+      // 验证经办人条目被置为 converted，仅在行动待办看板中显示
+      expect(mockPrisma.workbenchInboxItem.update).toHaveBeenCalledWith({
+        where: { id: 'inbox_item_recall_1' },
+        data: expect.objectContaining({
+          title: '[已撤回] 腾讯科技 - 战略合作保密协议 (NDA)',
+          status: 'converted',
+          unifiedPayload: expect.objectContaining({
+            isRecalled: true,
+            inTransit: false,
+            isSent: false,
+            currentStage: 'initiator_confirm',
+          }),
+        }),
+      });
+
+      // 验证待办任务状态被重置为 pending，回到待办
+      expect((mockPrisma as any).workbenchTodo.updateMany).toHaveBeenCalledWith({
+        where: expect.any(Object),
+        data: expect.objectContaining({
+          title: '[已撤回] 腾讯科技 - 战略合作保密协议 (NDA)',
+          status: 'pending',
+          completedAt: null,
+          contextData: expect.objectContaining({
+            isRecalled: true,
+          }),
+        }),
+      });
+
+      // 验证下游任务被废弃（status: discarded）
+      expect((mockPrisma as any).workbenchInboxItem.updateMany).toHaveBeenCalledWith({
+        where: expect.objectContaining({
+          userId: { not: 'u-initiator-1' },
+        }),
+        data: expect.objectContaining({
+          status: 'discarded',
+        }),
+      });
     });
 
   describe('MockHrService', () => {

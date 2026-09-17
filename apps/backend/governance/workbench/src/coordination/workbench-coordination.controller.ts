@@ -158,6 +158,17 @@ export class WorkbenchCoordinationController {
     return await this.coordinationService.archiveTask(userId, taskId);
   }
 
+  @Post('tasks/:taskId/recall')
+  @ApiOperation({ summary: '撤回协同任务并退回发起人待办' })
+  async recallTask(
+    @Request() req: any,
+    @Param('taskId') taskId: string,
+    @Body('comment') comment?: string
+  ) {
+    const userId = this.extractUserId(req);
+    return await this.coordinationService.recallTask(userId, taskId, comment);
+  }
+
   // ==========================================
   // 管理端 / 5173 企业工作流编排与发布接口
   // ==========================================

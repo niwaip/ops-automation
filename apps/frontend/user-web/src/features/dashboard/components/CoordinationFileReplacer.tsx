@@ -207,41 +207,43 @@ export function CoordinationFileReplacer({
           })}
         </Space>
       ) : !replacementFile ? (
-        <div
-          style={{
-            padding: '14px 16px',
-            borderRadius: 8,
-            border: '1px dashed var(--border-color, #d9d9d9)',
-            background: 'var(--bg-secondary, rgba(148, 163, 184, 0.04))',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-            当前暂未关联生成文档，您可上传交付成果文件：
-          </span>
-          <Upload
-            showUploadList={false}
-            beforeUpload={(file) => {
-              handleCustomUpload(file);
-              return false;
+        !disabled ? (
+          <div
+            style={{
+              padding: '14px 16px',
+              borderRadius: 8,
+              border: '1px dashed var(--border-color, #d9d9d9)',
+              background: 'var(--bg-secondary, rgba(148, 163, 184, 0.04))',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
             }}
-            accept=".docx,.doc,.pdf"
-            disabled={disabled || isUploading}
           >
-            <Button
-              size="small"
-              type="primary"
-              ghost
-              icon={<UploadOutlined />}
-              loading={isUploading}
-              style={{ borderRadius: 6, height: 28, fontSize: 12 }}
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+              当前暂未关联生成文档，您可上传交付成果文件：
+            </span>
+            <Upload
+              showUploadList={false}
+              beforeUpload={(file) => {
+                handleCustomUpload(file);
+                return false;
+              }}
+              accept=".docx,.doc,.pdf"
+              disabled={disabled || isUploading}
             >
-              上传交付文档
-            </Button>
-          </Upload>
-        </div>
+              <Button
+                size="small"
+                type="primary"
+                ghost
+                icon={<UploadOutlined />}
+                loading={isUploading}
+                style={{ borderRadius: 6, height: 28, fontSize: 12 }}
+              >
+                上传交付文档
+              </Button>
+            </Upload>
+          </div>
+        ) : null
       ) : null}
 
       {/* 2. 替换文件展示 */}
@@ -326,7 +328,7 @@ export function CoordinationFileReplacer({
             </Button>
           </Space>
         </div>
-      ) : validAttachments.length > 0 ? (
+      ) : validAttachments.length > 0 && !disabled ? (
         /* 3. 未上传替换文件时的温和提示 */
         <div
           style={{

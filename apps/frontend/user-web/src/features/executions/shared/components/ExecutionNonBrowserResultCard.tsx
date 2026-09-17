@@ -1,13 +1,14 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Button, Typography } from 'antd';
-import { DownOutlined, UpOutlined } from '@ant-design/icons';
+import { Button, Space, Typography } from 'antd';
+import { DownOutlined, DownloadOutlined, EyeOutlined, UpOutlined } from '@ant-design/icons';
 import { JsonPreview } from '@/features/executions/shared/components/JsonPreview';
 import { tryParseJsonValue } from '@/features/executions/shared/lib/common';
 import { beautifyText } from '@/features/executions/detail/lib/detailView';
 import { formatStructuredDataToMarkdown, normalizeTabSeparatedTable } from '@chat-web/lib/tableNormalizer';
 import { HtmlPreviewBlock } from '@chat-web/components/HtmlPreviewBlock';
+import { replaceLocalhostWithCurrentHost } from '@/shared/utils/publicUrl';
 
 const { Text } = Typography;
 
@@ -426,6 +427,7 @@ interface ExecutionNonBrowserResultCardProps {
     title?: string;
     resultType?: string;
     artifacts?: unknown[];
+    downloadUrl?: string;
     temporalLink?: string;
   };
   primaryResultText?: string;
@@ -436,12 +438,144 @@ interface ExecutionNonBrowserResultCardProps {
   labels: ExecutionNonBrowserResultCardLabels;
 }
 
+interface ExtractedArtifact {
+  id?: string;
+  name?: string;
+  label?: string;
+  url?: string;
+  downloadUrl?: string;
+  mimeType?: string;
+  artifactType?: string;
+}
+
+const collectArtifactsFromSources = (
+  normalizedResult?: ExecutionNonBrowserResultCardProps['normalizedResult'],
+  parsedData?: unknown
+): ExtractedArtifact[] => {
+  const result: ExtractedArtifact[] = [];
+  const seenUrls = new Set<string>();
+
+  const addArtifact = (item: unknown) => {
+    if (!item || typeof item !== 'object') return;
+    const rec = item as Record<string, unknown>;
+    const url = typeof rec.url === 'string' ? rec.url : undefined;
+    const downloadUrl =
+      typeof rec.downloadUrl === 'string'
+        ? rec.downloadUrl
+        : typeof rec.download_url === 'string'
+        ? rec.download_url
+        : undefined;
+    const primaryUrl = downloadUrl || url;
+    if (!primaryUrl || seenUrls.has(primaryUrl)) return;
+    seenUrls.add(primaryUrl);
+
+    const name =
+      typeof rec.name === 'string'
+        ? rec.name
+        : typeof rec.label === 'string'
+        ? rec.label
+        : typeof rec.fileName === 'string'
+        ? rec.fileName
+        : undefined;
+
+    result.push({
+      id: typeof rec.id === 'string' ? rec.id : undefined,
+      name,
+      label: typeof rec.label === 'string' ? rec.label : name,
+      url,
+      downloadUrl,
+      mimeType: typeof rec.mimeType === 'string' ? rec.mimeType : undefined,
+      artifactType: typeof rec.artifactType === 'string' ? rec.artifactType : undefined,
+    });
+  };
+
+  if (Array.isArray(normalizedResult?.artifacts)) {
+    normalizedResult.artifacts.forEach(addArtifact);
+  }
+  if (normalizedResult?.downloadUrl) {
+    addArtifact({ downloadUrl: normalizedResult.downloadUrl, name: '结果文件' });
+  }
+
+  if (parsedData && typeof parsedData === 'object') {
+    const rec = parsedData as Record<string, unknown>;
+    if (Array.isArray(rec.artifacts)) {
+      rec.artifacts.forEach(addArtifact);
+    }
+    if (rec.artifact && typeof rec.artifact === 'object') {
+      addArtifact(rec.artifact);
+    }
+    if (rec.finalOutputs && typeof rec.finalOutputs === 'object') {
+      const fo = rec.finalOutputs as Record<string, unknown>;
+      if (Array.isArray(fo.artifacts)) fo.artifacts.forEach(addArtifact);
+      if (fo.artifact && typeof fo.artifact === 'object') addArtifact(fo.artifact);
+      if (typeof fo.downloadUrl === 'string' || typeof fo.url === 'string') addArtifact(fo);
+    }
+    if (rec.result && typeof rec.result === 'object') {
+      const res = rec.result as Record<string, unknown>;
+      if (Array.isArray(res.artifacts)) res.artifacts.forEach(addArtifact);
+      if (res.artifact && typeof res.artifact === 'object') addArtifact(res.artifact);
+      if (typeof res.downloadUrl === 'string' || typeof res.url === 'string') addArtifact(res);
+    }
+  }
+
+  return result;
+};
+
+const renderArtifactActions = (artifacts: ExtractedArtifact[]) => {
+  if (!artifacts.length) return null;
+  return (
+    <div
+      style={{
+        marginTop: 14,
+        paddingTop: 12,
+        borderTop: '1px solid var(--border-color, rgba(0, 0, 0, 0.08))',
+      }}
+    >
+      <Space wrap size={[10, 10]}>
+        {artifacts.map((art, idx) => {
+          const rawUrl = art.downloadUrl || art.url;
+          const targetUrl = replaceLocalhostWithCurrentHost(rawUrl) || rawUrl;
+          if (!targetUrl) return null;
+          const displayName = art.name || art.label || `生成文档 ${idx + 1}`;
+          const isHtml =
+            displayName.endsWith('.html') || (art.mimeType && art.mimeType.includes('html'));
+          return (
+            <Space key={art.id || idx} size={8}>
+              <Button
+                type="primary"
+                size="small"
+                icon={<DownloadOutlined />}
+                onClick={() => window.open(targetUrl, '_blank')}
+                style={{ borderRadius: 6 }}
+              >
+                {`下载 ${displayName}`}
+              </Button>
+              {isHtml && (
+                <Button
+                  size="small"
+                  icon={<EyeOutlined />}
+                  onClick={() => window.open(targetUrl, '_blank')}
+                  style={{ borderRadius: 6 }}
+                >
+                  在线预览报告
+                </Button>
+              )}
+            </Space>
+          );
+        })}
+      </Space>
+    </div>
+  );
+};
+
 const ExecutionNonBrowserResultCard: React.FC<ExecutionNonBrowserResultCardProps> = ({
+  normalizedResult,
   primaryResultText,
   effectiveResultJson,
   labels,
 }) => {
   const parsedData = tryParseJsonValue(effectiveResultJson);
+  const artifacts = collectArtifactsFromSources(normalizedResult, parsedData);
   const rawDisplayText =
     primaryResultText ||
     extractDisplayText(parsedData) ||
@@ -461,6 +595,7 @@ const ExecutionNonBrowserResultCard: React.FC<ExecutionNonBrowserResultCardProps
           ) : (
             <ExpandablePlainText text={displayText} />
           )}
+          {renderArtifactActions(artifacts)}
         </div>
       </div>
     );
@@ -486,6 +621,7 @@ const ExecutionNonBrowserResultCard: React.FC<ExecutionNonBrowserResultCardProps
             <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
               任务已成功完成，已为您生成结果文档。您可以直接点击下方按钮进行查看与下载。
             </Text>
+            {renderArtifactActions(artifacts)}
           </div>
         </div>
       );
@@ -505,10 +641,18 @@ const ExecutionNonBrowserResultCard: React.FC<ExecutionNonBrowserResultCardProps
           {typeof parsedFallback === 'object' ? (
             <JsonPreview value={parsedFallback} />
           ) : (
-            <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 13 }}>
+            <pre
+              style={{
+                margin: 0,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                fontSize: 13,
+              }}
+            >
               {jsonString}
             </pre>
           )}
+          {renderArtifactActions(artifacts)}
         </div>
       </div>
     );

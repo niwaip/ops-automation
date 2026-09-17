@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom
 import { useStore } from 'zustand';
 import { authStore } from '../../adapters/auth/authStore';
 import { UserLayout } from '../layouts/UserLayout';
+import { ErrorBoundary } from '../../shared/components/ErrorBoundary';
 
 const LoginPage = lazy(() =>
   import('../../features/auth/pages/LoginPage').then((module) => ({ default: module.LoginPage }))
@@ -69,7 +70,9 @@ function PrivateRoute({ children }: PrivateRouteProps) {
 function ProtectedOutlet() {
   return (
     <PrivateRoute>
-      <Outlet />
+      <ErrorBoundary>
+        <Outlet />
+      </ErrorBoundary>
     </PrivateRoute>
   );
 }
