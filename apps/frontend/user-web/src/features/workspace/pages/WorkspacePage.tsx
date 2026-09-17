@@ -105,7 +105,7 @@ export function WorkspacePage() {
     }
   );
 
-  const [activeTab, setActiveTab] = useState<'personal' | 'department' | 'company'>('personal');
+  const [activeTab, setActiveTab] = useState<'personal' | 'department' | 'company' | 'process'>('personal');
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([{ id: null, name: '根目录' }]);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchMode, setSearchMode] = useState<'name' | 'content'>('name');
@@ -130,11 +130,12 @@ export function WorkspacePage() {
     if (!workspacesData) return null;
     if (activeTab === 'personal') return workspacesData.personal;
     if (activeTab === 'company') return workspacesData.company;
+    if (activeTab === 'process') return workspacesData.process || null;
     return workspacesData.department;
   }, [workspacesData, activeTab]);
 
   // 切换工作空间 Tab 时重置路径与搜索
-  const handleTabChange = useCallback((tab: 'personal' | 'department' | 'company') => {
+  const handleTabChange = useCallback((tab: 'personal' | 'department' | 'company' | 'process') => {
     setActiveTab(tab);
     setBreadcrumbs([{ id: null, name: '根目录' }]);
     setSearchKeyword('');
@@ -296,8 +297,8 @@ export function WorkspacePage() {
     }
   };
 
-  // 是否只读（公司公共盘且非管理员为只读）
-  const isReadOnly = activeTab === 'company' && !isAdmin;
+  // 是否只读（公司公共盘与流程管理空间默认非管理员只读，确保归档文档安全防篡改）
+  const isReadOnly = (activeTab === 'company' || activeTab === 'process') && !isAdmin;
 
   // 表格列定义
   const columns: ColumnsType<WorkspaceNode> = [
@@ -498,6 +499,17 @@ export function WorkspacePage() {
                 <span>公司公共盘</span>
               </div>
               <Tag color="orange" bordered={false}>{isAdmin ? '维护' : '只读'}</Tag>
+            </div>
+
+            <div
+              className={`${styles['workspace-nav-item']}${activeTab === 'process' ? ` ${styles['is-active']}` : ''}`}
+              onClick={() => handleTabChange('process')}
+            >
+              <div className={styles['workspace-nav-item-left']}>
+                <span className={styles['workspace-nav-icon']}><AuditOutlined /></span>
+                <span>流程管理空间</span>
+              </div>
+              <Tag color="cyan" bordered={false}>协同归档</Tag>
             </div>
           </nav>
         </div>

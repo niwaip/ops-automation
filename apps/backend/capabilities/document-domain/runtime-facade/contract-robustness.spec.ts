@@ -439,4 +439,164 @@ describe('Contract Robustness & High-Risk Vulnerability Fixes', () => {
       expect(result.warnings.some((w: string) => w.includes('混合图文版面'))).toBe(true);
     });
   });
+
+  describe('[P2] Contract Section and Chapter Segmentation for Arabic Numerals and OpenXML', () => {
+    it('should correctly segment Arabic numeral sections without splitting sub-clauses in text', () => {
+      const parser = new ContractAstParserService();
+      const contractText = `保 密 协 议
+鉴于甲方与乙方正在开展AI项目合作，双方订立如下协议：
+
+1. 定义：
+1.1 专有信息的定义：
+本协议所称的“专有信息”是指所有商业秘密、技术秘密。
+1.2 “接收方”：是指接收专有信息的一方。
+
+2. 保密义务：
+2.1 接收方同意严格保密透露方所透露的专有信息。
+2.2 接收方保证采取所有必要的方法进行保密。
+
+3. 争议的解决：
+由本协议产生的一切争议由双方友好协商解决。协商不成，应提交仲裁。`;
+
+      const clauses = parser.parseTextToClauses(contractText);
+
+      // Should have 4 clauses: 前言 + 1. 定义 + 2. 保密义务 + 3. 争议的解决
+      expect(clauses.length).toBe(4);
+      expect(clauses[0].clauseNumber).toBe('前言');
+      expect(clauses[0].title).toBe('合同引言与主体信息');
+
+      expect(clauses[1].clauseNumber).toBe('1.');
+      expect(clauses[1].title).toBe('定义');
+      expect(clauses[1].content).toContain('1.1 专有信息的定义');
+      expect(clauses[1].content).toContain('1.2 “接收方”');
+
+      expect(clauses[2].clauseNumber).toBe('2.');
+      expect(clauses[2].title).toBe('保密义务');
+      expect(clauses[2].content).toContain('2.1 接收方同意严格保密');
+
+      expect(clauses[3].clauseNumber).toBe('3.');
+      expect(clauses[3].title).toBe('争议的解决');
+      expect(clauses[3].chapterTitle).toBe('合同正文条款');
+    });
+
+    it('should correctly segment docx OpenXML with top-level Word numbering into chapters and clauses', async () => {
+      const parser = new ContractAstParserService();
+      const fs = await import('fs');
+      const path = await import('path');
+      const docxPath = path.join(
+        __dirname,
+        '../../../var/outputs/document-engine/7ab82ad9-9fe2-4bfc-b951-d57c0214e8a0.docx'
+      );
+
+      if (!fs.existsSync(docxPath)) {
+        return; // Skip if file is not in environment
+      }
+
+      const buffer = fs.readFileSync(docxPath);
+      const clauses = await parser.parseDocxOpenXml(buffer);
+
+      // Must be split into 12 distinct clauses (Preamble + 11 Articles)
+      expect(clauses.length).toBe(12);
+      expect(clauses[0].clauseNumber).toBe('前言');
+      expect(clauses[1].title).toBe('定义');
+      expect(clauses[2].title).toBe('保密义务');
+      expect(clauses[3].title).toBe('使用方式和不使用的义务');
+      expect(clauses[4].title).toBe('例外情况');
+      expect(clauses[5].title).toBe('专有信息的交回');
+      expect(clauses[6].title).toBe('否认许可');
+      expect(clauses[7].title).toBe('救济方法');
+      expect(clauses[8].title).toBe('保密期限');
+      expect(clauses[9].title).toBe('适用法律');
+      expect(clauses[10].title).toBe('争议的解决');
+      expect(clauses[11].title).toBe('生效及其它事项');
+
+      // Verify sub-clauses are contained inside their parent clauses
+      expect(clauses[1].content).toContain('专有信息的定义');
+      expect(clauses[7].content).toContain('救济方法');
+      expect(clauses[8].content).toContain('保密期限为“接收方”收到相关专有信息起3年');
+    });
+
+    it('should correctly segment Chinese numeral sections (一、二、三、) into distinct clauses', () => {
+      const parser = new ContractAstParserService();
+      const contractText = `商业保密合作协议
+甲方：北京科技创新有限公司
+乙方：深圳数字智能科技有限公司
+
+一、保密信息的范围与界定
+本协议所称的保密信息是指透露方向接收方披露的任何未公开的商业与技术信息。
+
+二、接收方的保密义务与责任
+接收方应当对透露方披露的保密信息采取严密的保密措施，不得向第三方透露。
+
+三、保密期限与终止
+双方确认保密期限自协议生效之日起三年内持续有效。
+
+四、违约赔偿责任
+任何一方违反保密义务，应当向守约方支付违约金并全额赔偿直接与间接损失。`;
+
+      const clauses = parser.parseTextToClauses(contractText);
+      expect(clauses.length).toBe(5); // 前言 + 一、 + 二、 + 三、 + 四、
+      expect(clauses[0].clauseNumber).toBe('前言');
+      expect(clauses[1].clauseNumber).toBe('一、');
+      expect(clauses[1].title).toBe('保密信息的范围与界定');
+      expect(clauses[2].clauseNumber).toBe('二、');
+      expect(clauses[2].title).toBe('接收方的保密义务与责任');
+      expect(clauses[3].clauseNumber).toBe('三、');
+      expect(clauses[3].title).toBe('保密期限与终止');
+      expect(clauses[4].clauseNumber).toBe('四、');
+      expect(clauses[4].title).toBe('违约赔偿责任');
+    });
+
+    it('should correctly segment chapter-only contracts without formal articles', () => {
+      const parser = new ContractAstParserService();
+      const contractText = `系统集成与技术服务主协议
+甲方：甲公司
+乙方：乙公司
+
+第一章 总则与合作宗旨
+双方基于互利共赢原则，就智慧物流平台集成项目展开全面技术合作。
+
+第二章 双方权利与义务
+甲方负责提供现场硬件环境与网络设施，乙方负责调度软件的开发与调试部署。
+
+第三章 验收标准与违约责任
+项目通过三阶段联调测试后签署终验报告。任何延期交付均须支付千分之五的违约金。`;
+
+      const clauses = parser.parseTextToClauses(contractText);
+      expect(clauses.length).toBe(4); // 前言 + 第一章 + 第二章 + 第三章
+      expect(clauses[0].clauseNumber).toBe('前言');
+      expect(clauses[1].clauseNumber).toBe('第一章');
+      expect(clauses[1].title).toContain('总则与合作宗旨');
+      expect(clauses[2].clauseNumber).toBe('第二章');
+      expect(clauses[2].title).toContain('双方权利与义务');
+      expect(clauses[3].clauseNumber).toBe('第三章');
+      expect(clauses[3].title).toContain('验收标准与违约责任');
+    });
+
+    it('should correctly segment docx OpenXML with markdown-styled headings (### 第一条)', async () => {
+      const parser = new ContractAstParserService();
+      const fs = await import('fs');
+      const path = await import('path');
+      const docxPath = path.join(
+        __dirname,
+        '../../../intelligence/ai-orchestrator/data/storage/uploads/file-1789267131748-y4ma0d7qd-contract_v1_baseline.docx'
+      );
+
+      if (!fs.existsSync(docxPath)) {
+        return;
+      }
+
+      const buffer = fs.readFileSync(docxPath);
+      const clauses = await parser.parseDocxOpenXml(buffer);
+
+      // Must be split into 9 distinct clauses (Preamble + 8 Articles)
+      expect(clauses.length).toBe(9);
+      expect(clauses[0].clauseNumber).toBe('前言');
+      expect(clauses[1].clauseNumber).toBe('第一条');
+      expect(clauses[1].title).toContain('项目范围与合作宗旨');
+      expect(clauses[2].clauseNumber).toBe('第二条');
+      expect(clauses[8].clauseNumber).toBe('第八条');
+      expect(clauses[8].title).toContain('争议管辖与仲裁');
+    });
+  });
 });

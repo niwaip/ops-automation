@@ -4,19 +4,47 @@ import { createChatSessionId } from './lib/session';
 
 export type ChatMode = 'chat' | 'task';
 
+export interface ChatTaskAttachment {
+  name: string;
+  url?: string;
+  size?: number;
+  mimeType?: string;
+}
+
+export interface ChatTaskContext {
+  taskId?: string;
+  taskTitle: string;
+  workflowId?: string;
+  taskContent?: string;
+  parameters?: Record<string, any>;
+  attachments?: ChatTaskAttachment[];
+}
+
 export interface ChatStoreState {
   currentSession: ChatSession | null;
   isOpen: boolean;
   chatMode: ChatMode;
   draftMessage: string;
   draftExecutionId: string | null;
+  taskContext: ChatTaskContext | null;
+  autoSend?: boolean;
   createSession: () => ChatSession;
   setCurrentSession: (session: ChatSession | null) => void;
   setOpen: (isOpen: boolean) => void;
   setChatMode: (mode: ChatMode) => void;
   setDraftMessage: (message: string) => void;
   setDraftExecutionId: (executionId: string | null) => void;
-  openWithPrompt: (message: string, mode?: ChatMode, executionId?: string | null) => void;
+  setTaskContext: (context: ChatTaskContext | null) => void;
+  openWithPrompt: (
+    message: string,
+    mode?: ChatMode,
+    executionId?: string | null,
+    autoSend?: boolean
+  ) => void;
+  openWithTaskContext: (
+    context: ChatTaskContext,
+    defaultDraft?: string
+  ) => void;
   clearDraftContext: () => void;
 }
 
@@ -26,6 +54,8 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
   chatMode: 'task',
   draftMessage: '',
   draftExecutionId: null,
+  taskContext: null,
+  autoSend: false,
   createSession: () => {
     const now = new Date().toISOString();
     const nextSession: ChatSession = {
@@ -52,17 +82,40 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
   },
   setDraftMessage: (draftMessage) => set({ draftMessage }),
   setDraftExecutionId: (draftExecutionId) => set({ draftExecutionId }),
-  openWithPrompt: (draftMessage, chatMode = 'task', draftExecutionId = null) =>
+  setTaskContext: (taskContext) => set({ taskContext }),
+  openWithPrompt: (
+    draftMessage,
+    chatMode = 'task',
+    draftExecutionId = null,
+    autoSend = false
+  ) => {
+    const nextSession = get().createSession();
     set({
       isOpen: true,
       draftMessage,
       chatMode,
       draftExecutionId,
-    }),
+      autoSend,
+      currentSession: nextSession,
+    });
+  },
+  openWithTaskContext: (taskContext, defaultDraft = '') => {
+    const nextSession = get().createSession();
+    set({
+      isOpen: true,
+      chatMode: 'task',
+      draftMessage: defaultDraft,
+      draftExecutionId: null,
+      taskContext,
+      autoSend: false,
+      currentSession: nextSession,
+    });
+  },
   clearDraftContext: () =>
     set({
       draftMessage: '',
       draftExecutionId: null,
       chatMode: 'task',
+      autoSend: false,
     }),
 }));

@@ -122,6 +122,12 @@ export function useWorkbenchExecutions({
   const upcomingSchedules = activeSchedules.slice(0, 3);
   const skillNameMap = useMemo(() => {
     const map = new Map<string, string>();
+    map.set('document.contract.review', '合同文档智能审查与合规诊断');
+    map.set('platform.document.contract-reviewer', '合同文档智能审查与合规诊断');
+    map.set('platform.document.contract-comparator', '合同文档智能比对与差异分析');
+    map.set('platform.document.pdf-create', '文档转 PDF 与存证渲染');
+    map.set('platform.notification.internal-message', '流转凭证与回执通知');
+    map.set('ConfidentialityAgreementGenerationWorkflow', '商业保密协议(NDA)智能生成技能');
     (skillsQuery.data?.skills || []).forEach((skill) => {
       map.set(skill.id, skill.name);
     });
@@ -176,7 +182,7 @@ export function useWorkbenchExecutions({
       if (!skillId) {
         return '未关联技能';
       }
-      return sanitizeDisplayName(skillNameMap.get(skillId)) || '未命名技能';
+      return sanitizeDisplayName(skillNameMap.get(skillId)) || skillId;
     },
     [skillNameMap]
   );

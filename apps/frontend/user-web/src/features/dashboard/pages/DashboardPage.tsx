@@ -1,6 +1,7 @@
 import {
   ArrowRightOutlined,
   CheckOutlined,
+  ClearOutlined,
   InboxOutlined,
   InfoCircleOutlined,
   OrderedListOutlined,
@@ -8,20 +9,24 @@ import {
 } from '@ant-design/icons';
 import {
   App,
+  Button,
   Card,
   Col,
+  Popconfirm,
   Popover,
   Row,
   Typography,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from 'react-query';
+import { useQuery, useQueryClient } from 'react-query';
 import {
   EXECUTION_STATUS_LABELS_ZH,
   type ExecutionDto,
 } from '@ops/user-core';
 import { workbenchInboxApi } from '@/api/workbenchInbox';
+import { workbenchTodoApi } from '@/api/workbenchTodo';
+import { executionApi } from '@/api/execution';
 import { useChatStore } from '../../chat';
 import { InboxCard } from '../components/InboxCard';
 import { RecentExecutionsCard } from '../components/RecentExecutionsCard';
@@ -31,7 +36,9 @@ import { useWorkbenchExecutions } from '../hooks/useWorkbenchExecutions';
 import { useWorkbenchSummary } from '../hooks/useWorkbenchSummary';
 import { useWorkbenchTodos } from '../hooks/useWorkbenchTodos';
 import {
+  clearWorkbenchHandledExecutions,
   loadWorkbenchHandledExecutions,
+  mergeHandledExecutions,
   saveWorkbenchHandledExecutions,
   type WorkbenchHandledExecutionMap,
 } from '../lib/workbenchHandledExecutionStorage';
@@ -46,63 +53,48 @@ const sanitizeDisplayName = (value?: string): string => {
   return value.replace(/-[a-f0-9]{8}(?=(\s|$))/gi, '').trim();
 };
 
-const getExecutionTitle = (execution: ExecutionDto): string => {
-  const resultTitle = execution.normalizedResult?.title?.trim();
-  if (resultTitle) {
-    return resultTitle;
-  }
-  const resultSummary = execution.normalizedResult?.summary?.trim();
-  if (resultSummary) {
-    return resultSummary;
-  }
-  const semanticRecord =
-    execution.semantic && typeof execution.semantic === 'object'
-      ? (execution.semantic as unknown as Record<string, unknown>)
-      : undefined;
-  const semanticTitleCandidate = [
-    semanticRecord?.title,
-    semanticRecord?.summary,
-    semanticRecord?.intent,
-    semanticRecord?.task,
-  ].find((item) => typeof item === 'string' && item.trim());
-  if (typeof semanticTitleCandidate === 'string') {
-    return semanticTitleCandidate;
-  }
-  const inputRecord =
-    execution.normalizedInput && typeof execution.normalizedInput === 'object'
-      ? (execution.normalizedInput as Record<string, unknown>)
-      : undefined;
-  const inputCandidate = [
-    inputRecord?.user_input,
-    inputRecord?.prompt,
-    inputRecord?.task,
-    inputRecord?.query,
-    inputRecord?.goal,
-    inputRecord?.url,
-  ].find((item) => typeof item === 'string' && item.trim());
-  if (typeof inputCandidate === 'string') {
-    return inputCandidate;
-  }
-  return `执行单 ${execution.id.slice(0, 8)}`;
-};
+import { getExecutionTitle } from '../lib/executionTitle';
 
 export function DashboardPage() {
   const { message } = App.useApp();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const createSession = useChatStore((state) => state.createSession);
   const setOpen = useChatStore((state) => state.setOpen);
   const setChatMode = useChatStore((state) => state.setChatMode);
   const setDraftMessage = useChatStore((state) => state.setDraftMessage);
   const setDraftExecutionId = useChatStore((state) => state.setDraftExecutionId);
+  const [isClearingData, setIsClearingData] = useState(false);
   const [handledExecutions, setHandledExecutions] = useState<WorkbenchHandledExecutionMap>(() =>
     loadWorkbenchHandledExecutions()
   );
 
+  // 从云端同步已阅执行单映射（解决换设备或清缓存后已阅失效的问题）
+  useQuery(
+    ['workbench-handled-executions'],
+    () => workbenchInboxApi.getHandledExecutions(),
+    {
+      staleTime: 60000,
+      onSuccess: (remoteMap) => {
+        if (remoteMap && typeof remoteMap === 'object' && Object.keys(remoteMap).length > 0) {
+          setHandledExecutions((current) => {
+            const merged = mergeHandledExecutions(current, remoteMap);
+            saveWorkbenchHandledExecutions(merged);
+            return merged;
+          });
+        }
+      },
+    }
+  );
+
   const {
     activeTab,
+    handleArchiveTodo,
     handleCreateTodo,
     handleDeleteTodo,
     handleExecuteTodo,
+    handleRecallTodo,
+    handleRemindTodo,
     handleToggleTodo,
     setActiveTab,
     setTodoDraft,
@@ -116,6 +108,7 @@ export function DashboardPage() {
     executionsReady,
     getExecutionDisplayDescription,
     getExecutionDisplayTime,
+    getSkillDisplayName,
     manualQueue,
     priorityQueueDisplay,
     recentSuccessfulExecutions,
@@ -182,21 +175,93 @@ export function DashboardPage() {
       for (const item of priorityQueueDisplay) {
         next[item.id] = handledAt;
       }
+      saveWorkbenchHandledExecutions(next);
+      void workbenchInboxApi.saveHandledExecutions(next);
       return next;
     });
     void message.success(`已全部标记已阅（${priorityQueueDisplay.length} 项）`);
   };
 
+  const handleIgnorePriorityItem = useCallback((executionId: string) => {
+    const handledAt = new Date().toISOString();
+    setHandledExecutions((current) => {
+      const next = {
+        ...current,
+        [executionId]: handledAt,
+      };
+      saveWorkbenchHandledExecutions(next);
+      void workbenchInboxApi.saveHandledExecutions(next);
+      return next;
+    });
+    void message.success('已标记已阅');
+  }, [message]);
+
+  const handleClearAllTestData = async () => {
+    try {
+      setIsClearingData(true);
+      await Promise.allSettled([
+        workbenchInboxApi.clearAll(true),
+        workbenchTodoApi.clearAll(true),
+        executionApi.cleanupBeforeDate({ beforeDate: '2099-01-01' }),
+      ]);
+
+      // 清除本地前端归档与已阅缓存
+      localStorage.removeItem('ops_archived_inbox_ids');
+      localStorage.removeItem('ops_archived_workbench_ids');
+      clearWorkbenchHandledExecutions();
+      setHandledExecutions({});
+
+      // 刷新所有相关缓存
+      await Promise.allSettled([
+        queryClient.invalidateQueries(['workbench-inbox']),
+        queryClient.invalidateQueries(['workbench-inbox-summary']),
+        queryClient.invalidateQueries(['workbench-todos']),
+        queryClient.invalidateQueries(['workbench-todos-summary']),
+        queryClient.invalidateQueries(['workbench-coordination-sent-tasks']),
+        queryClient.invalidateQueries(['workbench-handled-executions']),
+        queryClient.invalidateQueries(['dashboard-executions']),
+        queryClient.invalidateQueries(['dashboard-executions', 'summary']),
+        queryClient.invalidateQueries(['executions']),
+      ]);
+      void message.success('GTD 收件箱、待办与待介入执行记录已全部清空，可开始全新测试');
+    } catch (err: any) {
+      void message.error(`清空失败: ${err?.message || '网络或接口异常'}`);
+    } finally {
+      setIsClearingData(false);
+    }
+  };
+
   return (
     <div className={styles['workbench-page']}>
       {/* 顶部工作台全景态势条 */}
-      <Card className={styles['workbench-hero']} styles={{ body: { padding: '12px 20px' } }}>
+      <Card className={styles['workbench-hero']} styles={{ body: { padding: '14px 20px' } }}>
         <div className={styles['workbench-hero-content']}>
           <div className={styles['workbench-hero-heading']}>
-            <span className={styles['workbench-hero-title']}>办公与任务工作台</span>
+            <span className={styles['workbench-hero-title']}>工作台</span>
             <span className={styles['workbench-hero-subtitle']}>
-              左侧收集与厘清，右侧规划与执行；双核驱动个人高效工作流。
+              统一待办规划与任务协同中心
             </span>
+            <div style={{ marginLeft: 'auto' }}>
+              <Popconfirm
+                title="清空测试数据"
+                description="确定清空所有 GTD 收件箱与待办任务数据吗？此操作主要用于系统测试与数据重置。"
+                okText="确定清空"
+                cancelText="取消"
+                okButtonProps={{ danger: true, loading: isClearingData }}
+                onConfirm={handleClearAllTestData}
+              >
+                <Button
+                  size="small"
+                  danger
+                  type="text"
+                  icon={<ClearOutlined />}
+                  loading={isClearingData}
+                  style={{ fontSize: 12 }}
+                >
+                  清空测试数据
+                </Button>
+              </Popconfirm>
+            </div>
           </div>
 
           <div className={styles['workbench-summary-strip']}>
@@ -228,8 +293,25 @@ export function DashboardPage() {
                     <CheckOutlined />
                   </div>
                   <div className={styles['workbench-summary-body']}>
-                    <span className={styles['workbench-summary-key']}>今日完成</span>
-                    <span className={styles['workbench-summary-number']}>{todayCompletedExecutions.length}</span>
+                    <span className={styles['workbench-summary-key-row']}>
+                      <span className={styles['workbench-summary-key']}>今日完成</span>
+                      <Popover
+                        trigger={['hover']}
+                        placement="bottomLeft"
+                        overlayClassName="workbench-summary-popover"
+                        content={
+                          <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+                            <div>待办任务完成：<strong>{todoSummary.completedToday ?? 0}</strong> 项</div>
+                            <div>自动化执行完成：<strong>{todayCompletedExecutions.length}</strong> 次</div>
+                          </div>
+                        }
+                      >
+                        <InfoCircleOutlined className={styles['workbench-summary-tip']} />
+                      </Popover>
+                    </span>
+                    <span className={styles['workbench-summary-number']}>
+                      {(todoSummary.completedToday ?? 0) + todayCompletedExecutions.length}
+                    </span>
                   </div>
                 </div>
 
@@ -292,6 +374,12 @@ export function DashboardPage() {
             onOpenExecution={(executionId) => navigate(`/executions/${executionId}`)}
             onViewAllExecutions={() => navigate('/executions')}
             onIgnoreAllPriorityItems={handleIgnoreAllPriorityItems}
+            onIgnorePriorityItem={handleIgnorePriorityItem}
+            onLaunchAiAssistant={launchAiAssistant}
+            getExecutionDisplayDescription={getExecutionDisplayDescription}
+            getExecutionDisplayTime={getExecutionDisplayTime}
+            getSkillDisplayName={getSkillDisplayName}
+            onTodoCreated={() => setActiveTab('pending')}
           />
         </Col>
 
@@ -310,6 +398,9 @@ export function DashboardPage() {
             onToggleTodo={handleToggleTodo}
             onExecuteTodo={handleExecuteTodo}
             onDeleteTodo={handleDeleteTodo}
+            onArchiveTodo={handleArchiveTodo}
+            onRecallTodo={handleRecallTodo}
+            onRemindTodo={handleRemindTodo}
           />
         </Col>
       </Row>

@@ -644,4 +644,13 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
     expect(topology?.nodes[0]?.capabilityKey).toBe('platform.document.contract-reviewer');
     expect(topology?.finalOutputKind).toBe('artifact');
   });
+
+  it('does not hijack NDA drafting / generation requests as contract_review', () => {
+    const userRequest =
+      '合同审查 我需要的北京王府井大街1000号的 豆包有限公司，签订关于 ai模型开发的 保密协议，签订日期是今天，我们是乙方 富士通';
+    const matched = matcher.matchRecipe(userRequest);
+
+    // Should NOT match single-skill contract_review on nonexistent file
+    expect(matched?.recipeName).not.toBe('contract_review');
+  });
 });

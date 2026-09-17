@@ -20,7 +20,7 @@ import { GracePolicyService } from './grace-policy.service';
 import { ERROR_CODES } from '@ops/backend-error-codes';
 import { buildDeterministicExecutionResult } from './deterministic-execution-result.builder';
 import { DeterministicReadySetService } from './deterministic-ready-set.service';
-import { ResultRefService } from '../result-ref/result-ref.service';
+import { ResultRefService, truncateString } from '../result-ref/result-ref.service';
 import { unwrapStoredStepOutput } from './stored-step-output';
 import { createHash } from 'crypto';
 import { DeterministicRuntimeSessionCoordinatorService } from './deterministic-runtime-session-coordinator.service';
@@ -713,7 +713,9 @@ export class DeterministicPlanSchedulerService {
         inputSchema?.properties &&
         typeof inputSchema.properties === 'object' &&
         !Object.prototype.hasOwnProperty.call(inputSchema.properties, k) &&
-        k !== 'idempotencyKey'
+        k !== 'idempotencyKey' &&
+        k !== 'taskContext' &&
+        !['downloadUrl', 'fileUrl', 'url', 'downloadUrlA', 'fileUrlA', 'downloadUrlB', 'fileUrlB', 'files'].includes(k)
       ) {
         continue;
       }
@@ -1192,7 +1194,7 @@ export class DeterministicPlanSchedulerService {
           suspectedPromptInjection: candidate.suspectedPromptInjection === true,
           untrustedExternalContent: true,
         },
-        preview: text.slice(0, 160),
+        preview: truncateString(text, 160),
       };
       const page = Array.isArray(browser?.pages)
         ? browser.pages.find((item: any) => item.stepId === candidate.sourceStepId)

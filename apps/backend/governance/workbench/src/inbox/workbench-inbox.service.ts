@@ -73,7 +73,7 @@ export class WorkbenchInboxService {
     if (query.status) {
       where.status = query.status;
     } else if (!query.includeArchived) {
-      where.status = { notIn: [InboxItemStatus.archived, InboxItemStatus.discarded] };
+      where.status = { notIn: [InboxItemStatus.archived, InboxItemStatus.discarded, InboxItemStatus.converted] };
     }
 
     if (query.sourceType) {
@@ -177,7 +177,12 @@ export class WorkbenchInboxService {
       item.rawContent;
     const priority = dto.priority || actionItem?.priority || 'medium';
     const dueDate = dto.dueDate || actionItem?.dueDate;
-    const boundWorkflowId = dto.boundWorkflowId || actionItem?.suggestedWorkflowId;
+    const payload = (item.unifiedPayload || {}) as Record<string, any>;
+    const boundWorkflowId =
+      dto.boundWorkflowId ||
+      actionItem?.suggestedWorkflowId ||
+      payload.workflowId ||
+      null;
 
     // 1. 创建正式待办任务
     const createdTodo = await this.prisma.workbenchTodo.create({
@@ -242,4 +247,81 @@ export class WorkbenchInboxService {
     });
     return { success: true, id };
   }
+
+  /**
+   * 清空 GTD 收件箱数据（供系统测试与重置使用）
+   */
+  async clearAll(userId: string, wipeAllUsers = false) {
+    const where = wipeAllUsers ? {} : { userId };
+    const result = await this.prisma.workbenchInboxItem.deleteMany({ where });
+    this.logger.log(`Cleared inbox items: count=${result.count}, userId=${userId}, wipeAllUsers=${wipeAllUsers}`);
+    return { success: true, count: result.count };
+  }
+
+  /**
+   * 获取当前用户在云端持久化的已阅执行单映射
+   */
+  async getHandledExecutions(userId: string): Promise<Record<string, string>> {
+    try {
+      const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(userId);
+      const scopeId = isUuid ? userId : '00000000-0000-0000-0000-000000000000';
+      const memory = await this.prisma.scopedMemory?.findUnique?.({
+        where: {
+          scopeType_scopeId_kind_memoryKey: {
+            scopeType: 'user',
+            scopeId,
+            kind: 'workbench_preference',
+            memoryKey: 'handled_executions',
+          },
+        },
+      });
+      return (memory?.valueJson as Record<string, string>) || {};
+    } catch (err: any) {
+      this.logger.warn(`Failed to query handled executions: ${err?.message}`);
+      return {};
+    }
+  }
+
+  /**
+   * 持久化当前用户的已阅执行单映射至云端
+   */
+  async saveHandledExecutions(
+    userId: string,
+    handledExecutions: Record<string, string>
+  ): Promise<{ success: boolean }> {
+    try {
+      const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(userId);
+      const scopeId = isUuid ? userId : '00000000-0000-0000-0000-000000000000';
+      const sanitized = handledExecutions && typeof handledExecutions === 'object' ? handledExecutions : {};
+      await this.prisma.scopedMemory?.upsert?.({
+        where: {
+          scopeType_scopeId_kind_memoryKey: {
+            scopeType: 'user',
+            scopeId,
+            kind: 'workbench_preference',
+            memoryKey: 'handled_executions',
+          },
+        },
+        create: {
+          scopeType: 'user',
+          scopeId,
+          kind: 'workbench_preference',
+          memoryKey: 'handled_executions',
+          valueJson: sanitized,
+          source: 'user_setting',
+          status: 'active',
+        },
+        update: {
+          valueJson: sanitized,
+          status: 'active',
+          updatedAt: new Date(),
+        },
+      });
+      return { success: true };
+    } catch (err: any) {
+      this.logger.warn(`Failed to save handled executions: ${err?.message}`);
+      return { success: false };
+    }
+  }
 }
+

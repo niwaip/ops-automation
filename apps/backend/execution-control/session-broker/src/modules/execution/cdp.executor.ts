@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { getBrowserWorkerUrl } from '../../config/service-endpoints';
+import { getBrowserWorkerUrl, getInternalAuthHeaders } from '../../config/service-endpoints';
 
 export interface TemplateStep {
   step_id: string;
@@ -133,6 +133,7 @@ export class CdpExecutor implements OnModuleDestroy {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...getInternalAuthHeaders(),
       },
       body: JSON.stringify(body),
     });

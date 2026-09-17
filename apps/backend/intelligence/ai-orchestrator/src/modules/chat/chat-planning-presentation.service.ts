@@ -9,7 +9,8 @@ export class ChatPlanningPresentationService {
   constructor(private readonly promptDebugSettings: PromptDebugSettingsService) {}
 
   buildUploadedFileParams(
-    files?: Array<{ fileName: string; mimeType: string; content?: string; url?: string; downloadUrl?: string; fileUrl?: string }>
+    files?: Array<{ fileName?: string; mimeType?: string; content?: string; url?: string; downloadUrl?: string; fileUrl?: string; storagePath?: string }>,
+    message?: string
   ): Record<string, unknown> {
     const validFiles =
       files?.filter(
@@ -17,7 +18,8 @@ export class ChatPlanningPresentationService {
           Boolean(candidate.content) ||
           Boolean(candidate.fileName) ||
           Boolean((candidate as any).url) ||
-          Boolean((candidate as any).downloadUrl)
+          Boolean((candidate as any).downloadUrl) ||
+          Boolean((candidate as any).storagePath)
       ) || [];
     const first = validFiles[0];
     const second = validFiles[1];
@@ -32,7 +34,7 @@ export class ChatPlanningPresentationService {
         params.fileName = first.fileName;
         params.fileNameA = first.fileName;
       }
-      const urlA = (first as any).url || (first as any).downloadUrl || (first as any).fileUrl;
+      const urlA = (first as any).url || (first as any).downloadUrl || (first as any).fileUrl || (first as any).storagePath;
       if (urlA) {
         params.fileUrl = urlA;
         params.fileUrlA = urlA;
@@ -47,12 +49,53 @@ export class ChatPlanningPresentationService {
       if (second.fileName) {
         params.fileNameB = second.fileName;
       }
-      const urlB = (second as any).url || (second as any).downloadUrl || (second as any).fileUrl;
+      const urlB = (second as any).url || (second as any).downloadUrl || (second as any).fileUrl || (second as any).storagePath;
       if (urlB) {
         params.fileUrlB = urlB;
         params.downloadUrlB = urlB;
       }
     }
+
+    if (message && typeof message === 'string') {
+      const mdRegex = /\[([^\]]+)\]\((https?:\/\/[^\s\)]+|\/[^\s\)]+)\)/g;
+      const mdMatches: Array<{ title: string; url: string }> = [];
+      let m: RegExpExecArray | null;
+      while ((m = mdRegex.exec(message)) !== null) {
+        if (m[1] && m[2]) {
+          mdMatches.push({ title: m[1].trim(), url: m[2].trim() });
+        }
+      }
+
+      if (mdMatches.length > 0) {
+        if (!params.downloadUrl && mdMatches[0]) {
+          params.fileUrl = mdMatches[0].url;
+          params.fileUrlA = mdMatches[0].url;
+          params.downloadUrl = mdMatches[0].url;
+          params.downloadUrlA = mdMatches[0].url;
+          if (!params.fileName) {
+            params.fileName = mdMatches[0].title;
+            params.fileNameA = mdMatches[0].title;
+          }
+        }
+        if (!params.downloadUrlB && mdMatches[1]) {
+          params.fileUrlB = mdMatches[1].url;
+          params.downloadUrlB = mdMatches[1].url;
+          if (!params.fileNameB) {
+            params.fileNameB = mdMatches[1].title;
+          }
+        }
+      } else if (!params.downloadUrl) {
+        const urlMatch = message.match(/https?:\/\/[^\s\)\"\'\<\>]+/);
+        if (urlMatch) {
+          const matchedUrl = urlMatch[0];
+          params.fileUrl = matchedUrl;
+          params.fileUrlA = matchedUrl;
+          params.downloadUrl = matchedUrl;
+          params.downloadUrlA = matchedUrl;
+        }
+      }
+    }
+
     return params;
   }
 

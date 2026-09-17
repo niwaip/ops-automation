@@ -151,6 +151,20 @@ export const workbenchInboxApi = {
     return await apiClient.delete(`/workbench-inbox/${id}`);
   },
 
+  getHandledExecutions: async (): Promise<Record<string, string>> => {
+    return await apiClient.get("/workbench-inbox/preferences/handled-executions");
+  },
+
+  saveHandledExecutions: async (
+    handledExecutions: Record<string, string>
+  ): Promise<{ success: boolean }> => {
+    return await apiClient.put("/workbench-inbox/preferences/handled-executions", { handledExecutions });
+  },
+
+  clearAll: async (all = true): Promise<{ success: boolean; count: number }> => {
+    return await apiClient.delete(`/workbench-inbox/actions/clear-all?all=${all}`);
+  },
+
   syncEmail: async (limit?: number): Promise<EmailSyncResult> => {
     return await apiClient.post(`/workbench-inbox/sync-email${limit ? `?limit=${limit}` : ""}`);
   },

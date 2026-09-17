@@ -40,6 +40,27 @@ export interface WechatChannelStatus {
   provisioning?: { qrcodeUrl: string; expiresAt: string };
 }
 
+export interface XiaozhiChannelStatus {
+  channel: 'xiaozhi';
+  configured: boolean;
+  enabled: boolean;
+  status: 'unconfigured' | 'disabled' | 'connecting' | 'online' | 'reauth_required' | 'error';
+  alias: string;
+  lastConnectedAt?: string;
+  lastToolCallAt?: string;
+  lastError?: string;
+}
+
+export interface XiaozhiVoiceTask {
+  request_id: string;
+  status: string;
+  speech: string;
+  instruction: string;
+  createdAt: string;
+  execution_id?: string;
+  detail_path?: string;
+}
+
 export const imChannelApi = {
   getWechat: (): Promise<WechatChannelStatus> => apiClient.get('/im-channels/wechat'),
   beginWechatProvisioning: (): Promise<WechatChannelStatus> =>
@@ -51,6 +72,12 @@ export const imChannelApi = {
   ): Promise<WechatChannelStatus> =>
     apiClient.put('/im-channels/wechat/interaction-mode', { interactionMode }),
   removeWechat: (): Promise<{ success: boolean }> => apiClient.delete('/im-channels/wechat'),
+  getXiaozhi: (): Promise<XiaozhiChannelStatus> => apiClient.get('/im-channels/xiaozhi'),
+  saveXiaozhi: (endpoint: string, alias: string): Promise<XiaozhiChannelStatus> => apiClient.put('/im-channels/xiaozhi', { endpoint, alias }),
+  setXiaozhiEnabled: (enabled: boolean): Promise<XiaozhiChannelStatus> => apiClient.put('/im-channels/xiaozhi/enabled', { enabled }),
+  testXiaozhi: (): Promise<{ endpointValid: boolean; toolDiscovery: boolean; internalTaskService: boolean }> => apiClient.post('/im-channels/xiaozhi/test'),
+  getXiaozhiTasks: (): Promise<XiaozhiVoiceTask[]> => apiClient.get('/im-channels/xiaozhi/tasks?limit=20'),
+  removeXiaozhi: (): Promise<{ success: boolean }> => apiClient.delete('/im-channels/xiaozhi'),
 };
 const baseSkillApi = createSkillApi(apiClient);
 export const skillApi = {
@@ -137,4 +164,3 @@ export * from './workbenchTodo';
 export * from './workbenchInbox';
 export * from './workbenchCoordination';
 export * from './credentials';
-

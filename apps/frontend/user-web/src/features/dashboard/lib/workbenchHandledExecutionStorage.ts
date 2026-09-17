@@ -41,3 +41,21 @@ export const saveWorkbenchHandledExecutions = (
     JSON.stringify(handledExecutions)
   );
 };
+
+export const mergeHandledExecutions = (
+  base: WorkbenchHandledExecutionMap,
+  incoming: WorkbenchHandledExecutionMap
+): WorkbenchHandledExecutionMap => {
+  const merged: WorkbenchHandledExecutionMap = { ...base };
+  for (const [id, dateStr] of Object.entries(incoming)) {
+    if (!merged[id] || new Date(dateStr).getTime() > new Date(merged[id]).getTime()) {
+      merged[id] = dateStr;
+    }
+  }
+  return merged;
+};
+
+export const clearWorkbenchHandledExecutions = (): void => {
+  browserStorage.removeItem(WORKBENCH_HANDLED_EXECUTION_STORAGE_KEY);
+};
+

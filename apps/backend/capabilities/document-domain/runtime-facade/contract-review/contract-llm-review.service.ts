@@ -18,6 +18,7 @@ export interface ClauseLlmReviewInput {
   myPosition: PartyPosition;
   matchedRules: CheckpointRule[];
   formIntegrity?: FormIntegrityCheckResult;
+  reviewPrompt?: string;
 }
 
 export interface ClauseLlmReviewResult {
@@ -234,6 +235,11 @@ export class ContractLlmReviewService {
       }
     }
 
+    let customPromptDesc = '';
+    if (input.reviewPrompt && input.reviewPrompt.trim()) {
+      customPromptDesc = `\n【用户专项审查提示词 / 业务指引要求】:\n${input.reviewPrompt.trim()}\n`;
+    }
+
     return `你是一名资深中国商事合同法务与合规专家。请审查以下合同条款并以严格的 JSON 格式输出深度分析。
 
 【合同类别】: ${contractTypeName || '商事合同'}
@@ -243,10 +249,10 @@ export class ContractLlmReviewService {
 """
 ${clauseText}
 """
-${standardsDesc}${formIntegrityDesc}
+${standardsDesc}${formIntegrityDesc}${customPromptDesc}
 
 【审查要求】
-1. 结合我方商业立场与法律审查标准，进行实质性法理审查与风险研判。
+1. 结合我方商业立场、法律审查标准以及上述专项审查提示词要求，进行实质性法理审查与风险研判。
 2. 若存在单方倾斜、单方免责、过度责任、保密范围不对称或草案模板未填充等问题，指出核心风险并给出针对我方立场的谈判与修改策略。
 3. 严格输出一个 JSON 对象，严禁使用任何 markdown 代码块标记（禁止输出 \`\`\`json），严禁输出任何前后解释文字：
 {

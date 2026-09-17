@@ -71,6 +71,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   const prefetchedDraftMessage = useChatStore((state) => state.draftMessage);
   const prefetchedChatMode = useChatStore((state) => state.chatMode);
   const prefetchedDraftExecutionId = useChatStore((state) => state.draftExecutionId);
+  const prefetchedAutoSend = useChatStore((state) => state.autoSend);
   const clearDraftContext = useChatStore((state) => state.clearDraftContext);
   const setCurrentSession = useChatStore((state) => state.setCurrentSession);
   const [draft, setDraft] = useState('');
@@ -289,12 +290,23 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     if (!prefetchedDraftMessage) {
       return;
     }
-    setDraft(prefetchedDraftMessage);
+    const messageToSend = prefetchedDraftMessage;
+    const shouldAutoSend = prefetchedAutoSend;
+    setDraft(messageToSend);
     setChatMode(prefetchedChatMode);
     setPendingExecutionId(prefetchedDraftExecutionId);
     clearDraftContext();
+
+    if (shouldAutoSend) {
+      const timer = window.setTimeout(() => {
+        handleSendWithHistory([], messageToSend);
+      }, 100);
+      return () => window.clearTimeout(timer);
+    }
   }, [
     clearDraftContext,
+    handleSendWithHistory,
+    prefetchedAutoSend,
     prefetchedChatMode,
     prefetchedDraftExecutionId,
     prefetchedDraftMessage,

@@ -13,7 +13,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { Button, Input, Select, Segmented, Space, Switch, Tag, Tooltip, Upload, message as antdMessage } from 'antd';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import type { AIModel, UploadedFileDescriptor } from '@ops/user-core';
 import { WorkspaceMentionDropdown } from './WorkspaceMentionDropdown';
@@ -29,10 +29,32 @@ import type { WorkspaceNode } from '../../../api/workspace';
 import { supportsNativeReasoning } from '@/shared/lib/aiModelReasoning';
 import { shouldSubmitChatComposerOnEnter } from '../lib/chatComposerKeyboard';
 import { uploadChatFile } from '../lib/chatComposerMedia';
+import { useChatStore } from '../chatStore';
 
 import styles from '../pages/ChatPage.module.css';
 
 const { TextArea } = Input;
+
+const PARAM_LABEL_MAP: Record<string, string> = {
+  contractTitle: '合同名称',
+  counterpartyName: '相对方企业主体',
+  cooperationSubject: '合作业务主题',
+  durationYears: '保密义务年限',
+  myPosition: '我方合同立场',
+  penaltyAmount: '违约金赔偿约定',
+  remarks: '商务诉求说明',
+  contractType: '合同类型',
+  signDate: '签署日期',
+  currentStage: '当前流程阶段',
+  leaveType: '请假类型',
+  startTime: '开始时间',
+  endTime: '结束时间',
+  durationHours: '请假时长',
+  reason: '请假事由',
+  handoverPerson: '工作交接人',
+  expenseType: '报销类型',
+  amount: '报销金额',
+};
 
 interface UserChatComposerProps {
   draft: string;
@@ -119,6 +141,30 @@ export function UserChatComposer(props: UserChatComposerProps) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFileDescriptor[]>([]);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
 
+  const taskContext = useChatStore((state) => state.taskContext);
+  const setTaskContext = useChatStore((state) => state.setTaskContext);
+
+  // 自动将任务上下文关联的文档载入为附件
+  useEffect(() => {
+    if (!taskContext?.attachments || taskContext.attachments.length === 0) return;
+    const newFiles: UploadedFileDescriptor[] = taskContext.attachments.map((att, i) => ({
+      fileId: `task-att-${i}-${att.name}`,
+      fileName: att.name,
+      mimeType: att.mimeType || 'application/octet-stream',
+      size: att.size || 0,
+      storagePath: att.url,
+      url: att.url,
+      downloadUrl: att.url,
+      fileUrl: att.url,
+      source: 'workspace',
+    }));
+    setUploadedFiles((prev) => {
+      const existingNames = new Set(prev.map((f) => f.fileName));
+      const toAdd = newFiles.filter((f) => !existingNames.has(f.fileName));
+      return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+    });
+  }, [taskContext]);
+
   // # 选空间文件浮层状态
   const [workspaceMentionOpen, setWorkspaceMentionOpen] = useState(false);
   const [workspaceMentionQuery, setWorkspaceMentionQuery] = useState('');
@@ -134,8 +180,10 @@ export function UserChatComposer(props: UserChatComposerProps) {
   const [cardModalOpen, setCardModalOpen] = useState(false);
   const [selectedAssignee, setSelectedAssignee] = useState<CollaboratorUser | null>(null);
 
-  // @ 选人后敲空格唤起工作流流程选择卡片浮层状态
+  // 工作流选择浮层状态（支持 ! / ！与 @空格 唤起）
   const [workflowSelectionOpen, setWorkflowSelectionOpen] = useState(false);
+  const [workflowSelectionMode, setWorkflowSelectionMode] = useState<'bang' | 'at'>('bang');
+  const [workflowSelectionQuery, setWorkflowSelectionQuery] = useState<string>('');
   const [workflowSelectionUser, setWorkflowSelectionUser] = useState<string>('');
   const [workflowSelectionIndex, setWorkflowSelectionIndex] = useState(0);
   const [filteredWorkflowItems, setFilteredWorkflowItems] = useState<WorkflowOptionItem[]>([]);
@@ -157,7 +205,10 @@ export function UserChatComposer(props: UserChatComposerProps) {
             workspaceNodeId: node.id,
             workspaceId: node.workspaceId,
             workspaceType: node.workspaceType,
-            storagePath: (node as any).storagePath,
+            storagePath: (node as any).storagePath || (node as any).url,
+            url: (node as any).url || (node as any).downloadUrl || (node as any).storagePath,
+            downloadUrl: (node as any).downloadUrl || (node as any).url || (node as any).storagePath,
+            fileUrl: (node as any).fileUrl || (node as any).storagePath,
           },
         ]);
         void antdMessage.success(`已引用工作空间文件: ${node.name}`);
@@ -192,6 +243,20 @@ export function UserChatComposer(props: UserChatComposerProps) {
         templateId: 'hr.leave.request',
         name: '员工请假申请',
         tag: 'HRMS 考勤',
+      };
+    }
+    if (/保密|nda/i.test(lower)) {
+      return {
+        templateId: 'legal.nda.generation_and_review_flow',
+        name: '保密合同起草与法务审查闭环流',
+        tag: '法务风控',
+      };
+    }
+    if (/合同|协议|审查|法务/i.test(lower)) {
+      return {
+        templateId: 'legal.contract.review_flow',
+        name: '标准合同起草与法务审查闭环流',
+        tag: '法务风控',
       };
     }
     if (/报销|发票|差旅|打车|支出/i.test(lower)) {
@@ -250,34 +315,68 @@ export function UserChatComposer(props: UserChatComposerProps) {
   );
 
   const handleSelectWorkflow = useCallback(
-    (templateId: string, isModalAction?: boolean) => {
+    (templateId: string, isModalAction?: boolean, workflowItem?: WorkflowOptionItem) => {
       setWorkflowSelectionOpen(false);
-      const targetUser = lastMentionedUser || {
-        id: '',
-        username: workflowSelectionUser || '协同成员',
-        email: null,
-      };
-      setSelectedAssignee(targetUser);
 
-      const text = draft;
-      const lower = text.toLowerCase();
-      if (templateId === 'hr.leave.request' || /请假|休假|事假|病假|年假|调休/i.test(lower)) {
-        setCardInitialTemplateId('hr.leave.request');
-        setCardInitialValues({
-          leaveType: /病假/i.test(lower) ? '病假' : /年假/i.test(lower) ? '年假' : '事假',
-          durationHours: /下午|半天/i.test(lower) ? 4 : /一天|整天/i.test(lower) ? 8 : 4,
-          reason: text.replace(/[@＠][^\s@＠]+/g, '').trim() || '个人私事请假',
-        });
-      } else if (templateId === 'oa.expense.claim' || /报销|发票|支出/i.test(lower)) {
-        setCardInitialTemplateId('oa.expense.claim');
-        setCardInitialValues({});
-      } else {
-        setCardInitialTemplateId(isModalAction ? 'general.coordination' : templateId);
-        setCardInitialValues({});
+      // 如果用户主动选择打开卡片弹窗，保持原有弹窗体验
+      if (isModalAction) {
+        const targetUser = lastMentionedUser || {
+          id: '',
+          username: workflowSelectionUser || '协同成员',
+          email: null,
+        };
+        setSelectedAssignee(targetUser);
+
+        const text = draft;
+        const lower = text.toLowerCase();
+        if (templateId === 'hr.leave.request' || /请假|休假|事假|病假|年假|调休/i.test(lower)) {
+          setCardInitialTemplateId('hr.leave.request');
+          setCardInitialValues({
+            leaveType: /病假/i.test(lower) ? '病假' : /年假/i.test(lower) ? '年假' : '事假',
+            durationHours: /下午|半天/i.test(lower) ? 4 : /一天|整天/i.test(lower) ? 8 : 4,
+            reason: text.replace(/[@＠][^\s@＠]+/g, '').trim() || '个人私事请假',
+          });
+        } else if (templateId === 'oa.expense.claim' || /报销|发票|支出/i.test(lower)) {
+          setCardInitialTemplateId('oa.expense.claim');
+          setCardInitialValues({});
+        } else {
+          setCardInitialTemplateId(isModalAction ? 'general.coordination' : templateId);
+          setCardInitialValues({});
+        }
+        setCardModalOpen(true);
+        return;
       }
-      setCardModalOpen(true);
+
+      // 自然语言调用工作流模式（核心体验）：在输入框带入 !工作流名称 ，让用户直接输入自然语言，不需要卡片
+      const text = draft;
+      const textarea = inputRef.current?.resizableTextArea?.textArea;
+      const cursorPos = textarea?.selectionStart ?? text.length;
+      const textBefore = text.slice(0, cursorPos);
+      const textAfter = text.slice(cursorPos);
+
+      const workflowLabel = workflowItem?.name || templateId;
+
+      let newBefore = textBefore;
+      if (workflowSelectionMode === 'bang') {
+        newBefore = textBefore.replace(/(?:^|\s)[!！]([^\s!！]*)$/, (match) => {
+          const leading = match.startsWith(' ') ? ' ' : '';
+          return `${leading}!${workflowLabel} `;
+        });
+      } else {
+        newBefore = `${textBefore}!${workflowLabel} `;
+      }
+
+      onDraftChange(newBefore + textAfter);
+
+      setTimeout(() => {
+        if (textarea) {
+          textarea.focus();
+          const newPos = newBefore.length;
+          textarea.setSelectionRange(newPos, newPos);
+        }
+      }, 50);
     },
-    [draft, lastMentionedUser, workflowSelectionUser]
+    [draft, onDraftChange, workflowSelectionMode, lastMentionedUser, workflowSelectionUser]
   );
 
   // / 触发 Slash 命令浮层状态
@@ -353,12 +452,43 @@ export function UserChatComposer(props: UserChatComposerProps) {
       setLastMentionedUser(null);
     }
 
+    let finalMessage = trimmed;
+    if (taskContext && trimmed) {
+      const contextLines: string[] = [
+        '',
+        '---',
+        '📋 **【关联协同任务上下文】**',
+        `- **任务标题**：${taskContext.taskTitle}`,
+      ];
+      if (taskContext.workflowId) {
+        contextLines.push(`- **业务流程**：${taskContext.workflowId}`);
+      }
+      if (taskContext.taskContent && taskContext.taskContent !== taskContext.taskTitle) {
+        contextLines.push(`- **任务要求**：${taskContext.taskContent}`);
+      }
+      if (taskContext.parameters && Object.keys(taskContext.parameters).length > 0) {
+        const paramStrs = Object.entries(taskContext.parameters)
+          .filter(([k]) => !['downloadUrl', 'fileName', 'executionId'].includes(k))
+          .map(([k, v]) => `${PARAM_LABEL_MAP[k] || k}: ${v}`);
+        if (paramStrs.length > 0) {
+          contextLines.push(`- **业务要件**：${paramStrs.join('； ')}`);
+        }
+      }
+      if (taskContext.attachments && taskContext.attachments.length > 0) {
+        contextLines.push(
+          `- **关联文档**：${taskContext.attachments.map((a) => (a.url ? `[${a.name}](${a.url})` : a.name)).join(', ')}`
+        );
+      }
+      finalMessage = `${trimmed}\n${contextLines.join('\n')}`;
+      setTaskContext(null);
+    }
+
     if (chatMode === 'task' && workspaceSearchEnabled && trimmed && !trimmed.startsWith('/')) {
-      onSend(filesToSend, `/doc ${trimmed}`);
+      onSend(filesToSend, `/doc ${finalMessage}`);
       return;
     }
-    onSend(filesToSend);
-  }, [chatMode, draft, lastMentionedUser, onSend, uploadedFiles, workspaceSearchEnabled]);
+    onSend(filesToSend, finalMessage !== trimmed ? finalMessage : undefined);
+  }, [chatMode, draft, lastMentionedUser, onSend, setTaskContext, taskContext, uploadedFiles, workspaceSearchEnabled]);
 
   return (
     <div className={styles['user-chat-input-container']} style={{ position: 'relative' }}>
@@ -373,6 +503,8 @@ export function UserChatComposer(props: UserChatComposerProps) {
       />
       <WorkflowSelectionDropdown
         open={workflowSelectionOpen}
+        mode={workflowSelectionMode}
+        searchQuery={workflowSelectionQuery}
         username={workflowSelectionUser}
         targetUser={lastMentionedUser}
         selectedIndex={workflowSelectionIndex}
@@ -447,6 +579,70 @@ export function UserChatComposer(props: UserChatComposerProps) {
             </Button>
           </div>
         ) : null}
+
+        {taskContext ? (
+          <div className={styles['user-chat-task-context-bar']}>
+            <div className={styles['user-chat-task-context-header']}>
+              <div className={styles['user-chat-task-context-badge']}>
+                <RobotOutlined style={{ color: '#722ed1', fontSize: 13 }} />
+                <span style={{ fontWeight: 600, fontSize: 12, color: '#722ed1' }}>
+                  已带入协同任务上下文
+                </span>
+                {taskContext.workflowId ? (
+                  <Tag color="purple" style={{ margin: 0, fontSize: 10, padding: '0 4px', lineHeight: '18px' }}>
+                    {taskContext.workflowId}
+                  </Tag>
+                ) : null}
+              </div>
+              <Button
+                type="text"
+                size="small"
+                className={styles['user-chat-task-context-close-btn']}
+                onClick={() => setTaskContext(null)}
+                title="取消关联此任务上下文"
+              >
+                × 取消带入
+              </Button>
+            </div>
+            <div className={styles['user-chat-task-context-body']}>
+              <div className={styles['user-chat-task-context-title']}>
+                <strong>任务：</strong>{taskContext.taskTitle}
+              </div>
+              {taskContext.parameters && Object.keys(taskContext.parameters).length > 0 ? (
+                <div className={styles['user-chat-task-context-params']}>
+                  <strong>要求要件：</strong>
+                  {Object.entries(taskContext.parameters)
+                    .filter(([k]) => !['downloadUrl', 'fileName', 'executionId'].includes(k))
+                    .map(([k, v]) => `${PARAM_LABEL_MAP[k] || k}: ${v}`)
+                    .join('； ')}
+                </div>
+              ) : null}
+            </div>
+            <div className={styles['user-chat-task-context-suggestions']}>
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginRight: 4 }}>快捷输入：</span>
+              {[
+                '对比审查文档差异与合规风险',
+                '提取文档要点并给出批注建议',
+                '基于业务要求重新生成初稿',
+                '总结任务要求与后续办理事项',
+              ].map((suggestion) => (
+                <Tag
+                  key={suggestion}
+                  className={styles['user-chat-suggestion-pill']}
+                  onClick={() => {
+                    onDraftChange(suggestion);
+                    setTimeout(() => {
+                      inputRef.current?.focus();
+                    }, 50);
+                  }}
+                >
+                  {suggestion}
+                </Tag>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         {uploadedFiles.length > 0 && (
           <div className={styles['user-chat-input-attachments-bar']}>
             {uploadedFiles.map((file, idx) => (
@@ -477,9 +673,23 @@ export function UserChatComposer(props: UserChatComposerProps) {
               const text = event.target.value;
               onDraftChange(text);
 
-              // 1. 探测光标处是否有 @ 人员协同触发词（半角 @ 与全角 ＠，未输入空格）
               const cursorPos = event.target.selectionStart ?? text.length;
               const textBeforeCursor = text.slice(0, cursorPos);
+
+              // 0. 探测光标处是否有 ! 或 ！工作流触发词（输入 ！可以弹出工作流，客户选择模版后输入自然语言）
+              const bangMatch = textBeforeCursor.match(/(?:^|\s)[!！]([^\s!！]*)$/);
+              if (bangMatch) {
+                setWorkflowSelectionMode('bang');
+                setWorkflowSelectionQuery(bangMatch[1]);
+                setWorkflowSelectionOpen(true);
+                setWorkflowSelectionIndex(0);
+                setUserMentionOpen(false);
+                setWorkspaceMentionOpen(false);
+                setSlashOpen(false);
+                return;
+              }
+
+              // 1. 探测光标处是否有 @ 人员协同触发词（半角 @ 与全角 ＠，未输入空格）
               const atMatch = textBeforeCursor.match(/[@＠]([^\s@＠]*)$/);
               if (atMatch) {
                 setUserMentionOpen(true);
@@ -492,10 +702,12 @@ export function UserChatComposer(props: UserChatComposerProps) {
               }
               setUserMentionOpen(false);
 
-              // 2. 探测光标处是否刚刚在 @username 后面输入了空格（触发流程选择卡片）
+              // 2. 探测光标处是否刚刚在 @username 后面输入了空格（触发流程选择）
               const atSpaceMatch = textBeforeCursor.match(/(?:^|\s)[@＠]([^\s@＠]+)\s$/);
               if (atSpaceMatch) {
+                setWorkflowSelectionMode('at');
                 setWorkflowSelectionUser(atSpaceMatch[1]);
+                setWorkflowSelectionQuery('');
                 setWorkflowSelectionOpen(true);
                 setWorkflowSelectionIndex(0);
                 setWorkspaceMentionOpen(false);
@@ -527,12 +739,12 @@ export function UserChatComposer(props: UserChatComposerProps) {
             }}
             placeholder={
               workspaceSearchEnabled && enableWebSearch
-                ? '已开启联网与知识库检索，输入问题直接提问...（输入 / 唤起技能指令，# 关联文件，@ 协同成员）'
+                ? '已开启联网与知识库检索，输入问题直接提问...（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
                 : workspaceSearchEnabled
-                  ? '已开启知识库检索，输入问题直接研读空间文档...（输入 / 唤起技能指令，# 关联文件，@ 协同成员）'
+                  ? '已开启知识库检索，输入问题直接研读空间文档...（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
                   : enableWebSearch
-                    ? '已开启全网实时搜索，输入问题直接检索...（输入 / 唤起技能指令，# 关联文件，@ 协同成员）'
-                    : placeholder || '输入消息，Enter 发送，Shift+Enter 换行（输入 / 唤起技能指令，# 关联文件，@ 协同成员）'
+                    ? '已开启全网实时搜索，输入问题直接检索...（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
+                    : placeholder || '输入消息，Enter 发送，Shift+Enter 换行（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
             }
             className={styles['user-chat-input-textarea']}
             disabled={disabled || isTranscribing || isUploadingFile}
@@ -588,7 +800,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
                   e.preventDefault();
                   const targetItem = filteredWorkflowItems[workflowSelectionIndex];
                   if (targetItem) {
-                    handleSelectWorkflow(targetItem.id, targetItem.isModalAction);
+                    handleSelectWorkflow(targetItem.id, targetItem.isModalAction, targetItem);
                   }
                   return;
                 }
@@ -807,14 +1019,14 @@ export function UserChatComposer(props: UserChatComposerProps) {
                 })),
               ]}
             />
-            <Tooltip title="快捷发起协同流程卡片">
+            <Tooltip title="快捷唤起企业组织工作流 (!)">
               <Button
                 size="small"
                 icon={<ThunderboltOutlined style={{ color: '#722ed1' }} />}
                 onClick={() => {
-                  setSelectedAssignee(lastMentionedUser);
+                  setWorkflowSelectionMode('bang');
+                  setWorkflowSelectionQuery('');
                   setWorkflowSelectionOpen(true);
-                  setWorkflowSelectionUser(lastMentionedUser?.username || '协同成员');
                 }}
                 disabled={disabled}
                 className={styles['user-chat-input-icon-btn']}

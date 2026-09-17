@@ -261,9 +261,9 @@ describe('ContractCompareService Suite', () => {
         expect(result.metrics.totalClauses).toBeGreaterThan(5);
         expect(result.metrics.modifiedCount).toBeGreaterThan(0);
         expect(result.artifacts).toHaveLength(1);
-        expect(result.htmlReport).toContain('合同文档智能比对与红线审查报告');
+        expect(result.htmlReport).toContain('合同智能比对与红线审查报告');
         expect(result.summary).toContain('```html');
-        expect(result.summary).toContain('### ⚖️ 合同智能差异比对与风险研判完成');
+        expect(result.summary).toContain('合同智能比对与红线审查完成');
       }
     });
 
@@ -290,7 +290,7 @@ describe('ContractCompareService Suite', () => {
         expect(result.metrics.modifiedCount).toBeGreaterThan(0);
         expect(result.metrics.highRiskCount).toBeGreaterThanOrEqual(1);
         expect(result.artifacts).toHaveLength(1);
-        expect(result.htmlReport).toContain('合同文档智能比对与红线审查报告');
+        expect(result.htmlReport).toContain('合同智能比对与红线审查报告');
         expect(result.htmlReport).toContain('contract_v1_baseline.pdf');
         expect(result.htmlReport).toContain('contract_v2_revised.pdf');
       }
@@ -321,7 +321,7 @@ describe('ContractCompareService Suite', () => {
         // Must parse full document clauses, not just 1 clause from the filename!
         expect(result.metrics.totalClauses).toBeGreaterThanOrEqual(7);
         expect(result.summary).toContain('```html');
-        expect(result.summary).toContain('### ⚖️ 合同智能差异比对与风险研判完成');
+        expect(result.summary).toContain('合同智能比对与红线审查完成');
         expect(result.htmlReport).toContain('<!DOCTYPE html>');
       }
     });

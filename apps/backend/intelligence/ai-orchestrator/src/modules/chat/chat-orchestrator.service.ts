@@ -210,7 +210,7 @@ export class ChatOrchestratorService {
         context: {
           sessionId: body.sessionId,
           uploadedFiles: body.files,
-          system_collected: this.planningPresentation.buildUploadedFileParams(body.files),
+          system_collected: this.planningPresentation.buildUploadedFileParams(body.files, body.message),
           history: context.history,
           web_search_enabled: isExplicitWebSearch,
           webSearch: isExplicitWebSearch,
@@ -320,7 +320,7 @@ export class ChatOrchestratorService {
           user,
           availableSkills,
           systemInputs: {
-            ...this.planningPresentation.buildUploadedFileParams(body.files),
+            ...this.planningPresentation.buildUploadedFileParams(body.files, body.message),
             ...(hasPreviousResult
               ? {
                   taskContext: {

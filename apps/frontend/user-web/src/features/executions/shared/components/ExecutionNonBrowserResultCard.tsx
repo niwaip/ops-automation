@@ -29,6 +29,56 @@ const TEXT_FIELD_CANDIDATES = [
 
 const MARKDOWN_SYNTAX = /(^|\n)\s{0,3}(#{1,6}\s|[-*+]\s|\d+\.\s|>\s|```|\|.+\|)|\*\*[^*]+\*\*/m;
 
+const LEGAL_ARTICLE_HEADER_REGEX =
+  /^\s*(?:第\s*[一二三四五六七八九十百千万\d]+\s*条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b|[一二三四五六七八九十百]+[、\s]+|(?:\d+[\.、\s]+[^\d\s]))/i;
+
+const LEGAL_CHAPTER_HEADER_REGEX =
+  /^\s*(?:第\s*[一二三四五六七八九十百千万\d]+\s*[编章节篇部]|(?:CHAPTER|PART|TITLE|SECTION)\s+(?:[IVXLCDM\d]+|[A-Z]|\d+)\b)/i;
+
+/**
+ * Detect plain text legal documents with chapter or article structures and promote them
+ * to clean hierarchical markdown headers so they render as distinct structured sections.
+ */
+export function autoFormatLegalMarkdown(text: string): string {
+  if (!text || text.includes('# ') || text.includes('## ')) {
+    return text;
+  }
+
+  const lines = text.split(/\r?\n/);
+  let hasLegalStructure = false;
+
+  const processed = lines.map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return '';
+
+    if (
+      LEGAL_CHAPTER_HEADER_REGEX.test(trimmed) &&
+      trimmed.length < 50 &&
+      !/[。！？；]$/.test(trimmed)
+    ) {
+      hasLegalStructure = true;
+      return `\n## ${trimmed}\n`;
+    }
+
+    if (
+      LEGAL_ARTICLE_HEADER_REGEX.test(trimmed) &&
+      trimmed.length < 60 &&
+      !/[。！？；]$/.test(trimmed)
+    ) {
+      hasLegalStructure = true;
+      return `\n### ${trimmed}\n`;
+    }
+
+    if (/^[甲乙丙丁]方\s*[:：]/.test(trimmed) && trimmed.length < 60) {
+      return `**${trimmed}**`;
+    }
+
+    return line;
+  });
+
+  return hasLegalStructure ? processed.join('\n') : text;
+}
+
 const extractDisplayText = (value: unknown): string | undefined => {
   if (typeof value === 'string' && value.trim()) return value.trim();
   if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -104,6 +154,29 @@ const ExpandableMarkdownBody: React.FC<{ text: string }> = ({ text }) => {
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
+            h1: ({ children }: { children?: React.ReactNode }) => (
+              <h1 style={{ fontSize: 17, fontWeight: 700, margin: '14px 0 8px', borderBottom: '1px solid var(--border-color, #e2e8f0)', paddingBottom: 4 }}>
+                {children}
+              </h1>
+            ),
+            h2: ({ children }: { children?: React.ReactNode }) => (
+              <h2 style={{ fontSize: 15, fontWeight: 700, margin: '12px 0 6px', color: 'var(--ant-color-primary, #1677ff)' }}>
+                {children}
+              </h2>
+            ),
+            h3: ({ children }: { children?: React.ReactNode }) => (
+              <h3 style={{ fontSize: 14, fontWeight: 600, margin: '10px 0 4px', color: 'var(--text-primary, #243041)' }}>
+                {children}
+              </h3>
+            ),
+            h4: ({ children }: { children?: React.ReactNode }) => (
+              <h4 style={{ fontSize: 13, fontWeight: 600, margin: '8px 0 3px' }}>
+                {children}
+              </h4>
+            ),
+            hr: () => (
+              <hr style={{ border: 'none', borderTop: '1px solid var(--border-color, #e2e8f0)', margin: '12px 0' }} />
+            ),
             p: ({ children }: { children?: React.ReactNode }) => (
               <p style={{ margin: '4px 0', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                 {children}
@@ -369,11 +442,11 @@ const ExecutionNonBrowserResultCard: React.FC<ExecutionNonBrowserResultCardProps
   labels,
 }) => {
   const parsedData = tryParseJsonValue(effectiveResultJson);
-  // 1. primaryResultText wins, then extractDisplayText, then auto-formatting structured data
-  const displayText =
+  const rawDisplayText =
     primaryResultText ||
     extractDisplayText(parsedData) ||
     formatStructuredDataToMarkdown(parsedData);
+  const displayText = rawDisplayText ? autoFormatLegalMarkdown(rawDisplayText) : undefined;
   const hasMarkdown = displayText ? MARKDOWN_SYNTAX.test(displayText) : false;
 
   if (displayText) {

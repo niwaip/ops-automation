@@ -44,10 +44,11 @@ import {
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { imChannelApi, type WechatChannelStatus } from '@/api';
+import XiaozhiChannelCard from '../components/XiaozhiChannelCard';
 
 const { Title, Text, Paragraph } = Typography;
 
-type ChannelType = 'wechat' | 'feishu' | 'dingtalk' | 'slack';
+type ChannelType = 'wechat' | 'xiaozhi' | 'feishu' | 'dingtalk' | 'slack';
 
 interface StatusMeta {
   color: string;
@@ -261,11 +262,11 @@ export default function ImChannelsPage() {
                   boxShadow: '0 4px 12px rgba(7, 193, 96, 0.25)',
                 }}
               >
-                <WechatOutlined style={{ color: '#fff', fontSize: 22 }} />
+                  {activeChannel === 'xiaozhi' ? <ApiOutlined style={{ color: '#fff', fontSize: 22 }} /> : <WechatOutlined style={{ color: '#fff', fontSize: 22 }} />}
               </div>
               <div>
                 <Title level={4} style={{ margin: 0, fontWeight: 600, color: token.colorText }}>
-                  IM 即时通讯集成中心
+                  {activeChannel === 'xiaozhi' ? '小智语音 / AI Passport' : 'IM 即时通讯集成中心'}
                 </Title>
               </div>
             </Space>
@@ -273,10 +274,10 @@ export default function ImChannelsPage() {
               type="secondary"
               style={{ margin: 0, fontSize: 13, color: token.colorTextSecondary, maxWidth: 660 }}
             >
-              将 OpsPilot 自动化助手连接至你的即时通讯工具。支持微信自聊双向收发、原生打字状态反馈、多步骤自动化任务触发，并预留飞书、钉钉、Slack 等多渠道扩展。
+              {activeChannel === 'xiaozhi' ? '连接小智智能体，让语音任务进入 OpsPilot 并在网页查看真实执行状态。' : '将 OpsPilot 自动化助手连接至你的即时通讯工具。支持微信自聊双向收发、原生打字状态反馈、多步骤自动化任务触发，并预留飞书、钉钉、Slack 等多渠道扩展。'}
             </Paragraph>
           </Col>
-          <Col xs={24} md={8} style={{ textAlign: 'right' }}>
+          {activeChannel === 'wechat' && <Col xs={24} md={8} style={{ textAlign: 'right' }}>
             <Space direction="vertical" align="end" size={4}>
               <Badge
                 status={statusMeta.badgeStatus}
@@ -290,7 +291,7 @@ export default function ImChannelsPage() {
                 {status?.enabled ? '长连接通道运行中' : '长连接已暂停'}
               </Text>
             </Space>
-          </Col>
+          </Col>}
         </Row>
       </div>
 
@@ -316,6 +317,10 @@ export default function ImChannelsPage() {
                   </Tag>
                 </Space>
               ),
+            },
+            {
+              value: 'xiaozhi',
+              label: <Space size={8} style={{ padding: '4px 8px' }}><ApiOutlined /><span>小智语音 / AI Passport</span></Space>,
             },
             {
               value: 'feishu',
@@ -368,6 +373,7 @@ export default function ImChannelsPage() {
       </div>
 
       {/* 微信渠道主界面 */}
+      {activeChannel === 'xiaozhi' && <XiaozhiChannelCard />}
       {activeChannel === 'wechat' ? (
         <Row gutter={[20, 20]}>
           {/* 左侧：微信通道状态与操作 */}

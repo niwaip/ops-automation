@@ -74,7 +74,15 @@ export function buildDynamicWorkflowCardPayload(
   // 2. 动态合成业务单据标题 (从 Schema 关键业务字段自动推导)
   let title = formValues.title;
   if (!title) {
-    const keyCandidates = ['leaveType', 'expenseType', 'taskType', 'name', 'type'];
+    const keyCandidates = [
+      'contractTitle',
+      'leaveType',
+      'expenseType',
+      'counterpartyName',
+      'taskType',
+      'name',
+      'type',
+    ];
     const primaryKey =
       keyCandidates.find((k) => cleanParameters[k]) || Object.keys(cleanParameters)[0];
     const secondaryKey = ['durationHours', 'amount', 'days'].find(

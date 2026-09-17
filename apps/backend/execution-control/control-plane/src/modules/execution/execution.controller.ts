@@ -222,7 +222,8 @@ export class ExecutionController {
 
   @Get(':id/events/stream')
   @ApiOperation({ summary: 'Stream execution events (SSE)' })
-  async streamEvents(@Param('id') id: string, @Res() res: any): Promise<void> {
+  async streamEvents(@Param('id') id: string, @Req() req: AuthenticatedRequest, @Res() res: any): Promise<void> {
+    await this.executionService.getById(id, req.user);
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');

@@ -199,4 +199,34 @@ describe('Confidentiality Agreement Workflow End-to-End Resolution', () => {
     expect(signDay?.value).toBe(new Date().getDate());
     expect(signDay?.missing).toBe(false);
   });
+
+  it('end-to-end resolves parameters using recognizer for user real prompt without pre-mocked params', async () => {
+    const service = buildParamRecognizerService();
+    const recognizer = new RecognizerService({
+      resolveModelId: jest.fn().mockResolvedValue(null),
+      getClient: jest.fn().mockReturnValue(null),
+      getDefaultModel: jest.fn().mockReturnValue(null),
+    } as unknown as ModelService);
+
+    const realInput =
+      '生成保密合同 我需要的北京王府井大街1000号的 豆包有限公司，签订关于 ai模型开发的 保密协议，签订日期是今天，我们是乙方 富士通';
+
+    const recognized = await recognizer.recognizeParams({
+      template_id: confidentialitySkill.skillId,
+      user_input: realInput,
+      params_schema: confidentialitySkill.paramsSchema,
+    });
+
+    expect(recognized.params['partyA.name']).toBe('豆包有限公司');
+    expect(recognized.params['partyA.address']).toBe('北京王府井大街1000号');
+    expect(recognized.params['partyB.name']).toBe('富士通 ( 中国 ) 信息系統有限公司');
+    expect(recognized.params['cooperation.subject']).toBe('ai模型开发');
+    expect(recognized.params['agreement.signDate.year']).toBe(new Date().getFullYear());
+    expect(recognized.params['agreement.signDate.month']).toBe(new Date().getMonth() + 1);
+    expect(recognized.params['agreement.signDate.day']).toBe(new Date().getDate());
+
+    const inputs = service.buildRequiredInputs(confidentialitySkill, recognized);
+    const missingInputs = inputs.filter((i) => i.missing);
+    expect(missingInputs).toHaveLength(0);
+  });
 });

@@ -8,19 +8,37 @@ import {
   type WorkbenchInboxItem,
 } from "../../../api/workbenchInbox";
 
+export type WorkbenchInboxFilter =
+  | "all"
+  | "intervention"
+  | "unprocessed"
+  | "clarified_archived"
+  | "clarified"
+  | "converted"
+  | "archived";
+
 interface UseWorkbenchInboxOptions {
   message: MessageInstance;
   onTodoCreated?: () => void;
+  defaultFilter?: WorkbenchInboxFilter;
 }
 
-export function useWorkbenchInbox({ message, onTodoCreated }: UseWorkbenchInboxOptions) {
+export function useWorkbenchInbox({ message, onTodoCreated, defaultFilter }: UseWorkbenchInboxOptions) {
   const queryClient = useQueryClient();
   const [inboxDraft, setInboxDraft] = useState("");
-  const [inboxFilter, setInboxFilter] = useState<"all" | "unprocessed" | "clarified" | "converted" | "archived">("all");
+  const [inboxFilter, setInboxFilter] = useState<WorkbenchInboxFilter>(defaultFilter || "unprocessed");
   const [clarifyingIds, setClarifyingIds] = useState<Record<string, boolean>>({});
+  const [archivedInboxIds, setArchivedInboxIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('ops_archived_inbox_ids');
+      if (saved) return new Set(JSON.parse(saved));
+    } catch (_) {}
+    return new Set();
+  });
 
   const queryParams = useMemo(() => {
-    if (inboxFilter === "all") return {};
+    if (inboxFilter === "all" || inboxFilter === "intervention") return {};
+    if (inboxFilter === "clarified_archived") return { includeArchived: true, pageSize: 100 };
     return { status: inboxFilter as InboxItemStatus };
   }, [inboxFilter]);
 
@@ -31,10 +49,17 @@ export function useWorkbenchInbox({ message, onTodoCreated }: UseWorkbenchInboxO
     {
       staleTime: 10000,
       refetchInterval: 30000,
+      enabled: inboxFilter !== "intervention",
     }
   );
 
-  const inboxItems = useMemo(() => inboxData?.items ?? [], [inboxData]);
+  const inboxItems = useMemo(() => {
+    const raw = inboxData?.items ?? [];
+    if (inboxFilter === "clarified_archived") {
+      return raw.filter((i) => i.status === "clarified" || i.status === "archived" || archivedInboxIds.has(i.id));
+    }
+    return raw.filter((i) => i.status !== "converted" && !archivedInboxIds.has(i.id));
+  }, [inboxData, inboxFilter, archivedInboxIds]);
 
   // 获取收件箱概览（包含已归档条目以计算完整统计指标）
   const { data: allInboxData } = useQuery(
@@ -48,13 +73,13 @@ export function useWorkbenchInbox({ message, onTodoCreated }: UseWorkbenchInboxO
   const inboxSummary = useMemo(() => {
     const items = allInboxData?.items ?? inboxItems;
     return {
-      total: items.filter((i) => i.status !== "archived" && i.status !== "discarded").length,
-      unprocessed: items.filter((i) => i.status === "unprocessed").length,
-      clarified: items.filter((i) => i.status === "clarified").length,
-      converted: items.filter((i) => i.status === "converted").length,
-      archived: items.filter((i) => i.status === "archived").length,
+      total: items.filter((i) => i.status !== "archived" && i.status !== "discarded" && i.status !== "converted" && !archivedInboxIds.has(i.id)).length,
+      unprocessed: items.filter((i) => i.status === "unprocessed" && !archivedInboxIds.has(i.id)).length,
+      clarified: items.filter((i) => i.status === "clarified" && !archivedInboxIds.has(i.id)).length,
+      converted: items.filter((i) => i.status === "converted" && !archivedInboxIds.has(i.id)).length,
+      archived: items.filter((i) => i.status === "archived" || archivedInboxIds.has(i.id)).length,
     };
-  }, [allInboxData, inboxItems]);
+  }, [allInboxData, inboxItems, archivedInboxIds]);
 
   // 快速摄入到收件箱
   const ingestMutation = useMutation(
@@ -111,6 +136,9 @@ export function useWorkbenchInbox({ message, onTodoCreated }: UseWorkbenchInboxO
         void queryClient.invalidateQueries(["workbench-inbox-summary"]);
         void queryClient.invalidateQueries(["workbench-todos"]);
         void queryClient.invalidateQueries(["workbench-todos-summary"]);
+        void queryClient.invalidateQueries(["workbench-coordination-sent-tasks"]);
+        void queryClient.invalidateQueries(["workbench-inbox-summary-for-todos"]);
+        void queryClient.refetchQueries(["workbench-todos-summary"]);
         void message.success("已成功转为待办任务！");
         if (onTodoCreated) {
           onTodoCreated();
@@ -148,6 +176,14 @@ export function useWorkbenchInbox({ message, onTodoCreated }: UseWorkbenchInboxO
 
   const handleArchiveItem = useCallback(
     (id: string) => {
+      setArchivedInboxIds((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        try {
+          localStorage.setItem('ops_archived_inbox_ids', JSON.stringify(Array.from(next)));
+        } catch (_) {}
+        return next;
+      });
       updateStatusMutation.mutate({ id, status: "archived" });
     },
     [updateStatusMutation]
@@ -155,6 +191,14 @@ export function useWorkbenchInbox({ message, onTodoCreated }: UseWorkbenchInboxO
 
   const handleUnarchiveItem = useCallback(
     (id: string) => {
+      setArchivedInboxIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        try {
+          localStorage.setItem('ops_archived_inbox_ids', JSON.stringify(Array.from(next)));
+        } catch (_) {}
+        return next;
+      });
       updateStatusMutation.mutate({ id, status: "unprocessed" });
     },
     [updateStatusMutation]

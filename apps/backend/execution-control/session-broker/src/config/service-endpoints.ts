@@ -33,3 +33,12 @@ export const getRedisHost = (): string => {
 
   return isContainerRuntime() ? 'redis' : 'localhost';
 };
+
+export const getInternalAuthHeaders = (): Record<string, string> => {
+  const secret =
+    process.env.INTERNAL_API_SHARED_SECRET ||
+    process.env.INTERNAL_API_SECRET ||
+    'ops_internal_shared_secret_change_me';
+  return { 'x-internal-auth': secret };
+};
+

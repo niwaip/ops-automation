@@ -98,7 +98,7 @@ export interface WorkflowTemplateDto {
   workflowId: string;
   name: string;
   description: string;
-  category: 'hr' | 'oa' | 'devops' | 'general';
+  category: 'hr' | 'oa' | 'devops' | 'general' | 'legal';
   icon?: string;
   taskType: CoordinationTaskType;
   paramsSchema: {
@@ -128,6 +128,12 @@ export class SubmitCoordinationActionDto {
   @IsArray()
   @IsOptional()
   attachments?: CoordinationAttachment[];
+
+  @IsOptional()
+  parameters?: Record<string, any>;
+
+  @IsOptional()
+  sync?: boolean;
 }
 
 export class QueryCollaboratorsDto {

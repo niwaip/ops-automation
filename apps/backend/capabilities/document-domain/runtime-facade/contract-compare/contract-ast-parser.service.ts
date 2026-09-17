@@ -112,10 +112,20 @@ export class ContractAstParserService {
           buffer[3] === 0x46); // %PDF
 
       if (isDocx) {
+        let openXmlClauses: ContractClauseNode[] | null = null;
         try {
-          const openXmlClauses = await this.parseDocxOpenXml(buffer);
-          if (openXmlClauses && openXmlClauses.length > 0) {
+          openXmlClauses = await this.parseDocxOpenXml(buffer);
+          if (
+            openXmlClauses &&
+            (openXmlClauses.length > 1 ||
+              (openXmlClauses.length === 1 && openXmlClauses[0].content.length < 200))
+          ) {
             return { clauses: openXmlClauses, metadata: { isTruncated: false, format: 'docx' } };
+          }
+          if (openXmlClauses && openXmlClauses.length === 1) {
+            this.logger.warn(
+              `OpenXML direct parsing produced only 1 monolithic clause (${openXmlClauses[0].content.length} chars). Attempting Mammoth fallback.`
+            );
           }
         } catch (err) {
           this.logger.warn(`OpenXML direct parsing failed, falling back to Mammoth: ${(err as Error).message}`);
@@ -123,21 +133,33 @@ export class ContractAstParserService {
 
         try {
           const { value: html } = await mammoth.convertToHtml({ buffer });
-          return {
-            clauses: this.parseHtmlToClauses(html),
-            metadata: { isTruncated: false, format: 'docx' },
-          };
+          const htmlClauses = this.parseHtmlToClauses(html);
+          if (htmlClauses.length > 1 || !openXmlClauses || openXmlClauses.length === 0) {
+            return {
+              clauses: htmlClauses,
+              metadata: { isTruncated: false, format: 'docx' },
+            };
+          }
         } catch (err) {
           this.logger.warn(`Mammoth docx html extraction failed, falling back to raw text: ${(err as Error).message}`);
           try {
             const raw = await mammoth.extractRawText({ buffer });
-            return {
-              clauses: this.parseTextToClauses(raw.value || ''),
-              metadata: { isTruncated: false, format: 'docx' },
-            };
+            const textClauses = this.parseTextToClauses(raw.value || '');
+            if (textClauses.length > 1 || !openXmlClauses || openXmlClauses.length === 0) {
+              return {
+                clauses: textClauses,
+                metadata: { isTruncated: false, format: 'docx' },
+              };
+            }
           } catch {
-            throw new BadRequestException('Word 文档 (.docx) 结构损坏或无法解包解析，请核对文件后重试。');
+            if (!openXmlClauses || openXmlClauses.length === 0) {
+              throw new BadRequestException('Word 文档 (.docx) 结构损坏或无法解包解析，请核对文件后重试。');
+            }
           }
+        }
+
+        if (openXmlClauses && openXmlClauses.length > 0) {
+          return { clauses: openXmlClauses, metadata: { isTruncated: false, format: 'docx' } };
         }
       } else if (isPdf) {
         try {
@@ -220,19 +242,34 @@ export class ContractAstParserService {
                 buffer[3] === 0x46);
 
             if (isDocx) {
+              let openXmlClauses: ContractClauseNode[] | null = null;
               try {
-                const openXmlClauses = await this.parseDocxOpenXml(buffer);
-                if (openXmlClauses && openXmlClauses.length > 0) {
+                openXmlClauses = await this.parseDocxOpenXml(buffer);
+                if (
+                  openXmlClauses &&
+                  (openXmlClauses.length > 1 ||
+                    (openXmlClauses.length === 1 && openXmlClauses[0].content.length < 200))
+                ) {
                   return { clauses: openXmlClauses, metadata: { isTruncated: false, format: 'docx' } };
                 }
               } catch (err) {
                 this.logger.warn(`OpenXML direct parsing failed for ${resolvedPath}: ${(err as Error).message}`);
               }
-              const { value: html } = await mammoth.convertToHtml({ buffer });
-              return {
-                clauses: this.parseHtmlToClauses(html),
-                metadata: { isTruncated: false, format: 'docx' },
-              };
+              try {
+                const { value: html } = await mammoth.convertToHtml({ buffer });
+                const htmlClauses = this.parseHtmlToClauses(html);
+                if (htmlClauses.length > 1 || !openXmlClauses || openXmlClauses.length === 0) {
+                  return {
+                    clauses: htmlClauses,
+                    metadata: { isTruncated: false, format: 'docx' },
+                  };
+                }
+              } catch (err) {
+                this.logger.warn(`Mammoth docx html extraction failed for ${resolvedPath}: ${(err as Error).message}`);
+              }
+              if (openXmlClauses && openXmlClauses.length > 0) {
+                return { clauses: openXmlClauses, metadata: { isTruncated: false, format: 'docx' } };
+              }
             } else if (isPdf) {
               try {
                 const extraction = await this.pdfExtractor.extract({

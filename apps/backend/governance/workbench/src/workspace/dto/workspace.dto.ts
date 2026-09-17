@@ -170,7 +170,7 @@ export interface ContentSearchResultDto extends WorkspaceNodeDto {
 export interface WorkspaceSummaryDto {
   id: string;
   name: string;
-  type: 'personal' | 'department' | 'company';
+  type: 'personal' | 'department' | 'company' | 'process';
   ownerUserId?: string | null;
   departmentId?: string | null;
   quotaBytes: string;
@@ -189,6 +189,7 @@ export interface MyWorkspacesResponseDto {
   personal: WorkspaceSummaryDto;
   company: WorkspaceSummaryDto;
   department: WorkspaceSummaryDto | null;
+  process?: WorkspaceSummaryDto;
   departments?: DepartmentSummaryDto[];
 }
 
@@ -221,7 +222,7 @@ export interface WorkspaceNodeDto {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
-  workspaceType?: 'personal' | 'department' | 'company';
+  workspaceType?: 'personal' | 'department' | 'company' | 'process';
   workspaceName?: string;
 }
 

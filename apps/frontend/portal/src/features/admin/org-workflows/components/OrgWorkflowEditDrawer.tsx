@@ -12,13 +12,19 @@ import {
   message,
   Checkbox,
   Typography,
+  Segmented,
+  Tag,
+  Tooltip,
+  theme,
 } from 'antd';
 import {
   ApartmentOutlined,
   ApiOutlined,
+  InfoCircleOutlined,
   KeyOutlined,
   OrderedListOutlined,
   SettingOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import {
@@ -26,9 +32,12 @@ import {
   type OrganizationWorkflowDTO,
   type AssembledBaseWorkflow,
   type WorkflowStageDefinition,
+  type WorkflowParamsSchema,
 } from '@/api/orgWorkflow';
+import { PRESET_WORKFLOW_TEMPLATES } from '../constants/orgWorkflowPresets';
 import { ProcessStageList } from './ProcessStageList';
 import { WorkflowAssemblyPanel } from './WorkflowAssemblyPanel';
+import { OrgWorkflowVisualEditor } from './visual-editor/OrgWorkflowVisualEditor';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -37,6 +46,7 @@ const { Text } = Typography;
 interface OrgWorkflowEditDrawerProps {
   visible: boolean;
   workflow: OrganizationWorkflowDTO | null;
+  initialTemplateId?: string | null;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -44,18 +54,23 @@ interface OrgWorkflowEditDrawerProps {
 export const OrgWorkflowEditDrawer: React.FC<OrgWorkflowEditDrawerProps> = ({
   visible,
   workflow,
+  initialTemplateId,
   onClose,
   onSuccess,
 }) => {
   const [form] = Form.useForm();
+  const { token } = theme.useToken();
   const queryClient = useQueryClient();
   const isEditing = Boolean(workflow);
 
   const [activeTab, setActiveTab] = useState('basic');
+  const [viewMode, setViewMode] = useState<'canvas' | 'form'>('canvas');
   const [assembledWorkflows, setAssembledWorkflows] = useState<AssembledBaseWorkflow[]>([]);
   const [stages, setStages] = useState<WorkflowStageDefinition[]>([]);
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>(['employee', 'admin']);
   const [isPublished, setIsPublished] = useState<boolean>(true);
+  const [paramsSchema, setParamsSchema] = useState<WorkflowParamsSchema | undefined>(undefined);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(undefined);
 
   // 获取 5173 底层可用资产池
   const { data: baseWorkflows = [] } = useQuery(
@@ -64,60 +79,95 @@ export const OrgWorkflowEditDrawer: React.FC<OrgWorkflowEditDrawerProps> = ({
     { enabled: visible }
   );
 
+  const applyPresetTemplate = (templateId: string) => {
+    const preset = PRESET_WORKFLOW_TEMPLATES.find((p) => p.id === templateId);
+    if (!preset || !preset.workflow) return;
+
+    setSelectedTemplateId(templateId);
+    form.setFieldsValue({
+      workflowId: preset.workflow.workflowId,
+      name: preset.workflow.name,
+      description: preset.workflow.description,
+      category: preset.workflow.category,
+      taskType: preset.workflow.taskType,
+      icon: preset.workflow.icon || 'ApartmentOutlined',
+    });
+
+    setAssembledWorkflows(preset.workflow.assembledWorkflows || []);
+    setStages(preset.workflow.processDefinition?.stages || []);
+    setSelectedRoleIds(preset.workflow.grantedRoleIds || ['employee', 'admin']);
+    setIsPublished(preset.workflow.isPublished ?? true);
+    setParamsSchema(preset.workflow.paramsSchema);
+
+    message.success(`已成功载入模版【${preset.name}】，包含预置阶段与合规锁定规则！`);
+  };
+
   useEffect(() => {
-    if (workflow) {
-      form.setFieldsValue({
-        workflowId: workflow.workflowId,
-        name: workflow.name,
-        description: workflow.description,
-        category: workflow.category,
-        taskType: workflow.taskType,
-        icon: workflow.icon || 'ApartmentOutlined',
-      });
-      setAssembledWorkflows(workflow.assembledWorkflows || []);
-      setStages(workflow.processDefinition?.stages || []);
-      setSelectedRoleIds(workflow.grantedRoleIds || ['employee', 'admin']);
-      setIsPublished(workflow.isPublished);
-    } else {
-      form.resetFields();
-      form.setFieldsValue({
-        category: 'general',
-        taskType: 'approval',
-        icon: 'ApartmentOutlined',
-      });
-      setAssembledWorkflows([]);
-      setStages([
-        {
-          id: 'submit',
-          name: '发起申请',
-          type: 'submission',
-          description: '申请人在线填写表单参数卡片',
-        },
-        {
-          id: 'approval',
-          name: '主管审批',
-          type: 'approval',
-          description: '直属主管在 GTD 收集箱在线核准或驳回',
-          approverRule: 'leader',
-          actions: ['approve', 'reject'],
-        },
-        {
-          id: 'auto_execution',
-          name: '底层工作流执行',
-          type: 'automation',
-          description: '审批通过后自动触发绑定的 5173 自动化流闭环',
-        },
-        {
-          id: 'archive',
-          name: '回执与归档',
-          type: 'archive',
-          description: '流转凭证推入收件箱，支持一键归档',
-        },
-      ]);
-      setSelectedRoleIds(['employee', 'admin']);
-      setIsPublished(true);
+    if (visible) {
+      if (workflow) {
+        setSelectedTemplateId(undefined);
+        form.setFieldsValue({
+          workflowId: workflow.workflowId,
+          name: workflow.name,
+          description: workflow.description,
+          category: workflow.category,
+          taskType: workflow.taskType,
+          icon: workflow.icon || 'ApartmentOutlined',
+        });
+        setAssembledWorkflows(workflow.assembledWorkflows || []);
+        setStages(workflow.processDefinition?.stages || []);
+        setSelectedRoleIds(workflow.grantedRoleIds || ['employee', 'admin']);
+        setIsPublished(workflow.isPublished);
+        setParamsSchema(workflow.paramsSchema);
+      } else if (initialTemplateId) {
+        applyPresetTemplate(initialTemplateId);
+      } else {
+        setSelectedTemplateId(undefined);
+        form.resetFields();
+        form.setFieldsValue({
+          category: 'general',
+          taskType: 'approval',
+          icon: 'ApartmentOutlined',
+        });
+        setAssembledWorkflows([]);
+        setStages([
+          {
+            id: 'submit',
+            name: '发起申请',
+            type: 'submission',
+            description: '申请人在线填写表单参数卡片',
+            isLocked: false,
+          },
+          {
+            id: 'approval',
+            name: '主管审批',
+            type: 'approval',
+            description: '直属主管在 GTD 收集箱在线核准或驳回',
+            approverRule: 'leader',
+            actions: ['approve', 'reject'],
+            isLocked: true,
+          },
+          {
+            id: 'auto_execution',
+            name: '底层工作流执行',
+            type: 'automation',
+            description: '审批通过后自动触发绑定的 5173 自动化流闭环',
+            isLocked: true,
+          },
+          {
+            id: 'archive',
+            name: '回执与归档',
+            type: 'archive',
+            description: '流转凭证推入收件箱，支持一键归档',
+            isLocked: false,
+          },
+        ]);
+        setSelectedRoleIds(['employee', 'admin']);
+        setIsPublished(true);
+        setParamsSchema(undefined);
+      }
     }
-  }, [workflow, visible, form]);
+  }, [workflow, visible, initialTemplateId, form]);
 
   const saveMutation = useMutation(
     async (values: any) => {
@@ -131,6 +181,7 @@ export const OrgWorkflowEditDrawer: React.FC<OrgWorkflowEditDrawerProps> = ({
         assembledWorkflows,
         processDefinition: { stages },
         grantedRoleIds: selectedRoleIds,
+        paramsSchema: paramsSchema || workflow?.paramsSchema,
       };
 
       if (isEditing && workflow) {
@@ -157,15 +208,44 @@ export const OrgWorkflowEditDrawer: React.FC<OrgWorkflowEditDrawerProps> = ({
     <Drawer
       title={
         <Space>
-          <ApartmentOutlined style={{ color: '#1677ff' }} />
-          <span>{isEditing ? `编辑企业工作流 - ${workflow?.name}` : '组装与发布新企业工作流'}</span>
+          <ApartmentOutlined style={{ color: token.colorPrimary }} />
+          <span style={{ fontWeight: 600 }}>{isEditing ? `编辑企业工作流 - ${workflow?.name}` : '组装与发布新企业工作流'}</span>
         </Space>
       }
       open={visible}
       onClose={onClose}
-      width={760}
+      width={viewMode === 'canvas' ? 'min(98vw, 1800px)' : 860}
+      styles={{
+        body: {
+          padding: '8px 14px',
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          overflow: 'hidden',
+          background: token.colorBgLayout,
+        },
+        header: {
+          padding: '10px 16px',
+        },
+      }}
+      bodyStyle={{
+        padding: '8px 14px',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        overflow: 'hidden',
+        background: token.colorBgLayout,
+      }}
       extra={
-        <Space>
+        <Space size={12}>
+          <Segmented
+            value={viewMode}
+            onChange={(val) => setViewMode(val as 'canvas' | 'form')}
+            options={[
+              { label: '🎨 可视化编排画布', value: 'canvas' },
+              { label: '📋 表格列表模式', value: 'form' },
+            ]}
+          />
           <Button onClick={onClose}>取消</Button>
           <Button
             type="primary"
@@ -177,10 +257,174 @@ export const OrgWorkflowEditDrawer: React.FC<OrgWorkflowEditDrawerProps> = ({
         </Space>
       }
     >
-      <Form form={form} layout="vertical" onFinish={saveMutation.mutate}>
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={saveMutation.mutate}
+        style={{ display: 'flex', flexDirection: 'column', height: '100%', flex: 1, minHeight: 0 }}
+      >
+        {/* 官方标准预置模版载入条 */}
+        {!isEditing && (
+          <div
+            style={{
+              marginBottom: 8,
+              padding: '6px 14px',
+              background: token.colorInfoBg,
+              borderRadius: 8,
+              border: `1px solid ${token.colorInfoBorder}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexShrink: 0,
+            }}
+          >
+            <Space size={8}>
+              <ThunderboltOutlined style={{ color: token.colorPrimary, fontSize: 15 }} />
+              <div>
+                <span style={{ fontWeight: 600, fontSize: 12, color: token.colorText, marginRight: 8 }}>
+                  从企业官方标准模版快速载入:
+                </span>
+                <span style={{ fontSize: 11, color: token.colorTextSecondary }}>
+                  支持一键生成保密协议(NDA)与法务审查闭环、员工请假、费用报销等合规架构
+                </span>
+              </div>
+            </Space>
+
+            <Select
+              value={selectedTemplateId}
+              placeholder="⚡ 点击选择预置模版载入..."
+              style={{ width: 340 }}
+              size="small"
+              allowClear
+              onChange={(val) => {
+                if (val) {
+                  applyPresetTemplate(val);
+                }
+              }}
+            >
+              {PRESET_WORKFLOW_TEMPLATES.map((preset) => (
+                <Option key={preset.id} value={preset.id}>
+                  <Space>
+                    <Tag
+                      color={
+                        preset.category === 'legal'
+                          ? 'geekblue'
+                          : preset.category === 'hr'
+                          ? 'green'
+                          : 'orange'
+                      }
+                      style={{ margin: 0, fontSize: 10 }}
+                    >
+                      {preset.categoryName}
+                    </Tag>
+                    <span
+                      style={{
+                        fontWeight:
+                          preset.id === 'legal.contract.review_flow' ? 600 : 400,
+                      }}
+                    >
+                      {preset.name}
+                    </span>
+                  </Space>
+                </Option>
+              ))}
+            </Select>
+          </div>
+        )}
+
+        {/* 常驻基础属性快速配置条（完全适配 Dark/Light 模式） */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            padding: '6px 14px',
+            marginBottom: 8,
+            background: token.colorBgContainer,
+            borderRadius: 8,
+            border: `1px solid ${token.colorBorderSecondary}`,
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
+            {!isEditing && (
+              <Form.Item
+                label={<span style={{ fontSize: 12, color: token.colorTextSecondary }}>ID</span>}
+                name="workflowId"
+                rules={[{ required: true, message: '请输入唯一代号' }]}
+                style={{ margin: 0, width: 170 }}
+              >
+                <Input placeholder="如 legal.nda.flow" size="small" />
+              </Form.Item>
+            )}
+            <Form.Item
+              label={<span style={{ fontSize: 12, color: token.colorTextSecondary }}>名称</span>}
+              name="name"
+              rules={[{ required: true, message: '请输入工作流名称' }]}
+              style={{ margin: 0, flex: 1, minWidth: 180 }}
+            >
+              <Input placeholder="如 合同起草与法务审查闭环" size="small" />
+            </Form.Item>
+            <Form.Item
+              label={<span style={{ fontSize: 12, color: token.colorTextSecondary }}>分类</span>}
+              name="category"
+              rules={[{ required: true }]}
+              style={{ margin: 0, width: 155 }}
+            >
+              <Select size="small">
+                <Option value="legal">法务合规 (Legal)</Option>
+                <Option value="hr">HR 人事考勤</Option>
+                <Option value="oa">OA 行政报销</Option>
+                <Option value="it">IT 运维资产</Option>
+                <Option value="finance">财务审计</Option>
+                <Option value="general">通用组织协同</Option>
+              </Select>
+            </Form.Item>
+            <Form.Item
+              label={<span style={{ fontSize: 12, color: token.colorTextSecondary }}>类型</span>}
+              name="taskType"
+              rules={[{ required: true }]}
+              style={{ margin: 0, width: 155 }}
+            >
+              <Select size="small">
+                <Option value="approval">审批流转 (Approval)</Option>
+                <Option value="assignment">工作指派 (Assignment)</Option>
+                <Option value="review">审阅复核 (Review)</Option>
+              </Select>
+            </Form.Item>
+          </div>
+
+          {viewMode === 'canvas' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <Tooltip title="点击画布中的阶段卡片可在右侧检视属性；从左侧物料拖入节点或底层资产。">
+                <Space size={4} style={{ cursor: 'pointer', color: token.colorTextTertiary, fontSize: 12 }}>
+                  <InfoCircleOutlined />
+                  <span>编排提示</span>
+                </Space>
+              </Tooltip>
+              <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>阶段: {stages.length}</Tag>
+              <Tag color="purple" style={{ margin: 0, fontSize: 11 }}>资产: {assembledWorkflows.length}</Tag>
+            </div>
+          )}
+        </div>
+
+        {viewMode === 'canvas' ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <OrgWorkflowVisualEditor
+              stages={stages}
+              assembledWorkflows={assembledWorkflows}
+              availableWorkflows={baseWorkflows}
+              onChangeStages={setStages}
+              onChangeAssembledWorkflows={setAssembledWorkflows}
+            />
+          </div>
+        ) : (
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
           items={[
             {
               key: 'basic',
@@ -334,6 +578,8 @@ export const OrgWorkflowEditDrawer: React.FC<OrgWorkflowEditDrawerProps> = ({
             },
           ]}
         />
+      </div>
+    )}
       </Form>
     </Drawer>
   );

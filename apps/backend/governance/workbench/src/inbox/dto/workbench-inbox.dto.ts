@@ -156,7 +156,7 @@ export class QueryInboxDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(100)
+  @Max(500)
   pageSize?: number = 50;
 }
 
@@ -197,3 +197,10 @@ export class UpdateInboxStatusDto {
   @IsEnum(InboxItemStatus)
   status!: InboxItemStatus;
 }
+
+export class SaveHandledExecutionsDto {
+  @ApiProperty({ description: '已阅执行单ID与已阅时间映射字典' })
+  @IsObject()
+  handledExecutions!: Record<string, string>;
+}
+

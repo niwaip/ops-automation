@@ -439,26 +439,24 @@ export class ChatConversationService {
     files?: Array<ChatUploadedFileDTO | string>
   ): Array<Record<string, unknown>> {
     if (!files || !Array.isArray(files) || files.length === 0) return [];
-    return files
-      .map((f) => {
-        if (typeof f === 'string') {
-          return { fileName: f };
-        }
-        if (f && typeof f === 'object') {
-          return {
-            fileId: f.fileId,
-            fileName: f.fileName,
-            mimeType: f.mimeType,
-            size: f.size,
-            source: f.source || 'upload',
-            ...(f.workspaceNodeId ? { workspaceNodeId: f.workspaceNodeId } : {}),
-            ...(f.workspaceId ? { workspaceId: f.workspaceId } : {}),
-            ...(f.storagePath ? { storagePath: f.storagePath } : {}),
-          };
-        }
-        return null;
-      })
-      .filter((item): item is Record<string, unknown> => Boolean(item));
+    const results: Array<Record<string, unknown>> = [];
+    for (const f of files) {
+      if (typeof f === 'string') {
+        results.push({ fileName: f });
+      } else if (f && typeof f === 'object') {
+        results.push({
+          fileId: f.fileId,
+          fileName: f.fileName,
+          mimeType: f.mimeType,
+          size: f.size,
+          source: f.source || 'upload',
+          ...(f.workspaceNodeId ? { workspaceNodeId: f.workspaceNodeId } : {}),
+          ...(f.workspaceId ? { workspaceId: f.workspaceId } : {}),
+          ...(f.storagePath ? { storagePath: f.storagePath } : {}),
+        });
+      }
+    }
+    return results;
   }
 
   private buildChatAssistantMetadata(params: {

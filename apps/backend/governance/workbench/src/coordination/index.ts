@@ -8,4 +8,8 @@ export * from './stage-flow-ai-draft.service';
 export * from './workflow-stage-port.contract';
 export * from './org-base-workflow-templates.constants';
 export * from './workflow-templates.constants';
+export * from './coordination-attachment-storage.service';
+export * from './coordination-stage-engine.service';
+export * from './coordination-automation-runner.service';
+export * from './coordination-collaborator.service';
 export * from './dto/workbench-coordination.dto';

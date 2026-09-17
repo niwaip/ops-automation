@@ -85,6 +85,9 @@ export function useChatStreaming({
       queryClient.invalidateQueries(['user-web-chat-history', sessionId]),
       queryClient.invalidateQueries(['user-web-executions']),
       queryClient.invalidateQueries(['user-web-notifications']),
+      queryClient.invalidateQueries(['workbench-inbox']),
+      queryClient.invalidateQueries(['workbench-inbox-summary']),
+      queryClient.invalidateQueries(['coordinationTasks']),
     ]);
   }, [queryClient]);
 

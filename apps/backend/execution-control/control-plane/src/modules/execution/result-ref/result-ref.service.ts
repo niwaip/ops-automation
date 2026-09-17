@@ -23,19 +23,20 @@ export class ResultRefService {
     outputSchema?: unknown;
     schemaDigest?: string;
   }): Promise<ResultRefV1> {
-    const serialized = JSON.stringify(input.payload ?? null);
+    const safePayload = ensureWellFormed(input.payload);
+    const serialized = JSON.stringify(safePayload ?? null);
     const schemaDigest =
       input.schemaDigest ||
       createHash('sha256')
-        .update(JSON.stringify(input.outputSchema || inferShape(input.payload)))
+        .update(JSON.stringify(input.outputSchema || inferShape(safePayload)))
         .digest('hex');
     const row = await this.prisma.executionResultRef.create({
       data: {
         executionId: input.executionId,
         producerStepId: input.producerStepId,
         schemaDigest,
-        payloadJson: (input.payload ?? null) as Prisma.JsonValue,
-        previewJson: buildPreview(input.payload) as Prisma.JsonValue,
+        payloadJson: (safePayload ?? null) as Prisma.JsonValue,
+        previewJson: buildPreview(safePayload) as Prisma.JsonValue,
         sizeBytes: Buffer.byteLength(serialized, 'utf8'),
       },
     });
@@ -131,12 +132,46 @@ const SENSITIVE_PREVIEW_KEY = /(?:authorization|cookie|credential|password|secre
 const MAX_PREVIEW_DEPTH = 3;
 const MAX_PREVIEW_STRING_LENGTH = 160;
 
+export function toWellFormedString(str: string): string {
+  if (typeof (str as any).toWellFormed === 'function') {
+    return (str as any).toWellFormed();
+  }
+  return str.replace(
+    /([\uD800-\uDBFF](?![\uDC00-\uDFFF]))|((?<![\uD800-\uDBFF])[\uDC00-\uDFFF])/g,
+    '\uFFFD'
+  );
+}
+
+export function truncateString(str: string, maxLength: number): string {
+  const wellFormed = toWellFormedString(str);
+  const chars = Array.from(wellFormed);
+  if (chars.length <= maxLength) {
+    return wellFormed;
+  }
+  return `${toWellFormedString(chars.slice(0, maxLength).join(''))}…`;
+}
+
+export function ensureWellFormed<T>(value: T): T {
+  if (typeof value === 'string') {
+    return toWellFormedString(value) as unknown as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map(ensureWellFormed) as unknown as T;
+  }
+  if (value && typeof value === 'object') {
+    const res: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      res[toWellFormedString(k)] = ensureWellFormed(v);
+    }
+    return res as unknown as T;
+  }
+  return value;
+}
+
 function sanitizePreview(value: unknown, depth: number): unknown {
   if (depth >= MAX_PREVIEW_DEPTH) return '[truncated]';
   if (typeof value === 'string') {
-    return value.length <= MAX_PREVIEW_STRING_LENGTH
-      ? value
-      : `${value.slice(0, MAX_PREVIEW_STRING_LENGTH)}…`;
+    return truncateString(value, MAX_PREVIEW_STRING_LENGTH);
   }
   if (Array.isArray(value))
     return value.slice(0, 3).map((item) => sanitizePreview(item, depth + 1));
@@ -145,7 +180,7 @@ function sanitizePreview(value: unknown, depth: number): unknown {
       Object.entries(value as Record<string, unknown>)
         .slice(0, 8)
         .map(([key, item]) => [
-          key,
+          toWellFormedString(key),
           SENSITIVE_PREVIEW_KEY.test(key) ? '[redacted]' : sanitizePreview(item, depth + 1),
         ])
     );

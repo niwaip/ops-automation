@@ -6,5 +6,10 @@ export * from './wechat-ilink.client';
 export * from './wechat-media.adapter';
 export * from './wechat-outbound-queue.service';
 export * from './wechat-formatter.util';
+export * from './passport-mqtt.service';
+export * from './xiaozhi-channel.controller';
+export * from './xiaozhi-channel.service';
+export * from './xiaozhi-connector.service';
+export * from './xiaozhi-task.service';
+export * from './channel-task-gateway.service';
 export * from './im-channel.module';
-

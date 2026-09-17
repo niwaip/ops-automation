@@ -98,6 +98,37 @@ describe('document-payload-resolver.helper', () => {
       expect(input.fileName).toBe('custom_named_contract.docx');
     });
 
+    it('resolves document from downloadUrl with UUID', async () => {
+      const input: BuiltinContractReviewInput = {
+        downloadUrl: 'http://localhost:5174/studio/download/mock-uuid-aaa',
+      };
+      await resolveReviewDocumentPayload(input, [tmpDir]);
+      expect(input.fileBase64).toBe(Buffer.from('metadata resolved content').toString('base64'));
+    });
+
+    it('resolves document from input.files array', async () => {
+      const input: BuiltinContractReviewInput = {
+        files: [
+          {
+            fileName: 'uploaded_doc.docx',
+            downloadUrl: 'http://192.168.1.1/studio/download/mock-uuid-aaa',
+          },
+        ],
+      } as any;
+      await resolveReviewDocumentPayload(input, [tmpDir]);
+      expect(input.fileBase64).toBe(Buffer.from('metadata resolved content').toString('base64'));
+      expect(input.fileName).toBe('uploaded_doc.docx');
+    });
+
+    it('resolves document from markdown link in prompt string', async () => {
+      const input: BuiltinContractReviewInput = {
+        prompt: '帮我审查这份保密合同：[保密合同_v1.docx](http://localhost:5174/studio/download/mock-uuid-aaa)',
+      } as any;
+      await resolveReviewDocumentPayload(input, [tmpDir]);
+      expect(input.fileBase64).toBe(Buffer.from('metadata resolved content').toString('base64'));
+      expect(input.fileName).toBe('保密合同_v1.docx');
+    });
+
     it('falls back to detailText if file not on disk', async () => {
       const input: BuiltinContractReviewInput = {
         taskContext: {

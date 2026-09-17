@@ -102,6 +102,7 @@ services:
       IM_CHANNEL_ENCRYPTION_KEY: ${IM_CHANNEL_ENCRYPTION_KEY:-7fd6414a543574effddb645132638c2357ba2f12a57c09216bc45880f5271757}
       IM_CHANNEL_MAX_ACTIVE_CONNECTIONS: ${IM_CHANNEL_MAX_ACTIVE_CONNECTIONS:-100}
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
+      CONTROL_PLANE_URL: http://${CONTROL_PLANE_HOST:-control-plane}:${CONTROL_PLANE_PORT:-3003}
       SANDBOX_WORKER_URL: http://sandbox-worker:8090
       ACTIVITY_VALIDATION_AGENT_URL: http://sandbox-worker:8090
       CARBONE_SERVICE_URL: http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}
@@ -130,6 +131,27 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  xiaozhi-connector:
+    <<: *common-node-service
+    container_name: ops-xiaozhi-connector
+    command: >
+      sh -c "until node -e \"fetch('http://platform:${PLATFORM_PORT:-3001}/health').then(() => process.exit(0)).catch(() => process.exit(1))\"; do sleep 2; done
+      && node /workspace/apps/backend/platform/dist/xiaozhi-connector.main.js"
+    environment:
+      <<: *common-env
+      IM_CHANNEL_ENCRYPTION_KEY: ${IM_CHANNEL_ENCRYPTION_KEY:-7fd6414a543574effddb645132638c2357ba2f12a57c09216bc45880f5271757}
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
+      AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
+      CONTROL_PLANE_URL: http://${CONTROL_PLANE_HOST:-control-plane}:${CONTROL_PLANE_PORT:-3003}
+    volumes:
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
+    depends_on:
+      platform:
+        condition: service_started
+      workspace-deps-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
 
   session-broker:
     <<: *common-node-service
@@ -288,7 +310,7 @@ services:
     command: >
       sh -c "corepack enable && if [ \"${BROWSER_WORKER_RUN_MODE:-prod}\" = \"dev\" ]; then pnpm --filter @ops/browser-worker run dev; else pnpm --filter @ops/browser-worker run build && node --enable-source-maps /workspace/apps/backend/runtimes/browser-worker/dist/main.js; fi"
     environment:
-      NODE_ENV: ${BROWSER_WORKER_NODE_ENV:-production}
+      NODE_ENV: ${BROWSER_WORKER_NODE_ENV:-development}
       DOCKER_ENV: true
       PORT: ${BROWSER_WORKER_PORT:-3004}
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
@@ -498,7 +520,7 @@ services:
     image: ops-carbone-engine:dev
     container_name: carbone-engine
     command: >
-      sh -c "corepack enable && pnpm --filter @ops/document-domain exec prisma db push --schema template/prisma/schema.prisma
+      sh -c "corepack enable && pnpm --filter @ops/document-domain exec prisma db push --skip-generate --schema template/prisma/schema.prisma
       && pnpm --filter carbone-engine run dev"
     environment:
       <<: *common-env
@@ -540,6 +562,7 @@ services:
       VITE_CARBONE_API_URL: http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
       VITE_NOVNC_URL: http://${HOST_IP:-localhost}:${NOVNC_PORT:-6080}/vnc.html
       COREPACK_NPM_REGISTRY: ${COREPACK_NPM_REGISTRY:-https://registry.npmmirror.com}
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
     ports:
       - '${HOST_BIND_IP:-127.0.0.1}:${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}'
     volumes:
@@ -564,6 +587,7 @@ services:
       VITE_AI_API_BASE_URL: /api/ai
       VITE_HOST_IP: ${HOST_IP:-localhost}
       COREPACK_NPM_REGISTRY: ${COREPACK_NPM_REGISTRY:-https://registry.npmmirror.com}
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
     ports:
       - '${HOST_BIND_IP:-127.0.0.1}:${USER_WEB_PORT:-5174}:${USER_WEB_PORT:-5174}'
     volumes:

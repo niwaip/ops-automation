@@ -189,10 +189,21 @@ export const mapExecutionToDto = (execution: Record<string, unknown>): Execution
       ? execution.executionPhases
       : [];
 
+  const effectiveCapabilityId = (
+    execution.capabilityId ||
+    execution.skillId ||
+    (input as any)?.capabilityId ||
+    (input as any)?.skillId ||
+    (normalizedInput as any)?.capabilityId ||
+    (normalizedInput as any)?.skillId ||
+    (result as any)?.capabilityKey ||
+    null
+  ) as string | null;
+
   return {
     id: execution.id as string,
-    skillId: execution.skillId as string,
-    capabilityId: (execution.capabilityId || execution.skillId) as string | null,
+    skillId: (execution.skillId || effectiveCapabilityId) as string,
+    capabilityId: effectiveCapabilityId,
     skillVersion: (execution.skillVersion || execution.skill_version) as string | null,
     capabilityVersion: (execution.capabilityVersion ||
       execution.skillVersion ||

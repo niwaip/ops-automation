@@ -340,6 +340,31 @@ export class MultiNodeParameterBinderService {
           missing: true,
         });
       }
+
+      // Auto-propagate contextual file and execution references if available in systemInputs
+      if (systemInputs && node.dependsOn.length === 0) {
+        const contextualKeys = [
+          'downloadUrl',
+          'fileUrl',
+          'downloadUrlA',
+          'fileUrlA',
+          'downloadUrlB',
+          'fileUrlB',
+          'taskContext',
+        ];
+        for (const k of contextualKeys) {
+          if (
+            Object.prototype.hasOwnProperty.call(systemInputs, k) &&
+            !Object.prototype.hasOwnProperty.call(nodeInputs, k)
+          ) {
+            const val = systemInputs[k];
+            if (val !== undefined) {
+              nodeInputs[k] = val;
+              bindings[k] = { source: 'user_input', path: k };
+            }
+          }
+        }
+      }
     }
 
     return {

@@ -19,6 +19,7 @@ import {
   KeyOutlined,
   LockOutlined,
   RightOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import type { WorkflowTemplateDefinition } from '../../../api/workbenchCoordination';
 
@@ -44,6 +45,10 @@ export const OrganizationWorkflowCard: React.FC<OrganizationWorkflowCardProps> =
         return <CalendarOutlined style={{ fontSize: 24, color: '#1677ff' }} />;
       case 'oa.expense.claim':
         return <DollarOutlined style={{ fontSize: 24, color: '#fa8c16' }} />;
+      case 'legal.nda.generation_and_review_flow':
+        return <SafetyCertificateOutlined style={{ fontSize: 24, color: '#722ed1' }} />;
+      case 'legal.contract.review_flow':
+        return <SafetyCertificateOutlined style={{ fontSize: 24, color: '#faad14' }} />;
       default:
         return <FileDoneOutlined style={{ fontSize: 24, color: '#722ed1' }} />;
     }
@@ -54,8 +59,13 @@ export const OrganizationWorkflowCard: React.FC<OrganizationWorkflowCardProps> =
     if (template.processDefinition?.stages && template.processDefinition.stages.length > 0) {
       return template.processDefinition.stages.map((stage) => {
         let desc = stage.description;
-        if (stage.approverRole) {
+        if (stage.approverDepartment) {
+          desc += ` [部门: ${stage.approverDepartment}]`;
+        } else if (stage.approverRole) {
           desc += ` [角色: ${stage.approverRole}]`;
+        }
+        if (stage.rollbackStageId) {
+          desc += ` (可驳回重修)`;
         }
         return {
           title: stage.name,
@@ -107,6 +117,20 @@ export const OrganizationWorkflowCard: React.FC<OrganizationWorkflowCardProps> =
       return (
         <Tag color="orange" icon={<ApiOutlined />}>
           已接入 ERP 财务结算网关
+        </Tag>
+      );
+    }
+    if (template.id === 'legal.nda.generation_and_review_flow') {
+      return (
+        <Tag color="purple" icon={<ApiOutlined />}>
+          已接入保密合同生成与法务审查
+        </Tag>
+      );
+    }
+    if (template.id === 'legal.contract.review_flow') {
+      return (
+        <Tag color="gold" icon={<ApiOutlined />}>
+          已接入法务审查引擎与存证库
         </Tag>
       );
     }

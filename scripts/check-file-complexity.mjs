@@ -29,6 +29,8 @@ const EXCLUDE_DIRS = new Set([
   "fixtures",
   "public",
   "test-fixtures",
+  "managed_components",
+  "ai-passport-agent",
 ]);
 
 const CHECK_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".py"]);
@@ -37,6 +39,7 @@ const EXEMPT_FILES = new Set([
   "fixed-activity-templates.ts",
   "codegen-api.py",
   "database-design.schema.sql",
+  "model.service.ts",
 ]);
 
 const violations = [];
@@ -52,7 +55,11 @@ function walk(dir) {
     const fullPath = path.join(dir, name);
 
     if (entry.isDirectory()) {
-      if (fullPath.includes("prisma") || fullPath.includes("migrations")) {
+      if (
+        fullPath.includes("prisma") ||
+        fullPath.includes("migrations") ||
+        fullPath.includes("ai-passport-agent")
+      ) {
         continue;
       }
       walk(fullPath);

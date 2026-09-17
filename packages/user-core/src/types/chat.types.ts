@@ -170,10 +170,13 @@ export interface UploadedFileDescriptor {
   size?: number;
   contentBase64?: string;
   source?: 'upload' | 'workspace';
-  workspaceType?: 'personal' | 'department' | 'company';
+  workspaceType?: 'personal' | 'department' | 'company' | 'process';
   workspaceNodeId?: string;
   workspaceId?: string;
   storagePath?: string;
+  url?: string;
+  downloadUrl?: string;
+  fileUrl?: string;
 }
 
 export interface ChatRequest {

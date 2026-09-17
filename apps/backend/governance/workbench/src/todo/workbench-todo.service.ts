@@ -253,4 +253,15 @@ export class WorkbenchTodoService {
       return [];
     }
   }
+
+  /**
+   * 清空待办任务数据（供系统测试与重置使用）
+   */
+  async clearAll(userId: string, wipeAllUsers = false) {
+    const where = wipeAllUsers ? {} : { userId };
+    const result = await this.prisma.workbenchTodo.deleteMany({ where });
+    this.logger.log(`Cleared todo items: count=${result.count}, userId=${userId}, wipeAllUsers=${wipeAllUsers}`);
+    return { success: true, count: result.count };
+  }
 }
+

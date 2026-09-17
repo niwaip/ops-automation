@@ -13,6 +13,7 @@ import {
   buildChatRequest,
   buildResumeExecutionRequest,
 } from '@chat-web/controller/chatRequestController';
+import { isWorkflowCommand, handleWorkflowNaturalLanguage } from '../lib/workflowNaturalLanguageRouter';
 import { upsertMessage } from '../lib/messageState';
 import { summarizeSessionTitle } from '../lib/sessionView';
 import { getLatestWaitingInputExecutionId } from '../lib/taskStatus';
@@ -158,6 +159,66 @@ export function useChatPageActions({
       });
       void queryClient.invalidateQueries(['user-web-notifications']);
       void queryClient.invalidateQueries(['workbench-inbox-items']);
+      return;
+    }
+
+    // 探测是否为 ! / ！ 工作流自然语言连接器命令 (无需填写业务卡片，基于自然语言直接识别与阶段流转)
+    if (isWorkflowCommand(content)) {
+      const match = content.match(/^[!！]\s*([^\s:：]+)(?:[:：\s]+(.*))?$/s);
+      const rawWorkflow = match ? match[1].trim() : '';
+      const taskBody = match ? (match[2] || '').trim() : '';
+
+      let orchestratorMessage = content;
+      if (/比对|对比|差异|红线/i.test(rawWorkflow)) {
+        orchestratorMessage = taskBody ? `合同比对 ${taskBody}` : '合同比对审查';
+      } else if (/保密|nda|生成保密合同/i.test(rawWorkflow) || /保密|nda/i.test(taskBody)) {
+        orchestratorMessage = taskBody ? `生成保密合同 ${taskBody}` : '生成保密合同';
+      } else if (/起草|生成|填报/i.test(rawWorkflow) || (!filesToSend?.length && /(?:合同|协议).*(?:起草|生成|签订)/.test(taskBody))) {
+        orchestratorMessage = taskBody ? `生成合同 ${taskBody}` : '生成合同';
+      } else if (/审查|审核|合规/i.test(rawWorkflow)) {
+        orchestratorMessage = taskBody ? `合同审查 ${taskBody}` : '合同审查';
+      } else if (/合同|协议/i.test(rawWorkflow)) {
+        orchestratorMessage = taskBody ? `生成合同 ${taskBody}` : '生成合同';
+      } else if (/请假|休假|考勤/i.test(rawWorkflow)) {
+        orchestratorMessage = taskBody ? `请假申请 ${taskBody}` : '请假申请';
+      } else if (/报销|费用/i.test(rawWorkflow)) {
+        orchestratorMessage = taskBody ? `费用报销 ${taskBody}` : '费用报销';
+      } else {
+        orchestratorMessage = taskBody ? `${rawWorkflow} ${taskBody}` : rawWorkflow;
+      }
+
+      // 企业流程作为连接器：在后台预建组织工作流协同流转工单（如法务部合规把关审查），异步推进不阻塞真实技能执行流
+      void (async () => {
+        try {
+          const result = await handleWorkflowNaturalLanguage(content);
+          if (result?.coordinationTask) {
+            void queryClient.invalidateQueries(['user-web-notifications']);
+            void queryClient.invalidateQueries(['workbench-inbox-items']);
+          }
+        } catch (err: any) {
+          console.warn('[WorkflowRouter] Background coordination registration error:', err);
+        }
+      })();
+
+      const request: ChatRequest = buildChatRequest({
+        message: orchestratorMessage,
+        clientMessageId: userMessageId,
+        clientAssistantMessageId: assistantMessageId,
+        sessionId: session.id,
+        executionId: continuedExecutionId || undefined,
+        modelId: resolvedModelId,
+        files: filesToSend,
+        mode: 'task', // 组织工作流连接的底层执行技能强制以 task 任务规划模式运行
+        thinking: enableThinking,
+        reasoning: nativeReasoningEnabled,
+        webSearch: enableWebSearch,
+      });
+
+      if (pendingExecutionId) {
+        setPendingExecutionId(null);
+      }
+
+      void runAssistantRequest(session, request, assistantMessageId);
       return;
     }
 
@@ -374,10 +435,13 @@ export function useChatPageActions({
     isStreaming,
     nativeReasoningEnabled,
     pendingExecutionId,
+    queryClient,
     runAssistantRequest,
     selectedModel,
     setDraft,
     setPendingExecutionId,
+    toast,
+    updateMessage,
     updateSessionMessages,
     updateSessionMeta,
   ]);

@@ -2,23 +2,34 @@ import {
   ArrowRightOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
-  CloseCircleOutlined,
   DeleteOutlined,
+  DownloadOutlined,
   DownOutlined,
+  EditOutlined,
   ExclamationCircleOutlined,
   EyeOutlined,
+  FileWordOutlined,
   FolderOutlined,
   InboxOutlined,
   LoadingOutlined,
   MailOutlined,
   RobotOutlined,
+  SendOutlined,
   ThunderboltOutlined,
   UndoOutlined,
   UpOutlined,
 } from "@ant-design/icons";
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "react-query";
 import { InboxContentPreview } from "./InboxContentPreview";
-import { CoordinationActionModal } from "./CoordinationActionModal";
+import {
+  PARAM_LABEL_MAP,
+  formatParamValue,
+} from "./CoordinationActionModal";
+import { replaceLocalhostWithCurrentHost } from "@/shared/utils/publicUrl";
+import { useChatStore } from "../../chat";
+import { useAuthStore } from "@/shared/store/authStore";
+import { workbenchCoordinationApi } from "@/api/workbenchCoordination";
 import {
   Button,
   Card,
@@ -26,21 +37,27 @@ import {
   Input,
   List,
   Popconfirm,
-  Radio,
+  Segmented,
   Space,
   Tag,
   Tooltip,
   Typography,
+  message,
 } from "antd";
 import { useNavigate } from "react-router-dom";
+import type { ExecutionDto } from "@ops/user-core";
 import type { WorkbenchInboxItem } from "../../../api/workbenchInbox";
+import type { WorkbenchInboxFilter } from "../hooks/useWorkbenchInbox";
+import { InterventionList } from "./InterventionList";
+import { InboxTaskDetailModal } from "./InboxTaskDetailModal";
+import { classifyWorkflowNode } from "../lib/coordinationNodeClassifier";
 import { formatMonthDayTime } from "../../../shared/utils/dateText";
 import styles from "../pages/DashboardPage.module.css";
 import inboxStyles from "./InboxList.module.css";
 
 interface InboxListProps {
   inboxItems: WorkbenchInboxItem[];
-  inboxFilter: "all" | "unprocessed" | "clarified" | "converted" | "archived";
+  inboxFilter: WorkbenchInboxFilter;
   inboxSummary: {
     total: number;
     unprocessed: number;
@@ -51,7 +68,16 @@ interface InboxListProps {
   inboxDraft: string;
   clarifyingIds: Record<string, boolean>;
   isSyncingEmail?: boolean;
-  onFilterChange: (filter: "all" | "unprocessed" | "clarified" | "converted" | "archived") => void;
+  priorityItems?: ExecutionDto[];
+  onOpenExecution?: (executionId: string) => void;
+  onIgnorePriorityItem?: (executionId: string) => void;
+  onIgnoreAllPriorityItems?: () => void;
+  onViewAllExecutions?: () => void;
+  onLaunchAiAssistant?: (prompt: string) => void;
+  getExecutionDisplayDescription?: (execution: ExecutionDto) => string;
+  getExecutionDisplayTime?: (execution: ExecutionDto) => string;
+  getSkillDisplayName?: (skillId?: string) => string;
+  onFilterChange: (filter: WorkbenchInboxFilter) => void;
   onDraftChange: (draft: string) => void;
   onQuickIngest: () => void;
   onSyncEmail?: () => void;
@@ -67,26 +93,100 @@ export function InboxList({
   inboxFilter,
   inboxSummary,
   inboxDraft,
-  clarifyingIds,
+  clarifyingIds: _clarifyingIds,
   isSyncingEmail,
+  priorityItems = [],
+  onOpenExecution,
+  onIgnorePriorityItem,
+  onIgnoreAllPriorityItems,
+  onViewAllExecutions,
+  onLaunchAiAssistant,
+  getExecutionDisplayDescription,
+  getExecutionDisplayTime,
+  getSkillDisplayName,
   onFilterChange,
   onDraftChange,
   onQuickIngest,
   onSyncEmail,
-  onClarifyItem,
+  onClarifyItem: _onClarifyItem,
   onConvertToTodo,
   onArchiveItem,
   onUnarchiveItem,
   onDeleteItem,
 }: InboxListProps) {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isShaking, setIsShaking] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
-  const [actionModalOpen, setActionModalOpen] = useState(false);
-  const [activeAction, setActiveAction] = useState<'approve' | 'reject' | 'complete'>('approve');
-  const [activeCoordItem, setActiveCoordItem] = useState<WorkbenchInboxItem | null>(null);
+  const queryClient = useQueryClient();
+  const [quickSendingId, setQuickSendingId] = useState<string | null>(null);
+  const [detailModalItem, setDetailModalItem] = useState<WorkbenchInboxItem | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleQuickCoordAction = async (item: WorkbenchInboxItem) => {
+    try {
+      setQuickSendingId(item.id);
+      const nodeSemantics = classifyWorkflowNode(item, user?.username, user?.id);
+      const payload = (item.unifiedPayload || {}) as Record<string, any>;
+
+      // 针对归档/回执节点，快捷指令直接执行条目已阅归档
+      if (nodeSemantics.cardActionType === 'archive') {
+        onArchiveItem(item.id);
+        void workbenchCoordinationApi.submitAction(item.id, {
+          action: 'approve',
+          comment: '协同回执已阅并归档。',
+        }).catch(() => {});
+        void message.success(`已归档「${nodeSemantics.displayTitle || item.title}」，可在「已厘清/归档」中查阅`);
+        void queryClient.invalidateQueries(['workbench-inbox']);
+        void queryClient.invalidateQueries(['workbench-inbox-summary']);
+        return;
+      }
+
+      const isAssignment = payload.taskType === 'assignment' || nodeSemantics.cardActionType === 'flow';
+      const actionType =
+        nodeSemantics.cardActionType === 'send'
+          ? 'approve'
+          : isAssignment
+          ? 'complete'
+          : 'approve';
+
+      await workbenchCoordinationApi.submitAction(item.id, {
+        action: actionType,
+        comment:
+          nodeSemantics.cardActionText === '重新发送'
+            ? '已重新核验材料，重新提交发送后台审查。'
+            : nodeSemantics.cardActionType === 'send'
+            ? '初稿已核对无误，快捷发送提交流转。'
+            : isAssignment
+            ? '事项已完成，快捷提交流转。'
+            : '审核通过，快捷流转至下一节点。',
+      });
+
+      void message.success(
+        nodeSemantics.cardActionType === 'send'
+          ? `已提交送审！系统正在进行智能合规诊断，您可在「已发事项」中跟踪流转进展。`
+          : `已成功处理「${nodeSemantics.displayTitle || item.title}」，流程已流转至下一阶段！`
+      );
+
+      const triggerRefresh = () => {
+        void queryClient.invalidateQueries(['workbench-inbox']);
+        void queryClient.invalidateQueries(['workbench-inbox-summary']);
+        void queryClient.invalidateQueries(['workbench-todos']);
+        void queryClient.invalidateQueries(['workbench-todos-summary']);
+        void queryClient.invalidateQueries(['workbench-coordination-sent-tasks']);
+      };
+
+      triggerRefresh();
+      setTimeout(triggerRefresh, 1500);
+      setTimeout(triggerRefresh, 4000);
+      setTimeout(triggerRefresh, 8000);
+    } catch (err: any) {
+      void message.error(err?.message || '操作失败，您可点击「详细」进行处理');
+    } finally {
+      setQuickSendingId(null);
+    }
+  };
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => ({
@@ -123,6 +223,7 @@ export function InboxList({
     setErrorMessage(null);
     onQuickIngest();
   };
+
 
   const handleDraftChange = (val: string) => {
     if (errorMessage && val.trim()) {
@@ -248,6 +349,43 @@ export function InboxList({
     }
   };
 
+  const handleOpenTaskInAiChat = (item: WorkbenchInboxItem) => {
+    const payload = (item.unifiedPayload || {}) as Record<string, any>;
+    const params = payload.parameters || {};
+    const attachments = (payload.attachments || []) as Array<{
+      name: string;
+      url?: string;
+      size?: number;
+      mimeType?: string;
+    }>;
+    const directUrl =
+      params.downloadUrl ||
+      params.fileUrl ||
+      params.contractUrl ||
+      (payload.metadata as any)?.generatedDocUrl;
+
+    const effectiveAttachments = [...attachments];
+    if (directUrl && !effectiveAttachments.some((a) => a.url === directUrl)) {
+      effectiveAttachments.push({
+        name:
+          params.fileName ||
+          params.contractFileName ||
+          (params.contractTitle ? `${params.contractTitle}.docx` : `${item.title}.docx`),
+        url: directUrl,
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+    }
+
+    useChatStore.getState().openWithTaskContext({
+      taskId: item.id,
+      taskTitle: item.title,
+      workflowId: payload.workflowId,
+      taskContent: item.rawContent,
+      parameters: params,
+      attachments: effectiveAttachments,
+    });
+  };
+
   const renderMainContent = (item: WorkbenchInboxItem) => {
     const isExpanded = Boolean(expandedIds[item.id]);
     const payload = (item.unifiedPayload || {}) as Record<string, any>;
@@ -258,6 +396,24 @@ export function InboxList({
     const content = item.rawContent || "";
     const linesCount = (content.match(/\n/g) || []).length + 1;
     const isLong = linesCount >= 5 || content.length > 180;
+
+    const attachments = ((payload.attachments || []) as Array<{ name: string; url?: string; size?: number }>);
+    const directUrl =
+      params.downloadUrl ||
+      params.fileUrl ||
+      params.contractUrl ||
+      (payload.metadata as any)?.generatedDocUrl;
+
+    const effectiveDownloadUrl =
+      attachments.find((a) => a.url)?.url ||
+      directUrl ||
+      undefined;
+
+    const effectiveDocName =
+      attachments[0]?.name ||
+      params.fileName ||
+      params.contractFileName ||
+      (params.contractTitle ? `${params.contractTitle}.docx` : '文档初稿.docx');
 
     return (
       <div className={inboxStyles["inbox-content-container"]}>
@@ -274,34 +430,209 @@ export function InboxList({
                 {params.handoverPerson ? <div>交接人：{params.handoverPerson}</div> : null}
               </Space>
             ) : (
-              <Space direction="vertical" size={3} style={{ width: "100%" }}>
-                {Object.entries(params).map(([k, v]) => (
-                  <div key={k}><strong>{k}：</strong>{String(v)}</div>
-                ))}
-              </Space>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 13, lineHeight: 1.5 }}>
+                {/* 相对方主体与地址 */}
+                {params.counterpartyName ? (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>相对方：</span>
+                    <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                      {params.counterpartyName}
+                    </span>
+                    {params.counterpartyRole ? (
+                      <Tag color="cyan" style={{ margin: 0, fontSize: 11, padding: '0 4px', lineHeight: '18px' }}>
+                        {params.counterpartyRole}
+                      </Tag>
+                    ) : null}
+                    {params.counterpartyAddress ? (
+                      <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>
+                        (📍 {params.counterpartyAddress})
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {/* 我方主体与角色 */}
+                {params.ourParty || params.ourRole ? (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>我方：</span>
+                    <span style={{ color: 'var(--text-primary)' }}>
+                      <strong>{params.ourParty || '我方'}</strong>
+                      {params.ourRole ? (
+                        <Tag color="blue" style={{ marginLeft: 6, fontSize: 11, padding: '0 4px', lineHeight: '18px' }}>
+                          {params.ourRole}
+                        </Tag>
+                      ) : null}
+                    </span>
+                  </div>
+                ) : null}
+
+                {/* 合作业务事项 */}
+                {params.cooperationSubject && params.cooperationSubject !== '商业拓展与业务技术合作' ? (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>合作事项：</span>
+                    <span style={{ color: 'var(--text-primary)' }}>{params.cooperationSubject}</span>
+                  </div>
+                ) : null}
+
+                {/* 签署日期 */}
+                {params.signDate ? (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>签署日期：</span>
+                    <span style={{ color: 'var(--text-primary)' }}>{params.signDate}</span>
+                  </div>
+                ) : null}
+
+                {/* 金额 / 违约约定 */}
+                {params.penaltyAmount !== undefined || params.contractAmount !== undefined || params.amount !== undefined ? (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                      {params.penaltyAmount !== undefined ? '违约金：' : '涉及金额：'}
+                    </span>
+                    <span style={{ color: '#d4380d', fontWeight: 600 }}>
+                      ¥{Number(params.penaltyAmount ?? params.contractAmount ?? params.amount).toLocaleString()} 元
+                    </span>
+                  </div>
+                ) : null}
+
+                {/* 仅在用户真实指定立场时才显示 */}
+                {params.myPosition && ['seller', 'neutral'].includes(params.myPosition) ? (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>合同立场：</span>
+                    <span style={{ color: 'var(--text-primary)' }}>{formatParamValue('myPosition', params.myPosition)}</span>
+                  </div>
+                ) : null}
+
+                {/* 其它非合同特定自定义参数（如果存在且非内部冗余字段） */}
+                {Object.entries(params)
+                  .filter(([k]) => ![
+                    'downloadUrl', 'fileName', 'executionId', 'remarks',
+                    'contractTitle', 'contractType', 'currentStage', 'myPosition',
+                    'durationYears', 'counterpartyName', 'counterpartyAddress',
+                    'counterpartyRole', 'ourParty', 'ourRole', 'cooperationSubject',
+                    'signDate', 'penaltyAmount', 'contractAmount', 'amount'
+                  ].includes(k))
+                  .map(([k, v]) => (
+                    <div key={k} style={{ display: 'flex', gap: 6 }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{PARAM_LABEL_MAP[k] || k}：</span>
+                      <span>{formatParamValue(k, v)}</span>
+                    </div>
+                  ))}
+
+                {/* 快捷展开完整详情 */}
+                <div style={{ marginTop: 2 }}>
+                  <Button
+                    type="link"
+                    size="small"
+                    style={{ padding: 0, height: 'auto', fontSize: 12 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDetailModalItem(item);
+                    }}
+                  >
+                    查看完整要件与诉求 ›
+                  </Button>
+                </div>
+              </div>
             )}
+
+            {effectiveDownloadUrl ? (
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: '6px 10px',
+                  background: 'rgba(22, 119, 255, 0.08)',
+                  borderRadius: 6,
+                  border: '1px solid rgba(22, 119, 255, 0.22)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Space size={6}>
+                  <FileWordOutlined style={{ color: '#1677ff', fontSize: 16 }} />
+                  <span style={{ fontWeight: 600, fontSize: 12, color: 'var(--text-primary)' }}>
+                    {effectiveDocName}
+                  </span>
+                </Space>
+                <Button
+                  size="small"
+                  type="primary"
+                  icon={<DownloadOutlined />}
+                  href={replaceLocalhostWithCurrentHost(effectiveDownloadUrl)}
+                  target="_blank"
+                  download={effectiveDocName}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  下载
+                </Button>
+              </div>
+            ) : null}
+
+            {/* 通用 AI 协同助手快捷入口：带入文档与要求作为上下文 */}
+            <div
+              style={{
+                marginTop: 8,
+                padding: '8px 12px',
+                background: 'rgba(99, 102, 241, 0.04)',
+                borderRadius: 6,
+                border: '1px solid rgba(99, 102, 241, 0.16)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 8,
+              }}
+            >
+              <Space size={6}>
+                <RobotOutlined style={{ color: '#6366f1', fontSize: 14 }} />
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  将任务要件与文档带入 AI 对话，进行自然语言审查与修改
+                </span>
+              </Space>
+              <Button
+                size="small"
+                style={{
+                  backgroundColor: '#722ed1',
+                  borderColor: '#722ed1',
+                  color: '#fff',
+                  borderRadius: 6,
+                  fontSize: 12,
+                }}
+                icon={<RobotOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenTaskInAiChat(item);
+                }}
+              >
+                在 AI 窗口中处理
+              </Button>
+            </div>
           </div>
         ) : null}
 
-        <div
-          className={`${inboxStyles["inbox-content-box"]} ${
-            isLong && !isExpanded ? inboxStyles["inbox-content-collapsed"] : ""
-          }`}
-        >
-          <InboxContentPreview content={content} expanded={isExpanded || !isLong} />
-          {isLong && !isExpanded ? <div className={inboxStyles["inbox-content-fade"]} /> : null}
-        </div>
+        {!hasParams ? (
+          <>
+            <div
+              className={`${inboxStyles["inbox-content-box"]} ${
+                isLong && !isExpanded ? inboxStyles["inbox-content-collapsed"] : ""
+              }`}
+            >
+              <InboxContentPreview content={content} expanded={isExpanded || !isLong} />
+              {isLong && !isExpanded ? <div className={inboxStyles["inbox-content-fade"]} /> : null}
+            </div>
 
-        {isLong ? (
-          <Button
-            type="link"
-            size="small"
-            className={inboxStyles["inbox-expand-btn"]}
-            icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
-            onClick={() => toggleExpand(item.id)}
-          >
-            {isExpanded ? "收起全文" : `展开全文 (共 ${linesCount} 行)`}
-          </Button>
+            {isLong ? (
+              <Button
+                type="link"
+                size="small"
+                className={inboxStyles["inbox-expand-btn"]}
+                icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
+                onClick={() => toggleExpand(item.id)}
+              >
+                {isExpanded ? "收起全文" : `展开全文 (共 ${linesCount} 行)`}
+              </Button>
+            ) : null}
+          </>
         ) : null}
       </div>
     );
@@ -310,72 +641,111 @@ export function InboxList({
   return (
     <div className={styles["workbench-card-content-stack"]}>
       {/* 快速收集输入框与定时同步按钮 */}
-      <div className={styles["workbench-todo-form"]}>
-        <Input.TextArea
-          className={isShaking ? styles["inbox-input-shake"] : undefined}
-          status={errorMessage ? "error" : undefined}
-          value={inboxDraft}
-          placeholder="快速收集灵感、邮件要点或外部任务至收件箱（支持多行录入，后续统一整理）..."
-          onChange={(e) => handleDraftChange(e.target.value)}
-          autoSize={{ minRows: 2, maxRows: 4 }}
-        />
-        {errorMessage ? (
-          <div className={styles["inbox-error-message"]}>
-            <ExclamationCircleOutlined />
-            <span>{errorMessage}</span>
-          </div>
-        ) : null}
-        <div className={styles["workbench-todo-form-actions"]}>
-          <Tooltip title="将上方文本框中输入的便签或要点保存入 GTD 收件箱">
+      <div className={styles["workbench-compact-form"]}>
+        <div className={styles["workbench-compact-input-wrap"]}>
+          <Input.TextArea
+            className={isShaking ? styles["inbox-input-shake"] : undefined}
+            status={errorMessage ? "error" : undefined}
+            value={inboxDraft}
+            placeholder="快速收集便签/要点（Enter 保存，Shift+Enter 换行）..."
+            onChange={(e) => handleDraftChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleCollectClick();
+              }
+            }}
+            autoSize={{ minRows: 1, maxRows: 3 }}
+          />
+          <Button
+            type="primary"
+            size="small"
+            icon={<InboxOutlined />}
+            onClick={handleCollectClick}
+            className={styles["workbench-compact-btn-primary"]}
+          >
+            收集
+          </Button>
+        </div>
+        {onSyncEmail ? (
+          <Tooltip title="执行工作流：从已绑定的邮箱拉取未读邮件并沉淀入 GTD 收件箱">
             <Button
-              type="primary"
-              className={`${styles["workbench-action-button"]} ${styles["workbench-todo-toolbar-button"]} ${styles["is-create"]}`}
-              icon={<InboxOutlined />}
-              onClick={handleCollectClick}
+              size="small"
+              icon={isSyncingEmail ? <LoadingOutlined spin /> : <MailOutlined />}
+              onClick={onSyncEmail}
+              loading={isSyncingEmail}
+              className={styles["workbench-compact-btn-subtle"]}
             >
-              收集到收件箱
+              收取邮件
             </Button>
           </Tooltip>
-          {onSyncEmail ? (
-            <Tooltip title="执行工作流：从已绑定的邮箱拉取未读邮件并沉淀入 GTD 收件箱">
-              <Button
-                className={`${styles["workbench-action-button"]} ${styles["workbench-todo-toolbar-button"]} ${styles["is-ai"]}`}
-                icon={isSyncingEmail ? <LoadingOutlined spin /> : <MailOutlined />}
-                onClick={onSyncEmail}
-                loading={isSyncingEmail}
-              >
-                收取邮件
-              </Button>
-            </Tooltip>
-          ) : null}
-        </div>
+        ) : null}
       </div>
+      {errorMessage ? (
+        <div className={styles["inbox-error-message"]}>
+          <ExclamationCircleOutlined />
+          <span>{errorMessage}</span>
+        </div>
+      ) : null}
 
-      {/* 状态筛选 Radio */}
-      <Radio.Group
+      {/* 状态筛选 Segmented */}
+      <Segmented
         value={inboxFilter}
-        onChange={(e) => onFilterChange(e.target.value)}
+        onChange={(val) => onFilterChange(val as any)}
         size="small"
-        buttonStyle="solid"
-      >
-        <Radio.Button value="all">全部 ({inboxSummary.total})</Radio.Button>
-        <Radio.Button value="unprocessed">
-          待整理 ({inboxSummary.unprocessed})
-        </Radio.Button>
-        <Radio.Button value="clarified">
-          已厘清 ({inboxSummary.clarified})
-        </Radio.Button>
-        <Radio.Button value="converted">
-          已转待办 ({inboxSummary.converted})
-        </Radio.Button>
-        <Radio.Button value="archived">
-          已归档 ({inboxSummary.archived})
-        </Radio.Button>
-      </Radio.Group>
+        className={styles["workbench-segmented-filter"]}
+        options={[
+          {
+            label: (
+              <Space size={4} align="center">
+                <span>待介入</span>
+                {priorityItems.length > 0 ? (
+                  <Tag
+                    color="error"
+                    bordered={false}
+                    style={{
+                      margin: 0,
+                      paddingInline: 5,
+                      height: 16,
+                      lineHeight: "16px",
+                      fontSize: 10,
+                      borderRadius: 8,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {priorityItems.length}
+                  </Tag>
+                ) : (
+                  <span style={{ opacity: 0.6 }}>(0)</span>
+                )}
+              </Space>
+            ),
+            value: "intervention",
+          },
+          { label: `待整理 (${inboxSummary.unprocessed})`, value: "unprocessed" },
+          {
+            label: `已厘清/归档 (${inboxSummary.clarified + inboxSummary.archived})`,
+            value: "clarified_archived",
+          },
+          { label: `全部 (${inboxSummary.total})`, value: "all" },
+        ]}
+      />
 
       {/* 收件箱条目列表 (可滚动区域) */}
       <div className={styles["workbench-card-scroll-area"]}>
-        {inboxItems.length === 0 ? (
+        {inboxFilter === "intervention" ? (
+          <InterventionList
+            priorityItems={priorityItems}
+            onOpenExecution={onOpenExecution}
+            onIgnorePriorityItem={onIgnorePriorityItem}
+            onIgnoreAllPriorityItems={onIgnoreAllPriorityItems}
+            onViewAllExecutions={onViewAllExecutions}
+            onLaunchAiAssistant={onLaunchAiAssistant}
+            getExecutionDisplayDescription={getExecutionDisplayDescription}
+            getExecutionDisplayTime={getExecutionDisplayTime}
+            getSkillDisplayName={getSkillDisplayName}
+          />
+        ) : inboxItems.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description="收件箱暂无此状态条目 (Inbox Zero)"
@@ -384,7 +754,6 @@ export function InboxList({
           <List
           dataSource={inboxItems}
           renderItem={(item) => {
-            const isClarifying = clarifyingIds[item.id];
             const isConverted = item.status === "converted";
             const clarification = item.aiClarification;
             const actionItem = clarification?.actionItem;
@@ -401,6 +770,18 @@ export function InboxList({
             const isCoordination = payload.kind === "coordination";
             const isApproval = isCoordination && payload.taskType === "approval" && !isReceipt;
             const isAssignment = isCoordination && !isApproval && !isReceipt;
+            const isWorkflowItem =
+              isCoordination ||
+              isReceipt ||
+              (item.sourceType as string) === "workflow" ||
+              Boolean(payload.workflowId) ||
+              Boolean(extra.workflowId) ||
+              item.title?.includes("流程") ||
+              item.title?.includes("待担当确认") ||
+              item.title?.includes("待发送");
+
+            // 智能节点语义分类（解耦 发起/初稿确认节点、审批承认节点、归档办结节点）
+            const nodeSemantics = classifyWorkflowNode(item, user?.username, user?.id);
 
             return (
               <List.Item key={item.id} style={{ padding: "8px 0", border: "none" }}>
@@ -413,6 +794,8 @@ export function InboxList({
                       ? isRejectReceipt
                         ? "3px solid #ff4d4f"
                         : "3px solid #52c41a"
+                      : nodeSemantics.isInitiatorNode
+                      ? "3px solid #1677ff"
                       : isCoordination
                       ? "3px solid #722ed1"
                       : isIntervention
@@ -426,7 +809,30 @@ export function InboxList({
                     {/* 1. 顶部标题与主要操作栏 */}
                     <div className={inboxStyles["inbox-item-header"]}>
                       <div className={inboxStyles["inbox-item-title-wrapper"]}>
-                        {renderStatusTag(item.status)}
+                        {/* 任务主分类：流程任务 (跨节点流转) vs 普通任务 (个人便签) */}
+                        <Tag
+                          color={nodeSemantics.isProcessTask ? "blue" : "default"}
+                          bordered={false}
+                          style={{
+                            margin: 0,
+                            fontWeight: 600,
+                            fontSize: 11,
+                            borderRadius: 4,
+                          }}
+                        >
+                          {nodeSemantics.isProcessTask ? "流程任务" : "普通任务"}
+                        </Tag>
+
+                        {/* 状态标签：区分普通便签(未整理)、发起节点(未确认/需重修)、审批节点(待审批) */}
+                        {nodeSemantics.isInitiatorNode || nodeSemantics.isApprovalNode ? (
+                          <Tag color={nodeSemantics.statusTagColor} style={{ margin: 0, fontWeight: 500 }}>
+                            {nodeSemantics.statusTagText}
+                          </Tag>
+                        ) : (
+                          renderStatusTag(item.status)
+                        )}
+
+                        {/* 业务类型标签：区分待发送、需重修、审批承认、协同回执 */}
                         {isReceipt ? (
                           <Tag
                             color={isRejectReceipt ? "error" : isApproveReceipt ? "success" : "cyan"}
@@ -438,66 +844,150 @@ export function InboxList({
                               ? "协同回执 · 已通过"
                               : "协同回执 · 已办结"}
                           </Tag>
-                        ) : isCoordination ? (
-                          <Tag color="purple" style={{ marginRight: 4 }}>
-                            {isApproval ? "审批承认" : "协同作业"}
+                        ) : nodeSemantics.isProcessTask ? (
+                          <Tag color={nodeSemantics.categoryTagColor} style={{ marginRight: 4 }}>
+                            {nodeSemantics.categoryTagText}
                           </Tag>
                         ) : null}
-                        {item.sourceSender ? (
+
+                        {/* 经办人 / 发起人身份标签 */}
+                        {nodeSemantics.operatorDisplayText ? (
+                          <Tag color={nodeSemantics.operatorIsMe ? "green" : "blue"} style={{ marginRight: 4 }}>
+                            {nodeSemantics.operatorDisplayText}
+                          </Tag>
+                        ) : item.sourceSender ? (
                           <Tag color="blue" style={{ marginRight: 4 }}>
                             @{item.sourceSender}
                           </Tag>
                         ) : null}
+
+                        {/* 清洗后标题：将奇怪的 [待担当确认] 转换为 [待发送] */}
                         <Typography.Text strong className={inboxStyles["inbox-item-title"]}>
-                          {item.title || "未命名收集条目"}
+                          {nodeSemantics.displayTitle || item.title || "未命名收集条目"}
                         </Typography.Text>
                       </div>
 
-                      {/* 右侧动作按钮 */}
+                      {/* 右侧动作按钮：发起/初稿确认显示“发送”，审批节点显示“同意”，作业节点显示“流转” */}
                       <Space size={4} wrap className={inboxStyles["inbox-item-actions"]}>
-                        {isCoordination && isApproval && !isConverted ? (
+                        {/* 1. 需重修 / 已驳回任务：无论状态是否已转待办，卡片右侧都保证提供「重新编辑并发送」与「详细」 */}
+                        {nodeSemantics.isRevisionRequired ? (
                           <>
-                            <Button
-                              size="small"
-                              type="primary"
-                              style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
-                              icon={<CheckCircleOutlined />}
-                              onClick={() => {
-                                setActiveCoordItem(item);
-                                setActiveAction("approve");
-                                setActionModalOpen(true);
-                              }}
-                            >
-                              同意承认
-                            </Button>
-                            <Button
-                              size="small"
-                              danger
-                              icon={<CloseCircleOutlined />}
-                              onClick={() => {
-                                setActiveCoordItem(item);
-                                setActiveAction("reject");
-                                setActionModalOpen(true);
-                              }}
-                            >
-                              驳回
-                            </Button>
+                            <Tooltip title="当前任务已被驳回或需重修，请打开详情修改业务要件或替换附件后再重新提交">
+                              <Button
+                                size="small"
+                                type="primary"
+                                danger
+                                icon={<EditOutlined style={{ fontSize: 12 }} />}
+                                style={{
+                                  fontWeight: 500,
+                                  borderRadius: 6,
+                                  height: 26,
+                                  padding: "0 10px",
+                                }}
+                                onClick={() => {
+                                  setDetailModalItem(item);
+                                }}
+                              >
+                                重新编辑并发送
+                              </Button>
+                            </Tooltip>
+                            <Tooltip title="查看驳回批注与修改意见，核验材料后重新提交">
+                              <Button
+                                size="small"
+                                icon={<EyeOutlined />}
+                                onClick={() => {
+                                  setDetailModalItem(item);
+                                }}
+                              >
+                                详细
+                              </Button>
+                            </Tooltip>
                           </>
-                        ) : null}
-                        {isCoordination && isAssignment && !isConverted ? (
-                          <Button
-                            size="small"
-                            type="primary"
-                            style={{ backgroundColor: "#722ed1", borderColor: "#722ed1" }}
-                            icon={<CheckCircleOutlined />}
-                            onClick={() => {
-                              setActiveCoordItem(item);
-                              setActiveAction("complete");
-                              setActionModalOpen(true);
-                            }}
-                          >
-                            完成任务
-                          </Button>
+                        ) : nodeSemantics.isProcessTask ? (
+                          /* 2. 正常流程任务：未转待办时展示快捷流转按钮，且始终展示「详细」按钮 */
+                          <>
+                            {!isConverted ? (
+                              <Popconfirm
+                                title={
+                                  nodeSemantics.cardActionType === "send"
+                                    ? "确认提交合同并送审？"
+                                    : nodeSemantics.isApprovalNode
+                                    ? "确认审批通过并流转？"
+                                    : "确认办理完成并提交流转？"
+                                }
+                                description={
+                                  nodeSemantics.cardActionType === "send"
+                                    ? "提交后系统将开展智能合规审查与风险诊断，并通过后自动流转至法务专员/下一环节审批。您可在「已发事项」中跟踪最新流转进度。"
+                                    : nodeSemantics.isApprovalNode
+                                    ? "审批通过后将自动流转至下一节点继续流转，审批意见与协同记录将同步归档。"
+                                    : "办理完成后将提交流转至后续处理或归档节点。"
+                                }
+                                okText={nodeSemantics.cardActionText}
+                                cancelText="取消"
+                                onConfirm={() => handleQuickCoordAction(item)}
+                                disabled={quickSendingId === item.id}
+                              >
+                                <Tooltip
+                                  title={
+                                    nodeSemantics.cardActionType === "send"
+                                      ? "快捷指令：一键确认初稿并发送至下一节点"
+                                      : nodeSemantics.isApprovalNode
+                                      ? "快捷指令：一键审核通过并流转至下一节点"
+                                      : "快捷指令：一键办结并提交流转"
+                                  }
+                                >
+                                  <Button
+                                    size="small"
+                                    type="primary"
+                                    loading={quickSendingId === item.id}
+                                    icon={
+                                      nodeSemantics.cardActionType === "send" ? (
+                                        <SendOutlined style={{ fontSize: 12 }} />
+                                      ) : (
+                                        <CheckCircleOutlined style={{ fontSize: 12 }} />
+                                      )
+                                    }
+                                    style={
+                                      nodeSemantics.cardActionType === "send"
+                                        ? {
+                                            background: "linear-gradient(135deg, #1677ff 0%, #0958d9 100%)",
+                                            borderColor: "#0958d9",
+                                            boxShadow: "0 2px 4px rgba(22, 119, 255, 0.25)",
+                                            fontWeight: 500,
+                                            borderRadius: 6,
+                                            height: 26,
+                                            padding: "0 10px",
+                                          }
+                                        : isAssignment
+                                        ? {
+                                            background: "linear-gradient(135deg, #722ed1 0%, #531dab 100%)",
+                                            borderColor: "#531dab",
+                                            boxShadow: "0 2px 4px rgba(114, 46, 209, 0.25)",
+                                            fontWeight: 500,
+                                            borderRadius: 6,
+                                            height: 26,
+                                            padding: "0 10px",
+                                          }
+                                        : undefined
+                                    }
+                                  >
+                                    {nodeSemantics.cardActionText}
+                                  </Button>
+                                </Tooltip>
+                              </Popconfirm>
+                            ) : null}
+                            <Tooltip title="查看流程进度、结构化参数与附件详情">
+                              <Button
+                                size="small"
+                                icon={<EyeOutlined />}
+                                onClick={() => {
+                                  setDetailModalItem(item);
+                                }}
+                              >
+                                详细
+                              </Button>
+                            </Tooltip>
+                          </>
                         ) : null}
                         {isIntervention && extra.actionUrl ? (
                           <Button
@@ -521,27 +1011,16 @@ export function InboxList({
                               恢复
                             </Button>
                           </Tooltip>
-                        ) : !isConverted ? (
+                        ) : !isConverted && !nodeSemantics.isRevisionRequired ? (
                           <>
-                            <Tooltip title="使用大模型对内容进行 5W1H 深度厘清并推断优先级/工作流">
+                            <Tooltip title="转为正式任务，进入行动待办看板排期执行">
                               <Button
                                 size="small"
-                                icon={isClarifying ? <LoadingOutlined spin /> : <RobotOutlined />}
-                                onClick={() => onClarifyItem(item)}
-                                disabled={isClarifying}
-                              >
-                                {item.status === "clarified" ? "重新整理" : "AI 智能整理"}
-                              </Button>
-                            </Tooltip>
-
-                            <Tooltip title="转为正式待办，进入行动看板排期执行">
-                              <Button
-                                size="small"
-                                type="primary"
+                                type={isCoordination ? "default" : "primary"}
                                 icon={<ArrowRightOutlined />}
                                 onClick={() => onConvertToTodo(item.id)}
                               >
-                                转为待办
+                                转任务
                               </Button>
                             </Tooltip>
 
@@ -554,7 +1033,7 @@ export function InboxList({
                             </Tooltip>
                           </>
                         ) : (
-                          <Tooltip title="归档已转待办条目 (从收集箱清理移出)">
+                          <Tooltip title="归档已转任务条目 (从收集箱清理移出)">
                             <Button
                               size="small"
                               icon={<FolderOutlined />}
@@ -563,14 +1042,16 @@ export function InboxList({
                           </Tooltip>
                         )}
 
-                        <Popconfirm
-                          title="确定删除此条目吗？"
-                          onConfirm={() => onDeleteItem(item.id)}
-                          okText="删除"
-                          cancelText="取消"
-                        >
-                          <Button size="small" type="text" danger icon={<DeleteOutlined />} />
-                        </Popconfirm>
+                        {!isWorkflowItem ? (
+                          <Popconfirm
+                            title="确定删除此条目吗？"
+                            onConfirm={() => onDeleteItem(item.id)}
+                            okText="删除"
+                            cancelText="取消"
+                          >
+                            <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+                          </Popconfirm>
+                        ) : null}
                       </Space>
                     </div>
 
@@ -637,33 +1118,15 @@ export function InboxList({
       )}
     </div>
 
-    {activeCoordItem ? (
-      <CoordinationActionModal
-        open={actionModalOpen}
-        action={activeAction}
-        taskId={activeCoordItem.sourceRefId || activeCoordItem.id}
-        taskTitle={activeCoordItem.sourceTitle || activeCoordItem.title}
-        initiatorName={
-          (activeCoordItem.unifiedPayload as any)?.initiator?.username ||
-          activeCoordItem.sourceSender ||
-          undefined
-        }
-        workflowId={(activeCoordItem.unifiedPayload as any)?.workflowId}
-        parameters={(activeCoordItem.unifiedPayload as any)?.parameters}
-        rawContent={activeCoordItem.rawContent}
-        incomingAttachments={(activeCoordItem.unifiedPayload as any)?.attachments}
-        onClose={() => {
-          setActionModalOpen(false);
-          setActiveCoordItem(null);
-        }}
-        onSuccess={() => {
-          setActionModalOpen(false);
-          const itemId = activeCoordItem.id;
-          setActiveCoordItem(null);
-          onConvertToTodo(itemId);
-        }}
-      />
-    ) : null}
+    <InboxTaskDetailModal
+      open={Boolean(detailModalItem)}
+      item={detailModalItem}
+      onClose={() => setDetailModalItem(null)}
+      onOpenInAi={handleOpenTaskInAiChat}
+      onSuccess={() => {
+        setDetailModalItem(null);
+      }}
+    />
   </div>
   );
 }

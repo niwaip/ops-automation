@@ -2255,3 +2255,96 @@
     min-width: 90px !important;
   }
 }
+
+.user-chat-task-context-bar {
+  background: rgba(114, 46, 209, 0.05);
+  border-bottom: 1px dashed rgba(114, 46, 209, 0.22);
+  padding: 8px 14px 6px;
+  font-size: 12px;
+}
+
+[data-theme="dark"] .user-chat-task-context-bar {
+  background: rgba(114, 46, 209, 0.12);
+  border-bottom-color: rgba(114, 46, 209, 0.3);
+}
+
+.user-chat-task-context-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.user-chat-task-context-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-chat-task-context-close-btn {
+  font-size: 11px !important;
+  color: var(--text-tertiary) !important;
+  padding: 0 4px !important;
+  height: 20px !important;
+  line-height: 20px !important;
+}
+
+.user-chat-task-context-close-btn:hover {
+  color: #ff4d4f !important;
+}
+
+.user-chat-task-context-body {
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.user-chat-task-context-title {
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.user-chat-task-context-params {
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-chat-task-context-suggestions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.user-chat-suggestion-pill {
+  cursor: pointer;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+  padding: 0 8px !important;
+  line-height: 20px !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(114, 46, 209, 0.2) !important;
+  color: #722ed1 !important;
+  transition: all 0.15s ease;
+}
+
+.user-chat-suggestion-pill:hover {
+  background: #722ed1 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .user-chat-suggestion-pill {
+  background: rgba(30, 41, 59, 0.8) !important;
+  border-color: rgba(168, 85, 247, 0.3) !important;
+  color: #c084fc !important;
+}
+
+[data-theme="dark"] .user-chat-suggestion-pill:hover {
+  background: #a855f7 !important;
+  color: #ffffff !important;
+}

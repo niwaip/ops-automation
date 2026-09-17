@@ -233,13 +233,22 @@ export default defineConfig({
       },
       '/api/renders': {
         target: getProxyTarget(
-          'ops-carbone-engine',
+          'carbone-engine',
           3009,
           ['CARBONE_ENGINE_HOST'],
           ['CARBONE_ENGINE_PORT', 'CARBONE_PORT']
         ),
         changeOrigin: true,
         rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),
+      },
+      '/studio': {
+        target: getProxyTarget(
+          'carbone-engine',
+          3009,
+          ['CARBONE_ENGINE_HOST'],
+          ['CARBONE_ENGINE_PORT', 'CARBONE_PORT']
+        ),
+        changeOrigin: true,
       },
       '/api/browser-runtime': {
         target: getProxyTarget(

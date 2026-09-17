@@ -179,5 +179,65 @@ describe('param-default-and-date specifications', () => {
       expect(partyAName).toBe('豆包公司');
       expect(partyAAddress).toBe('北京大街100号');
     });
+
+    it('extracts all parameters from real user input (我需要的北京王府井大街1000号的 豆包有限公司...关于 ai模型开发的 保密协议...我们是乙方 富士通)', () => {
+      const realInput =
+        '生成保密合同 我需要的北京王府井大街1000号的 豆包有限公司，签订关于 ai模型开发的 保密协议，签订日期是今天，我们是乙方 富士通';
+
+      const partyAName = inferFieldValueFromExplicitPatterns(
+        'partyA.name',
+        { type: 'string', displayName: '甲方公司法定全称', description: '协议首部甲方法律主体名称' },
+        realInput
+      );
+      const partyAAddress = inferFieldValueFromExplicitPatterns(
+        'partyA.address',
+        { type: 'string', displayName: '甲方注册或经营地址', description: '协议首部甲方注册或联系地址' },
+        realInput
+      );
+      const partyBName = inferFieldValueFromExplicitPatterns(
+        'partyB.name',
+        {
+          type: 'string',
+          displayName: '乙方（接收方）的公司全称',
+          description: '协议落款及首部乙方法律主体名称',
+          default: '富士通 ( 中国 ) 信息系統有限公司',
+        },
+        realInput
+      );
+      const cooperationSubject = inferFieldValueFromExplicitPatterns(
+        'cooperation.subject',
+        {
+          type: 'string',
+          displayName: '双方合作的具体业务主题或项目内容',
+          description: '保密协议所覆盖的合作项目/业务范围主题',
+        },
+        realInput
+      );
+
+      const now = new Date();
+      const year = inferFieldValueFromExplicitPatterns(
+        'agreement.signDate.year',
+        { type: 'number', description: '协议签订年份' },
+        realInput
+      );
+      const month = inferFieldValueFromExplicitPatterns(
+        'agreement.signDate.month',
+        { type: 'number', description: '协议签订月份' },
+        realInput
+      );
+      const day = inferFieldValueFromExplicitPatterns(
+        'agreement.signDate.day',
+        { type: 'number', description: '协议签订日（日号）' },
+        realInput
+      );
+
+      expect(partyAName).toBe('豆包有限公司');
+      expect(partyAAddress).toBe('北京王府井大街1000号');
+      expect(partyBName).toBe('富士通 ( 中国 ) 信息系統有限公司');
+      expect(cooperationSubject).toBe('ai模型开发');
+      expect(year).toBe(now.getFullYear());
+      expect(month).toBe(now.getMonth() + 1);
+      expect(day).toBe(now.getDate());
+    });
   });
 });

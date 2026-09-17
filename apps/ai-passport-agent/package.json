@@ -1,0 +1,23 @@
+{
+  "name": "@ops-automation/ai-passport-agent",
+  "version": "1.0.0",
+  "description": "AI Passport Voice Agent Terminal Firmware - A wearable, push-to-talk voice portal for ops-automation and AI agents",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "build": "python scripts/build.py folo/ai-passport-c3 --name folo-ai-passport-c3 --language zh-CN --wake-word nihaoxiaozhi",
+    "test": "python -m unittest discover -s scripts/tests -v",
+    "clean": "idf.py fullclean",
+    "flash": "python -m esptool --chip esp32c3 --baud 460800 write_flash --flash_mode dio --flash_freq 80m --flash_size 8MB 0x0 build/merged-binary.bin"
+  },
+  "keywords": [
+    "ai-passport",
+    "esp32-c3",
+    "voice-agent",
+    "pager",
+    "ptt",
+    "ops-automation"
+  ],
+  "author": "Ops Automation Team",
+  "license": "MIT"
+}

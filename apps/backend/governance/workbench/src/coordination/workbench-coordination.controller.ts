@@ -8,8 +8,14 @@ import {
   Put,
   Query,
   Request,
+  Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
+import { Public } from '@ops/identity-access';
 import {
   CreateCoordinationTaskDto,
   QueryCollaboratorsDto,
@@ -29,6 +35,7 @@ import {
   GenerateStageFlowAiDraftDto,
 } from './stage-flow-ai-draft.service';
 import { WorkbenchCoordinationService } from './workbench-coordination.service';
+import { CoordinationAttachmentStorageService } from './coordination-attachment-storage.service';
 
 @ApiTags('Workbench Coordination')
 @ApiBearerAuth()
@@ -37,7 +44,8 @@ export class WorkbenchCoordinationController {
   constructor(
     private readonly coordinationService: WorkbenchCoordinationService,
     private readonly orgWorkflowService: OrgWorkflowService,
-    private readonly stageFlowAiDraftService: StageFlowAiDraftService
+    private readonly stageFlowAiDraftService: StageFlowAiDraftService,
+    private readonly attachmentStorage: CoordinationAttachmentStorageService
   ) {}
 
   private extractUserId(req: any): string {
@@ -100,6 +108,32 @@ export class WorkbenchCoordinationController {
     return await this.coordinationService.submitAction(userId, taskId, body);
   }
 
+  @Post('tasks/upload-attachment')
+  @ApiOperation({ summary: '上传协同任务附件或修订合同文档' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadAttachment(
+    @Request() req: any,
+    @UploadedFile() file: any
+  ) {
+    const userId = this.extractUserId(req);
+    return await this.attachmentStorage.saveAttachment(file, userId);
+  }
+
+  @Public()
+  @Get('attachments/:attachmentId/download')
+  @ApiOperation({ summary: '下载协同任务附件或修订合同文档' })
+  async downloadAttachment(
+    @Param('attachmentId') attachmentId: string,
+    @Res() res: Response
+  ) {
+    const { buffer, fileName, mimeType } = await this.attachmentStorage.getAttachment(attachmentId);
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    res.setHeader('Content-Length', buffer.length);
+    res.end(buffer);
+  }
+
   @Get('tasks')
   @ApiOperation({ summary: '查询协同任务与流程实例列表' })
   async listTasks(
@@ -115,6 +149,13 @@ export class WorkbenchCoordinationController {
   async getTaskDetails(@Request() req: any, @Param('taskId') taskId: string) {
     const userId = this.extractUserId(req);
     return await this.coordinationService.getTaskDetails(userId, taskId);
+  }
+
+  @Post('tasks/:taskId/archive')
+  @ApiOperation({ summary: '归档协同任务及其关联的所有条目' })
+  async archiveTask(@Request() req: any, @Param('taskId') taskId: string) {
+    const userId = this.extractUserId(req);
+    return await this.coordinationService.archiveTask(userId, taskId);
   }
 
   // ==========================================

@@ -29,6 +29,8 @@ export interface BuiltinContractReviewInput {
   url?: string;
   taskContext?: any;
   idempotencyKey?: string;
+  prompt?: string;
+  reviewPrompt?: string;
 }
 
 export interface CustomCheckpointDto {

@@ -287,8 +287,10 @@ export class UserSandboxDispatcherService {
       const outboundMarkerRegex = /<<<DSH_OUTBOUND_FILE:([\s\S]*?)>>>/g;
       let m: RegExpExecArray | null;
       while ((m = outboundMarkerRegex.exec(rawOutput)) !== null) {
+        const markerContent = m[1];
+        if (!markerContent) continue;
         try {
-          const parsed = JSON.parse(m[1].trim());
+          const parsed = JSON.parse(markerContent.trim());
           if (parsed && typeof parsed.filePath === 'string') {
             outboundFiles.push({
               filePath: parsed.filePath,

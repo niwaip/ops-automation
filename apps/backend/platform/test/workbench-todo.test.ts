@@ -46,3 +46,26 @@ describe('WorkbenchTodoParserService', () => {
     expect(preview.sourceType).toBe(TodoSourceType.chat);
   });
 });
+
+describe('QueryWorkbenchTodoDto validation', () => {
+  it('should allow pageSize up to 500 and reject pageSize above 500', () => {
+    const { validateSync } = require('class-validator');
+    const { plainToInstance } = require('class-transformer');
+    const { QueryWorkbenchTodoDto } = require('@ops/workbench/todo');
+
+    const dto100 = plainToInstance(QueryWorkbenchTodoDto, { pageSize: '100' });
+    expect(validateSync(dto100)).toHaveLength(0);
+
+    const dto200 = plainToInstance(QueryWorkbenchTodoDto, { pageSize: '200' });
+    expect(validateSync(dto200)).toHaveLength(0);
+
+    const dto500 = plainToInstance(QueryWorkbenchTodoDto, { pageSize: '500' });
+    expect(validateSync(dto500)).toHaveLength(0);
+
+    const dto600 = plainToInstance(QueryWorkbenchTodoDto, { pageSize: '600' });
+    const errors600 = validateSync(dto600);
+    expect(errors600.length).toBeGreaterThan(0);
+    expect(errors600[0].constraints?.max).toContain('pageSize must not be greater than 500');
+  });
+});
+

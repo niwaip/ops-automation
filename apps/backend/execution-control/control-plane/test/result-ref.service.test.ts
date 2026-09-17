@@ -64,4 +64,39 @@ describe('ResultRefService', () => {
       service.project('execution-1', 'ref-1', ['title'], { id: 'user-1' })
     ).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it('safely truncates unicode characters and prevents lone surrogate pairs at boundaries', async () => {
+    const { service, prisma } = createService();
+    prisma.executionResultRef.create.mockImplementation(({ data }: any) => ({
+      id: 'ref-emoji',
+      ...data,
+    }));
+
+    // Construct a string where an emoji (like 🟡 or ⚖️) crosses index 160
+    // 'a' repeated 159 times + '🟡' (which consists of 2 UTF-16 code units \uD83D\uDFE1)
+    const boundaryString = 'a'.repeat(159) + '🟡' + 'extra text';
+    await service.create({
+      executionId: 'execution-emoji',
+      payload: { summary: boundaryString },
+    });
+
+    const preview = prisma.executionResultRef.create.mock.calls[0][0].data.previewJson;
+    expect(preview.summary).toBeDefined();
+    // The string must be well-formed and valid JSON without lone surrogate errors
+    const serialized = JSON.stringify(preview.summary);
+    expect(() => JSON.parse(serialized)).not.toThrow();
+    // Check that lone surrogate characters do not exist
+    for (let i = 0; i < preview.summary.length; i++) {
+      const code = preview.summary.charCodeAt(i);
+      if (code >= 0xd800 && code <= 0xdbff) {
+        // High surrogate must be followed by a low surrogate
+        const nextCode = preview.summary.charCodeAt(i + 1);
+        expect(nextCode).toBeGreaterThanOrEqual(0xdc00);
+        expect(nextCode).toBeLessThanOrEqual(0xdfff);
+        i++;
+      } else {
+        expect(code < 0xdc00 || code > 0xdfff).toBe(true);
+      }
+    }
+  });
 });

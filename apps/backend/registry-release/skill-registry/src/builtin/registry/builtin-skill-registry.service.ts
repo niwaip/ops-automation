@@ -20,8 +20,13 @@ const ALIAS_MAP: Record<string, string> = {
   workspace_explorer: 'platform.workspace.explorer',
   contract_comparator: 'platform.document.contract-comparator',
   contract_compare: 'platform.document.contract-comparator',
+  'document.contract.compare': 'platform.document.contract-comparator',
   contract_reviewer: 'platform.document.contract-reviewer',
   contract_review: 'platform.document.contract-reviewer',
+  'document.contract.review': 'platform.document.contract-reviewer',
+  'document.pdf.create': 'platform.document.pdf-create',
+  'document.pdf.split': 'platform.document.pdf-split',
+  'document.pdf.merge': 'platform.document.pdf-merge',
 };
 
 @Injectable()

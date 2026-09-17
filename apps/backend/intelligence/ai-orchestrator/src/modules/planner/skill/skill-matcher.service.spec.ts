@@ -287,4 +287,55 @@ describe('SkillMatcherService deterministic explicit routing', () => {
       })
     );
   });
+
+  it('prioritizes specific skill alias/trigger over generic web search keyword (regression: 登录调用ai vs 查询)', async () => {
+    const service = new SkillMatcherService({} as any);
+    const result = await service.matchSkill({
+      userInput: '登录调用ai  查询deepseek harness的安装方法',
+      userId: 'user-1',
+      availableSkills: [
+        {
+          skillId: 'platform.search.web',
+          executableVersion: '1.0.3',
+          skillName: '内置联网搜索',
+          description: '检索公开互联网中的最新网页与新闻信息',
+          triggerKeywords: ['联网搜索', '检索', '搜索', '查找', '查询', '新闻'],
+          paramsSchema: {
+            properties: {
+              query: { type: 'string', description: '检索词', required: true },
+            },
+            required: ['query'],
+          },
+        },
+        {
+          skillId: '19d7c3f6-18a2-424a-95b8-82856154daf1',
+          executableVersion: '1.0.0',
+          skillName: '登录并且调用ai',
+          description: '登录指定系统并调用悬浮AI助手进行智能问答',
+          triggerKeywords: ['登录并且调用ai', '登录调用ai', '登录并调用ai'],
+          apiEndpoints: {
+            runtimeMetadata: {
+              routingAliases: ['登录并且调用ai', '登录调用ai', '登录并调用ai'],
+            },
+          },
+          paramsSchema: {
+            properties: {
+              input6TextboxName: { type: 'string', description: '提问内容', required: true },
+            },
+            required: ['input6TextboxName'],
+          },
+        },
+      ],
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        skillId: '19d7c3f6-18a2-424a-95b8-82856154daf1',
+        confidence: 0.99,
+        matchReason: 'deterministic_routing_signal',
+      })
+    );
+    expect(axios.post).not.toHaveBeenCalled();
+  });
 });
+

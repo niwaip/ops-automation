@@ -132,9 +132,9 @@ export function CoordinationTaskCardModal({
       });
 
       message.success(
-        `已成功发起业务卡片「${created.title}」，已推入 @${
-          initialAssignee?.username || '对方'
-        } 的 GTD 收件箱`
+        `已成功发起业务协同「${created.title}」，已推送至 @${
+          initialAssignee?.username || '担当人'
+        } 的工作待办`
       );
       form.resetFields();
       setFileList([]);

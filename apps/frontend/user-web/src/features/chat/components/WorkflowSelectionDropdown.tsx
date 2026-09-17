@@ -4,6 +4,7 @@ import {
   DollarOutlined,
   FileDoneOutlined,
   FormOutlined,
+  SafetyCertificateOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { Button, Empty, Tag } from 'antd';
@@ -26,46 +27,51 @@ export interface WorkflowOptionItem {
 
 interface WorkflowSelectionDropdownProps {
   open: boolean;
-  username: string;
+  mode?: 'bang' | 'at';
+  username?: string;
   targetUser?: CollaboratorUser | null;
   searchQuery?: string;
   selectedIndex: number;
   onHoverIndex: (index: number) => void;
-  onSelectWorkflow: (templateId: string, isModalAction?: boolean) => void;
+  onSelectWorkflow: (
+    templateId: string,
+    isModalAction?: boolean,
+    workflowItem?: WorkflowOptionItem
+  ) => void;
   onClose: () => void;
   onFilteredItemsChange?: (items: WorkflowOptionItem[]) => void;
 }
 
 const DEFAULT_TEMPLATES: WorkflowOptionItem[] = [
   {
+    id: 'legal.contract.review_flow',
+    name: '标准合同起草与法务审查闭环流',
+    description: '商业合作与定制开发合同初稿填报，流转法务部合规审查与批注，通过自动归档存证',
+    category: 'legal',
+  },
+  {
     id: 'hr.leave.request',
-    name: '员工请假申请流程',
-    description: '提交事假/年假/病假，审批核准后自动调用企业 HRMS 扣减额度',
+    name: '员工请假审批',
+    description: '提交事假/年假/病假等考勤申请，直属主管审批通过后自动核销考勤额度',
     category: 'hr',
   },
   {
     id: 'oa.expense.claim',
-    name: '差旅与费用报销审批',
-    description: '填写报销明细与发票凭证，主管及财务审核，对接 ERP 财务网关',
+    name: '费用报销审批',
+    description: '日常差旅、办公及招待费用报销，财务审核通过后自动写入 ERP 财务网关',
     category: 'oa',
   },
   {
     id: 'general.coordination',
-    name: '通用协同任务单',
-    description: '布置工作事项，明确协同要求、交付标准与截止时间，推入收集箱',
+    name: '通用协同任务',
+    description: '布置协同事项，明确要求、交付标准与截止时间，推入对方 GTD 收集箱',
     category: 'general',
-  },
-  {
-    id: 'custom.card.modal',
-    name: '打开完整规范卡片 (弹窗)',
-    description: '在线填报结构化表单卡片，支持自定义优先级、时间与附件',
-    category: 'general',
-    isModalAction: true,
   },
 ];
 
 export function WorkflowSelectionDropdown({
   open,
+  mode = 'bang',
   username,
   searchQuery = '',
   selectedIndex,
@@ -76,36 +82,56 @@ export function WorkflowSelectionDropdown({
 }: WorkflowSelectionDropdownProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { data: serverTemplates = [] } = useQuery(
+  const { data: serverTemplates = [], isSuccess } = useQuery(
     ['workflowTemplates'],
     () => workbenchCoordinationApi.getWorkflowTemplates(),
     {
-      staleTime: 60000,
+      staleTime: 5000,
+      refetchOnWindowFocus: true,
       enabled: open,
     }
   );
 
   const allItems = useMemo<WorkflowOptionItem[]>(() => {
-    if (serverTemplates && serverTemplates.length > 0) {
-      const mapped = serverTemplates.map((t: WorkflowTemplateDefinition) => ({
-        id: t.id || t.workflowId,
-        name: t.name,
-        description: t.description,
-        category: t.category,
-      }));
-      return [
-        ...mapped,
-        {
-          id: 'custom.card.modal',
-          name: '打开完整规范卡片 (弹窗)',
-          description: '在线填报结构化表单卡片，支持自定义优先级、时间与附件',
-          category: 'general',
-          isModalAction: true,
-        },
-      ];
+    const items: WorkflowOptionItem[] = [];
+    const existingIds = new Set<string>();
+
+    if (isSuccess && Array.isArray(serverTemplates)) {
+      // 服务端已成功返回数据：以服务端发布的组织工作流为唯一准则（仅展示已发布且有权限的工作流，下架的工作流自动消失）
+      for (const t of serverTemplates as WorkflowTemplateDefinition[]) {
+        if (t.isPublished === false || t.status === 'draft') continue;
+        const id = t.id || t.workflowId;
+        if (!id || existingIds.has(id)) continue;
+
+        items.push({
+          id,
+          name: t.name,
+          description: t.description || '',
+          category: t.category || 'general',
+        });
+        existingIds.add(id);
+      }
+    } else if (!isSuccess && DEFAULT_TEMPLATES.length > 0) {
+      // 仅在首次加载尚未完成或离线网络异常时使用兜底
+      for (const t of DEFAULT_TEMPLATES) {
+        if (!existingIds.has(t.id)) {
+          items.push(t);
+          existingIds.add(t.id);
+        }
+      }
     }
-    return DEFAULT_TEMPLATES;
-  }, [serverTemplates]);
+
+    // 追加传统表单卡片选项
+    items.push({
+      id: 'custom.card.modal',
+      name: '打开传统表单卡片 (弹窗填写)',
+      description: '切换至结构化表单卡片填写（适合需要手动上传多个附件或调整复杂优先级的场景）',
+      category: 'general',
+      isModalAction: true,
+    });
+
+    return items;
+  }, [serverTemplates, isSuccess]);
 
   const filteredItems = useMemo(() => {
     if (!searchQuery.trim()) return allItems;
@@ -146,6 +172,10 @@ export function WorkflowSelectionDropdown({
 
   const getItemIcon = (id: string) => {
     switch (id) {
+      case 'legal.nda.generation_and_review_flow':
+        return <SafetyCertificateOutlined style={{ fontSize: 18, color: '#722ed1' }} />;
+      case 'legal.contract.review_flow':
+        return <SafetyCertificateOutlined style={{ fontSize: 18, color: '#2f54eb' }} />;
       case 'hr.leave.request':
         return <CalendarOutlined style={{ fontSize: 18, color: '#1677ff' }} />;
       case 'oa.expense.claim':
@@ -159,11 +189,13 @@ export function WorkflowSelectionDropdown({
 
   const getCategoryBadge = (item: WorkflowOptionItem) => {
     if (item.isModalAction) {
-      return <Tag color="green">直接弹窗</Tag>;
+      return <Tag color="green">表单卡片</Tag>;
     }
     switch (item.category) {
+      case 'legal':
+        return <Tag color="geekblue">法务审查</Tag>;
       case 'hr':
-        return <Tag color="blue">HRMS 联动</Tag>;
+        return <Tag color="blue">HRMS 考勤</Tag>;
       case 'oa':
         return <Tag color="orange">财务/ERP</Tag>;
       default:
@@ -176,7 +208,11 @@ export function WorkflowSelectionDropdown({
       <div className={styles['workflow-header']}>
         <div className={styles['workflow-title']}>
           <ThunderboltOutlined style={{ color: '#722ed1', fontSize: 16 }} />
-          <span>为协同成员发起工作流流程卡片</span>
+          <span>
+            {mode === 'bang'
+              ? '⚡ 选择组织工作流（选定后直接输入自然语言，无需卡片）'
+              : '为协同成员发起工作流流程'}
+          </span>
           {username ? (
             <Tag color="purple" style={{ borderRadius: 10, fontSize: 12 }}>
               @{username}
@@ -207,7 +243,7 @@ export function WorkflowSelectionDropdown({
                 key={item.id}
                 className={`${styles['workflow-item']} ${isSelected ? styles['is-selected'] : ''}`}
                 onMouseEnter={() => onHoverIndex(idx)}
-                onClick={() => onSelectWorkflow(item.id, item.isModalAction)}
+                onClick={() => onSelectWorkflow(item.id, item.isModalAction, item)}
               >
                 <div style={{ paddingTop: 2 }}>{getItemIcon(item.id)}</div>
                 <div className={styles['workflow-item-main']}>
@@ -227,9 +263,11 @@ export function WorkflowSelectionDropdown({
       <div className={styles['workflow-footer']}>
         <span>
           <span className={styles.kbd}>↑</span> <span className={styles.kbd}>↓</span> 切换，
-          <span className={styles.kbd}>Enter</span> 选定流程卡片，<span className={styles.kbd}>Esc</span> 取消
+          <span className={styles.kbd}>Enter</span> 选定工作流，<span className={styles.kbd}>Esc</span> 取消
         </span>
-        <span style={{ color: 'var(--text-tertiary)' }}>亦可继续打字进行普通对话</span>
+        <span style={{ color: 'var(--text-tertiary)' }}>
+          {mode === 'bang' ? '💡 选定后直接在对话框输入自然语言即可调用' : '亦可继续打字进行普通对话'}
+        </span>
       </div>
     </div>
   );

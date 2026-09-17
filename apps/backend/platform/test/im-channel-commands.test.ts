@@ -120,6 +120,22 @@ describe('ImChannelService Commands & WeChat Typing', () => {
       expect(explicitTaskRes.mode).toBe('task');
       expect(explicitTaskRes.message).toBe('查询北京天气');
     });
+
+    it('automatically promotes explicit workflow commands to task mode', () => {
+      const ndaRes = imChannelService.resolveInteraction(
+        '生成保密合同 需要和豆包公司 在北京王府井大街1号 关于ai开发项目 我们是乙方富士通',
+        'chat'
+      );
+      expect(ndaRes.mode).toBe('task');
+      expect(ndaRes.message).toContain('生成保密合同');
+
+      const bangRes = imChannelService.resolveInteraction(
+        '!保密合同起草与法务审查闭环流 帮我和腾讯科技签署NDA',
+        'chat'
+      );
+      expect(bangRes.mode).toBe('task');
+      expect(bangRes.message).toContain('保密合同起草与法务审查闭环流');
+    });
   });
 
   describe('WechatIlinkClient typing status', () => {

@@ -4,7 +4,7 @@ import { authStore } from '../adapters/auth/authStore';
 export interface WorkspaceSummary {
   id: string;
   name: string;
-  type: 'personal' | 'department' | 'company';
+  type: 'personal' | 'department' | 'company' | 'process';
   ownerUserId?: string | null;
   departmentId?: string | null;
   quotaBytes: string;
@@ -23,6 +23,7 @@ export interface MyWorkspacesResponse {
   personal: WorkspaceSummary;
   company: WorkspaceSummary;
   department: WorkspaceSummary | null;
+  process?: WorkspaceSummary;
   departments?: DepartmentItem[];
 }
 
@@ -50,7 +51,7 @@ export interface WorkspaceNode {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
-  workspaceType?: 'personal' | 'department' | 'company';
+  workspaceType?: 'personal' | 'department' | 'company' | 'process';
   workspaceName?: string;
 }
 

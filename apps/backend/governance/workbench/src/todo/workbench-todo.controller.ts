@@ -56,6 +56,13 @@ export class WorkbenchTodoController {
     return await this.todoService.discoverTaskRunnableWorkflows();
   }
 
+  @Delete('actions/clear-all')
+  @ApiOperation({ summary: '清空待办任务数据（供系统测试与重置使用）' })
+  async clearAll(@Request() req: any, @Query('all') all?: string) {
+    const userId = this.extractUserId(req);
+    return await this.todoService.clearAll(userId, all === 'true');
+  }
+
   @Get(':id')
   @ApiOperation({ summary: '获取待办任务详情' })
   async getById(@Request() req: any, @Param('id') id: string) {

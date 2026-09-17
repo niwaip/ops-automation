@@ -121,7 +121,17 @@ export class ExecutionQueryService {
       where.status = statuses.length > 1 ? { in: statuses } : statuses[0];
     }
     if (dto.skillId) {
-      where.skillId = dto.skillId;
+      const isUuidSkill =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dto.skillId);
+      if (isUuidSkill) {
+        where.skillId = dto.skillId;
+      } else {
+        where.OR = [
+          { inputJson: { path: ['capabilityId'], equals: dto.skillId } },
+          { inputJson: { path: ['skillId'], equals: dto.skillId } },
+          { normalizedInputJson: { path: ['capabilityId'], equals: dto.skillId } },
+        ];
+      }
     }
     if (requester?.id && requester.role !== 'admin') {
       where.createdBy = requester.id;

@@ -68,6 +68,27 @@ spec:
             items:
               type: object
             description: 兼容旧版契约的自定义审查要点
+          downloadUrlA:
+            type: string
+            description: 基准合同A的下载或访问 URL
+          fileUrlA:
+            type: string
+            description: 基准合同A的存储或访问 URL
+          downloadUrlB:
+            type: string
+            description: 比对合同B的下载或访问 URL
+          fileUrlB:
+            type: string
+            description: 比对合同B的存储或访问 URL
+          downloadUrl:
+            type: string
+            description: 兼容单文件或默认下载 URL
+          fileUrl:
+            type: string
+            description: 兼容单文件或默认存储 URL
+          taskContext:
+            type: object
+            description: 协同任务或上游上下文元数据
     output:
       schemaRef: inline
       schema:

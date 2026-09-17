@@ -12,24 +12,30 @@ import {
   message,
   Tooltip,
   Alert,
+  Dropdown,
   theme,
 } from 'antd';
+import type { MenuProps } from 'antd';
 import {
   ApartmentOutlined,
   ApiOutlined,
   DeleteOutlined,
+  DownOutlined,
   EditOutlined,
   KeyOutlined,
   PlusOutlined,
   ReloadOutlined,
   RightOutlined,
+  SafetyCertificateOutlined,
   SearchOutlined,
   SendOutlined,
   StopOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import type { ColumnsType } from 'antd/es/table';
 import { orgWorkflowApi, type OrganizationWorkflowDTO } from '@/api/orgWorkflow';
+import { PRESET_WORKFLOW_TEMPLATES } from '../constants/orgWorkflowPresets';
 import { OrgWorkflowEditDrawer } from '../components/OrgWorkflowEditDrawer';
 import { OrgWorkflowPermissionModal } from '../components/OrgWorkflowPermissionModal';
 
@@ -96,6 +102,7 @@ const OrgWorkflowAdminContent: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedWorkflow, setSelectedWorkflow] = useState<OrganizationWorkflowDTO | null>(null);
+  const [initialTemplateId, setInitialTemplateId] = useState<string | null>(null);
   const [permissionModalVisible, setPermissionModalVisible] = useState(false);
 
   const {
@@ -166,34 +173,56 @@ const OrgWorkflowAdminContent: React.FC = () => {
     {
       title: '工作流名称 / 唯一标识',
       key: 'name',
-      render: (_, record) => (
-        <div>
-          <Space>
-            <ApartmentOutlined style={{ color: '#1677ff', fontSize: 16 }} />
-            <strong style={{ fontSize: 15 }}>{record.name || '未命名工作流'}</strong>
-          </Space>
-          <div style={{ fontSize: 12, color: token.colorTextSecondary, marginTop: 2 }}>
-            代号：<code>{record.workflowId || '-'}</code>
+      render: (_, record) => {
+        const isLegal = record.category === 'legal' || record.icon === 'SafetyCertificateOutlined';
+        return (
+          <div>
+            <Space>
+              {isLegal ? (
+                <SafetyCertificateOutlined style={{ color: '#2f54eb', fontSize: 16 }} />
+              ) : (
+                <ApartmentOutlined style={{ color: '#1677ff', fontSize: 16 }} />
+              )}
+              <strong style={{ fontSize: 15 }}>{record.name || '未命名工作流'}</strong>
+              {isLegal && (
+                <Tag color="geekblue" style={{ fontSize: 10, lineHeight: '18px' }}>
+                  保密协议/合同审查闭环
+                </Tag>
+              )}
+            </Space>
+            <div style={{ fontSize: 12, color: token.colorTextSecondary, marginTop: 2 }}>
+              代号：<code>{record.workflowId || '-'}</code>
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: '分类 & 任务类型',
       key: 'category',
       width: 140,
-      render: (_, record) => (
-        <Space direction="vertical" size={2}>
-          <Tag color="blue">{record.category?.toUpperCase() || 'GENERAL'}</Tag>
-          <span style={{ fontSize: 12, color: token.colorTextSecondary }}>
-            {record.taskType === 'approval'
-              ? '审批流转'
-              : record.taskType === 'assignment'
-              ? '任务指派'
-              : '审阅复核'}
-          </span>
-        </Space>
-      ),
+      render: (_, record) => {
+        const catColor =
+          record.category === 'legal'
+            ? 'geekblue'
+            : record.category === 'hr'
+            ? 'green'
+            : record.category === 'oa'
+            ? 'gold'
+            : 'blue';
+        return (
+          <Space direction="vertical" size={2}>
+            <Tag color={catColor}>{record.category?.toUpperCase() || 'GENERAL'}</Tag>
+            <span style={{ fontSize: 12, color: token.colorTextSecondary }}>
+              {record.taskType === 'approval'
+                ? '审批流转'
+                : record.taskType === 'assignment'
+                ? '任务指派'
+                : '审阅复核'}
+            </span>
+          </Space>
+        );
+      },
     },
     {
       title: '组装的 5173 底层普通工作流',
@@ -359,6 +388,57 @@ const OrgWorkflowAdminContent: React.FC = () => {
     },
   ];
 
+  const templateMenuItems: MenuProps['items'] = PRESET_WORKFLOW_TEMPLATES.map((t) => ({
+    key: t.id,
+    icon: <ThunderboltOutlined style={{ color: t.category === 'legal' ? '#2f54eb' : '#fa8c16' }} />,
+    label: (
+      <div style={{ padding: '2px 0' }}>
+        <Space size={6}>
+          <Tag
+            color={
+              t.category === 'legal'
+                ? 'geekblue'
+                : t.category === 'hr'
+                ? 'green'
+                : 'orange'
+            }
+            style={{ margin: 0, fontSize: 10 }}
+          >
+            {t.categoryName}
+          </Tag>
+          <strong>{t.name}</strong>
+          {t.id === 'legal.nda.generation_and_review_flow' && (
+            <Tag color="volcano" style={{ fontSize: 10, margin: 0 }}>
+              首推: 专属保密合同
+            </Tag>
+          )}
+          {t.id === 'legal.contract.review_flow' && (
+            <Tag color="blue" style={{ fontSize: 10, margin: 0 }}>
+              通用商业合同
+            </Tag>
+          )}
+        </Space>
+        <div
+          style={{
+            fontSize: 11,
+            color: token.colorTextSecondary,
+            maxWidth: 360,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {t.description}
+        </div>
+      </div>
+    ),
+    onClick: () => {
+      setSelectedWorkflow(null);
+      setInitialTemplateId(t.id);
+      setDrawerVisible(true);
+    },
+  }));
+
   return (
     <div style={{ padding: '0 0 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* 错误提示 */}
@@ -419,16 +499,24 @@ const OrgWorkflowAdminContent: React.FC = () => {
             </Button>
           </Space>
 
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => {
-              setSelectedWorkflow(null);
-              setDrawerVisible(true);
-            }}
-          >
-            组装与新建企业工作流
-          </Button>
+          <Space size={10}>
+            <Dropdown menu={{ items: templateMenuItems }} placement="bottomRight">
+              <Button icon={<ThunderboltOutlined style={{ color: '#2f54eb' }} />}>
+                从官方模版新建 <DownOutlined style={{ fontSize: 10 }} />
+              </Button>
+            </Dropdown>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                setSelectedWorkflow(null);
+                setInitialTemplateId('legal.nda.generation_and_review_flow');
+                setDrawerVisible(true);
+              }}
+            >
+              新建企业工作流
+            </Button>
+          </Space>
         </div>
       </Card>
 
@@ -447,9 +535,11 @@ const OrgWorkflowAdminContent: React.FC = () => {
       <OrgWorkflowEditDrawer
         visible={drawerVisible}
         workflow={selectedWorkflow}
+        initialTemplateId={initialTemplateId}
         onClose={() => {
           setDrawerVisible(false);
           setSelectedWorkflow(null);
+          setInitialTemplateId(null);
         }}
         onSuccess={() => refetch()}
       />

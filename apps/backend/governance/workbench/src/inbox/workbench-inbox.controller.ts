@@ -14,6 +14,7 @@ import {
   ConvertInboxToTodoDto,
   IngestInboxItemDto,
   QueryInboxDto,
+  SaveHandledExecutionsDto,
   UpdateInboxStatusDto,
 } from './dto/workbench-inbox.dto';
 import { WorkbenchInboxService } from './workbench-inbox.service';
@@ -26,6 +27,27 @@ export class WorkbenchInboxController {
 
   private extractUserId(req: any): string {
     return req.user?.id || req.user?.userId || 'anonymous';
+  }
+
+  @Get('preferences/handled-executions')
+  @ApiOperation({ summary: '获取当前用户云端持久化的待介入已阅执行单映射' })
+  async getHandledExecutions(@Request() req: any) {
+    const userId = this.extractUserId(req);
+    return await this.inboxService.getHandledExecutions(userId);
+  }
+
+  @Put('preferences/handled-executions')
+  @ApiOperation({ summary: '持久化当前用户待介入已阅执行单映射' })
+  async saveHandledExecutions(@Request() req: any, @Body() body: SaveHandledExecutionsDto) {
+    const userId = this.extractUserId(req);
+    return await this.inboxService.saveHandledExecutions(userId, body.handledExecutions);
+  }
+
+  @Delete('actions/clear-all')
+  @ApiOperation({ summary: '清空 GTD 收件箱数据（供系统测试与重置使用）' })
+  async clearAll(@Request() req: any, @Query('all') all?: string) {
+    const userId = this.extractUserId(req);
+    return await this.inboxService.clearAll(userId, all === 'true');
   }
 
   @Post()

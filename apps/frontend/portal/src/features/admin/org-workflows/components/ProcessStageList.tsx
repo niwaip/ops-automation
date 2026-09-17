@@ -18,12 +18,18 @@ import {
   HolderOutlined,
   PlusOutlined,
   DeleteOutlined,
+  ExportOutlined,
+  LockOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
   RightOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import type { WorkflowStageDefinition, StageType } from '@/api/orgWorkflow';
+import {
+  useWorkflowCapabilityOptions,
+  resolveCanonicalCapabilityKey,
+} from '../hooks/useWorkflowCapabilityOptions';
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -46,6 +52,7 @@ export const ProcessStageList: React.FC<ProcessStageListProps> = ({ stages, onCh
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [addForm] = Form.useForm();
+  const { capabilityGroups, capabilityMap, isLoading: isLoadingCapabilities } = useWorkflowCapabilityOptions();
 
   // 拖拽排序逻辑
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
@@ -115,13 +122,27 @@ export const ProcessStageList: React.FC<ProcessStageListProps> = ({ stages, onCh
 
   // 添加新阶段
   const handleAddStage = (values: any) => {
+    const isWf = values.type === 'automation' && values.capabilityId && capabilityMap.get(values.capabilityId)?.type === 'workflow';
     const newStage: WorkflowStageDefinition = {
       id: `stage_${Date.now()}`,
       name: values.name.trim(),
       type: values.type,
       description: values.description?.trim() || '',
+      capabilityId: values.type === 'automation' ? values.capabilityId || undefined : undefined,
+      workflowId: isWf ? values.capabilityId : undefined,
+      config:
+        values.type === 'automation'
+          ? {
+              contractType: values.contractType || 'nda',
+              myPosition: values.myPosition || 'buyer',
+              reviewPrompt: values.reviewPrompt || values.prompt || undefined,
+              prompt: values.reviewPrompt || values.prompt || undefined,
+            }
+          : undefined,
       approverRule: values.type === 'approval' ? values.approverRule || 'leader' : undefined,
       approverRole: values.type === 'approval' && values.approverRule === 'role' ? values.approverRole : undefined,
+      approverDepartment: values.type === 'approval' && values.approverRule === 'department' ? values.approverDepartment : undefined,
+      approverUsername: values.type === 'approval' && (values.approverRule === 'specific_user' || values.approverRule === 'department') ? values.approverUsername : undefined,
     };
     onChange([...stages, newStage]);
     setIsAddModalVisible(false);
@@ -225,6 +246,7 @@ export const ProcessStageList: React.FC<ProcessStageListProps> = ({ stages, onCh
                     <Select
                       value={stage.type}
                       style={{ width: 135 }}
+                      disabled={stage.isLocked}
                       onChange={(val) => handleUpdateStage(idx, { type: val })}
                     >
                       <Option value="submission">提单申请阶段</Option>
@@ -232,6 +254,13 @@ export const ProcessStageList: React.FC<ProcessStageListProps> = ({ stages, onCh
                       <Option value="automation">自动化流阶段</Option>
                       <Option value="archive">回执归档阶段</Option>
                     </Select>
+                    {stage.isLocked && (
+                      <Tooltip title="核心合规基准节点受保护，不可误删或篡改节点性质">
+                        <Tag color="gold" icon={<LockOutlined style={{ fontSize: 10 }} />} style={{ margin: 0, fontSize: 11 }}>
+                          合规受控
+                        </Tag>
+                      </Tooltip>
+                    )}
                   </div>
 
                   {/* 右侧：上移/下移/删除操作按钮 */}
@@ -254,15 +283,21 @@ export const ProcessStageList: React.FC<ProcessStageListProps> = ({ stages, onCh
                         onClick={() => handleMove(idx, 'down')}
                       />
                     </Tooltip>
-                    <Popconfirm
-                      title="确定删除此流程节点？"
-                      onConfirm={() => handleDelete(idx)}
-                      okText="删除"
-                      cancelText="取消"
-                      okButtonProps={{ danger: true }}
-                    >
-                      <Button size="small" type="text" danger icon={<DeleteOutlined />} />
-                    </Popconfirm>
+                    {stage.isLocked ? (
+                      <Tooltip title="核心合规基准节点受保护，不可删除">
+                        <Button size="small" type="text" disabled icon={<LockOutlined style={{ color: '#faad14' }} />} />
+                      </Tooltip>
+                    ) : (
+                      <Popconfirm
+                        title="确定删除此流程节点？"
+                        onConfirm={() => handleDelete(idx)}
+                        okText="删除"
+                        cancelText="取消"
+                        okButtonProps={{ danger: true }}
+                      >
+                        <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+                      </Popconfirm>
+                    )}
                   </Space>
                 </div>
 
@@ -291,21 +326,74 @@ export const ProcessStageList: React.FC<ProcessStageListProps> = ({ stages, onCh
                         <Select
                           size="small"
                           value={stage.approverRule || 'leader'}
-                          style={{ width: 140 }}
+                          style={{ width: 145 }}
                           onChange={(val) => handleUpdateStage(idx, { approverRule: val })}
                         >
+                          <Option value="initiator">业务担当本人确认</Option>
+                          <Option value="department">按组织部门审批</Option>
+                          <Option value="specific_user">指定具体承办用户</Option>
                           <Option value="leader">直属主管审批</Option>
                           <Option value="role">按业务角色池审批</Option>
                           <Option value="assignee">指定经办承办人</Option>
                         </Select>
 
+                        {stage.approverRule === 'department' && (
+                          <>
+                            <Select
+                              size="small"
+                              value={stage.approverDepartment || '法务部'}
+                              style={{ width: 130 }}
+                              showSearch
+                              placeholder="选择受理部门"
+                              onChange={(val) => handleUpdateStage(idx, { approverDepartment: val })}
+                            >
+                              <Option value="法务部">法务部</Option>
+                              <Option value="财务部">财务部</Option>
+                              <Option value="总务部">总务部</Option>
+                              <Option value="人力资源部">人力资源部</Option>
+                              <Option value="信息技术与运维部">信息技术与运维部</Option>
+                            </Select>
+                            <Select
+                              size="small"
+                              value={stage.approverUsername}
+                              placeholder="指定部门专员(可选)"
+                              allowClear
+                              style={{ width: 140 }}
+                              showSearch
+                              onChange={(val) => handleUpdateStage(idx, { approverUsername: val })}
+                            >
+                              <Option value="law01">law01 (法务专员)</Option>
+                              <Option value="law02">law02 (法务专员)</Option>
+                              <Option value="admin">admin (系统管理员)</Option>
+                              <Option value="test">test (总务专员)</Option>
+                            </Select>
+                          </>
+                        )}
+
+                        {stage.approverRule === 'specific_user' && (
+                          <Select
+                            size="small"
+                            value={stage.approverUsername || 'law01'}
+                            placeholder="选择具体承办用户"
+                            style={{ width: 150 }}
+                            showSearch
+                            onChange={(val) => handleUpdateStage(idx, { approverUsername: val })}
+                          >
+                            <Option value="law01">law01 (法务专员)</Option>
+                            <Option value="law02">law02 (法务专员)</Option>
+                            <Option value="admin">admin (系统管理员)</Option>
+                            <Option value="test">test (总务专员)</Option>
+                          </Select>
+                        )}
+
                         {stage.approverRule === 'role' && (
                           <Select
                             size="small"
-                            value={stage.approverRole || 'hr'}
+                            value={stage.approverRole || 'legal'}
                             style={{ width: 130 }}
                             onChange={(val) => handleUpdateStage(idx, { approverRole: val })}
                           >
+                            <Option value="legal">法务审核组</Option>
                             <Option value="admin">管理员组</Option>
                             <Option value="hr">HR 人事组</Option>
                             <Option value="finance">财务审批组</Option>
@@ -316,7 +404,88 @@ export const ProcessStageList: React.FC<ProcessStageListProps> = ({ stages, onCh
                     )}
 
                     {stage.type === 'automation' && (
-                      <Tag color="purple">执行策略：前序审批核准后自动触发绑定的底层流闭环</Tag>
+                      <Space size={6} wrap>
+                        <Tag color="purple">执行流/技能:</Tag>
+                        <Select
+                          size="small"
+                          loading={isLoadingCapabilities}
+                          showSearch
+                          allowClear
+                          optionFilterProp="label"
+                          filterOption={(input, option) => {
+                            const label = String(option?.label ?? '');
+                            const value = option && 'value' in option ? String(option.value ?? '') : '';
+                            return (
+                              label.toLowerCase().includes(input.toLowerCase()) ||
+                              value.toLowerCase().includes(input.toLowerCase())
+                            );
+                          }}
+                          value={
+                            resolveCanonicalCapabilityKey(stage.capabilityId || stage.workflowId) ||
+                            (stage.name?.includes('审查') ? 'platform.document.contract-reviewer' : undefined)
+                          }
+                          style={{ minWidth: 260 }}
+                          onChange={(val) => {
+                            if (!val) {
+                              handleUpdateStage(idx, { capabilityId: undefined, workflowId: undefined });
+                              return;
+                            }
+                            const matched = capabilityMap.get(val);
+                            if (matched?.type === 'workflow') {
+                              handleUpdateStage(idx, { capabilityId: val, workflowId: val });
+                            } else {
+                              handleUpdateStage(idx, { capabilityId: val, workflowId: undefined });
+                            }
+                          }}
+                          options={capabilityGroups}
+                          placeholder="选择调度执行工作流或技能"
+                        />
+
+                        {Boolean(
+                          (stage.capabilityId || stage.workflowId || stage.name?.includes('审查')) &&
+                            (
+                              resolveCanonicalCapabilityKey(stage.capabilityId || stage.workflowId || '').includes('review') ||
+                              resolveCanonicalCapabilityKey(stage.capabilityId || stage.workflowId || '').includes('reviewer') ||
+                              resolveCanonicalCapabilityKey(stage.capabilityId || stage.workflowId || '').includes('审查') ||
+                              (stage.name || '').includes('审查')
+                            )
+                        ) && (
+                          <>
+                            <Text type="secondary" style={{ fontSize: 12 }}>审查立场:</Text>
+                            <Select
+                              size="small"
+                              value={stage.config?.myPosition || 'buyer'}
+                              style={{ width: 115 }}
+                              onChange={(pos) =>
+                                handleUpdateStage(idx, {
+                                  config: { ...(stage.config || {}), myPosition: pos },
+                                })
+                              }
+                            >
+                              <Option value="buyer">甲方/买方立场</Option>
+                              <Option value="seller">乙方/卖方立场</Option>
+                              <Option value="neutral">中立客观立场</Option>
+                            </Select>
+
+                            <Text type="secondary" style={{ fontSize: 12 }}>合同类型:</Text>
+                            <Select
+                              size="small"
+                              value={stage.config?.contractType || 'nda'}
+                              style={{ width: 105 }}
+                              onChange={(cType) =>
+                                handleUpdateStage(idx, {
+                                  config: { ...(stage.config || {}), contractType: cType },
+                                })
+                              }
+                            >
+                              <Option value="nda">保密协议</Option>
+                              <Option value="service">服务协议</Option>
+                              <Option value="purchase">采购协议</Option>
+                              <Option value="general">通用协议</Option>
+                            </Select>
+                          </>
+                        )}
+                      </Space>
                     )}
 
                     {stage.type === 'archive' && (
@@ -382,13 +551,190 @@ export const ProcessStageList: React.FC<ProcessStageListProps> = ({ stages, onCh
           >
             {({ getFieldValue }) =>
               getFieldValue('type') === 'approval' ? (
-                <Form.Item name="approverRule" label="审批规则">
-                  <Select>
-                    <Option value="leader">直属主管审批</Option>
-                    <Option value="role">特定业务角色组审批</Option>
-                    <Option value="assignee">指定承办担当人</Option>
-                  </Select>
-                </Form.Item>
+                <>
+                  <Form.Item name="approverRule" label="审批规则" initialValue="department">
+                    <Select>
+                      <Option value="initiator">业务担当本人确认 (Initiator)</Option>
+                      <Option value="department">按组织部门路由 (Department)</Option>
+                      <Option value="specific_user">指定具体承办用户 (Specific User)</Option>
+                      <Option value="leader">直属业务主管审批 (Leader)</Option>
+                      <Option value="role">特定业务角色组审批 (Role)</Option>
+                      <Option value="assignee">发起人自选指派承办人</Option>
+                    </Select>
+                  </Form.Item>
+
+                  <Form.Item
+                    noStyle
+                    shouldUpdate={(prev, curr) => prev.approverRule !== curr.approverRule}
+                  >
+                    {({ getFieldValue: getRuleVal }) => {
+                      const rule = getRuleVal('approverRule');
+                      if (rule === 'department') {
+                        return (
+                          <>
+                            <Form.Item name="approverDepartment" label="选择受理部门" initialValue="法务部">
+                              <Select showSearch>
+                                <Option value="法务部">法务部</Option>
+                                <Option value="财务部">财务部</Option>
+                                <Option value="总务部">总务部</Option>
+                                <Option value="人力资源部">人力资源部</Option>
+                                <Option value="信息技术与运维部">信息技术与运维部</Option>
+                              </Select>
+                            </Form.Item>
+                            <Form.Item name="approverUsername" label="指定该部门专员（可选）">
+                              <Select showSearch allowClear placeholder="可选该部门指定专员">
+                                <Option value="law01">law01 (法务专员)</Option>
+                                <Option value="law02">law02 (法务专员)</Option>
+                                <Option value="admin">admin (系统管理员)</Option>
+                                <Option value="test">test (总务专员)</Option>
+                              </Select>
+                            </Form.Item>
+                          </>
+                        );
+                      }
+                      if (rule === 'specific_user') {
+                        return (
+                          <Form.Item name="approverUsername" label="选择承办用户" initialValue="law01">
+                            <Select showSearch>
+                              <Option value="law01">law01 (法务专员)</Option>
+                              <Option value="law02">law02 (法务专员)</Option>
+                              <Option value="admin">admin (系统管理员)</Option>
+                              <Option value="test">test (总务专员)</Option>
+                            </Select>
+                          </Form.Item>
+                        );
+                      }
+                      if (rule === 'role') {
+                        return (
+                          <Form.Item name="approverRole" label="选择业务角色组" initialValue="legal">
+                            <Select>
+                              <Option value="legal">法务审核组 (legal)</Option>
+                              <Option value="finance">财务审批组 (finance)</Option>
+                              <Option value="hr">人事组 (hr)</Option>
+                              <Option value="admin">管理员组 (admin)</Option>
+                            </Select>
+                          </Form.Item>
+                        );
+                      }
+                      return null;
+                    }}
+                  </Form.Item>
+                </>
+              ) : getFieldValue('type') === 'automation' ? (
+                <>
+                  <Form.Item
+                    name="capabilityId"
+                    label={
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        <span>自动化流能力 / 底层工作流</span>
+                        <Space size={8} style={{ fontWeight: 'normal', fontSize: 11 }}>
+                          <a href="/admin/skills?tab=builtin" target="_blank" rel="noreferrer">
+                            内置技能 <ExportOutlined style={{ fontSize: 10 }} />
+                          </a>
+                          <a href="/admin/skills?tab=custom" target="_blank" rel="noreferrer">
+                            自定义技能 <ExportOutlined style={{ fontSize: 10 }} />
+                          </a>
+                        </Space>
+                      </div>
+                    }
+                  >
+                    <Select
+                      loading={isLoadingCapabilities}
+                      showSearch
+                      allowClear
+                      optionFilterProp="label"
+                      filterOption={(input, option) => {
+                        const label = String(option?.label ?? '');
+                        const value = option && 'value' in option ? String(option.value ?? '') : '';
+                        return (
+                          label.toLowerCase().includes(input.toLowerCase()) ||
+                          value.toLowerCase().includes(input.toLowerCase())
+                        );
+                      }}
+                      options={capabilityGroups}
+                      placeholder="请选择调度执行流或能力技能（可选）"
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    noStyle
+                    shouldUpdate={(prev, curr) => prev.capabilityId !== curr.capabilityId || prev.name !== curr.name}
+                  >
+                    {({ getFieldValue: getCapVal, setFieldsValue }) => {
+                      const cap = resolveCanonicalCapabilityKey(getCapVal('capabilityId') || '');
+                      const name = String(getCapVal('name') || '');
+                      if (
+                        cap.includes('review') ||
+                        cap.includes('reviewer') ||
+                        cap.includes('审查') ||
+                        name.includes('审查')
+                      ) {
+                        return (
+                          <>
+                            <Form.Item
+                              name="reviewPrompt"
+                              label="专项审查提示词 / 审查要求 (Prompt)"
+                              tooltip="可填写专门针对当前业务的合规底线要求，如保密期限、违约金比例等"
+                            >
+                              <Input.TextArea
+                                rows={2}
+                                placeholder="例：重点审查保密期限≤3年，排查单方违约金条款，争议管辖为买方所在地..."
+                              />
+                            </Form.Item>
+                            <div style={{ marginTop: -16, marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                              {[
+                                '保密期限≤3年',
+                                '排查单方违约金条款',
+                                '争议管辖归买方所在地',
+                                '知识产权成果归买方',
+                              ].map((tagText) => (
+                                <Tag
+                                  key={tagText}
+                                  style={{ cursor: 'pointer', fontSize: 10, margin: 0 }}
+                                  onClick={() => {
+                                    const curr = getCapVal('reviewPrompt') || '';
+                                    setFieldsValue({
+                                      reviewPrompt: curr ? `${curr}；${tagText}` : tagText,
+                                    });
+                                  }}
+                                >
+                                  + {tagText}
+                                </Tag>
+                              ))}
+                            </div>
+                            <div style={{ display: 'flex', gap: 12 }}>
+                              <Form.Item
+                                name="myPosition"
+                                label="审查立场"
+                                initialValue="buyer"
+                                style={{ flex: 1 }}
+                              >
+                                <Select>
+                                  <Option value="buyer">甲方/买方立场</Option>
+                                  <Option value="seller">乙方/卖方立场</Option>
+                                  <Option value="neutral">中立客观立场</Option>
+                                </Select>
+                              </Form.Item>
+                              <Form.Item
+                                name="contractType"
+                                label="合同类型"
+                                initialValue="nda"
+                                style={{ flex: 1 }}
+                              >
+                                <Select>
+                                  <Option value="nda">保密协议 (NDA)</Option>
+                                  <Option value="service">技术/服务协议</Option>
+                                  <Option value="purchase">采购协议</Option>
+                                  <Option value="general">通用商业合同</Option>
+                                </Select>
+                              </Form.Item>
+                            </div>
+                          </>
+                        );
+                      }
+                      return null;
+                    }}
+                  </Form.Item>
+                </>
               ) : null
             }
           </Form.Item>

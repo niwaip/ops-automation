@@ -151,6 +151,10 @@ export const workbenchTodoApi = {
     return await apiClient.delete(`/workbench-todos/${id}`);
   },
 
+  clearAll: async (all = true): Promise<{ success: boolean; count: number }> => {
+    return await apiClient.delete(`/workbench-todos/actions/clear-all?all=${all}`);
+  },
+
   extractPreview: async (payload: ExtractTodoPreviewPayload): Promise<ExtractedTodoPreview> => {
     return await apiClient.post('/workbench-todos/extract-preview', payload);
   },

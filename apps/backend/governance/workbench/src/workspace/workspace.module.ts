@@ -6,12 +6,14 @@ import { STORAGE_DRIVER } from './storage/storage-driver.interface';
 import { WorkspaceContentIndexerService } from './workspace-content-indexer.service';
 import { WorkspaceDigestService } from './workspace-digest.service';
 import { WorkspaceNoteService } from './workspace-note.service';
+import { WorkspaceProcessArchiveService } from './workspace-process-archive.service';
 
 @Module({
   controllers: [WorkspaceController],
   providers: [
     WorkspaceService,
     WorkspaceNoteService,
+    WorkspaceProcessArchiveService,
     WorkspaceContentIndexerService,
     WorkspaceDigestService,
     LocalDiskStorageService,
@@ -23,6 +25,7 @@ import { WorkspaceNoteService } from './workspace-note.service';
   exports: [
     WorkspaceService,
     WorkspaceNoteService,
+    WorkspaceProcessArchiveService,
     WorkspaceContentIndexerService,
     WorkspaceDigestService,
     STORAGE_DRIVER,

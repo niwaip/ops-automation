@@ -138,22 +138,61 @@ export function tryReadFileByName(
     // 3. Scan metadata .json files in candidate directory
     try {
       const files = fs.readdirSync(dir);
+      const scoredCandidates: Array<{ filePath: string; score: number; mtime: number }> = [];
+
       for (const f of files) {
         if (f.endsWith('.json')) {
           try {
-            const meta = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+            const metaPath = path.join(dir, f);
+            const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+            const id = meta.id || f.replace(/\.json$/, '');
+            const ext = meta.format ? `.${meta.format}` : '.docx';
+            const matchedFilePath = path.join(dir, `${id}${ext}`);
+            if (!fs.existsSync(matchedFilePath)) continue;
+
             if (meta.fileName === normalizedName || meta.outputName === normalizedName) {
-              const id = meta.id || f.replace(/\.json$/, '');
-              const ext = meta.format ? `.${meta.format}` : '.docx';
-              const matchedFilePath = path.join(dir, `${id}${ext}`);
-              if (fs.existsSync(matchedFilePath)) {
-                logger?.log(`Found document matched via metadata json: ${matchedFilePath}`);
-                return fs.readFileSync(matchedFilePath);
+              logger?.log(`Found document matched via metadata json: ${matchedFilePath}`);
+              return fs.readFileSync(matchedFilePath);
+            }
+
+            let score = 0;
+            const normClean = normalizedName.replace(/\.(docx|pdf|doc)$/i, '');
+            const metaFileClean = String(meta.fileName || '').replace(/\.(docx|pdf|doc)$/i, '');
+
+            if (
+              normClean &&
+              metaFileClean &&
+              (normClean.startsWith(metaFileClean.slice(0, 4)) || metaFileClean.startsWith(normClean.slice(0, 4)))
+            ) {
+              score += 20;
+            }
+
+            if (meta.params && typeof meta.params === 'object') {
+              for (const pv of Object.values(meta.params)) {
+                if (typeof pv === 'string' && pv.length >= 2) {
+                  if (normalizedName.includes(pv) || (normClean.length >= 4 && pv.includes(normClean.slice(0, 4)))) {
+                    score += 15;
+                  }
+                }
               }
+            }
+
+            if (score > 0) {
+              const stat = fs.statSync(matchedFilePath);
+              scoredCandidates.push({ filePath: matchedFilePath, score, mtime: stat.mtimeMs });
             }
           } catch {
             // ignore
           }
+        }
+      }
+
+      if (scoredCandidates.length > 0) {
+        scoredCandidates.sort((a, b) => (b.score !== a.score ? b.score - a.score : b.mtime - a.mtime));
+        const best = scoredCandidates[0];
+        if (best && best.score >= 20) {
+          logger?.log(`Found document matched via metadata fuzzy score (${best.score}): ${best.filePath}`);
+          return fs.readFileSync(best.filePath);
         }
       }
     } catch {
@@ -203,12 +242,30 @@ export async function resolveDocumentBuffer(
   let fileBuffer: Buffer | null = null;
   let resolvedFileName = target.fileName;
 
-  // 1. Try resolving via URL (UUID on disk first, then remote fetch)
+  // 1. Try resolving via URL (UUID or download path on disk first, then remote fetch)
   const targetUrl = target.downloadUrl || target.fileUrl || target.url;
   if (targetUrl) {
     const uuidMatch = targetUrl.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
-    if (uuidMatch && uuidMatch[1]) {
-      fileBuffer = tryReadFileById(uuidMatch[1], candidateDirs, logger);
+    const pathIdMatch = targetUrl.match(/\/(?:studio\/download|download|renders|outputs|attachments)\/([a-zA-Z0-9_\-]+?)(?:\.[a-z0-9]+)?(?:[?#]|$)/i);
+    const targetFileId = uuidMatch?.[1] || pathIdMatch?.[1];
+    if (targetFileId) {
+      fileBuffer = tryReadFileById(targetFileId, candidateDirs, logger);
+      if (fileBuffer && !resolvedFileName) {
+        for (const dir of candidateDirs) {
+          const metaPath = path.join(dir, `${targetFileId}.json`);
+          if (fs.existsSync(metaPath)) {
+            try {
+              const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+              if (meta.fileName || meta.outputName) {
+                resolvedFileName = meta.fileName || meta.outputName;
+              }
+            } catch {
+              // ignore
+            }
+            break;
+          }
+        }
+      }
     }
     if (!fileBuffer) {
       fileBuffer = await fetchFileFromUrl(targetUrl, logger);
@@ -241,6 +298,28 @@ export async function resolveReviewDocumentPayload(
   let targetFileName = input.fileName;
   let fallbackText: string | undefined;
 
+  // 1. Check input.files array (e.g. from chat uploaded files)
+  const filesArray = (input as any).files;
+  if (Array.isArray(filesArray) && filesArray.length > 0) {
+    const f0 = filesArray[0];
+    if (f0.content && !input.fileBase64) input.fileBase64 = f0.content;
+    if (f0.fileName && !targetFileName) targetFileName = f0.fileName;
+    if (!targetUrl) targetUrl = f0.url || f0.downloadUrl || f0.fileUrl || f0.storagePath;
+  }
+
+  // 2. Check taskContext attachments
+  if (input.taskContext?.attachments && Array.isArray(input.taskContext.attachments)) {
+    for (const att of input.taskContext.attachments) {
+      if (!targetUrl && (att.url || att.downloadUrl || att.storagePath)) {
+        targetUrl = att.url || att.downloadUrl || att.storagePath;
+      }
+      if (!targetFileName && att.name) {
+        targetFileName = att.name;
+      }
+    }
+  }
+
+  // 3. Check taskContext references
   if (input.taskContext?.references && Array.isArray(input.taskContext.references)) {
     for (const ref of input.taskContext.references) {
       if (!ref) continue;
@@ -262,6 +341,25 @@ export async function resolveReviewDocumentPayload(
         const urlMatch = ref.detailText.match(/https?:\/\/[^\s\)\"\'\<\>]+/i);
         if (urlMatch) {
           targetUrl = urlMatch[0];
+        }
+      }
+    }
+  }
+
+  // 4. Scan all string fields in input for markdown links or URLs
+  if (!targetUrl) {
+    for (const [key, val] of Object.entries(input as Record<string, unknown>)) {
+      if (typeof val === 'string' && val.length > 0) {
+        const mdMatch = val.match(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+|\/[^\s\)]+)\)/i);
+        if (mdMatch && mdMatch[2]) {
+          targetUrl = mdMatch[2];
+          if (!targetFileName && mdMatch[1]) targetFileName = mdMatch[1];
+          break;
+        }
+        const urlMatch = val.match(/(https?:\/\/[^\s\)\"\'\<\>]+)/i);
+        if (urlMatch && urlMatch[1]) {
+          targetUrl = urlMatch[1];
+          break;
         }
       }
     }

@@ -5,5 +5,5 @@ export * from './workspace-note.service';
 export * from './workspace-content-indexer.service';
 export * from './workspace-digest.service';
 export * from './dto/workspace.dto';
-export * from './storage/storage-driver.interface';
 export * from './storage/local-disk-storage.service';
+export * from './workspace-process-archive.service';

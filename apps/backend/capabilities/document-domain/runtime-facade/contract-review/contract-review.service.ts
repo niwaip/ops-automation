@@ -46,6 +46,8 @@ export class ContractReviewService {
       myPosition: input.myPosition,
       customCheckpoints: effectiveCustomRules,
       customChecklistRules: effectiveCustomRules,
+      prompt: input.prompt,
+      reviewPrompt: input.reviewPrompt,
     });
 
     const {

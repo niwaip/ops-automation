@@ -27,7 +27,12 @@ import {
   DEFAULT_LEAVE_ASSEMBLED_WORKFLOWS,
   DEFAULT_EXPENSE_ASSEMBLED_WORKFLOWS,
   DEFAULT_GENERAL_COORDINATION_ASSEMBLED_WORKFLOWS,
+  DEFAULT_CONTRACT_REVIEW_ASSEMBLED_WORKFLOWS,
+  DEFAULT_NDA_ASSEMBLED_WORKFLOWS,
 } from './org-base-workflow-templates.constants';
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 @Injectable()
 export class OrgWorkflowService implements OnModuleInit {
@@ -41,10 +46,14 @@ export class OrgWorkflowService implements OnModuleInit {
   constructor(
     @Inject(WORKBENCH_PRISMA)
     private readonly prisma: WorkbenchPrismaPort
-  ) {}
+  ) {
+    this.seedDefaultWorkflows();
+  }
 
   async onModuleInit() {
-    this.seedDefaultWorkflows();
+    if (this.workflows.size === 0) {
+      this.seedDefaultWorkflows();
+    }
   }
 
   /**
@@ -189,6 +198,142 @@ export class OrgWorkflowService implements OnModuleInit {
         paramsSchema: BUILT_IN_WORKFLOW_TEMPLATES.find((t) => t.id === 'general.coordination')!
           .paramsSchema as any,
         grantedRoleIds: ['employee', 'admin'],
+        createdAt: new Date('2026-09-01T08:00:00Z').toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'legal.contract.review_flow',
+        workflowId: 'legal.contract.review_flow',
+        name: '标准合同起草与法务审查闭环流',
+        description: '员工在线填报商务要素生成合同初稿，自动流转至法务部门进行智能要件审查与人工批注。通过后自动归档并通知员工，未通过则回退重修。',
+        category: 'legal',
+        icon: 'SafetyCertificateOutlined',
+        taskType: CoordinationTaskType.approval,
+        status: 'published',
+        isPublished: true,
+        version: '1.0.0',
+        assembledWorkflows: [...DEFAULT_CONTRACT_REVIEW_ASSEMBLED_WORKFLOWS],
+        processDefinition: {
+          stages: [
+            {
+              id: 'draft_submission',
+              name: '商务填报与初稿生成',
+              type: 'submission',
+              description: '员工填写对方主体、合同金额、条款要素等商务参数并生成初稿',
+              isLocked: false,
+            },
+            {
+              id: 'legal_review',
+              name: '法务合规审查与批注',
+              type: 'approval',
+              description: '法务部门执行合同要件审查，核验合规风险并在线填写批注建议',
+              approverRule: 'department',
+              approverDepartment: '法务部',
+              rollbackStageId: 'draft_submission',
+              actions: ['approve', 'reject'],
+              isLocked: true,
+            },
+            {
+              id: 'auto_archiving',
+              name: '电子归档与版本存证',
+              type: 'automation',
+              description: '审查通过后自动写入企业合同库并固化版本凭证',
+              isLocked: true,
+            },
+            {
+              id: 'final_receipt',
+              name: '回执通知与办结',
+              type: 'archive',
+              description: '向发起员工推送归档结项回执并闭环流转',
+              isLocked: false,
+            },
+          ],
+        },
+        paramsSchema: BUILT_IN_WORKFLOW_TEMPLATES.find(
+          (t) => t.id === 'legal.contract.review_flow'
+        )!.paramsSchema as any,
+        grantedRoleIds: ['employee', 'admin', 'legal'],
+        createdAt: new Date('2026-09-01T08:00:00Z').toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'legal.nda.generation_and_review_flow',
+        workflowId: 'legal.nda.generation_and_review_flow',
+        name: '保密合同起草与法务审查闭环流',
+        description: '专属保密合同生成技能 (ConfidentialityAgreementGenerationWorkflow) 提取要件生成初稿，流转法务部专项审查批注，通过后归档存证，未通过回退重修。',
+        category: 'legal',
+        icon: 'SafetyCertificateOutlined',
+        taskType: CoordinationTaskType.approval,
+        status: 'published',
+        isPublished: true,
+        version: '1.0.0',
+        assembledWorkflows: [...DEFAULT_NDA_ASSEMBLED_WORKFLOWS],
+        processDefinition: {
+          stages: [
+            {
+              id: 'draft_submission',
+              name: '商务填报与初稿生成',
+              type: 'submission',
+              description: '调用专属保密合同生成技能 (ConfidentialityAgreementGenerationWorkflow) 提取主体、保密期限等要件输出初稿',
+              isLocked: false,
+            },
+            {
+              id: 'initiator_confirm',
+              name: '业务担当初稿确认',
+              type: 'approval',
+              description: '调用专属技能生成初稿后，由业务担当查看并核对生成的内容与条款要素，确认通过后提交合同审查',
+              approverRule: 'initiator',
+              rollbackStageId: 'draft_submission',
+              actions: ['approve', 'reject'],
+              allowFileReplacement: true,
+              isArtifactReview: true,
+              isLocked: true,
+            },
+            {
+              id: 'contract_review_execution',
+              name: '合同合规智能审查',
+              type: 'automation',
+              capabilityId: 'platform.document.contract-reviewer',
+              config: {
+                contractType: 'nda',
+                myPosition: 'buyer',
+              },
+              description: '担当确认后自动调用 contract-review 规则库排查永久保密陷阱、除外责任及违约条款，输出审查报告',
+              isLocked: true,
+            },
+            {
+              id: 'legal_review',
+              name: '法务合规核准与确认',
+              type: 'approval',
+              description: '法务专员 (law01) 结合初稿与智能审查报告进行专业把关与批注，通过后归档存证，未通过回退担当重修',
+              approverRule: 'department',
+              approverDepartment: '法务部',
+              approverUsername: 'law01',
+              rollbackStageId: 'initiator_confirm',
+              actions: ['approve', 'reject'],
+              isLocked: true,
+            },
+            {
+              id: 'auto_archiving',
+              name: '电子归档与版本存证',
+              type: 'automation',
+              capabilityId: 'platform.document.pdf-create',
+              description: '法务确认通过后自动生成不可篡改版本并归档存证入企业合同库',
+              isLocked: true,
+            },
+            {
+              id: 'final_receipt',
+              name: '回执通知与办结',
+              type: 'archive',
+              description: '向业务担当与法务专员推送归档结项回执并闭环流转',
+              isLocked: false,
+            },
+          ],
+        },
+        paramsSchema: BUILT_IN_WORKFLOW_TEMPLATES.find(
+          (t) => t.id === 'legal.nda.generation_and_review_flow'
+        )!.paramsSchema as any,
+        grantedRoleIds: ['employee', 'admin', 'legal'],
         createdAt: new Date('2026-09-01T08:00:00Z').toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -462,6 +607,13 @@ export class OrgWorkflowService implements OnModuleInit {
       assembledBaseCount: number;
     };
   }> {
+    if (
+      !this.workflows.has('legal.contract.review_flow') ||
+      !this.workflows.has('legal.nda.generation_and_review_flow')
+    ) {
+      this.seedDefaultWorkflows();
+    }
+
     const all = Array.from(this.workflows.values()).sort((a, b) =>
       a.name.localeCompare(b.name)
     );
@@ -488,10 +640,18 @@ export class OrgWorkflowService implements OnModuleInit {
    * 业务端员工查询已发布的组织工作流目录（带权限判定）
    */
   async listCatalogForUser(userId: string): Promise<OrgWorkflowCatalogItemDto[]> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: { userRoles: { include: { role: true } } },
-    });
+    let user: any = null;
+    if (userId && UUID_REGEX.test(userId)) {
+      user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: { userRoles: { include: { role: true } } },
+      });
+    } else if (userId && userId !== 'anonymous') {
+      user = await this.prisma.user.findFirst({
+        where: { username: { equals: userId, mode: 'insensitive' }, isActive: true },
+        include: { userRoles: { include: { role: true } } },
+      });
+    }
 
     const userRoleNames = new Set<string>();
     const userRoleIds = new Set<string>();
@@ -509,6 +669,13 @@ export class OrgWorkflowService implements OnModuleInit {
     }
 
     const isAdmin = userRoleNames.has('admin') || user?.role === 'admin';
+
+    if (
+      !this.workflows.has('legal.contract.review_flow') ||
+      !this.workflows.has('legal.nda.generation_and_review_flow')
+    ) {
+      this.seedDefaultWorkflows();
+    }
 
     // 仅返回已发布的工作流
     const publishedWorkflows = Array.from(this.workflows.values()).filter(
@@ -561,6 +728,9 @@ export class OrgWorkflowService implements OnModuleInit {
    * 获取单个工作流详情
    */
   getWorkflowById(id: string): OrganizationWorkflowDefinition | null {
+    if (this.workflows.size === 0) {
+      this.seedDefaultWorkflows();
+    }
     return this.workflows.get(id) || null;
   }
 
@@ -734,10 +904,18 @@ export class OrgWorkflowService implements OnModuleInit {
       throw new NotFoundException(`企业工作流不存在: ${workflowId}`);
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, username: true },
-    });
+    let user: any = null;
+    if (userId && UUID_REGEX.test(userId)) {
+      user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, username: true },
+      });
+    } else if (userId && userId !== 'anonymous') {
+      user = await this.prisma.user.findFirst({
+        where: { username: { equals: userId, mode: 'insensitive' }, isActive: true },
+        select: { id: true, username: true },
+      });
+    }
 
     const requestId = `req_${randomUUID()}`;
     const request: OrgWorkflowAccessRequest = {

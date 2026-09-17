@@ -158,3 +158,8 @@ docker/ops
 *.otf
 *.ttf
 
+# Embedded firmware components
+managed_components/
+sdkconfig.old
+sdkconfig
+

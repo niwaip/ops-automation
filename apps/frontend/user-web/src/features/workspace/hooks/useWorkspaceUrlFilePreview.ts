@@ -10,8 +10,8 @@ import {
 
 interface UseWorkspaceUrlFilePreviewOptions {
   workspacesData: MyWorkspacesResponse | undefined;
-  activeTab: 'personal' | 'department' | 'company';
-  setActiveTab: (tab: 'personal' | 'department' | 'company') => void;
+  activeTab: 'personal' | 'department' | 'company' | 'process';
+  setActiveTab: (tab: 'personal' | 'department' | 'company' | 'process') => void;
   setPreviewNode: (node: WorkspaceNode | null) => void;
   setPreviewData: (data: FilePreviewResponse | null) => void;
   setIsPreviewOpen: (open: boolean) => void;
@@ -36,7 +36,12 @@ export function useWorkspaceUrlFilePreview({
 
   // Sync tab from URL if present
   useEffect(() => {
-    if (urlTab === 'personal' || urlTab === 'department' || urlTab === 'company') {
+    if (
+      urlTab === 'personal' ||
+      urlTab === 'department' ||
+      urlTab === 'company' ||
+      urlTab === 'process'
+    ) {
       setActiveTab(urlTab);
     }
   }, [urlTab, setActiveTab]);
@@ -52,6 +57,8 @@ export function useWorkspaceUrlFilePreview({
         ? workspacesData?.company?.id
         : activeTab === 'department'
         ? workspacesData?.department?.id
+        : activeTab === 'process'
+        ? workspacesData?.process?.id
         : workspacesData?.personal?.id);
 
     if (!targetWsId) return;

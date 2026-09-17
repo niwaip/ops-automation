@@ -4,14 +4,18 @@ import { runtimeConfig } from '@/shared/config/runtime';
 export const replaceLocalhostWithCurrentHost = (url?: string): string | undefined => {
   if (!url) return undefined;
   const target = url.trim();
-  const host =
-    typeof window !== 'undefined' && window.location.hostname
-      ? window.location.hostname
-      : runtimeConfig.hostIp || 'localhost';
 
-  if (target.startsWith('/') && /^\/([a-zA-Z0-9_-]+\/)*(renders)\//i.test(target)) {
-    const cleanPath = target.replace(/^(\/public)?(\/api)?\/renders\//i, '/renders/');
-    return `http://${host}:3009${cleanPath}`;
+  // Handle studio download routes (e.g. /studio/download/xxx, http://...:3009/studio/download/xxx)
+  // Route through current origin / Vite proxy so it works on any host/IP
+  if (/^(?:https?:\/\/[^/]+)?(?:\/api)?\/studio\/(.*)$/i.test(target)) {
+    const rest = target.replace(/^(?:https?:\/\/[^/]+)?(?:\/api)?\/studio\//i, '');
+    return `/studio/${rest}`;
+  }
+
+  // Handle carbone renders routes (e.g. /renders/xxx, http://...:3009/renders/xxx)
+  if (/^(?:https?:\/\/[^/]+)?(?:\/api)?\/renders\/(.*)$/i.test(target)) {
+    const rest = target.replace(/^(?:https?:\/\/[^/]+)?(?:\/api)?\/renders\//i, '');
+    return `/api/renders/${rest}`;
   }
 
   return replaceLocalhostWithHost(

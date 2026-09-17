@@ -3,7 +3,7 @@ import { buildDocumentBlocksFromText } from './contract-text-block-parser.util';
 
 // Universal Legal Document Numbering Grammars (Language-neutral, structure-driven)
 export const TIER1_CHAPTER_REGEX =
-  /^\s*(?:第\s*[一二三四五六七八九十百千万\d]+\s*[编章节篇部]|[一二三四五六七八九十]+\s*[、\s]+\s*[^\n]{2,30}$|(?:CHAPTER|PART|TITLE|SECTION)\s+(?:[IVXLCDM\d]+|[A-Z]|\d+)\b)/i;
+  /^\s*(?:第\s*[一二三四五六七八九十百千万\d]+\s*[编章节篇部]|(?:CHAPTER|PART|TITLE|SECTION)\s+(?:[IVXLCDM\d]+|[A-Z]|\d+)\b)/i;
 
 export const TIER2_ARTICLE_REGEX =
   /^\s*(?:第\s*[一二三四五六七八九十百千万\d]+\s*条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)/i;
@@ -134,12 +134,11 @@ export function parseHtmlToClauses(html: string): ContractClauseNode[] {
 
     // 4. Tier 2 Article / Clause detection
     const cleanItText = cleanMarkdownFormatting(it.text);
-    const isNumberedArticle = hasFormalArticles
-      ? TIER2_ARTICLE_REGEX.test(cleanItText)
-      : TIER2_ARTICLE_REGEX.test(cleanItText) ||
-        (/^\s*(?:\d+(\.\d+)+)[\.、\s]+[^\d\s]/i.test(cleanItText) &&
-          cleanItText.length < 45 &&
-          !/[。！？；]$/.test(cleanItText));
+    const isNumberedArticle =
+      TIER2_ARTICLE_REGEX.test(cleanItText) ||
+      (/^\s*(?:(?:\d+)|[一二三四五六七八九十百]+)[\.、\s]+(?!\d)/i.test(cleanItText) &&
+        cleanItText.length < 50 &&
+        !/[。！？；]$/.test(cleanItText));
 
     const isStrongNumberedList =
       it.isList &&
@@ -171,12 +170,18 @@ export function parseHtmlToClauses(html: string): ContractClauseNode[] {
       const matchArt = heading.match(
         /^\s*(第[一二三四五六七八九十百千万\d]+条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)\s*(.*)$/i
       );
+      const matchNum = heading.match(
+        /^\s*(\d+[\.、\s]+(?!\d)|[一二三四五六七八九十百]+[、\s]+)\s*(.*)$/
+      );
       let cNum = `第 ${clauseIndex} 条`;
       let cleanTitle = heading;
 
       if (matchArt) {
         cNum = matchArt[1].trim();
-        cleanTitle = matchArt[2]?.trim() || matchArt[1].trim();
+        cleanTitle = matchArt[2]?.trim().replace(/^[:：\s]+|[:：\s]+$/g, '') || matchArt[1].trim();
+      } else if (matchNum) {
+        cNum = matchNum[1].trim();
+        cleanTitle = matchNum[2]?.trim().replace(/^[:：\s]+|[:：\s]+$/g, '') || heading;
       }
 
       pushClause(cleanTitle, cNum, 2);
@@ -201,10 +206,32 @@ export function parseHtmlToClauses(html: string): ContractClauseNode[] {
  * Fallback chunking: group into substantial logical blocks instead of single-line fragments
  */
 export function fallbackParagraphChunking(text: string): ContractClauseNode[] {
-  const rawParagraphs = text
-    .split(/\n\s*\n/)
+  let rawParagraphs = text
+    .split(/\r?\n\s*\r?\n/)
     .map((p) => p.trim())
     .filter((p) => p.length > 0);
+
+  // If double-newline splitting resulted in a single block for longer text, split by heading patterns or single newlines
+  if (rawParagraphs.length <= 1 && text.length > 150) {
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+    const lineBlocks: string[] = [];
+    let cur = '';
+    for (const line of lines) {
+      const isHeaderLike =
+        /^(?:第\s*[一二三四五六七八九十百千万\d]+\s*[编章节篇部条]|[一二三四五六七八九十百]+[、\.\s]|\d+[\.、\s]|#{1,6}\s|[【(（])/i.test(line) &&
+        line.length < 50;
+      if (isHeaderLike && cur) {
+        lineBlocks.push(cur);
+        cur = line;
+      } else {
+        cur += (cur ? '\n' : '') + line;
+      }
+    }
+    if (cur) lineBlocks.push(cur);
+    if (lineBlocks.length > 1) {
+      rawParagraphs = lineBlocks;
+    }
+  }
 
   const mergedBlocks: string[] = [];
   let currentBlock = '';
@@ -212,7 +239,7 @@ export function fallbackParagraphChunking(text: string): ContractClauseNode[] {
   for (const p of rawParagraphs) {
     if (!currentBlock) {
       currentBlock = p;
-    } else if (currentBlock.length < 250 || p.length < 80) {
+    } else if (currentBlock.length < 220 && p.length < 60) {
       currentBlock += '\n\n' + p;
     } else {
       mergedBlocks.push(currentBlock);
@@ -224,11 +251,11 @@ export function fallbackParagraphChunking(text: string): ContractClauseNode[] {
   }
 
   return mergedBlocks.map((p, idx) => {
-    const firstLine = p.split('\n')[0].slice(0, 35);
+    const firstLine = p.split('\n')[0].slice(0, 40).replace(/^#{1,6}\s+/, '').trim();
     return {
       id: `clause-${idx + 1}`,
       clauseNumber: `条款 ${idx + 1}`,
-      title: firstLine,
+      title: firstLine || `条款 ${idx + 1}`,
       content: p,
       level: 2,
     };
@@ -301,22 +328,22 @@ export function parseTextToClauses(text: string): ContractClauseNode[] {
       continue;
     }
 
-    // Tier 1 Chapter
+    // Tier 1 Chapter: e.g. "第一章 总则", "CHAPTER 1"
     const isTier1 = TIER1_CHAPTER_REGEX.test(cleanLine);
     if (isTier1) {
       const chNum = cleanLine.split(/\s+/)[0];
       currentDivisionNum = chNum;
       currentDivisionTitle = cleanLine;
+      pushClause(cleanLine, chNum, 1, chNum, cleanLine);
       continue;
     }
 
-    // Tier 2 Article
-    const isNumberedArticle = hasFormalArticles
-      ? TIER2_ARTICLE_REGEX.test(cleanLine)
-      : TIER2_ARTICLE_REGEX.test(cleanLine) ||
-        (/^\s*(?:\d+(\.\d+)+)[\.、\s]+[^\d\s]/i.test(cleanLine) &&
-          cleanLine.length < 45 &&
-          !/[。！？；]$/.test(cleanLine));
+    // Tier 2 Article: e.g. "第一条", "一、", "1.", "ARTICLE 1"
+    const isNumberedArticle =
+      TIER2_ARTICLE_REGEX.test(cleanLine) ||
+      (/^\s*(?:(?:\d+)|[一二三四五六七八九十百]+)[\.、\s]+(?!\d)/i.test(cleanLine) &&
+        cleanLine.length < 50 &&
+        !/[。！？；]$/.test(cleanLine));
 
     if (isNumberedArticle) {
       if (currentDivisionNum === '前言') {
@@ -338,12 +365,18 @@ export function parseTextToClauses(text: string): ContractClauseNode[] {
       const matchArt = heading.match(
         /^\s*(第\s*[一二三四五六七八九十百千万\d]+\s*条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)\s*(.*)$/i
       );
+      const matchNum = heading.match(
+        /^\s*(\d+[\.、\s]+(?!\d)|[一二三四五六七八九十百]+[、\s]+)\s*(.*)$/
+      );
       let cNum = `第 ${clauseIndex} 条`;
       let cleanTitle = heading;
 
       if (matchArt) {
         cNum = matchArt[1].replace(/\s+/g, '');
-        cleanTitle = matchArt[2]?.trim() || matchArt[1].trim();
+        cleanTitle = matchArt[2]?.trim().replace(/^[:：\s]+|[:：\s]+$/g, '') || matchArt[1].trim();
+      } else if (matchNum) {
+        cNum = matchNum[1].trim();
+        cleanTitle = matchNum[2]?.trim().replace(/^[:：\s]+|[:：\s]+$/g, '') || heading;
       }
 
       pushClause(cleanTitle, cNum, 2, currentDivisionNum, currentDivisionTitle);

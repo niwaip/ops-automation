@@ -24,6 +24,16 @@ export type User = $Result.DefaultSelection<Prisma.$UserPayload>
  */
 export type ImChannelConnection = $Result.DefaultSelection<Prisma.$ImChannelConnectionPayload>
 /**
+ * Model VoiceTaskRequest
+ * 
+ */
+export type VoiceTaskRequest = $Result.DefaultSelection<Prisma.$VoiceTaskRequestPayload>
+/**
+ * Model XiaozhiConnectorLease
+ * 
+ */
+export type XiaozhiConnectorLease = $Result.DefaultSelection<Prisma.$XiaozhiConnectorLeasePayload>
+/**
  * Model Role
  * 
  */
@@ -433,7 +443,8 @@ export type UserRoleType = (typeof UserRoleType)[keyof typeof UserRoleType]
 
 
 export const ImChannelType: {
-  wechat: 'wechat'
+  wechat: 'wechat',
+  xiaozhi: 'xiaozhi'
 };
 
 export type ImChannelType = (typeof ImChannelType)[keyof typeof ImChannelType]
@@ -492,7 +503,8 @@ export type IdentityProviderType = (typeof IdentityProviderType)[keyof typeof Id
 export const WorkspaceType: {
   personal: 'personal',
   department: 'department',
-  company: 'company'
+  company: 'company',
+  process: 'process'
 };
 
 export type WorkspaceType = (typeof WorkspaceType)[keyof typeof WorkspaceType]
@@ -758,6 +770,26 @@ export class PrismaClient<
     * ```
     */
   get imChannelConnection(): Prisma.ImChannelConnectionDelegate<ExtArgs>;
+
+  /**
+   * `prisma.voiceTaskRequest`: Exposes CRUD operations for the **VoiceTaskRequest** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more VoiceTaskRequests
+    * const voiceTaskRequests = await prisma.voiceTaskRequest.findMany()
+    * ```
+    */
+  get voiceTaskRequest(): Prisma.VoiceTaskRequestDelegate<ExtArgs>;
+
+  /**
+   * `prisma.xiaozhiConnectorLease`: Exposes CRUD operations for the **XiaozhiConnectorLease** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more XiaozhiConnectorLeases
+    * const xiaozhiConnectorLeases = await prisma.xiaozhiConnectorLease.findMany()
+    * ```
+    */
+  get xiaozhiConnectorLease(): Prisma.XiaozhiConnectorLeaseDelegate<ExtArgs>;
 
   /**
    * `prisma.role`: Exposes CRUD operations for the **Role** model.
@@ -1991,6 +2023,8 @@ export namespace Prisma {
   export const ModelName: {
     User: 'User',
     ImChannelConnection: 'ImChannelConnection',
+    VoiceTaskRequest: 'VoiceTaskRequest',
+    XiaozhiConnectorLease: 'XiaozhiConnectorLease',
     Role: 'Role',
     UserRole: 'UserRole',
     Organization: 'Organization',
@@ -2085,7 +2119,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "user" | "imChannelConnection" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionResultRef" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "userSavedSkill" | "userWorkflowAlias" | "userSavedSkillVersion" | "assistantFeedbackEvent" | "assistantFeedbackCurrent" | "routingObservation" | "planningDecision" | "taskPolicySet" | "taskCommandAlias" | "taskRecipe" | "taskCapabilityBinding" | "taskPolicyProposal" | "taskPolicyAuditLog" | "executionCompletionClaim" | "promptSnapshot" | "llmUsageLedger" | "executionOutbox" | "scheduleFire" | "habitLearningRun" | "userHabitCandidate" | "userHabit" | "userPersonalizationPreference" | "scopedMemory" | "candidateRecipe" | "candidateRecipeEvaluation" | "habitGovernanceAudit" | "builtinSkill" | "builtinSkillRuntimeConfig" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent" | "workspace" | "workspaceNode" | "workbenchTodo" | "workbenchInboxItem" | "userCredential" | "userSkillCredentialBinding"
+      modelProps: "user" | "imChannelConnection" | "voiceTaskRequest" | "xiaozhiConnectorLease" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionResultRef" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "userSavedSkill" | "userWorkflowAlias" | "userSavedSkillVersion" | "assistantFeedbackEvent" | "assistantFeedbackCurrent" | "routingObservation" | "planningDecision" | "taskPolicySet" | "taskCommandAlias" | "taskRecipe" | "taskCapabilityBinding" | "taskPolicyProposal" | "taskPolicyAuditLog" | "executionCompletionClaim" | "promptSnapshot" | "llmUsageLedger" | "executionOutbox" | "scheduleFire" | "habitLearningRun" | "userHabitCandidate" | "userHabit" | "userPersonalizationPreference" | "scopedMemory" | "candidateRecipe" | "candidateRecipeEvaluation" | "habitGovernanceAudit" | "builtinSkill" | "builtinSkillRuntimeConfig" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent" | "workspace" | "workspaceNode" | "workbenchTodo" | "workbenchInboxItem" | "userCredential" | "userSkillCredentialBinding"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -2226,6 +2260,146 @@ export namespace Prisma {
           count: {
             args: Prisma.ImChannelConnectionCountArgs<ExtArgs>
             result: $Utils.Optional<ImChannelConnectionCountAggregateOutputType> | number
+          }
+        }
+      }
+      VoiceTaskRequest: {
+        payload: Prisma.$VoiceTaskRequestPayload<ExtArgs>
+        fields: Prisma.VoiceTaskRequestFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.VoiceTaskRequestFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$VoiceTaskRequestPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.VoiceTaskRequestFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$VoiceTaskRequestPayload>
+          }
+          findFirst: {
+            args: Prisma.VoiceTaskRequestFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$VoiceTaskRequestPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.VoiceTaskRequestFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$VoiceTaskRequestPayload>
+          }
+          findMany: {
+            args: Prisma.VoiceTaskRequestFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$VoiceTaskRequestPayload>[]
+          }
+          create: {
+            args: Prisma.VoiceTaskRequestCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$VoiceTaskRequestPayload>
+          }
+          createMany: {
+            args: Prisma.VoiceTaskRequestCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.VoiceTaskRequestCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$VoiceTaskRequestPayload>[]
+          }
+          delete: {
+            args: Prisma.VoiceTaskRequestDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$VoiceTaskRequestPayload>
+          }
+          update: {
+            args: Prisma.VoiceTaskRequestUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$VoiceTaskRequestPayload>
+          }
+          deleteMany: {
+            args: Prisma.VoiceTaskRequestDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.VoiceTaskRequestUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.VoiceTaskRequestUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$VoiceTaskRequestPayload>
+          }
+          aggregate: {
+            args: Prisma.VoiceTaskRequestAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateVoiceTaskRequest>
+          }
+          groupBy: {
+            args: Prisma.VoiceTaskRequestGroupByArgs<ExtArgs>
+            result: $Utils.Optional<VoiceTaskRequestGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.VoiceTaskRequestCountArgs<ExtArgs>
+            result: $Utils.Optional<VoiceTaskRequestCountAggregateOutputType> | number
+          }
+        }
+      }
+      XiaozhiConnectorLease: {
+        payload: Prisma.$XiaozhiConnectorLeasePayload<ExtArgs>
+        fields: Prisma.XiaozhiConnectorLeaseFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.XiaozhiConnectorLeaseFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$XiaozhiConnectorLeasePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.XiaozhiConnectorLeaseFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$XiaozhiConnectorLeasePayload>
+          }
+          findFirst: {
+            args: Prisma.XiaozhiConnectorLeaseFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$XiaozhiConnectorLeasePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.XiaozhiConnectorLeaseFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$XiaozhiConnectorLeasePayload>
+          }
+          findMany: {
+            args: Prisma.XiaozhiConnectorLeaseFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$XiaozhiConnectorLeasePayload>[]
+          }
+          create: {
+            args: Prisma.XiaozhiConnectorLeaseCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$XiaozhiConnectorLeasePayload>
+          }
+          createMany: {
+            args: Prisma.XiaozhiConnectorLeaseCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.XiaozhiConnectorLeaseCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$XiaozhiConnectorLeasePayload>[]
+          }
+          delete: {
+            args: Prisma.XiaozhiConnectorLeaseDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$XiaozhiConnectorLeasePayload>
+          }
+          update: {
+            args: Prisma.XiaozhiConnectorLeaseUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$XiaozhiConnectorLeasePayload>
+          }
+          deleteMany: {
+            args: Prisma.XiaozhiConnectorLeaseDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.XiaozhiConnectorLeaseUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.XiaozhiConnectorLeaseUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$XiaozhiConnectorLeasePayload>
+          }
+          aggregate: {
+            args: Prisma.XiaozhiConnectorLeaseAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateXiaozhiConnectorLease>
+          }
+          groupBy: {
+            args: Prisma.XiaozhiConnectorLeaseGroupByArgs<ExtArgs>
+            result: $Utils.Optional<XiaozhiConnectorLeaseGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.XiaozhiConnectorLeaseCountArgs<ExtArgs>
+            result: $Utils.Optional<XiaozhiConnectorLeaseCountAggregateOutputType> | number
           }
         }
       }
@@ -10077,6 +10251,8 @@ export namespace Prisma {
     providerOwnerUserId: string | null
     providerBaseUrl: string | null
     encryptedCredential: string | null
+    credentialFingerprint: string | null
+    xiaozhiAlias: string | null
     updateCursor: string | null
     lastConnectedAt: Date | null
     lastMessageAt: Date | null
@@ -10096,6 +10272,8 @@ export namespace Prisma {
     providerOwnerUserId: string | null
     providerBaseUrl: string | null
     encryptedCredential: string | null
+    credentialFingerprint: string | null
+    xiaozhiAlias: string | null
     updateCursor: string | null
     lastConnectedAt: Date | null
     lastMessageAt: Date | null
@@ -10115,6 +10293,8 @@ export namespace Prisma {
     providerOwnerUserId: number
     providerBaseUrl: number
     encryptedCredential: number
+    credentialFingerprint: number
+    xiaozhiAlias: number
     updateCursor: number
     lastConnectedAt: number
     lastMessageAt: number
@@ -10136,6 +10316,8 @@ export namespace Prisma {
     providerOwnerUserId?: true
     providerBaseUrl?: true
     encryptedCredential?: true
+    credentialFingerprint?: true
+    xiaozhiAlias?: true
     updateCursor?: true
     lastConnectedAt?: true
     lastMessageAt?: true
@@ -10155,6 +10337,8 @@ export namespace Prisma {
     providerOwnerUserId?: true
     providerBaseUrl?: true
     encryptedCredential?: true
+    credentialFingerprint?: true
+    xiaozhiAlias?: true
     updateCursor?: true
     lastConnectedAt?: true
     lastMessageAt?: true
@@ -10174,6 +10358,8 @@ export namespace Prisma {
     providerOwnerUserId?: true
     providerBaseUrl?: true
     encryptedCredential?: true
+    credentialFingerprint?: true
+    xiaozhiAlias?: true
     updateCursor?: true
     lastConnectedAt?: true
     lastMessageAt?: true
@@ -10266,6 +10452,8 @@ export namespace Prisma {
     providerOwnerUserId: string | null
     providerBaseUrl: string | null
     encryptedCredential: string | null
+    credentialFingerprint: string | null
+    xiaozhiAlias: string | null
     updateCursor: string | null
     lastConnectedAt: Date | null
     lastMessageAt: Date | null
@@ -10302,6 +10490,8 @@ export namespace Prisma {
     providerOwnerUserId?: boolean
     providerBaseUrl?: boolean
     encryptedCredential?: boolean
+    credentialFingerprint?: boolean
+    xiaozhiAlias?: boolean
     updateCursor?: boolean
     lastConnectedAt?: boolean
     lastMessageAt?: boolean
@@ -10322,6 +10512,8 @@ export namespace Prisma {
     providerOwnerUserId?: boolean
     providerBaseUrl?: boolean
     encryptedCredential?: boolean
+    credentialFingerprint?: boolean
+    xiaozhiAlias?: boolean
     updateCursor?: boolean
     lastConnectedAt?: boolean
     lastMessageAt?: boolean
@@ -10342,6 +10534,8 @@ export namespace Prisma {
     providerOwnerUserId?: boolean
     providerBaseUrl?: boolean
     encryptedCredential?: boolean
+    credentialFingerprint?: boolean
+    xiaozhiAlias?: boolean
     updateCursor?: boolean
     lastConnectedAt?: boolean
     lastMessageAt?: boolean
@@ -10373,6 +10567,8 @@ export namespace Prisma {
       providerOwnerUserId: string | null
       providerBaseUrl: string | null
       encryptedCredential: string | null
+      credentialFingerprint: string | null
+      xiaozhiAlias: string | null
       updateCursor: string | null
       lastConnectedAt: Date | null
       lastMessageAt: Date | null
@@ -10783,6 +10979,8 @@ export namespace Prisma {
     readonly providerOwnerUserId: FieldRef<"ImChannelConnection", 'String'>
     readonly providerBaseUrl: FieldRef<"ImChannelConnection", 'String'>
     readonly encryptedCredential: FieldRef<"ImChannelConnection", 'String'>
+    readonly credentialFingerprint: FieldRef<"ImChannelConnection", 'String'>
+    readonly xiaozhiAlias: FieldRef<"ImChannelConnection", 'String'>
     readonly updateCursor: FieldRef<"ImChannelConnection", 'String'>
     readonly lastConnectedAt: FieldRef<"ImChannelConnection", 'DateTime'>
     readonly lastMessageAt: FieldRef<"ImChannelConnection", 'DateTime'>
@@ -11118,6 +11316,1834 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: ImChannelConnectionInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model VoiceTaskRequest
+   */
+
+  export type AggregateVoiceTaskRequest = {
+    _count: VoiceTaskRequestCountAggregateOutputType | null
+    _min: VoiceTaskRequestMinAggregateOutputType | null
+    _max: VoiceTaskRequestMaxAggregateOutputType | null
+  }
+
+  export type VoiceTaskRequestMinAggregateOutputType = {
+    id: string | null
+    channelConnectionId: string | null
+    ownerUserId: string | null
+    organizationId: string | null
+    idempotencyKey: string | null
+    instruction: string | null
+    status: string | null
+    executionId: string | null
+    speechSummary: string | null
+    lastErrorCode: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type VoiceTaskRequestMaxAggregateOutputType = {
+    id: string | null
+    channelConnectionId: string | null
+    ownerUserId: string | null
+    organizationId: string | null
+    idempotencyKey: string | null
+    instruction: string | null
+    status: string | null
+    executionId: string | null
+    speechSummary: string | null
+    lastErrorCode: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type VoiceTaskRequestCountAggregateOutputType = {
+    id: number
+    channelConnectionId: number
+    ownerUserId: number
+    organizationId: number
+    idempotencyKey: number
+    instruction: number
+    status: number
+    executionId: number
+    speechSummary: number
+    lastErrorCode: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type VoiceTaskRequestMinAggregateInputType = {
+    id?: true
+    channelConnectionId?: true
+    ownerUserId?: true
+    organizationId?: true
+    idempotencyKey?: true
+    instruction?: true
+    status?: true
+    executionId?: true
+    speechSummary?: true
+    lastErrorCode?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type VoiceTaskRequestMaxAggregateInputType = {
+    id?: true
+    channelConnectionId?: true
+    ownerUserId?: true
+    organizationId?: true
+    idempotencyKey?: true
+    instruction?: true
+    status?: true
+    executionId?: true
+    speechSummary?: true
+    lastErrorCode?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type VoiceTaskRequestCountAggregateInputType = {
+    id?: true
+    channelConnectionId?: true
+    ownerUserId?: true
+    organizationId?: true
+    idempotencyKey?: true
+    instruction?: true
+    status?: true
+    executionId?: true
+    speechSummary?: true
+    lastErrorCode?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type VoiceTaskRequestAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which VoiceTaskRequest to aggregate.
+     */
+    where?: VoiceTaskRequestWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of VoiceTaskRequests to fetch.
+     */
+    orderBy?: VoiceTaskRequestOrderByWithRelationInput | VoiceTaskRequestOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: VoiceTaskRequestWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` VoiceTaskRequests from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` VoiceTaskRequests.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned VoiceTaskRequests
+    **/
+    _count?: true | VoiceTaskRequestCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: VoiceTaskRequestMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: VoiceTaskRequestMaxAggregateInputType
+  }
+
+  export type GetVoiceTaskRequestAggregateType<T extends VoiceTaskRequestAggregateArgs> = {
+        [P in keyof T & keyof AggregateVoiceTaskRequest]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateVoiceTaskRequest[P]>
+      : GetScalarType<T[P], AggregateVoiceTaskRequest[P]>
+  }
+
+
+
+
+  export type VoiceTaskRequestGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: VoiceTaskRequestWhereInput
+    orderBy?: VoiceTaskRequestOrderByWithAggregationInput | VoiceTaskRequestOrderByWithAggregationInput[]
+    by: VoiceTaskRequestScalarFieldEnum[] | VoiceTaskRequestScalarFieldEnum
+    having?: VoiceTaskRequestScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: VoiceTaskRequestCountAggregateInputType | true
+    _min?: VoiceTaskRequestMinAggregateInputType
+    _max?: VoiceTaskRequestMaxAggregateInputType
+  }
+
+  export type VoiceTaskRequestGroupByOutputType = {
+    id: string
+    channelConnectionId: string
+    ownerUserId: string
+    organizationId: string | null
+    idempotencyKey: string
+    instruction: string
+    status: string
+    executionId: string | null
+    speechSummary: string
+    lastErrorCode: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: VoiceTaskRequestCountAggregateOutputType | null
+    _min: VoiceTaskRequestMinAggregateOutputType | null
+    _max: VoiceTaskRequestMaxAggregateOutputType | null
+  }
+
+  type GetVoiceTaskRequestGroupByPayload<T extends VoiceTaskRequestGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<VoiceTaskRequestGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof VoiceTaskRequestGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], VoiceTaskRequestGroupByOutputType[P]>
+            : GetScalarType<T[P], VoiceTaskRequestGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type VoiceTaskRequestSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    channelConnectionId?: boolean
+    ownerUserId?: boolean
+    organizationId?: boolean
+    idempotencyKey?: boolean
+    instruction?: boolean
+    status?: boolean
+    executionId?: boolean
+    speechSummary?: boolean
+    lastErrorCode?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["voiceTaskRequest"]>
+
+  export type VoiceTaskRequestSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    channelConnectionId?: boolean
+    ownerUserId?: boolean
+    organizationId?: boolean
+    idempotencyKey?: boolean
+    instruction?: boolean
+    status?: boolean
+    executionId?: boolean
+    speechSummary?: boolean
+    lastErrorCode?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["voiceTaskRequest"]>
+
+  export type VoiceTaskRequestSelectScalar = {
+    id?: boolean
+    channelConnectionId?: boolean
+    ownerUserId?: boolean
+    organizationId?: boolean
+    idempotencyKey?: boolean
+    instruction?: boolean
+    status?: boolean
+    executionId?: boolean
+    speechSummary?: boolean
+    lastErrorCode?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+
+  export type $VoiceTaskRequestPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "VoiceTaskRequest"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      channelConnectionId: string
+      ownerUserId: string
+      organizationId: string | null
+      idempotencyKey: string
+      instruction: string
+      status: string
+      executionId: string | null
+      speechSummary: string
+      lastErrorCode: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["voiceTaskRequest"]>
+    composites: {}
+  }
+
+  type VoiceTaskRequestGetPayload<S extends boolean | null | undefined | VoiceTaskRequestDefaultArgs> = $Result.GetResult<Prisma.$VoiceTaskRequestPayload, S>
+
+  type VoiceTaskRequestCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<VoiceTaskRequestFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: VoiceTaskRequestCountAggregateInputType | true
+    }
+
+  export interface VoiceTaskRequestDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['VoiceTaskRequest'], meta: { name: 'VoiceTaskRequest' } }
+    /**
+     * Find zero or one VoiceTaskRequest that matches the filter.
+     * @param {VoiceTaskRequestFindUniqueArgs} args - Arguments to find a VoiceTaskRequest
+     * @example
+     * // Get one VoiceTaskRequest
+     * const voiceTaskRequest = await prisma.voiceTaskRequest.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends VoiceTaskRequestFindUniqueArgs>(args: SelectSubset<T, VoiceTaskRequestFindUniqueArgs<ExtArgs>>): Prisma__VoiceTaskRequestClient<$Result.GetResult<Prisma.$VoiceTaskRequestPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one VoiceTaskRequest that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {VoiceTaskRequestFindUniqueOrThrowArgs} args - Arguments to find a VoiceTaskRequest
+     * @example
+     * // Get one VoiceTaskRequest
+     * const voiceTaskRequest = await prisma.voiceTaskRequest.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends VoiceTaskRequestFindUniqueOrThrowArgs>(args: SelectSubset<T, VoiceTaskRequestFindUniqueOrThrowArgs<ExtArgs>>): Prisma__VoiceTaskRequestClient<$Result.GetResult<Prisma.$VoiceTaskRequestPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first VoiceTaskRequest that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {VoiceTaskRequestFindFirstArgs} args - Arguments to find a VoiceTaskRequest
+     * @example
+     * // Get one VoiceTaskRequest
+     * const voiceTaskRequest = await prisma.voiceTaskRequest.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends VoiceTaskRequestFindFirstArgs>(args?: SelectSubset<T, VoiceTaskRequestFindFirstArgs<ExtArgs>>): Prisma__VoiceTaskRequestClient<$Result.GetResult<Prisma.$VoiceTaskRequestPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first VoiceTaskRequest that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {VoiceTaskRequestFindFirstOrThrowArgs} args - Arguments to find a VoiceTaskRequest
+     * @example
+     * // Get one VoiceTaskRequest
+     * const voiceTaskRequest = await prisma.voiceTaskRequest.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends VoiceTaskRequestFindFirstOrThrowArgs>(args?: SelectSubset<T, VoiceTaskRequestFindFirstOrThrowArgs<ExtArgs>>): Prisma__VoiceTaskRequestClient<$Result.GetResult<Prisma.$VoiceTaskRequestPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more VoiceTaskRequests that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {VoiceTaskRequestFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all VoiceTaskRequests
+     * const voiceTaskRequests = await prisma.voiceTaskRequest.findMany()
+     * 
+     * // Get first 10 VoiceTaskRequests
+     * const voiceTaskRequests = await prisma.voiceTaskRequest.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const voiceTaskRequestWithIdOnly = await prisma.voiceTaskRequest.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends VoiceTaskRequestFindManyArgs>(args?: SelectSubset<T, VoiceTaskRequestFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$VoiceTaskRequestPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a VoiceTaskRequest.
+     * @param {VoiceTaskRequestCreateArgs} args - Arguments to create a VoiceTaskRequest.
+     * @example
+     * // Create one VoiceTaskRequest
+     * const VoiceTaskRequest = await prisma.voiceTaskRequest.create({
+     *   data: {
+     *     // ... data to create a VoiceTaskRequest
+     *   }
+     * })
+     * 
+     */
+    create<T extends VoiceTaskRequestCreateArgs>(args: SelectSubset<T, VoiceTaskRequestCreateArgs<ExtArgs>>): Prisma__VoiceTaskRequestClient<$Result.GetResult<Prisma.$VoiceTaskRequestPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many VoiceTaskRequests.
+     * @param {VoiceTaskRequestCreateManyArgs} args - Arguments to create many VoiceTaskRequests.
+     * @example
+     * // Create many VoiceTaskRequests
+     * const voiceTaskRequest = await prisma.voiceTaskRequest.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends VoiceTaskRequestCreateManyArgs>(args?: SelectSubset<T, VoiceTaskRequestCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many VoiceTaskRequests and returns the data saved in the database.
+     * @param {VoiceTaskRequestCreateManyAndReturnArgs} args - Arguments to create many VoiceTaskRequests.
+     * @example
+     * // Create many VoiceTaskRequests
+     * const voiceTaskRequest = await prisma.voiceTaskRequest.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many VoiceTaskRequests and only return the `id`
+     * const voiceTaskRequestWithIdOnly = await prisma.voiceTaskRequest.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends VoiceTaskRequestCreateManyAndReturnArgs>(args?: SelectSubset<T, VoiceTaskRequestCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$VoiceTaskRequestPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a VoiceTaskRequest.
+     * @param {VoiceTaskRequestDeleteArgs} args - Arguments to delete one VoiceTaskRequest.
+     * @example
+     * // Delete one VoiceTaskRequest
+     * const VoiceTaskRequest = await prisma.voiceTaskRequest.delete({
+     *   where: {
+     *     // ... filter to delete one VoiceTaskRequest
+     *   }
+     * })
+     * 
+     */
+    delete<T extends VoiceTaskRequestDeleteArgs>(args: SelectSubset<T, VoiceTaskRequestDeleteArgs<ExtArgs>>): Prisma__VoiceTaskRequestClient<$Result.GetResult<Prisma.$VoiceTaskRequestPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one VoiceTaskRequest.
+     * @param {VoiceTaskRequestUpdateArgs} args - Arguments to update one VoiceTaskRequest.
+     * @example
+     * // Update one VoiceTaskRequest
+     * const voiceTaskRequest = await prisma.voiceTaskRequest.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends VoiceTaskRequestUpdateArgs>(args: SelectSubset<T, VoiceTaskRequestUpdateArgs<ExtArgs>>): Prisma__VoiceTaskRequestClient<$Result.GetResult<Prisma.$VoiceTaskRequestPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more VoiceTaskRequests.
+     * @param {VoiceTaskRequestDeleteManyArgs} args - Arguments to filter VoiceTaskRequests to delete.
+     * @example
+     * // Delete a few VoiceTaskRequests
+     * const { count } = await prisma.voiceTaskRequest.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends VoiceTaskRequestDeleteManyArgs>(args?: SelectSubset<T, VoiceTaskRequestDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more VoiceTaskRequests.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {VoiceTaskRequestUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many VoiceTaskRequests
+     * const voiceTaskRequest = await prisma.voiceTaskRequest.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends VoiceTaskRequestUpdateManyArgs>(args: SelectSubset<T, VoiceTaskRequestUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one VoiceTaskRequest.
+     * @param {VoiceTaskRequestUpsertArgs} args - Arguments to update or create a VoiceTaskRequest.
+     * @example
+     * // Update or create a VoiceTaskRequest
+     * const voiceTaskRequest = await prisma.voiceTaskRequest.upsert({
+     *   create: {
+     *     // ... data to create a VoiceTaskRequest
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the VoiceTaskRequest we want to update
+     *   }
+     * })
+     */
+    upsert<T extends VoiceTaskRequestUpsertArgs>(args: SelectSubset<T, VoiceTaskRequestUpsertArgs<ExtArgs>>): Prisma__VoiceTaskRequestClient<$Result.GetResult<Prisma.$VoiceTaskRequestPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of VoiceTaskRequests.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {VoiceTaskRequestCountArgs} args - Arguments to filter VoiceTaskRequests to count.
+     * @example
+     * // Count the number of VoiceTaskRequests
+     * const count = await prisma.voiceTaskRequest.count({
+     *   where: {
+     *     // ... the filter for the VoiceTaskRequests we want to count
+     *   }
+     * })
+    **/
+    count<T extends VoiceTaskRequestCountArgs>(
+      args?: Subset<T, VoiceTaskRequestCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], VoiceTaskRequestCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a VoiceTaskRequest.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {VoiceTaskRequestAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends VoiceTaskRequestAggregateArgs>(args: Subset<T, VoiceTaskRequestAggregateArgs>): Prisma.PrismaPromise<GetVoiceTaskRequestAggregateType<T>>
+
+    /**
+     * Group by VoiceTaskRequest.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {VoiceTaskRequestGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends VoiceTaskRequestGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: VoiceTaskRequestGroupByArgs['orderBy'] }
+        : { orderBy?: VoiceTaskRequestGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, VoiceTaskRequestGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetVoiceTaskRequestGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the VoiceTaskRequest model
+   */
+  readonly fields: VoiceTaskRequestFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for VoiceTaskRequest.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__VoiceTaskRequestClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the VoiceTaskRequest model
+   */ 
+  interface VoiceTaskRequestFieldRefs {
+    readonly id: FieldRef<"VoiceTaskRequest", 'String'>
+    readonly channelConnectionId: FieldRef<"VoiceTaskRequest", 'String'>
+    readonly ownerUserId: FieldRef<"VoiceTaskRequest", 'String'>
+    readonly organizationId: FieldRef<"VoiceTaskRequest", 'String'>
+    readonly idempotencyKey: FieldRef<"VoiceTaskRequest", 'String'>
+    readonly instruction: FieldRef<"VoiceTaskRequest", 'String'>
+    readonly status: FieldRef<"VoiceTaskRequest", 'String'>
+    readonly executionId: FieldRef<"VoiceTaskRequest", 'String'>
+    readonly speechSummary: FieldRef<"VoiceTaskRequest", 'String'>
+    readonly lastErrorCode: FieldRef<"VoiceTaskRequest", 'String'>
+    readonly createdAt: FieldRef<"VoiceTaskRequest", 'DateTime'>
+    readonly updatedAt: FieldRef<"VoiceTaskRequest", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * VoiceTaskRequest findUnique
+   */
+  export type VoiceTaskRequestFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the VoiceTaskRequest
+     */
+    select?: VoiceTaskRequestSelect<ExtArgs> | null
+    /**
+     * Filter, which VoiceTaskRequest to fetch.
+     */
+    where: VoiceTaskRequestWhereUniqueInput
+  }
+
+  /**
+   * VoiceTaskRequest findUniqueOrThrow
+   */
+  export type VoiceTaskRequestFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the VoiceTaskRequest
+     */
+    select?: VoiceTaskRequestSelect<ExtArgs> | null
+    /**
+     * Filter, which VoiceTaskRequest to fetch.
+     */
+    where: VoiceTaskRequestWhereUniqueInput
+  }
+
+  /**
+   * VoiceTaskRequest findFirst
+   */
+  export type VoiceTaskRequestFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the VoiceTaskRequest
+     */
+    select?: VoiceTaskRequestSelect<ExtArgs> | null
+    /**
+     * Filter, which VoiceTaskRequest to fetch.
+     */
+    where?: VoiceTaskRequestWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of VoiceTaskRequests to fetch.
+     */
+    orderBy?: VoiceTaskRequestOrderByWithRelationInput | VoiceTaskRequestOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for VoiceTaskRequests.
+     */
+    cursor?: VoiceTaskRequestWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` VoiceTaskRequests from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` VoiceTaskRequests.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of VoiceTaskRequests.
+     */
+    distinct?: VoiceTaskRequestScalarFieldEnum | VoiceTaskRequestScalarFieldEnum[]
+  }
+
+  /**
+   * VoiceTaskRequest findFirstOrThrow
+   */
+  export type VoiceTaskRequestFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the VoiceTaskRequest
+     */
+    select?: VoiceTaskRequestSelect<ExtArgs> | null
+    /**
+     * Filter, which VoiceTaskRequest to fetch.
+     */
+    where?: VoiceTaskRequestWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of VoiceTaskRequests to fetch.
+     */
+    orderBy?: VoiceTaskRequestOrderByWithRelationInput | VoiceTaskRequestOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for VoiceTaskRequests.
+     */
+    cursor?: VoiceTaskRequestWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` VoiceTaskRequests from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` VoiceTaskRequests.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of VoiceTaskRequests.
+     */
+    distinct?: VoiceTaskRequestScalarFieldEnum | VoiceTaskRequestScalarFieldEnum[]
+  }
+
+  /**
+   * VoiceTaskRequest findMany
+   */
+  export type VoiceTaskRequestFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the VoiceTaskRequest
+     */
+    select?: VoiceTaskRequestSelect<ExtArgs> | null
+    /**
+     * Filter, which VoiceTaskRequests to fetch.
+     */
+    where?: VoiceTaskRequestWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of VoiceTaskRequests to fetch.
+     */
+    orderBy?: VoiceTaskRequestOrderByWithRelationInput | VoiceTaskRequestOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing VoiceTaskRequests.
+     */
+    cursor?: VoiceTaskRequestWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` VoiceTaskRequests from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` VoiceTaskRequests.
+     */
+    skip?: number
+    distinct?: VoiceTaskRequestScalarFieldEnum | VoiceTaskRequestScalarFieldEnum[]
+  }
+
+  /**
+   * VoiceTaskRequest create
+   */
+  export type VoiceTaskRequestCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the VoiceTaskRequest
+     */
+    select?: VoiceTaskRequestSelect<ExtArgs> | null
+    /**
+     * The data needed to create a VoiceTaskRequest.
+     */
+    data: XOR<VoiceTaskRequestCreateInput, VoiceTaskRequestUncheckedCreateInput>
+  }
+
+  /**
+   * VoiceTaskRequest createMany
+   */
+  export type VoiceTaskRequestCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many VoiceTaskRequests.
+     */
+    data: VoiceTaskRequestCreateManyInput | VoiceTaskRequestCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * VoiceTaskRequest createManyAndReturn
+   */
+  export type VoiceTaskRequestCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the VoiceTaskRequest
+     */
+    select?: VoiceTaskRequestSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many VoiceTaskRequests.
+     */
+    data: VoiceTaskRequestCreateManyInput | VoiceTaskRequestCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * VoiceTaskRequest update
+   */
+  export type VoiceTaskRequestUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the VoiceTaskRequest
+     */
+    select?: VoiceTaskRequestSelect<ExtArgs> | null
+    /**
+     * The data needed to update a VoiceTaskRequest.
+     */
+    data: XOR<VoiceTaskRequestUpdateInput, VoiceTaskRequestUncheckedUpdateInput>
+    /**
+     * Choose, which VoiceTaskRequest to update.
+     */
+    where: VoiceTaskRequestWhereUniqueInput
+  }
+
+  /**
+   * VoiceTaskRequest updateMany
+   */
+  export type VoiceTaskRequestUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update VoiceTaskRequests.
+     */
+    data: XOR<VoiceTaskRequestUpdateManyMutationInput, VoiceTaskRequestUncheckedUpdateManyInput>
+    /**
+     * Filter which VoiceTaskRequests to update
+     */
+    where?: VoiceTaskRequestWhereInput
+  }
+
+  /**
+   * VoiceTaskRequest upsert
+   */
+  export type VoiceTaskRequestUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the VoiceTaskRequest
+     */
+    select?: VoiceTaskRequestSelect<ExtArgs> | null
+    /**
+     * The filter to search for the VoiceTaskRequest to update in case it exists.
+     */
+    where: VoiceTaskRequestWhereUniqueInput
+    /**
+     * In case the VoiceTaskRequest found by the `where` argument doesn't exist, create a new VoiceTaskRequest with this data.
+     */
+    create: XOR<VoiceTaskRequestCreateInput, VoiceTaskRequestUncheckedCreateInput>
+    /**
+     * In case the VoiceTaskRequest was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<VoiceTaskRequestUpdateInput, VoiceTaskRequestUncheckedUpdateInput>
+  }
+
+  /**
+   * VoiceTaskRequest delete
+   */
+  export type VoiceTaskRequestDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the VoiceTaskRequest
+     */
+    select?: VoiceTaskRequestSelect<ExtArgs> | null
+    /**
+     * Filter which VoiceTaskRequest to delete.
+     */
+    where: VoiceTaskRequestWhereUniqueInput
+  }
+
+  /**
+   * VoiceTaskRequest deleteMany
+   */
+  export type VoiceTaskRequestDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which VoiceTaskRequests to delete
+     */
+    where?: VoiceTaskRequestWhereInput
+  }
+
+  /**
+   * VoiceTaskRequest without action
+   */
+  export type VoiceTaskRequestDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the VoiceTaskRequest
+     */
+    select?: VoiceTaskRequestSelect<ExtArgs> | null
+  }
+
+
+  /**
+   * Model XiaozhiConnectorLease
+   */
+
+  export type AggregateXiaozhiConnectorLease = {
+    _count: XiaozhiConnectorLeaseCountAggregateOutputType | null
+    _min: XiaozhiConnectorLeaseMinAggregateOutputType | null
+    _max: XiaozhiConnectorLeaseMaxAggregateOutputType | null
+  }
+
+  export type XiaozhiConnectorLeaseMinAggregateOutputType = {
+    connectionId: string | null
+    workerId: string | null
+    leaseUntil: Date | null
+    heartbeatAt: Date | null
+  }
+
+  export type XiaozhiConnectorLeaseMaxAggregateOutputType = {
+    connectionId: string | null
+    workerId: string | null
+    leaseUntil: Date | null
+    heartbeatAt: Date | null
+  }
+
+  export type XiaozhiConnectorLeaseCountAggregateOutputType = {
+    connectionId: number
+    workerId: number
+    leaseUntil: number
+    heartbeatAt: number
+    _all: number
+  }
+
+
+  export type XiaozhiConnectorLeaseMinAggregateInputType = {
+    connectionId?: true
+    workerId?: true
+    leaseUntil?: true
+    heartbeatAt?: true
+  }
+
+  export type XiaozhiConnectorLeaseMaxAggregateInputType = {
+    connectionId?: true
+    workerId?: true
+    leaseUntil?: true
+    heartbeatAt?: true
+  }
+
+  export type XiaozhiConnectorLeaseCountAggregateInputType = {
+    connectionId?: true
+    workerId?: true
+    leaseUntil?: true
+    heartbeatAt?: true
+    _all?: true
+  }
+
+  export type XiaozhiConnectorLeaseAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which XiaozhiConnectorLease to aggregate.
+     */
+    where?: XiaozhiConnectorLeaseWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of XiaozhiConnectorLeases to fetch.
+     */
+    orderBy?: XiaozhiConnectorLeaseOrderByWithRelationInput | XiaozhiConnectorLeaseOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: XiaozhiConnectorLeaseWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` XiaozhiConnectorLeases from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` XiaozhiConnectorLeases.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned XiaozhiConnectorLeases
+    **/
+    _count?: true | XiaozhiConnectorLeaseCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: XiaozhiConnectorLeaseMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: XiaozhiConnectorLeaseMaxAggregateInputType
+  }
+
+  export type GetXiaozhiConnectorLeaseAggregateType<T extends XiaozhiConnectorLeaseAggregateArgs> = {
+        [P in keyof T & keyof AggregateXiaozhiConnectorLease]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateXiaozhiConnectorLease[P]>
+      : GetScalarType<T[P], AggregateXiaozhiConnectorLease[P]>
+  }
+
+
+
+
+  export type XiaozhiConnectorLeaseGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: XiaozhiConnectorLeaseWhereInput
+    orderBy?: XiaozhiConnectorLeaseOrderByWithAggregationInput | XiaozhiConnectorLeaseOrderByWithAggregationInput[]
+    by: XiaozhiConnectorLeaseScalarFieldEnum[] | XiaozhiConnectorLeaseScalarFieldEnum
+    having?: XiaozhiConnectorLeaseScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: XiaozhiConnectorLeaseCountAggregateInputType | true
+    _min?: XiaozhiConnectorLeaseMinAggregateInputType
+    _max?: XiaozhiConnectorLeaseMaxAggregateInputType
+  }
+
+  export type XiaozhiConnectorLeaseGroupByOutputType = {
+    connectionId: string
+    workerId: string
+    leaseUntil: Date
+    heartbeatAt: Date
+    _count: XiaozhiConnectorLeaseCountAggregateOutputType | null
+    _min: XiaozhiConnectorLeaseMinAggregateOutputType | null
+    _max: XiaozhiConnectorLeaseMaxAggregateOutputType | null
+  }
+
+  type GetXiaozhiConnectorLeaseGroupByPayload<T extends XiaozhiConnectorLeaseGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<XiaozhiConnectorLeaseGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof XiaozhiConnectorLeaseGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], XiaozhiConnectorLeaseGroupByOutputType[P]>
+            : GetScalarType<T[P], XiaozhiConnectorLeaseGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type XiaozhiConnectorLeaseSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    connectionId?: boolean
+    workerId?: boolean
+    leaseUntil?: boolean
+    heartbeatAt?: boolean
+  }, ExtArgs["result"]["xiaozhiConnectorLease"]>
+
+  export type XiaozhiConnectorLeaseSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    connectionId?: boolean
+    workerId?: boolean
+    leaseUntil?: boolean
+    heartbeatAt?: boolean
+  }, ExtArgs["result"]["xiaozhiConnectorLease"]>
+
+  export type XiaozhiConnectorLeaseSelectScalar = {
+    connectionId?: boolean
+    workerId?: boolean
+    leaseUntil?: boolean
+    heartbeatAt?: boolean
+  }
+
+
+  export type $XiaozhiConnectorLeasePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "XiaozhiConnectorLease"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      connectionId: string
+      workerId: string
+      leaseUntil: Date
+      heartbeatAt: Date
+    }, ExtArgs["result"]["xiaozhiConnectorLease"]>
+    composites: {}
+  }
+
+  type XiaozhiConnectorLeaseGetPayload<S extends boolean | null | undefined | XiaozhiConnectorLeaseDefaultArgs> = $Result.GetResult<Prisma.$XiaozhiConnectorLeasePayload, S>
+
+  type XiaozhiConnectorLeaseCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<XiaozhiConnectorLeaseFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: XiaozhiConnectorLeaseCountAggregateInputType | true
+    }
+
+  export interface XiaozhiConnectorLeaseDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['XiaozhiConnectorLease'], meta: { name: 'XiaozhiConnectorLease' } }
+    /**
+     * Find zero or one XiaozhiConnectorLease that matches the filter.
+     * @param {XiaozhiConnectorLeaseFindUniqueArgs} args - Arguments to find a XiaozhiConnectorLease
+     * @example
+     * // Get one XiaozhiConnectorLease
+     * const xiaozhiConnectorLease = await prisma.xiaozhiConnectorLease.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends XiaozhiConnectorLeaseFindUniqueArgs>(args: SelectSubset<T, XiaozhiConnectorLeaseFindUniqueArgs<ExtArgs>>): Prisma__XiaozhiConnectorLeaseClient<$Result.GetResult<Prisma.$XiaozhiConnectorLeasePayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one XiaozhiConnectorLease that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {XiaozhiConnectorLeaseFindUniqueOrThrowArgs} args - Arguments to find a XiaozhiConnectorLease
+     * @example
+     * // Get one XiaozhiConnectorLease
+     * const xiaozhiConnectorLease = await prisma.xiaozhiConnectorLease.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends XiaozhiConnectorLeaseFindUniqueOrThrowArgs>(args: SelectSubset<T, XiaozhiConnectorLeaseFindUniqueOrThrowArgs<ExtArgs>>): Prisma__XiaozhiConnectorLeaseClient<$Result.GetResult<Prisma.$XiaozhiConnectorLeasePayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first XiaozhiConnectorLease that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {XiaozhiConnectorLeaseFindFirstArgs} args - Arguments to find a XiaozhiConnectorLease
+     * @example
+     * // Get one XiaozhiConnectorLease
+     * const xiaozhiConnectorLease = await prisma.xiaozhiConnectorLease.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends XiaozhiConnectorLeaseFindFirstArgs>(args?: SelectSubset<T, XiaozhiConnectorLeaseFindFirstArgs<ExtArgs>>): Prisma__XiaozhiConnectorLeaseClient<$Result.GetResult<Prisma.$XiaozhiConnectorLeasePayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first XiaozhiConnectorLease that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {XiaozhiConnectorLeaseFindFirstOrThrowArgs} args - Arguments to find a XiaozhiConnectorLease
+     * @example
+     * // Get one XiaozhiConnectorLease
+     * const xiaozhiConnectorLease = await prisma.xiaozhiConnectorLease.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends XiaozhiConnectorLeaseFindFirstOrThrowArgs>(args?: SelectSubset<T, XiaozhiConnectorLeaseFindFirstOrThrowArgs<ExtArgs>>): Prisma__XiaozhiConnectorLeaseClient<$Result.GetResult<Prisma.$XiaozhiConnectorLeasePayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more XiaozhiConnectorLeases that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {XiaozhiConnectorLeaseFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all XiaozhiConnectorLeases
+     * const xiaozhiConnectorLeases = await prisma.xiaozhiConnectorLease.findMany()
+     * 
+     * // Get first 10 XiaozhiConnectorLeases
+     * const xiaozhiConnectorLeases = await prisma.xiaozhiConnectorLease.findMany({ take: 10 })
+     * 
+     * // Only select the `connectionId`
+     * const xiaozhiConnectorLeaseWithConnectionIdOnly = await prisma.xiaozhiConnectorLease.findMany({ select: { connectionId: true } })
+     * 
+     */
+    findMany<T extends XiaozhiConnectorLeaseFindManyArgs>(args?: SelectSubset<T, XiaozhiConnectorLeaseFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$XiaozhiConnectorLeasePayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a XiaozhiConnectorLease.
+     * @param {XiaozhiConnectorLeaseCreateArgs} args - Arguments to create a XiaozhiConnectorLease.
+     * @example
+     * // Create one XiaozhiConnectorLease
+     * const XiaozhiConnectorLease = await prisma.xiaozhiConnectorLease.create({
+     *   data: {
+     *     // ... data to create a XiaozhiConnectorLease
+     *   }
+     * })
+     * 
+     */
+    create<T extends XiaozhiConnectorLeaseCreateArgs>(args: SelectSubset<T, XiaozhiConnectorLeaseCreateArgs<ExtArgs>>): Prisma__XiaozhiConnectorLeaseClient<$Result.GetResult<Prisma.$XiaozhiConnectorLeasePayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many XiaozhiConnectorLeases.
+     * @param {XiaozhiConnectorLeaseCreateManyArgs} args - Arguments to create many XiaozhiConnectorLeases.
+     * @example
+     * // Create many XiaozhiConnectorLeases
+     * const xiaozhiConnectorLease = await prisma.xiaozhiConnectorLease.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends XiaozhiConnectorLeaseCreateManyArgs>(args?: SelectSubset<T, XiaozhiConnectorLeaseCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many XiaozhiConnectorLeases and returns the data saved in the database.
+     * @param {XiaozhiConnectorLeaseCreateManyAndReturnArgs} args - Arguments to create many XiaozhiConnectorLeases.
+     * @example
+     * // Create many XiaozhiConnectorLeases
+     * const xiaozhiConnectorLease = await prisma.xiaozhiConnectorLease.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many XiaozhiConnectorLeases and only return the `connectionId`
+     * const xiaozhiConnectorLeaseWithConnectionIdOnly = await prisma.xiaozhiConnectorLease.createManyAndReturn({ 
+     *   select: { connectionId: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends XiaozhiConnectorLeaseCreateManyAndReturnArgs>(args?: SelectSubset<T, XiaozhiConnectorLeaseCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$XiaozhiConnectorLeasePayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a XiaozhiConnectorLease.
+     * @param {XiaozhiConnectorLeaseDeleteArgs} args - Arguments to delete one XiaozhiConnectorLease.
+     * @example
+     * // Delete one XiaozhiConnectorLease
+     * const XiaozhiConnectorLease = await prisma.xiaozhiConnectorLease.delete({
+     *   where: {
+     *     // ... filter to delete one XiaozhiConnectorLease
+     *   }
+     * })
+     * 
+     */
+    delete<T extends XiaozhiConnectorLeaseDeleteArgs>(args: SelectSubset<T, XiaozhiConnectorLeaseDeleteArgs<ExtArgs>>): Prisma__XiaozhiConnectorLeaseClient<$Result.GetResult<Prisma.$XiaozhiConnectorLeasePayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one XiaozhiConnectorLease.
+     * @param {XiaozhiConnectorLeaseUpdateArgs} args - Arguments to update one XiaozhiConnectorLease.
+     * @example
+     * // Update one XiaozhiConnectorLease
+     * const xiaozhiConnectorLease = await prisma.xiaozhiConnectorLease.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends XiaozhiConnectorLeaseUpdateArgs>(args: SelectSubset<T, XiaozhiConnectorLeaseUpdateArgs<ExtArgs>>): Prisma__XiaozhiConnectorLeaseClient<$Result.GetResult<Prisma.$XiaozhiConnectorLeasePayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more XiaozhiConnectorLeases.
+     * @param {XiaozhiConnectorLeaseDeleteManyArgs} args - Arguments to filter XiaozhiConnectorLeases to delete.
+     * @example
+     * // Delete a few XiaozhiConnectorLeases
+     * const { count } = await prisma.xiaozhiConnectorLease.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends XiaozhiConnectorLeaseDeleteManyArgs>(args?: SelectSubset<T, XiaozhiConnectorLeaseDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more XiaozhiConnectorLeases.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {XiaozhiConnectorLeaseUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many XiaozhiConnectorLeases
+     * const xiaozhiConnectorLease = await prisma.xiaozhiConnectorLease.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends XiaozhiConnectorLeaseUpdateManyArgs>(args: SelectSubset<T, XiaozhiConnectorLeaseUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one XiaozhiConnectorLease.
+     * @param {XiaozhiConnectorLeaseUpsertArgs} args - Arguments to update or create a XiaozhiConnectorLease.
+     * @example
+     * // Update or create a XiaozhiConnectorLease
+     * const xiaozhiConnectorLease = await prisma.xiaozhiConnectorLease.upsert({
+     *   create: {
+     *     // ... data to create a XiaozhiConnectorLease
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the XiaozhiConnectorLease we want to update
+     *   }
+     * })
+     */
+    upsert<T extends XiaozhiConnectorLeaseUpsertArgs>(args: SelectSubset<T, XiaozhiConnectorLeaseUpsertArgs<ExtArgs>>): Prisma__XiaozhiConnectorLeaseClient<$Result.GetResult<Prisma.$XiaozhiConnectorLeasePayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of XiaozhiConnectorLeases.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {XiaozhiConnectorLeaseCountArgs} args - Arguments to filter XiaozhiConnectorLeases to count.
+     * @example
+     * // Count the number of XiaozhiConnectorLeases
+     * const count = await prisma.xiaozhiConnectorLease.count({
+     *   where: {
+     *     // ... the filter for the XiaozhiConnectorLeases we want to count
+     *   }
+     * })
+    **/
+    count<T extends XiaozhiConnectorLeaseCountArgs>(
+      args?: Subset<T, XiaozhiConnectorLeaseCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], XiaozhiConnectorLeaseCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a XiaozhiConnectorLease.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {XiaozhiConnectorLeaseAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends XiaozhiConnectorLeaseAggregateArgs>(args: Subset<T, XiaozhiConnectorLeaseAggregateArgs>): Prisma.PrismaPromise<GetXiaozhiConnectorLeaseAggregateType<T>>
+
+    /**
+     * Group by XiaozhiConnectorLease.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {XiaozhiConnectorLeaseGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends XiaozhiConnectorLeaseGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: XiaozhiConnectorLeaseGroupByArgs['orderBy'] }
+        : { orderBy?: XiaozhiConnectorLeaseGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, XiaozhiConnectorLeaseGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetXiaozhiConnectorLeaseGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the XiaozhiConnectorLease model
+   */
+  readonly fields: XiaozhiConnectorLeaseFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for XiaozhiConnectorLease.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__XiaozhiConnectorLeaseClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the XiaozhiConnectorLease model
+   */ 
+  interface XiaozhiConnectorLeaseFieldRefs {
+    readonly connectionId: FieldRef<"XiaozhiConnectorLease", 'String'>
+    readonly workerId: FieldRef<"XiaozhiConnectorLease", 'String'>
+    readonly leaseUntil: FieldRef<"XiaozhiConnectorLease", 'DateTime'>
+    readonly heartbeatAt: FieldRef<"XiaozhiConnectorLease", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * XiaozhiConnectorLease findUnique
+   */
+  export type XiaozhiConnectorLeaseFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the XiaozhiConnectorLease
+     */
+    select?: XiaozhiConnectorLeaseSelect<ExtArgs> | null
+    /**
+     * Filter, which XiaozhiConnectorLease to fetch.
+     */
+    where: XiaozhiConnectorLeaseWhereUniqueInput
+  }
+
+  /**
+   * XiaozhiConnectorLease findUniqueOrThrow
+   */
+  export type XiaozhiConnectorLeaseFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the XiaozhiConnectorLease
+     */
+    select?: XiaozhiConnectorLeaseSelect<ExtArgs> | null
+    /**
+     * Filter, which XiaozhiConnectorLease to fetch.
+     */
+    where: XiaozhiConnectorLeaseWhereUniqueInput
+  }
+
+  /**
+   * XiaozhiConnectorLease findFirst
+   */
+  export type XiaozhiConnectorLeaseFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the XiaozhiConnectorLease
+     */
+    select?: XiaozhiConnectorLeaseSelect<ExtArgs> | null
+    /**
+     * Filter, which XiaozhiConnectorLease to fetch.
+     */
+    where?: XiaozhiConnectorLeaseWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of XiaozhiConnectorLeases to fetch.
+     */
+    orderBy?: XiaozhiConnectorLeaseOrderByWithRelationInput | XiaozhiConnectorLeaseOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for XiaozhiConnectorLeases.
+     */
+    cursor?: XiaozhiConnectorLeaseWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` XiaozhiConnectorLeases from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` XiaozhiConnectorLeases.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of XiaozhiConnectorLeases.
+     */
+    distinct?: XiaozhiConnectorLeaseScalarFieldEnum | XiaozhiConnectorLeaseScalarFieldEnum[]
+  }
+
+  /**
+   * XiaozhiConnectorLease findFirstOrThrow
+   */
+  export type XiaozhiConnectorLeaseFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the XiaozhiConnectorLease
+     */
+    select?: XiaozhiConnectorLeaseSelect<ExtArgs> | null
+    /**
+     * Filter, which XiaozhiConnectorLease to fetch.
+     */
+    where?: XiaozhiConnectorLeaseWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of XiaozhiConnectorLeases to fetch.
+     */
+    orderBy?: XiaozhiConnectorLeaseOrderByWithRelationInput | XiaozhiConnectorLeaseOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for XiaozhiConnectorLeases.
+     */
+    cursor?: XiaozhiConnectorLeaseWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` XiaozhiConnectorLeases from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` XiaozhiConnectorLeases.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of XiaozhiConnectorLeases.
+     */
+    distinct?: XiaozhiConnectorLeaseScalarFieldEnum | XiaozhiConnectorLeaseScalarFieldEnum[]
+  }
+
+  /**
+   * XiaozhiConnectorLease findMany
+   */
+  export type XiaozhiConnectorLeaseFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the XiaozhiConnectorLease
+     */
+    select?: XiaozhiConnectorLeaseSelect<ExtArgs> | null
+    /**
+     * Filter, which XiaozhiConnectorLeases to fetch.
+     */
+    where?: XiaozhiConnectorLeaseWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of XiaozhiConnectorLeases to fetch.
+     */
+    orderBy?: XiaozhiConnectorLeaseOrderByWithRelationInput | XiaozhiConnectorLeaseOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing XiaozhiConnectorLeases.
+     */
+    cursor?: XiaozhiConnectorLeaseWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` XiaozhiConnectorLeases from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` XiaozhiConnectorLeases.
+     */
+    skip?: number
+    distinct?: XiaozhiConnectorLeaseScalarFieldEnum | XiaozhiConnectorLeaseScalarFieldEnum[]
+  }
+
+  /**
+   * XiaozhiConnectorLease create
+   */
+  export type XiaozhiConnectorLeaseCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the XiaozhiConnectorLease
+     */
+    select?: XiaozhiConnectorLeaseSelect<ExtArgs> | null
+    /**
+     * The data needed to create a XiaozhiConnectorLease.
+     */
+    data: XOR<XiaozhiConnectorLeaseCreateInput, XiaozhiConnectorLeaseUncheckedCreateInput>
+  }
+
+  /**
+   * XiaozhiConnectorLease createMany
+   */
+  export type XiaozhiConnectorLeaseCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many XiaozhiConnectorLeases.
+     */
+    data: XiaozhiConnectorLeaseCreateManyInput | XiaozhiConnectorLeaseCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * XiaozhiConnectorLease createManyAndReturn
+   */
+  export type XiaozhiConnectorLeaseCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the XiaozhiConnectorLease
+     */
+    select?: XiaozhiConnectorLeaseSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many XiaozhiConnectorLeases.
+     */
+    data: XiaozhiConnectorLeaseCreateManyInput | XiaozhiConnectorLeaseCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * XiaozhiConnectorLease update
+   */
+  export type XiaozhiConnectorLeaseUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the XiaozhiConnectorLease
+     */
+    select?: XiaozhiConnectorLeaseSelect<ExtArgs> | null
+    /**
+     * The data needed to update a XiaozhiConnectorLease.
+     */
+    data: XOR<XiaozhiConnectorLeaseUpdateInput, XiaozhiConnectorLeaseUncheckedUpdateInput>
+    /**
+     * Choose, which XiaozhiConnectorLease to update.
+     */
+    where: XiaozhiConnectorLeaseWhereUniqueInput
+  }
+
+  /**
+   * XiaozhiConnectorLease updateMany
+   */
+  export type XiaozhiConnectorLeaseUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update XiaozhiConnectorLeases.
+     */
+    data: XOR<XiaozhiConnectorLeaseUpdateManyMutationInput, XiaozhiConnectorLeaseUncheckedUpdateManyInput>
+    /**
+     * Filter which XiaozhiConnectorLeases to update
+     */
+    where?: XiaozhiConnectorLeaseWhereInput
+  }
+
+  /**
+   * XiaozhiConnectorLease upsert
+   */
+  export type XiaozhiConnectorLeaseUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the XiaozhiConnectorLease
+     */
+    select?: XiaozhiConnectorLeaseSelect<ExtArgs> | null
+    /**
+     * The filter to search for the XiaozhiConnectorLease to update in case it exists.
+     */
+    where: XiaozhiConnectorLeaseWhereUniqueInput
+    /**
+     * In case the XiaozhiConnectorLease found by the `where` argument doesn't exist, create a new XiaozhiConnectorLease with this data.
+     */
+    create: XOR<XiaozhiConnectorLeaseCreateInput, XiaozhiConnectorLeaseUncheckedCreateInput>
+    /**
+     * In case the XiaozhiConnectorLease was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<XiaozhiConnectorLeaseUpdateInput, XiaozhiConnectorLeaseUncheckedUpdateInput>
+  }
+
+  /**
+   * XiaozhiConnectorLease delete
+   */
+  export type XiaozhiConnectorLeaseDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the XiaozhiConnectorLease
+     */
+    select?: XiaozhiConnectorLeaseSelect<ExtArgs> | null
+    /**
+     * Filter which XiaozhiConnectorLease to delete.
+     */
+    where: XiaozhiConnectorLeaseWhereUniqueInput
+  }
+
+  /**
+   * XiaozhiConnectorLease deleteMany
+   */
+  export type XiaozhiConnectorLeaseDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which XiaozhiConnectorLeases to delete
+     */
+    where?: XiaozhiConnectorLeaseWhereInput
+  }
+
+  /**
+   * XiaozhiConnectorLease without action
+   */
+  export type XiaozhiConnectorLeaseDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the XiaozhiConnectorLease
+     */
+    select?: XiaozhiConnectorLeaseSelect<ExtArgs> | null
   }
 
 
@@ -91340,6 +93366,8 @@ export namespace Prisma {
     providerOwnerUserId: 'providerOwnerUserId',
     providerBaseUrl: 'providerBaseUrl',
     encryptedCredential: 'encryptedCredential',
+    credentialFingerprint: 'credentialFingerprint',
+    xiaozhiAlias: 'xiaozhiAlias',
     updateCursor: 'updateCursor',
     lastConnectedAt: 'lastConnectedAt',
     lastMessageAt: 'lastMessageAt',
@@ -91349,6 +93377,34 @@ export namespace Prisma {
   };
 
   export type ImChannelConnectionScalarFieldEnum = (typeof ImChannelConnectionScalarFieldEnum)[keyof typeof ImChannelConnectionScalarFieldEnum]
+
+
+  export const VoiceTaskRequestScalarFieldEnum: {
+    id: 'id',
+    channelConnectionId: 'channelConnectionId',
+    ownerUserId: 'ownerUserId',
+    organizationId: 'organizationId',
+    idempotencyKey: 'idempotencyKey',
+    instruction: 'instruction',
+    status: 'status',
+    executionId: 'executionId',
+    speechSummary: 'speechSummary',
+    lastErrorCode: 'lastErrorCode',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type VoiceTaskRequestScalarFieldEnum = (typeof VoiceTaskRequestScalarFieldEnum)[keyof typeof VoiceTaskRequestScalarFieldEnum]
+
+
+  export const XiaozhiConnectorLeaseScalarFieldEnum: {
+    connectionId: 'connectionId',
+    workerId: 'workerId',
+    leaseUntil: 'leaseUntil',
+    heartbeatAt: 'heartbeatAt'
+  };
+
+  export type XiaozhiConnectorLeaseScalarFieldEnum = (typeof XiaozhiConnectorLeaseScalarFieldEnum)[keyof typeof XiaozhiConnectorLeaseScalarFieldEnum]
 
 
   export const RoleScalarFieldEnum: {
@@ -93253,6 +95309,8 @@ export namespace Prisma {
     providerOwnerUserId?: StringNullableFilter<"ImChannelConnection"> | string | null
     providerBaseUrl?: StringNullableFilter<"ImChannelConnection"> | string | null
     encryptedCredential?: StringNullableFilter<"ImChannelConnection"> | string | null
+    credentialFingerprint?: StringNullableFilter<"ImChannelConnection"> | string | null
+    xiaozhiAlias?: StringNullableFilter<"ImChannelConnection"> | string | null
     updateCursor?: StringNullableFilter<"ImChannelConnection"> | string | null
     lastConnectedAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
     lastMessageAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
@@ -93273,6 +95331,8 @@ export namespace Prisma {
     providerOwnerUserId?: SortOrderInput | SortOrder
     providerBaseUrl?: SortOrderInput | SortOrder
     encryptedCredential?: SortOrderInput | SortOrder
+    credentialFingerprint?: SortOrderInput | SortOrder
+    xiaozhiAlias?: SortOrderInput | SortOrder
     updateCursor?: SortOrderInput | SortOrder
     lastConnectedAt?: SortOrderInput | SortOrder
     lastMessageAt?: SortOrderInput | SortOrder
@@ -93284,6 +95344,7 @@ export namespace Prisma {
 
   export type ImChannelConnectionWhereUniqueInput = Prisma.AtLeast<{
     id?: string
+    credentialFingerprint?: string
     userId_channel?: ImChannelConnectionUserIdChannelCompoundUniqueInput
     AND?: ImChannelConnectionWhereInput | ImChannelConnectionWhereInput[]
     OR?: ImChannelConnectionWhereInput[]
@@ -93297,6 +95358,7 @@ export namespace Prisma {
     providerOwnerUserId?: StringNullableFilter<"ImChannelConnection"> | string | null
     providerBaseUrl?: StringNullableFilter<"ImChannelConnection"> | string | null
     encryptedCredential?: StringNullableFilter<"ImChannelConnection"> | string | null
+    xiaozhiAlias?: StringNullableFilter<"ImChannelConnection"> | string | null
     updateCursor?: StringNullableFilter<"ImChannelConnection"> | string | null
     lastConnectedAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
     lastMessageAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
@@ -93304,7 +95366,7 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"ImChannelConnection"> | Date | string
     updatedAt?: DateTimeFilter<"ImChannelConnection"> | Date | string
     user?: XOR<UserRelationFilter, UserWhereInput>
-  }, "id" | "userId_channel">
+  }, "id" | "credentialFingerprint" | "userId_channel">
 
   export type ImChannelConnectionOrderByWithAggregationInput = {
     id?: SortOrder
@@ -93317,6 +95379,8 @@ export namespace Prisma {
     providerOwnerUserId?: SortOrderInput | SortOrder
     providerBaseUrl?: SortOrderInput | SortOrder
     encryptedCredential?: SortOrderInput | SortOrder
+    credentialFingerprint?: SortOrderInput | SortOrder
+    xiaozhiAlias?: SortOrderInput | SortOrder
     updateCursor?: SortOrderInput | SortOrder
     lastConnectedAt?: SortOrderInput | SortOrder
     lastMessageAt?: SortOrderInput | SortOrder
@@ -93342,12 +95406,149 @@ export namespace Prisma {
     providerOwnerUserId?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
     providerBaseUrl?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
     encryptedCredential?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
+    credentialFingerprint?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
+    xiaozhiAlias?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
     updateCursor?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
     lastConnectedAt?: DateTimeNullableWithAggregatesFilter<"ImChannelConnection"> | Date | string | null
     lastMessageAt?: DateTimeNullableWithAggregatesFilter<"ImChannelConnection"> | Date | string | null
     lastError?: StringNullableWithAggregatesFilter<"ImChannelConnection"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"ImChannelConnection"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"ImChannelConnection"> | Date | string
+  }
+
+  export type VoiceTaskRequestWhereInput = {
+    AND?: VoiceTaskRequestWhereInput | VoiceTaskRequestWhereInput[]
+    OR?: VoiceTaskRequestWhereInput[]
+    NOT?: VoiceTaskRequestWhereInput | VoiceTaskRequestWhereInput[]
+    id?: UuidFilter<"VoiceTaskRequest"> | string
+    channelConnectionId?: UuidFilter<"VoiceTaskRequest"> | string
+    ownerUserId?: UuidFilter<"VoiceTaskRequest"> | string
+    organizationId?: UuidNullableFilter<"VoiceTaskRequest"> | string | null
+    idempotencyKey?: StringFilter<"VoiceTaskRequest"> | string
+    instruction?: StringFilter<"VoiceTaskRequest"> | string
+    status?: StringFilter<"VoiceTaskRequest"> | string
+    executionId?: UuidNullableFilter<"VoiceTaskRequest"> | string | null
+    speechSummary?: StringFilter<"VoiceTaskRequest"> | string
+    lastErrorCode?: StringNullableFilter<"VoiceTaskRequest"> | string | null
+    createdAt?: DateTimeFilter<"VoiceTaskRequest"> | Date | string
+    updatedAt?: DateTimeFilter<"VoiceTaskRequest"> | Date | string
+  }
+
+  export type VoiceTaskRequestOrderByWithRelationInput = {
+    id?: SortOrder
+    channelConnectionId?: SortOrder
+    ownerUserId?: SortOrder
+    organizationId?: SortOrderInput | SortOrder
+    idempotencyKey?: SortOrder
+    instruction?: SortOrder
+    status?: SortOrder
+    executionId?: SortOrderInput | SortOrder
+    speechSummary?: SortOrder
+    lastErrorCode?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type VoiceTaskRequestWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    channelConnectionId_idempotencyKey?: VoiceTaskRequestChannelConnectionIdIdempotencyKeyCompoundUniqueInput
+    AND?: VoiceTaskRequestWhereInput | VoiceTaskRequestWhereInput[]
+    OR?: VoiceTaskRequestWhereInput[]
+    NOT?: VoiceTaskRequestWhereInput | VoiceTaskRequestWhereInput[]
+    channelConnectionId?: UuidFilter<"VoiceTaskRequest"> | string
+    ownerUserId?: UuidFilter<"VoiceTaskRequest"> | string
+    organizationId?: UuidNullableFilter<"VoiceTaskRequest"> | string | null
+    idempotencyKey?: StringFilter<"VoiceTaskRequest"> | string
+    instruction?: StringFilter<"VoiceTaskRequest"> | string
+    status?: StringFilter<"VoiceTaskRequest"> | string
+    executionId?: UuidNullableFilter<"VoiceTaskRequest"> | string | null
+    speechSummary?: StringFilter<"VoiceTaskRequest"> | string
+    lastErrorCode?: StringNullableFilter<"VoiceTaskRequest"> | string | null
+    createdAt?: DateTimeFilter<"VoiceTaskRequest"> | Date | string
+    updatedAt?: DateTimeFilter<"VoiceTaskRequest"> | Date | string
+  }, "id" | "channelConnectionId_idempotencyKey">
+
+  export type VoiceTaskRequestOrderByWithAggregationInput = {
+    id?: SortOrder
+    channelConnectionId?: SortOrder
+    ownerUserId?: SortOrder
+    organizationId?: SortOrderInput | SortOrder
+    idempotencyKey?: SortOrder
+    instruction?: SortOrder
+    status?: SortOrder
+    executionId?: SortOrderInput | SortOrder
+    speechSummary?: SortOrder
+    lastErrorCode?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: VoiceTaskRequestCountOrderByAggregateInput
+    _max?: VoiceTaskRequestMaxOrderByAggregateInput
+    _min?: VoiceTaskRequestMinOrderByAggregateInput
+  }
+
+  export type VoiceTaskRequestScalarWhereWithAggregatesInput = {
+    AND?: VoiceTaskRequestScalarWhereWithAggregatesInput | VoiceTaskRequestScalarWhereWithAggregatesInput[]
+    OR?: VoiceTaskRequestScalarWhereWithAggregatesInput[]
+    NOT?: VoiceTaskRequestScalarWhereWithAggregatesInput | VoiceTaskRequestScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"VoiceTaskRequest"> | string
+    channelConnectionId?: UuidWithAggregatesFilter<"VoiceTaskRequest"> | string
+    ownerUserId?: UuidWithAggregatesFilter<"VoiceTaskRequest"> | string
+    organizationId?: UuidNullableWithAggregatesFilter<"VoiceTaskRequest"> | string | null
+    idempotencyKey?: StringWithAggregatesFilter<"VoiceTaskRequest"> | string
+    instruction?: StringWithAggregatesFilter<"VoiceTaskRequest"> | string
+    status?: StringWithAggregatesFilter<"VoiceTaskRequest"> | string
+    executionId?: UuidNullableWithAggregatesFilter<"VoiceTaskRequest"> | string | null
+    speechSummary?: StringWithAggregatesFilter<"VoiceTaskRequest"> | string
+    lastErrorCode?: StringNullableWithAggregatesFilter<"VoiceTaskRequest"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"VoiceTaskRequest"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"VoiceTaskRequest"> | Date | string
+  }
+
+  export type XiaozhiConnectorLeaseWhereInput = {
+    AND?: XiaozhiConnectorLeaseWhereInput | XiaozhiConnectorLeaseWhereInput[]
+    OR?: XiaozhiConnectorLeaseWhereInput[]
+    NOT?: XiaozhiConnectorLeaseWhereInput | XiaozhiConnectorLeaseWhereInput[]
+    connectionId?: UuidFilter<"XiaozhiConnectorLease"> | string
+    workerId?: StringFilter<"XiaozhiConnectorLease"> | string
+    leaseUntil?: DateTimeFilter<"XiaozhiConnectorLease"> | Date | string
+    heartbeatAt?: DateTimeFilter<"XiaozhiConnectorLease"> | Date | string
+  }
+
+  export type XiaozhiConnectorLeaseOrderByWithRelationInput = {
+    connectionId?: SortOrder
+    workerId?: SortOrder
+    leaseUntil?: SortOrder
+    heartbeatAt?: SortOrder
+  }
+
+  export type XiaozhiConnectorLeaseWhereUniqueInput = Prisma.AtLeast<{
+    connectionId?: string
+    AND?: XiaozhiConnectorLeaseWhereInput | XiaozhiConnectorLeaseWhereInput[]
+    OR?: XiaozhiConnectorLeaseWhereInput[]
+    NOT?: XiaozhiConnectorLeaseWhereInput | XiaozhiConnectorLeaseWhereInput[]
+    workerId?: StringFilter<"XiaozhiConnectorLease"> | string
+    leaseUntil?: DateTimeFilter<"XiaozhiConnectorLease"> | Date | string
+    heartbeatAt?: DateTimeFilter<"XiaozhiConnectorLease"> | Date | string
+  }, "connectionId">
+
+  export type XiaozhiConnectorLeaseOrderByWithAggregationInput = {
+    connectionId?: SortOrder
+    workerId?: SortOrder
+    leaseUntil?: SortOrder
+    heartbeatAt?: SortOrder
+    _count?: XiaozhiConnectorLeaseCountOrderByAggregateInput
+    _max?: XiaozhiConnectorLeaseMaxOrderByAggregateInput
+    _min?: XiaozhiConnectorLeaseMinOrderByAggregateInput
+  }
+
+  export type XiaozhiConnectorLeaseScalarWhereWithAggregatesInput = {
+    AND?: XiaozhiConnectorLeaseScalarWhereWithAggregatesInput | XiaozhiConnectorLeaseScalarWhereWithAggregatesInput[]
+    OR?: XiaozhiConnectorLeaseScalarWhereWithAggregatesInput[]
+    NOT?: XiaozhiConnectorLeaseScalarWhereWithAggregatesInput | XiaozhiConnectorLeaseScalarWhereWithAggregatesInput[]
+    connectionId?: UuidWithAggregatesFilter<"XiaozhiConnectorLease"> | string
+    workerId?: StringWithAggregatesFilter<"XiaozhiConnectorLease"> | string
+    leaseUntil?: DateTimeWithAggregatesFilter<"XiaozhiConnectorLease"> | Date | string
+    heartbeatAt?: DateTimeWithAggregatesFilter<"XiaozhiConnectorLease"> | Date | string
   }
 
   export type RoleWhereInput = {
@@ -100721,6 +102922,8 @@ export namespace Prisma {
     providerOwnerUserId?: string | null
     providerBaseUrl?: string | null
     encryptedCredential?: string | null
+    credentialFingerprint?: string | null
+    xiaozhiAlias?: string | null
     updateCursor?: string | null
     lastConnectedAt?: Date | string | null
     lastMessageAt?: Date | string | null
@@ -100741,6 +102944,8 @@ export namespace Prisma {
     providerOwnerUserId?: string | null
     providerBaseUrl?: string | null
     encryptedCredential?: string | null
+    credentialFingerprint?: string | null
+    xiaozhiAlias?: string | null
     updateCursor?: string | null
     lastConnectedAt?: Date | string | null
     lastMessageAt?: Date | string | null
@@ -100759,6 +102964,8 @@ export namespace Prisma {
     providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
     providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
     encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    credentialFingerprint?: NullableStringFieldUpdateOperationsInput | string | null
+    xiaozhiAlias?: NullableStringFieldUpdateOperationsInput | string | null
     updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
     lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -100779,6 +102986,8 @@ export namespace Prisma {
     providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
     providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
     encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    credentialFingerprint?: NullableStringFieldUpdateOperationsInput | string | null
+    xiaozhiAlias?: NullableStringFieldUpdateOperationsInput | string | null
     updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
     lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -100798,6 +103007,8 @@ export namespace Prisma {
     providerOwnerUserId?: string | null
     providerBaseUrl?: string | null
     encryptedCredential?: string | null
+    credentialFingerprint?: string | null
+    xiaozhiAlias?: string | null
     updateCursor?: string | null
     lastConnectedAt?: Date | string | null
     lastMessageAt?: Date | string | null
@@ -100816,6 +103027,8 @@ export namespace Prisma {
     providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
     providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
     encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    credentialFingerprint?: NullableStringFieldUpdateOperationsInput | string | null
+    xiaozhiAlias?: NullableStringFieldUpdateOperationsInput | string | null
     updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
     lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -100835,12 +103048,168 @@ export namespace Prisma {
     providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
     providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
     encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    credentialFingerprint?: NullableStringFieldUpdateOperationsInput | string | null
+    xiaozhiAlias?: NullableStringFieldUpdateOperationsInput | string | null
     updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
     lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastError?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type VoiceTaskRequestCreateInput = {
+    id?: string
+    channelConnectionId: string
+    ownerUserId: string
+    organizationId?: string | null
+    idempotencyKey: string
+    instruction: string
+    status?: string
+    executionId?: string | null
+    speechSummary?: string
+    lastErrorCode?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type VoiceTaskRequestUncheckedCreateInput = {
+    id?: string
+    channelConnectionId: string
+    ownerUserId: string
+    organizationId?: string | null
+    idempotencyKey: string
+    instruction: string
+    status?: string
+    executionId?: string | null
+    speechSummary?: string
+    lastErrorCode?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type VoiceTaskRequestUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    channelConnectionId?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    organizationId?: NullableStringFieldUpdateOperationsInput | string | null
+    idempotencyKey?: StringFieldUpdateOperationsInput | string
+    instruction?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    speechSummary?: StringFieldUpdateOperationsInput | string
+    lastErrorCode?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type VoiceTaskRequestUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    channelConnectionId?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    organizationId?: NullableStringFieldUpdateOperationsInput | string | null
+    idempotencyKey?: StringFieldUpdateOperationsInput | string
+    instruction?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    speechSummary?: StringFieldUpdateOperationsInput | string
+    lastErrorCode?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type VoiceTaskRequestCreateManyInput = {
+    id?: string
+    channelConnectionId: string
+    ownerUserId: string
+    organizationId?: string | null
+    idempotencyKey: string
+    instruction: string
+    status?: string
+    executionId?: string | null
+    speechSummary?: string
+    lastErrorCode?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type VoiceTaskRequestUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    channelConnectionId?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    organizationId?: NullableStringFieldUpdateOperationsInput | string | null
+    idempotencyKey?: StringFieldUpdateOperationsInput | string
+    instruction?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    speechSummary?: StringFieldUpdateOperationsInput | string
+    lastErrorCode?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type VoiceTaskRequestUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    channelConnectionId?: StringFieldUpdateOperationsInput | string
+    ownerUserId?: StringFieldUpdateOperationsInput | string
+    organizationId?: NullableStringFieldUpdateOperationsInput | string | null
+    idempotencyKey?: StringFieldUpdateOperationsInput | string
+    instruction?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    executionId?: NullableStringFieldUpdateOperationsInput | string | null
+    speechSummary?: StringFieldUpdateOperationsInput | string
+    lastErrorCode?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type XiaozhiConnectorLeaseCreateInput = {
+    connectionId: string
+    workerId: string
+    leaseUntil: Date | string
+    heartbeatAt: Date | string
+  }
+
+  export type XiaozhiConnectorLeaseUncheckedCreateInput = {
+    connectionId: string
+    workerId: string
+    leaseUntil: Date | string
+    heartbeatAt: Date | string
+  }
+
+  export type XiaozhiConnectorLeaseUpdateInput = {
+    connectionId?: StringFieldUpdateOperationsInput | string
+    workerId?: StringFieldUpdateOperationsInput | string
+    leaseUntil?: DateTimeFieldUpdateOperationsInput | Date | string
+    heartbeatAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type XiaozhiConnectorLeaseUncheckedUpdateInput = {
+    connectionId?: StringFieldUpdateOperationsInput | string
+    workerId?: StringFieldUpdateOperationsInput | string
+    leaseUntil?: DateTimeFieldUpdateOperationsInput | Date | string
+    heartbeatAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type XiaozhiConnectorLeaseCreateManyInput = {
+    connectionId: string
+    workerId: string
+    leaseUntil: Date | string
+    heartbeatAt: Date | string
+  }
+
+  export type XiaozhiConnectorLeaseUpdateManyMutationInput = {
+    connectionId?: StringFieldUpdateOperationsInput | string
+    workerId?: StringFieldUpdateOperationsInput | string
+    leaseUntil?: DateTimeFieldUpdateOperationsInput | Date | string
+    heartbeatAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type XiaozhiConnectorLeaseUncheckedUpdateManyInput = {
+    connectionId?: StringFieldUpdateOperationsInput | string
+    workerId?: StringFieldUpdateOperationsInput | string
+    leaseUntil?: DateTimeFieldUpdateOperationsInput | Date | string
+    heartbeatAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type RoleCreateInput = {
@@ -109579,6 +111948,8 @@ export namespace Prisma {
     providerOwnerUserId?: SortOrder
     providerBaseUrl?: SortOrder
     encryptedCredential?: SortOrder
+    credentialFingerprint?: SortOrder
+    xiaozhiAlias?: SortOrder
     updateCursor?: SortOrder
     lastConnectedAt?: SortOrder
     lastMessageAt?: SortOrder
@@ -109598,6 +111969,8 @@ export namespace Prisma {
     providerOwnerUserId?: SortOrder
     providerBaseUrl?: SortOrder
     encryptedCredential?: SortOrder
+    credentialFingerprint?: SortOrder
+    xiaozhiAlias?: SortOrder
     updateCursor?: SortOrder
     lastConnectedAt?: SortOrder
     lastMessageAt?: SortOrder
@@ -109617,6 +111990,8 @@ export namespace Prisma {
     providerOwnerUserId?: SortOrder
     providerBaseUrl?: SortOrder
     encryptedCredential?: SortOrder
+    credentialFingerprint?: SortOrder
+    xiaozhiAlias?: SortOrder
     updateCursor?: SortOrder
     lastConnectedAt?: SortOrder
     lastMessageAt?: SortOrder
@@ -109653,6 +112028,77 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumImInteractionModeFilter<$PrismaModel>
     _max?: NestedEnumImInteractionModeFilter<$PrismaModel>
+  }
+
+  export type VoiceTaskRequestChannelConnectionIdIdempotencyKeyCompoundUniqueInput = {
+    channelConnectionId: string
+    idempotencyKey: string
+  }
+
+  export type VoiceTaskRequestCountOrderByAggregateInput = {
+    id?: SortOrder
+    channelConnectionId?: SortOrder
+    ownerUserId?: SortOrder
+    organizationId?: SortOrder
+    idempotencyKey?: SortOrder
+    instruction?: SortOrder
+    status?: SortOrder
+    executionId?: SortOrder
+    speechSummary?: SortOrder
+    lastErrorCode?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type VoiceTaskRequestMaxOrderByAggregateInput = {
+    id?: SortOrder
+    channelConnectionId?: SortOrder
+    ownerUserId?: SortOrder
+    organizationId?: SortOrder
+    idempotencyKey?: SortOrder
+    instruction?: SortOrder
+    status?: SortOrder
+    executionId?: SortOrder
+    speechSummary?: SortOrder
+    lastErrorCode?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type VoiceTaskRequestMinOrderByAggregateInput = {
+    id?: SortOrder
+    channelConnectionId?: SortOrder
+    ownerUserId?: SortOrder
+    organizationId?: SortOrder
+    idempotencyKey?: SortOrder
+    instruction?: SortOrder
+    status?: SortOrder
+    executionId?: SortOrder
+    speechSummary?: SortOrder
+    lastErrorCode?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type XiaozhiConnectorLeaseCountOrderByAggregateInput = {
+    connectionId?: SortOrder
+    workerId?: SortOrder
+    leaseUntil?: SortOrder
+    heartbeatAt?: SortOrder
+  }
+
+  export type XiaozhiConnectorLeaseMaxOrderByAggregateInput = {
+    connectionId?: SortOrder
+    workerId?: SortOrder
+    leaseUntil?: SortOrder
+    heartbeatAt?: SortOrder
+  }
+
+  export type XiaozhiConnectorLeaseMinOrderByAggregateInput = {
+    connectionId?: SortOrder
+    workerId?: SortOrder
+    leaseUntil?: SortOrder
+    heartbeatAt?: SortOrder
   }
   export type JsonFilter<$PrismaModel = never> = 
     | PatchUndefined<
@@ -118258,6 +120704,8 @@ export namespace Prisma {
     providerOwnerUserId?: string | null
     providerBaseUrl?: string | null
     encryptedCredential?: string | null
+    credentialFingerprint?: string | null
+    xiaozhiAlias?: string | null
     updateCursor?: string | null
     lastConnectedAt?: Date | string | null
     lastMessageAt?: Date | string | null
@@ -118276,6 +120724,8 @@ export namespace Prisma {
     providerOwnerUserId?: string | null
     providerBaseUrl?: string | null
     encryptedCredential?: string | null
+    credentialFingerprint?: string | null
+    xiaozhiAlias?: string | null
     updateCursor?: string | null
     lastConnectedAt?: Date | string | null
     lastMessageAt?: Date | string | null
@@ -118635,6 +121085,8 @@ export namespace Prisma {
     providerOwnerUserId?: StringNullableFilter<"ImChannelConnection"> | string | null
     providerBaseUrl?: StringNullableFilter<"ImChannelConnection"> | string | null
     encryptedCredential?: StringNullableFilter<"ImChannelConnection"> | string | null
+    credentialFingerprint?: StringNullableFilter<"ImChannelConnection"> | string | null
+    xiaozhiAlias?: StringNullableFilter<"ImChannelConnection"> | string | null
     updateCursor?: StringNullableFilter<"ImChannelConnection"> | string | null
     lastConnectedAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
     lastMessageAt?: DateTimeNullableFilter<"ImChannelConnection"> | Date | string | null
@@ -126915,6 +129367,8 @@ export namespace Prisma {
     providerOwnerUserId?: string | null
     providerBaseUrl?: string | null
     encryptedCredential?: string | null
+    credentialFingerprint?: string | null
+    xiaozhiAlias?: string | null
     updateCursor?: string | null
     lastConnectedAt?: Date | string | null
     lastMessageAt?: Date | string | null
@@ -127112,6 +129566,8 @@ export namespace Prisma {
     providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
     providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
     encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    credentialFingerprint?: NullableStringFieldUpdateOperationsInput | string | null
+    xiaozhiAlias?: NullableStringFieldUpdateOperationsInput | string | null
     updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
     lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -127130,6 +129586,8 @@ export namespace Prisma {
     providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
     providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
     encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    credentialFingerprint?: NullableStringFieldUpdateOperationsInput | string | null
+    xiaozhiAlias?: NullableStringFieldUpdateOperationsInput | string | null
     updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
     lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -127148,6 +129606,8 @@ export namespace Prisma {
     providerOwnerUserId?: NullableStringFieldUpdateOperationsInput | string | null
     providerBaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
     encryptedCredential?: NullableStringFieldUpdateOperationsInput | string | null
+    credentialFingerprint?: NullableStringFieldUpdateOperationsInput | string | null
+    xiaozhiAlias?: NullableStringFieldUpdateOperationsInput | string | null
     updateCursor?: NullableStringFieldUpdateOperationsInput | string | null
     lastConnectedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -129528,6 +131988,14 @@ export namespace Prisma {
      * @deprecated Use ImChannelConnectionDefaultArgs instead
      */
     export type ImChannelConnectionArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ImChannelConnectionDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use VoiceTaskRequestDefaultArgs instead
+     */
+    export type VoiceTaskRequestArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = VoiceTaskRequestDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use XiaozhiConnectorLeaseDefaultArgs instead
+     */
+    export type XiaozhiConnectorLeaseArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = XiaozhiConnectorLeaseDefaultArgs<ExtArgs>
     /**
      * @deprecated Use RoleDefaultArgs instead
      */

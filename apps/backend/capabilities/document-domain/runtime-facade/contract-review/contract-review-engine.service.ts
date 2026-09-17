@@ -37,6 +37,8 @@ export interface ReviewEngineInput {
   myPosition?: PartyPositionInput;
   customCheckpoints?: CustomCheckpointDto[];
   customChecklistRules?: CustomCheckpointDto[];
+  prompt?: string;
+  reviewPrompt?: string;
 }
 
 export interface ReviewEngineResult {
@@ -100,7 +102,38 @@ export class ContractReviewEngineService {
       typeInfo.defaultPosition
     );
 
-    const effectiveCustomRules = input.customChecklistRules || input.customCheckpoints;
+    const rawPrompt = (input.reviewPrompt || input.prompt || '').trim();
+    const promptRules: CustomCheckpointDto[] = [];
+    if (rawPrompt) {
+      const promptLines = rawPrompt
+        .split(/[\n;；。]+/)
+        .map((l) => l.trim())
+        .filter((l) => l.length >= 2);
+      if (promptLines.length > 0) {
+        promptLines.forEach((line, idx) => {
+          promptRules.push({
+            id: `prompt-rule-${idx + 1}`,
+            title: line.length > 24 ? line.slice(0, 22) + '...' : line,
+            severity: 'HIGH',
+            rule: line,
+            category: '审查Prompt专项要点',
+          });
+        });
+      } else {
+        promptRules.push({
+          id: 'prompt-rule-1',
+          title: '审查Prompt专项要点',
+          severity: 'HIGH',
+          rule: rawPrompt,
+          category: '审查Prompt专项要点',
+        });
+      }
+    }
+
+    const effectiveCustomRules = [
+      ...(input.customChecklistRules || input.customCheckpoints || []),
+      ...promptRules,
+    ];
 
     // 3. Load checklist rules filtered by contract type and party position
     const rules = this.checklistMatrix.getRulesForType(
@@ -153,6 +186,7 @@ export class ContractReviewEngineService {
           myPosition: resolvedPosition,
           matchedRules,
           formIntegrity,
+          reviewPrompt: rawPrompt || undefined,
         });
 
         // Determine accurate primary elementId & elementCode (match with severity & triggering rules)

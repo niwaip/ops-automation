@@ -9,9 +9,19 @@ export interface WorkflowStageDefinition {
   name: string;
   type: StageType;
   description: string;
-  approverRule?: 'leader' | 'role' | 'assignee' | 'specific_user';
+  approverRule?: 'leader' | 'role' | 'assignee' | 'specific_user' | 'department' | 'initiator';
   approverRole?: string;
+  approverDepartment?: string;
+  approverUsername?: string;
+  rollbackStageId?: string;
   actions?: string[];
+  isLocked?: boolean;
+  allowFileReplacement?: boolean;
+  isArtifactReview?: boolean;
+  // 自动化能力/工作流动态配置项 (支持自定义绑定与运行参数)
+  capabilityId?: string;
+  workflowId?: string;
+  config?: Record<string, any>;
 }
 
 export type BaseWorkflowType = 'execution_flow' | 'temporal_workflow' | 'skill';
@@ -23,8 +33,10 @@ export interface AssembledBaseWorkflow {
   triggerEvent?: 'on_submit' | 'on_stage_approval' | 'on_approve' | 'on_complete';
   description?: string;
   stageType?: StageType;
+  stageId?: string;
   handlerRule?: string;
   requiredMetadata?: string[];
+  config?: Record<string, any>;
 }
 
 export interface WorkflowParamProperty {

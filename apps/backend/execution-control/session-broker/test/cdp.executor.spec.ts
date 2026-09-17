@@ -478,4 +478,32 @@ describe('CdpExecutor execution policy', () => {
       })
     );
   });
+
+  it('includes x-internal-auth header in postJson requests', async () => {
+    postJsonSpy.mockRestore();
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      text: async () => JSON.stringify({ success: true }),
+    });
+    const originalFetch = global.fetch;
+    global.fetch = fetchMock;
+
+    try {
+      const result = await (executor as any).postJson('/browser/init', { runtimeSessionId: 'test-123' });
+      expect(result).toEqual({ success: true });
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/browser/init'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            'x-internal-auth': expect.any(String),
+          }),
+        })
+      );
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });
+

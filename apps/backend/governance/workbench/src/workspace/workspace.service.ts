@@ -5,6 +5,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -18,15 +19,21 @@ import type {
   WorkspaceNodeDto,
   WorkspaceSummaryDto,
   DepartmentSummaryDto,
+  MyWorkspacesResponseDto,
   RegenerateDigestDto,
   BatchRegenerateDigestDto,
   SaveTextNoteDto,
   MulterUploadedFile,
 } from './dto/workspace.dto';
 import { WorkspaceNoteService } from './workspace-note.service';
+import {
+  WorkspaceProcessArchiveService,
+  type ArchiveDeliverablesOptions,
+  type ArchiveResult,
+} from './workspace-process-archive.service';
 
 @Injectable()
-export class WorkspaceService {
+export class WorkspaceService implements OnModuleInit {
   private readonly logger = new Logger(WorkspaceService.name);
 
   constructor(
@@ -34,8 +41,19 @@ export class WorkspaceService {
     @Inject(STORAGE_DRIVER) private readonly storage: StorageDriver,
     private readonly contentIndexer: WorkspaceContentIndexerService,
     private readonly digestService: WorkspaceDigestService,
-    private readonly noteService: WorkspaceNoteService
+    private readonly noteService: WorkspaceNoteService,
+    private readonly processArchiveService: WorkspaceProcessArchiveService
   ) {}
+
+  async onModuleInit() {
+    setImmediate(async () => {
+      try {
+        await this.processArchiveService.syncHistoricalArchivedTasks();
+      } catch (err) {
+        this.logger.warn('Failed to sync historical archived tasks during onModuleInit:', err);
+      }
+    });
+  }
 
   /**
    * 保存文本笔记/AI对话沉淀
@@ -55,12 +73,7 @@ export class WorkspaceService {
   public async getMyWorkspaces(
     userId: string,
     departmentId?: string
-  ): Promise<{
-    personal: WorkspaceSummaryDto;
-    company: WorkspaceSummaryDto;
-    department: WorkspaceSummaryDto | null;
-    departments?: DepartmentSummaryDto[];
-  }> {
+  ): Promise<MyWorkspacesResponseDto> {
     // 1. 个人空间 (Personal Workspace)
     let personal = await this.prisma.workspace.findFirst({
       where: { type: 'personal', ownerUserId: userId },
@@ -140,6 +153,20 @@ export class WorkspaceService {
       }
     }
 
+    // 4. 流程管理空间 (Process / Workflow Archive)
+    let processWorkspace = await this.prisma.workspace.findFirst({
+      where: { type: 'process' },
+    });
+    if (!processWorkspace) {
+      processWorkspace = await this.prisma.workspace.create({
+        data: {
+          name: '流程管理空间',
+          type: 'process',
+        },
+      });
+      this.logger.log(`Initialized process workspace`);
+    }
+
     // 计算当前用户可见的部门列表：
     // 若用户明确绑定了部门，则展示该用户归属的部门；若为管理员（或未绑定），则支持访问全量部门
     const visibleDepts = userDeptIds.length > 0
@@ -161,6 +188,7 @@ export class WorkspaceService {
       personal: this.toWorkspaceSummary(personal),
       company: this.toWorkspaceSummary(company),
       department: department ? this.toWorkspaceSummary(department) : null,
+      process: this.toWorkspaceSummary(processWorkspace),
       departments: departmentsList,
     };
   }
@@ -417,6 +445,7 @@ export class WorkspaceService {
       spaces.personal.id,
       spaces.company.id,
       spaces.department?.id,
+      spaces.process?.id,
     ].filter(Boolean) as string[];
 
     const q = (query || '').trim();
@@ -461,6 +490,7 @@ export class WorkspaceService {
       spaces.personal.id,
       spaces.company.id,
       spaces.department?.id,
+      spaces.process?.id,
     ].filter(Boolean) as string[];
 
     let targetWorkspaceIds = visibleWorkspaceIds;
@@ -672,6 +702,16 @@ export class WorkspaceService {
       }
       if (!isAdmin) {
         throw new ForbiddenException('只有系统管理员有权修改公司公共盘内容');
+      }
+      return workspace;
+    }
+
+    if (workspace.type === 'process') {
+      if (action === 'read') {
+        return workspace; // 全员只读
+      }
+      if (action === 'delete' && !isAdmin) {
+        throw new ForbiddenException('只有系统管理员有权删除流程归档文档');
       }
       return workspace;
     }
@@ -922,5 +962,21 @@ export class WorkspaceService {
       case '.py': return 'text/x-python';
       default: return 'application/octet-stream';
     }
+  }
+
+  /**
+   * 自动将流程成果物（合同文档、智能审查报告、存证备案单）归档入库到「流程管理空间」
+   */
+  public async archiveWorkflowDeliverables(
+    opts: ArchiveDeliverablesOptions
+  ): Promise<ArchiveResult> {
+    return await this.processArchiveService.archiveWorkflowDeliverables(opts);
+  }
+
+  /**
+   * 同步历史已办结/已归档任务成果物
+   */
+  public async syncHistoricalArchivedTasks(): Promise<number> {
+    return await this.processArchiveService.syncHistoricalArchivedTasks();
   }
 }

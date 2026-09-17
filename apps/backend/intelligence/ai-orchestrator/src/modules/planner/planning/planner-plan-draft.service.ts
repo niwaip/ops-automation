@@ -213,7 +213,7 @@ export class PlannerPlanDraftService {
       template_id: input.matchedSkill.skillId,
       user_input: input.objective,
       modelId: input.modelId,
-      fallbackMode: 'none',
+      fallbackMode: 'basic',
       postProcessMode: input.isDocumentSkill ? 'semantic_augmentation' : 'schema_only',
       context: input.recognizerContext,
       guide_context: buildDocumentGuideContext({

@@ -149,12 +149,36 @@ exports.Prisma.ImChannelConnectionScalarFieldEnum = {
   providerOwnerUserId: 'providerOwnerUserId',
   providerBaseUrl: 'providerBaseUrl',
   encryptedCredential: 'encryptedCredential',
+  credentialFingerprint: 'credentialFingerprint',
+  xiaozhiAlias: 'xiaozhiAlias',
   updateCursor: 'updateCursor',
   lastConnectedAt: 'lastConnectedAt',
   lastMessageAt: 'lastMessageAt',
   lastError: 'lastError',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
+};
+
+exports.Prisma.VoiceTaskRequestScalarFieldEnum = {
+  id: 'id',
+  channelConnectionId: 'channelConnectionId',
+  ownerUserId: 'ownerUserId',
+  organizationId: 'organizationId',
+  idempotencyKey: 'idempotencyKey',
+  instruction: 'instruction',
+  status: 'status',
+  executionId: 'executionId',
+  speechSummary: 'speechSummary',
+  lastErrorCode: 'lastErrorCode',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.XiaozhiConnectorLeaseScalarFieldEnum = {
+  connectionId: 'connectionId',
+  workerId: 'workerId',
+  leaseUntil: 'leaseUntil',
+  heartbeatAt: 'heartbeatAt'
 };
 
 exports.Prisma.RoleScalarFieldEnum = {
@@ -1369,7 +1393,8 @@ exports.UserRoleType = exports.$Enums.UserRoleType = {
 };
 
 exports.ImChannelType = exports.$Enums.ImChannelType = {
-  wechat: 'wechat'
+  wechat: 'wechat',
+  xiaozhi: 'xiaozhi'
 };
 
 exports.ImConnectionStatus = exports.$Enums.ImConnectionStatus = {
@@ -1410,7 +1435,8 @@ exports.IdentityProviderType = exports.$Enums.IdentityProviderType = {
 exports.WorkspaceType = exports.$Enums.WorkspaceType = {
   personal: 'personal',
   department: 'department',
-  company: 'company'
+  company: 'company',
+  process: 'process'
 };
 
 exports.WorkspaceNodeType = exports.$Enums.WorkspaceNodeType = {
@@ -1459,6 +1485,8 @@ exports.CredentialCategory = exports.$Enums.CredentialCategory = {
 exports.Prisma.ModelName = {
   User: 'User',
   ImChannelConnection: 'ImChannelConnection',
+  VoiceTaskRequest: 'VoiceTaskRequest',
+  XiaozhiConnectorLease: 'XiaozhiConnectorLease',
   Role: 'Role',
   UserRole: 'UserRole',
   Organization: 'Organization',

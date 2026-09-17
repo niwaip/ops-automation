@@ -1,5 +1,6 @@
 import * as JSZip from 'jszip';
 import type { ContractClauseNode, DocumentBlock } from './contract-compare.types';
+import { cleanMarkdownFormatting } from './contract-clause-segmenter.util';
 
 export interface NumberingDefinitions {
   numToAbstract: Record<string, string>;
@@ -254,8 +255,16 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
   const clauses: ContractClauseNode[] = [];
   let currentClause: ContractClauseNode | null = null;
   let clauseIndex = 0;
+  let currentChapterNum = '前言';
+  let currentChapterTitle = '合同引言与签约主体';
 
-  const pushNewClause = (title: string, clauseNum: string, level: number) => {
+  const pushNewClause = (
+    title: string,
+    clauseNum: string,
+    level: number,
+    chNum?: string,
+    chTitle?: string
+  ) => {
     if (currentClause && (currentClause.content.trim() || (currentClause.blocks && currentClause.blocks.length > 0))) {
       currentClause.content = currentClause.content.trim();
       clauses.push(currentClause);
@@ -267,11 +276,22 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
       content: '',
       blocks: [],
       level,
+      chapterNumber: chNum || currentChapterNum,
+      chapterTitle: chTitle || currentChapterTitle,
     };
   };
 
-  const articleRegex = /^\s*(?:第\s*[一二三四五六七八九十百千万\d]+\s*条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)/i;
+  const articleRegex =
+    /^\s*(?:(?:第\s*[一二三四五六七八九十百千万\d]+\s*条)|(?:(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)|(?:[一二三四五六七八九十百]+[、\s]+)|(?:\d+[\.、\s]+(?!\d)))/i;
   const annexRegex = /^(?:附件|附录|付属文書|Exhibit|Schedule|Annex|Appendix)\s*[一二三四五六七八九十\d\w]*/i;
+  const chapterRegex =
+    /^\s*(?:第\s*[一二三四五六七八九十百千万\d]+\s*[编章节篇部]|(?:CHAPTER|PART|TITLE|SECTION)\s+(?:[IVXLCDM\d]+|[A-Z]|\d+)\b)/i;
+
+  const hasFormalArticles = rawElements.some((el) => {
+    if (el.type !== 'p') return false;
+    const c = cleanMarkdownFormatting(el.fullText || el.text);
+    return articleRegex.test(c) && !/[。！？；]$/.test(c);
+  });
 
   let blockIdx = 1;
 
@@ -280,7 +300,7 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
     const nextEl = rawElements[i + 1];
 
     if (el.type === 'table') {
-      if (!currentClause) pushNewClause('合同引言与主体信息', '前言', 2);
+      if (!currentClause) pushNewClause('合同引言与主体信息', '前言', 2, '前言', '合同引言与签约主体');
       const isGrid = el.rows && el.rows.every((r) => r.length === 2);
       if (isGrid && el.rows) {
         currentClause!.blocks!.push({
@@ -303,12 +323,21 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
     }
 
     // Paragraph
-    const cleanText = el.fullText;
+    const cleanText = cleanMarkdownFormatting(el.fullText).trim();
     const isAnnex = annexRegex.test(cleanText) && cleanText.length < 40;
-    const isArticle = articleRegex.test(cleanText) || (el.prefix && /^\d+(\.\d+)*\s*$/.test(el.prefix) && el.isBold && cleanText.length < 60);
+    const isChapter = chapterRegex.test(cleanText) && cleanText.length < 50 && !/[。！？；]$/.test(cleanText);
+
+    // Only top level in Word numbering (ilvl === 0) or unnumbered article headings qualify
+    const isTopLevelNumbered =
+      Boolean(el.numId) && el.ilvl === 0 && cleanText.length < 60 && !/[。！？；]$/.test(cleanText);
+    const matchesArticleText =
+      !el.numId && articleRegex.test(cleanText) && cleanText.length < 60 && !/[。！？；]$/.test(cleanText);
+    const isArticle = !isAnnex && !isChapter && (isTopLevelNumbered || matchesArticleText);
 
     if (isAnnex) {
-      pushNewClause(cleanText, '附件', 1);
+      currentChapterNum = '附件';
+      currentChapterTitle = cleanText;
+      pushNewClause(cleanText, '附件', 1, currentChapterNum, currentChapterTitle);
       currentClause!.blocks!.push({
         id: `blk-${blockIdx++}`,
         type: 'heading',
@@ -320,15 +349,52 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
       continue;
     }
 
+    if (isChapter) {
+      currentChapterNum = cleanText.split(/\s+/)[0];
+      currentChapterTitle = cleanText;
+      if (!hasFormalArticles) {
+        pushNewClause(cleanText, currentChapterNum, 1, currentChapterNum, currentChapterTitle);
+        currentClause!.blocks!.push({
+          id: `blk-${blockIdx++}`,
+          type: 'heading',
+          primaryText: cleanText,
+          primaryHtml: el.html,
+          isBold: true,
+        });
+        currentClause!.content += cleanText;
+      }
+      continue;
+    }
+
     if (isArticle) {
       let title = cleanText;
-      let num = `第 ${clauseIndex} 条`;
-      const match = cleanText.match(articleRegex);
-      if (match) {
-        num = match[0].trim();
-        title = cleanText.slice(match[0].length).trim() || num;
+      let num = '';
+      const matchFormal = cleanText.match(
+        /^\s*(第\s*[一二三四五六七八九十百千万\d]+\s*条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)\s*(.*)$/i
+      );
+      const matchNum = cleanText.match(
+        /^\s*(\d+[\.、\s]+(?!\d)|[一二三四五六七八九十百]+[、\s]+)\s*(.*)$/
+      );
+      if (matchFormal) {
+        num = matchFormal[1].trim();
+        title = matchFormal[2]?.trim().replace(/^[:：\s]+|[:：\s]+$/g, '') || num;
+      } else if (matchNum) {
+        num = matchNum[1].trim();
+        title = matchNum[2]?.trim().replace(/^[:：\s]+|[:：\s]+$/g, '') || cleanText;
+      } else if (el.prefix) {
+        num = el.prefix.trim();
+        title = el.text.trim().replace(/^[:：\s]+|[:：\s]+$/g, '') || cleanText;
+      } else {
+        num = `第 ${clauseIndex} 条`;
+        title = cleanText;
       }
-      pushNewClause(title, num, 2);
+
+      if (currentChapterNum === '前言') {
+        currentChapterNum = '正文';
+        currentChapterTitle = '合同正文条款';
+      }
+
+      pushNewClause(title, num, 2, currentChapterNum, currentChapterTitle);
       currentClause!.blocks!.push({
         id: `blk-${blockIdx++}`,
         type: 'heading',
@@ -418,9 +484,21 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
   // Re-index clauses
   clauses.forEach((c, idx) => {
     c.id = `clause-${idx}`;
-    if (idx === 0) c.clauseNumber = '前言';
-    else if (c.title.includes('附件') || c.title.includes('付属文書')) c.clauseNumber = '附件';
-    else c.clauseNumber = `第 ${idx} 条`;
+    if (idx === 0) {
+      c.clauseNumber = c.clauseNumber || '前言';
+      c.chapterNumber = c.chapterNumber || '前言';
+      c.chapterTitle = c.chapterTitle || '合同引言与签约主体';
+    } else if (c.title.includes('附件') || c.title.includes('付属文書') || c.clauseNumber?.includes('附件')) {
+      c.clauseNumber = '附件';
+      c.chapterNumber = c.chapterNumber || '附件';
+      c.chapterTitle = c.chapterTitle || '合同附件与补充协议';
+    } else {
+      if (!c.clauseNumber) {
+        c.clauseNumber = `第 ${idx} 条`;
+      }
+      c.chapterNumber = c.chapterNumber || '正文';
+      c.chapterTitle = c.chapterTitle || '合同正文条款';
+    }
   });
 
   return clauses;

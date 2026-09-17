@@ -17,6 +17,7 @@ import { WechatIlinkClient, WechatLoginResult, WechatUploadMediaType } from './w
 import { WechatMediaAdapter } from './wechat-media.adapter';
 import { WechatOutboundQueueService } from './wechat-outbound-queue.service';
 import { formatForWeChat, splitTextPreservingLines } from './wechat-formatter.util';
+import { ChannelTaskGatewayService } from './channel-task-gateway.service';
 
 type Credential = { token: string; baseUrl: string; ownerUserId: string };
 type InteractionMode = 'auto' | 'chat' | 'task';
@@ -66,6 +67,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
   private readonly runtimes = new Map<string, AbortController>();
   private readonly sessionTokens = new Map<string, string>();
   private readonly stagedMedia = new Map<string, StagedMediaSession>();
+  private readonly activeModes = new Map<string, InteractionMode>();
   private static readonly STAGED_MEDIA_TTL_MS = 15 * 60 * 1000;
   private readonly mediaAdapter: WechatMediaAdapter;
   private readonly outboundQueue: WechatOutboundQueueService;
@@ -78,7 +80,8 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     private readonly cipher: ImCredentialCipher,
     private readonly wechat: WechatIlinkClient,
     @Optional() mediaAdapter?: WechatMediaAdapter,
-    @Optional() outboundQueue?: WechatOutboundQueueService
+    @Optional() outboundQueue?: WechatOutboundQueueService,
+    @Optional() private readonly taskGateway?: ChannelTaskGatewayService
   ) {
     this.mediaAdapter = mediaAdapter ?? new WechatMediaAdapter();
     this.outboundQueue = outboundQueue ?? new WechatOutboundQueueService();
@@ -356,6 +359,11 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
         where: { id: connectionId },
         data: { status: 'online', lastConnectedAt: new Date(), lastError: null },
       });
+      const initialMode: InteractionMode =
+        connection.interactionMode && connection.interactionMode !== 'auto'
+          ? connection.interactionMode
+          : 'chat';
+      this.activeModes.set(connectionId, initialMode);
       let cursor = connection.updateCursor ?? '';
       let consecutiveTimeouts = 0;
       while (!controller.signal.aborted) {
@@ -386,11 +394,13 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
           }
         }
         consecutiveTimeouts = 0;
+        const currentInteractionMode =
+          this.activeModes.get(connectionId) || connection.interactionMode;
         for (const message of Array.isArray(response?.msgs) ? response.msgs : [])
           await this.handleInbound(
             connection.userId,
             connectionId,
-            connection.interactionMode,
+            currentInteractionMode,
             credential,
             message
           );
@@ -681,9 +691,15 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
         request.systemReplyText || '已处理。',
         message?.context_token
       );
+      if (request.mode) {
+        this.activeModes.set(connectionId, request.mode);
+      }
       await this.prisma.imChannelConnection.update({
         where: { id: connectionId },
-        data: { lastMessageAt: new Date() },
+        data: {
+          lastMessageAt: new Date(),
+          ...(request.mode ? { interactionMode: request.mode } : {}),
+        },
       });
       return;
     }
@@ -806,7 +822,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
           mode: 'task',
           message: '',
           systemReplyText:
-            '🤖 已切换至【工作任务模式】。\n你可以直接向我发送任务指令（例如：`/t 拆分PDF文件`、`/t 查询北京天气`）。',
+            '🤖 已切换至【工作任务模式】。\n后续输入将直接进入任务规划模式执行。你可以直接向我发送任务指令（例如：`生成保密合同`、`拆分PDF文件`）。如需切回问答模式请输入 `/c`。',
         };
       }
       return {
@@ -825,7 +841,8 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
           type: 'system_reply',
           mode: 'chat',
           message: '',
-          systemReplyText: '💬 已切换至【个人问答模式】。\n接下来你可以向我提问、咨询或进行日常交互。',
+          systemReplyText:
+            '💬 已切换至【个人问答模式】。\n后续输入将以个人问答模式执行。如需切回任务模式请输入 `/t`。',
         };
       }
       return {
@@ -835,12 +852,20 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
       };
     }
 
-    // 5. Configured / Default mode (微信通信默认统一调用个人模式 chat)
-    // 微信端所有未带前缀的常规消息，一律默认进入个人模式；工作任务需通过 /t 显式触发
+    // 5. Configured / Default mode
+    // 智能工作流与技能意图识别：
+    // 若消息以 !/！ 开头，或包含明确的工作流/技能意图，自动进入 task 规划模式
+    const isExplicitWorkflow =
+      /^[!！]/.test(raw) ||
+      /^(?:生成|起草|拟定|拟写|创建|审查|比对)(?:保密合同|保密协议|合同|协议)/i.test(raw) ||
+      /(?:生成保密合同|保密合同起草|合同合规审查)/i.test(raw);
+
+    const resolvedMode: InteractionMode = isExplicitWorkflow ? 'task' : 'chat';
+
     return {
       type: 'ai',
-      mode: 'chat',
-      message: raw,
+      mode: resolvedMode,
+      message: raw.replace(/^[!！]\s*/, ''),
     };
   }
 
@@ -1052,6 +1077,10 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     files?: any[],
     systemReply?: string
   ): Promise<{ response: string; outboundFiles?: OutboundFilePayload[] }> {
+    if (this.taskGateway) {
+      const payload = await this.taskGateway.dispatch(userId, sessionId, message, mode, { files, systemReply });
+      return { response: payload.response?.trim() || '任务已处理，但没有可返回的文本结果。', outboundFiles: payload.outboundFiles };
+    }
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { role: true, activeOrgId: true },

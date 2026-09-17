@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as http from 'http';
-import { getBrowserWorkerUrl } from '../../config/service-endpoints';
+import { getBrowserWorkerUrl, getInternalAuthHeaders } from '../../config/service-endpoints';
 import { RedisService } from '../lock/redis.service';
 
 export interface FreezeResult {
@@ -156,6 +156,7 @@ export class FreezeService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...getInternalAuthHeaders(),
           },
         },
         (response) => {

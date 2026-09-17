@@ -65,6 +65,14 @@ export const buildExecutionSkillNameMap = (
 ): Map<string, string> => {
   const map = new Map<string, string>();
 
+  // 预置系统能力与内置工作流标准名称映射
+  map.set('document.contract.review', '合同文档智能审查与合规诊断');
+  map.set('platform.document.contract-reviewer', '合同文档智能审查与合规诊断');
+  map.set('platform.document.contract-comparator', '合同文档智能比对与差异分析');
+  map.set('platform.document.pdf-create', '文档转 PDF 与存证渲染');
+  map.set('platform.notification.internal-message', '流转凭证与回执通知');
+  map.set('ConfidentialityAgreementGenerationWorkflow', '商业保密协议(NDA)智能生成技能');
+
   releases.forEach((release) => {
     if (!release.publishedSkillId) {
       return;

@@ -1,4 +1,5 @@
 import { apiClient } from './index';
+import { authStore } from '../adapters/auth/authStore';
 
 export interface CollaboratorUser {
   id: string;
@@ -51,9 +52,14 @@ export interface WorkflowStageDefinition {
   name: string;
   type: StageType;
   description: string;
-  approverRule?: 'leader' | 'role' | 'assignee' | 'specific_user';
+  approverRule?: 'leader' | 'role' | 'assignee' | 'specific_user' | 'department' | 'initiator';
   approverRole?: string;
+  approverDepartment?: string;
+  approverUsername?: string;
+  rollbackStageId?: string;
   actions?: string[];
+  allowFileReplacement?: boolean;
+  isArtifactReview?: boolean;
 }
 
 export type BaseWorkflowType = 'execution_flow' | 'temporal_workflow' | 'skill';
@@ -62,8 +68,10 @@ export interface AssembledBaseWorkflow {
   type: BaseWorkflowType;
   refId: string;
   name: string;
-  triggerEvent?: 'on_approve' | 'on_submit';
+  triggerEvent?: 'on_approve' | 'on_submit' | 'on_stage_approval' | 'on_complete';
   description?: string;
+  stageType?: StageType;
+  handlerRule?: string;
 }
 
 export interface WorkflowTemplateDefinition {
@@ -114,6 +122,7 @@ export interface SubmitCoordinationActionPayload {
   action: 'approve' | 'reject' | 'complete';
   comment?: string;
   attachments?: CoordinationAttachment[];
+  parameters?: Record<string, any>;
 }
 
 export interface CoordinationTask {
@@ -149,6 +158,8 @@ export interface CoordinationTask {
   createdAt?: string;
   updatedAt?: string;
   unifiedPayload?: Record<string, any>;
+  currentStage?: string;
+  metadata?: Record<string, any>;
 }
 
 export const workbenchCoordinationApi = {
@@ -229,6 +240,28 @@ export const workbenchCoordinationApi = {
   },
 
   /**
+   * 上传协同任务附件或修正后的合同文档
+   */
+  uploadAttachment: async (file: File): Promise<CoordinationAttachment> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const token = (await apiClient.ensureFreshAccessToken()) || authStore.getState().accessToken;
+    const response = await fetch('/api/workbench-coordination/tasks/upload-attachment', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ message: '文件上传失败' }));
+      throw new Error(err.message || '文件上传失败');
+    }
+
+    return await response.json();
+  },
+
+  /**
    * 获取协同任务详情
    */
   getTaskDetails: async (taskId: string): Promise<CoordinationTask> => {
@@ -257,5 +290,12 @@ export const workbenchCoordinationApi = {
       `/workbench-coordination/workflow-templates/${workflowId}/request-access`,
       { reason }
     );
+  },
+
+  /**
+   * 归档协同任务及其关联条目
+   */
+  archiveTask: async (taskId: string): Promise<{ success: boolean; taskId: string }> => {
+    return await apiClient.post(`/workbench-coordination/tasks/${taskId}/archive`);
   },
 };

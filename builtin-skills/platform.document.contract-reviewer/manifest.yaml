@@ -65,6 +65,21 @@ spec:
             items:
               type: object
             description: 兼容旧版契约的自定义审查要点
+          downloadUrl:
+            type: string
+            description: 合同文档的下载或访问 URL
+          fileUrl:
+            type: string
+            description: 合同文档的存储或访问 URL
+          prompt:
+            type: string
+            description: 针对该合同的专项审查提示词与重点关注要求
+          reviewPrompt:
+            type: string
+            description: 审查提示词或专项指引规则要求（例如：重点审查保密期限与违约责任）
+          taskContext:
+            type: object
+            description: 协同任务或上游上下文元数据
     output:
       schemaRef: inline
       schema:

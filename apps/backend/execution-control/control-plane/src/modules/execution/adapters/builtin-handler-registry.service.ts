@@ -106,15 +106,24 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
   ): void {
     const handler: BuiltinHandlerFn = async (req, idempotencyKey) => {
       const domainUrl = getCarboneServiceUrl();
-      const response = await axios.post(`${domainUrl}${endpoint}`, {
-        executionId: req.executionId,
-        stepId: req.stepId,
-        capabilityKey: req.publishedSkillId || req.skillId,
-        definitionVersion: req.metadata?.definitionVersion || (req as any).skillVersion,
-        idempotencyKey,
-        input: req.input || {},
-      });
-      return response.data as BuiltinSkillHandlerResult;
+      try {
+        const response = await axios.post(`${domainUrl}${endpoint}`, {
+          executionId: req.executionId,
+          stepId: req.stepId,
+          capabilityKey: req.publishedSkillId || req.skillId,
+          definitionVersion: req.metadata?.definitionVersion || (req as any).skillVersion,
+          idempotencyKey,
+          input: req.input || {},
+        });
+        return response.data as BuiltinSkillHandlerResult;
+      } catch (err: any) {
+        const remoteMsg =
+          err.response?.data?.message ||
+          err.response?.data?.error ||
+          err.message ||
+          'Document domain execution error';
+        throw new Error(remoteMsg);
+      }
     };
     this.registerHandler(handlerKey, handler);
     capabilityAliases.forEach((capabilityKey) => this.registerHandler(capabilityKey, handler));

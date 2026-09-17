@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { RedisService } from '../lock/redis.service';
-import { getBrowserWorkerUrl } from '../../config/service-endpoints';
+import { getBrowserWorkerUrl, getInternalAuthHeaders } from '../../config/service-endpoints';
 import { WorkerEndpoints, WorkerInfo } from '../../interfaces/session.interface';
 
 @Injectable()
@@ -129,11 +129,7 @@ export class AllocationService implements OnModuleInit {
   }
 
   private getInternalAuthHeaders(): Record<string, string> {
-    const secret =
-      process.env.INTERNAL_API_SHARED_SECRET ||
-      process.env.INTERNAL_API_SECRET ||
-      'ops_internal_shared_secret_change_me';
-    return { 'x-internal-auth': secret };
+    return getInternalAuthHeaders();
   }
 
   private async postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {

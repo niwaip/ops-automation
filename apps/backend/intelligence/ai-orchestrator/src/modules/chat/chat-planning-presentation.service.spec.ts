@@ -34,6 +34,33 @@ describe('ChatPlanningPresentationService', () => {
       fileBase64B: 'base64-b',
       fileNameB: 'revised.docx',
     });
+
+    const fileWithStoragePath = [
+      {
+        fileName: 'contract.docx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        storagePath: 'http://localhost:5174/studio/download/test-uuid-123',
+      },
+    ];
+    expect(service.buildUploadedFileParams(fileWithStoragePath)).toEqual({
+      fileName: 'contract.docx',
+      fileNameA: 'contract.docx',
+      fileUrl: 'http://localhost:5174/studio/download/test-uuid-123',
+      fileUrlA: 'http://localhost:5174/studio/download/test-uuid-123',
+      downloadUrl: 'http://localhost:5174/studio/download/test-uuid-123',
+      downloadUrlA: 'http://localhost:5174/studio/download/test-uuid-123',
+    });
+
+    const msgWithMdLink = '请审查：[保密协议.docx](http://localhost:5174/studio/download/md-uuid-456)';
+    expect(service.buildUploadedFileParams([], msgWithMdLink)).toEqual({
+      fileName: '保密协议.docx',
+      fileNameA: '保密协议.docx',
+      fileUrl: 'http://localhost:5174/studio/download/md-uuid-456',
+      fileUrlA: 'http://localhost:5174/studio/download/md-uuid-456',
+      downloadUrl: 'http://localhost:5174/studio/download/md-uuid-456',
+      downloadUrlA: 'http://localhost:5174/studio/download/md-uuid-456',
+    });
+
     const request = service.buildPlanningRequest('总结附件', files);
     expect(request).toContain('用户已上传 PDF 附件');
     expect(request).not.toContain('base64-payload');

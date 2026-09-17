@@ -82,6 +82,7 @@ model User {
 
 enum ImChannelType {
   wechat
+  xiaozhi
 }
 
 enum ImConnectionStatus {
@@ -111,6 +112,8 @@ model ImChannelConnection {
   providerOwnerUserId String?            @map("provider_owner_user_id") @db.VarChar(255)
   providerBaseUrl     String?            @map("provider_base_url") @db.VarChar(500)
   encryptedCredential String?            @map("encrypted_credential") @db.Text
+  credentialFingerprint String?           @unique @map("credential_fingerprint") @db.VarChar(64)
+  xiaozhiAlias        String?            @map("xiaozhi_alias") @db.VarChar(100)
   updateCursor        String?            @map("update_cursor") @db.Text
   lastConnectedAt     DateTime?          @map("last_connected_at") @db.Timestamptz
   lastMessageAt       DateTime?          @map("last_message_at") @db.Timestamptz
@@ -122,6 +125,36 @@ model ImChannelConnection {
   @@unique([userId, channel])
   @@index([enabled, status])
   @@map("im_channel_connections")
+}
+
+model VoiceTaskRequest {
+  id                  String   @id @default(uuid()) @db.Uuid
+  channelConnectionId String   @map("channel_connection_id") @db.Uuid
+  ownerUserId         String   @map("owner_user_id") @db.Uuid
+  organizationId      String?  @map("organization_id") @db.Uuid
+  idempotencyKey      String   @map("idempotency_key") @db.VarChar(128)
+  instruction         String   @db.VarChar(1000)
+  status              String   @default("accepted") @db.VarChar(32)
+  executionId         String?  @map("execution_id") @db.Uuid
+  speechSummary       String   @default("任务已受理，可以稍后查询进度。") @map("speech_summary") @db.VarChar(500)
+  lastErrorCode       String?  @map("last_error_code") @db.VarChar(100)
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([channelConnectionId, idempotencyKey])
+  @@index([channelConnectionId, createdAt(sort: Desc)])
+  @@index([ownerUserId, createdAt(sort: Desc)])
+  @@map("voice_task_requests")
+}
+
+model XiaozhiConnectorLease {
+  connectionId String   @id @map("connection_id") @db.Uuid
+  workerId     String   @map("worker_id") @db.VarChar(100)
+  leaseUntil   DateTime @map("lease_until") @db.Timestamptz
+  heartbeatAt  DateTime @map("heartbeat_at") @db.Timestamptz
+
+  @@index([leaseUntil])
+  @@map("xiaozhi_connector_leases")
 }
 
 // Roles Table
@@ -1688,6 +1721,7 @@ enum WorkspaceType {
   personal
   department
   company
+  process
 }
 
 enum WorkspaceNodeType {
@@ -1865,4 +1899,3 @@ model UserSkillCredentialBinding {
   @@index([userId, skillId])
   @@map("user_skill_credential_bindings")
 }
-
