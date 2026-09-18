@@ -101,6 +101,9 @@ describe('NotificationService', () => {
           },
         ]),
       },
+      reminderDelivery: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
     } as any;
 
     const service = new NotificationService(executionService, mockPrisma);

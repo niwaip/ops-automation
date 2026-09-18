@@ -63,6 +63,7 @@ builtin-skills/
 ├── platform.email.update/                         # [邮件域] 邮件状态更新与标记
 │
 ├── platform.notification.internal-message/        # [通知域] 站内信/内部通知推送
+├── platform.notification.reminder/                # [通知域] 一次性与定期消息提醒
 │
 ├── platform.search.web/                           # [搜索域] 实时全网检索与新闻资讯
 └── platform.workspace.explorer/                   # [工作区] 工作区节点与文件树探测
@@ -71,6 +72,13 @@ builtin-skills/
 ---
 
 ## 三、标准能力包规范 (Bundle Anatomy)
+
+### 消息提醒能力
+
+`platform.notification.reminder` 在内置 Skill 列表启用后，显示在用户的数字员工列表。用户可配置一次性、每天一次、每天多次（最多 12 个独立时间）、工作日、每周或每月提醒，并管理启停。一次性规则发送后自动完成。默认写入顶部消息中心；选择微信时要求该用户已绑定且启用微信渠道。单条消息可延迟 10 分钟、1 小时或一天，原定期规则不变。
+
+规则和每次发送记录保存在 `reminder_rules`、`reminder_deliveries`。调度服务每 30 秒检查到期规则，使用数据库条件更新避免多实例重复触发；停机恢复后每条规则最多补发一次，再进入下个未来周期。微信失败留下投递状态并重试，站内记录始终保留。部署需执行提醒相关迁移至 `20260918130000_add_reminder_once_and_daily_times`，并通过 `builtin-skill-provision` 命令激活新包。
+
 
 每个能力包文件夹命名严格遵循 `platform.<domain>.<action>` 规范，内部必须包含以下标准文件：
 

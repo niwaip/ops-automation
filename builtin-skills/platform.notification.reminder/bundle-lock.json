@@ -1,0 +1,11 @@
+{
+  "capabilityKey": "platform.notification.reminder",
+  "definitionVersion": "1.1.0",
+  "definitionDigest": "sha256:94bfc695a759837a82d054d0ab405ea2621b859aa8749ab72d4865115355ef3f",
+  "fileHashes": {
+    "manifest.yaml": "sha256:eacda0ada16da8663453aee91846a7df26c66d423304fc933bc726cbfca4ab0c",
+    "workflow.json": "sha256:8c8e7fb028d6edbcf897d625e1256a27770f66e7e7cae2ddc627b2ba2c224167",
+    "fixtures/smoke-input.json": "sha256:b2b4229747b211f28f3591e12281364652e55d19ddca0565dcaec97d618343d6"
+  },
+  "createdAt": "2026-09-18T04:25:03.134Z"
+}

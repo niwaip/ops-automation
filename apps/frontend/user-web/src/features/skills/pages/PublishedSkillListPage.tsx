@@ -15,6 +15,7 @@ import { usePublishedSkillList } from '@/features/skills/hooks/usePublishedSkill
 import { SavedWorkflowList } from '@/features/skills/saved-workflows/SavedWorkflowList';
 import { OrganizationWorkflowList } from '@/features/skills/components/OrganizationWorkflowList';
 import { ContractReviewRulesModal } from '@/features/skills/components/ContractReviewRulesModal';
+import { ReminderConfigModal } from '@/features/skills/components/ReminderConfigModal';
 import type { PublishedSkillCatalogItem } from '@/api/skill';
 
 function PublishedSkillsContent() {
@@ -47,6 +48,7 @@ function PublishedSkillsContent() {
   } = usePublishedSkillList();
   const [credentialTarget, setCredentialTarget] = useState<PublishedSkillCatalogItem | null>(null);
   const [rulesTarget, setRulesTarget] = useState<PublishedSkillCatalogItem | null>(null);
+  const [reminderOpen, setReminderOpen] = useState(false);
 
   const contractSkill = useMemo(() => {
     return (
@@ -130,10 +132,12 @@ function PublishedSkillsContent() {
                 authorized
                 emptyText={hasActiveFilters ? '当前筛选下无在岗数字员工' : '当前没有已开通的数字员工'}
                 isLoading={isInitialLoading}
-                onPrimaryAction={handleSkillPrimaryAction}
+                onPrimaryAction={(skill, authorized) => skill.id === 'platform.notification.reminder' && authorized
+                  ? setReminderOpen(true) : handleSkillPrimaryAction(skill, authorized)}
                 onChatCollaborate={handleChatCollaborate}
                 onConfigureCredentials={setCredentialTarget}
                 onConfigureRules={setRulesTarget}
+                onConfigureReminder={() => setReminderOpen(true)}
                 recentlyRequestedSkillId={recentlyRequestedSkillId}
                 schedulesBySkillId={schedulesBySkillId}
                 skills={authorizedSkills}
@@ -192,6 +196,7 @@ function PublishedSkillsContent() {
         open={Boolean(rulesTarget)}
         onClose={() => setRulesTarget(null)}
       />
+      <ReminderConfigModal open={reminderOpen} onClose={() => setReminderOpen(false)} />
     </div>
   );
 }

@@ -61,10 +61,10 @@ export const NAV_STRUCTURE: (NavItemConfig | NavGroupConfig)[] = [
     requiresAdmin: false,
   },
   {
-    key: 'sub-workflows',
-    labelKey: 'workflowManagement',
-    defaultLabel: '工作流管理',
-    icon: <ApartmentOutlined />,
+    key: 'sub-templates',
+    labelKey: 'templatesAndCapabilities',
+    defaultLabel: '模版与能力',
+    icon: <AppstoreOutlined />,
     requiresAdmin: false,
     children: [
       {
@@ -82,35 +82,21 @@ export const NAV_STRUCTURE: (NavItemConfig | NavGroupConfig)[] = [
         requiresAdmin: true,
       },
       {
-        key: '/admin/flows',
-        labelKey: 'executionFlows',
-        defaultLabel: '工作流组合',
-        icon: <OrderedListOutlined />,
-        requiresAdmin: true,
-      },
-      {
-        key: '/admin/org-workflows',
-        labelKey: 'orgWorkflows',
-        defaultLabel: '组织工作流',
-        icon: <ApartmentOutlined />,
-        requiresAdmin: true,
-      },
-    ],
-  },
-  {
-    key: 'sub-templates',
-    labelKey: 'templatesAndCapabilities',
-    defaultLabel: '模版与能力',
-    icon: <AppstoreOutlined />,
-    requiresAdmin: false,
-    children: [
-      {
         key: '/carbone-templates',
         labelKey: 'carboneTemplates',
         defaultLabel: '文档模版',
         icon: <FileWordOutlined />,
         requiresAdmin: false,
       },
+    ],
+  },
+  {
+    key: 'sub-workflows',
+    labelKey: 'managementAndRelease',
+    defaultLabel: '管理与发布',
+    icon: <ApartmentOutlined />,
+    requiresAdmin: false,
+    children: [
       {
         key: '/admin/skills',
         labelKey: 'skills',
@@ -123,6 +109,20 @@ export const NAV_STRUCTURE: (NavItemConfig | NavGroupConfig)[] = [
         labelKey: 'capabilities',
         defaultLabel: '流程发布',
         icon: <RocketOutlined />,
+        requiresAdmin: true,
+      },
+      {
+        key: '/admin/flows',
+        labelKey: 'executionFlows',
+        defaultLabel: '工作流组合',
+        icon: <OrderedListOutlined />,
+        requiresAdmin: true,
+      },
+      {
+        key: '/admin/org-workflows',
+        labelKey: 'orgWorkflows',
+        defaultLabel: '组织工作流',
+        icon: <ApartmentOutlined />,
         requiresAdmin: true,
       },
     ],

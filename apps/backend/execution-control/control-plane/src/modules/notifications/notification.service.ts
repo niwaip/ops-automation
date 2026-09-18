@@ -70,8 +70,9 @@ export class NotificationService {
     const shouldIncludeExecution = !query.source || query.source === 'execution';
     const shouldIncludeReport = !query.source || query.source === 'report';
     const shouldIncludeCoordination = !query.source || query.source === 'coordination';
+    const shouldIncludeReminder = !query.source || query.source === 'reminder';
 
-    const [executionItems, reportItems, coordinationItems] = await Promise.all([
+    const [executionItems, reportItems, coordinationItems, reminderItems] = await Promise.all([
       shouldIncludeExecution
         ? this.listExecutionNotifications(limit, requester)
         : Promise.resolve([]),
@@ -79,9 +80,10 @@ export class NotificationService {
       shouldIncludeCoordination
         ? this.listCoordinationNotifications(limit, requester)
         : Promise.resolve([]),
+      shouldIncludeReminder ? this.listReminderNotifications(limit, requester) : Promise.resolve([]),
     ]);
 
-    const items = [...executionItems, ...reportItems, ...coordinationItems].sort(
+    const items = [...executionItems, ...reportItems, ...coordinationItems, ...reminderItems].sort(
       (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime()
     );
 
@@ -93,6 +95,33 @@ export class NotificationService {
       items: filteredItems.slice(0, limit),
       total: filteredItems.length,
     };
+  }
+
+  private async listReminderNotifications(
+    limit: number,
+    requester?: AuthenticatedRequest['user'] | RequestUserContext
+  ): Promise<AppNotificationDto[]> {
+    if (!this.prisma || !requester?.id) return [];
+    const deliveries = await this.prisma.reminderDelivery.findMany({
+      where: { userId: requester.id, remindAt: { lte: new Date() } },
+      orderBy: { remindAt: 'desc' }, take: limit,
+    });
+    return deliveries.map((delivery) => ({
+      id: `reminder:${delivery.id}`,
+      dedupeKey: `reminder:${delivery.id}`,
+      source: 'reminder',
+      sourceId: delivery.id,
+      sourceName: '消息提醒',
+      severity: 'info',
+      category: 'status_update',
+      stateKey: delivery.remindAt.toISOString(),
+      timestamp: delivery.remindAt.toISOString(),
+      unread: !delivery.readAt,
+      requiresAction: false,
+      actionUrl: '/notifications',
+      metadata: { title: delivery.title, resultSummary: delivery.message, ruleId: delivery.ruleId,
+        wechatStatus: delivery.wechatStatus },
+    }));
   }
 
   private async listCoordinationNotifications(

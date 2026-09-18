@@ -1,0 +1,63 @@
+apiVersion: platform.ops/v1alpha1
+kind: BuiltinWorkflowSkill
+metadata:
+  key: platform.notification.reminder
+  displayName: 消息提醒数字员工
+  description: 配置一次性或每天多次的定期提醒，默认发送到顶部消息区，可选已绑定的微信渠道
+  owner: platform-notification
+  labels:
+    category: notification
+    domain: platform
+spec:
+  definitionVersion: 1.1.0
+  lifecycle: stable
+  userConfigurable: true
+  defaultAccess:
+    mode: authenticated
+  planner:
+    enabled: true
+    triggerKeywords:
+      - 定期提醒
+      - 运维点检提醒
+      - 每天提醒我
+    matchSummary: 创建个人一次性或定期消息提醒
+    runtimeType: workflow
+    supportsArtifact: false
+  contracts:
+    input:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        required: [title, message]
+        properties:
+          title: { type: string, minLength: 1, maxLength: 200 }
+          message: { type: string, minLength: 1, maxLength: 4096 }
+          cronExpression: { type: string, description: 五段 Cron 表达式，多个每日时间用分号分隔，最多 12 个 }
+          runAt: { type: string, format: date-time, description: 一次性提醒的未来时间，与 cronExpression 二选一 }
+          timezone: { type: string, default: Asia/Shanghai }
+          sendWechat: { type: boolean, default: false }
+    output:
+      schemaRef: inline
+      schema:
+        type: object
+        required: [reminderId, nextRunAt]
+        properties:
+          reminderId: { type: string }
+          nextRunAt: { type: string }
+  workflow:
+    engine: domain-handler
+    definitionRef: workflow.json
+  runtime:
+    adapterRoute: builtin:workflow
+    handlerKey: platform.notification.reminder
+    idempotency: required
+    timeoutSeconds: 15
+  migration:
+    minimumPlatformVersion: 4.0.0
+    contractCompatibility: backward
+  smokeTest:
+    inputRef: fixtures/smoke-input.json
+    assertions:
+      - output.reminderId exists
+      - output.nextRunAt exists

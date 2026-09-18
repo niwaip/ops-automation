@@ -448,16 +448,16 @@ export const resolveActiveMenuKey = (pathname: string) => {
 };
 
 const OPEN_KEYS_MAP: Record<string, string[]> = {
-  'sub-workflows': [
+  'sub-templates': [
     '/admin/activities',
     '/admin/temporal',
-    '/admin/flows',
-    '/admin/org-workflows',
-  ],
-  'sub-templates': [
     '/carbone-templates',
+  ],
+  'sub-workflows': [
     '/admin/skills',
     '/admin/capabilities',
+    '/admin/flows',
+    '/admin/org-workflows',
   ],
   'sub-browser': [
     '/templates',

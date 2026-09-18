@@ -1,0 +1,18 @@
+{
+  "workflowVersion": "v1",
+  "engine": "domain-handler",
+  "handlerKey": "platform.notification.reminder",
+  "steps": [
+    {
+      "stepId": "create_reminder",
+      "action": "create_periodic_reminder",
+      "inputMapping": {
+        "title": "$.input.title",
+        "message": "$.input.message",
+        "cronExpression": "$.input.cronExpression",
+        "timezone": "$.input.timezone",
+        "sendWechat": "$.input.sendWechat"
+      }
+    }
+  ]
+}

@@ -660,6 +660,41 @@ exports.Prisma.SkillScheduleScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.ReminderRuleScalarFieldEnum = {
+  id: 'id',
+  sourceExecutionId: 'sourceExecutionId',
+  userId: 'userId',
+  title: 'title',
+  message: 'message',
+  cronExpression: 'cronExpression',
+  runAt: 'runAt',
+  timezone: 'timezone',
+  sendWechat: 'sendWechat',
+  isActive: 'isActive',
+  deletedAt: 'deletedAt',
+  nextRunAt: 'nextRunAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.ReminderDeliveryScalarFieldEnum = {
+  id: 'id',
+  ruleId: 'ruleId',
+  userId: 'userId',
+  scheduledAt: 'scheduledAt',
+  title: 'title',
+  message: 'message',
+  remindAt: 'remindAt',
+  readAt: 'readAt',
+  sendWechat: 'sendWechat',
+  wechatStatus: 'wechatStatus',
+  wechatAttempts: 'wechatAttempts',
+  wechatNextAttemptAt: 'wechatNextAttemptAt',
+  wechatLeaseUntil: 'wechatLeaseUntil',
+  wechatLastError: 'wechatLastError',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.UserSavedSkillScalarFieldEnum = {
   id: 'id',
   ownerUserId: 'ownerUserId',
@@ -1519,6 +1554,8 @@ exports.Prisma.ModelName = {
   Activity: 'Activity',
   TemporalWorkflow: 'TemporalWorkflow',
   SkillSchedule: 'SkillSchedule',
+  ReminderRule: 'ReminderRule',
+  ReminderDelivery: 'ReminderDelivery',
   UserSavedSkill: 'UserSavedSkill',
   UserWorkflowAlias: 'UserWorkflowAlias',
   UserSavedSkillVersion: 'UserSavedSkillVersion',

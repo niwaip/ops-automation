@@ -16,6 +16,7 @@ export interface SkillParamsSchema {
 
 export interface SkillConfig {
   id: string;
+  userConfigurable?: boolean;
   name: string;
   description: string;
   triggerKeywords: string[];

@@ -22,6 +22,7 @@ interface SkillCardProps {
   onChatCollaborate?: (skill: PublishedSkillCatalogItem) => void;
   onConfigureCredentials?: (skill: PublishedSkillCatalogItem) => void;
   onConfigureRules?: (skill: PublishedSkillCatalogItem) => void;
+  onConfigureReminder?: (skill: PublishedSkillCatalogItem) => void;
   recentlyRequested: boolean;
   schedules: ScheduleDto[];
   skill: PublishedSkillCatalogItem;
@@ -65,6 +66,7 @@ export function SkillCard({
   onChatCollaborate,
   onConfigureCredentials,
   onConfigureRules,
+  onConfigureReminder,
   recentlyRequested,
   schedules,
   skill,
@@ -277,7 +279,7 @@ export function SkillCard({
           className={styles['employee-primary-action-btn']}
         >
           {authorized
-            ? '指派任务'
+            ? skill.id === 'platform.notification.reminder' ? '配置提醒' : '指派任务'
             : skill.accessStatus === 'requested'
               ? '审批中'
               : skill.accessRequest?.status === 'rejected'
@@ -285,7 +287,7 @@ export function SkillCard({
                 : '申请开通'}
         </Button>
 
-        {authorized && onConfigureCredentials && (
+        {authorized && onConfigureCredentials && skill.id !== 'platform.notification.reminder' && (
           <Tooltip title="配置该数字员工专属运行凭据（如 Bark 密钥、系统账号密码）">
             <Button
               icon={<KeyOutlined />}
@@ -295,6 +297,11 @@ export function SkillCard({
               配置
             </Button>
           </Tooltip>
+        )}
+
+        {authorized && onConfigureReminder && skill.id === 'platform.notification.reminder' && (
+          <Button icon={<CalendarOutlined />} onClick={() => onConfigureReminder(skill)}
+            className={styles['employee-secondary-action-btn']}>管理排班</Button>
         )}
 
         {isContractReviewer && onConfigureRules && (
@@ -311,7 +318,7 @@ export function SkillCard({
           </Tooltip>
         )}
 
-        {authorized && onChatCollaborate && (
+        {authorized && onChatCollaborate && skill.id !== 'platform.notification.reminder' && (
           <Tooltip title="进入智能协同，与该数字员工开展人机协同问答与任务委派">
             <Button
               icon={<MessageOutlined />}

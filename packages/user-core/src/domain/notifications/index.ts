@@ -70,6 +70,14 @@ export const buildNotificationContent = (
     .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
     .join(isEnglish ? ' - ' : '：');
 
+  if (item.source === 'reminder') {
+    return {
+      title: typeof item.metadata?.title === 'string' ? item.metadata.title : '定期提醒',
+      description: resultSummary || '',
+      actionText: isEnglish ? 'View reminder' : '查看提醒',
+    };
+  }
+
   if (item.source === 'coordination') {
     const isApproval = item.metadata?.taskType === 'approval';
     const sender =

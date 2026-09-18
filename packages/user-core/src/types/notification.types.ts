@@ -1,4 +1,4 @@
-export type NotificationSource = 'execution' | 'report' | 'coordination';
+export type NotificationSource = 'execution' | 'report' | 'coordination' | 'reminder';
 
 export type NotificationSeverity = 'success' | 'error' | 'warning' | 'info';
 

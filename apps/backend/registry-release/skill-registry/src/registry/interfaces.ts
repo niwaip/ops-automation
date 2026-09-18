@@ -182,6 +182,7 @@ export interface CreateSkillDTO {
  */
 export interface SkillConfigDto {
   id: string;
+  userConfigurable?: boolean;
   name: string;
   description: string;
   triggerKeywords: string[];

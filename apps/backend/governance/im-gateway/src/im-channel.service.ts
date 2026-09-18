@@ -127,6 +127,24 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  async sendReminder(userId: string, text: string, idempotencyKey: string): Promise<void> {
+    const connection = await this.prisma.imChannelConnection.findUnique({
+      where: { userId_channel: { userId, channel: 'wechat' } },
+    });
+    if (!connection?.enabled || !connection.encryptedCredential || connection.status !== 'online') {
+      throw new BadRequestException('微信渠道未连接');
+    }
+    const credential = JSON.parse(this.cipher.decrypt(connection.encryptedCredential)) as Credential;
+    if (!this.outboundQueue.isBudgetAvailable(connection.id)) {
+      throw new BadRequestException('微信发送额度暂时不足');
+    }
+    await this.wechat.sendText(
+      credential.baseUrl, credential.token, credential.ownerUserId,
+      formatForWeChat(text), undefined, idempotencyKey
+    );
+    this.outboundQueue.recordSent(connection.id);
+  }
+
   async beginWechatProvisioning(userId: string) {
     this.provisioning.get(userId)?.controller.abort();
     const existing = await this.prisma.imChannelConnection.findUnique({

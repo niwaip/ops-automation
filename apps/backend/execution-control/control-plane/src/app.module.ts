@@ -13,6 +13,7 @@ import { SavedSkillModule } from './modules/saved-skill/saved-skill.module';
 import { AssistantFeedbackModule } from './modules/feedback/assistant-feedback.module';
 import { ExperienceLearningModule } from './modules/experience-learning/experience-learning.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
+import { ReminderModule } from './modules/reminders/reminder.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { MetricsModule } from './modules/metrics/metrics.module';
     AuditModule,
     ExecutionModule,
     NotificationModule,
+    ReminderModule,
     McpModule,
     SchedulerModule,
     SavedSkillModule,
