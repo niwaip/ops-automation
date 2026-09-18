@@ -359,11 +359,12 @@ export class WechatIlinkClient {
     token: string,
     toUserId: string,
     text: string,
-    contextToken?: string
+    contextToken?: string,
+    clientIdPrefix?: string
   ): Promise<void> {
     const sanitized = sanitizeWeChatText(text);
     const chunks = splitTextPreservingLines(sanitized, 1800);
-    for (const chunk of chunks) {
+    for (const [index, chunk] of chunks.entries()) {
       if (!chunk.trim()) continue;
       await this.request('POST', baseUrl, 'ilink/bot/sendmessage', {
         token,
@@ -371,7 +372,7 @@ export class WechatIlinkClient {
           msg: {
             from_user_id: '',
             to_user_id: toUserId,
-            client_id: `ops-wechat-${randomUUID()}`,
+            client_id: clientIdPrefix ? `ops-reminder-${clientIdPrefix}-${index}` : `ops-wechat-${randomUUID()}`,
             message_type: 2,
             message_state: 2,
             item_list: [{ type: 1, text_item: { text: chunk } }],

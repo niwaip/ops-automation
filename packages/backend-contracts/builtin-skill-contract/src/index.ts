@@ -89,6 +89,7 @@ export interface BuiltinSkillSmokeTestSpec {
 
 export interface BuiltinSkillManifestSpec {
   definitionVersion: string; // SemVer e.g. '1.0.0'
+  userConfigurable?: boolean;
   lifecycle: BuiltinSkillLifecycle;
   defaultAccess: {
     mode: BuiltinSkillAccessMode;

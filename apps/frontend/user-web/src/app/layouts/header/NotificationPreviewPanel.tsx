@@ -1,5 +1,7 @@
 import { Button, Empty, Space, Tag, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from 'react-query';
+import { reminderApi } from '@/api';
 import { useStore } from 'zustand';
 import {
   buildNotificationContent,
@@ -27,6 +29,7 @@ interface NotificationPreviewPanelProps {
  */
 export function NotificationPreviewPanel({ language }: NotificationPreviewPanelProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const notifications = useStore(notificationStore, (state) => state.items);
   const unreadNotificationCount = useStore(
     notificationStore,
@@ -71,7 +74,10 @@ export function NotificationPreviewPanel({ language }: NotificationPreviewPanelP
             type="link"
             size="small"
             disabled={unreadNotificationCount === 0}
-            onClick={() => markAllAsRead()}
+            onClick={() => {
+              markAllAsRead();
+              void reminderApi.markAllRead().then(() => queryClient.invalidateQueries(['user-web-notifications']));
+            }}
           >
             全部已读
           </Button>
@@ -107,6 +113,9 @@ export function NotificationPreviewPanel({ language }: NotificationPreviewPanelP
                 className={`${styles['user-shell-notification-item']}${item.unread ? ` ${styles['is-unread']}` : ''}`}
                 onClick={() => {
                   markAsRead(item.id);
+                  if (item.source === 'reminder') {
+                    void reminderApi.markRead(item.sourceId).then(() => queryClient.invalidateQueries(['user-web-notifications']));
+                  }
                   navigate(
                     resolveNotificationActionPath(item.actionUrl, item.source, item.sourceId)
                   );

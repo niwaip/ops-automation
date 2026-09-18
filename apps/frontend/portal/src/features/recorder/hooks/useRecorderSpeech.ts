@@ -51,6 +51,17 @@ export const useRecorderSpeech = ({
       return;
     }
 
+    if (!navigator.mediaDevices?.getUserMedia) {
+      if (typeof window !== 'undefined' && !window.isSecureContext) {
+        void message.error(
+          '浏览器安全限制：非 HTTPS 或非 localhost 环境无法调用麦克风，请改用 localhost 访问。'
+        );
+      } else {
+        void message.error('当前浏览器环境不支持麦克风录音功能。');
+      }
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -97,7 +108,16 @@ export const useRecorderSpeech = ({
       mediaRecorder.start();
     } catch (error) {
       console.error('Failed to start MediaRecorder:', error);
-      void message.error('无法访问麦克风，请检查浏览器权限设置。');
+      const errName = error instanceof Error ? error.name : '';
+      if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
+        void message.error('麦克风权限被拒绝，请在浏览器地址栏或系统“隐私与安全性”中允许访问麦克风。');
+      } else if (errName === 'NotFoundError' || errName === 'DevicesNotFoundError') {
+        void message.error('未检测到可用麦克风，请检查音频输入设备连接。');
+      } else if (errName === 'NotReadableError' || errName === 'TrackStartError') {
+        void message.error('麦克风被其他应用程序占用，请关闭会议等应用后重试。');
+      } else {
+        void message.error('无法访问麦克风，请检查浏览器权限设置。');
+      }
     }
   }, [isListening, mergeSpeechText, setParamInput, inputRef]);
 

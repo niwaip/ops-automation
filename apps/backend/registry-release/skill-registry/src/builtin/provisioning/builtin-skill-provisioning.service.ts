@@ -339,6 +339,13 @@ export class BuiltinSkillProvisioningService {
       };
     }
 
+    if (handlerKey === 'platform.notification.reminder') {
+      return {
+        success: true,
+        output: { reminderId: 'smoke-reminder', nextRunAt: new Date().toISOString() },
+      };
+    }
+
     if (handlerKey === 'search.web' || handlerKey === 'platform.search.web') {
       return {
         success: true,

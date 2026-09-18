@@ -59,6 +59,7 @@ import { VersionRetentionService } from './plan-runtime/version-retention.servic
 import { LlmOperationAttestationClient } from './plan-runtime/llm-operation-attestation.client';
 import { BackfillModule } from './backfill/backfill.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { ReminderModule } from '../reminders/reminder.module';
 import { SavedSkillModule } from '../saved-skill/saved-skill.module';
 import { ExecutionOutboxService } from './outbox/execution-outbox.service';
 import { ExecutionDispatcherService } from './dispatcher/execution-dispatcher.service';
@@ -73,7 +74,7 @@ import { DeterministicRuntimeSessionCoordinatorService } from './plan-runtime/de
 import { CompletionClaimSynthesizerService } from './plan-runtime/completion-claim-synthesizer.service';
 
 @Module({
-  imports: [DiscoveryModule, PrismaModule, BackfillModule, SavedSkillModule],
+  imports: [DiscoveryModule, PrismaModule, BackfillModule, SavedSkillModule, ReminderModule],
   controllers: [ExecutionController, ResultRefController],
   providers: [
     BrowserPhaseRecoveryPlanner,

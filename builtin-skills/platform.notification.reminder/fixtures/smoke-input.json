@@ -1,0 +1,7 @@
+{
+  "title": "运维点检",
+  "message": "检查每日运行状态",
+  "cronExpression": "0 9 * * 1-5",
+  "timezone": "Asia/Shanghai",
+  "sendWechat": false
+}

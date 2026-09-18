@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, Post, Put, Request } from '@nestjs/common';
-import { IsBoolean, IsIn } from 'class-validator';
+import { Body, Controller, Delete, ForbiddenException, Get, Post, Put, Request, SetMetadata } from '@nestjs/common';
+import { IsBoolean, IsIn, IsString, IsUUID, MaxLength } from 'class-validator';
 import { ImChannelService } from './im-channel.service';
 
 class SetImEnabledDto {
@@ -11,9 +11,25 @@ class SetImInteractionModeDto {
   interactionMode!: 'auto' | 'chat' | 'task';
 }
 
+class InternalReminderDto {
+  @IsUUID() userId!: string;
+  @IsString() @MaxLength(4300) text!: string;
+  @IsUUID() idempotencyKey!: string;
+}
+
 @Controller('im-channels')
 export class ImChannelController {
   constructor(private readonly service: ImChannelService) {}
+  @SetMetadata('isPublic', true)
+  @Post('internal/reminder')
+  async sendInternalReminder(@Request() req: any, @Body() body: InternalReminderDto) {
+    const secret = process.env.INTERNAL_API_SHARED_SECRET || process.env.INTERNAL_API_SECRET;
+    if (!secret || req.headers['x-internal-auth'] !== secret) {
+      throw new ForbiddenException('Internal authentication required');
+    }
+    await this.service.sendReminder(body.userId, body.text, body.idempotencyKey);
+    return { success: true };
+  }
   @Get('wechat') getWechat(@Request() req: any) {
     return this.service.getWechat(req.user.id);
   }

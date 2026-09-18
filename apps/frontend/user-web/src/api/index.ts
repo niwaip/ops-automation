@@ -18,6 +18,36 @@ export const authApi = createAuthApi(apiClient);
 export const chatApi = createChatApi(apiClient, runtimeConfig);
 export const executionApi = createExecutionApi(apiClient, runtimeConfig);
 export const notificationApi = createNotificationApi(apiClient);
+export interface ReminderRule {
+  id: string;
+  title: string;
+  message: string;
+  cronExpression: string;
+  runAt: string | null;
+  timezone: string;
+  sendWechat: boolean;
+  isActive: boolean;
+  nextRunAt: string;
+}
+export interface ReminderInput {
+  title?: string;
+  message: string;
+  cronExpression?: string;
+  runAt?: string | null;
+  timezone: string;
+  sendWechat: boolean;
+}
+export const reminderApi = {
+  list: (): Promise<ReminderRule[]> => apiClient.get('/reminders'),
+  create: (input: ReminderInput): Promise<ReminderRule> => apiClient.post('/reminders', input),
+  update: (id: string, input: Partial<ReminderInput> & { isActive?: boolean }): Promise<ReminderRule> =>
+    apiClient.put(`/reminders/${id}`, input),
+  remove: (id: string): Promise<{ success: boolean }> => apiClient.delete(`/reminders/${id}`),
+  markRead: (id: string): Promise<{ success: boolean }> => apiClient.post(`/reminders/deliveries/${id}/read`),
+  markAllRead: (): Promise<{ success: boolean }> => apiClient.post('/reminders/deliveries/read-all'),
+  snooze: (id: string, minutes: 10 | 60 | 1440): Promise<{ success: boolean }> =>
+    apiClient.post(`/reminders/deliveries/${id}/snooze`, { minutes }),
+};
 export const reportApi = createReportApi(apiClient);
 
 export interface WechatChannelStatus {

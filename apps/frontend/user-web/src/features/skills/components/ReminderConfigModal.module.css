@@ -1,0 +1,599 @@
+.modal :global(.ant-modal-content) {
+  border-radius: 20px;
+  padding: 24px 28px 28px;
+}
+
+.heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.headingIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(79, 70, 229, 0.12);
+  color: var(--primary-color, #4f46e5);
+  font-size: 15px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 0 12px;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.sectionBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(79, 70, 229, 0.12);
+  color: var(--primary-color, #4f46e5);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sectionSub {
+  font-size: 12px;
+  color: #8b98aa;
+  font-weight: 400;
+}
+
+.countBadge {
+  font-size: 12px;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.formLabel {
+  font-size: 13.5px;
+  font-weight: 550;
+}
+
+.optionalTag {
+  font-size: 11px;
+  font-weight: 400;
+  color: #8b98aa;
+  background: rgba(139, 152, 170, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+}
+
+.fieldLabel {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+/* 标题与内容上下通栏对齐，彻底消除左右不均 */
+.contentStacked {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.stackedItem {
+  margin-bottom: 0 !important;
+  width: 100%;
+}
+
+.stackedItem :global(.ant-input),
+.stackedItem :global(.ant-input-affix-wrapper) {
+  border-radius: 9px;
+}
+
+.patternFormItem {
+  margin-bottom: 12px !important;
+}
+
+.patterns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.patterns :global(.ant-radio-button-wrapper) {
+  border: 1px solid #dce4f0 !important;
+  border-radius: 8px !important;
+  height: 36px;
+  line-height: 34px;
+  padding: 0 16px;
+  font-size: 13px;
+  box-shadow: none !important;
+  transition: all 0.2s ease;
+}
+
+.patterns :global(.ant-radio-button-wrapper::before) {
+  display: none !important;
+}
+
+.patterns :global(.ant-radio-button-wrapper-checked) {
+  background: #eef4ff !important;
+  border-color: #6d95e5 !important;
+  color: #225ac0 !important;
+  font-weight: 550;
+}
+
+/* 动态时间配置框：定高稳定设计，消除切换时的上下抖动 */
+.scheduleBox {
+  min-height: 124px;
+  box-sizing: border-box;
+  padding: 12px 18px;
+  margin: 4px 0 16px;
+  border: 1px solid #e7edf5;
+  border-radius: 12px;
+  background: #fafcff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.scheduleRowContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: center;
+  width: 100%;
+}
+
+.scheduleFieldsRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  width: 100%;
+}
+
+.inlineItem {
+  flex: 1;
+  margin-bottom: 0 !important;
+}
+
+.fieldHintBlock {
+  font-size: 12px;
+  color: #8b98aa;
+  padding-bottom: 6px;
+  white-space: nowrap;
+}
+
+.quickChips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.quickChipsLabel {
+  font-size: 12px;
+  color: #8b98aa;
+  flex: none;
+}
+
+.chipBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  font-size: 11.5px;
+  border-radius: 6px;
+  border: 1px solid #dce4f0;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.3;
+}
+
+.chipBtn:hover {
+  border-color: var(--primary-color, #4f46e5);
+  color: var(--primary-color, #4f46e5);
+  background: rgba(79, 70, 229, 0.05);
+}
+
+.multipleContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.multipleHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.multipleScrollArea {
+  max-height: 78px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.timeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.timeItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e4ebf5;
+}
+
+.timeIndex {
+  min-width: 44px;
+  color: #71809a;
+  font-size: 11.5px;
+}
+
+.addTime {
+  height: 42px;
+  border-style: dashed;
+  color: var(--primary-color, #4f46e5);
+}
+
+/* 同一行双列交付配置卡片 */
+.deliveryConfigRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 14px 0 16px;
+}
+
+.deliveryCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #e7edf5;
+  background: #fafcff;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.deliveryCard:hover {
+  border-color: #c7d8f3;
+}
+
+.deliveryCardDisabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.deliveryCardIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(79, 70, 229, 0.1);
+  color: var(--primary-color, #4f46e5);
+  font-size: 17px;
+}
+
+.wechatIcon {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.deliveryCardInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.deliveryCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.deliveryCardTitle {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.deliveryTag {
+  margin: 0;
+  font-size: 11px;
+}
+
+.deliveryCardDesc {
+  font-size: 11.5px;
+  color: #8b98aa;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0 14px;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.timezoneInfo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #8b98aa;
+}
+
+.submitBtn {
+  min-width: 100px;
+  font-weight: 550;
+}
+
+/* 我的提醒列表区域 */
+.ruleList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.ruleCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid #e7ebf1;
+  border-radius: 12px;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.ruleCard:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.ruleCardInactive {
+  opacity: 0.72;
+}
+
+.ruleStatusIndicator {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot_active {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.dot_completed {
+  background: #94a3b8;
+}
+
+.dot_paused {
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+}
+
+.ruleBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.ruleHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ruleTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+
+.tagGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ruleMessage {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #64748b;
+  font-size: 12.5px;
+  margin-top: 3px;
+}
+
+.ruleMeta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.scheduleText {
+  color: var(--primary-color, #4f46e5);
+  font-weight: 500;
+}
+
+.nextRunText {
+  color: #8b98aa;
+}
+
+.ruleActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.editBtn {
+  color: var(--primary-color, #4f46e5);
+}
+
+.deleteBtn {
+  color: #ef4444;
+}
+
+.loadingBox {
+  padding: 24px;
+  text-align: center;
+  color: #8b98aa;
+  font-size: 13px;
+}
+
+.empty {
+  padding: 24px;
+  text-align: center;
+  border: 1px dashed #dce4ef;
+  border-radius: 12px;
+  color: #8b98aa;
+}
+
+/* 深色模式适配 */
+[data-theme='dark'] .scheduleBox {
+  background: #192231;
+  border-color: #2d3848;
+}
+
+[data-theme='dark'] .chipBtn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+[data-theme='dark'] .chipBtn:hover {
+  border-color: #818cf8;
+  color: #818cf8;
+  background: rgba(79, 70, 229, 0.2);
+}
+
+[data-theme='dark'] .deliveryCard {
+  background: #192231;
+  border-color: #2d3848;
+}
+
+[data-theme='dark'] .deliveryCard:hover {
+  border-color: #4a5c75;
+}
+
+[data-theme='dark'] .deliveryCardIcon {
+  background: rgba(79, 70, 229, 0.25);
+  color: #9bb7ff;
+}
+
+[data-theme='dark'] .wechatIcon {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+[data-theme='dark'] .timeItem,
+[data-theme='dark'] .ruleCard {
+  background: #1e2532;
+  border-color: #2e3846;
+}
+
+[data-theme='dark'] .ruleCard:hover {
+  border-color: #415065;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='dark'] .patterns :global(.ant-radio-button-wrapper) {
+  background: #161e2b !important;
+  border-color: #2e3846 !important;
+  color: #94a3b8 !important;
+}
+
+[data-theme='dark'] .patterns :global(.ant-radio-button-wrapper-checked) {
+  background: #233550 !important;
+  border-color: #5c84d6 !important;
+  color: #c2d8ff !important;
+}
+
+[data-theme='dark'] .actions {
+  border-color: #2d3848;
+}
+
+[data-theme='dark'] .empty {
+  border-color: #334155;
+  background: #192231;
+}
+
+[data-theme='dark'] .countBadge {
+  background: #243042;
+  color: #94a3b8;
+}
+
+@media (max-width: 650px) {
+  .modal :global(.ant-modal-content) {
+    padding: 16px;
+  }
+  .timeGrid,
+  .scheduleFieldsRow,
+  .deliveryConfigRow {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+  .actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .ruleCard {
+    flex-wrap: wrap;
+  }
+  .ruleActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+

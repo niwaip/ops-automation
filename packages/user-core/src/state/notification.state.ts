@@ -54,7 +54,7 @@ export const createNotificationStore = (): NotificationStore =>
 
           return {
             ...notification,
-            unread: existingItem
+            unread: notification.source === 'reminder' ? notification.unread : existingItem
               ? shouldMarkUnread
                 ? true
                 : existingItem.unread

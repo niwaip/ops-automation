@@ -103,13 +103,15 @@ export const BUILTIN_TOOLKIT_GROUPS: BuiltinToolkitGroup[] = [
     englishName: 'Notification Toolkit',
     icon: '🔔',
     tagColor: 'purple',
-    description: '提供 Bark、Webhook 及各类移动端即时消息推送服务',
+    description: '提供站内定期提醒，以及已绑定微信渠道的可选消息投递',
     matcher: (skill) =>
+      skill.id.startsWith('platform.notification.') ||
       skill.id.includes('bark') ||
       skill.id.includes('push') ||
       skill.id.includes('notify') ||
       skill.name.includes('推送') ||
-      skill.name.includes('通知'),
+      skill.name.includes('通知') ||
+      skill.name.includes('提醒'),
   },
 ];
 

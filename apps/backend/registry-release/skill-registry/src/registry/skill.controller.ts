@@ -196,6 +196,7 @@ export class SkillController {
 
           skills.push({
             id: bSkill.capabilityKey,
+            userConfigurable: manifest?.spec?.userConfigurable === true,
             name: bSkill.displayName || bSkill.capabilityKey,
             description: bSkill.description || planner?.matchSummary || '',
             triggerKeywords: planner?.triggerKeywords || [],

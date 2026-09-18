@@ -194,6 +194,16 @@ export type TemporalWorkflow = $Result.DefaultSelection<Prisma.$TemporalWorkflow
  */
 export type SkillSchedule = $Result.DefaultSelection<Prisma.$SkillSchedulePayload>
 /**
+ * Model ReminderRule
+ * 
+ */
+export type ReminderRule = $Result.DefaultSelection<Prisma.$ReminderRulePayload>
+/**
+ * Model ReminderDelivery
+ * 
+ */
+export type ReminderDelivery = $Result.DefaultSelection<Prisma.$ReminderDeliveryPayload>
+/**
  * Model UserSavedSkill
  * 
  */
@@ -1110,6 +1120,26 @@ export class PrismaClient<
     * ```
     */
   get skillSchedule(): Prisma.SkillScheduleDelegate<ExtArgs>;
+
+  /**
+   * `prisma.reminderRule`: Exposes CRUD operations for the **ReminderRule** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more ReminderRules
+    * const reminderRules = await prisma.reminderRule.findMany()
+    * ```
+    */
+  get reminderRule(): Prisma.ReminderRuleDelegate<ExtArgs>;
+
+  /**
+   * `prisma.reminderDelivery`: Exposes CRUD operations for the **ReminderDelivery** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more ReminderDeliveries
+    * const reminderDeliveries = await prisma.reminderDelivery.findMany()
+    * ```
+    */
+  get reminderDelivery(): Prisma.ReminderDeliveryDelegate<ExtArgs>;
 
   /**
    * `prisma.userSavedSkill`: Exposes CRUD operations for the **UserSavedSkill** model.
@@ -2057,6 +2087,8 @@ export namespace Prisma {
     Activity: 'Activity',
     TemporalWorkflow: 'TemporalWorkflow',
     SkillSchedule: 'SkillSchedule',
+    ReminderRule: 'ReminderRule',
+    ReminderDelivery: 'ReminderDelivery',
     UserSavedSkill: 'UserSavedSkill',
     UserWorkflowAlias: 'UserWorkflowAlias',
     UserSavedSkillVersion: 'UserSavedSkillVersion',
@@ -2119,7 +2151,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "user" | "imChannelConnection" | "voiceTaskRequest" | "xiaozhiConnectorLease" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionResultRef" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "userSavedSkill" | "userWorkflowAlias" | "userSavedSkillVersion" | "assistantFeedbackEvent" | "assistantFeedbackCurrent" | "routingObservation" | "planningDecision" | "taskPolicySet" | "taskCommandAlias" | "taskRecipe" | "taskCapabilityBinding" | "taskPolicyProposal" | "taskPolicyAuditLog" | "executionCompletionClaim" | "promptSnapshot" | "llmUsageLedger" | "executionOutbox" | "scheduleFire" | "habitLearningRun" | "userHabitCandidate" | "userHabit" | "userPersonalizationPreference" | "scopedMemory" | "candidateRecipe" | "candidateRecipeEvaluation" | "habitGovernanceAudit" | "builtinSkill" | "builtinSkillRuntimeConfig" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent" | "workspace" | "workspaceNode" | "workbenchTodo" | "workbenchInboxItem" | "userCredential" | "userSkillCredentialBinding"
+      modelProps: "user" | "imChannelConnection" | "voiceTaskRequest" | "xiaozhiConnectorLease" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionResultRef" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "reminderRule" | "reminderDelivery" | "userSavedSkill" | "userWorkflowAlias" | "userSavedSkillVersion" | "assistantFeedbackEvent" | "assistantFeedbackCurrent" | "routingObservation" | "planningDecision" | "taskPolicySet" | "taskCommandAlias" | "taskRecipe" | "taskCapabilityBinding" | "taskPolicyProposal" | "taskPolicyAuditLog" | "executionCompletionClaim" | "promptSnapshot" | "llmUsageLedger" | "executionOutbox" | "scheduleFire" | "habitLearningRun" | "userHabitCandidate" | "userHabit" | "userPersonalizationPreference" | "scopedMemory" | "candidateRecipe" | "candidateRecipeEvaluation" | "habitGovernanceAudit" | "builtinSkill" | "builtinSkillRuntimeConfig" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent" | "workspace" | "workspaceNode" | "workbenchTodo" | "workbenchInboxItem" | "userCredential" | "userSkillCredentialBinding"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -4640,6 +4672,146 @@ export namespace Prisma {
           count: {
             args: Prisma.SkillScheduleCountArgs<ExtArgs>
             result: $Utils.Optional<SkillScheduleCountAggregateOutputType> | number
+          }
+        }
+      }
+      ReminderRule: {
+        payload: Prisma.$ReminderRulePayload<ExtArgs>
+        fields: Prisma.ReminderRuleFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.ReminderRuleFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderRulePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.ReminderRuleFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderRulePayload>
+          }
+          findFirst: {
+            args: Prisma.ReminderRuleFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderRulePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.ReminderRuleFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderRulePayload>
+          }
+          findMany: {
+            args: Prisma.ReminderRuleFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderRulePayload>[]
+          }
+          create: {
+            args: Prisma.ReminderRuleCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderRulePayload>
+          }
+          createMany: {
+            args: Prisma.ReminderRuleCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.ReminderRuleCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderRulePayload>[]
+          }
+          delete: {
+            args: Prisma.ReminderRuleDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderRulePayload>
+          }
+          update: {
+            args: Prisma.ReminderRuleUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderRulePayload>
+          }
+          deleteMany: {
+            args: Prisma.ReminderRuleDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.ReminderRuleUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.ReminderRuleUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderRulePayload>
+          }
+          aggregate: {
+            args: Prisma.ReminderRuleAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateReminderRule>
+          }
+          groupBy: {
+            args: Prisma.ReminderRuleGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ReminderRuleGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.ReminderRuleCountArgs<ExtArgs>
+            result: $Utils.Optional<ReminderRuleCountAggregateOutputType> | number
+          }
+        }
+      }
+      ReminderDelivery: {
+        payload: Prisma.$ReminderDeliveryPayload<ExtArgs>
+        fields: Prisma.ReminderDeliveryFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.ReminderDeliveryFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderDeliveryPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.ReminderDeliveryFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderDeliveryPayload>
+          }
+          findFirst: {
+            args: Prisma.ReminderDeliveryFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderDeliveryPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.ReminderDeliveryFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderDeliveryPayload>
+          }
+          findMany: {
+            args: Prisma.ReminderDeliveryFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderDeliveryPayload>[]
+          }
+          create: {
+            args: Prisma.ReminderDeliveryCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderDeliveryPayload>
+          }
+          createMany: {
+            args: Prisma.ReminderDeliveryCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.ReminderDeliveryCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderDeliveryPayload>[]
+          }
+          delete: {
+            args: Prisma.ReminderDeliveryDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderDeliveryPayload>
+          }
+          update: {
+            args: Prisma.ReminderDeliveryUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderDeliveryPayload>
+          }
+          deleteMany: {
+            args: Prisma.ReminderDeliveryDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.ReminderDeliveryUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.ReminderDeliveryUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ReminderDeliveryPayload>
+          }
+          aggregate: {
+            args: Prisma.ReminderDeliveryAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateReminderDelivery>
+          }
+          groupBy: {
+            args: Prisma.ReminderDeliveryGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ReminderDeliveryGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.ReminderDeliveryCountArgs<ExtArgs>
+            result: $Utils.Optional<ReminderDeliveryCountAggregateOutputType> | number
           }
         }
       }
@@ -8648,6 +8820,37 @@ export namespace Prisma {
    */
   export type ExecutionPhaseCountOutputTypeCountStepsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: ExecutionPhaseStepWhereInput
+  }
+
+
+  /**
+   * Count Type ReminderRuleCountOutputType
+   */
+
+  export type ReminderRuleCountOutputType = {
+    deliveries: number
+  }
+
+  export type ReminderRuleCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    deliveries?: boolean | ReminderRuleCountOutputTypeCountDeliveriesArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * ReminderRuleCountOutputType without action
+   */
+  export type ReminderRuleCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderRuleCountOutputType
+     */
+    select?: ReminderRuleCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * ReminderRuleCountOutputType without action
+   */
+  export type ReminderRuleCountOutputTypeCountDeliveriesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ReminderDeliveryWhereInput
   }
 
 
@@ -46213,6 +46416,2149 @@ export namespace Prisma {
      * Select specific fields to fetch from the SkillSchedule
      */
     select?: SkillScheduleSelect<ExtArgs> | null
+  }
+
+
+  /**
+   * Model ReminderRule
+   */
+
+  export type AggregateReminderRule = {
+    _count: ReminderRuleCountAggregateOutputType | null
+    _min: ReminderRuleMinAggregateOutputType | null
+    _max: ReminderRuleMaxAggregateOutputType | null
+  }
+
+  export type ReminderRuleMinAggregateOutputType = {
+    id: string | null
+    sourceExecutionId: string | null
+    userId: string | null
+    title: string | null
+    message: string | null
+    cronExpression: string | null
+    runAt: Date | null
+    timezone: string | null
+    sendWechat: boolean | null
+    isActive: boolean | null
+    deletedAt: Date | null
+    nextRunAt: Date | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ReminderRuleMaxAggregateOutputType = {
+    id: string | null
+    sourceExecutionId: string | null
+    userId: string | null
+    title: string | null
+    message: string | null
+    cronExpression: string | null
+    runAt: Date | null
+    timezone: string | null
+    sendWechat: boolean | null
+    isActive: boolean | null
+    deletedAt: Date | null
+    nextRunAt: Date | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ReminderRuleCountAggregateOutputType = {
+    id: number
+    sourceExecutionId: number
+    userId: number
+    title: number
+    message: number
+    cronExpression: number
+    runAt: number
+    timezone: number
+    sendWechat: number
+    isActive: number
+    deletedAt: number
+    nextRunAt: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type ReminderRuleMinAggregateInputType = {
+    id?: true
+    sourceExecutionId?: true
+    userId?: true
+    title?: true
+    message?: true
+    cronExpression?: true
+    runAt?: true
+    timezone?: true
+    sendWechat?: true
+    isActive?: true
+    deletedAt?: true
+    nextRunAt?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ReminderRuleMaxAggregateInputType = {
+    id?: true
+    sourceExecutionId?: true
+    userId?: true
+    title?: true
+    message?: true
+    cronExpression?: true
+    runAt?: true
+    timezone?: true
+    sendWechat?: true
+    isActive?: true
+    deletedAt?: true
+    nextRunAt?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ReminderRuleCountAggregateInputType = {
+    id?: true
+    sourceExecutionId?: true
+    userId?: true
+    title?: true
+    message?: true
+    cronExpression?: true
+    runAt?: true
+    timezone?: true
+    sendWechat?: true
+    isActive?: true
+    deletedAt?: true
+    nextRunAt?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type ReminderRuleAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ReminderRule to aggregate.
+     */
+    where?: ReminderRuleWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ReminderRules to fetch.
+     */
+    orderBy?: ReminderRuleOrderByWithRelationInput | ReminderRuleOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: ReminderRuleWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ReminderRules from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ReminderRules.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned ReminderRules
+    **/
+    _count?: true | ReminderRuleCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: ReminderRuleMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: ReminderRuleMaxAggregateInputType
+  }
+
+  export type GetReminderRuleAggregateType<T extends ReminderRuleAggregateArgs> = {
+        [P in keyof T & keyof AggregateReminderRule]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateReminderRule[P]>
+      : GetScalarType<T[P], AggregateReminderRule[P]>
+  }
+
+
+
+
+  export type ReminderRuleGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ReminderRuleWhereInput
+    orderBy?: ReminderRuleOrderByWithAggregationInput | ReminderRuleOrderByWithAggregationInput[]
+    by: ReminderRuleScalarFieldEnum[] | ReminderRuleScalarFieldEnum
+    having?: ReminderRuleScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: ReminderRuleCountAggregateInputType | true
+    _min?: ReminderRuleMinAggregateInputType
+    _max?: ReminderRuleMaxAggregateInputType
+  }
+
+  export type ReminderRuleGroupByOutputType = {
+    id: string
+    sourceExecutionId: string | null
+    userId: string
+    title: string
+    message: string
+    cronExpression: string
+    runAt: Date | null
+    timezone: string
+    sendWechat: boolean
+    isActive: boolean
+    deletedAt: Date | null
+    nextRunAt: Date
+    createdAt: Date
+    updatedAt: Date
+    _count: ReminderRuleCountAggregateOutputType | null
+    _min: ReminderRuleMinAggregateOutputType | null
+    _max: ReminderRuleMaxAggregateOutputType | null
+  }
+
+  type GetReminderRuleGroupByPayload<T extends ReminderRuleGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<ReminderRuleGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof ReminderRuleGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], ReminderRuleGroupByOutputType[P]>
+            : GetScalarType<T[P], ReminderRuleGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type ReminderRuleSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    sourceExecutionId?: boolean
+    userId?: boolean
+    title?: boolean
+    message?: boolean
+    cronExpression?: boolean
+    runAt?: boolean
+    timezone?: boolean
+    sendWechat?: boolean
+    isActive?: boolean
+    deletedAt?: boolean
+    nextRunAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    deliveries?: boolean | ReminderRule$deliveriesArgs<ExtArgs>
+    _count?: boolean | ReminderRuleCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["reminderRule"]>
+
+  export type ReminderRuleSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    sourceExecutionId?: boolean
+    userId?: boolean
+    title?: boolean
+    message?: boolean
+    cronExpression?: boolean
+    runAt?: boolean
+    timezone?: boolean
+    sendWechat?: boolean
+    isActive?: boolean
+    deletedAt?: boolean
+    nextRunAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["reminderRule"]>
+
+  export type ReminderRuleSelectScalar = {
+    id?: boolean
+    sourceExecutionId?: boolean
+    userId?: boolean
+    title?: boolean
+    message?: boolean
+    cronExpression?: boolean
+    runAt?: boolean
+    timezone?: boolean
+    sendWechat?: boolean
+    isActive?: boolean
+    deletedAt?: boolean
+    nextRunAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type ReminderRuleInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    deliveries?: boolean | ReminderRule$deliveriesArgs<ExtArgs>
+    _count?: boolean | ReminderRuleCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type ReminderRuleIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+
+  export type $ReminderRulePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "ReminderRule"
+    objects: {
+      deliveries: Prisma.$ReminderDeliveryPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      sourceExecutionId: string | null
+      userId: string
+      title: string
+      message: string
+      cronExpression: string
+      runAt: Date | null
+      timezone: string
+      sendWechat: boolean
+      isActive: boolean
+      deletedAt: Date | null
+      nextRunAt: Date
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["reminderRule"]>
+    composites: {}
+  }
+
+  type ReminderRuleGetPayload<S extends boolean | null | undefined | ReminderRuleDefaultArgs> = $Result.GetResult<Prisma.$ReminderRulePayload, S>
+
+  type ReminderRuleCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<ReminderRuleFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: ReminderRuleCountAggregateInputType | true
+    }
+
+  export interface ReminderRuleDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['ReminderRule'], meta: { name: 'ReminderRule' } }
+    /**
+     * Find zero or one ReminderRule that matches the filter.
+     * @param {ReminderRuleFindUniqueArgs} args - Arguments to find a ReminderRule
+     * @example
+     * // Get one ReminderRule
+     * const reminderRule = await prisma.reminderRule.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends ReminderRuleFindUniqueArgs>(args: SelectSubset<T, ReminderRuleFindUniqueArgs<ExtArgs>>): Prisma__ReminderRuleClient<$Result.GetResult<Prisma.$ReminderRulePayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one ReminderRule that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {ReminderRuleFindUniqueOrThrowArgs} args - Arguments to find a ReminderRule
+     * @example
+     * // Get one ReminderRule
+     * const reminderRule = await prisma.reminderRule.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends ReminderRuleFindUniqueOrThrowArgs>(args: SelectSubset<T, ReminderRuleFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ReminderRuleClient<$Result.GetResult<Prisma.$ReminderRulePayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first ReminderRule that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ReminderRuleFindFirstArgs} args - Arguments to find a ReminderRule
+     * @example
+     * // Get one ReminderRule
+     * const reminderRule = await prisma.reminderRule.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends ReminderRuleFindFirstArgs>(args?: SelectSubset<T, ReminderRuleFindFirstArgs<ExtArgs>>): Prisma__ReminderRuleClient<$Result.GetResult<Prisma.$ReminderRulePayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first ReminderRule that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ReminderRuleFindFirstOrThrowArgs} args - Arguments to find a ReminderRule
+     * @example
+     * // Get one ReminderRule
+     * const reminderRule = await prisma.reminderRule.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends ReminderRuleFindFirstOrThrowArgs>(args?: SelectSubset<T, ReminderRuleFindFirstOrThrowArgs<ExtArgs>>): Prisma__ReminderRuleClient<$Result.GetResult<Prisma.$ReminderRulePayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more ReminderRules that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ReminderRuleFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all ReminderRules
+     * const reminderRules = await prisma.reminderRule.findMany()
+     * 
+     * // Get first 10 ReminderRules
+     * const reminderRules = await prisma.reminderRule.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const reminderRuleWithIdOnly = await prisma.reminderRule.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends ReminderRuleFindManyArgs>(args?: SelectSubset<T, ReminderRuleFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReminderRulePayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a ReminderRule.
+     * @param {ReminderRuleCreateArgs} args - Arguments to create a ReminderRule.
+     * @example
+     * // Create one ReminderRule
+     * const ReminderRule = await prisma.reminderRule.create({
+     *   data: {
+     *     // ... data to create a ReminderRule
+     *   }
+     * })
+     * 
+     */
+    create<T extends ReminderRuleCreateArgs>(args: SelectSubset<T, ReminderRuleCreateArgs<ExtArgs>>): Prisma__ReminderRuleClient<$Result.GetResult<Prisma.$ReminderRulePayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many ReminderRules.
+     * @param {ReminderRuleCreateManyArgs} args - Arguments to create many ReminderRules.
+     * @example
+     * // Create many ReminderRules
+     * const reminderRule = await prisma.reminderRule.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends ReminderRuleCreateManyArgs>(args?: SelectSubset<T, ReminderRuleCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many ReminderRules and returns the data saved in the database.
+     * @param {ReminderRuleCreateManyAndReturnArgs} args - Arguments to create many ReminderRules.
+     * @example
+     * // Create many ReminderRules
+     * const reminderRule = await prisma.reminderRule.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many ReminderRules and only return the `id`
+     * const reminderRuleWithIdOnly = await prisma.reminderRule.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends ReminderRuleCreateManyAndReturnArgs>(args?: SelectSubset<T, ReminderRuleCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReminderRulePayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a ReminderRule.
+     * @param {ReminderRuleDeleteArgs} args - Arguments to delete one ReminderRule.
+     * @example
+     * // Delete one ReminderRule
+     * const ReminderRule = await prisma.reminderRule.delete({
+     *   where: {
+     *     // ... filter to delete one ReminderRule
+     *   }
+     * })
+     * 
+     */
+    delete<T extends ReminderRuleDeleteArgs>(args: SelectSubset<T, ReminderRuleDeleteArgs<ExtArgs>>): Prisma__ReminderRuleClient<$Result.GetResult<Prisma.$ReminderRulePayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one ReminderRule.
+     * @param {ReminderRuleUpdateArgs} args - Arguments to update one ReminderRule.
+     * @example
+     * // Update one ReminderRule
+     * const reminderRule = await prisma.reminderRule.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends ReminderRuleUpdateArgs>(args: SelectSubset<T, ReminderRuleUpdateArgs<ExtArgs>>): Prisma__ReminderRuleClient<$Result.GetResult<Prisma.$ReminderRulePayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more ReminderRules.
+     * @param {ReminderRuleDeleteManyArgs} args - Arguments to filter ReminderRules to delete.
+     * @example
+     * // Delete a few ReminderRules
+     * const { count } = await prisma.reminderRule.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends ReminderRuleDeleteManyArgs>(args?: SelectSubset<T, ReminderRuleDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ReminderRules.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ReminderRuleUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many ReminderRules
+     * const reminderRule = await prisma.reminderRule.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends ReminderRuleUpdateManyArgs>(args: SelectSubset<T, ReminderRuleUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one ReminderRule.
+     * @param {ReminderRuleUpsertArgs} args - Arguments to update or create a ReminderRule.
+     * @example
+     * // Update or create a ReminderRule
+     * const reminderRule = await prisma.reminderRule.upsert({
+     *   create: {
+     *     // ... data to create a ReminderRule
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the ReminderRule we want to update
+     *   }
+     * })
+     */
+    upsert<T extends ReminderRuleUpsertArgs>(args: SelectSubset<T, ReminderRuleUpsertArgs<ExtArgs>>): Prisma__ReminderRuleClient<$Result.GetResult<Prisma.$ReminderRulePayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of ReminderRules.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ReminderRuleCountArgs} args - Arguments to filter ReminderRules to count.
+     * @example
+     * // Count the number of ReminderRules
+     * const count = await prisma.reminderRule.count({
+     *   where: {
+     *     // ... the filter for the ReminderRules we want to count
+     *   }
+     * })
+    **/
+    count<T extends ReminderRuleCountArgs>(
+      args?: Subset<T, ReminderRuleCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], ReminderRuleCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a ReminderRule.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ReminderRuleAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends ReminderRuleAggregateArgs>(args: Subset<T, ReminderRuleAggregateArgs>): Prisma.PrismaPromise<GetReminderRuleAggregateType<T>>
+
+    /**
+     * Group by ReminderRule.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ReminderRuleGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends ReminderRuleGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: ReminderRuleGroupByArgs['orderBy'] }
+        : { orderBy?: ReminderRuleGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, ReminderRuleGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetReminderRuleGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the ReminderRule model
+   */
+  readonly fields: ReminderRuleFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for ReminderRule.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__ReminderRuleClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    deliveries<T extends ReminderRule$deliveriesArgs<ExtArgs> = {}>(args?: Subset<T, ReminderRule$deliveriesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReminderDeliveryPayload<ExtArgs>, T, "findMany"> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the ReminderRule model
+   */ 
+  interface ReminderRuleFieldRefs {
+    readonly id: FieldRef<"ReminderRule", 'String'>
+    readonly sourceExecutionId: FieldRef<"ReminderRule", 'String'>
+    readonly userId: FieldRef<"ReminderRule", 'String'>
+    readonly title: FieldRef<"ReminderRule", 'String'>
+    readonly message: FieldRef<"ReminderRule", 'String'>
+    readonly cronExpression: FieldRef<"ReminderRule", 'String'>
+    readonly runAt: FieldRef<"ReminderRule", 'DateTime'>
+    readonly timezone: FieldRef<"ReminderRule", 'String'>
+    readonly sendWechat: FieldRef<"ReminderRule", 'Boolean'>
+    readonly isActive: FieldRef<"ReminderRule", 'Boolean'>
+    readonly deletedAt: FieldRef<"ReminderRule", 'DateTime'>
+    readonly nextRunAt: FieldRef<"ReminderRule", 'DateTime'>
+    readonly createdAt: FieldRef<"ReminderRule", 'DateTime'>
+    readonly updatedAt: FieldRef<"ReminderRule", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * ReminderRule findUnique
+   */
+  export type ReminderRuleFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderRule
+     */
+    select?: ReminderRuleSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderRuleInclude<ExtArgs> | null
+    /**
+     * Filter, which ReminderRule to fetch.
+     */
+    where: ReminderRuleWhereUniqueInput
+  }
+
+  /**
+   * ReminderRule findUniqueOrThrow
+   */
+  export type ReminderRuleFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderRule
+     */
+    select?: ReminderRuleSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderRuleInclude<ExtArgs> | null
+    /**
+     * Filter, which ReminderRule to fetch.
+     */
+    where: ReminderRuleWhereUniqueInput
+  }
+
+  /**
+   * ReminderRule findFirst
+   */
+  export type ReminderRuleFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderRule
+     */
+    select?: ReminderRuleSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderRuleInclude<ExtArgs> | null
+    /**
+     * Filter, which ReminderRule to fetch.
+     */
+    where?: ReminderRuleWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ReminderRules to fetch.
+     */
+    orderBy?: ReminderRuleOrderByWithRelationInput | ReminderRuleOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ReminderRules.
+     */
+    cursor?: ReminderRuleWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ReminderRules from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ReminderRules.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ReminderRules.
+     */
+    distinct?: ReminderRuleScalarFieldEnum | ReminderRuleScalarFieldEnum[]
+  }
+
+  /**
+   * ReminderRule findFirstOrThrow
+   */
+  export type ReminderRuleFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderRule
+     */
+    select?: ReminderRuleSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderRuleInclude<ExtArgs> | null
+    /**
+     * Filter, which ReminderRule to fetch.
+     */
+    where?: ReminderRuleWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ReminderRules to fetch.
+     */
+    orderBy?: ReminderRuleOrderByWithRelationInput | ReminderRuleOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ReminderRules.
+     */
+    cursor?: ReminderRuleWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ReminderRules from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ReminderRules.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ReminderRules.
+     */
+    distinct?: ReminderRuleScalarFieldEnum | ReminderRuleScalarFieldEnum[]
+  }
+
+  /**
+   * ReminderRule findMany
+   */
+  export type ReminderRuleFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderRule
+     */
+    select?: ReminderRuleSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderRuleInclude<ExtArgs> | null
+    /**
+     * Filter, which ReminderRules to fetch.
+     */
+    where?: ReminderRuleWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ReminderRules to fetch.
+     */
+    orderBy?: ReminderRuleOrderByWithRelationInput | ReminderRuleOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing ReminderRules.
+     */
+    cursor?: ReminderRuleWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ReminderRules from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ReminderRules.
+     */
+    skip?: number
+    distinct?: ReminderRuleScalarFieldEnum | ReminderRuleScalarFieldEnum[]
+  }
+
+  /**
+   * ReminderRule create
+   */
+  export type ReminderRuleCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderRule
+     */
+    select?: ReminderRuleSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderRuleInclude<ExtArgs> | null
+    /**
+     * The data needed to create a ReminderRule.
+     */
+    data: XOR<ReminderRuleCreateInput, ReminderRuleUncheckedCreateInput>
+  }
+
+  /**
+   * ReminderRule createMany
+   */
+  export type ReminderRuleCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many ReminderRules.
+     */
+    data: ReminderRuleCreateManyInput | ReminderRuleCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ReminderRule createManyAndReturn
+   */
+  export type ReminderRuleCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderRule
+     */
+    select?: ReminderRuleSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many ReminderRules.
+     */
+    data: ReminderRuleCreateManyInput | ReminderRuleCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ReminderRule update
+   */
+  export type ReminderRuleUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderRule
+     */
+    select?: ReminderRuleSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderRuleInclude<ExtArgs> | null
+    /**
+     * The data needed to update a ReminderRule.
+     */
+    data: XOR<ReminderRuleUpdateInput, ReminderRuleUncheckedUpdateInput>
+    /**
+     * Choose, which ReminderRule to update.
+     */
+    where: ReminderRuleWhereUniqueInput
+  }
+
+  /**
+   * ReminderRule updateMany
+   */
+  export type ReminderRuleUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update ReminderRules.
+     */
+    data: XOR<ReminderRuleUpdateManyMutationInput, ReminderRuleUncheckedUpdateManyInput>
+    /**
+     * Filter which ReminderRules to update
+     */
+    where?: ReminderRuleWhereInput
+  }
+
+  /**
+   * ReminderRule upsert
+   */
+  export type ReminderRuleUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderRule
+     */
+    select?: ReminderRuleSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderRuleInclude<ExtArgs> | null
+    /**
+     * The filter to search for the ReminderRule to update in case it exists.
+     */
+    where: ReminderRuleWhereUniqueInput
+    /**
+     * In case the ReminderRule found by the `where` argument doesn't exist, create a new ReminderRule with this data.
+     */
+    create: XOR<ReminderRuleCreateInput, ReminderRuleUncheckedCreateInput>
+    /**
+     * In case the ReminderRule was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<ReminderRuleUpdateInput, ReminderRuleUncheckedUpdateInput>
+  }
+
+  /**
+   * ReminderRule delete
+   */
+  export type ReminderRuleDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderRule
+     */
+    select?: ReminderRuleSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderRuleInclude<ExtArgs> | null
+    /**
+     * Filter which ReminderRule to delete.
+     */
+    where: ReminderRuleWhereUniqueInput
+  }
+
+  /**
+   * ReminderRule deleteMany
+   */
+  export type ReminderRuleDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ReminderRules to delete
+     */
+    where?: ReminderRuleWhereInput
+  }
+
+  /**
+   * ReminderRule.deliveries
+   */
+  export type ReminderRule$deliveriesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderDelivery
+     */
+    select?: ReminderDeliverySelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderDeliveryInclude<ExtArgs> | null
+    where?: ReminderDeliveryWhereInput
+    orderBy?: ReminderDeliveryOrderByWithRelationInput | ReminderDeliveryOrderByWithRelationInput[]
+    cursor?: ReminderDeliveryWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: ReminderDeliveryScalarFieldEnum | ReminderDeliveryScalarFieldEnum[]
+  }
+
+  /**
+   * ReminderRule without action
+   */
+  export type ReminderRuleDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderRule
+     */
+    select?: ReminderRuleSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderRuleInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model ReminderDelivery
+   */
+
+  export type AggregateReminderDelivery = {
+    _count: ReminderDeliveryCountAggregateOutputType | null
+    _avg: ReminderDeliveryAvgAggregateOutputType | null
+    _sum: ReminderDeliverySumAggregateOutputType | null
+    _min: ReminderDeliveryMinAggregateOutputType | null
+    _max: ReminderDeliveryMaxAggregateOutputType | null
+  }
+
+  export type ReminderDeliveryAvgAggregateOutputType = {
+    wechatAttempts: number | null
+  }
+
+  export type ReminderDeliverySumAggregateOutputType = {
+    wechatAttempts: number | null
+  }
+
+  export type ReminderDeliveryMinAggregateOutputType = {
+    id: string | null
+    ruleId: string | null
+    userId: string | null
+    scheduledAt: Date | null
+    title: string | null
+    message: string | null
+    remindAt: Date | null
+    readAt: Date | null
+    sendWechat: boolean | null
+    wechatStatus: string | null
+    wechatAttempts: number | null
+    wechatNextAttemptAt: Date | null
+    wechatLeaseUntil: Date | null
+    wechatLastError: string | null
+    createdAt: Date | null
+  }
+
+  export type ReminderDeliveryMaxAggregateOutputType = {
+    id: string | null
+    ruleId: string | null
+    userId: string | null
+    scheduledAt: Date | null
+    title: string | null
+    message: string | null
+    remindAt: Date | null
+    readAt: Date | null
+    sendWechat: boolean | null
+    wechatStatus: string | null
+    wechatAttempts: number | null
+    wechatNextAttemptAt: Date | null
+    wechatLeaseUntil: Date | null
+    wechatLastError: string | null
+    createdAt: Date | null
+  }
+
+  export type ReminderDeliveryCountAggregateOutputType = {
+    id: number
+    ruleId: number
+    userId: number
+    scheduledAt: number
+    title: number
+    message: number
+    remindAt: number
+    readAt: number
+    sendWechat: number
+    wechatStatus: number
+    wechatAttempts: number
+    wechatNextAttemptAt: number
+    wechatLeaseUntil: number
+    wechatLastError: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type ReminderDeliveryAvgAggregateInputType = {
+    wechatAttempts?: true
+  }
+
+  export type ReminderDeliverySumAggregateInputType = {
+    wechatAttempts?: true
+  }
+
+  export type ReminderDeliveryMinAggregateInputType = {
+    id?: true
+    ruleId?: true
+    userId?: true
+    scheduledAt?: true
+    title?: true
+    message?: true
+    remindAt?: true
+    readAt?: true
+    sendWechat?: true
+    wechatStatus?: true
+    wechatAttempts?: true
+    wechatNextAttemptAt?: true
+    wechatLeaseUntil?: true
+    wechatLastError?: true
+    createdAt?: true
+  }
+
+  export type ReminderDeliveryMaxAggregateInputType = {
+    id?: true
+    ruleId?: true
+    userId?: true
+    scheduledAt?: true
+    title?: true
+    message?: true
+    remindAt?: true
+    readAt?: true
+    sendWechat?: true
+    wechatStatus?: true
+    wechatAttempts?: true
+    wechatNextAttemptAt?: true
+    wechatLeaseUntil?: true
+    wechatLastError?: true
+    createdAt?: true
+  }
+
+  export type ReminderDeliveryCountAggregateInputType = {
+    id?: true
+    ruleId?: true
+    userId?: true
+    scheduledAt?: true
+    title?: true
+    message?: true
+    remindAt?: true
+    readAt?: true
+    sendWechat?: true
+    wechatStatus?: true
+    wechatAttempts?: true
+    wechatNextAttemptAt?: true
+    wechatLeaseUntil?: true
+    wechatLastError?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type ReminderDeliveryAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ReminderDelivery to aggregate.
+     */
+    where?: ReminderDeliveryWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ReminderDeliveries to fetch.
+     */
+    orderBy?: ReminderDeliveryOrderByWithRelationInput | ReminderDeliveryOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: ReminderDeliveryWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ReminderDeliveries from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ReminderDeliveries.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned ReminderDeliveries
+    **/
+    _count?: true | ReminderDeliveryCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: ReminderDeliveryAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: ReminderDeliverySumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: ReminderDeliveryMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: ReminderDeliveryMaxAggregateInputType
+  }
+
+  export type GetReminderDeliveryAggregateType<T extends ReminderDeliveryAggregateArgs> = {
+        [P in keyof T & keyof AggregateReminderDelivery]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateReminderDelivery[P]>
+      : GetScalarType<T[P], AggregateReminderDelivery[P]>
+  }
+
+
+
+
+  export type ReminderDeliveryGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ReminderDeliveryWhereInput
+    orderBy?: ReminderDeliveryOrderByWithAggregationInput | ReminderDeliveryOrderByWithAggregationInput[]
+    by: ReminderDeliveryScalarFieldEnum[] | ReminderDeliveryScalarFieldEnum
+    having?: ReminderDeliveryScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: ReminderDeliveryCountAggregateInputType | true
+    _avg?: ReminderDeliveryAvgAggregateInputType
+    _sum?: ReminderDeliverySumAggregateInputType
+    _min?: ReminderDeliveryMinAggregateInputType
+    _max?: ReminderDeliveryMaxAggregateInputType
+  }
+
+  export type ReminderDeliveryGroupByOutputType = {
+    id: string
+    ruleId: string
+    userId: string
+    scheduledAt: Date
+    title: string
+    message: string
+    remindAt: Date
+    readAt: Date | null
+    sendWechat: boolean
+    wechatStatus: string
+    wechatAttempts: number
+    wechatNextAttemptAt: Date | null
+    wechatLeaseUntil: Date | null
+    wechatLastError: string | null
+    createdAt: Date
+    _count: ReminderDeliveryCountAggregateOutputType | null
+    _avg: ReminderDeliveryAvgAggregateOutputType | null
+    _sum: ReminderDeliverySumAggregateOutputType | null
+    _min: ReminderDeliveryMinAggregateOutputType | null
+    _max: ReminderDeliveryMaxAggregateOutputType | null
+  }
+
+  type GetReminderDeliveryGroupByPayload<T extends ReminderDeliveryGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<ReminderDeliveryGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof ReminderDeliveryGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], ReminderDeliveryGroupByOutputType[P]>
+            : GetScalarType<T[P], ReminderDeliveryGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type ReminderDeliverySelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    ruleId?: boolean
+    userId?: boolean
+    scheduledAt?: boolean
+    title?: boolean
+    message?: boolean
+    remindAt?: boolean
+    readAt?: boolean
+    sendWechat?: boolean
+    wechatStatus?: boolean
+    wechatAttempts?: boolean
+    wechatNextAttemptAt?: boolean
+    wechatLeaseUntil?: boolean
+    wechatLastError?: boolean
+    createdAt?: boolean
+    rule?: boolean | ReminderRuleDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["reminderDelivery"]>
+
+  export type ReminderDeliverySelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    ruleId?: boolean
+    userId?: boolean
+    scheduledAt?: boolean
+    title?: boolean
+    message?: boolean
+    remindAt?: boolean
+    readAt?: boolean
+    sendWechat?: boolean
+    wechatStatus?: boolean
+    wechatAttempts?: boolean
+    wechatNextAttemptAt?: boolean
+    wechatLeaseUntil?: boolean
+    wechatLastError?: boolean
+    createdAt?: boolean
+    rule?: boolean | ReminderRuleDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["reminderDelivery"]>
+
+  export type ReminderDeliverySelectScalar = {
+    id?: boolean
+    ruleId?: boolean
+    userId?: boolean
+    scheduledAt?: boolean
+    title?: boolean
+    message?: boolean
+    remindAt?: boolean
+    readAt?: boolean
+    sendWechat?: boolean
+    wechatStatus?: boolean
+    wechatAttempts?: boolean
+    wechatNextAttemptAt?: boolean
+    wechatLeaseUntil?: boolean
+    wechatLastError?: boolean
+    createdAt?: boolean
+  }
+
+  export type ReminderDeliveryInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    rule?: boolean | ReminderRuleDefaultArgs<ExtArgs>
+  }
+  export type ReminderDeliveryIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    rule?: boolean | ReminderRuleDefaultArgs<ExtArgs>
+  }
+
+  export type $ReminderDeliveryPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "ReminderDelivery"
+    objects: {
+      rule: Prisma.$ReminderRulePayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      ruleId: string
+      userId: string
+      scheduledAt: Date
+      title: string
+      message: string
+      remindAt: Date
+      readAt: Date | null
+      sendWechat: boolean
+      wechatStatus: string
+      wechatAttempts: number
+      wechatNextAttemptAt: Date | null
+      wechatLeaseUntil: Date | null
+      wechatLastError: string | null
+      createdAt: Date
+    }, ExtArgs["result"]["reminderDelivery"]>
+    composites: {}
+  }
+
+  type ReminderDeliveryGetPayload<S extends boolean | null | undefined | ReminderDeliveryDefaultArgs> = $Result.GetResult<Prisma.$ReminderDeliveryPayload, S>
+
+  type ReminderDeliveryCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<ReminderDeliveryFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: ReminderDeliveryCountAggregateInputType | true
+    }
+
+  export interface ReminderDeliveryDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['ReminderDelivery'], meta: { name: 'ReminderDelivery' } }
+    /**
+     * Find zero or one ReminderDelivery that matches the filter.
+     * @param {ReminderDeliveryFindUniqueArgs} args - Arguments to find a ReminderDelivery
+     * @example
+     * // Get one ReminderDelivery
+     * const reminderDelivery = await prisma.reminderDelivery.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends ReminderDeliveryFindUniqueArgs>(args: SelectSubset<T, ReminderDeliveryFindUniqueArgs<ExtArgs>>): Prisma__ReminderDeliveryClient<$Result.GetResult<Prisma.$ReminderDeliveryPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one ReminderDelivery that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {ReminderDeliveryFindUniqueOrThrowArgs} args - Arguments to find a ReminderDelivery
+     * @example
+     * // Get one ReminderDelivery
+     * const reminderDelivery = await prisma.reminderDelivery.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends ReminderDeliveryFindUniqueOrThrowArgs>(args: SelectSubset<T, ReminderDeliveryFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ReminderDeliveryClient<$Result.GetResult<Prisma.$ReminderDeliveryPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first ReminderDelivery that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ReminderDeliveryFindFirstArgs} args - Arguments to find a ReminderDelivery
+     * @example
+     * // Get one ReminderDelivery
+     * const reminderDelivery = await prisma.reminderDelivery.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends ReminderDeliveryFindFirstArgs>(args?: SelectSubset<T, ReminderDeliveryFindFirstArgs<ExtArgs>>): Prisma__ReminderDeliveryClient<$Result.GetResult<Prisma.$ReminderDeliveryPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first ReminderDelivery that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ReminderDeliveryFindFirstOrThrowArgs} args - Arguments to find a ReminderDelivery
+     * @example
+     * // Get one ReminderDelivery
+     * const reminderDelivery = await prisma.reminderDelivery.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends ReminderDeliveryFindFirstOrThrowArgs>(args?: SelectSubset<T, ReminderDeliveryFindFirstOrThrowArgs<ExtArgs>>): Prisma__ReminderDeliveryClient<$Result.GetResult<Prisma.$ReminderDeliveryPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more ReminderDeliveries that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ReminderDeliveryFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all ReminderDeliveries
+     * const reminderDeliveries = await prisma.reminderDelivery.findMany()
+     * 
+     * // Get first 10 ReminderDeliveries
+     * const reminderDeliveries = await prisma.reminderDelivery.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const reminderDeliveryWithIdOnly = await prisma.reminderDelivery.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends ReminderDeliveryFindManyArgs>(args?: SelectSubset<T, ReminderDeliveryFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReminderDeliveryPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a ReminderDelivery.
+     * @param {ReminderDeliveryCreateArgs} args - Arguments to create a ReminderDelivery.
+     * @example
+     * // Create one ReminderDelivery
+     * const ReminderDelivery = await prisma.reminderDelivery.create({
+     *   data: {
+     *     // ... data to create a ReminderDelivery
+     *   }
+     * })
+     * 
+     */
+    create<T extends ReminderDeliveryCreateArgs>(args: SelectSubset<T, ReminderDeliveryCreateArgs<ExtArgs>>): Prisma__ReminderDeliveryClient<$Result.GetResult<Prisma.$ReminderDeliveryPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many ReminderDeliveries.
+     * @param {ReminderDeliveryCreateManyArgs} args - Arguments to create many ReminderDeliveries.
+     * @example
+     * // Create many ReminderDeliveries
+     * const reminderDelivery = await prisma.reminderDelivery.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends ReminderDeliveryCreateManyArgs>(args?: SelectSubset<T, ReminderDeliveryCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many ReminderDeliveries and returns the data saved in the database.
+     * @param {ReminderDeliveryCreateManyAndReturnArgs} args - Arguments to create many ReminderDeliveries.
+     * @example
+     * // Create many ReminderDeliveries
+     * const reminderDelivery = await prisma.reminderDelivery.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many ReminderDeliveries and only return the `id`
+     * const reminderDeliveryWithIdOnly = await prisma.reminderDelivery.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends ReminderDeliveryCreateManyAndReturnArgs>(args?: SelectSubset<T, ReminderDeliveryCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReminderDeliveryPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a ReminderDelivery.
+     * @param {ReminderDeliveryDeleteArgs} args - Arguments to delete one ReminderDelivery.
+     * @example
+     * // Delete one ReminderDelivery
+     * const ReminderDelivery = await prisma.reminderDelivery.delete({
+     *   where: {
+     *     // ... filter to delete one ReminderDelivery
+     *   }
+     * })
+     * 
+     */
+    delete<T extends ReminderDeliveryDeleteArgs>(args: SelectSubset<T, ReminderDeliveryDeleteArgs<ExtArgs>>): Prisma__ReminderDeliveryClient<$Result.GetResult<Prisma.$ReminderDeliveryPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one ReminderDelivery.
+     * @param {ReminderDeliveryUpdateArgs} args - Arguments to update one ReminderDelivery.
+     * @example
+     * // Update one ReminderDelivery
+     * const reminderDelivery = await prisma.reminderDelivery.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends ReminderDeliveryUpdateArgs>(args: SelectSubset<T, ReminderDeliveryUpdateArgs<ExtArgs>>): Prisma__ReminderDeliveryClient<$Result.GetResult<Prisma.$ReminderDeliveryPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more ReminderDeliveries.
+     * @param {ReminderDeliveryDeleteManyArgs} args - Arguments to filter ReminderDeliveries to delete.
+     * @example
+     * // Delete a few ReminderDeliveries
+     * const { count } = await prisma.reminderDelivery.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends ReminderDeliveryDeleteManyArgs>(args?: SelectSubset<T, ReminderDeliveryDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ReminderDeliveries.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ReminderDeliveryUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many ReminderDeliveries
+     * const reminderDelivery = await prisma.reminderDelivery.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends ReminderDeliveryUpdateManyArgs>(args: SelectSubset<T, ReminderDeliveryUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one ReminderDelivery.
+     * @param {ReminderDeliveryUpsertArgs} args - Arguments to update or create a ReminderDelivery.
+     * @example
+     * // Update or create a ReminderDelivery
+     * const reminderDelivery = await prisma.reminderDelivery.upsert({
+     *   create: {
+     *     // ... data to create a ReminderDelivery
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the ReminderDelivery we want to update
+     *   }
+     * })
+     */
+    upsert<T extends ReminderDeliveryUpsertArgs>(args: SelectSubset<T, ReminderDeliveryUpsertArgs<ExtArgs>>): Prisma__ReminderDeliveryClient<$Result.GetResult<Prisma.$ReminderDeliveryPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of ReminderDeliveries.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ReminderDeliveryCountArgs} args - Arguments to filter ReminderDeliveries to count.
+     * @example
+     * // Count the number of ReminderDeliveries
+     * const count = await prisma.reminderDelivery.count({
+     *   where: {
+     *     // ... the filter for the ReminderDeliveries we want to count
+     *   }
+     * })
+    **/
+    count<T extends ReminderDeliveryCountArgs>(
+      args?: Subset<T, ReminderDeliveryCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], ReminderDeliveryCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a ReminderDelivery.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ReminderDeliveryAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends ReminderDeliveryAggregateArgs>(args: Subset<T, ReminderDeliveryAggregateArgs>): Prisma.PrismaPromise<GetReminderDeliveryAggregateType<T>>
+
+    /**
+     * Group by ReminderDelivery.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ReminderDeliveryGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends ReminderDeliveryGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: ReminderDeliveryGroupByArgs['orderBy'] }
+        : { orderBy?: ReminderDeliveryGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, ReminderDeliveryGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetReminderDeliveryGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the ReminderDelivery model
+   */
+  readonly fields: ReminderDeliveryFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for ReminderDelivery.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__ReminderDeliveryClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    rule<T extends ReminderRuleDefaultArgs<ExtArgs> = {}>(args?: Subset<T, ReminderRuleDefaultArgs<ExtArgs>>): Prisma__ReminderRuleClient<$Result.GetResult<Prisma.$ReminderRulePayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the ReminderDelivery model
+   */ 
+  interface ReminderDeliveryFieldRefs {
+    readonly id: FieldRef<"ReminderDelivery", 'String'>
+    readonly ruleId: FieldRef<"ReminderDelivery", 'String'>
+    readonly userId: FieldRef<"ReminderDelivery", 'String'>
+    readonly scheduledAt: FieldRef<"ReminderDelivery", 'DateTime'>
+    readonly title: FieldRef<"ReminderDelivery", 'String'>
+    readonly message: FieldRef<"ReminderDelivery", 'String'>
+    readonly remindAt: FieldRef<"ReminderDelivery", 'DateTime'>
+    readonly readAt: FieldRef<"ReminderDelivery", 'DateTime'>
+    readonly sendWechat: FieldRef<"ReminderDelivery", 'Boolean'>
+    readonly wechatStatus: FieldRef<"ReminderDelivery", 'String'>
+    readonly wechatAttempts: FieldRef<"ReminderDelivery", 'Int'>
+    readonly wechatNextAttemptAt: FieldRef<"ReminderDelivery", 'DateTime'>
+    readonly wechatLeaseUntil: FieldRef<"ReminderDelivery", 'DateTime'>
+    readonly wechatLastError: FieldRef<"ReminderDelivery", 'String'>
+    readonly createdAt: FieldRef<"ReminderDelivery", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * ReminderDelivery findUnique
+   */
+  export type ReminderDeliveryFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderDelivery
+     */
+    select?: ReminderDeliverySelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderDeliveryInclude<ExtArgs> | null
+    /**
+     * Filter, which ReminderDelivery to fetch.
+     */
+    where: ReminderDeliveryWhereUniqueInput
+  }
+
+  /**
+   * ReminderDelivery findUniqueOrThrow
+   */
+  export type ReminderDeliveryFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderDelivery
+     */
+    select?: ReminderDeliverySelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderDeliveryInclude<ExtArgs> | null
+    /**
+     * Filter, which ReminderDelivery to fetch.
+     */
+    where: ReminderDeliveryWhereUniqueInput
+  }
+
+  /**
+   * ReminderDelivery findFirst
+   */
+  export type ReminderDeliveryFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderDelivery
+     */
+    select?: ReminderDeliverySelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderDeliveryInclude<ExtArgs> | null
+    /**
+     * Filter, which ReminderDelivery to fetch.
+     */
+    where?: ReminderDeliveryWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ReminderDeliveries to fetch.
+     */
+    orderBy?: ReminderDeliveryOrderByWithRelationInput | ReminderDeliveryOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ReminderDeliveries.
+     */
+    cursor?: ReminderDeliveryWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ReminderDeliveries from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ReminderDeliveries.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ReminderDeliveries.
+     */
+    distinct?: ReminderDeliveryScalarFieldEnum | ReminderDeliveryScalarFieldEnum[]
+  }
+
+  /**
+   * ReminderDelivery findFirstOrThrow
+   */
+  export type ReminderDeliveryFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderDelivery
+     */
+    select?: ReminderDeliverySelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderDeliveryInclude<ExtArgs> | null
+    /**
+     * Filter, which ReminderDelivery to fetch.
+     */
+    where?: ReminderDeliveryWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ReminderDeliveries to fetch.
+     */
+    orderBy?: ReminderDeliveryOrderByWithRelationInput | ReminderDeliveryOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ReminderDeliveries.
+     */
+    cursor?: ReminderDeliveryWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ReminderDeliveries from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ReminderDeliveries.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ReminderDeliveries.
+     */
+    distinct?: ReminderDeliveryScalarFieldEnum | ReminderDeliveryScalarFieldEnum[]
+  }
+
+  /**
+   * ReminderDelivery findMany
+   */
+  export type ReminderDeliveryFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderDelivery
+     */
+    select?: ReminderDeliverySelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderDeliveryInclude<ExtArgs> | null
+    /**
+     * Filter, which ReminderDeliveries to fetch.
+     */
+    where?: ReminderDeliveryWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ReminderDeliveries to fetch.
+     */
+    orderBy?: ReminderDeliveryOrderByWithRelationInput | ReminderDeliveryOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing ReminderDeliveries.
+     */
+    cursor?: ReminderDeliveryWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ReminderDeliveries from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ReminderDeliveries.
+     */
+    skip?: number
+    distinct?: ReminderDeliveryScalarFieldEnum | ReminderDeliveryScalarFieldEnum[]
+  }
+
+  /**
+   * ReminderDelivery create
+   */
+  export type ReminderDeliveryCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderDelivery
+     */
+    select?: ReminderDeliverySelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderDeliveryInclude<ExtArgs> | null
+    /**
+     * The data needed to create a ReminderDelivery.
+     */
+    data: XOR<ReminderDeliveryCreateInput, ReminderDeliveryUncheckedCreateInput>
+  }
+
+  /**
+   * ReminderDelivery createMany
+   */
+  export type ReminderDeliveryCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many ReminderDeliveries.
+     */
+    data: ReminderDeliveryCreateManyInput | ReminderDeliveryCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ReminderDelivery createManyAndReturn
+   */
+  export type ReminderDeliveryCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderDelivery
+     */
+    select?: ReminderDeliverySelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many ReminderDeliveries.
+     */
+    data: ReminderDeliveryCreateManyInput | ReminderDeliveryCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderDeliveryIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * ReminderDelivery update
+   */
+  export type ReminderDeliveryUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderDelivery
+     */
+    select?: ReminderDeliverySelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderDeliveryInclude<ExtArgs> | null
+    /**
+     * The data needed to update a ReminderDelivery.
+     */
+    data: XOR<ReminderDeliveryUpdateInput, ReminderDeliveryUncheckedUpdateInput>
+    /**
+     * Choose, which ReminderDelivery to update.
+     */
+    where: ReminderDeliveryWhereUniqueInput
+  }
+
+  /**
+   * ReminderDelivery updateMany
+   */
+  export type ReminderDeliveryUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update ReminderDeliveries.
+     */
+    data: XOR<ReminderDeliveryUpdateManyMutationInput, ReminderDeliveryUncheckedUpdateManyInput>
+    /**
+     * Filter which ReminderDeliveries to update
+     */
+    where?: ReminderDeliveryWhereInput
+  }
+
+  /**
+   * ReminderDelivery upsert
+   */
+  export type ReminderDeliveryUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderDelivery
+     */
+    select?: ReminderDeliverySelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderDeliveryInclude<ExtArgs> | null
+    /**
+     * The filter to search for the ReminderDelivery to update in case it exists.
+     */
+    where: ReminderDeliveryWhereUniqueInput
+    /**
+     * In case the ReminderDelivery found by the `where` argument doesn't exist, create a new ReminderDelivery with this data.
+     */
+    create: XOR<ReminderDeliveryCreateInput, ReminderDeliveryUncheckedCreateInput>
+    /**
+     * In case the ReminderDelivery was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<ReminderDeliveryUpdateInput, ReminderDeliveryUncheckedUpdateInput>
+  }
+
+  /**
+   * ReminderDelivery delete
+   */
+  export type ReminderDeliveryDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderDelivery
+     */
+    select?: ReminderDeliverySelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderDeliveryInclude<ExtArgs> | null
+    /**
+     * Filter which ReminderDelivery to delete.
+     */
+    where: ReminderDeliveryWhereUniqueInput
+  }
+
+  /**
+   * ReminderDelivery deleteMany
+   */
+  export type ReminderDeliveryDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ReminderDeliveries to delete
+     */
+    where?: ReminderDeliveryWhereInput
+  }
+
+  /**
+   * ReminderDelivery without action
+   */
+  export type ReminderDeliveryDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ReminderDelivery
+     */
+    select?: ReminderDeliverySelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ReminderDeliveryInclude<ExtArgs> | null
   }
 
 
@@ -93982,6 +96328,47 @@ export namespace Prisma {
   export type SkillScheduleScalarFieldEnum = (typeof SkillScheduleScalarFieldEnum)[keyof typeof SkillScheduleScalarFieldEnum]
 
 
+  export const ReminderRuleScalarFieldEnum: {
+    id: 'id',
+    sourceExecutionId: 'sourceExecutionId',
+    userId: 'userId',
+    title: 'title',
+    message: 'message',
+    cronExpression: 'cronExpression',
+    runAt: 'runAt',
+    timezone: 'timezone',
+    sendWechat: 'sendWechat',
+    isActive: 'isActive',
+    deletedAt: 'deletedAt',
+    nextRunAt: 'nextRunAt',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type ReminderRuleScalarFieldEnum = (typeof ReminderRuleScalarFieldEnum)[keyof typeof ReminderRuleScalarFieldEnum]
+
+
+  export const ReminderDeliveryScalarFieldEnum: {
+    id: 'id',
+    ruleId: 'ruleId',
+    userId: 'userId',
+    scheduledAt: 'scheduledAt',
+    title: 'title',
+    message: 'message',
+    remindAt: 'remindAt',
+    readAt: 'readAt',
+    sendWechat: 'sendWechat',
+    wechatStatus: 'wechatStatus',
+    wechatAttempts: 'wechatAttempts',
+    wechatNextAttemptAt: 'wechatNextAttemptAt',
+    wechatLeaseUntil: 'wechatLeaseUntil',
+    wechatLastError: 'wechatLastError',
+    createdAt: 'createdAt'
+  };
+
+  export type ReminderDeliveryScalarFieldEnum = (typeof ReminderDeliveryScalarFieldEnum)[keyof typeof ReminderDeliveryScalarFieldEnum]
+
+
   export const UserSavedSkillScalarFieldEnum: {
     id: 'id',
     ownerUserId: 'ownerUserId',
@@ -98548,6 +100935,214 @@ export namespace Prisma {
     createdBy?: UuidWithAggregatesFilter<"SkillSchedule"> | string
     createdAt?: DateTimeWithAggregatesFilter<"SkillSchedule"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"SkillSchedule"> | Date | string
+  }
+
+  export type ReminderRuleWhereInput = {
+    AND?: ReminderRuleWhereInput | ReminderRuleWhereInput[]
+    OR?: ReminderRuleWhereInput[]
+    NOT?: ReminderRuleWhereInput | ReminderRuleWhereInput[]
+    id?: UuidFilter<"ReminderRule"> | string
+    sourceExecutionId?: UuidNullableFilter<"ReminderRule"> | string | null
+    userId?: UuidFilter<"ReminderRule"> | string
+    title?: StringFilter<"ReminderRule"> | string
+    message?: StringFilter<"ReminderRule"> | string
+    cronExpression?: StringFilter<"ReminderRule"> | string
+    runAt?: DateTimeNullableFilter<"ReminderRule"> | Date | string | null
+    timezone?: StringFilter<"ReminderRule"> | string
+    sendWechat?: BoolFilter<"ReminderRule"> | boolean
+    isActive?: BoolFilter<"ReminderRule"> | boolean
+    deletedAt?: DateTimeNullableFilter<"ReminderRule"> | Date | string | null
+    nextRunAt?: DateTimeFilter<"ReminderRule"> | Date | string
+    createdAt?: DateTimeFilter<"ReminderRule"> | Date | string
+    updatedAt?: DateTimeFilter<"ReminderRule"> | Date | string
+    deliveries?: ReminderDeliveryListRelationFilter
+  }
+
+  export type ReminderRuleOrderByWithRelationInput = {
+    id?: SortOrder
+    sourceExecutionId?: SortOrderInput | SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    message?: SortOrder
+    cronExpression?: SortOrder
+    runAt?: SortOrderInput | SortOrder
+    timezone?: SortOrder
+    sendWechat?: SortOrder
+    isActive?: SortOrder
+    deletedAt?: SortOrderInput | SortOrder
+    nextRunAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    deliveries?: ReminderDeliveryOrderByRelationAggregateInput
+  }
+
+  export type ReminderRuleWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    sourceExecutionId?: string
+    AND?: ReminderRuleWhereInput | ReminderRuleWhereInput[]
+    OR?: ReminderRuleWhereInput[]
+    NOT?: ReminderRuleWhereInput | ReminderRuleWhereInput[]
+    userId?: UuidFilter<"ReminderRule"> | string
+    title?: StringFilter<"ReminderRule"> | string
+    message?: StringFilter<"ReminderRule"> | string
+    cronExpression?: StringFilter<"ReminderRule"> | string
+    runAt?: DateTimeNullableFilter<"ReminderRule"> | Date | string | null
+    timezone?: StringFilter<"ReminderRule"> | string
+    sendWechat?: BoolFilter<"ReminderRule"> | boolean
+    isActive?: BoolFilter<"ReminderRule"> | boolean
+    deletedAt?: DateTimeNullableFilter<"ReminderRule"> | Date | string | null
+    nextRunAt?: DateTimeFilter<"ReminderRule"> | Date | string
+    createdAt?: DateTimeFilter<"ReminderRule"> | Date | string
+    updatedAt?: DateTimeFilter<"ReminderRule"> | Date | string
+    deliveries?: ReminderDeliveryListRelationFilter
+  }, "id" | "sourceExecutionId">
+
+  export type ReminderRuleOrderByWithAggregationInput = {
+    id?: SortOrder
+    sourceExecutionId?: SortOrderInput | SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    message?: SortOrder
+    cronExpression?: SortOrder
+    runAt?: SortOrderInput | SortOrder
+    timezone?: SortOrder
+    sendWechat?: SortOrder
+    isActive?: SortOrder
+    deletedAt?: SortOrderInput | SortOrder
+    nextRunAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: ReminderRuleCountOrderByAggregateInput
+    _max?: ReminderRuleMaxOrderByAggregateInput
+    _min?: ReminderRuleMinOrderByAggregateInput
+  }
+
+  export type ReminderRuleScalarWhereWithAggregatesInput = {
+    AND?: ReminderRuleScalarWhereWithAggregatesInput | ReminderRuleScalarWhereWithAggregatesInput[]
+    OR?: ReminderRuleScalarWhereWithAggregatesInput[]
+    NOT?: ReminderRuleScalarWhereWithAggregatesInput | ReminderRuleScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"ReminderRule"> | string
+    sourceExecutionId?: UuidNullableWithAggregatesFilter<"ReminderRule"> | string | null
+    userId?: UuidWithAggregatesFilter<"ReminderRule"> | string
+    title?: StringWithAggregatesFilter<"ReminderRule"> | string
+    message?: StringWithAggregatesFilter<"ReminderRule"> | string
+    cronExpression?: StringWithAggregatesFilter<"ReminderRule"> | string
+    runAt?: DateTimeNullableWithAggregatesFilter<"ReminderRule"> | Date | string | null
+    timezone?: StringWithAggregatesFilter<"ReminderRule"> | string
+    sendWechat?: BoolWithAggregatesFilter<"ReminderRule"> | boolean
+    isActive?: BoolWithAggregatesFilter<"ReminderRule"> | boolean
+    deletedAt?: DateTimeNullableWithAggregatesFilter<"ReminderRule"> | Date | string | null
+    nextRunAt?: DateTimeWithAggregatesFilter<"ReminderRule"> | Date | string
+    createdAt?: DateTimeWithAggregatesFilter<"ReminderRule"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"ReminderRule"> | Date | string
+  }
+
+  export type ReminderDeliveryWhereInput = {
+    AND?: ReminderDeliveryWhereInput | ReminderDeliveryWhereInput[]
+    OR?: ReminderDeliveryWhereInput[]
+    NOT?: ReminderDeliveryWhereInput | ReminderDeliveryWhereInput[]
+    id?: UuidFilter<"ReminderDelivery"> | string
+    ruleId?: UuidFilter<"ReminderDelivery"> | string
+    userId?: UuidFilter<"ReminderDelivery"> | string
+    scheduledAt?: DateTimeFilter<"ReminderDelivery"> | Date | string
+    title?: StringFilter<"ReminderDelivery"> | string
+    message?: StringFilter<"ReminderDelivery"> | string
+    remindAt?: DateTimeFilter<"ReminderDelivery"> | Date | string
+    readAt?: DateTimeNullableFilter<"ReminderDelivery"> | Date | string | null
+    sendWechat?: BoolFilter<"ReminderDelivery"> | boolean
+    wechatStatus?: StringFilter<"ReminderDelivery"> | string
+    wechatAttempts?: IntFilter<"ReminderDelivery"> | number
+    wechatNextAttemptAt?: DateTimeNullableFilter<"ReminderDelivery"> | Date | string | null
+    wechatLeaseUntil?: DateTimeNullableFilter<"ReminderDelivery"> | Date | string | null
+    wechatLastError?: StringNullableFilter<"ReminderDelivery"> | string | null
+    createdAt?: DateTimeFilter<"ReminderDelivery"> | Date | string
+    rule?: XOR<ReminderRuleRelationFilter, ReminderRuleWhereInput>
+  }
+
+  export type ReminderDeliveryOrderByWithRelationInput = {
+    id?: SortOrder
+    ruleId?: SortOrder
+    userId?: SortOrder
+    scheduledAt?: SortOrder
+    title?: SortOrder
+    message?: SortOrder
+    remindAt?: SortOrder
+    readAt?: SortOrderInput | SortOrder
+    sendWechat?: SortOrder
+    wechatStatus?: SortOrder
+    wechatAttempts?: SortOrder
+    wechatNextAttemptAt?: SortOrderInput | SortOrder
+    wechatLeaseUntil?: SortOrderInput | SortOrder
+    wechatLastError?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    rule?: ReminderRuleOrderByWithRelationInput
+  }
+
+  export type ReminderDeliveryWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    ruleId_scheduledAt?: ReminderDeliveryRuleIdScheduledAtCompoundUniqueInput
+    AND?: ReminderDeliveryWhereInput | ReminderDeliveryWhereInput[]
+    OR?: ReminderDeliveryWhereInput[]
+    NOT?: ReminderDeliveryWhereInput | ReminderDeliveryWhereInput[]
+    ruleId?: UuidFilter<"ReminderDelivery"> | string
+    userId?: UuidFilter<"ReminderDelivery"> | string
+    scheduledAt?: DateTimeFilter<"ReminderDelivery"> | Date | string
+    title?: StringFilter<"ReminderDelivery"> | string
+    message?: StringFilter<"ReminderDelivery"> | string
+    remindAt?: DateTimeFilter<"ReminderDelivery"> | Date | string
+    readAt?: DateTimeNullableFilter<"ReminderDelivery"> | Date | string | null
+    sendWechat?: BoolFilter<"ReminderDelivery"> | boolean
+    wechatStatus?: StringFilter<"ReminderDelivery"> | string
+    wechatAttempts?: IntFilter<"ReminderDelivery"> | number
+    wechatNextAttemptAt?: DateTimeNullableFilter<"ReminderDelivery"> | Date | string | null
+    wechatLeaseUntil?: DateTimeNullableFilter<"ReminderDelivery"> | Date | string | null
+    wechatLastError?: StringNullableFilter<"ReminderDelivery"> | string | null
+    createdAt?: DateTimeFilter<"ReminderDelivery"> | Date | string
+    rule?: XOR<ReminderRuleRelationFilter, ReminderRuleWhereInput>
+  }, "id" | "ruleId_scheduledAt">
+
+  export type ReminderDeliveryOrderByWithAggregationInput = {
+    id?: SortOrder
+    ruleId?: SortOrder
+    userId?: SortOrder
+    scheduledAt?: SortOrder
+    title?: SortOrder
+    message?: SortOrder
+    remindAt?: SortOrder
+    readAt?: SortOrderInput | SortOrder
+    sendWechat?: SortOrder
+    wechatStatus?: SortOrder
+    wechatAttempts?: SortOrder
+    wechatNextAttemptAt?: SortOrderInput | SortOrder
+    wechatLeaseUntil?: SortOrderInput | SortOrder
+    wechatLastError?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    _count?: ReminderDeliveryCountOrderByAggregateInput
+    _avg?: ReminderDeliveryAvgOrderByAggregateInput
+    _max?: ReminderDeliveryMaxOrderByAggregateInput
+    _min?: ReminderDeliveryMinOrderByAggregateInput
+    _sum?: ReminderDeliverySumOrderByAggregateInput
+  }
+
+  export type ReminderDeliveryScalarWhereWithAggregatesInput = {
+    AND?: ReminderDeliveryScalarWhereWithAggregatesInput | ReminderDeliveryScalarWhereWithAggregatesInput[]
+    OR?: ReminderDeliveryScalarWhereWithAggregatesInput[]
+    NOT?: ReminderDeliveryScalarWhereWithAggregatesInput | ReminderDeliveryScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"ReminderDelivery"> | string
+    ruleId?: UuidWithAggregatesFilter<"ReminderDelivery"> | string
+    userId?: UuidWithAggregatesFilter<"ReminderDelivery"> | string
+    scheduledAt?: DateTimeWithAggregatesFilter<"ReminderDelivery"> | Date | string
+    title?: StringWithAggregatesFilter<"ReminderDelivery"> | string
+    message?: StringWithAggregatesFilter<"ReminderDelivery"> | string
+    remindAt?: DateTimeWithAggregatesFilter<"ReminderDelivery"> | Date | string
+    readAt?: DateTimeNullableWithAggregatesFilter<"ReminderDelivery"> | Date | string | null
+    sendWechat?: BoolWithAggregatesFilter<"ReminderDelivery"> | boolean
+    wechatStatus?: StringWithAggregatesFilter<"ReminderDelivery"> | string
+    wechatAttempts?: IntWithAggregatesFilter<"ReminderDelivery"> | number
+    wechatNextAttemptAt?: DateTimeNullableWithAggregatesFilter<"ReminderDelivery"> | Date | string | null
+    wechatLeaseUntil?: DateTimeNullableWithAggregatesFilter<"ReminderDelivery"> | Date | string | null
+    wechatLastError?: StringNullableWithAggregatesFilter<"ReminderDelivery"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"ReminderDelivery"> | Date | string
   }
 
   export type UserSavedSkillWhereInput = {
@@ -106646,6 +109241,254 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type ReminderRuleCreateInput = {
+    id?: string
+    sourceExecutionId?: string | null
+    userId: string
+    title: string
+    message: string
+    cronExpression: string
+    runAt?: Date | string | null
+    timezone?: string
+    sendWechat?: boolean
+    isActive?: boolean
+    deletedAt?: Date | string | null
+    nextRunAt: Date | string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    deliveries?: ReminderDeliveryCreateNestedManyWithoutRuleInput
+  }
+
+  export type ReminderRuleUncheckedCreateInput = {
+    id?: string
+    sourceExecutionId?: string | null
+    userId: string
+    title: string
+    message: string
+    cronExpression: string
+    runAt?: Date | string | null
+    timezone?: string
+    sendWechat?: boolean
+    isActive?: boolean
+    deletedAt?: Date | string | null
+    nextRunAt: Date | string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    deliveries?: ReminderDeliveryUncheckedCreateNestedManyWithoutRuleInput
+  }
+
+  export type ReminderRuleUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceExecutionId?: NullableStringFieldUpdateOperationsInput | string | null
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    cronExpression?: StringFieldUpdateOperationsInput | string
+    runAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    timezone?: StringFieldUpdateOperationsInput | string
+    sendWechat?: BoolFieldUpdateOperationsInput | boolean
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    nextRunAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    deliveries?: ReminderDeliveryUpdateManyWithoutRuleNestedInput
+  }
+
+  export type ReminderRuleUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceExecutionId?: NullableStringFieldUpdateOperationsInput | string | null
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    cronExpression?: StringFieldUpdateOperationsInput | string
+    runAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    timezone?: StringFieldUpdateOperationsInput | string
+    sendWechat?: BoolFieldUpdateOperationsInput | boolean
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    nextRunAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    deliveries?: ReminderDeliveryUncheckedUpdateManyWithoutRuleNestedInput
+  }
+
+  export type ReminderRuleCreateManyInput = {
+    id?: string
+    sourceExecutionId?: string | null
+    userId: string
+    title: string
+    message: string
+    cronExpression: string
+    runAt?: Date | string | null
+    timezone?: string
+    sendWechat?: boolean
+    isActive?: boolean
+    deletedAt?: Date | string | null
+    nextRunAt: Date | string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ReminderRuleUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceExecutionId?: NullableStringFieldUpdateOperationsInput | string | null
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    cronExpression?: StringFieldUpdateOperationsInput | string
+    runAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    timezone?: StringFieldUpdateOperationsInput | string
+    sendWechat?: BoolFieldUpdateOperationsInput | boolean
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    nextRunAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ReminderRuleUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceExecutionId?: NullableStringFieldUpdateOperationsInput | string | null
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    cronExpression?: StringFieldUpdateOperationsInput | string
+    runAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    timezone?: StringFieldUpdateOperationsInput | string
+    sendWechat?: BoolFieldUpdateOperationsInput | boolean
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    nextRunAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ReminderDeliveryCreateInput = {
+    id?: string
+    userId: string
+    scheduledAt: Date | string
+    title: string
+    message: string
+    remindAt: Date | string
+    readAt?: Date | string | null
+    sendWechat?: boolean
+    wechatStatus?: string
+    wechatAttempts?: number
+    wechatNextAttemptAt?: Date | string | null
+    wechatLeaseUntil?: Date | string | null
+    wechatLastError?: string | null
+    createdAt?: Date | string
+    rule: ReminderRuleCreateNestedOneWithoutDeliveriesInput
+  }
+
+  export type ReminderDeliveryUncheckedCreateInput = {
+    id?: string
+    ruleId: string
+    userId: string
+    scheduledAt: Date | string
+    title: string
+    message: string
+    remindAt: Date | string
+    readAt?: Date | string | null
+    sendWechat?: boolean
+    wechatStatus?: string
+    wechatAttempts?: number
+    wechatNextAttemptAt?: Date | string | null
+    wechatLeaseUntil?: Date | string | null
+    wechatLastError?: string | null
+    createdAt?: Date | string
+  }
+
+  export type ReminderDeliveryUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    scheduledAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    title?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    remindAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    readAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sendWechat?: BoolFieldUpdateOperationsInput | boolean
+    wechatStatus?: StringFieldUpdateOperationsInput | string
+    wechatAttempts?: IntFieldUpdateOperationsInput | number
+    wechatNextAttemptAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    wechatLeaseUntil?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    wechatLastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    rule?: ReminderRuleUpdateOneRequiredWithoutDeliveriesNestedInput
+  }
+
+  export type ReminderDeliveryUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ruleId?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    scheduledAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    title?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    remindAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    readAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sendWechat?: BoolFieldUpdateOperationsInput | boolean
+    wechatStatus?: StringFieldUpdateOperationsInput | string
+    wechatAttempts?: IntFieldUpdateOperationsInput | number
+    wechatNextAttemptAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    wechatLeaseUntil?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    wechatLastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ReminderDeliveryCreateManyInput = {
+    id?: string
+    ruleId: string
+    userId: string
+    scheduledAt: Date | string
+    title: string
+    message: string
+    remindAt: Date | string
+    readAt?: Date | string | null
+    sendWechat?: boolean
+    wechatStatus?: string
+    wechatAttempts?: number
+    wechatNextAttemptAt?: Date | string | null
+    wechatLeaseUntil?: Date | string | null
+    wechatLastError?: string | null
+    createdAt?: Date | string
+  }
+
+  export type ReminderDeliveryUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    scheduledAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    title?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    remindAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    readAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sendWechat?: BoolFieldUpdateOperationsInput | boolean
+    wechatStatus?: StringFieldUpdateOperationsInput | string
+    wechatAttempts?: IntFieldUpdateOperationsInput | number
+    wechatNextAttemptAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    wechatLeaseUntil?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    wechatLastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ReminderDeliveryUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ruleId?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    scheduledAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    title?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    remindAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    readAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sendWechat?: BoolFieldUpdateOperationsInput | boolean
+    wechatStatus?: StringFieldUpdateOperationsInput | string
+    wechatAttempts?: IntFieldUpdateOperationsInput | number
+    wechatNextAttemptAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    wechatLeaseUntil?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    wechatLastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type UserSavedSkillCreateInput = {
     id?: string
     ownerUserId: string
@@ -114008,6 +116851,139 @@ export namespace Prisma {
     updatedAt?: SortOrder
   }
 
+  export type ReminderDeliveryListRelationFilter = {
+    every?: ReminderDeliveryWhereInput
+    some?: ReminderDeliveryWhereInput
+    none?: ReminderDeliveryWhereInput
+  }
+
+  export type ReminderDeliveryOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type ReminderRuleCountOrderByAggregateInput = {
+    id?: SortOrder
+    sourceExecutionId?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    message?: SortOrder
+    cronExpression?: SortOrder
+    runAt?: SortOrder
+    timezone?: SortOrder
+    sendWechat?: SortOrder
+    isActive?: SortOrder
+    deletedAt?: SortOrder
+    nextRunAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ReminderRuleMaxOrderByAggregateInput = {
+    id?: SortOrder
+    sourceExecutionId?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    message?: SortOrder
+    cronExpression?: SortOrder
+    runAt?: SortOrder
+    timezone?: SortOrder
+    sendWechat?: SortOrder
+    isActive?: SortOrder
+    deletedAt?: SortOrder
+    nextRunAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ReminderRuleMinOrderByAggregateInput = {
+    id?: SortOrder
+    sourceExecutionId?: SortOrder
+    userId?: SortOrder
+    title?: SortOrder
+    message?: SortOrder
+    cronExpression?: SortOrder
+    runAt?: SortOrder
+    timezone?: SortOrder
+    sendWechat?: SortOrder
+    isActive?: SortOrder
+    deletedAt?: SortOrder
+    nextRunAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ReminderRuleRelationFilter = {
+    is?: ReminderRuleWhereInput
+    isNot?: ReminderRuleWhereInput
+  }
+
+  export type ReminderDeliveryRuleIdScheduledAtCompoundUniqueInput = {
+    ruleId: string
+    scheduledAt: Date | string
+  }
+
+  export type ReminderDeliveryCountOrderByAggregateInput = {
+    id?: SortOrder
+    ruleId?: SortOrder
+    userId?: SortOrder
+    scheduledAt?: SortOrder
+    title?: SortOrder
+    message?: SortOrder
+    remindAt?: SortOrder
+    readAt?: SortOrder
+    sendWechat?: SortOrder
+    wechatStatus?: SortOrder
+    wechatAttempts?: SortOrder
+    wechatNextAttemptAt?: SortOrder
+    wechatLeaseUntil?: SortOrder
+    wechatLastError?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type ReminderDeliveryAvgOrderByAggregateInput = {
+    wechatAttempts?: SortOrder
+  }
+
+  export type ReminderDeliveryMaxOrderByAggregateInput = {
+    id?: SortOrder
+    ruleId?: SortOrder
+    userId?: SortOrder
+    scheduledAt?: SortOrder
+    title?: SortOrder
+    message?: SortOrder
+    remindAt?: SortOrder
+    readAt?: SortOrder
+    sendWechat?: SortOrder
+    wechatStatus?: SortOrder
+    wechatAttempts?: SortOrder
+    wechatNextAttemptAt?: SortOrder
+    wechatLeaseUntil?: SortOrder
+    wechatLastError?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type ReminderDeliveryMinOrderByAggregateInput = {
+    id?: SortOrder
+    ruleId?: SortOrder
+    userId?: SortOrder
+    scheduledAt?: SortOrder
+    title?: SortOrder
+    message?: SortOrder
+    remindAt?: SortOrder
+    readAt?: SortOrder
+    sendWechat?: SortOrder
+    wechatStatus?: SortOrder
+    wechatAttempts?: SortOrder
+    wechatNextAttemptAt?: SortOrder
+    wechatLeaseUntil?: SortOrder
+    wechatLastError?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type ReminderDeliverySumOrderByAggregateInput = {
+    wechatAttempts?: SortOrder
+  }
+
   export type UserSavedSkillVersionListRelationFilter = {
     every?: UserSavedSkillVersionWhereInput
     some?: UserSavedSkillVersionWhereInput
@@ -118935,6 +121911,62 @@ export namespace Prisma {
     decrement?: number
     multiply?: number
     divide?: number
+  }
+
+  export type ReminderDeliveryCreateNestedManyWithoutRuleInput = {
+    create?: XOR<ReminderDeliveryCreateWithoutRuleInput, ReminderDeliveryUncheckedCreateWithoutRuleInput> | ReminderDeliveryCreateWithoutRuleInput[] | ReminderDeliveryUncheckedCreateWithoutRuleInput[]
+    connectOrCreate?: ReminderDeliveryCreateOrConnectWithoutRuleInput | ReminderDeliveryCreateOrConnectWithoutRuleInput[]
+    createMany?: ReminderDeliveryCreateManyRuleInputEnvelope
+    connect?: ReminderDeliveryWhereUniqueInput | ReminderDeliveryWhereUniqueInput[]
+  }
+
+  export type ReminderDeliveryUncheckedCreateNestedManyWithoutRuleInput = {
+    create?: XOR<ReminderDeliveryCreateWithoutRuleInput, ReminderDeliveryUncheckedCreateWithoutRuleInput> | ReminderDeliveryCreateWithoutRuleInput[] | ReminderDeliveryUncheckedCreateWithoutRuleInput[]
+    connectOrCreate?: ReminderDeliveryCreateOrConnectWithoutRuleInput | ReminderDeliveryCreateOrConnectWithoutRuleInput[]
+    createMany?: ReminderDeliveryCreateManyRuleInputEnvelope
+    connect?: ReminderDeliveryWhereUniqueInput | ReminderDeliveryWhereUniqueInput[]
+  }
+
+  export type ReminderDeliveryUpdateManyWithoutRuleNestedInput = {
+    create?: XOR<ReminderDeliveryCreateWithoutRuleInput, ReminderDeliveryUncheckedCreateWithoutRuleInput> | ReminderDeliveryCreateWithoutRuleInput[] | ReminderDeliveryUncheckedCreateWithoutRuleInput[]
+    connectOrCreate?: ReminderDeliveryCreateOrConnectWithoutRuleInput | ReminderDeliveryCreateOrConnectWithoutRuleInput[]
+    upsert?: ReminderDeliveryUpsertWithWhereUniqueWithoutRuleInput | ReminderDeliveryUpsertWithWhereUniqueWithoutRuleInput[]
+    createMany?: ReminderDeliveryCreateManyRuleInputEnvelope
+    set?: ReminderDeliveryWhereUniqueInput | ReminderDeliveryWhereUniqueInput[]
+    disconnect?: ReminderDeliveryWhereUniqueInput | ReminderDeliveryWhereUniqueInput[]
+    delete?: ReminderDeliveryWhereUniqueInput | ReminderDeliveryWhereUniqueInput[]
+    connect?: ReminderDeliveryWhereUniqueInput | ReminderDeliveryWhereUniqueInput[]
+    update?: ReminderDeliveryUpdateWithWhereUniqueWithoutRuleInput | ReminderDeliveryUpdateWithWhereUniqueWithoutRuleInput[]
+    updateMany?: ReminderDeliveryUpdateManyWithWhereWithoutRuleInput | ReminderDeliveryUpdateManyWithWhereWithoutRuleInput[]
+    deleteMany?: ReminderDeliveryScalarWhereInput | ReminderDeliveryScalarWhereInput[]
+  }
+
+  export type ReminderDeliveryUncheckedUpdateManyWithoutRuleNestedInput = {
+    create?: XOR<ReminderDeliveryCreateWithoutRuleInput, ReminderDeliveryUncheckedCreateWithoutRuleInput> | ReminderDeliveryCreateWithoutRuleInput[] | ReminderDeliveryUncheckedCreateWithoutRuleInput[]
+    connectOrCreate?: ReminderDeliveryCreateOrConnectWithoutRuleInput | ReminderDeliveryCreateOrConnectWithoutRuleInput[]
+    upsert?: ReminderDeliveryUpsertWithWhereUniqueWithoutRuleInput | ReminderDeliveryUpsertWithWhereUniqueWithoutRuleInput[]
+    createMany?: ReminderDeliveryCreateManyRuleInputEnvelope
+    set?: ReminderDeliveryWhereUniqueInput | ReminderDeliveryWhereUniqueInput[]
+    disconnect?: ReminderDeliveryWhereUniqueInput | ReminderDeliveryWhereUniqueInput[]
+    delete?: ReminderDeliveryWhereUniqueInput | ReminderDeliveryWhereUniqueInput[]
+    connect?: ReminderDeliveryWhereUniqueInput | ReminderDeliveryWhereUniqueInput[]
+    update?: ReminderDeliveryUpdateWithWhereUniqueWithoutRuleInput | ReminderDeliveryUpdateWithWhereUniqueWithoutRuleInput[]
+    updateMany?: ReminderDeliveryUpdateManyWithWhereWithoutRuleInput | ReminderDeliveryUpdateManyWithWhereWithoutRuleInput[]
+    deleteMany?: ReminderDeliveryScalarWhereInput | ReminderDeliveryScalarWhereInput[]
+  }
+
+  export type ReminderRuleCreateNestedOneWithoutDeliveriesInput = {
+    create?: XOR<ReminderRuleCreateWithoutDeliveriesInput, ReminderRuleUncheckedCreateWithoutDeliveriesInput>
+    connectOrCreate?: ReminderRuleCreateOrConnectWithoutDeliveriesInput
+    connect?: ReminderRuleWhereUniqueInput
+  }
+
+  export type ReminderRuleUpdateOneRequiredWithoutDeliveriesNestedInput = {
+    create?: XOR<ReminderRuleCreateWithoutDeliveriesInput, ReminderRuleUncheckedCreateWithoutDeliveriesInput>
+    connectOrCreate?: ReminderRuleCreateOrConnectWithoutDeliveriesInput
+    upsert?: ReminderRuleUpsertWithoutDeliveriesInput
+    connect?: ReminderRuleWhereUniqueInput
+    update?: XOR<XOR<ReminderRuleUpdateToOneWithWhereWithoutDeliveriesInput, ReminderRuleUpdateWithoutDeliveriesInput>, ReminderRuleUncheckedUpdateWithoutDeliveriesInput>
   }
 
   export type UserSavedSkillVersionCreateNestedManyWithoutSkillInput = {
@@ -126855,6 +129887,171 @@ export namespace Prisma {
     takeovers?: ExecutionTakeoverUncheckedUpdateManyWithoutExecutionNestedInput
   }
 
+  export type ReminderDeliveryCreateWithoutRuleInput = {
+    id?: string
+    userId: string
+    scheduledAt: Date | string
+    title: string
+    message: string
+    remindAt: Date | string
+    readAt?: Date | string | null
+    sendWechat?: boolean
+    wechatStatus?: string
+    wechatAttempts?: number
+    wechatNextAttemptAt?: Date | string | null
+    wechatLeaseUntil?: Date | string | null
+    wechatLastError?: string | null
+    createdAt?: Date | string
+  }
+
+  export type ReminderDeliveryUncheckedCreateWithoutRuleInput = {
+    id?: string
+    userId: string
+    scheduledAt: Date | string
+    title: string
+    message: string
+    remindAt: Date | string
+    readAt?: Date | string | null
+    sendWechat?: boolean
+    wechatStatus?: string
+    wechatAttempts?: number
+    wechatNextAttemptAt?: Date | string | null
+    wechatLeaseUntil?: Date | string | null
+    wechatLastError?: string | null
+    createdAt?: Date | string
+  }
+
+  export type ReminderDeliveryCreateOrConnectWithoutRuleInput = {
+    where: ReminderDeliveryWhereUniqueInput
+    create: XOR<ReminderDeliveryCreateWithoutRuleInput, ReminderDeliveryUncheckedCreateWithoutRuleInput>
+  }
+
+  export type ReminderDeliveryCreateManyRuleInputEnvelope = {
+    data: ReminderDeliveryCreateManyRuleInput | ReminderDeliveryCreateManyRuleInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type ReminderDeliveryUpsertWithWhereUniqueWithoutRuleInput = {
+    where: ReminderDeliveryWhereUniqueInput
+    update: XOR<ReminderDeliveryUpdateWithoutRuleInput, ReminderDeliveryUncheckedUpdateWithoutRuleInput>
+    create: XOR<ReminderDeliveryCreateWithoutRuleInput, ReminderDeliveryUncheckedCreateWithoutRuleInput>
+  }
+
+  export type ReminderDeliveryUpdateWithWhereUniqueWithoutRuleInput = {
+    where: ReminderDeliveryWhereUniqueInput
+    data: XOR<ReminderDeliveryUpdateWithoutRuleInput, ReminderDeliveryUncheckedUpdateWithoutRuleInput>
+  }
+
+  export type ReminderDeliveryUpdateManyWithWhereWithoutRuleInput = {
+    where: ReminderDeliveryScalarWhereInput
+    data: XOR<ReminderDeliveryUpdateManyMutationInput, ReminderDeliveryUncheckedUpdateManyWithoutRuleInput>
+  }
+
+  export type ReminderDeliveryScalarWhereInput = {
+    AND?: ReminderDeliveryScalarWhereInput | ReminderDeliveryScalarWhereInput[]
+    OR?: ReminderDeliveryScalarWhereInput[]
+    NOT?: ReminderDeliveryScalarWhereInput | ReminderDeliveryScalarWhereInput[]
+    id?: UuidFilter<"ReminderDelivery"> | string
+    ruleId?: UuidFilter<"ReminderDelivery"> | string
+    userId?: UuidFilter<"ReminderDelivery"> | string
+    scheduledAt?: DateTimeFilter<"ReminderDelivery"> | Date | string
+    title?: StringFilter<"ReminderDelivery"> | string
+    message?: StringFilter<"ReminderDelivery"> | string
+    remindAt?: DateTimeFilter<"ReminderDelivery"> | Date | string
+    readAt?: DateTimeNullableFilter<"ReminderDelivery"> | Date | string | null
+    sendWechat?: BoolFilter<"ReminderDelivery"> | boolean
+    wechatStatus?: StringFilter<"ReminderDelivery"> | string
+    wechatAttempts?: IntFilter<"ReminderDelivery"> | number
+    wechatNextAttemptAt?: DateTimeNullableFilter<"ReminderDelivery"> | Date | string | null
+    wechatLeaseUntil?: DateTimeNullableFilter<"ReminderDelivery"> | Date | string | null
+    wechatLastError?: StringNullableFilter<"ReminderDelivery"> | string | null
+    createdAt?: DateTimeFilter<"ReminderDelivery"> | Date | string
+  }
+
+  export type ReminderRuleCreateWithoutDeliveriesInput = {
+    id?: string
+    sourceExecutionId?: string | null
+    userId: string
+    title: string
+    message: string
+    cronExpression: string
+    runAt?: Date | string | null
+    timezone?: string
+    sendWechat?: boolean
+    isActive?: boolean
+    deletedAt?: Date | string | null
+    nextRunAt: Date | string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ReminderRuleUncheckedCreateWithoutDeliveriesInput = {
+    id?: string
+    sourceExecutionId?: string | null
+    userId: string
+    title: string
+    message: string
+    cronExpression: string
+    runAt?: Date | string | null
+    timezone?: string
+    sendWechat?: boolean
+    isActive?: boolean
+    deletedAt?: Date | string | null
+    nextRunAt: Date | string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ReminderRuleCreateOrConnectWithoutDeliveriesInput = {
+    where: ReminderRuleWhereUniqueInput
+    create: XOR<ReminderRuleCreateWithoutDeliveriesInput, ReminderRuleUncheckedCreateWithoutDeliveriesInput>
+  }
+
+  export type ReminderRuleUpsertWithoutDeliveriesInput = {
+    update: XOR<ReminderRuleUpdateWithoutDeliveriesInput, ReminderRuleUncheckedUpdateWithoutDeliveriesInput>
+    create: XOR<ReminderRuleCreateWithoutDeliveriesInput, ReminderRuleUncheckedCreateWithoutDeliveriesInput>
+    where?: ReminderRuleWhereInput
+  }
+
+  export type ReminderRuleUpdateToOneWithWhereWithoutDeliveriesInput = {
+    where?: ReminderRuleWhereInput
+    data: XOR<ReminderRuleUpdateWithoutDeliveriesInput, ReminderRuleUncheckedUpdateWithoutDeliveriesInput>
+  }
+
+  export type ReminderRuleUpdateWithoutDeliveriesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceExecutionId?: NullableStringFieldUpdateOperationsInput | string | null
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    cronExpression?: StringFieldUpdateOperationsInput | string
+    runAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    timezone?: StringFieldUpdateOperationsInput | string
+    sendWechat?: BoolFieldUpdateOperationsInput | boolean
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    nextRunAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ReminderRuleUncheckedUpdateWithoutDeliveriesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceExecutionId?: NullableStringFieldUpdateOperationsInput | string | null
+    userId?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    cronExpression?: StringFieldUpdateOperationsInput | string
+    runAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    timezone?: StringFieldUpdateOperationsInput | string
+    sendWechat?: BoolFieldUpdateOperationsInput | boolean
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    nextRunAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type UserSavedSkillVersionCreateWithoutSkillInput = {
     id?: string
     ownerUserId: string
@@ -131177,6 +134374,74 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type ReminderDeliveryCreateManyRuleInput = {
+    id?: string
+    userId: string
+    scheduledAt: Date | string
+    title: string
+    message: string
+    remindAt: Date | string
+    readAt?: Date | string | null
+    sendWechat?: boolean
+    wechatStatus?: string
+    wechatAttempts?: number
+    wechatNextAttemptAt?: Date | string | null
+    wechatLeaseUntil?: Date | string | null
+    wechatLastError?: string | null
+    createdAt?: Date | string
+  }
+
+  export type ReminderDeliveryUpdateWithoutRuleInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    scheduledAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    title?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    remindAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    readAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sendWechat?: BoolFieldUpdateOperationsInput | boolean
+    wechatStatus?: StringFieldUpdateOperationsInput | string
+    wechatAttempts?: IntFieldUpdateOperationsInput | number
+    wechatNextAttemptAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    wechatLeaseUntil?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    wechatLastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ReminderDeliveryUncheckedUpdateWithoutRuleInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    scheduledAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    title?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    remindAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    readAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sendWechat?: BoolFieldUpdateOperationsInput | boolean
+    wechatStatus?: StringFieldUpdateOperationsInput | string
+    wechatAttempts?: IntFieldUpdateOperationsInput | number
+    wechatNextAttemptAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    wechatLeaseUntil?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    wechatLastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ReminderDeliveryUncheckedUpdateManyWithoutRuleInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    scheduledAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    title?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    remindAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    readAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sendWechat?: BoolFieldUpdateOperationsInput | boolean
+    wechatStatus?: StringFieldUpdateOperationsInput | string
+    wechatAttempts?: IntFieldUpdateOperationsInput | number
+    wechatNextAttemptAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    wechatLeaseUntil?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    wechatLastError?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type UserSavedSkillVersionCreateManySkillInput = {
     id?: string
     ownerUserId: string
@@ -131953,6 +135218,10 @@ export namespace Prisma {
      */
     export type ExecutionPhaseCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ExecutionPhaseCountOutputTypeDefaultArgs<ExtArgs>
     /**
+     * @deprecated Use ReminderRuleCountOutputTypeDefaultArgs instead
+     */
+    export type ReminderRuleCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ReminderRuleCountOutputTypeDefaultArgs<ExtArgs>
+    /**
      * @deprecated Use UserSavedSkillCountOutputTypeDefaultArgs instead
      */
     export type UserSavedSkillCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = UserSavedSkillCountOutputTypeDefaultArgs<ExtArgs>
@@ -132124,6 +135393,14 @@ export namespace Prisma {
      * @deprecated Use SkillScheduleDefaultArgs instead
      */
     export type SkillScheduleArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = SkillScheduleDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use ReminderRuleDefaultArgs instead
+     */
+    export type ReminderRuleArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ReminderRuleDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use ReminderDeliveryDefaultArgs instead
+     */
+    export type ReminderDeliveryArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ReminderDeliveryDefaultArgs<ExtArgs>
     /**
      * @deprecated Use UserSavedSkillDefaultArgs instead
      */

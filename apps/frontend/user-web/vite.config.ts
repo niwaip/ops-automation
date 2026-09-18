@@ -153,6 +153,12 @@ export default defineConfig({
         ),
         changeOrigin: true,
       },
+      '/api/reminders': {
+        target: getProxyTarget(
+          'ops-control-plane', 3003, ['CONTROL_PLANE_HOST'], ['CONTROL_PLANE_PORT']
+        ),
+        changeOrigin: true,
+      },
       '/api/saved-skills': {
         target: getProxyTarget(
           'ops-control-plane',

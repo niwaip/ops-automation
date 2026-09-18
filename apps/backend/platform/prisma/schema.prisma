@@ -915,6 +915,52 @@ model SkillSchedule {
   @@map("skill_schedules")
 }
 
+model ReminderRule {
+  id             String   @id @default(uuid()) @db.Uuid
+  sourceExecutionId String? @unique @map("source_execution_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  title          String   @db.VarChar(200)
+  message        String   @db.VarChar(4096)
+  cronExpression String   @map("cron_expression") @db.VarChar(500)
+  runAt          DateTime? @map("run_at") @db.Timestamptz
+  timezone       String   @default("Asia/Shanghai") @db.VarChar(50)
+  sendWechat     Boolean  @default(false) @map("send_wechat")
+  isActive       Boolean  @default(true) @map("is_active")
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+  nextRunAt      DateTime @map("next_run_at") @db.Timestamptz
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  deliveries     ReminderDelivery[]
+
+  @@index([isActive, nextRunAt])
+  @@index([userId])
+  @@map("reminder_rules")
+}
+
+model ReminderDelivery {
+  id                  String       @id @default(uuid()) @db.Uuid
+  ruleId              String       @map("rule_id") @db.Uuid
+  userId              String       @map("user_id") @db.Uuid
+  scheduledAt         DateTime     @map("scheduled_at") @db.Timestamptz
+  title               String       @db.VarChar(200)
+  message             String       @db.VarChar(4096)
+  remindAt            DateTime     @map("remind_at") @db.Timestamptz
+  readAt              DateTime?    @map("read_at") @db.Timestamptz
+  sendWechat          Boolean      @default(false) @map("send_wechat")
+  wechatStatus        String       @default("skipped") @map("wechat_status") @db.VarChar(32)
+  wechatAttempts      Int          @default(0) @map("wechat_attempts")
+  wechatNextAttemptAt DateTime?    @map("wechat_next_attempt_at") @db.Timestamptz
+  wechatLeaseUntil    DateTime?    @map("wechat_lease_until") @db.Timestamptz
+  wechatLastError     String?      @map("wechat_last_error") @db.VarChar(1000)
+  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  rule                ReminderRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@unique([ruleId, scheduledAt])
+  @@index([userId, remindAt])
+  @@index([wechatStatus, wechatNextAttemptAt])
+  @@map("reminder_deliveries")
+}
+
 // User-private deterministic workflow saved from a successful execution.
 model UserSavedSkill {
   id              String   @id @default(uuid()) @db.Uuid

@@ -1,5 +1,5 @@
 import { ReloadOutlined } from '@ant-design/icons';
-import { Button, Card, Empty, List, Space, Tag, Typography } from 'antd';
+import { Button, Card, Dropdown, Empty, List, Space, Tag, Typography } from 'antd';
 import { useMemo } from 'react';
 import { useIsFetching, useQueryClient } from 'react-query';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +16,7 @@ import { useStore } from 'zustand';
 import { preferencesStore } from '../../../adapters/preferences/preferencesStore';
 import { useNotificationStore } from '../../../adapters/notifications/notificationStore';
 import { resolveNotificationActionPath } from '@/shared/utils/notificationNavigation';
+import { reminderApi } from '@/api';
 
 export function NotificationsPage() {
   const navigate = useNavigate();
@@ -78,10 +79,23 @@ export function NotificationsPage() {
               ? (item.metadata?.resultTitle as string) || content.description
               : content.description;
 
+            const refresh = () => void queryClient.invalidateQueries(['user-web-notifications']);
+
             return (
               <List.Item
                 key={item.id}
                 actions={[
+                  ...(item.source === 'reminder' ? [
+                    <Button key="read" type="link" disabled={!item.unread}
+                      onClick={() => void reminderApi.markRead(item.sourceId).then(refresh)}>标为已读</Button>,
+                    <Dropdown key="snooze" menu={{ items: [
+                      { key: '10', label: '10 分钟后' },
+                      { key: '60', label: '1 小时后' },
+                      { key: '1440', label: '明天此时' },
+                    ], onClick: ({ key }) => void reminderApi.snooze(item.sourceId, Number(key) as 10 | 60 | 1440).then(refresh) }}>
+                      <Button type="link">稍后提醒</Button>
+                    </Dropdown>,
+                  ] : []),
                   ...(resolveDownloadUrl(item)
                     ? [
                         <Button
@@ -98,11 +112,14 @@ export function NotificationsPage() {
                   <Button
                     key="open"
                     type="link"
-                    onClick={() =>
+                    onClick={() => {
+                      if (item.source === 'reminder') {
+                        void reminderApi.markRead(item.sourceId).then(refresh);
+                      }
                       navigate(
                         resolveNotificationActionPath(item.actionUrl, item.source, item.sourceId)
-                      )
-                    }
+                      );
+                    }}
                   >
                     {content.actionText}
                   </Button>,

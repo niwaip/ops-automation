@@ -8,6 +8,11 @@ import { executeEmailMessages } from './email/email-messages.handler';
 import { executeEmailSend } from './email/email-send.handler';
 import { executeEmailUpdate } from './email/email-update.handler';
 import { executeWorkspaceExplorer } from './workspace/workspace-explorer.handler';
+import { ReminderService } from '../../reminders/reminder.service';
+import {
+  DEFAULT_REMINDER_TIMEZONE,
+  REMINDER_CAPABILITY_KEY,
+} from '../../reminders/reminder.constants';
 
 export type BuiltinHandlerFn = (request: RuntimeStepInvokeRequest, idempotencyKey: string) => Promise<BuiltinSkillHandlerResult>;
 
@@ -15,6 +20,8 @@ export type BuiltinHandlerFn = (request: RuntimeStepInvokeRequest, idempotencyKe
 export class BuiltinHandlerRegistryService implements OnModuleInit {
   private readonly logger = new Logger(BuiltinHandlerRegistryService.name);
   private readonly handlerMap = new Map<string, BuiltinHandlerFn>();
+
+  constructor(private readonly reminders?: ReminderService) {}
 
   onModuleInit() {
     this.registerDefaultHandlers();
@@ -96,6 +103,21 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
           title,
         },
       };
+    });
+
+    this.registerHandler(REMINDER_CAPABILITY_KEY, async (req) => {
+      const userId = req.traceContext?.userId;
+      if (!userId) throw new Error('Reminder requires an authenticated user');
+      if (!this.reminders) throw new Error('ReminderService is not available');
+      const input = req.input || {};
+      const rule = await this.reminders.createFromSkill(userId, req.executionId, {
+        title: String(input.title || ''), message: String(input.message || ''),
+        cronExpression: String(input.cronExpression || ''),
+        runAt: input.runAt ? String(input.runAt) : undefined,
+        timezone: String(input.timezone || DEFAULT_REMINDER_TIMEZONE),
+        sendWechat: input.sendWechat === true,
+      });
+      return { success: true, output: { reminderId: rule.id, nextRunAt: rule.nextRunAt.toISOString() } };
     });
   }
 
