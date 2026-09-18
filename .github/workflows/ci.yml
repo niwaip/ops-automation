@@ -28,7 +28,7 @@ jobs:
       - name: Check file complexity red line (AGENTS.md)
         run: bash ./scripts/check-file-complexity.sh
 
-      - name: Validate database schema ownership (88 tables)
+      - name: Validate database schema ownership (92 tables)
         run: node database/scripts/validate-schema-ownership.mjs
 
       - name: Validate V4 compose architecture layering

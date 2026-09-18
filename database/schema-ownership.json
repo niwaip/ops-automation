@@ -78,7 +78,11 @@
       "temporal_workflows"
     ],
     "session-broker": ["runtime_sessions"],
-    "im-gateway": ["im_channel_connections"],
+    "im-gateway": [
+      "im_channel_connections",
+      "voice_task_requests",
+      "xiaozhi_connector_leases"
+    ],
     "ai-orchestrator": [
       "chat_messages",
       "chat_sessions",
