@@ -64,7 +64,7 @@ export function CoordinationFileReplacer({
 
   // 严格过滤掉无名称也无下载地址的幽灵空附件
   const validOriginals = (originalAttachments || []).filter(
-    (att) => Boolean(att && typeof att === 'object' && !Array.isArray(att) && (att.url?.trim() || att.name?.trim()))
+    (att) => Boolean(att && typeof att === 'object' && !Array.isArray(att) && (att.url?.trim() || (att as any).attachmentId || att.name?.trim()))
   );
 
   // 兼顾 appendedFiles 与单文件 replacementFile 的兼容性
@@ -197,7 +197,12 @@ export function CoordinationFileReplacer({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {/* 1. 历史与初始原稿履历列表（按真实版本序列倒序展示：Index 0 为最新版本，后续为历史归档原稿） */}
         {validOriginals.map((att, idx) => {
-          const resolvedUrl = replaceLocalhostWithCurrentHost(att.url);
+          const directUrl =
+            att.url ||
+            ((att as any).attachmentId
+              ? `/api/workbench-coordination/attachments/${encodeURIComponent((att as any).attachmentId)}/download?fileName=${encodeURIComponent(att.name || 'document.docx')}`
+              : undefined);
+          const resolvedUrl = replaceLocalhostWithCurrentHost(directUrl);
           const isWord = att.name?.endsWith('.docx') || att.name?.endsWith('.doc');
           const isPdf = att.name?.endsWith('.pdf');
 

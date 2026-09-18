@@ -126,12 +126,52 @@ export class WorkspaceProcessArchiveService {
     const instanceFolderId = currentParentId!;
     const savedFiles: Array<{ id: string; name: string; mimeType: string; size: number }> = [];
 
-    // 辅助函数：保存或复用文件节点
+    // 辅助函数：保存或复用文件节点（支持无版本前缀历史节点原地平滑升级）
     const saveOrUpdateFile = async (
       fileName: string,
       mimeType: string,
-      buffer: Buffer
+      buffer: Buffer,
+      options?: { overwriteContent?: boolean; originalUnprefixedName?: string }
     ): Promise<string> => {
+      // 1. 若指定了升级前旧名称，且与目标 fileName 不一致，优先定位旧节点做原地重命名升级
+      if (options?.originalUnprefixedName && options.originalUnprefixedName !== fileName) {
+        const legacyNode = await this.prisma.workspaceNode.findFirst({
+          where: {
+            workspaceId: processWorkspace.id,
+            parentId: instanceFolderId,
+            name: options.originalUnprefixedName,
+            type: 'file',
+          },
+        });
+        if (legacyNode) {
+          const safeName = fileName.replace(/[\\/:*?"<>|]/g, '_');
+          if (options?.overwriteContent && legacyNode.storagePath) {
+            await this.storage.putFile(legacyNode.storagePath, buffer);
+          }
+          await this.prisma.workspaceNode.update({
+            where: { id: legacyNode.id },
+            data: {
+              name: safeName,
+              fileSize: BigInt(buffer.length),
+              mimeType,
+              updatedAt: new Date(),
+            },
+          });
+          void this.contentIndexer
+            .extractText(buffer, safeName, mimeType)
+            .catch(() => {});
+
+          savedFiles.push({
+            id: legacyNode.id,
+            name: safeName,
+            mimeType,
+            size: buffer.length,
+          });
+          return legacyNode.id;
+        }
+      }
+
+      // 2. 检查是否已存在同名节点
       const existing = await this.prisma.workspaceNode.findFirst({
         where: {
           workspaceId: processWorkspace.id,
@@ -142,11 +182,25 @@ export class WorkspaceProcessArchiveService {
       });
 
       if (existing) {
+        if (options?.overwriteContent && existing.storagePath) {
+          await this.storage.putFile(existing.storagePath, buffer);
+          await this.prisma.workspaceNode.update({
+            where: { id: existing.id },
+            data: {
+              fileSize: BigInt(buffer.length),
+              mimeType,
+              updatedAt: new Date(),
+            },
+          });
+          void this.contentIndexer
+            .extractText(buffer, existing.name, mimeType)
+            .catch(() => {});
+        }
         savedFiles.push({
           id: existing.id,
           name: existing.name,
           mimeType: existing.mimeType || mimeType,
-          size: Number(existing.fileSize || 0),
+          size: buffer.length,
         });
         return existing.id;
       }
@@ -186,42 +240,190 @@ export class WorkspaceProcessArchiveService {
       return node.id;
     };
 
-    // 3. 归档成果物 A：合同文档正本 / 修订版 (.docx)
-    try {
-      const resolvedDoc = await this.resolveDocumentBuffer(opts);
-      if (resolvedDoc) {
-        await saveOrUpdateFile(
-          resolvedDoc.fileName,
-          resolvedDoc.mimeType,
-          resolvedDoc.buffer
-        );
+    // 3. 收集所有待归档候选成果物（兼容 attachments 列表、parameters 各种下载地址与初稿原稿）
+    const candidateDeliverables: any[] = [];
+    const seenCandidateKeys = new Set<string>();
+
+    const addCandidate = (att: any) => {
+      if (!att || typeof att !== 'object') return;
+      const key = att.attachmentId || att.storagePath || att.url || att.name;
+      if (key && !seenCandidateKeys.has(key)) {
+        seenCandidateKeys.add(key);
+        candidateDeliverables.push(att);
       }
-    } catch (docErr) {
-      this.logger.warn(`Failed to resolve and archive contract document:`, docErr);
+    };
+
+    if (Array.isArray(opts.attachments)) {
+      for (const att of opts.attachments) {
+        addCandidate(att);
+      }
     }
 
-    // 4. 归档成果物 B：合同智能审查与合规诊断报告 (.md)
+    if (opts.parameters?.downloadUrl) {
+      addCandidate({
+        name: opts.parameters.fileName || opts.parameters.contractFileName || '保密合同正式版.docx',
+        url: opts.parameters.downloadUrl,
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+    }
+
+    if (opts.parameters?.originalDraftUrl) {
+      addCandidate({
+        name: opts.parameters.originalDraftFileName || '保密合同_初始初稿.docx',
+        url: opts.parameters.originalDraftUrl,
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+    }
+
+    // 解析所有候选成果物的二进制数据流
+    const resolvedContractDocs: Array<{
+      buffer: Buffer;
+      fileName: string;
+      mimeType: string;
+    }> = [];
+
+    const resolvedHtmlReports: Array<{
+      buffer: Buffer;
+      fileName: string;
+      mimeType: string;
+    }> = [];
+
+    const resolvedOtherDeliverables: Array<{
+      buffer: Buffer;
+      fileName: string;
+      mimeType: string;
+    }> = [];
+
+    for (const cand of candidateDeliverables) {
+      try {
+        const resolved = await this.resolveAttachmentBuffer(cand);
+        if (!resolved) continue;
+
+        const lower = resolved.fileName.toLowerCase();
+        if (lower.endsWith('.html') || lower.endsWith('.htm') || resolved.mimeType.includes('html')) {
+          resolvedHtmlReports.push(resolved);
+        } else if (lower.endsWith('.docx') || lower.endsWith('.doc') || lower.endsWith('.pdf')) {
+          resolvedContractDocs.push(resolved);
+        } else {
+          resolvedOtherDeliverables.push(resolved);
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to resolve deliverable candidate "${cand.name || cand.url}":`, err);
+      }
+    }
+
+    // 去重合同文档（避免由于别名或冗余引用导致的重复）
+    const uniqueContractDocs: typeof resolvedContractDocs = [];
+    const seenHashes = new Set<string>();
+    for (const doc of resolvedContractDocs) {
+      const hash = `${doc.buffer.length}_${doc.buffer.subarray(0, 64).toString('hex')}`;
+      if (!seenHashes.has(hash)) {
+        seenHashes.add(hash);
+        uniqueContractDocs.push(doc);
+      }
+    }
+
+    const archivedDeliverablesForCert: Array<{
+      fileName: string;
+      mimeType: string;
+      size: number;
+    }> = [];
+
+    // 4. 归档成果物 A：多版本合同文档正本（依版本演进序列归档，支持多版本标识）
+    const totalContractDocs = uniqueContractDocs.length;
+    for (let i = 0; i < totalContractDocs; i++) {
+      const doc = uniqueContractDocs[i];
+      let finalName = doc.fileName;
+
+      if (totalContractDocs > 1) {
+        const cleanName = doc.fileName.replace(/^\[V\d+[^\]]*\]\s*/, '').trim();
+        if (i === 0) {
+          finalName = `[V${totalContractDocs}_最新生效版] ${cleanName}`;
+        } else {
+          const vNum = totalContractDocs - i;
+          finalName = vNum === 1
+            ? `[V1_历史留存稿] ${cleanName}`
+            : `[V${vNum}_历史留存稿] ${cleanName}`;
+        }
+      }
+
+      try {
+        await saveOrUpdateFile(finalName, doc.mimeType, doc.buffer, {
+          overwriteContent: true,
+          originalUnprefixedName: doc.fileName,
+        });
+        archivedDeliverablesForCert.push({
+          fileName: finalName,
+          mimeType: doc.mimeType,
+          size: doc.buffer.length,
+        });
+      } catch (docErr) {
+        this.logger.warn(`Failed to archive contract document "${finalName}":`, docErr);
+      }
+    }
+
+    // 5. 归档成果物 B：智能审查报告（HTML 可视化交互诊断报告）
+    for (const rpt of resolvedHtmlReports) {
+      try {
+        await saveOrUpdateFile(rpt.fileName, rpt.mimeType, rpt.buffer, {
+          overwriteContent: true,
+        });
+        archivedDeliverablesForCert.push({
+          fileName: rpt.fileName,
+          mimeType: rpt.mimeType,
+          size: rpt.buffer.length,
+        });
+      } catch (rptErr) {
+        this.logger.warn(`Failed to archive HTML review report "${rpt.fileName}":`, rptErr);
+      }
+    }
+
+    // 6. 归档成果物 C：合同智能审查与合规诊断报告 (.md)
     try {
       const reportMd = this.buildReviewReportMarkdown(opts, baseTitle, trackingNumber);
+      const reportMdBuffer = Buffer.from(reportMd, 'utf8');
       await saveOrUpdateFile(
         '合同合规智能审查与诊断报告.md',
         'text/markdown',
-        Buffer.from(reportMd, 'utf8')
+        reportMdBuffer,
+        { overwriteContent: true }
       );
+      archivedDeliverablesForCert.push({
+        fileName: '合同合规智能审查与诊断报告.md',
+        mimeType: 'text/markdown',
+        size: reportMdBuffer.length,
+      });
     } catch (repErr) {
       this.logger.warn(`Failed to build/archive review report markdown:`, repErr);
     }
 
-    // 5. 归档成果物 C：业务协同流程办结与电子存证备案凭证 (.md)
+    // 7. 归档成果物 D：业务协同流程办结与电子存证备案凭证 (.md)
     try {
-      const certMd = this.buildProcessCertificateMarkdown(opts, baseTitle, trackingNumber);
+      const certMd = this.buildProcessCertificateMarkdown(
+        opts,
+        baseTitle,
+        trackingNumber,
+        archivedDeliverablesForCert
+      );
       await saveOrUpdateFile(
         '流程办结与电子存证备案单.md',
         'text/markdown',
-        Buffer.from(certMd, 'utf8')
+        Buffer.from(certMd, 'utf8'),
+        { overwriteContent: true }
       );
     } catch (certErr) {
       this.logger.warn(`Failed to build/archive process certificate markdown:`, certErr);
+    }
+
+    // 8. 归档成果物 E：其他辅助交付物/附件
+    for (const other of resolvedOtherDeliverables) {
+      try {
+        await saveOrUpdateFile(other.fileName, other.mimeType, other.buffer, {
+          overwriteContent: true,
+        });
+      } catch (othErr) {
+        this.logger.warn(`Failed to archive other deliverable "${other.fileName}":`, othErr);
+      }
     }
 
     this.logger.log(
@@ -236,77 +438,136 @@ export class WorkspaceProcessArchiveService {
   }
 
   /**
-   * 解析合同文档源二进制数据（从本地文档输出区、附件缓存区或下载地址提取）
+   * 解析任意附件/成果物的二进制数据（从本地文档输出区、附件存储区或网络地址提取）
    */
-  private async resolveDocumentBuffer(
-    opts: ArchiveDeliverablesOptions
+  private async resolveAttachmentBuffer(
+    att: any,
+    fallbackName?: string
   ): Promise<{ buffer: Buffer; fileName: string; mimeType: string } | null> {
-    const defaultDocxMime =
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    const targetFileName =
-      opts.parameters?.fileName ||
-      opts.parameters?.contractFileName ||
-      '保密合同正式版.docx';
+    if (!att || typeof att !== 'object') return null;
 
-    // 优先通过 downloadUrl 中的 UUID 解析
-    const downloadUrl = opts.parameters?.downloadUrl || '';
-    const uuidMatch = downloadUrl.match(
+    const targetFileName = att.name || fallbackName || '文档.docx';
+    const lowerName = targetFileName.toLowerCase();
+    let defaultMime = att.mimeType;
+    if (!defaultMime) {
+      if (lowerName.endsWith('.docx')) {
+        defaultMime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      } else if (lowerName.endsWith('.html') || lowerName.endsWith('.htm')) {
+        defaultMime = 'text/html; charset=utf-8';
+      } else if (lowerName.endsWith('.pdf')) {
+        defaultMime = 'application/pdf';
+      } else if (lowerName.endsWith('.md')) {
+        defaultMime = 'text/markdown';
+      } else {
+        defaultMime = 'application/octet-stream';
+      }
+    }
+
+    // 1. 如果包含 storagePath，尝试从 storagePath 提取
+    if (att.storagePath) {
+      const sp = att.storagePath;
+      const candStoragePaths = [
+        sp,
+        path.resolve(process.cwd(), sp.replace(/^\/workspace\//, '')),
+        `/workspace/${sp.replace(/^\/workspace\//, '')}`,
+        path.resolve(__dirname, '../../../../..', sp.replace(/^\/workspace\//, '')),
+        path.resolve(__dirname, '../../../../', sp.replace(/^\/workspace\//, '')),
+      ];
+      for (const p of candStoragePaths) {
+        if (fs.existsSync(p)) {
+          const buffer = await fs.promises.readFile(p);
+          return { buffer, fileName: targetFileName, mimeType: defaultMime };
+        }
+      }
+    }
+
+    // 2. 如果包含 attachmentId，在附件存储区检索
+    const attId = att.attachmentId || '';
+    if (attId) {
+      const searchDirs = [
+        '/workspace/data/storage/attachments',
+        path.resolve(process.cwd(), 'data/storage/attachments'),
+        path.resolve(__dirname, '../../../../../data/storage/attachments'),
+        path.resolve(__dirname, '../../../../data/storage/attachments'),
+      ];
+      for (const dir of searchDirs) {
+        if (fs.existsSync(dir)) {
+          const files = await fs.promises.readdir(dir).catch(() => [] as string[]);
+          const matched = files.find((f) => f.startsWith(attId) && !f.endsWith('.meta.json'));
+          if (matched) {
+            const p = path.join(dir, matched);
+            const buffer = await fs.promises.readFile(p);
+            return { buffer, fileName: targetFileName, mimeType: defaultMime };
+          }
+        }
+      }
+    }
+
+    // 3. 如果包含 URL，提取 UUID 并排查常见输出路径
+    const urlStr = typeof att.url === 'string' ? att.url : '';
+    const uuidMatch = urlStr.match(
       /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/
     );
     const docUuid = uuidMatch ? uuidMatch[0] : null;
 
     if (docUuid) {
-      const possibleDocPaths = [
-        path.resolve(process.cwd(), 'apps/backend/var/outputs/document-engine', `${docUuid}.docx`),
-        path.resolve(process.cwd(), 'var/outputs/document-engine', `${docUuid}.docx`),
-        `/workspace/apps/backend/var/outputs/document-engine/${docUuid}.docx`,
-        path.resolve(__dirname, '../../../../var/outputs/document-engine', `${docUuid}.docx`),
-        path.resolve(__dirname, '../../../../../var/outputs/document-engine', `${docUuid}.docx`),
+      const ext = path.extname(targetFileName) || (lowerName.includes('html') ? '.html' : '.docx');
+      const candUuidPaths = [
+        path.resolve(process.cwd(), 'apps/backend/var/outputs/document-engine', `${docUuid}${ext}`),
+        path.resolve(process.cwd(), 'apps/backend/var/outputs/document-engine/renders', `${docUuid}${ext}`),
+        path.resolve(process.cwd(), 'var/outputs/document-engine', `${docUuid}${ext}`),
+        path.resolve(process.cwd(), 'var/outputs/document-engine/renders', `${docUuid}${ext}`),
+        `/workspace/apps/backend/var/outputs/document-engine/${docUuid}${ext}`,
+        `/workspace/apps/backend/var/outputs/document-engine/renders/${docUuid}${ext}`,
+        path.resolve(__dirname, '../../../../var/outputs/document-engine', `${docUuid}${ext}`),
+        path.resolve(__dirname, '../../../../var/outputs/document-engine/renders', `${docUuid}${ext}`),
+        path.resolve(__dirname, '../../../../../var/outputs/document-engine', `${docUuid}${ext}`),
+        path.resolve(__dirname, '../../../../../var/outputs/document-engine/renders', `${docUuid}${ext}`),
       ];
 
-      for (const p of possibleDocPaths) {
+      for (const p of candUuidPaths) {
         if (fs.existsSync(p)) {
           const buffer = await fs.promises.readFile(p);
-          return {
-            buffer,
-            fileName: targetFileName,
-            mimeType: defaultDocxMime,
-          };
+          return { buffer, fileName: targetFileName, mimeType: defaultMime };
+        }
+      }
+
+      // 也检查 data/storage/attachments 目录中包含该 UUID 的文件
+      const attDirs = [
+        '/workspace/data/storage/attachments',
+        path.resolve(process.cwd(), 'data/storage/attachments'),
+        path.resolve(__dirname, '../../../../../data/storage/attachments'),
+        path.resolve(__dirname, '../../../../data/storage/attachments'),
+      ];
+      for (const dir of attDirs) {
+        if (fs.existsSync(dir)) {
+          const files = await fs.promises.readdir(dir).catch(() => [] as string[]);
+          const matched = files.find((f) => f.includes(docUuid) && !f.endsWith('.meta.json'));
+          if (matched) {
+            const p = path.join(dir, matched);
+            const buffer = await fs.promises.readFile(p);
+            return { buffer, fileName: targetFileName, mimeType: defaultMime };
+          }
         }
       }
     }
 
-    // 检查 attachments 列表中是否存在附件
-    if (Array.isArray(opts.attachments) && opts.attachments.length > 0) {
-      const att = opts.attachments[0];
-      if (att && typeof att === 'object') {
-        const attName = att.name || targetFileName;
-        const attMime = att.mimeType || defaultDocxMime;
-
-        if (att.storagePath && fs.existsSync(att.storagePath)) {
-          const buffer = await fs.promises.readFile(att.storagePath);
-          return { buffer, fileName: attName, mimeType: attMime };
-        }
-
-        if (att.url) {
-          const attUuid = att.url.match(
-            /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/
-          )?.[0];
-          if (attUuid) {
-            const candAttPaths = [
-              `/workspace/data/storage/attachments/${attUuid}`,
-              path.resolve(process.cwd(), 'data/storage/attachments', attUuid),
-              path.resolve(__dirname, '../../../../data/storage/attachments', attUuid),
-              path.resolve(process.cwd(), 'apps/backend/var/outputs/document-engine', `${attUuid}.docx`),
-            ];
-            for (const cp of candAttPaths) {
-              if (fs.existsSync(cp)) {
-                const buffer = await fs.promises.readFile(cp);
-                return { buffer, fileName: attName, mimeType: attMime };
-              }
-            }
+    // 4. 若 URL 为 http/https 地址，尝试网络请求兜底获取
+    if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 3000);
+        const resp = await fetch(urlStr, { signal: controller.signal });
+        clearTimeout(timer);
+        if (resp.ok) {
+          const arrayBuf = await resp.arrayBuffer();
+          const buffer = Buffer.from(arrayBuf);
+          if (buffer.length > 0) {
+            return { buffer, fileName: targetFileName, mimeType: defaultMime };
           }
         }
+      } catch {
+        // 网络请求失败不中断
       }
     }
 
@@ -397,12 +658,13 @@ ${summaryItems.join('\n')}
   }
 
   /**
-   * 构建流程办结与存证备案凭证 Markdown
+   * 构建流程办结与存证备案凭证 Markdown（包含成果文档与多版本存证履历）
    */
   private buildProcessCertificateMarkdown(
     opts: ArchiveDeliverablesOptions,
     baseTitle: string,
-    trackingNumber: string
+    trackingNumber: string,
+    archivedDeliverables?: Array<{ fileName: string; mimeType: string; size: number }>
   ): string {
     const ext = opts.syncResult || {};
     const detail = ext.detail || {};
@@ -423,6 +685,28 @@ ${summaryItems.join('\n')}
     const initiatorName = opts.initiator?.username || '系统发起人';
     const operatorName = opts.operator?.username || '协同经办人';
 
+    const deliverablesTable =
+      Array.isArray(archivedDeliverables) && archivedDeliverables.length > 0
+        ? `\n---\n\n## 成果文档与版本演进存证履历\n\n| 序号 | 存证文件名称 | 格式类型 | 文件大小 | 存证属性与归档定位 |\n| :--- | :--- | :--- | :--- | :--- |\n${archivedDeliverables
+            .map((doc, idx) => {
+              const sizeKb = (doc.size / 1024).toFixed(1);
+              const isLatest =
+                doc.fileName.includes('最新生效版') ||
+                (!doc.fileName.includes('历史留存稿') && doc.fileName.endsWith('.docx'));
+              const isHistorical = doc.fileName.includes('历史留存稿');
+              const isReport = doc.fileName.endsWith('.html') || doc.fileName.endsWith('.md');
+              const attr = isLatest
+                ? '最新送审生效版（终审归档标准正本）'
+                : isHistorical
+                ? '经办人历史原稿（全生命周期留痕备查）'
+                : isReport
+                ? '智能合规诊断与存证审查报告'
+                : '流程业务成果附件';
+              return `| ${idx + 1} | ${doc.fileName} | \`${doc.mimeType}\` | ${sizeKb} KB | ${attr} |`;
+            })
+            .join('\n')}\n`
+        : '';
+
     return `# 业务协同流程办结与电子存证备案凭证
 
 - **流程业务模版**：${opts.workflowName || '保密合同起草与法务审查闭环流'}
@@ -441,7 +725,7 @@ ${summaryItems.join('\n')}
 - **相对方注册地址**：${counterpartyAddress}
 - **约定签署日期**：${signDate}
 - **经办业务说明**：${remarks}
-
+${deliverablesTable}
 ---
 
 ## 全周期审批流转轨迹与审计记录
@@ -457,7 +741,7 @@ ${summaryItems.join('\n')}
 ---
 
 > **数字存证法律效力声明**：
-> 本凭证由企业协同自动化平台与电子文档存证归档网关联合生成，包含全链条电子时间戳与节点数字签名，所载最终版合同文本及审查报告已归档于「流程管理空间」，具有完整性与防篡改证明力。
+> 本凭证由企业协同自动化平台与电子文档存证归档网关联合生成，包含全链条电子时间戳与节点数字签名，所载最终版合同文本、历史版本及审查报告已归档于「流程管理空间」，具有完整性与防篡改证明力。
 `;
   }
 
@@ -496,8 +780,14 @@ ${summaryItems.join('\n')}
         if (isFinished) {
           await this.archiveWorkflowDeliverables({
             workflowId: payload.workflowId || detail.workflowId || 'generic_workflow',
-            workflowName: detail.workflowName || payload.workflowName || '业务协同流转流程',
-            category: '流程归档',
+            workflowName:
+              detail.workflowName ||
+              payload.workflowName ||
+              '保密合同起草与法务审查闭环流',
+            category:
+              payload.category ||
+              detail.category ||
+              (payload.workflowId?.startsWith('legal.') ? '合规法务' : '流程归档'),
             taskTitle: detail.contractTitle || payload.parameters?.contractTitle || item.sourceTitle || item.title,
             trackingNumber: ext.trackingNumber || `TRACK-${Date.now().toString().slice(-6)}`,
             archiveId: detail.archiveId || `ARC_${Date.now()}`,

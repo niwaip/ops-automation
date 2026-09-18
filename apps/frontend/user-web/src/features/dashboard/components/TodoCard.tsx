@@ -39,6 +39,7 @@ import type { WorkbenchTodoItem } from "../../../api/workbenchTodo";
 import { workbenchCoordinationApi } from "../../../api/workbenchCoordination";
 import {
   getContractComparisonPair,
+  getFormattedContractVersions,
   triggerContractComparisonInAi,
 } from "../lib/contractComparisonHelper";
 import { formatMonthDayTime } from "@/shared/utils/dateText";
@@ -1005,6 +1006,74 @@ export function TodoCard({
                           )}
 
                           {(() => {
+                            const formattedVersions = getFormattedContractVersions(coordPayload.attachments, undefined, coordParams);
+                            if (formattedVersions.length > 1) {
+                              return (
+                                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                  {formattedVersions.map((ver) => {
+                                    const downloadUrl = ver.url ? replaceLocalhostWithCurrentHost(ver.url) : undefined;
+                                    return (
+                                      <div
+                                        key={ver.name + ver.versionNumber}
+                                        style={{
+                                          padding: '6px 10px',
+                                          background: ver.isLatest
+                                            ? 'linear-gradient(135deg, rgba(22, 119, 255, 0.08) 0%, rgba(99, 102, 241, 0.05) 100%)'
+                                            : 'var(--bg-secondary, rgba(148, 163, 184, 0.06))',
+                                          borderRadius: 6,
+                                          border: ver.isLatest
+                                            ? '1px solid rgba(22, 119, 255, 0.22)'
+                                            : '1px solid var(--border-color, rgba(148, 163, 184, 0.2))',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'space-between',
+                                          gap: 8,
+                                        }}
+                                      >
+                                        <Space size={6} style={{ minWidth: 0, flex: 1 }}>
+                                          <FileWordOutlined style={{ color: ver.isLatest ? '#1677ff' : '#8c8c8c', fontSize: 14 }} />
+                                          <Tag
+                                            color={ver.isLatest ? 'processing' : 'default'}
+                                            bordered={false}
+                                            style={{ fontSize: 11, lineHeight: '18px', padding: '0 5px', margin: 0 }}
+                                          >
+                                            {ver.versionLabel}
+                                          </Tag>
+                                          <span
+                                            style={{
+                                              fontWeight: ver.isLatest ? 600 : 400,
+                                              fontSize: 12,
+                                              color: 'var(--text-primary, #1e293b)',
+                                              overflow: 'hidden',
+                                              textOverflow: 'ellipsis',
+                                              whiteSpace: 'nowrap',
+                                            }}
+                                            title={ver.name}
+                                          >
+                                            {ver.name}
+                                          </span>
+                                        </Space>
+                                        {downloadUrl ? (
+                                          <Button
+                                            size="small"
+                                            type={ver.isLatest ? 'primary' : 'default'}
+                                            icon={<DownloadOutlined style={{ fontSize: 11 }} />}
+                                            href={downloadUrl}
+                                            target="_blank"
+                                            download={ver.name}
+                                            onClick={(e) => e.stopPropagation()}
+                                            style={{ fontSize: 11, height: 24, padding: '0 8px' }}
+                                          >
+                                            下载
+                                          </Button>
+                                        ) : null}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            }
+
                             const attachments = ((coordPayload.attachments || []) as Array<{ name: string; url?: string }>);
                             const directUrl =
                               coordParams.downloadUrl ||

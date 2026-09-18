@@ -29,6 +29,7 @@ import { useQueryClient } from "react-query";
 import { InboxContentPreview } from "./InboxContentPreview";
 import {
   getContractComparisonPair,
+  getFormattedContractVersions,
   triggerContractComparisonInAi,
 } from "../lib/contractComparisonHelper";
 import {
@@ -665,38 +666,112 @@ export function InboxList({
               </div>
             )}
 
-            {effectiveDownloadUrl ? (
-              <div
-                style={{
-                  marginTop: 8,
-                  padding: '6px 10px',
-                  background: 'rgba(22, 119, 255, 0.08)',
-                  borderRadius: 6,
-                  border: '1px solid rgba(22, 119, 255, 0.22)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <Space size={6}>
-                  <FileWordOutlined style={{ color: '#1677ff', fontSize: 16 }} />
-                  <span style={{ fontWeight: 600, fontSize: 12, color: 'var(--text-primary)' }}>
-                    {effectiveDocName}
-                  </span>
-                </Space>
-                <Button
-                  size="small"
-                  type="primary"
-                  icon={<DownloadOutlined />}
-                  href={replaceLocalhostWithCurrentHost(effectiveDownloadUrl)}
-                  target="_blank"
-                  download={effectiveDocName}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  下载
-                </Button>
-              </div>
-            ) : null}
+            {(() => {
+              const formattedVersions = getFormattedContractVersions(payload.attachments, undefined, params);
+              if (formattedVersions.length > 1) {
+                return (
+                  <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {formattedVersions.map((ver) => {
+                      const downloadUrl = ver.url ? replaceLocalhostWithCurrentHost(ver.url) : undefined;
+                      return (
+                        <div
+                          key={ver.name + ver.versionNumber}
+                          style={{
+                            padding: '6px 10px',
+                            background: ver.isLatest
+                              ? 'rgba(22, 119, 255, 0.08)'
+                              : 'var(--bg-secondary, rgba(148, 163, 184, 0.06))',
+                            borderRadius: 6,
+                            border: ver.isLatest
+                              ? '1px solid rgba(22, 119, 255, 0.22)'
+                              : '1px solid var(--border-color, rgba(148, 163, 184, 0.2))',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 8,
+                          }}
+                        >
+                          <Space size={6} style={{ minWidth: 0, flex: 1 }}>
+                            <FileWordOutlined style={{ color: ver.isLatest ? '#1677ff' : '#8c8c8c', fontSize: 15 }} />
+                            <Tag
+                              color={ver.isLatest ? 'processing' : 'default'}
+                              bordered={false}
+                              style={{ fontSize: 11, lineHeight: '18px', padding: '0 5px', margin: 0 }}
+                            >
+                              {ver.versionLabel}
+                            </Tag>
+                            <span
+                              style={{
+                                fontWeight: ver.isLatest ? 600 : 400,
+                                fontSize: 12,
+                                color: 'var(--text-primary)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                              title={ver.name}
+                            >
+                              {ver.name}
+                            </span>
+                          </Space>
+                          {downloadUrl ? (
+                            <Button
+                              size="small"
+                              type={ver.isLatest ? 'primary' : 'default'}
+                              icon={<DownloadOutlined />}
+                              href={downloadUrl}
+                              target="_blank"
+                              download={ver.name}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ fontSize: 11, height: 24, padding: '0 8px' }}
+                            >
+                              下载
+                            </Button>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }
+
+              if (effectiveDownloadUrl) {
+                return (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      padding: '6px 10px',
+                      background: 'rgba(22, 119, 255, 0.08)',
+                      borderRadius: 6,
+                      border: '1px solid rgba(22, 119, 255, 0.22)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <Space size={6}>
+                      <FileWordOutlined style={{ color: '#1677ff', fontSize: 16 }} />
+                      <span style={{ fontWeight: 600, fontSize: 12, color: 'var(--text-primary)' }}>
+                        {effectiveDocName}
+                      </span>
+                    </Space>
+                    <Button
+                      size="small"
+                      type="primary"
+                      icon={<DownloadOutlined />}
+                      href={replaceLocalhostWithCurrentHost(effectiveDownloadUrl)}
+                      target="_blank"
+                      download={effectiveDocName}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      下载
+                    </Button>
+                  </div>
+                );
+              }
+
+              return null;
+            })()}
 
             {/* 通用 AI 协同助手快捷入口：带入文档与要求作为上下文 */}
             {(() => {

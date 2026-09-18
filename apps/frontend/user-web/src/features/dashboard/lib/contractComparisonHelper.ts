@@ -36,16 +36,26 @@ export function resolveContractDocVersions(
   appendedFiles: Array<CoordinationAttachment | ChatTaskAttachment | undefined | null> = [],
   parameters?: Record<string, any>
 ): ChatTaskAttachment[] {
+  const normalizeDocUrl = (att: any): string | undefined => {
+    if (att?.url && typeof att.url === 'string' && att.url.trim()) {
+      return att.url.trim();
+    }
+    if (att?.attachmentId && typeof att.attachmentId === 'string' && att.attachmentId.trim()) {
+      return `/api/workbench-coordination/attachments/${encodeURIComponent(att.attachmentId.trim())}/download?fileName=${encodeURIComponent(att.name || 'document.docx')}`;
+    }
+    return undefined;
+  };
+
   // 1. 过滤原始附件中的有效合同文档
   const validOriginals = (originalAttachments || []).filter(
     (att): att is CoordinationAttachment | ChatTaskAttachment =>
-      Boolean(att && (att.url?.trim() || att.name?.trim()) && !isNonContractReportFile(att))
+      Boolean(att && (normalizeDocUrl(att) || att.name?.trim()) && !isNonContractReportFile(att))
   );
 
   // 2. 过滤追加的新版本文件
   const validAppended = (appendedFiles || []).filter(
     (att): att is CoordinationAttachment | ChatTaskAttachment =>
-      Boolean(att && (att.url?.trim() || att.name?.trim()) && !isNonContractReportFile(att))
+      Boolean(att && (normalizeDocUrl(att) || att.name?.trim()) && !isNonContractReportFile(att))
   );
 
   // 3. 如果原始附件暂未载入但 parameters 携带了初稿地址
@@ -61,6 +71,18 @@ export function resolveContractDocVersions(
     });
   }
 
+  // 4. 如果 parameters 中包含明确的 originalDraftUrl 且在列表中未出现，补充为初始初稿
+  if (
+    parameters?.originalDraftUrl &&
+    !validOriginals.some((a) => (a.url && a.url === parameters.originalDraftUrl) || a.name === parameters.originalDraftFileName)
+  ) {
+    validOriginals.push({
+      name: parameters.originalDraftFileName || '保密合同_初始初稿.docx',
+      url: parameters.originalDraftUrl,
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+  }
+
   // CoordinationFileReplacer 中 validOriginals 为最新置顶倒序：Index 0 是最新，Index (length-1) 是 V1
   // 反转为按版本时间升序排列：[V1, V2, ..., VN]
   const chronologicalOriginals = [...validOriginals].reverse();
@@ -71,20 +93,70 @@ export function resolveContractDocVersions(
   // 按 URL 去重（若无 URL 则按文件名去重）
   const seenKeys = new Set<string>();
   const result: ChatTaskAttachment[] = [];
-  for (const doc of combined) {
-    const key = doc.url || doc.name;
+  for (const rawDoc of combined) {
+    const docUrl = normalizeDocUrl(rawDoc) || (rawDoc === combined[combined.length - 1] ? parameters?.downloadUrl : undefined);
+    const key = docUrl || rawDoc.name;
     if (key && !seenKeys.has(key)) {
       seenKeys.add(key);
       result.push({
-        name: doc.name || '合同文档.docx',
-        url: doc.url,
-        size: doc.size,
-        mimeType: doc.mimeType || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        name: rawDoc.name || '合同文档.docx',
+        url: docUrl,
+        size: rawDoc.size,
+        mimeType: rawDoc.mimeType || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       });
     }
   }
 
   return result;
+}
+
+export interface FormattedContractVersion {
+  versionNumber: number;
+  versionLabel: string;
+  isLatest: boolean;
+  name: string;
+  url?: string;
+  size?: number;
+  mimeType?: string;
+}
+
+/**
+ * 提取结构化合同版本列表，按最新版本置顶倒序输出：[VN, VN-1, ..., V1]
+ */
+export function getFormattedContractVersions(
+  originalAttachments: Array<CoordinationAttachment | ChatTaskAttachment | undefined | null> = [],
+  appendedFiles: Array<CoordinationAttachment | ChatTaskAttachment | undefined | null> = [],
+  parameters?: Record<string, any>
+): FormattedContractVersion[] {
+  const ascendingVersions = resolveContractDocVersions(originalAttachments, appendedFiles, parameters);
+  if (ascendingVersions.length === 0) {
+    return [];
+  }
+
+  const total = ascendingVersions.length;
+  // 反转为倒序（最新版本排在最前）
+  return [...ascendingVersions].reverse().map((doc, idx) => {
+    const versionNumber = total - idx;
+    const isLatest = idx === 0;
+    const versionLabel =
+      total === 1
+        ? '送审版本'
+        : isLatest
+        ? `V${versionNumber} · 最新生效版`
+        : versionNumber === 1
+        ? 'V1 · 初始初稿'
+        : `V${versionNumber} · 经办人修订版`;
+
+    return {
+      versionNumber,
+      versionLabel,
+      isLatest,
+      name: doc.name || '合同文档.docx',
+      url: doc.url,
+      size: doc.size,
+      mimeType: doc.mimeType,
+    };
+  });
 }
 
 /**
