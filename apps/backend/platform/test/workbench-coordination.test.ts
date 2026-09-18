@@ -607,7 +607,10 @@ describe('WorkbenchCoordinationService', () => {
             downloadUrl: '/api/workbench-coordination/attachments/att_12345/download',
             isDraftReplaced: true,
           }),
-          attachments: expect.arrayContaining([replacementAttachment]),
+          attachments: expect.arrayContaining([
+            replacementAttachment,
+            expect.objectContaining({ url: 'http://example.com/original.docx' }),
+          ]),
           metadata: expect.objectContaining({
             isDraftReplaced: true,
             replacedFileName: '保密合同_豆包有限公司_v2_担当修改版.docx',
@@ -911,6 +914,94 @@ describe('WorkbenchCoordinationService', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           status: 'converted',
+        }),
+      })
+    );
+  });
+
+  it('should advance workflow and dispatch to next stage rather than archiving when resubmitting a rejected receipt task', async () => {
+    mockPrisma.workbenchInboxItem.findFirst.mockResolvedValue({
+      id: 'inbox-receipt-rejected-item',
+      title: '[协同回执] @law01 已驳回退回担当重修: 豆包有限公司 - 商业保密协议 (NDA)',
+      sourceTitle: '豆包有限公司 - 商业保密协议 (NDA)',
+      sourceRefId: 'coord_ece70e20-6250-4782-807c-ff5c777afe73',
+      unifiedPayload: {
+        taskId: 'coord_ece70e20-6250-4782-807c-ff5c777afe73',
+        workflowId: 'legal.nda.generation_and_review_flow',
+        currentStage: 'initiator_confirm',
+        taskType: 'receipt',
+        isReceipt: true,
+        receiptAction: 'reject',
+        status: 'revision_required',
+        initiator: { id: 'u-initiator-1', username: 'business_owner' },
+        assignee: { id: 'u-law01-uuid', username: 'law01' },
+        actions: [{ id: 'act_reject_1', action: 'reject', comment: '保密期间太短了' }],
+        parameters: {
+          counterpartyName: '豆包有限公司',
+          durationYears: 3,
+          downloadUrl: 'http://minio/nda_v1.docx',
+        },
+        attachments: [
+          { name: '保密协议_v1.docx', url: 'http://minio/nda_v1.docx' },
+        ],
+        externalSyncResult: {
+          success: false,
+          rollbackTarget: 'initiator_confirm',
+          rollbackAssignee: 'business_owner',
+        },
+      },
+    });
+
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'u-initiator-1',
+      username: 'business_owner',
+    });
+    mockPrisma.user.findFirst.mockResolvedValue({
+      id: 'u-law01-uuid',
+      username: 'law01',
+      email: 'law01@example.com',
+    });
+    mockPrisma.workbenchInboxItem.update.mockResolvedValue({});
+    mockPrisma.workbenchInboxItem.create.mockResolvedValue({});
+
+    const result = await service.submitAction('u-initiator-1', 'coord_ece70e20-6250-4782-807c-ff5c777afe73', {
+      action: 'approve',
+      sync: true,
+      comment: '已追加新版本文件并调整保密期限为5年',
+      parameters: {
+        counterpartyName: '豆包有限公司',
+        durationYears: 5,
+        downloadUrl: 'http://minio/nda_v2.docx',
+      },
+      attachments: [
+        { name: '保密协议_v2.docx', url: 'http://minio/nda_v2.docx' },
+        { name: '保密协议_v1.docx', url: 'http://minio/nda_v1.docx' },
+      ],
+    });
+
+    expect(result.status).not.toBe('archived');
+    expect(result.status).toBe(CoordinationTaskStatus.approved);
+
+    // Verify it updated initiator's item to converted with [已发送] title
+    expect(mockPrisma.workbenchInboxItem.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'inbox-receipt-rejected-item' },
+        data: expect.objectContaining({
+          status: 'converted',
+          title: expect.stringContaining('[已发送] 豆包有限公司 - 商业保密协议 (NDA)'),
+        }),
+      })
+    );
+
+    // Verify it created next stage task for law01
+    expect(mockPrisma.workbenchInboxItem.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          userId: 'u-law01-uuid',
+          title: expect.stringContaining('[待法务确认]'),
+          unifiedPayload: expect.objectContaining({
+            currentStage: 'legal_review',
+          }),
         }),
       })
     );

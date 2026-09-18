@@ -54,6 +54,10 @@ const PARAM_LABEL_MAP: Record<string, string> = {
   handoverPerson: '工作交接人',
   expenseType: '报销类型',
   amount: '报销金额',
+  baseFileName: '基准版本',
+  compareFileName: '比对版本',
+  fileNameA: '基准合同',
+  fileNameB: '比对合同',
 };
 
 interface UserChatComposerProps {
@@ -150,7 +154,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
     const newFiles: UploadedFileDescriptor[] = taskContext.attachments.map((att, i) => ({
       fileId: `task-att-${i}-${att.name}`,
       fileName: att.name,
-      mimeType: att.mimeType || 'application/octet-stream',
+      mimeType: att.mimeType || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       size: att.size || 0,
       storagePath: att.url,
       url: att.url,
@@ -158,11 +162,16 @@ export function UserChatComposer(props: UserChatComposerProps) {
       fileUrl: att.url,
       source: 'workspace',
     }));
-    setUploadedFiles((prev) => {
-      const existingNames = new Set(prev.map((f) => f.fileName));
-      const toAdd = newFiles.filter((f) => !existingNames.has(f.fileName));
-      return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
-    });
+    if (taskContext.workflowId === 'platform.document.contract-comparator') {
+      // 合同比对场景：严格只保留待比对的基准与修订两份文档
+      setUploadedFiles(newFiles);
+    } else {
+      setUploadedFiles((prev) => {
+        const existingNames = new Set(prev.map((f) => f.fileName));
+        const toAdd = newFiles.filter((f) => !existingNames.has(f.fileName));
+        return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+      });
+    }
   }, [taskContext]);
 
   // # 选空间文件浮层状态
@@ -468,7 +477,12 @@ export function UserChatComposer(props: UserChatComposerProps) {
       }
       if (taskContext.parameters && Object.keys(taskContext.parameters).length > 0) {
         const paramStrs = Object.entries(taskContext.parameters)
-          .filter(([k]) => !['downloadUrl', 'fileName', 'executionId'].includes(k))
+          .filter(([k]) => ![
+            'downloadUrl', 'fileUrl', 'contractUrl', 'fileName', 'contractFileName',
+            'executionId', 'isDraftReplaced', 'originalDraftUrl', 'originalDraftFileName',
+            'originalDraftSize', 'rawContent', 'text',
+            'fileUrlA', 'downloadUrlA', 'fileNameA', 'fileUrlB', 'downloadUrlB', 'fileNameB'
+          ].includes(k))
           .map(([k, v]) => `${PARAM_LABEL_MAP[k] || k}: ${v}`);
         if (paramStrs.length > 0) {
           contextLines.push(`- **业务要件**：${paramStrs.join('； ')}`);
@@ -586,11 +600,15 @@ export function UserChatComposer(props: UserChatComposerProps) {
               <div className={styles['user-chat-task-context-badge']}>
                 <RobotOutlined style={{ color: '#722ed1', fontSize: 13 }} />
                 <span style={{ fontWeight: 600, fontSize: 12, color: '#722ed1' }}>
-                  已带入协同任务上下文
+                  {taskContext.workflowId === 'platform.document.contract-comparator'
+                    ? '已载入两份合同版本 · 准备比对与红线审查'
+                    : '已带入协同任务上下文'}
                 </span>
                 {taskContext.workflowId ? (
                   <Tag color="purple" style={{ margin: 0, fontSize: 10, padding: '0 4px', lineHeight: '18px' }}>
-                    {taskContext.workflowId}
+                    {taskContext.workflowId === 'platform.document.contract-comparator'
+                      ? '合同文档智能比对与红线审查'
+                      : taskContext.workflowId}
                   </Tag>
                 ) : null}
               </div>
@@ -612,7 +630,12 @@ export function UserChatComposer(props: UserChatComposerProps) {
                 <div className={styles['user-chat-task-context-params']}>
                   <strong>要求要件：</strong>
                   {Object.entries(taskContext.parameters)
-                    .filter(([k]) => !['downloadUrl', 'fileName', 'executionId'].includes(k))
+                    .filter(([k]) => ![
+                      'downloadUrl', 'fileUrl', 'contractUrl', 'fileName', 'contractFileName',
+                      'executionId', 'isDraftReplaced', 'originalDraftUrl', 'originalDraftFileName',
+                      'originalDraftSize', 'rawContent', 'text',
+                      'fileUrlA', 'downloadUrlA', 'fileNameA', 'fileUrlB', 'downloadUrlB', 'fileNameB'
+                    ].includes(k))
                     .map(([k, v]) => `${PARAM_LABEL_MAP[k] || k}: ${v}`)
                     .join('； ')}
                 </div>
@@ -620,12 +643,20 @@ export function UserChatComposer(props: UserChatComposerProps) {
             </div>
             <div className={styles['user-chat-task-context-suggestions']}>
               <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginRight: 4 }}>快捷输入：</span>
-              {[
-                '对比审查文档差异与合规风险',
-                '提取文档要点并给出批注建议',
-                '基于业务要求重新生成初稿',
-                '总结任务要求与后续办理事项',
-              ].map((suggestion) => (
+              {(taskContext.workflowId === 'platform.document.contract-comparator'
+                ? [
+                    '比较合同',
+                    '比对新旧版本条款差异与红线',
+                    '重点排查保密期限与违约金变更',
+                    '生成合同修订前后并排比对报告',
+                  ]
+                : [
+                    '对比审查文档差异与合规风险',
+                    '提取文档要点并给出批注建议',
+                    '基于业务要求重新生成初稿',
+                    '总结任务要求与后续办理事项',
+                  ]
+              ).map((suggestion) => (
                 <Tag
                   key={suggestion}
                   className={styles['user-chat-suggestion-pill']}

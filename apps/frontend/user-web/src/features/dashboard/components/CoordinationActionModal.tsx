@@ -18,6 +18,7 @@ import {
 import { CoordinationFileReplacer } from './CoordinationFileReplacer';
 import { useChatStore } from '../../chat/chatStore';
 import { useAuthStore } from '@/shared/store/authStore';
+import { useQueryClient } from 'react-query';
 import { classifyWorkflowNode } from '../lib/coordinationNodeClassifier';
 
 export const PARAM_LABEL_MAP: Record<string, string> = {
@@ -119,10 +120,12 @@ export function CoordinationActionModal({
   onSuccess,
 }: CoordinationActionModalProps) {
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [replacementFile, setReplacementFile] = useState<CoordinationAttachment | null>(null);
+  const [appendedFiles, setAppendedFiles] = useState<CoordinationAttachment[]>([]);
   const [currentAction, setCurrentAction] = useState<'approve' | 'reject' | 'complete'>(action);
   const [editedParams, setEditedParams] = useState<Record<string, any>>({});
   const [isEditingParams, setIsEditingParams] = useState(false);
@@ -248,9 +251,20 @@ export function CoordinationActionModal({
       params?.contractFileName ||
       (params as any)?.documentName ||
       (params?.contractTitle ? `${params.contractTitle}.docx` : `${taskTitle}.docx`);
-    allAttachments.push({
+    allAttachments.unshift({
       name: docName,
       url: directUrl,
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+  }
+
+  const originalDraftUrl =
+    params?.originalDraftUrl ||
+    (params as any)?.metadata?.originalDraftUrl;
+  if (originalDraftUrl && !allAttachments.some((a) => a.url === originalDraftUrl)) {
+    allAttachments.push({
+      name: params?.originalDraftFileName || (params?.fileName ? `初始版本 · ${params.fileName}` : '初始合同原稿.docx'),
+      url: originalDraftUrl,
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
   }
@@ -308,6 +322,7 @@ export function CoordinationActionModal({
     form.resetFields();
     setFileList([]);
     setReplacementFile(null);
+    setAppendedFiles([]);
     onClose();
   };
 
@@ -323,18 +338,30 @@ export function CoordinationActionModal({
         mimeType: f.type,
       }));
 
-      // 如果有担当上传的替换文件，优先将替换文件作为核心附件提交
-      const finalAttachments: CoordinationAttachment[] = replacementFile
-        ? [replacementFile, ...uploadedFiles.filter((f) => f.name !== replacementFile.name)]
-        : uploadedFiles.length > 0
-        ? uploadedFiles
-        : allAttachments;
+      const latestAppendedFile =
+        appendedFiles.length > 0
+          ? appendedFiles[appendedFiles.length - 1]
+          : replacementFile;
+
+      // 如果有担当上传的追加新版本文件，将最新追加版本置顶提交流转，同时完整保留原附件作为历史版本材料
+      const finalAttachments: CoordinationAttachment[] = [
+        ...appendedFiles,
+        ...(replacementFile && !appendedFiles.some((f) => f.url === replacementFile.url)
+          ? [replacementFile]
+          : []),
+        ...uploadedFiles,
+        ...allAttachments.filter(
+          (orig) =>
+            !appendedFiles.some((af) => af.url === orig.url) &&
+            (!replacementFile || orig.url !== replacementFile.url)
+        ),
+      ];
 
       let comment = values.comment?.trim() || '';
-      if (replacementFile && !comment.includes(replacementFile.name)) {
+      if (latestAppendedFile && !comment.includes(latestAppendedFile.name)) {
         comment = comment
-          ? `${comment}（已上传修订版文件：${replacementFile.name}）`
-          : `已核实并上传修订版文件（${replacementFile.name}），替换原生成文件提交流转。`;
+          ? `${comment}（已追加新版本文件：${latestAppendedFile.name}）`
+          : `已核实并追加修订版文件（${latestAppendedFile.name}），提交流转至下一节点。`;
       }
 
       await workbenchCoordinationApi.submitAction(taskId, {
@@ -346,22 +373,22 @@ export function CoordinationActionModal({
 
       if (nodeSemantics.isInitiatorNode) {
         message.success(
-          replacementFile
-            ? `已成功确认初稿并发送「${taskTitle}」，已附带修订版文件提交流程！`
+          latestAppendedFile
+            ? `已成功确认初稿并发送「${taskTitle}」，已附带最新追加文件提交流程！`
             : `已成功确认初稿并发送「${taskTitle}」，流程已推进至下一阶段！`
         );
       } else if (isApprove) {
         message.success(
-          replacementFile
-            ? `已成功确认流转「${taskTitle}」，已附带修订版文件提交流程！`
+          latestAppendedFile
+            ? `已成功确认流转「${taskTitle}」，已附带最新追加文件提交流程！`
             : `已成功确认流转「${taskTitle}」，流程已推进至下一阶段！`
         );
       } else if (isReject) {
         message.success(`已驳回「${taskTitle}」，退回修改意见已同步发起人及相关节点`);
       } else {
         message.success(
-          replacementFile
-            ? `已成功完成协同任务「${taskTitle}」，已附带最新修订文档同步流转！`
+          latestAppendedFile
+            ? `已成功完成协同任务「${taskTitle}」，已附带最新追加文档同步流转！`
             : `已成功完成协同任务「${taskTitle}」，执行结果已同步发起人！`
         );
       }
@@ -369,10 +396,21 @@ export function CoordinationActionModal({
       form.resetFields();
       setFileList([]);
       setReplacementFile(null);
+      setAppendedFiles([]);
       onSuccess();
       onClose();
     } catch (err: any) {
       if (err?.errorFields) return;
+      if (err?.message?.includes('未找到协同任务') || err?.response?.status === 404) {
+        message.warning('该协同任务已在其他环节流转或已更新，已为您自动刷新最新状态');
+        onClose();
+        void queryClient.invalidateQueries(['workbench-inbox']);
+        void queryClient.invalidateQueries(['workbench-inbox-summary']);
+        void queryClient.invalidateQueries(['workbench-todos']);
+        void queryClient.invalidateQueries(['workbench-todos-summary']);
+        void queryClient.invalidateQueries(['workbench-coordination-sent-tasks']);
+        return;
+      }
       message.error(err?.message || '操作失败，请重试');
     } finally {
       setIsSubmitting(false);
@@ -595,7 +633,11 @@ export function CoordinationActionModal({
           {isEditingParams ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {Object.entries(params)
-                .filter(([key]) => !['downloadUrl', 'fileName', 'executionId', 'remarks'].includes(key))
+                .filter(([key]) => ![
+                  'downloadUrl', 'fileUrl', 'contractUrl', 'fileName', 'contractFileName',
+                  'executionId', 'remarks', 'isDraftReplaced', 'originalDraftUrl',
+                  'originalDraftFileName', 'originalDraftSize', 'rawContent', 'text'
+                ].includes(key))
                 .map(([key, val]) => (
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ width: 110, fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0 }}>
@@ -643,7 +685,11 @@ export function CoordinationActionModal({
           ) : (
             <Descriptions size="small" column={1}>
               {Object.entries(params)
-                .filter(([key]) => !['downloadUrl', 'fileName', 'executionId', 'remarks'].includes(key))
+                .filter(([key]) => ![
+                  'downloadUrl', 'fileUrl', 'contractUrl', 'fileName', 'contractFileName',
+                  'executionId', 'remarks', 'isDraftReplaced', 'originalDraftUrl',
+                  'originalDraftFileName', 'originalDraftSize', 'rawContent', 'text'
+                ].includes(key))
                 .map(([key, val]) => (
                   <Descriptions.Item key={key} label={PARAM_LABEL_MAP[key] || key}>
                     {formatParamValue(key, val)}
@@ -720,12 +766,16 @@ export function CoordinationActionModal({
         </Button>
       </div>
 
-      {/* 附带材料与生成文档（排除 HTML 报告文件，仅保留业务文档） */}
+      {/* 附带材料与生成文档（排除 HTML 报告文件，仅保留业务文档；法务审查模式下只查验各版本，不可追加新版本） */}
       <CoordinationFileReplacer
         originalAttachments={businessAttachments}
         replacementFile={replacementFile}
         onReplacementChange={setReplacementFile}
+        appendedFiles={appendedFiles}
+        onAppendedFilesChange={setAppendedFiles}
         disabled={isSubmitting}
+        allowAppend={!nodeSemantics.isApprovalNode && !nodeSemantics.isArchiveNode}
+        isApprovalMode={nodeSemantics.isApprovalNode}
       />
 
       {/* 外部系统联动温馨提示 */}

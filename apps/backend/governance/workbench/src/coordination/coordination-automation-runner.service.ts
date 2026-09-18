@@ -80,7 +80,10 @@ export class CoordinationAutomationRunnerService {
       payload,
     } = opts;
 
-    const activeAttachment = activeAttachments?.[0];
+    const sanitizedAttachments = (activeAttachments || []).filter(
+      (a: any) => Boolean(a && typeof a === 'object' && !Array.isArray(a) && (a.url?.trim() || a.name?.trim()))
+    );
+    const activeAttachment = sanitizedAttachments?.[0];
     const fileName =
       activeAttachment?.name ||
       params.fileName ||
@@ -379,7 +382,10 @@ export class CoordinationAutomationRunnerService {
       targetItem,
     } = opts;
 
-    const activeAttachment = activeAttachments?.[0];
+    const sanitizedAttachments = (activeAttachments || []).filter(
+      (a: any) => Boolean(a && typeof a === 'object' && !Array.isArray(a) && (a.url?.trim() || a.name?.trim()))
+    );
+    const activeAttachment = sanitizedAttachments?.[0];
     const fileName =
       activeAttachment?.name ||
       params.fileName ||

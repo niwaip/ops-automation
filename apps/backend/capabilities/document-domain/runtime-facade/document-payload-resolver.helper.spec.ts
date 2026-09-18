@@ -26,6 +26,16 @@ describe('document-payload-resolver.helper', () => {
     };
     fs.writeFileSync(path.join(tmpDir, 'mock-uuid-aaa.json'), JSON.stringify(metaA));
     fs.writeFileSync(path.join(tmpDir, 'mock-uuid-aaa.docx'), 'metadata resolved content');
+
+    // Write sample coordination attachment files
+    const attId = 'att_12345678-1234-1234-1234-123456789abc';
+    const attMeta = {
+      attachmentId: attId,
+      fileName: 'revised_contract_v2.docx',
+      storagePath: path.join(tmpDir, `${attId}_revised_contract_v2.docx`),
+    };
+    fs.writeFileSync(path.join(tmpDir, `${attId}.meta.json`), JSON.stringify(attMeta));
+    fs.writeFileSync(path.join(tmpDir, `${attId}_revised_contract_v2.docx`), 'coordination attachment content v2');
   });
 
   afterAll(() => {
@@ -62,6 +72,18 @@ describe('document-payload-resolver.helper', () => {
       expect(buf?.toString()).toBe('metadata resolved content');
     });
 
+    it('finds coordination attachment by att_ ID with .meta.json storagePath', () => {
+      const buf = tryReadFileById('att_12345678-1234-1234-1234-123456789abc', [tmpDir]);
+      expect(buf).not.toBeNull();
+      expect(buf?.toString()).toBe('coordination attachment content v2');
+    });
+
+    it('finds coordination attachment by clean UUID when file has att_ prefix', () => {
+      const buf = tryReadFileById('12345678-1234-1234-1234-123456789abc', [tmpDir]);
+      expect(buf).not.toBeNull();
+      expect(buf?.toString()).toBe('coordination attachment content v2');
+    });
+
     it('returns null for non-existent ID', () => {
       const buf = tryReadFileById('non-existent-uuid', [tmpDir]);
       expect(buf).toBeNull();
@@ -69,6 +91,15 @@ describe('document-payload-resolver.helper', () => {
   });
 
   describe('resolveReviewDocumentPayload', () => {
+    it('resolves coordination attachment from relative downloadUrl', async () => {
+      const input: BuiltinContractReviewInput = {
+        downloadUrl: '/api/workbench-coordination/attachments/att_12345678-1234-1234-1234-123456789abc/download?fileName=revised_contract_v2.docx',
+      };
+      await resolveReviewDocumentPayload(input, [tmpDir]);
+      expect(input.fileBase64).toBe(Buffer.from('coordination attachment content v2').toString('base64'));
+      expect(input.fileName).toBe('revised_contract_v2.docx');
+    });
+
     it('resolves document from fileName in candidate dirs', async () => {
       const input: BuiltinContractReviewInput = {
         fileName: 'test_contract_a.docx',

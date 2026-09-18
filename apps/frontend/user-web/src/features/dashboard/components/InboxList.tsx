@@ -1,7 +1,10 @@
 import {
   ArrowRightOutlined,
+  BellOutlined,
+  CheckCircleFilled,
   CheckCircleOutlined,
   ClockCircleOutlined,
+  CloseCircleFilled,
   DeleteOutlined,
   DownloadOutlined,
   DownOutlined,
@@ -14,7 +17,9 @@ import {
   LoadingOutlined,
   MailOutlined,
   RobotOutlined,
+  RollbackOutlined,
   SendOutlined,
+  SwapOutlined,
   ThunderboltOutlined,
   UndoOutlined,
   UpOutlined,
@@ -22,6 +27,10 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "react-query";
 import { InboxContentPreview } from "./InboxContentPreview";
+import {
+  getContractComparisonPair,
+  triggerContractComparisonInAi,
+} from "../lib/contractComparisonHelper";
 import {
   PARAM_LABEL_MAP,
   formatParamValue,
@@ -50,7 +59,7 @@ import type { WorkbenchInboxItem } from "../../../api/workbenchInbox";
 import type { WorkbenchInboxFilter } from "../hooks/useWorkbenchInbox";
 import { InterventionList } from "./InterventionList";
 import { InboxTaskDetailModal } from "./InboxTaskDetailModal";
-import { classifyWorkflowNode } from "../lib/coordinationNodeClassifier";
+import { classifyWorkflowNode, extractRollbackReason, extractApprovalComment } from "../lib/coordinationNodeClassifier";
 import {
   applyOptimisticCoordinationSend,
   rollbackOptimisticCoordinationSend,
@@ -214,10 +223,42 @@ export function InboxList({
         return next;
       });
       rollbackOptimisticCoordinationSend(queryClient, item, user);
+      if (err?.message?.includes('未找到协同任务') || err?.response?.status === 404) {
+        void message.warning('该协同任务已在其他环节流转或已更新，已为您自动刷新最新状态');
+        void queryClient.invalidateQueries(['workbench-inbox']);
+        void queryClient.invalidateQueries(['workbench-inbox-summary']);
+        void queryClient.invalidateQueries(['workbench-todos']);
+        void queryClient.invalidateQueries(['workbench-coordination-sent-tasks']);
+        return;
+      }
       void message.error(err?.message || '操作失败，您可点击「详细」进行处理');
     } finally {
       setQuickSendingId(null);
     }
+  };
+
+  const handleRecallItem = async (item: WorkbenchInboxItem) => {
+    try {
+      const rawTaskId = item.sourceRefId || item.id;
+      const taskId = rawTaskId.startsWith('coord_coord_')
+        ? rawTaskId.replace(/^(?:coord_)+/, 'coord_')
+        : rawTaskId;
+      await workbenchCoordinationApi.recallTask(taskId, '发起人从收集箱撤回事项');
+      void message.success(`已成功撤回「${item.title}」，事项已退回至您的「待办」，您可重新编辑并再次发送。`);
+      void queryClient.invalidateQueries(['workbench-inbox']);
+      void queryClient.invalidateQueries(['workbench-inbox-summary']);
+      void queryClient.invalidateQueries(['workbench-todos']);
+      void queryClient.invalidateQueries(['workbench-todos-summary']);
+      void queryClient.invalidateQueries(['workbench-coordination-sent-tasks']);
+    } catch (err: any) {
+      void message.error(err?.message || '撤回失败，请重试');
+    }
+  };
+
+  const handleRemindItem = (item: WorkbenchInboxItem) => {
+    const nodeSemantics = classifyWorkflowNode(item, user?.username, user?.id);
+    const assigneeName = nodeSemantics.currentAssigneeName || '处理担当';
+    void message.success(`已向处理担当 @${assigneeName} 发送催办提醒，已催促尽快办理！`);
   };
 
   const toggleExpand = (id: string) => {
@@ -436,6 +477,14 @@ export function InboxList({
       params.contractUrl ||
       (payload.metadata as any)?.generatedDocUrl;
 
+    const nodeSemantics = classifyWorkflowNode(item, user?.username, user?.id);
+    const rollbackReason = nodeSemantics.isRevisionRequired
+      ? (nodeSemantics.rollbackReason || extractRollbackReason(item, payload))
+      : undefined;
+    const approvalComment = !nodeSemantics.isRevisionRequired
+      ? (nodeSemantics.approvalComment || extractApprovalComment(item, payload))
+      : undefined;
+
     const effectiveDownloadUrl =
       attachments.find((a) => a.url)?.url ||
       directUrl ||
@@ -449,6 +498,54 @@ export function InboxList({
 
     return (
       <div className={inboxStyles["inbox-content-container"]}>
+        {/* 需重修 / 驳回理由卡片提示 */}
+        {nodeSemantics.isRevisionRequired && rollbackReason ? (
+          <div
+            style={{
+              marginBottom: 8,
+              padding: '8px 12px',
+              borderRadius: 6,
+              background: 'rgba(255, 77, 79, 0.08)',
+              border: '1px solid rgba(255, 77, 79, 0.28)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 8,
+            }}
+          >
+            <CloseCircleFilled style={{ color: '#ff4d4f', fontSize: 14, marginTop: 3, flexShrink: 0 }} />
+            <div style={{ fontSize: 12.5, lineHeight: 1.5, minWidth: 0, flex: 1 }}>
+              <span style={{ color: '#cf1322', fontWeight: 600 }}>驳回批注与修改意见：</span>
+              <span style={{ color: 'var(--text-primary, #1f1f1f)', fontWeight: 500, wordBreak: 'break-word' }}>
+                {rollbackReason}
+              </span>
+            </div>
+          </div>
+        ) : null}
+
+        {/* 审批通过 / 办结批注提示 */}
+        {!nodeSemantics.isRevisionRequired && approvalComment ? (
+          <div
+            style={{
+              marginBottom: 8,
+              padding: '8px 12px',
+              borderRadius: 6,
+              background: 'rgba(82, 196, 26, 0.08)',
+              border: '1px solid rgba(82, 196, 26, 0.28)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 8,
+            }}
+          >
+            <CheckCircleFilled style={{ color: '#52c41a', fontSize: 14, marginTop: 3, flexShrink: 0 }} />
+            <div style={{ fontSize: 12.5, lineHeight: 1.5, minWidth: 0, flex: 1 }}>
+              <span style={{ color: '#389e0d', fontWeight: 600 }}>审批通过批注 / 流转说明：</span>
+              <span style={{ color: 'var(--text-primary, #1f1f1f)', fontWeight: 500, wordBreak: 'break-word' }}>
+                {approvalComment}
+              </span>
+            </div>
+          </div>
+        ) : null}
+
         {hasParams ? (
           <div className={inboxStyles["inbox-params-box"]}>
             {isLeave ? (
@@ -537,11 +634,12 @@ export function InboxList({
                 {/* 其它非合同特定自定义参数（如果存在且非内部冗余字段） */}
                 {Object.entries(params)
                   .filter(([k]) => ![
-                    'downloadUrl', 'fileName', 'executionId', 'remarks',
-                    'contractTitle', 'contractType', 'currentStage', 'myPosition',
-                    'durationYears', 'counterpartyName', 'counterpartyAddress',
+                    'downloadUrl', 'fileUrl', 'contractUrl', 'fileName', 'contractFileName',
+                    'executionId', 'remarks', 'contractTitle', 'contractType', 'currentStage',
+                    'myPosition', 'durationYears', 'counterpartyName', 'counterpartyAddress',
                     'counterpartyRole', 'ourParty', 'ourRole', 'cooperationSubject',
-                    'signDate', 'penaltyAmount', 'contractAmount', 'amount'
+                    'signDate', 'penaltyAmount', 'contractAmount', 'amount', 'isDraftReplaced',
+                    'originalDraftUrl', 'originalDraftFileName', 'originalDraftSize', 'rawContent', 'text'
                   ].includes(k))
                   .map(([k, v]) => (
                     <div key={k} style={{ display: 'flex', gap: 6 }}>
@@ -601,44 +699,78 @@ export function InboxList({
             ) : null}
 
             {/* 通用 AI 协同助手快捷入口：带入文档与要求作为上下文 */}
-            <div
-              style={{
-                marginTop: 8,
-                padding: '8px 12px',
-                background: 'rgba(99, 102, 241, 0.04)',
-                borderRadius: 6,
-                border: '1px solid rgba(99, 102, 241, 0.16)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: 8,
-              }}
-            >
-              <Space size={6}>
-                <RobotOutlined style={{ color: '#6366f1', fontSize: 14 }} />
-                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  将任务要件与文档带入 AI 对话，进行自然语言审查与修改
-                </span>
-              </Space>
-              <Button
-                size="small"
-                style={{
-                  backgroundColor: '#722ed1',
-                  borderColor: '#722ed1',
-                  color: '#fff',
-                  borderRadius: 6,
-                  fontSize: 12,
-                }}
-                icon={<RobotOutlined />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleOpenTaskInAiChat(item);
-                }}
-              >
-                在 AI 窗口中处理
-              </Button>
-            </div>
+            {(() => {
+              const itemComparisonPair = getContractComparisonPair(payload.attachments, undefined, params);
+              return (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: '8px 12px',
+                    background: 'rgba(99, 102, 241, 0.04)',
+                    borderRadius: 6,
+                    border: '1px solid rgba(99, 102, 241, 0.16)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 8,
+                  }}
+                >
+                  <Space size={6}>
+                    <RobotOutlined style={{ color: '#6366f1', fontSize: 14 }} />
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      将任务要件与文档带入 AI 对话，进行自然语言审查与修改
+                    </span>
+                  </Space>
+                  <Space size={8}>
+                    {itemComparisonPair ? (
+                      <Button
+                        size="small"
+                        style={{
+                          borderColor: '#722ed1',
+                          color: '#722ed1',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 500,
+                          backgroundColor: 'rgba(114, 46, 209, 0.04)',
+                        }}
+                        icon={<SwapOutlined style={{ color: '#722ed1' }} />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerContractComparisonInAi({
+                            taskId: item.id,
+                            taskTitle: item.title,
+                            baseDoc: itemComparisonPair.baseDoc,
+                            latestDoc: itemComparisonPair.latestDoc,
+                            parameters: params,
+                          });
+                        }}
+                        title="将新旧版本合同载入 AI 窗口进行智能比对与红线审查"
+                      >
+                        比较合同
+                      </Button>
+                    ) : null}
+                    <Button
+                      size="small"
+                      style={{
+                        backgroundColor: '#722ed1',
+                        borderColor: '#722ed1',
+                        color: '#fff',
+                        borderRadius: 6,
+                        fontSize: 12,
+                      }}
+                      icon={<RobotOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenTaskInAiChat(item);
+                      }}
+                    >
+                      在 AI 窗口中处理
+                    </Button>
+                  </Space>
+                </div>
+              );
+            })()}
           </div>
         ) : null}
 
@@ -929,32 +1061,64 @@ export function InboxList({
                         ) : (
                           /* 未归档条目：根据流程节点与任务类型展示相应动作 */
                           <>
-                            {/* 1. 需重修 / 已驳回任务：无论状态是否已转待办，卡片右侧都保证提供「重新编辑并发送」与「详细」 */}
+                            {/* 1. 需重修 / 已驳回任务：无论状态是否已转待办，卡片右侧提供醒目的「重新编辑并发送」 */}
                             {nodeSemantics.isRevisionRequired ? (
+                              <Tooltip title="当前任务已被驳回或需重修，请打开详情修改业务要件或追加新版本附件后再重新提交">
+                                <Button
+                                  size="small"
+                                  type="primary"
+                                  danger
+                                  icon={<EditOutlined style={{ fontSize: 12 }} />}
+                                  style={{
+                                    fontWeight: 500,
+                                    borderRadius: 6,
+                                    height: 26,
+                                    padding: "0 10px",
+                                  }}
+                                  onClick={() => {
+                                    setDetailModalItem(item);
+                                  }}
+                                >
+                                  重新编辑并发送
+                                </Button>
+                              </Tooltip>
+                            ) : nodeSemantics.isWaitingForOther ? (
+                              /* 2. 发起人外发等待他人审批：显示撤回、催办与详细 */
                               <>
-                                <Tooltip title="当前任务已被驳回或需重修，请打开详情修改业务要件或替换附件后再重新提交">
-                                  <Button
-                                    size="small"
-                                    type="primary"
-                                    danger
-                                    icon={<EditOutlined style={{ fontSize: 12 }} />}
-                                    style={{
-                                      fontWeight: 500,
-                                      borderRadius: 6,
-                                      height: 26,
-                                      padding: "0 10px",
-                                    }}
-                                    onClick={() => {
-                                      setDetailModalItem(item);
-                                    }}
+                                {nodeSemantics.canRecall ? (
+                                  <Popconfirm
+                                    title="确定撤回此发起事项？"
+                                    description="撤回后将终止后续流转，并将事项退回至您的「待办」，您可重新编辑并再次发送。"
+                                    onConfirm={() => handleRecallItem(item)}
+                                    okText="确认撤回"
+                                    cancelText="取消"
                                   >
-                                    重新编辑并发送
-                                  </Button>
-                                </Tooltip>
-                                <Tooltip title="查看驳回批注与修改意见，核验材料后重新提交">
+                                    <Button
+                                      size="small"
+                                      icon={<RollbackOutlined style={{ fontSize: 12 }} />}
+                                      className={styles['workbench-todo-recall-btn']}
+                                    >
+                                      撤回
+                                    </Button>
+                                  </Popconfirm>
+                                ) : null}
+                                {nodeSemantics.canRemind ? (
+                                  <Tooltip title={`向当前处理担当 @${nodeSemantics.currentAssigneeName || '处理人'} 发送催办提醒`}>
+                                    <Button
+                                      size="small"
+                                      icon={<BellOutlined style={{ fontSize: 12 }} />}
+                                      className={styles['workbench-todo-remind-btn']}
+                                      onClick={() => handleRemindItem(item)}
+                                    >
+                                      催办
+                                    </Button>
+                                  </Tooltip>
+                                ) : null}
+                                <Tooltip title="查看流程进度、结构化参数与附件详情">
                                   <Button
                                     size="small"
-                                    icon={<EyeOutlined />}
+                                    className={styles['workbench-todo-action-btn']}
+                                    icon={<EyeOutlined style={{ fontSize: 12 }} />}
                                     onClick={() => {
                                       setDetailModalItem(item);
                                     }}
@@ -964,9 +1128,9 @@ export function InboxList({
                                 </Tooltip>
                               </>
                             ) : nodeSemantics.isProcessTask ? (
-                              /* 2. 正常流程任务：未转待办时展示快捷流转按钮，且始终展示「详细」按钮 */
+                              /* 3. 正常流程任务：未转待办时展示快捷流转按钮，且始终展示「详细」按钮 */
                               <>
-                                {!isConverted ? (
+                                {!isConverted && (nodeSemantics.cardActionType === 'send' || nodeSemantics.canApprove) ? (
                                   <Popconfirm
                                     title={
                                       nodeSemantics.cardActionType === "send"
@@ -1162,6 +1326,8 @@ export function InboxList({
         item={detailModalItem}
         onClose={() => setDetailModalItem(null)}
         onOpenInAi={handleOpenTaskInAiChat}
+        onRecall={handleRecallItem}
+        onRemind={handleRemindItem}
         onSuccess={() => {
           setDetailModalItem(null);
         }}

@@ -1,14 +1,19 @@
 import {
+  BellOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
+  DownOutlined,
   EyeOutlined,
   RobotOutlined,
+  RollbackOutlined,
   SendOutlined,
+  SwapOutlined,
+  UpOutlined,
   UploadOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Card, Input, Modal, Space, Tag, Typography, Upload, message } from 'antd';
+import { Button, Card, Input, Modal, Popconfirm, Space, Tag, Tooltip, Typography, Upload, message } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQueryClient } from 'react-query';
@@ -19,6 +24,10 @@ import {
   type CoordinationAttachment,
 } from '../../../api/workbenchCoordination';
 import { CoordinationFileReplacer } from './CoordinationFileReplacer';
+import {
+  getContractComparisonPair,
+  triggerContractComparisonInAi,
+} from '../lib/contractComparisonHelper';
 import { classifyWorkflowNode } from '../lib/coordinationNodeClassifier';
 import {
   applyOptimisticCoordinationSend,
@@ -27,6 +36,8 @@ import {
 import { formatMonthDayTime } from '../../../shared/utils/dateText';
 import { ComplianceAuditCard, extractAuditReportFromTask } from './ComplianceAuditCard';
 import { BusinessParametersCard } from './BusinessParametersCard';
+import { TaskStageBanner } from './TaskStageBanner';
+import { VoucherAttachmentsCard } from './VoucherAttachmentsCard';
 
 interface InboxTaskDetailModalProps {
   open: boolean;
@@ -34,6 +45,8 @@ interface InboxTaskDetailModalProps {
   onClose: () => void;
   onFlow?: (item: WorkbenchInboxItem) => void;
   onOpenInAi?: (item: WorkbenchInboxItem) => void;
+  onRecall?: (item: WorkbenchInboxItem) => void;
+  onRemind?: (item: WorkbenchInboxItem) => void;
   onSuccess?: () => void;
 }
 
@@ -43,16 +56,20 @@ export function InboxTaskDetailModal({
   onClose,
   onFlow: _onFlow,
   onOpenInAi,
+  onRecall,
+  onRemind,
   onSuccess,
 }: InboxTaskDetailModalProps) {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const [replacementFile, setReplacementFile] = useState<CoordinationAttachment | null>(null);
+  const [appendedFiles, setAppendedFiles] = useState<CoordinationAttachment[]>([]);
   const [comment, setComment] = useState('');
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [initialParams, setInitialParams] = useState<Record<string, any>>({});
   const [editedParams, setEditedParams] = useState<Record<string, any>>({});
+  const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(true);
   const loadedItemIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -62,9 +79,11 @@ export function InboxTaskDetailModal({
       if (loadedItemIdRef.current !== currentItemId) {
         loadedItemIdRef.current = currentItemId;
         setReplacementFile(null);
+        setAppendedFiles([]);
         setComment('');
         setFileList([]);
         setIsSubmitting(false);
+        setIsHistoryCollapsed(true);
         const rawP = (item.unifiedPayload as any)?.parameters || {};
         setEditedParams({ ...rawP });
         setInitialParams({ ...rawP });
@@ -91,46 +110,13 @@ export function InboxTaskDetailModal({
   const isActionable =
     Boolean(item) &&
     !isArchived &&
+    !nodeSemantics.isWaitingForOther &&
     item?.status !== 'converted' &&
     item?.status !== 'discarded' &&
     ((isCoordination || nodeSemantics.isProcessTask) ||
       nodeSemantics.isRevisionRequired);
   const isAssignment = isCoordination && payload.taskType !== 'approval';
   const hasParams = Boolean(item) && (isCoordination || nodeSemantics.isProcessTask) && Object.keys(params).length > 0;
-
-  const extractRollbackReason = (): string | undefined => {
-    if (payload.metadata?.rollbackReason) return payload.metadata.rollbackReason;
-    if (payload.rollbackReason) return payload.rollbackReason;
-    if ((item as any)?.rollbackReason) return (item as any).rollbackReason;
-
-    // 从 actions 列表中查找最近一次驳回记录
-    if (Array.isArray(payload.actions)) {
-      const lastReject = [...payload.actions].reverse().find((a: any) => a.action === 'reject');
-      if (lastReject?.comment?.trim()) return lastReject.comment.trim();
-    }
-
-    // 从 item.rawContent 或 (item as any).description 中提取处理意见
-    const textToSearch = `${item?.rawContent || ''}\n${(item as any)?.description || ''}`;
-    const commentMatch = textToSearch.match(/处理意见[：:]\s*([^\n\r]+)/);
-    if (commentMatch && commentMatch[1]?.trim()) {
-      return commentMatch[1].trim();
-    }
-    const auditMatch = textToSearch.match(/(?:审核人员批注|驳回批注|驳回原因|退回原因)[：:]\s*([^\n\r]+)/);
-    if (auditMatch && auditMatch[1]?.trim()) {
-      return auditMatch[1].trim();
-    }
-    const quoteMatch = textToSearch.match(/(?:驳回|意见|退回|原因)[^\n\r]*[\r\n]+>\s*([^\n\r]+)/);
-    if (quoteMatch && quoteMatch[1]?.trim()) {
-      return quoteMatch[1].trim();
-    }
-
-    if (payload.externalSyncResult?.message) return payload.externalSyncResult.message;
-    if (payload.lastFailure?.error) return payload.lastFailure.error;
-    if (payload.asyncExecution?.error) return payload.asyncExecution.error;
-
-    return undefined;
-  };
-  const rollbackReason = extractRollbackReason();
 
   // 识别企业主体是否误识别为地址
   const looksLikeAddress = (name?: string): boolean => {
@@ -205,9 +191,20 @@ export function InboxTaskDetailModal({
       params.fileName ||
       params.contractFileName ||
       (params.contractTitle ? `${params.contractTitle}.docx` : item?.title ? `${item.title}.docx` : '合同文档.docx');
-    allAttachments.push({
+    allAttachments.unshift({
       name: docName,
       url: directUrl,
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+  }
+
+  const originalDraftUrl =
+    params.originalDraftUrl ||
+    (payload.metadata as any)?.originalDraftUrl;
+  if (originalDraftUrl && !allAttachments.some((a) => a.url === originalDraftUrl)) {
+    allAttachments.push({
+      name: params.originalDraftFileName || (params.fileName ? `初始版本 · ${params.fileName}` : '初始合同原稿.docx'),
+      url: originalDraftUrl,
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
   }
@@ -237,7 +234,23 @@ export function InboxTaskDetailModal({
     });
   }, [allAttachments]);
 
+  const comparisonPair = useMemo(() => {
+    return getContractComparisonPair(businessAttachments, appendedFiles, params);
+  }, [businessAttachments, appendedFiles, params]);
+
   if (!item) return null;
+
+  const handleCompareContractVersions = () => {
+    if (!comparisonPair || !item) return;
+    triggerContractComparisonInAi({
+      taskId: item.id,
+      taskTitle: item.title,
+      baseDoc: comparisonPair.baseDoc,
+      latestDoc: comparisonPair.latestDoc,
+      parameters: params,
+    });
+    onClose();
+  };
 
   const handleSubmit = async (action: 'approve' | 'reject' | 'complete') => {
     if (action === 'reject' && !comment.trim()) {
@@ -253,6 +266,12 @@ export function InboxTaskDetailModal({
         'executionId',
         'contractFileName',
         'contractUrl',
+        'isDraftReplaced',
+        'originalDraftUrl',
+        'originalDraftFileName',
+        'originalDraftSize',
+        'rawContent',
+        'text',
       ]);
 
       const hasParamChanges = Object.keys(editedParams).some((k) => {
@@ -263,6 +282,7 @@ export function InboxTaskDetailModal({
       });
 
       const hasAttachmentChanges =
+        appendedFiles.length > 0 ||
         Boolean(replacementFile) ||
         fileList.length > 0 ||
         Boolean(editedParams.isDraftReplaced);
@@ -271,7 +291,7 @@ export function InboxTaskDetailModal({
 
       if (!hasParamChanges && !hasAttachmentChanges && !hasComment) {
         message.error(
-          '已驳回的任务不能无修改直接提交！请修改业务要件参数、上传替换修订版附件，或填写重新发送的理由说明后再提交。'
+          '已驳回的任务不能无修改直接提交！请修改业务要件参数、追加新的修订版附件，或填写重新发送的理由说明后再提交。'
         );
         return;
       }
@@ -291,18 +311,37 @@ export function InboxTaskDetailModal({
         mimeType: f.type,
       }));
 
-      // 如果有担当上传的替换文件，优先将替换文件作为核心附件提交流转
-      const finalAttachments: CoordinationAttachment[] = replacementFile
-        ? [replacementFile, ...uploadedFiles.filter((f) => f.name !== replacementFile.name)]
-        : uploadedFiles.length > 0
-        ? uploadedFiles
-        : allAttachments;
+      const latestAppendedFile =
+        appendedFiles.length > 0
+          ? appendedFiles[appendedFiles.length - 1]
+          : replacementFile;
+
+      // 如果有担当上传的追加新版本文件，将最新追加版本置顶提交流转，同时完整保留原业务附件作为历史版本材料
+      // 旧轮次的 HTML 合规报告诊断工件不作为业务原稿继续下发，由引擎针对新版本重新生成
+      const businessAllAttachments = allAttachments.filter((orig) => {
+        const name = orig.name?.toLowerCase() || '';
+        const isHtml = name.endsWith('.html') || name.endsWith('.htm') || orig.mimeType === 'text/html';
+        return !isHtml;
+      });
+
+      const finalAttachments: CoordinationAttachment[] = [
+        ...appendedFiles,
+        ...(replacementFile && !appendedFiles.some((f) => f.url === replacementFile.url)
+          ? [replacementFile]
+          : []),
+        ...uploadedFiles,
+        ...businessAllAttachments.filter(
+          (orig) =>
+            !appendedFiles.some((af) => af.url === orig.url) &&
+            (!replacementFile || orig.url !== replacementFile.url)
+        ),
+      ];
 
       let finalComment = comment.trim();
-      if (replacementFile && !finalComment.includes(replacementFile.name)) {
+      if (latestAppendedFile && !finalComment.includes(latestAppendedFile.name)) {
         finalComment = finalComment
-          ? `${finalComment}（已上传修订版文件：${replacementFile.name}）`
-          : `已核实并上传修订版文件（${replacementFile.name}），替换原生成文档提交流转。`;
+          ? `${finalComment}（已追加新版本文件：${latestAppendedFile.name}）`
+          : `已核实并追加修订版文件（${latestAppendedFile.name}），提交流转至下一节点。`;
       }
 
       if (nodeSemantics.isArchiveNode) {
@@ -335,28 +374,28 @@ export function InboxTaskDetailModal({
 
       if (nodeSemantics.isRevisionRequired) {
         message.success(
-          replacementFile
-            ? `已成功提交重修材料「${item.title}」，已附带最新修订版附件提交流程！`
+          latestAppendedFile
+            ? `已成功提交重修材料「${item.title}」，已附带最新追加版本提交流程！`
             : `已成功重新提交「${item.title}」！系统正在进行智能审查与合规诊断，已自动迁移至「已发事项」。`
         );
       } else if (nodeSemantics.cardActionType === 'send') {
         message.success(
-          replacementFile
-            ? `已成功提交合同送审「${item.title}」，已附带最新修订版文件提交流程！`
+          latestAppendedFile
+            ? `已成功提交合同送审「${item.title}」，已附带最新追加文件提交流程！`
             : `已成功提交送审！系统正在进行智能合规诊断与风险复核，已自动迁移至「已发事项」。`
         );
       } else if (action === 'approve') {
         message.success(
-          replacementFile
-            ? `已成功确认流转「${item.title}」，已附带最新修订版文件提交流程！`
+          latestAppendedFile
+            ? `已成功确认流转「${item.title}」，已附带最新追加文件提交流程！`
             : `已成功确认流转「${item.title}」，流程已推进至下一阶段！`
         );
       } else if (action === 'reject') {
         message.success(`已驳回「${item.title}」，修改要求已同步上一节点承办人`);
       } else {
         message.success(
-          replacementFile
-            ? `已成功完成协同任务「${item.title}」，已附带最新修订文档同步流转！`
+          latestAppendedFile
+            ? `已成功完成协同任务「${item.title}」，已附带最新追加文档同步流转！`
             : `已成功完成协同任务「${item.title}」，执行结果已同步发起人！`
         );
       }
@@ -380,10 +419,58 @@ export function InboxTaskDetailModal({
       if (nodeSemantics.cardActionType === 'send' || action === 'approve' || action === 'complete') {
         rollbackOptimisticCoordinationSend(queryClient, item, user);
       }
+      if (err?.message?.includes('未找到协同任务') || err?.response?.status === 404) {
+        message.warning('该协同任务已在其他环节流转或已更新，已为您自动刷新最新状态');
+        onClose();
+        void queryClient.invalidateQueries(['workbench-inbox']);
+        void queryClient.invalidateQueries(['workbench-inbox-summary']);
+        void queryClient.invalidateQueries(['workbench-todos']);
+        void queryClient.invalidateQueries(['workbench-todos-summary']);
+        void queryClient.invalidateQueries(['workbench-coordination-sent-tasks']);
+        return;
+      }
       message.error(err?.message || '操作失败，请重试');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleRecall = async () => {
+    if (onRecall && item) {
+      onRecall(item);
+      onClose();
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      const rawTaskId = item?.sourceRefId || item?.id;
+      const taskId = rawTaskId?.startsWith('coord_coord_')
+        ? rawTaskId.replace(/^(?:coord_)+/, 'coord_')
+        : rawTaskId;
+      if (!taskId) return;
+      await workbenchCoordinationApi.recallTask(taskId, comment.trim() || '发起人从详情页撤回事项');
+      message.success(`已成功撤回「${item?.title}」，事项已退回至您的「待办」，您可重新编辑并再次发送。`);
+      onClose();
+      onSuccess?.();
+      void queryClient.invalidateQueries(['workbench-todos']);
+      void queryClient.invalidateQueries(['workbench-todos-summary']);
+      void queryClient.invalidateQueries(['workbench-coordination-sent-tasks']);
+      void queryClient.invalidateQueries(['workbench-inbox']);
+      void queryClient.invalidateQueries(['workbench-inbox-summary']);
+    } catch (err: any) {
+      message.error(err?.message || '撤回失败，请重试');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRemind = () => {
+    if (onRemind && item) {
+      onRemind(item);
+      return;
+    }
+    const assigneeName = nodeSemantics.currentAssigneeName || '处理担当';
+    message.success(`已向处理担当 @${assigneeName} 发送催办提醒，已催促尽快办理！`);
   };
 
   return (
@@ -415,7 +502,52 @@ export function InboxTaskDetailModal({
             在 AI 窗口中处理
           </Button>
         ) : null,
-        isActionable && nodeSemantics.allowReject ? (
+        comparisonPair ? (
+          <Button
+            key="compare"
+            icon={<SwapOutlined style={{ color: '#722ed1' }} />}
+            onClick={handleCompareContractVersions}
+            disabled={isSubmitting}
+            style={{ borderColor: '#722ed1', color: '#722ed1' }}
+            title="将新旧版本合同载入 AI 窗口进行智能比对与红线审查"
+          >
+            比较合同版本 (AI)
+          </Button>
+        ) : null,
+        nodeSemantics.isWaitingForOther && nodeSemantics.canRemind ? (
+          <Tooltip key="remind-tip" title={`向当前处理担当 @${nodeSemantics.currentAssigneeName || '处理担当'} 发送催办提醒`}>
+            <Button
+              key="remind"
+              icon={<BellOutlined style={{ color: '#fa8c16' }} />}
+              disabled={isSubmitting}
+              onClick={handleRemind}
+              style={{ borderColor: '#fa8c16', color: '#fa8c16' }}
+            >
+              催办
+            </Button>
+          </Tooltip>
+        ) : null,
+        nodeSemantics.isWaitingForOther && nodeSemantics.canRecall ? (
+          <Popconfirm
+            key="recall-popconfirm"
+            title="确定撤回此发起事项？"
+            description="撤回后将终止后续流转，并将事项退回至您的「待办」，您可重新编辑并再次发送。"
+            onConfirm={handleRecall}
+            okText="确认撤回"
+            cancelText="取消"
+            disabled={isSubmitting}
+          >
+            <Button
+              key="recall"
+              danger
+              icon={<RollbackOutlined />}
+              loading={isSubmitting}
+            >
+              撤回
+            </Button>
+          </Popconfirm>
+        ) : null,
+        isActionable && nodeSemantics.canReject && nodeSemantics.allowReject ? (
           <Button
             key="reject"
             danger
@@ -426,7 +558,7 @@ export function InboxTaskDetailModal({
             驳回修改
           </Button>
         ) : null,
-        isActionable ? (
+        isActionable && (!nodeSemantics.isApprovalNode || nodeSemantics.canApprove) ? (
           <Button
             key="submit"
             type="primary"
@@ -439,7 +571,9 @@ export function InboxTaskDetailModal({
             }
             loading={isSubmitting}
             style={
-              nodeSemantics.cardActionType === 'send'
+              nodeSemantics.isRevisionRequired
+                ? { backgroundColor: '#fa541c', borderColor: '#fa541c' }
+                : nodeSemantics.cardActionType === 'send'
                 ? { backgroundColor: '#1677ff', borderColor: '#1677ff' }
                 : isAssignment
                 ? { backgroundColor: '#722ed1', borderColor: '#722ed1' }
@@ -447,7 +581,9 @@ export function InboxTaskDetailModal({
             }
             onClick={() => handleSubmit(isAssignment ? 'complete' : 'approve')}
           >
-            {nodeSemantics.modalSubmitText}
+            {nodeSemantics.isRevisionRequired
+              ? (nodeSemantics.hasDocumentWorkflow ? '修改完成，重新提交' : '修改完成，重新提交申请')
+              : nodeSemantics.modalSubmitText}
           </Button>
         ) : null,
       ].filter(Boolean)}
@@ -490,219 +626,586 @@ export function InboxTaskDetailModal({
           </Space>
         </div>
 
-        {/* 需重修/已驳回专属引导 Alert (已归档任务不显示重修引导) */}
-        {nodeSemantics.isRevisionRequired && !isArchived ? (
-          <Alert
-            type="error"
-            showIcon
-            message={
-              <span style={{ fontWeight: 600, fontSize: 14 }}>
-                【当前任务已被驳回 / 需重修】
-              </span>
-            }
-            description={
-              <div style={{ fontSize: 13, lineHeight: 1.6, marginTop: 4 }}>
+        {/* 顶部阶段与引导栏（自适应：首次核对引导 / 驳回高亮诊断 / 审批合规提示 / 归档只读） */}
+        <TaskStageBanner nodeSemantics={nodeSemantics} isArchived={isArchived} />
+
+        {/* 模式一：无需生成交付文档的纯表单流转（员工请假、费用报销、纯数据审批与协同） */}
+        {!nodeSemantics.hasDocumentWorkflow ? (
+          <>
+            {/* 核心业务表单要件（首屏全展开高亮呈现，驳回重修状态下支持直接编辑修改） */}
+            {hasParams ? (
+              <BusinessParametersCard
+                parameters={params}
+                isSubmitter={isSubmitter}
+                isActionable={isActionable}
+                defaultCardCollapsed={false}
+                defaultEditing={Boolean(nodeSemantics.isRevisionRequired && isSubmitter)}
+                isRevisionMode={nodeSemantics.isRevisionRequired}
+                customTitle="📋 申请表单要素与业务要件"
+                candidateCompany={candidateCompany}
+                onApplyAutoCorrection={handleApplyAutoCorrection}
+                onChange={(key, val) =>
+                  setEditedParams((prev) => ({
+                    ...prev,
+                    [key]: val,
+                  }))
+                }
+              />
+            ) : null}
+
+            {/* 业务凭证与佐证材料（不展示版本履历与文档替换框） */}
+            <VoucherAttachmentsCard
+              attachments={businessAttachments}
+              fileList={fileList}
+              onFileListChange={setFileList}
+              disabled={isSubmitting || !isActionable}
+              isActionable={isActionable}
+            />
+
+            {/* 流转说明与留言 */}
+            {isActionable ? (
+              <div>
                 <div
                   style={{
-                    background: 'rgba(255, 77, 79, 0.08)',
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    border: '1px solid rgba(255, 77, 79, 0.25)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: nodeSemantics.isRevisionRequired ? '#cf1322' : 'var(--text-primary)',
+                    marginBottom: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                   }}
                 >
-                  <div style={{ color: '#cf1322', fontWeight: 600, marginBottom: 4 }}>
-                    📌 驳回批注与修改意见：
-                  </div>
-                  <div style={{ color: 'var(--text-primary, #1f1f1f)', whiteSpace: 'pre-wrap', fontWeight: 500 }}>
-                    {rollbackReason || '审核人员提出了修改意见，请根据批注调整表单要素或替换附件。'}
-                  </div>
-                </div>
-                <div style={{ marginTop: 8, color: '#cf1322', fontWeight: 600, fontSize: 12 }}>
-                  ⚠️ 系统规则：重新提交前请修改业务表单要件参数、上传替换新的修订版附件，或在下方填写重发理由说明（禁止无任何修改且无说明直接提交）。
-                </div>
-              </div>
-            }
-            style={{ borderRadius: 6, borderColor: '#ffa39e' }}
-          />
-        ) : null}
-
-        {/* 结构化业务要件表单（提取核心关键要件、支持展开折叠、仅提交者可修改） */}
-        {hasParams ? (
-          <BusinessParametersCard
-            parameters={params}
-            isSubmitter={isSubmitter}
-            isActionable={isActionable}
-            defaultEditing={Boolean(nodeSemantics.isRevisionRequired && isSubmitter)}
-            candidateCompany={candidateCompany}
-            onApplyAutoCorrection={handleApplyAutoCorrection}
-            onChange={(key, val) =>
-              setEditedParams((prev) => ({
-                ...prev,
-                [key]: val,
-              }))
-            }
-          />
-        ) : null}
-
-        {/* 流程自动生成的合同合规审查报告与 HTML 诊断交互文件（聚合展示，支持直接预览，无替换文档按钮） */}
-        {auditReport || htmlAttachment ? (
-          <ComplianceAuditCard
-            reportData={auditReport}
-            htmlAttachment={htmlAttachment}
-          />
-        ) : null}
-
-        {/* 原始提交说明 / 流转附言（已剥离合规审查报告大段文本，保持经办附言清爽干净） */}
-        {cleanedRawContent &&
-        cleanedRawContent !== item.title &&
-        (!hasParams || !Object.values(params).some((val) => typeof val === 'string' && val.trim() === cleanedRawContent?.trim())) ? (
-          <div
-            style={{
-              fontSize: 13,
-              lineHeight: 1.6,
-              padding: '8px 12px',
-              borderRadius: 6,
-              background: 'var(--bg-secondary, rgba(148, 163, 184, 0.05))',
-              border: '1px solid var(--border-color, rgba(148, 163, 184, 0.12))',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-            }}
-          >
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
-              📌 经办流转说明 / 原始提交附言
-            </div>
-            <div
-              style={{ fontSize: 13, lineHeight: 1.6 }}
-              dangerouslySetInnerHTML={{
-                __html: cleanedRawContent
-                  .replace(/&/g, '&amp;')
-                  .replace(/</g, '&lt;')
-                  .replace(/>/g, '&gt;')
-                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                  .replace(/\n/g, '<br />'),
-              }}
-            />
-          </div>
-        ) : null}
-
-        {/* 业务成果交付文档（排除 HTML 报告后的主合同文件，支持下载查验与本地修订版上传替换） */}
-        {(businessAttachments.length > 0 || replacementFile || nodeSemantics.cardActionType === 'send') ? (
-          <CoordinationFileReplacer
-            originalAttachments={businessAttachments}
-            replacementFile={replacementFile}
-            onReplacementChange={setReplacementFile}
-            disabled={isSubmitting || !isActionable}
-          />
-        ) : null}
-
-        {/* 留言 / 审批与流转说明 */}
-        {isActionable ? (
-          <div>
-            <div
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: 'var(--text-primary)',
-                marginBottom: 6,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <Space size={6}>
-                <span>💬 留言 / 流转说明</span>
-              </Space>
-            </div>
-            <Input.TextArea
-              rows={3}
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder={
-                nodeSemantics.isRevisionRequired
-                  ? '请输入重发理由说明、修改批注或流转留言（若未更改参数与附件，可在此填写说明理由后重新发送）...'
-                  : '请输入流转留言、审批意见或修改批注（如已在上方替换附件，可在此简要备注修改要点）...'
-              }
-              disabled={isSubmitting}
-              maxLength={500}
-              showCount
-            />
-          </div>
-        ) : null}
-
-        {/* 补充佐证附件（可选） */}
-        {isActionable ? (
-          <div>
-            <Upload
-              fileList={fileList}
-              beforeUpload={(file) => {
-                setFileList((prev) => [...prev, file]);
-                return false;
-              }}
-              onRemove={(file) => {
-                setFileList((prev) => prev.filter((f) => f.uid !== file.uid));
-              }}
-              disabled={isSubmitting}
-            >
-              <Button size="small" icon={<UploadOutlined />}>
-                上传补充附件 / 佐证材料（可选）
-              </Button>
-            </Upload>
-          </div>
-        ) : null}
-
-        {/* 历史流转历程与批注（若存在） */}
-        {Array.isArray(payload.actions) && payload.actions.length > 0 ? (
-          <Card
-            size="small"
-            title={<span style={{ fontSize: 12, fontWeight: 600 }}>🕒 历史流转历程与留言记录</span>}
-            styles={{ body: { padding: '8px 12px' } }}
-            style={{
-              background: 'var(--bg-secondary, rgba(148, 163, 184, 0.05))',
-              borderColor: 'var(--border-color, rgba(148, 163, 184, 0.14))',
-            }}
-          >
-            <Space direction="vertical" size={8} style={{ width: '100%' }}>
-              {payload.actions.map((act: any, idx: number) => (
-                <div key={idx} style={{ fontSize: 12, lineHeight: 1.5 }}>
-                  <Space size={6} wrap>
-                    <strong>@{act.operatorName || '协同成员'}</strong>
-                    <Tag
-                      color={
-                        act.action === 'reject'
-                          ? 'error'
-                          : act.action === 'complete'
-                          ? 'purple'
-                          : 'blue'
-                      }
-                      style={{ fontSize: 11, margin: 0 }}
-                    >
-                      {act.action === 'reject'
-                        ? '驳回修改'
-                        : act.action === 'complete'
-                        ? '办结提交'
-                        : '确认流转'}
-                    </Tag>
-                    <span style={{ color: 'var(--text-tertiary)' }}>
-                      {formatMonthDayTime(act.timestamp)}
+                  <Space size={6}>
+                    <span>
+                      {nodeSemantics.isRevisionRequired
+                        ? '💬 针对驳回意见的修改回复 / 重新提交说明'
+                        : nodeSemantics.isApprovalNode
+                        ? '💬 审批意见 / 批注意见'
+                        : '💬 申请留言 / 补充说明 (可选)'}
                     </span>
                   </Space>
-                  {act.comment ? (
+                </div>
+                <Input.TextArea
+                  rows={3}
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder={
+                    nodeSemantics.isRevisionRequired
+                      ? '请在此说明针对驳回批注所做的修改调整或补充材料说明（如：已修正请假时长/已重新核对金额明细）...'
+                      : nodeSemantics.isApprovalNode
+                      ? '请输入审批流转意见；若驳回请务必在此填写详细修改原因与要求...'
+                      : '请输入本次申请的备注或流转说明...'
+                  }
+                  disabled={isSubmitting}
+                  maxLength={500}
+                  showCount
+                />
+              </div>
+            ) : null}
+          </>
+        ) : (
+          /* 模式二：包含交付成果文档的工作流（保密协议 NDA、商业合同起草与法务审查闭环流） */
+          <>
+            {/* 2.1 驳回后重新提交模式：成果文档标记退回并引导追加 V2，业务要件展开可直接修改 */}
+            {nodeSemantics.isRevisionRequired ? (
+              <>
+                {/* 交付文档版本履历与 V2 修订稿追加上传 */}
+                <CoordinationFileReplacer
+                  originalAttachments={businessAttachments}
+                  replacementFile={replacementFile}
+                  onReplacementChange={setReplacementFile}
+                  appendedFiles={appendedFiles}
+                  onAppendedFilesChange={setAppendedFiles}
+                  onCompareVersions={handleCompareContractVersions}
+                  taskId={item.id}
+                  taskTitle={item.title}
+                  parameters={params}
+                  disabled={isSubmitting || !isActionable}
+                  isRevisionMode={true}
+                />
+
+                {/* 针对驳回意见的修改回复输入区（置于要件详情前面） */}
+                {isActionable ? (
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: '#cf1322',
+                        marginBottom: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <Space size={6}>
+                        <span>💬 针对驳回意见的修改说明 / 重发理由</span>
+                      </Space>
+                      <Upload
+                        fileList={fileList}
+                        beforeUpload={(file) => {
+                          setFileList((prev) => [...prev, file]);
+                          return false;
+                        }}
+                        onRemove={(file) => {
+                          setFileList((prev) => prev.filter((f) => f.uid !== file.uid));
+                        }}
+                        disabled={isSubmitting}
+                      >
+                        <Button type="link" size="small" icon={<UploadOutlined />} style={{ fontSize: 12, padding: 0 }}>
+                          + 补充佐证材料 (可选)
+                        </Button>
+                      </Upload>
+                    </div>
+                    <Input.TextArea
+                      rows={3}
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="请输入重发理由说明或修改批注（如：已按法务要求调整违约金条款，并上传了 V2 修订版；请复核）..."
+                      disabled={isSubmitting}
+                      maxLength={500}
+                      showCount
+                    />
+                  </div>
+                ) : null}
+
+                {/* 结构化业务要件表单（默认折叠，支持展开修改） */}
+                {hasParams ? (
+                  <BusinessParametersCard
+                    parameters={params}
+                    isSubmitter={isSubmitter}
+                    isActionable={isActionable}
+                    defaultCardCollapsed={true}
+                    defaultEditing={isSubmitter}
+                    isRevisionMode={true}
+                    candidateCompany={candidateCompany}
+                    onApplyAutoCorrection={handleApplyAutoCorrection}
+                    onChange={(key, val) =>
+                      setEditedParams((prev) => ({
+                        ...prev,
+                        [key]: val,
+                      }))
+                    }
+                  />
+                ) : null}
+
+                {/* 合同合规智能审查报告（折叠备查） */}
+                {auditReport || htmlAttachment ? (
+                  <ComplianceAuditCard
+                    reportData={auditReport}
+                    htmlAttachment={htmlAttachment}
+                    defaultCardCollapsed={true}
+                  />
+                ) : null}
+              </>
+            ) : nodeSemantics.isFirstTimeInitiation ? (
+              /* 2.2 首次确认模式：核验核心签约要件，查验初稿，轻量化替换入口 */
+              <>
+                {/* 核心签约要件（默认折叠） */}
+                {hasParams ? (
+                  <BusinessParametersCard
+                    parameters={params}
+                    isSubmitter={isSubmitter}
+                    isActionable={isActionable}
+                    defaultCardCollapsed={true}
+                    defaultEditing={false}
+                    customTitle="📋 核心签约要件核对"
+                    candidateCompany={candidateCompany}
+                    onApplyAutoCorrection={handleApplyAutoCorrection}
+                    onChange={(key, val) =>
+                      setEditedParams((prev) => ({
+                        ...prev,
+                        [key]: val,
+                      }))
+                    }
+                  />
+                ) : null}
+
+                {/* 成果文档初稿查验（紧凑展示初稿，支持下载，可选展开替换框） */}
+                {(businessAttachments.length > 0 || directUrl) ? (
+                  <CoordinationFileReplacer
+                    originalAttachments={businessAttachments}
+                    replacementFile={replacementFile}
+                    onReplacementChange={setReplacementFile}
+                    appendedFiles={appendedFiles}
+                    onAppendedFilesChange={setAppendedFiles}
+                    onCompareVersions={handleCompareContractVersions}
+                    taskId={item.id}
+                    taskTitle={item.title}
+                    parameters={params}
+                    disabled={isSubmitting || !isActionable}
+                    isFirstTimeMode={true}
+                  />
+                ) : null}
+
+                {/* 智能审查合规预警（如存在高危风险则自动展开高亮提醒） */}
+                {auditReport || htmlAttachment ? (
+                  <ComplianceAuditCard
+                    reportData={auditReport}
+                    htmlAttachment={htmlAttachment}
+                    defaultCardCollapsed={!(auditReport?.overallRisk === 'HIGH' || (auditReport?.score !== undefined && auditReport.score < 60))}
+                  />
+                ) : null}
+
+                {/* 提交留言 */}
+                {isActionable ? (
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: 'var(--text-primary)',
+                        marginBottom: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <Space size={6}>
+                        <span>💬 提交留言 / 协同说明 (可选)</span>
+                      </Space>
+                      <Upload
+                        fileList={fileList}
+                        beforeUpload={(file) => {
+                          setFileList((prev) => [...prev, file]);
+                          return false;
+                        }}
+                        onRemove={(file) => {
+                          setFileList((prev) => prev.filter((f) => f.uid !== file.uid));
+                        }}
+                        disabled={isSubmitting}
+                      >
+                        <Button type="link" size="small" icon={<UploadOutlined />} style={{ fontSize: 12, padding: 0 }}>
+                          + 补充佐证材料 (可选)
+                        </Button>
+                      </Upload>
+                    </div>
+                    <Input.TextArea
+                      rows={3}
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="请输入初稿提交流转留言或商务说明..."
+                      disabled={isSubmitting}
+                      maxLength={500}
+                      showCount
+                    />
+                  </div>
+                ) : null}
+              </>
+            ) : nodeSemantics.isApprovalNode ? (
+              /* 2.3 审批审查模式：AI合规风险报告置顶首屏展开，交付物查验，要件核对，审批意见 */
+              <>
+                {/* 智能审查合规报告首屏展开 */}
+                {auditReport || htmlAttachment ? (
+                  <ComplianceAuditCard
+                    reportData={auditReport}
+                    htmlAttachment={htmlAttachment}
+                    defaultCardCollapsed={false}
+                  />
+                ) : null}
+
+                {/* 成果文档查验（法务审批节点：只查验版本，不追加新版本） */}
+                {(businessAttachments.length > 0 || directUrl) ? (
+                  <CoordinationFileReplacer
+                    originalAttachments={businessAttachments}
+                    replacementFile={replacementFile}
+                    onReplacementChange={setReplacementFile}
+                    appendedFiles={appendedFiles}
+                    onAppendedFilesChange={setAppendedFiles}
+                    onCompareVersions={handleCompareContractVersions}
+                    taskId={item.id}
+                    taskTitle={item.title}
+                    parameters={params}
+                    disabled={isSubmitting || !isActionable}
+                    allowAppend={false}
+                    isApprovalMode={true}
+                  />
+                ) : null}
+
+                {/* 业务要件表单 */}
+                {hasParams ? (
+                  <BusinessParametersCard
+                    parameters={params}
+                    isSubmitter={isSubmitter}
+                    isActionable={isActionable}
+                    defaultCardCollapsed={true}
+                    defaultEditing={false}
+                    candidateCompany={candidateCompany}
+                    onApplyAutoCorrection={handleApplyAutoCorrection}
+                    onChange={(key, val) =>
+                      setEditedParams((prev) => ({
+                        ...prev,
+                        [key]: val,
+                      }))
+                    }
+                  />
+                ) : null}
+
+                {/* 审批流转批注 */}
+                {isActionable ? (
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: 'var(--text-primary)',
+                        marginBottom: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <Space size={6}>
+                        <span>💬 审批意见 / 修改批注</span>
+                      </Space>
+                      <Upload
+                        fileList={fileList}
+                        beforeUpload={(file) => {
+                          setFileList((prev) => [...prev, file]);
+                          return false;
+                        }}
+                        onRemove={(file) => {
+                          setFileList((prev) => prev.filter((f) => f.uid !== file.uid));
+                        }}
+                        disabled={isSubmitting}
+                      >
+                        <Button type="link" size="small" icon={<UploadOutlined />} style={{ fontSize: 12, padding: 0 }}>
+                          + 补充佐证材料 (可选)
+                        </Button>
+                      </Upload>
+                    </div>
+                    <Input.TextArea
+                      rows={3}
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="请输入审批流转意见；若驳回请务必在此填写详细修改原因与要求..."
+                      disabled={isSubmitting}
+                      maxLength={500}
+                      showCount
+                    />
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              /* 2.4 普通流转/办结归档查看模式 */
+              <>
+                {(businessAttachments.length > 0 || appendedFiles.length > 0 || replacementFile || nodeSemantics.cardActionType === 'send') ? (
+                  <CoordinationFileReplacer
+                    originalAttachments={businessAttachments}
+                    replacementFile={replacementFile}
+                    onReplacementChange={setReplacementFile}
+                    appendedFiles={appendedFiles}
+                    onAppendedFilesChange={setAppendedFiles}
+                    onCompareVersions={handleCompareContractVersions}
+                    taskId={item.id}
+                    taskTitle={item.title}
+                    parameters={params}
+                    disabled={isSubmitting || !isActionable}
+                    allowAppend={isActionable && !nodeSemantics.isArchiveNode}
+                    isApprovalMode={nodeSemantics.isApprovalNode}
+                  />
+                ) : null}
+
+                {isActionable ? (
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: 'var(--text-primary)',
+                        marginBottom: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <Space size={6}>
+                        <span>💬 留言 / 流转说明</span>
+                      </Space>
+                    </div>
+                    <Input.TextArea
+                      rows={3}
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="请输入流转留言或修改批注..."
+                      disabled={isSubmitting}
+                      maxLength={500}
+                      showCount
+                    />
+                  </div>
+                ) : null}
+
+                {hasParams ? (
+                  <BusinessParametersCard
+                    parameters={params}
+                    isSubmitter={isSubmitter}
+                    isActionable={isActionable}
+                    defaultCardCollapsed={true}
+                    defaultEditing={false}
+                    candidateCompany={candidateCompany}
+                    onApplyAutoCorrection={handleApplyAutoCorrection}
+                    onChange={(key, val) =>
+                      setEditedParams((prev) => ({
+                        ...prev,
+                        [key]: val,
+                      }))
+                    }
+                  />
+                ) : null}
+
+                {auditReport || htmlAttachment ? (
+                  <ComplianceAuditCard
+                    reportData={auditReport}
+                    htmlAttachment={htmlAttachment}
+                    defaultCardCollapsed={true}
+                  />
+                ) : null}
+              </>
+            )}
+          </>
+        )}
+
+        {/* 历史流转历程与留言记录（整合初始发起说明与各环节操作记录，支持展开折叠、默认折叠） */}
+        {(() => {
+          const hasInitialNote = Boolean(
+            cleanedRawContent &&
+            cleanedRawContent !== item.title &&
+            (!hasParams || !Object.values(params).some((val) => typeof val === 'string' && val.trim() === cleanedRawContent?.trim()))
+          );
+          const actionList = Array.isArray(payload.actions) ? payload.actions : [];
+          const totalHistoryCount = (hasInitialNote ? 1 : 0) + actionList.length;
+
+          if (totalHistoryCount === 0) return null;
+
+          return (
+            <Card
+              size="small"
+              title={
+                <div
+                  style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
+                  onClick={() => setIsHistoryCollapsed(!isHistoryCollapsed)}
+                >
+                  <Space size={6}>
+                    {isHistoryCollapsed ? (
+                      <DownOutlined style={{ fontSize: 11, color: 'var(--text-tertiary)' }} />
+                    ) : (
+                      <UpOutlined style={{ fontSize: 11, color: 'var(--text-tertiary)' }} />
+                    )}
+                    <span style={{ fontSize: 12, fontWeight: 600 }}>🕒 历史流转历程与留言记录</span>
+                    <Tag color="default" bordered={false} style={{ fontSize: 11, margin: 0 }}>
+                      {totalHistoryCount} 条记录
+                    </Tag>
+                  </Space>
+                </div>
+              }
+              extra={
+                <Button
+                  type="link"
+                  size="small"
+                  icon={isHistoryCollapsed ? <DownOutlined /> : <UpOutlined />}
+                  onClick={() => setIsHistoryCollapsed(!isHistoryCollapsed)}
+                  style={{ fontSize: 12, padding: 0 }}
+                >
+                  {isHistoryCollapsed ? '展开记录' : '收起记录'}
+                </Button>
+              }
+              styles={{
+                body: isHistoryCollapsed
+                  ? { display: 'none' }
+                  : { padding: '10px 14px' },
+              }}
+              style={{
+                background: 'var(--bg-secondary, rgba(148, 163, 184, 0.05))',
+                borderColor: 'var(--border-color, rgba(148, 163, 184, 0.14))',
+                borderRadius: 8,
+              }}
+            >
+              <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                {/* 1. 初始发起附言 */}
+                {hasInitialNote ? (
+                  <div style={{ fontSize: 12, lineHeight: 1.5 }}>
+                    <Space size={6} wrap align="center">
+                      <strong style={{ color: 'var(--text-primary)' }}>
+                        @{item.sourceSender || payload.initiator?.username || '经办发起人'}
+                      </strong>
+                      <Tag color="cyan" style={{ fontSize: 11, margin: 0 }}>
+                        初始发起需求
+                      </Tag>
+                      <span style={{ color: 'var(--text-tertiary)' }}>
+                        {formatMonthDayTime(item.createdAt)}
+                      </span>
+                    </Space>
                     <div
                       style={{
                         marginTop: 4,
                         color: 'var(--text-secondary)',
                         paddingLeft: 8,
-                        borderLeft: '2px solid rgba(148, 163, 184, 0.3)',
+                        borderLeft: '2px solid rgba(22, 119, 255, 0.4)',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
                       }}
-                    >
-                      {act.comment}
-                    </div>
-                  ) : null}
-                </div>
-              ))}
-            </Space>
-          </Card>
-        ) : null}
+                      dangerouslySetInnerHTML={{
+                        __html: (cleanedRawContent || '')
+                          .replace(/&/g, '&amp;')
+                          .replace(/</g, '&lt;')
+                          .replace(/>/g, '&gt;')
+                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                          .replace(/\n/g, '<br />'),
+                      }}
+                    />
+                  </div>
+                ) : null}
+
+                {/* 2. 各节点审批与流转记录 */}
+                {actionList.map((act: any, idx: number) => (
+                  <div key={idx} style={{ fontSize: 12, lineHeight: 1.5 }}>
+                    <Space size={6} wrap align="center">
+                      <strong style={{ color: 'var(--text-primary)' }}>
+                        @{act.operatorName || '协同成员'}
+                      </strong>
+                      <Tag
+                        color={
+                          act.action === 'reject'
+                            ? 'error'
+                            : act.action === 'complete'
+                            ? 'purple'
+                            : 'blue'
+                        }
+                        style={{ fontSize: 11, margin: 0 }}
+                      >
+                        {act.action === 'reject'
+                          ? '驳回修改'
+                          : act.action === 'complete'
+                          ? '办结提交'
+                          : '确认流转'}
+                      </Tag>
+                      <span style={{ color: 'var(--text-tertiary)' }}>
+                        {formatMonthDayTime(act.timestamp)}
+                      </span>
+                    </Space>
+                    {act.comment ? (
+                      <div
+                        style={{
+                          marginTop: 4,
+                          color: 'var(--text-secondary)',
+                          paddingLeft: 8,
+                          borderLeft: `2px solid ${
+                            act.action === 'reject'
+                              ? 'rgba(255, 77, 79, 0.5)'
+                              : 'rgba(148, 163, 184, 0.3)'
+                          }`,
+                        }}
+                      >
+                        {act.comment}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </Space>
+            </Card>
+          );
+        })()}
       </div>
     </Modal>
   );

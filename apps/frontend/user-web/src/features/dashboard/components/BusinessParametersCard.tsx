@@ -6,7 +6,7 @@ import {
   UpOutlined,
 } from '@ant-design/icons';
 import { Button, Card, Descriptions, Input, Space, Tag, Tooltip } from 'antd';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { PARAM_LABEL_MAP, formatParamValue } from './CoordinationActionModal';
 
 interface BusinessParametersCardProps {
@@ -18,7 +18,10 @@ interface BusinessParametersCardProps {
   onChange: (key: string, value: any) => void;
   defaultExpanded?: boolean;
   defaultEditing?: boolean;
+  defaultCardCollapsed?: boolean;
   coreKeys?: string[];
+  customTitle?: string;
+  isRevisionMode?: boolean;
 }
 
 const EXCLUDED_KEYS = new Set([
@@ -29,6 +32,11 @@ const EXCLUDED_KEYS = new Set([
   'executionId',
   'contractFileName',
   'isDraftReplaced',
+  'originalDraftUrl',
+  'originalDraftFileName',
+  'originalDraftSize',
+  'rawContent',
+  'text',
 ]);
 
 // 默认核心主要关键字段定义（折叠状态下优先展示）
@@ -50,10 +58,24 @@ export function BusinessParametersCard({
   onChange,
   defaultExpanded = false,
   defaultEditing = false,
+  defaultCardCollapsed = true,
   coreKeys,
+  customTitle,
+  isRevisionMode = false,
 }: BusinessParametersCardProps) {
+  const [isCardCollapsed, setIsCardCollapsed] = useState(defaultCardCollapsed);
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [isEditing, setIsEditing] = useState(Boolean(defaultEditing && isSubmitter));
+
+  useEffect(() => {
+    setIsCardCollapsed(defaultCardCollapsed);
+  }, [defaultCardCollapsed]);
+
+  useEffect(() => {
+    if (defaultEditing && isSubmitter) {
+      setIsEditing(true);
+    }
+  }, [defaultEditing, isSubmitter]);
 
   // 过滤有效参数字段
   const validEntries = useMemo(() => {
@@ -107,50 +129,109 @@ export function BusinessParametersCard({
     <Card
       size="small"
       title={
-        <Space size={6}>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>📋 业务表单要件详情</span>
-          <Tag color="blue" bordered={false} style={{ fontSize: 11, margin: 0 }}>
-            {validEntries.length} 项要件
-          </Tag>
-        </Space>
+        <div
+          style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
+          onClick={() => setIsCardCollapsed(!isCardCollapsed)}
+        >
+          <Space size={6}>
+            {isCardCollapsed ? (
+              <DownOutlined style={{ fontSize: 11, color: 'var(--text-tertiary)' }} />
+            ) : (
+              <UpOutlined style={{ fontSize: 11, color: 'var(--text-tertiary)' }} />
+            )}
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{customTitle || '📋 业务表单要件详情'}</span>
+            <Tag color="blue" bordered={false} style={{ fontSize: 11, margin: 0 }}>
+              {validEntries.length} 项要件
+            </Tag>
+            {isRevisionMode && canEdit ? (
+              <Tag color="error" bordered={false} style={{ fontSize: 10, margin: 0 }}>
+                可修正
+              </Tag>
+            ) : null}
+          </Space>
+        </div>
       }
       extra={
         <Space size={8}>
-          {canEdit ? (
-            <Button
-              type="link"
-              size="small"
-              icon={isEditing ? <SaveOutlined /> : <EditOutlined />}
-              onClick={() => setIsEditing(!isEditing)}
-              style={{ fontSize: 12, padding: 0 }}
-            >
-              {isEditing ? '完成编辑' : '手动修正要件'}
-            </Button>
-          ) : !isSubmitter ? (
-            <Tooltip title="根据系统合规规范，仅发起/提交者本人有权修正业务要件">
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                <InfoCircleOutlined style={{ marginRight: 4 }} />
-                仅提交者可修正
-              </span>
-            </Tooltip>
-          ) : null}
+          {isCardCollapsed ? (
+            <>
+              {canEdit ? (
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={() => {
+                    setIsCardCollapsed(false);
+                    setIsEditing(true);
+                  }}
+                  style={{ fontSize: 12, padding: 0 }}
+                >
+                  展开并修正要件
+                </Button>
+              ) : null}
+              <Button
+                type="link"
+                size="small"
+                icon={<DownOutlined />}
+                onClick={() => setIsCardCollapsed(false)}
+                style={{ fontSize: 12, padding: 0 }}
+              >
+                展开查看要件
+              </Button>
+            </>
+          ) : (
+            <>
+              {canEdit ? (
+                <Button
+                  type="link"
+                  size="small"
+                  icon={isEditing ? <SaveOutlined /> : <EditOutlined />}
+                  onClick={() => setIsEditing(!isEditing)}
+                  style={{ fontSize: 12, padding: 0 }}
+                >
+                  {isEditing ? '完成编辑' : '手动修正要件'}
+                </Button>
+              ) : !isSubmitter ? (
+                <Tooltip title="根据系统合规规范，仅发起/提交者本人有权修正业务要件">
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                    <InfoCircleOutlined style={{ marginRight: 4 }} />
+                    仅提交者可修正
+                  </span>
+                </Tooltip>
+              ) : null}
 
-          {!isEditing && (secondaryEntries.length > 0 || remarksEntry) ? (
-            <Button
-              type="link"
-              size="small"
-              icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
-              onClick={() => setIsExpanded(!isExpanded)}
-              style={{ fontSize: 12, padding: 0 }}
-            >
-              {isExpanded
-                ? '收起次要要件'
-                : `展开全部要件 (${validEntries.length} 项)`}
-            </Button>
-          ) : null}
+              {!isEditing && (secondaryEntries.length > 0 || remarksEntry) ? (
+                <Button
+                  type="link"
+                  size="small"
+                  icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  style={{ fontSize: 12, padding: 0 }}
+                >
+                  {isExpanded
+                    ? '收起次要要件'
+                    : `展开全部要件 (${validEntries.length} 项)`}
+                </Button>
+              ) : null}
+
+              <Button
+                type="link"
+                size="small"
+                icon={<UpOutlined />}
+                onClick={() => setIsCardCollapsed(true)}
+                style={{ fontSize: 12, padding: 0, color: 'var(--text-secondary)' }}
+              >
+                折叠要件
+              </Button>
+            </>
+          )}
         </Space>
       }
-      styles={{ body: { padding: '10px 14px' } }}
+      styles={{
+        body: isCardCollapsed
+          ? { display: 'none' }
+          : { padding: '10px 14px' },
+      }}
       style={{
         background: 'var(--bg-secondary, rgba(148, 163, 184, 0.05))',
         borderColor: 'var(--border-color, rgba(148, 163, 184, 0.16))',

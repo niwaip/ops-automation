@@ -1669,3 +1669,15 @@
   border-color: #1e40af !important;
   box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3) !important;
 }
+
+/* 9. 紧凑型成果文档上传拖拽框 */
+.compact-file-dragger :global(.ant-upload.ant-upload-drag) {
+  padding: 0 !important;
+  border-radius: 6px !important;
+  min-height: auto !important;
+}
+
+.compact-file-dragger :global(.ant-upload.ant-upload-drag .ant-upload-btn) {
+  padding: 6px 12px !important;
+}
+

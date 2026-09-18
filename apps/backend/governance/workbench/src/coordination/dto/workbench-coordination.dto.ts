@@ -1,9 +1,11 @@
+import { Type } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
+  ValidateNested,
 } from 'class-validator';
 
 export enum CoordinationTaskType {
@@ -34,6 +36,32 @@ export interface CoordinationAttachment {
   size?: number;
   mimeType?: string;
   storagePath?: string;
+  attachmentId?: string;
+}
+
+export class CoordinationAttachmentDto implements CoordinationAttachment {
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+
+  @IsString()
+  @IsOptional()
+  url?: string;
+
+  @IsOptional()
+  size?: number;
+
+  @IsString()
+  @IsOptional()
+  mimeType?: string;
+
+  @IsString()
+  @IsOptional()
+  storagePath?: string;
+
+  @IsString()
+  @IsOptional()
+  attachmentId?: string;
 }
 
 export interface CoordinationActionRecord {
@@ -77,7 +105,9 @@ export class CreateCoordinationTaskDto {
 
   @IsArray()
   @IsOptional()
-  attachments?: CoordinationAttachment[];
+  @ValidateNested({ each: true })
+  @Type(() => CoordinationAttachmentDto)
+  attachments?: CoordinationAttachmentDto[];
 
   @IsOptional()
   isCardTemplate?: boolean;
@@ -127,7 +157,9 @@ export class SubmitCoordinationActionDto {
 
   @IsArray()
   @IsOptional()
-  attachments?: CoordinationAttachment[];
+  @ValidateNested({ each: true })
+  @Type(() => CoordinationAttachmentDto)
+  attachments?: CoordinationAttachmentDto[];
 
   @IsOptional()
   parameters?: Record<string, any>;

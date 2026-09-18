@@ -24,12 +24,15 @@ export const WORKSPACE_ROOT = process.env.PROJECT_ROOT || findWorkspaceRoot();
 export function getCandidateStorageDirs(workspaceRoot: string = WORKSPACE_ROOT): string[] {
   const customOutputs = process.env.OUTPUTS_DIR;
   const customRenders = process.env.STORAGE_RENDER_DIR || process.env.MEDIA_STORAGE_PATH;
+  const customCoordinationStorage = process.env.COORDINATION_STORAGE_ROOT;
 
   const dirs = [
     customOutputs,
     customRenders,
+    customCoordinationStorage,
     path.join(workspaceRoot, 'apps', 'backend', 'var', 'outputs', 'document-engine'),
     path.join(workspaceRoot, 'apps', 'backend', 'var', 'outputs', 'document-engine', 'renders'),
+    path.join(workspaceRoot, 'data', 'storage', 'attachments'),
     path.join(workspaceRoot, 'data', 'storage', 'uploads'),
     path.join(workspaceRoot, 'data', 'storage'),
     path.join(workspaceRoot, 'apps', 'backend', 'intelligence', 'ai-orchestrator', 'data', 'storage', 'uploads'),
@@ -37,6 +40,11 @@ export function getCandidateStorageDirs(workspaceRoot: string = WORKSPACE_ROOT):
     path.join(workspaceRoot, 'docs', 'artifacts', 'sample-contracts'),
     path.join(process.cwd(), 'outputs'),
     path.join(process.cwd(), '.tmp', 'renders'),
+    path.resolve(process.cwd(), 'data/storage/attachments'),
+    path.resolve(process.cwd(), '../../../data/storage/attachments'),
+    path.resolve(process.cwd(), '../../../../data/storage/attachments'),
+    '/workspace/data/storage/attachments',
+    '/tmp/coordination-attachments',
   ];
 
   return dirs.filter((d): d is string => typeof d === 'string' && d.trim().length > 0);
@@ -49,40 +57,65 @@ export function tryReadFileById(
 ): Buffer | null {
   if (!fileId || typeof fileId !== 'string') return null;
 
-  let knownFormat: string | undefined;
-  for (const dir of candidateDirs) {
-    if (!fs.existsSync(dir)) continue;
-    const metaPath = path.join(dir, `${fileId}.json`);
-    if (fs.existsSync(metaPath)) {
-      try {
-        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-        if (meta.format) knownFormat = String(meta.format).toLowerCase();
-      } catch {
-        // ignore
-      }
-      break;
-    }
-  }
-
-  const extensions = knownFormat
-    ? [`.${knownFormat}`, '.docx', '.pdf', '.doc', '']
-    : ['.docx', '.pdf', '.doc', ''];
+  const cleanId = fileId.replace(/^att_/, '');
+  const idVariants = Array.from(new Set([fileId, cleanId, `att_${cleanId}`])).filter(Boolean);
 
   for (const dir of candidateDirs) {
     if (!fs.existsSync(dir)) continue;
-    for (const ext of extensions) {
-      const filePath = path.join(dir, `${fileId}${ext}`);
-      if (fs.existsSync(filePath)) {
-        try {
-          const stat = fs.statSync(filePath);
-          if (stat.isFile() && stat.size > 0) {
-            logger?.log(`Found contract document by ID: ${filePath} (${stat.size} bytes)`);
-            return fs.readFileSync(filePath);
+
+    // 1. Check metadata files (.meta.json for coordination attachments, or .json for document-engine)
+    for (const variant of idVariants) {
+      const metaCandidates = [
+        path.join(dir, `${variant}.meta.json`),
+        path.join(dir, `${variant}.json`),
+      ];
+
+      for (const metaPath of metaCandidates) {
+        if (fs.existsSync(metaPath)) {
+          try {
+            const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+            if (meta.storagePath && fs.existsSync(meta.storagePath)) {
+              const stat = fs.statSync(meta.storagePath);
+              if (stat.isFile() && stat.size > 0) {
+                logger?.log(`Found contract document via attachment meta storagePath: ${meta.storagePath} (${stat.size} bytes)`);
+                return fs.readFileSync(meta.storagePath);
+              }
+            }
+          } catch {
+            // ignore
           }
-        } catch {
-          // ignore
         }
       }
+    }
+
+    // 2. Direct exact or prefixed file match in the directory
+    try {
+      const files = fs.readdirSync(dir);
+      for (const variant of idVariants) {
+        for (const file of files) {
+          if (
+            file === `${variant}.docx` ||
+            file === `${variant}.pdf` ||
+            file === `${variant}.doc` ||
+            file.startsWith(`${variant}_`) ||
+            file.startsWith(`${variant}.`)
+          ) {
+            if (file.endsWith('.json') || file.endsWith('.meta.json')) continue;
+            const filePath = path.join(dir, file);
+            try {
+              const stat = fs.statSync(filePath);
+              if (stat.isFile() && stat.size > 0) {
+                logger?.log(`Found contract document by ID pattern: ${filePath} (${stat.size} bytes)`);
+                return fs.readFileSync(filePath);
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore
     }
   }
 
@@ -145,14 +178,17 @@ export function tryReadFileByName(
           try {
             const metaPath = path.join(dir, f);
             const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-            const id = meta.id || f.replace(/\.json$/, '');
+            const id = meta.id || meta.attachmentId || f.replace(/\.(?:meta\.)?json$/, '');
             const ext = meta.format ? `.${meta.format}` : '.docx';
-            const matchedFilePath = path.join(dir, `${id}${ext}`);
+            const matchedFilePath = meta.storagePath && fs.existsSync(meta.storagePath)
+              ? meta.storagePath
+              : path.join(dir, `${id}${ext}`);
             if (!fs.existsSync(matchedFilePath)) continue;
 
             if (meta.fileName === normalizedName || meta.outputName === normalizedName) {
-              logger?.log(`Found document matched via metadata json: ${matchedFilePath}`);
-              return fs.readFileSync(matchedFilePath);
+              const stat = fs.statSync(matchedFilePath);
+              scoredCandidates.push({ filePath: matchedFilePath, score: 100, mtime: stat.mtimeMs });
+              continue;
             }
 
             let score = 0;
@@ -211,15 +247,24 @@ export function tryReadFileByName(
 }
 
 export async function fetchFileFromUrl(targetUrl: string, logger?: Logger): Promise<Buffer | null> {
-  if (!targetUrl || !/^https?:\/\//i.test(targetUrl)) return null;
+  if (!targetUrl || typeof targetUrl !== 'string') return null;
+
+  let resolvedUrl = targetUrl;
+  if (resolvedUrl.startsWith('/')) {
+    const platformHost = process.env.PLATFORM_HOST || process.env.HOST_IP || 'platform';
+    const platformPort = process.env.AUTH_PORT || '3001';
+    resolvedUrl = `http://${platformHost}:${platformPort}${resolvedUrl}`;
+  }
+
+  if (!/^https?:\/\//i.test(resolvedUrl)) return null;
   try {
-    logger?.log(`Fetching contract document from URL: ${targetUrl}`);
-    const resp = await axios.get(targetUrl, { responseType: 'arraybuffer', timeout: 15000 });
+    logger?.log(`Fetching contract document from URL: ${resolvedUrl}`);
+    const resp = await axios.get(resolvedUrl, { responseType: 'arraybuffer', timeout: 15000 });
     if (resp.status >= 200 && resp.status < 300 && resp.data) {
       return Buffer.from(resp.data as ArrayBuffer);
     }
   } catch (err) {
-    logger?.warn(`Failed fetching document from ${targetUrl}: ${(err as Error).message}`);
+    logger?.warn(`Failed fetching document from ${resolvedUrl}: ${(err as Error).message}`);
   }
   return null;
 }
@@ -245,25 +290,41 @@ export async function resolveDocumentBuffer(
   // 1. Try resolving via URL (UUID or download path on disk first, then remote fetch)
   const targetUrl = target.downloadUrl || target.fileUrl || target.url;
   if (targetUrl) {
-    const uuidMatch = targetUrl.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+    const queryNameMatch = targetUrl.match(/[\?&]fileName=([^&#]+)/i);
+    if (queryNameMatch && !resolvedFileName) {
+      try {
+        resolvedFileName = decodeURIComponent(queryNameMatch[1]);
+      } catch {
+        resolvedFileName = queryNameMatch[1];
+      }
+    }
+
+    const attMatch = targetUrl.match(/attachments\/(att_[0-9a-f\-]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
     const pathIdMatch = targetUrl.match(/\/(?:studio\/download|download|renders|outputs|attachments)\/([a-zA-Z0-9_\-]+?)(?:\.[a-z0-9]+)?(?:[?#]|$)/i);
-    const targetFileId = uuidMatch?.[1] || pathIdMatch?.[1];
+    const uuidMatch = targetUrl.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+    const targetFileId = attMatch?.[1] || pathIdMatch?.[1] || uuidMatch?.[1];
     if (targetFileId) {
       fileBuffer = tryReadFileById(targetFileId, candidateDirs, logger);
       if (fileBuffer && !resolvedFileName) {
         for (const dir of candidateDirs) {
-          const metaPath = path.join(dir, `${targetFileId}.json`);
-          if (fs.existsSync(metaPath)) {
-            try {
-              const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-              if (meta.fileName || meta.outputName) {
-                resolvedFileName = meta.fileName || meta.outputName;
+          const metaCandidates = [
+            path.join(dir, `${targetFileId}.meta.json`),
+            path.join(dir, `${targetFileId}.json`),
+          ];
+          for (const mp of metaCandidates) {
+            if (fs.existsSync(mp)) {
+              try {
+                const meta = JSON.parse(fs.readFileSync(mp, 'utf8'));
+                if (meta.fileName || meta.outputName) {
+                  resolvedFileName = meta.fileName || meta.outputName;
+                  break;
+                }
+              } catch {
+                // ignore
               }
-            } catch {
-              // ignore
             }
-            break;
           }
+          if (resolvedFileName) break;
         }
       }
     }
@@ -365,7 +426,7 @@ export async function resolveReviewDocumentPayload(
     }
   }
 
-  const { buffer, fallbackText: resolvedFallback } = await resolveDocumentBuffer(
+  const { buffer, resolvedFileName, fallbackText: resolvedFallback } = await resolveDocumentBuffer(
     {
       fileBase64: input.fileBase64,
       fileName: targetFileName,
@@ -379,11 +440,12 @@ export async function resolveReviewDocumentPayload(
 
   if (buffer && buffer.length > 0) {
     input.fileBase64 = buffer.toString('base64');
-    if (targetFileName && !input.fileName) {
-      input.fileName = targetFileName;
+    const finalName = targetFileName || resolvedFileName;
+    if (finalName && !input.fileName) {
+      input.fileName = finalName;
     }
     logger?.log(
-      `Successfully auto-resolved review document payload (${buffer.length} bytes, fileName=${input.fileName || targetFileName})`
+      `Successfully auto-resolved review document payload (${buffer.length} bytes, fileName=${input.fileName || finalName})`
     );
   } else if (resolvedFallback && !input.text) {
     input.text = resolvedFallback;

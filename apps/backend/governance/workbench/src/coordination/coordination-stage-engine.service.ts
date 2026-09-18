@@ -163,22 +163,71 @@ export class CoordinationStageEngineService {
       targetItem.sourceTitle ||
       targetItem.title;
 
-    // 1. 通用处理文件替换 (File Replacement)
-    const hasReplacedFile =
-      Array.isArray(dto.attachments) && dto.attachments.length > 0;
-    const activeAttachments: CoordinationAttachment[] = hasReplacedFile
-      ? dto.attachments!
-      : payload.attachments || [];
+    // 1. 通用处理文件替换与多版本历史履历留存 (File Replacement & Version Tracking)
+    const sanitizeAttachments = (arr?: any[]): CoordinationAttachment[] => {
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(
+        (a) => Boolean(a && typeof a === 'object' && !Array.isArray(a) && (a.url?.trim() || a.name?.trim()))
+      );
+    };
 
-    const replacedFileName = hasReplacedFile
-      ? activeAttachments[0]?.name
-      : undefined;
-    const replacedFileUrl = hasReplacedFile
-      ? activeAttachments[0]?.url
-      : undefined;
+    const sanitizedDtoAttachments = sanitizeAttachments(dto.attachments);
+    const sanitizedPayloadAttachments = sanitizeAttachments(payload.attachments);
+
+    const hasReplacedFile = sanitizedDtoAttachments.length > 0;
+    const replacedFileName = hasReplacedFile ? sanitizedDtoAttachments[0]?.name : undefined;
+    const replacedFileUrl = hasReplacedFile ? sanitizedDtoAttachments[0]?.url : undefined;
+
+    // 组装并留存多版本历史履历：最新送审文件置顶（Index 0），前序历史原稿顺序留存（Index 1..N）
+    const historicalAttachments: CoordinationAttachment[] = [];
+    const initialDraftUrl =
+      payload.parameters?.originalDraftUrl ||
+      payload.parameters?.downloadUrl ||
+      payload.parameters?.fileUrl;
+
+    if (initialDraftUrl && initialDraftUrl !== replacedFileUrl) {
+      historicalAttachments.push({
+        name: payload.parameters?.originalDraftFileName || payload.parameters?.fileName || '保密合同初稿_V1.docx',
+        url: initialDraftUrl,
+        size: payload.parameters?.originalDraftSize,
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+    }
+
+    for (const prev of sanitizedPayloadAttachments) {
+      const isHtml =
+        prev.name?.toLowerCase().endsWith('.html') ||
+        prev.name?.toLowerCase().endsWith('.htm') ||
+        prev.mimeType === 'text/html';
+      if (hasReplacedFile && isHtml) {
+        continue;
+      }
+      if (
+        prev.url !== replacedFileUrl &&
+        !historicalAttachments.some((h) => h.url === prev.url) &&
+        !sanitizedDtoAttachments.some((d) => d.url === prev.url)
+      ) {
+        historicalAttachments.push(prev);
+      }
+    }
+
+    const activeAttachments: CoordinationAttachment[] = hasReplacedFile
+      ? [
+          ...sanitizedDtoAttachments,
+          ...historicalAttachments.filter(
+            (h) => !sanitizedDtoAttachments.some((d) => d.url === h.url)
+          ),
+        ]
+      : sanitizedPayloadAttachments.length > 0
+      ? sanitizedPayloadAttachments
+      : historicalAttachments;
 
     const params = { ...(payload.parameters || {}), ...((dto as any).parameters || {}) };
     if (hasReplacedFile && replacedFileUrl) {
+      if (!params.originalDraftUrl && payload.parameters?.downloadUrl && payload.parameters.downloadUrl !== replacedFileUrl) {
+        params.originalDraftUrl = payload.parameters.downloadUrl;
+        params.originalDraftFileName = payload.parameters.fileName;
+      }
       params.downloadUrl = replacedFileUrl;
       params.fileUrl = replacedFileUrl;
       params.fileName = replacedFileName;
@@ -750,7 +799,26 @@ export class CoordinationStageEngineService {
     }
 
     // 4. 将生成的 HTML 报告等关键工件同步回填至 context.activeAttachments
-    if (Array.isArray(report.artifacts) && context?.activeAttachments) {
+    if (Array.isArray(report.artifacts) && Array.isArray(context?.activeAttachments)) {
+      // 移除前序旧审查轮次遗留的过期 HTML 报告，确保附件列表中仅保留与本次评估对应的最新诊断报告
+      const isReviewCapability = capabilityRefId.includes('review') || capabilityRefId.includes('reviewer');
+      if (isReviewCapability) {
+        for (let i = context.activeAttachments.length - 1; i >= 0; i--) {
+          const a = context.activeAttachments[i];
+          const aName = a?.name?.toLowerCase() || '';
+          if (
+            aName.includes('审查报告') ||
+            aName.includes('合规审查') ||
+            aName.includes('review-report') ||
+            a?.mimeType === 'text/html' ||
+            aName.endsWith('.html') ||
+            aName.endsWith('.htm')
+          ) {
+            context.activeAttachments.splice(i, 1);
+          }
+        }
+      }
+
       for (const art of report.artifacts) {
         const artUrl = art.url || art.downloadUrl;
         if (artUrl && !context.activeAttachments.some((a) => a.url === artUrl)) {

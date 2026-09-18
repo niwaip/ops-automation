@@ -30,13 +30,16 @@ interface ComplianceAuditCardProps {
   reportData?: AuditReportData | null;
   htmlAttachment?: CoordinationAttachment | null;
   defaultExpanded?: boolean;
+  defaultCardCollapsed?: boolean;
 }
 
 export function ComplianceAuditCard({
   reportData,
   htmlAttachment: propHtmlAttachment,
   defaultExpanded = false,
+  defaultCardCollapsed = true,
 }: ComplianceAuditCardProps) {
+  const [isCardCollapsed, setIsCardCollapsed] = useState(defaultCardCollapsed);
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
@@ -90,40 +93,61 @@ export function ComplianceAuditCard({
         background: 'var(--bg-card, transparent)',
       }}
       styles={{
-        body: { padding: '12px 14px' },
+        body: isCardCollapsed ? { display: 'none' } : { padding: '12px 14px' },
       }}
       title={
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <Space size={8} align="center">
-            <SafetyCertificateOutlined style={{ color: 'var(--primary-color, #1677ff)', fontSize: 16 }} />
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
-              {cardTitle}
-            </span>
-            {riskLevel === 'HIGH' ? (
-              <Tag color="error" bordered={false} icon={<CloseCircleOutlined />} style={{ margin: 0, fontWeight: 500 }}>
-                {reportData?.score !== undefined ? `${reportData.score} 分 · 高危漏洞预警` : '高危漏洞预警'}
-              </Tag>
-            ) : riskLevel === 'MEDIUM' ? (
-              <Tag color="warning" bordered={false} icon={<WarningOutlined />} style={{ margin: 0, fontWeight: 500 }}>
-                {reportData?.score !== undefined ? `${reportData.score} 分 · 中度风险` : '中度风险预警'}
-              </Tag>
-            ) : (
-              <Tag color="success" bordered={false} icon={<CheckCircleOutlined />} style={{ margin: 0, fontWeight: 500 }}>
-                {reportData?.score !== undefined ? `${reportData.score} 分 · 合规良好` : '合规通过'}
-              </Tag>
-            )}
-          </Space>
+          <div
+            style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
+            onClick={() => setIsCardCollapsed(!isCardCollapsed)}
+          >
+            <Space size={8} align="center">
+              {isCardCollapsed ? (
+                <DownOutlined style={{ fontSize: 11, color: 'var(--text-tertiary)' }} />
+              ) : (
+                <UpOutlined style={{ fontSize: 11, color: 'var(--text-tertiary)' }} />
+              )}
+              <SafetyCertificateOutlined style={{ color: 'var(--primary-color, #1677ff)', fontSize: 16 }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                {cardTitle}
+              </span>
+              {riskLevel === 'HIGH' ? (
+                <Tag color="error" bordered={false} icon={<CloseCircleOutlined />} style={{ margin: 0, fontWeight: 500 }}>
+                  {reportData?.score !== undefined ? `${reportData.score} 分 · 高危预警` : '高危漏洞预警'}
+                </Tag>
+              ) : riskLevel === 'MEDIUM' ? (
+                <Tag color="warning" bordered={false} icon={<WarningOutlined />} style={{ margin: 0, fontWeight: 500 }}>
+                  {reportData?.score !== undefined ? `${reportData.score} 分 · 中度风险` : '中度风险预警'}
+                </Tag>
+              ) : (
+                <Tag color="success" bordered={false} icon={<CheckCircleOutlined />} style={{ margin: 0, fontWeight: 500 }}>
+                  {reportData?.score !== undefined ? `${reportData.score} 分 · 合规良好` : '合规通过'}
+                </Tag>
+              )}
+            </Space>
+          </div>
 
-          {reportData?.executionId ? (
-            <a
-              href={`/executions?id=${reportData.executionId}`}
-              target="_blank"
-              rel="noreferrer"
-              style={{ fontSize: 12, color: 'var(--primary-color, #1677ff)', textDecoration: 'none' }}
+          <Space size={10} align="center">
+            {reportData?.executionId ? (
+              <a
+                href={`/executions?id=${reportData.executionId}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{ fontSize: 12, color: 'var(--primary-color, #1677ff)', textDecoration: 'none' }}
+              >
+                执行单号 #{reportData.executionId.slice(0, 8)} ↗
+              </a>
+            ) : null}
+            <Button
+              type="link"
+              size="small"
+              icon={isCardCollapsed ? <DownOutlined /> : <UpOutlined />}
+              onClick={() => setIsCardCollapsed(!isCardCollapsed)}
+              style={{ fontSize: 12, padding: 0 }}
             >
-              执行单号 #{reportData.executionId.slice(0, 8)} ↗
-            </a>
-          ) : null}
+              {isCardCollapsed ? '展开审查报告详情' : '折叠审查报告'}
+            </Button>
+          </Space>
         </div>
       }
     >
@@ -401,27 +425,9 @@ export function extractAuditReportFromTask(
 } {
   let htmlAttachment: CoordinationAttachment | null = null;
 
-  // 1. 查找 HTML 报告附件
-  if (Array.isArray(attachments)) {
-    const found = attachments.find(
-      (a) =>
-        Boolean(a) &&
-        (a.name?.toLowerCase().endsWith('.html') ||
-          a.name?.toLowerCase().endsWith('.htm') ||
-          a.mimeType === 'text/html')
-    );
-    if (found) htmlAttachment = found;
-  }
-
-  // 2. 如果 reviewReport 中含有 htmlReportUrl 或 artifacts
-  if (!htmlAttachment && reviewReport) {
-    if (reviewReport.htmlReportUrl) {
-      htmlAttachment = {
-        name: reviewReport.title ? `${reviewReport.title}.html` : '合同合规智能审查报告.html',
-        url: reviewReport.htmlReportUrl,
-        mimeType: 'text/html',
-      };
-    } else if (Array.isArray(reviewReport.artifacts)) {
+  // 1. 优先使用当前 reviewReport 显式绑定的工件 (artifacts / htmlReportUrl)
+  if (reviewReport) {
+    if (Array.isArray(reviewReport.artifacts) && reviewReport.artifacts.length > 0) {
       const art = reviewReport.artifacts.find(
         (a: any) =>
           a.name?.toLowerCase().endsWith('.html') ||
@@ -430,12 +436,33 @@ export function extractAuditReportFromTask(
       );
       if (art) {
         htmlAttachment = {
-          name: art.name || '合同合规智能审查报告.html',
-          url: art.url,
-          size: art.size,
-          mimeType: 'text/html',
+          name: art.name || art.fileName || (reviewReport.title ? `${reviewReport.title}.html` : '合同合规智能审查报告.html'),
+          url: art.url || art.downloadUrl,
+          size: art.size || art.sizeBytes,
+          mimeType: art.mimeType || 'text/html',
         };
       }
+    }
+    if (!htmlAttachment && reviewReport.htmlReportUrl) {
+      htmlAttachment = {
+        name: reviewReport.title ? `${reviewReport.title}.html` : '合同合规智能审查报告.html',
+        url: reviewReport.htmlReportUrl,
+        mimeType: 'text/html',
+      };
+    }
+  }
+
+  // 2. 备用：若 reviewReport 未携带直接工件，从 attachments 中倒序查找最新生成的 HTML 审查报告
+  if (!htmlAttachment && Array.isArray(attachments)) {
+    const htmlAttachments = attachments.filter(
+      (a) =>
+        Boolean(a) &&
+        (a.name?.toLowerCase().endsWith('.html') ||
+          a.name?.toLowerCase().endsWith('.htm') ||
+          a.mimeType === 'text/html')
+    );
+    if (htmlAttachments.length > 0) {
+      htmlAttachment = htmlAttachments[htmlAttachments.length - 1];
     }
   }
 

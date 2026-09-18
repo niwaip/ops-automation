@@ -16,6 +16,7 @@ import { WorkbenchInboxService } from '../inbox/workbench-inbox.service';
 import { MockHrService } from './mock-hr.service';
 import {
   CoordinationActionRecord,
+  CoordinationAttachment,
   CoordinationTaskPriority,
   CoordinationTaskStatus,
   CoordinationTaskType,
@@ -37,7 +38,17 @@ import {
 } from './coordination-collaborator.service';
 import { CoordinationLifecycleService } from './coordination-lifecycle.service';
 
-export { CollaboratorUserDto };
+import {
+  sanitizeCoordinationAttachments,
+  resolveEffectiveAndHistoricalAttachments,
+} from './coordination-attachment-helper';
+
+export {
+  CollaboratorUserDto,
+  sanitizeCoordinationAttachments,
+  resolveEffectiveAndHistoricalAttachments,
+};
+
 
 @Injectable()
 export class WorkbenchCoordinationService implements OnModuleInit {
@@ -607,7 +618,11 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       }
     }
 
-    // 核心特性：若目标为协同回执条目 (taskType === 'receipt' 或 isReceipt) 或动作指令为归档，执行回执已阅归档
+    // 识别是否属于驳回重修任务的重新提交流程
+    const isResubmission =
+      isRevisionRequired && (dto.action === 'approve' || dto.action === 'complete');
+
+    // 核心特性：若目标为协同回执条目 (taskType === 'receipt' 或 isReceipt) 或动作指令为归档，且非重新提交流程，执行回执已阅归档
     const isReceipt = Boolean(
       payload.isReceipt ||
       payload.taskType === 'receipt' ||
@@ -616,7 +631,7 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       targetItem.title?.includes('已归档')
     );
 
-    if (isReceipt || (dto.action as any) === 'archive') {
+    if (!isResubmission && (isReceipt || (dto.action as any) === 'archive')) {
       await this.prisma.workbenchInboxItem.update({
         where: { id: targetItem.id },
         data: {
@@ -733,14 +748,39 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       };
     }
 
-    // 防重复提交与终态保护：仅当条目已归档/废弃，或者已经流转完毕（converted）且处于终态已办结时才拦截
+    if (isResubmission) {
+      delete (payload as any).isReceipt;
+      delete (payload as any).receiptAction;
+      delete (payload as any).rollbackReason;
+      if (payload.metadata) {
+        delete (payload.metadata as any).isReceipt;
+        delete (payload.metadata as any).rollbackReason;
+      }
+      payload.isResubmission = true;
+      payload.taskType = payload.originalTaskType || CoordinationTaskType.approval;
+      payload.status = CoordinationTaskStatus.pending;
+
+      const rollbackTarget =
+        payload.externalSyncResult?.rollbackTarget ||
+        payload.metadata?.rollbackTarget ||
+        payload.metadata?.rollbackFromStage;
+      if (rollbackTarget) {
+        payload.currentStage = rollbackTarget;
+      } else if (!payload.currentStage || payload.currentStage === 'legal_review') {
+        payload.currentStage = 'initiator_confirm';
+      }
+      targetItem.unifiedPayload = payload;
+    }
+
+    // 防重复提交与终态保护：仅当条目已归档/废弃（且非重新提交流程），或者已经流转完毕（converted）且处于终态已办结时才拦截
     const isTerminalCompleted =
-      targetItem.status === InboxItemStatus.archived ||
-      targetItem.status === InboxItemStatus.discarded ||
-      (!isRevisionRequired &&
-        !payload.isRecalled &&
-        targetItem.status === InboxItemStatus.converted &&
-        (payload.status === CoordinationTaskStatus.completed || payload.status === CoordinationTaskStatus.approved));
+      !isResubmission &&
+      (targetItem.status === InboxItemStatus.archived ||
+        targetItem.status === InboxItemStatus.discarded ||
+        (!isRevisionRequired &&
+          !payload.isRecalled &&
+          targetItem.status === InboxItemStatus.converted &&
+          (payload.status === CoordinationTaskStatus.completed || payload.status === CoordinationTaskStatus.approved)));
 
     if (isTerminalCompleted) {
       this.logger.warn(`协同任务 ${taskId} 已完成流转处理 (status: ${payload.status || targetItem.status})`);
@@ -774,15 +814,28 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       const cleanTitle = (targetItem.sourceTitle || targetItem.title || '')
         .replace(/^【(?:已驳回|需重修|待发送|已发送)】\s*/g, '')
         .replace(/^\[(?:已驳回|需重修|待发送|已发送|待担当确认|待初稿确认)\]\s*/g, '')
+        .replace(/^\[协同回执\][^:]*:\s*/g, '')
         .trim();
 
       const nextStage = stages[currentStageIndex + 1];
+      const { effectiveAttachments, parameterPatch } = resolveEffectiveAndHistoricalAttachments(
+        dto.attachments,
+        payload.attachments,
+        payload.parameters
+      );
+
       const asyncRunningPayload = {
         ...payload,
         status: CoordinationTaskStatus.pending,
         currentStage: nextStage?.id || payload.currentStage,
         inTransit: true,
         isSent: true,
+        attachments: effectiveAttachments,
+        parameters: {
+          ...(payload.parameters || {}),
+          ...(dto.parameters || {}),
+          ...parameterPatch,
+        },
         asyncExecution: {
           status: 'running',
           currentStage: nextStage?.id || payload.currentStage,
@@ -1108,11 +1161,20 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       : [actionRecord];
 
     const isResubmittingRevision =
-      (payload.status === 'revision_required' ||
+      Boolean(payload.isResubmission) ||
+      ((payload.status === 'revision_required' ||
         payload.status === CoordinationTaskStatus.rejected ||
         targetItem.title?.includes('[需重修]') ||
+        targetItem.title?.includes('需重修') ||
+        targetItem.title?.includes('已驳回') ||
         payload.receiptAction === 'reject') &&
-      (dto.action === 'approve' || dto.action === 'complete');
+      (dto.action === 'approve' || dto.action === 'complete'));
+
+    const { effectiveAttachments, parameterPatch } = resolveEffectiveAndHistoricalAttachments(
+      dto.attachments,
+      payload.attachments,
+      payload.parameters
+    );
 
     const updatedPayload = {
       ...payload,
@@ -1124,11 +1186,14 @@ export class WorkbenchCoordinationService implements OnModuleInit {
         dto.action === 'reject' && externalSyncResult?.rollbackTarget
           ? payload.currentStage
           : payload.previousStage,
-      parameters: dto.parameters
-        ? { ...(payload.parameters || {}), ...dto.parameters }
-        : payload.parameters,
+      parameters: {
+        ...(payload.parameters || {}),
+        ...(dto.parameters || {}),
+        ...parameterPatch,
+      },
       status: nextStatus,
       actions: updatedActions,
+      attachments: effectiveAttachments,
       rollbackReason: dto.action === 'reject' ? (dto.comment?.trim() || '审核人员提出了修改意见') : payload.rollbackReason,
       metadata: {
         ...(payload.metadata || {}),
@@ -1147,14 +1212,18 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       delete (updatedPayload as any).lastFailure;
       delete (updatedPayload as any).receiptAction;
       delete (updatedPayload as any).isReceipt;
+      delete (updatedPayload as any).isResubmission;
       if ((updatedPayload as any).metadata) {
         delete (updatedPayload as any).metadata.rollbackReason;
+        delete (updatedPayload as any).metadata.isReceipt;
       }
     }
 
     let nextTargetTitle = targetItem.title;
     if (isResubmittingRevision) {
       const cleanTitle = (targetItem.sourceTitle || targetItem.title || '')
+        .replace(/^【(?:已驳回|需重修|待发送|已发送)】\s*/g, '')
+        .replace(/^\[(?:已驳回|需重修|待发送|已发送|待担当确认|待初稿确认)\]\s*/g, '')
         .replace(/^\[需重修\]\s*/, '')
         .replace(/^\[协同回执\][^:]*:\s*/, '')
         .replace(/^\[待发送\]\s*/, '')

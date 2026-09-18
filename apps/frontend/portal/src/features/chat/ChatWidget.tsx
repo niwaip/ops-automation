@@ -3,22 +3,85 @@
  * 悬浮聊天入口组件
  */
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Button, Badge } from 'antd';
 import { useChatStore } from './chatStore';
 import ChatWindow from './ChatWindow';
 import './ChatWidget.css';
 
 const ChatWidget: React.FC = () => {
-  const { isOpen, toggleChat, messages } = useChatStore();
+  const { isOpen, toggleChat, setOpen, messages } = useChatStore();
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLDivElement | null>(null);
 
   // 未读消息数（assistant消息）
   const unreadCount = messages.filter((m) => m.role === 'assistant' && !m.isStreaming).length;
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+
+      // 1. 点击发生在悬浮聊天窗内部 -> 不收起
+      if (containerRef.current && containerRef.current.contains(target)) {
+        return;
+      }
+
+      // 2. 点击发生在右下角悬浮切换按钮本身 -> 由按钮自身 onClick 切换
+      if (triggerRef.current && triggerRef.current.contains(target)) {
+        return;
+      }
+
+      // 3. 点击发生在挂载于 document.body 的全局浮层/弹窗（如下拉选项、提示框、模态弹窗等） -> 不收起
+      if (
+        target.closest('.ant-select-dropdown') ||
+        target.closest('.ant-dropdown') ||
+        target.closest('.ant-popover') ||
+        target.closest('.ant-tooltip') ||
+        target.closest('.ant-modal-root') ||
+        target.closest('.ant-modal-mask') ||
+        target.closest('.ant-modal-wrap') ||
+        target.closest('.ant-message') ||
+        target.closest('.ant-notification') ||
+        target.closest('.ant-picker-dropdown') ||
+        target.closest('[data-floating-ui-portal]')
+      ) {
+        return;
+      }
+
+      // 4. 用户点击了悬浮窗外部的页面其他区域 -> 自动收起聊天框
+      setOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (
+          document.querySelector('.ant-modal-wrap:not([style*="display: none"])') ||
+          document.querySelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
+        ) {
+          return;
+        }
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, setOpen]);
+
   return (
     <>
       {/* 悬浮按钮 */}
-      <div className="chat-widget-trigger">
+      <div ref={triggerRef} className="chat-widget-trigger">
         <Badge count={unreadCount} offset={[-5, 5]}>
           <Button
             shape="circle"
@@ -39,7 +102,11 @@ const ChatWidget: React.FC = () => {
       </div>
 
       {/* 聊天窗口 */}
-      {isOpen && <ChatWindow />}
+      {isOpen && (
+        <div ref={containerRef}>
+          <ChatWindow />
+        </div>
+      )}
     </>
   );
 };

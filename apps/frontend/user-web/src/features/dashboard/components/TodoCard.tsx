@@ -1,8 +1,10 @@
 import {
   BellOutlined,
+  CheckCircleFilled,
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
+  CloseCircleFilled,
   DownloadOutlined,
   EditOutlined,
   EyeOutlined,
@@ -14,6 +16,7 @@ import {
   RobotOutlined,
   RollbackOutlined,
   SendOutlined,
+  SwapOutlined,
 } from "@ant-design/icons";
 import {
   Button,
@@ -32,8 +35,12 @@ import {
 } from "antd";
 import { useState, useMemo } from "react";
 import { useQueryClient } from "react-query";
-import type { WorkbenchTodoItem } from "@/api/workbenchTodo";
-import { workbenchCoordinationApi } from "@/api/workbenchCoordination";
+import type { WorkbenchTodoItem } from "../../../api/workbenchTodo";
+import { workbenchCoordinationApi } from "../../../api/workbenchCoordination";
+import {
+  getContractComparisonPair,
+  triggerContractComparisonInAi,
+} from "../lib/contractComparisonHelper";
 import { formatMonthDayTime } from "@/shared/utils/dateText";
 import {
   PARAM_LABEL_MAP,
@@ -44,7 +51,7 @@ import { replaceLocalhostWithCurrentHost } from "@/shared/utils/publicUrl";
 import { useAuthStore } from "@/shared/store/authStore";
 import { useChatStore } from "../../chat/chatStore";
 import { isItemInitiatedByMe, type WorkbenchTodoTab } from "../hooks/useWorkbenchTodos";
-import { classifyWorkflowNode } from "../lib/coordinationNodeClassifier";
+import { classifyWorkflowNode, extractRollbackReason, extractApprovalComment } from "../lib/coordinationNodeClassifier";
 import { applyOptimisticCoordinationSend } from "../lib/coordinationOptimistic";
 import styles from "../pages/DashboardPage.module.css";
 
@@ -103,6 +110,18 @@ export function TodoCard({
     if (!detailModalTodo) return null;
     const contextData = (detailModalTodo.contextData as any) || {};
     const unifiedPayload = contextData.unifiedPayload || {};
+    const isInitiated = isItemInitiatedByMe(detailModalTodo, currentUsername, currentUserId);
+    const initiator =
+      unifiedPayload.initiator ||
+      contextData.initiator ||
+      (isInitiated ? { username: currentUsername, id: currentUserId } : undefined) ||
+      (contextData.sourceSender ? { username: contextData.sourceSender } : undefined) ||
+      (contextData.initiatorName ? { username: contextData.initiatorName } : undefined);
+    const assignee =
+      unifiedPayload.assignee ||
+      contextData.assignee ||
+      (contextData.assigneeName ? { username: contextData.assigneeName } : undefined);
+
     return {
       id:
         contextData.inboxItemId ||
@@ -118,7 +137,7 @@ export function TodoCard({
         contextData.taskId ||
         detailModalTodo.id,
       sourceTitle: detailModalTodo.sourceTitle || detailModalTodo.title,
-      sourceSender: contextData.sourceSender,
+      sourceSender: initiator?.username || contextData.sourceSender || (isInitiated ? currentUsername : undefined),
       status: (detailModalTodo.status === 'completed' || detailModalTodo.status === 'cancelled')
         ? 'archived'
         : (contextData.inboxStatus || 'unprocessed'),
@@ -174,11 +193,13 @@ export function TodoCard({
         currentStage:
           unifiedPayload.currentStage ||
           contextData.currentStage,
+        initiator,
+        assignee,
         ...unifiedPayload,
       },
       createdAt: detailModalTodo.createdAt,
     } as any;
-  }, [detailModalTodo, currentUserId]);
+  }, [detailModalTodo, currentUserId, currentUsername]);
 
   const handleQuickAction = async (item: WorkbenchTodoItem) => {
     try {
@@ -269,6 +290,14 @@ export function TodoCard({
       setTimeout(triggerRefresh, 4000);
       setTimeout(triggerRefresh, 8000);
     } catch (err: any) {
+      if (err?.message?.includes('未找到协同任务') || err?.response?.status === 404) {
+        void message.warning('该协同任务已在其他环节流转或已更新，已为您自动刷新最新状态');
+        void queryClient.invalidateQueries(['workbench-todos']);
+        void queryClient.invalidateQueries(['workbench-todos-summary']);
+        void queryClient.invalidateQueries(['workbench-inbox']);
+        void queryClient.invalidateQueries(['workbench-coordination-sent-tasks']);
+        return;
+      }
       void message.error(err?.message || '快捷发送失败，您可点击「详细」进行处理');
     } finally {
       setQuickSendingId(null);
@@ -497,6 +526,18 @@ export function TodoCard({
                     currentUsername,
                     currentUserId
                   );
+                  const rollbackReason = nodeSemantics.isRevisionRequired
+                    ? (nodeSemantics.rollbackReason || extractRollbackReason(item, coordPayload))
+                    : undefined;
+                  const approvalComment = !nodeSemantics.isRevisionRequired
+                    ? (nodeSemantics.approvalComment || extractApprovalComment(item, coordPayload))
+                    : undefined;
+
+                  const comparisonPair = getContractComparisonPair(
+                    coordPayload.attachments,
+                    undefined,
+                    coordPayload.parameters
+                  );
 
                   return (
                     <List.Item key={item.id} style={{ padding: "8px 0", border: "none" }}>
@@ -619,41 +660,57 @@ export function TodoCard({
                             )}
 
                             <Space size={6} className={styles["workbench-todo-actions"]}>
-                              {/* 1. 需重修/已驳回状态任务：展示「重新编辑并发送」与「详细」按钮 (已结束任务仅允许查看详情) */}
+                              {/* 比较合同快捷入口：存在 2 个及以上文档版本时呈现 */}
+                              {comparisonPair ? (
+                                <Tooltip title="将新旧版本合同载入 AI 窗口进行智能比对与红线审查">
+                                  <Button
+                                    size="small"
+                                    icon={<SwapOutlined style={{ fontSize: 12, color: '#722ed1' }} />}
+                                    style={{
+                                      borderColor: '#722ed1',
+                                      color: '#722ed1',
+                                      borderRadius: 6,
+                                      fontSize: 12,
+                                      height: 26,
+                                      padding: '0 8px',
+                                      backgroundColor: 'rgba(114, 46, 209, 0.04)',
+                                    }}
+                                    onClick={() => {
+                                      triggerContractComparisonInAi({
+                                        taskId: item.id,
+                                        taskTitle: item.title,
+                                        baseDoc: comparisonPair.baseDoc,
+                                        latestDoc: comparisonPair.latestDoc,
+                                        parameters: coordPayload.parameters,
+                                      });
+                                    }}
+                                  >
+                                    比较合同
+                                  </Button>
+                                </Tooltip>
+                              ) : null}
+
+                              {/* 1. 需重修/已驳回状态任务：展示醒目的「重新编辑并发送」按钮 (已结束任务仅允许查看详情) */}
                               {nodeSemantics.isRevisionRequired && !isCompleted ? (
-                                <>
-                                  <Tooltip title="当前任务已被驳回或需重修，请打开详情修改业务要件或替换附件后再重新提交">
-                                    <Button
-                                      size="small"
-                                      type="primary"
-                                      danger
-                                      icon={<EditOutlined style={{ fontSize: 12 }} />}
-                                      style={{
-                                        fontWeight: 500,
-                                        borderRadius: 6,
-                                        height: 26,
-                                        padding: '0 10px',
-                                      }}
-                                      onClick={() => {
-                                        setDetailModalTodo(item);
-                                      }}
-                                    >
-                                      重新编辑并发送
-                                    </Button>
-                                  </Tooltip>
-                                  <Tooltip title="查看驳回原因、核验材料并重新编辑提交流程">
-                                    <Button
-                                      size="small"
-                                      className={styles['workbench-todo-action-btn']}
-                                      icon={<EyeOutlined style={{ fontSize: 12 }} />}
-                                      onClick={() => {
-                                        setDetailModalTodo(item);
-                                      }}
-                                    >
-                                      详细
-                                    </Button>
-                                  </Tooltip>
-                                </>
+                                <Tooltip title="当前任务已被驳回或需重修，请打开详情修改业务要件或追加新版本附件后再重新提交">
+                                  <Button
+                                    size="small"
+                                    type="primary"
+                                    danger
+                                    icon={<EditOutlined style={{ fontSize: 12 }} />}
+                                    style={{
+                                      fontWeight: 500,
+                                      borderRadius: 6,
+                                      height: 26,
+                                      padding: '0 10px',
+                                    }}
+                                    onClick={() => {
+                                      setDetailModalTodo(item);
+                                    }}
+                                  >
+                                    重新编辑并发送
+                                  </Button>
+                                </Tooltip>
                               ) : isWaitingForOther && !isCompleted ? (
                                 /* 2. 发起人且当前流转在他人手中：在已发事项/全部中显示撤回、催办与详细 */
                                 <>
@@ -806,6 +863,54 @@ export function TodoCard({
                             </Space>
                           </div>
 
+                      {/* 需重修 / 驳回理由提示 */}
+                      {nodeSemantics.isRevisionRequired && rollbackReason ? (
+                        <div
+                          style={{
+                            margin: "2px 0 6px 24px",
+                            padding: "6px 10px",
+                            borderRadius: 6,
+                            background: "rgba(255, 77, 79, 0.08)",
+                            border: "1px solid rgba(255, 77, 79, 0.28)",
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 8,
+                          }}
+                        >
+                          <CloseCircleFilled style={{ color: "#ff4d4f", fontSize: 13, marginTop: 3, flexShrink: 0 }} />
+                          <div style={{ fontSize: 12, lineHeight: 1.5, minWidth: 0, flex: 1 }}>
+                            <span style={{ color: "#cf1322", fontWeight: 600 }}>驳回批注与修改意见：</span>
+                            <span style={{ color: "var(--text-primary, #1f1f1f)", fontWeight: 500, wordBreak: "break-word" }}>
+                              {rollbackReason}
+                            </span>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* 审批通过 / 办结批注提示 */}
+                      {!nodeSemantics.isRevisionRequired && approvalComment ? (
+                        <div
+                          style={{
+                            margin: "2px 0 6px 24px",
+                            padding: "6px 10px",
+                            borderRadius: 6,
+                            background: "rgba(82, 196, 26, 0.08)",
+                            border: "1px solid rgba(82, 196, 26, 0.28)",
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 8,
+                          }}
+                        >
+                          <CheckCircleFilled style={{ color: "#52c41a", fontSize: 13, marginTop: 3, flexShrink: 0 }} />
+                          <div style={{ fontSize: 12, lineHeight: 1.5, minWidth: 0, flex: 1 }}>
+                            <span style={{ color: "#389e0d", fontWeight: 600 }}>审批通过批注 / 流转说明：</span>
+                            <span style={{ color: "var(--text-primary, #1f1f1f)", fontWeight: 500, wordBreak: "break-word" }}>
+                              {approvalComment}
+                            </span>
+                          </div>
+                        </div>
+                      ) : null}
+
                       {hasCoordParams ? (
                         <div
                           style={{
@@ -883,11 +988,12 @@ export function TodoCard({
                               ) : null}
                               {Object.entries(coordParams)
                                 .filter(([k]) => ![
-                                  'downloadUrl', 'fileName', 'executionId', 'remarks',
-                                  'contractTitle', 'contractType', 'currentStage', 'myPosition',
-                                  'durationYears', 'counterpartyName', 'counterpartyAddress',
+                                  'downloadUrl', 'fileUrl', 'contractUrl', 'fileName', 'contractFileName',
+                                  'executionId', 'remarks', 'contractTitle', 'contractType', 'currentStage',
+                                  'myPosition', 'durationYears', 'counterpartyName', 'counterpartyAddress',
                                   'counterpartyRole', 'ourParty', 'ourRole', 'cooperationSubject',
-                                  'signDate', 'penaltyAmount', 'contractAmount', 'amount'
+                                  'signDate', 'penaltyAmount', 'contractAmount', 'amount', 'isDraftReplaced',
+                                  'originalDraftUrl', 'originalDraftFileName', 'originalDraftSize', 'rawContent', 'text'
                                 ].includes(k))
                                 .map(([k, v]) => (
                                   <div key={k} style={{ display: 'flex', gap: 6 }}>
@@ -1033,6 +1139,17 @@ export function TodoCard({
           attachments: cData.attachments,
         });
         setDetailModalTodo(null);
+      }}
+      onRecall={(_inboxItem) => {
+        if (detailModalTodo) {
+          onRecallTodo?.(detailModalTodo);
+          setDetailModalTodo(null);
+        }
+      }}
+      onRemind={(_inboxItem) => {
+        if (detailModalTodo) {
+          onRemindTodo?.(detailModalTodo);
+        }
       }}
       onSuccess={() => {
         setDetailModalTodo(null);
