@@ -405,7 +405,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
                     codeText.includes('diff-ins') ||
                     codeText.includes('diff-del'))
                 ) {
-                  return <HtmlPreviewBlock code={codeText.trim()} className={className} />;
+                  return <HtmlPreviewBlock code={codeText.trim()} className={className} isStreaming={showRunningState} />;
                 }
 
                 return match ? (
@@ -492,7 +492,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
                     codeText.includes('diff-ins') ||
                     codeText.includes('diff-del'))
                 ) {
-                  return <HtmlPreviewBlock code={codeText.trim()} className={className} />;
+                  return <HtmlPreviewBlock code={codeText.trim()} className={className} isStreaming={showRunningState} />;
                 }
 
                 return match ? (

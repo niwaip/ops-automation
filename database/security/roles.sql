@@ -40,7 +40,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
   executions, execution_steps, execution_events, execution_plans, execution_artifacts,
   execution_completion_claims, execution_result_refs, execution_phases, execution_phase_steps,
   execution_phase_artifacts, execution_takeovers, execution_outbox, schedule_fires, skill_schedules,
-  execution_flow_templates, temporal_workflows
+  execution_flow_templates, temporal_workflows, reminder_deliveries, reminder_rules
 TO ops_execution_writer;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE runtime_sessions TO ops_runtime_writer;

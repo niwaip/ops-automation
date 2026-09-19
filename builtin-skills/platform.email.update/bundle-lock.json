@@ -1,11 +1,11 @@
 {
-  "schemaVersion": "1.0.0",
-  "bundleDigest": "sha256:ab4a17f31c5a8e41c6880fe0c3ed41bcab0cf75f5e387c1f4378a24bc6cab153",
-  "lockedAt": "2026-09-02T15:24:08.443Z",
-  "files": [
-    {
-      "path": "manifest.yaml",
-      "sha256": "ab4a17f31c5a8e41c6880fe0c3ed41bcab0cf75f5e387c1f4378a24bc6cab153"
-    }
-  ]
+  "capabilityKey": "platform.email.update",
+  "definitionVersion": "1.0.0",
+  "definitionDigest": "sha256:18e1c774fb96841c9c03d75fa480c9d7db6e8c21a14e7198b5717191abdf3a43",
+  "fileHashes": {
+    "manifest.yaml": "sha256:61d59cef39395ca57d6e473d604995e4710fe2996f89cc3577e06792af718a72",
+    "workflow.json": "sha256:4cb8e7e8ef19c9547a6a5f5645b140e5ca3d02513aa7f4fd728b1f59d158af31",
+    "fixtures/smoke-input.json": "sha256:4dcdec91d676119adb7765f55123001a23f878e5f6ef6f43fbecfaaea07c59d7"
+  },
+  "createdAt": "2026-09-19T02:30:16.952Z"
 }

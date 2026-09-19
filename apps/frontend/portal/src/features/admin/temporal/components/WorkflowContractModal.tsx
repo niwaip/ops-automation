@@ -136,7 +136,7 @@ export const WorkflowContractModal: React.FC<WorkflowContractModalProps> = ({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 6 }}>
         <Alert
           message="接口契约必须固定的设计原则"
-          description="无论底层对接哪家企业的何种系统（飞书、钉钉、SAP、金蝶或自研系统），此原子流均实现相同的 I/O 协议。因此 5173 企业审批流在组装该流时，可保证 100% 稳定运行。"
+          description="无论底层对接哪家企业的何种系统（飞书、钉钉、SAP、金蝶或自研系统），此原子流均实现相同的 I/O 协议。在组装该流时，可保证 100% 稳定运行。"
           type="info"
           showIcon
         />

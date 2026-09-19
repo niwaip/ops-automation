@@ -284,9 +284,13 @@ export class ContractChecklistMatrixService {
           // The contract has this clause. Check subitems coverage if required
           if (el.criteria?.requiredSubItems && el.criteria.requiredSubItems.length > 0) {
             const clauseBody = matchingClause.originalContent || matchingClause.content || '';
-            const coveredCount = el.criteria.requiredSubItems.filter((p: string) =>
-              new RegExp(p, 'i').test(clauseBody)
-            ).length;
+            const coveredCount = el.criteria.requiredSubItems.filter((p: string) => {
+              try {
+                return new RegExp(p, 'i').test(clauseBody);
+              } catch {
+                return clauseBody.toLowerCase().includes(p.toLowerCase());
+              }
+            }).length;
             const totalCount = el.criteria.requiredSubItems.length;
             if (coveredCount < 3) {
               // Severely incomplete coverage -> HIGH severity alert
@@ -328,7 +332,13 @@ export class ContractChecklistMatrixService {
 
         // Subitems coverage refinement (e.g. NDA-04 exceptions partially covered)
         if (el.criteria?.requiredSubItems && el.criteria.requiredSubItems.length > 0) {
-          const coveredCount = el.criteria.requiredSubItems.filter((p: string) => new RegExp(p, 'i').test(fullText)).length;
+          const coveredCount = el.criteria.requiredSubItems.filter((p: string) => {
+            try {
+              return new RegExp(p, 'i').test(fullText);
+            } catch {
+              return fullText.toLowerCase().includes(p.toLowerCase());
+            }
+          }).length;
           const totalCount = el.criteria.requiredSubItems.length;
           if (coveredCount >= 3 && coveredCount < totalCount) {
             title = '保密除外情形约定不够周延';

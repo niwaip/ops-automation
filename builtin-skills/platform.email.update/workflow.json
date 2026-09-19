@@ -1,0 +1,18 @@
+{
+  "workflowVersion": "v1",
+  "engine": "domain-handler",
+  "handlerKey": "email.update",
+  "steps": [
+    {
+      "stepId": "update_messages",
+      "action": "email_update",
+      "inputMapping": {
+        "mailboxKey": "$.input.mailboxKey",
+        "messageRefs": "$.input.messageRefs",
+        "isRead": "$.input.isRead",
+        "selector": "$.input.selector",
+        "prompt": "$.input.prompt"
+      }
+    }
+  ]
+}

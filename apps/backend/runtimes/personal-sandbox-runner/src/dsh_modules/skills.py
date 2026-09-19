@@ -23,12 +23,27 @@ def get_available_skills() -> list:
             if not item.is_dir() or item.name.startswith(".") or item.name in seen_ids:
                 continue
             skill_file = item / "SKILL.md" if (item / "SKILL.md").exists() else item / "README.md"
+            manifest_file = item / "manifest.json"
+            triggers = []
+            if manifest_file.exists():
+                try:
+                    import json
+                    with open(manifest_file, "r", encoding="utf-8") as mf:
+                        m_data = json.load(mf)
+                        raw_trig = m_data.get("triggers") or m_data.get("keywords") or []
+                        if isinstance(raw_trig, list):
+                            triggers.extend([str(t).strip().lower() for t in raw_trig if t])
+                except Exception:
+                    pass
+
             meta = {
                 "id": item.name,
                 "name": item.name,
                 "description": "",
                 "type": skill_type,
-                "path": str(item)
+                "path": str(item),
+                "triggers": triggers,
+                "aliases": [item.name.lower()]
             }
             if skill_file.exists():
                 try:
@@ -37,14 +52,32 @@ def get_available_skills() -> list:
                         if content.startswith("---"):
                             parts = content.split("---", 2)
                             if len(parts) >= 3:
+                                in_triggers = False
                                 for line in parts[1].splitlines():
                                     s = line.strip()
-                                    if s.startswith("zh_name:") or (s.startswith("name:") and meta["name"] == item.name):
+                                    if s.startswith("name:"):
+                                        raw_n = s.split(":", 1)[1].strip().strip('"\'').lower()
+                                        if raw_n:
+                                            meta["aliases"].append(raw_n)
+                                        if meta["name"] == item.name:
+                                            meta["name"] = s.split(":", 1)[1].strip().strip('"\'')
+                                    elif s.startswith("zh_name:"):
                                         meta["name"] = s.split(":", 1)[1].strip().strip('"\'')
                                     elif s.startswith("zh_description:") or (s.startswith("description:") and not meta["description"]):
                                         desc_val = s.split(":", 1)[1].strip().strip('"\'')
                                         if desc_val not in ["|", ">"]:
                                             meta["description"] = desc_val
+                                    elif s.startswith("triggers:") or s.startswith("keywords:"):
+                                        in_triggers = True
+                                        trig_val = s.split(":", 1)[1].strip().strip('[]')
+                                        parts_trig = [t.strip().strip('"\'').lower() for t in trig_val.split(",") if t.strip()]
+                                        meta["triggers"].extend(parts_trig)
+                                    elif in_triggers and s.startswith("-"):
+                                        item_trig = s.lstrip("-").strip().strip('"\'').lower()
+                                        if item_trig:
+                                            meta["triggers"].append(item_trig)
+                                    elif s and not s.startswith("-") and ":" in s:
+                                        in_triggers = False
                         if not meta["description"] or meta["description"] in ["|", ">"]:
                             body = parts[2] if len(parts) >= 3 else content
                             for line in body.splitlines():
@@ -54,6 +87,8 @@ def get_available_skills() -> list:
                                     break
                 except Exception:
                     pass
+            meta["triggers"] = list(dict.fromkeys(meta["triggers"]))
+            meta["aliases"] = list(dict.fromkeys(meta["aliases"]))
             skills.append(meta)
             seen_ids.add(item.name)
     return skills
@@ -99,6 +134,21 @@ def read_skill(skill_name: str) -> str:
             break
 
     if not target_dir:
+        for s in get_available_skills():
+            s_name = s.get("name", "").lower()
+            s_id = s.get("id", "").lower()
+            s_aliases = [str(a).lower() for a in s.get("aliases", [])]
+            s_triggers = [str(t).lower() for t in s.get("triggers", [])]
+            if clean_name in [s_name, s_id] or clean_name in s_aliases or clean_name in s_triggers:
+                for s_dir in search_dirs:
+                    cand = s_dir / s["id"]
+                    if cand.exists() and cand.is_dir():
+                        target_dir = cand
+                        break
+                if target_dir:
+                    break
+
+    if not target_dir:
         available = [s["id"] for s in get_available_skills()]
         return f"未找到技能 '{skill_name}'。可用技能列表: {', '.join(available)}"
 
@@ -109,6 +159,12 @@ def read_skill(skill_name: str) -> str:
     try:
         with open(skill_file, "r", encoding="utf-8") as f:
             content = f.read()
+
+        body = content
+        if content.startswith("---"):
+            parts = content.split("---", 2)
+            if len(parts) >= 3:
+                body = parts[2].strip()
 
         sub_files = []
         for p in target_dir.rglob("*"):
@@ -121,6 +177,6 @@ def read_skill(skill_name: str) -> str:
         if sub_files:
             addon = f"\n\n【技能附带资源与可用模版 (位于 {target_dir})】:\n" + "\n".join(f"- {f}" for f in sub_files[:15])
 
-        return content + addon
+        return body + addon
     except Exception as e:
         return f"读取技能失败: {e}"

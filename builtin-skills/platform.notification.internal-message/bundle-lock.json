@@ -3,9 +3,9 @@
   "definitionVersion": "1.0.0",
   "definitionDigest": "sha256:18591b95cfd5ad4c149d51c732de69f3050e63c0e3f269fee796a25c69eb3f29",
   "fileHashes": {
-    "manifest.yaml": "sha256:77a75e3edcdbfbd05d3ee448d3db0df2b79ebccbb93bc67edcdd652fbb6b7bf6",
-    "workflow.json": "sha256:3d4c82b9a706b3a093a388b0a1dcdbcfdfb690edcd6e7dce2e2ebae9d13db9b9",
-    "fixtures/smoke-input.json": "sha256:506e9b4d8c6b65f7c32bf234dfa1a8ecb819f71c4fa4e6e65a443a6d4d12c8a1"
+    "manifest.yaml": "sha256:adb9ac6f3291282740b53e0740833f0c977b5644cd1d217967cb863da2664a00",
+    "workflow.json": "sha256:17324d76eb76079ed475516f68df1f0d1e822f8da3b0f50139b0c42cbfe5ef52",
+    "fixtures/smoke-input.json": "sha256:0106fd313744afb05f20b0e6b4f8f11eadecaa4954a3fa0ecf834f5378d123e9"
   },
   "createdAt": "2026-07-29T14:48:37.000Z"
 }

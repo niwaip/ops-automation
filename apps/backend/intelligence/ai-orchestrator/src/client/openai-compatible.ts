@@ -1,4 +1,6 @@
 import axios from 'axios';
+import * as http from 'http';
+import * as https from 'https';
 import { StringDecoder } from 'string_decoder';
 import { applyReasoningRequestAdapter } from './reasoning-request-adapter';
 import {
@@ -73,6 +75,8 @@ export class OpenAICompatibleClient {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.apiKey}`,
       },
+      httpAgent: new http.Agent({ keepAlive: true, timeout: this.timeout }),
+      httpsAgent: new https.Agent({ keepAlive: true, timeout: this.timeout }),
     });
   }
 
@@ -133,7 +137,7 @@ export class OpenAICompatibleClient {
         reasoningContent: choice?.message?.reasoning_content,
         usage: response.data?.usage,
         rateLimit: this.extractRateLimit(response.headers),
-        tool_calls: choice?.message?.tool_calls,
+        tool_calls: (choice?.message as any)?.tool_calls,
       };
     } catch (error: unknown) {
       const axiosError = error as AxiosLikeError;
@@ -252,9 +256,9 @@ export class OpenAICompatibleClient {
           const content = delta?.content || '';
           if (content) {
             fullContent += content;
-            onChunk(content, { delta, finish_reason: finishReason });
-          } else if (delta?.tool_calls || finishReason) {
-            onChunk('', { delta, finish_reason: finishReason });
+            onChunk(content, { delta, finish_reason: finishReason, usage: parsed.usage });
+          } else if (delta?.tool_calls || finishReason || parsed.usage) {
+            onChunk('', { delta, finish_reason: finishReason, usage: parsed.usage });
           }
         } catch {
           // Incomplete or invalid JSON chunk

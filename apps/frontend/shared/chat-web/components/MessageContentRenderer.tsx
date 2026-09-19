@@ -60,9 +60,17 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
                 codeText.includes('<html') ||
                 codeText.includes('class="slide') ||
                 codeText.includes('presentation') ||
-                codeText.includes('guizang'))
+                codeText.includes('guizang') ||
+                codeText.includes('diff-ins') ||
+                codeText.includes('diff-del'))
             ) {
-              return <HtmlPreviewBlock code={codeText.trim()} className={className} />;
+              return (
+                <HtmlPreviewBlock
+                  code={codeText.trim()}
+                  className={className}
+                  isStreaming={isStreaming}
+                />
+              );
             }
 
             return match ? (
@@ -200,7 +208,7 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
       >
         {normalizeTabSeparatedTable(content)}
       </ReactMarkdown>
-      {isStreaming ? <span className="streaming-indicator">...</span> : null}
+      {isStreaming ? <span className="streaming-indicator" aria-label="generating" /> : null}
     </div>
   );
 };

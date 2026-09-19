@@ -111,16 +111,35 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     const attempt = this.provisioning.get(userId);
     const rawMode = connection?.interactionMode;
     const interactionMode = rawMode && rawMode !== 'auto' ? rawMode : 'chat';
+    const isRuntimeActive = connection ? this.runtimes.has(connection.id) : false;
+    let effectiveStatus = attempt?.state ?? connection?.status ?? 'unconfigured';
+    let effectiveError = attempt?.error ?? connection?.lastError ?? undefined;
+
+    // Self-heal: If the background polling runtime is actively running in memory,
+    // the channel is healthy and online regardless of stale database error status.
+    if (isRuntimeActive && connection?.enabled) {
+      if (effectiveStatus !== 'online') {
+        effectiveStatus = 'online';
+        effectiveError = undefined;
+        void this.prisma.imChannelConnection
+          .updateMany({
+            where: { id: connection.id },
+            data: { status: 'online', lastError: null },
+          })
+          .catch(() => {});
+      }
+    }
+
     return {
       channel: 'wechat',
       configured: Boolean(connection?.encryptedCredential),
       enabled: connection?.enabled ?? false,
-      status: attempt?.state ?? connection?.status ?? 'unconfigured',
+      status: effectiveStatus,
       interactionMode,
       providerAccountId: connection?.providerAccountId ?? undefined,
       lastConnectedAt: connection?.lastConnectedAt?.toISOString(),
       lastMessageAt: connection?.lastMessageAt?.toISOString(),
-      lastError: attempt?.error ?? connection?.lastError ?? undefined,
+      lastError: effectiveError,
       provisioning: attempt
         ? { qrcodeUrl: attempt.qrcodeUrl, expiresAt: new Date(attempt.expiresAt).toISOString() }
         : undefined,
@@ -384,13 +403,31 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
       this.activeModes.set(connectionId, initialMode);
       let cursor = connection.updateCursor ?? '';
       let consecutiveTimeouts = 0;
+      let consecutiveErrors = 0;
       while (!controller.signal.aborted) {
-        const response = await this.wechat.getUpdates(
-          credential.baseUrl,
-          credential.token,
-          cursor,
-          controller.signal
-        );
+        let response: any;
+        try {
+          response = await this.wechat.getUpdates(
+            credential.baseUrl,
+            credential.token,
+            cursor,
+            controller.signal
+          );
+          consecutiveErrors = 0;
+        } catch (pollErr) {
+          if (controller.signal.aborted) break;
+          consecutiveErrors++;
+          const errMsg = pollErr instanceof Error ? pollErr.message : String(pollErr);
+          this.logger.warn(
+            `WeChat getUpdates transient error for ${connectionId} (${consecutiveErrors}/5): ${errMsg}`
+          );
+          if (consecutiveErrors >= 5) {
+            throw pollErr;
+          }
+          const backoff = Math.min(10000, 1000 * Math.pow(2, consecutiveErrors));
+          await new Promise((resolve) => setTimeout(resolve, backoff));
+          continue;
+        }
         if (response?.ret === -14 || response?.errcode === -14) {
           consecutiveTimeouts++;
           this.logger.warn(
@@ -783,7 +820,11 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
 
     await this.prisma.imChannelConnection.update({
       where: { id: connectionId },
-      data: { lastMessageAt: new Date() },
+      data: {
+        lastMessageAt: new Date(),
+        status: 'online',
+        lastError: null,
+      },
     });
   }
 

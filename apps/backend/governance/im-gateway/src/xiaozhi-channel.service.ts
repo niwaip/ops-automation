@@ -24,7 +24,7 @@ export class XiaozhiChannelService {
 
   async save(userId: string, endpoint: string, alias?: string) {
     const url = this.validateEndpoint(endpoint);
-    const fingerprint = createHmac('sha256', this.key()).update(url).digest('hex');
+    const fingerprint = createHmac('sha256', this.cipher.getFingerprintKey()).update(url).digest('hex');
     const bound = await this.prisma.imChannelConnection.findUnique({ where: { credentialFingerprint: fingerprint } });
     if (bound && bound.userId !== userId) throw new ConflictException('该接入点已绑定其他用户');
     const existing = await this.prisma.imChannelConnection.findUnique({ where: { userId_channel: { userId, channel: 'xiaozhi' } } });
@@ -91,9 +91,5 @@ export class XiaozhiChannelService {
     if (value.length > 100) throw new BadRequestException('别名不能超过 100 字');
     return value || null;
   }
-
-  private key() {
-    const raw = process.env.IM_CHANNEL_ENCRYPTION_KEY ?? '';
-    return /^[0-9a-f]{64}$/i.test(raw) ? Buffer.from(raw, 'hex') : Buffer.from(raw, 'base64');
-  }
 }
+

@@ -101,8 +101,14 @@ export class ContractReviewHtmlFindingRenderer {
           }
 
           // Clean duplicate clause number in title if already present
+          const escapedClauseNum = (c.clauseNumber || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const cleanFindingTitle = (f.title || '审查风控预警')
-            .replace(new RegExp(`^(第\\s*\\d+\\s*条|${c.clauseNumber})\\s*`, 'i'), '')
+            .replace(
+              escapedClauseNum
+                ? new RegExp(`^(第\\s*\\d+\\s*条|${escapedClauseNum})\\s*`, 'i')
+                : /^第\s*\d+\s*条\s*/i,
+              ''
+            )
             .trim();
 
           // Resolve evidence quote gracefully
@@ -134,8 +140,14 @@ export class ContractReviewHtmlFindingRenderer {
           issueType = '表述歧义';
         }
 
+        const escapedClauseNum = (c.clauseNumber || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const cleanTitle = (c.title || '条款合规诊断')
-          .replace(new RegExp(`^(第\\s*\\d+\\s*条|${c.clauseNumber})\\s*`, 'i'), '')
+          .replace(
+            escapedClauseNum
+              ? new RegExp(`^(第\\s*\\d+\\s*条|${escapedClauseNum})\\s*`, 'i')
+              : /^第\s*\d+\s*条\s*/i,
+            ''
+          )
           .trim();
 
         const resolvedQuote = this.resolveEvidenceQuote(undefined, c.originalContent, cleanTitle, c.riskSummary);

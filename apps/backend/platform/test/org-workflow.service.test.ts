@@ -31,6 +31,27 @@ describe('OrgWorkflowService', () => {
         }
         return null;
       }),
+      findFirst: jest.fn().mockImplementation(async ({ where }) => {
+        const username = where?.username?.equals || where?.username;
+        if (username === 'user-admin' || username === 'admin_user') {
+          return { id: 'user-admin', username: 'admin_user', role: 'admin', userRoles: [] };
+        }
+        if (username === 'user-employee' || username === 'john_doe') {
+          return { id: 'user-employee', username: 'john_doe', role: 'employee', userRoles: [] };
+        }
+        if (username === 'user-finance' || username === 'finance_user') {
+          return {
+            id: 'user-finance',
+            username: 'finance_user',
+            role: 'employee',
+            userRoles: [{ roleId: 'role-finance', role: { name: 'finance' } }],
+          };
+        }
+        if (username === 'user-guest' || username === 'guest_user') {
+          return { id: 'user-guest', username: 'guest_user', role: 'guest', userRoles: [] };
+        }
+        return null;
+      }),
     },
     executionFlowTemplate: {
       findMany: jest.fn().mockResolvedValue([
@@ -63,25 +84,25 @@ describe('OrgWorkflowService', () => {
   });
 
   it('should seed default workflows with process definitions and assembled workflows', () => {
-    const leaveWf = service.getWorkflowById('hr.leave.request');
-    expect(leaveWf).toBeDefined();
-    expect(leaveWf?.name).toBe('员工请假审批');
-    expect(leaveWf?.isPublished).toBe(true);
-    expect(leaveWf?.assembledWorkflows.length).toBe(0);
-    expect(leaveWf?.processDefinition.stages.length).toBe(4);
-    expect(leaveWf?.paramsSchema.required).toContain('leaveType');
+    const legalWf = service.getWorkflowById('legal.contract.review_flow');
+    expect(legalWf).toBeDefined();
+    expect(legalWf?.name).toBe('标准合同起草与法务审查闭环流');
+    expect(legalWf?.isPublished).toBe(true);
+    expect(legalWf?.assembledWorkflows.length).toBe(3);
+    expect(legalWf?.processDefinition.stages.length).toBe(4);
+    expect(legalWf?.paramsSchema.required).toContain('contractTitle');
   });
 
   it('should list admin workflows and return accurate statistics', async () => {
     const res = await service.listAdminWorkflows();
-    expect(res.workflows.length).toBeGreaterThanOrEqual(3);
+    expect(res.workflows.length).toBe(2);
     expect(res.stats.total).toBe(res.workflows.length);
-    expect(res.stats.publishedCount).toBeGreaterThanOrEqual(3);
+    expect(res.stats.publishedCount).toBe(2);
     expect(res.stats.draftCount).toBe(0);
-    expect(res.stats.assembledBaseCount).toBe(0);
+    expect(res.stats.assembledBaseCount).toBeGreaterThan(0);
   });
 
-  it('should fetch available base workflows from 5173 ExecutionFlows, Temporal and Skills', async () => {
+  it('should fetch available base workflows from ExecutionFlows, Temporal and Skills', async () => {
     const baseList = await service.getAvailableBaseWorkflows();
     expect(baseList.length).toBeGreaterThanOrEqual(3);
     expect(baseList.find((b) => b.type === 'execution_flow')).toBeDefined();

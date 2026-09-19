@@ -6,6 +6,7 @@ import type { StreamEvent } from '../react-engine/interfaces';
 import type { ChatRequestDTO, ChatUploadedFileDTO } from './chat.dto';
 import { ChatConversationService } from './chat-conversation.service';
 import { ChatMediaService } from './chat-media.service';
+import { ModelService } from '../model/model.service';
 import { isWorkSlashCommand } from './chat-slash-command.util';
 
 @Injectable()
@@ -15,7 +16,8 @@ export class UserSandboxDispatcherService {
 
   constructor(
     private readonly chatConversationService: ChatConversationService,
-    private readonly chatMediaService: ChatMediaService
+    private readonly chatMediaService: ChatMediaService,
+    private readonly modelService: ModelService
   ) {
     const host =
       process.env.SESSION_BROKER_HOST ||
@@ -226,7 +228,12 @@ export class UserSandboxDispatcherService {
       });
 
       // 尝试向 Session Broker 发起 run-harness 请求
-      const timeoutMs = 120000;
+      const timeoutMs =
+        typeof (body.config as any)?.timeoutMs === 'number' && (body.config as any).timeoutMs > 0
+          ? (body.config as any).timeoutMs
+          : typeof (body as any).timeoutMs === 'number' && (body as any).timeoutMs > 0
+            ? (body as any).timeoutMs
+            : 300000;
       const controller = new AbortController();
       const timeoutId = setTimeout(async () => {
         this.logger.warn(`Execution timeout (${timeoutMs / 1000}s) reached for user [${effectiveUserId}], stopping sandbox processes...`);
@@ -256,24 +263,47 @@ export class UserSandboxDispatcherService {
         containerName: string;
         durationMs: number;
         exitCode: number;
-      };
+      } | null = null;
+
+      let effectiveModel = body.modelId;
+      if (!effectiveModel || effectiveModel === 'default' || effectiveModel === 'deepseek-chat') {
+        const preferred =
+          this.modelService.getPreferredDefaultModel({ mode: 'chat' }) ||
+          this.modelService.getDefaultModel();
+        effectiveModel = preferred?.id || effectiveModel || 'default';
+      }
+      const modelEntity = await this.modelService.getModel(effectiveModel);
+      const modelDisplayName = modelEntity?.name || (effectiveModel !== 'default' ? effectiveModel : undefined);
 
       try {
-        const res = await fetch(`${this.sessionBrokerUrl}/user-sandboxes/run-harness`, {
+        const payload = {
+          userId: effectiveUserId,
+          prompt: promptForSandbox,
+          sessionId,
+          files: sessionAttachedFiles,
+          history: recentHistory,
+          webSearch: Boolean(body.config?.webSearch),
+          model: effectiveModel,
+          modelDisplayName,
+          timeoutMs,
+        };
+
+        let res = await fetch(`${this.sessionBrokerUrl}/user-sandboxes/run-harness-stream`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: effectiveUserId,
-            prompt: promptForSandbox,
-            sessionId,
-            files: sessionAttachedFiles,
-            history: recentHistory,
-            webSearch: Boolean(body.config?.webSearch),
-            model: body.modelId || 'deepseek-chat',
-            timeoutMs,
-          }),
+          body: JSON.stringify(payload),
           signal: controller.signal,
         });
+
+        if (res.status === 404) {
+          this.logger.log('Streaming endpoint not available, falling back to standard run-harness');
+          res = await fetch(`${this.sessionBrokerUrl}/user-sandboxes/run-harness`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+          });
+        }
 
         if (!res.ok) {
           const errorText = await res.text();
@@ -294,7 +324,77 @@ export class UserSandboxDispatcherService {
           return false;
         }
 
-        harnessResult = await res.json();
+        if (res.headers.get('content-type')?.includes('text/event-stream') && res.body) {
+          const reader = (res.body as any).getReader();
+          const decoder = new TextDecoder('utf-8');
+          let sseBuffer = '';
+          let deltaAccumulator = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            sseBuffer += decoder.decode(value, { stream: true });
+            const sseEvents = sseBuffer.split('\n\n');
+            sseBuffer = sseEvents.pop() || '';
+
+            for (const evt of sseEvents) {
+              const lines = evt.split('\n');
+              let eventType = 'message';
+              let eventData = '';
+              for (const l of lines) {
+                if (l.startsWith('event:')) {
+                  eventType = l.slice(6).trim();
+                } else if (l.startsWith('data:')) {
+                  eventData += l.slice(5).trim();
+                }
+              }
+              if (!eventData) continue;
+
+              let parsed: any;
+              try {
+                parsed = JSON.parse(eventData);
+              } catch {
+                // ignore malformed JSON chunk
+                continue;
+              }
+
+              if (eventType === 'observation' && parsed?.content) {
+                // 当沙箱开始调用工具或命中技能意图时，说明进入中间行动阶段，清空上一轮的过渡垫话累加器
+                const contentStr = String(parsed.content);
+                if (contentStr.includes('⚡') || contentStr.includes('🎯') || contentStr.includes('🔍')) {
+                  deltaAccumulator = '';
+                }
+                emit({
+                  type: StreamEventType.OBSERVATION,
+                  content: parsed.content,
+                });
+              } else if (eventType === 'delta' && parsed?.content) {
+                deltaAccumulator += parsed.content;
+                emit({
+                  type: StreamEventType.OBSERVATION,
+                  content: deltaAccumulator,
+                  data: { mode: 'chat', isDelta: true },
+                });
+              } else if (eventType === 'done') {
+                harnessResult = parsed;
+              } else if (eventType === 'error') {
+                throw new Error(parsed?.message || parsed?.error || 'Sandbox execution error');
+              }
+            }
+          }
+        } else {
+          harnessResult = await res.json();
+        }
+
+        if (!harnessResult) {
+          throw new Error('Sandbox stream ended unexpectedly without completion event');
+        }
+
+        if (harnessResult.success === false) {
+          throw new Error(
+            harnessResult.output || `Sandbox process failed with exit code ${harnessResult.exitCode}`
+          );
+        }
       } catch (fetchErr: any) {
         if (abortSignal?.aborted) {
           this.logger.log(`Run harness cancelled by client for user [${effectiveUserId}]`);
@@ -380,10 +480,12 @@ export class UserSandboxDispatcherService {
       // 二次防御：彻底剔除可能意外残留在正文中的工具调用裸 JSON 与 XML 标签及外发文件标记
       cleanAnswer = this.stripToolCallArtifacts(cleanAnswer);
       cleanAnswer = cleanAnswer
+        .replace(/<<<DSH_DELTA:[\s\S]*?>>>/g, '')
         .replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '')
         .replace(/<<<DSH_METRICS:[\s\S]*?>>>/g, '')
         .trim();
       telemetrySummary = telemetrySummary
+        .replace(/<<<DSH_DELTA:[\s\S]*?>>>/g, '')
         .replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '')
         .replace(/<<<DSH_METRICS:[\s\S]*?>>>/g, '')
         .trim();
@@ -428,7 +530,7 @@ export class UserSandboxDispatcherService {
         userContent: body.message,
         assistantContent: cleanAnswer,
         rawAssistantContent: rawOutput,
-        modelId: body.modelId || 'deepseek-chat',
+        modelId: effectiveModel || body.modelId || 'default',
         thinkingEnabled: Boolean(body.config?.thinking),
         ownerUserId: effectiveUserId,
         clientMessageId: body.clientMessageId,

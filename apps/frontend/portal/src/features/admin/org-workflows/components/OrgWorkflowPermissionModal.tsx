@@ -90,7 +90,7 @@ export const OrgWorkflowPermissionModal: React.FC<OrgWorkflowPermissionModalProp
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
         <Alert
           message="与普通技能统一的权限模型"
-          description="被授权角色的员工在 5174 组织工作流目录中可直接发起提单；未被授权的员工将展示为「未开通 (支持申请)」，提交后由管理员在此审核开通。"
+          description="被授权角色的员工在组织工作流目录中可直接发起提单；未被授权的员工将展示为「未开通 (支持申请)」，提交后由管理员在此审核开通。"
           type="info"
           showIcon
         />

@@ -757,7 +757,6 @@ ${deliverablesTable}
             { title: { contains: '[协同回执]' } },
             { title: { contains: '已终审通过并归档' } },
             { title: { contains: '已办结' } },
-            { id: '71bee8a3-e667-44fd-bfd5-8a5e6408c7a5' },
           ],
         },
         orderBy: { createdAt: 'asc' },

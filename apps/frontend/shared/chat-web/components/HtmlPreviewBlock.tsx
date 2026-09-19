@@ -10,6 +10,7 @@ import {
   UpOutlined,
   FileTextOutlined,
   ExportOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons';
 
 interface HtmlPreviewBlockProps {
@@ -17,6 +18,7 @@ interface HtmlPreviewBlockProps {
   className?: string;
   defaultTitle?: string;
   defaultExpanded?: boolean;
+  isStreaming?: boolean;
 }
 
 export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(function HtmlPreviewBlock({
@@ -24,6 +26,7 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
   className,
   defaultTitle = 'HTML 演示文稿 / 原型',
   defaultExpanded,
+  isStreaming = false,
 }) {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [isFullscreenModal, setIsFullscreenModal] = useState<boolean>(false);
@@ -53,6 +56,9 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
     defaultExpanded !== undefined ? defaultExpanded : false
   );
 
+  // Never mount iframe or expand content while streaming to prevent executing partial code
+  const effectiveExpanded = !isStreaming && isExpanded;
+
   const displayTitle = isContractReview
     ? '⚖️ 合同文档智能审查与合规诊断报告'
     : isContractCompare
@@ -71,19 +77,37 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
 
   const approxSize = `${(code.length / 1024).toFixed(1)} KB`;
 
+  const readyTipText = isPresentation
+    ? '💡 演示文稿已就绪：支持键盘翻页 (← → / 空格)、全屏演播（点击展开预览）'
+    : isContractCompare
+      ? '💡 比对报告已就绪：支持左右双栏对齐、字符级红线与高风险筛选（点击展开预览）'
+      : isContractReview
+        ? '💡 审查报告已就绪：支持审查意见高亮、风险分级与诊断分析（点击展开预览）'
+        : `💡 ${defaultTitle}已就绪（点击展开在线预览）`;
+
+  const generatingTipText = isPresentation
+    ? '⚡ 演示文稿生成中：AI 正在编写交互式页面结构与幻灯片样式...'
+    : isContractCompare
+      ? '⚡ 比对报告生成中：AI 正在提取条款并计算字符级红线差异...'
+      : isContractReview
+        ? '⚡ 审查报告生成中：AI 正在分析合同条款并生成合规诊断意见...'
+        : '⚡ 产物生成中：AI 正在编写页面代码与样式，生成完毕后即可预览与下载...';
+
+  const tipText = isStreaming ? generatingTipText : readyTipText;
+
   // Ref-based srcdoc management ensures ZERO iframe reloads/flickering on parent keystrokes
   // and avoids dangerous Blob URL revocation bugs and Chrome top-level blob navigation restrictions.
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const lastRenderedCodeRef = useRef<string>('');
 
   useEffect(() => {
-    if (isExpanded && activeTab === 'preview' && iframeRef.current) {
+    if (effectiveExpanded && activeTab === 'preview' && iframeRef.current) {
       if (lastRenderedCodeRef.current !== code || !iframeRef.current.srcdoc) {
         lastRenderedCodeRef.current = code;
         iframeRef.current.srcdoc = code;
       }
     }
-  }, [code, isExpanded, activeTab]);
+  }, [code, effectiveExpanded, activeTab]);
 
   // Open full HTML document in new tab reliably using document.write instead of ephemeral Blob URLs
   const handleOpenNewWindow = useCallback(() => {
@@ -143,15 +167,21 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
           alignItems: 'center',
           padding: '9px 12px',
           background: 'rgba(0, 0, 0, 0.03)',
-          borderBottom: isExpanded ? '1px solid rgba(140, 140, 140, 0.15)' : 'none',
+          borderBottom: effectiveExpanded ? '1px solid rgba(140, 140, 140, 0.15)' : 'none',
           flexWrap: 'wrap',
           gap: '8px',
-          cursor: 'pointer',
+          cursor: isStreaming ? 'default' : 'pointer',
         }}
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => {
+          if (!isStreaming) {
+            setIsExpanded(!isExpanded);
+          }
+        }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {isContractCompare ? (
+          {isStreaming ? (
+            <LoadingOutlined spin style={{ color: '#1677ff', fontSize: '15px' }} />
+          ) : isContractCompare ? (
             <FileTextOutlined style={{ color: '#1677ff', fontSize: '15px' }} />
           ) : (
             <PlayCircleOutlined style={{ color: '#1677ff', fontSize: '15px' }} />
@@ -164,7 +194,7 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
                   fontSize: '11px',
                   padding: '1px 6px',
                   borderRadius: '4px',
-                  background: 'rgba(22, 119, 255, 0.1)',
+                  background: isStreaming ? 'rgba(22, 119, 255, 0.08)' : 'rgba(22, 119, 255, 0.1)',
                   color: '#1677ff',
                   fontWeight: 500,
                 }}
@@ -183,58 +213,84 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
                 {approxSize}
               </span>
             </div>
-            {!isExpanded && (
-              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                💡 产物已就绪：支持左右双栏对齐、字符级红线、大纲跳转与高风险筛选（点击展开预览）
+            {!effectiveExpanded && (
+              <div
+                style={{
+                  fontSize: '11px',
+                  color: isStreaming ? '#1677ff' : '#64748b',
+                  marginTop: '2px',
+                }}
+              >
+                {tipText}
               </div>
             )}
           </div>
         </div>
 
-        <Space size="small" onClick={(e) => e.stopPropagation()}>
-          <Button
-            size="small"
-            type={isExpanded ? 'default' : 'primary'}
-            icon={isExpanded ? <UpOutlined /> : <EyeOutlined />}
-            onClick={() => setIsExpanded(!isExpanded)}
-          >
-            {isExpanded ? '收起预览' : '展开在线预览'}
-          </Button>
-
-          {isExpanded && (
-            <Segmented
+        {isStreaming ? (
+          <Space size="small" onClick={(e) => e.stopPropagation()}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12px',
+                color: '#1677ff',
+                background: 'rgba(22, 119, 255, 0.08)',
+                padding: '3px 10px',
+                borderRadius: '12px',
+                fontWeight: 500,
+              }}
+            >
+              <LoadingOutlined spin /> 生成中...
+            </span>
+          </Space>
+        ) : (
+          <Space size="small" onClick={(e) => e.stopPropagation()}>
+            <Button
               size="small"
-              value={activeTab}
-              onChange={(val) => setActiveTab(val as 'preview' | 'code')}
-              options={[
-                { label: '在线演示', value: 'preview', icon: <DesktopOutlined /> },
-                { label: '查看源码', value: 'code', icon: <CodeOutlined /> },
-              ]}
-            />
-          )}
-
-          <Tooltip title="在当前页面全屏沉浸式预览">
-            <Button size="small" icon={<FullscreenOutlined />} onClick={() => setIsFullscreenModal(true)}>
-              全屏
+              type={effectiveExpanded ? 'default' : 'primary'}
+              icon={effectiveExpanded ? <UpOutlined /> : <EyeOutlined />}
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              {effectiveExpanded ? '收起预览' : '展开在线预览'}
             </Button>
-          </Tooltip>
 
-          <Tooltip title="在新标签页独立大窗口打开">
-            <Button size="small" icon={<ExportOutlined />} onClick={handleOpenNewWindow}>
-              新窗口
-            </Button>
-          </Tooltip>
+            {effectiveExpanded && (
+              <Segmented
+                size="small"
+                value={activeTab}
+                onChange={(val) => setActiveTab(val as 'preview' | 'code')}
+                options={[
+                  { label: '在线演示', value: 'preview', icon: <DesktopOutlined /> },
+                  { label: '查看源码', value: 'code', icon: <CodeOutlined /> },
+                ]}
+              />
+            )}
 
-          <Tooltip title="下载 HTML 文件至本地">
-            <Button size="small" type="primary" ghost icon={<DownloadOutlined />} onClick={handleDownload}>
-              下载
-            </Button>
-          </Tooltip>
-        </Space>
+            <Tooltip title="在当前页面全屏沉浸式预览">
+              <Button size="small" icon={<FullscreenOutlined />} onClick={() => setIsFullscreenModal(true)}>
+                全屏
+              </Button>
+            </Tooltip>
+
+            <Tooltip title="在新标签页独立大窗口打开">
+              <Button size="small" icon={<ExportOutlined />} onClick={handleOpenNewWindow}>
+                新窗口
+              </Button>
+            </Tooltip>
+
+            <Tooltip title="下载 HTML 文件至本地">
+              <Button size="small" type="primary" ghost icon={<DownloadOutlined />} onClick={handleDownload}>
+                下载
+              </Button>
+            </Tooltip>
+          </Space>
+        )}
       </div>
 
       {/* Body content (collapsible) */}
-      {isExpanded && (activeTab === 'preview' ? (
+      {effectiveExpanded && (activeTab === 'preview' ? (
         <div>
           <iframe
             ref={iframeRef}
@@ -242,10 +298,10 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
             allowFullScreen
             style={{
               width: '100%',
-              height: isContractCompare ? '580px' : '480px',
+              height: isContractCompare || isContractReview ? '580px' : '480px',
               border: 'none',
               display: 'block',
-              backgroundColor: isContractCompare ? '#f8fafc' : '#0f172a',
+              backgroundColor: isContractCompare || isContractReview ? '#f8fafc' : '#0f172a',
             }}
             title={displayTitle}
           />
@@ -262,8 +318,12 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
           >
             {isContractCompare ? (
               <span>💡 提示：支持左右双栏平滑滚动联动、章节大纲快速跳转、仅看变更与高风险过滤。</span>
-            ) : (
+            ) : isContractReview ? (
+              <span>💡 提示：支持审查意见高亮过滤、风险等级筛选、审查工作底稿展开与条款快速定位。</span>
+            ) : isPresentation ? (
               <span>💡 提示：点击画面可直接交互，支持键盘左右键 / 空格翻页、ESC 查看索引。</span>
+            ) : (
+              <span>💡 提示：支持在线交互操作与离线独立运行。</span>
             )}
             <span>单文件离线 HTML</span>
           </div>

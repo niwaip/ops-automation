@@ -240,20 +240,13 @@ export function UserChatComposer(props: UserChatComposerProps) {
     [draft, onDraftChange, uploadedFiles]
   );
 
-  const [cardInitialTemplateId, setCardInitialTemplateId] = useState<string>('general.coordination');
+  const [cardInitialTemplateId, setCardInitialTemplateId] = useState<string>('legal.contract.review_flow');
   const [cardInitialValues, setCardInitialValues] = useState<Record<string, any>>({});
 
   // 智能嗅探自然语言协同意图
   const detectedWorkflowIntent = useMemo(() => {
     if (!draft || !draft.includes('@')) return null;
     const lower = draft.toLowerCase();
-    if (/请假|休假|事假|病假|年假|调休/i.test(lower)) {
-      return {
-        templateId: 'hr.leave.request',
-        name: '员工请假申请',
-        tag: 'HRMS 考勤',
-      };
-    }
     if (/保密|nda/i.test(lower)) {
       return {
         templateId: 'legal.nda.generation_and_review_flow',
@@ -266,13 +259,6 @@ export function UserChatComposer(props: UserChatComposerProps) {
         templateId: 'legal.contract.review_flow',
         name: '标准合同起草与法务审查闭环流',
         tag: '法务风控',
-      };
-    }
-    if (/报销|发票|差旅|打车|支出/i.test(lower)) {
-      return {
-        templateId: 'oa.expense.claim',
-        name: '费用报销审批',
-        tag: '财务/ERP',
       };
     }
     return null;
@@ -294,21 +280,8 @@ export function UserChatComposer(props: UserChatComposerProps) {
       setUserMentionOpen(false);
 
       if (mode === 'card') {
-        const lower = text.toLowerCase();
-        if (/请假|休假|事假|病假|年假|调休/i.test(lower)) {
-          setCardInitialTemplateId('hr.leave.request');
-          setCardInitialValues({
-            leaveType: /病假/i.test(lower) ? '病假' : /年假/i.test(lower) ? '年假' : '事假',
-            durationHours: /下午|半天/i.test(lower) ? 4 : /一天|整天/i.test(lower) ? 8 : 4,
-            reason: text.replace(/[@＠][^\s@＠]+/g, '').trim() || '个人私事请假',
-          });
-        } else if (/报销|发票|支出/i.test(lower)) {
-          setCardInitialTemplateId('oa.expense.claim');
-          setCardInitialValues({});
-        } else {
-          setCardInitialTemplateId('general.coordination');
-          setCardInitialValues({});
-        }
+        setCardInitialTemplateId('legal.contract.review_flow');
+        setCardInitialValues({});
         setCardModalOpen(true);
       } else {
         const newPos = newBefore.length;
@@ -338,18 +311,11 @@ export function UserChatComposer(props: UserChatComposerProps) {
 
         const text = draft;
         const lower = text.toLowerCase();
-        if (templateId === 'hr.leave.request' || /请假|休假|事假|病假|年假|调休/i.test(lower)) {
-          setCardInitialTemplateId('hr.leave.request');
-          setCardInitialValues({
-            leaveType: /病假/i.test(lower) ? '病假' : /年假/i.test(lower) ? '年假' : '事假',
-            durationHours: /下午|半天/i.test(lower) ? 4 : /一天|整天/i.test(lower) ? 8 : 4,
-            reason: text.replace(/[@＠][^\s@＠]+/g, '').trim() || '个人私事请假',
-          });
-        } else if (templateId === 'oa.expense.claim' || /报销|发票|支出/i.test(lower)) {
-          setCardInitialTemplateId('oa.expense.claim');
+        if (templateId === 'legal.nda.generation_and_review_flow' || /保密|nda/i.test(lower)) {
+          setCardInitialTemplateId('legal.nda.generation_and_review_flow');
           setCardInitialValues({});
         } else {
-          setCardInitialTemplateId(isModalAction ? 'general.coordination' : templateId);
+          setCardInitialTemplateId(templateId || 'legal.contract.review_flow');
           setCardInitialValues({});
         }
         setCardModalOpen(true);

@@ -139,6 +139,62 @@ describe('Contract Robustness & High-Risk Vulnerability Fixes', () => {
       expect(html).toContain('文档部分截断审查警示');
       expect(html).toContain('文本达到 200000 字符上限，后续内容未被审查');
     });
+
+    it('should safely render clauses with special characters in clauseNumber (e.g. "1)", "(2)", "[3]") without regex syntax error', () => {
+      const reviewRenderer = new ContractReviewHtmlRendererService();
+      const metrics: ContractReviewMetrics = {
+        totalClauses: 2,
+        healthScore: 60,
+        highRiskCount: 1,
+        mediumRiskCount: 1,
+        lowRiskCount: 0,
+        missingClausesCount: 0,
+        passCount: 0,
+        isTruncated: false,
+      };
+
+      expect(() => {
+        reviewRenderer.renderHtmlReport({
+          fileName: '1234 (1).docx',
+          contractType: 'general',
+          contractTypeName: '买卖合同',
+          myPosition: 'buyer',
+          metrics,
+          clauses: [
+            {
+              clauseIndex: 1,
+              clauseNumber: '1)',
+              title: '1) 标的物条款',
+              originalContent: '标的物应在30日内送达。',
+              riskLevel: 'HIGH',
+              riskSummary: '约定交付时间不清晰',
+              legalAdvice: '明确交付具体日期',
+              matchedCheckpoints: [],
+              findings: [
+                {
+                  id: 'f-1',
+                  category: '合规要件',
+                  severity: 'HIGH',
+                  title: '1) 交付不明确',
+                  riskSummary: '未明确违约责任',
+                },
+              ],
+            },
+            {
+              clauseIndex: 2,
+              clauseNumber: '(2)',
+              title: '(2) 结算条款',
+              originalContent: '款项两周内支付。',
+              riskLevel: 'MEDIUM',
+              riskSummary: '结算方式含糊',
+              legalAdvice: '明确支付节点',
+              matchedCheckpoints: [],
+            },
+          ],
+          missingClauses: [],
+        });
+      }).not.toThrow();
+    });
   });
 
   describe('[P1] Compare Single Empty Document Guard', () => {

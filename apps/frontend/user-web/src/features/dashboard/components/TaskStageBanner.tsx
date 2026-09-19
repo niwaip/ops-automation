@@ -212,7 +212,7 @@ export function TaskStageBanner({ nodeSemantics, isArchived }: TaskStageBannerPr
   if (nodeSemantics.isWaitingForOther) {
     const isLegal = categoryTagText?.includes('法务') || nodeSemantics.currentStageName?.includes('法务');
     const stageTitle = nodeSemantics.currentStageName || (isLegal ? '法务合规审查' : '业务审批');
-    const handler = nodeSemantics.currentAssigneeName || (isLegal ? 'law01' : '审核人员');
+    const handler = nodeSemantics.currentAssigneeName || (isLegal ? '法务专员' : '审核人员');
 
     return (
       <div

@@ -419,7 +419,9 @@ services:
     <<: *common-node-service
     container_name: ops-ai-orchestrator
     command: >
-      sh -c "corepack enable && pnpm --filter @ops/ai-orchestrator run build
+      sh -c "corepack enable
+      && pnpm --filter @ops/browser-recorder --filter @ops/browser-runtime-facade run build
+      && pnpm --filter @ops/ai-orchestrator run build
       && rm -rf /workspace/apps/backend/intelligence/ai-orchestrator/dist/generated
       && mkdir -p /workspace/apps/backend/intelligence/ai-orchestrator/dist/generated
       && cp -R /workspace/apps/backend/intelligence/ai-orchestrator/src/generated/prisma /workspace/apps/backend/intelligence/ai-orchestrator/dist/generated/prisma

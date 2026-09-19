@@ -73,6 +73,8 @@
       "execution_steps",
       "execution_takeovers",
       "executions",
+      "reminder_deliveries",
+      "reminder_rules",
       "schedule_fires",
       "skill_schedules",
       "temporal_workflows"

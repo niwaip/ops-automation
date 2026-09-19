@@ -6,8 +6,10 @@ import {
   Body,
   Query,
   Param,
+  Res,
   BadRequestException,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UserSandboxService } from './user-sandbox.service';
 import {
@@ -154,6 +156,90 @@ export class UserSandboxController {
       timeoutMs: dto.timeoutMs,
       files: dto.files,
     });
+  }
+
+  @Post('run-harness-stream')
+  @ApiOperation({ summary: '在用户的沙箱中调用 DeepSeek Harness 并以 SSE 流式返回实时事件与执行结果' })
+  async runHarnessStream(
+    @Body() dto: RunHarnessDto,
+    @Res() res: Response
+  ): Promise<void> {
+    if (!dto.userId) {
+      throw new BadRequestException('userId 不能为空');
+    }
+    if (!dto.prompt) {
+      throw new BadRequestException('prompt 不能为空');
+    }
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    let buffer = '';
+    let isFinished = false;
+    const sendEvent = (event: string, data: any) => {
+      if (!res.writableEnded) {
+        res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      }
+    };
+
+    const onClose = () => {
+      if (!isFinished) {
+        this.userSandboxService.stopSandboxExecution(dto.userId).catch(() => {});
+      }
+    };
+    res.on('close', onClose);
+
+    try {
+      const result = await this.userSandboxService.runHarness(dto.userId, dto.prompt, {
+        webSearch: dto.webSearch,
+        model: dto.model,
+        modelDisplayName: dto.modelDisplayName,
+        sessionId: dto.sessionId,
+        history: dto.history,
+        timeoutMs: dto.timeoutMs,
+        files: dto.files,
+        onStdoutChunk: (chunk: string) => {
+          buffer += chunk;
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            if (trimmed.startsWith('<<<DSH_DELTA:') && trimmed.endsWith('>>>')) {
+              try {
+                const deltaPayload = JSON.parse(trimmed.slice(13, -3));
+                sendEvent('delta', { content: deltaPayload });
+              } catch {
+                // ignore
+              }
+            } else if (
+              trimmed.startsWith('⚡') ||
+              trimmed.startsWith('✓') ||
+              trimmed.startsWith('🎯') ||
+              trimmed.startsWith('🔍') ||
+              trimmed.startsWith('✨')
+            ) {
+              sendEvent('observation', { content: trimmed });
+            }
+          }
+        },
+      });
+
+      isFinished = true;
+      sendEvent('done', result);
+      if (!res.writableEnded) {
+        res.end();
+      }
+    } catch (err: any) {
+      isFinished = true;
+      sendEvent('error', { message: err.message });
+      if (!res.writableEnded) {
+        res.end();
+      }
+    } finally {
+      res.removeListener('close', onClose);
+    }
   }
 
   @Post(':userId/stop-exec')

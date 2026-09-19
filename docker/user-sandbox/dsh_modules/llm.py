@@ -4,16 +4,27 @@ LLM communications, tool call extraction and response cleanup for DeepSeek Harne
 
 import json
 import re
+import sys
 import time
 import urllib.request
 import urllib.error
 from .config import DEFAULT_PROXY_URL, VIRTUAL_API_KEY
 
 
-def call_model_proxy(messages: list, model: str = "deepseek-chat", tools: list = None) -> dict:
+def call_model_proxy(
+    messages: list,
+    model: str = None,
+    tools: list = None,
+    timeout: int = 40,
+    deadline: float = None
+) -> dict:
     """Invokes the central model proxy through internal network streaming, returning structured response with metrics and native tool calls"""
     api_endpoint = f"{DEFAULT_PROXY_URL.rstrip('/')}/chat/completions"
-    payload = {"model": model, "messages": messages, "temperature": 0.4, "max_tokens": 4096, "stream": True}
+    payload = {"messages": messages, "temperature": 0.4, "max_tokens": 4096, "stream": True}
+    if model and model != "default":
+        payload["model"] = model
+    else:
+        payload["model"] = "default"
     if tools:
         payload["tools"] = tools
         payload["tool_choice"] = "auto"
@@ -29,54 +40,105 @@ def call_model_proxy(messages: list, model: str = "deepseek-chat", tools: list =
     start_time = time.time()
     ttft_ms = None
 
-    with urllib.request.urlopen(req, timeout=90) as response:
-        for line in response:
-            l = line.decode("utf-8", errors="replace").strip()
-            if not l.startswith("data:"):
+    max_retries = 2
+    for attempt in range(max_retries + 1):
+        if deadline is not None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("Task total execution deadline exceeded")
+            effective_timeout = max(1.0, min(float(timeout), remaining))
+        else:
+            effective_timeout = float(timeout)
+
+        try:
+            with urllib.request.urlopen(req, timeout=effective_timeout) as response:
+                for line in response:
+                    if deadline is not None and time.monotonic() >= deadline:
+                        raise TimeoutError("Task total execution deadline exceeded while receiving model stream")
+                    l = line.decode("utf-8", errors="replace").strip()
+                    if not l.startswith("data:"):
+                        continue
+                    d = l[5:].strip()
+                    if d == "[DONE]":
+                        break
+                    try:
+                        data_obj = json.loads(d)
+                        if "error" in data_obj:
+                            raise RuntimeError(data_obj["error"].get("message", "Model execution error"))
+                        if data_obj.get("usage"):
+                            usage = data_obj["usage"]
+                        choices = data_obj.get("choices")
+                        if not choices:
+                            continue
+                        choice = choices[0]
+                        if choice.get("finish_reason"):
+                            finish_reason = choice["finish_reason"]
+                        delta = choice.get("delta", {})
+                        chunk = delta.get("content", "")
+                        if chunk:
+                            if ttft_ms is None:
+                                ttft_ms = (time.time() - start_time) * 1000
+                            chunks.append(chunk)
+                            # Real-time delta streaming to stdout
+                            sys.stdout.write(f"<<<DSH_DELTA:{json.dumps(chunk, ensure_ascii=False)}>>>\n")
+                            sys.stdout.flush()
+                        t_calls = delta.get("tool_calls")
+                        if t_calls and isinstance(t_calls, list):
+                            if ttft_ms is None:
+                                ttft_ms = (time.time() - start_time) * 1000
+                            for tc in t_calls:
+                                idx = tc.get("index", 0)
+                                if idx not in tool_call_deltas:
+                                    tool_call_deltas[idx] = {
+                                        "id": tc.get("id") or f"call_{idx}_{int(time.time()*1000)}",
+                                        "type": "function",
+                                        "name": "",
+                                        "arguments": ""
+                                    }
+                                elif tc.get("id") and not tool_call_deltas[idx].get("id"):
+                                    tool_call_deltas[idx]["id"] = tc.get("id")
+                                fn = tc.get("function", {})
+                                if fn.get("name"):
+                                    tool_call_deltas[idx]["name"] += fn["name"]
+                                if fn.get("arguments"):
+                                    tool_call_deltas[idx]["arguments"] += fn["arguments"]
+                    except json.JSONDecodeError:
+                        pass
+            break
+        except urllib.error.HTTPError as e:
+            err_msg = e.read().decode("utf-8", errors="ignore")
+            is_transient = any(kw in err_msg.lower() for kw in ["aborted", "socket hang up", "econnreset", "bad gateway", "timeout"]) or e.code in [502, 503, 504]
+            if is_transient and attempt < max_retries:
+                backoff = 1.5 * (attempt + 1)
+                if deadline is not None and time.monotonic() + backoff >= deadline:
+                    raise TimeoutError("Task total execution deadline exceeded during retry")
+                time.sleep(backoff)
+                chunks = []
+                tool_call_deltas = {}
                 continue
-            d = l[5:].strip()
-            if d == "[DONE]":
-                break
-            try:
-                data_obj = json.loads(d)
-                if "error" in data_obj:
-                    raise RuntimeError(data_obj["error"].get("message", "Model execution error"))
-                if data_obj.get("usage"):
-                    usage = data_obj["usage"]
-                choices = data_obj.get("choices")
-                if not choices:
-                    continue
-                choice = choices[0]
-                if choice.get("finish_reason"):
-                    finish_reason = choice["finish_reason"]
-                delta = choice.get("delta", {})
-                chunk = delta.get("content", "")
-                if chunk:
-                    if ttft_ms is None:
-                        ttft_ms = (time.time() - start_time) * 1000
-                    chunks.append(chunk)
-                t_calls = delta.get("tool_calls")
-                if t_calls and isinstance(t_calls, list):
-                    if ttft_ms is None:
-                        ttft_ms = (time.time() - start_time) * 1000
-                    for tc in t_calls:
-                        idx = tc.get("index", 0)
-                        if idx not in tool_call_deltas:
-                            tool_call_deltas[idx] = {
-                                "id": tc.get("id") or f"call_{idx}_{int(time.time()*1000)}",
-                                "type": "function",
-                                "name": "",
-                                "arguments": ""
-                            }
-                        elif tc.get("id") and not tool_call_deltas[idx].get("id"):
-                            tool_call_deltas[idx]["id"] = tc.get("id")
-                        fn = tc.get("function", {})
-                        if fn.get("name"):
-                            tool_call_deltas[idx]["name"] += fn["name"]
-                        if fn.get("arguments"):
-                            tool_call_deltas[idx]["arguments"] += fn["arguments"]
-            except json.JSONDecodeError:
-                pass
+            raise urllib.error.HTTPError(e.url, e.code, err_msg, e.hdrs, None)
+        except (urllib.error.URLError, ConnectionResetError):
+            if attempt < max_retries:
+                backoff = 1.5 * (attempt + 1)
+                if deadline is not None and time.monotonic() + backoff >= deadline:
+                    raise TimeoutError("Task total execution deadline exceeded during retry")
+                time.sleep(backoff)
+                chunks = []
+                tool_call_deltas = {}
+                continue
+            raise
+        except RuntimeError as e:
+            err_msg = str(e)
+            is_transient = any(kw in err_msg.lower() for kw in ["aborted", "socket hang up", "econnreset", "bad gateway", "timeout"])
+            if is_transient and attempt < max_retries:
+                backoff = 1.5 * (attempt + 1)
+                if deadline is not None and time.monotonic() + backoff >= deadline:
+                    raise TimeoutError("Task total execution deadline exceeded during retry")
+                time.sleep(backoff)
+                chunks = []
+                tool_call_deltas = {}
+                continue
+            raise
 
     total_ms = (time.time() - start_time) * 1000
     res_text = "".join(chunks).strip()

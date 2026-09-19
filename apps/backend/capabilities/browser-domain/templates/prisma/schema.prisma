@@ -19,7 +19,7 @@ enum TemplateStatus {
 }
 
 model Template {
-  id           String         @id(map: "PK_515948649ce0bbbe391de702ae5") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id           String         @id(map: "PK_515948649ce0bbbe391de702ae5") @default(uuid()) @db.Uuid
   name         String         @db.VarChar(255)
   version      String         @default("1.0.0") @db.VarChar(50)
   status       TemplateStatus @default(DRAFT)

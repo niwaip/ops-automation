@@ -8,6 +8,7 @@ export interface UserWorkspacePaths {
   sharedPlugins: string;
   sharedSkills: string;
   dshModules?: string;
+  dshBin?: string;
 }
 
 export interface UserSandboxQuota {
@@ -130,7 +131,17 @@ export class UserSandboxStorageService {
     const hostKnowledge = path.join(hostUserRoot, 'knowledge');
     const hostSharedPlugins = path.join(this.hostProjectRoot, 'data', 'shared', 'dsh-plugins');
     const hostSharedSkills = path.join(this.hostProjectRoot, 'data', 'shared', 'dsh-skills');
-    const hostDshModules = path.join(this.hostProjectRoot, 'docker', 'user-sandbox', 'dsh_modules');
+    const localCanonicalDshModules = path.join(this.localProjectRoot, 'apps', 'backend', 'runtimes', 'personal-sandbox-runner', 'src', 'dsh_modules');
+    const hostCanonicalDshModules = path.join(this.hostProjectRoot, 'apps', 'backend', 'runtimes', 'personal-sandbox-runner', 'src', 'dsh_modules');
+    const hostFallbackDshModules = path.join(this.hostProjectRoot, 'docker', 'user-sandbox', 'dsh_modules');
+    const hostDshModules = fs.existsSync(localCanonicalDshModules) ? hostCanonicalDshModules : hostFallbackDshModules;
+
+    const localCanonicalDshBin = path.join(this.localProjectRoot, 'apps', 'backend', 'runtimes', 'personal-sandbox-runner', 'bin', 'dsh');
+    const hostCanonicalDshBin = path.join(this.hostProjectRoot, 'apps', 'backend', 'runtimes', 'personal-sandbox-runner', 'bin', 'dsh');
+    const hostFallbackDshBin = path.join(this.hostProjectRoot, 'docker', 'user-sandbox', 'dsh');
+    const hostDshBin = fs.existsSync(localCanonicalDshBin)
+      ? hostCanonicalDshBin
+      : (fs.existsSync(path.join(this.localProjectRoot, 'docker', 'user-sandbox', 'dsh')) ? hostFallbackDshBin : undefined);
 
     const localUserRoot = path.join(this.localProjectRoot, 'data', 'users', sanitized);
     const localWorkspace = path.join(localUserRoot, 'workspace');
@@ -219,6 +230,7 @@ export class UserSandboxStorageService {
       sharedPlugins: hostSharedPlugins,
       sharedSkills: hostSharedSkills,
       dshModules: hostDshModules,
+      dshBin: hostDshBin,
     };
   }
 

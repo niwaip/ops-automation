@@ -52,7 +52,7 @@ export interface WorkflowNodeSemantics {
   canReject: boolean; // 是否具备驳回操作权限（必须当前用户为审批人且处于审批阶段）
   canRecall: boolean; // 是否具备撤回权限（发起人外发在他人审批中时可撤回）
   canRemind: boolean; // 是否具备催办权限（发起人外发在他人审批中时可催办）
-  currentAssigneeName?: string; // 当前处理承办人姓名（如 law01）
+  currentAssigneeName?: string; // 当前处理承办人姓名
   currentStageName?: string; // 当前阶段名称（如 法务审查）
 
   // 驳回批注与修改意见（若存在）
@@ -333,7 +333,7 @@ export function classifyWorkflowNode(
 
   const currentAssigneeName =
     payload.assignee?.username ||
-    (currentStage === 'legal_review' || rawTitle.includes('法务') ? 'law01' : undefined) ||
+    (currentStage === 'legal_review' || rawTitle.includes('法务') ? '法务专员' : undefined) ||
     item.sourceSender ||
     '处理担当';
 

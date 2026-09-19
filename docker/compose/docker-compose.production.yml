@@ -10,6 +10,8 @@ services:
       DATABASE_URL: ${CONTROL_PLANE_DATABASE_URL:?CONTROL_PLANE_DATABASE_URL is required}
       REDIS_HOST: ${REDIS_HOST:?REDIS_HOST is required}
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:?INTERNAL_API_SHARED_SECRET is required}
       EXECUTION_OUTBOX_ENABLED: ${EXECUTION_OUTBOX_ENABLED:-false}
       PLAN_RISK_EVALUATOR_V2_ENABLED: ${PLAN_RISK_EVALUATOR_V2_ENABLED:-false}
       RESULT_REF_ENABLED: ${RESULT_REF_ENABLED:-false}
@@ -53,6 +55,8 @@ services:
       DATABASE_URL: ${CONTROL_PLANE_DATABASE_URL:?CONTROL_PLANE_DATABASE_URL is required}
       REDIS_HOST: ${REDIS_HOST:?REDIS_HOST is required}
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:?INTERNAL_API_SHARED_SECRET is required}
     command: ['pnpm', '--filter', '@ops/control-plane', 'run', 'start:worker']
     stop_grace_period: 60s
     deploy:
@@ -70,6 +74,8 @@ services:
       DATABASE_URL: ${CONTROL_PLANE_DATABASE_URL:?CONTROL_PLANE_DATABASE_URL is required}
       REDIS_HOST: ${REDIS_HOST:?REDIS_HOST is required}
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:?INTERNAL_API_SHARED_SECRET is required}
     command: ['pnpm', '--filter', '@ops/control-plane', 'run', 'start:worker']
     stop_grace_period: 30s
     networks: [control, data]
@@ -81,6 +87,8 @@ services:
       # The AI login must receive only reader + intelligence writer memberships.
       # In particular it must not inherit execution or registry writer roles.
       DATABASE_URL: ${AI_ORCHESTRATOR_DATABASE_URL:?AI_ORCHESTRATOR_DATABASE_URL is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:?INTERNAL_API_SHARED_SECRET is required}
       CONTROL_PLANE_URL: http://control-plane-api:3003
       PLANNING_DECISION_PERSIST_ENABLED: ${PLANNING_DECISION_PERSIST_ENABLED:-false}
       MODEL_INVOCATION_LEDGER_ENABLED: ${MODEL_INVOCATION_LEDGER_ENABLED:-false}
@@ -111,6 +119,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: '3004'
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:?INTERNAL_API_SHARED_SECRET is required}
       SESSION_BROKER_URL: ${SESSION_BROKER_URL:?SESSION_BROKER_URL is required}
       CONTROL_PLANE_URL: http://control-plane-api:3003
       BROWSER_WORKER_ORPHAN_SWEEP_ENABLED: 'true'

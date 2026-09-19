@@ -46,8 +46,10 @@ export async function executeWorkspaceExplorer(
   const internalSecret = process.env.INTERNAL_API_SHARED_SECRET || process.env.JWT_SECRET;
   const userId =
     ((request.policyContext as any)?.userId as string) ||
+    ((request as any)?.initiatedBy as string) ||
     (request.metadata?.userId as string) ||
-    'e7fce333-a8f4-4097-9a53-f0a4c729da46';
+    process.env.DEFAULT_ADMIN_USER_ID ||
+    '00000000-0000-0000-0000-000000000000';
 
   const headers = {
     ...(internalSecret ? { 'x-internal-auth': internalSecret } : {}),

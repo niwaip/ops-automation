@@ -11,10 +11,8 @@ import {
 import {
   ApartmentOutlined,
   ApiOutlined,
-  CalendarOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
-  DollarOutlined,
   FileDoneOutlined,
   KeyOutlined,
   LockOutlined,
@@ -41,10 +39,6 @@ export const OrganizationWorkflowCard: React.FC<OrganizationWorkflowCardProps> =
 
   const getWorkflowIcon = (templateId: string) => {
     switch (templateId) {
-      case 'hr.leave.request':
-        return <CalendarOutlined style={{ fontSize: 24, color: '#1677ff' }} />;
-      case 'oa.expense.claim':
-        return <DollarOutlined style={{ fontSize: 24, color: '#fa8c16' }} />;
       case 'legal.nda.generation_and_review_flow':
         return <SafetyCertificateOutlined style={{ fontSize: 24, color: '#722ed1' }} />;
       case 'legal.contract.review_flow':
@@ -54,7 +48,7 @@ export const OrganizationWorkflowCard: React.FC<OrganizationWorkflowCardProps> =
     }
   };
 
-  // 动态解析流程定义中的阶段步骤（来自 5173 管理后台的流程定义）
+  // 动态解析流程定义中的阶段步骤（来自管理后台的流程定义）
   const getWorkflowSteps = () => {
     if (template.processDefinition?.stages && template.processDefinition.stages.length > 0) {
       return template.processDefinition.stages.map((stage) => {
@@ -83,7 +77,7 @@ export const OrganizationWorkflowCard: React.FC<OrganizationWorkflowCardProps> =
     ];
   };
 
-  // 动态渲染组装的 5173 底层普通工作流资产徽标
+  // 动态渲染组装的底层工作流资产徽标
   const renderAssembledBadges = () => {
     const assembled = template.assembledWorkflows || [];
     if (assembled.length > 0) {
@@ -106,20 +100,6 @@ export const OrganizationWorkflowCard: React.FC<OrganizationWorkflowCardProps> =
     }
 
     // 默认 fallback
-    if (template.id === 'hr.leave.request') {
-      return (
-        <Tag color="success" icon={<ApiOutlined />}>
-          已接入 Mock Enterprise HRMS
-        </Tag>
-      );
-    }
-    if (template.id === 'oa.expense.claim') {
-      return (
-        <Tag color="orange" icon={<ApiOutlined />}>
-          已接入 ERP 财务结算网关
-        </Tag>
-      );
-    }
     if (template.id === 'legal.nda.generation_and_review_flow') {
       return (
         <Tag color="purple" icon={<ApiOutlined />}>
@@ -221,7 +201,7 @@ export const OrganizationWorkflowCard: React.FC<OrganizationWorkflowCardProps> =
           }}
         >
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 500 }}>
-            流程定义链路（基于 5173 编排）：
+            流程定义链路：
           </div>
           <Steps size="small" direction="vertical" items={getWorkflowSteps()} />
         </div>

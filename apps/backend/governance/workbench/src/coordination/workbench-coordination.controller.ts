@@ -53,7 +53,7 @@ export class WorkbenchCoordinationController {
   }
 
   // ==========================================
-  // 用户端 / 5174 组织工作流消费接口
+  // 用户端组织工作流消费接口
   // ==========================================
 
   @Get('workflow-templates')
@@ -170,11 +170,11 @@ export class WorkbenchCoordinationController {
   }
 
   // ==========================================
-  // 管理端 / 5173 企业工作流编排与发布接口
+  // 管理端企业工作流编排与发布接口
   // ==========================================
 
   @Get('admin/available-base-workflows')
-  @ApiOperation({ summary: '获取 5173 底层普通工作流资产（供组装勾选）' })
+  @ApiOperation({ summary: '获取底层普通工作流资产（供组装勾选）' })
   async getAvailableBaseWorkflows() {
     return await this.orgWorkflowService.getAvailableBaseWorkflows();
   }

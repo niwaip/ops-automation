@@ -20,7 +20,7 @@ import { LockService } from '../lock/lock.service';
 export type SandboxExecutorFn = (
   userId: string,
   cmd: string | string[],
-  options?: { timeoutMs?: number; workDir?: string }
+  options?: { timeoutMs?: number; workDir?: string; onStdoutChunk?: (chunk: string) => void }
 ) => Promise<UserSandboxExecResult>;
 
 @Injectable()
@@ -39,7 +39,7 @@ export class UserSandboxHarnessService {
   async executeInSandbox(
     userId: string,
     cmd: string | string[],
-    options?: { timeoutMs?: number; workDir?: string }
+    options?: { timeoutMs?: number; workDir?: string; onStdoutChunk?: (chunk: string) => void }
   ): Promise<UserSandboxExecResult> {
     const startTime = Date.now();
     const containerName = this.containerService.getContainerName(userId);
@@ -93,7 +93,11 @@ export class UserSandboxHarnessService {
 
         const stdoutStream = new Writable({
           write(chunk, encoding, callback) {
-            stdout += stdoutDecoder.write(chunk);
+            const decoded = stdoutDecoder.write(chunk);
+            stdout += decoded;
+            if (options?.onStdoutChunk && decoded) {
+              try { options.onStdoutChunk(decoded); } catch { /* ignore */ }
+            }
             callback();
           },
         });
@@ -109,7 +113,11 @@ export class UserSandboxHarnessService {
           dockerClient.modem.demuxStream(stream, stdoutStream, stderrStream);
         } else {
           stream.on('data', (chunk: Buffer) => {
-            stdout += stdoutDecoder.write(chunk);
+            const decoded = stdoutDecoder.write(chunk);
+            stdout += decoded;
+            if (options?.onStdoutChunk && decoded) {
+              try { options.onStdoutChunk(decoded); } catch { /* ignore */ }
+            }
           });
         }
 
@@ -157,10 +165,12 @@ export class UserSandboxHarnessService {
     options?: {
       webSearch?: boolean;
       model?: string;
+      modelDisplayName?: string;
       sessionId?: string;
       history?: Array<{ role: string; content: string }>;
       timeoutMs?: number;
       files?: string[];
+      onStdoutChunk?: (chunk: string) => void;
     },
     customExecutor?: SandboxExecutorFn
   ): Promise<UserSandboxHarnessResult> {
@@ -191,6 +201,15 @@ export class UserSandboxHarnessService {
     if (options?.model) {
       dshCmd.push('--model', options.model);
     }
+    if (options?.modelDisplayName) {
+      dshCmd.push('--model-display-name', options.modelDisplayName);
+    }
+    if (options?.timeoutMs) {
+      const timeoutSec = Math.floor(options.timeoutMs / 1000);
+      if (timeoutSec > 0) {
+        dshCmd.push('--timeout', String(timeoutSec));
+      }
+    }
 
     const executor = customExecutor || ((u, c, opts) => this.executeInSandbox(u, c, opts));
     const timeoutMs = options?.timeoutMs || 300000;
@@ -209,6 +228,7 @@ export class UserSandboxHarnessService {
       const execResult = await executor(userId, dshCmd, {
         timeoutMs,
         workDir: '/workspace',
+        onStdoutChunk: options?.onStdoutChunk,
       });
 
       const stdout = execResult.stdout?.trim() || '';

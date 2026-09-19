@@ -72,7 +72,7 @@ export const OrgWorkflowEditDrawer: React.FC<OrgWorkflowEditDrawerProps> = ({
   const [paramsSchema, setParamsSchema] = useState<WorkflowParamsSchema | undefined>(undefined);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(undefined);
 
-  // 获取 5173 底层可用资产池
+  // 获取底层可用资产池
   const { data: baseWorkflows = [] } = useQuery(
     ['available-base-workflows'],
     () => orgWorkflowApi.getAvailableBaseWorkflows(),
@@ -151,7 +151,7 @@ export const OrgWorkflowEditDrawer: React.FC<OrgWorkflowEditDrawerProps> = ({
             id: 'auto_execution',
             name: '底层工作流执行',
             type: 'automation',
-            description: '审批通过后自动触发绑定的 5173 自动化流闭环',
+            description: '审批通过后自动触发绑定的自动化流闭环',
             isLocked: true,
           },
           {
@@ -438,12 +438,12 @@ export const OrgWorkflowEditDrawer: React.FC<OrgWorkflowEditDrawerProps> = ({
                   <Form.Item
                     label="企业工作流唯一标识 (Workflow ID / Key)"
                     name="workflowId"
-                    rules={[{ required: !isEditing, message: '请输入唯一代号，如 hr.leave.request' }]}
+                    rules={[{ required: !isEditing, message: '请输入唯一代号，如 legal.contract.review_flow' }]}
                     tooltip="企业内全局唯一的流程契约代号，由小写字母、点号组成"
                   >
                     <Input
                       disabled={isEditing}
-                      placeholder="如：hr.leave.request / oa.expense.claim / it.device.borrow"
+                      placeholder="如：legal.contract.review_flow / legal.nda.generation_and_review_flow"
                     />
                   </Form.Item>
 
@@ -452,7 +452,7 @@ export const OrgWorkflowEditDrawer: React.FC<OrgWorkflowEditDrawerProps> = ({
                     name="name"
                     rules={[{ required: true, message: '请输入工作流显示名称' }]}
                   >
-                    <Input placeholder="如：员工请假审批 / 差旅报销审批" />
+                    <Input placeholder="如：合同多方联合会签与合规审查" />
                   </Form.Item>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -488,7 +488,7 @@ export const OrgWorkflowEditDrawer: React.FC<OrgWorkflowEditDrawerProps> = ({
               key: 'assembly',
               label: (
                 <span>
-                  <ApiOutlined /> 5173 底层工作流组装 ({assembledWorkflows.length})
+                  <ApiOutlined /> 底层能力组装 ({assembledWorkflows.length})
                 </span>
               ),
               children: (
@@ -527,7 +527,7 @@ export const OrgWorkflowEditDrawer: React.FC<OrgWorkflowEditDrawerProps> = ({
                       <div>
                         <strong>发布状态 (Publish Status)</strong>
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                          已发布后将在 5174（用户工作台）展示；草稿态仅在 5173 管理后台可见。
+                          已发布后将在工作台展示；草稿态仅管理员可见。
                         </div>
                       </div>
                       <Switch
@@ -542,7 +542,7 @@ export const OrgWorkflowEditDrawer: React.FC<OrgWorkflowEditDrawerProps> = ({
                   <Card size="small" title="授权可见与发起角色 (Role Permissions)">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <Text type="secondary">
-                        选择有权在 5174 发起该流程的角色。未授权员工将被标识为「待开通」，支持提交开通申请。
+                        选择有权发起该流程的角色。未授权员工将被标识为「待开通」，支持提交开通申请。
                       </Text>
 
                       {['employee', 'admin', 'finance', 'hr'].map((role) => {

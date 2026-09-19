@@ -315,12 +315,12 @@ export const WorkflowAssemblyPanel: React.FC<WorkflowAssemblyPanelProps> = ({
         )}
       </div>
 
-      {/* 2. 5173 底层资产池 (Draggable Asset Cards - Dark Mode 适配) */}
+      {/* 2. 底层资产池 (Draggable Asset Cards - Dark Mode 适配) */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <Space>
             <ThunderboltOutlined style={{ color: token.colorPrimary }} />
-            <Text strong>5173 流程专用工作流资产池 (可拖拽或点击组装)</Text>
+            <Text strong>工作流能力资产池 (可拖拽或点击组装)</Text>
           </Space>
           <Radio.Group
             size="small"

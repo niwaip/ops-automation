@@ -1,7 +1,5 @@
 import {
-  CalendarOutlined,
   CloseOutlined,
-  DollarOutlined,
   FileDoneOutlined,
   FormOutlined,
   SafetyCertificateOutlined,
@@ -50,22 +48,10 @@ const DEFAULT_TEMPLATES: WorkflowOptionItem[] = [
     category: 'legal',
   },
   {
-    id: 'hr.leave.request',
-    name: '员工请假审批',
-    description: '提交事假/年假/病假等考勤申请，直属主管审批通过后自动核销考勤额度',
-    category: 'hr',
-  },
-  {
-    id: 'oa.expense.claim',
-    name: '费用报销审批',
-    description: '日常差旅、办公及招待费用报销，财务审核通过后自动写入 ERP 财务网关',
-    category: 'oa',
-  },
-  {
-    id: 'general.coordination',
-    name: '通用协同任务',
-    description: '布置协同事项，明确要求、交付标准与截止时间，推入对方 GTD 收集箱',
-    category: 'general',
+    id: 'legal.nda.generation_and_review_flow',
+    name: '保密合同起草与法务审查闭环流',
+    description: '专属保密合同生成与法务闭环审查，自动生成标准条款草案并流转专项审核',
+    category: 'legal',
   },
 ];
 
@@ -176,10 +162,6 @@ export function WorkflowSelectionDropdown({
         return <SafetyCertificateOutlined style={{ fontSize: 18, color: '#722ed1' }} />;
       case 'legal.contract.review_flow':
         return <SafetyCertificateOutlined style={{ fontSize: 18, color: '#2f54eb' }} />;
-      case 'hr.leave.request':
-        return <CalendarOutlined style={{ fontSize: 18, color: '#1677ff' }} />;
-      case 'oa.expense.claim':
-        return <DollarOutlined style={{ fontSize: 18, color: '#fa8c16' }} />;
       case 'custom.card.modal':
         return <FormOutlined style={{ fontSize: 18, color: '#52c41a' }} />;
       default:

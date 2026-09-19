@@ -1,8 +1,9 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
 
 @Injectable()
 export class BuiltinSkillRuntimeConfigCipher {
+  private readonly logger = new Logger(BuiltinSkillRuntimeConfigCipher.name);
   private readonly key = this.loadKey();
 
   encrypt(value: string): string {
@@ -31,19 +32,30 @@ export class BuiltinSkillRuntimeConfigCipher {
 
   private loadKey(): Buffer {
     const raw = (
-      process.env.BUILTIN_SKILL_CONFIG_ENCRYPTION_KEY || process.env.IM_CHANNEL_ENCRYPTION_KEY
+      process.env.BUILTIN_SKILL_CONFIG_ENCRYPTION_KEY ||
+      process.env.IM_CHANNEL_ENCRYPTION_KEY ||
+      process.env.USER_CREDENTIAL_ENCRYPTION_KEY
     )?.trim();
-    const key =
-      raw && /^[0-9a-f]{64}$/i.test(raw)
-        ? Buffer.from(raw, 'hex')
-        : raw
-          ? Buffer.from(raw, 'base64')
-          : null;
-    if (!key || key.length !== 32) {
+    if (raw) {
+      if (/^[0-9a-f]{64}$/i.test(raw)) {
+        return Buffer.from(raw, 'hex');
+      }
+      try {
+        const buf = Buffer.from(raw, 'base64');
+        if (buf.length === 32) return buf;
+      } catch {
+        // fallthrough
+      }
+      if (raw.length >= 32) {
+        return createHash('sha256').update(raw).digest();
+      }
+    }
+    if (process.env.NODE_ENV === 'production') {
       throw new InternalServerErrorException(
         'BUILTIN_SKILL_CONFIG_ENCRYPTION_KEY must be a 32-byte base64 or 64-character hex key'
       );
     }
-    return key;
+    this.logger.warn('BUILTIN_SKILL_CONFIG_ENCRYPTION_KEY not set; using deterministic dev fallback key');
+    return createHash('sha256').update(process.env.JWT_SECRET || 'ops_dev_builtin_skill_enc_key_2026').digest();
   }
 }

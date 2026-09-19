@@ -24,9 +24,6 @@ import {
 import { BUILT_IN_WORKFLOW_TEMPLATES } from './workflow-templates.constants';
 import {
   DEDICATED_BASE_WORKFLOW_TEMPLATES,
-  DEFAULT_LEAVE_ASSEMBLED_WORKFLOWS,
-  DEFAULT_EXPENSE_ASSEMBLED_WORKFLOWS,
-  DEFAULT_GENERAL_COORDINATION_ASSEMBLED_WORKFLOWS,
   DEFAULT_CONTRACT_REVIEW_ASSEMBLED_WORKFLOWS,
   DEFAULT_NDA_ASSEMBLED_WORKFLOWS,
 } from './org-base-workflow-templates.constants';
@@ -57,150 +54,10 @@ export class OrgWorkflowService implements OnModuleInit {
   }
 
   /**
-   * 初始化预置的企业工作流（基于 5173 底层普通工作流组装并赋予标准流程定义）
+   * 初始化预置的企业工作流（基于底层普通工作流组装并赋予标准流程定义）
    */
   private seedDefaultWorkflows() {
     const defaultWorkflows: OrganizationWorkflowDefinition[] = [
-      {
-        id: 'hr.leave.request',
-        workflowId: 'hr.leave.request',
-        name: '员工请假审批',
-        description: '支持事假、年假、病假等考勤申请，审批承认后自动联动外部人事考勤系统核销额度。',
-        category: 'hr',
-        icon: 'CalendarOutlined',
-        taskType: CoordinationTaskType.approval,
-        status: 'published',
-        isPublished: true,
-        version: '1.0.0',
-        assembledWorkflows: [...DEFAULT_LEAVE_ASSEMBLED_WORKFLOWS],
-        processDefinition: {
-          stages: [
-            {
-              id: 'submit',
-              name: '发起申请',
-              type: 'submission',
-              description: '员工填写请假类型、时长与事由参数卡片',
-            },
-            {
-              id: 'leader_approval',
-              name: '主管审批',
-              type: 'approval',
-              description: '直属主管在 GTD 收集箱在线核准或驳回',
-              approverRule: 'leader',
-              approverRole: 'leader',
-              actions: ['approve', 'reject'],
-            },
-            {
-              id: 'hrms_sync',
-              name: '考勤核销执行',
-              type: 'automation',
-              description: '自动对接 HRMS 扣减额度并写入考勤结算单',
-            },
-            {
-              id: 'archive',
-              name: '回执与归档',
-              type: 'archive',
-              description: '考勤凭证回执推入收集箱，员工一键归档闭环',
-            },
-          ],
-        },
-        paramsSchema: BUILT_IN_WORKFLOW_TEMPLATES.find((t) => t.id === 'hr.leave.request')!
-          .paramsSchema as any,
-        grantedRoleIds: ['employee', 'admin'],
-        createdAt: new Date('2026-09-01T08:00:00Z').toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'oa.expense.claim',
-        workflowId: 'oa.expense.claim',
-        name: '费用报销审批',
-        description: '日常差旅、办公及招待费用报销审批，财务承认后自动写入 ERP 财务系统。',
-        category: 'oa',
-        icon: 'DollarOutlined',
-        taskType: CoordinationTaskType.approval,
-        status: 'published',
-        isPublished: true,
-        version: '1.0.0',
-        assembledWorkflows: [...DEFAULT_EXPENSE_ASSEMBLED_WORKFLOWS],
-        processDefinition: {
-          stages: [
-            {
-              id: 'submit',
-              name: '提报凭证',
-              type: 'submission',
-              description: '填写报销类别、金额及发票事由',
-            },
-            {
-              id: 'finance_approval',
-              name: '财务审核',
-              type: 'approval',
-              description: '主管及财务专员在收集箱审核凭证合规性',
-              approverRule: 'role',
-              approverRole: 'finance',
-              actions: ['approve', 'reject'],
-            },
-            {
-              id: 'erp_sync',
-              name: '核算建档',
-              type: 'automation',
-              description: '自动对接财务网关建档并生成打款批次',
-            },
-            {
-              id: 'archive',
-              name: '回执与归档',
-              type: 'archive',
-              description: '生成报销凭证回执并归档',
-            },
-          ],
-        },
-        paramsSchema: BUILT_IN_WORKFLOW_TEMPLATES.find((t) => t.id === 'oa.expense.claim')!
-          .paramsSchema as any,
-        grantedRoleIds: ['employee', 'admin'],
-        createdAt: new Date('2026-09-01T08:00:00Z').toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'general.coordination',
-        workflowId: 'general.coordination',
-        name: '通用协同任务',
-        description: '日常跨部门工作指派、业务备忘或审阅协同任务。',
-        category: 'general',
-        icon: 'FileDoneOutlined',
-        taskType: CoordinationTaskType.assignment,
-        status: 'published',
-        isPublished: true,
-        version: '1.0.0',
-        assembledWorkflows: [...DEFAULT_GENERAL_COORDINATION_ASSEMBLED_WORKFLOWS],
-        processDefinition: {
-          stages: [
-            {
-              id: 'submit',
-              name: '任务布置',
-              type: 'submission',
-              description: '明确协同目标、要求及交付标准',
-            },
-            {
-              id: 'execute',
-              name: '协作者执行',
-              type: 'approval',
-              description: '协作者在 GTD 收集箱办理并回传结果附件',
-              approverRule: 'assignee',
-              actions: ['complete'],
-            },
-            {
-              id: 'archive',
-              name: '验收归档',
-              type: 'archive',
-              description: '发起人核准交付物，关闭任务并归档',
-            },
-          ],
-        },
-        paramsSchema: BUILT_IN_WORKFLOW_TEMPLATES.find((t) => t.id === 'general.coordination')!
-          .paramsSchema as any,
-        grantedRoleIds: ['employee', 'admin'],
-        createdAt: new Date('2026-09-01T08:00:00Z').toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
       {
         id: 'legal.contract.review_flow',
         workflowId: 'legal.contract.review_flow',
@@ -305,10 +162,9 @@ export class OrgWorkflowService implements OnModuleInit {
               id: 'legal_review',
               name: '法务合规核准与确认',
               type: 'approval',
-              description: '法务专员 (law01) 结合初稿与智能审查报告进行专业把关与批注，通过后归档存证，未通过回退担当重修',
+              description: '法务专员结合初稿与智能审查报告进行专业把关与批注，通过后归档存证，未通过回退担当重修',
               approverRule: 'department',
               approverDepartment: '法务部',
-              approverUsername: 'law01',
               rollbackStageId: 'initiator_confirm',
               actions: ['approve', 'reject'],
               isLocked: true,
@@ -346,7 +202,7 @@ export class OrgWorkflowService implements OnModuleInit {
   }
 
   /**
-   * 获取 5173 底层可用资产（供管理员组装时多选）
+   * 获取底层可用资产（供管理员组装时多选）
    */
   async getAvailableBaseWorkflows(): Promise<AvailableBaseWorkflowItem[]> {
     const results: AvailableBaseWorkflowItem[] = [...DEDICATED_BASE_WORKFLOW_TEMPLATES];

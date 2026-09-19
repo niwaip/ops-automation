@@ -460,7 +460,9 @@ export const reduceChatStreamEvent = ({
   const terminalTaskResult = event.type === StreamEventTypeValue.RESULT && isTerminalTaskResult(mode, data);
 
   let nextAccumulatedContent = accumulatedContent;
-  if (
+  if (data?.isDelta) {
+    nextAccumulatedContent = contentText;
+  } else if (
     event.type === StreamEventTypeValue.THOUGHT ||
     event.type === StreamEventTypeValue.ACTION ||
     event.type === StreamEventTypeValue.OBSERVATION

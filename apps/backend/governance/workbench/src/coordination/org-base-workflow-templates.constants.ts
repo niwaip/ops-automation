@@ -1,25 +1,10 @@
 import { AssembledBaseWorkflow, AvailableBaseWorkflowItem } from './org-workflow.entity';
 
 /**
- * 流程专用基础工作流资产池（供 5173 管理员组装企业工作流）
+ * 流程专用基础工作流资产池（供管理员组装企业工作流）
  * 初始为空，由管理员通过「AI 对话创建原子流」从第一步按需创建并注册
  */
 export const DEDICATED_BASE_WORKFLOW_TEMPLATES: AvailableBaseWorkflowItem[] = [];
-
-/**
- * 预置默认员工请假审批企业工作流的标准组装配置（初始为空，由管理员组装）
- */
-export const DEFAULT_LEAVE_ASSEMBLED_WORKFLOWS: AssembledBaseWorkflow[] = [];
-
-/**
- * 预置默认费用报销审批企业工作流的标准组装配置（初始为空，由管理员组装）
- */
-export const DEFAULT_EXPENSE_ASSEMBLED_WORKFLOWS: AssembledBaseWorkflow[] = [];
-
-/**
- * 预置默认通用协同任务的标准组装配置（初始为空，由管理员组装）
- */
-export const DEFAULT_GENERAL_COORDINATION_ASSEMBLED_WORKFLOWS: AssembledBaseWorkflow[] = [];
 
 /**
  * 预置默认合同起草与法务审查企业工作流的标准组装配置
@@ -88,11 +73,11 @@ export const DEFAULT_NDA_ASSEMBLED_WORKFLOWS: AssembledBaseWorkflow[] = [
   {
     type: 'skill',
     refId: 'workbench.task.legal-review',
-    name: '法务合规核准与确认 (law01)',
+    name: '法务合规核准与确认',
     triggerEvent: 'on_stage_approval',
     stageType: 'approval',
     stageId: 'legal_review',
-    description: '法务专员 (law01) 结合初稿内容与合同审查报告进行最终核准与批注把关，核准通过后归档存证',
+    description: '法务专员结合初稿内容与合同审查报告进行最终核准与批注把关，核准通过后归档存证',
   },
   {
     type: 'skill',

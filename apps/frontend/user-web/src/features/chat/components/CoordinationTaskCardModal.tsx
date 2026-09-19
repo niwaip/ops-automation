@@ -52,7 +52,7 @@ export function CoordinationTaskCardModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
-    initialTemplateId || 'general.coordination'
+    initialTemplateId || 'legal.contract.review_flow'
   );
 
   const { data: templates = [] } = useQuery(
@@ -67,7 +67,6 @@ export function CoordinationTaskCardModal({
   const currentTemplate = useMemo(() => {
     return (
       templates.find((t) => t.workflowId === selectedTemplateId) ||
-      templates.find((t) => t.workflowId === 'general.coordination') ||
       templates[0]
     );
   }, [templates, selectedTemplateId]);
@@ -104,7 +103,7 @@ export function CoordinationTaskCardModal({
       let parameters = values;
       let markdownCard: string | undefined;
 
-      if (currentTemplate && currentTemplate.workflowId !== 'general.coordination') {
+      if (currentTemplate && currentTemplate.paramsSchema?.properties) {
         const payload = buildDynamicWorkflowCardPayload(
           currentTemplate,
           values,
@@ -252,7 +251,7 @@ export function CoordinationTaskCardModal({
           </Form.Item>
         )}
 
-        {currentTemplate && currentTemplate.workflowId !== 'general.coordination' ? (
+        {currentTemplate && currentTemplate.paramsSchema?.properties ? (
           <DynamicWorkflowForm
             template={currentTemplate}
             form={form}

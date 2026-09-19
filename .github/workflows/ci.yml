@@ -28,7 +28,7 @@ jobs:
       - name: Check file complexity red line (AGENTS.md)
         run: bash ./scripts/check-file-complexity.sh
 
-      - name: Validate database schema ownership (92 tables)
+      - name: Validate database schema ownership
         run: node database/scripts/validate-schema-ownership.mjs
 
       - name: Validate V4 compose architecture layering
@@ -90,16 +90,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Type check
-        run: pnpm typecheck || exit 0
-        continue-on-error: true
+        run: pnpm typecheck
 
       - name: Validate user-core boundaries
-        run: pnpm validate:user-core || exit 0
-        continue-on-error: true
+        run: pnpm validate:user-core
 
       - name: Build
-        run: pnpm build || exit 0
-        continue-on-error: true
+        run: pnpm build
 
   docker-lint:
     name: Docker Lint
