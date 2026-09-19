@@ -4,6 +4,7 @@ import {
   BankOutlined,
   CloudServerOutlined,
   DeleteOutlined,
+  DesktopOutlined,
   DownloadOutlined,
   EyeOutlined,
   FileExcelOutlined,
@@ -72,6 +73,15 @@ function formatBytes(bytesStr: string | number): string {
 
 function getFileIcon(node: WorkspaceNode) {
   if (node.type === 'folder') {
+    if (node.name.includes('tasks') || node.name.includes('工作任务成果')) {
+      return <FolderOutlined style={{ color: '#1677ff' }} className={styles['node-icon-folder']} />;
+    }
+    if (node.name.includes('saved') || node.name.includes('沙盒保存内容')) {
+      return <FolderOutlined style={{ color: '#52c41a' }} className={styles['node-icon-folder']} />;
+    }
+    if (node.name.includes('temp') || node.name.includes('临时工作区')) {
+      return <FolderOutlined style={{ color: '#faad14' }} className={styles['node-icon-folder']} />;
+    }
     return <FolderOutlined className={styles['node-icon-folder']} />;
   }
   const ext = (node.name.split('.').pop() || '').toLowerCase();
@@ -79,6 +89,7 @@ function getFileIcon(node: WorkspaceNode) {
   if (['docx', 'doc'].includes(ext)) return <FileWordOutlined className={styles['node-icon-word']} />;
   if (['pptx', 'ppt'].includes(ext)) return <FilePptOutlined className={styles['node-icon-ppt']} />;
   if (['xlsx', 'xls', 'csv'].includes(ext)) return <FileExcelOutlined className={styles['node-icon-excel']} />;
+  if (['html', 'htm'].includes(ext)) return <DesktopOutlined style={{ color: '#fa8c16' }} className={styles['node-icon-default']} />;
   if (['txt', 'md', 'json', 'yaml', 'yml'].includes(ext)) return <FileTextOutlined className={styles['node-icon-default']} />;
   return <FileOutlined className={styles['node-icon-default']} />;
 }
@@ -363,9 +374,18 @@ export function WorkspacePage() {
     {
       title: '类型',
       key: 'type',
-      width: 130,
+      width: 140,
       render: (_, record) => {
         if (record.type === 'folder') {
+          if (record.name.includes('tasks') || record.name.includes('工作任务成果')) {
+            return <Tag color="blue">工作模式成果</Tag>;
+          }
+          if (record.name.includes('saved') || record.name.includes('沙盒保存内容')) {
+            return <Tag color="success">沙盒沉淀</Tag>;
+          }
+          if (record.name.includes('temp') || record.name.includes('临时工作区')) {
+            return <Tag color="warning">沙盒临时</Tag>;
+          }
           return <Tag color="default">文件夹</Tag>;
         }
         const ext = (record.name.split('.').pop() || '文件').toUpperCase();

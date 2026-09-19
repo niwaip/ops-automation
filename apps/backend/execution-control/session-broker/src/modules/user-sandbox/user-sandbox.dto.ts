@@ -105,6 +105,11 @@ export class RunHarnessDto {
   @IsString()
   model?: string;
 
+  @ApiPropertyOptional({ description: '模型真实显示名称（如 qwen36-35b-a3b）' })
+  @IsOptional()
+  @IsString()
+  modelDisplayName?: string;
+
   @ApiPropertyOptional({ description: '当前会话标识，用于多轮对话上下文关联' })
   @IsOptional()
   @IsString()
@@ -123,4 +128,13 @@ export class RunHarnessDto {
   @ApiPropertyOptional({ description: '执行超时时间(毫秒)', default: 300000 })
   @IsOptional()
   timeoutMs?: number;
+
+  @ApiPropertyOptional({
+    description: '当前会话绑定的附件文件名列表',
+    type: [String],
+    example: ['1.pdf'],
+  })
+  @IsOptional()
+  @IsArray()
+  files?: string[];
 }

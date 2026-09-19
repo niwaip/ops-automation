@@ -71,8 +71,8 @@ ENV USER_MODE=personal \
 WORKDIR /workspace
 
 # 7. 拷贝不可变 DSH 运行底座、管理员认证插件与技能模版库
-COPY docker/user-sandbox/dsh /usr/local/bin/dsh
-COPY docker/user-sandbox/dsh_modules /usr/local/bin/dsh_modules
+COPY apps/backend/runtimes/personal-sandbox-runner/bin/dsh /usr/local/bin/dsh
+COPY apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules /usr/local/bin/dsh_modules
 RUN chmod 755 /usr/local/bin/dsh && chmod -R 755 /usr/local/bin/dsh_modules
 
 COPY docker/user-sandbox/plugins/ /opt/dsh/plugins/

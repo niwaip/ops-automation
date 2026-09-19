@@ -3,20 +3,24 @@ import {
   Logger,
   BadRequestException,
   NotFoundException,
+  ConflictException,
+  Optional,
 } from '@nestjs/common';
 import { Writable } from 'stream';
 import { StringDecoder } from 'string_decoder';
+import * as path from 'path';
 import {
   UserSandboxExecResult,
   UserSandboxHarnessResult,
 } from './user-sandbox.interface';
 import { UserSandboxStorageService } from './user-sandbox-storage.service';
 import { UserSandboxContainerService } from './user-sandbox-container.service';
+import { LockService } from '../lock/lock.service';
 
 export type SandboxExecutorFn = (
   userId: string,
   cmd: string | string[],
-  options?: { timeoutMs?: number; workDir?: string }
+  options?: { timeoutMs?: number; workDir?: string; onStdoutChunk?: (chunk: string) => void }
 ) => Promise<UserSandboxExecResult>;
 
 @Injectable()
@@ -25,7 +29,8 @@ export class UserSandboxHarnessService {
 
   constructor(
     private readonly storageService: UserSandboxStorageService,
-    private readonly containerService: UserSandboxContainerService
+    private readonly containerService: UserSandboxContainerService,
+    @Optional() private readonly lockService?: LockService
   ) {}
 
   /**
@@ -34,7 +39,7 @@ export class UserSandboxHarnessService {
   async executeInSandbox(
     userId: string,
     cmd: string | string[],
-    options?: { timeoutMs?: number; workDir?: string }
+    options?: { timeoutMs?: number; workDir?: string; onStdoutChunk?: (chunk: string) => void }
   ): Promise<UserSandboxExecResult> {
     const startTime = Date.now();
     const containerName = this.containerService.getContainerName(userId);
@@ -62,8 +67,16 @@ export class UserSandboxHarnessService {
 
     return new Promise((resolve, reject) => {
       let timedOut = false;
-      const timer = setTimeout(() => {
+      const timer = setTimeout(async () => {
         timedOut = true;
+        this.logger.warn(
+          `Execution timed out (${timeoutMs}ms) in sandbox [${containerName}], forcibly stopping processes...`
+        );
+        try {
+          await this.stopSandboxExecution(userId);
+        } catch (killErr: any) {
+          this.logger.warn(`Failed to stop sandbox execution on timeout for user [${userId}]: ${killErr.message}`);
+        }
         reject(new BadRequestException(`沙箱命令执行超时 (${timeoutMs}ms)`));
       }, timeoutMs);
 
@@ -80,7 +93,11 @@ export class UserSandboxHarnessService {
 
         const stdoutStream = new Writable({
           write(chunk, encoding, callback) {
-            stdout += stdoutDecoder.write(chunk);
+            const decoded = stdoutDecoder.write(chunk);
+            stdout += decoded;
+            if (options?.onStdoutChunk && decoded) {
+              try { options.onStdoutChunk(decoded); } catch { /* ignore */ }
+            }
             callback();
           },
         });
@@ -96,7 +113,11 @@ export class UserSandboxHarnessService {
           dockerClient.modem.demuxStream(stream, stdoutStream, stderrStream);
         } else {
           stream.on('data', (chunk: Buffer) => {
-            stdout += stdoutDecoder.write(chunk);
+            const decoded = stdoutDecoder.write(chunk);
+            stdout += decoded;
+            if (options?.onStdoutChunk && decoded) {
+              try { options.onStdoutChunk(decoded); } catch { /* ignore */ }
+            }
           });
         }
 
@@ -144,9 +165,12 @@ export class UserSandboxHarnessService {
     options?: {
       webSearch?: boolean;
       model?: string;
+      modelDisplayName?: string;
       sessionId?: string;
       history?: Array<{ role: string; content: string }>;
       timeoutMs?: number;
+      files?: string[];
+      onStdoutChunk?: (chunk: string) => void;
     },
     customExecutor?: SandboxExecutorFn
   ): Promise<UserSandboxHarnessResult> {
@@ -157,35 +181,76 @@ export class UserSandboxHarnessService {
       this.storageService.writeSessionHistory(userId, sanitizedSessionId, options.history);
     }
 
+    // 若传入了会话关联附件列表，委托 storageService 写入 session 附件索引
+    if (options?.files && Array.isArray(options.files) && options.files.length > 0) {
+      this.storageService.writeSessionAttachments(userId, sanitizedSessionId, options.files);
+    }
+
     const dshCmd = ['dsh', 'run', prompt, '--session-id', sanitizedSessionId];
+    if (options?.files && options.files.length > 0) {
+      const cleanFiles = options.files
+        .map((f) => path.basename(f.trim()))
+        .filter(Boolean);
+      if (cleanFiles.length > 0) {
+        dshCmd.push('--files', cleanFiles.join(','));
+      }
+    }
     if (options?.webSearch) {
       dshCmd.push('--web-search');
     }
     if (options?.model) {
       dshCmd.push('--model', options.model);
     }
+    if (options?.modelDisplayName) {
+      dshCmd.push('--model-display-name', options.modelDisplayName);
+    }
+    if (options?.timeoutMs) {
+      const timeoutSec = Math.floor(options.timeoutMs / 1000);
+      if (timeoutSec > 0) {
+        dshCmd.push('--timeout', String(timeoutSec));
+      }
+    }
 
     const executor = customExecutor || ((u, c, opts) => this.executeInSandbox(u, c, opts));
-    const execResult = await executor(userId, dshCmd, {
-      timeoutMs: options?.timeoutMs || 300000,
-      workDir: '/workspace',
-    });
+    const timeoutMs = options?.timeoutMs || 300000;
 
-    const stdout = execResult.stdout?.trim() || '';
-    const stderr = execResult.stderr?.trim() || '';
-    let output = '';
-    if (stdout && stderr && execResult.exitCode !== 0) {
-      output = `${stdout}\n\n${stderr}`;
-    } else {
-      output = stdout || stderr || 'DeepSeek Harness 执行完毕 (无返回内容)';
+    let lockToken: string | null = null;
+    if (this.lockService) {
+      const ttlSeconds = Math.ceil(timeoutMs / 1000) + 15;
+      const lockResult = await this.lockService.acquireSandboxLock(userId, ttlSeconds);
+      if (!lockResult.success) {
+        throw new ConflictException(`该用户的个人沙箱当前正在执行其他任务，请稍后再试`);
+      }
+      lockToken = lockResult.token;
     }
-    return {
-      success: execResult.exitCode === 0,
-      output,
-      containerName: execResult.containerName,
-      durationMs: execResult.durationMs,
-      exitCode: execResult.exitCode,
-    };
+
+    try {
+      const execResult = await executor(userId, dshCmd, {
+        timeoutMs,
+        workDir: '/workspace',
+        onStdoutChunk: options?.onStdoutChunk,
+      });
+
+      const stdout = execResult.stdout?.trim() || '';
+      const stderr = execResult.stderr?.trim() || '';
+      let output = '';
+      if (stdout && stderr && execResult.exitCode !== 0) {
+        output = `${stdout}\n\n${stderr}`;
+      } else {
+        output = stdout || stderr || 'DeepSeek Harness 执行完毕 (无返回内容)';
+      }
+      return {
+        success: execResult.exitCode === 0,
+        output,
+        containerName: execResult.containerName,
+        durationMs: execResult.durationMs,
+        exitCode: execResult.exitCode,
+      };
+    } finally {
+      if (this.lockService && lockToken) {
+        await this.lockService.releaseSandboxLock(userId, lockToken);
+      }
+    }
   }
 
   /**

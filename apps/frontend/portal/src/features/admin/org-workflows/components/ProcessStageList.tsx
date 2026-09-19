@@ -30,6 +30,7 @@ import {
   useWorkflowCapabilityOptions,
   resolveCanonicalCapabilityKey,
 } from '../hooks/useWorkflowCapabilityOptions';
+import { useOrganizationMembers } from '../hooks/useOrganizationMembers';
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -53,6 +54,7 @@ export const ProcessStageList: React.FC<ProcessStageListProps> = ({ stages, onCh
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [addForm] = Form.useForm();
   const { capabilityGroups, capabilityMap, isLoading: isLoadingCapabilities } = useWorkflowCapabilityOptions();
+  const { departmentOptions, memberOptions } = useOrganizationMembers();
 
   // 拖拽排序逻辑
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
@@ -341,48 +343,63 @@ export const ProcessStageList: React.FC<ProcessStageListProps> = ({ stages, onCh
                           <>
                             <Select
                               size="small"
-                              value={stage.approverDepartment || '法务部'}
+                              value={stage.approverDepartment || departmentOptions[0]?.value || '法务部'}
                               style={{ width: 130 }}
                               showSearch
                               placeholder="选择受理部门"
                               onChange={(val) => handleUpdateStage(idx, { approverDepartment: val })}
                             >
-                              <Option value="法务部">法务部</Option>
-                              <Option value="财务部">财务部</Option>
-                              <Option value="总务部">总务部</Option>
-                              <Option value="人力资源部">人力资源部</Option>
-                              <Option value="信息技术与运维部">信息技术与运维部</Option>
+                              {departmentOptions.map((dept) => (
+                                <Option key={dept.value} value={dept.value}>{dept.label}</Option>
+                              ))}
                             </Select>
-                            <Select
-                              size="small"
-                              value={stage.approverUsername}
-                              placeholder="指定部门专员(可选)"
-                              allowClear
-                              style={{ width: 140 }}
-                              showSearch
-                              onChange={(val) => handleUpdateStage(idx, { approverUsername: val })}
-                            >
-                              <Option value="law01">law01 (法务专员)</Option>
-                              <Option value="law02">law02 (法务专员)</Option>
-                              <Option value="admin">admin (系统管理员)</Option>
-                              <Option value="test">test (总务专员)</Option>
-                            </Select>
+                            {(() => {
+                              const deptMembers = memberOptions.filter(
+                                (m) => !stage.approverDepartment || m.departmentName === stage.approverDepartment
+                              );
+                              const availableMembers = deptMembers;
+                              return (
+                                <Select
+                                  size="small"
+                                  value={stage.approverUsername}
+                                  placeholder={availableMembers.length > 0 ? "指定部门专员(可选)" : "该部门暂无在职专员"}
+                                  allowClear
+                                  disabled={availableMembers.length === 0}
+                                  style={{ width: 140 }}
+                                  showSearch
+                                  onChange={(val) => handleUpdateStage(idx, { approverUsername: val })}
+                                >
+                                  {availableMembers.map((m) => (
+                                    <Option key={m.value} value={m.value}>
+                                      {m.label}
+                                    </Option>
+                                  ))}
+                                </Select>
+                              );
+                            })()}
                           </>
                         )}
 
                         {stage.approverRule === 'specific_user' && (
                           <Select
                             size="small"
-                            value={stage.approverUsername || 'law01'}
+                            value={stage.approverUsername}
                             placeholder="选择具体承办用户"
                             style={{ width: 150 }}
                             showSearch
                             onChange={(val) => handleUpdateStage(idx, { approverUsername: val })}
                           >
-                            <Option value="law01">law01 (法务专员)</Option>
-                            <Option value="law02">law02 (法务专员)</Option>
-                            <Option value="admin">admin (系统管理员)</Option>
-                            <Option value="test">test (总务专员)</Option>
+                            {stage.approverUsername &&
+                              !memberOptions.some((m) => m.value === stage.approverUsername) && (
+                                <Option key={stage.approverUsername} value={stage.approverUsername}>
+                                  {stage.approverUsername}
+                                </Option>
+                              )}
+                            {memberOptions.map((m) => (
+                              <Option key={m.value} value={m.value}>
+                                {m.label}
+                              </Option>
+                            ))}
                           </Select>
                         )}
 
@@ -572,34 +589,57 @@ export const ProcessStageList: React.FC<ProcessStageListProps> = ({ stages, onCh
                       if (rule === 'department') {
                         return (
                           <>
-                            <Form.Item name="approverDepartment" label="选择受理部门" initialValue="法务部">
+                            <Form.Item
+                              name="approverDepartment"
+                              label="选择受理部门"
+                              initialValue={departmentOptions[0]?.value || '法务部'}
+                            >
                               <Select showSearch>
-                                <Option value="法务部">法务部</Option>
-                                <Option value="财务部">财务部</Option>
-                                <Option value="总务部">总务部</Option>
-                                <Option value="人力资源部">人力资源部</Option>
-                                <Option value="信息技术与运维部">信息技术与运维部</Option>
+                                {departmentOptions.map((dept) => (
+                                  <Option key={dept.value} value={dept.value}>{dept.label}</Option>
+                                ))}
                               </Select>
                             </Form.Item>
-                            <Form.Item name="approverUsername" label="指定该部门专员（可选）">
-                              <Select showSearch allowClear placeholder="可选该部门指定专员">
-                                <Option value="law01">law01 (法务专员)</Option>
-                                <Option value="law02">law02 (法务专员)</Option>
-                                <Option value="admin">admin (系统管理员)</Option>
-                                <Option value="test">test (总务专员)</Option>
-                              </Select>
+                            <Form.Item
+                              noStyle
+                              shouldUpdate={(prev, curr) => prev.approverDepartment !== curr.approverDepartment}
+                            >
+                              {({ getFieldValue: getDeptVal }) => {
+                                const currentDept = getDeptVal('approverDepartment');
+                                const deptMembers = memberOptions.filter(
+                                  (m) => !currentDept || m.departmentName === currentDept
+                                );
+                                const availableMembers = deptMembers;
+                                return (
+                                  <Form.Item name="approverUsername" label="指定该部门专员（可选）">
+                                    <Select
+                                      showSearch
+                                      allowClear
+                                      disabled={availableMembers.length === 0}
+                                      placeholder={availableMembers.length > 0 ? "可选该部门指定专员" : "该部门暂无在职专员"}
+                                    >
+                                      {availableMembers.map((m) => (
+                                        <Option key={m.value} value={m.value}>{m.label}</Option>
+                                      ))}
+                                    </Select>
+                                  </Form.Item>
+                                );
+                              }}
                             </Form.Item>
                           </>
                         );
                       }
                       if (rule === 'specific_user') {
                         return (
-                          <Form.Item name="approverUsername" label="选择承办用户" initialValue="law01">
-                            <Select showSearch>
-                              <Option value="law01">law01 (法务专员)</Option>
-                              <Option value="law02">law02 (法务专员)</Option>
-                              <Option value="admin">admin (系统管理员)</Option>
-                              <Option value="test">test (总务专员)</Option>
+                          <Form.Item
+                            name="approverUsername"
+                            label="选择承办用户"
+                            rules={[{ required: true, message: '请选择具体承办用户' }]}
+                          >
+                            <Select showSearch placeholder="请选择具体承办用户">
+                              {memberOptions.map((m) => (
+                                <Option key={m.value} value={m.value}>{m.label}</Option>
+                              ))}
                             </Select>
                           </Form.Item>
                         );

@@ -2,6 +2,7 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import * as yaml from 'js-yaml';
 import axios from 'axios';
 import {
   BuiltinSkillManifest,
@@ -16,6 +17,7 @@ import {
   ARTIFACT_SMOKE_HANDLER_KEYS,
   verifyBuiltinArtifactSmoke,
 } from './builtin-skill-artifact-smoke-verifier';
+import { executeLocalSmokeHandler } from './builtin-skill-local-handlers';
 
 @Injectable()
 export class BuiltinSkillProvisioningService {
@@ -85,7 +87,6 @@ export class BuiltinSkillProvisioningService {
     }
 
     const manifestContent = fs.readFileSync(manifestPath, 'utf8');
-    const yaml = require('js-yaml');
     const rawManifest = yaml.load(manifestContent);
     const manifest = this.validateManifest(rawManifest);
 
@@ -134,11 +135,22 @@ export class BuiltinSkillProvisioningService {
     let smokePassed = true;
     let smokeError: string | null = null;
     let smokeFixtureDigest: string | undefined;
+    let externalDependencyInfo: any = undefined;
 
     const smokeInputRef = manifest.spec.smokeTest?.inputRef || 'fixtures/smoke-input.json';
     const smokeInputPath = path.join(resolvedDir, smokeInputRef);
 
-    if (!fs.existsSync(smokeInputPath)) {
+    const skipSmoke =
+      process.env.BUILTIN_SKILL_PROVISION_SKIP_SMOKE === 'true' || environment === 'bootstrap';
+
+    if (skipSmoke) {
+      this.logger.log(
+        `Skipping handler smoke execution for '${manifest.metadata.key}' (skipSmoke=true)`
+      );
+      if (fs.existsSync(smokeInputPath)) {
+        smokeFixtureDigest = this.computeContentDigest(fs.readFileSync(smokeInputPath, 'utf8'));
+      }
+    } else if (!fs.existsSync(smokeInputPath)) {
       smokePassed = false;
       smokeError = `Smoke test fixture file missing at '${smokeInputPath}'`;
     } else {
@@ -174,6 +186,12 @@ export class BuiltinSkillProvisioningService {
           smokeInput,
           smokeIdempotencyKey
         );
+        if (smokeResult?.externalDependency) {
+          externalDependencyInfo = smokeResult.externalDependency;
+          this.logger.log(
+            `[BuiltinSkillProvisioningService] Verified '${manifest.metadata.key}' external dependency: [${externalDependencyInfo.type}] ${externalDependencyInfo.status} (${externalDependencyInfo.message})`
+          );
+        }
 
         // Verify output contract
         if (!smokeResult || typeof smokeResult !== 'object') {
@@ -239,37 +257,50 @@ export class BuiltinSkillProvisioningService {
       throw new BadRequestException(`Builtin skill provision failed smoke test: ${smokeError}`);
     }
 
-    const workflowPath = path.join(resolvedDir, 'workflow.json');
-    const runtimeSource = fs.existsSync(workflowPath)
-      ? fs.readFileSync(workflowPath, 'utf8')
-      : manifest.spec.runtime.handlerKey;
-    const attestedVersion = await this.registryService.attestVersion({
-      builtinSkillId: skill.id,
-      builtinSkillVersionId: version.id,
-      sourceDigest: digest,
-      contractDigest: this.computeContentDigest(
-        JSON.stringify(canonicalizeObject(manifest.spec.contracts))
-      ),
-      runtimeDigest: this.computeContentDigest(runtimeSource),
-      fixtureDigest: smokeFixtureDigest,
-    });
+    let finalVersion = version;
+    if (!skipSmoke) {
+      const workflowPath = path.join(resolvedDir, 'workflow.json');
+      const runtimeSource = fs.existsSync(workflowPath)
+        ? fs.readFileSync(workflowPath, 'utf8')
+        : manifest.spec.runtime.handlerKey;
+      finalVersion = await this.registryService.attestVersion({
+        builtinSkillId: skill.id,
+        builtinSkillVersionId: version.id,
+        sourceDigest: digest,
+        contractDigest: this.computeContentDigest(
+          JSON.stringify(canonicalizeObject(manifest.spec.contracts))
+        ),
+        runtimeDigest: this.computeContentDigest(runtimeSource),
+        fixtureDigest: smokeFixtureDigest,
+      });
+    }
+
+    const smokeTestStatus = skipSmoke ? 'untested' : 'passed';
+    const deploymentStatus = skipSmoke ? 'registered' : 'healthy';
 
     await this.registryService.markDeployment({
-      builtinSkillVersionId: attestedVersion.id,
+      builtinSkillVersionId: finalVersion.id,
       environment,
-      status: 'healthy',
-      smokeTestStatus: 'passed',
-      smokeTestDigest: digest,
+      status: deploymentStatus,
+      smokeTestStatus,
+      smokeTestDigest: skipSmoke ? undefined : digest,
     });
 
     await this.auditService.logEvent({
       builtinSkillId: skill.id,
-      action: 'provision_passed',
-      versionId: attestedVersion.id,
-      payload: { environment, definitionVersion: attestedVersion.definitionVersion, digest },
+      action: skipSmoke ? 'provision_untested' : 'provision_passed',
+      versionId: finalVersion.id,
+      payload: {
+        environment,
+        definitionVersion: finalVersion.definitionVersion,
+        digest,
+        smokeTestStatus,
+        status: deploymentStatus,
+        externalDependency: externalDependencyInfo,
+      },
     });
 
-    return { skill, version: attestedVersion, digest };
+    return { skill, version: finalVersion, digest };
   }
 
   private async executeSmokeHandler(
@@ -327,76 +358,87 @@ export class BuiltinSkillProvisioningService {
       return response.data as BuiltinSkillHandlerResult;
     }
 
-    if (handlerKey === 'platform.notification.internal-message') {
-      return {
-        success: true,
-        output: {
-          notificationId: 'smoke-msg-' + Date.now(),
-          deliveredAt: new Date().toISOString(),
-          recipientId: 'smoke-test',
-          title: 'Provisioning smoke test notification',
-        },
-      };
+    return await executeLocalSmokeHandler(handlerKey, input, idempotencyKeyOverride);
+  }
+
+  public resolveTargetBundles(targetArg?: string): string[] {
+    const findBundlesInDir = (dirPath: string): string[] => {
+      if (!fs.existsSync(dirPath)) return [];
+      try {
+        const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+        return entries
+          .filter((entry) => entry.isDirectory())
+          .map((entry) => path.join(dirPath, entry.name))
+          .filter((bundleDir) => fs.existsSync(path.join(bundleDir, 'manifest.yaml')))
+          .sort();
+      } catch {
+        return [];
+      }
+    };
+
+    if (targetArg && targetArg !== 'all') {
+      const resolved = path.isAbsolute(targetArg) ? targetArg : path.resolve(process.cwd(), targetArg);
+      if (fs.existsSync(path.join(resolved, 'manifest.yaml'))) {
+        return [resolved];
+      }
+      const subBundles = findBundlesInDir(resolved);
+      if (subBundles.length > 0) {
+        return subBundles;
+      }
     }
 
-    if (handlerKey === 'platform.notification.reminder') {
-      return {
-        success: true,
-        output: { reminderId: 'smoke-reminder', nextRunAt: new Date().toISOString() },
-      };
+    const searchRoots = [
+      process.env.BUILTIN_SKILLS_DIR,
+      path.resolve(process.cwd(), 'builtin-skills'),
+      path.resolve(process.cwd(), '../../builtin-skills'),
+      path.resolve(process.cwd(), '../../../builtin-skills'),
+      path.resolve(__dirname, '../../../../../../builtin-skills'),
+      path.resolve(__dirname, '../../../../../builtin-skills'),
+      path.resolve(__dirname, '../../../../builtin-skills'),
+      '/workspace/builtin-skills',
+    ].filter(Boolean) as string[];
+
+    for (const root of searchRoots) {
+      const bundles = findBundlesInDir(root);
+      if (bundles.length > 0) {
+        return bundles;
+      }
     }
 
-    if (handlerKey === 'search.web' || handlerKey === 'platform.search.web') {
-      return {
-        success: true,
-        output: {
-          query: String(input.query || 'smoke test'),
-          provider: 'tavily',
-          results: [],
-          resultCount: 0,
-          searchedAt: new Date().toISOString(),
-          warnings: ['Provisioning smoke test does not call the external search provider'],
-        },
-      };
+    return [];
+  }
+
+  public async verifyAndActivateAll(
+    targetArg?: string,
+    environment: string = 'production'
+  ): Promise<{
+    succeeded: string[];
+    failed: Array<{ bundle: string; error: string }>;
+  }> {
+    const bundles = this.resolveTargetBundles(targetArg);
+    const succeeded: string[] = [];
+    const failed: Array<{ bundle: string; error: string }> = [];
+
+    this.logger.log(`Verifying and activating ${bundles.length} built-in skill bundle(s)...`);
+
+    for (const bundleDir of bundles) {
+      const bundleName = path.basename(bundleDir);
+      try {
+        const result = await this.provisionBundle(bundleDir, environment);
+        await this.registryService.activateVersion(
+          result.skill.capabilityKey,
+          result.version.definitionVersion
+        );
+        succeeded.push(`${result.skill.capabilityKey}@${result.version.definitionVersion}`);
+        this.logger.log(
+          `Successfully verified and activated ${result.skill.capabilityKey} v${result.version.definitionVersion}`
+        );
+      } catch (err: any) {
+        this.logger.error(`Failed to verify and activate bundle ${bundleName}: ${err.message}`);
+        failed.push({ bundle: bundleName, error: err.message });
+      }
     }
 
-    if (handlerKey === 'workspace.explorer' || handlerKey === 'platform.workspace.explorer') {
-      return {
-        success: true,
-        output: {
-          query: String(input.query || 'smoke test'),
-          answer: 'Provisioning smoke test workspace explorer answer',
-          citations: [],
-          searchedFilesCount: 0,
-        },
-      };
-    }
-
-    if (handlerKey === 'email.messages' || handlerKey === 'platform.email.messages') {
-      return {
-        success: true,
-        output: {
-          mailboxKey: 'smoke-test-mailbox',
-          items: [],
-          resultCount: 0,
-          fetchedAt: new Date().toISOString(),
-          warnings: ['Provisioning smoke test'],
-        },
-      };
-    }
-
-    if (handlerKey === 'email.send' || handlerKey === 'platform.email.send') {
-      return {
-        success: true,
-        output: {
-          deliveryId: 'del_smoke_' + Date.now(),
-          state: 'accepted',
-          acceptedAt: new Date().toISOString(),
-          warnings: ['Provisioning smoke test'],
-        },
-      };
-    }
-
-    throw new Error(`No smoke handler registered for '${handlerKey}' — deployment aborted`);
+    return { succeeded, failed };
   }
 }

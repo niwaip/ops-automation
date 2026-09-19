@@ -18,9 +18,32 @@ export interface ContentBlock {
   };
 }
 
+export interface ToolCallFunction {
+  name: string;
+  arguments: string;
+}
+
+export interface ToolCall {
+  id: string;
+  type: 'function';
+  function: ToolCallFunction;
+}
+
+export interface ToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description?: string;
+    parameters?: Record<string, unknown>;
+  };
+}
+
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
+  role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | ContentBlock[]; // 支持纯文本或多模态内容
+  name?: string;
+  tool_call_id?: string;
+  tool_calls?: ToolCall[];
 }
 
 export interface OpenAICompatibleConfig {
@@ -79,6 +102,7 @@ export interface LLMResponse {
   reasoningContent?: string;
   usage?: LLMUsage;
   rateLimit?: LLMRateLimit;
+  tool_calls?: ToolCall[];
 }
 
 /**

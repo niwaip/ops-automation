@@ -413,6 +413,33 @@ export class BuiltinSkillRegistryService {
       );
     }
 
+    // Verify deployment health & smoke test status
+    const deployment = await this.prisma.builtinSkillDeployment.findFirst({
+      where: { builtinSkillVersionId: version.id },
+      orderBy: { deployedAt: 'desc' },
+    });
+    if (deployment && (deployment.status !== 'healthy' || deployment.smokeTestStatus !== 'passed')) {
+      this.logger.error(
+        `Activating version ${version.definitionVersion} of skill ${skill.capabilityKey} blocked — ` +
+          `deployment status is '${deployment.status}', smoke test status is '${deployment.smokeTestStatus}'`
+      );
+      await this.auditService.logEvent({
+        builtinSkillId: skill.id,
+        action: 'activate_version_blocked',
+        versionId: version.id,
+        payload: {
+          versionStr,
+          reason: 'deployment_unhealthy_or_untested',
+          status: deployment.status,
+          smokeTestStatus: deployment.smokeTestStatus,
+        },
+      });
+      throw new BadRequestException(
+        `Activation blocked: version ${version.definitionVersion} of skill ${skill.capabilityKey} ` +
+          `is not verified healthy (status: ${deployment.status}, smokeTest: ${deployment.smokeTestStatus})`
+      );
+    }
+
     const updatedSkill = await this.prisma.builtinSkill.update({
       where: { id: skill.id },
       data: {

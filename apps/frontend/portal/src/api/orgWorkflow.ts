@@ -160,7 +160,7 @@ export const orgWorkflowApi = {
   },
 
   /**
-   * 获取 5173 底层可用资产池（Execution Flow, Temporal, Skill）
+   * 获取底层可用资产池（Execution Flow, Temporal, Skill）
    */
   getAvailableBaseWorkflows: async (): Promise<AvailableBaseWorkflowItem[]> => {
     try {

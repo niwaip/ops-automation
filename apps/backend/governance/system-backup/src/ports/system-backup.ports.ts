@@ -26,6 +26,7 @@ export interface SystemBackupPrismaPort {
   taskCommandAlias?: any;
   taskCapabilityBinding?: any;
   workspace?: any;
+  workspaceNode?: any;
   workspaceDocument?: any;
   userCredential?: any;
   userSkillCredentialBinding?: any;

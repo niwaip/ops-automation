@@ -3,8 +3,10 @@ import { createHash, randomBytes, randomUUID } from 'crypto';
 import { WechatMediaAdapter } from './wechat-media.adapter';
 import { sanitizeWeChatText, splitTextPreservingLines } from './wechat-formatter.util';
 
-const QR_BASE_URL = 'https://ilinkai.weixin.qq.com/';
-const PROTOCOL_VERSION = '2.4.6';
+const QR_BASE_URL =
+  process.env.WECHAT_ILINK_BASE_URL?.trim() || 'https://ilinkai.weixin.qq.com/';
+const PROTOCOL_VERSION =
+  process.env.WECHAT_ILINK_PROTOCOL_VERSION?.trim() || '2.4.6';
 const CLIENT_VERSION = (2 << 16) | (4 << 8) | 6;
 
 export const WechatUploadMediaType = {

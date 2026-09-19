@@ -71,28 +71,13 @@ export async function handleWorkflowNaturalLanguage(
     /保密|nda|legal\.nda\.generation_and_review_flow|生成保密合同/i.test(rawWorkflow) ||
     (/保密|nda/i.test(taskBody) && /合同|协议|生成/i.test(rawWorkflow));
   const isLegal = isDedicatedNda || /法务|合同|审查|legal\.contract\.review_flow/i.test(rawWorkflow);
-  const isLeave = /请假|休假|考勤|hr\.leave\.request/i.test(rawWorkflow);
-  const isExpense = /报销|费用|财务|oa\.expense\.claim/i.test(rawWorkflow);
-
   const workflowId = isDedicatedNda
     ? 'legal.nda.generation_and_review_flow'
-    : isLegal
-    ? 'legal.contract.review_flow'
-    : isLeave
-    ? 'hr.leave.request'
-    : isExpense
-    ? 'oa.expense.claim'
-    : 'general.coordination';
+    : 'legal.contract.review_flow';
 
   const workflowName = isDedicatedNda
     ? '生成保密合同 (保密合同起草与法务审查闭环流)'
-    : isLegal
-    ? '标准合同起草与法务审查闭环流'
-    : isLeave
-    ? '员工请假审批'
-    : isExpense
-    ? '费用报销审批'
-    : '通用协同任务';
+    : '标准合同起草与法务审查闭环流';
 
 interface ExtractedContractEntities {
   counterpartyName: string;
@@ -334,25 +319,14 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
     const finalCounterparty = counterpartyName || '相对方企业主体（待明确）';
     const contractTitle = `${finalCounterparty} - 商业保密协议 (NDA)`;
     const docFileName = `保密合同_${finalCounterparty}_v1_${dayjs().format('YYYYMMDD')}.docx`;
-    const hostOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3009';
-    const downloadUrl = `${hostOrigin}/studio/download/7ab82ad9-9fe2-4bfc-b951-d57c0214e8a0`;
 
-    const attachments = [
-      {
-        name: docFileName,
-        url: downloadUrl,
-        size: 19463,
-        mimeType:
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      },
-    ];
+    const attachments: any[] = [];
 
     const parameters: Record<string, any> = {
       contractTitle,
       contractType: 'nda',
       counterpartyName: finalCounterparty,
       remarks: taskBody,
-      downloadUrl,
       fileName: docFileName,
     };
     if (entities.counterpartyAddress) parameters.counterpartyAddress = entities.counterpartyAddress;
@@ -371,7 +345,7 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
 
     // 从流程模版中读取法务确认节点配置的指定部门与指定承办人
     let targetDept = '法务部';
-    let targetUser = 'law01';
+    let targetUser: string | undefined = undefined;
     try {
       const templates = await workbenchCoordinationApi.getWorkflowTemplates();
       const ndaTemplate = templates.find((t) => t.id === workflowId || t.workflowId === workflowId);
@@ -414,7 +388,7 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
       `- **当前流转阶段**：第 1 阶段【商务填报与初稿生成】完成 ➔ **进入第 2 阶段【业务担当初稿确认】**`,
       `- **当前待办处理人（担当）**：@${initiatorAssignee.username}（已派发至个人待办箱，请核对生成内容）`,
       `- **底层专属技能连接**：已调用专门的保密合同生成技能 \`ConfidentialityAgreementGenerationWorkflow\`，基于主体与要件渲染生成标准保密合同草案凭据`,
-      `- **合同初稿凭据**：📄 **[点击下载初稿文档 (${docFileName})](${downloadUrl})**`,
+      `- **合同初稿文档**：📄 \`${docFileName}\`（工作流将调用保密协议生成引擎实时渲染）`,
       `- **自然语言核心要件提取结果**：`,
       `  - **合同名称**：${contractTitle}`,
       `  - **相对方企业**：${finalCounterparty}${entities.counterpartyRole ? ` (${entities.counterpartyRole})` : ''}`,
@@ -426,10 +400,10 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
       myPositionText ? `  - **合同立场策略**：${myPositionText}` : '',
       entities.penaltyAmount !== undefined ? `  - **违约金赔偿约定**：¥${entities.penaltyAmount.toLocaleString()} 元` : '',
       `- **全流程闭环管线（基于流程模版阶段定义）**：`,
-      `  1. 📝 **初稿生成 (已完成)**：智能提取要件输出保密合同草案 [下载附件](${downloadUrl})`,
+      `  1. 📝 **初稿生成 (进行中)**：智能提取要件输出保密合同草案（${docFileName}）`,
       `  2. 👤 **业务担当确认 (当前阶段)**：已推入担当待办箱 (@${initiatorAssignee.username})，担当核对并确认生成内容`,
       `  3. 🤖 **合同合规智能审查**：担当确认后自动调用 \`contract-reviewer\` 规则库深度排查合规风险`,
-      `  4. ⚖️ **法务合规核准与确认**：审查通过后流转至模版选定的【${targetDept}】(@${targetUser}) 终审把关与签署确认`,
+      `  4. ⚖️ **法务合规核准与确认**：审查通过后流转至模版配置的【${targetDept}】${targetUser ? `(@${targetUser})` : '法务专员'} 终审把关与签署确认`,
       `  5. 🗄️ **归档办结**：法务核准后自动归档存证并推送办结回执`,
     ]
       .filter(Boolean)
@@ -555,111 +529,13 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
   }
 
   // ==========================================
-  // 2. 员工请假审批流
-  // ==========================================
-  if (isLeave) {
-    const leaveType = /病假/i.test(taskBody)
-      ? '病假'
-      : /年假/i.test(taskBody)
-      ? '年假'
-      : /调休/i.test(taskBody)
-      ? '调休'
-      : '事假';
-    const isAfternoon = /下午|半天/i.test(taskBody);
-    const durationHours = isAfternoon ? 4 : /一天|整天/i.test(taskBody) ? 8 : 4;
-    const todayStr = dayjs().format('YYYY-MM-DD');
-    const startTime = isAfternoon ? `${todayStr} 14:00` : `${todayStr} 09:00`;
-    const endTime = `${todayStr} 18:00`;
-    const reason = taskBody || '个人私事请假';
-
-    const parameters = {
-      leaveType,
-      startTime,
-      endTime,
-      durationHours,
-      reason,
-    };
-
-    const assignee = await resolveAssignee('主管');
-    const created = await workbenchCoordinationApi.createTask({
-      assigneeId: assignee.id,
-      assigneeName: assignee.username,
-      workflowId,
-      title: `[请假审批] ${leaveType} ${durationHours}小时`,
-      content: taskBody || `申请${leaveType} ${durationHours}小时`,
-      taskType: 'approval',
-      parameters,
-    });
-
-    return {
-      handled: true,
-      content: [
-        `### 🏖️ 组织工作流已启动：${workflowName}`,
-        ``,
-        `- **当前流转阶段**：第 1 阶段【考勤填报】完成 ➔ **进入第 2 阶段【直属主管审批】**`,
-        `- **参数提取结果**：${leaveType} · ${durationHours} 小时 (${startTime} ~ ${endTime})`,
-        `- **请假事由**：${reason}`,
-        `- **底层能力连接**：主管 (@${assignee.username}) 在 GTD 收集箱审批通过后，将自动调用 HRMS 考勤网关核销额度并推入归档。`,
-      ].join('\n'),
-      coordinationTask: created,
-    };
-  }
-
-  // ==========================================
-  // 3. 费用报销审批流
-  // ==========================================
-  if (isExpense) {
-    const expenseType = /餐饮|招待|宴请/i.test(taskBody)
-      ? '餐饮招待'
-      : /采购|设备|办公/i.test(taskBody)
-      ? '办公采购'
-      : /培训|团建/i.test(taskBody)
-      ? '培训团建'
-      : '差旅交通';
-
-    const amountMatch = taskBody.match(/([0-9]+(?:\.[0-9]+)?)\s*(?:元|块|rmb|万)?/i);
-    const amount = amountMatch ? parseFloat(amountMatch[1]) : 100;
-
-    const parameters = {
-      expenseType,
-      amount,
-      reason: taskBody || '日常业务开支报销',
-    };
-
-    const assignee = await resolveAssignee('财务');
-    const created = await workbenchCoordinationApi.createTask({
-      assigneeId: assignee.id,
-      assigneeName: assignee.username,
-      workflowId,
-      title: `[费用报销] ${expenseType} ¥${amount}元`,
-      content: taskBody || `${expenseType}报销`,
-      taskType: 'approval',
-      parameters,
-    });
-
-    return {
-      handled: true,
-      content: [
-        `### 💰 组织工作流已启动：${workflowName}`,
-        ``,
-        `- **当前流转阶段**：第 1 阶段【凭证提报】完成 ➔ **进入第 2 阶段【财务合规审核】**`,
-        `- **参数提取结果**：报销类别【${expenseType}】· 金额【¥${amount}元】`,
-        `- **费用说明**：${parameters.reason}`,
-        `- **底层能力连接**：财务专员 (@${assignee.username}) 审核通过后，将自动触发 ERP 核算建档并生成打款批次。`,
-      ].join('\n'),
-      coordinationTask: created,
-    };
-  }
-
-  // ==========================================
-  // 4. 通用协同任务
+  // 2. 通用协同任务
   // ==========================================
   const assignee = await resolveAssignee();
   const created = await workbenchCoordinationApi.createTask({
     assigneeId: assignee.id,
     assigneeName: assignee.username,
-    workflowId: 'general.coordination',
-    title: taskBody.slice(0, 40) || '通用协同任务',
+    title: taskBody.slice(0, 40) || '协同任务',
     content: taskBody || '协同任务要求',
     taskType: 'assignment',
     parameters: { content: taskBody },
@@ -668,7 +544,7 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
   return {
     handled: true,
     content: [
-      `### 🤝 组织工作流已启动：${workflowName}`,
+      `### 🤝 协同任务已启动`,
       ``,
       `- **当前流转阶段**：第 1 阶段【任务布置】完成 ➔ **进入第 2 阶段【协作者执行】**`,
       `- **任务内容**：${created.title}`,

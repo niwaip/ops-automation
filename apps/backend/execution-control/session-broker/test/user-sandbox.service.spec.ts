@@ -141,6 +141,28 @@ describe('UserSandboxService', () => {
       expect(result.containerName).toBe('ops-user-sandbox-user_1');
     });
 
+    it('should include --files in dsh command when files are provided', async () => {
+      const execSpy = jest.spyOn(service, 'executeInSandbox').mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: 'Processed 1.pdf',
+        stderr: '',
+        durationMs: 50,
+        containerName: 'ops-user-sandbox-user_1',
+      });
+
+      const result = await service.runHarness('user_1', '附件是什么', {
+        files: ['1.pdf'],
+        sessionId: 'session-123',
+      });
+
+      expect(execSpy).toHaveBeenCalledWith(
+        'user_1',
+        ['dsh', 'run', '附件是什么', '--session-id', 'session-123', '--files', '1.pdf'],
+        expect.any(Object)
+      );
+      expect(result.success).toBe(true);
+    });
+
     it('should automatically freeze sandboxes idle for longer than threshold', async () => {
       const freezeSpy = jest.spyOn(service, 'freezeUserSandbox').mockResolvedValueOnce({
         userId: 'idle_user',

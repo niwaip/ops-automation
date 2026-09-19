@@ -53,7 +53,7 @@ export class AnthropicMessagesClient {
   private timeout: number;
   private anthropicVersion: string;
 
-  constructor(config: OpenAICompatibleConfig, timeout: number = 300000) {
+  constructor(config: OpenAICompatibleConfig, timeout: number = 90000) {
     this.baseURL = config.baseURL;
     this.apiKey = config.apiKey;
     this.model = config.model;
@@ -106,14 +106,17 @@ export class AnthropicMessagesClient {
   }
 
   async chatCompletionStream(
-    messages: ChatMessage[],
+    request: ChatMessage[] | LLMChatRequest,
     _onChunk: (chunk: string) => void,
     _reasoning?: {
       enabled?: boolean;
       effort?: 'low' | 'medium' | 'high';
     }
   ): Promise<LLMResponse> {
-    return this.chatCompletion(_reasoning ? { messages, reasoning: _reasoning } : messages);
+    if (Array.isArray(request)) {
+      return this.chatCompletion(_reasoning ? { messages: request, reasoning: _reasoning } : request);
+    }
+    return this.chatCompletion(request);
   }
 
   async listModels(): Promise<string[]> {

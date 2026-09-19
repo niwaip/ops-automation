@@ -6,6 +6,7 @@ import type { StreamEvent } from '../react-engine/interfaces';
 import type { ChatRequestDTO, ChatUploadedFileDTO } from './chat.dto';
 import { ChatConversationService } from './chat-conversation.service';
 import { ChatMediaService } from './chat-media.service';
+import { ModelService } from '../model/model.service';
 import { isWorkSlashCommand } from './chat-slash-command.util';
 
 @Injectable()
@@ -15,7 +16,8 @@ export class UserSandboxDispatcherService {
 
   constructor(
     private readonly chatConversationService: ChatConversationService,
-    private readonly chatMediaService: ChatMediaService
+    private readonly chatMediaService: ChatMediaService,
+    private readonly modelService: ModelService
   ) {
     const host =
       process.env.SESSION_BROKER_HOST ||
@@ -43,37 +45,60 @@ export class UserSandboxDispatcherService {
     return target;
   }
 
-  syncFilesToSandboxWorkspace(userId: string, files?: ChatUploadedFileDTO[]): void {
-    if (!files || files.length === 0) return;
-    try {
-      const userWorkspaceDir = this.getWorkspaceDir(userId);
-      for (const file of files) {
-        const destPath = path.join(userWorkspaceDir, file.fileName);
-        if (file.filePath && fs.existsSync(file.filePath)) {
-          fs.copyFileSync(file.filePath, destPath);
-          try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+  syncFilesToSandboxWorkspace(
+    userId: string,
+    files?: ChatUploadedFileDTO[],
+    sessionId?: string,
+    sessionFiles?: string[]
+  ): void {
+    const userWorkspaceDir = this.getWorkspaceDir(userId);
+    if (files && files.length > 0) {
+      try {
+        for (const file of files) {
+          const destPath = path.join(userWorkspaceDir, file.fileName);
+          if (file.filePath && fs.existsSync(file.filePath)) {
+            fs.copyFileSync(file.filePath, destPath);
+            try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
 
-          // 如果存在提取的文本文件，也一并同步为 .txt 与 .extracted.txt
-          const extractedSrc = `${file.filePath}.extracted.txt`;
-          if (fs.existsSync(extractedSrc)) {
-            const destTxt = path.join(userWorkspaceDir, `${file.fileName}.txt`);
-            fs.copyFileSync(extractedSrc, destTxt);
-            try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
-          }
-        } else if (file.content) {
-          fs.writeFileSync(destPath, Buffer.from(file.content, 'base64'));
-          try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+            // 如果存在提取的文本文件，也一并同步为 .txt 与 .extracted.txt
+            const extractedSrc = `${file.filePath}.extracted.txt`;
+            if (fs.existsSync(extractedSrc)) {
+              const destTxt = path.join(userWorkspaceDir, `${file.fileName}.txt`);
+              fs.copyFileSync(extractedSrc, destTxt);
+              try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+            }
+          } else if (file.content) {
+            fs.writeFileSync(destPath, Buffer.from(file.content, 'base64'));
+            try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
 
-          if (file.extractedText) {
-            const destTxt = path.join(userWorkspaceDir, `${file.fileName}.txt`);
-            fs.writeFileSync(destTxt, file.extractedText, 'utf-8');
-            try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+            if (file.extractedText) {
+              const destTxt = path.join(userWorkspaceDir, `${file.fileName}.txt`);
+              fs.writeFileSync(destTxt, file.extractedText, 'utf-8');
+              try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+            }
           }
+          this.logger.log(`Synced attached file [${file.fileName}] to user sandbox workspace: ${destPath}`);
         }
-        this.logger.log(`Synced attached file [${file.fileName}] to user sandbox workspace: ${destPath}`);
+      } catch (e: any) {
+        this.logger.warn(`Failed to sync attached files to sandbox workspace: ${e.message}`);
       }
-    } catch (e: any) {
-      this.logger.warn(`Failed to sync attached files to sandbox workspace: ${e.message}`);
+    }
+
+    // 将会话关联的有效附件清单持久化到工作区 session 目录，保证沙箱环境上下文隔离
+    if (sessionId && sessionFiles && sessionFiles.length > 0) {
+      try {
+        const cleanSid = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const sessionsDir = path.join(userWorkspaceDir, '.dsh', 'sessions');
+        if (!fs.existsSync(sessionsDir)) {
+          fs.mkdirSync(sessionsDir, { recursive: true });
+          try { fs.chmodSync(sessionsDir, 0o777); } catch { /* best-effort */ }
+        }
+        const attFile = path.join(sessionsDir, `${cleanSid}.attachments.json`);
+        fs.writeFileSync(attFile, JSON.stringify(sessionFiles, null, 2), 'utf-8');
+        try { fs.chmodSync(attFile, 0o666); } catch { /* best-effort */ }
+      } catch (e: any) {
+        this.logger.warn(`Failed to persist session attachments index: ${e.message}`);
+      }
     }
   }
 
@@ -127,68 +152,98 @@ export class UserSandboxDispatcherService {
     });
 
     try {
-      // 1. 同步附加文件到沙箱工作区，确保 dsh 和用户脚本能直接访问
-      this.syncFilesToSandboxWorkspace(effectiveUserId, body.files);
-
-      // 2. 构造面向沙箱的高保真 Prompt（附带文件位置与文本预览）
-      let promptForSandbox = body.message;
-      if (body.files && body.files.length > 0) {
-        const fileList = body.files.map((f) => f.fileName).join(', ');
-        promptForSandbox =
-          `用户附加了文件：${fileList}。\n` +
-          `文件已放入当前沙箱 /workspace/ 目录下（可直接使用内置 read_file / vision_inspect 工具进行内容解析或视觉识别）。\n\n`;
-        for (const f of body.files) {
-          if (f.extractedText) {
-            const preview = f.extractedText.slice(0, 4000);
-            promptForSandbox += `【文件 ${f.fileName} 提取文本预览】：\n${preview}\n\n`;
-          }
+      // 1. 获取当前会话上下文历史并收集属于当前会话的全部有效附件（会话作用域隔离）
+      let recentHistory: Array<{ role: string; content: string }> = [];
+      const sessionAttachedFiles: string[] = [];
+      const addSessionFile = (name?: string) => {
+        if (!name) return;
+        const clean = path.basename(name).trim();
+        if (clean && !sessionAttachedFiles.includes(clean)) {
+          sessionAttachedFiles.push(clean);
         }
-        promptForSandbox += `用户指令：${body.message}`;
+      };
+
+      if (body.files && Array.isArray(body.files)) {
+        for (const f of body.files) {
+          addSessionFile(f.fileName);
+        }
       }
 
-      // 获取当前会话上下文历史（保留最近 8 条历史记录，确保多轮对话上下文连续）
-      let recentHistory: Array<{ role: string; content: string }> = [];
       try {
         const historyItems = await this.chatConversationService.getChatHistory(
           sessionId,
           effectiveUserId
         );
-        recentHistory = (historyItems || [])
-          .slice(-8)
-          .filter((item) => item.role === 'user' || item.role === 'assistant')
-          .map((item) => ({
-            role: item.role,
-            content: typeof item.content === 'string' ? item.content : JSON.stringify(item.content),
-          }));
+        if (historyItems && Array.isArray(historyItems)) {
+          for (const item of historyItems) {
+            const metaFiles = (item as any).metadata?.files;
+            if (Array.isArray(metaFiles)) {
+              for (const mf of metaFiles) {
+                const fn = typeof mf === 'string' ? mf : (mf as any)?.fileName;
+                addSessionFile(fn);
+              }
+            }
+          }
+
+          recentHistory = historyItems
+            .slice(-6)
+            .filter((item) => item.role === 'user' || item.role === 'assistant')
+            .map((item) => {
+              let contentStr = typeof item.content === 'string' ? item.content : JSON.stringify(item.content);
+              if (contentStr.length > 3000) {
+                contentStr = contentStr.slice(0, 3000) + '...[历史内容截断]';
+              }
+              return {
+                role: item.role,
+                content: contentStr,
+              };
+            });
+        }
       } catch (histErr: any) {
         this.logger.warn(`Failed to retrieve chat history for session [${sessionId}]: ${histErr.message}`);
+      }
+
+      // 2. 同步本轮附加文件到沙箱工作区并写入当前会话附件索引
+      this.syncFilesToSandboxWorkspace(effectiveUserId, body.files, sessionId, sessionAttachedFiles);
+
+      // 3. 构造面向沙箱的高保真 Prompt（明确会话附件清单，严禁无意注入触发词）
+      let promptForSandbox = body.message;
+      if (sessionAttachedFiles.length > 0) {
+        let prefix = `【当前会话有效附件清单】: ${sessionAttachedFiles.join(', ')}\n`;
+        if (body.files && body.files.length > 0) {
+          for (const f of body.files) {
+            if (f.extractedText) {
+              const preview = f.extractedText.slice(0, 3000);
+              prefix += `【本轮附件 ${f.fileName} 提取文本预览】:\n${preview}\n\n`;
+            }
+          }
+        }
+        promptForSandbox = `${prefix}用户指令：${body.message}`;
       }
 
       // 立即向前端发送沙箱连接状态，消除白屏与挂起感
       emit({
         type: StreamEventType.OBSERVATION,
-        content: `⚡ 正在连接个人安全沙箱 [${effectiveUserId}]，启动 DeepSeek Harness 智能引擎...`,
+        content: `⚡ 正在连接个人安全沙箱 [${effectiveUserId}]，启动智能分析与执行引擎...`,
       });
 
-      // 启动心跳进度指示器，让前台实时感知沙箱运行阶段
-      let progressTick = 0;
-      const progressStages = [
-        '🔍 沙箱正在检索外部实时数据与知识库上下文关联...',
-        '⚡ 正在执行多轮 ReAct 推理与自主工具调用...',
-        '✓ 正在整合工具返回数据，编写条理化的最终分析解答...',
-      ];
-      const heartbeatTimer = setInterval(() => {
-        const msg = progressStages[progressTick] || '⏳ 正在进行深度推理与数据综合计算...';
-        progressTick += 1;
-        emit({
-          type: StreamEventType.OBSERVATION,
-          content: msg,
-        });
-      }, 3000);
-
       // 尝试向 Session Broker 发起 run-harness 请求
+      const timeoutMs =
+        typeof (body.config as any)?.timeoutMs === 'number' && (body.config as any).timeoutMs > 0
+          ? (body.config as any).timeoutMs
+          : typeof (body as any).timeoutMs === 'number' && (body as any).timeoutMs > 0
+            ? (body as any).timeoutMs
+            : 300000;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000);
+      const timeoutId = setTimeout(async () => {
+        this.logger.warn(`Execution timeout (${timeoutMs / 1000}s) reached for user [${effectiveUserId}], stopping sandbox processes...`);
+        controller.abort();
+        try {
+          await this.stopPersonalSandbox(effectiveUserId);
+        } catch (e: any) {
+          this.logger.warn(`Failed to stop personal sandbox on timeout: ${e.message}`);
+        }
+      }, timeoutMs);
 
       const onAbort = () => {
         controller.abort();
@@ -208,45 +263,153 @@ export class UserSandboxDispatcherService {
         containerName: string;
         durationMs: number;
         exitCode: number;
-      };
+      } | null = null;
+
+      let effectiveModel = body.modelId;
+      if (!effectiveModel || effectiveModel === 'default' || effectiveModel === 'deepseek-chat') {
+        const preferred =
+          this.modelService.getPreferredDefaultModel({ mode: 'chat' }) ||
+          this.modelService.getDefaultModel();
+        effectiveModel = preferred?.id || effectiveModel || 'default';
+      }
+      const modelEntity = await this.modelService.getModel(effectiveModel);
+      const modelDisplayName = modelEntity?.name || (effectiveModel !== 'default' ? effectiveModel : undefined);
 
       try {
-        const res = await fetch(`${this.sessionBrokerUrl}/user-sandboxes/run-harness`, {
+        const payload = {
+          userId: effectiveUserId,
+          prompt: promptForSandbox,
+          sessionId,
+          files: sessionAttachedFiles,
+          history: recentHistory,
+          webSearch: Boolean(body.config?.webSearch),
+          model: effectiveModel,
+          modelDisplayName,
+          timeoutMs,
+        };
+
+        let res = await fetch(`${this.sessionBrokerUrl}/user-sandboxes/run-harness-stream`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: effectiveUserId,
-            prompt: promptForSandbox,
-            sessionId,
-            history: recentHistory,
-            webSearch: Boolean(body.config?.webSearch),
-            model: body.modelId || 'deepseek-chat',
-            timeoutMs: 300000,
-          }),
+          body: JSON.stringify(payload),
           signal: controller.signal,
         });
+
+        if (res.status === 404) {
+          this.logger.log('Streaming endpoint not available, falling back to standard run-harness');
+          res = await fetch(`${this.sessionBrokerUrl}/user-sandboxes/run-harness`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+          });
+        }
 
         if (!res.ok) {
           const errorText = await res.text();
           this.logger.warn(
             `Session broker user sandbox returned ${res.status}: ${errorText}`
           );
+          if (res.status === 409) {
+            emit({
+              type: StreamEventType.ERROR,
+              content: '⚠️ 该沙箱当前正在执行前一个任务，请稍后再试或点击停止。',
+            });
+            return true;
+          }
           emit({
             type: StreamEventType.OBSERVATION,
-            content: `⚠️ 沙箱执行返回异常 (${res.status})，正在自动无缝切换到云端模型直连模式...`,
+            content: `⚠️ 沙箱执行返回异常 (${res.status})，正在自动切换到云端模型直连模式...`,
           });
           return false;
         }
 
-        harnessResult = await res.json();
+        if (res.headers.get('content-type')?.includes('text/event-stream') && res.body) {
+          const reader = (res.body as any).getReader();
+          const decoder = new TextDecoder('utf-8');
+          let sseBuffer = '';
+          let deltaAccumulator = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            sseBuffer += decoder.decode(value, { stream: true });
+            const sseEvents = sseBuffer.split('\n\n');
+            sseBuffer = sseEvents.pop() || '';
+
+            for (const evt of sseEvents) {
+              const lines = evt.split('\n');
+              let eventType = 'message';
+              let eventData = '';
+              for (const l of lines) {
+                if (l.startsWith('event:')) {
+                  eventType = l.slice(6).trim();
+                } else if (l.startsWith('data:')) {
+                  eventData += l.slice(5).trim();
+                }
+              }
+              if (!eventData) continue;
+
+              let parsed: any;
+              try {
+                parsed = JSON.parse(eventData);
+              } catch {
+                // ignore malformed JSON chunk
+                continue;
+              }
+
+              if (eventType === 'observation' && parsed?.content) {
+                // 当沙箱开始调用工具或命中技能意图时，说明进入中间行动阶段，清空上一轮的过渡垫话累加器
+                const contentStr = String(parsed.content);
+                if (contentStr.includes('⚡') || contentStr.includes('🎯') || contentStr.includes('🔍')) {
+                  deltaAccumulator = '';
+                }
+                emit({
+                  type: StreamEventType.OBSERVATION,
+                  content: parsed.content,
+                });
+              } else if (eventType === 'delta' && parsed?.content) {
+                deltaAccumulator += parsed.content;
+                emit({
+                  type: StreamEventType.OBSERVATION,
+                  content: deltaAccumulator,
+                  data: { mode: 'chat', isDelta: true },
+                });
+              } else if (eventType === 'done') {
+                harnessResult = parsed;
+              } else if (eventType === 'error') {
+                throw new Error(parsed?.message || parsed?.error || 'Sandbox execution error');
+              }
+            }
+          }
+        } else {
+          harnessResult = await res.json();
+        }
+
+        if (!harnessResult) {
+          throw new Error('Sandbox stream ended unexpectedly without completion event');
+        }
+
+        if (harnessResult.success === false) {
+          throw new Error(
+            harnessResult.output || `Sandbox process failed with exit code ${harnessResult.exitCode}`
+          );
+        }
       } catch (fetchErr: any) {
-        if (controller.signal.aborted || abortSignal?.aborted) {
-          this.logger.log(`Run harness aborted for user [${effectiveUserId}]`);
+        if (abortSignal?.aborted) {
+          this.logger.log(`Run harness cancelled by client for user [${effectiveUserId}]`);
+          return true;
+        }
+        if (controller.signal.aborted) {
+          this.logger.warn(`Run harness timed out for user [${effectiveUserId}]`);
+          emit({
+            type: StreamEventType.ERROR,
+            content: `⚠️ 沙箱任务执行超时（超过 ${timeoutMs / 1000} 秒），已自动中止后台任务。请尝试简化任务或检查模型连通性。`,
+          });
           return true;
         }
         throw fetchErr;
       } finally {
-        clearInterval(heartbeatTimer);
         clearTimeout(timeoutId);
         if (abortSignal) {
           abortSignal.removeEventListener('abort', onAbort);
@@ -303,10 +466,29 @@ export class UserSandboxDispatcherService {
         }
       }
 
+      // 解析并提取结构化性能遥测指标（如 <<<DSH_METRICS:...>>>）
+      let executionMetrics: Record<string, unknown> | undefined;
+      const metricsMatch = rawOutput.match(/<<<DSH_METRICS:([\s\S]*?)>>>/);
+      if (metricsMatch && metricsMatch[1]) {
+        try {
+          executionMetrics = JSON.parse(metricsMatch[1].trim());
+        } catch {
+          // 忽略非法格式指标
+        }
+      }
+
       // 二次防御：彻底剔除可能意外残留在正文中的工具调用裸 JSON 与 XML 标签及外发文件标记
       cleanAnswer = this.stripToolCallArtifacts(cleanAnswer);
-      cleanAnswer = cleanAnswer.replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '').trim();
-      telemetrySummary = telemetrySummary.replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '').trim();
+      cleanAnswer = cleanAnswer
+        .replace(/<<<DSH_DELTA:[\s\S]*?>>>/g, '')
+        .replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '')
+        .replace(/<<<DSH_METRICS:[\s\S]*?>>>/g, '')
+        .trim();
+      telemetrySummary = telemetrySummary
+        .replace(/<<<DSH_DELTA:[\s\S]*?>>>/g, '')
+        .replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '')
+        .replace(/<<<DSH_METRICS:[\s\S]*?>>>/g, '')
+        .trim();
 
       // 自动解析沙箱生成/外发的图片文件，转换为内联 Markdown 图片直接呈现在聊天界面
       cleanAnswer = this.embedWorkspaceImagesInAnswer(effectiveUserId, cleanAnswer, outboundFiles);
@@ -336,6 +518,7 @@ export class UserSandboxDispatcherService {
             executed: true,
             durationMs: harnessResult.durationMs,
             exitCode: harnessResult.exitCode,
+            metrics: executionMetrics,
           },
           outboundFiles: outboundFiles.length > 0 ? outboundFiles : undefined,
         },
@@ -347,7 +530,7 @@ export class UserSandboxDispatcherService {
         userContent: body.message,
         assistantContent: cleanAnswer,
         rawAssistantContent: rawOutput,
-        modelId: body.modelId || 'deepseek-chat',
+        modelId: effectiveModel || body.modelId || 'default',
         thinkingEnabled: Boolean(body.config?.thinking),
         ownerUserId: effectiveUserId,
         clientMessageId: body.clientMessageId,

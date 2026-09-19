@@ -17,6 +17,30 @@ import { UserOrgBackupHandler } from './handlers/user-org-backup.handler';
 import { TaskPolicyBackupHandler } from './handlers/task-policy-backup.handler';
 import { WorkspaceBackupHandler } from './handlers/workspace-backup.handler';
 
+if (typeof (BigInt.prototype as any).toJSON !== 'function') {
+  (BigInt.prototype as any).toJSON = function () {
+    return Number(this) <= Number.MAX_SAFE_INTEGER ? Number(this) : this.toString();
+  };
+}
+
+export function serializeBigInts<T>(value: T): T {
+  if (typeof value === 'bigint') {
+    return (value <= Number.MAX_SAFE_INTEGER ? Number(value) : value.toString()) as unknown as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => serializeBigInts(item)) as unknown as T;
+  }
+  if (value !== null && typeof value === 'object') {
+    if (value instanceof Date) return value;
+    const res: Record<string, any> = {};
+    for (const [k, v] of Object.entries(value)) {
+      res[k] = serializeBigInts(v);
+    }
+    return res as T;
+  }
+  return value;
+}
+
 @Injectable()
 export class SystemBackupService {
   private readonly logger = new Logger(SystemBackupService.name);
@@ -32,7 +56,13 @@ export class SystemBackupService {
   ) {}
 
   private computeChecksum(data: unknown): string {
-    const jsonStr = JSON.stringify(data);
+    const jsonStr = JSON.stringify(data, (_, value) =>
+      typeof value === 'bigint'
+        ? value <= Number.MAX_SAFE_INTEGER
+          ? Number(value)
+          : value.toString()
+        : value
+    );
     return `sha256:${crypto.createHash('sha256').update(jsonStr, 'utf-8').digest('hex')}`;
   }
 
@@ -144,7 +174,8 @@ export class SystemBackupService {
     if (selectedModules.has('executionFlowTemplates')) {
       const flowData = await this.templateFlowHandler.exportFlowTemplates();
       modulesData.executionFlowTemplates = flowData;
-      counts.executionFlowTemplates = flowData.executionFlowTemplates.length;
+      counts.executionFlowTemplates =
+        flowData.executionFlowTemplates.length + (flowData.llmOperations?.length || 0);
     }
 
     if (selectedModules.has('userOrganizations')) {
@@ -165,26 +196,40 @@ export class SystemBackupService {
     if (selectedModules.has('workspaces')) {
       const wsData = await this.workspaceHandler.export();
       modulesData.workspaces = wsData;
-      counts.workspaces = wsData.workspaces.length + wsData.documents.length;
+      counts.workspaces =
+        wsData.workspaces.length + ((wsData as any).nodes?.length ?? wsData.documents?.length ?? 0);
     }
+
+    const sanitizedModulesData = serializeBigInts(modulesData);
 
     const manifest: SystemBackupManifest = {
       version: '1.0.0',
       exportedAt: new Date().toISOString(),
       systemVersion: '1.0.0',
-      checksum: this.computeChecksum(modulesData),
+      checksum: this.computeChecksum(sanitizedModulesData),
       counts,
     };
 
     return {
       manifest,
-      modules: modulesData,
+      modules: sanitizedModulesData,
     };
   }
 
   async previewBackup(payload: SystemBackupArchive): Promise<BackupPreviewResult> {
     if (!payload || !payload.manifest || !payload.modules) {
       throw new BadRequestException('无效的备份文件结构，缺少 manifest 或 modules 字段');
+    }
+
+    let valid = true;
+    if (!payload.manifest.checksum) {
+      valid = false;
+    } else {
+      const expectedChecksum = payload.manifest.checksum;
+      const actualChecksum = this.computeChecksum(payload.modules);
+      if (expectedChecksum !== actualChecksum) {
+        valid = false;
+      }
     }
 
     const modulePreviews = await Promise.all([
@@ -230,7 +275,7 @@ export class SystemBackupService {
     }
 
     return {
-      valid: true,
+      valid,
       manifest: payload.manifest,
       modulePreviews: activePreviews,
       summary: {
@@ -248,6 +293,17 @@ export class SystemBackupService {
   ): Promise<BackupImportResult> {
     if (!payload || !payload.manifest || !payload.modules) {
       throw new BadRequestException('无效的备份文件格式');
+    }
+
+    if (!payload.manifest.checksum) {
+      throw new BadRequestException('备份文件缺少必填的 manifest.checksum 字段，拒绝导入');
+    }
+    const expectedChecksum = payload.manifest.checksum;
+    const actualChecksum = this.computeChecksum(payload.modules);
+    if (expectedChecksum !== actualChecksum) {
+      throw new BadRequestException(
+        `备份文件校验和不匹配，文件可能已损坏或被篡改 (期望: ${expectedChecksum}, 实际: ${actualChecksum})`
+      );
     }
 
     const selectedModules = new Set<BackupModuleKey>(
@@ -315,10 +371,18 @@ export class SystemBackupService {
     // 4. Execution Flow Templates & LLM Operations
     if (selectedModules.has('executionFlowTemplates') && payload.modules.executionFlowTemplates) {
       try {
-        importedCounts.executionFlowTemplates = await this.templateFlowHandler.importFlowTemplates(
+        const flowResult = await this.templateFlowHandler.importFlowTemplates(
           payload.modules.executionFlowTemplates,
           strategy
         );
+        importedCounts.executionFlowTemplates = {
+          created: flowResult.created,
+          updated: flowResult.updated,
+          skipped: flowResult.skipped,
+        };
+        if (flowResult.errors && flowResult.errors.length > 0) {
+          errors.push(...flowResult.errors);
+        }
       } catch (err: any) {
         this.logger.error(`Import executionFlowTemplates failed: ${err.message}`, err.stack);
         errors.push(`流程模板导入失败: ${err.message}`);
@@ -380,10 +444,18 @@ export class SystemBackupService {
     // 9. Workspaces & Documents
     if (selectedModules.has('workspaces') && payload.modules.workspaces) {
       try {
-        importedCounts.workspaces = await this.workspaceHandler.import(
+        const wsResult = await this.workspaceHandler.import(
           payload.modules.workspaces,
           strategy
         );
+        importedCounts.workspaces = {
+          created: wsResult.created,
+          updated: wsResult.updated,
+          skipped: wsResult.skipped,
+        };
+        if (wsResult.errors && wsResult.errors.length > 0) {
+          errors.push(...wsResult.errors);
+        }
       } catch (err: any) {
         this.logger.error(`Import workspaces failed: ${err.message}`, err.stack);
         errors.push(`工作空间导入失败: ${err.message}`);

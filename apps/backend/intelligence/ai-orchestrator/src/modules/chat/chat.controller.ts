@@ -14,6 +14,7 @@ import {
   UseGuards,
   UseInterceptors,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -52,6 +53,8 @@ type SseEventPayload = {
 @ApiTags('AI-Chat')
 @Controller('ai')
 export class ChatController {
+  private readonly logger = new Logger(ChatController.name);
+
   constructor(
     private readonly chatConversationService: ChatConversationService,
     private readonly chatMediaService: ChatMediaService,
@@ -288,13 +291,17 @@ export class ChatController {
         );
         const userId = resolvedUser.userId || 'admin';
 
-        const isInternalServiceOrAddin =
+        const shouldBypassSandbox =
           body.sessionId?.startsWith('office-') ||
           (body.config as any)?.source === 'office-addin' ||
           (body.config as any)?.bypassSandbox === true;
 
-        if (!isInternalServiceOrAddin) {
-          // 优先调度用户独立安全沙箱 (DeepSeek Harness) 执行
+        if (!shouldBypassSandbox) {
+          this.logger.log(
+            `Dispatching personal chat request to unified sandbox agent for user [${userId}]`
+          );
+          // 个人模式：统一由个人安全沙箱 (DeepSeek Harness) 执行
+          // 由模型自主感知上下文并自主调用工具（外部检索/代码运行/文件分析等），无工具需求则单轮快速返回
           const handledBySandbox = await this.userSandboxDispatcherService.dispatchPersonalSandbox(
             body,
             (event) => {
@@ -321,6 +328,10 @@ export class ChatController {
             res.end();
             return;
           }
+        } else {
+          this.logger.log(
+            `Sandbox bypassed by configuration for user [${userId}], falling back to direct streamChat`
+          );
         }
 
         // 沙箱未就绪、出现异常或为内部插件/服务分析调用时，直接进行模型流式交互
@@ -410,6 +421,7 @@ export class ChatController {
     }
   }
 
+  @Public()
   @Post('chat/stop')
   @ApiOperation({ summary: '显式停止正在执行的个人沙箱与会话任务' })
   async stopChat(
@@ -608,14 +620,14 @@ export class ChatController {
         mode,
       },
     };
-    const isInternalServiceOrAddin =
+    const shouldBypassSandbox =
       body.sessionId?.startsWith('office-') ||
       (body.config as any)?.source === 'office-addin' ||
       (body.config as any)?.bypassSandbox === true;
 
     if (mode !== 'task') {
-      if (!isInternalServiceOrAddin) {
-        // 个人模式：优先调度用户专属安全沙箱 (DeepSeek Harness) 执行
+      if (!shouldBypassSandbox) {
+        // 个人模式：统一由用户专属安全沙箱 (DeepSeek Harness) 执行
         const events: StreamEvent[] = [];
         let resultAnswer = '';
         let outboundFiles: any[] | undefined = undefined;

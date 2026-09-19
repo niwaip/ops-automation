@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { WorkbenchInboxService } from '@ops/workbench/inbox';
 import {
@@ -6,7 +7,6 @@ import {
   CoordinationTaskStatus,
   CoordinationTaskType,
   WorkbenchCoordinationService,
-  MockHrService,
   OrgWorkflowService,
   CoordinationStageEngineService,
   CoordinationAutomationRunnerService,
@@ -27,7 +27,6 @@ jest.mock('axios', () => ({
 
 describe('WorkbenchCoordinationService', () => {
   let service: WorkbenchCoordinationService;
-  let mockHrService: MockHrService;
   let orgWorkflowService: OrgWorkflowService;
 
   const mockPrisma = {
@@ -61,6 +60,12 @@ describe('WorkbenchCoordinationService', () => {
         Promise.resolve({ id: 'step-auto-review-1', ...args.data })
       ),
     },
+    orgMembership: {
+      findFirst: jest.fn(),
+    },
+    department: {
+      findFirst: jest.fn(),
+    },
   };
 
   const mockInboxService = {
@@ -69,6 +74,13 @@ describe('WorkbenchCoordinationService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockPrisma.orgMembership.findFirst.mockResolvedValue({
+      user: {
+        id: 'u-law01-uuid',
+        username: 'law01',
+        email: 'law01@example.com',
+      },
+    });
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WorkbenchCoordinationService,
@@ -76,7 +88,6 @@ describe('WorkbenchCoordinationService', () => {
         CoordinationStageEngineService,
         CoordinationAutomationRunnerService,
         CoordinationCollaboratorService,
-        MockHrService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: WORKBENCH_PRISMA, useValue: mockPrisma },
         { provide: WorkbenchInboxService, useValue: mockInboxService },
@@ -86,7 +97,6 @@ describe('WorkbenchCoordinationService', () => {
     service = module.get<WorkbenchCoordinationService>(
       WorkbenchCoordinationService
     );
-    mockHrService = module.get<MockHrService>(MockHrService);
     orgWorkflowService = module.get<OrgWorkflowService>(OrgWorkflowService);
   });
 
@@ -197,74 +207,14 @@ describe('WorkbenchCoordinationService', () => {
     });
   });
 
-  it('should return built-in workflow templates including hr.leave.request with schema', () => {
+  it('should return built-in workflow templates including legal.contract.review_flow with schema', () => {
     const templates = service.getWorkflowTemplates();
     expect(templates).toBeInstanceOf(Array);
-    const leaveTemplate = templates.find((t) => t.id === 'hr.leave.request');
-    expect(leaveTemplate).toBeDefined();
-    expect(leaveTemplate?.name).toBe('员工请假审批');
-    expect(leaveTemplate?.category).toBe('hr');
-    expect(leaveTemplate?.paramsSchema.required).toContain('leaveType');
-    expect(leaveTemplate?.paramsSchema.required).toContain('startTime');
-    expect(leaveTemplate?.paramsSchema.required).toContain('endTime');
-    expect(leaveTemplate?.paramsSchema.required).toContain('reason');
-    expect(leaveTemplate?.paramsSchema.properties.leaveType.enum).toContain('事假');
-  });
-
-  it('should call mock HR system when approving hr.leave.request task', async () => {
-    const spySync = jest.spyOn(mockHrService, 'syncLeaveApproval');
-
-    mockPrisma.workbenchInboxItem.findFirst.mockResolvedValue({
-      id: 'inbox-leave-1',
-      title: '[待我承认] [请假审批] 事假 4小时',
-      sourceTitle: '[请假审批] 事假 4小时',
-      unifiedPayload: {
-        taskId: 'coord_leave_123',
-        workflowId: 'hr.leave.request',
-        taskType: 'approval',
-        parameters: {
-          leaveType: '事假',
-          startTime: '2026-09-05 14:00',
-          endTime: '2026-09-05 18:00',
-          durationHours: 4,
-          reason: '去趟医院看门诊',
-        },
-        initiator: { id: 'u-applicant', username: 'alice' },
-        assignee: { id: 'u-manager', username: 'bob' },
-        actions: [],
-      },
-    });
-
-    mockPrisma.user.findUnique.mockResolvedValue({
-      id: 'u-manager',
-      username: 'bob',
-    });
-
-    mockPrisma.workbenchInboxItem.update.mockResolvedValue({});
-    mockPrisma.workbenchInboxItem.create.mockResolvedValue({});
-
-    const result = await service.submitAction('u-manager', 'coord_leave_123', {
-      action: 'approve',
-      comment: '同意请假，注意身体。',
-    });
-
-    expect(result.status).toBe(CoordinationTaskStatus.approved);
-    expect(spySync).toHaveBeenCalledWith(
-      expect.objectContaining({
-        taskId: 'coord_leave_123',
-        applicantName: 'alice',
-        approverName: 'bob',
-        leaveType: '事假',
-        durationHours: 4,
-        reason: '去趟医院看门诊',
-      })
-    );
-    expect(mockPrisma.workbenchInboxItem.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        userId: 'u-applicant',
-        rawContent: expect.stringContaining('人事考勤中心'),
-      }),
-    });
+    const contractTemplate = templates.find((t) => t.id === 'legal.contract.review_flow');
+    expect(contractTemplate).toBeDefined();
+    expect(contractTemplate?.name).toBe('标准合同起草与法务审查闭环流');
+    expect(contractTemplate?.category).toBe('legal');
+    expect(contractTemplate?.paramsSchema.required).toContain('contractTitle');
   });
 
   it('should submit action (complete) for assignment tasks', async () => {
@@ -314,14 +264,14 @@ describe('WorkbenchCoordinationService', () => {
       {
         id: 'inbox-1',
         sourceRefId: 'coord_task_1',
-        sourceTitle: '请假申请',
-        title: '[待我承认] 请假申请',
-        rawContent: '去医院看病',
+        sourceTitle: '合同审查申请',
+        title: '[待我承认] 合同审查申请',
+        rawContent: '合同初稿法务审查',
         createdAt: new Date(),
         updatedAt: new Date(),
         unifiedPayload: {
           taskId: 'coord_task_1',
-          workflowId: 'hr.leave.request',
+          workflowId: 'legal.contract.review_flow',
           status: 'pending',
           taskType: 'approval',
           initiator: { id: 'u-other', username: 'other' },
@@ -331,14 +281,14 @@ describe('WorkbenchCoordinationService', () => {
       {
         id: 'inbox-2',
         sourceRefId: 'coord_task_1', // duplicate inbox item for same task
-        sourceTitle: '请假申请',
-        title: '[协同回执] 请假申请',
+        sourceTitle: '合同审查申请',
+        title: '[协同回执] 合同审查申请',
         rawContent: '已同意',
         createdAt: new Date(),
         updatedAt: new Date(),
         unifiedPayload: {
           taskId: 'coord_task_1',
-          workflowId: 'hr.leave.request',
+          workflowId: 'legal.contract.review_flow',
           status: 'approved',
           taskType: 'approval',
           initiator: { id: 'u-other', username: 'other' },
@@ -350,29 +300,31 @@ describe('WorkbenchCoordinationService', () => {
     const tasks = await service.listTasks('u-current', 'assignee');
     expect(tasks).toHaveLength(1);
     expect(tasks[0].taskId).toBe('coord_task_1');
-    expect(tasks[0].workflowId).toBe('hr.leave.request');
+    expect(tasks[0].workflowId).toBe('legal.contract.review_flow');
   });
 
-  it('should safely resolve non-UUID username or anonymous user without crashing', async () => {
-    // initiator is anonymous -> fallback via findFirst
-    mockPrisma.user.findFirst
-      .mockResolvedValueOnce({
-        id: '22222222-2222-2222-2222-222222222222',
-        username: 'admin',
-        email: 'admin@example.com',
+  it('should reject anonymous user and prevent silent identity hijacking', async () => {
+    await expect(
+      service.createTask('anonymous', {
+        assigneeId: 'admin',
+        title: '测试任务',
+        content: '任务内容',
       })
-      // assignee is username 'admin' -> findFirst by username
-      .mockResolvedValueOnce({
-        id: '22222222-2222-2222-2222-222222222222',
-        username: 'admin',
-        email: 'admin@example.com',
-      });
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('should safely resolve system principal and non-UUID username without crashing', async () => {
+    mockPrisma.user.findFirst.mockResolvedValueOnce({
+      id: '22222222-2222-2222-2222-222222222222',
+      username: 'admin',
+      email: 'admin@example.com',
+    });
 
     mockPrisma.workbenchInboxItem.create.mockResolvedValue({
       id: 'inbox-nda-1',
     });
 
-    const result = await service.createTask('anonymous', {
+    const result = await service.createTask('system', {
       assigneeId: 'admin',
       workflowId: 'legal.nda.generation_and_review_flow',
       title: '腾讯科技 - 商业保密协议 (NDA)',
@@ -389,12 +341,12 @@ describe('WorkbenchCoordinationService', () => {
 
     expect(result.taskId).toMatch(/^coord_/);
     expect(result.status).toBe(CoordinationTaskStatus.pending);
-    expect(result.initiator.username).toBe('admin');
+    expect(result.initiator.username).toBe('system');
     expect(result.assignee.username).toBe('admin');
     expect(mockPrisma.workbenchInboxItem.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: '22222222-2222-2222-2222-222222222222',
-        sourceSender: 'admin',
+        sourceSender: 'system',
         title: expect.stringMatching(/\[待(?:担当确认|我承认|发送)\] 腾讯科技 - 商业保密协议 \(NDA\)/),
       }),
     });
@@ -1432,26 +1384,6 @@ describe('WorkbenchCoordinationService', () => {
         }),
       });
     });
-
-  describe('MockHrService', () => {
-    it('should sync leave approval and return tracking number with detail', async () => {
-      const res = await mockHrService.syncLeaveApproval({
-        taskId: 'coord_leave_mock',
-        applicantName: 'alice',
-        approverName: 'bob',
-        leaveType: '事假',
-        startTime: '2026-09-05 14:00',
-        endTime: '2026-09-05 18:00',
-        durationHours: 4,
-        reason: '门诊看病',
-      });
-      expect(res.success).toBe(true);
-      expect(res.trackingNumber).toMatch(/^HR-LEAVE-/);
-      expect(res.detail.applicant).toBe('alice');
-      expect(res.detail.approver).toBe('bob');
-      expect(res.detail.status).toBe('RECORDED_AND_DEDUCTED');
-    });
-  });
 
   describe('CoordinationAttachmentStorageService', () => {
     it('should save attachment and retrieve it successfully', async () => {

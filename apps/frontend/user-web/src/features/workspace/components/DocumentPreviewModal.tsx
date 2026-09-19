@@ -1,6 +1,8 @@
 import {
   CopyOutlined,
+  DesktopOutlined,
   DownloadOutlined,
+  ExportOutlined,
   FileExcelOutlined,
   FileOutlined,
   FilePdfOutlined,
@@ -48,7 +50,8 @@ function getFileType(node: WorkspaceNode | null) {
   if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp'].includes(ext)) return { type: 'image', ext };
   if (['csv', 'tsv'].includes(ext)) return { type: 'csv', ext };
   if (['json'].includes(ext)) return { type: 'json', ext };
-  if (['ts', 'tsx', 'js', 'jsx', 'py', 'sh', 'yaml', 'yml', 'sql', 'html', 'css'].includes(ext)) {
+  if (['html', 'htm'].includes(ext) || node.mimeType === 'text/html') return { type: 'html', ext };
+  if (['ts', 'tsx', 'js', 'jsx', 'py', 'sh', 'yaml', 'yml', 'sql', 'css'].includes(ext)) {
     return { type: 'code', ext };
   }
   return { type: 'text', ext };
@@ -59,6 +62,7 @@ function getFileIcon(type: string) {
   if (type === 'pdf') return <FilePdfOutlined style={{ color: '#ff4d4f' }} />;
   if (type === 'image') return <PictureOutlined style={{ color: '#13c2c2' }} />;
   if (type === 'csv') return <FileExcelOutlined style={{ color: '#52c41a' }} />;
+  if (type === 'html') return <DesktopOutlined style={{ color: '#fa8c16' }} />;
   return <FileOutlined style={{ color: '#8c8c8c' }} />;
 }
 
@@ -86,7 +90,7 @@ export function DocumentPreviewModal({
       }
       return;
     }
-    if (fileType === 'markdown') {
+    if (fileType === 'markdown' || fileType === 'html') {
       setViewMode('rendered');
     } else if (fileType === 'pdf') {
       setViewMode('native');
@@ -132,6 +136,14 @@ export function DocumentPreviewModal({
     }
   };
 
+  // 在新窗口运行 HTML
+  const handleOpenInNewTab = () => {
+    if (!previewData?.content) return;
+    const blob = new Blob([previewData.content], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  };
+
   // CSV 简单解析
   const csvParsed = useMemo(() => {
     if (fileType !== 'csv' || !previewData?.content) return null;
@@ -166,13 +178,15 @@ export function DocumentPreviewModal({
             <span style={{ maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
               {node?.name}
             </span>
-            <Tag color={fileType === 'markdown' ? 'blue' : fileType === 'pdf' ? 'red' : 'cyan'}>
+            <Tag color={fileType === 'markdown' ? 'blue' : fileType === 'pdf' ? 'red' : fileType === 'html' ? 'orange' : 'cyan'}>
               {fileType === 'markdown'
                 ? 'Markdown'
                 : fileType === 'pdf'
                 ? 'PDF 文档'
                 : fileType === 'csv'
                 ? 'CSV 表格'
+                : fileType === 'html'
+                ? 'HTML 交互应用'
                 : fileType === 'image'
                 ? '图像'
                 : (ext || '文本').toUpperCase()}
@@ -188,6 +202,17 @@ export function DocumentPreviewModal({
                 onChange={(val) => setViewMode(val as string)}
                 options={[
                   { label: '渲染视图', value: 'rendered' },
+                  { label: '源码视图', value: 'raw' },
+                ]}
+              />
+            )}
+            {fileType === 'html' && (
+              <Segmented
+                size="small"
+                value={viewMode}
+                onChange={(val) => setViewMode(val as string)}
+                options={[
+                  { label: '页面运行', value: 'rendered' },
                   { label: '源码视图', value: 'raw' },
                 ]}
               />
@@ -236,6 +261,11 @@ export function DocumentPreviewModal({
             {rawText && (
               <Button icon={<CopyOutlined />} onClick={handleCopy}>
                 复制文本
+              </Button>
+            )}
+            {fileType === 'html' && rawText && (
+              <Button icon={<ExportOutlined />} onClick={handleOpenInNewTab}>
+                在新窗口运行
               </Button>
             )}
             <Button
@@ -397,8 +427,31 @@ export function DocumentPreviewModal({
               </div>
             )}
 
-            {/* 8. 通用代码与纯文本 */}
-            {!['markdown', 'pdf', 'image', 'csv'].includes(fileType) && (
+            {/* 8. HTML 交互页面视图 */}
+            {fileType === 'html' && viewMode === 'rendered' && (
+              <iframe
+                srcDoc={rawText}
+                title={node?.name || 'HTML Preview'}
+                style={{
+                  width: '100%',
+                  height: isFullscreen ? '80vh' : '68vh',
+                  border: 'none',
+                  borderRadius: 8,
+                  backgroundColor: '#ffffff',
+                }}
+                sandbox="allow-scripts allow-same-origin allow-modals allow-popups allow-forms"
+              />
+            )}
+
+            {/* 9. HTML 源码视图 */}
+            {fileType === 'html' && viewMode === 'raw' && (
+              <div className={styles['preview-raw']}>
+                {rawText || '暂无内容'}
+              </div>
+            )}
+
+            {/* 10. 通用代码与纯文本 */}
+            {!['markdown', 'pdf', 'image', 'csv', 'html'].includes(fileType) && (
               <div className={styles['preview-raw']}>
                 {rawText || '暂无内容'}
               </div>

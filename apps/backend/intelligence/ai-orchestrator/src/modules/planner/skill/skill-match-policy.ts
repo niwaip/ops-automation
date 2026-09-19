@@ -10,10 +10,10 @@ export function formatNoMatchingSkillMessage(userInput?: string): string {
       '该请求为 `@` 人员协同指令。协同任务已作为固定工作流派发至目标成员的 GTD 收件箱，无需匹配 AI 技能。'
     );
   }
-  if (/(ppt|演示文稿|幻灯片|presentation|slides?|做幻灯|生成ppt)/i.test(text)) {
+  if (/(ppt|演示文稿|幻灯片|presentation|slides?|做幻灯|生成ppt|html报告|网页报告|交互式报告)/i.test(text)) {
     return (
       '当前工作模式下未匹配到企业级自动化技能。\n\n' +
-      '💡 **模式指引**：检测到您正在制作 **PPT / 演示文稿**。该能力由专属安全沙箱（DeepSeek Harness + guizang-ppt 设计引擎）提供支持。\n' +
+      '💡 **模式指引**：检测到您正在制作 **PPT / 演示文稿 / HTML报告**。该能力由专属安全沙箱（DeepSeek Harness + guizang-ppt 设计引擎）提供支持。\n' +
       '👉 请在左下方将模式切换为 **【个人模式】** 后重新发送，沙箱将自动为您生成高保真交互式演示文稿并保存至工作区！'
     );
   }

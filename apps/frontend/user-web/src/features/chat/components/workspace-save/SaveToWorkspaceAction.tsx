@@ -67,12 +67,11 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
     return tags;
   }, [message.metadata?.mode, message.metadata?.skillUsed]);
 
-  // 默认归档目录（AI知识候选/YYYY-MM）
+  // 默认归档目录（工作模式保存到任务成果，个人模式保存到沙盒保存内容）
+  const isTaskMode = message.metadata?.mode === 'task' || Boolean(executionId);
   const defaultFolderPath = useMemo(() => {
-    const now = new Date();
-    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    return `AI知识候选/${ym}`;
-  }, []);
+    return isTaskMode ? '工作任务成果 (tasks)' : '沙盒保存内容 (saved)';
+  }, [isTaskMode]);
 
   // 一键异步保存 Mutation，无需用户干预
   const saveMutation = useMutation(
@@ -106,9 +105,13 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
         void queryClient.invalidateQueries('my-workspaces');
         void queryClient.invalidateQueries('workspace-nodes');
 
+        const targetDesc = isTaskMode
+          ? '工作任务成果已保存至个人空间「工作任务成果」目录！'
+          : '文档已保存至个人空间「沙盒保存内容」目录！';
+
         void toast.success(
           <span>
-            文档已保存至个人空间！AI 正在后台自动提炼与归档。
+            {targetDesc} AI 正在后台自动提炼与归档。
             <Button
               type="link"
               size="small"

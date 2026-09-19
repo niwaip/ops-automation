@@ -205,9 +205,23 @@ export class WorkspaceService implements OnModuleInit {
   ): Promise<WorkspaceNodeDto[]> {
     await this.assertAccess(workspaceId, userId, departmentId, 'read', userRoles);
 
-    // 若访问的是个人空间根目录，自动同步沙箱 /knowledge 目录下的新文件
+    // 若访问的是个人空间根目录，自动同步沙箱个人空间目录
     if (!parentId) {
       await this.syncUserSandboxKnowledge(workspaceId, userId);
+    } else {
+      // 增量同步特定子目录
+      try {
+        const currentFolder = await this.prisma.workspaceNode.findUnique({ where: { id: parentId } });
+        if (currentFolder && currentFolder.workspaceId === workspaceId) {
+          if (currentFolder.name.includes('temp') || currentFolder.name.includes('临时工作区')) {
+            await this.syncPhysicalDirToNodeFolder(workspaceId, userId, parentId, 'workspace');
+          } else if (currentFolder.name.includes('saved') || currentFolder.name.includes('沙盒保存内容')) {
+            await this.syncPhysicalDirToNodeFolder(workspaceId, userId, parentId, 'knowledge');
+          }
+        }
+      } catch (err: any) {
+        this.logger.warn(`Failed to incremental sync subfolder ${parentId}: ${err.message}`);
+      }
     }
 
     const nodes = await this.prisma.workspaceNode.findMany({
@@ -219,6 +233,26 @@ export class WorkspaceService implements OnModuleInit {
     });
 
     return nodes.map((node) => this.toNodeDto(node));
+  }
+
+  /**
+   * 按 ID 获取单个节点详情（含摘要与空间信息，供工具或详情页跨目录读取）
+   */
+  public async getNodeById(
+    workspaceId: string,
+    nodeId: string,
+    userId: string,
+    userRoles: string[] = [],
+    departmentId?: string
+  ): Promise<WorkspaceNodeDto> {
+    await this.assertAccess(workspaceId, userId, departmentId, 'read', userRoles);
+    const node = await this.prisma.workspaceNode.findUnique({
+      where: { id: nodeId },
+    });
+    if (!node || node.workspaceId !== workspaceId) {
+      throw new NotFoundException(`未找到指定文件或目录节点: ${nodeId}`);
+    }
+    return this.toNodeDto(node);
   }
 
   /**
@@ -843,52 +877,155 @@ export class WorkspaceService implements OnModuleInit {
   }
 
   /**
-   * 自动同步沙箱个人空间 (/knowledge) 中的持久化文件到 Web 资料空间
+   * 确保个人空间根目录下存在标准子目录：
+   * 1. 临时工作区 (temp) - 映射沙箱 /workspace 临时运行工作目录
+   * 2. 沙盒保存内容 (saved) - 映射沙箱 /knowledge 持久化知识与对话主动保存目录
    */
-  public async syncUserSandboxKnowledge(workspaceId: string, userId: string): Promise<void> {
-    try {
-      const workspace = await this.prisma.workspace.findUnique({
-        where: { id: workspaceId },
+  public async ensureStandardFolder(
+    workspaceId: string,
+    userId: string,
+    folderName: string
+  ): Promise<any> {
+    let folder = await this.prisma.workspaceNode.findFirst({
+      where: {
+        workspaceId,
+        parentId: null,
+        name: folderName,
+        type: 'folder',
+      },
+    });
+
+    if (!folder) {
+      folder = await this.prisma.workspaceNode.create({
+        data: {
+          id: randomUUID(),
+          workspaceId,
+          parentId: null,
+          name: folderName,
+          type: 'folder',
+          createdBy: userId,
+        },
       });
-      if (!workspace || workspace.type !== 'personal' || workspace.ownerUserId !== userId) {
-        return;
-      }
+    }
 
-      const candidates = [
-        process.env.SANDBOX_DATA_ROOT ? path.join(process.env.SANDBOX_DATA_ROOT, 'users', userId, 'knowledge') : null,
-        path.join('/workspace', 'data', 'users', userId, 'knowledge'),
-        path.resolve(process.cwd(), '../../../../data/users', userId, 'knowledge'),
-        path.resolve(process.cwd(), 'data/users', userId, 'knowledge'),
-      ].filter(Boolean) as string[];
+    return folder;
+  }
 
-      let knowledgeDir: string | null = null;
-      for (const cand of candidates) {
-        if (fs.existsSync(cand)) {
-          knowledgeDir = cand;
-          break;
-        }
-      }
+  /**
+   * 将物理磁盘目录文件增量同步到指定的 Workspace 文件夹节点下
+   */
+  public async syncPhysicalDirToNodeFolder(
+    workspaceId: string,
+    userId: string,
+    targetFolderId: string,
+    subDir: 'workspace' | 'knowledge'
+  ): Promise<void> {
+    try {
+      const dirPath = this.getPhysicalUserDir(userId, subDir);
+      if (!dirPath || !fs.existsSync(dirPath)) return;
 
-      if (!knowledgeDir) return;
-
-      const entries = await fs.promises.readdir(knowledgeDir, { withFileTypes: true });
+      const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
 
       for (const entry of entries) {
-        if (entry.name.startsWith('.') || entry.isDirectory() || entry.name === 'skills') {
+        if (
+          entry.name.startsWith('.') ||
+          entry.name === 'skills' ||
+          entry.name === 'node_modules' ||
+          entry.name.endsWith('.tmp')
+        ) {
           continue;
         }
 
-        const filePath = path.join(knowledgeDir, entry.name);
-        const stat = await fs.promises.stat(filePath);
+        const filePath = path.join(dirPath, entry.name);
+        let stat: fs.Stats;
+        try {
+          stat = await fs.promises.stat(filePath);
+        } catch {
+          continue;
+        }
+
+        // 如果是子目录（如 outputs）
+        if (entry.isDirectory()) {
+          if (entry.name === 'outputs') {
+            let subFolder = await this.prisma.workspaceNode.findFirst({
+              where: {
+                workspaceId,
+                parentId: targetFolderId,
+                name: 'outputs',
+                type: 'folder',
+              },
+            });
+            if (!subFolder) {
+              subFolder = await this.prisma.workspaceNode.create({
+                data: {
+                  id: randomUUID(),
+                  workspaceId,
+                  parentId: targetFolderId,
+                  name: 'outputs',
+                  type: 'folder',
+                  createdBy: userId,
+                },
+              });
+            }
+            try {
+              const subEntries = await fs.promises.readdir(filePath, { withFileTypes: true });
+              for (const subEntry of subEntries) {
+                if (subEntry.name.startsWith('.') || subEntry.isDirectory()) continue;
+                const subFilePath = path.join(filePath, subEntry.name);
+                const subStat = await fs.promises.stat(subFilePath);
+                if (!subStat.isFile()) continue;
+
+                const existingSub = await this.prisma.workspaceNode.findFirst({
+                  where: {
+                    workspaceId,
+                    parentId: subFolder.id,
+                    name: subEntry.name,
+                  },
+                });
+
+                const subMime = this.guessMimeType(subEntry.name);
+                if (!existingSub) {
+                  const buffer = await fs.promises.readFile(subFilePath);
+                  const subNodeId = randomUUID();
+                  const storageKey = `personal/${workspaceId}/${subNodeId}_${subEntry.name}`;
+                  await this.storage.putFile(storageKey, buffer);
+                  await this.prisma.workspaceNode.create({
+                    data: {
+                      id: subNodeId,
+                      workspaceId,
+                      parentId: subFolder.id,
+                      name: subEntry.name,
+                      type: 'file',
+                      fileSize: BigInt(subStat.size),
+                      mimeType: subMime,
+                      storagePath: storageKey,
+                      createdBy: userId,
+                    },
+                  });
+                  await this.prisma.workspace.update({
+                    where: { id: workspaceId },
+                    data: { usedBytes: { increment: BigInt(subStat.size) } },
+                  });
+                }
+              }
+            } catch (subErr: any) {
+              this.logger.warn(`Failed to sync subfolder outputs: ${subErr.message}`);
+            }
+          }
+          continue;
+        }
+
         if (!stat.isFile()) continue;
 
         const existing = await this.prisma.workspaceNode.findFirst({
           where: {
             workspaceId,
-            parentId: null,
+            parentId: targetFolderId,
             name: entry.name,
           },
         });
+
+        const mimeType = this.guessMimeType(entry.name);
 
         if (!existing) {
           const buffer = await fs.promises.readFile(filePath);
@@ -896,13 +1033,12 @@ export class WorkspaceService implements OnModuleInit {
           const storageKey = `personal/${workspaceId}/${nodeId}_${entry.name}`;
 
           await this.storage.putFile(storageKey, buffer);
-          const mimeType = this.guessMimeType(entry.name);
 
           await this.prisma.workspaceNode.create({
             data: {
               id: nodeId,
               workspaceId,
-              parentId: null,
+              parentId: targetFolderId,
               name: entry.name,
               type: 'file',
               fileSize: BigInt(stat.size),
@@ -917,15 +1053,17 @@ export class WorkspaceService implements OnModuleInit {
             data: { usedBytes: { increment: BigInt(stat.size) } },
           });
 
-          this.contentIndexer
-            .extractText(buffer, entry.name, mimeType)
-            .then(async (text) => {
-              if (text) {
-                await this.contentIndexer.cacheExtractedText(storageKey, text);
-                await this.digestService.generateAndSaveDigest(nodeId, storageKey, entry.name, mimeType);
-              }
-            })
-            .catch(() => {});
+          if (['text/markdown', 'text/plain', 'application/json', 'text/html'].includes(mimeType)) {
+            this.contentIndexer
+              .extractText(buffer, entry.name, mimeType)
+              .then(async (text) => {
+                if (text) {
+                  await this.contentIndexer.cacheExtractedText(storageKey, text);
+                  await this.digestService.generateAndSaveDigest(nodeId, storageKey, entry.name, mimeType);
+                }
+              })
+              .catch(() => {});
+          }
         } else if (existing.storagePath && BigInt(stat.size) !== existing.fileSize) {
           const buffer = await fs.promises.readFile(filePath);
           await this.storage.putFile(existing.storagePath, buffer);
@@ -944,8 +1082,71 @@ export class WorkspaceService implements OnModuleInit {
         }
       }
     } catch (err: any) {
-      this.logger.warn(`Failed to sync sandbox knowledge for user ${userId}: ${err.message}`);
+      this.logger.warn(`Failed to sync physical dir ${subDir} to folder ${targetFolderId}: ${err.message}`);
     }
+  }
+
+  /**
+   * 自动同步沙箱个人空间目录结构与物理文件：
+   * 1. 确保根目录下有两个标准子目录：「临时工作区 (temp)」与「沙盒保存内容 (saved)」
+   * 2. 迁移根目录下历史旧文件与目录至「沙盒保存内容 (saved)」
+   * 3. 自动增量同步沙箱物理 workspace -> temp，knowledge -> saved
+   */
+  public async syncUserSandboxKnowledge(workspaceId: string, userId: string): Promise<void> {
+    try {
+      const workspace = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+      });
+      if (!workspace || workspace.type !== 'personal' || workspace.ownerUserId !== userId) {
+        return;
+      }
+
+      // 1. 创建或获取三个标准根目录（临时工作区、沙盒保存内容、工作任务成果）
+      const tempFolder = await this.ensureStandardFolder(workspaceId, userId, '临时工作区 (temp)');
+      const savedFolder = await this.ensureStandardFolder(workspaceId, userId, '沙盒保存内容 (saved)');
+      const tasksFolder = await this.ensureStandardFolder(workspaceId, userId, '工作任务成果 (tasks)');
+
+      // 2. 将旧的根级文件或旧文件夹（如 AI知识候选）归拢至「沙盒保存内容 (saved)」
+      const legacyRootNodes = await this.prisma.workspaceNode.findMany({
+        where: {
+          workspaceId,
+          parentId: null,
+          id: { notIn: [tempFolder.id, savedFolder.id, tasksFolder.id] },
+        },
+      });
+
+      for (const legacy of legacyRootNodes) {
+        if (legacy.name === 'AI知识候选' || legacy.type === 'file') {
+          await this.prisma.workspaceNode.update({
+            where: { id: legacy.id },
+            data: { parentId: savedFolder.id },
+          });
+        }
+      }
+
+      // 3. 分别增量同步沙箱中的 workspace 与 knowledge 目录
+      await this.syncPhysicalDirToNodeFolder(workspaceId, userId, tempFolder.id, 'workspace');
+      await this.syncPhysicalDirToNodeFolder(workspaceId, userId, savedFolder.id, 'knowledge');
+    } catch (err: any) {
+      this.logger.warn(`Failed to sync user sandbox knowledge: ${err.message}`);
+    }
+  }
+
+  private getPhysicalUserDir(userId: string, subDir: 'workspace' | 'knowledge'): string | null {
+    const candidates = [
+      process.env.SANDBOX_DATA_ROOT ? path.join(process.env.SANDBOX_DATA_ROOT, 'users', userId, subDir) : null,
+      path.join('/workspace', 'data', 'users', userId, subDir),
+      path.resolve(process.cwd(), '../../../../data/users', userId, subDir),
+      path.resolve(process.cwd(), 'data/users', userId, subDir),
+      path.join('/app', 'data', 'users', userId, subDir),
+    ].filter(Boolean) as string[];
+
+    for (const cand of candidates) {
+      if (fs.existsSync(cand)) {
+        return cand;
+      }
+    }
+    return null;
   }
 
   private guessMimeType(filename: string): string {
@@ -955,11 +1156,17 @@ export class WorkspaceService implements OnModuleInit {
       case '.txt': return 'text/plain';
       case '.docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
       case '.xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case '.pptx': return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
       case '.pdf': return 'application/pdf';
       case '.html': case '.htm': return 'text/html';
       case '.json': return 'application/json';
       case '.csv': return 'text/csv';
       case '.py': return 'text/x-python';
+      case '.png': return 'image/png';
+      case '.jpg': case '.jpeg': return 'image/jpeg';
+      case '.webp': return 'image/webp';
+      case '.gif': return 'image/gif';
+      case '.svg': return 'image/svg+xml';
       default: return 'application/octet-stream';
     }
   }

@@ -33,6 +33,7 @@ import {
   useWorkflowCapabilityOptions,
   resolveCanonicalCapabilityKey,
 } from '../../hooks/useWorkflowCapabilityOptions';
+import { useOrganizationMembers } from '../../hooks/useOrganizationMembers';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -51,15 +52,7 @@ interface OrgStageInspectorProps {
   onDeselect: () => void;
 }
 
-const COMMON_DEPARTMENTS = [
-  '法务部',
-  '财务合规部',
-  '人力资源部',
-  '信息技术与运维部',
-  '商业运营部',
-  '行政总务部',
-  '供应链采购部',
-];
+
 
 export const OrgStageInspector: React.FC<OrgStageInspectorProps> = ({
   selectedStage,
@@ -72,6 +65,7 @@ export const OrgStageInspector: React.FC<OrgStageInspectorProps> = ({
 }) => {
   const { token } = theme.useToken();
   const [collapsed, setCollapsed] = useState(false);
+  const { departmentOptions, memberOptions } = useOrganizationMembers();
 
   const rawCapabilityOrWorkflow =
     selectedStage?.capabilityId ||
@@ -381,7 +375,7 @@ export const OrgStageInspector: React.FC<OrgStageInspectorProps> = ({
                 >
                   <Option value="initiator">业务担当/发起人本人确认 (Initiator)</Option>
                   <Option value="department">按组织部门路由 (如法务部协同池)</Option>
-                  <Option value="specific_user">指定特定承办用户 (如 law01)</Option>
+                  <Option value="specific_user">指定特定承办用户</Option>
                   <Option value="leader">直属业务主管审批 (Leader)</Option>
                   <Option value="role">按角色权限审批 (Role)</Option>
                   <Option value="assignee">发起人自选指派协同人</Option>
@@ -395,15 +389,15 @@ export const OrgStageInspector: React.FC<OrgStageInspectorProps> = ({
                       指定受理部门：
                     </div>
                     <Select
-                      value={selectedStage.approverDepartment || '法务部'}
+                      value={selectedStage.approverDepartment || departmentOptions[0]?.value || '法务部'}
                       onChange={(val) => onUpdateStage({ approverDepartment: val })}
                       style={{ width: '100%' }}
                       showSearch
                     >
-                      {COMMON_DEPARTMENTS.map((dept) => (
-                        <Option key={dept} value={dept}>
+                      {departmentOptions.map((dept) => (
+                        <Option key={dept.value} value={dept.value}>
                           <ApartmentOutlined style={{ marginRight: 4 }} />
-                          {dept}
+                          {dept.label}
                         </Option>
                       ))}
                     </Select>
@@ -412,19 +406,31 @@ export const OrgStageInspector: React.FC<OrgStageInspectorProps> = ({
                     <div style={{ fontSize: 11, color: token.colorTextSecondary, marginBottom: 4 }}>
                       指定该部门承办专员（可选）：
                     </div>
-                    <Select
-                      value={selectedStage.approverUsername}
-                      onChange={(val) => onUpdateStage({ approverUsername: val })}
-                      style={{ width: '100%' }}
-                      showSearch
-                      allowClear
-                      placeholder="留空则按部门成员顺序流转"
-                    >
-                      <Option value="law01">law01 (法务部专员)</Option>
-                      <Option value="law02">law02 (法务部专员)</Option>
-                      <Option value="admin">admin (系统管理员)</Option>
-                      <Option value="test">test (总务部专员)</Option>
-                    </Select>
+                    {(() => {
+                      const deptMembers = memberOptions.filter(
+                        (m) =>
+                          !selectedStage.approverDepartment ||
+                          m.departmentName === selectedStage.approverDepartment
+                      );
+                      const availableMembers = deptMembers;
+                      return (
+                        <Select
+                          value={selectedStage.approverUsername}
+                          onChange={(val) => onUpdateStage({ approverUsername: val })}
+                          style={{ width: '100%' }}
+                          showSearch
+                          allowClear
+                          disabled={availableMembers.length === 0}
+                          placeholder={availableMembers.length > 0 ? "留空则按部门成员顺序流转" : "该部门暂无在职专员"}
+                        >
+                          {availableMembers.map((m) => (
+                            <Option key={m.value} value={m.value}>
+                              {m.label}
+                            </Option>
+                          ))}
+                        </Select>
+                      );
+                    })()}
                   </div>
                 </>
               )}
@@ -435,15 +441,23 @@ export const OrgStageInspector: React.FC<OrgStageInspectorProps> = ({
                     指定具体承办用户：
                   </div>
                   <Select
-                    value={selectedStage.approverUsername || 'law01'}
+                    value={selectedStage.approverUsername}
+                    placeholder="选择具体承办用户"
                     onChange={(val) => onUpdateStage({ approverUsername: val })}
                     style={{ width: '100%' }}
                     showSearch
                   >
-                    <Option value="law01">law01 (法务部专员)</Option>
-                    <Option value="law02">law02 (法务部专员)</Option>
-                    <Option value="admin">admin (系统管理员)</Option>
-                    <Option value="test">test (总务部专员)</Option>
+                    {selectedStage.approverUsername &&
+                      !memberOptions.some((m) => m.value === selectedStage.approverUsername) && (
+                        <Option key={selectedStage.approverUsername} value={selectedStage.approverUsername}>
+                          {selectedStage.approverUsername}
+                        </Option>
+                      )}
+                    {memberOptions.map((m) => (
+                      <Option key={m.value} value={m.value}>
+                        {m.label}
+                      </Option>
+                    ))}
                   </Select>
                 </div>
               )}
@@ -618,13 +632,11 @@ export const OrgStageInspector: React.FC<OrgStageInspectorProps> = ({
                 )}
               </div>
 
-              {Boolean(
-                canonicalCapabilityId &&
-                  (canonicalCapabilityId.includes('review') ||
-                    canonicalCapabilityId.includes('reviewer') ||
-                    canonicalCapabilityId.includes('审查') ||
-                    (selectedStage.name || '').includes('审查'))
-              ) ? (
+              {canonicalCapabilityId &&
+              (canonicalCapabilityId.includes('review') ||
+                canonicalCapabilityId.includes('reviewer') ||
+                canonicalCapabilityId.includes('审查') ||
+                (selectedStage.name || '').includes('审查')) ? (
                 <>
                   {/* 专项审查 Prompt */}
                   <div style={{ marginBottom: 8 }}>

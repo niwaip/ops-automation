@@ -3,7 +3,6 @@ import { WorkbenchInboxModule } from '../inbox/workbench-inbox.module';
 import { WorkbenchCoordinationController } from './workbench-coordination.controller';
 import { WorkbenchCoordinationService } from './workbench-coordination.service';
 
-import { MockHrService } from './mock-hr.service';
 import { OrgWorkflowService } from './org-workflow.service';
 import { StageFlowAiDraftService } from './stage-flow-ai-draft.service';
 import { CoordinationAttachmentStorageService } from './coordination-attachment-storage.service';
@@ -19,7 +18,6 @@ import { WorkspaceModule } from '../workspace/workspace.module';
   providers: [
     WorkbenchCoordinationService,
     OrgWorkflowService,
-    MockHrService,
     StageFlowAiDraftService,
     CoordinationAttachmentStorageService,
     CoordinationStageEngineService,
@@ -29,7 +27,6 @@ import { WorkspaceModule } from '../workspace/workspace.module';
   exports: [
     WorkbenchCoordinationService,
     OrgWorkflowService,
-    MockHrService,
     StageFlowAiDraftService,
     CoordinationAttachmentStorageService,
     CoordinationStageEngineService,
