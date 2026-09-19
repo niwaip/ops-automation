@@ -514,8 +514,7 @@ def read_workspace_file(file_path: str, max_chars: int = 15000) -> str:
                 if knowledge_candidates:
                     p = knowledge_candidates[0]
                 else:
-                    available = [f.name for f in Path(WORKSPACE_DIR).iterdir() if f.is_file() and not f.name.startswith(".")]
-                    return f"文件未找到: {file_path} (当前工作区文件列表: {available})"
+                    return f"文件未找到: {file_path}"
 
     suffix = p.suffix.lower()
 
@@ -580,17 +579,49 @@ def read_workspace_file(file_path: str, max_chars: int = 15000) -> str:
         except Exception as e:
             return f"Excel 表格提取失败 ({p.name}): {e}"
 
-    # 3. 检查是否有已提取的同名 .txt
+    # 3. PDF 文档 (.pdf) 原生提取 (基于 pypdf)
+    elif suffix == ".pdf":
+        txt_sibling = p.parent / f"{p.name}.txt"
+        if not txt_sibling.exists():
+            txt_sibling = p.parent / f"{p.stem}.txt"
+        if txt_sibling.exists():
+            try:
+                return f"【PDF 文档 ({p.name}) 提取文本】:\n" + txt_sibling.read_text(encoding="utf-8", errors="ignore")[:max_chars]
+            except Exception:
+                pass
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(str(p))
+            num_pages = len(reader.pages)
+            pages_text = []
+            has_images = False
+            for i, page in enumerate(reader.pages):
+                txt = (page.extract_text() or "").strip()
+                if txt:
+                    pages_text.append(f"--- 第 {i+1} 页 ---\n{txt}")
+                if getattr(page, "images", None) and len(page.images) > 0:
+                    has_images = True
+            combined_text = "\n\n".join(pages_text).strip()
+            if combined_text:
+                return f"【PDF 文档 ({p.name}) 内容提取，共 {num_pages} 页】:\n" + combined_text[:max_chars]
+            elif has_images:
+                return f"【PDF 文档 ({p.name}) 概要】: 共 {num_pages} 页，文档属于扫描版或图片型 PDF（包含嵌入图片对象，无直接文本层）。"
+            else:
+                return f"【PDF 文档 ({p.name}) 概要】: 共 {num_pages} 页，文档为空或未检测到文字内容。"
+        except Exception as e:
+            return f"PDF 文档解析失败 ({p.name}): {e}"
+
+    # 4. 检查是否有已提取的同名 .txt
     txt_sibling = p.parent / f"{p.name}.txt"
     if not txt_sibling.exists():
         txt_sibling = p.parent / f"{p.stem}.txt"
-    if txt_sibling.exists() and suffix in [".pdf", ".docx", ".xlsx", ".pptx", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"]:
+    if txt_sibling.exists() and suffix in [".docx", ".xlsx", ".pptx", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"]:
         try:
             return f"【文件 ({p.name}) 提取文本/视觉识别结果】:\n" + txt_sibling.read_text(encoding="utf-8", errors="ignore")[:max_chars]
         except Exception:
             pass
 
-    # 4. 图片文件 (.jpg, .jpeg, .png, .webp, .gif, .bmp) 视觉识别与解析
+    # 5. 图片文件 (.jpg, .jpeg, .png, .webp, .gif, .bmp) 视觉识别与解析
     if suffix in [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"]:
         return inspect_image(str(p), max_chars=max_chars)
 

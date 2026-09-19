@@ -43,37 +43,60 @@ export class UserSandboxDispatcherService {
     return target;
   }
 
-  syncFilesToSandboxWorkspace(userId: string, files?: ChatUploadedFileDTO[]): void {
-    if (!files || files.length === 0) return;
-    try {
-      const userWorkspaceDir = this.getWorkspaceDir(userId);
-      for (const file of files) {
-        const destPath = path.join(userWorkspaceDir, file.fileName);
-        if (file.filePath && fs.existsSync(file.filePath)) {
-          fs.copyFileSync(file.filePath, destPath);
-          try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+  syncFilesToSandboxWorkspace(
+    userId: string,
+    files?: ChatUploadedFileDTO[],
+    sessionId?: string,
+    sessionFiles?: string[]
+  ): void {
+    const userWorkspaceDir = this.getWorkspaceDir(userId);
+    if (files && files.length > 0) {
+      try {
+        for (const file of files) {
+          const destPath = path.join(userWorkspaceDir, file.fileName);
+          if (file.filePath && fs.existsSync(file.filePath)) {
+            fs.copyFileSync(file.filePath, destPath);
+            try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
 
-          // 如果存在提取的文本文件，也一并同步为 .txt 与 .extracted.txt
-          const extractedSrc = `${file.filePath}.extracted.txt`;
-          if (fs.existsSync(extractedSrc)) {
-            const destTxt = path.join(userWorkspaceDir, `${file.fileName}.txt`);
-            fs.copyFileSync(extractedSrc, destTxt);
-            try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
-          }
-        } else if (file.content) {
-          fs.writeFileSync(destPath, Buffer.from(file.content, 'base64'));
-          try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+            // 如果存在提取的文本文件，也一并同步为 .txt 与 .extracted.txt
+            const extractedSrc = `${file.filePath}.extracted.txt`;
+            if (fs.existsSync(extractedSrc)) {
+              const destTxt = path.join(userWorkspaceDir, `${file.fileName}.txt`);
+              fs.copyFileSync(extractedSrc, destTxt);
+              try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+            }
+          } else if (file.content) {
+            fs.writeFileSync(destPath, Buffer.from(file.content, 'base64'));
+            try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
 
-          if (file.extractedText) {
-            const destTxt = path.join(userWorkspaceDir, `${file.fileName}.txt`);
-            fs.writeFileSync(destTxt, file.extractedText, 'utf-8');
-            try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+            if (file.extractedText) {
+              const destTxt = path.join(userWorkspaceDir, `${file.fileName}.txt`);
+              fs.writeFileSync(destTxt, file.extractedText, 'utf-8');
+              try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+            }
           }
+          this.logger.log(`Synced attached file [${file.fileName}] to user sandbox workspace: ${destPath}`);
         }
-        this.logger.log(`Synced attached file [${file.fileName}] to user sandbox workspace: ${destPath}`);
+      } catch (e: any) {
+        this.logger.warn(`Failed to sync attached files to sandbox workspace: ${e.message}`);
       }
-    } catch (e: any) {
-      this.logger.warn(`Failed to sync attached files to sandbox workspace: ${e.message}`);
+    }
+
+    // 将会话关联的有效附件清单持久化到工作区 session 目录，保证沙箱环境上下文隔离
+    if (sessionId && sessionFiles && sessionFiles.length > 0) {
+      try {
+        const cleanSid = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const sessionsDir = path.join(userWorkspaceDir, '.dsh', 'sessions');
+        if (!fs.existsSync(sessionsDir)) {
+          fs.mkdirSync(sessionsDir, { recursive: true });
+          try { fs.chmodSync(sessionsDir, 0o777); } catch { /* best-effort */ }
+        }
+        const attFile = path.join(sessionsDir, `${cleanSid}.attachments.json`);
+        fs.writeFileSync(attFile, JSON.stringify(sessionFiles, null, 2), 'utf-8');
+        try { fs.chmodSync(attFile, 0o666); } catch { /* best-effort */ }
+      } catch (e: any) {
+        this.logger.warn(`Failed to persist session attachments index: ${e.message}`);
+      }
     }
   }
 
@@ -127,47 +150,73 @@ export class UserSandboxDispatcherService {
     });
 
     try {
-      // 1. 同步附加文件到沙箱工作区，确保 dsh 和用户脚本能直接访问
-      this.syncFilesToSandboxWorkspace(effectiveUserId, body.files);
-
-      // 2. 构造面向沙箱的高保真 Prompt（附带文件位置与文本预览）
-      let promptForSandbox = body.message;
-      if (body.files && body.files.length > 0) {
-        const fileList = body.files.map((f) => f.fileName).join(', ');
-        promptForSandbox =
-          `用户附加了文件：${fileList}。\n` +
-          `文件已放入当前沙箱 /workspace/ 目录下（可直接使用内置 read_file / vision_inspect 工具进行内容解析或视觉识别）。\n\n`;
-        for (const f of body.files) {
-          if (f.extractedText) {
-            const preview = f.extractedText.slice(0, 4000);
-            promptForSandbox += `【文件 ${f.fileName} 提取文本预览】：\n${preview}\n\n`;
-          }
+      // 1. 获取当前会话上下文历史并收集属于当前会话的全部有效附件（会话作用域隔离）
+      let recentHistory: Array<{ role: string; content: string }> = [];
+      const sessionAttachedFiles: string[] = [];
+      const addSessionFile = (name?: string) => {
+        if (!name) return;
+        const clean = path.basename(name).trim();
+        if (clean && !sessionAttachedFiles.includes(clean)) {
+          sessionAttachedFiles.push(clean);
         }
-        promptForSandbox += `用户指令：${body.message}`;
+      };
+
+      if (body.files && Array.isArray(body.files)) {
+        for (const f of body.files) {
+          addSessionFile(f.fileName);
+        }
       }
 
-      // 获取当前会话上下文历史（保留最近 4 条历史记录并严格限制单条长度，避免模型首字推理超负荷）
-      let recentHistory: Array<{ role: string; content: string }> = [];
       try {
         const historyItems = await this.chatConversationService.getChatHistory(
           sessionId,
           effectiveUserId
         );
-        recentHistory = (historyItems || [])
-          .slice(-4)
-          .filter((item) => item.role === 'user' || item.role === 'assistant')
-          .map((item) => {
-            let contentStr = typeof item.content === 'string' ? item.content : JSON.stringify(item.content);
-            if (contentStr.length > 1000) {
-              contentStr = contentStr.slice(0, 1000) + '...[历史内容截断]';
+        if (historyItems && Array.isArray(historyItems)) {
+          for (const item of historyItems) {
+            const metaFiles = (item as any).metadata?.files;
+            if (Array.isArray(metaFiles)) {
+              for (const mf of metaFiles) {
+                const fn = typeof mf === 'string' ? mf : (mf as any)?.fileName;
+                addSessionFile(fn);
+              }
             }
-            return {
-              role: item.role,
-              content: contentStr,
-            };
-          });
+          }
+
+          recentHistory = historyItems
+            .slice(-4)
+            .filter((item) => item.role === 'user' || item.role === 'assistant')
+            .map((item) => {
+              let contentStr = typeof item.content === 'string' ? item.content : JSON.stringify(item.content);
+              if (contentStr.length > 1000) {
+                contentStr = contentStr.slice(0, 1000) + '...[历史内容截断]';
+              }
+              return {
+                role: item.role,
+                content: contentStr,
+              };
+            });
+        }
       } catch (histErr: any) {
         this.logger.warn(`Failed to retrieve chat history for session [${sessionId}]: ${histErr.message}`);
+      }
+
+      // 2. 同步本轮附加文件到沙箱工作区并写入当前会话附件索引
+      this.syncFilesToSandboxWorkspace(effectiveUserId, body.files, sessionId, sessionAttachedFiles);
+
+      // 3. 构造面向沙箱的高保真 Prompt（明确会话附件清单，严禁无意注入触发词）
+      let promptForSandbox = body.message;
+      if (sessionAttachedFiles.length > 0) {
+        let prefix = `【当前会话有效附件清单】: ${sessionAttachedFiles.join(', ')}\n`;
+        if (body.files && body.files.length > 0) {
+          for (const f of body.files) {
+            if (f.extractedText) {
+              const preview = f.extractedText.slice(0, 3000);
+              prefix += `【本轮附件 ${f.fileName} 提取文本预览】:\n${preview}\n\n`;
+            }
+          }
+        }
+        promptForSandbox = `${prefix}用户指令：${body.message}`;
       }
 
       // 立即向前端发送沙箱连接状态，消除白屏与挂起感
@@ -217,6 +266,7 @@ export class UserSandboxDispatcherService {
             userId: effectiveUserId,
             prompt: promptForSandbox,
             sessionId,
+            files: sessionAttachedFiles,
             history: recentHistory,
             webSearch: Boolean(body.config?.webSearch),
             model: body.modelId || 'deepseek-chat',

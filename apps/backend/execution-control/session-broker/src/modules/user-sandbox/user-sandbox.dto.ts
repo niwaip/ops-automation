@@ -123,4 +123,13 @@ export class RunHarnessDto {
   @ApiPropertyOptional({ description: '执行超时时间(毫秒)', default: 300000 })
   @IsOptional()
   timeoutMs?: number;
+
+  @ApiPropertyOptional({
+    description: '当前会话绑定的附件文件名列表',
+    type: [String],
+    example: ['1.pdf'],
+  })
+  @IsOptional()
+  @IsArray()
+  files?: string[];
 }

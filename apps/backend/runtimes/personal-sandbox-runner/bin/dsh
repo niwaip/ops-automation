@@ -53,6 +53,7 @@ def main():
     parser_run.add_argument("--web-search", "-s", action="store_true", help="Enable internet search retrieval")
     parser_run.add_argument("--model", "-m", default="deepseek-chat", help="Model name (default: deepseek-chat)")
     parser_run.add_argument("--session-id", default=None, help="Session identifier for multi-turn context")
+    parser_run.add_argument("--files", default=None, help="Comma-separated list of session-scoped attachment filenames")
     parser_run.set_defaults(func=cmd_run)
 
     parser_exec = subparsers.add_parser("exec", help="Execute shell command inside workspace")

@@ -266,4 +266,49 @@ export class UserSandboxStorageService {
       this.logger.warn(`Failed to persist session history for sandbox: ${err.message}`);
     }
   }
+
+  /**
+   * 将会话关联的附件清单持久化至工作区 session 存储目录中
+   */
+  writeSessionAttachments(
+    userId: string,
+    sessionId: string,
+    files: string[]
+  ): void {
+    if (!Array.isArray(files) || files.length === 0) {
+      return;
+    }
+    const sanitizedSessionId = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const sanitizedUser = this.sanitizeUserId(userId);
+    const localWorkspace = path.join(this.localProjectRoot, 'data', 'users', sanitizedUser, 'workspace');
+
+    try {
+      const validFiles = files
+        .filter((f) => typeof f === 'string' && f.trim().length > 0)
+        .map((f) => path.basename(f.trim()));
+
+      if (validFiles.length === 0) {
+        return;
+      }
+
+      const sessionsDir = path.join(localWorkspace, '.dsh', 'sessions');
+      if (!fs.existsSync(sessionsDir)) {
+        fs.mkdirSync(sessionsDir, { recursive: true });
+        try {
+          fs.chmodSync(sessionsDir, 0o777);
+        } catch {
+          // best-effort permissions for container mounting
+        }
+      }
+      const attFile = path.join(sessionsDir, `${sanitizedSessionId}.attachments.json`);
+      fs.writeFileSync(attFile, JSON.stringify(validFiles, null, 2), 'utf-8');
+      try {
+        fs.chmodSync(attFile, 0o666);
+      } catch {
+        // best-effort permissions for container mounting
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to persist session attachments for sandbox: ${err.message}`);
+    }
+  }
 }

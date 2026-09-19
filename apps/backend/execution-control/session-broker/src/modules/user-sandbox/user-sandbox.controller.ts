@@ -152,6 +152,7 @@ export class UserSandboxController {
       sessionId: dto.sessionId,
       history: dto.history,
       timeoutMs: dto.timeoutMs,
+      files: dto.files,
     });
   }
 

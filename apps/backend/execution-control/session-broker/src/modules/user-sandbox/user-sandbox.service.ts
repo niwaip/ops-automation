@@ -204,6 +204,7 @@ export class UserSandboxService implements OnModuleInit, OnModuleDestroy {
       sessionId?: string;
       history?: Array<{ role: string; content: string }>;
       timeoutMs?: number;
+      files?: string[];
     }
   ): Promise<UserSandboxHarnessResult> {
     return this.harnessService.runHarness(

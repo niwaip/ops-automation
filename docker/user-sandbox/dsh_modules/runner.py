@@ -173,23 +173,59 @@ def cmd_run(args):
         "5. Output clean, beautifully structured, accurate Chinese Markdown. Never leave raw XML or tool_call tags in the final answer."
     )
 
+    # 1. 解析当前会话绑定的有效附件列表（会话作用域隔离，彻底杜绝工作区历史文件污染）
+    session_files = []
+    raw_files = getattr(args, "files", None)
+    if raw_files:
+        session_files = [f.strip() for f in str(raw_files).split(",") if f.strip()]
+    elif session_id:
+        clean_sid = re.sub(r'[^a-zA-Z0-9_-]', '_', session_id)
+        att_file = Path(WORKSPACE_DIR) / ".dsh" / "sessions" / f"{clean_sid}.attachments.json"
+        if att_file.exists():
+            try:
+                with open(att_file, "r", encoding="utf-8") as f:
+                    loaded_att = json.load(f)
+                    if isinstance(loaded_att, list):
+                        for item in loaded_att:
+                            if isinstance(item, str) and item.strip():
+                                session_files.append(item.strip())
+                            elif isinstance(item, dict) and "fileName" in item:
+                                session_files.append(str(item["fileName"]).strip())
+            except Exception:
+                pass
+
     user_parts = [f"[User Request]:\n{prompt}"]
 
-    # 自动探测并注入用户在 prompt 中提及的工作区附加文件内容（如 docx, xlsx, txt, 图片等）
     file_context = ""
+    # 严格限定仅自动加载当前会话绑定的附件内容
+    for fname in session_files:
+        fpath = Path(WORKSPACE_DIR) / fname
+        if fpath.exists() and fpath.is_file():
+            extracted = read_workspace_file(fname)
+            if extracted and not extracted.startswith("文件未找到"):
+                clipped = extracted[:3500] + ("\n...[文件过长已截断]" if len(extracted) > 3500 else "")
+                file_context += f"\n\n[Attached File Content - {fname}]:\n{clipped}"
+
+    # 如果用户在提示词中显式提及了特定工作区文件名（精确匹配完整文件名），按需作为参考文件加载
     if os.path.exists(WORKSPACE_DIR):
         for item in sorted(Path(WORKSPACE_DIR).iterdir()):
-            if item.is_file() and not item.name.startswith("."):
-                is_mentioned = (
-                    item.name in prompt or
-                    (len(item.stem) >= 3 and item.stem in prompt) or
-                    (item.suffix.lower() in [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"] and any(k in prompt for k in ["图", "看", "照", "分析", "识别", "这", "image", "pic", "photo"]))
-                )
-                if is_mentioned:
+            if item.is_file() and not item.name.startswith(".") and item.name not in session_files:
+                if item.name in prompt:
                     extracted = read_workspace_file(item.name)
                     if extracted and not extracted.startswith("文件未找到"):
                         clipped = extracted[:3500] + ("\n...[文件过长已截断]" if len(extracted) > 3500 else "")
-                        file_context += f"\n\n[Attached File Content - {item.name}]:\n{clipped}"
+                        file_context += f"\n\n[Referenced Workspace File - {item.name}]:\n{clipped}"
+
+    if session_files:
+        user_parts.append(
+            f"[Session Attachments]: 当前会话有效附件为: {', '.join(session_files)}。"
+            "除此列表以外的工作区文件为沙箱历史遗留或系统环境文件，绝不是本次会话的附件。"
+        )
+    else:
+        user_parts.append(
+            "[Session Attachments]: 当前会话用户未上传任何附件。"
+            "若用户询问“附件是什么”或查询当前上传的文件，请直接明确告知当前会话未上传附件，切勿调用 bash 或工具扫描工作区历史遗留文件。"
+        )
     if file_context:
         user_parts.append(file_context.strip())
 

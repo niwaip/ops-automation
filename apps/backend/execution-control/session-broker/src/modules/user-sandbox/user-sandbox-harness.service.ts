@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Writable } from 'stream';
 import { StringDecoder } from 'string_decoder';
+import * as path from 'path';
 import {
   UserSandboxExecResult,
   UserSandboxHarnessResult,
@@ -159,6 +160,7 @@ export class UserSandboxHarnessService {
       sessionId?: string;
       history?: Array<{ role: string; content: string }>;
       timeoutMs?: number;
+      files?: string[];
     },
     customExecutor?: SandboxExecutorFn
   ): Promise<UserSandboxHarnessResult> {
@@ -169,7 +171,20 @@ export class UserSandboxHarnessService {
       this.storageService.writeSessionHistory(userId, sanitizedSessionId, options.history);
     }
 
+    // 若传入了会话关联附件列表，委托 storageService 写入 session 附件索引
+    if (options?.files && Array.isArray(options.files) && options.files.length > 0) {
+      this.storageService.writeSessionAttachments(userId, sanitizedSessionId, options.files);
+    }
+
     const dshCmd = ['dsh', 'run', prompt, '--session-id', sanitizedSessionId];
+    if (options?.files && options.files.length > 0) {
+      const cleanFiles = options.files
+        .map((f) => path.basename(f.trim()))
+        .filter(Boolean);
+      if (cleanFiles.length > 0) {
+        dshCmd.push('--files', cleanFiles.join(','));
+      }
+    }
     if (options?.webSearch) {
       dshCmd.push('--web-search');
     }
