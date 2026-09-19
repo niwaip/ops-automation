@@ -28,6 +28,143 @@ CITY_PINYIN = {
     "乌鲁木齐": "Urumqi", "拉萨": "Lhasa", "香港": "Hong_Kong", "澳门": "Macau", "台北": "Taipei"
 }
 
+SANDBOX_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "weather",
+            "description": "查询指定城市或地区的实时气象、气温、风力及多日天气预报",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {
+                        "type": "string",
+                        "description": "城市中文名称或拼音，例如 '北京', '上海', '深圳', 'Guangzhou'"
+                    }
+                },
+                "required": ["city"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_search",
+            "description": "使用联网搜索引擎检索实时新闻、事实数据、最新热点及技术文档",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "搜索关键词或短语"
+                    }
+                },
+                "required": ["query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "fetch_page",
+            "description": "读取并提取公开网页或 URL 的正文内容（Markdown 格式）",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "网页 URL 地址，例如 'https://example.com'"
+                    }
+                },
+                "required": ["url"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_file",
+            "description": "读取沙箱工作区或知识库中的文件内容（支持代码文件、文本、markdown、docx、xlsx、pdf、json 等）",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "文件路径或文件名，例如 'report.md' 或 'src/index.ts'"
+                    }
+                },
+                "required": ["file_path"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "bash",
+            "description": "在沙箱隔离 Linux 环境执行 Shell 命令行指令（如 python3, curl, jq, git, cat 等）",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "cmd": {
+                        "type": "string",
+                        "description": "要执行的 Shell 命令行指令"
+                    }
+                },
+                "required": ["cmd"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scan_knowledge",
+            "description": "扫描并读取挂载的个人知识库 (/knowledge) 中的参考文档与记忆",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_skill",
+            "description": "读取系统专业技能指南或 PPT 设计规范模板",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "skill_name": {
+                        "type": "string",
+                        "description": "技能名称，例如 'guizang-ppt'"
+                    }
+                },
+                "required": ["skill_name"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "send_file",
+            "description": "将沙箱生成的文件直接推送/发送到用户的即时通讯（微信/网页）客户端",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "要发送的文件路径或文件名"
+                    },
+                    "comment": {
+                        "type": "string",
+                        "description": "发送给用户的留言或说明"
+                    }
+                },
+                "required": ["file_path"]
+            }
+        }
+    }
+]
+
 
 def fetch_weather(query_or_city: str) -> str:
     """Fetches high-accuracy real-time weather and 3-day forecast via structured weather API"""

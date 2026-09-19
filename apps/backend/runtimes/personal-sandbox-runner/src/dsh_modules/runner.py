@@ -13,7 +13,7 @@ from pathlib import Path
 
 from .config import WORKSPACE_DIR, KNOWLEDGE_DIR, CUSTOM_SKILL_DIR, SKILL_DIR, print_banner
 from .skills import get_available_skills, read_skill
-from .tools import scan_personal_knowledge, perform_web_search, read_workspace_file, execute_tool
+from .tools import scan_personal_knowledge, perform_web_search, read_workspace_file, execute_tool, SANDBOX_TOOLS
 from .llm import call_model_proxy, parse_tool_calls, clean_output, is_promising_action
 
 
@@ -30,15 +30,8 @@ def cmd_run(args):
     is_knowledge_intent = any(k in prompt.lower() for k in knowledge_keywords)
     knowledge_context = scan_personal_knowledge() if is_knowledge_intent else ""
 
-    # 扩展的实时意图嗅探 (Web 搜索)
-    search_keywords = [
-        "搜索", "新闻", "最新", "热点", "热搜", "今天", "查", "查看",
-        "榜", "天气", "行情", "search", "news", "trending", "trend",
-        "b站", "bilibili", "微博", "知乎", "热度", "最高", "排行",
-        "最火", "热门", "推荐", "推荐下", "插件", "谁", "哪些", "多少", "评测",
-        "现在", "目前"
-    ]
-    is_search_intent = args.web_search or any(k in prompt for k in search_keywords)
+    # 仅当显式勾选了联网开关或用户以 /search 开头时触发前置搜索，其余查询由模型自主 ReAct 调用工具
+    is_search_intent = bool(args.web_search) or prompt.strip().startswith("/search ")
 
     session_id = getattr(args, "session_id", None)
     history_file = None
@@ -147,48 +140,37 @@ def cmd_run(args):
     system_prompt = (
         "You are DeepSeek Harness (dsh), an autonomous intelligence agent running directly inside the user's isolated Linux sandbox container.\n\n"
         "【Environment Context】:\n"
-        "- Container: Standard Linux Sandbox\n"
-        "- User: sandbox (UID: 1001, non-root, immutable core system)\n"
-        "- Mode: personal (Work-related enterprise workflows are strictly isolated)\n"
+        "- Container: Standard Linux Sandbox (User: sandbox, non-root)\n"
         f"- Workspace: {WORKSPACE_DIR} (read-write current task workspace)\n"
-        f"- Knowledge Space: {KNOWLEDGE_DIR} (read-write personal space for long-term deliverables, documents, reports, and custom skills)\n"
-        f"- Custom Skills: {CUSTOM_SKILL_DIR} (user-defined skills created with skill-creator)\n"
-        f"- Certified Skills & Templates: {SKILL_DIR} (read-only system design systems & productivity engines)\n\n"
+        f"- Knowledge Space: {KNOWLEDGE_DIR} (read-write deliverables, documents, reports, custom skills)\n\n"
         "【Available Tools in Sandbox】:\n"
         "You have direct access to execute the following tools within the sandbox when you need fresh data, computation, or verification:\n"
         "1. `weather`: Query real-time weather and 3-day forecast for any city.\n"
         "   Call format: <tool_call>{\"name\": \"weather\", \"arguments\": {\"city\": \"城市名\"}}</tool_call>\n"
-        "2. `web_search`: Search the live web for up-to-date information, news, trending topics (powered by modsearch).\n"
+        "2. `web_search`: Search the live web for up-to-date information, news, trending topics.\n"
         "   Call format: <tool_call>{\"name\": \"web_search\", \"arguments\": {\"query\": \"搜索关键词\"}}</tool_call>\n"
-        "3. `fetch_page`: Read and extract content from any live webpage or URL as clean Markdown/text (e.g. GitHub Trending, HackerNews, blogs, news, documentation).\n"
+        "3. `fetch_page`: Read and extract content from any live webpage or URL as clean Markdown/text.\n"
         "   Call format: <tool_call>{\"name\": \"fetch_page\", \"arguments\": {\"url\": \"https://...\"}}</tool_call>\n"
-        "4. `read_file`: Read and parse any file in /workspace or /knowledge (natively supports Office .docx Word documents, .xlsx Excel sheets, .pdf, .txt, .md, .json, .csv, code files).\n"
+        "4. `read_file`: Read and parse any file in /workspace or /knowledge (.docx, .xlsx, .pdf, .txt, .md, .json, .csv, code files).\n"
         "   Call format: <tool_call>{\"name\": \"read_file\", \"arguments\": {\"file_path\": \"文件名或路径\"}}</tool_call>\n"
         "5. `bash`: Execute shell commands inside Linux sandbox /workspace (e.g. curl, python3, jq, cat, ls, find, sed, awk).\n"
-        "   Call format: <tool_call>{\"name\": \"bash\", \"arguments\": {\"cmd\": \"shell命令\"}}</tool_call> or ```bash\n命令\n```\n"
+        "   Call format: <tool_call>{\"name\": \"bash\", \"arguments\": {\"cmd\": \"shell命令\"}}</tool_call>\n"
         "6. `scan_knowledge`: Scan the user's personal knowledge base (/knowledge) for reference materials, saved documents, and custom skills.\n"
         "   Call format: <tool_call>{\"name\": \"scan_knowledge\", \"arguments\": {}}</tool_call>\n"
-        "7. `read_skill`: Read professional design, PPT presentation, and productivity templates (/knowledge/skills or /opt/dsh/skills).\n"
-        "   Available system skills: `xlsx` (Excel spreadsheet creation with formulas & styles), `docx` (Word document & contract processing), `pdf` (offline PDF document/report generation), `internal-comms` (3P updates, post-mortems, maintenance notices), `doc-coauthoring` (collaborative technical spec & PRD workflow), `skill-creator` (develop new custom skills), `theme-factory` (design themes & color palettes), `guizang-ppt` (magazine-style HTML slides), `html-ppt`, `frontend-design`, `dashboard`, `saas-landing`, `web-prototype`, `taste-skill`, `pptx`, `slides`, plus any custom skills in /knowledge/skills.\n"
+        "7. `read_skill`: Read professional design, PPT presentation, and productivity templates (/opt/dsh/skills).\n"
         "   Call format: <tool_call>{\"name\": \"read_skill\", \"arguments\": {\"skill_name\": \"guizang-ppt\"}}</tool_call>\n"
-        "8. `vision_inspect`: Inspect, analyze, and read visual content from any image file (.jpg, .png, .webp, .jpeg) in /workspace or /knowledge using the system model. If the system default model is a text-only model without vision capability, it will report that vision is unsupported.\n"
-        "   Call format: <tool_call>{\"name\": \"vision_inspect\", \"arguments\": {\"file_path\": \"图片文件名或路径\", \"prompt\": \"分析指令（可选）\"}}</tool_call>\n"
-        "9. `image_gen`: Generate or edit images using the system default model. If the system default model is a text-only model without image generation capability, it will politely report that the default model does not support it. NEVER prompt the user to configure API keys.\n"
-        "   Call format: <tool_call>{\"name\": \"image_gen\", \"arguments\": {\"prompt\": \"详细生图提示词\", \"aspect_ratio\": \"16:9\", \"output_filename\": \"图片名.png\", \"input_image\": \"可选参考图\"}}</tool_call>\n"
+        "8. `vision_inspect`: Inspect and analyze visual content from image files.\n"
+        "   Call format: <tool_call>{\"name\": \"vision_inspect\", \"arguments\": {\"file_path\": \"图片文件名或路径\", \"prompt\": \"指令\"}}</tool_call>\n"
+        "9. `image_gen`: Generate or edit images using the system model.\n"
+        "   Call format: <tool_call>{\"name\": \"image_gen\", \"arguments\": {\"prompt\": \"详细生图提示词\", \"aspect_ratio\": \"16:9\", \"output_filename\": \"图片名.png\"}}</tool_call>\n"
         "10. `send_file`: Deliver/push any file from /workspace or /knowledge directly to the user's WeChat / chat client.\n"
         "   Call format: <tool_call>{\"name\": \"send_file\", \"arguments\": {\"file_path\": \"文件名或路径\", \"comment\": \"可选备注说明\"}}</tool_call>\n\n"
-        "【Personal Space & Custom Skills Instructions】:\n"
-        "- Saving Deliverables to Personal Space: /knowledge is fully read-write and persistent across sandbox restarts. When the user asks to save documents, reports, summaries, or artifacts to '个人空间' (Personal Space), write them directly to /knowledge/ (e.g. `/knowledge/系统运维报告书.docx` or `/knowledge/outputs/...`). Do NOT say that /knowledge is read-only.\n"
-        "- Sending Files to User / WeChat: The user sandbox IS fully integrated with WeChat outbound file delivery! Whenever the user asks to send, push, export, or deliver a file or document to them or to WeChat (e.g. '通过微信发送...给我', '发给我', '推送文件到微信'), ALWAYS call the `send_file` tool to send it. NEVER claim that the sandbox cannot send files or lacks WeChat integration!\n"
-        "- Vision and Image Generation: Always use the system default model through internal proxy. Never prompt or ask the user to configure an API key. If the tool indicates that the current default model is text-only and does not support vision or image generation, directly and politely tell the user that the system default model is a text-only model and does not support vision/image generation.\n"
-        "- Custom Skills: When developing custom skills using `skill-creator`, save them into `/knowledge/skills/<skill-name>/SKILL.md` (and optional scripts/templates in the same folder). dsh will automatically detect and load them via `read_skill`!\n\n"
-        "【Autonomous Problem Solving & Design Instructions】:\n"
-        "1. Deliverable Creation: When asked to create PPT, slides, dashboard, landing page, UI, or code, DO NOT invoke search or shell tools unless live external facts are specifically requested. Use the loaded design rules and DIRECTLY write the full working code!\n"
-        "2. Real-time Accuracy: When asked for live news, real-time weather, or today's trends, refer to [Current System Timestamp] and autonomously invoke `weather` or `web_search`.\n"
-        "3. Tool Call Protocol: When invoking a tool, output strictly: <tool_call>{\"name\": \"...\", \"arguments\": {...}}</tool_call>. CRITICAL: If you plan or promise to perform an action (e.g. '我换用关键词搜索...', '重新查询...', '接下来我来获取...'), you MUST output the <tool_call> tag in the SAME response! NEVER output conversational filler or empty action promises without the tool call tag. Ensure valid JSON syntax with properly escaped strings and closed curly braces `}}`.\n"
-        "4. Deliverable Format: ONLY when the user explicitly requests PPT, slides, dashboard, landing page, UI, or HTML artifacts, generate single-file HTML/CSS/JS (inside ```html ``` code block). For normal questions (such as weather, Q&A, facts, data queries), answer directly in clean Markdown without generating unrequested HTML or artifacts.\n"
-        "5. Direct & Proportional Response: Answer what the user asked directly and concisely. Do NOT proactively offer or generate unrequested HTML cards, files, or extra deliverables unless explicitly asked.\n"
-        "6. Final Output: Output clean, beautifully structured, accurate Chinese Markdown. Never leave raw XML or tool_call tags in the final answer."
+        "【Instructions】:\n"
+        "1. For simple questions and normal dialogue, answer directly and concisely in Markdown without invoking any tools.\n"
+        "2. When asked for real-time facts, current weather, or latest news, autonomously invoke `weather` or `web_search`.\n"
+        "3. When invoking a tool, output strictly: <tool_call>{\"name\": \"...\", \"arguments\": {...}}</tool_call> with valid JSON syntax.\n"
+        "4. Save deliverables to /knowledge/ directly when requested to save to personal space. Use `send_file` when asked to send to user/WeChat.\n"
+        "5. Output clean, beautifully structured, accurate Chinese Markdown. Never leave raw XML or tool_call tags in the final answer."
     )
 
     user_parts = [f"[User Request]:\n{prompt}"]
@@ -206,7 +188,8 @@ def cmd_run(args):
                 if is_mentioned:
                     extracted = read_workspace_file(item.name)
                     if extracted and not extracted.startswith("文件未找到"):
-                        file_context += f"\n\n[Attached File Content - {item.name}]:\n{extracted[:15000]}"
+                        clipped = extracted[:3500] + ("\n...[文件过长已截断]" if len(extracted) > 3500 else "")
+                        file_context += f"\n\n[Attached File Content - {item.name}]:\n{clipped}"
     if file_context:
         user_parts.append(file_context.strip())
 
@@ -214,7 +197,7 @@ def cmd_run(args):
         user_parts.append(f"[Mounted Personal Knowledge Base]:\n{knowledge_context}")
     if skill_context:
         user_parts.append(
-            f"[Loaded Design Skill & Style Guide]:\n{skill_context[:3500]}\n\n"
+            f"[Loaded Design Skill & Style Guide]:\n{skill_context[:1500]}\n\n"
             "【注意】：当前设计规范已为你成功加载就绪，你无需再调用任何工具。请直接根据以上规范生成高质量、美观单文件 HTML 幻灯片代码（保存在 ```html ``` 代码块中）。"
         )
     if is_send_intent:
@@ -228,108 +211,192 @@ def cmd_run(args):
     current_turn_text = "\n\n".join(user_parts)
     messages = [{"role": "system", "content": system_prompt}]
 
-    # 注入该会话的历史对话记录（最多取最近 10 条）
-    for h in existing_history[-10:]:
+    # 注入该会话的历史对话记录（基于滑动窗口预算，总预算上限约 4000 字符 / 2500 Tokens）
+    MAX_HISTORY_CHARS = 4000
+    budgeted_history = []
+    used_chars = 0
+    dropped_count = 0
+    for h in reversed(existing_history):
         if not isinstance(h, dict):
             continue
         role = h.get("role")
         content = h.get("content")
-        if role in ["user", "assistant"] and content:
-            messages.append({"role": role, "content": content})
+        if role in ["user", "assistant", "tool"] and content:
+            content_str = str(content)
+            if len(content_str) > 1000:
+                content_str = content_str[:1000] + "...[内容已截断]"
+            if used_chars + len(content_str) > MAX_HISTORY_CHARS:
+                dropped_count += 1
+                continue
+            used_chars += len(content_str)
+            item = {"role": role, "content": content_str}
+            if role == "tool" and h.get("tool_call_id"):
+                item["tool_call_id"] = h["tool_call_id"]
+            if role == "assistant" and h.get("tool_calls"):
+                item["tool_calls"] = h["tool_calls"]
+            budgeted_history.insert(0, item)
+
+    if dropped_count > 0:
+        messages.append({"role": "system", "content": f"[系统提示：为确保高效响应，早期 {dropped_count} 条历史交互已自动精简归档]"})
+    for bh in budgeted_history:
+        messages.append(bh)
 
     messages.append({"role": "user", "content": current_turn_text})
 
-    try:
-        reply = call_model_proxy(messages, args.model or "deepseek-chat")
+    # 根据任务意图动态分配最大执行轮数，避免多轮空转耗时
+    if is_ppt_intent or is_design_intent:
+        max_rounds = 4
+    elif any(w in prompt for w in ["天气", "气温", "几度", "预报", "几点", "日期", "时间", "汇率"]):
+        max_rounds = 2
+    elif is_search_intent:
+        max_rounds = 3
+    else:
+        max_rounds = 3
 
-        # 智能自主 ReAct 工具调用循环 (设计任务最多 1 轮以确保快速产出，研究分析任务支持最多 5 轮)
-        max_rounds = 1 if (is_ppt_intent or is_design_intent) else 5
-        outbound_files_collected = []
+    MAX_TOOL_RESULT_CHARS = 3000
+    outbound_files_collected = []
+    telemetry_stats = {
+        "ttft_ms": 0,
+        "total_ms": 0,
+        "tool_invocations": 0,
+        "tokens": {},
+        "finish_reason": "stop"
+    }
+    reply_text = ""
+
+    try:
         for round_idx in range(max_rounds):
-            tool_calls = parse_tool_calls(reply)
-            if not tool_calls:
-                # 检查回复是否是模型“打算继续行动/换关键词重试”的口头承诺垫话（遗漏了 tool_call 标签）
-                if is_promising_action(reply) and round_idx < max_rounds - 1:
-                    print("⚡ [Harness Action Nudge] 检测到模型表达了后续执行意图但遗漏了工具标签，正在提醒模型执行工具...")
-                    messages.append({"role": "assistant", "content": reply})
+            llm_res = call_model_proxy(messages, args.model or "deepseek-chat", tools=SANDBOX_TOOLS)
+            reply_text = llm_res.get("content", "") if isinstance(llm_res, dict) else str(llm_res)
+            structured_calls = list(llm_res.get("tool_calls", [])) if isinstance(llm_res, dict) else []
+
+            if isinstance(llm_res, dict):
+                telemetry_stats["total_ms"] += llm_res.get("total_ms", 0)
+                if round_idx == 0:
+                    telemetry_stats["ttft_ms"] = llm_res.get("ttft_ms", 0)
+                if llm_res.get("usage"):
+                    telemetry_stats["tokens"] = llm_res["usage"]
+                telemetry_stats["finish_reason"] = llm_res.get("finish_reason", "stop")
+
+            # 混合兼容降级：若 structured_calls 为空但模型文本中含有 XML/DSML tool_call 标签
+            if not structured_calls and reply_text:
+                legacy_calls = parse_tool_calls(reply_text)
+                if legacy_calls:
+                    for i, lc in enumerate(legacy_calls):
+                        structured_calls.append({
+                            "id": f"call_legacy_{round_idx}_{i}",
+                            "type": "function",
+                            "function": {
+                                "name": lc["name"],
+                                "arguments": json.dumps(lc.get("params", {}), ensure_ascii=False)
+                            }
+                        })
+
+            # 若当轮无任何工具调用
+            if not structured_calls:
+                if is_promising_action(reply_text) and round_idx < max_rounds - 1:
+                    print("⚡ [Harness Action Nudge] 检测到模型表达了后续执行意图但遗漏了工具调用，正在提醒模型执行工具...")
+                    messages.append({"role": "assistant", "content": reply_text})
                     messages.append({
                         "role": "user",
-                        "content": (
-                            "你刚才提出了具体的后续行动方案（例如换用关键词搜索），但尚未输出工具调用标签！\n"
-                            "请不要只输出口头承诺，请立刻输出具体的 <tool_call>{\"name\": \"web_search\", \"arguments\": {\"query\": \"具体关键词\"}}</tool_call> "
-                            "或其它对应工具标签来执行该操作！"
-                        )
+                        "content": "你刚才提出了具体的行动方案，请立刻使用对应的工具函数执行该操作，不要仅输出口头承诺！"
                     })
-                    reply = call_model_proxy(messages, args.model or "deepseek-chat")
                     continue
                 break
 
-            t = tool_calls[0]
-            t_name = t["name"]
-            t_params = t["params"]
-            param_preview = (
-                t_params.get("__search_query") or
-                t_params.get("query") or
-                t_params.get("cmd") or
-                str(t_params)
-            )
+            # 按照标准 OpenAI 规范记录助手消息（包含当轮所有 tool_calls）
+            assistant_msg = {
+                "role": "assistant",
+                "content": reply_text or None,
+                "tool_calls": structured_calls
+            }
+            messages.append(assistant_msg)
 
-            clean_param = re.sub(r'\s+', ' ', param_preview).strip()
-            if len(clean_param) > 80:
-                clean_param = clean_param[:80] + "..."
-            print(f"⚡ [Harness Tool Call] 正在调用工具: {t_name}({clean_param})...")
-            tool_res = execute_tool(t_name, t_params)
-            print("✓ 工具执行完成，正在分析并综合归纳...")
+            # 支持多工具/并行工具执行：遍历当轮全部工具调用！
+            is_file_sent = False
+            for tc in structured_calls:
+                telemetry_stats["tool_invocations"] += 1
+                t_id = tc.get("id") or f"call_{round_idx}_{telemetry_stats['tool_invocations']}"
+                fn = tc.get("function", {})
+                t_name = fn.get("name", "unknown")
+                t_args_raw = fn.get("arguments", "{}")
+                if isinstance(t_args_raw, str):
+                    try:
+                        t_params = json.loads(t_args_raw)
+                    except Exception:
+                        t_params = {}
+                elif isinstance(t_args_raw, dict):
+                    t_params = t_args_raw
+                else:
+                    t_params = {}
 
-            # 抓取工具执行中的外发文件标记
-            for m in re.findall(r'<<<DSH_OUTBOUND_FILE:(.*?)>>>', tool_res):
-                outbound_files_collected.append(m.strip())
+                param_preview = (
+                    t_params.get("__search_query") or
+                    t_params.get("query") or
+                    t_params.get("cmd") or
+                    t_params.get("city") or
+                    str(t_params)
+                )
+                clean_param = re.sub(r'\s+', ' ', str(param_preview)).strip()
+                if len(clean_param) > 80:
+                    clean_param = clean_param[:80] + "..."
+                print(f"⚡ [Harness Tool Call] 正在调用工具: {t_name}({clean_param})...")
+                tool_res = execute_tool(t_name, t_params)
+                print(f"✓ 工具 [{t_name}] 执行完成")
 
-            next_tip = "请继续推进并输出最终成果（制作PPT/网页请提供完整HTML代码）。"
-            if t_name.lower() in ["send_file", "send_workspace_file", "send_to_user", "send_to_wechat"]:
-                messages.append({"role": "assistant", "content": reply})
+                for m in re.findall(r'<<<DSH_OUTBOUND_FILE:(.*?)>>>', tool_res):
+                    outbound_files_collected.append(m.strip())
+
+                if t_name.lower() in ["send_file", "send_workspace_file", "send_to_user", "send_to_wechat"]:
+                    is_file_sent = True
+
+                # 严格控制工具输出上限，杜绝单工具打爆上下文
+                if len(tool_res) > MAX_TOOL_RESULT_CHARS:
+                    tool_res = tool_res[:MAX_TOOL_RESULT_CHARS] + f"\n...[工具输出超过 {MAX_TOOL_RESULT_CHARS} 字符，已自动截断以保障模型效率]"
+
+                # 按照标准 OpenAI Tool Specification 回传: role: tool, tool_call_id
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": t_id,
+                    "name": t_name,
+                    "content": tool_res
+                })
+
+            if is_file_sent:
                 messages.append({
                     "role": "user",
-                    "content": f"[Tool Execution Result - {t_name}]:\n{tool_res}\n\n文件已成功标记并推送至即时通讯通道。请直接回复用户，告知文件已通过微信发送，请其查收即可。无需再调用任何其他工具。"
+                    "content": "文件已成功标记并推送至即时通讯通道。请直接回复用户，告知文件已通过微信发送，请其查收即可。无需再调用任何其他工具。"
                 })
-                reply = call_model_proxy(messages, args.model or "deepseek-chat")
+                final_step = call_model_proxy(messages, args.model or "deepseek-chat")
+                reply_text = final_step.get("content", "") if isinstance(final_step, dict) else str(final_step)
                 break
-            elif (is_ppt_intent or is_design_intent) and round_idx >= 1:
-                next_tip = "参考材料已完备。请立刻根据设计规范生成完整可运行的 HTML 代码（置于 ```html 代码块中）并详细说明。"
-            messages.append({
-                "role": "user",
-                "content": f"[Tool Execution Result - {t_name}]:\n{tool_res}\n\n{next_tip}"
-            })
 
-            reply = call_model_proxy(messages, args.model or "deepseek-chat")
+        # 检查是否仍有未执行的工具调用请求或残留
+        has_pending_tool_calls = bool(parse_tool_calls(reply_text))
+        final_text = clean_output(reply_text)
 
-        # 检查是否仍有未执行的工具调用请求（达到 max_rounds 退出循环时）
-        has_pending_tool_calls = bool(parse_tool_calls(reply))
-        final_text = clean_output(reply)
-
-        # 检查是否仅留下了过渡性前导垫话（如“让我深入探索克隆下来的仓库内容...”或“我换用更精确的关键词搜索...”）
+        # 检查是否仅留下了过渡性前导垫话
         action_filler_keywords = [
             "让我", "正在", "接下来", "探索", "获取", "抓取", "解析", "稍等", "深入", "克隆", "调用",
             "换用", "重新搜索", "继续搜索", "我来搜索", "我将搜索", "来搜索", "关键词组合"
         ]
         is_transitional_filler = (
             len(final_text) < 120 and
-            (any(kw in final_text for kw in action_filler_keywords) or is_promising_action(reply))
+            (any(kw in final_text for kw in action_filler_keywords) or is_promising_action(reply_text))
         )
 
-        # 只要文本中包含未执行的 DSML 或 tool 标记残留，绝对不能视为最终答复
-        has_raw_dsml = bool(re.search(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}', reply))
-        has_raw_tool = bool(re.search(r'<(?:tool_call|tool_calls)', reply))
+        has_raw_dsml = bool(re.search(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}', reply_text))
+        has_raw_tool = bool(re.search(r'<(?:tool_call|tool_calls)', reply_text))
 
-        # 如果模型仍试图调用工具、内容为空或仅有过渡性短句，强制请求输出最终总结
         if has_pending_tool_calls or not final_text or is_transitional_filler or has_raw_dsml or has_raw_tool:
-            messages.append({"role": "assistant", "content": reply})
+            messages.append({"role": "assistant", "content": reply_text or None})
             messages.append({
                 "role": "user",
                 "content": "工具调用轮次已结束。请根据目前已探索和收集到的所有信息与仓库内容，直接给出深入、结构完整、详尽的最终中文回答（严禁输出中间过渡垫话或未执行的工具标签）。"
             })
             try:
-                forced_reply = call_model_proxy(messages, args.model or "deepseek-chat")
+                forced_res = call_model_proxy(messages, args.model or "deepseek-chat")
+                forced_reply = forced_res.get("content", "") if isinstance(forced_res, dict) else str(forced_res)
                 final_text = clean_output(forced_reply) or forced_reply.strip()
             except Exception:
                 pass
@@ -377,6 +444,15 @@ def cmd_run(args):
 
         for m in outbound_files_collected:
             print(f"\n<<<DSH_OUTBOUND_FILE:{m}>>>")
+
+        metrics_json = json.dumps({
+            "ttftMs": telemetry_stats["ttft_ms"],
+            "durationMs": round(telemetry_stats["total_ms"], 2),
+            "toolCallsCount": telemetry_stats["tool_invocations"],
+            "tokens": telemetry_stats["tokens"],
+            "finishReason": telemetry_stats["finish_reason"]
+        }, ensure_ascii=False)
+        print(f"\n<<<DSH_METRICS:{metrics_json}>>>")
 
         print("\n<<<DSH_FINAL_OUTPUT>>>\n" + final_text)
 
