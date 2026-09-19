@@ -47,6 +47,9 @@ describe('WorkspaceNoteService', () => {
         })),
         update: jest.fn().mockResolvedValue({}),
       },
+      executionArtifact: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
     };
 
     mockStorage = {
@@ -212,10 +215,9 @@ describe('WorkspaceNoteService', () => {
     });
 
     const now = new Date();
-    // Simulate folder lookup returning null so it creates folder
+    // Simulate folder lookup returning null so it creates folder (1 segment: 沙盒保存内容 (saved))
     mockPrisma.workspaceNode.findFirst
-      .mockResolvedValueOnce(null) // segment 1
-      .mockResolvedValueOnce(null) // segment 2
+      .mockResolvedValueOnce(null) // folder segment: 沙盒保存内容 (saved)
       .mockResolvedValueOnce({
         id: 'existing-node-id',
         workspaceId: 'ws-personal-1',
@@ -241,6 +243,58 @@ describe('WorkspaceNoteService', () => {
         expect(res.id).toBe('existing-node-id');
         expect(res.name).toBe('测试文档.md');
       });
+  });
+
+  it('should save task results into 工作任务成果 (tasks) and query execution artifacts', async () => {
+    const userId = 'user-task-1';
+    const personalWorkspace = {
+      id: 'ws-personal-task',
+      name: '我的空间',
+      type: 'personal',
+      ownerUserId: userId,
+      quotaBytes: BigInt(1000000),
+      usedBytes: BigInt(100),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    mockPrisma.workspace.findFirst.mockResolvedValue(personalWorkspace);
+    mockPrisma.workspaceNode.findFirst.mockResolvedValue(null);
+    mockPrisma.executionArtifact.findMany.mockResolvedValue([
+      {
+        id: 'art-1',
+        executionId: 'exec-12345',
+        name: '合同合规审查报告.docx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        url: 'http://carbone-engine:3009/renders/contract_review.docx',
+      },
+    ]);
+
+    const result = await service.saveTextNote(userId, {
+      title: '合同合规审查总结',
+      content: '审查已完成，详情参见报告。',
+      type: 'task_result',
+      executionId: 'exec-12345',
+    });
+
+    expect(result).toBeDefined();
+    expect(result.name).toBe('合同合规审查总结.md');
+
+    // 验证目标文件夹创建为 工作任务成果 (tasks)
+    expect(mockPrisma.workspaceNode.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          name: '工作任务成果 (tasks)',
+          type: 'folder',
+        }),
+      })
+    );
+
+    // 验证 executionArtifact.findMany 被调用
+    expect(mockPrisma.executionArtifact.findMany).toHaveBeenCalledWith({
+      where: { executionId: 'exec-12345' },
+      orderBy: { createdAt: 'asc' },
+    });
   });
 });
 

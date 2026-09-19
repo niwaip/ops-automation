@@ -25,7 +25,7 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
       listMessages: jest.fn().mockResolvedValue([]),
       persistConversation: jest.fn().mockResolvedValue({ id: 'sess_1' }),
       buildSessionPatchEvent: jest.fn().mockReturnValue({ type: StreamEventType.SESSION_PATCH, data: {} } as any),
-    };
+    } as any;
     mockMediaService = {};
     mockModelService = {
       getPreferredDefaultModel: jest.fn().mockReturnValue({ id: 'uuid-1234', name: 'qwen36-35b-a3b' }),

@@ -25,7 +25,12 @@ class SkillRoutingResult:
 HIGH_CONFIDENCE_RULES = {
     "guizang-ppt": [
         "做ppt", "生成ppt", "制作ppt", "ppt演示", "做幻灯片", "制作幻灯片",
-        "生成幻灯片", "演示文稿", "做个deck", "做个汇报ppt", "设计ppt"
+        "生成幻灯片", "演示文稿", "做个deck", "做个汇报ppt", "设计ppt",
+        "ppt报告", "生成ppt报告", "做ppt报告", "制作ppt报告",
+        "html报告", "生成html报告", "html的报告", "生成html的报告", "制作html报告",
+        "网页报告", "生成网页报告", "交互式报告", "生成交互式报告", "web报告",
+        "做演示文稿", "生成演示文稿", "制作演示文稿", "汇报演示文稿",
+        "html演示文稿", "生成html演示文稿"
     ],
     "image-gen": [
         "画一张图", "生成图片", "ai绘图", "ai生图", "设计logo", "做个海报",
@@ -137,6 +142,22 @@ class SkillRouter:
                 if any(k in c for k in ["pdf", "导出", "生成文档", "fpdf", "notosans"]):
                     result.skill_id = "pdf"
                     break
+
+        # 7.2 前端网页/交互原型/游戏迭代上下文探测（如前轮生成了 HTML/游戏，本轮用户反馈 "没有音效"、"加个悔棋"、"改一下颜色"）
+        if not result.skill_id and existing_history:
+            has_recent_html = False
+            for h in reversed(existing_history[-4:]):
+                if not isinstance(h, dict):
+                    continue
+                c = str(h.get("content", "")).lower()
+                if any(k in c for k in ["```html", "交互式页面", "index.html", "gomoku", "canvas", "游戏", "原型"]):
+                    has_recent_html = True
+                    break
+            if has_recent_html:
+                game_iteration_cues = ["音效", "声音", "音乐", "修改", "改一下", "调整", "重新", "优化", "加个", "没有", "样式", "速度", "颜色", "按钮", "重开", "悔棋", "对战", "规则", "再加", "继续", "完善"]
+                if any(cue in lower_query for cue in game_iteration_cues):
+                    result.skill_id = "web-prototype"
+                    result.is_design_intent = True
 
         # 8. 用户自定义技能探测 (/knowledge/skills)
         if not result.skill_id:

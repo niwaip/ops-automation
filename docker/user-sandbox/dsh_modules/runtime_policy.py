@@ -20,16 +20,16 @@ class RuntimePolicy:
     max_tool_result_chars: int = 3000
     param_preview_chars: int = 80
     recent_history_save_count: int = 20
-    single_request_timeout: int = 90
-    total_task_timeout: int = 180
-    timeout_seconds: int = 180
+    single_request_timeout: int = 180
+    total_task_timeout: int = 300
+    timeout_seconds: int = 300
     timezone: str = "Asia/Shanghai"
 
     @classmethod
     def from_env(cls) -> "RuntimePolicy":
         """Factory method to load defaults with environment overrides."""
-        single_to = int(os.getenv("DSH_SINGLE_TIMEOUT_SECONDS", "90"))
-        total_to = int(os.getenv("DSH_TOTAL_TIMEOUT_SECONDS", os.getenv("DSH_TIMEOUT_SECONDS", "180")))
+        single_to = int(os.getenv("DSH_SINGLE_TIMEOUT_SECONDS", "180"))
+        total_to = int(os.getenv("DSH_TOTAL_TIMEOUT_SECONDS", os.getenv("DSH_TIMEOUT_SECONDS", "300")))
         return cls(
             max_rounds=int(os.getenv("DSH_MAX_ROUNDS", "3")),
             max_history_chars=int(os.getenv("DSH_MAX_HISTORY_CHARS", "4000")),

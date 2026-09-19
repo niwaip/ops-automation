@@ -254,6 +254,15 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertTrue(res_attachment_ppt.is_ppt_intent)
         self.assertEqual(res_attachment_ppt.skill_id, "guizang-ppt")
 
+        # 6. 新增扩充：html报告、网页报告等也应精准路由至 guizang-ppt
+        res_html_rep = SkillRouter.route("生成html的报告")
+        self.assertTrue(res_html_rep.is_ppt_intent)
+        self.assertEqual(res_html_rep.skill_id, "guizang-ppt")
+
+        res_web_rep = SkillRouter.route("帮我做一个交互式报告")
+        self.assertTrue(res_web_rep.is_ppt_intent)
+        self.assertEqual(res_web_rep.skill_id, "guizang-ppt")
+
     def test_artifact_exporter_html_extraction(self):
         """AC-4: 验证 ArtifactExporter 提取 HTML 并正确生成 Banner 与落盘"""
         import tempfile
@@ -270,10 +279,74 @@ class TestDshCoreModules(unittest.TestCase):
             self.assertTrue(exported[0].endswith("presentation.html"))
             self.assertIn("✨ **演示文稿已生成完毕！**", final_text)
 
+            # 验证通用 HTML（如游戏、原型）也具备交互 Banner
+            final_text2, exported2 = ArtifactExporter.export_html(sample_output, is_ppt_intent=False, workspace_dir=tmpdir)
+            self.assertEqual(len(exported2), 1)
+            self.assertTrue(exported2[0].endswith("index.html"))
+            self.assertIn("✨ **交互式页面已生成完毕！**", final_text2)
+
             # 验证文件已成功写入
             with open(exported[0], "r", encoding="utf-8") as f:
                 content = f.read()
                 self.assertIn("<title>Test Deck</title>", content)
+
+            # 验证情况 B：模型仅在磁盘生成了 gomoku.html，回复文字未附代码块时，自动回填
+            with open(Path(tmpdir) / "gomoku.html", "w", encoding="utf-8") as f:
+                f.write("<!DOCTYPE html><html><body><h1>五子棋</h1></body></html>")
+            plain_resp = "已为您生成五子棋游戏，文件保存在 /workspace/gomoku.html，请在浏览器中打开！"
+            final_text3, exported3 = ArtifactExporter.export_html(plain_resp, is_ppt_intent=False, workspace_dir=tmpdir)
+            self.assertIn("✨ **交互式页面已生成完毕！**", final_text3)
+            self.assertIn("/workspace/gomoku.html", final_text3)
+            self.assertIn("```html\n<!DOCTYPE html>", final_text3)
+            self.assertTrue(any(e.endswith("gomoku.html") for e in exported3))
+
+    def test_artifact_exporter_cross_turn_isolation(self):
+        """验证跨轮次/跨会话历史 HTML 不会泄漏到后续无关对话中"""
+        import tempfile
+        import os
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # 模拟上一轮 (t = 1000.0) 生成了 index.html (如天气报告)
+            weather_html = Path(tmpdir) / "index.html"
+            with open(weather_html, "w", encoding="utf-8") as f:
+                f.write("<!DOCTYPE html><html><head><title>上海天气</title></head><body>天气报告</body></html>")
+            os.utime(weather_html, (1000.0, 1000.0))
+
+            # 模拟下一轮对话 (t = 1050.0)，用户发送完全无关的指令 "查看bilibili热点"
+            turn_start_time = 1050.0
+            bili_resp = "为您整理了 Bilibili 当前实时热点与热门榜单：\n1. 12306拒绝出票\n2. 机器人格斗"
+            final_text, exported = ArtifactExporter.export_html(
+                bili_resp,
+                is_ppt_intent=False,
+                workspace_dir=tmpdir,
+                turn_start_time=turn_start_time,
+                is_design_intent=False,
+                prompt="查看bilibili热点"
+            )
+
+            # 验证：上一轮的 HTML 决不能泄漏到本轮回复中，文本完全保持不变
+            self.assertEqual(final_text, bili_resp)
+            self.assertEqual(len(exported), 0)
+            self.assertNotIn("✨ **交互式页面已生成完毕！**", final_text)
+            self.assertNotIn("```html", final_text)
+
+            # 模拟又一轮对话：用户发送有 HTML 意图的指令 "制作单页报告"，且在此轮中更新了 index.html
+            new_turn_start = 1200.0
+            with open(weather_html, "w", encoding="utf-8") as f:
+                f.write("<!DOCTYPE html><html><head><title>新报告</title></head><body>更新后的报告</body></html>")
+            os.utime(weather_html, (1205.0, 1205.0))
+
+            plain_resp2 = "已为您生成单页报告，请查看。"
+            final_text2, exported2 = ArtifactExporter.export_html(
+                plain_resp2,
+                is_ppt_intent=False,
+                workspace_dir=tmpdir,
+                turn_start_time=new_turn_start,
+                is_design_intent=False,
+                prompt="制作单页报告"
+            )
+            self.assertIn("✨ **交互式页面已生成完毕！**", final_text2)
+            self.assertEqual(len(exported2), 1)
+            self.assertIn("```html", final_text2)
 
     def test_telemetry_stats_recording(self):
         """AC-2: 验证 TelemetryStats 遥测指标收集与序列化"""

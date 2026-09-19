@@ -74,11 +74,20 @@ export class WorkspaceOutlineTool extends BaseTool {
     };
 
     try {
-      // 获取当前节点详情与 digest
-      const url = `${authUrl}/workspaces/${workspaceId}/nodes`;
-      const res = await axios.get(url, { headers, timeout: 5000 });
-      const nodes = Array.isArray(res.data) ? res.data : [];
-      const targetNode = nodes.find((n: any) => n.id === nodeId);
+      // 获取当前节点详情与 digest（优先直查单节点，容错回退到列表）
+      let targetNode: any = null;
+      try {
+        const detailUrl = `${authUrl}/workspaces/${workspaceId}/nodes/${nodeId}`;
+        const detailRes = await axios.get<any>(detailUrl, { headers, timeout: 5000 });
+        if (detailRes.data && (detailRes.data as any).id) {
+          targetNode = detailRes.data;
+        }
+      } catch {
+        const url = `${authUrl}/workspaces/${workspaceId}/nodes`;
+        const res = await axios.get(url, { headers, timeout: 5000 });
+        const nodes = Array.isArray(res.data) ? res.data : [];
+        targetNode = nodes.find((n: any) => n.id === nodeId);
+      }
 
       if (!targetNode) {
         return {

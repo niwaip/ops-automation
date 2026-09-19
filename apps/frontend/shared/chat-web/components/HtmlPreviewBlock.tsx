@@ -36,7 +36,12 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
     code.includes('slide') ||
     code.includes('presentation') ||
     code.includes('deck') ||
-    code.includes('swiper');
+    code.includes('swiper') ||
+    code.includes('html报告') ||
+    code.includes('阶段性报告') ||
+    code.includes('项目报告') ||
+    code.includes('进度报告') ||
+    code.includes('演示文稿');
 
   const isContractReview =
     code.includes('合同智能审查') ||
@@ -51,6 +56,16 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
     code.includes('diff-del') ||
     code.includes('基准合同 (A)');
 
+  const isInteractiveApp =
+    !isPresentation &&
+    !isContractReview &&
+    !isContractCompare &&
+    (code.includes('<canvas') ||
+      code.includes('五子棋') ||
+      code.includes('gomoku') ||
+      code.includes('game-container') ||
+      code.includes('dashboard'));
+
   // Reports can execute scripts and load large assets. Mount only on demand.
   const [isExpanded, setIsExpanded] = useState<boolean>(
     defaultExpanded !== undefined ? defaultExpanded : false
@@ -59,13 +74,21 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
   // Never mount iframe or expand content while streaming to prevent executing partial code
   const effectiveExpanded = !isStreaming && isExpanded;
 
+  // 从 HTML 代码中提取 title 标签内容
+  const extractedTitle = React.useMemo(() => {
+    const match = code.match(/<title[^>]*>([^<]+)<\/title>/i);
+    return match ? match[1].trim() : null;
+  }, [code]);
+
   const displayTitle = isContractReview
-    ? '⚖️ 合同文档智能审查与合规诊断报告'
+    ? (extractedTitle ? `⚖️ ${extractedTitle}` : '⚖️ 合同文档智能审查与合规诊断报告')
     : isContractCompare
-      ? '⚖️ 合同文档智能比对与红线审查报告'
+      ? (extractedTitle ? `⚖️ ${extractedTitle}` : '⚖️ 合同文档智能比对与红线审查报告')
       : isPresentation
-        ? '🎨 交互式 HTML 演示文稿 (Presentation)'
-        : `🎨 ${defaultTitle}`;
+        ? (extractedTitle ? `🎨 ${extractedTitle}` : '🎨 交互式 HTML 演示文稿 (Presentation)')
+        : isInteractiveApp
+          ? (extractedTitle ? `🎮 ${extractedTitle}` : '🎮 交互式 Web 原型 / 应用')
+          : (extractedTitle ? `🎨 ${extractedTitle}` : `🎨 ${defaultTitle}`);
 
   const defaultFileName = isContractReview
     ? 'contract_review_report.html'
@@ -73,7 +96,9 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
       ? 'contract_diff_report.html'
       : isPresentation
         ? 'presentation.html'
-        : 'index.html';
+        : (code.includes('五子棋') || code.includes('gomoku'))
+          ? 'gomoku.html'
+          : 'index.html';
 
   const approxSize = `${(code.length / 1024).toFixed(1)} KB`;
 
@@ -83,7 +108,9 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
       ? '💡 比对报告已就绪：支持左右双栏对齐、字符级红线与高风险筛选（点击展开预览）'
       : isContractReview
         ? '💡 审查报告已就绪：支持审查意见高亮、风险分级与诊断分析（点击展开预览）'
-        : `💡 ${defaultTitle}已就绪（点击展开在线预览）`;
+        : isInteractiveApp
+          ? '💡 交互应用已就绪：支持在线操作、全屏沉浸与本地导出（点击展开预览）'
+          : `💡 ${defaultTitle}已就绪（点击展开在线预览）`;
 
   const generatingTipText = isPresentation
     ? '⚡ 演示文稿生成中：AI 正在编写交互式页面结构与幻灯片样式...'

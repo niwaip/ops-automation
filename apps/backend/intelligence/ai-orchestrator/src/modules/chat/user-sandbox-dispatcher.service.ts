@@ -186,12 +186,12 @@ export class UserSandboxDispatcherService {
           }
 
           recentHistory = historyItems
-            .slice(-4)
+            .slice(-6)
             .filter((item) => item.role === 'user' || item.role === 'assistant')
             .map((item) => {
               let contentStr = typeof item.content === 'string' ? item.content : JSON.stringify(item.content);
-              if (contentStr.length > 1000) {
-                contentStr = contentStr.slice(0, 1000) + '...[历史内容截断]';
+              if (contentStr.length > 3000) {
+                contentStr = contentStr.slice(0, 3000) + '...[历史内容截断]';
               }
               return {
                 role: item.role,

@@ -104,7 +104,7 @@ def cmd_run(args):
     if cli_timeout and isinstance(cli_timeout, int) and cli_timeout > 0:
         policy.total_task_timeout = cli_timeout
         policy.timeout_seconds = cli_timeout
-        policy.single_request_timeout = min(policy.single_request_timeout, cli_timeout)
+        policy.single_request_timeout = min(cli_timeout, 240)
 
     task_deadline = time.monotonic() + policy.total_task_timeout
     session_id = getattr(args, "session_id", None)
@@ -170,6 +170,8 @@ def cmd_run(args):
         is_send_intent=skill_res.is_send_intent,
         is_search_intent=is_search_intent,
         is_ppt_intent=skill_res.is_ppt_intent,
+        is_design_intent=skill_res.is_design_intent,
+        existing_history=existing_history,
         max_skill_chars=policy.max_skill_chars,
         timestamp_str=get_current_timestamp_str(policy.timezone)
     )
@@ -186,7 +188,14 @@ def cmd_run(args):
         loop_res = run_agent_loop(messages, model_name, policy, max_rounds, deadline=task_deadline)
 
         # 6. 产物导出与落盘 (HTML/PPT)
-        final_text, _ = ArtifactExporter.export_html(loop_res.final_text, skill_res.is_ppt_intent, WORKSPACE_DIR)
+        final_text, _ = ArtifactExporter.export_html(
+            loop_res.final_text,
+            skill_res.is_ppt_intent,
+            WORKSPACE_DIR,
+            turn_start_time=overall_start_time,
+            is_design_intent=skill_res.is_design_intent,
+            prompt=prompt
+        )
 
         # 7. 会话历史持久化
         if history_file:

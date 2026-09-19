@@ -77,7 +77,7 @@ export class OpenAICompatibleClient {
       },
       httpAgent: new http.Agent({ keepAlive: true, timeout: this.timeout }),
       httpsAgent: new https.Agent({ keepAlive: true, timeout: this.timeout }),
-    });
+    } as any);
   }
 
   /**
