@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { LockModule } from '../lock/lock.module';
 import { UserSandboxService } from './user-sandbox.service';
 import { UserSandboxStorageService } from './user-sandbox-storage.service';
 import { UserSandboxContainerService } from './user-sandbox-container.service';
@@ -6,6 +7,7 @@ import { UserSandboxHarnessService } from './user-sandbox-harness.service';
 import { UserSandboxController } from './user-sandbox.controller';
 
 @Module({
+  imports: [LockModule],
   controllers: [UserSandboxController],
   providers: [
     UserSandboxStorageService,
