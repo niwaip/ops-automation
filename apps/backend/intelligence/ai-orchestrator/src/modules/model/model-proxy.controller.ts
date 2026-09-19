@@ -76,21 +76,28 @@ export class ModelProxyController {
     }
     if (!client && body.model) {
       client = this.modelService.getClient(body.model);
+      if (!client && !apiKey) {
+        this.logger.error(`Explicitly requested model [${body.model}] not found and no upstream API key configured`);
+        throw new HttpException(
+          `Requested model [${body.model}] is not configured or unavailable on the platform`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
     }
-    if (!client) {
+    if (!client && !body.model) {
       const defaultChat = this.modelService.getPreferredDefaultModel({ mode: 'chat' });
       if (defaultChat) {
         client = this.modelService.getClient(defaultChat.id);
       }
-    }
-    if (!client) {
-      client =
-        this.modelService.getClient('deepseek-v4-flash-0731') ||
-        this.modelService.getClient('deepseek-v4-flash') ||
-        this.modelService.getClient('default');
+      if (!client) {
+        client =
+          this.modelService.getClient('deepseek-v4-flash-0731') ||
+          this.modelService.getClient('deepseek-v4-flash') ||
+          this.modelService.getClient('default');
+      }
     }
 
-    if ((!apiKey || isVisionRequested) && client) {
+    if (client) {
       this.logger.log(`Using platform-managed model client for sandbox proxy (${body.model || 'default'})`);
       try {
         if (isStream) {
@@ -99,7 +106,14 @@ export class ModelProxyController {
           res.setHeader('Connection', 'keep-alive');
 
           let streamSuccess = false;
-          const writeChunk = (chunk: string, modelName: string) => {
+          const writeChunk = (chunk: string, modelName: string, meta?: any) => {
+            const deltaPayload: any = {};
+            if (chunk) {
+              deltaPayload.content = chunk;
+            }
+            if (meta?.delta?.tool_calls) {
+              deltaPayload.tool_calls = meta.delta.tool_calls;
+            }
             const ssePayload = {
               id: `chatcmpl-${Date.now()}`,
               object: 'chat.completion.chunk',
@@ -108,8 +122,8 @@ export class ModelProxyController {
               choices: [
                 {
                   index: 0,
-                  delta: { content: chunk },
-                  finish_reason: null,
+                  delta: deltaPayload,
+                  finish_reason: meta?.finish_reason || null,
                 },
               ],
             };
@@ -118,13 +132,27 @@ export class ModelProxyController {
 
           try {
             await client.chatCompletionStream(
-              body.messages || [{ role: 'user', content: body.prompt || '' }],
-              (chunk: string) => writeChunk(chunk, body.model || 'deepseek-chat')
+              {
+                messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
+                temperature: body.temperature,
+                max_tokens: body.max_tokens,
+                tools: body.tools,
+                tool_choice: body.tool_choice,
+              },
+              (chunk: string, meta?: any) => writeChunk(chunk, body.model || 'deepseek-chat', meta)
             );
             streamSuccess = true;
           } catch (primaryErr: any) {
+            // 当显式指定了具体模型时，严禁静默 fallback 到其他模型，避免模型欺骗
+            if (body.model) {
+              this.logger.error(
+                `Primary model [${body.model}] stream failed (${primaryErr.message}). Explicit model requested; fallback is strictly disabled.`
+              );
+              throw primaryErr;
+            }
+
             this.logger.warn(
-              `Primary model [${body.model}] stream failed (${primaryErr.message}). Attempting fallback to platform resilient model...`
+              `Default model stream failed (${primaryErr.message}). Attempting fallback to platform resilient model...`
             );
             const fallbackKeys = isVisionRequested
               ? ['gemini-3.7-flash-high', 'gemini-3.7-flash', 'default']
@@ -168,12 +196,22 @@ export class ModelProxyController {
               messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
               temperature: body.temperature,
               max_tokens: body.max_tokens,
+              tools: body.tools,
+              tool_choice: body.tool_choice,
             });
             responseContent = response.content;
             responseUsage = response.usage || responseUsage;
           } catch (primaryErr: any) {
+            // 当显式指定了具体模型时，严禁静默 fallback 到其他模型，避免模型欺骗
+            if (body.model) {
+              this.logger.error(
+                `Primary model [${body.model}] failed (${primaryErr.message}). Explicit model requested; fallback is strictly disabled.`
+              );
+              throw primaryErr;
+            }
+
             this.logger.warn(
-              `Primary model [${body.model}] failed (${primaryErr.message}). Attempting fallback to platform resilient model...`
+              `Default model failed (${primaryErr.message}). Attempting fallback to platform resilient model...`
             );
             const fallbackKeys = isVisionRequested
               ? ['gemini-3.7-flash-high', 'gemini-3.7-flash', 'default']

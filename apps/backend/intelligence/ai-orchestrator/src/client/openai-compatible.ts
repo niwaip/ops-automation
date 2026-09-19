@@ -56,7 +56,7 @@ export class OpenAICompatibleClient {
   /** Learned per-client capability: this model rejects an explicit off request. */
   private reasoningOffRejected = false;
 
-  constructor(config: OpenAICompatibleConfig, timeout: number = 300000) {
+  constructor(config: OpenAICompatibleConfig, timeout: number = 90000) {
     this.baseURL = config.baseURL;
     this.apiKey = config.apiKey;
     this.model = config.model;
@@ -92,6 +92,12 @@ export class OpenAICompatibleClient {
       if (normalized.responseFormat === 'json_object' || this.useJsonMode) {
         data.response_format = { type: 'json_object' };
       }
+      if (normalized.tools && normalized.tools.length > 0) {
+        data.tools = normalized.tools;
+      }
+      if (normalized.tool_choice) {
+        data.tool_choice = normalized.tool_choice;
+      }
       const isGemini =
         this.provider === 'gemini' ||
         this.provider === 'google' ||
@@ -120,12 +126,14 @@ export class OpenAICompatibleClient {
       );
 
       const choice = response.data?.choices?.[0];
+      const content = choice?.message?.content || '';
       return {
-        content: choice?.message?.content || '',
+        content,
         finishReason: choice?.finish_reason,
         reasoningContent: choice?.message?.reasoning_content,
         usage: response.data?.usage,
         rateLimit: this.extractRateLimit(response.headers),
+        tool_calls: choice?.message?.tool_calls,
       };
     } catch (error: unknown) {
       const axiosError = error as AxiosLikeError;
@@ -146,29 +154,36 @@ export class OpenAICompatibleClient {
 
   /**
    * Send chat completion request with streaming support
-   * @param messages - Array of chat messages
+   * @param request - Array of chat messages or LLMChatRequest
    * @param onChunk - Callback for each streamed chunk
    * @returns Promise resolving to structured LLM response
    */
   async chatCompletionStream(
-    messages: ChatMessage[],
-    onChunk: (chunk: string) => void,
+    request: ChatMessage[] | LLMChatRequest,
+    onChunk: (chunk: string, meta?: any) => void,
     reasoning?: {
       enabled?: boolean;
       effort?: 'low' | 'medium' | 'high';
     }
   ): Promise<LLMResponse> {
+    const normalized = this.normalizeChatRequest(request);
     const data: any = {
       model: this.model,
-      messages,
+      messages: normalized.messages,
       stream: true,
       stream_options: { include_usage: true }, // Request usage in the last chunk
     };
 
-    if (this.useJsonMode) {
+    if (this.useJsonMode || normalized.responseFormat === 'json_object') {
       data.response_format = { type: 'json_object' };
     }
-    this.applyReasoningConfig(data, reasoning);
+    if (normalized.tools && normalized.tools.length > 0) {
+      data.tools = normalized.tools;
+    }
+    if (normalized.tool_choice) {
+      data.tool_choice = normalized.tool_choice;
+    }
+    this.applyReasoningConfig(data, normalized.reasoning || reasoning);
 
     let response: any;
     try {
@@ -231,10 +246,15 @@ export class OpenAICompatibleClient {
             finalUsage = parsed.usage;
           }
 
-          const content = parsed.choices?.[0]?.delta?.content || '';
+          const choice = parsed.choices?.[0];
+          const delta = choice?.delta;
+          const finishReason = choice?.finish_reason;
+          const content = delta?.content || '';
           if (content) {
             fullContent += content;
-            onChunk(content);
+            onChunk(content, { delta, finish_reason: finishReason });
+          } else if (delta?.tool_calls || finishReason) {
+            onChunk('', { delta, finish_reason: finishReason });
           }
         } catch {
           // Incomplete or invalid JSON chunk
@@ -515,6 +535,8 @@ export class OpenAICompatibleClient {
       enabled?: boolean;
       effort?: 'low' | 'medium' | 'high';
     };
+    tools?: any[];
+    tool_choice?: any;
   } {
     if (Array.isArray(request)) {
       return {
@@ -532,6 +554,8 @@ export class OpenAICompatibleClient {
         promptCacheKey: request.assembly?.promptCacheKey || this.promptCacheKey,
         promptCacheRetention: request.promptCaching?.retention || this.promptCacheRetention,
         reasoning: request.reasoning,
+        tools: request.tools,
+        tool_choice: request.tool_choice,
       };
     }
 
@@ -550,6 +574,8 @@ export class OpenAICompatibleClient {
         promptCacheKey: request.assembly.promptCacheKey || this.promptCacheKey,
         promptCacheRetention: request.promptCaching?.retention || this.promptCacheRetention,
         reasoning: request.reasoning,
+        tools: request.tools,
+        tool_choice: request.tool_choice,
       };
     }
 

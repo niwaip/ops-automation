@@ -146,7 +146,7 @@ export class UserSandboxDispatcherService {
         promptForSandbox += `用户指令：${body.message}`;
       }
 
-      // 获取当前会话上下文历史（保留最近 8 条历史记录，确保多轮对话上下文连续）
+      // 获取当前会话上下文历史（保留最近 4 条历史记录并严格限制单条长度，避免模型首字推理超负荷）
       let recentHistory: Array<{ role: string; content: string }> = [];
       try {
         const historyItems = await this.chatConversationService.getChatHistory(
@@ -154,12 +154,18 @@ export class UserSandboxDispatcherService {
           effectiveUserId
         );
         recentHistory = (historyItems || [])
-          .slice(-8)
+          .slice(-4)
           .filter((item) => item.role === 'user' || item.role === 'assistant')
-          .map((item) => ({
-            role: item.role,
-            content: typeof item.content === 'string' ? item.content : JSON.stringify(item.content),
-          }));
+          .map((item) => {
+            let contentStr = typeof item.content === 'string' ? item.content : JSON.stringify(item.content);
+            if (contentStr.length > 1000) {
+              contentStr = contentStr.slice(0, 1000) + '...[历史内容截断]';
+            }
+            return {
+              role: item.role,
+              content: contentStr,
+            };
+          });
       } catch (histErr: any) {
         this.logger.warn(`Failed to retrieve chat history for session [${sessionId}]: ${histErr.message}`);
       }
@@ -167,28 +173,21 @@ export class UserSandboxDispatcherService {
       // 立即向前端发送沙箱连接状态，消除白屏与挂起感
       emit({
         type: StreamEventType.OBSERVATION,
-        content: `⚡ 正在连接个人安全沙箱 [${effectiveUserId}]，启动 DeepSeek Harness 智能引擎...`,
+        content: `⚡ 正在连接个人安全沙箱 [${effectiveUserId}]，启动智能分析与执行引擎...`,
       });
 
-      // 启动心跳进度指示器，让前台实时感知沙箱运行阶段
-      let progressTick = 0;
-      const progressStages = [
-        '🔍 沙箱正在检索外部实时数据与知识库上下文关联...',
-        '⚡ 正在执行多轮 ReAct 推理与自主工具调用...',
-        '✓ 正在整合工具返回数据，编写条理化的最终分析解答...',
-      ];
-      const heartbeatTimer = setInterval(() => {
-        const msg = progressStages[progressTick] || '⏳ 正在进行深度推理与数据综合计算...';
-        progressTick += 1;
-        emit({
-          type: StreamEventType.OBSERVATION,
-          content: msg,
-        });
-      }, 3000);
-
       // 尝试向 Session Broker 发起 run-harness 请求
+      const timeoutMs = 120000;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000);
+      const timeoutId = setTimeout(async () => {
+        this.logger.warn(`Execution timeout (${timeoutMs / 1000}s) reached for user [${effectiveUserId}], stopping sandbox processes...`);
+        controller.abort();
+        try {
+          await this.stopPersonalSandbox(effectiveUserId);
+        } catch (e: any) {
+          this.logger.warn(`Failed to stop personal sandbox on timeout: ${e.message}`);
+        }
+      }, timeoutMs);
 
       const onAbort = () => {
         controller.abort();
@@ -221,7 +220,7 @@ export class UserSandboxDispatcherService {
             history: recentHistory,
             webSearch: Boolean(body.config?.webSearch),
             model: body.modelId || 'deepseek-chat',
-            timeoutMs: 300000,
+            timeoutMs,
           }),
           signal: controller.signal,
         });
@@ -231,22 +230,36 @@ export class UserSandboxDispatcherService {
           this.logger.warn(
             `Session broker user sandbox returned ${res.status}: ${errorText}`
           );
+          if (res.status === 409) {
+            emit({
+              type: StreamEventType.ERROR,
+              content: '⚠️ 该沙箱当前正在执行前一个任务，请稍后再试或点击停止。',
+            });
+            return true;
+          }
           emit({
             type: StreamEventType.OBSERVATION,
-            content: `⚠️ 沙箱执行返回异常 (${res.status})，正在自动无缝切换到云端模型直连模式...`,
+            content: `⚠️ 沙箱执行返回异常 (${res.status})，正在自动切换到云端模型直连模式...`,
           });
           return false;
         }
 
         harnessResult = await res.json();
       } catch (fetchErr: any) {
-        if (controller.signal.aborted || abortSignal?.aborted) {
-          this.logger.log(`Run harness aborted for user [${effectiveUserId}]`);
+        if (abortSignal?.aborted) {
+          this.logger.log(`Run harness cancelled by client for user [${effectiveUserId}]`);
+          return true;
+        }
+        if (controller.signal.aborted) {
+          this.logger.warn(`Run harness timed out for user [${effectiveUserId}]`);
+          emit({
+            type: StreamEventType.ERROR,
+            content: `⚠️ 沙箱任务执行超时（超过 ${timeoutMs / 1000} 秒），已自动中止后台任务。请尝试简化任务或检查模型连通性。`,
+          });
           return true;
         }
         throw fetchErr;
       } finally {
-        clearInterval(heartbeatTimer);
         clearTimeout(timeoutId);
         if (abortSignal) {
           abortSignal.removeEventListener('abort', onAbort);
@@ -303,10 +316,27 @@ export class UserSandboxDispatcherService {
         }
       }
 
+      // 解析并提取结构化性能遥测指标（如 <<<DSH_METRICS:...>>>）
+      let executionMetrics: Record<string, unknown> | undefined;
+      const metricsMatch = rawOutput.match(/<<<DSH_METRICS:([\s\S]*?)>>>/);
+      if (metricsMatch && metricsMatch[1]) {
+        try {
+          executionMetrics = JSON.parse(metricsMatch[1].trim());
+        } catch {
+          // 忽略非法格式指标
+        }
+      }
+
       // 二次防御：彻底剔除可能意外残留在正文中的工具调用裸 JSON 与 XML 标签及外发文件标记
       cleanAnswer = this.stripToolCallArtifacts(cleanAnswer);
-      cleanAnswer = cleanAnswer.replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '').trim();
-      telemetrySummary = telemetrySummary.replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '').trim();
+      cleanAnswer = cleanAnswer
+        .replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '')
+        .replace(/<<<DSH_METRICS:[\s\S]*?>>>/g, '')
+        .trim();
+      telemetrySummary = telemetrySummary
+        .replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '')
+        .replace(/<<<DSH_METRICS:[\s\S]*?>>>/g, '')
+        .trim();
 
       // 自动解析沙箱生成/外发的图片文件，转换为内联 Markdown 图片直接呈现在聊天界面
       cleanAnswer = this.embedWorkspaceImagesInAnswer(effectiveUserId, cleanAnswer, outboundFiles);
@@ -336,6 +366,7 @@ export class UserSandboxDispatcherService {
             executed: true,
             durationMs: harnessResult.durationMs,
             exitCode: harnessResult.exitCode,
+            metrics: executionMetrics,
           },
           outboundFiles: outboundFiles.length > 0 ? outboundFiles : undefined,
         },
