@@ -31,6 +31,7 @@ export interface BuiltinContractReviewInput {
   idempotencyKey?: string;
   prompt?: string;
   reviewPrompt?: string;
+  skipLlmReview?: boolean;
 }
 
 export interface CustomCheckpointDto {

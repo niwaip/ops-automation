@@ -65,4 +65,35 @@ describe('ContractReviewController', () => {
       idempotencyKey: 'exec-review-1',
     });
   });
+
+  it('automatically sets skipLlmReview to true during smoke test invocations', async () => {
+    const mockService = {
+      reviewContract: jest.fn<any>().mockResolvedValue({} as any),
+    };
+    const controller = new ContractReviewController(mockService as any);
+
+    // Case 1: definitionVersion is 0.0.0-smoke
+    await controller.invoke({
+      executionId: 'exec-test-1',
+      definitionVersion: '0.0.0-smoke',
+      input: { text: '测试合同' },
+    });
+    expect(mockService.reviewContract).toHaveBeenCalledWith({
+      text: '测试合同',
+      idempotencyKey: 'exec-test-1',
+      skipLlmReview: true,
+    });
+
+    // Case 2: executionId starts with smoke-
+    await controller.invoke({
+      executionId: 'smoke-999999',
+      definitionVersion: '1.0.0',
+      input: { text: '测试合同' },
+    });
+    expect(mockService.reviewContract).toHaveBeenCalledWith({
+      text: '测试合同',
+      idempotencyKey: 'smoke-999999',
+      skipLlmReview: true,
+    });
+  });
 });

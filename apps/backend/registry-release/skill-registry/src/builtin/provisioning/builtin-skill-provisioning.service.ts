@@ -343,6 +343,7 @@ export class BuiltinSkillProvisioningService {
     if (documentHandler) {
       const domainUrl = getCarboneServiceUrl();
       const smokeExecutionId = idempotencyKeyOverride || 'smoke-' + Date.now();
+      const timeoutMs = Number(process.env.BUILTIN_SKILL_SMOKE_TIMEOUT_MS) || 60000;
       const response = await axios.post(
         `${domainUrl}${documentHandler.endpoint}`,
         {
@@ -353,7 +354,7 @@ export class BuiltinSkillProvisioningService {
           idempotencyKey: smokeExecutionId,
           input,
         },
-        { timeout: 30000 }
+        { timeout: timeoutMs }
       );
       return response.data as BuiltinSkillHandlerResult;
     }

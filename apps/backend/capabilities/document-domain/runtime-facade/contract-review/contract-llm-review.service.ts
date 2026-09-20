@@ -72,7 +72,9 @@ export class ContractLlmReviewService {
           modelId: 'default',
           prompt,
         },
-        { timeout: 25000 }
+        {
+          timeout: Number(process.env.CONTRACT_REVIEW_LLM_TIMEOUT_MS) || 60000,
+        }
       );
 
       const rawResult = response.data?.result || response.data?.content || '';
