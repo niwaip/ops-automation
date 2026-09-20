@@ -195,6 +195,7 @@ export interface ChatRequest {
     thinking?: boolean;
     reasoning?: boolean;
     webSearch?: boolean;
+    research?: boolean;
   };
 }
 

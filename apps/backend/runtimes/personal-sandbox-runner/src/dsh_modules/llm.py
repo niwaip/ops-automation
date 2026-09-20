@@ -239,7 +239,7 @@ def extract_bare_json_tool_calls(text: str) -> list:
     return tools
 
 
-def parse_tool_calls(text: str) -> list:
+def parse_tool_calls(text: str, is_guide: bool = False) -> list:
     """Parses tool calls from DSML, tool_call XML tags, or markdown code blocks"""
     tools = []
     # 1. 解析 DSML / DSML calls 格式 (支持单竖线 ｜/| 与双竖线 ｜｜/||，支持空格、calls 外层容器与 arguments JSON 展开)
@@ -316,8 +316,8 @@ def parse_tool_calls(text: str) -> list:
         if bare_tools:
             tools.extend(bare_tools)
 
-    # 4. 解析 markdown bash / sh / python 代码块工具调用（无论是否有前置或后置对话说明）
-    if not tools:
+    # 4. 解析 markdown bash / sh / python 代码块工具调用（知识/教程模式下严禁将教程代码块作为工具调用）
+    if not tools and not is_guide:
         bash_matches = list(re.finditer(r'```(?:bash|sh|shell|zsh)?\s*\n([\s\S]*?)```', text))
         for m in bash_matches:
             cmd = m.group(1).strip()
@@ -327,7 +327,7 @@ def parse_tool_calls(text: str) -> list:
                 break
 
     # 5. 极端容错：模型未用代码块，直接输出以 curl/python3/sh 等开头的执行管道
-    if not tools:
+    if not tools and not is_guide:
         cmd_candidate = text.strip()
         pipe_m = re.search(r'(?:^|\n\n)(curl\s+[^\n]+(?:\s*&&\s*python3\s*<<\s*[\'"]?EOF[\'"]?[\s\S]*?EOF)?)\s*$', cmd_candidate, re.DOTALL)
         if pipe_m:
@@ -336,7 +336,7 @@ def parse_tool_calls(text: str) -> list:
     return tools
 
 
-def clean_output(text: str) -> str:
+def clean_output(text: str, is_guide: bool = False) -> str:
     """Removes raw DSML, tool_call, bare tool JSON, and internal tags from final user output"""
     text = re.sub(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*(?:calls|tool_calls)>.*?</[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*(?:calls|tool_calls)>', '', text, flags=re.DOTALL)
     text = re.sub(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*invoke[^>]*>.*?(?:</[｜|]{1,2}\s*DSML\s*[｜|]{1,2}\s*invoke>|</[｜|]{1,2}\s*DSML\s*[｜|]{1,2}>|$)', '', text, flags=re.DOTALL)
@@ -349,10 +349,10 @@ def clean_output(text: str) -> str:
         if raw_snippet and raw_snippet in text:
             text = text.replace(raw_snippet, "")
 
-    # 移除残留的未执行或已执行 bash/sh 工具代码块
-    text = re.sub(r'```(?:bash|sh|shell|zsh)?\s*\n(?:curl|python|python3|cat|ls|node|git|sh|bash|grep|find|sed|awk|dsh|cd |mkdir|wget|pip|set |echo)[\s\S]*?```', '', text)
-    # 移除裸露的 curl / python 管道脚本
-    text = re.sub(r'curl\s+[^\n]+(?:\s*&&\s*python3\s*<<\s*[\'"]?EOF[\'"]?[\s\S]*?EOF)?', '', text, flags=re.DOTALL)
+    # 仅在非教程模式下，移除残留的未执行或已执行 bash/sh 工具代码块与裸露管道
+    if not is_guide:
+        text = re.sub(r'```(?:bash|sh|shell|zsh)?\s*\n(?:curl|python|python3|cat|ls|node|git|sh|bash|grep|find|sed|awk|dsh|cd |mkdir|wget|pip|set |echo)[\s\S]*?```', '', text)
+        text = re.sub(r'curl\s+[^\n]+(?:\s*&&\s*python3\s*<<\s*[\'"]?EOF[\'"]?[\s\S]*?EOF)?', '', text, flags=re.DOTALL)
 
     # 移除如「页面已抓取成功，现在解析...」「页面已抓到...」这类中间垫话
     filler_pats = [

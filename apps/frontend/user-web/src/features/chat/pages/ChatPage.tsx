@@ -79,9 +79,10 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   const [sentHistory, setSentHistory] = useState<string[]>([]);
   const [pendingExecutionId, setPendingExecutionId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>('default');
-  const [chatMode, setChatMode] = useState<'chat' | 'task'>('task');
+  const [chatMode, setChatMode] = useState<'chat' | 'task'>(() => useChatStore.getState().chatMode);
   const [enableThinking, setEnableThinking] = useState(true);
   const [enableWebSearch, setEnableWebSearch] = useState(false);
+  const [enableResearch, setEnableResearch] = useState(false);
   const [expandedThoughtMessageId, setExpandedThoughtMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const notifiedTaskStateKeysRef = useRef<Set<string>>(new Set());
@@ -219,6 +220,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     draft,
     enableThinking,
     enableWebSearch,
+    enableResearch,
     ensureSession,
     isStreaming,
     nativeReasoningEnabled,
@@ -255,6 +257,9 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       useChatStore.getState().setChatMode(nextMode);
       setPendingExecutionId(null);
       clearError();
+      if (nextMode === 'task') {
+        setEnableResearch(false);
+      }
       // 切换模式时开启新的对话，避免跨模式历史上下文污染与 Token 暴增
       handleCreateSession();
     },
@@ -578,6 +583,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             onEnableThinkingChange={setEnableThinking}
             enableWebSearch={enableWebSearch}
             onEnableWebSearchChange={setEnableWebSearch}
+            enableResearch={enableResearch}
+            onEnableResearchChange={setEnableResearch}
             thinkingLabel={thinkingToggleLabel}
             thinkingHint={thinkingToggleHint}
             nativeReasoningSupported={nativeReasoningSupported}

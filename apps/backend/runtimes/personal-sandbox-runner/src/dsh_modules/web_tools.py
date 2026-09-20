@@ -190,7 +190,7 @@ def extract_query_freshness(q: str) -> Optional[str]:
 def normalize_search_query(q: str) -> str:
     """Removes conversational stop words, pronouns, and request verbs to optimize search relevance without hardcoding"""
     cleaned = re.sub(
-        r'^(帮我|请|给我|带我|麻烦|协助)?\s*(查一下|查询|搜索|查找|看下|看看|检索|了解一下|获取|调研|调查|分析一下|评测一下|研究一下|调用|查看|search|find|lookup|research|investigate)\s*',
+        r'^(帮我|请|给我|带我|麻烦|协助)?\s*(查一下|查下|查询|搜索|查找|看下|看一下|看看|检索|了解一下|获取|调研|调查|分析一下|分析|评测一下|评测|研究一下|调用|查看|search|find|lookup|research|investigate)\s*',
         '',
         q,
         flags=re.I
@@ -202,12 +202,36 @@ def normalize_search_query(q: str) -> str:
         cleaned,
         flags=re.I
     ).strip()
+    cleaned = re.sub(
+        r'^(他|她|它|其|这个|该|对方)[的]?\s*',
+        '',
+        cleaned,
+        flags=re.I
+    ).strip()
     cleaned = re.sub(r'^[的得地]\s*', '', cleaned).strip()
 
-    substance = re.sub(r'(今天|今日|现在|最新|最近|的|热点|热搜|热门|动态|新闻|\s+)', '', cleaned)
+    substance = re.sub(r'(今天|今日|现在|最新|最近|近年|历年|历届|的|热点|热搜|热门|动态|新闻|\s+)', '', cleaned)
     if len(substance) >= 2:
         cleaned = re.sub(
-            r'\s*(最近\s*\d+\s*天[的]?|近\s*\d+\s*天[的]?|最近一个月[的]?|近一个月[的]?|最近[的]?|最新[的]?|当前[的]?|今天[的]?|今日[的]?)$',
+            r'^(近\s*\d+\s*年[的]?|近年[的]?|近几年[的]?|历年[的]?|往年[的]?|历届[的]?|最近\s*\d+\s*天[的]?|近\s*\d+\s*天[的]?|最近一个月[的]?|近一个月[的]?|最近[的]?|最新[的]?|当前[的]?|今天[的]?|今日[的]?)\s*',
+            '',
+            cleaned,
+            flags=re.I
+        ).strip()
+        cleaned = re.sub(
+            r'\s*[是为]?(什么时候|何时|哪天|几天|多久|哪一年|具体时间|时间安排|举办时间|安排|排期|日期)[呢吗呀啊\?？]*$',
+            '',
+            cleaned,
+            flags=re.I
+        ).strip()
+        cleaned = re.sub(
+            r'\s*[是为]?(什么|哪些|哪几样|怎么回事|是什么概念|是什么意思)[呢吗呀啊\?？]*$',
+            '',
+            cleaned,
+            flags=re.I
+        ).strip()
+        cleaned = re.sub(
+            r'\s*(近\s*\d+\s*年[的]?|近年[的]?|近几年[的]?|历年[的]?|往年[的]?|历届[的]?|最近\s*\d+\s*天[的]?|近\s*\d+\s*天[的]?|最近一个月[的]?|近一个月[的]?|最近[的]?|最新[的]?|当前[的]?|今天[的]?|今日[的]?)$',
             '',
             cleaned,
             flags=re.I

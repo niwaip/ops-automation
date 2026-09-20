@@ -11,6 +11,7 @@ import { TemplateFlowBackupHandler } from './handlers/template-flow-backup.handl
 import { UserOrgBackupHandler } from './handlers/user-org-backup.handler';
 import { TaskPolicyBackupHandler } from './handlers/task-policy-backup.handler';
 import { WorkspaceBackupHandler } from './handlers/workspace-backup.handler';
+import { DocumentTemplateBackupHandler } from './handlers/document-template-backup.handler';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { WorkspaceBackupHandler } from './handlers/workspace-backup.handler';
     UserOrgBackupHandler,
     TaskPolicyBackupHandler,
     WorkspaceBackupHandler,
+    DocumentTemplateBackupHandler,
   ],
   exports: [
     SystemBackupService,
@@ -41,6 +43,7 @@ import { WorkspaceBackupHandler } from './handlers/workspace-backup.handler';
     UserOrgBackupHandler,
     TaskPolicyBackupHandler,
     WorkspaceBackupHandler,
+    DocumentTemplateBackupHandler,
   ],
 })
 export class SystemBackupModule {}

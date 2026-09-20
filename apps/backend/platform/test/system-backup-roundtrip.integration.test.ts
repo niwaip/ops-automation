@@ -619,6 +619,7 @@ describe('SystemBackup Integration Roundtrip Tests', () => {
             userOrganizations: 0,
             taskPolicies: 0,
             workspaces: 2,
+            documentTemplates: 0,
           },
         },
         modules: {

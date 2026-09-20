@@ -16,6 +16,7 @@ import { TemplateFlowBackupHandler } from './handlers/template-flow-backup.handl
 import { UserOrgBackupHandler } from './handlers/user-org-backup.handler';
 import { TaskPolicyBackupHandler } from './handlers/task-policy-backup.handler';
 import { WorkspaceBackupHandler } from './handlers/workspace-backup.handler';
+import { DocumentTemplateBackupHandler } from './handlers/document-template-backup.handler';
 
 if (typeof (BigInt.prototype as any).toJSON !== 'function') {
   (BigInt.prototype as any).toJSON = function () {
@@ -52,7 +53,8 @@ export class SystemBackupService {
     private readonly templateFlowHandler: TemplateFlowBackupHandler,
     private readonly userOrgHandler: UserOrgBackupHandler,
     private readonly taskPolicyHandler: TaskPolicyBackupHandler,
-    private readonly workspaceHandler: WorkspaceBackupHandler
+    private readonly workspaceHandler: WorkspaceBackupHandler,
+    private readonly documentTemplateHandler?: DocumentTemplateBackupHandler
   ) {}
 
   private computeChecksum(data: unknown): string {
@@ -77,6 +79,7 @@ export class SystemBackupService {
       userOrgsCount,
       taskPoliciesCount,
       workspacesCount,
+      documentTemplatesCount,
     ] = await Promise.all([
       this.aiModelHandler.count(),
       this.skillWorkflowHandler.countSkills(),
@@ -87,6 +90,7 @@ export class SystemBackupService {
       this.userOrgHandler.count(),
       this.taskPolicyHandler.count(),
       this.workspaceHandler.count(),
+      this.documentTemplateHandler ? this.documentTemplateHandler.count() : Promise.resolve(0),
     ]);
 
     const counts: Record<BackupModuleKey, number> = {
@@ -99,6 +103,7 @@ export class SystemBackupService {
       userOrganizations: userOrgsCount,
       taskPolicies: taskPoliciesCount,
       workspaces: workspacesCount,
+      documentTemplates: documentTemplatesCount,
     };
 
     const totalAssets = Object.values(counts).reduce((sum, n) => sum + n, 0);
@@ -116,6 +121,7 @@ export class SystemBackupService {
       'userOrganizations',
       'taskPolicies',
       'workspaces',
+      'documentTemplates',
     ];
 
     const selectedModules = new Set<BackupModuleKey>(
@@ -133,6 +139,7 @@ export class SystemBackupService {
       userOrganizations: 0,
       taskPolicies: 0,
       workspaces: 0,
+      documentTemplates: 0,
     };
 
     if (selectedModules.has('aiModels')) {
@@ -200,6 +207,12 @@ export class SystemBackupService {
         wsData.workspaces.length + ((wsData as any).nodes?.length ?? wsData.documents?.length ?? 0);
     }
 
+    if (selectedModules.has('documentTemplates') && this.documentTemplateHandler) {
+      const docData = await this.documentTemplateHandler.export();
+      modulesData.documentTemplates = docData;
+      counts.documentTemplates = docData.templates.length;
+    }
+
     const sanitizedModulesData = serializeBigInts(modulesData);
 
     const manifest: SystemBackupManifest = {
@@ -259,6 +272,9 @@ export class SystemBackupService {
         : Promise.resolve(null),
       payload.modules.workspaces
         ? this.workspaceHandler.preview(payload.modules.workspaces)
+        : Promise.resolve(null),
+      payload.modules.documentTemplates && this.documentTemplateHandler
+        ? this.documentTemplateHandler.preview(payload.modules.documentTemplates)
         : Promise.resolve(null),
     ]);
 
@@ -325,6 +341,7 @@ export class SystemBackupService {
       userOrganizations: { created: 0, updated: 0, skipped: 0 },
       taskPolicies: { created: 0, updated: 0, skipped: 0 },
       workspaces: { created: 0, updated: 0, skipped: 0 },
+      documentTemplates: { created: 0, updated: 0, skipped: 0 },
     };
 
     const errors: string[] = [];
@@ -459,6 +476,31 @@ export class SystemBackupService {
       } catch (err: any) {
         this.logger.error(`Import workspaces failed: ${err.message}`, err.stack);
         errors.push(`工作空间导入失败: ${err.message}`);
+      }
+    }
+
+    // 10. Document Templates & Skills
+    if (
+      selectedModules.has('documentTemplates') &&
+      payload.modules.documentTemplates &&
+      this.documentTemplateHandler
+    ) {
+      try {
+        const docResult = await this.documentTemplateHandler.import(
+          payload.modules.documentTemplates,
+          strategy
+        );
+        importedCounts.documentTemplates = {
+          created: docResult.created,
+          updated: docResult.updated,
+          skipped: docResult.skipped,
+        };
+        if (docResult.errors && docResult.errors.length > 0) {
+          errors.push(...docResult.errors);
+        }
+      } catch (err: any) {
+        this.logger.error(`Import documentTemplates failed: ${err.message}`, err.stack);
+        errors.push(`文档模版导入失败: ${err.message}`);
       }
     }
 

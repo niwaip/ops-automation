@@ -76,11 +76,12 @@ def build_system_prompt(
         f"- Knowledge Space: {knowledge_dir} (read-write deliverables, documents, reports, custom skills)\n\n"
         "【Instructions】:\n"
         "1. For basic greetings and polite dialogue without actionable requests (e.g. '你好', '你是谁'), respond directly and politely in Markdown without invoking tools.\n"
-        "2. Action-Driven Execution (【动作驱动原则】):\n"
-        "   - Whenever the user prompt involves action verbs such as 【查看、检查、检索、查阅、排查、查一下、搜索、验证、测试、分析、执行、生成】:\n"
-        "     You MUST actively invoke native tools (web_search, fetch_page, bash, read_file, scan_knowledge, etc.) to investigate real data or execute actions.\n"
-        "   - Zero Deflection Rule: NEVER output passive cop-outs such as '请提供具体的链接或说明', '请提供更多上下文', or falsely claim an entity '实际上并不存在' without having verified via search tools. You have full access to `web_search` and `bash`—proactively search and verify first!\n"
-        "   - Sandbox Self-Inspection: You are operating directly inside the DeepSeek Harness (dsh) Linux container. If the user asks to inspect, check, or diagnose DeepSeek Harness, dsh, or the sandbox environment, proactively run `bash` (e.g. `dsh doctor`, `dsh --help`, `ls /workspace`) to inspect the real environment.\n"
+        "2. Intent-Aligned Execution (【意图对齐执行准则】):\n"
+        "   - 知识问答与操作指导 (Knowledge & Guidance): 当用户询问使用方法、安装步骤、配置指南、架构原理或代码示例时（例如包含“安装方法”、“怎么配置”、“使用教程”、“原理”等），请直接输出深入、准确、格式工整的 Markdown 教程与示例代码。严禁未获用户明确指令前在终端私自执行可能变更系统环境的命令（如 pip install、apt install、rm 等）。\n"
+        "   - 环境诊断与状态排查 (Environment Inspection): 仅当用户明确要求检查本地沙箱状态、查看工作区文件或排查具体报错时（如“查看当前目录有哪些文件”、“诊断沙箱环境”），才可调用只读检查工具（如 read_file、dsh doctor、ls、cat）。\n"
+        "   - 任务实操与产物创建 (Action Execution): 当用户明确要求新建文件、生成演示文稿、修改代码或添加批注时，主动调用对应工具或技能脚本落盘生成交付物。\n"
+        "   - 外部生态与最新资讯检索 (Live Intelligence): 当用户询问某个框架/工具的最新动态、最新插件、开源社区生态或前沿进展时（例如包含“最新”、“最热门”、“近期”、“社区”等），若沙箱本地缺乏相关情报，【必须主动调用 web_search 联网检索获取互联网最新真实数据】；切勿闭门造车，也切勿将沙箱本地预装的基础内置技能混淆为外部最新的开源插件。\n"
+        "   - Zero Deflection Rule: 在技术问答中切勿随意推诿“请提供链接”或消极回应，充分利用已知知识、联网检索或已加载的专业技能直接给出权威解答。\n"
         "3. Save deliverables and persistent documents to the knowledge space (/knowledge) when requested.\n"
         "4. Output clean, beautifully structured, accurate Chinese Markdown. Never leave raw XML tags or unparsed function artifacts in the final answer.\n"
         "5. When creating or developing web pages, HTML games, dashboards, or prototypes, ALWAYS include the complete standalone HTML code in a single ```html ... ``` block in your final response (even if you write files to workspace). This enables the frontend live interactive preview, fullscreen mode, and download card.\n"
@@ -185,6 +186,7 @@ def build_user_turn(
     is_office_intent: bool = False,
     is_research_intent: bool = False,
     is_inspect_intent: bool = False,
+    is_guide_intent: bool = False,
     existing_history: Optional[List[dict]] = None,
     max_skill_chars: int = 1500,
     timestamp_str: Optional[str] = None
@@ -195,12 +197,19 @@ def build_user_turn(
     """
     user_parts = [f"[User Request]:\n{prompt}"]
 
-    if is_inspect_intent:
+    if is_guide_intent:
         user_parts.append(
-            "【行动执行指引 (Action Directive)】:\n"
-            "- 检测到用户发出了明确的【查看 / 检查 / 检索 / 排查 / 查一下】动作指令。\n"
-            "- 严禁停留在空泛对话或口头向用户索要链接/更多上下文；\n"
-            "- 必须主动调用对应工具展开行动：若涉及技术资料/开源方案/安装部署，立刻调用 `web_search` 或执行检索；若涉及沙箱环境/命令/系统状态，立刻调用 `bash` 或相关工具进行真实探测与验证！"
+            "【技术咨询与指导模式 (Knowledge & Guidance Directive)】:\n"
+            "- 检测到用户正在咨询使用方法、安装部署步骤、配置说明或技术原理。\n"
+            "- 请直接向用户输出结构清晰、详尽完备、可直接复制的中文 Markdown 指南与命令示例；\n"
+            "- 【安全红线】：用户并未授权在沙箱环境中真实执行安装变更，严禁在沙箱终端私自执行 `pip install`、`apt install`、创建虚拟环境或修改系统文件！"
+        )
+    elif is_inspect_intent and not is_research_intent:
+        user_parts.append(
+            "【查看与排查执行指引 (Action Directive)】:\n"
+            "- 检测到用户提出查看、检查、排查或日常问询。\n"
+            "- 请基于已有知识或上下文直接解答；若需要了解本地沙箱环境、文件或系统状态，可调用 `bash` 或相关工具进行真实探测与验证；\n"
+            "- 【硬性规范】：未明确指示深度调研时，切勿发起冗长外部网络调研或执行调研脚本，以直接、高效地解决用户问题为主。"
         )
 
     if session_files:
@@ -296,18 +305,29 @@ def build_user_turn(
         user_parts.append("[Delivery Intent]: 检测到用户要求通过即时通讯通道接收文件。请使用 `send_file` 工具将对应文件推送给用户。")
 
     if is_research_intent:
-        user_parts.append(
-            "【多源深度调研与事实溯源硬性规范 (Research Grounding)】:\n"
-            "- 检测到深度调研、竞品对比、技术选型或最新动态探索意图。\n"
-            "- 实体提炼准则：调用搜索或执行工具前，【务必剥除代词（如'关于他'、'关于它'）、口语祈使词与尾部时间词】，提炼出干净的实体关键词（如将 '调研关于他qwen 3.8 27b 最近30天的' 提炼为 'qwen 3.8 27b'），坚决避免口语虚词导致搜索引擎召回严重漂移。\n"
-            "- 优先调用 `web_search(query='...', freshness='month')`（按近30天时间窗检索）或在终端执行 `python3 /opt/dsh/skills/research/scripts/deep_research.py \"<干净实体关键词>\" --days 30 --html /workspace/调研简报.html` 获取 Web、GitHub 与技术社区真实评价与动态。\n"
+        research_directives = [
+            "【多源深度调研与事实溯源硬性规范 (Research Grounding)】:",
+            "- 检测到深度调研、竞品对比、技术选型或最新动态探索意图。"
+        ]
+        from .skill_router import SkillRouter
+        resolved_q = SkillRouter.resolve_contextual_query(prompt, existing_history)
+        if resolved_q != prompt:
+            research_directives.append(f"- 【多轮实体指代消歧】：根据前序会话上下文，本轮指令 '{prompt}' 实际指代的目标实体为：【{resolved_q}】。执行调研与检索时请以此实体为准！")
+        research_directives.extend([
+            "- 实体提炼准则：调用搜索或执行工具前，【务必剥除代词（如'关于他'、'关于它'）、口语祈使词与尾部时间词】，提炼出干净的实体关键词（如将 '调研关于他qwen 3.8 27b 最近30天的' 提炼为 'qwen 3.8 27b'），坚决避免口语虚词导致搜索引擎召回严重漂移。",
+            "- 优先调用 `web_search(query='...', freshness='month')`（按近30天时间窗检索）或在终端执行 `python3 /opt/dsh/skills/research/scripts/deep_research.py \"<干净实体关键词>\" --days 30 --html /workspace/调研简报.html` 获取 Web、GitHub 与技术社区真实评价与动态。",
             "- 严格基于近 30 天最新信息，坚决剔除陈旧过时方案。每个关键结论必须附带事实依据与 Markdown 超链接引述；摘录 1-2 条社区代表性用户的高赞原声金句（Quotes），杜绝空洞的主观泛谈。"
-        )
+        ])
+        user_parts.append("\n".join(research_directives))
 
     if search_context.strip():
         user_parts.append(f"[Live Retrieved Information]:\n{search_context.strip()}")
     elif is_search_intent:
-        user_parts.append("[Search Status]: 初步检索未获得足够数据。请主动调用工具（如 weather, web_search, 或 bash 执行终端命令）自主获取最新数据解答用户。")
+        user_parts.append(
+            "[Search Status]: 检测到用户正在询问最新动态或外部生态资讯。\n"
+            "- 沙箱本地仅为执行环境，并不包含外部社区的最新情报。\n"
+            "- 若缺少一手数据，请主动调用 `web_search` 搜索引擎工具实时检索互联网与技术社区的最新公开信息后再行回答，切勿将沙箱本地预装的基础内置技能当成外部最新插件！"
+        )
 
     ts = timestamp_str or get_current_timestamp_str()
     user_parts.append(f"---\n[Current System Timestamp]: {ts}")

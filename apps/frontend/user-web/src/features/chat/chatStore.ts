@@ -48,10 +48,24 @@ export interface ChatStoreState {
   clearDraftContext: () => void;
 }
 
+export const STORAGE_KEY_CHAT_MODE = 'ops_user_chat_mode';
+
+const getStoredChatMode = (): ChatMode => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_CHAT_MODE);
+    if (saved === 'chat' || saved === 'task') {
+      return saved;
+    }
+  } catch {
+    // fallback
+  }
+  return 'task';
+};
+
 export const useChatStore = create<ChatStoreState>((set, get) => ({
   currentSession: null,
   isOpen: false,
-  chatMode: 'task',
+  chatMode: getStoredChatMode(),
   draftMessage: '',
   draftExecutionId: null,
   taskContext: null,
@@ -75,6 +89,11 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
   setOpen: (isOpen) => set({ isOpen }),
   setChatMode: (chatMode) => {
     const prevMode = get().chatMode;
+    try {
+      localStorage.setItem(STORAGE_KEY_CHAT_MODE, chatMode);
+    } catch {
+      // ignore
+    }
     if (prevMode !== chatMode) {
       const nextSession = get().createSession();
       set({ chatMode, currentSession: nextSession, draftExecutionId: null });
@@ -85,11 +104,12 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
   setTaskContext: (taskContext) => set({ taskContext }),
   openWithPrompt: (
     draftMessage,
-    chatMode = 'task',
+    mode,
     draftExecutionId = null,
     autoSend = false
   ) => {
     const nextSession = get().createSession();
+    const chatMode = mode || get().chatMode;
     set({
       isOpen: true,
       draftMessage,
@@ -115,7 +135,6 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
     set({
       draftMessage: '',
       draftExecutionId: null,
-      chatMode: 'task',
       autoSend: false,
     }),
 }));

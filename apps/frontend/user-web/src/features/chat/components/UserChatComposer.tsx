@@ -1,6 +1,7 @@
 import {
   AudioOutlined,
   CloudSyncOutlined,
+  CompassOutlined,
   FolderOpenOutlined,
   FolderOutlined,
   GlobalOutlined,
@@ -73,6 +74,8 @@ interface UserChatComposerProps {
   onEnableThinkingChange: (enabled: boolean) => void;
   enableWebSearch?: boolean;
   onEnableWebSearchChange?: (enabled: boolean) => void;
+  enableResearch?: boolean;
+  onEnableResearchChange?: (enabled: boolean) => void;
   thinkingLabel: string;
   thinkingHint: string;
   nativeReasoningSupported: boolean;
@@ -101,6 +104,8 @@ export function UserChatComposer(props: UserChatComposerProps) {
     onEnableThinkingChange,
     enableWebSearch = false,
     onEnableWebSearchChange,
+    enableResearch = false,
+    onEnableResearchChange,
     thinkingLabel,
     thinkingHint,
     nativeReasoningSupported,
@@ -948,30 +953,58 @@ export function UserChatComposer(props: UserChatComposerProps) {
                   className={styles['user-chat-input-dot-switch']}
                 />
               </div>
-              <div
-                className={styles['user-chat-control-item']}
-                title={
-                  enableWebSearch
-                    ? '联网搜索：已开启（允许 AI 检索互联网公开资讯，点击关闭）'
-                    : '联网搜索：已关闭（可选开启，开启后允许 AI 检索互联网公开资讯）'
-                }
-              >
-                <span className={styles['user-chat-control-label']}>
-                  <GlobalOutlined
-                    style={{
-                      marginRight: 4,
-                      color: enableWebSearch ? '#6366f1' : undefined,
-                    }}
+              {chatMode === 'chat' ? (
+                <div
+                  className={styles['user-chat-control-item']}
+                  title={
+                    enableResearch
+                      ? '深度调研：已开启（支持多源网络情报、GitHub动态与近30天事实分析）'
+                      : '深度调研：已关闭（默认关闭。常规查看与问询不走调研；开启或输入 /research 启用多源深度调研）'
+                  }
+                >
+                  <span className={styles['user-chat-control-label']}>
+                    <CompassOutlined
+                      style={{
+                        marginRight: 4,
+                        color: enableResearch ? '#10b981' : undefined,
+                      }}
+                    />
+                    调研
+                  </span>
+                  <Switch
+                    size="small"
+                    checked={Boolean(enableResearch)}
+                    onChange={onEnableResearchChange}
+                    className={styles['user-chat-input-dot-switch']}
                   />
-                  联网
-                </span>
-                <Switch
-                  size="small"
-                  checked={enableWebSearch}
-                  onChange={onEnableWebSearchChange}
-                  className={styles['user-chat-input-dot-switch']}
-                />
-              </div>
+                </div>
+              ) : null}
+              {chatMode === 'task' ? (
+                <div
+                  className={styles['user-chat-control-item']}
+                  title={
+                    enableWebSearch
+                      ? '联网搜索：已开启（允许 AI 检索互联网公开资讯，点击关闭）'
+                      : '联网搜索：已关闭（可选开启，开启后允许 AI 检索互联网公开资讯）'
+                  }
+                >
+                  <span className={styles['user-chat-control-label']}>
+                    <GlobalOutlined
+                      style={{
+                        marginRight: 4,
+                        color: enableWebSearch ? '#6366f1' : undefined,
+                      }}
+                    />
+                    联网
+                  </span>
+                  <Switch
+                    size="small"
+                    checked={enableWebSearch}
+                    onChange={onEnableWebSearchChange}
+                    className={styles['user-chat-input-dot-switch']}
+                  />
+                </div>
+              ) : null}
               <div
                 className={styles['user-chat-control-item']}
                 style={chatMode === 'chat' ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}

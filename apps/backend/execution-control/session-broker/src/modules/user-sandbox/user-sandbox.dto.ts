@@ -100,6 +100,11 @@ export class RunHarnessDto {
   @IsBoolean()
   webSearch?: boolean;
 
+  @ApiPropertyOptional({ description: '是否显式启用深度调研(Research)机能', default: false })
+  @IsOptional()
+  @IsBoolean()
+  research?: boolean;
+
   @ApiPropertyOptional({ description: '使用的模型名称', default: 'deepseek-chat' })
   @IsOptional()
   @IsString()

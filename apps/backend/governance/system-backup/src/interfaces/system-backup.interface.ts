@@ -7,7 +7,8 @@ export type BackupModuleKey =
   | 'executionFlowTemplates'
   | 'userOrganizations'
   | 'taskPolicies'
-  | 'workspaces';
+  | 'workspaces'
+  | 'documentTemplates';
 
 export type BackupImportStrategy = 'merge_override' | 'skip_existing';
 
@@ -16,7 +17,7 @@ export interface SystemBackupManifest {
   exportedAt: string;
   systemVersion: string;
   checksum: string;
-  counts: Record<BackupModuleKey, number>;
+  counts: Partial<Record<BackupModuleKey, number>> & Record<string, number>;
 }
 
 export interface SystemBackupArchive {
@@ -78,6 +79,10 @@ export interface SystemBackupArchive {
       workspaces?: any[];
       documents?: any[];
       nodes?: any[];
+    };
+    documentTemplates?: {
+      templates?: any[];
+      skills?: any[];
     };
   };
 }

@@ -8,3 +8,5 @@ export * from './dto/workspace.dto';
 export * from './storage/local-disk-storage.service';
 export * from './storage/storage-driver.interface';
 export * from './workspace-process-archive.service';
+export * from './workspace-artifact-sync.helper';
+export * from './workspace-note-ai.helper';

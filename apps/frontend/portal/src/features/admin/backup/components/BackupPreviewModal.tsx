@@ -40,6 +40,7 @@ const MODULE_TITLE_MAP: Record<BackupModuleKey, string> = {
   skills: '技能与工具注册表',
   temporalWorkflows: '工作流与活动工件',
   capabilityReleases: '能力发布中心版本',
+  documentTemplates: 'Carbone 文档模版与渲染资产',
   browserTemplates: '浏览器录制模板',
   executionFlowTemplates: '执行流模板与算子',
   taskPolicies: '任务策略与指令配方',

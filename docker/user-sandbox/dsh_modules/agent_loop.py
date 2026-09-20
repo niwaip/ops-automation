@@ -126,7 +126,8 @@ def run_agent_loop(
     policy: RuntimePolicy,
     max_rounds: int,
     tools: Optional[List[Dict[str, Any]]] = None,
-    deadline: Optional[float] = None
+    deadline: Optional[float] = None,
+    is_guide_intent: bool = False
 ) -> AgentLoopResult:
     """
     Executes the multi-turn ReAct tool calling loop up to max_rounds.
@@ -157,7 +158,7 @@ def run_agent_loop(
 
         # 混合兼容降级：若 structured_calls 为空但模型文本中含有 XML/DSML tool_call 标签
         if not structured_calls and reply_text:
-            legacy_calls = parse_tool_calls(reply_text)
+            legacy_calls = parse_tool_calls(reply_text, is_guide=is_guide_intent)
             if legacy_calls:
                 for i, lc in enumerate(legacy_calls):
                     structured_calls.append({
@@ -181,7 +182,8 @@ def run_agent_loop(
                 })
                 continue
 
-            if is_promising_action(reply_text) and round_idx < max_rounds - 1:
+            # 在知识咨询与教程模式下，模型直接输出回答即为最佳结果，严禁强行推动执行工具
+            if not is_guide_intent and is_promising_action(reply_text) and round_idx < max_rounds - 1:
                 print("⚡ [Harness Action Nudge] 检测到模型表达了后续执行意图但遗漏了工具调用，正在提醒模型执行工具...", flush=True)
                 messages.append({"role": "assistant", "content": reply_text})
                 messages.append({
@@ -190,12 +192,12 @@ def run_agent_loop(
                 })
                 continue
 
-            if detect_passive_deflection(reply_text) and round_idx < max_rounds - 1:
+            if not is_guide_intent and detect_passive_deflection(reply_text) and round_idx < max_rounds - 1:
                 print("⚡ [Harness Anti-Deflection Guard] 检测到模型在技术查阅任务中消极推诿向用户索要链接/上下文，正在强制拦截并引导调用工具执行...", flush=True)
                 messages.append({"role": "assistant", "content": reply_text})
                 messages.append({
                     "role": "user",
-                    "content": "【系统行动指令拦截】：沙箱配备了完整的联网检索（web_search）与系统终端（bash）工具。严禁向用户索取链接或推诿要求更多上下文！请立即调用 web_search 搜索该技术项目、关键词或安装方法的官方资料，或调用 bash 探测沙箱环境！"
+                    "content": "【系统行动指令拦截】：沙箱配备了完整的联网检索（web_search）与系统终端（bash）工具。严禁向用户索取链接或推诿要求更多上下文！请立即调用 web_search 搜索该技术项目、关键词或官方资料，或调用 bash 探测沙箱环境！"
                 })
                 continue
             break
@@ -237,6 +239,32 @@ def run_agent_loop(
             )
             clean_param = sanitize_preview(raw_preview, max_chars=policy.param_preview_chars)
             print(f"⚡ [Harness Tool Call] 正在调用工具: {t_name}({clean_param})...", flush=True)
+
+            # 安全红线拦截：若当前为技术咨询/教程模式，严禁私自在终端执行环境安装与系统变更
+            if is_guide_intent and t_name == "bash":
+                cmd_str = str(t_params.get("cmd", "")).strip().lower()
+                is_mutative_install = (
+                    cmd_str.startswith("pip install") or
+                    cmd_str.startswith("pip3 install") or
+                    cmd_str.startswith("python -m pip install") or
+                    cmd_str.startswith("python3 -m pip install") or
+                    "apt-get install" in cmd_str or
+                    "apt install" in cmd_str or
+                    "-m venv" in cmd_str
+                )
+                if is_mutative_install:
+                    print(f"⚠️ [Harness Safety Intercept] 拦截在技术咨询模式下私自执行安装命令: {cmd_str}", flush=True)
+                    tool_res = (
+                        "【系统安全拦截】：当前任务为技术咨询与安装/配置方法说明，用户并未授权在沙箱环境中实际执行安装变更。"
+                        "请立即停止在终端运行安装命令，直接根据已知技术规范与标准流程向用户输出完整详尽的安装方法说明与示例代码！"
+                    )
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": t_id,
+                        "name": t_name,
+                        "content": tool_res
+                    })
+                    continue
 
             # 死循环拦截：检测连续调用相同工具且参数完全一致
             call_sig = f"{t_name}:{json.dumps(t_params, sort_keys=True, ensure_ascii=False)}"
@@ -285,8 +313,8 @@ def run_agent_loop(
             break
 
     # 检查是否仍有未执行的工具调用请求或过渡垫话
-    has_pending_tool_calls = bool(parse_tool_calls(reply_text))
-    final_text = clean_output(reply_text)
+    has_pending_tool_calls = bool(parse_tool_calls(reply_text, is_guide=is_guide_intent))
+    final_text = clean_output(reply_text, is_guide=is_guide_intent)
 
     is_transitional_filler = (
         len(final_text) < 120 and
@@ -311,7 +339,7 @@ def run_agent_loop(
             )
             telemetry.record_llm_response(forced_res, is_first_round=False)
             forced_reply = forced_res.get("content", "") if isinstance(forced_res, dict) else str(forced_res)
-            final_text = clean_output(forced_reply) or forced_reply.strip()
+            final_text = clean_output(forced_reply, is_guide=is_guide_intent) or forced_reply.strip()
         except TimeoutError:
             raise
         except Exception:
