@@ -515,6 +515,9 @@ generate_default_env() {
   cp "$source_file" "$temp_file"
 
   set_env_value "$temp_file" "HOST_IP" "$ip_input"
+  if [[ "$ip_input" != "localhost" && "$ip_input" != "127.0.0.1" ]]; then
+    set_env_value "$temp_file" "HOST_BIND_IP" "0.0.0.0"
+  fi
   set_env_value "$temp_file" "SESSION_BROWSER_IMAGE" "ops-browser-chrome:local"
   set_env_value "$temp_file" "OFFICE_ADDIN_PUBLIC_HOST" "$ip_input"
   set_env_value "$temp_file" "CARBONE_API_PUBLIC_HOST" "$ip_input"
