@@ -77,8 +77,18 @@ install_workspace_deps() {
 }
 
 build_shared_packages() {
-  log "Building shared workspace packages (@ops/browser-recorder, @ops/browser-runtime-facade)"
+  log "Building shared workspace packages (@ops/browser-recorder, @ops/browser-runtime-facade, backend modules)"
   CI=true pnpm --dir "$WORKSPACE_ROOT" --filter @ops/browser-recorder --filter @ops/browser-runtime-facade run build || true
+  CI=true pnpm --dir "$WORKSPACE_ROOT" --filter @ops/platform exec prisma generate --schema ./prisma/schema.prisma || true
+  CI=true pnpm --dir "$WORKSPACE_ROOT" \
+    --filter @ops/identity-access \
+    --filter @ops/organization \
+    --filter @ops/workflow-registry \
+    --filter @ops/skill-registry \
+    --filter @ops/release-manager \
+    --filter @ops/workbench \
+    --filter @ops/im-gateway \
+    --filter @ops/system-backup run build || true
 }
 
 main() {
@@ -102,7 +112,9 @@ main() {
   fi
 
   if [[ -d "$WORKSPACE_ROOT/node_modules/.pnpm" ]] && [[ "$previous_fingerprint" == "$current_fingerprint" ]]; then
-    if [[ ! -d "$WORKSPACE_ROOT/apps/backend/capabilities/browser-domain/recorder/dist" ]] || [[ ! -d "$WORKSPACE_ROOT/apps/backend/capabilities/browser-domain/runtime-facade/dist" ]]; then
+    if [[ ! -d "$WORKSPACE_ROOT/apps/backend/capabilities/browser-domain/recorder/dist" ]] || \
+       [[ ! -d "$WORKSPACE_ROOT/apps/backend/capabilities/browser-domain/runtime-facade/dist" ]] || \
+       [[ ! -d "$WORKSPACE_ROOT/apps/backend/registry-release/skill-registry/dist" ]]; then
       build_shared_packages
     fi
     log "Workspace dependencies are up to date"
