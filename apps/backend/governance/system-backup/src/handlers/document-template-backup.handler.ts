@@ -46,10 +46,19 @@ export class DocumentTemplateBackupHandler {
     return fallback;
   }
 
+  private isDraftTemplateName(fileName?: string | null): boolean {
+    if (!fileName) return false;
+    return String(fileName).trim().toLowerCase().startsWith('draft-');
+  }
+
   async count(): Promise<number> {
     try {
       const result = await this.prisma.$queryRawUnsafe<{ count: string | number }[]>(
-        `SELECT count(*)::int as count FROM document_engine.carbone_templates WHERE type = 'template'`
+        `SELECT count(*)::int as count 
+         FROM document_engine.carbone_templates 
+         WHERE type = 'template' 
+           AND file_name NOT LIKE 'draft-%' 
+           AND file_name NOT ILIKE 'draft-%'`
       );
       return Number(result[0]?.count || 0);
     } catch {
@@ -58,7 +67,22 @@ export class DocumentTemplateBackupHandler {
         const dir = this.getTemplatesDir();
         if (fs.existsSync(dir)) {
           const files = fs.readdirSync(dir);
-          return files.filter((f) => f.endsWith('.json') && !f.startsWith('skill_')).length;
+          let count = 0;
+          for (const f of files) {
+            if (!f.endsWith('.json') || f.startsWith('skill_') || f.toLowerCase().startsWith('draft-')) {
+              continue;
+            }
+            try {
+              const meta = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf-8'));
+              if (this.isDraftTemplateName(meta.fileName || meta.file_name)) {
+                continue;
+              }
+              count += 1;
+            } catch {
+              count += 1;
+            }
+          }
+          return count;
         }
       } catch {
         // ignore
@@ -77,7 +101,11 @@ export class DocumentTemplateBackupHandler {
 
     try {
       dbTemplates = await this.prisma.$queryRawUnsafe<any[]>(
-        `SELECT * FROM document_engine.carbone_templates ORDER BY created_at DESC`
+        `SELECT * FROM document_engine.carbone_templates 
+         WHERE type = 'template' 
+           AND file_name NOT LIKE 'draft-%' 
+           AND file_name NOT ILIKE 'draft-%' 
+         ORDER BY created_at DESC`
       );
     } catch (err: any) {
       this.logger.warn(`Failed to export carbone_templates from database: ${err.message}`);
@@ -85,7 +113,12 @@ export class DocumentTemplateBackupHandler {
 
     try {
       dbSkills = await this.prisma.$queryRawUnsafe<any[]>(
-        `SELECT * FROM document_engine.carbone_skills ORDER BY created_at DESC`
+        `SELECT s.* FROM document_engine.carbone_skills s
+         INNER JOIN document_engine.carbone_templates t ON s.template_id = t.id
+         WHERE t.type = 'template' 
+           AND t.file_name NOT LIKE 'draft-%' 
+           AND t.file_name NOT ILIKE 'draft-%' 
+         ORDER BY s.created_at DESC`
       );
     } catch (err: any) {
       this.logger.warn(`Failed to export carbone_skills from database: ${err.message}`);
@@ -153,12 +186,17 @@ export class DocumentTemplateBackupHandler {
     templates?: any[];
     skills?: any[];
   }): Promise<BackupModulePreview> {
-    const backupTemplates = backupData?.templates || [];
+    const backupTemplates = (backupData?.templates || []).filter(
+      (item) => !this.isDraftTemplateName(item.file_name || item.fileName)
+    );
     let currentTemplates: any[] = [];
 
     try {
       currentTemplates = await this.prisma.$queryRawUnsafe<any[]>(
-        `SELECT id, file_name FROM document_engine.carbone_templates`
+        `SELECT id, file_name FROM document_engine.carbone_templates 
+         WHERE type = 'template' 
+           AND file_name NOT LIKE 'draft-%' 
+           AND file_name NOT ILIKE 'draft-%'`
       );
     } catch {
       currentTemplates = [];
@@ -289,7 +327,9 @@ export class DocumentTemplateBackupHandler {
 
     await this.ensureSchemaAndTables();
 
-    const templates = backupData.templates || [];
+    const templates = (backupData.templates || []).filter(
+      (t) => !this.isDraftTemplateName(t.file_name || t.fileName)
+    );
     for (const t of templates) {
       if (!t.id) continue;
       const id = t.id;

@@ -74,10 +74,15 @@ const isDraftDocumentTemplate = (template: CarboneTemplate): boolean => {
 class CarboneAPI {
   /**
    * 获取所有模板列表
+   * @param options.includeDrafts 是否包含草稿，默认 false
    */
-  async getTemplates(): Promise<CarboneTemplate[]> {
+  async getTemplates(options?: { includeDrafts?: boolean }): Promise<CarboneTemplate[]> {
     const response = await apiClient.get<{ templates: CarboneTemplate[] }>(`/carbone/templates`);
-    return (response.templates || []).filter((template) => !isDraftDocumentTemplate(template));
+    const all = response.templates || [];
+    if (options?.includeDrafts) {
+      return all;
+    }
+    return all.filter((template) => !isDraftDocumentTemplate(template));
   }
 
   /**
