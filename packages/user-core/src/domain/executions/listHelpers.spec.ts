@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {
   extractExecutionDisplayInput,
   summarizeExecutionListInput,
-} from '../../../dist/domain/executions/listHelpers.js';
-import type { ExecutionDto } from '../../../dist/types/execution.types.js';
+} from './listHelpers.js';
+import type { ExecutionDto } from '../../types/execution.types.js';
 
 describe('extractExecutionDisplayInput', () => {
   it('filters out raw base64 data and deduplicates fileName when fileNameA is present', () => {

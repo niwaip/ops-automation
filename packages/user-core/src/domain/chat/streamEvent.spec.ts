@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { reduceChatStreamEvent } from '../../../dist/domain/chat/streamEvent.js';
-import { StreamEventType } from '../../../dist/types/chat.types.js';
+import { reduceChatStreamEvent } from './streamEvent.js';
+import { StreamEventType } from '../../types/chat.types.js';
 
 describe('reduceChatStreamEvent', () => {
   it('completes a ReAct task result without a control-plane execution id', () => {
