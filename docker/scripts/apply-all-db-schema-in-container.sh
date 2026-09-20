@@ -13,5 +13,7 @@ bash "$SCRIPT_DIR/apply-latest-db-schema-in-container.sh"
 bash "$SCRIPT_DIR/apply-ai-orchestrator-db-schema-in-container.sh"
 
 if [[ -f "$SCRIPT_DIR/seed-builtin-skills-in-container.sh" ]]; then
-  bash "$SCRIPT_DIR/seed-builtin-skills-in-container.sh"
+  bash "$SCRIPT_DIR/seed-builtin-skills-in-container.sh" || {
+    printf '[apply-all-db-schema] WARNING: Built-in skills seeding encountered an error; platform service will retry on start.\n' >&2
+  }
 fi
