@@ -58,7 +58,62 @@ export async function executeWorkspaceExplorer(
   };
 
   try {
-    // 1. 发起工作空间关键词检索
+    // 1. 识别是否属于“泛意图空间文件概览”需求（非特定关键词搜索，而是想了解空间里有哪些文档或概况）
+    const strippedTerms = cleanKeyword
+      .replace(/(本地|当前|我的|企业|公司|工作空间|知识空间|知识库|文档库|空间|盘|资料库|内部资料|这里|里面)/g, '')
+      .trim();
+
+    const isOverviewQuery =
+      !strippedTerms ||
+      /^(查看|看看|列出|展示|浏览|获取|有哪些|有什么|所有|全部|概览|清单|列表|目录|文件树|东西|内容|资料|文件|文档)+$/i.test(
+        strippedTerms
+      );
+
+    if (isOverviewQuery) {
+      const listUrl = `${authUrl}/workspaces/search?q=`;
+      const listRes = await axios.get<any[]>(listUrl, {
+        headers,
+        timeout: 8000,
+      });
+      const allFiles = Array.isArray(listRes.data) ? listRes.data : [];
+      const fileNames = allFiles.map((f) => f.name);
+
+      if (allFiles.length === 0) {
+        return {
+          success: true,
+          output: {
+            query: rawQuery,
+            answer:
+              '### 📂 工作空间知识库全貌概览\n\n当前工作空间（个人盘、部门盘与公司公共盘）中暂无已上传或归档的文档。您可以在工作空间中上传相关资料，或通过执行任务自动归档成果。',
+            citations: [],
+            scannedFiles: [],
+            searchedFilesCount: 0,
+          },
+        };
+      }
+
+      const fileItems = allFiles.slice(0, 15).map((f) => {
+        const tab = f.workspaceType || 'personal';
+        const fileUrl = `/workspaces?tab=${encodeURIComponent(tab)}&fileId=${encodeURIComponent(f.id)}&workspaceId=${encodeURIComponent(f.workspaceId)}`;
+        const sizeKb = f.fileSize ? ` (${(Number(f.fileSize) / 1024).toFixed(1)} KB)` : '';
+        return `- 📄 **[${f.name}](${fileUrl})**${sizeKb} · *${f.workspaceName || '空间'}*`;
+      });
+
+      const answer = `### 📂 工作空间知识库全貌概览\n\n在您当前的工作空间中，共检测到 **${allFiles.length}** 个可用文档与交付成果：\n\n${fileItems.join('\n')}${allFiles.length > 15 ? `\n- *...及其他 ${allFiles.length - 15} 个文档*` : ''}\n\n---\n💡 **快速搜索提示**：输入具体关键词（例如 \`/doc 合同\` 或 \`/doc 五子棋\`）可进行跨文档全文研读与高亮行定位。`;
+
+      return {
+        success: true,
+        output: {
+          query: rawQuery,
+          answer,
+          citations: [],
+          scannedFiles: fileNames,
+          searchedFilesCount: allFiles.length,
+        },
+      };
+    }
+
+    // 2. 发起工作空间关键词检索
     const searchUrl = `${authUrl}/workspaces/search-content?q=${encodeURIComponent(cleanKeyword)}`;
     const searchRes = await axios.get<ContentSearchResult[]>(searchUrl, {
       headers,
@@ -103,14 +158,28 @@ export async function executeWorkspaceExplorer(
     }> = [];
 
     if (searchResults.length === 0) {
+      let totalFilesCount = 0;
+      let availableHints = '';
+      try {
+        const listUrl = `${authUrl}/workspaces/search?q=`;
+        const listRes = await axios.get<any[]>(listUrl, { headers, timeout: 5000 });
+        if (Array.isArray(listRes.data) && listRes.data.length > 0) {
+          totalFilesCount = listRes.data.length;
+          const topNames = listRes.data.slice(0, 5).map((f) => `\`${f.name}\``).join('、');
+          availableHints = `\n\n当前工作空间共有 **${totalFilesCount}** 个文档（包括 ${topNames} 等），建议检查关键词是否准确或尝试更换相关业务术语。`;
+        }
+      } catch {
+        // ignore list fallback error
+      }
+
       return {
         success: true,
         output: {
           query: rawQuery,
-          answer: `在当前工作空间（个人盘、部门盘与公司公共盘）中未检索到包含关键词 "${cleanKeyword}" 的文档内容。建议检查文件名或更换关键词重试。`,
+          answer: `在当前工作空间（个人盘、部门盘与公司公共盘）的 **${totalFilesCount || '多'}** 个文档中，未检索到包含关键词 "${cleanKeyword}" 的内容。${availableHints || '建议检查文件名或更换关键词重试。'}`,
           citations: [],
           scannedFiles: [],
-          searchedFilesCount: 0,
+          searchedFilesCount: totalFilesCount,
         },
       };
     }
