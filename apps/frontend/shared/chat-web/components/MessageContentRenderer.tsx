@@ -31,6 +31,19 @@ const safeUrlTransform = (url?: string): string => {
   return '';
 };
 
+const appendAuthToken = (url: string): string => {
+  if (typeof window === 'undefined' || !url.includes('/api/ai/chat/workspace-files/')) return url;
+  if (url.includes('token=')) return url;
+  try {
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+    if (!token) return url;
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}token=${encodeURIComponent(token)}`;
+  } catch {
+    return url;
+  }
+};
+
 const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
   content,
   mode,
@@ -60,9 +73,17 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
                 codeText.includes('<html') ||
                 codeText.includes('class="slide') ||
                 codeText.includes('presentation') ||
-                codeText.includes('guizang'))
+                codeText.includes('guizang') ||
+                codeText.includes('diff-ins') ||
+                codeText.includes('diff-del'))
             ) {
-              return <HtmlPreviewBlock code={codeText.trim()} className={className} />;
+              return (
+                <HtmlPreviewBlock
+                  code={codeText.trim()}
+                  className={className}
+                  isStreaming={isStreaming}
+                />
+              );
             }
 
             return match ? (
@@ -80,9 +101,10 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
             if (finalSrc.startsWith('/workspace/') || finalSrc.startsWith('workspace/')) {
               const fileName = finalSrc.split('/').pop();
               if (fileName) {
-                finalSrc = `/api/ai/chat/workspace-files/default/${encodeURIComponent(fileName)}`;
+                finalSrc = `/api/ai/chat/workspace-files/me/${encodeURIComponent(fileName)}`;
               }
             }
+            finalSrc = appendAuthToken(finalSrc);
 
             return (
               <span style={{ display: 'block', margin: '12px 0', maxWidth: '100%' }}>
@@ -174,15 +196,27 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
                 </span>
               );
             }
+            let finalHref = href || '';
+            if (finalHref.startsWith('/workspace/') || finalHref.startsWith('workspace/')) {
+              const fileName = finalHref.split('/').pop();
+              if (fileName) {
+                finalHref = `/api/ai/chat/workspace-files/me/${encodeURIComponent(fileName)}`;
+              }
+            }
+            finalHref = appendAuthToken(finalHref);
+            const isDownloadLink = finalHref.includes('/api/ai/chat/workspace-files/');
             return (
               <a
-                href={href}
+                href={finalHref}
                 target="_blank"
                 rel="noopener noreferrer"
+                download={isDownloadLink ? true : undefined}
                 style={{
                   wordBreak: 'break-all',
                   overflowWrap: 'anywhere',
                   wordWrap: 'break-word',
+                  color: 'var(--primary-color, #1677ff)',
+                  fontWeight: isDownloadLink ? 600 : undefined,
                 }}
                 onClick={onClick}
                 {...props}
@@ -200,7 +234,7 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
       >
         {normalizeTabSeparatedTable(content)}
       </ReactMarkdown>
-      {isStreaming ? <span className="streaming-indicator">...</span> : null}
+      {isStreaming ? <span className="streaming-indicator" aria-label="generating" /> : null}
     </div>
   );
 };

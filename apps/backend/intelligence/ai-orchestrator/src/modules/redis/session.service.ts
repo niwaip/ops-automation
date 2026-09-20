@@ -298,4 +298,22 @@ export class SessionService {
       this.logger.error(`Failed to delete chat session ${sessionId}:`, error);
     }
   }
+
+  async clearChatSessions(ownerUserId?: string): Promise<number> {
+    try {
+      const sessions = await this.listChatSessions(ownerUserId);
+      let count = 0;
+      for (const s of sessions) {
+        if (s.id) {
+          await this.deleteChatSession(s.id);
+          count++;
+        }
+      }
+      this.logger.debug(`Cleared ${count} chat sessions for user ${ownerUserId || 'all'}`);
+      return count;
+    } catch (error) {
+      this.logger.error(`Failed to clear chat sessions:`, error);
+      return 0;
+    }
+  }
 }

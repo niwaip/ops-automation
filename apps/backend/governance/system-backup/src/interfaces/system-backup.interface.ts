@@ -53,6 +53,8 @@ export interface SystemBackupArchive {
     executionFlowTemplates?: {
       executionFlowTemplates?: any[];
       llmOperations?: any[];
+      llmOperationVersions?: any[];
+      llmOperationActivations?: any[];
     };
     userOrganizations?: {
       users?: any[];
@@ -75,6 +77,7 @@ export interface SystemBackupArchive {
     workspaces?: {
       workspaces?: any[];
       documents?: any[];
+      nodes?: any[];
     };
   };
 }

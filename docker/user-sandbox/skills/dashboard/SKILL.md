@@ -1,15 +1,15 @@
 ---
 name: dashboard
-description: |
-  Admin / analytics dashboard in a single HTML file. Fixed left sidebar,
-  top bar with user/search, main grid of KPI cards and one or two charts.
-  Use when the brief asks for a "dashboard", "admin", "analytics", or
-  "control panel" screen.
+description: "单页面数据看板与后台管理界面（Dashboard / Admin Panel）。包含指标卡片（KPI）、图表与侧边栏。当用户需要设计或制作后台管理界面、数据看板、数据大屏或控制面板时使用。"
 triggers:
   - "dashboard"
   - "admin panel"
   - "analytics"
   - "control panel"
+  - "看板"
+  - "数据看板"
+  - "做个看板"
+  - "看板设计"
   - "后台"
   - "管理后台"
 od:

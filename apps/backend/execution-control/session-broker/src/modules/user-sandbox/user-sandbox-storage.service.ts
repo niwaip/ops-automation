@@ -8,6 +8,7 @@ export interface UserWorkspacePaths {
   sharedPlugins: string;
   sharedSkills: string;
   dshModules?: string;
+  dshBin?: string;
 }
 
 export interface UserSandboxQuota {
@@ -130,7 +131,17 @@ export class UserSandboxStorageService {
     const hostKnowledge = path.join(hostUserRoot, 'knowledge');
     const hostSharedPlugins = path.join(this.hostProjectRoot, 'data', 'shared', 'dsh-plugins');
     const hostSharedSkills = path.join(this.hostProjectRoot, 'data', 'shared', 'dsh-skills');
-    const hostDshModules = path.join(this.hostProjectRoot, 'docker', 'user-sandbox', 'dsh_modules');
+    const localCanonicalDshModules = path.join(this.localProjectRoot, 'apps', 'backend', 'runtimes', 'personal-sandbox-runner', 'src', 'dsh_modules');
+    const hostCanonicalDshModules = path.join(this.hostProjectRoot, 'apps', 'backend', 'runtimes', 'personal-sandbox-runner', 'src', 'dsh_modules');
+    const hostFallbackDshModules = path.join(this.hostProjectRoot, 'docker', 'user-sandbox', 'dsh_modules');
+    const hostDshModules = fs.existsSync(localCanonicalDshModules) ? hostCanonicalDshModules : hostFallbackDshModules;
+
+    const localCanonicalDshBin = path.join(this.localProjectRoot, 'apps', 'backend', 'runtimes', 'personal-sandbox-runner', 'bin', 'dsh');
+    const hostCanonicalDshBin = path.join(this.hostProjectRoot, 'apps', 'backend', 'runtimes', 'personal-sandbox-runner', 'bin', 'dsh');
+    const hostFallbackDshBin = path.join(this.hostProjectRoot, 'docker', 'user-sandbox', 'dsh');
+    const hostDshBin = fs.existsSync(localCanonicalDshBin)
+      ? hostCanonicalDshBin
+      : (fs.existsSync(path.join(this.localProjectRoot, 'docker', 'user-sandbox', 'dsh')) ? hostFallbackDshBin : undefined);
 
     const localUserRoot = path.join(this.localProjectRoot, 'data', 'users', sanitized);
     const localWorkspace = path.join(localUserRoot, 'workspace');
@@ -204,9 +215,7 @@ export class UserSandboxStorageService {
         for (const s of defaultSkills) {
           const src = path.join(defaultSkillsDir, s);
           const dest = path.join(localSharedSkills, s);
-          if (!fs.existsSync(dest)) {
-            fs.cpSync(src, dest, { recursive: true });
-          }
+          fs.cpSync(src, dest, { recursive: true, force: true });
         }
       } catch (e: any) {
         this.logger.warn(`Failed to seed default skills: ${e.message}`);
@@ -219,6 +228,7 @@ export class UserSandboxStorageService {
       sharedPlugins: hostSharedPlugins,
       sharedSkills: hostSharedSkills,
       dshModules: hostDshModules,
+      dshBin: hostDshBin,
     };
   }
 
@@ -264,6 +274,51 @@ export class UserSandboxStorageService {
       }
     } catch (err: any) {
       this.logger.warn(`Failed to persist session history for sandbox: ${err.message}`);
+    }
+  }
+
+  /**
+   * 将会话关联的附件清单持久化至工作区 session 存储目录中
+   */
+  writeSessionAttachments(
+    userId: string,
+    sessionId: string,
+    files: string[]
+  ): void {
+    if (!Array.isArray(files) || files.length === 0) {
+      return;
+    }
+    const sanitizedSessionId = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const sanitizedUser = this.sanitizeUserId(userId);
+    const localWorkspace = path.join(this.localProjectRoot, 'data', 'users', sanitizedUser, 'workspace');
+
+    try {
+      const validFiles = files
+        .filter((f) => typeof f === 'string' && f.trim().length > 0)
+        .map((f) => path.basename(f.trim()));
+
+      if (validFiles.length === 0) {
+        return;
+      }
+
+      const sessionsDir = path.join(localWorkspace, '.dsh', 'sessions');
+      if (!fs.existsSync(sessionsDir)) {
+        fs.mkdirSync(sessionsDir, { recursive: true });
+        try {
+          fs.chmodSync(sessionsDir, 0o777);
+        } catch {
+          // best-effort permissions for container mounting
+        }
+      }
+      const attFile = path.join(sessionsDir, `${sanitizedSessionId}.attachments.json`);
+      fs.writeFileSync(attFile, JSON.stringify(validFiles, null, 2), 'utf-8');
+      try {
+        fs.chmodSync(attFile, 0o666);
+      } catch {
+        // best-effort permissions for container mounting
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to persist session attachments for sandbox: ${err.message}`);
     }
   }
 }

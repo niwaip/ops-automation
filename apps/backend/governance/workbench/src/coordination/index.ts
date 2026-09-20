@@ -3,7 +3,6 @@ export * from './workbench-coordination.service';
 export * from './workbench-coordination.controller';
 export * from './org-workflow.service';
 export * from './org-workflow.entity';
-export * from './mock-hr.service';
 export * from './stage-flow-ai-draft.service';
 export * from './workflow-stage-port.contract';
 export * from './org-base-workflow-templates.constants';

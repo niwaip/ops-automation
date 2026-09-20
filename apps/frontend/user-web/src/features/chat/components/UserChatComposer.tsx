@@ -24,7 +24,7 @@ import type { CollaboratorUser } from '../../../api/workbenchCoordination';
 import { useChatComposerHistory } from '../hooks/useChatComposerHistory';
 import { useChatSpeechRecorder } from '../hooks/useChatSpeechRecorder';
 import { SlashCommandDropdown } from './SlashCommandDropdown';
-import { isWorkSlashCommand, type SlashCommandDefinition } from '../lib/slashCommands';
+import { isWorkSlashCommand, isPersonalSlashCommand, type SlashCommandDefinition } from '../lib/slashCommands';
 import type { WorkspaceNode } from '../../../api/workspace';
 import { supportsNativeReasoning } from '@/shared/lib/aiModelReasoning';
 import { shouldSubmitChatComposerOnEnter } from '../lib/chatComposerKeyboard';
@@ -240,20 +240,13 @@ export function UserChatComposer(props: UserChatComposerProps) {
     [draft, onDraftChange, uploadedFiles]
   );
 
-  const [cardInitialTemplateId, setCardInitialTemplateId] = useState<string>('general.coordination');
+  const [cardInitialTemplateId, setCardInitialTemplateId] = useState<string>('legal.contract.review_flow');
   const [cardInitialValues, setCardInitialValues] = useState<Record<string, any>>({});
 
   // 智能嗅探自然语言协同意图
   const detectedWorkflowIntent = useMemo(() => {
     if (!draft || !draft.includes('@')) return null;
     const lower = draft.toLowerCase();
-    if (/请假|休假|事假|病假|年假|调休/i.test(lower)) {
-      return {
-        templateId: 'hr.leave.request',
-        name: '员工请假申请',
-        tag: 'HRMS 考勤',
-      };
-    }
     if (/保密|nda/i.test(lower)) {
       return {
         templateId: 'legal.nda.generation_and_review_flow',
@@ -266,13 +259,6 @@ export function UserChatComposer(props: UserChatComposerProps) {
         templateId: 'legal.contract.review_flow',
         name: '标准合同起草与法务审查闭环流',
         tag: '法务风控',
-      };
-    }
-    if (/报销|发票|差旅|打车|支出/i.test(lower)) {
-      return {
-        templateId: 'oa.expense.claim',
-        name: '费用报销审批',
-        tag: '财务/ERP',
       };
     }
     return null;
@@ -294,21 +280,8 @@ export function UserChatComposer(props: UserChatComposerProps) {
       setUserMentionOpen(false);
 
       if (mode === 'card') {
-        const lower = text.toLowerCase();
-        if (/请假|休假|事假|病假|年假|调休/i.test(lower)) {
-          setCardInitialTemplateId('hr.leave.request');
-          setCardInitialValues({
-            leaveType: /病假/i.test(lower) ? '病假' : /年假/i.test(lower) ? '年假' : '事假',
-            durationHours: /下午|半天/i.test(lower) ? 4 : /一天|整天/i.test(lower) ? 8 : 4,
-            reason: text.replace(/[@＠][^\s@＠]+/g, '').trim() || '个人私事请假',
-          });
-        } else if (/报销|发票|支出/i.test(lower)) {
-          setCardInitialTemplateId('oa.expense.claim');
-          setCardInitialValues({});
-        } else {
-          setCardInitialTemplateId('general.coordination');
-          setCardInitialValues({});
-        }
+        setCardInitialTemplateId('legal.contract.review_flow');
+        setCardInitialValues({});
         setCardModalOpen(true);
       } else {
         const newPos = newBefore.length;
@@ -338,18 +311,11 @@ export function UserChatComposer(props: UserChatComposerProps) {
 
         const text = draft;
         const lower = text.toLowerCase();
-        if (templateId === 'hr.leave.request' || /请假|休假|事假|病假|年假|调休/i.test(lower)) {
-          setCardInitialTemplateId('hr.leave.request');
-          setCardInitialValues({
-            leaveType: /病假/i.test(lower) ? '病假' : /年假/i.test(lower) ? '年假' : '事假',
-            durationHours: /下午|半天/i.test(lower) ? 4 : /一天|整天/i.test(lower) ? 8 : 4,
-            reason: text.replace(/[@＠][^\s@＠]+/g, '').trim() || '个人私事请假',
-          });
-        } else if (templateId === 'oa.expense.claim' || /报销|发票|支出/i.test(lower)) {
-          setCardInitialTemplateId('oa.expense.claim');
+        if (templateId === 'legal.nda.generation_and_review_flow' || /保密|nda/i.test(lower)) {
+          setCardInitialTemplateId('legal.nda.generation_and_review_flow');
           setCardInitialValues({});
         } else {
-          setCardInitialTemplateId(isModalAction ? 'general.coordination' : templateId);
+          setCardInitialTemplateId(templateId || 'legal.contract.review_flow');
           setCardInitialValues({});
         }
         setCardModalOpen(true);
@@ -396,11 +362,8 @@ export function UserChatComposer(props: UserChatComposerProps) {
 
   const handleSelectSlashCommand = useCallback(
     (cmd: SlashCommandDefinition) => {
-      if (cmd.disabled || (chatMode === 'chat' && cmd.scope === 'work')) {
-        void antdMessage.warning(
-          cmd.disabledReason ||
-            '个人模式下不能调用工作能力。如需使用企业技能，请在左下方切换至「工作模式」。'
-        );
+      if (cmd.disabled) {
+        void antdMessage.warning(cmd.disabledReason || '当前指令暂不可用');
         return;
       }
       const text = draft;
@@ -419,7 +382,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
         textarea?.focus();
       }, 50);
     },
-    [chatMode, draft, onDraftChange]
+    [draft, onDraftChange]
   );
 
   const activeUploadsCountRef = useRef(0);
@@ -450,7 +413,13 @@ export function UserChatComposer(props: UserChatComposerProps) {
     const trimmed = draft.trim();
     if (chatMode === 'chat' && isWorkSlashCommand(trimmed)) {
       void antdMessage.warning(
-        '个人模式下不能调用工作能力（如 /doc、/email、/extract 等）。如需使用企业技能，请切换到「工作模式」。'
+        '提示：/doc、/email、/extract 为工作模式专属企业技能。个人模式请使用 /ppt、/research、/excel、/word 等独立沙箱指令，如需企业知识协同请在左下方切换至「工作模式」。'
+      );
+      return;
+    }
+    if (chatMode === 'task' && isPersonalSlashCommand(trimmed)) {
+      void antdMessage.warning(
+        '提示：/ppt、/research 等为个人模式沙箱专属工具链。如需体验深度技术调研或PPT生成，请在左下方切换至「个人模式」。'
       );
       return;
     }
@@ -775,7 +744,9 @@ export function UserChatComposer(props: UserChatComposerProps) {
                   ? '已开启知识库检索，输入问题直接研读空间文档...（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
                   : enableWebSearch
                     ? '已开启全网实时搜索，输入问题直接检索...（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
-                    : placeholder || '输入消息，Enter 发送，Shift+Enter 换行（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
+                    : placeholder || (chatMode === 'chat'
+                      ? '输入消息，Enter 发送（输入 / 唤起 /ppt, /research 等沙箱生产力工具）'
+                      : '输入消息，Enter 发送（输入 / 唤起工作模式企业技能，! 唤起工作流）')
             }
             className={styles['user-chat-input-textarea']}
             disabled={disabled || isTranscribing || isUploadingFile}

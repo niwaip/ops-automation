@@ -7,16 +7,29 @@ export interface ParsedChatSlashCommand {
 }
 
 /**
- * 工作模式专属的 Slash 技能指令列表与匹配正则
+ * 工作模式专属的 Slash 技能指令列表与匹配正则（企业知识库、文档内容提取与邮件）
  */
 export const WORK_SLASH_COMMAND_REGEX =
-  /^\s*\/(?:doc|workspace|rag|extract|pdf|email)(?:\s+|$)([\s\S]*)/i;
+  /^\s*\/(?:doc|workspace|rag|extract|email)(?:\s+|$)([\s\S]*)/i;
 
 /**
  * 检测消息是否为工作模式专属的 Slash 指令
  */
 export function isWorkSlashCommand(text: string): boolean {
   return WORK_SLASH_COMMAND_REGEX.test(text || '');
+}
+
+/**
+ * 个人模式专属的 Slash 工具指令（由沙箱 Agent 自主解析与执行）
+ */
+export const PERSONAL_SLASH_COMMAND_REGEX =
+  /^\s*\/(?:ppt|slides|deck|research|deepsearch|last30days|调研|excel|xlsx|table|表格|word|docx|pdf|form|image|draw|生图|design|ui|prototype|report)(?:\s+|$)([\s\S]*)/i;
+
+/**
+ * 检测消息是否为个人沙箱专属的 Slash 指令
+ */
+export function isPersonalSlashCommand(text: string): boolean {
+  return PERSONAL_SLASH_COMMAND_REGEX.test(text || '');
 }
 
 export function parseChatSlashCommand(

@@ -1,16 +1,14 @@
 ---
 name: pdf
-zh_name: "PDF 文档与报告生成引擎"
-description: |
-  Generate professional, beautifully formatted PDF documents and reports from Word (.docx), Markdown, or structured data.
-zh_description: |
-  专业级 PDF 生成规范：支持将 Word (.docx)、Markdown、表格与结构化数据快速转换为排版精良的 PDF 文档，内置中文字体与开箱即用的本地生成模版。
+zh_name: "PDF 文档与交互式表单处理引擎"
+description: "专业级 PDF 文档生成、格式转换（Word/Markdown转PDF）与交互式 AcroForm 表单填报引擎。当用户需要生成 PDF、导出 PDF 报表、填写 PDF 表单、或将文档转为 PDF 时必须使用此技能。不要用于普通的日常问答或代码开发。"
 tags:
   - "pdf"
   - "document"
   - "report"
   - "docx-to-pdf"
   - "export-pdf"
+  - "form-fill"
 triggers:
   - "pdf"
   - "生成pdf"
@@ -18,26 +16,53 @@ triggers:
   - "转为pdf"
   - "转成pdf"
   - "pdf report"
+  - "pdf表单"
+  - "填写pdf"
+  - "表单填报"
   - "继续生成"
   - "1"
 ---
 
-# PDF Document Generation Skill
+# PDF Document Generation & Interactive Form Processing Skill
 
-> 本技能为沙箱环境中的智能体提供标准、离线、高可靠的 PDF 生成指引与代码模版。
+本技能为沙箱环境中的智能体提供标准、离线、高可靠的 PDF 生成指引与交互式表单填报规范。
 
 ---
 
-## 1. 运行环境与字体约束（严禁联网下载！）
+## 1. 运行环境与约束（严禁联网下载！）
 
 沙箱容器中**已永久内置全部必要环境与中文字体**，执行生成时：
 - ✅ **中文字体位置**：优先使用 `/opt/dsh/skills/pdf/assets/NotoSansSC-Regular.otf` 或 `/tmp/font/NotoSansSC-Regular.otf`（100% 存在）。
-- ✅ **预装依赖库**：`python-docx` 与 `fpdf2` 已预装就绪。
+- ✅ **预装依赖库**：`pypdf`、`python-docx` 与 `fpdf2` 已预装就绪。
 - ❌ **严格禁止**：在脚本中编写 `pip install`、`curl` 或 `wget` 联网下载字体！严禁编写 ` || ` 等未完成的空命令。
+- ✅ **黑盒脚本工具库**：表单识别与填报脚本位于 `/opt/dsh/skills/pdf/scripts/`，详细表单工作流可参阅 `forms.md`。
 
 ---
 
-## 2. 场景一：从 Word 合同/文档 (.docx) 生成 PDF
+## 2. 场景一：交互式 PDF 表单识别与自动填报 (Interactive Form Filling)
+
+当用户提供需填写的政府/企业/银行 PDF 表单时，严格按如下黑盒 CLI 流程处理：
+
+```bash
+# 步骤 1: 检查 PDF 是否包含交互式表单字段
+python /opt/dsh/skills/pdf/scripts/check_fillable_fields.py /workspace/input_form.pdf
+
+# 步骤 2: 若具备表单字段，提取表单字段元数据 (生成 field_info.json)
+python /opt/dsh/skills/pdf/scripts/extract_form_field_info.py /workspace/input_form.pdf /workspace/field_info.json
+
+# 步骤 3: 根据用户提供的信息构造待填充值映射文件 /workspace/field_values.json，格式示例:
+# [
+#   {"field_id": "company_name", "value": "智能科技有限公司"},
+#   {"field_id": "is_general_taxpayer", "value": "/Yes"}
+# ]
+
+# 步骤 4: 执行表单填报并校验生成终态文件
+python /opt/dsh/skills/pdf/scripts/fill_fillable_fields.py /workspace/input_form.pdf /workspace/field_values.json /workspace/filled_form.pdf
+```
+
+---
+
+## 3. 场景二：从 Word 合同/文档 (.docx) 生成 PDF
 
 当用户上传了 `.docx` 并要求生成 PDF 时，使用如下标准的 Python 脚本生成（调用 `bash` 工具静默执行）：
 
@@ -124,9 +149,7 @@ print(f"SUCCESS: {PDF_PATH}, pages={pdf.page_no()}, size={os.path.getsize(PDF_PA
 
 ---
 
-## 3. 场景二：从 Markdown / 分析总结生成报告 PDF
-
-若用户需要将对话中的分析、热点榜单或调研报告直接导出为 PDF：
+## 4. 场景三：从 Markdown / 分析总结生成报告 PDF
 
 ```python
 #!/usr/bin/env python3
@@ -150,20 +173,15 @@ pdf.ln(5)
 
 # Body
 pdf.set_font('NotoSC', '', 10.5)
-# 写入段落内容...
 pdf.output('/workspace/report.pdf')
 ```
 
 ---
 
-## 4. 智能体执行准则（严防代码泄漏与半成品）
+## 5. 智能体执行准则
 
 1. **自动闭环执行**：
-   - 收到“生成PDF”、“继续生成”或数字回复时，**智能体必须直接调用 `bash` 工具静默执行 Python 生成脚本**；
-   - **严禁**直接在最终回答中输出裸露的 `set -e`、`pip install` 或 `=== [1/4] ===` 等脚本草稿！
+   - 收到“生成PDF”、“继续生成”或填表请求时，直接调用 `bash` 工具静默执行 Python 脚本；
+   - 严禁直接输出脚本源码半成品给用户。
 2. **生成完毕后汇报**：
-   - 执行成功后，检查 `/workspace/<filename>.pdf` 是否存在；
-   - 向用户清晰汇报：
-     - 📄 **文档名称**：如 `1234 (2).pdf`
-     - 📊 **页数与大小**：如 `共 6 页，约 48 KB`
-     - 💾 **下载与查看方式**：已成功保存至个人工作区，支持在左侧资料面板下载或直接预览。
+   - 执行成功后，向用户汇报文件名称、页数与大小，提示文件已保存在个人工作区。

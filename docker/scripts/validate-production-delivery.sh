@@ -24,6 +24,7 @@ Required environment variables:
   CONTROL_PLANE_DATABASE_URL Dedicated Control Plane login URL
   AI_ORCHESTRATOR_DATABASE_URL Dedicated AI Orchestrator login URL
   REDIS_HOST, REDIS_PASSWORD, SESSION_BROKER_URL
+  JWT_SECRET, INTERNAL_API_SHARED_SECRET
 
 --verify-db-roles additionally requires DATABASE_ADMIN_URL and the three
 *_DB_LOGIN variables documented by database/scripts/verify-application-roles.mjs.
@@ -58,7 +59,8 @@ require_digest() {
 for variable in \
   CONTROL_PLANE_IMAGE AI_ORCHESTRATOR_IMAGE RUNTIME_WORKER_IMAGE \
   CONTROL_PLANE_DATABASE_URL AI_ORCHESTRATOR_DATABASE_URL \
-  REDIS_HOST REDIS_PASSWORD SESSION_BROKER_URL; do
+  REDIS_HOST REDIS_PASSWORD SESSION_BROKER_URL \
+  JWT_SECRET INTERNAL_API_SHARED_SECRET; do
   require_env "$variable"
 done
 

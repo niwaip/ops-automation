@@ -1,4 +1,4 @@
-import { parseChatSlashCommand, isWorkSlashCommand } from './chat-slash-command.util';
+import { parseChatSlashCommand, isWorkSlashCommand, isPersonalSlashCommand } from './chat-slash-command.util';
 
 describe('parseChatSlashCommand', () => {
   it('parses /t short command and switches to task mode', () => {
@@ -84,14 +84,17 @@ describe('parseChatSlashCommand', () => {
       expect(p3.systemReply).toContain('个人模式下不能调用工作能力');
     });
 
-    it('blocks /extract and /pdf in chat mode', () => {
+    it('blocks /extract in chat mode', () => {
       const p1 = parseChatSlashCommand('/extract 提取文档', 'chat');
       expect(p1.isCommandOnly).toBe(true);
       expect(p1.systemReply).toContain('个人模式下不能调用工作能力');
+    });
 
-      const p2 = parseChatSlashCommand('/pdf 解析报告.pdf', 'chat');
-      expect(p2.isCommandOnly).toBe(true);
-      expect(p2.systemReply).toContain('个人模式下不能调用工作能力');
+    it('allows /pdf in chat mode as personal sandbox capability', () => {
+      const p2 = parseChatSlashCommand('/pdf 导出员工审批表', 'chat');
+      expect(p2.mode).toBe('chat');
+      expect(p2.message).toBe('/pdf 导出员工审批表');
+      expect(p2.isCommandOnly).toBe(false);
     });
 
     it('blocks /email in chat mode', () => {
@@ -124,11 +127,25 @@ describe('parseChatSlashCommand', () => {
       expect(isWorkSlashCommand('/doc xxx')).toBe(true);
       expect(isWorkSlashCommand('/workspace')).toBe(true);
       expect(isWorkSlashCommand('/extract')).toBe(true);
-      expect(isWorkSlashCommand('/pdf sample.pdf')).toBe(true);
+      expect(isWorkSlashCommand('/pdf sample.pdf')).toBe(false);
       expect(isWorkSlashCommand('/email')).toBe(true);
       expect(isWorkSlashCommand('/search xxx')).toBe(false);
       expect(isWorkSlashCommand('/help')).toBe(false);
       expect(isWorkSlashCommand('普通文本 /doc')).toBe(false);
+    });
+
+    it('correctly identifies personal slash commands using isPersonalSlashCommand', () => {
+      expect(isPersonalSlashCommand('/ppt 生成ppt')).toBe(true);
+      expect(isPersonalSlashCommand('/slides 商业计划书')).toBe(true);
+      expect(isPersonalSlashCommand('/deck')).toBe(true);
+      expect(isPersonalSlashCommand('/research AI行业报告')).toBe(true);
+      expect(isPersonalSlashCommand('/excel 数据分析')).toBe(true);
+      expect(isPersonalSlashCommand('/word 周报')).toBe(true);
+      expect(isPersonalSlashCommand('/pdf 导出表单')).toBe(true);
+      expect(isPersonalSlashCommand('/image 画一只猫')).toBe(true);
+      expect(isPersonalSlashCommand('/design 制作大屏')).toBe(true);
+      expect(isPersonalSlashCommand('/doc xxx')).toBe(false);
+      expect(isPersonalSlashCommand('普通文本 /ppt')).toBe(false);
     });
   });
 });

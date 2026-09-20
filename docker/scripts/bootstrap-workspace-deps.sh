@@ -76,6 +76,11 @@ install_workspace_deps() {
   popd > /dev/null
 }
 
+build_shared_packages() {
+  log "Building shared workspace packages (@ops/browser-recorder, @ops/browser-runtime-facade)"
+  CI=true pnpm --dir "$WORKSPACE_ROOT" --filter @ops/browser-recorder --filter @ops/browser-runtime-facade run build || true
+}
+
 main() {
   ensure_workspace_root
   mkdir -p "$STAMP_DIR"
@@ -97,6 +102,9 @@ main() {
   fi
 
   if [[ -d "$WORKSPACE_ROOT/node_modules/.pnpm" ]] && [[ "$previous_fingerprint" == "$current_fingerprint" ]]; then
+    if [[ ! -d "$WORKSPACE_ROOT/apps/backend/capabilities/browser-domain/recorder/dist" ]] || [[ ! -d "$WORKSPACE_ROOT/apps/backend/capabilities/browser-domain/runtime-facade/dist" ]]; then
+      build_shared_packages
+    fi
     log "Workspace dependencies are up to date"
     exit 0
   fi
@@ -119,6 +127,8 @@ main() {
     rm -rf "$WORKSPACE_ROOT/node_modules"
     BOOTSTRAP_RETRY=1 exec "$0" "$@"
   fi
+
+  build_shared_packages
 
   # Only write stamp file if node_modules actually exists after install
   if [[ -d "$WORKSPACE_ROOT/node_modules/.pnpm" ]]; then

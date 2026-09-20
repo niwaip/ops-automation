@@ -10,7 +10,7 @@ import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
-import { WORKBENCH_PRISMA, WorkbenchPrismaPort, getAiOrchestratorUrl } from '../ports';
+import { WORKBENCH_PRISMA, WorkbenchPrismaPort, getAiOrchestratorUrl, isContainerRuntime } from '../ports';
 import { STORAGE_DRIVER, type StorageDriver } from './storage/storage-driver.interface';
 import { WorkspaceContentIndexerService } from './workspace-content-indexer.service';
 import { WorkspaceDigestService } from './workspace-digest.service';
@@ -69,10 +69,11 @@ export class WorkspaceNoteService {
       }
     }
 
-    // 2. 确定保存目录（默认为 "AI知识候选/YYYY-MM"）
+    // 2. 确定保存目录（工作模式默认为 "工作任务成果 (tasks)"，个人模式默认为 "沙盒保存内容 (saved)"）
     const now = new Date();
-    const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const rawFolderPath = (dto.folderPath && dto.folderPath.trim()) || `AI知识候选/${yearMonth}`;
+    const isTaskMode = dto.type === 'task_result' || Boolean(dto.executionId);
+    const defaultFolder = isTaskMode ? '工作任务成果 (tasks)' : '沙盒保存内容 (saved)';
+    const rawFolderPath = (dto.folderPath && dto.folderPath.trim()) || defaultFolder;
     const folderSegments = rawFolderPath
       .split('/')
       .map((s) => s.trim())
@@ -166,11 +167,11 @@ export class WorkspaceNoteService {
       data: { usedBytes: nextUsedBytes },
     });
 
-    // 自动关联同步正文中引用的沙箱生成图片至相同工作区目录
+    // 自动关联同步正文与沙箱中引用的成果物（HTML应用、图表、文档、图片）至相同工作区目录及沙箱知识库
     try {
-      await this.syncReferencedImagesToWorkspace(userId, workspace, currentParentId, dto.content);
+      await this.syncReferencedArtifactsToWorkspace(userId, workspace, currentParentId, dto);
     } catch (err: any) {
-      this.logger.warn(`Failed to sync companion images: ${err.message}`);
+      this.logger.warn(`Failed to sync companion artifacts: ${err.message}`);
     }
 
     // 8. 异步触发纯文本索引与卡片提取
@@ -536,49 +537,147 @@ export class WorkspaceNoteService {
   }
 
   /**
-   * 自动同步并保存正文中引用的沙箱生成图片到工作空间
+   * 自动同步并保存正文与沙箱中引用的交付成果物（HTML应用、图表、文档、图片等）到工作空间与沙箱知识库
    */
-  public async syncReferencedImagesToWorkspace(
+  public async syncReferencedArtifactsToWorkspace(
     userId: string,
     workspace: any,
     parentId: string | null,
-    content: string
+    dto: SaveTextNoteDto
   ): Promise<void> {
     try {
-      const imageRegex = /!\[(.*?)\]\((.*?)\)/g;
-      let match: RegExpExecArray | null;
+      const isTaskMode = dto.type === 'task_result' || Boolean(dto.executionId);
       const foundFiles = new Set<string>();
+      const fileUrlMap = new Map<string, string>();
+      const combinedText = [
+        dto.content || '',
+        dto.userQuery || '',
+        dto.title || '',
+        typeof dto.rawResultData === 'string' ? dto.rawResultData : JSON.stringify(dto.rawResultData || ''),
+      ].join('\n');
 
-      while ((match = imageRegex.exec(content)) !== null) {
-        const src = match[2];
-        const fileMatch = src.match(/(?:workspace-files\/[^/]+\/|\/workspace\/|^)([a-zA-Z0-9_\-.]+\.(?:png|jpg|jpeg|webp|gif|svg))/i);
-        if (fileMatch && fileMatch[1]) {
-          foundFiles.add(fileMatch[1]);
+      // 1. 匹配 Markdown 引用（图片与超链接）
+      const linkRegex = /(?:!\[.*?\]\((.*?)\)|\[.*?\]\((.*?)\))/g;
+      let match: RegExpExecArray | null;
+      while ((match = linkRegex.exec(combinedText)) !== null) {
+        const src = match[1] || match[2];
+        if (src) {
+          const fileMatch = src.match(/(?:workspace-files\/[^/]+\/|\/workspace\/|^)([a-zA-Z0-9_\-.\u4e00-\u9fa5]+\.(?:png|jpg|jpeg|webp|gif|svg|html|htm|pdf|docx|pptx|xlsx|csv|json|py|txt))/i);
+          if (fileMatch && fileMatch[1]) {
+            foundFiles.add(fileMatch[1]);
+          }
+          if (src.startsWith('http://') || src.startsWith('https://')) {
+            const parsedName = path.basename(src.split('?')[0]);
+            if (parsedName && parsedName.includes('.')) {
+              foundFiles.add(parsedName);
+              fileUrlMap.set(parsedName, src);
+            }
+          }
         }
       }
 
-      const directMatches = content.match(/\/workspace\/([a-zA-Z0-9_\-.]+\.(?:png|jpg|jpeg|webp|gif|svg))/gi);
+      // 2. 匹配沙箱路径如 /workspace/xxx.html 或文档渲染路径 /renders/xxx
+      const directMatches = combinedText.match(/(?:\/workspace\/|\/api\/renders\/|\/renders\/)([a-zA-Z0-9_\-.\u4e00-\u9fa5]+\.(?:png|jpg|jpeg|webp|gif|svg|html|htm|pdf|docx|pptx|xlsx|csv|json|py|txt))/gi);
       if (directMatches) {
         for (const dm of directMatches) {
           foundFiles.add(path.basename(dm));
         }
       }
 
+      // 3. 匹配正文中独立出现的产物文件名（如 gomoku.html, presentation.html 等）
+      const artifactWordRegex = /\b([a-zA-Z0-9_\-.\u4e00-\u9fa5]+\.(?:html|htm|pdf|docx|pptx|xlsx))\b/gi;
+      let wordMatch: RegExpExecArray | null;
+      while ((wordMatch = artifactWordRegex.exec(combinedText)) !== null) {
+        if (wordMatch[1]) {
+          foundFiles.add(wordMatch[1]);
+        }
+      }
+
+      // 4. 工作模式关联查询：若携带 executionId，读取 execution_artifacts 表中登记的所有任务交付物
+      if (dto.executionId) {
+        try {
+          let rawArtifacts: any[] = [];
+          if (this.prisma.executionArtifact) {
+            rawArtifacts = await this.prisma.executionArtifact.findMany({
+              where: { executionId: dto.executionId },
+              orderBy: { createdAt: 'asc' },
+            });
+          } else {
+            rawArtifacts = await this.prisma.$queryRawUnsafe(
+              `SELECT id, execution_id as "executionId", name, url, mime_type as "mimeType", size_bytes as "sizeBytes" FROM "execution_artifacts" WHERE "execution_id" = $1::uuid ORDER BY "created_at" ASC`,
+              dto.executionId
+            );
+          }
+          if (Array.isArray(rawArtifacts)) {
+            for (const art of rawArtifacts) {
+              if (art && art.name) {
+                foundFiles.add(art.name);
+                if (art.url) {
+                  fileUrlMap.set(art.name, art.url);
+                }
+              }
+            }
+          }
+        } catch (artErr: any) {
+          this.logger.warn(`Failed to query execution_artifacts for execution ${dto.executionId}: ${artErr.message}`);
+        }
+      }
+
+      // 5. 自动扫描沙箱 workspace 中最近 2 小时生成的交付产物（个人模式）
+      const candDirs = [
+        path.join('/workspace/data/users', userId, 'workspace'),
+        path.join(process.cwd(), 'data/users', userId, 'workspace'),
+      ];
+      for (const cDir of candDirs) {
+        if (fs.existsSync(cDir)) {
+          try {
+            const dirents = fs.readdirSync(cDir, { withFileTypes: true });
+            const now = Date.now();
+            for (const d of dirents) {
+              if (d.isFile() && /\.(?:html|htm|pdf|pptx|docx)$/i.test(d.name) && !d.name.startsWith('.')) {
+                try {
+                  const stat = fs.statSync(path.join(cDir, d.name));
+                  if (now - stat.mtimeMs < 2 * 3600 * 1000 || combinedText.includes(d.name.split('.')[0])) {
+                    foundFiles.add(d.name);
+                  }
+                } catch {}
+              }
+            }
+          } catch {}
+          break;
+        }
+      }
+
       if (foundFiles.size === 0) return;
 
-      for (const fileName of foundFiles) {
-        const existing = await this.prisma.workspaceNode.findFirst({
-          where: {
-            workspaceId: workspace.id,
-            parentId,
-            name: fileName,
-          },
-        });
-        if (existing) continue;
+      const targetKnowledgeDirs = [
+        path.join('/workspace/data/users', userId, 'knowledge'),
+        path.join(process.cwd(), 'data/users', userId, 'knowledge'),
+      ];
+      let activeKnowledgeDir: string | null = null;
+      for (const kd of targetKnowledgeDirs) {
+        if (fs.existsSync(kd)) {
+          activeKnowledgeDir = kd;
+          break;
+        }
+      }
 
+      const renderDirs = [
+        '/workspace/apps/backend/var/outputs/document-engine/renders',
+        path.join(process.cwd(), 'apps/backend/var/outputs/document-engine/renders'),
+        path.join(process.cwd(), 'var/outputs/document-engine/renders'),
+        path.join(process.cwd(), '..', '..', '..', 'var', 'outputs', 'document-engine', 'renders'),
+        path.join(process.cwd(), 'data/renders'),
+        '/workspace/data/renders',
+      ];
+
+      for (const fileName of foundFiles) {
         const candidateRoots = [
           path.join('/workspace/data/users', userId, 'workspace', fileName),
           path.join(process.cwd(), 'data/users', userId, 'workspace', fileName),
+          path.join('/workspace/data/users', userId, 'knowledge', fileName),
+          path.join(process.cwd(), 'data/users', userId, 'knowledge', fileName),
+          ...renderDirs.map((d) => path.join(d, fileName)),
         ];
 
         let physicalPath: string | null = null;
@@ -589,7 +688,10 @@ export class WorkspaceNoteService {
           }
         }
 
-        if (!physicalPath) {
+        let fileBuffer: Buffer | null = null;
+        if (physicalPath) {
+          fileBuffer = fs.readFileSync(physicalPath);
+        } else {
           const globalRoots = ['/workspace/data/users', path.join(process.cwd(), 'data/users')];
           for (const gRoot of globalRoots) {
             if (fs.existsSync(gRoot)) {
@@ -599,59 +701,135 @@ export class WorkspaceNoteService {
                   const cand = path.join(gRoot, u, 'workspace', fileName);
                   if (fs.existsSync(cand)) {
                     physicalPath = cand;
+                    fileBuffer = fs.readFileSync(cand);
                     break;
                   }
                 }
               } catch {}
             }
-            if (physicalPath) break;
+            if (fileBuffer) break;
           }
         }
 
-        if (!physicalPath) continue;
+        // 若本地磁盘未直接命中且有远程 URL，通过 HTTP 下载文件流
+        if (!fileBuffer && fileUrlMap.has(fileName)) {
+          const remoteUrl = fileUrlMap.get(fileName)!;
+          try {
+            let fetchUrl = remoteUrl;
+            if (isContainerRuntime() && /https?:\/\/(localhost|127\.0\.0\.1):3009/i.test(fetchUrl)) {
+              fetchUrl = fetchUrl.replace(/https?:\/\/(localhost|127\.0\.0\.1):3009/i, 'http://carbone-engine:3009');
+            }
+            const resp = await axios.get<any>(fetchUrl, { responseType: 'arraybuffer', timeout: 8000 });
+            if (resp.data) {
+              fileBuffer = Buffer.isBuffer(resp.data) ? resp.data : Buffer.from(resp.data);
+            }
+          } catch (httpErr: any) {
+            this.logger.warn(`Failed to fetch artifact via HTTP (${remoteUrl}): ${httpErr.message}`);
+          }
+        }
 
-        const imgBuffer = fs.readFileSync(physicalPath);
-        const imgSize = BigInt(imgBuffer.length);
-        const imgNodeId = randomUUID();
-        const imgStorageKey = `${workspace.type}/${workspace.id}/${imgNodeId}_${fileName}`;
+        if (!fileBuffer || fileBuffer.length === 0) continue;
 
-        await this.storage.putFile(imgStorageKey, imgBuffer);
+        // 物理同步到沙箱 /knowledge 目录（仅非任务模式或沙箱产物）
+        if (physicalPath && activeKnowledgeDir && !isTaskMode) {
+          const targetPersistPath = path.join(activeKnowledgeDir, fileName);
+          if (!fs.existsSync(targetPersistPath)) {
+            try {
+              fs.copyFileSync(physicalPath, targetPersistPath);
+            } catch (copyErr: any) {
+              this.logger.warn(`Failed to copy artifact to knowledge: ${copyErr.message}`);
+            }
+          }
+        }
 
-        const ext = path.extname(fileName).toLowerCase();
-        const mimeType =
-          ext === '.png'
-            ? 'image/png'
-            : ext === '.jpg' || ext === '.jpeg'
-            ? 'image/jpeg'
-            : ext === '.webp'
-            ? 'image/webp'
-            : ext === '.gif'
-            ? 'image/gif'
-            : 'application/octet-stream';
+        const fileSize = BigInt(fileBuffer.length);
+        const mimeType = this.guessMimeType(fileName);
+
+        const existing = await this.prisma.workspaceNode.findFirst({
+          where: {
+            workspaceId: workspace.id,
+            parentId,
+            name: fileName,
+          },
+        });
+
+        if (existing) {
+          if (existing.storagePath && existing.fileSize !== fileSize) {
+            await this.storage.putFile(existing.storagePath, fileBuffer);
+            const diff = fileSize - existing.fileSize;
+            await this.prisma.workspaceNode.update({
+              where: { id: existing.id },
+              data: { fileSize, updatedAt: new Date() },
+            });
+            await this.prisma.workspace.update({
+              where: { id: workspace.id },
+              data: { usedBytes: BigInt(workspace.usedBytes) + diff },
+            });
+          }
+          continue;
+        }
+
+        const fileNodeId = randomUUID();
+        const storageKey = `${workspace.type}/${workspace.id}/${fileNodeId}_${fileName}`;
+        await this.storage.putFile(storageKey, fileBuffer);
 
         await this.prisma.workspaceNode.create({
           data: {
-            id: imgNodeId,
+            id: fileNodeId,
             workspaceId: workspace.id,
             parentId,
             name: fileName,
             type: 'file',
-            fileSize: imgSize,
+            fileSize,
             mimeType,
-            storagePath: imgStorageKey,
+            storagePath: storageKey,
             createdBy: userId,
           },
         });
 
         await this.prisma.workspace.update({
           where: { id: workspace.id },
-          data: { usedBytes: BigInt(workspace.usedBytes) + imgSize },
+          data: { usedBytes: BigInt(workspace.usedBytes) + fileSize },
         });
 
-        this.logger.log(`Automatically archived companion image to workspace: ${fileName} (${imgNodeId})`);
+        this.logger.log(`Successfully archived companion artifact to workspace: ${fileName} (${fileNodeId})`);
+
+        if (['text/markdown', 'text/plain', 'text/html', 'application/json'].includes(mimeType)) {
+          this.contentIndexer
+            .extractText(fileBuffer, fileName, mimeType)
+            .then(async (extractedText) => {
+              if (extractedText) {
+                await this.contentIndexer.cacheExtractedText(storageKey, extractedText);
+                await this.digestService.generateAndSaveDigest(fileNodeId, storageKey, fileName, mimeType);
+              }
+            })
+            .catch(() => {});
+        }
       }
     } catch (err: any) {
-      this.logger.warn(`Failed to auto-sync referenced images to workspace: ${err.message}`);
+      this.logger.warn(`Failed to auto-sync referenced artifacts to workspace: ${err.message}`);
+    }
+  }
+
+  private guessMimeType(filename: string): string {
+    const ext = path.extname(filename).toLowerCase();
+    switch (ext) {
+      case '.md': return 'text/markdown';
+      case '.txt': return 'text/plain';
+      case '.docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case '.xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case '.pptx': return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case '.pdf': return 'application/pdf';
+      case '.html': case '.htm': return 'text/html';
+      case '.json': return 'application/json';
+      case '.csv': return 'text/csv';
+      case '.py': return 'text/x-python';
+      case '.png': return 'image/png';
+      case '.jpg': case '.jpeg': return 'image/jpeg';
+      case '.webp': return 'image/webp';
+      case '.gif': return 'image/gif';
+      case '.svg': return 'image/svg+xml';
+      default: return 'application/octet-stream';
     }
   }
 }

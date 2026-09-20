@@ -14,6 +14,7 @@ import {
   UseGuards,
   UseInterceptors,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -40,6 +41,7 @@ import { ChatMediaService } from './chat-media.service';
 import { ChatOrchestratorService } from './chat-orchestrator.service';
 import { parseChatSlashCommand } from './chat-slash-command.util';
 import { UserSandboxDispatcherService } from './user-sandbox-dispatcher.service';
+import { WorkspaceArtifactService } from './workspace-artifact.service';
 
 type SseEventPayload = {
   type: string;
@@ -52,12 +54,15 @@ type SseEventPayload = {
 @ApiTags('AI-Chat')
 @Controller('ai')
 export class ChatController {
+  private readonly logger = new Logger(ChatController.name);
+
   constructor(
     private readonly chatConversationService: ChatConversationService,
     private readonly chatMediaService: ChatMediaService,
     private readonly chatOrchestratorService: ChatOrchestratorService,
     private readonly chatFeedbackService: ChatFeedbackService,
-    private readonly userSandboxDispatcherService: UserSandboxDispatcherService
+    private readonly userSandboxDispatcherService: UserSandboxDispatcherService,
+    private readonly workspaceArtifactService: WorkspaceArtifactService
   ) {}
 
   private writeSse(res: Response, payload: Record<string, unknown>): void {
@@ -132,6 +137,21 @@ export class ChatController {
     if (!userId) throw new UnauthorizedException('Login required');
     const sessions = await this.chatConversationService.listSessions(userId);
     return { sessions };
+  }
+
+  @Delete('chat/sessions')
+  @ApiOperation({ summary: 'Delete all chat sessions for the current user' })
+  @ApiResponse({ status: 200, description: 'All chat sessions deleted successfully' })
+  async clearAllSessions(
+    @Req() req: Request
+  ): Promise<{ success: boolean; count: number }> {
+    const identity = await this.chatOrchestratorService.resolveAuthenticatedUser(
+      req.headers.authorization
+    );
+    const userId = this.resolveUserIdFromRequest(req, identity.userId);
+    if (!userId) throw new UnauthorizedException('Login required');
+    const count = await this.chatConversationService.clearAllSessions(userId);
+    return { success: true, count };
   }
 
   @Delete('chat/sessions/:sessionId')
@@ -288,13 +308,17 @@ export class ChatController {
         );
         const userId = resolvedUser.userId || 'admin';
 
-        const isInternalServiceOrAddin =
+        const shouldBypassSandbox =
           body.sessionId?.startsWith('office-') ||
           (body.config as any)?.source === 'office-addin' ||
           (body.config as any)?.bypassSandbox === true;
 
-        if (!isInternalServiceOrAddin) {
-          // 优先调度用户独立安全沙箱 (DeepSeek Harness) 执行
+        if (!shouldBypassSandbox) {
+          this.logger.log(
+            `Dispatching personal chat request to unified sandbox agent for user [${userId}]`
+          );
+          // 个人模式：统一由个人安全沙箱 (DeepSeek Harness) 执行
+          // 由模型自主感知上下文并自主调用工具（外部检索/代码运行/文件分析等），无工具需求则单轮快速返回
           const handledBySandbox = await this.userSandboxDispatcherService.dispatchPersonalSandbox(
             body,
             (event) => {
@@ -321,6 +345,10 @@ export class ChatController {
             res.end();
             return;
           }
+        } else {
+          this.logger.log(
+            `Sandbox bypassed by configuration for user [${userId}], falling back to direct streamChat`
+          );
         }
 
         // 沙箱未就绪、出现异常或为内部插件/服务分析调用时，直接进行模型流式交互
@@ -410,6 +438,7 @@ export class ChatController {
     }
   }
 
+  @Public()
   @Post('chat/stop')
   @ApiOperation({ summary: '显式停止正在执行的个人沙箱与会话任务' })
   async stopChat(
@@ -608,14 +637,14 @@ export class ChatController {
         mode,
       },
     };
-    const isInternalServiceOrAddin =
+    const shouldBypassSandbox =
       body.sessionId?.startsWith('office-') ||
       (body.config as any)?.source === 'office-addin' ||
       (body.config as any)?.bypassSandbox === true;
 
     if (mode !== 'task') {
-      if (!isInternalServiceOrAddin) {
-        // 个人模式：优先调度用户专属安全沙箱 (DeepSeek Harness) 执行
+      if (!shouldBypassSandbox) {
+        // 个人模式：统一由用户专属安全沙箱 (DeepSeek Harness) 执行
         const events: StreamEvent[] = [];
         let resultAnswer = '';
         let outboundFiles: any[] | undefined = undefined;
@@ -803,86 +832,34 @@ export class ChatController {
   }
 
   @Get('chat/workspace-files/:userId/:fileName')
-  @Public()
   @ApiOperation({ summary: 'Serve workspace file generated in user sandbox (e.g. AI images)' })
   async serveWorkspaceFile(
     @Param('userId') userId: string,
     @Param('fileName') fileName: string,
+    @Req() req: Request,
     @Res() res: Response
   ): Promise<void> {
-    const rawUserId = String(userId || '').trim();
-    const rawFileName = String(fileName || '').trim();
-
-    // 防御路径穿越
-    if (!rawUserId || !rawFileName || rawUserId.includes('..') || rawFileName.includes('..')) {
-      throw new BadRequestException('Invalid userId or fileName parameter');
-    }
-
-    let safeFileName = path.basename(rawFileName);
-    try {
-      safeFileName = path.basename(decodeURIComponent(rawFileName));
-    } catch {
-      // ignore
-    }
-
-    const filePath = this.userSandboxDispatcherService.getWorkspaceFilePath(rawUserId, safeFileName);
-    if (!filePath || !fs.existsSync(filePath)) {
-      res.status(404).send('File not found in workspace');
-      return;
-    }
-
-    const ext = path.extname(safeFileName).toLowerCase();
-    let mime = 'application/octet-stream';
-    if (ext === '.png') mime = 'image/png';
-    else if (ext === '.jpg' || ext === '.jpeg') mime = 'image/jpeg';
-    else if (ext === '.webp') mime = 'image/webp';
-    else if (ext === '.gif') mime = 'image/gif';
-    else if (ext === '.svg') mime = 'image/svg+xml';
-    else if (ext === '.pdf') mime = 'application/pdf';
-    else if (ext === '.txt') mime = 'text/plain; charset=utf-8';
-    else if (ext === '.json') mime = 'application/json';
-
-    // 智能嗅探文件魔数（解决如生成 JPEG 但命名为 .png 的情况）
-    try {
-      const fd = fs.openSync(filePath, 'r');
-      const header = Buffer.alloc(12);
-      fs.readSync(fd, header, 0, 12, 0);
-      fs.closeSync(fd);
-      if (header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff) {
-        mime = 'image/jpeg';
-      } else if (
-        header[0] === 0x89 &&
-        header[1] === 0x50 &&
-        header[2] === 0x4e &&
-        header[3] === 0x47
-      ) {
-        mime = 'image/png';
-      } else if (
-        header[0] === 0x52 &&
-        header[1] === 0x49 &&
-        header[2] === 0x46 &&
-        header[3] === 0x46 &&
-        header[8] === 0x57 &&
-        header[9] === 0x45 &&
-        header[10] === 0x42 &&
-        header[11] === 0x50
-      ) {
-        mime = 'image/webp';
-      } else if (
-        header[0] === 0x47 &&
-        header[1] === 0x49 &&
-        header[2] === 0x46 &&
-        header[3] === 0x38
-      ) {
-        mime = 'image/gif';
+    let requestingUser = (req as any).user;
+    if (!requestingUser?.id) {
+      const authHeader = req.headers.authorization;
+      const queryToken = typeof req.query?.token === 'string' ? `Bearer ${req.query.token}` : undefined;
+      const identity = await this.chatOrchestratorService.resolveAuthenticatedUser(
+        authHeader || queryToken
+      );
+      const resolvedId = this.resolveUserIdFromRequest(req, identity.userId);
+      if (resolvedId) {
+        requestingUser = {
+          id: resolvedId,
+          role: identity.userRoles?.[0] || 'employee',
+        };
       }
-    } catch {
-      // ignore sniff error
     }
 
-    res.setHeader('Content-Type', mime);
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    const stream = fs.createReadStream(filePath);
-    stream.pipe(res);
+    await this.workspaceArtifactService.serveWorkspaceFile({
+      targetUserId: userId,
+      fileName,
+      requestingUser,
+      res,
+    });
   }
 }

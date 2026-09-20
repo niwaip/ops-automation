@@ -160,13 +160,27 @@ export class AiAuthGuard implements CanActivate {
       return true;
     }
 
-    // 2. Check Bearer Authorization token
+    // 2. Check Bearer Authorization token, query parameter, or cookies
+    let token: string | undefined;
     const authHeader = request.headers['authorization'];
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Authentication token required');
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      token = authHeader.slice(7).trim();
+    } else if (typeof request.query?.token === 'string' && request.query.token.trim()) {
+      token = request.query.token.trim();
+    } else if (typeof request.query?.access_token === 'string' && request.query.access_token.trim()) {
+      token = request.query.access_token.trim();
+    } else if (request.cookies?.token) {
+      token = String(request.cookies.token).trim();
+    } else if (typeof request.headers['cookie'] === 'string') {
+      const match = request.headers['cookie'].match(/(?:^|;\s*)token=([^;]+)/);
+      if (match && match[1]) {
+        token = decodeURIComponent(match[1]).trim();
+      }
     }
 
-    const token = authHeader.slice(7).trim();
+    if (!token) {
+      throw new UnauthorizedException('Authentication token required');
+    }
     const requestPath: string = request.path || request.url || '';
     const sandboxUserId = requestPath.startsWith('/ai/proxy/v1/')
       ? parseAndVerifySandboxToken(token)

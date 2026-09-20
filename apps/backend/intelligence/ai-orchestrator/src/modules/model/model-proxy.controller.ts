@@ -74,24 +74,55 @@ export class ModelProxyController {
         client = this.modelService.getClient(visionModel.id);
       }
     }
-    if (!client && body.model) {
+    const defaultChat =
+      this.modelService.getPreferredDefaultModel({ mode: 'chat' }) ||
+      this.modelService.getDefaultModel();
+    const defaultModel = this.modelService.getDefaultModel();
+
+    const isGenericOrPlaceholder =
+      !body.model ||
+      body.model === 'default' ||
+      (body.model === 'deepseek-chat' && !this.modelService.getClient('deepseek-chat')) ||
+      (defaultChat && body.model === defaultChat.id) ||
+      (defaultModel && body.model === defaultModel.id);
+
+    if (!client && body.model && !isGenericOrPlaceholder) {
       client = this.modelService.getClient(body.model);
+      if (!client && !apiKey) {
+        this.logger.error(`Explicitly requested model [${body.model}] not found and no upstream API key configured`);
+        throw new HttpException(
+          `Requested model [${body.model}] is not configured or unavailable on the platform`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
     }
-    if (!client) {
-      const defaultChat = this.modelService.getPreferredDefaultModel({ mode: 'chat' });
+    if (!client && isGenericOrPlaceholder) {
       if (defaultChat) {
         client = this.modelService.getClient(defaultChat.id);
       }
-    }
-    if (!client) {
-      client =
-        this.modelService.getClient('deepseek-v4-flash-0731') ||
-        this.modelService.getClient('deepseek-v4-flash') ||
-        this.modelService.getClient('default');
+      if (!client) {
+        const activeCandidates = this.modelService.listActiveModelsForRouting();
+        for (const candidate of activeCandidates) {
+          const candidateClient = this.modelService.getClient(candidate.id);
+          if (candidateClient) {
+            client = candidateClient;
+            break;
+          }
+        }
+      }
+      if (!client) {
+        client = this.modelService.getClient('default');
+      }
     }
 
-    if ((!apiKey || isVisionRequested) && client) {
-      this.logger.log(`Using platform-managed model client for sandbox proxy (${body.model || 'default'})`);
+    if (client) {
+      const resolvedModelName =
+        (client as any)?.model ||
+        (client as any)?.modelConfig?.name ||
+        (client as any)?.modelConfig?.id ||
+        body.model ||
+        'default';
+      this.logger.log(`Using platform-managed model client for sandbox proxy (${resolvedModelName})`);
       try {
         if (isStream) {
           res.setHeader('Content-Type', 'text/event-stream');
@@ -99,8 +130,15 @@ export class ModelProxyController {
           res.setHeader('Connection', 'keep-alive');
 
           let streamSuccess = false;
-          const writeChunk = (chunk: string, modelName: string) => {
-            const ssePayload = {
+          const writeChunk = (chunk: string, modelName: string, meta?: any) => {
+            const deltaPayload: any = {};
+            if (chunk) {
+              deltaPayload.content = chunk;
+            }
+            if (meta?.delta?.tool_calls) {
+              deltaPayload.tool_calls = meta.delta.tool_calls;
+            }
+            const ssePayload: any = {
               id: `chatcmpl-${Date.now()}`,
               object: 'chat.completion.chunk',
               created: Math.floor(Date.now() / 1000),
@@ -108,48 +146,53 @@ export class ModelProxyController {
               choices: [
                 {
                   index: 0,
-                  delta: { content: chunk },
-                  finish_reason: null,
+                  delta: deltaPayload,
+                  finish_reason: meta?.finish_reason || null,
                 },
               ],
             };
+            if (meta?.usage) {
+              ssePayload.usage = meta.usage;
+            }
             res.write(`data: ${JSON.stringify(ssePayload)}\n\n`);
           };
 
           try {
             await client.chatCompletionStream(
-              body.messages || [{ role: 'user', content: body.prompt || '' }],
-              (chunk: string) => writeChunk(chunk, body.model || 'deepseek-chat')
+              {
+                messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
+                temperature: body.temperature,
+                max_tokens: body.max_tokens,
+                tools: body.tools,
+                tool_choice: body.tool_choice,
+              },
+              (chunk: string, meta?: any) => writeChunk(chunk, resolvedModelName, meta)
             );
             streamSuccess = true;
           } catch (primaryErr: any) {
+            // 当显式指定了具体模型时，严禁静默 fallback 到其他模型，避免模型欺骗
+            if (body.model && !isGenericOrPlaceholder) {
+              this.logger.error(
+                `Primary model [${body.model}] stream failed (${primaryErr.message}). Explicit model requested; fallback is strictly disabled.`
+              );
+              throw primaryErr;
+            }
+
             this.logger.warn(
-              `Primary model [${body.model}] stream failed (${primaryErr.message}). Attempting fallback to platform resilient model...`
+              `Default model stream failed (${primaryErr.message}). Attempting fallback to platform resilient model...`
             );
-            const fallbackKeys = isVisionRequested
-              ? ['gemini-3.7-flash-high', 'gemini-3.7-flash', 'default']
-              : [
-                  'deepseek-v4-flash-0731',
-                  'deepseek-v4-flash',
-                  'gemini-3.7-flash-high',
-                  'gemini-3.7-flash',
-                  'bc660c37-bf55-411b-91cd-8e732b0301f0',
-                  'default',
-                ];
-            for (const fbKey of fallbackKeys) {
-              const fbClient = this.modelService.getClient(fbKey);
-              if (fbClient && fbClient !== client) {
-                try {
-                  this.logger.log(`Trying fallback model client stream [${fbKey}]...`);
-                  await fbClient.chatCompletionStream(
-                    body.messages || [{ role: 'user', content: body.prompt || '' }],
-                    (chunk: string) => writeChunk(chunk, fbKey)
-                  );
-                  streamSuccess = true;
-                  break;
-                } catch (fbErr: any) {
-                  this.logger.warn(`Fallback client stream [${fbKey}] also failed: ${fbErr.message}`);
-                }
+            const fallbackCandidates = this.getResilientFallbackClients(isVisionRequested, client);
+            for (const { id: fbKey, client: fbClient } of fallbackCandidates) {
+              try {
+                this.logger.log(`Trying fallback model client stream [${fbKey}]...`);
+                await fbClient.chatCompletionStream(
+                  body.messages || [{ role: 'user', content: body.prompt || '' }],
+                  (chunk: string) => writeChunk(chunk, fbKey)
+                );
+                streamSuccess = true;
+                break;
+              } catch (fbErr: any) {
+                this.logger.warn(`Fallback client stream [${fbKey}] also failed: ${fbErr.message}`);
               }
             }
             if (!streamSuccess) {
@@ -168,41 +211,39 @@ export class ModelProxyController {
               messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
               temperature: body.temperature,
               max_tokens: body.max_tokens,
+              tools: body.tools,
+              tool_choice: body.tool_choice,
             });
             responseContent = response.content;
             responseUsage = response.usage || responseUsage;
           } catch (primaryErr: any) {
+            // 当显式指定了具体模型时，严禁静默 fallback 到其他模型，避免模型欺骗
+            if (body.model && !isGenericOrPlaceholder) {
+              this.logger.error(
+                `Primary model [${body.model}] failed (${primaryErr.message}). Explicit model requested; fallback is strictly disabled.`
+              );
+              throw primaryErr;
+            }
+
             this.logger.warn(
-              `Primary model [${body.model}] failed (${primaryErr.message}). Attempting fallback to platform resilient model...`
+              `Default model failed (${primaryErr.message}). Attempting fallback to platform resilient model...`
             );
-            const fallbackKeys = isVisionRequested
-              ? ['gemini-3.7-flash-high', 'gemini-3.7-flash', 'default']
-              : [
-                  'deepseek-v4-flash-0731',
-                  'deepseek-v4-flash',
-                  'gemini-3.7-flash-high',
-                  'gemini-3.7-flash',
-                  'bc660c37-bf55-411b-91cd-8e732b0301f0',
-                  'default',
-                ];
+            const fallbackCandidates = this.getResilientFallbackClients(isVisionRequested, client);
             let fallbackSucceeded = false;
-            for (const fbKey of fallbackKeys) {
-              const fbClient = this.modelService.getClient(fbKey);
-              if (fbClient && fbClient !== client) {
-                try {
-                  this.logger.log(`Trying fallback model client [${fbKey}]...`);
-                  const fbRes = await fbClient.chatCompletion({
-                    messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
-                    temperature: body.temperature,
-                    max_tokens: body.max_tokens,
-                  });
-                  responseContent = fbRes.content;
-                  responseUsage = fbRes.usage || responseUsage;
-                  fallbackSucceeded = true;
-                  break;
-                } catch (fbErr: any) {
-                  this.logger.warn(`Fallback client [${fbKey}] also failed: ${fbErr.message}`);
-                }
+            for (const { id: fbKey, client: fbClient } of fallbackCandidates) {
+              try {
+                this.logger.log(`Trying fallback model client [${fbKey}]...`);
+                const fbRes = await fbClient.chatCompletion({
+                  messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
+                  temperature: body.temperature,
+                  max_tokens: body.max_tokens,
+                });
+                responseContent = fbRes.content;
+                responseUsage = fbRes.usage || responseUsage;
+                fallbackSucceeded = true;
+                break;
+              } catch (fbErr: any) {
+                this.logger.warn(`Fallback client [${fbKey}] also failed: ${fbErr.message}`);
               }
             }
             if (!fallbackSucceeded) {
@@ -214,7 +255,7 @@ export class ModelProxyController {
             id: `chatcmpl-${Date.now()}`,
             object: 'chat.completion',
             created: Math.floor(Date.now() / 1000),
-            model: body.model || 'deepseek-chat',
+            model: resolvedModelName,
             choices: [
               {
                 index: 0,
@@ -296,9 +337,20 @@ export class ModelProxyController {
         res.status(upstreamResponse.status).json(upstreamResponse.data);
       }
     } catch (err: any) {
+      this.logger.error(`Upstream model proxy call failed: ${err.message}`);
+      if (res.headersSent) {
+        if (!res.writableEnded) {
+          try {
+            res.write(`data: ${JSON.stringify({ error: { message: err.message || 'Model execution error' } })}\n\n`);
+            res.end();
+          } catch {
+            // ignore socket errors on already closed connection
+          }
+        }
+        return;
+      }
       const status = err.response?.status || HttpStatus.INTERNAL_SERVER_ERROR;
       const errorData = err.response?.data || { message: err.message };
-      this.logger.error(`Upstream model proxy call failed (${status}): ${JSON.stringify(errorData)}`);
       res.status(status).json(errorData);
     }
   }
@@ -314,12 +366,27 @@ export class ModelProxyController {
       throw new HttpException('Invalid or missing sandbox user token', HttpStatus.UNAUTHORIZED);
     }
 
+    const models = await this.modelService.listModels();
+    const data: Array<{ id: string; name?: string; object: string; owned_by: string }> = models.map((m) => ({
+      id: m.id,
+      name: m.name,
+      object: 'model',
+      owned_by: m.provider || 'custom',
+    }));
+
+    const preferredDefault =
+      this.modelService.getPreferredDefaultModel({ mode: 'chat' }) ||
+      this.modelService.getDefaultModel();
+    data.unshift({
+      id: 'default',
+      name: preferredDefault ? `${preferredDefault.name} (Platform Default)` : 'Platform Default',
+      object: 'model',
+      owned_by: preferredDefault?.provider || 'platform',
+    });
+
     return {
       object: 'list',
-      data: [
-        { id: 'deepseek-chat', object: 'model', owned_by: 'deepseek' },
-        { id: 'deepseek-reasoner', object: 'model', owned_by: 'deepseek' },
-      ],
+      data,
     };
   }
 
@@ -415,10 +482,50 @@ export class ModelProxyController {
     return match && match[1] ? match[1].trim() : null;
   }
 
+  private getResilientFallbackClients(
+    isVisionRequested: boolean,
+    currentClient: any
+  ): Array<{ id: string; client: any }> {
+    const candidates: Array<{ id: string; client: any }> = [];
+    const seen = new Set<string>();
+
+    if (isVisionRequested) {
+      const visionModel = this.modelService.getPreferredVisionModel();
+      if (visionModel) {
+        const vClient = this.modelService.getClient(visionModel.id);
+        if (vClient && vClient !== currentClient) {
+          candidates.push({ id: visionModel.name || visionModel.id, client: vClient });
+          seen.add(visionModel.id);
+        }
+      }
+    }
+
+    const activeModels = this.modelService.listActiveModelsForRouting();
+    for (const model of activeModels) {
+      if (seen.has(model.id)) continue;
+      if (isVisionRequested && !this.modelService.isVisionCapableModel(model)) continue;
+      const mClient = this.modelService.getClient(model.id);
+      if (mClient && mClient !== currentClient) {
+        candidates.push({ id: model.name || model.id, client: mClient });
+        seen.add(model.id);
+      }
+    }
+
+    const defaultClient = this.modelService.getClient('default');
+    if (defaultClient && defaultClient !== currentClient && !candidates.some((c) => c.client === defaultClient)) {
+      candidates.push({ id: 'default', client: defaultClient });
+    }
+
+    return candidates;
+  }
+
   private async resolveUpstreamCredentials(): Promise<{ apiKey?: string; baseUrl: string }> {
     // 1. 优先从管理员环境变量获取
-    const envKey = process.env.DEEPSEEK_API_KEY;
-    const envBase = process.env.DEEPSEEK_BASE_URL;
+    const envKey = process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY;
+    const envBase =
+      process.env.DEEPSEEK_BASE_URL ||
+      process.env.OPENAI_BASE_URL ||
+      process.env.MODEL_PROXY_DEFAULT_ENDPOINT;
     let apiKey: string | undefined = envKey ? envKey.trim() : undefined;
     let baseUrl: string = envBase && envBase.trim() ? envBase.trim() : DEFAULT_DEEPSEEK_ENDPOINT;
 
@@ -426,18 +533,23 @@ export class ModelProxyController {
     if (!apiKey) {
       try {
         const models = await this.modelService.listModels();
-        const dsModel = models.find((m) => m.provider?.toLowerCase() === 'deepseek');
-        if (dsModel) {
-          const cred = (this.modelService as any).resolveCredentialForModel?.(dsModel);
+        const preferred =
+          models.find((m) => m.provider?.toLowerCase() === 'deepseek') ||
+          this.modelService.getDefaultModel() ||
+          models[0];
+        if (preferred) {
+          const cred =
+            (this.modelService as any).resolveCredentialForModel?.(preferred) ||
+            (this.modelService as any).getResolvedApiKeyForModel?.(preferred.id);
           if (cred) {
             apiKey = cred;
           }
-          if (dsModel.api_endpoint) {
-            baseUrl = dsModel.api_endpoint;
+          if (preferred.api_endpoint) {
+            baseUrl = preferred.api_endpoint;
           }
         }
       } catch (err: any) {
-        this.logger.warn(`Failed to query model service for deepseek credential: ${err.message}`);
+        this.logger.warn(`Failed to query model service for upstream credential: ${err.message}`);
       }
     }
 

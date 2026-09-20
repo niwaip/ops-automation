@@ -20,9 +20,10 @@ lib_dir = Path("/opt/dsh/lib")
 if lib_dir.exists() and str(lib_dir) not in sys.path:
     sys.path.insert(0, str(lib_dir))
 
-from dsh_modules.config import cmd_version, cmd_info, cmd_plugins
+from dsh_modules.config import cmd_version, cmd_info, cmd_plugins, cmd_doctor
 from dsh_modules.skills import cmd_skills, read_skill
 from dsh_modules.runner import cmd_run, cmd_exec
+from dsh_modules.eval_skill import cmd_eval_skill
 
 
 def main():
@@ -31,6 +32,9 @@ def main():
         description="DeepSeek Harness (dsh) - Standardized Personal User Sandbox CLI"
     )
     subparsers = parser.add_subparsers(dest="command", help="Harness commands")
+
+    parser_doc = subparsers.add_parser("doctor", help="Run sandbox environment health diagnostics")
+    parser_doc.set_defaults(func=cmd_doctor)
 
     parser_ver = subparsers.add_parser("version", help="Show harness version info")
     parser_ver.set_defaults(func=cmd_version)
@@ -48,11 +52,19 @@ def main():
     parser_skill.add_argument("skill_name", help="Name or ID of skill to inspect")
     parser_skill.set_defaults(func=lambda args: print(read_skill(args.skill_name)))
 
+    parser_eval = subparsers.add_parser("eval-skill", help="Evaluate intent triggering accuracy for a skill")
+    parser_eval.add_argument("skill_name", help="Name or ID of skill to evaluate")
+    parser_eval.add_argument("--verbose", "-v", action="store_true", help="Show detailed matching reasons")
+    parser_eval.set_defaults(func=cmd_eval_skill)
+
     parser_run = subparsers.add_parser("run", help="Run DeepSeek Harness on a prompt or task")
     parser_run.add_argument("query", nargs="+", help="Prompt or task for DeepSeek Harness")
     parser_run.add_argument("--web-search", "-s", action="store_true", help="Enable internet search retrieval")
-    parser_run.add_argument("--model", "-m", default="deepseek-chat", help="Model name (default: deepseek-chat)")
+    parser_run.add_argument("--model", "-m", default=None, help="Model name (default: platform default)")
+    parser_run.add_argument("--model-display-name", default=None, help="Model human-readable display name")
+    parser_run.add_argument("--timeout", "-t", type=int, default=None, help="Execution timeout in seconds")
     parser_run.add_argument("--session-id", default=None, help="Session identifier for multi-turn context")
+    parser_run.add_argument("--files", default=None, help="Comma-separated list of session-scoped attachment filenames")
     parser_run.set_defaults(func=cmd_run)
 
     parser_exec = subparsers.add_parser("exec", help="Execute shell command inside workspace")

@@ -1,4 +1,6 @@
+import { useMemo } from 'react';
 import {
+  BellOutlined,
   CalendarOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
@@ -12,6 +14,7 @@ import {
 import { Button, Card, Tag, Tooltip, Typography, theme } from 'antd';
 import type { PublishedSkillCatalogItem } from '@/api/skill';
 import type { ScheduleDto } from '@/api/schedules';
+import type { ReminderRule } from '@/api/index';
 import styles from './EmployeeManagement.module.css';
 import { formatLocalizedDateTime } from '@/shared/utils/dateText';
 import { summarizeCronExpression } from '@/shared/utils/scheduleText';
@@ -26,6 +29,7 @@ interface SkillCardProps {
   recentlyRequested: boolean;
   schedules: ScheduleDto[];
   skill: PublishedSkillCatalogItem;
+  reminderRules?: ReminderRule[];
 }
 
 const getEmployeeAvatarBackground = (name: string) => {
@@ -70,10 +74,20 @@ export function SkillCard({
   recentlyRequested,
   schedules,
   skill,
+  reminderRules,
 }: SkillCardProps) {
   const { token } = theme.useToken();
   const activeSchedules = schedules.filter((schedule) => schedule.isActive);
   const nextSchedule = activeSchedules[0] || schedules[0];
+  const activeReminderRules = useMemo(
+    () =>
+      (reminderRules || []).filter((r) => {
+        if (!r.isActive) return false;
+        if (r.runAt && new Date(r.runAt) <= new Date()) return false;
+        return true;
+      }),
+    [reminderRules]
+  );
   const requestCreatedAt = formatLocalizedDateTime(skill.accessRequest?.createdAt, { fallback: null });
   const requestProcessedAt = formatLocalizedDateTime(
     skill.accessRequest?.processedAt || skill.accessRequest?.updatedAt,
@@ -110,6 +124,11 @@ export function SkillCard({
         Boolean(skill.name?.includes('诊断')))) ||
     Boolean(skill.tools?.some((t) => t?.toLowerCase().includes('contract') || t?.toLowerCase().includes('review'))) ||
     Boolean(skill.triggerKeywords?.some((k) => k?.includes('合同') || k?.includes('审查')));
+
+  const isReminderSkill =
+    skill.id === 'platform.notification.reminder' ||
+    skill.id?.toLowerCase().includes('reminder') ||
+    (Boolean(skill.name?.includes('提醒')) && Boolean(skill.name?.includes('消息')));
 
   return (
     <Card
@@ -201,43 +220,84 @@ export function SkillCard({
 
         {/* Schedule & Duty Section */}
         {authorized && (
-          <div
-            className={`${styles['employee-duty-box']} ${
-              activeSchedules.length > 0 ? styles['is-active-schedule'] : ''
-            }`}
-          >
-            <div className={styles['employee-duty-header']}>
-              <span className={styles['employee-duty-title']}>
-                <CalendarOutlined style={{ color: activeSchedules.length > 0 ? '#10b981' : undefined }} />
-                勤务排班
-              </span>
-              {activeSchedules.length > 0 ? (
-                <Tag color="success" bordered={false} style={{ margin: 0, fontSize: 10 }}>
-                  {activeSchedules.length} 项排班运行中
-                </Tag>
+          isReminderSkill ? (
+            <div
+              className={`${styles['employee-duty-box']} ${
+                activeReminderRules.length > 0 ? styles['is-active-schedule'] : ''
+              }`}
+            >
+              <div className={styles['employee-duty-header']}>
+                <span className={styles['employee-duty-title']}>
+                  <BellOutlined style={{ color: activeReminderRules.length > 0 ? '#10b981' : '#3b82f6' }} />
+                  消息与日程提醒
+                </span>
+                {activeReminderRules.length > 0 ? (
+                  <Tag color="success" bordered={false} style={{ margin: 0, fontSize: 10 }}>
+                    {activeReminderRules.length} 项提醒运行中
+                  </Tag>
+                ) : (
+                  <Tag color="processing" bordered={false} style={{ margin: 0, fontSize: 10 }}>
+                    微信 / 站内触达
+                  </Tag>
+                )}
+              </div>
+              {activeReminderRules.length > 0 ? (
+                <>
+                  <span className={styles['employee-duty-desc']}>
+                    {activeReminderRules[0].title || activeReminderRules[0].message || '定时提醒'}
+                    {activeReminderRules[0].cronExpression
+                      ? ` (${summarizeCronExpression(activeReminderRules[0].cronExpression, { workdaysLabel: '工作日' })})`
+                      : ''}
+                  </span>
+                  <span className={styles['employee-duty-next']}>
+                    下次触达：{formatLocalizedDateTime(activeReminderRules[0].nextRunAt || activeReminderRules[0].runAt)}
+                  </span>
+                </>
               ) : (
-                <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>按需即时指派</span>
+                <span className={styles['employee-duty-next']}>
+                  支持每日打卡提醒、周期日程与多端推送，点击下方直接配置
+                </span>
               )}
             </div>
+          ) : (
+            <div
+              className={`${styles['employee-duty-box']} ${
+                activeSchedules.length > 0 ? styles['is-active-schedule'] : ''
+              }`}
+            >
+              <div className={styles['employee-duty-header']}>
+                <span className={styles['employee-duty-title']}>
+                  <CalendarOutlined style={{ color: activeSchedules.length > 0 ? '#10b981' : undefined }} />
+                  勤务排班
+                </span>
+                {activeSchedules.length > 0 ? (
+                  <Tag color="success" bordered={false} style={{ margin: 0, fontSize: 10 }}>
+                    {activeSchedules.length} 项排班运行中
+                  </Tag>
+                ) : (
+                  <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>按需即时指派</span>
+                )}
+              </div>
 
-            {nextSchedule ? (
-              <>
-                <span className={styles['employee-duty-desc']}>
-                  {summarizeCronExpression(nextSchedule.cronExpression, { workdaysLabel: '工作日' })}
-                </span>
-                <span className={styles['employee-duty-next']}>
-                  {nextSchedule.isActive ? '下次执勤' : '最近更新'}：
-                  {formatLocalizedDateTime(
-                    nextSchedule.isActive
-                      ? nextSchedule.nextRunAt
-                      : nextSchedule.updatedAt || nextSchedule.nextRunAt
-                  )}
-                </span>
-              </>
-            ) : (
-              <span className={styles['employee-duty-next']}>当前无周期定时执勤，随时接受人工指派</span>
-            )}
-          </div>
+              {nextSchedule ? (
+                <>
+                  <span className={styles['employee-duty-desc']}>
+                    {summarizeCronExpression(nextSchedule.cronExpression, { workdaysLabel: '工作日' })}
+                  </span>
+                  <span className={styles['employee-duty-next']}>
+                    {nextSchedule.isActive ? '下次执勤' : '最近更新'}：
+                    {formatLocalizedDateTime(
+                      nextSchedule.isActive
+                        ? nextSchedule.nextRunAt
+                        : nextSchedule.updatedAt || nextSchedule.nextRunAt
+                    )}
+                  </span>
+                </>
+              ) : (
+                <span className={styles['employee-duty-next']}>当前无周期定时执勤，随时接受人工指派</span>
+              )}
+            </div>
+          )
         )}
 
         {/* Request Alerts */}
@@ -273,13 +333,25 @@ export function SkillCard({
         <Button
           type={authorized ? 'primary' : skill.accessStatus === 'requested' ? 'default' : 'primary'}
           ghost={!authorized && skill.accessStatus !== 'requested'}
-          icon={authorized ? <PlayCircleOutlined /> : <SendOutlined />}
+          icon={
+            authorized
+              ? isReminderSkill
+                ? <BellOutlined />
+                : <PlayCircleOutlined />
+              : <SendOutlined />
+          }
           disabled={!authorized && skill.accessStatus === 'requested'}
-          onClick={() => onPrimaryAction(skill, authorized)}
+          onClick={() => {
+            if (authorized && isReminderSkill && onConfigureReminder) {
+              onConfigureReminder(skill);
+            } else {
+              onPrimaryAction(skill, authorized);
+            }
+          }}
           className={styles['employee-primary-action-btn']}
         >
           {authorized
-            ? skill.id === 'platform.notification.reminder' ? '配置提醒' : '指派任务'
+            ? isReminderSkill ? '设置提醒' : '指派任务'
             : skill.accessStatus === 'requested'
               ? '审批中'
               : skill.accessRequest?.status === 'rejected'
@@ -287,7 +359,7 @@ export function SkillCard({
                 : '申请开通'}
         </Button>
 
-        {authorized && onConfigureCredentials && skill.id !== 'platform.notification.reminder' && (
+        {authorized && onConfigureCredentials && !isReminderSkill && (
           <Tooltip title="配置该数字员工专属运行凭据（如 Bark 密钥、系统账号密码）">
             <Button
               icon={<KeyOutlined />}
@@ -297,11 +369,6 @@ export function SkillCard({
               配置
             </Button>
           </Tooltip>
-        )}
-
-        {authorized && onConfigureReminder && skill.id === 'platform.notification.reminder' && (
-          <Button icon={<CalendarOutlined />} onClick={() => onConfigureReminder(skill)}
-            className={styles['employee-secondary-action-btn']}>管理排班</Button>
         )}
 
         {isContractReviewer && onConfigureRules && (
@@ -318,8 +385,8 @@ export function SkillCard({
           </Tooltip>
         )}
 
-        {authorized && onChatCollaborate && skill.id !== 'platform.notification.reminder' && (
-          <Tooltip title="进入智能协同，与该数字员工开展人机协同问答与任务委派">
+        {authorized && onChatCollaborate && (
+          <Tooltip title={`进入智能协同，与【${skill.name}】开展人机协同问答与任务委派`}>
             <Button
               icon={<MessageOutlined />}
               onClick={() => onChatCollaborate(skill)}

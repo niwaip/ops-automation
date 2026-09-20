@@ -352,10 +352,20 @@ export function useChatSessions({
     setSelectedSessionId((current) => (current === sessionId ? null : current));
   }, []);
 
+  const clearAllSessions = useCallback(() => {
+    syncedHistoryIdsRef.current.clear();
+    setDraftSessions([]);
+    setSessionOverrides({});
+    setSessionMessages({});
+    setSelectedSessionId(null);
+    setCurrentSession(null);
+  }, [setCurrentSession]);
+
   return {
     activeMessages,
     createDraftSession,
     deleteSession,
+    clearAllSessions,
     ensureSession,
     selectedSession,
     selectedSessionId,

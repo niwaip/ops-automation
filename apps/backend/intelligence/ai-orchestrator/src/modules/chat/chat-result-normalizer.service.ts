@@ -315,36 +315,65 @@ export class ChatResultNormalizerService {
   }
 
   private summarizeDocumentResult(result: NormalizedChatExecutionResult): string | undefined {
-    const record = this.asRecord(result.structuredData);
-    if (!record) {
+    if (result.artifacts.length > 1) {
+      return undefined;
+    }
+    const rawRecord = this.asRecord(result.structuredData);
+    const nestedRecord = rawRecord ? this.asRecord(rawRecord.result) : undefined;
+    const record = nestedRecord || rawRecord;
+    if (!record && result.artifacts.length === 0 && result.resultType !== 'document') {
       return undefined;
     }
 
-    const resultType = this.asString(record.resultType)?.trim().toLowerCase();
-    const status = this.asString(record.status)?.trim().toLowerCase();
+    const firstArtifact = result.artifacts?.[0];
     const fileName = this.firstNonEmptyString(
-      this.asString(record.fileName),
-      this.asString(record.filename),
-      this.asString(record.name)
+      this.asString(record?.fileName),
+      this.asString(record?.filename),
+      this.asString(record?.name),
+      this.asString(rawRecord?.fileName),
+      this.asString(rawRecord?.filename),
+      firstArtifact?.name
     );
-    const format = this.asString(record.format)?.trim().toUpperCase();
+    const format = this.firstNonEmptyString(
+      this.asString(record?.format),
+      this.asString(rawRecord?.format),
+      fileName && fileName.includes('.') ? fileName.split('.').pop() : undefined
+    )?.trim().toUpperCase();
+
+    const resultType = this.firstNonEmptyString(
+      result.resultType,
+      this.asString(record?.resultType),
+      this.asString(rawRecord?.resultType)
+    )?.trim().toLowerCase();
+    const status = this.firstNonEmptyString(
+      this.asString(record?.status),
+      this.asString(rawRecord?.status)
+    )?.trim().toLowerCase();
 
     const isExplicitDocument =
-      resultType === 'document' || Boolean(record.isDocument) || Boolean(record.carbone);
+      resultType === 'document' ||
+      Boolean(record?.isDocument) ||
+      Boolean(rawRecord?.isDocument) ||
+      Boolean(record?.carbone) ||
+      Boolean(rawRecord?.carbone);
+    const downloadUrl =
+      result.downloadUrl ||
+      this.asString(record?.downloadUrl) ||
+      this.asString(rawRecord?.downloadUrl) ||
+      firstArtifact?.downloadUrl;
     const hasDocumentFileMeta = Boolean(
-      (fileName || format) && (result.downloadUrl || status === 'rendered')
+      (fileName || format) && (downloadUrl || status === 'rendered' || result.artifacts.length > 0)
     );
 
     if (!isExplicitDocument && !hasDocumentFileMeta) {
       return undefined;
     }
 
-
     return [
       '文档已生成。',
       ...(fileName ? [`- 文件名：${fileName}`] : []),
       ...(format ? [`- 格式：${format}`] : []),
-      result.downloadUrl ? '- 可直接下载查看。' : '- 可在执行详情中查看结果。',
+      downloadUrl ? '- 可直接下载查看。' : '- 可在执行详情中查看结果。',
     ].join('\n');
   }
 

@@ -33,6 +33,13 @@ describe('Activation Gate (P3 item 4, §10.6)', () => {
       capabilityAttestation: {
         findFirst: jest.fn().mockResolvedValue(over.attestation ?? null),
       },
+      builtinSkillDeployment: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'deploy-1',
+          status: 'healthy',
+          smokeTestStatus: 'passed',
+        }),
+      },
     };
     const auditService = {
       logEvent: jest.fn().mockResolvedValue(undefined),

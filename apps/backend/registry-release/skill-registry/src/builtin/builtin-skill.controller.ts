@@ -4,17 +4,19 @@ import {
   Post,
   Body,
   Req,
+  Res,
   HttpCode,
   HttpStatus,
   Param,
   ForbiddenException,
 } from '@nestjs/common';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { IsString, IsOptional, IsArray, IsIn } from 'class-validator';
 import { Public } from '@ops/identity-access';
 import { BuiltinSkillCatalogProjectionService } from './catalog-projection/builtin-skill-catalog-projection.service';
 import { BuiltinSkillRegistryService } from './registry/builtin-skill-registry.service';
 import { BuiltinSkillRuntimeConfigService } from './runtime-config/builtin-skill-runtime-config.service';
+import { BuiltinSkillProvisioningService } from './provisioning/builtin-skill-provisioning.service';
 
 export class ResolveRequestDto {
   @IsString()
@@ -48,7 +50,8 @@ export class BuiltinSkillController {
   constructor(
     private readonly catalogProjectionService: BuiltinSkillCatalogProjectionService,
     private readonly registryService: BuiltinSkillRegistryService,
-    private readonly runtimeConfigService: BuiltinSkillRuntimeConfigService
+    private readonly runtimeConfigService: BuiltinSkillRuntimeConfigService,
+    private readonly provisioningService: BuiltinSkillProvisioningService
   ) {}
 
   private isTrustedInternalCaller(req: Request): boolean {
@@ -64,6 +67,28 @@ export class BuiltinSkillController {
       req.headers['x-internal-token'] ||
       req.headers['x-internal-auth'];
     return hasUser || reqSecret === internalSecret;
+  }
+
+  @Post('verify-and-activate')
+  @HttpCode(HttpStatus.OK)
+  async verifyAndActivateAll(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Body() body?: { target?: string }
+  ) {
+    if (!this.isTrustedInternalCaller(req)) {
+      throw new ForbiddenException('Trusted internal caller required');
+    }
+    const result = await this.provisioningService.verifyAndActivateAll(body?.target);
+    if (result.failed.length > 0) {
+      res.status(207);
+    }
+    return {
+      success: result.failed.length === 0,
+      succeeded: result.succeeded,
+      failed: result.failed,
+      total: result.succeeded.length + result.failed.length,
+    };
   }
 
   @Get(':capabilityKey/runtime-config')

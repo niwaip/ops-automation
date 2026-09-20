@@ -6,6 +6,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard, Roles, RolesGuard } from '@ops/identity-access';
@@ -24,6 +25,8 @@ import {
 @Controller('system/backup')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class SystemBackupController {
+  private readonly logger = new Logger(SystemBackupController.name);
+
   constructor(private readonly systemBackupService: SystemBackupService) {}
 
   @Get('summary')
@@ -38,7 +41,13 @@ export class SystemBackupController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Export system assets as a structured backup archive' })
   async exportBackup(@Body() body: ExportBackupRequestDTO): Promise<SystemBackupArchive> {
-    return this.systemBackupService.exportBackup(body?.modules);
+    try {
+      return await this.systemBackupService.exportBackup(body?.modules);
+    } catch (err: any) {
+      console.error('CRITICAL EXPORT ERROR:', err);
+      this.logger.error(`Failed to export backup: ${err?.message || err}`, err?.stack);
+      throw err;
+    }
   }
 
   @Post('preview')

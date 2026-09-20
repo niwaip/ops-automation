@@ -1,4 +1,5 @@
 import {
+  ClearOutlined,
   DeleteOutlined,
   DesktopOutlined,
   MenuUnfoldOutlined,
@@ -101,6 +102,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     appendProgressLog,
     createDraftSession,
     deleteSession,
+    clearAllSessions,
     ensureSession,
     isSessionListCollapsed,
     mergeSessionHistory,
@@ -259,6 +261,28 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     [chatMode, clearError, handleCreateSession]
   );
 
+  const handleClearAllSessions = useCallback(async () => {
+    clearAllSessions();
+    handleCreateSession();
+    try {
+      if (typeof chatApi.clearAllSessions === 'function') {
+        await chatApi.clearAllSessions();
+      } else {
+        await Promise.allSettled(sessions.map((s) => chatApi.deleteSession(s.id)));
+      }
+      toast.success('已清理全部会话');
+      void refetchSessions();
+    } catch {
+      try {
+        await Promise.allSettled(sessions.map((s) => chatApi.deleteSession(s.id)));
+        void refetchSessions();
+        toast.success('已清理全部会话');
+      } catch {
+        toast.error('清理会话失败，请稍后重试');
+      }
+    }
+  }, [clearAllSessions, handleCreateSession, refetchSessions, sessions, toast]);
+
   const handleToggleThought = useCallback((messageId: string) => {
     setExpandedThoughtMessageId((current) => (current === messageId ? null : messageId));
   }, []);
@@ -360,8 +384,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
         return '请直接在聊天框补充所需信息，Enter 发送后会继续当前任务';
       }
       return chatMode === 'task'
-        ? '例如：帮我总结这个执行的结果，并给出下一步建议'
-        : '输入你想咨询的问题';
+        ? '例如：/doc 分析工作空间架构 或 /email 总结今日邮件（输入 / 唤起工作技能，! 唤起工作流）'
+        : '例如：/ppt 制作商业汇报 或 /research 调研开源模型（输入 / 唤起沙箱生产力工具）';
     },
     [activeMessages, chatMode, pendingExecutionId]
   );
@@ -384,6 +408,27 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             onClick={handleCreateSession}
             title="新建会话"
           />
+          <Popconfirm
+            title="清理全部会话"
+            description="确定要清空所有会话历史记录吗？此操作不可恢复。"
+            okText="清空"
+            cancelText="取消"
+            okButtonProps={{ danger: true, size: 'small' }}
+            cancelButtonProps={{ size: 'small' }}
+            disabled={sessions.length === 0}
+            onConfirm={handleClearAllSessions}
+          >
+            <Tooltip title={sessions.length === 0 ? '暂无会话可清理' : '清理全部会话'} placement="right">
+              <Button
+                type="text"
+                danger
+                icon={<ClearOutlined />}
+                disabled={sessions.length === 0}
+                className={styles['user-chat-sidebar-clear-btn']}
+                aria-label="清理全部会话"
+              />
+            </Tooltip>
+          </Popconfirm>
         </div>
       ) : null}
 
@@ -402,6 +447,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
               // ignore
             }
           }}
+          onClearAllSessions={handleClearAllSessions}
           onRefresh={() => {
             void refetchSessions();
           }}

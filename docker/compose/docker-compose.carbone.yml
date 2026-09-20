@@ -41,7 +41,7 @@ services:
 
   # 开发模式配置（可选）
   carbone-engine-dev:
-    image: node:20-bullseye
+    image: node:20-bookworm
     container_name: carbone-engine-dev
     working_dir: /workspace/apps/backend/capabilities/document-domain
     command: >

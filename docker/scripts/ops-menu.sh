@@ -310,6 +310,27 @@ database_status_check() {
       log_warn "Migration sequence authority check reported warnings."
     fi
   fi
+
+  printf '\n[5. Built-in Skills & LLM Operations Inventory]\n'
+  if table_exists "builtin_skills"; then
+    local skill_count active_count
+    skill_count="$(psql_query "SELECT COUNT(*) FROM builtin_skills" 2>/dev/null || echo "0")"
+    active_count="$(psql_query "SELECT COUNT(*) FROM builtin_skills WHERE is_enabled = true" 2>/dev/null || echo "0")"
+    if [[ "${skill_count:-0}" -gt 0 ]]; then
+      log_ok "builtin_skills: ${skill_count} total, ${active_count} active"
+    else
+      log_warn "builtin_skills: table is EMPTY! Run 'ops db seed-skills' to populate."
+    fi
+  fi
+  if table_exists "llm_operations"; then
+    local op_count
+    op_count="$(psql_query "SELECT COUNT(*) FROM llm_operations" 2>/dev/null || echo "0")"
+    if [[ "${op_count:-0}" -gt 0 ]]; then
+      log_ok "llm_operations: ${op_count} operations registered"
+    else
+      log_warn "llm_operations: table is EMPTY (auto-seeds once ai-orchestrator starts successfully)."
+    fi
+  fi
   printf '\n'
 }
 
@@ -425,6 +446,28 @@ reset_admin_password() {
   wait_for_postgres
   ADMIN_PASSWORD="$password" seed_platform_accounts_sql
   log_ok "Admin password updated successfully."
+}
+
+seed_builtin_skills() {
+  printf '\n=== Seed All Built-in Skills ===\n'
+  get_db_params
+  if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${POSTGRES_CONTAINER}$"; then
+    log_info "Postgres is not running. Starting infra..."
+    start_stack "infra"
+  fi
+  wait_for_postgres
+
+  local platform_container="ops-platform"
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${platform_container}$"; then
+    log "Provisioning built-in skills via running ${platform_container} container..."
+    docker exec -e BUILTIN_SKILL_PROVISION_SKIP_SMOKE=true "$platform_container" sh -c \
+      "cd /workspace/apps/backend/platform && pnpm exec ts-node src/commands/builtin-skill-provision.command.ts all full"
+  else
+    log "Running platform container to provision built-in skills..."
+    run_smart dev run --rm --no-deps -e BUILTIN_SKILL_PROVISION_SKIP_SMOKE=true platform sh -c \
+      "cd /workspace/apps/backend/platform && pnpm exec ts-node src/commands/builtin-skill-provision.command.ts all full"
+  fi
+  log_ok "Built-in skills provisioning completed."
 }
 
 export_initial_data() {
@@ -544,20 +587,22 @@ database_menu() {
     printf ' 1) Database Status & 88-Table Authority Check\n'
     printf ' 2) Apply Latest Database Schema & Migrations\n'
     printf ' 3) Seed Platform Default Accounts (Admin/Employee/Agent)\n'
-    printf ' 4) Reset Admin Password\n'
-    printf ' 5) Export Initial Data Snapshot\n'
-    printf ' 6) Reset Public Schema (CAUTION: Drop All Tables)\n'
+    printf ' 4) Seed All Built-in Skills (14 declarative bundles)\n'
+    printf ' 5) Reset Admin Password\n'
+    printf ' 6) Export Initial Data Snapshot\n'
+    printf ' 7) Reset Public Schema (CAUTION: Drop All Tables)\n'
     printf ' 0) Back to Main Menu\n'
     printf '============================================================\n'
-    read -r -p "Select option [0-6]: " choice
+    read -r -p "Select option [0-7]: " choice
 
     case "$choice" in
       1) database_status_check; prompt_enter ;;
       2) apply_latest_database_schema; prompt_enter ;;
       3) start_stack "infra"; wait_for_postgres; seed_platform_accounts_sql; prompt_enter ;;
-      4) reset_admin_password; prompt_enter ;;
-      5) export_initial_data; prompt_enter ;;
-      6) reset_public_schema; prompt_enter ;;
+      4) seed_builtin_skills; prompt_enter ;;
+      5) reset_admin_password; prompt_enter ;;
+      6) export_initial_data; prompt_enter ;;
+      7) reset_public_schema; prompt_enter ;;
       0) return 0 ;;
       *) log_warn "Invalid selection: $choice" ;;
     esac
@@ -648,6 +693,7 @@ Database:
   ops db check          Verify database migrations and 88-table schema ownership
   ops db apply          Apply latest migrations and shared domain repairs
   ops db seed           Seed default roles and admin account
+  ops db seed-skills    Seed & activate all 14 built-in skill bundles
   ops db reset          Reset public schema (drops all tables)
   ops db export [path]  Export snapshot of initial platform data
 
@@ -701,12 +747,13 @@ dispatch_cli() {
     db)
       local sub="${1:-check}"
       case "$sub" in
-        check)  database_status_check ;;
-        apply)  apply_latest_database_schema ;;
-        seed)   start_stack "infra"; wait_for_postgres; seed_platform_accounts_sql ;;
-        reset)  reset_public_schema ;;
-        export) export_initial_data ;;
-        *)      database_menu ;;
+        check)        database_status_check ;;
+        apply)        apply_latest_database_schema ;;
+        seed)         start_stack "infra"; wait_for_postgres; seed_platform_accounts_sql ;;
+        seed-skills)  seed_builtin_skills ;;
+        reset)        reset_public_schema ;;
+        export)       export_initial_data ;;
+        *)            database_menu ;;
       esac
       ;;
     env)

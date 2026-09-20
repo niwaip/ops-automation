@@ -21,6 +21,7 @@ import { ChatTaskResumeService } from './chat-task-resume.service';
 import { ChatPlanningPresentationService } from './chat-planning-presentation.service';
 import { ScopedPlannerMemoryService } from './scoped-planner-memory.service';
 import { UserSandboxDispatcherService } from './user-sandbox-dispatcher.service';
+import { WorkspaceArtifactService } from './workspace-artifact.service';
 import { StorageConfigModule } from '../storage/storage-config.module';
 
 @Module({
@@ -50,6 +51,8 @@ import { StorageConfigModule } from '../storage/storage-config.module';
     ChatPlanningPresentationService,
     ScopedPlannerMemoryService,
     UserSandboxDispatcherService,
+    WorkspaceArtifactService,
   ],
+  exports: [WorkspaceArtifactService],
 })
 export class ChatModule {}

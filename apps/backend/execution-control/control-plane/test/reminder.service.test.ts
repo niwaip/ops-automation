@@ -30,6 +30,22 @@ describe('ReminderService', () => {
       .toThrow(BadRequestException);
   });
 
+  it('correctly resolves naive datetime in the specified timezone', () => {
+    const from = new Date('2026-09-18T00:00:00Z');
+    // 2026-09-19 10:00 in Asia/Shanghai (UTC+8) is 2026-09-19 02:00:00 UTC
+    const shanghaiResult = resolveReminderSchedule('', '2026-09-19T10:00', 'Asia/Shanghai', from);
+    expect(shanghaiResult.runAt?.toISOString()).toBe('2026-09-19T02:00:00.000Z');
+    expect(shanghaiResult.nextRunAt.toISOString()).toBe('2026-09-19T02:00:00.000Z');
+
+    // 2026-09-19 10:00 in UTC is 2026-09-19 10:00:00 UTC
+    const utcResult = resolveReminderSchedule('', '2026-09-19T10:00', 'UTC', from);
+    expect(utcResult.runAt?.toISOString()).toBe('2026-09-19T10:00:00.000Z');
+
+    // Invalid timezone throws BadRequestException
+    expect(() => resolveReminderSchedule('', '2026-09-19T10:00', 'Invalid/Timezone', from))
+      .toThrow(BadRequestException);
+  });
+
   it('requires the owner to have enabled WeChat when selected', async () => {
     prisma.imChannelConnection.findUnique.mockResolvedValue(null);
     await expect(service.create('owner', {

@@ -1,10 +1,7 @@
 ---
 name: image-gen
 zh_name: "对话图像创作与编辑引擎"
-description: |
-  Autonomous AI image generation and multi-turn iterative editing for DeepSeek Harness (dsh). Supports text-to-image, image-to-image, style transfer, and continuous dialogue-based image modifications using system default models.
-zh_description: |
-  AI 图像创作与多轮连续编辑规范：利用系统默认模型进行文生图与图生图。若系统默认模型为纯文本架构不支持视觉/生图，则主动明确提示不支持，严禁要求用户手动配置第三方 API 密钥。
+description: "AI 图像创作与多轮连续编辑。支持文生图、以图生图、设计海报与插画创作。当用户需要画图、生成图片、设计海报、Logo、插图或编辑修改现有图片时必须使用此技能。不要用于普通的代码编写或数据分析。"
 tags:
   - "image"
   - "image-gen"
@@ -17,9 +14,14 @@ triggers:
   - "生成图片"
   - "生图"
   - "画个"
+  - "画一只"
+  - "插画"
+  - "画一幅"
   - "设计logo"
   - "设计海报"
   - "做个海报"
+  - "海报"
+  - "logo"
   - "以图生图"
   - "修改图片"
   - "重绘"

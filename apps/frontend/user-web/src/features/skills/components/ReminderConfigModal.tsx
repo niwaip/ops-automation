@@ -1,6 +1,7 @@
 import {
   BellOutlined,
   CalendarOutlined,
+  CheckOutlined,
   ClockCircleOutlined,
   DeleteOutlined,
   EditOutlined,
@@ -20,7 +21,6 @@ import {
   Popconfirm,
   Radio,
   Select,
-  Space,
   Switch,
   Tag,
   TimePicker,
@@ -211,23 +211,27 @@ export function ReminderConfigModal({ open, onClose }: { open: boolean; onClose:
       width={780}
       destroyOnClose
       title={
-        <span className={styles.heading}>
-          <span className={styles.headingIcon}>
+        <div className={styles.headingWrapper}>
+          <div className={styles.headingIcon}>
             <BellOutlined />
-          </span>
-          消息提醒
-        </span>
+          </div>
+          <div className={styles.headingTitleCol}>
+            <div className={styles.headingTitleRow}>
+              <span className={styles.headingTitle}>消息与日程提醒</span>
+              {editing ? (
+                <Tag color="processing" bordered={false} style={{ margin: 0, fontSize: 11 }}>
+                  正在编辑: {editing.title || '自定义提醒'}
+                </Tag>
+              ) : null}
+            </div>
+            <span className={styles.headingSub}>
+              配置个人日常事务与周期排班，支持站内实时弹窗及微信同步推送
+            </span>
+          </div>
+        </div>
       }
       className={styles.modal}
     >
-      {/* 模块1：新建与编辑 */}
-      <div className={styles.sectionHeader}>
-        <div className={styles.sectionTitle}>
-          <span className={styles.sectionBadge}>01</span>
-          新建与编辑
-        </div>
-        <span className={styles.sectionSub}>配置提醒事项与执行时机</span>
-      </div>
 
       <Form
         form={form}
@@ -503,12 +507,23 @@ export function ReminderConfigModal({ open, onClose }: { open: boolean; onClose:
               </div>
             </div>
           ) : (
-            <div className={styles.multipleContainer}>
-              <div className={styles.multipleHeader}>
-                <span className={styles.fieldLabel}>每天提醒的时间列表 (支持 1 至 12 个时间点)</span>
-              </div>
-              <Form.List name="times">
-                {(fields, { add, remove: removeTime }) => (
+            <Form.List name="times">
+              {(fields, { add, remove: removeTime }) => (
+                <div className={styles.multipleContainer}>
+                  <div className={styles.multipleHeader}>
+                    <span className={styles.fieldLabel}>每天提醒的时间列表 (支持 1 至 12 个时间点)</span>
+                    {fields.length < MAX_DAILY_TIMES && (
+                      <Button
+                        type="dashed"
+                        size="small"
+                        icon={<PlusOutlined />}
+                        onClick={() => add(dayjs().hour(9).minute(0))}
+                        className={styles.addTimeHeaderBtn}
+                      >
+                        添加时间点
+                      </Button>
+                    )}
+                  </div>
                   <div className={styles.multipleScrollArea}>
                     <div className={styles.timeGrid}>
                       {fields.map((field, index) => (
@@ -532,82 +547,51 @@ export function ReminderConfigModal({ open, onClose }: { open: boolean; onClose:
                           )}
                         </div>
                       ))}
-                      {fields.length < MAX_DAILY_TIMES && (
-                        <Button
-                          className={styles.addTime}
-                          icon={<PlusOutlined />}
-                          onClick={() => add(dayjs().hour(9).minute(0))}
-                        >
-                          添加时间
-                        </Button>
-                      )}
                     </div>
                   </div>
-                )}
-              </Form.List>
-            </div>
+                </div>
+              )}
+            </Form.List>
           )}
         </div>
 
-        {/* 顶部消息区 + 同步到微信 合并为同一行配置区 */}
-        <div className={styles.deliveryConfigRow}>
-          {/* 顶部消息区卡片 */}
-          <div className={styles.deliveryCard}>
-            <div className={styles.deliveryCardIcon}>
-              <BellOutlined />
-            </div>
-            <div className={styles.deliveryCardInfo}>
-              <div className={styles.deliveryCardHeader}>
-                <span className={styles.deliveryCardTitle}>顶部消息区</span>
-                <Tag color="blue" bordered={false} className={styles.deliveryTag}>
-                  默认开启
-                </Tag>
-              </div>
-              <div className={styles.deliveryCardDesc}>
-                默认送达站内消息中心，可稍后提醒
-              </div>
-            </div>
-          </div>
-
-          {/* 同步到微信卡片 */}
-          <div
-            className={`${styles.deliveryCard} ${
-              !wechatConnected ? styles.deliveryCardDisabled : ''
-            }`}
-            onClick={() => {
-              if (wechatConnected) {
-                form.setFieldValue('sendWechat', !sendWechat);
-              }
-            }}
-          >
-            <div className={`${styles.deliveryCardIcon} ${styles.wechatIcon}`}>
-              <WechatOutlined />
-            </div>
-            <div className={styles.deliveryCardInfo}>
-              <div className={styles.deliveryCardHeader}>
-                <span className={styles.deliveryCardTitle}>同步到微信</span>
-                <Form.Item name="sendWechat" valuePropName="checked" noStyle>
-                  <Switch
-                    disabled={!wechatConnected}
-                    onClick={(_, e) => e.stopPropagation()}
-                  />
-                </Form.Item>
-              </div>
-              <div className={styles.deliveryCardDesc}>
-                {wechatConnected ? '使用已连接的微信渠道推送' : '未连接微信（请先在渠道中绑定）'}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 底部操作区 */}
+        {/* 底部操作区：时区提示 + 微信同步开关 + 创建/保存按钮 */}
         <div className={styles.actions}>
           <div className={styles.timezoneInfo}>
-            <GlobalOutlined /> 按 {USER_TIMEZONE} 时区执行
+            <GlobalOutlined /> 按 {USER_TIMEZONE} 时区执行 · 默认站内送达
           </div>
-          <Space>
+          <div className={styles.actionControls}>
+            {/* 微信同步快捷胶囊 */}
+            <div
+              className={`${styles.wechatSyncPill} ${
+                sendWechat && wechatConnected ? styles.wechatActive : ''
+              } ${!wechatConnected ? styles.wechatDisabled : ''}`}
+              onClick={() => {
+                if (wechatConnected) {
+                  form.setFieldValue('sendWechat', !sendWechat);
+                }
+              }}
+              title={
+                wechatConnected
+                  ? sendWechat
+                    ? '已开启微信同步推送，点击可关闭'
+                    : '已连接微信，点击开启同步推送'
+                  : '微信渠道未配置（请先在渠道设置中绑定公众号）'
+              }
+            >
+              <WechatOutlined className={styles.wechatPillIcon} />
+              <span className={styles.wechatPillText}>同步到微信</span>
+              <Form.Item name="sendWechat" valuePropName="checked" noStyle>
+                <Switch
+                  size="small"
+                  disabled={!wechatConnected}
+                  onClick={(_, e) => e.stopPropagation()}
+                />
+              </Form.Item>
+            </div>
+
             {editing && (
-              <Button onClick={reset} size="large">
+              <Button onClick={reset} size="large" className={styles.cancelBtn}>
                 取消编辑
               </Button>
             )}
@@ -616,23 +600,23 @@ export function ReminderConfigModal({ open, onClose }: { open: boolean; onClose:
               size="large"
               htmlType="submit"
               loading={save.isLoading}
+              icon={editing ? <CheckOutlined /> : <PlusOutlined />}
               className={styles.submitBtn}
             >
               {editing ? '保存修改' : '创建提醒'}
             </Button>
-          </Space>
+          </div>
         </div>
       </Form>
 
-      {/* 模块2：我的提醒 */}
-      <div className={styles.sectionHeader}>
-        <div className={styles.sectionTitle}>
-          <span className={styles.sectionBadge}>02</span>
-          我的提醒
+      {/* 已设提醒规则 */}
+      <div className={styles.ruleSectionHeader}>
+        <div className={styles.ruleSectionTitle}>
+          <ClockCircleOutlined style={{ color: '#6366f1' }} />
+          <span>已设提醒规则</span>
+          <span className={styles.countBadge}>{displayRules.length}</span>
         </div>
-        <span className={styles.countBadge}>
-          {rules.data ? `共 ${displayRules.length} 条` : '管理已安排的提醒'}
-        </span>
+        <span className={styles.sectionSub}>支持随时暂停、编辑或删除</span>
       </div>
 
       {rules.isError && <Alert type="error" showIcon message="加载提醒列表失败，请稍后重试" />}

@@ -1,6 +1,7 @@
 import { Card, Empty } from 'antd';
 import type { PublishedSkillCatalogItem } from '@/api/skill';
 import type { ScheduleDto } from '@/api/schedules';
+import type { ReminderRule } from '@/api/index';
 import { SkillCard } from '@/features/skills/components/SkillCard';
 import styles from './EmployeeManagement.module.css';
 
@@ -16,6 +17,7 @@ interface SkillGridProps {
   recentlyRequestedSkillId: string | null;
   schedulesBySkillId: Map<string, ScheduleDto[]>;
   skills: PublishedSkillCatalogItem[];
+  reminderRules?: ReminderRule[];
 }
 
 export function SkillGrid({
@@ -30,6 +32,7 @@ export function SkillGrid({
   recentlyRequestedSkillId,
   schedulesBySkillId,
   skills,
+  reminderRules,
 }: SkillGridProps) {
   if (isLoading) {
     return (
@@ -70,6 +73,7 @@ export function SkillGrid({
           recentlyRequested={recentlyRequestedSkillId === skill.id && skill.accessStatus === 'requested'}
           schedules={schedulesBySkillId.get(skill.id) || []}
           skill={skill}
+          reminderRules={reminderRules}
         />
       ))}
     </div>

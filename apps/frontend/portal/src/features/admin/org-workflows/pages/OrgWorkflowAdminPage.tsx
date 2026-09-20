@@ -225,7 +225,7 @@ const OrgWorkflowAdminContent: React.FC = () => {
       },
     },
     {
-      title: '组装的 5173 底层普通工作流',
+      title: '组装的底层能力',
       key: 'assembled',
       render: (_, record) => {
         const assembled = Array.isArray(record.assembledWorkflows)
@@ -313,7 +313,7 @@ const OrgWorkflowAdminContent: React.FC = () => {
       width: 130,
       render: (_, record) =>
         record.isPublished ? (
-          <Badge status="success" text="已发布 (5174可见)" />
+          <Badge status="success" text="已发布 (工作台可见)" />
         ) : (
           <Badge status="default" text="草稿 (Draft)" />
         ),
@@ -463,7 +463,7 @@ const OrgWorkflowAdminContent: React.FC = () => {
           <div style={{ fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>{stats.total}</div>
         </Card>
         <Card size="small" style={{ borderRadius: 8 }}>
-          <div style={{ fontSize: 13, color: token.colorTextSecondary }}>已公开就绪 (5174 可见)</div>
+          <div style={{ fontSize: 13, color: token.colorTextSecondary }}>已公开就绪 (工作台可见)</div>
           <div style={{ fontSize: 24, fontWeight: 'bold', color: '#52c41a', marginTop: 4 }}>
             {stats.publishedCount}
           </div>

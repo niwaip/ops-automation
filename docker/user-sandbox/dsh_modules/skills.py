@@ -23,12 +23,27 @@ def get_available_skills() -> list:
             if not item.is_dir() or item.name.startswith(".") or item.name in seen_ids:
                 continue
             skill_file = item / "SKILL.md" if (item / "SKILL.md").exists() else item / "README.md"
+            manifest_file = item / "manifest.json"
+            triggers = []
+            if manifest_file.exists():
+                try:
+                    import json
+                    with open(manifest_file, "r", encoding="utf-8") as mf:
+                        m_data = json.load(mf)
+                        raw_trig = m_data.get("triggers") or m_data.get("keywords") or []
+                        if isinstance(raw_trig, list):
+                            triggers.extend([str(t).strip().lower() for t in raw_trig if t])
+                except Exception:
+                    pass
+
             meta = {
                 "id": item.name,
                 "name": item.name,
                 "description": "",
                 "type": skill_type,
-                "path": str(item)
+                "path": str(item),
+                "triggers": triggers,
+                "aliases": [item.name.lower()]
             }
             if skill_file.exists():
                 try:
@@ -37,23 +52,77 @@ def get_available_skills() -> list:
                         if content.startswith("---"):
                             parts = content.split("---", 2)
                             if len(parts) >= 3:
-                                for line in parts[1].splitlines():
-                                    s = line.strip()
-                                    if s.startswith("zh_name:") or (s.startswith("name:") and meta["name"] == item.name):
-                                        meta["name"] = s.split(":", 1)[1].strip().strip('"\'')
-                                    elif s.startswith("zh_description:") or (s.startswith("description:") and not meta["description"]):
-                                        desc_val = s.split(":", 1)[1].strip().strip('"\'')
-                                        if desc_val not in ["|", ">"]:
-                                            meta["description"] = desc_val
+                                lines = parts[1].splitlines()
+                                i = 0
+                                current_block_key = None
+                                block_lines = []
+
+                                def flush_block():
+                                    nonlocal current_block_key, block_lines
+                                    if current_block_key in ("zh_description", "description") and block_lines:
+                                        val = " ".join(l.strip() for l in block_lines if l.strip())
+                                        if not meta["description"] or current_block_key == "zh_description":
+                                            meta["description"] = val
+                                    block_lines = []
+                                    current_block_key = None
+
+                                while i < len(lines):
+                                    line = lines[i]
+                                    stripped = line.strip()
+                                    if not stripped or stripped.startswith("#"):
+                                        i += 1
+                                        continue
+
+                                    if stripped.startswith("-") and current_block_key == "triggers":
+                                        trig_item = stripped.lstrip("-").strip().strip("\"'").lower()
+                                        if trig_item:
+                                            meta["triggers"].append(trig_item)
+                                        i += 1
+                                        continue
+
+                                    if (line.startswith("  ") or line.startswith("\t")) and current_block_key in ("description", "zh_description"):
+                                        block_lines.append(stripped)
+                                        i += 1
+                                        continue
+
+                                    flush_block()
+                                    if ":" in line:
+                                        k, v = line.split(":", 1)
+                                        k = k.strip()
+                                        v = v.strip().strip("\"'")
+                                        if k == "name":
+                                            if v:
+                                                meta["aliases"].append(v.lower())
+                                            if meta["name"] == item.name and v:
+                                                meta["name"] = v
+                                        elif k == "zh_name" and v:
+                                            meta["name"] = v
+                                        elif k in ("description", "zh_description"):
+                                            if v in ("|", ">"):
+                                                current_block_key = k
+                                            elif v:
+                                                if not meta["description"] or k == "zh_description":
+                                                    meta["description"] = v
+                                        elif k in ("triggers", "keywords"):
+                                            if v.startswith("[") and v.endswith("]"):
+                                                parts_trig = [t.strip().strip("\"'").lower() for t in v[1:-1].split(",") if t.strip()]
+                                                meta["triggers"].extend(parts_trig)
+                                            else:
+                                                current_block_key = "triggers"
+                                    i += 1
+                                flush_block()
+
                         if not meta["description"] or meta["description"] in ["|", ">"]:
                             body = parts[2] if len(parts) >= 3 else content
                             for line in body.splitlines():
                                 line_t = line.strip()
                                 if not line_t.startswith("#") and not line_t.startswith("---") and not line_t.startswith(">") and line_t:
-                                    meta["description"] = line_t[:90]
+                                    meta["description"] = line_t[:120]
                                     break
                 except Exception:
                     pass
+            meta["triggers"] = list(dict.fromkeys(meta["triggers"]))
+            meta["aliases"] = list(dict.fromkeys(meta["aliases"]))
             skills.append(meta)
             seen_ids.add(item.name)
     return skills
@@ -99,6 +168,21 @@ def read_skill(skill_name: str) -> str:
             break
 
     if not target_dir:
+        for s in get_available_skills():
+            s_name = s.get("name", "").lower()
+            s_id = s.get("id", "").lower()
+            s_aliases = [str(a).lower() for a in s.get("aliases", [])]
+            s_triggers = [str(t).lower() for t in s.get("triggers", [])]
+            if clean_name in [s_name, s_id] or clean_name in s_aliases or clean_name in s_triggers:
+                for s_dir in search_dirs:
+                    cand = s_dir / s["id"]
+                    if cand.exists() and cand.is_dir():
+                        target_dir = cand
+                        break
+                if target_dir:
+                    break
+
+    if not target_dir:
         available = [s["id"] for s in get_available_skills()]
         return f"未找到技能 '{skill_name}'。可用技能列表: {', '.join(available)}"
 
@@ -109,6 +193,12 @@ def read_skill(skill_name: str) -> str:
     try:
         with open(skill_file, "r", encoding="utf-8") as f:
             content = f.read()
+
+        body = content
+        if content.startswith("---"):
+            parts = content.split("---", 2)
+            if len(parts) >= 3:
+                body = parts[2].strip()
 
         sub_files = []
         for p in target_dir.rglob("*"):
@@ -121,6 +211,6 @@ def read_skill(skill_name: str) -> str:
         if sub_files:
             addon = f"\n\n【技能附带资源与可用模版 (位于 {target_dir})】:\n" + "\n".join(f"- {f}" for f in sub_files[:15])
 
-        return content + addon
+        return body + addon
     except Exception as e:
         return f"读取技能失败: {e}"

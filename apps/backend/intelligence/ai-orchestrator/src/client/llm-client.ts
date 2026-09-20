@@ -1,4 +1,4 @@
-import { ChatMessage, LLMResponse, OpenAICompatibleConfig } from '../interfaces';
+import { ChatMessage, LLMResponse, OpenAICompatibleConfig, ToolDefinition } from '../interfaces';
 
 export type PromptCachingMode = 'none' | 'openai_auto' | 'anthropic_auto' | 'anthropic_explicit';
 
@@ -31,12 +31,14 @@ export interface LLMChatRequest {
     enabled?: boolean;
     effort?: 'low' | 'medium' | 'high';
   };
+  tools?: ToolDefinition[];
+  tool_choice?: 'auto' | 'none' | 'required' | { type: 'function'; function: { name: string } };
 }
 
 export interface LLMClient {
   chatCompletion(request: ChatMessage[] | LLMChatRequest): Promise<LLMResponse>;
   chatCompletionStream(
-    messages: ChatMessage[],
+    request: ChatMessage[] | LLMChatRequest,
     onChunk: (chunk: string) => void,
     reasoning?: {
       enabled?: boolean;

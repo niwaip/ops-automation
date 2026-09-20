@@ -230,6 +230,7 @@ export class UserSandboxContainerService {
           `${paths.sharedPlugins}:/opt/dsh/plugins:ro`,
           `${paths.sharedSkills}:/opt/dsh/skills:ro`,
           ...(paths.dshModules ? [`${paths.dshModules}:/usr/local/bin/dsh_modules:ro`] : []),
+          ...(paths.dshBin ? [`${paths.dshBin}:/usr/local/bin/dsh:ro`] : []),
         ],
         Memory: memoryLimitMb * 1024 * 1024,
         CpuQuota: cpuLimit * 100000,

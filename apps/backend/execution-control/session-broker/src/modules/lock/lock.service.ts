@@ -126,4 +126,33 @@ export class LockService {
     const lockKey = `lock:profile:${userId}`;
     return this.redisService.ttl(lockKey);
   }
+
+  /**
+   * Acquire execution lock for user personal sandbox to prevent concurrent overlapping dsh executions
+   */
+  async acquireSandboxLock(userId: string, ttlSeconds: number = 180): Promise<{ success: boolean; token: string }> {
+    const lockKey = `lock:sandbox:exec:${userId}`;
+    const token = uuidv4();
+    const result = await this.redisService.set(lockKey, token, ttlSeconds);
+    const success = result === 'OK';
+    if (!success) {
+      this.logger.warn(`Sandbox execution lock conflict for user [${userId}]`);
+    } else {
+      this.logger.log(`Sandbox execution lock acquired for user [${userId}], token=${token}`);
+    }
+    return { success, token };
+  }
+
+  /**
+   * Release sandbox execution lock safely
+   */
+  async releaseSandboxLock(userId: string, token: string): Promise<boolean> {
+    const lockKey = `lock:sandbox:exec:${userId}`;
+    const result = await this.redisService.eval(SAFE_RELEASE_SCRIPT, [lockKey], [token]);
+    const released = result === 1;
+    if (released) {
+      this.logger.log(`Sandbox execution lock released for user [${userId}]`);
+    }
+    return released;
+  }
 }

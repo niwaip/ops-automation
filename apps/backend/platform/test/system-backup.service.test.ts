@@ -1,9 +1,13 @@
-import { SystemBackupService } from '../src/modules/system-backup/system-backup.service';
-import { AIModelBackupHandler } from '../src/modules/system-backup/handlers/ai-model-backup.handler';
-import { SkillWorkflowBackupHandler } from '../src/modules/system-backup/handlers/skill-workflow-backup.handler';
-import { CapabilityReleaseBackupHandler } from '../src/modules/system-backup/handlers/capability-release-backup.handler';
-import { TemplateFlowBackupHandler } from '../src/modules/system-backup/handlers/template-flow-backup.handler';
-import { UserOrgBackupHandler } from '../src/modules/system-backup/handlers/user-org-backup.handler';
+import {
+  SystemBackupService,
+  AIModelBackupHandler,
+  SkillWorkflowBackupHandler,
+  CapabilityReleaseBackupHandler,
+  TemplateFlowBackupHandler,
+  UserOrgBackupHandler,
+  TaskPolicyBackupHandler,
+  WorkspaceBackupHandler,
+} from '@ops/system-backup';
 
 describe('SystemBackupService', () => {
   let service: SystemBackupService;
@@ -12,6 +16,8 @@ describe('SystemBackupService', () => {
   let capabilityReleaseHandler: jest.Mocked<CapabilityReleaseBackupHandler>;
   let templateFlowHandler: jest.Mocked<TemplateFlowBackupHandler>;
   let userOrgHandler: jest.Mocked<UserOrgBackupHandler>;
+  let taskPolicyHandler: jest.Mocked<TaskPolicyBackupHandler>;
+  let workspaceHandler: jest.Mocked<WorkspaceBackupHandler>;
 
   beforeEach(() => {
     aiModelHandler = {
@@ -150,18 +156,61 @@ describe('SystemBackupService', () => {
       import: jest.fn().mockResolvedValue({ created: 0, updated: 1, skipped: 0 }),
     } as any;
 
+    taskPolicyHandler = {
+      count: jest.fn().mockResolvedValue(2),
+      export: jest.fn().mockResolvedValue({
+        policySets: [{ id: 'ps-1', name: 'Policy 1' }],
+        recipes: [],
+        commandAliases: [],
+        capabilityBindings: [],
+      }),
+      preview: jest.fn().mockResolvedValue({
+        moduleKey: 'taskPolicies',
+        totalInBackup: 1,
+        newCount: 0,
+        conflictCount: 1,
+        items: [{ key: 'ps-1', name: 'Task Policy: Policy 1', existsInTarget: true, action: 'update' }],
+      }),
+      import: jest.fn().mockResolvedValue({ created: 0, updated: 1, skipped: 0 }),
+    } as any;
+
+    workspaceHandler = {
+      count: jest.fn().mockResolvedValue(1),
+      export: jest.fn().mockResolvedValue({
+        workspaces: [
+          {
+            id: 'ws-1',
+            name: 'Default Workspace',
+            quotaBytes: 5368709120n,
+            usedBytes: 1048576n,
+          },
+        ],
+        documents: [],
+      }),
+      preview: jest.fn().mockResolvedValue({
+        moduleKey: 'workspaces',
+        totalInBackup: 1,
+        newCount: 0,
+        conflictCount: 1,
+        items: [{ key: 'ws-1', name: 'Workspace: Default Workspace', existsInTarget: true, action: 'update' }],
+      }),
+      import: jest.fn().mockResolvedValue({ created: 0, updated: 1, skipped: 0 }),
+    } as any;
+
     service = new SystemBackupService(
       aiModelHandler,
       skillWorkflowHandler,
       capabilityReleaseHandler,
       templateFlowHandler,
-      userOrgHandler
+      userOrgHandler,
+      taskPolicyHandler,
+      workspaceHandler
     );
   });
 
   it('should summarize asset counts across all modules', async () => {
     const summary = await service.getAssetSummary();
-    expect(summary.totalAssets).toBe(38);
+    expect(summary.totalAssets).toBe(41);
     expect(summary.counts.aiModels).toBe(6);
     expect(summary.counts.skills).toBe(10);
     expect(summary.counts.temporalWorkflows).toBe(4);
@@ -169,6 +218,8 @@ describe('SystemBackupService', () => {
     expect(summary.counts.browserTemplates).toBe(5);
     expect(summary.counts.executionFlowTemplates).toBe(3);
     expect(summary.counts.userOrganizations).toBe(8);
+    expect(summary.counts.taskPolicies).toBe(2);
+    expect(summary.counts.workspaces).toBe(1);
   });
 
   it('should export all requested modules with manifest and checksum', async () => {
@@ -196,5 +247,16 @@ describe('SystemBackupService', () => {
     expect(result.importedCounts.aiModels.updated).toBe(1);
     expect(result.importedCounts.skills.created).toBe(1);
     expect(result.errors).toHaveLength(0);
+  });
+
+  it('should serialize BigInt fields safely in exported modules', async () => {
+    const archive = await service.exportBackup(['workspaces']);
+    expect(archive.modules.workspaces?.workspaces).toHaveLength(1);
+    const ws = archive.modules.workspaces?.workspaces?.[0];
+    expect(ws?.quotaBytes).toBe(5368709120);
+    expect(typeof ws?.quotaBytes).toBe('number');
+    expect(ws?.usedBytes).toBe(1048576);
+    expect(typeof ws?.usedBytes).toBe('number');
+    expect(() => JSON.stringify(archive)).not.toThrow();
   });
 });

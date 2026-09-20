@@ -200,7 +200,7 @@ export function OrganizationWorkflowList() {
               组织工作流中心 (Enterprise Organization Workflows)
             </Typography.Title>
             <Typography.Paragraph type="secondary" style={{ margin: 0, maxWidth: 850 }}>
-              组织工作流由管理员在 5173 管理后台基于底层普通工作流（基础执行流、Temporal、技能）进行组装并发布。具备完整的流程定义（提单 Schema 契约 → 审批节点及角色规则 → 审批通过后自动触发底层自动化执行流闭环 → GTD 回执归档）。
+              组织工作流由管理员在管理后台基于底层能力（基础执行流、Temporal、技能）进行组装并发布。具备完整的流程定义（提单 Schema 契约 → 审批节点及角色规则 → 审批通过后自动触发底层自动化执行流闭环 → GTD 回执归档）。
             </Typography.Paragraph>
           </div>
           <Space>
@@ -347,7 +347,7 @@ export function OrganizationWorkflowList() {
                 children: (
                   <div>
                     <Typography.Paragraph type="secondary">
-                      在 5173 管理后台中配置的业务流转节点与审批人角色定义：
+                      管理后台中配置的业务流转节点与审批人角色定义：
                     </Typography.Paragraph>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -373,7 +373,7 @@ export function OrganizationWorkflowList() {
                     </div>
 
                     <Typography.Title level={5} style={{ marginTop: 20 }}>
-                      组装的 5173 底层普通工作流
+                      组装的底层能力
                     </Typography.Title>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {(schemaDrawerWorkflow.assembledWorkflows || []).length === 0 ? (

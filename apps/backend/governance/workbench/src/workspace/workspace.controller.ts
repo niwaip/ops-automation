@@ -160,6 +160,23 @@ export class WorkspaceController {
     );
   }
 
+  @Get(':workspaceId/nodes/:nodeId')
+  @ApiOperation({ summary: '获取指定文件或文件夹节点详情（含摘要卡片）' })
+  async getNodeDetail(
+    @Request() req: any,
+    @Param('workspaceId') workspaceId: string,
+    @Param('nodeId') nodeId: string
+  ) {
+    const { userId, departmentId, userRoles } = this.extractAuth(req);
+    return await this.workspaceService.getNodeById(
+      workspaceId,
+      nodeId,
+      userId,
+      userRoles,
+      departmentId
+    );
+  }
+
   @Post(':workspaceId/folder')
   @ApiOperation({ summary: '在指定空间/目录下新建文件夹' })
   async createFolder(

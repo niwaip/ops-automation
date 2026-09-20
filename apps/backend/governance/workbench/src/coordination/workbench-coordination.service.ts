@@ -13,7 +13,6 @@ import { WORKBENCH_PRISMA, WorkbenchPrismaPort } from '../ports';
 import { InboxItemStatus, TodoSourceType } from '../inbox/dto/workbench-inbox.dto';
 import { TodoPriority, TodoStatus } from '../todo/dto/workbench-todo.dto';
 import { WorkbenchInboxService } from '../inbox/workbench-inbox.service';
-import { MockHrService } from './mock-hr.service';
 import {
   CoordinationActionRecord,
   CoordinationAttachment,
@@ -59,7 +58,6 @@ export class WorkbenchCoordinationService implements OnModuleInit {
     @Inject(WORKBENCH_PRISMA)
     private readonly prisma: WorkbenchPrismaPort,
     private readonly inboxService: WorkbenchInboxService,
-    private readonly mockHrService: MockHrService,
     @Optional()
     private readonly orgWorkflowService?: OrgWorkflowService,
     @Optional()
@@ -185,10 +183,9 @@ export class WorkbenchCoordinationService implements OnModuleInit {
     }
 
     const taskId = `coord_${randomUUID()}`;
-    const workflowId =
-      dto.workflowId || (dto.isCardTemplate ? 'general.coordination' : undefined);
+    const workflowId = dto.workflowId;
     const parameters = dto.parameters || {};
-    const taskType = dto.taskType || (workflowId === 'hr.leave.request' ? CoordinationTaskType.approval : CoordinationTaskType.approval);
+    const taskType = dto.taskType || CoordinationTaskType.approval;
 
     let typePrefix = '[待我处理]';
     if (taskType === CoordinationTaskType.approval) {
@@ -262,10 +259,14 @@ export class WorkbenchCoordinationService implements OnModuleInit {
           (parameters as any).contractFileName ||
           (parameters as any).documentName ||
           `${dto.title.trim()}.docx`;
+        const attachmentSize =
+          Number((parameters as any).size) ||
+          Number((parameters as any).fileSize) ||
+          undefined;
         attachments.push({
           name: fileName,
           url: directUrl,
-          size: 19463,
+          ...(attachmentSize ? { size: attachmentSize } : {}),
           mimeType:
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         });
@@ -277,13 +278,17 @@ export class WorkbenchCoordinationService implements OnModuleInit {
             (parameters as any).executionId ||
             (dto.metadata as any)?.executionId;
 
+          const configuredSkillIds = (process.env.DOCUMENT_STAGE_SKILL_IDS || '16fb88e9-ba9c-4ab7-b508-f23adb1a821a,773bd4a6-8327-4610-8fb2-826314133335')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+
           const queryWhere: any = executionId
             ? { id: executionId }
             : {
                 status: 'succeeded',
                 OR: [
-                  { skillId: '16fb88e9-ba9c-4ab7-b508-f23adb1a821a' },
-                  { skillId: '773bd4a6-8327-4610-8fb2-826314133335' },
+                  ...configuredSkillIds.map((skillId) => ({ skillId })),
                 ],
               };
 
@@ -303,10 +308,14 @@ export class WorkbenchCoordinationService implements OnModuleInit {
               rJson.result?.businessData?.result?.fileName ||
               `${dto.title.trim()}.docx`;
             if (downloadUrl) {
+              const docSize =
+                Number(rJson.size) ||
+                Number(rJson.result?.businessData?.result?.size) ||
+                undefined;
               attachments.push({
                 name: fileName,
                 url: downloadUrl,
-                size: 19463,
+                ...(docSize ? { size: docSize } : {}),
                 mimeType:
                   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
               });
@@ -941,41 +950,9 @@ export class WorkbenchCoordinationService implements OnModuleInit {
       actionText = '完成提交';
     }
 
-    // 模拟调用外部系统（如考勤系统、HRMS、ERP 财务系统）
+    // 流程流转执行
     let externalSyncResult: any = undefined;
-    if (dto.action === 'approve' && payload.workflowId === 'hr.leave.request') {
-      try {
-        const params = payload.parameters || {};
-        externalSyncResult = await this.mockHrService.syncLeaveApproval({
-          taskId,
-          applicantName: initiator.username || '员工',
-          approverName: operator?.username || '主管',
-          leaveType: params.leaveType || '请假',
-          startTime: params.startTime || '',
-          endTime: params.endTime || '',
-          durationHours: Number(params.durationHours || 4),
-          reason: params.reason || targetItem.sourceTitle || targetItem.title,
-          handoverPerson: params.handoverPerson,
-          emergencyContact: params.emergencyContact,
-        });
-      } catch (hrErr) {
-        this.logger.warn(`Failed to sync leave approval to Mock HR:`, hrErr);
-      }
-    } else if (dto.action === 'approve' && payload.workflowId === 'oa.expense.claim') {
-      const params = payload.parameters || {};
-      externalSyncResult = {
-        success: true,
-        trackingNumber: `ERP-EXP-${Date.now().toString().slice(-6)}`,
-        externalSystem: 'ERP 财务结算网关',
-        message: `报销核准通过，已同步至财务凭证中心完成结算建档（金额：¥${params.amount || 0}）`,
-        detail: {
-          voucherId: `VCH_${Date.now()}`,
-          expenseType: params.expenseType,
-          amount: params.amount,
-          settledAt: new Date().toISOString(),
-        },
-      };
-    } else if (payload.workflowId) {
+    if (payload.workflowId) {
       const workflow: any =
         this.orgWorkflowService?.getWorkflowById(payload.workflowId) ||
         BUILT_IN_WORKFLOW_TEMPLATES.find(

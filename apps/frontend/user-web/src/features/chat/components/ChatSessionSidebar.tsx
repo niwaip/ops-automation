@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   AppstoreOutlined,
+  ClearOutlined,
   ClockCircleOutlined,
   DeleteOutlined,
   DesktopOutlined,
@@ -36,6 +37,7 @@ interface ChatSessionSidebarProps {
   isLoading: boolean;
   onSelectSession: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
+  onClearAllSessions?: () => void;
   onRefresh?: () => void;
   onCollapse: () => void;
   onCreateSession: () => void;
@@ -51,6 +53,7 @@ export function ChatSessionSidebar({
   isLoading,
   onSelectSession,
   onDeleteSession,
+  onClearAllSessions,
   onRefresh,
   onCollapse,
   onCreateSession,
@@ -149,7 +152,7 @@ export function ChatSessionSidebar({
             本地与渠道多端任务管理
           </Typography.Text>
         </div>
-        <Space size={6}>
+        <Space size={6} style={{ flexShrink: 0 }}>
           <Tooltip title="收起侧边栏">
             <Button
               type="text"
@@ -167,6 +170,29 @@ export function ChatSessionSidebar({
                 className={styles['user-chat-sidebar-toggle']}
               />
             </Tooltip>
+          ) : null}
+          {onClearAllSessions ? (
+            <Popconfirm
+              title="清理全部会话"
+              description="确定要清空所有会话历史记录吗？此操作不可恢复。"
+              okText="清空"
+              cancelText="取消"
+              okButtonProps={{ danger: true, size: 'small' }}
+              cancelButtonProps={{ size: 'small' }}
+              disabled={sessions.length === 0}
+              onConfirm={onClearAllSessions}
+            >
+              <Tooltip title={sessions.length === 0 ? '暂无会话可清理' : '清理全部会话'}>
+                <Button
+                  type="text"
+                  danger
+                  icon={<ClearOutlined />}
+                  disabled={sessions.length === 0}
+                  className={styles['user-chat-sidebar-clear-btn']}
+                  aria-label="清理全部会话"
+                />
+              </Tooltip>
+            </Popconfirm>
           ) : null}
           <Tooltip title="新建会话">
             <Button

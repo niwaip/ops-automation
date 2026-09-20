@@ -6,7 +6,8 @@ import type { StreamEvent } from '../react-engine/interfaces';
 import type { ChatRequestDTO, ChatUploadedFileDTO } from './chat.dto';
 import { ChatConversationService } from './chat-conversation.service';
 import { ChatMediaService } from './chat-media.service';
-import { isWorkSlashCommand } from './chat-slash-command.util';
+import { ModelService } from '../model/model.service';
+import { isWorkSlashCommand, isPersonalSlashCommand } from './chat-slash-command.util';
 
 @Injectable()
 export class UserSandboxDispatcherService {
@@ -15,7 +16,8 @@ export class UserSandboxDispatcherService {
 
   constructor(
     private readonly chatConversationService: ChatConversationService,
-    private readonly chatMediaService: ChatMediaService
+    private readonly chatMediaService: ChatMediaService,
+    private readonly modelService: ModelService
   ) {
     const host =
       process.env.SESSION_BROKER_HOST ||
@@ -43,37 +45,63 @@ export class UserSandboxDispatcherService {
     return target;
   }
 
-  syncFilesToSandboxWorkspace(userId: string, files?: ChatUploadedFileDTO[]): void {
-    if (!files || files.length === 0) return;
-    try {
-      const userWorkspaceDir = this.getWorkspaceDir(userId);
-      for (const file of files) {
-        const destPath = path.join(userWorkspaceDir, file.fileName);
-        if (file.filePath && fs.existsSync(file.filePath)) {
-          fs.copyFileSync(file.filePath, destPath);
-          try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+  syncFilesToSandboxWorkspace(
+    userId: string,
+    files?: ChatUploadedFileDTO[],
+    sessionId?: string,
+    sessionFiles?: string[]
+  ): void {
+    const userWorkspaceDir = this.getWorkspaceDir(userId);
+    if (files && files.length > 0) {
+      try {
+        for (const file of files as any[]) {
+          const fileName = typeof file === 'string' ? path.basename(file) : file?.fileName;
+          if (!fileName) continue;
+          const destPath = path.join(userWorkspaceDir, fileName);
+          const filePath = typeof file === 'string' ? file : file?.filePath;
+          if (filePath && fs.existsSync(filePath)) {
+            fs.copyFileSync(filePath, destPath);
+            try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
 
-          // 如果存在提取的文本文件，也一并同步为 .txt 与 .extracted.txt
-          const extractedSrc = `${file.filePath}.extracted.txt`;
-          if (fs.existsSync(extractedSrc)) {
-            const destTxt = path.join(userWorkspaceDir, `${file.fileName}.txt`);
-            fs.copyFileSync(extractedSrc, destTxt);
-            try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
-          }
-        } else if (file.content) {
-          fs.writeFileSync(destPath, Buffer.from(file.content, 'base64'));
-          try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+            // 如果存在提取的文本文件，也一并同步为 .txt 与 .extracted.txt
+            const extractedSrc = `${filePath}.extracted.txt`;
+            if (fs.existsSync(extractedSrc)) {
+              const destTxt = path.join(userWorkspaceDir, `${fileName}.txt`);
+              fs.copyFileSync(extractedSrc, destTxt);
+              try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+            }
+          } else if (file?.content) {
+            fs.writeFileSync(destPath, Buffer.from(file.content, 'base64'));
+            try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
 
-          if (file.extractedText) {
-            const destTxt = path.join(userWorkspaceDir, `${file.fileName}.txt`);
-            fs.writeFileSync(destTxt, file.extractedText, 'utf-8');
-            try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+            if (file.extractedText) {
+              const destTxt = path.join(userWorkspaceDir, `${fileName}.txt`);
+              fs.writeFileSync(destTxt, file.extractedText, 'utf-8');
+              try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
+            }
           }
+          this.logger.log(`Synced attached file [${fileName}] to user sandbox workspace: ${destPath}`);
         }
-        this.logger.log(`Synced attached file [${file.fileName}] to user sandbox workspace: ${destPath}`);
+      } catch (e: any) {
+        this.logger.warn(`Failed to sync attached files to sandbox workspace: ${e.message}`);
       }
-    } catch (e: any) {
-      this.logger.warn(`Failed to sync attached files to sandbox workspace: ${e.message}`);
+    }
+
+    // 将会话关联的有效附件清单持久化到工作区 session 目录，保证沙箱环境上下文隔离
+    if (sessionId && sessionFiles && sessionFiles.length > 0) {
+      try {
+        const cleanSid = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const sessionsDir = path.join(userWorkspaceDir, '.dsh', 'sessions');
+        if (!fs.existsSync(sessionsDir)) {
+          fs.mkdirSync(sessionsDir, { recursive: true });
+          try { fs.chmodSync(sessionsDir, 0o777); } catch { /* best-effort */ }
+        }
+        const attFile = path.join(sessionsDir, `${cleanSid}.attachments.json`);
+        fs.writeFileSync(attFile, JSON.stringify(sessionFiles, null, 2), 'utf-8');
+        try { fs.chmodSync(attFile, 0o666); } catch { /* best-effort */ }
+      } catch (e: any) {
+        this.logger.warn(`Failed to persist session attachments index: ${e.message}`);
+      }
     }
   }
 
@@ -127,127 +155,276 @@ export class UserSandboxDispatcherService {
     });
 
     try {
-      // 1. 同步附加文件到沙箱工作区，确保 dsh 和用户脚本能直接访问
-      this.syncFilesToSandboxWorkspace(effectiveUserId, body.files);
-
-      // 2. 构造面向沙箱的高保真 Prompt（附带文件位置与文本预览）
-      let promptForSandbox = body.message;
-      if (body.files && body.files.length > 0) {
-        const fileList = body.files.map((f) => f.fileName).join(', ');
-        promptForSandbox =
-          `用户附加了文件：${fileList}。\n` +
-          `文件已放入当前沙箱 /workspace/ 目录下（可直接使用内置 read_file / vision_inspect 工具进行内容解析或视觉识别）。\n\n`;
-        for (const f of body.files) {
-          if (f.extractedText) {
-            const preview = f.extractedText.slice(0, 4000);
-            promptForSandbox += `【文件 ${f.fileName} 提取文本预览】：\n${preview}\n\n`;
-          }
+      // 1. 获取当前会话上下文历史并收集属于当前会话的全部有效附件（会话作用域隔离）
+      let recentHistory: Array<{ role: string; content: string }> = [];
+      const sessionAttachedFiles: string[] = [];
+      const addSessionFile = (name?: string) => {
+        if (!name) return;
+        const clean = path.basename(name).trim();
+        if (clean && !sessionAttachedFiles.includes(clean)) {
+          sessionAttachedFiles.push(clean);
         }
-        promptForSandbox += `用户指令：${body.message}`;
+      };
+
+      if (body.files && Array.isArray(body.files)) {
+        for (const f of body.files as any[]) {
+          const fn = typeof f === 'string' ? f : (f?.fileName || f?.filePath);
+          addSessionFile(fn);
+        }
       }
 
-      // 获取当前会话上下文历史（保留最近 8 条历史记录，确保多轮对话上下文连续）
-      let recentHistory: Array<{ role: string; content: string }> = [];
       try {
         const historyItems = await this.chatConversationService.getChatHistory(
           sessionId,
           effectiveUserId
         );
-        recentHistory = (historyItems || [])
-          .slice(-8)
-          .filter((item) => item.role === 'user' || item.role === 'assistant')
-          .map((item) => ({
-            role: item.role,
-            content: typeof item.content === 'string' ? item.content : JSON.stringify(item.content),
-          }));
+        if (historyItems && Array.isArray(historyItems)) {
+          for (const item of historyItems) {
+            const metaFiles = (item as any).metadata?.files;
+            if (Array.isArray(metaFiles)) {
+              for (const mf of metaFiles) {
+                const fn = typeof mf === 'string' ? mf : (mf as any)?.fileName;
+                addSessionFile(fn);
+              }
+            }
+          }
+
+          recentHistory = historyItems
+            .slice(-6)
+            .filter((item) => item.role === 'user' || item.role === 'assistant')
+            .map((item) => {
+              let contentStr = typeof item.content === 'string' ? item.content : JSON.stringify(item.content);
+              if (contentStr.length > 3000) {
+                contentStr = contentStr.slice(0, 3000) + '...[历史内容截断]';
+              }
+              return {
+                role: item.role,
+                content: contentStr,
+              };
+            });
+        }
       } catch (histErr: any) {
         this.logger.warn(`Failed to retrieve chat history for session [${sessionId}]: ${histErr.message}`);
+      }
+
+      // 2. 同步本轮附加文件到沙箱工作区并写入当前会话附件索引
+      this.syncFilesToSandboxWorkspace(effectiveUserId, body.files, sessionId, sessionAttachedFiles);
+
+      // 3. 构造面向沙箱的高保真 Prompt（明确会话附件清单，严禁无意注入触发词）
+      let promptForSandbox = body.message;
+      if (sessionAttachedFiles.length > 0) {
+        let prefix = `【当前会话有效附件清单】: ${sessionAttachedFiles.join(', ')}\n`;
+        if (body.files && body.files.length > 0) {
+          for (const f of body.files) {
+            if (f.extractedText) {
+              const preview = f.extractedText.slice(0, 3000);
+              prefix += `【本轮附件 ${f.fileName} 提取文本预览】:\n${preview}\n\n`;
+            }
+          }
+        }
+        promptForSandbox = `${prefix}用户指令：${body.message}`;
       }
 
       // 立即向前端发送沙箱连接状态，消除白屏与挂起感
       emit({
         type: StreamEventType.OBSERVATION,
-        content: `⚡ 正在连接个人安全沙箱 [${effectiveUserId}]，启动 DeepSeek Harness 智能引擎...`,
+        content: `⚡ 正在连接个人安全沙箱 [${effectiveUserId}]，启动智能分析与执行引擎...`,
       });
 
-      // 启动心跳进度指示器，让前台实时感知沙箱运行阶段
-      let progressTick = 0;
-      const progressStages = [
-        '🔍 沙箱正在检索外部实时数据与知识库上下文关联...',
-        '⚡ 正在执行多轮 ReAct 推理与自主工具调用...',
-        '✓ 正在整合工具返回数据，编写条理化的最终分析解答...',
-      ];
-      const heartbeatTimer = setInterval(() => {
-        const msg = progressStages[progressTick] || '⏳ 正在进行深度推理与数据综合计算...';
-        progressTick += 1;
-        emit({
-          type: StreamEventType.OBSERVATION,
-          content: msg,
-        });
-      }, 3000);
-
-      // 尝试向 Session Broker 发起 run-harness 请求
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000);
-
       const onAbort = () => {
         controller.abort();
         void this.stopPersonalSandbox(effectiveUserId);
       };
+      if (abortSignal?.aborted) {
+        onAbort();
+        return false;
+      }
       if (abortSignal) {
-        if (abortSignal.aborted) {
-          onAbort();
-          return false;
-        }
         abortSignal.addEventListener('abort', onAbort, { once: true });
       }
 
+      // 尝试向 Session Broker 发起 run-harness 请求
+      const timeoutMs =
+        typeof (body.config as any)?.timeoutMs === 'number' && (body.config as any).timeoutMs > 0
+          ? (body.config as any).timeoutMs
+          : typeof (body as any).timeoutMs === 'number' && (body as any).timeoutMs > 0
+            ? (body as any).timeoutMs
+            : 300000;
+      let timeoutId: NodeJS.Timeout | undefined = undefined;
       let harnessResult: {
         success: boolean;
         output: string;
         containerName: string;
         durationMs: number;
         exitCode: number;
-      };
+      } | null = null;
+
+      const isExplicitModel = Boolean(
+        body.modelId &&
+        body.modelId !== 'default' &&
+        body.modelId !== 'deepseek-chat'
+      );
+      let effectiveModel = body.modelId;
+      let targetModelId = effectiveModel;
+      if (!isExplicitModel) {
+        const preferred =
+          this.modelService.getPreferredDefaultModel({ mode: 'chat' }) ||
+          this.modelService.getDefaultModel();
+        targetModelId = preferred?.id || 'default';
+        effectiveModel = 'default';
+      }
 
       try {
-        const res = await fetch(`${this.sessionBrokerUrl}/user-sandboxes/run-harness`, {
+        timeoutId = setTimeout(async () => {
+          this.logger.warn(`Execution timeout (${timeoutMs / 1000}s) reached for user [${effectiveUserId}], stopping sandbox processes...`);
+          controller.abort();
+          try {
+            await this.stopPersonalSandbox(effectiveUserId);
+          } catch (e: any) {
+            this.logger.warn(`Failed to stop personal sandbox on timeout: ${e.message}`);
+          }
+        }, timeoutMs);
+
+        const modelEntity = await this.modelService.getModel(targetModelId || 'default');
+        const modelDisplayName = modelEntity?.name || (targetModelId && targetModelId !== 'default' ? targetModelId : undefined);
+        const payload = {
+          userId: effectiveUserId,
+          prompt: promptForSandbox,
+          sessionId,
+          files: sessionAttachedFiles,
+          history: recentHistory,
+          webSearch: Boolean(body.config?.webSearch),
+          model: effectiveModel,
+          modelDisplayName,
+          timeoutMs,
+        };
+
+        let res = await fetch(`${this.sessionBrokerUrl}/user-sandboxes/run-harness-stream`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: effectiveUserId,
-            prompt: promptForSandbox,
-            sessionId,
-            history: recentHistory,
-            webSearch: Boolean(body.config?.webSearch),
-            model: body.modelId || 'deepseek-chat',
-            timeoutMs: 300000,
-          }),
+          body: JSON.stringify(payload),
           signal: controller.signal,
         });
+
+        if (res.status === 404) {
+          this.logger.log('Streaming endpoint not available, falling back to standard run-harness');
+          res = await fetch(`${this.sessionBrokerUrl}/user-sandboxes/run-harness`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+          });
+        }
 
         if (!res.ok) {
           const errorText = await res.text();
           this.logger.warn(
             `Session broker user sandbox returned ${res.status}: ${errorText}`
           );
+          if (res.status === 409) {
+            emit({
+              type: StreamEventType.ERROR,
+              content: '⚠️ 该沙箱当前正在执行前一个任务，请稍后再试或点击停止。',
+            });
+            return true;
+          }
           emit({
             type: StreamEventType.OBSERVATION,
-            content: `⚠️ 沙箱执行返回异常 (${res.status})，正在自动无缝切换到云端模型直连模式...`,
+            content: `⚠️ 沙箱执行返回异常 (${res.status})，正在自动切换到云端模型直连模式...`,
           });
           return false;
         }
 
-        harnessResult = await res.json();
+        if (res.headers.get('content-type')?.includes('text/event-stream') && res.body) {
+          const reader = (res.body as any).getReader();
+          const decoder = new TextDecoder('utf-8');
+          let sseBuffer = '';
+          let deltaAccumulator = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            sseBuffer += decoder.decode(value, { stream: true });
+            const sseEvents = sseBuffer.split('\n\n');
+            sseBuffer = sseEvents.pop() || '';
+
+            for (const evt of sseEvents) {
+              const lines = evt.split('\n');
+              let eventType = 'message';
+              let eventData = '';
+              for (const l of lines) {
+                if (l.startsWith('event:')) {
+                  eventType = l.slice(6).trim();
+                } else if (l.startsWith('data:')) {
+                  eventData += l.slice(5).trim();
+                }
+              }
+              if (!eventData) continue;
+
+              let parsed: any;
+              try {
+                parsed = JSON.parse(eventData);
+              } catch {
+                // ignore malformed JSON chunk
+                continue;
+              }
+
+              if (eventType === 'observation' && parsed?.content) {
+                // 当沙箱开始调用工具或命中技能意图时，说明进入中间行动阶段，清空上一轮的过渡垫话累加器
+                const contentStr = String(parsed.content);
+                if (contentStr.includes('⚡') || contentStr.includes('🎯') || contentStr.includes('🔍')) {
+                  deltaAccumulator = '';
+                }
+                emit({
+                  type: StreamEventType.OBSERVATION,
+                  content: parsed.content,
+                });
+              } else if (eventType === 'delta' && parsed?.content) {
+                deltaAccumulator += parsed.content;
+                emit({
+                  type: StreamEventType.OBSERVATION,
+                  content: deltaAccumulator,
+                  data: { mode: 'chat', isDelta: true },
+                });
+              } else if (eventType === 'done') {
+                harnessResult = parsed;
+              } else if (eventType === 'error') {
+                throw new Error(parsed?.message || parsed?.error || 'Sandbox execution error');
+              }
+            }
+          }
+        } else {
+          harnessResult = await res.json();
+        }
+
+        if (!harnessResult) {
+          throw new Error('Sandbox stream ended unexpectedly without completion event');
+        }
+
+        if (harnessResult.success === false) {
+          throw new Error(
+            harnessResult.output || `Sandbox process failed with exit code ${harnessResult.exitCode}`
+          );
+        }
       } catch (fetchErr: any) {
-        if (controller.signal.aborted || abortSignal?.aborted) {
-          this.logger.log(`Run harness aborted for user [${effectiveUserId}]`);
+        if (abortSignal?.aborted) {
+          this.logger.log(`Run harness cancelled by client for user [${effectiveUserId}]`);
+          return true;
+        }
+        if (controller.signal.aborted) {
+          this.logger.warn(`Run harness timed out for user [${effectiveUserId}]`);
+          emit({
+            type: StreamEventType.ERROR,
+            content: `⚠️ 沙箱任务执行超时（超过 ${timeoutMs / 1000} 秒），已自动中止后台任务。请尝试简化任务或检查模型连通性。`,
+          });
           return true;
         }
         throw fetchErr;
       } finally {
-        clearInterval(heartbeatTimer);
-        clearTimeout(timeoutId);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
         if (abortSignal) {
           abortSignal.removeEventListener('abort', onAbort);
         }
@@ -303,16 +480,41 @@ export class UserSandboxDispatcherService {
         }
       }
 
+      // 解析并提取结构化性能遥测指标（如 <<<DSH_METRICS:...>>>）
+      let executionMetrics: Record<string, unknown> | undefined;
+      const metricsMatch = rawOutput.match(/<<<DSH_METRICS:([\s\S]*?)>>>/);
+      if (metricsMatch && metricsMatch[1]) {
+        try {
+          executionMetrics = JSON.parse(metricsMatch[1].trim());
+        } catch {
+          // 忽略非法格式指标
+        }
+      }
+
       // 二次防御：彻底剔除可能意外残留在正文中的工具调用裸 JSON 与 XML 标签及外发文件标记
       cleanAnswer = this.stripToolCallArtifacts(cleanAnswer);
-      cleanAnswer = cleanAnswer.replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '').trim();
-      telemetrySummary = telemetrySummary.replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '').trim();
+      cleanAnswer = cleanAnswer
+        .replace(/<<<DSH_DELTA:[\s\S]*?>>>/g, '')
+        .replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '')
+        .replace(/<<<DSH_METRICS:[\s\S]*?>>>/g, '')
+        .trim();
+      telemetrySummary = telemetrySummary
+        .replace(/<<<DSH_DELTA:[\s\S]*?>>>/g, '')
+        .replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '')
+        .replace(/<<<DSH_METRICS:[\s\S]*?>>>/g, '')
+        .trim();
 
-      // 自动解析沙箱生成/外发的图片文件，转换为内联 Markdown 图片直接呈现在聊天界面
-      cleanAnswer = this.embedWorkspaceImagesInAnswer(effectiveUserId, cleanAnswer, outboundFiles);
+      // 自动解析沙箱生成/外发的图片与各类交付物文件（Word/Excel/PPT/PDF等），转换为内联 Markdown 或专属下载卡片
+      cleanAnswer = this.embedWorkspaceDeliverablesAndImagesInAnswer(
+        effectiveUserId,
+        cleanAnswer,
+        outboundFiles,
+        sessionAttachedFiles
+      );
 
       if (!cleanAnswer) {
-        cleanAnswer = '已为您完成沙箱智能检索与数据分析，未获取到更多额外内容。';
+        cleanAnswer =
+          '⚠️ 沙箱已完成执行，但未能生成有效的回复文本（可能上游推理模型网络超时或服务异常中断）。建议重新发送或切换更稳定的模型重试。';
       }
 
       if (!telemetrySummary) {
@@ -336,6 +538,7 @@ export class UserSandboxDispatcherService {
             executed: true,
             durationMs: harnessResult.durationMs,
             exitCode: harnessResult.exitCode,
+            metrics: executionMetrics,
           },
           outboundFiles: outboundFiles.length > 0 ? outboundFiles : undefined,
         },
@@ -347,7 +550,7 @@ export class UserSandboxDispatcherService {
         userContent: body.message,
         assistantContent: cleanAnswer,
         rawAssistantContent: rawOutput,
-        modelId: body.modelId || 'deepseek-chat',
+        modelId: effectiveModel || body.modelId || 'default',
         thinkingEnabled: Boolean(body.config?.thinking),
         ownerUserId: effectiveUserId,
         clientMessageId: body.clientMessageId,
@@ -359,8 +562,15 @@ export class UserSandboxDispatcherService {
       return true;
     } catch (err: any) {
       this.logger.warn(
-        `Failed to dispatch to user sandbox (${err.message}). Gracefully falling back to direct streamChat.`
+        `Failed to dispatch to user sandbox (${err.message}).`
       );
+      if (isPersonalSlashCommand(body.message) || body.message.trim().startsWith('/')) {
+        emit({
+          type: StreamEventType.ERROR,
+          content: `⚠️ 沙箱任务执行异常 (${err.message})，未能完成指令执行。请重试或检查模型服务连接。`,
+        });
+        return true;
+      }
       emit({
         type: StreamEventType.OBSERVATION,
         content: `⚠️ 沙箱连接遇到异常 (${err.message})，正在自动无缝切换到云端模型直连模式...`,
@@ -434,27 +644,16 @@ export class UserSandboxDispatcherService {
       return primaryPath;
     }
 
-    // 兜底搜索 candidate user workspaces（如当 userId 为 default 或跨模式时）
-    const candidateRoots = [
-      '/workspace/data/users',
-      path.join(process.cwd(), 'data/users'),
-      path.resolve(__dirname, '../../../../../../../data/users'),
+    // 检查是否在用户知识库目录下
+    const knowledgeCandidates = [
+      path.join(userWorkspaceDir, '..', 'knowledge', cleanName),
+      path.join(process.cwd(), 'data/users', userId, 'knowledge', cleanName),
+      path.join('/workspace/data/users', userId, 'knowledge', cleanName),
     ];
-    for (const root of candidateRoots) {
-      if (fs.existsSync(root)) {
-        try {
-          const subdirs = fs.readdirSync(root);
-          for (const sub of subdirs) {
-            const candidate = path.join(root, sub, 'workspace', cleanName);
-            if (fs.existsSync(candidate)) {
-              return candidate;
-            }
-          }
-        } catch {
-          // ignore
-        }
-      }
+    for (const cand of knowledgeCandidates) {
+      if (fs.existsSync(cand)) return cand;
     }
+
     return null;
   }
 
@@ -523,6 +722,131 @@ export class UserSandboxDispatcherService {
           result += `\n\n![${cleanName}](${fileUrl})\n`;
         }
       }
+    }
+
+    return result;
+  }
+
+  /**
+   * 将沙箱工作区生成或提及的交付物（图片、Office 文档、PDF、压缩包等）转换为 Markdown 内联呈现或专属下载卡片
+   */
+  private embedWorkspaceDeliverablesAndImagesInAnswer(
+    userId: string,
+    text: string,
+    outboundFiles: Array<{ filePath: string; fileName: string; comment?: string }>,
+    sessionFiles: string[] = []
+  ): string {
+    // 1. 先进行图片内联转换（保持既有行为与规范）
+    let result = this.embedWorkspaceImagesInAnswer(userId, text, outboundFiles);
+
+    // 2. 文档与交付物扩展名
+    const deliverableExts = new Set([
+      '.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt',
+      '.pdf', '.zip', '.tar', '.gz', '.csv', '.txt'
+    ]);
+
+    // 记录用户上传的原始输入附件文件名，严禁将其作为“新生成产物”推荐给用户
+    const inputFiles = new Set(
+      (sessionFiles || []).map((f) => path.basename(f).trim().toLowerCase())
+    );
+
+    const getFileIcon = (ext: string): string => {
+      if (ext === '.docx' || ext === '.doc') return '📄';
+      if (ext === '.xlsx' || ext === '.xls' || ext === '.csv') return '📊';
+      if (ext === '.pptx' || ext === '.ppt') return '📑';
+      if (ext === '.pdf') return '📕';
+      if (ext === '.zip' || ext === '.tar' || ext === '.gz') return '📦';
+      return '📎';
+    };
+
+    const formatFileSize = (bytes: number): string => {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    };
+
+    const handledFiles = new Set<string>();
+
+    // 2.1 将正文中现存的 Markdown 链接中的 /workspace/xxx 或本地文件名改写为直链下载地址
+    result = result.replace(
+      /\[(.*?)\]\((?:(?:\/workspace\/)?([a-zA-Z0-9_\-\u4e00-\u9fa5 ]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv)))\)/gi,
+      (match, label, fileName) => {
+        const cleanName = path.basename(fileName.trim());
+        const filePath = this.getWorkspaceFilePath(userId, cleanName);
+        if (filePath && fs.existsSync(filePath)) {
+          handledFiles.add(cleanName);
+          const fileUrl = `/api/ai/chat/workspace-files/${encodeURIComponent(userId)}/${encodeURIComponent(cleanName)}`;
+          return `[${label || cleanName}](${fileUrl})`;
+        }
+        return match;
+      }
+    );
+
+    // 2.2 收集外发及文本中提及的文件
+    const candidateDeliverables: Array<{ fileName: string; filePath?: string; comment?: string }> = [];
+
+    for (const f of outboundFiles) {
+      const cleanName = path.basename(f.fileName || f.filePath || '').trim();
+      if (!cleanName) continue;
+      // 过滤输入文件
+      if (inputFiles.has(cleanName.toLowerCase())) continue;
+      const ext = path.extname(cleanName).toLowerCase();
+      if (deliverableExts.has(ext) && !candidateDeliverables.some((c) => c.fileName === cleanName)) {
+        candidateDeliverables.push({
+          fileName: cleanName,
+          filePath: f.filePath,
+          comment: f.comment,
+        });
+      }
+    }
+
+    // 扫描正文提及的文件名（如 《保密合同_审查意见书.docx》 或 保密合同_审查意见书.docx）
+    const mentionRegex = /(?:《|【|“|"|'|`|\/workspace\/)?([a-zA-Z0-9_\-\u4e00-\u9fa5 ]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv))(?:》|】|”|"|'|`|\b)?/gi;
+    let match: RegExpExecArray | null;
+    while ((match = mentionRegex.exec(result)) !== null) {
+      const foundName = match[1]?.trim();
+      if (!foundName) continue;
+      // 严禁将用户本轮上传的原始输入附件作为“AI生成产物”挂载
+      if (inputFiles.has(foundName.toLowerCase())) continue;
+      if (!candidateDeliverables.some((c) => c.fileName === foundName)) {
+        const ext = path.extname(foundName).toLowerCase();
+        if (deliverableExts.has(ext)) {
+          const filePath = this.getWorkspaceFilePath(userId, foundName);
+          if (filePath && fs.existsSync(filePath)) {
+            candidateDeliverables.push({ fileName: foundName, filePath });
+          }
+        }
+      }
+    }
+
+    // 2.3 生成下载卡片
+    const downloadCards: string[] = [];
+    for (const item of candidateDeliverables) {
+      if (handledFiles.has(item.fileName)) continue;
+      const filePath = item.filePath && fs.existsSync(item.filePath)
+        ? item.filePath
+        : this.getWorkspaceFilePath(userId, item.fileName);
+      if (!filePath || !fs.existsSync(filePath)) continue;
+
+      handledFiles.add(item.fileName);
+      const ext = path.extname(item.fileName).toLowerCase();
+      const icon = getFileIcon(ext);
+      let sizeInfo = '';
+      try {
+        const stats = fs.statSync(filePath);
+        sizeInfo = ` · ${formatFileSize(stats.size)}`;
+      } catch {
+        // ignore
+      }
+      const fileUrl = `/api/ai/chat/workspace-files/${encodeURIComponent(userId)}/${encodeURIComponent(item.fileName)}`;
+      const displayName = item.fileName.startsWith('《') && item.fileName.endsWith('》')
+        ? item.fileName
+        : `《${item.fileName}》`;
+      downloadCards.push(`- ${icon} **[${displayName}](${fileUrl})** (点击直接下载${sizeInfo})`);
+    }
+
+    if (downloadCards.length > 0) {
+      result = result.trimEnd() + `\n\n> 📥 **生成产物已就绪**：\n` + downloadCards.map((c) => `> ${c}`).join('\n') + '\n';
     }
 
     return result;

@@ -2,32 +2,38 @@
 name: magazine-web-ppt
 en_name: "Write a Brand-to-Revenue Story like a Growth Strategy Lead"
 zh_name: "像增长策略负责人一样写品牌到收入故事"
-description: |
-  For marketing and gtm work: bind launches, campaigns, events, and brand plans to growth and pipeline outcomes. Built around the core query "annual-marketing-plan", with GTM strategy lead judgment, buyer-ready proof, and this outcome: approve launch plan, campaign budget, or GTM motion.
-en_description: |
-  For marketing and gtm work: bind launches, campaigns, events, and brand plans to growth and pipeline outcomes. Built around the core query "annual-marketing-plan", with GTM strategy lead judgment, buyer-ready proof, and this outcome: approve launch plan, campaign budget, or GTM motion.
-zh_description: |
-  市场/增长/GTM场景：围绕 core query「annual-marketing-plan」把粗糙材料整理成“像增长策略负责人一样写品牌到收入故事”这类可购买、可复用的专业 Deck；突出受众、决策目标、证据链、风险取舍和评审标准。
+description: "专业演示文稿（PPT / Slides / Deck）与交互式 HTML 汇报报告生成。当用户需要制作 PPT、生成幻灯片、做演示文稿、设计商业 Deck、或生成交互式网页汇报报告时必须使用此技能。不要用于纯文本总结或简单的表格生成。"
 tags:
-  - "marketing-gtm"
-  - "annual-marketing-plan"
-  - "launch"
-  - "campaign"
-  - "pipeline"
-  - "marketing"
-  - "decision-deck"
-  - "commercial-slide-agent"
+  - "ppt"
+  - "slides"
+  - "deck"
+  - "html-report"
+  - "presentation"
   - "guizang-ppt"
 triggers:
-  - "annual-marketing-plan"
-  - "marketing-gtm"
-  - "Write a Brand-to-Revenue Story like a Growth Strategy Lead"
-  - "像增长策略负责人一样写品牌到收入故事"
-  - "launch"
-  - "campaign"
-  - "pipeline"
-  - "html deck"
-  - "html slides"
+  - "ppt"
+  - "slides"
+  - "deck"
+  - "做ppt"
+  - "生成ppt"
+  - "制作ppt"
+  - "ppt演示"
+  - "幻灯片"
+  - "做幻灯片"
+  - "制作幻灯片"
+  - "生成幻灯片"
+  - "演示文稿"
+  - "制作演示文稿"
+  - "生成演示文稿"
+  - "做个deck"
+  - "做个汇报ppt"
+  - "设计ppt"
+  - "ppt报告"
+  - "html报告"
+  - "生成html报告"
+  - "网页报告"
+  - "生成网页报告"
+  - "交互式报告"
 od:
   mode: deck
   default_for: deck
@@ -65,9 +71,12 @@ This skill's aesthetic is not "corporate PPT," nor "consumer-internet UI": it lo
 - A web version of slides that you "make once, with no paging tool needed"
 
 **Unsuitable scenarios**:
-- Long stretches of tabular data, stacked charts (use a regular PPT)
-- Training courseware (information density too low)
 - Multi-person collaborative editing (this is static HTML)
+- Unstyled raw spreadsheet dumps (for tabular, forecast, or quantitative data, transform into styled stat cards, timeline steps, or 2/3/6-column grids rather than raw unstyled tables)
+
+**Topic & Domain Flexibility**:
+- This skill applies to ANY topic (weather forecasts, operational reports, personal reviews, product briefs, scientific summaries, etc.).
+- The tech/AI/magazine examples in this guide are stylistic and layout references only. The actual deck MUST always follow the user's requested topic or conversation context.
 
 ## Workflow
 

@@ -1,17 +1,18 @@
 ---
 name: web-prototype
-description: |
-  General-purpose desktop web prototype. Single self-contained HTML file built
-  by copying the seed `assets/template.html` and pasting section layouts from
-  `references/layouts.md`. Default for any landing / marketing / docs / SaaS
-  page when no more specific skill matches.
+description: "交互式前端原型、Web 单页面应用与交互小游戏开发。当用户需要制作前端页面原型、交互式 Demo、小游戏（五子棋等）、Web UI 或交互页面时必须使用此技能。输出为单文件包含 HTML/CSS/JS 的自包含页面。"
 triggers:
   - "prototype"
   - "mockup"
   - "landing"
-  - "single page"
-  - "marketing page"
-  - "homepage"
+  - "web原型"
+  - "前端原型"
+  - "交互原型"
+  - "页面原型"
+  - "小游戏"
+  - "做个网页"
+  - "制作网页"
+  - "五子棋"
 od:
   mode: prototype
   platform: desktop
