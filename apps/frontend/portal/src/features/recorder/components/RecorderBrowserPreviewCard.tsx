@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button, Card, Space, Typography } from 'antd';
 import { DesktopOutlined } from '@ant-design/icons';
+import { buildNovncAutoConnectUrl } from '@ops/user-core';
 
 const { Text } = Typography;
 
@@ -22,7 +23,13 @@ const RecorderBrowserPreviewCard: React.FC<RecorderBrowserPreviewCardProps> = ({
   browserPreviewLabel,
   startPreviewHint,
   noVncHint,
-}) => (
+}) => {
+  const connectUrl = React.useMemo(
+    () => (previewUrl ? buildNovncAutoConnectUrl(previewUrl) : ''),
+    [previewUrl]
+  );
+
+  return (
   <Card
     title={
       <Space>
@@ -56,11 +63,11 @@ const RecorderBrowserPreviewCard: React.FC<RecorderBrowserPreviewCardProps> = ({
         type="link"
         size="small"
         onClick={() => {
-          if (previewUrl) {
-            window.open(`${previewUrl}?autoconnect=true&resize=scale`, '_blank');
+          if (connectUrl) {
+            window.open(connectUrl, '_blank', 'noopener,noreferrer');
           }
         }}
-        disabled={!previewUrl}
+        disabled={!connectUrl}
         style={{ color: '#6366f1' }}
       >
         {openInNewTabLabel}
@@ -78,16 +85,17 @@ const RecorderBrowserPreviewCard: React.FC<RecorderBrowserPreviewCardProps> = ({
         overflow: 'hidden',
       }}
     >
-      {previewUrl ? (
+      {connectUrl ? (
         <iframe
-          key={previewUrl}
-          src={`${previewUrl}?autoconnect=true&resize=scale&reconnect=true`}
+          key={connectUrl}
+          src={connectUrl}
           style={{
             width: '100%',
             height: '100%',
             border: 'none',
           }}
           title="Browser Preview"
+          allow="fullscreen"
         />
       ) : (
         <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
@@ -106,6 +114,7 @@ const RecorderBrowserPreviewCard: React.FC<RecorderBrowserPreviewCardProps> = ({
       )}
     </div>
   </Card>
-);
+  );
+};
 
 export default RecorderBrowserPreviewCard;

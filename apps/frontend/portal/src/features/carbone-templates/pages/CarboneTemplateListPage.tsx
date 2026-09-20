@@ -1,38 +1,32 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
+  Badge,
   Button,
   Card,
-  Input,
   Modal,
   Space,
   Table,
-  Tag,
+  Tabs,
   Typography,
   message,
 } from 'antd';
 import {
-  DeleteOutlined,
+  ClearOutlined,
   DownloadOutlined,
-  EditOutlined,
-  FileExcelOutlined,
-  FilePdfOutlined,
-  FileWordOutlined,
   PlusOutlined,
   SyncOutlined,
-  ClockCircleOutlined,
 } from '@ant-design/icons';
 import { carboneAPI, type CarboneSkill, type CarboneTemplate } from '@/api/carbone';
 import {
-  extractSkillOverview,
-  formatFileSize,
-  formatTemplateDate,
   getLatestTemplateId,
   isDraftDocumentTemplate,
   OFFICE_ADDIN_DOWNLOAD_URL,
   OFFICE_ADDIN_TASKPANE_URL,
-  truncateText,
 } from '@/features/carbone-templates/lib/carboneTemplateList';
 import { CarboneTemplateDetailDrawer } from '../components/CarboneTemplateDetailDrawer';
+import { CarboneTemplateRenameModal } from '../components/CarboneTemplateRenameModal';
+import { useCarboneTemplateColumns } from '../components/useCarboneTemplateColumns';
 
 const { Title, Text } = Typography;
 
@@ -45,6 +39,8 @@ const CarboneTemplateListPage: React.FC = () => {
   const [detailDrawerVisible, setDetailDrawerVisible] = useState(false);
   const [renameModalVisible, setRenameModalVisible] = useState(false);
   const [newName, setNewName] = useState('');
+  const [activeTab, setActiveTab] = useState<'formal' | 'draft' | 'all'>('formal');
+  const [clearingDrafts, setClearingDrafts] = useState(false);
 
   useEffect(() => {
     void loadTemplates();
@@ -53,10 +49,8 @@ const CarboneTemplateListPage: React.FC = () => {
   const loadTemplates = async () => {
     setLoading(true);
     try {
-      const response = await carboneAPI.getTemplates();
-      const templatesData = (Array.isArray(response) ? response : []).filter(
-        (template) => !isDraftDocumentTemplate(template)
-      );
+      const response = await carboneAPI.getTemplates({ includeDrafts: true });
+      const templatesData = Array.isArray(response) ? response : [];
       setTemplates(templatesData);
 
       const skillResults = await Promise.allSettled(
@@ -85,17 +79,35 @@ const CarboneTemplateListPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const formalTemplates = useMemo(
+    () => templates.filter((template) => !isDraftDocumentTemplate(template)),
+    [templates]
+  );
+
+  const draftTemplates = useMemo(
+    () => templates.filter((template) => isDraftDocumentTemplate(template)),
+    [templates]
+  );
+
+  const displayedTemplates = useMemo(() => {
+    if (activeTab === 'formal') return formalTemplates;
+    if (activeTab === 'draft') return draftTemplates;
+    return templates;
+  }, [activeTab, formalTemplates, draftTemplates, templates]);
+
+  const handleDelete = async (id: string, isDraft = false) => {
     Modal.confirm({
-      title: '删除模板',
-      content: '确定要删除此模板及其关联的Skill吗？此操作不可恢复。',
+      title: isDraft ? '删除暂存草稿' : '删除模板',
+      content: isDraft
+        ? '确定要删除此暂存草稿吗？此操作不可恢复。'
+        : '确定要删除此模板及其关联的Skill吗？此操作不可恢复。',
       okText: '删除',
       okType: 'danger',
       cancelText: '取消',
       onOk: async () => {
         try {
           await carboneAPI.deleteTemplate(id);
-          message.success('模板已删除');
+          message.success(isDraft ? '暂存草稿已删除' : '模板已删除');
           await loadTemplates();
         } catch (error: any) {
           message.error(`删除失败: ${error.message || '未知错误'}`);
@@ -104,20 +116,50 @@ const CarboneTemplateListPage: React.FC = () => {
     });
   };
 
+  const handleClearAllDrafts = () => {
+    if (draftTemplates.length === 0) return;
+    Modal.confirm({
+      title: '清空所有暂存草稿',
+      content: `确定要清空全部 ${draftTemplates.length} 份暂存草稿吗？此操作将永久删除所有 draft-* 临时草稿文件及关联配置，不可恢复。`,
+      okText: '确认清空',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        setClearingDrafts(true);
+        try {
+          const results = await Promise.allSettled(
+            draftTemplates.map((t) => carboneAPI.deleteTemplate(t.id))
+          );
+          const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+          message.success(`已清空 ${succeeded} 份暂存草稿`);
+          if (activeTab === 'draft' && succeeded === draftTemplates.length) {
+            setActiveTab('formal');
+          }
+          await loadTemplates();
+        } catch (error: any) {
+          message.error(`清空草稿失败: ${error.message || '未知错误'}`);
+        } finally {
+          setClearingDrafts(false);
+        }
+      },
+    });
+  };
+
   const handleRename = async () => {
     if (!selectedTemplate || !newName.trim()) {
-      message.warning('请输入新名称');
+      message.warning('请输入名称');
       return;
     }
 
+    const isDraft = isDraftDocumentTemplate(selectedTemplate);
     try {
       await carboneAPI.renameTemplate(selectedTemplate.id, newName.trim());
-      message.success('重命名成功');
+      message.success(isDraft ? '已转为正式模板并保存' : '重命名成功');
       setRenameModalVisible(false);
       setNewName('');
       await loadTemplates();
     } catch (error: any) {
-      message.error(`重命名失败: ${error.message || '未知错误'}`);
+      message.error(`操作失败: ${error.message || '未知错误'}`);
     }
   };
 
@@ -142,187 +184,23 @@ const CarboneTemplateListPage: React.FC = () => {
 
   const handleOpenRenameModal = (template: CarboneTemplate) => {
     setSelectedTemplate(template);
-    setNewName(template.fileName.replace(/\.[^.]+$/, ''));
+    const isDraft = isDraftDocumentTemplate(template);
+    const baseName = template.fileName.replace(/\.[^.]+$/, '');
+    setNewName(isDraft ? '' : baseName);
     setRenameModalVisible(true);
   };
 
-  const getFormatIcon = (format: string) => {
-    switch (format) {
-      case 'docx':
-        return <FileWordOutlined style={{ color: '#2b579a' }} />;
-      case 'xlsx':
-        return <FileExcelOutlined style={{ color: '#217346' }} />;
-      case 'pptx':
-        return <FilePdfOutlined style={{ color: '#d24726' }} />;
-      default:
-        return null;
-    }
-  };
-
-  const latestTemplateId = useMemo(() => getLatestTemplateId(templates), [templates]);
-
-  const columns = useMemo(
-    () => [
-      {
-        title: '模板文件 / 标识',
-        dataIndex: 'fileName',
-        key: 'fileName',
-        render: (name: string, record: CarboneTemplate) => {
-          const isLatest = record.id === latestTemplateId;
-          return (
-            <Space direction="vertical" size={4}>
-              <Space wrap>
-                {getFormatIcon(record.format)}
-                <Text strong style={{ fontSize: 14 }}>{name}</Text>
-                {isLatest && (
-                  <Tag color="magenta" style={{ fontWeight: 600 }}>
-                    最新
-                  </Tag>
-                )}
-                <Tag color="geekblue">{record.format.toUpperCase()}</Tag>
-                {record.size ? <Tag>{formatFileSize(record.size)}</Tag> : null}
-              </Space>
-              <Space size={12} wrap>
-                <Text
-                  type="secondary"
-                  copyable={{ text: record.id }}
-                  style={{ fontSize: 12 }}
-                >
-                  模板ID: {record.id.slice(0, 8)}...
-                </Text>
-                {record.skillId ? (
-                  <Text
-                    type="secondary"
-                    copyable={{ text: record.skillId }}
-                    style={{ fontSize: 12 }}
-                  >
-                    Skill: {record.skillId.slice(0, 8)}...
-                  </Text>
-                ) : (
-                  <Tag style={{ fontSize: 11 }}>无关联Skill</Tag>
-                )}
-              </Space>
-            </Space>
-          );
-        },
-      },
-      {
-        title: 'Skill 类型与场景',
-        key: 'skillType',
-        width: 240,
-        render: (_: unknown, record: CarboneTemplate) => {
-          const skill = record.skillId ? skillMap[record.skillId] : undefined;
-          const overview = extractSkillOverview(skill);
-          return (
-            <Space direction="vertical" size={2}>
-              {overview.templateType ? (
-                <Tag color="blue">{overview.templateType}</Tag>
-              ) : (
-                <Text type="secondary" style={{ fontSize: 12 }}>未定义类型</Text>
-              )}
-              <Text style={{ fontSize: 12 }}>
-                {truncateText(overview.mainScene || overview.businessType || '-', 50)}
-              </Text>
-            </Space>
-          );
-        },
-      },
-      {
-        title: '参数与变量',
-        key: 'variableStats',
-        width: 180,
-        render: (_: unknown, record: CarboneTemplate) => {
-          const varCount = record.variables?.length ?? record.suggestions?.length ?? 0;
-          const loopCount = record.loops?.length ?? 0;
-          const paramCount = record.parameterCount;
-
-          return (
-            <Space direction="vertical" size={4} wrap>
-              <Tag color="cyan">{varCount} 个变量</Tag>
-              {loopCount > 0 && <Tag color="purple">{loopCount} 个循环表</Tag>}
-              {paramCount != null && paramCount > 0 && (
-                <Tag color="geekblue">{paramCount} 个提取项</Tag>
-              )}
-            </Space>
-          );
-        },
-      },
-      {
-        title: '更新 / 创建时间',
-        dataIndex: 'updatedAt',
-        key: 'updatedAt',
-        width: 210,
-        sorter: (a: CarboneTemplate, b: CarboneTemplate) => {
-          const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
-          const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
-          return timeA - timeB;
-        },
-        defaultSortOrder: 'descend' as const,
-        render: (_: unknown, record: CarboneTemplate) => {
-          const isLatest = record.id === latestTemplateId;
-          const displayUpdated = formatTemplateDate(record.updatedAt || record.createdAt);
-          const displayCreated = record.createdAt ? formatTemplateDate(record.createdAt) : null;
-
-          return (
-            <Space direction="vertical" size={2}>
-              <Space size={4}>
-                <ClockCircleOutlined style={{ color: isLatest ? '#eb2f96' : '#8c8c8c' }} />
-                <Text strong={isLatest} style={{ color: isLatest ? '#c41d7f' : undefined }}>
-                  {displayUpdated}
-                </Text>
-              </Space>
-              {displayCreated && displayCreated !== displayUpdated && (
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  创建于: {displayCreated}
-                </Text>
-              )}
-            </Space>
-          );
-        },
-      },
-      {
-        title: '操作',
-        key: 'actions',
-        width: 220,
-        render: (_: unknown, record: CarboneTemplate) => (
-          <Space>
-            <Button
-              size="small"
-              icon={<EditOutlined />}
-              onClick={(event) => {
-                event.stopPropagation();
-                handleOpenRenameModal(record);
-              }}
-            >
-              重命名
-            </Button>
-            <Button
-              size="small"
-              icon={<DownloadOutlined />}
-              onClick={(event) => {
-                event.stopPropagation();
-                window.open(carboneAPI.getDownloadTemplateUrl(record.id), '_blank');
-              }}
-            >
-              下载
-            </Button>
-            <Button
-              size="small"
-              icon={<DeleteOutlined />}
-              danger
-              onClick={(event) => {
-                event.stopPropagation();
-                void handleDelete(record.id);
-              }}
-            >
-              删除
-            </Button>
-          </Space>
-        ),
-      },
-    ],
-    [skillMap, latestTemplateId]
+  const latestTemplateId = useMemo(
+    () => getLatestTemplateId(formalTemplates),
+    [formalTemplates]
   );
+
+  const columns = useCarboneTemplateColumns({
+    skillMap,
+    latestTemplateId,
+    onOpenRenameModal: handleOpenRenameModal,
+    onDelete: (id, isDraft) => void handleDelete(id, isDraft),
+  });
 
   return (
     <div style={{ padding: '24px' }}>
@@ -372,10 +250,20 @@ const CarboneTemplateListPage: React.FC = () => {
                 模板列表
               </Title>
               <Text type="secondary">
-                共 {templates.length} 份模板，默认按最新更新时间倒序排列。
+                共 {formalTemplates.length} 份正式模板{draftTemplates.length > 0 ? `，${draftTemplates.length} 份暂存草稿` : ''}。
               </Text>
             </div>
             <Space wrap>
+              {activeTab === 'draft' && draftTemplates.length > 0 && (
+                <Button
+                  danger
+                  icon={<ClearOutlined />}
+                  loading={clearingDrafts}
+                  onClick={handleClearAllDrafts}
+                >
+                  一键清空草稿
+                </Button>
+              )}
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
@@ -390,12 +278,53 @@ const CarboneTemplateListPage: React.FC = () => {
               </Button>
             </Space>
           </div>
+
+          <Tabs
+            activeKey={activeTab}
+            onChange={(key) => setActiveTab(key as 'formal' | 'draft' | 'all')}
+            style={{ marginBottom: 16 }}
+            items={[
+              {
+                key: 'formal',
+                label: `正式模板 (${formalTemplates.length})`,
+              },
+              {
+                key: 'draft',
+                label: (
+                  <Space size={6}>
+                    <span>暂存草稿</span>
+                    {draftTemplates.length > 0 && (
+                      <Badge
+                        count={draftTemplates.length}
+                        style={{ backgroundColor: '#fa8c16' }}
+                      />
+                    )}
+                  </Space>
+                ),
+              },
+              {
+                key: 'all',
+                label: `全部 (${templates.length})`,
+              },
+            ]}
+          />
+
+          {activeTab === 'draft' && (
+            <Alert
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message="暂存草稿说明"
+              description="以下为在 Office 插件（Word/Excel/PPT）中设计模板时自动保存的临时草稿。草稿不会计入系统备份资产。点击「转为正式」去除 draft-* 前缀并赋予正式名称后可发布为正式模板；若无需保留可随时删除或一键清空。"
+            />
+          )}
+
           <Table
-            dataSource={templates}
+            dataSource={displayedTemplates}
             columns={columns}
             rowKey="id"
             loading={loading}
-            pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 份模板` }}
+            pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 项` }}
             onRow={(record) => ({
               onClick: () => {
                 void handleViewDetail(record);
@@ -414,24 +343,17 @@ const CarboneTemplateListPage: React.FC = () => {
         isLatest={selectedTemplate?.id === latestTemplateId}
       />
 
-      <Modal
-        title="重命名模板"
+      <CarboneTemplateRenameModal
         open={renameModalVisible}
+        selectedTemplate={selectedTemplate}
+        newName={newName}
+        onNewNameChange={setNewName}
+        onOk={() => void handleRename()}
         onCancel={() => {
           setRenameModalVisible(false);
           setNewName('');
         }}
-        onOk={() => void handleRename()}
-        okText="确认"
-        cancelText="取消"
-      >
-        <Input
-          value={newName}
-          onChange={(event) => setNewName(event.target.value)}
-          placeholder="请输入新名称"
-          autoFocus
-        />
-      </Modal>
+      />
     </div>
   );
 };

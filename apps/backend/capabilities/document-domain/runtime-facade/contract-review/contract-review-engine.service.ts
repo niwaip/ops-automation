@@ -39,6 +39,7 @@ export interface ReviewEngineInput {
   customChecklistRules?: CustomCheckpointDto[];
   prompt?: string;
   reviewPrompt?: string;
+  skipLlmReview?: boolean;
 }
 
 export interface ReviewEngineResult {
@@ -176,18 +177,34 @@ export class ContractReviewEngineService {
         }
 
         // Perspective 2: AI & Semantic Legal Analysis
-        const semantic = await this.llmReview.reviewClause({
-          clauseIndex: index,
-          clauseNumber: clause.clauseNumber || `第 ${index + 1} 条`,
-          clauseTitle,
-          clauseText,
-          contractType: typeInfo.type,
-          contractTypeName: typeInfo.displayName,
-          myPosition: resolvedPosition,
-          matchedRules,
-          formIntegrity,
-          reviewPrompt: rawPrompt || undefined,
-        });
+        const shouldSkipLlm =
+          input.skipLlmReview === true || process.env.CONTRACT_REVIEW_SKIP_LLM === 'true';
+
+        const semantic = shouldSkipLlm
+          ? this.llmReview.reviewClauseRuleBasedFallback({
+              clauseIndex: index,
+              clauseNumber: clause.clauseNumber || `第 ${index + 1} 条`,
+              clauseTitle,
+              clauseText,
+              contractType: typeInfo.type,
+              contractTypeName: typeInfo.displayName,
+              myPosition: resolvedPosition,
+              matchedRules,
+              formIntegrity,
+              reviewPrompt: rawPrompt || undefined,
+            })
+          : await this.llmReview.reviewClause({
+              clauseIndex: index,
+              clauseNumber: clause.clauseNumber || `第 ${index + 1} 条`,
+              clauseTitle,
+              clauseText,
+              contractType: typeInfo.type,
+              contractTypeName: typeInfo.displayName,
+              myPosition: resolvedPosition,
+              matchedRules,
+              formIntegrity,
+              reviewPrompt: rawPrompt || undefined,
+            });
 
         // Determine accurate primary elementId & elementCode (match with severity & triggering rules)
         let primaryRule: CheckpointRule | undefined;

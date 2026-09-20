@@ -6,6 +6,7 @@ import { useMutation } from 'react-query';
 import { AIControls } from '@/features/recorder/components';
 import { runtimeConfig } from '@/shared/config/runtime';
 import RecorderBrowserPreviewCard from '@/features/recorder/components/RecorderBrowserPreviewCard';
+import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
 import RecorderCompilePanel from '@/features/recorder/components/RecorderCompilePanel';
 import RecorderTopActions from '@/features/recorder/components/RecorderTopActions';
 import type {
@@ -221,12 +222,13 @@ const RecorderPage: React.FC = () => {
   );
 
   const defaultNoVncUrl = runtimeConfig.noVncUrl;
-  const previewUrl =
+  const rawPreviewUrl =
     previewMode === 'session'
       ? dynamicNoVncUrl
       : previewMode === 'shared'
         ? (defaultNoVncUrl ?? null)
         : null;
+  const previewUrl = replaceLocalhostWithCurrentHost(rawPreviewUrl || undefined) ?? null;
   const activeTakeover = takeoverState.mode !== 'idle';
   const takeoverAlertType =
     takeoverState.mode === 'ready_to_resume'

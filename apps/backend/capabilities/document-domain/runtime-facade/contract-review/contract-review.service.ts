@@ -48,6 +48,7 @@ export class ContractReviewService {
       customChecklistRules: effectiveCustomRules,
       prompt: input.prompt,
       reviewPrompt: input.reviewPrompt,
+      skipLlmReview: input.skipLlmReview,
     });
 
     const {
