@@ -106,15 +106,15 @@ exec_in_container() {
 }
 
 platform_prisma_generate() {
-  exec_in_container "$PLATFORM_CONTAINER" "cd /app && pnpm exec prisma generate"
+  exec_in_container "$PLATFORM_CONTAINER" "cd /workspace/apps/backend/platform && pnpm exec prisma generate"
 }
 
 platform_db_push() {
-  exec_in_container "$PLATFORM_CONTAINER" "cd /app && pnpm exec prisma db push --accept-data-loss"
+  exec_in_container "$PLATFORM_CONTAINER" "cd /workspace/apps/backend/platform && pnpm exec prisma db push --accept-data-loss"
 }
 
 platform_seed() {
-  exec_in_container "$PLATFORM_CONTAINER" "cd /app && npm run seed"
+  exec_in_container "$PLATFORM_CONTAINER" "cd /workspace/apps/backend/platform && pnpm run seed"
 }
 
 platform_login() {
