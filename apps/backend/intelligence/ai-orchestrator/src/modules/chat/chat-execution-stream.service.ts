@@ -387,7 +387,10 @@ export class ChatExecutionStreamService {
               const warningText = aiResult.warning.startsWith('AI 自动总结未生成')
                 ? aiResult.warning
                 : `AI 自动总结未生成：${aiResult.warning}`;
-              chatContent = `${chatContent}\n\n---\n_⚠️ ${warningText}_`;
+              const isRawJsonDump = chatContent.startsWith('任务已完成，返回结果如下：\n\n{');
+              if (isRawJsonDump) {
+                chatContent = `${chatContent}\n\n---\n_⚠️ ${warningText}_`;
+              }
             }
           }
 
@@ -882,14 +885,14 @@ ${payloadStr.length > 10000 ? payloadStr.slice(0, 10000) + '\n... (输出已截�
             {
               role: 'system',
               content:
-                '你是业务结果呈现助手。请把已验证的结构化执行结果转换成忠于原始数据、简洁易读的中文 Markdown；不要改变结果含义。',
+                '你是业务结果呈现助手。请把已验证的结构化执行结果转换成忠于原始数据、简洁易读的中文 Markdown；不要改变结果含义。请直接输出最终呈现内容，不要输出多余的思考过程。',
             },
             {
               role: 'user',
               content: prompt,
             },
           ],
-          maxOutputTokens: 800,
+          maxOutputTokens: 2000,
           reasoning: { enabled: false },
         }),
         timeoutPromise,
@@ -897,9 +900,21 @@ ${payloadStr.length > 10000 ? payloadStr.slice(0, 10000) + '\n... (输出已截�
 
       const rawSummaryText =
         typeof response?.content === 'string' ? response.content.trim() : undefined;
-      const summaryText = rawSummaryText
+      let summaryText = rawSummaryText
         ? this.modelService.stripThinkingTags(rawSummaryText)
         : undefined;
+
+      if (
+        !summaryText &&
+        typeof response?.reasoningContent === 'string' &&
+        response.reasoningContent.trim()
+      ) {
+        const strippedReasoning = this.modelService.stripThinkingTags(response.reasoningContent);
+        if (strippedReasoning) {
+          summaryText = strippedReasoning;
+        }
+      }
+
       if (summaryText) {
         this.logger.log(
           `AI summary generated successfully for execution ${executionId} (${summaryText.length} chars)`
@@ -912,6 +927,13 @@ ${payloadStr.length > 10000 ? payloadStr.slice(0, 10000) + '\n... (输出已截�
         'AI summary returned empty content',
         { executionId, objective, modelId: preferredModel.id }
       );
+      const fallbackSummary = this.generateFallbackSummary(rawResult, objective);
+      if (fallbackSummary) {
+        this.logger.log(
+          `AI summary returned empty; used deterministic fallback summary for execution ${executionId}`
+        );
+        return { summary: fallbackSummary };
+      }
       return { warning: 'AI 自动总结未生成：AI 返回了空内容' };
     } catch (error) {
       const rawReason = error instanceof Error ? error.message : 'unknown';
@@ -922,6 +944,13 @@ ${payloadStr.length > 10000 ? payloadStr.slice(0, 10000) + '\n... (输出已截�
         'AI summary LLM call failed',
         { executionId, objective, reason: rawReason }
       );
+      const fallbackSummary = this.generateFallbackSummary(rawResult, objective);
+      if (fallbackSummary) {
+        this.logger.log(
+          `AI summary call failed (${rawReason}); used deterministic fallback summary for execution ${executionId}`
+        );
+        return { summary: fallbackSummary };
+      }
       let friendlyReason = rawReason;
       if (/timed out/i.test(rawReason)) {
         friendlyReason = '大模型响应超时，已展示原始执行结果';
@@ -930,5 +959,78 @@ ${payloadStr.length > 10000 ? payloadStr.slice(0, 10000) + '\n... (输出已截�
       }
       return { warning: `AI 自动总结未生成：${friendlyReason}` };
     }
+  }
+
+  private generateFallbackSummary(rawResult: unknown, objective?: string): string | undefined {
+    const rawRecord = this.asRecord(rawResult);
+    if (!rawRecord) return undefined;
+
+    const nestedRecord = this.asRecord(rawRecord.result);
+    const data = nestedRecord || rawRecord;
+
+    const fileName = this.firstNonEmptyString(
+      this.readString(data.fileName),
+      this.readString(data.filename),
+      this.readString(data.name),
+      this.readString(rawRecord.fileName),
+      this.readString(rawRecord.filename)
+    );
+    const format = this.firstNonEmptyString(
+      this.readString(data.format),
+      this.readString(rawRecord.format),
+      fileName && fileName.includes('.') ? fileName.split('.').pop() : undefined
+    )?.toUpperCase();
+
+    const downloadUrl = this.firstNonEmptyString(
+      this.readString(data.downloadUrl),
+      this.readString(rawRecord.downloadUrl),
+      this.readString(data.url),
+      this.readString(rawRecord.url)
+    );
+
+    const isDocument =
+      data.status === 'rendered' ||
+      rawRecord.status === 'rendered' ||
+      data.format === 'docx' ||
+      data.format === 'pdf' ||
+      Boolean(fileName);
+
+    if (isDocument && fileName) {
+      const docType = /保密|协议/i.test(objective || '')
+        ? '保密协议'
+        : /合同/i.test(objective || '')
+          ? '合同文件'
+          : '文档';
+      const lines = [
+        `${docType}已成功生成，相关信息如下：\n`,
+        `- **文件名称**：${fileName}`,
+        ...(format ? [`- **文件格式**：${format}`] : []),
+        `- **生成状态**：已完成`,
+        ...(downloadUrl ? [`- **下载链接**：[点击下载文件](${downloadUrl})`] : []),
+      ];
+      return lines.join('\n');
+    }
+
+    const results = Array.isArray(data.searchResults)
+      ? data.searchResults
+      : Array.isArray(rawRecord.searchResults)
+        ? rawRecord.searchResults
+        : Array.isArray(data.results)
+          ? data.results
+          : undefined;
+    if (results && results.length > 0) {
+      const items = results.slice(0, 5).map((item: any, idx: number) => {
+        const itemTitle = item.title || item.name || `结果 ${idx + 1}`;
+        const itemUrl = item.url || item.link;
+        const snippet = item.snippet || item.content || item.summary || '';
+        const titleLine = itemUrl
+          ? `### ${idx + 1}. [${itemTitle}](${itemUrl})`
+          : `### ${idx + 1}. ${itemTitle}`;
+        return snippet ? `${titleLine}\n${snippet.slice(0, 200)}` : titleLine;
+      });
+      return `已为您完成检索，共找到 ${results.length} 条相关结果：\n\n${items.join('\n\n')}`;
+    }
+
+    return undefined;
   }
 }

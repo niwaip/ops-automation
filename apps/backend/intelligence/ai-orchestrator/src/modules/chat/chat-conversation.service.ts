@@ -294,6 +294,11 @@ export class ChatConversationService {
     await this.sessionService.deleteChatSession(sessionId);
   }
 
+  async clearAllSessions(ownerUserId?: string): Promise<number> {
+    if (!ownerUserId) return 0;
+    return this.sessionService.clearChatSessions(ownerUserId);
+  }
+
   async getChatHistory(sessionId: string, ownerUserId?: string): Promise<ChatHistoryItem[]> {
     const chatSession = await this.sessionService.getChatSession(sessionId);
     if (ownerUserId && chatSession?.session?.ownerUserId !== ownerUserId) return [];

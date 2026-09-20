@@ -24,7 +24,7 @@ import type { CollaboratorUser } from '../../../api/workbenchCoordination';
 import { useChatComposerHistory } from '../hooks/useChatComposerHistory';
 import { useChatSpeechRecorder } from '../hooks/useChatSpeechRecorder';
 import { SlashCommandDropdown } from './SlashCommandDropdown';
-import { isWorkSlashCommand, type SlashCommandDefinition } from '../lib/slashCommands';
+import { isWorkSlashCommand, isPersonalSlashCommand, type SlashCommandDefinition } from '../lib/slashCommands';
 import type { WorkspaceNode } from '../../../api/workspace';
 import { supportsNativeReasoning } from '@/shared/lib/aiModelReasoning';
 import { shouldSubmitChatComposerOnEnter } from '../lib/chatComposerKeyboard';
@@ -362,11 +362,8 @@ export function UserChatComposer(props: UserChatComposerProps) {
 
   const handleSelectSlashCommand = useCallback(
     (cmd: SlashCommandDefinition) => {
-      if (cmd.disabled || (chatMode === 'chat' && cmd.scope === 'work')) {
-        void antdMessage.warning(
-          cmd.disabledReason ||
-            '个人模式下不能调用工作能力。如需使用企业技能，请在左下方切换至「工作模式」。'
-        );
+      if (cmd.disabled) {
+        void antdMessage.warning(cmd.disabledReason || '当前指令暂不可用');
         return;
       }
       const text = draft;
@@ -385,7 +382,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
         textarea?.focus();
       }, 50);
     },
-    [chatMode, draft, onDraftChange]
+    [draft, onDraftChange]
   );
 
   const activeUploadsCountRef = useRef(0);
@@ -416,7 +413,13 @@ export function UserChatComposer(props: UserChatComposerProps) {
     const trimmed = draft.trim();
     if (chatMode === 'chat' && isWorkSlashCommand(trimmed)) {
       void antdMessage.warning(
-        '个人模式下不能调用工作能力（如 /doc、/email、/extract 等）。如需使用企业技能，请切换到「工作模式」。'
+        '提示：/doc、/email、/extract 为工作模式专属企业技能。个人模式请使用 /ppt、/research、/excel、/word 等独立沙箱指令，如需企业知识协同请在左下方切换至「工作模式」。'
+      );
+      return;
+    }
+    if (chatMode === 'task' && isPersonalSlashCommand(trimmed)) {
+      void antdMessage.warning(
+        '提示：/ppt、/research 等为个人模式沙箱专属工具链。如需体验深度技术调研或PPT生成，请在左下方切换至「个人模式」。'
       );
       return;
     }
@@ -741,7 +744,9 @@ export function UserChatComposer(props: UserChatComposerProps) {
                   ? '已开启知识库检索，输入问题直接研读空间文档...（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
                   : enableWebSearch
                     ? '已开启全网实时搜索，输入问题直接检索...（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
-                    : placeholder || '输入消息，Enter 发送，Shift+Enter 换行（输入 ! 唤起工作流，/ 唤起技能，# 关联文件，@ 协同成员）'
+                    : placeholder || (chatMode === 'chat'
+                      ? '输入消息，Enter 发送（输入 / 唤起 /ppt, /research 等沙箱生产力工具）'
+                      : '输入消息，Enter 发送（输入 / 唤起工作模式企业技能，! 唤起工作流）')
             }
             className={styles['user-chat-input-textarea']}
             disabled={disabled || isTranscribing || isUploadingFile}

@@ -74,10 +74,17 @@ export class ModelProxyController {
         client = this.modelService.getClient(visionModel.id);
       }
     }
+    const defaultChat =
+      this.modelService.getPreferredDefaultModel({ mode: 'chat' }) ||
+      this.modelService.getDefaultModel();
+    const defaultModel = this.modelService.getDefaultModel();
+
     const isGenericOrPlaceholder =
       !body.model ||
       body.model === 'default' ||
-      (body.model === 'deepseek-chat' && !this.modelService.getClient('deepseek-chat'));
+      (body.model === 'deepseek-chat' && !this.modelService.getClient('deepseek-chat')) ||
+      (defaultChat && body.model === defaultChat.id) ||
+      (defaultModel && body.model === defaultModel.id);
 
     if (!client && body.model && !isGenericOrPlaceholder) {
       client = this.modelService.getClient(body.model);
@@ -90,9 +97,6 @@ export class ModelProxyController {
       }
     }
     if (!client && isGenericOrPlaceholder) {
-      const defaultChat =
-        this.modelService.getPreferredDefaultModel({ mode: 'chat' }) ||
-        this.modelService.getDefaultModel();
       if (defaultChat) {
         client = this.modelService.getClient(defaultChat.id);
       }
@@ -214,7 +218,7 @@ export class ModelProxyController {
             responseUsage = response.usage || responseUsage;
           } catch (primaryErr: any) {
             // 当显式指定了具体模型时，严禁静默 fallback 到其他模型，避免模型欺骗
-            if (body.model) {
+            if (body.model && !isGenericOrPlaceholder) {
               this.logger.error(
                 `Primary model [${body.model}] failed (${primaryErr.message}). Explicit model requested; fallback is strictly disabled.`
               );

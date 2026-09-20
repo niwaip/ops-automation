@@ -253,4 +253,6 @@ export const createChatApi = (client: ApiClient, runtimeConfig: RuntimeConfigPor
     client.delete(
       resolveAiClientPath(runtimeConfig, `/chat/sessions/${encodeURIComponent(sessionId)}`)
     ),
+  clearAllSessions: async (): Promise<{ success: boolean; count?: number }> =>
+    client.delete(resolveAiClientPath(runtimeConfig, '/chat/sessions')),
 });

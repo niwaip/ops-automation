@@ -7,7 +7,7 @@ import type { ChatRequestDTO, ChatUploadedFileDTO } from './chat.dto';
 import { ChatConversationService } from './chat-conversation.service';
 import { ChatMediaService } from './chat-media.service';
 import { ModelService } from '../model/model.service';
-import { isWorkSlashCommand } from './chat-slash-command.util';
+import { isWorkSlashCommand, isPersonalSlashCommand } from './chat-slash-command.util';
 
 @Injectable()
 export class UserSandboxDispatcherService {
@@ -54,30 +54,33 @@ export class UserSandboxDispatcherService {
     const userWorkspaceDir = this.getWorkspaceDir(userId);
     if (files && files.length > 0) {
       try {
-        for (const file of files) {
-          const destPath = path.join(userWorkspaceDir, file.fileName);
-          if (file.filePath && fs.existsSync(file.filePath)) {
-            fs.copyFileSync(file.filePath, destPath);
+        for (const file of files as any[]) {
+          const fileName = typeof file === 'string' ? path.basename(file) : file?.fileName;
+          if (!fileName) continue;
+          const destPath = path.join(userWorkspaceDir, fileName);
+          const filePath = typeof file === 'string' ? file : file?.filePath;
+          if (filePath && fs.existsSync(filePath)) {
+            fs.copyFileSync(filePath, destPath);
             try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
 
             // 如果存在提取的文本文件，也一并同步为 .txt 与 .extracted.txt
-            const extractedSrc = `${file.filePath}.extracted.txt`;
+            const extractedSrc = `${filePath}.extracted.txt`;
             if (fs.existsSync(extractedSrc)) {
-              const destTxt = path.join(userWorkspaceDir, `${file.fileName}.txt`);
+              const destTxt = path.join(userWorkspaceDir, `${fileName}.txt`);
               fs.copyFileSync(extractedSrc, destTxt);
               try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
             }
-          } else if (file.content) {
+          } else if (file?.content) {
             fs.writeFileSync(destPath, Buffer.from(file.content, 'base64'));
             try { fs.chmodSync(destPath, 0o666); } catch { /* best-effort permission setting for container mounts */ }
 
             if (file.extractedText) {
-              const destTxt = path.join(userWorkspaceDir, `${file.fileName}.txt`);
+              const destTxt = path.join(userWorkspaceDir, `${fileName}.txt`);
               fs.writeFileSync(destTxt, file.extractedText, 'utf-8');
               try { fs.chmodSync(destTxt, 0o666); } catch { /* best-effort permission setting for container mounts */ }
             }
           }
-          this.logger.log(`Synced attached file [${file.fileName}] to user sandbox workspace: ${destPath}`);
+          this.logger.log(`Synced attached file [${fileName}] to user sandbox workspace: ${destPath}`);
         }
       } catch (e: any) {
         this.logger.warn(`Failed to sync attached files to sandbox workspace: ${e.message}`);
@@ -164,8 +167,9 @@ export class UserSandboxDispatcherService {
       };
 
       if (body.files && Array.isArray(body.files)) {
-        for (const f of body.files) {
-          addSessionFile(f.fileName);
+        for (const f of body.files as any[]) {
+          const fn = typeof f === 'string' ? f : (f?.fileName || f?.filePath);
+          addSessionFile(fn);
         }
       }
 
@@ -227,6 +231,19 @@ export class UserSandboxDispatcherService {
         content: `⚡ 正在连接个人安全沙箱 [${effectiveUserId}]，启动智能分析与执行引擎...`,
       });
 
+      const controller = new AbortController();
+      const onAbort = () => {
+        controller.abort();
+        void this.stopPersonalSandbox(effectiveUserId);
+      };
+      if (abortSignal?.aborted) {
+        onAbort();
+        return false;
+      }
+      if (abortSignal) {
+        abortSignal.addEventListener('abort', onAbort, { once: true });
+      }
+
       // 尝试向 Session Broker 发起 run-harness 请求
       const timeoutMs =
         typeof (body.config as any)?.timeoutMs === 'number' && (body.config as any).timeoutMs > 0
@@ -234,29 +251,7 @@ export class UserSandboxDispatcherService {
           : typeof (body as any).timeoutMs === 'number' && (body as any).timeoutMs > 0
             ? (body as any).timeoutMs
             : 300000;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(async () => {
-        this.logger.warn(`Execution timeout (${timeoutMs / 1000}s) reached for user [${effectiveUserId}], stopping sandbox processes...`);
-        controller.abort();
-        try {
-          await this.stopPersonalSandbox(effectiveUserId);
-        } catch (e: any) {
-          this.logger.warn(`Failed to stop personal sandbox on timeout: ${e.message}`);
-        }
-      }, timeoutMs);
-
-      const onAbort = () => {
-        controller.abort();
-        void this.stopPersonalSandbox(effectiveUserId);
-      };
-      if (abortSignal) {
-        if (abortSignal.aborted) {
-          onAbort();
-          return false;
-        }
-        abortSignal.addEventListener('abort', onAbort, { once: true });
-      }
-
+      let timeoutId: NodeJS.Timeout | undefined = undefined;
       let harnessResult: {
         success: boolean;
         output: string;
@@ -265,17 +260,34 @@ export class UserSandboxDispatcherService {
         exitCode: number;
       } | null = null;
 
+      const isExplicitModel = Boolean(
+        body.modelId &&
+        body.modelId !== 'default' &&
+        body.modelId !== 'deepseek-chat'
+      );
       let effectiveModel = body.modelId;
-      if (!effectiveModel || effectiveModel === 'default' || effectiveModel === 'deepseek-chat') {
+      let targetModelId = effectiveModel;
+      if (!isExplicitModel) {
         const preferred =
           this.modelService.getPreferredDefaultModel({ mode: 'chat' }) ||
           this.modelService.getDefaultModel();
-        effectiveModel = preferred?.id || effectiveModel || 'default';
+        targetModelId = preferred?.id || 'default';
+        effectiveModel = 'default';
       }
-      const modelEntity = await this.modelService.getModel(effectiveModel);
-      const modelDisplayName = modelEntity?.name || (effectiveModel !== 'default' ? effectiveModel : undefined);
 
       try {
+        timeoutId = setTimeout(async () => {
+          this.logger.warn(`Execution timeout (${timeoutMs / 1000}s) reached for user [${effectiveUserId}], stopping sandbox processes...`);
+          controller.abort();
+          try {
+            await this.stopPersonalSandbox(effectiveUserId);
+          } catch (e: any) {
+            this.logger.warn(`Failed to stop personal sandbox on timeout: ${e.message}`);
+          }
+        }, timeoutMs);
+
+        const modelEntity = await this.modelService.getModel(targetModelId || 'default');
+        const modelDisplayName = modelEntity?.name || (targetModelId && targetModelId !== 'default' ? targetModelId : undefined);
         const payload = {
           userId: effectiveUserId,
           prompt: promptForSandbox,
@@ -410,7 +422,9 @@ export class UserSandboxDispatcherService {
         }
         throw fetchErr;
       } finally {
-        clearTimeout(timeoutId);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
         if (abortSignal) {
           abortSignal.removeEventListener('abort', onAbort);
         }
@@ -490,11 +504,17 @@ export class UserSandboxDispatcherService {
         .replace(/<<<DSH_METRICS:[\s\S]*?>>>/g, '')
         .trim();
 
-      // 自动解析沙箱生成/外发的图片文件，转换为内联 Markdown 图片直接呈现在聊天界面
-      cleanAnswer = this.embedWorkspaceImagesInAnswer(effectiveUserId, cleanAnswer, outboundFiles);
+      // 自动解析沙箱生成/外发的图片与各类交付物文件（Word/Excel/PPT/PDF等），转换为内联 Markdown 或专属下载卡片
+      cleanAnswer = this.embedWorkspaceDeliverablesAndImagesInAnswer(
+        effectiveUserId,
+        cleanAnswer,
+        outboundFiles,
+        sessionAttachedFiles
+      );
 
       if (!cleanAnswer) {
-        cleanAnswer = '已为您完成沙箱智能检索与数据分析，未获取到更多额外内容。';
+        cleanAnswer =
+          '⚠️ 沙箱已完成执行，但未能生成有效的回复文本（可能上游推理模型网络超时或服务异常中断）。建议重新发送或切换更稳定的模型重试。';
       }
 
       if (!telemetrySummary) {
@@ -542,8 +562,15 @@ export class UserSandboxDispatcherService {
       return true;
     } catch (err: any) {
       this.logger.warn(
-        `Failed to dispatch to user sandbox (${err.message}). Gracefully falling back to direct streamChat.`
+        `Failed to dispatch to user sandbox (${err.message}).`
       );
+      if (isPersonalSlashCommand(body.message) || body.message.trim().startsWith('/')) {
+        emit({
+          type: StreamEventType.ERROR,
+          content: `⚠️ 沙箱任务执行异常 (${err.message})，未能完成指令执行。请重试或检查模型服务连接。`,
+        });
+        return true;
+      }
       emit({
         type: StreamEventType.OBSERVATION,
         content: `⚠️ 沙箱连接遇到异常 (${err.message})，正在自动无缝切换到云端模型直连模式...`,
@@ -617,27 +644,16 @@ export class UserSandboxDispatcherService {
       return primaryPath;
     }
 
-    // 兜底搜索 candidate user workspaces（如当 userId 为 default 或跨模式时）
-    const candidateRoots = [
-      '/workspace/data/users',
-      path.join(process.cwd(), 'data/users'),
-      path.resolve(__dirname, '../../../../../../../data/users'),
+    // 检查是否在用户知识库目录下
+    const knowledgeCandidates = [
+      path.join(userWorkspaceDir, '..', 'knowledge', cleanName),
+      path.join(process.cwd(), 'data/users', userId, 'knowledge', cleanName),
+      path.join('/workspace/data/users', userId, 'knowledge', cleanName),
     ];
-    for (const root of candidateRoots) {
-      if (fs.existsSync(root)) {
-        try {
-          const subdirs = fs.readdirSync(root);
-          for (const sub of subdirs) {
-            const candidate = path.join(root, sub, 'workspace', cleanName);
-            if (fs.existsSync(candidate)) {
-              return candidate;
-            }
-          }
-        } catch {
-          // ignore
-        }
-      }
+    for (const cand of knowledgeCandidates) {
+      if (fs.existsSync(cand)) return cand;
     }
+
     return null;
   }
 
@@ -706,6 +722,131 @@ export class UserSandboxDispatcherService {
           result += `\n\n![${cleanName}](${fileUrl})\n`;
         }
       }
+    }
+
+    return result;
+  }
+
+  /**
+   * 将沙箱工作区生成或提及的交付物（图片、Office 文档、PDF、压缩包等）转换为 Markdown 内联呈现或专属下载卡片
+   */
+  private embedWorkspaceDeliverablesAndImagesInAnswer(
+    userId: string,
+    text: string,
+    outboundFiles: Array<{ filePath: string; fileName: string; comment?: string }>,
+    sessionFiles: string[] = []
+  ): string {
+    // 1. 先进行图片内联转换（保持既有行为与规范）
+    let result = this.embedWorkspaceImagesInAnswer(userId, text, outboundFiles);
+
+    // 2. 文档与交付物扩展名
+    const deliverableExts = new Set([
+      '.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt',
+      '.pdf', '.zip', '.tar', '.gz', '.csv', '.txt'
+    ]);
+
+    // 记录用户上传的原始输入附件文件名，严禁将其作为“新生成产物”推荐给用户
+    const inputFiles = new Set(
+      (sessionFiles || []).map((f) => path.basename(f).trim().toLowerCase())
+    );
+
+    const getFileIcon = (ext: string): string => {
+      if (ext === '.docx' || ext === '.doc') return '📄';
+      if (ext === '.xlsx' || ext === '.xls' || ext === '.csv') return '📊';
+      if (ext === '.pptx' || ext === '.ppt') return '📑';
+      if (ext === '.pdf') return '📕';
+      if (ext === '.zip' || ext === '.tar' || ext === '.gz') return '📦';
+      return '📎';
+    };
+
+    const formatFileSize = (bytes: number): string => {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    };
+
+    const handledFiles = new Set<string>();
+
+    // 2.1 将正文中现存的 Markdown 链接中的 /workspace/xxx 或本地文件名改写为直链下载地址
+    result = result.replace(
+      /\[(.*?)\]\((?:(?:\/workspace\/)?([a-zA-Z0-9_\-\u4e00-\u9fa5 ]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv)))\)/gi,
+      (match, label, fileName) => {
+        const cleanName = path.basename(fileName.trim());
+        const filePath = this.getWorkspaceFilePath(userId, cleanName);
+        if (filePath && fs.existsSync(filePath)) {
+          handledFiles.add(cleanName);
+          const fileUrl = `/api/ai/chat/workspace-files/${encodeURIComponent(userId)}/${encodeURIComponent(cleanName)}`;
+          return `[${label || cleanName}](${fileUrl})`;
+        }
+        return match;
+      }
+    );
+
+    // 2.2 收集外发及文本中提及的文件
+    const candidateDeliverables: Array<{ fileName: string; filePath?: string; comment?: string }> = [];
+
+    for (const f of outboundFiles) {
+      const cleanName = path.basename(f.fileName || f.filePath || '').trim();
+      if (!cleanName) continue;
+      // 过滤输入文件
+      if (inputFiles.has(cleanName.toLowerCase())) continue;
+      const ext = path.extname(cleanName).toLowerCase();
+      if (deliverableExts.has(ext) && !candidateDeliverables.some((c) => c.fileName === cleanName)) {
+        candidateDeliverables.push({
+          fileName: cleanName,
+          filePath: f.filePath,
+          comment: f.comment,
+        });
+      }
+    }
+
+    // 扫描正文提及的文件名（如 《保密合同_审查意见书.docx》 或 保密合同_审查意见书.docx）
+    const mentionRegex = /(?:《|【|“|"|'|`|\/workspace\/)?([a-zA-Z0-9_\-\u4e00-\u9fa5 ]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv))(?:》|】|”|"|'|`|\b)?/gi;
+    let match: RegExpExecArray | null;
+    while ((match = mentionRegex.exec(result)) !== null) {
+      const foundName = match[1]?.trim();
+      if (!foundName) continue;
+      // 严禁将用户本轮上传的原始输入附件作为“AI生成产物”挂载
+      if (inputFiles.has(foundName.toLowerCase())) continue;
+      if (!candidateDeliverables.some((c) => c.fileName === foundName)) {
+        const ext = path.extname(foundName).toLowerCase();
+        if (deliverableExts.has(ext)) {
+          const filePath = this.getWorkspaceFilePath(userId, foundName);
+          if (filePath && fs.existsSync(filePath)) {
+            candidateDeliverables.push({ fileName: foundName, filePath });
+          }
+        }
+      }
+    }
+
+    // 2.3 生成下载卡片
+    const downloadCards: string[] = [];
+    for (const item of candidateDeliverables) {
+      if (handledFiles.has(item.fileName)) continue;
+      const filePath = item.filePath && fs.existsSync(item.filePath)
+        ? item.filePath
+        : this.getWorkspaceFilePath(userId, item.fileName);
+      if (!filePath || !fs.existsSync(filePath)) continue;
+
+      handledFiles.add(item.fileName);
+      const ext = path.extname(item.fileName).toLowerCase();
+      const icon = getFileIcon(ext);
+      let sizeInfo = '';
+      try {
+        const stats = fs.statSync(filePath);
+        sizeInfo = ` · ${formatFileSize(stats.size)}`;
+      } catch {
+        // ignore
+      }
+      const fileUrl = `/api/ai/chat/workspace-files/${encodeURIComponent(userId)}/${encodeURIComponent(item.fileName)}`;
+      const displayName = item.fileName.startsWith('《') && item.fileName.endsWith('》')
+        ? item.fileName
+        : `《${item.fileName}》`;
+      downloadCards.push(`- ${icon} **[${displayName}](${fileUrl})** (点击直接下载${sizeInfo})`);
+    }
+
+    if (downloadCards.length > 0) {
+      result = result.trimEnd() + `\n\n> 📥 **生成产物已就绪**：\n` + downloadCards.map((c) => `> ${c}`).join('\n') + '\n';
     }
 
     return result;

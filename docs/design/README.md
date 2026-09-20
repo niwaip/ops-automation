@@ -9,6 +9,14 @@
 - **合同法务审查套件功能设计**：[`Contract-Legal-Review-Toolkit-Functional-Design_v1.0.md`](Contract-Legal-Review-Toolkit-Functional-Design_v1.0.md)
   *围绕合同智能比对、合规诊断、统一问题项、证据锚点、Legal Playbook 与后续法务工作流衔接的功能设计。*
 
+- **借鉴 Anthropic Skills 演进设计方案 (三阶段路线图)**：
+  - **Phase 1: 深度 Office/PDF 能力架构与个人沙箱 (DSH) 隔离验证方案**：[`Phase1-Office-Engine-Deep-Capabilities-and-DSH-Sandbox-Design_v1.0.md`](Phase1-Office-Engine-Deep-Capabilities-and-DSH-Sandbox-Design_v1.0.md)  
+    *在不影响现有微服务工作模式前提下，于个人沙箱 `dsh` 验证 Word 审阅留痕/批注、Excel 公式重算缓存与 PDF 交互式表单。*
+  - **Phase 2: 技能全生命周期工程、意图优化与双路评测体系方案**：[`Phase2-Skill-Lifecycle-Evaluation-and-Intent-Optimization-Design_v1.0.md`](Phase2-Skill-Lifecycle-Evaluation-and-Intent-Optimization-Design_v1.0.md)  
+    *借鉴 `skill-creator`，建立意图描述反向优化循环（混淆矩阵）、双路并行基线评测与 Portal 视觉审查看板。*
+  - **Phase 3: 交互式 Web 成果物生成与 MCP 开放生态网关方案**：[`Phase3-Interactive-Web-Artifacts-and-MCP-Gateway-Design_v1.0.md`](Phase3-Interactive-Web-Artifacts-and-MCP-Gateway-Design_v1.0.md)  
+    *借鉴 `web-artifacts-builder` 与 `mcp-builder`，落地单文件 React+Tailwind 交互成果物与平台级 MCP 开放网关。*
+
 ---
 
 ## 1. 核心总纲与项目描述 (`v4/`)

@@ -3,7 +3,7 @@ FROM node:22-bookworm-slim
 LABEL maintainer="Ops Automation Team"
 LABEL description="Standardized Personal User Sandbox with Immutable Runtime & Non-root Isolation"
 
-# 1. 安装基础工具、Python 3、Git 与核心编译环境
+# 1. 安装基础工具、Python 3、Git、Office无头环境与核心编译环境
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
@@ -18,11 +18,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zsh \
     bash \
     build-essential \
+    poppler-utils \
+    libreoffice-calc-nogui \
+    libreoffice-writer-nogui \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. 全局安装 pnpm、modsearch 与核心办公文档依赖库
 RUN npm install -g pnpm @liustack/modsearch || npm install -g --registry=https://registry.npmmirror.com pnpm @liustack/modsearch
-RUN pip3 install --no-cache-dir --break-system-packages fpdf2 python-docx openpyxl pypdf
+RUN pip3 install --no-cache-dir --break-system-packages fpdf2 python-docx openpyxl pypdf defusedxml pdf2image pdfplumber
 
 # 3. 创建集中式不可变系统插件库、技能库与默认配置
 RUN mkdir -p /opt/dsh/plugins /opt/dsh/skills /etc/dsh \

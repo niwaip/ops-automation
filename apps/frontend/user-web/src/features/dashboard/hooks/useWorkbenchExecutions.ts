@@ -4,7 +4,7 @@ import {
   type ExecutionDto,
   type ExecutionStatus,
 } from '@ops/user-core';
-import { executionApi, scheduleApi, skillApi } from '../../../api';
+import { executionApi, reminderApi, scheduleApi, skillApi } from '../../../api';
 import type { WorkbenchHandledExecutionMap } from '../lib/workbenchHandledExecutionStorage';
 
 const ACTIONABLE_STATUSES: ExecutionStatus[] = [
@@ -90,6 +90,15 @@ export function useWorkbenchExecutions({
       refetchOnWindowFocus: false,
     }
   );
+  const remindersQuery = useQuery(
+    ['dashboard-reminders'],
+    async () => reminderApi.list(),
+    {
+      staleTime: 60000,
+      keepPreviousData: true,
+      refetchOnWindowFocus: false,
+    }
+  );
   const skillsQuery = useQuery(['dashboard-skills-name-map'], () => skillApi.list(), {
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -120,6 +129,21 @@ export function useWorkbenchExecutions({
     [schedules]
   );
   const upcomingSchedules = activeSchedules.slice(0, 3);
+  const activeReminders = useMemo(
+    () =>
+      (remindersQuery.data || [])
+        .filter((rule) => {
+          if (!rule.isActive) return false;
+          if (rule.runAt && new Date(rule.runAt) <= new Date()) return false;
+          return true;
+        })
+        .sort((a, b) => {
+          const aTime = a.nextRunAt || a.runAt || '';
+          const bTime = b.nextRunAt || b.runAt || '';
+          return new Date(aTime).getTime() - new Date(bTime).getTime();
+        }),
+    [remindersQuery.data]
+  );
   const skillNameMap = useMemo(() => {
     const map = new Map<string, string>();
     map.set('document.contract.review', '合同文档智能审查与合规诊断');
@@ -204,6 +228,7 @@ export function useWorkbenchExecutions({
   );
 
   return {
+    activeReminders,
     activeSchedules,
     executionsReady: executionsQuery.isSuccess,
     getExecutionDisplayDescription,

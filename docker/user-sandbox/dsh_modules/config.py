@@ -15,7 +15,16 @@ VIRTUAL_API_KEY = os.environ.get("DEEPSEEK_API_KEY", os.environ.get("OPENAI_API_
 WORKSPACE_DIR = os.environ.get("WORKSPACE", "/workspace")
 KNOWLEDGE_DIR = os.environ.get("KNOWLEDGE_DIR", "/knowledge")
 PLUGIN_DIR = os.environ.get("DSH_PLUGIN_DIR", "/opt/dsh/plugins")
-SKILL_DIR = os.environ.get("DSH_SKILL_DIR", "/opt/dsh/skills")
+_default_skill_dir = "/opt/dsh/skills"
+if not os.path.exists(_default_skill_dir):
+    try:
+        _cand = Path(__file__).resolve().parents[6] / "docker" / "user-sandbox" / "skills"
+        if _cand.exists():
+            _default_skill_dir = str(_cand)
+    except Exception:
+        pass
+
+SKILL_DIR = os.environ.get("DSH_SKILL_DIR", _default_skill_dir)
 CUSTOM_SKILL_DIR = os.environ.get("DSH_CUSTOM_SKILL_DIR", "/knowledge/skills")
 
 
@@ -83,3 +92,8 @@ def cmd_plugins(args):
         print(f"Found {len(plugins)} certified plugins in {PLUGIN_DIR}:")
         for p in sorted(plugins):
             print(f" - {p}")
+
+
+def cmd_doctor(args=None):
+    from .doctor import cmd_doctor as _cmd_doctor
+    return _cmd_doctor(args)

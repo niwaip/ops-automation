@@ -135,3 +135,46 @@ class ArtifactExporter:
                 print(f"⚠️ [Harness Export] 读取工作区补全文件异常: {e}")
 
         return cleaned_text, exported_files
+
+    @staticmethod
+    def export_deliverables(
+        workspace_dir: str,
+        final_text: str,
+        turn_start_time: float = None
+    ) -> List[dict]:
+        """
+        Scans workspace for newly created or mentioned document deliverables (docx, xlsx, pptx, pdf, zip, etc.)
+        and returns list of {filePath, fileName}.
+        """
+        deliverables = []
+        seen_names = set()
+        doc_exts = {".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt", ".pdf", ".zip", ".csv"}
+
+        ws_path = Path(workspace_dir)
+        if not ws_path.exists():
+            return deliverables
+
+        # 1. 扫描本轮次中新增或修改的文件
+        if turn_start_time is not None:
+            min_mtime = turn_start_time - 2.0
+            for item in ws_path.iterdir():
+                if item.is_file() and item.suffix.lower() in doc_exts:
+                    if item.stat().st_size > 0 and item.stat().st_mtime >= min_mtime:
+                        deliverables.append({"filePath": str(item), "fileName": item.name})
+                        seen_names.add(item.name)
+
+        # 2. 扫描文本中明确提及的文件名
+        mentioned = re.findall(
+            r'(?:/workspace/|workspace/|`|《|“|"|\')?([a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|zip|csv))(?:`|》|”|"|\')?',
+            final_text,
+            re.I
+        )
+        for fn in mentioned:
+            if fn in seen_names:
+                continue
+            cand = ws_path / fn
+            if cand.exists() and cand.is_file() and cand.stat().st_size > 0:
+                deliverables.append({"filePath": str(cand), "fileName": cand.name})
+                seen_names.add(fn)
+
+        return deliverables

@@ -215,9 +215,7 @@ export class UserSandboxStorageService {
         for (const s of defaultSkills) {
           const src = path.join(defaultSkillsDir, s);
           const dest = path.join(localSharedSkills, s);
-          if (!fs.existsSync(dest)) {
-            fs.cpSync(src, dest, { recursive: true });
-          }
+          fs.cpSync(src, dest, { recursive: true, force: true });
         }
       } catch (e: any) {
         this.logger.warn(`Failed to seed default skills: ${e.message}`);

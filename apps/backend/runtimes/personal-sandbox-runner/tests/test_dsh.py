@@ -14,17 +14,19 @@ if str(src_dir) not in sys.path:
 
 import json
 import time
+import tempfile
 
 from dsh_modules.config import VERSION
 from dsh_modules.tools import (
-    CITY_PINYIN, normalize_search_query, execute_tool, SANDBOX_TOOLS,
-    perform_web_search, fetch_weather, fetch_page, inspect_image, read_workspace_file
+    CITY_PINYIN, normalize_search_query, extract_query_freshness, execute_tool, SANDBOX_TOOLS,
+    get_sandbox_tools, perform_web_search, fetch_weather, fetch_page, inspect_image, read_workspace_file
 )
 from dsh_modules.llm import parse_tool_calls, clean_output, extract_bare_json_tool_calls, is_promising_action, call_model_proxy
 from dsh_modules.runtime_policy import RuntimePolicy
 from dsh_modules.context_budget import ContextBudget
-from dsh_modules.prompt_builder import build_system_prompt, build_user_turn
-from dsh_modules.skill_router import SkillRouter
+from dsh_modules.prompt_builder import build_system_prompt, build_user_turn, build_skills_catalog
+from dsh_modules.skill_router import SkillRouter, SemanticSkillMatcher
+from dsh_modules.eval_skill import run_skill_eval
 from dsh_modules.artifact_exporter import ArtifactExporter
 from dsh_modules.telemetry import TelemetryStats
 from dsh_modules.agent_loop import run_agent_loop, sanitize_preview
@@ -39,6 +41,15 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertEqual(normalize_search_query("帮我查一下天气"), "天气")
         self.assertEqual(normalize_search_query("搜索 deepseek 最新新闻"), "deepseek 最新新闻")
         self.assertEqual(normalize_search_query("查询上海"), "上海")
+        self.assertEqual(normalize_search_query("调研关于他qwen 3.8 27b"), "qwen 3.8 27b")
+        self.assertEqual(normalize_search_query("调研关于他qwen 3.8 27b 最近30天的"), "qwen 3.8 27b")
+        self.assertEqual(normalize_search_query("查看关于它的技术方案"), "技术方案")
+
+    def test_extract_query_freshness(self):
+        self.assertEqual(extract_query_freshness("调研关于他qwen 3.8 27b 最近30天的"), "month")
+        self.assertEqual(extract_query_freshness("查看近7天动态"), "week")
+        self.assertEqual(extract_query_freshness("今天最新新闻"), "day")
+        self.assertIsNone(extract_query_freshness("普通查询"))
 
     def test_city_pinyin_mapping(self):
         self.assertEqual(CITY_PINYIN.get("上海"), "Shanghai")
@@ -126,11 +137,12 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertEqual(calls[0]["params"].get("aspect_ratio"), "16:9")
 
     def test_sandbox_tools_schema_completeness(self):
-        """AC-1: 验证 SANDBOX_TOOLS 包含全部 10 个工具且包含 vision_inspect 与 image_gen"""
+        """AC-1: 验证 SANDBOX_TOOLS 包含全部 11 个工具且包含 vision_inspect, image_gen 与 patch_file"""
         tool_names = [t["function"]["name"] for t in SANDBOX_TOOLS]
-        self.assertEqual(len(tool_names), 10)
+        self.assertEqual(len(tool_names), 11)
         self.assertIn("vision_inspect", tool_names)
         self.assertIn("image_gen", tool_names)
+        self.assertIn("patch_file", tool_names)
         self.assertIn("weather", tool_names)
         self.assertIn("web_search", tool_names)
         self.assertIn("fetch_page", tool_names)
@@ -139,6 +151,11 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertIn("scan_knowledge", tool_names)
         self.assertIn("read_skill", tool_names)
         self.assertIn("send_file", tool_names)
+
+        # 检查 read_file 是否支持 start_line 与 end_line 切片
+        rf_tool = next(t for t in SANDBOX_TOOLS if t["function"]["name"] == "read_file")
+        self.assertIn("start_line", rf_tool["function"]["parameters"]["properties"])
+        self.assertIn("end_line", rf_tool["function"]["parameters"]["properties"])
 
         # 检查 vision_inspect 结构
         vi_tool = next(t for t in SANDBOX_TOOLS if t["function"]["name"] == "vision_inspect")
@@ -263,6 +280,74 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertTrue(res_web_rep.is_ppt_intent)
         self.assertEqual(res_web_rep.skill_id, "guizang-ppt")
 
+    def test_progressive_disclosure_and_dynamic_schema(self):
+        """验证渐进式披露：System Prompt 注入 Level 1 目录且 read_skill Schema 动态包含全部技能 ID"""
+        # 1. 动态生成 System Prompt
+        sys_prompt = build_system_prompt("/workspace", "/knowledge")
+        self.assertIn("【Available Skills Catalog】", sys_prompt)
+        self.assertIn("- research:", sys_prompt)
+        self.assertIn("- docx:", sys_prompt)
+        self.assertIn("- guizang-ppt:", sys_prompt)
+        self.assertIn("- xlsx:", sys_prompt)
+
+        # 2. 动态读取工具 Schema
+        tools = get_sandbox_tools()
+        read_skill_tool = next((t for t in tools if t["function"]["name"] == "read_skill"), None)
+        self.assertIsNotNone(read_skill_tool)
+        skill_enum = read_skill_tool["function"]["parameters"]["properties"]["skill_name"]["enum"]
+        self.assertIn("research", skill_enum)
+        self.assertIn("guizang-ppt", skill_enum)
+        self.assertIn("docx", skill_enum)
+        self.assertIn("xlsx", skill_enum)
+        self.assertIn("dashboard", skill_enum)
+        self.assertIn("web-prototype", skill_enum)
+
+    def test_semantic_matcher_plug_and_play(self):
+        """验证零代码即插即用：新增自定义技能无需修改任何 Python 代码即可被语义路由器精准识别"""
+        custom_skills = [
+            {
+                "id": "k8s-diagnose",
+                "name": "Kubernetes 集群排障助手",
+                "description": "诊断排查 Kubernetes 集群 Pod 故障、CrashLoopBackOff、节点资源不足与网络延迟问题。不要用于写普通 Python 脚本。",
+                "triggers": ["k8s排障", "集群诊断", "pod报错", "k8s故障"],
+                "aliases": ["k8s", "kubernetes"],
+                "type": "custom"
+            },
+            {
+                "id": "research",
+                "name": "research",
+                "description": "深度技术调研、选型对比、模型评测、近30天动态追踪与真实社区口碑分析。",
+                "triggers": ["调研", "调查", "深度调研"],
+                "aliases": ["research"],
+                "type": "certified"
+            }
+        ]
+
+        matcher = SemanticSkillMatcher(custom_skills)
+        res1 = matcher.match("帮我排查一下这个 pod 报错和 k8s 集群问题")
+        top_id, top_score, _ = res1[0]
+        self.assertEqual(top_id, "k8s-diagnose")
+        self.assertTrue(top_score >= SkillRouter.AFFINITY_THRESHOLD)
+
+        # 验证近邻负样本不误触
+        res_neg = matcher.match("写一个 Python 脚本打印 Hello World")
+        top_neg_id, top_neg_score, _ = res_neg[0]
+        self.assertTrue(top_neg_score < SkillRouter.AFFINITY_THRESHOLD)
+
+    def test_skill_intent_eval_suite(self):
+        """验证技能意图评测套件可准确计算 Precision、Recall、F1-score"""
+        rep_research = run_skill_eval("research")
+        self.assertEqual(rep_research.precision, 1.0)
+        self.assertEqual(rep_research.recall, 1.0)
+        self.assertEqual(rep_research.f1, 1.0)
+        self.assertTrue(rep_research.passed)
+
+        rep_docx = run_skill_eval("docx")
+        self.assertEqual(rep_docx.precision, 1.0)
+        self.assertEqual(rep_docx.recall, 1.0)
+        self.assertEqual(rep_docx.f1, 1.0)
+        self.assertTrue(rep_docx.passed)
+
     def test_artifact_exporter_html_extraction(self):
         """AC-4: 验证 ArtifactExporter 提取 HTML 并正确生成 Banner 与落盘"""
         import tempfile
@@ -347,6 +432,34 @@ class TestDshCoreModules(unittest.TestCase):
             self.assertIn("✨ **交互式页面已生成完毕！**", final_text2)
             self.assertEqual(len(exported2), 1)
             self.assertIn("```html", final_text2)
+
+    def test_artifact_exporter_deliverables(self):
+        """验证 ArtifactExporter.export_deliverables 准确识别当前轮次生成与提及的 Office 文档交付物"""
+        import tempfile
+        import os
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # 1. 模拟当前轮次生成了 docx
+            docx_file = Path(tmpdir) / "保密合同_审查意见书.docx"
+            docx_file.write_bytes(b"PK\x03\x04test_docx")
+            now = 2000.0
+            os.utime(docx_file, (now, now))
+
+            # 2. 模拟过去轮次遗留的旧 xlsx
+            old_xlsx = Path(tmpdir) / "历史记录.xlsx"
+            old_xlsx.write_bytes(b"PK\x03\x04test_xlsx")
+            os.utime(old_xlsx, (1000.0, 1000.0))
+
+            # 执行探测
+            text = "我已将 《保密合同_审查意见书.docx》 发送至您的聊天界面，请查收。"
+            deliverables = ArtifactExporter.export_deliverables(
+                tmpdir,
+                final_text=text,
+                turn_start_time=1990.0
+            )
+
+            file_names = [d["fileName"] for d in deliverables]
+            self.assertIn("保密合同_审查意见书.docx", file_names)
+            self.assertNotIn("历史记录.xlsx", file_names)
 
     def test_telemetry_stats_recording(self):
         """AC-2: 验证 TelemetryStats 遥测指标收集与序列化"""
@@ -708,6 +821,208 @@ class TestDshCoreModules(unittest.TestCase):
         with patch("urllib.request.urlopen", return_value=MockResp()):
             resolved = resolve_model_display_name("d13e0d30-87b9-4e87-b96a-d8b1b3cf78af", None)
             self.assertEqual(resolved, "qwen36-35b-a3b")
+
+    def test_bash_structured_failure_and_self_healing(self):
+        """验证 bash 执行失败时返回结构化退出码、STDERR 与自愈提示"""
+        # 1. 模拟缺失模块错误
+        res_pkg = execute_tool("bash", {"cmd": "python3 -c 'import non_existent_pkg_xyz'"})
+        self.assertIn("命令执行失败，退出码 1", res_pkg)
+        self.assertIn("STDERR:", res_pkg)
+        self.assertIn("ModuleNotFoundError", res_pkg)
+        self.assertIn("系统自愈提示", res_pkg)
+        self.assertIn("pip install", res_pkg)
+
+        # 2. 模拟文件不存在错误
+        res_fnf = execute_tool("bash", {"cmd": "cat nonexistent_file_98765.txt"})
+        self.assertIn("命令执行失败，退出码 1", res_fnf)
+        self.assertIn("系统自愈提示", res_fnf)
+        self.assertIn("ls -la", res_fnf)
+
+        # 3. 模拟语法错误
+        res_syn = execute_tool("bash", {"cmd": "python3 -c 'def broken(:'"})
+        self.assertIn("命令执行失败", res_syn)
+        self.assertIn("SyntaxError", res_syn)
+        self.assertIn("语法错误", res_syn)
+
+    def test_read_workspace_file_line_slicing(self):
+        """验证 read_file 支持按行切片读取大文件并附带行号标记"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "sample_multiline.txt"
+            lines = [f"This is line {i}" for i in range(1, 51)]
+            test_file.write_text("\n".join(lines), encoding="utf-8")
+
+            res_slice = execute_tool("read_file", {
+                "file_path": str(test_file),
+                "start_line": 10,
+                "end_line": 15
+            })
+            self.assertIn("第 10 至 15 行", res_slice)
+            self.assertIn("共 50 行", res_slice)
+            self.assertIn("L10: This is line 10", res_slice)
+            self.assertIn("L15: This is line 15", res_slice)
+            self.assertNotIn("L9: ", res_slice)
+            self.assertNotIn("L16: ", res_slice)
+
+    def test_patch_workspace_file(self):
+        """验证 patch_file 工具的精准局部匹配与原子替换"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "config.yaml"
+            test_file.write_text("server:\n  host: 127.0.0.1\n  port: 8080\n", encoding="utf-8")
+
+            # 1. 成功精准替换
+            res_ok = execute_tool("patch_file", {
+                "file_path": str(test_file),
+                "target_text": "port: 8080",
+                "replacement_text": "port: 9090"
+            })
+            self.assertIn("已成功精准修改落盘", res_ok)
+            new_content = test_file.read_text(encoding="utf-8")
+            self.assertIn("port: 9090", new_content)
+            self.assertNotIn("port: 8080", new_content)
+
+            # 2. 目标文本不存在时的自愈提示
+            res_miss = execute_tool("patch_file", {
+                "file_path": str(test_file),
+                "target_text": "non_existent_key: 123",
+                "replacement_text": "foo: bar"
+            })
+            self.assertIn("替换失败：在文件", res_miss)
+            self.assertIn("未找到目标文本", res_miss)
+            self.assertIn("read_file", res_miss)
+
+    def test_artifact_assertion_guard_detects_missing(self):
+        """验证物理产物断言拦截器 detect_missing_claimed_artifacts 能正确拦截口头声称的虚假生成产物"""
+        from dsh_modules.agent_loop import detect_missing_claimed_artifacts
+        import dsh_modules.agent_loop as al_mod
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            orig_ws = al_mod.WORKSPACE_DIR
+            try:
+                al_mod.WORKSPACE_DIR = tmpdir
+                # 1. 模型口头声称生成了文件，但磁盘不存在
+                fake_reply = "已按照要求完成审阅，输出文件为 **《合同审查结果_最终版.docx》**，已保存到工作区。"
+                missing = detect_missing_claimed_artifacts(fake_reply)
+                self.assertEqual(missing, ["合同审查结果_最终版.docx"])
+
+                # 2. 当文件物理落盘后，不再被视为 missing
+                real_file = Path(tmpdir) / "合同审查结果_最终版.docx"
+                real_file.write_text("real content", encoding="utf-8")
+                missing_after = detect_missing_claimed_artifacts(fake_reply)
+                self.assertEqual(missing_after, [])
+
+                # 3. 正常文本交流未声称生成产物，不触发断言
+                normal_reply = "关于保密合同，我建议将争议解决机构改为上海仲裁委员会。"
+                self.assertEqual(detect_missing_claimed_artifacts(normal_reply), [])
+            finally:
+                al_mod.WORKSPACE_DIR = orig_ws
+
+    def test_web_search_freshness_filtering_and_schema(self):
+        """验证 web_search 工具支持 freshness 参数，且参数 Schema 定义完整"""
+        ws_tool = next(t for t in SANDBOX_TOOLS if t["function"]["name"] == "web_search")
+        props = ws_tool["function"]["parameters"]["properties"]
+        self.assertIn("freshness", props)
+        self.assertEqual(props["freshness"]["enum"], ["day", "week", "month", "year"])
+
+        # 验证 execute_tool 派发接受 freshness 参数
+        res = execute_tool("web_search", {"query": "上海天气", "freshness": "day"})
+        self.assertTrue(isinstance(res, str))
+
+    def test_dsh_doctor_diagnostics(self):
+        """验证 dsh doctor 环境自检诊断器能够输出完整分类的健康清单"""
+        from dsh_modules.doctor import run_doctor_checks, check_python_modules, check_system_binaries
+        is_healthy, checks = run_doctor_checks()
+        self.assertIsInstance(is_healthy, bool)
+        self.assertIsInstance(checks, list)
+        self.assertGreater(len(checks), 10)
+
+        categories = {c["category"] for c in checks}
+        self.assertIn("Python 核心依赖", categories)
+        self.assertIn("系统命令引擎", categories)
+        self.assertIn("沙箱路径挂载", categories)
+        self.assertIn("通信与网络通道", categories)
+
+        for c in checks:
+            self.assertIn(c["status"], ["PASS", "WARN", "FAIL"])
+            self.assertTrue(len(c["name"]) > 0)
+            self.assertTrue(len(c["detail"]) > 0)
+
+    def test_skill_router_and_prompt_builder_research_intent(self):
+        """验证 SkillRouter 正确识别深度调研意图并注入 Research Grounding 事实溯源规则"""
+        from dsh_modules.skill_router import SkillRouter
+        from dsh_modules.prompt_builder import build_user_turn
+
+        # 1. 关键词触发深度调研意图
+        res_kw = SkillRouter.route("帮我深度调研一下业内对 Claude 3.7 的真实评价与争议")
+        self.assertEqual(res_kw.skill_id, "research")
+        self.assertTrue(res_kw.is_research_intent)
+
+        # 2. 竞品选型对比关键词
+        res_cmp = SkillRouter.route("做个竞品调研：FastAPI 与 Litestar 架构选型对比")
+        self.assertEqual(res_cmp.skill_id, "research")
+        self.assertTrue(res_cmp.is_research_intent)
+
+        # 3. Slash 命令触发
+        res_slash = SkillRouter.route("/last30days DeepSeek V3")
+        self.assertEqual(res_slash.skill_id, "research")
+        self.assertTrue(res_slash.is_research_intent)
+
+        res_slash2 = SkillRouter.route("/research OpenAI Operator")
+        self.assertEqual(res_slash2.skill_id, "research")
+        self.assertTrue(res_slash2.is_research_intent)
+
+        # 4. PromptBuilder 注入 Research Grounding 事实溯源硬性规范
+        user_turn = build_user_turn(
+            prompt="帮我深度调研一下",
+            is_research_intent=True
+        )
+        self.assertIn("【多源深度调研与事实溯源硬性规范 (Research Grounding)】", user_turn)
+        self.assertIn("freshness='month'", user_turn)
+        self.assertIn("deep_research.py", user_turn)
+
+    def test_context_continuity_for_followup_ppt(self):
+        """验证多轮会话承接指令（如'生成一张ppt报告'）正确继承上一轮上下文主题，并实施范例主题隔离"""
+        from dsh_modules.prompt_builder import (
+            build_user_turn,
+            is_context_dependent_action,
+            extract_recent_history_topic
+        )
+        from dsh_modules.skill_router import SkillRouter
+
+        # 1. 动作依存性测试
+        self.assertTrue(is_context_dependent_action("生成一张ppt报告"))
+        self.assertTrue(is_context_dependent_action("做个ppt"))
+        self.assertTrue(is_context_dependent_action("把内容生成一张ppt"))
+        self.assertTrue(is_context_dependent_action("导出为html"))
+        self.assertTrue(is_context_dependent_action("生成演示文稿"))
+
+        # 独立新任务不应被判定为纯承接动作
+        self.assertFalse(is_context_dependent_action("帮我制作一份关于新能源汽车发展的深度行业调研ppt报告"))
+
+        # 2. 历史主题抽取测试
+        history = [
+            {"role": "user", "content": "查看上海这周的天气"},
+            {"role": "assistant", "content": "以下是**上海本周（9月20日–9月26日）的天气预报**：\n\n| 日期 | 天气 | 最低温 | 最高温 | 降水概率 | 状况 |\n| 9月20日 | 晴 | 23°C | 29°C | 20% | 晴 |"}
+        ]
+        u_topic, a_topic = extract_recent_history_topic(history)
+        self.assertEqual(u_topic, "查看上海这周的天气")
+        self.assertIn("上海本周（9月20日–9月26日）的天气预报", a_topic)
+
+        # 3. 验证 build_user_turn 正确注入上下文继承指令与隔离声明
+        res = SkillRouter.route("生成一张ppt报告", history)
+        self.assertTrue(res.is_ppt_intent)
+        user_turn = build_user_turn(
+            prompt="生成一张ppt报告",
+            skill_context=res.skill_context,
+            is_ppt_intent=res.is_ppt_intent,
+            existing_history=history
+        )
+
+        self.assertIn("【多轮会话上下文继承硬性要求 (Context Continuity Directive)】", user_turn)
+        self.assertIn("前序用户问题：【查看上海这周的天气】", user_turn)
+        self.assertIn("上海本周（9月20日–9月26日）的天气预报", user_turn)
+        self.assertIn("【注意与主题隔离要求】", user_turn)
+        self.assertIn("绝不是本次生成任务的内容主题", user_turn)
+        self.assertIn("若当前会话讨论的是天气、指标、业务总结等具体场景", user_turn)
 
 
 if __name__ == "__main__":

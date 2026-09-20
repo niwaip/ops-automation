@@ -2,7 +2,8 @@ import { App } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { useNavigate } from 'react-router-dom';
-import { scheduleApi, skillApi } from '@/api/index';
+import { useChatStore } from '@/features/chat';
+import { reminderApi, scheduleApi, skillApi, type ReminderRule } from '@/api/index';
 import type { PublishedSkillCatalogItem } from '@/api/skill';
 import type { ScheduleDto } from '@/api/schedules';
 import {
@@ -109,6 +110,14 @@ export const usePublishedSkillList = () => {
       refetchOnWindowFocus: false,
     }
   );
+  const remindersQuery = useQuery<ReminderRule[]>(
+    ['user-web-published-skill-reminders'],
+    () => reminderApi.list(),
+    {
+      staleTime: 60000,
+      refetchOnWindowFocus: false,
+    }
+  );
 
   const requestAccessMutation = useMutation(
     async (payload: { skillId: string; reason?: string }) =>
@@ -182,12 +191,34 @@ export const usePublishedSkillList = () => {
     [schedulesQuery.data]
   );
 
+  const activeReminderRules = useMemo(
+    () =>
+      (remindersQuery.data || []).filter((r) => {
+        if (!r.isActive) return false;
+        if (r.runAt && new Date(r.runAt) <= new Date()) return false;
+        return true;
+      }),
+    [remindersQuery.data]
+  );
+
   const scheduledSkillsCount = useMemo(() => {
-    return skills.filter((skill) => {
+    let count = skills.filter((skill) => {
       const sList = schedulesBySkillId.get(skill.id) || [];
       return sList.some((s) => s.isActive);
     }).length;
-  }, [skills, schedulesBySkillId]);
+    const reminderSkill = skills.find(
+      (s) =>
+        s.id === 'platform.notification.reminder' ||
+        (Boolean(s.name?.includes('提醒')) && Boolean(s.name?.includes('消息')))
+    );
+    if (reminderSkill && activeReminderRules.length > 0) {
+      const alreadyCounted = (schedulesBySkillId.get(reminderSkill.id) || []).some((s) => s.isActive);
+      if (!alreadyCounted) {
+        count += 1;
+      }
+    }
+    return count;
+  }, [skills, schedulesBySkillId, activeReminderRules]);
 
   const filterSkill = useCallback(
     (skill: PublishedSkillCatalogItem) => {
@@ -216,6 +247,12 @@ export const usePublishedSkillList = () => {
           }
         }
         if (statusFilter === 'scheduled') {
+          const isReminder =
+            skill.id === 'platform.notification.reminder' ||
+            (Boolean(skill.name?.includes('提醒')) && Boolean(skill.name?.includes('消息')));
+          if (isReminder && activeReminderRules.length > 0) {
+            return true;
+          }
           const skillSchedules = schedulesBySkillId.get(skill.id) || [];
           if (!skillSchedules.some((s) => s.isActive)) return false;
         }
@@ -223,7 +260,7 @@ export const usePublishedSkillList = () => {
 
       return true;
     },
-    [schedulesBySkillId, searchText, statusFilter]
+    [activeReminderRules, schedulesBySkillId, searchText, statusFilter]
   );
 
   const filteredAuthorizedSkills = useMemo(
@@ -289,11 +326,10 @@ export const usePublishedSkillList = () => {
 
   const handleChatCollaborate = useCallback(
     (skill: PublishedSkillCatalogItem) => {
-      navigate('/chat', {
-        state: {
-          initialPrompt: `你好，我想请你作为【${skill.name}】协助我完成相关任务。`,
-        },
-      });
+      useChatStore
+        .getState()
+        .openWithPrompt(`你好，我想请你作为【${skill.name}】协助我完成相关任务。`, 'task');
+      navigate('/chat');
     },
     [navigate]
   );
@@ -321,6 +357,8 @@ export const usePublishedSkillList = () => {
     allUnauthorizedSkillsCount: orderedUnauthorizedSkills.length,
     recentlyRequestedSkillId,
     requestAccessMutation,
+    activeReminderRules,
+    reminderRules: remindersQuery.data || [],
     requestReason,
     requestTarget,
     schedulesBySkillId,

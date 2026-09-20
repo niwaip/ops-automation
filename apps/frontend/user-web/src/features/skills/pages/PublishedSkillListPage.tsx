@@ -1,9 +1,13 @@
 import {
+  ApartmentOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
+  FolderOpenOutlined,
+  RobotOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { Button, Empty as AntdEmpty, Tabs as AntdTabs } from 'antd';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PublishedSkillOverview } from '@/features/skills/components/PublishedSkillOverview';
 import { PublishedSkillSectionCard } from '@/features/skills/components/PublishedSkillSectionCard';
@@ -17,6 +21,7 @@ import { OrganizationWorkflowList } from '@/features/skills/components/Organizat
 import { ContractReviewRulesModal } from '@/features/skills/components/ContractReviewRulesModal';
 import { ReminderConfigModal } from '@/features/skills/components/ReminderConfigModal';
 import type { PublishedSkillCatalogItem } from '@/api/skill';
+import styles from '../components/EmployeeManagement.module.css';
 
 function PublishedSkillsContent() {
   const {
@@ -33,6 +38,7 @@ function PublishedSkillsContent() {
     orderedUnauthorizedSkills,
     allUnauthorizedSkillsCount,
     recentlyRequestedSkillId,
+    reminderRules,
     requestAccessMutation,
     requestReason,
     requestTarget,
@@ -49,14 +55,6 @@ function PublishedSkillsContent() {
   const [credentialTarget, setCredentialTarget] = useState<PublishedSkillCatalogItem | null>(null);
   const [rulesTarget, setRulesTarget] = useState<PublishedSkillCatalogItem | null>(null);
   const [reminderOpen, setReminderOpen] = useState(false);
-
-  const contractSkill = useMemo(() => {
-    return (
-      authorizedSkills.find((s) => s.id.includes('contract') || s.name?.includes('合同')) ||
-      orderedUnauthorizedSkills.find((s) => s.id.includes('contract') || s.name?.includes('合同')) ||
-      null
-    );
-  }, [authorizedSkills, orderedUnauthorizedSkills]);
 
   const showAuthorizedSection =
     authorizedSkills.length > 0 || (!hasActiveFilters && allAuthorizedSkillsCount > 0);
@@ -82,15 +80,6 @@ function PublishedSkillsContent() {
         filteredCount={totalVisibleCount}
         hasActiveFilters={hasActiveFilters}
         onClearFilters={clearAllFilters}
-        onOpenContractRules={() =>
-          setRulesTarget(
-            contractSkill ||
-              ({
-                id: 'platform.document.contract-reviewer',
-                name: '合同文档智能审查与合规诊断',
-              } as any)
-          )
-        }
       />
 
       {/* 3. Global Filter Empty State */}
@@ -141,6 +130,7 @@ function PublishedSkillsContent() {
                 recentlyRequestedSkillId={recentlyRequestedSkillId}
                 schedulesBySkillId={schedulesBySkillId}
                 skills={authorizedSkills}
+                reminderRules={reminderRules}
               />
             </PublishedSkillSectionCard>
           )}
@@ -167,6 +157,7 @@ function PublishedSkillsContent() {
                 recentlyRequestedSkillId={recentlyRequestedSkillId}
                 schedulesBySkillId={schedulesBySkillId}
                 skills={orderedUnauthorizedSkills}
+                reminderRules={reminderRules}
               />
             </PublishedSkillSectionCard>
           )}
@@ -209,35 +200,78 @@ export function PublishedSkillListPage() {
     : 'published';
 
   return (
-    <AntdTabs
-      activeKey={activeTab}
-      onChange={(tab) => {
-        const next = new URLSearchParams(searchParams);
-        if (tab === 'published') {
-          next.delete('tab');
-          next.delete('skillId');
-        } else {
-          next.set('tab', tab);
-        }
-        setSearchParams(next);
-      }}
-      items={[
-        {
-          key: 'published',
-          label: '数字员工阵容',
-          children: <PublishedSkillsContent />,
-        },
-        {
-          key: 'org-workflows',
-          label: '组织工作流 (企业标准流)',
-          children: <OrganizationWorkflowList />,
-        },
-        {
-          key: 'my-workflows',
-          label: '专属工作流 (个人沉淀)',
-          children: <SavedWorkflowList />,
-        },
-      ]}
-    />
+    <div className={styles['skills-page-container']}>
+      {/* Top Executive Hero Banner */}
+      <div className={styles['skills-page-hero']}>
+        <div className={styles['skills-page-hero-content']}>
+          <div className={styles['skills-page-hero-badge']}>
+            <RobotOutlined style={{ marginRight: 6 }} /> 企业级智能数字员工中心
+          </div>
+          <h1 className={styles['skills-page-hero-title']}>
+            数字员工与自动化技能资产
+          </h1>
+          <p className={styles['skills-page-hero-subtitle']}>
+            统一调度在岗数字员工、组织标准业务流与个人沉淀工作流，实现人机智能协同与无人值守定时排班
+          </p>
+        </div>
+        <div className={styles['skills-page-hero-stats']}>
+          <div className={styles['skills-page-hero-pill']}>
+            <span className={styles['skills-hero-pill-dot']} style={{ background: '#10b981' }} />
+            <span>在岗即时协同</span>
+          </div>
+          <div className={styles['skills-page-hero-pill']}>
+            <span className={styles['skills-hero-pill-dot']} style={{ background: '#6366f1' }} />
+            <span>周期执勤与触达</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <AntdTabs
+        activeKey={activeTab}
+        onChange={(tab) => {
+          const next = new URLSearchParams(searchParams);
+          if (tab === 'published') {
+            next.delete('tab');
+            next.delete('skillId');
+          } else {
+            next.set('tab', tab);
+          }
+          setSearchParams(next);
+        }}
+        items={[
+          {
+            key: 'published',
+            label: (
+              <span>
+                <TeamOutlined style={{ marginRight: 6 }} />
+                数字员工阵容
+              </span>
+            ),
+            children: <PublishedSkillsContent />,
+          },
+          {
+            key: 'org-workflows',
+            label: (
+              <span>
+                <ApartmentOutlined style={{ marginRight: 6 }} />
+                组织工作流 (企业标准流)
+              </span>
+            ),
+            children: <OrganizationWorkflowList />,
+          },
+          {
+            key: 'my-workflows',
+            label: (
+              <span>
+                <FolderOpenOutlined style={{ marginRight: 6 }} />
+                专属工作流 (个人沉淀)
+              </span>
+            ),
+            children: <SavedWorkflowList />,
+          },
+        ]}
+      />
+    </div>
   );
 }

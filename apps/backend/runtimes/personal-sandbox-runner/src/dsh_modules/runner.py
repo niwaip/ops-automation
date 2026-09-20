@@ -171,6 +171,10 @@ def cmd_run(args):
         is_search_intent=is_search_intent,
         is_ppt_intent=skill_res.is_ppt_intent,
         is_design_intent=skill_res.is_design_intent,
+        is_docx_intent=skill_res.is_docx_intent,
+        is_office_intent=skill_res.is_office_intent,
+        is_research_intent=skill_res.is_research_intent,
+        is_inspect_intent=skill_res.is_inspect_intent,
         existing_history=existing_history,
         max_skill_chars=policy.max_skill_chars,
         timestamp_str=get_current_timestamp_str(policy.timezone)
@@ -187,7 +191,7 @@ def cmd_run(args):
     try:
         loop_res = run_agent_loop(messages, model_name, policy, max_rounds, deadline=task_deadline)
 
-        # 6. 产物导出与落盘 (HTML/PPT)
+        # 6. 产物导出与落盘 (HTML/PPT 及各种文档交付物)
         final_text, _ = ArtifactExporter.export_html(
             loop_res.final_text,
             skill_res.is_ppt_intent,
@@ -195,6 +199,12 @@ def cmd_run(args):
             turn_start_time=overall_start_time,
             is_design_intent=skill_res.is_design_intent,
             prompt=prompt
+        )
+
+        detected_deliverables = ArtifactExporter.export_deliverables(
+            WORKSPACE_DIR,
+            final_text,
+            turn_start_time=overall_start_time
         )
 
         # 7. 会话历史持久化
@@ -210,7 +220,12 @@ def cmd_run(args):
         # 8. 协议标记与结果序列化
         elapsed_ms = (time.time() - overall_start_time) * 1000
         loop_res.telemetry.set_wall_clock_duration(elapsed_ms)
-        TelemetryStats.emit_outbound_files(loop_res.outbound_files)
+        outbound_set = list(loop_res.outbound_files)
+        for item in detected_deliverables:
+            payload = json.dumps({"filePath": item["filePath"], "fileName": item["fileName"]}, ensure_ascii=False)
+            if payload not in outbound_set and not any(item["fileName"] in existing for existing in outbound_set):
+                outbound_set.append(payload)
+        TelemetryStats.emit_outbound_files(outbound_set)
         loop_res.telemetry.emit_metrics_event()
         TelemetryStats.emit_final_output(final_text)
 

@@ -104,6 +104,7 @@ export function DashboardPage() {
   } = useWorkbenchTodos({ message });
 
   const {
+    activeReminders,
     activeSchedules,
     executionsReady,
     getExecutionDisplayDescription,
@@ -339,15 +340,36 @@ export function DashboardPage() {
                         placement="bottomLeft"
                         overlayClassName="workbench-summary-popover"
                         content={
-                          upcomingSchedules.length === 0 ? (
-                            <Typography.Text type="secondary">当前没有启用中的定期任务</Typography.Text>
+                          upcomingSchedules.length === 0 && activeReminders.length === 0 ? (
+                            <Typography.Text type="secondary">当前没有启用中的定期任务或消息提醒</Typography.Text>
                           ) : (
                             <div className={styles['workbench-summary-popover-list']}>
+                              {activeSchedules.length > 0 && (
+                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                                  业务流执勤 ({activeSchedules.length})
+                                </div>
+                              )}
                               {upcomingSchedules.map((item) => (
                                 <div className={styles['workbench-summary-popover-item']} key={item.id}>
                                   <Typography.Text strong>{sanitizeDisplayName(item.name)}</Typography.Text>
                                   <Typography.Text type="secondary">
                                     {summarizeCronExpression(item.cronExpression, { workdaysLabel: '工作日' })} · {formatMonthDayTime(item.nextRunAt)}
+                                  </Typography.Text>
+                                </div>
+                              ))}
+                              {activeReminders.length > 0 && (
+                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginTop: activeSchedules.length > 0 ? 8 : 0, marginBottom: 4 }}>
+                                  消息与日程提醒 ({activeReminders.length})
+                                </div>
+                              )}
+                              {activeReminders.slice(0, 3).map((item) => (
+                                <div className={styles['workbench-summary-popover-item']} key={item.id}>
+                                  <Typography.Text strong>{item.title || item.message || '定时提醒'}</Typography.Text>
+                                  <Typography.Text type="secondary">
+                                    {item.cronExpression
+                                      ? summarizeCronExpression(item.cronExpression, { workdaysLabel: '工作日' })
+                                      : '单次提醒'}
+                                    {item.nextRunAt || item.runAt ? ` · ${formatMonthDayTime(item.nextRunAt || item.runAt)}` : ''}
                                   </Typography.Text>
                                 </div>
                               ))}
@@ -358,7 +380,7 @@ export function DashboardPage() {
                         <InfoCircleOutlined className={styles['workbench-summary-tip']} />
                       </Popover>
                     </span>
-                    <span className={styles['workbench-summary-number']}>{activeSchedules.length}</span>
+                    <span className={styles['workbench-summary-number']}>{activeSchedules.length + activeReminders.length}</span>
                   </div>
             </div>
           </div>

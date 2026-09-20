@@ -52,38 +52,72 @@ def get_available_skills() -> list:
                         if content.startswith("---"):
                             parts = content.split("---", 2)
                             if len(parts) >= 3:
-                                in_triggers = False
-                                for line in parts[1].splitlines():
-                                    s = line.strip()
-                                    if s.startswith("name:"):
-                                        raw_n = s.split(":", 1)[1].strip().strip('"\'').lower()
-                                        if raw_n:
-                                            meta["aliases"].append(raw_n)
-                                        if meta["name"] == item.name:
-                                            meta["name"] = s.split(":", 1)[1].strip().strip('"\'')
-                                    elif s.startswith("zh_name:"):
-                                        meta["name"] = s.split(":", 1)[1].strip().strip('"\'')
-                                    elif s.startswith("zh_description:") or (s.startswith("description:") and not meta["description"]):
-                                        desc_val = s.split(":", 1)[1].strip().strip('"\'')
-                                        if desc_val not in ["|", ">"]:
-                                            meta["description"] = desc_val
-                                    elif s.startswith("triggers:") or s.startswith("keywords:"):
-                                        in_triggers = True
-                                        trig_val = s.split(":", 1)[1].strip().strip('[]')
-                                        parts_trig = [t.strip().strip('"\'').lower() for t in trig_val.split(",") if t.strip()]
-                                        meta["triggers"].extend(parts_trig)
-                                    elif in_triggers and s.startswith("-"):
-                                        item_trig = s.lstrip("-").strip().strip('"\'').lower()
-                                        if item_trig:
-                                            meta["triggers"].append(item_trig)
-                                    elif s and not s.startswith("-") and ":" in s:
-                                        in_triggers = False
+                                lines = parts[1].splitlines()
+                                i = 0
+                                current_block_key = None
+                                block_lines = []
+
+                                def flush_block():
+                                    nonlocal current_block_key, block_lines
+                                    if current_block_key in ("zh_description", "description") and block_lines:
+                                        val = " ".join(l.strip() for l in block_lines if l.strip())
+                                        if not meta["description"] or current_block_key == "zh_description":
+                                            meta["description"] = val
+                                    block_lines = []
+                                    current_block_key = None
+
+                                while i < len(lines):
+                                    line = lines[i]
+                                    stripped = line.strip()
+                                    if not stripped or stripped.startswith("#"):
+                                        i += 1
+                                        continue
+
+                                    if stripped.startswith("-") and current_block_key == "triggers":
+                                        trig_item = stripped.lstrip("-").strip().strip("\"'").lower()
+                                        if trig_item:
+                                            meta["triggers"].append(trig_item)
+                                        i += 1
+                                        continue
+
+                                    if (line.startswith("  ") or line.startswith("\t")) and current_block_key in ("description", "zh_description"):
+                                        block_lines.append(stripped)
+                                        i += 1
+                                        continue
+
+                                    flush_block()
+                                    if ":" in line:
+                                        k, v = line.split(":", 1)
+                                        k = k.strip()
+                                        v = v.strip().strip("\"'")
+                                        if k == "name":
+                                            if v:
+                                                meta["aliases"].append(v.lower())
+                                            if meta["name"] == item.name and v:
+                                                meta["name"] = v
+                                        elif k == "zh_name" and v:
+                                            meta["name"] = v
+                                        elif k in ("description", "zh_description"):
+                                            if v in ("|", ">"):
+                                                current_block_key = k
+                                            elif v:
+                                                if not meta["description"] or k == "zh_description":
+                                                    meta["description"] = v
+                                        elif k in ("triggers", "keywords"):
+                                            if v.startswith("[") and v.endswith("]"):
+                                                parts_trig = [t.strip().strip("\"'").lower() for t in v[1:-1].split(",") if t.strip()]
+                                                meta["triggers"].extend(parts_trig)
+                                            else:
+                                                current_block_key = "triggers"
+                                    i += 1
+                                flush_block()
+
                         if not meta["description"] or meta["description"] in ["|", ">"]:
                             body = parts[2] if len(parts) >= 3 else content
                             for line in body.splitlines():
                                 line_t = line.strip()
                                 if not line_t.startswith("#") and not line_t.startswith("---") and not line_t.startswith(">") and line_t:
-                                    meta["description"] = line_t[:90]
+                                    meta["description"] = line_t[:120]
                                     break
                 except Exception:
                     pass

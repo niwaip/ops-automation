@@ -41,6 +41,7 @@ import { ChatMediaService } from './chat-media.service';
 import { ChatOrchestratorService } from './chat-orchestrator.service';
 import { parseChatSlashCommand } from './chat-slash-command.util';
 import { UserSandboxDispatcherService } from './user-sandbox-dispatcher.service';
+import { WorkspaceArtifactService } from './workspace-artifact.service';
 
 type SseEventPayload = {
   type: string;
@@ -60,7 +61,8 @@ export class ChatController {
     private readonly chatMediaService: ChatMediaService,
     private readonly chatOrchestratorService: ChatOrchestratorService,
     private readonly chatFeedbackService: ChatFeedbackService,
-    private readonly userSandboxDispatcherService: UserSandboxDispatcherService
+    private readonly userSandboxDispatcherService: UserSandboxDispatcherService,
+    private readonly workspaceArtifactService: WorkspaceArtifactService
   ) {}
 
   private writeSse(res: Response, payload: Record<string, unknown>): void {
@@ -135,6 +137,21 @@ export class ChatController {
     if (!userId) throw new UnauthorizedException('Login required');
     const sessions = await this.chatConversationService.listSessions(userId);
     return { sessions };
+  }
+
+  @Delete('chat/sessions')
+  @ApiOperation({ summary: 'Delete all chat sessions for the current user' })
+  @ApiResponse({ status: 200, description: 'All chat sessions deleted successfully' })
+  async clearAllSessions(
+    @Req() req: Request
+  ): Promise<{ success: boolean; count: number }> {
+    const identity = await this.chatOrchestratorService.resolveAuthenticatedUser(
+      req.headers.authorization
+    );
+    const userId = this.resolveUserIdFromRequest(req, identity.userId);
+    if (!userId) throw new UnauthorizedException('Login required');
+    const count = await this.chatConversationService.clearAllSessions(userId);
+    return { success: true, count };
   }
 
   @Delete('chat/sessions/:sessionId')
@@ -815,86 +832,34 @@ export class ChatController {
   }
 
   @Get('chat/workspace-files/:userId/:fileName')
-  @Public()
   @ApiOperation({ summary: 'Serve workspace file generated in user sandbox (e.g. AI images)' })
   async serveWorkspaceFile(
     @Param('userId') userId: string,
     @Param('fileName') fileName: string,
+    @Req() req: Request,
     @Res() res: Response
   ): Promise<void> {
-    const rawUserId = String(userId || '').trim();
-    const rawFileName = String(fileName || '').trim();
-
-    // 防御路径穿越
-    if (!rawUserId || !rawFileName || rawUserId.includes('..') || rawFileName.includes('..')) {
-      throw new BadRequestException('Invalid userId or fileName parameter');
-    }
-
-    let safeFileName = path.basename(rawFileName);
-    try {
-      safeFileName = path.basename(decodeURIComponent(rawFileName));
-    } catch {
-      // ignore
-    }
-
-    const filePath = this.userSandboxDispatcherService.getWorkspaceFilePath(rawUserId, safeFileName);
-    if (!filePath || !fs.existsSync(filePath)) {
-      res.status(404).send('File not found in workspace');
-      return;
-    }
-
-    const ext = path.extname(safeFileName).toLowerCase();
-    let mime = 'application/octet-stream';
-    if (ext === '.png') mime = 'image/png';
-    else if (ext === '.jpg' || ext === '.jpeg') mime = 'image/jpeg';
-    else if (ext === '.webp') mime = 'image/webp';
-    else if (ext === '.gif') mime = 'image/gif';
-    else if (ext === '.svg') mime = 'image/svg+xml';
-    else if (ext === '.pdf') mime = 'application/pdf';
-    else if (ext === '.txt') mime = 'text/plain; charset=utf-8';
-    else if (ext === '.json') mime = 'application/json';
-
-    // 智能嗅探文件魔数（解决如生成 JPEG 但命名为 .png 的情况）
-    try {
-      const fd = fs.openSync(filePath, 'r');
-      const header = Buffer.alloc(12);
-      fs.readSync(fd, header, 0, 12, 0);
-      fs.closeSync(fd);
-      if (header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff) {
-        mime = 'image/jpeg';
-      } else if (
-        header[0] === 0x89 &&
-        header[1] === 0x50 &&
-        header[2] === 0x4e &&
-        header[3] === 0x47
-      ) {
-        mime = 'image/png';
-      } else if (
-        header[0] === 0x52 &&
-        header[1] === 0x49 &&
-        header[2] === 0x46 &&
-        header[3] === 0x46 &&
-        header[8] === 0x57 &&
-        header[9] === 0x45 &&
-        header[10] === 0x42 &&
-        header[11] === 0x50
-      ) {
-        mime = 'image/webp';
-      } else if (
-        header[0] === 0x47 &&
-        header[1] === 0x49 &&
-        header[2] === 0x46 &&
-        header[3] === 0x38
-      ) {
-        mime = 'image/gif';
+    let requestingUser = (req as any).user;
+    if (!requestingUser?.id) {
+      const authHeader = req.headers.authorization;
+      const queryToken = typeof req.query?.token === 'string' ? `Bearer ${req.query.token}` : undefined;
+      const identity = await this.chatOrchestratorService.resolveAuthenticatedUser(
+        authHeader || queryToken
+      );
+      const resolvedId = this.resolveUserIdFromRequest(req, identity.userId);
+      if (resolvedId) {
+        requestingUser = {
+          id: resolvedId,
+          role: identity.userRoles?.[0] || 'employee',
+        };
       }
-    } catch {
-      // ignore sniff error
     }
 
-    res.setHeader('Content-Type', mime);
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    const stream = fs.createReadStream(filePath);
-    stream.pipe(res);
+    await this.workspaceArtifactService.serveWorkspaceFile({
+      targetUserId: userId,
+      fileName,
+      requestingUser,
+      res,
+    });
   }
 }

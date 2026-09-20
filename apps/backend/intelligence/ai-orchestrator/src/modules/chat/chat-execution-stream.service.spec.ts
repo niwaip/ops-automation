@@ -526,4 +526,119 @@ describe('ChatExecutionStreamService', () => {
     expect(customChatCompletion).toHaveBeenCalled();
     expect(event?.content).toBe('定制模型生成的新闻摘要。');
   });
+
+  it('uses deterministic fallback summary when AI summary model returns empty content', async () => {
+    const controlPlaneClient = {
+      getExecution: jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'execution-doc-empty-ai',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+        })
+        .mockResolvedValueOnce({
+          id: 'execution-doc-empty-ai',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+          normalizedInput: { objective: '签订关于 ai模型开发的 保密协议' },
+          resultJson: {
+            execution: { status: 'success' },
+            result: {
+              resultType: 'document',
+              title: 'ConfidentialityAgreementGenerationWorkflow',
+              businessData: {
+                result: {
+                  format: 'docx',
+                  status: 'rendered',
+                  fileName: '保密合同_豆包有限公司_v1_20260920.docx',
+                  downloadUrl: 'http://example.com/download.docx',
+                },
+              },
+            },
+            presentation: { preferAiSummary: true },
+          },
+        }),
+      streamExecutionEvents: jest.fn(),
+      updateExecutionResultSummary: jest.fn(),
+    };
+    const waitingInputService = {
+      buildControlPlaneRequestOptions: jest.fn(() => ({})),
+      loadWaitingInputDetails: jest.fn(),
+      extractExecutionSemantic: jest.fn(),
+      formatWaitingInputMessage: jest.fn(),
+    };
+    const emptyChatCompletion = jest.fn().mockResolvedValue({
+      content: '',
+      finishReason: 'length',
+    });
+    const modelService = {
+      getPreferredDefaultModel: jest.fn(() => ({ id: 'model-1', name: 'model-1' })),
+      getClient: jest.fn(() => ({ chatCompletion: emptyChatCompletion })),
+      stripThinkingTags: jest.fn((content: string) => content.trim()),
+    };
+    const service = new ChatExecutionStreamService(
+      controlPlaneClient as any,
+      waitingInputService as any,
+      new ChatResultNormalizerService(),
+      modelService as any
+    );
+
+    const event = await service.buildLatestExecutionStateEvent('execution-doc-empty-ai');
+
+    expect(emptyChatCompletion).toHaveBeenCalled();
+    expect(event?.content).toContain('保密协议已成功生成');
+    expect(event?.content).toContain('保密合同_豆包有限公司_v1_20260920.docx');
+    expect(event?.content).toContain('http://example.com/download.docx');
+    expect(event?.content).not.toContain('AI 返回了空内容');
+  });
+
+  it('uses reasoningContent when content is empty and reasoningContent contains answer', async () => {
+    const controlPlaneClient = {
+      getExecution: jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'execution-reasoning-only',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+        })
+        .mockResolvedValueOnce({
+          id: 'execution-reasoning-only',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+          normalizedInput: { objective: '展示执行结果' },
+          resultJson: {
+            execution: { status: 'success' },
+            result: {
+              title: 'generic_workflow',
+              businessData: { results: [{ title: 'Item 1' }] },
+            },
+            presentation: { preferAiSummary: true },
+          },
+        }),
+      streamExecutionEvents: jest.fn(),
+      updateExecutionResultSummary: jest.fn(),
+    };
+    const waitingInputService = {
+      buildControlPlaneRequestOptions: jest.fn(() => ({})),
+      loadWaitingInputDetails: jest.fn(),
+      extractExecutionSemantic: jest.fn(),
+      formatWaitingInputMessage: jest.fn(),
+    };
+    const reasoningChatCompletion = jest.fn().mockResolvedValue({
+      content: '',
+      reasoningContent: '已获取到 Item 1 数据结果。',
+    });
+    const modelService = {
+      getPreferredDefaultModel: jest.fn(() => ({ id: 'model-1', name: 'model-1' })),
+      getClient: jest.fn(() => ({ chatCompletion: reasoningChatCompletion })),
+      stripThinkingTags: jest.fn((content: string) => content.trim()),
+    };
+    const service = new ChatExecutionStreamService(
+      controlPlaneClient as any,
+      waitingInputService as any,
+      new ChatResultNormalizerService(),
+      modelService as any
+    );
+
+    const event = await service.buildLatestExecutionStateEvent('execution-reasoning-only');
+
+    expect(reasoningChatCompletion).toHaveBeenCalled();
+    expect(event?.content).toBe('已获取到 Item 1 数据结果。');
+  });
 });

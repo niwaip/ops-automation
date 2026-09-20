@@ -7,14 +7,88 @@ and legacy format fallbacks.
 import re
 import json
 import time
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 
 from .runtime_policy import RuntimePolicy
 from .context_budget import ContextBudget
 from .telemetry import TelemetryStats
-from .tools import execute_tool, SANDBOX_TOOLS
+from .tools import execute_tool, SANDBOX_TOOLS, get_sandbox_tools
 from .llm import call_model_proxy, parse_tool_calls, clean_output, is_promising_action
+from .config import WORKSPACE_DIR, KNOWLEDGE_DIR
+
+
+CLAIM_PATTERNS = [
+    "已生成", "已经生成", "生成了", "输出了", "输出文件", "保存到", "已保存", "已经保存",
+    "保存至", "输出为", "保存在", "写入了", "创建了", "落盘至", "生成完毕", "导出为",
+    "导出了", "已导出", "保存路径", "文件已生成", "文档已生成"
+]
+
+DELIVERABLE_EXTS = {
+    ".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt", ".pdf",
+    ".html", ".csv", ".json", ".py", ".sh", ".txt", ".png", ".jpg"
+}
+
+
+def detect_missing_claimed_artifacts(text: str) -> List[str]:
+    """
+    Detects if the model claimed in text to have generated or outputted deliverable files
+    that do not physically exist on disk in WORKSPACE_DIR or KNOWLEDGE_DIR.
+    """
+    if not text:
+        return []
+
+    if not any(k in text for k in CLAIM_PATTERNS):
+        return []
+
+    fn_pattern = r'(?:《|【|“|"|\'|`|\/workspace\/|\/knowledge\/)?([a-zA-Z0-9_\-\u4e00-\u9fa5 ]+\.(?:docx?|xlsx?|pptx?|pdf|html|csv|json|py|sh|txt|png|jpg))(?:》|】|”|"|\'|`|\b)?'
+    found_names = re.findall(fn_pattern, text)
+    if not found_names:
+        return []
+
+    missing: List[str] = []
+    has_inline_html = "```html" in text.lower()
+
+    for name in found_names:
+        clean_name = name.strip()
+        if not clean_name:
+            continue
+        ext = Path(clean_name).suffix.lower()
+        if ext not in DELIVERABLE_EXTS:
+            continue
+        if has_inline_html and clean_name in ["index.html", "presentation.html"]:
+            continue
+
+        ws_file = Path(WORKSPACE_DIR) / clean_name
+        kn_file = Path(KNOWLEDGE_DIR) / clean_name
+
+        exists_and_nonempty = (
+            (ws_file.exists() and ws_file.is_file() and ws_file.stat().st_size > 0) or
+            (kn_file.exists() and kn_file.is_file() and kn_file.stat().st_size > 0)
+        )
+        if not exists_and_nonempty and clean_name not in missing:
+            missing.append(clean_name)
+
+    return missing
+
+
+def detect_passive_deflection(text: str) -> bool:
+    """
+    Detects if the model passively asked the user for URLs/context or made lazy brush-offs
+    instead of autonomously using web_search or bash to investigate.
+    """
+    if not text:
+        return False
+    deflection_patterns = [
+        r"请(?:您)?提供(?:更多|更详细|具体)?(?:的)?(?:链接|说明|上下文|信息)",
+        r"(?:如果|若)(?:你|您)指的是某个具体(?:的)?(?:开源项目|仓库|项目|工具)",
+        r"请(?:给出|发一下|提供)(?:具体)?(?:的)?(?:链接|网址|url)",
+        r"无法确定(?:具体)?指(?:的)?是哪",
+        r"请补充更多(?:的)?(?:上下文|信息|背景)",
+        r"请告知更多上下文",
+    ]
+    return any(re.search(p, text) for p in deflection_patterns)
 
 
 @dataclass
@@ -57,7 +131,7 @@ def run_agent_loop(
     """
     Executes the multi-turn ReAct tool calling loop up to max_rounds.
     """
-    active_tools = tools if tools is not None else SANDBOX_TOOLS
+    active_tools = tools if tools is not None else get_sandbox_tools()
     telemetry = TelemetryStats()
     outbound_files: List[str] = []
     executed_calls_history: List[str] = []
@@ -97,12 +171,31 @@ def run_agent_loop(
 
         # 若当轮无任何工具调用
         if not structured_calls:
+            missing_artifacts = detect_missing_claimed_artifacts(reply_text)
+            if missing_artifacts and round_idx < max_rounds - 1:
+                print(f"⚡ [Harness Artifact Assertion Guard] 检测到模型声称生成了文件 {missing_artifacts}，但物理文件并不存在，正在强制拦截并引导执行工具落盘...", flush=True)
+                messages.append({"role": "assistant", "content": reply_text})
+                messages.append({
+                    "role": "user",
+                    "content": f"【系统产物物理断言拦截】：你在回复中声称已生成或输出了文件 {', '.join(missing_artifacts)}，但沙箱物理文件系统检查发现该文件并不存在！请立刻调用 bash 或相应工具实际执行代码或脚本生成该文件并落盘保存到工作区 (/workspace/)，严禁只在文本回复中口头声称！"
+                })
+                continue
+
             if is_promising_action(reply_text) and round_idx < max_rounds - 1:
                 print("⚡ [Harness Action Nudge] 检测到模型表达了后续执行意图但遗漏了工具调用，正在提醒模型执行工具...", flush=True)
                 messages.append({"role": "assistant", "content": reply_text})
                 messages.append({
                     "role": "user",
                     "content": "你刚才提出了具体的行动方案，请立刻使用对应的工具函数执行该操作，不要仅输出口头承诺！"
+                })
+                continue
+
+            if detect_passive_deflection(reply_text) and round_idx < max_rounds - 1:
+                print("⚡ [Harness Anti-Deflection Guard] 检测到模型在技术查阅任务中消极推诿向用户索要链接/上下文，正在强制拦截并引导调用工具执行...", flush=True)
+                messages.append({"role": "assistant", "content": reply_text})
+                messages.append({
+                    "role": "user",
+                    "content": "【系统行动指令拦截】：沙箱配备了完整的联网检索（web_search）与系统终端（bash）工具。严禁向用户索取链接或推诿要求更多上下文！请立即调用 web_search 搜索该技术项目、关键词或安装方法的官方资料，或调用 bash 探测沙箱环境！"
                 })
                 continue
             break
@@ -227,7 +320,29 @@ def run_agent_loop(
     if not final_text:
         if deadline is not None and time.monotonic() >= deadline:
             raise TimeoutError(f"Task total execution deadline ({policy.total_task_timeout}s) exceeded")
-        final_text = "已为您完成沙箱智能检索与数据分析，未获取到更多额外内容。"
+        if executed_calls_history:
+            tool_names = ", ".join(sorted(set(executed_calls_history)))
+            data_clues = []
+            for msg in reversed(messages):
+                if msg.get("role") == "tool" and msg.get("content"):
+                    c_str = str(msg["content"]).strip()
+                    if c_str and not c_str.startswith("未识别"):
+                        for line in c_str.split("\n"):
+                            clean_l = line.strip()
+                            if clean_l and not clean_l.startswith("【") and len(clean_l) > 6:
+                                data_clues.append(clean_l)
+                                if len(data_clues) >= 4:
+                                    break
+                    if data_clues:
+                        break
+            clues_block = ("\n\n【沙箱已检索到的参考数据线索】:\n" + "\n".join(f"- {c}" for c in data_clues)) if data_clues else ""
+            final_text = (
+                f"⚠️ 沙箱已成功调用工具（{tool_names}）采集到相关数据，但在进行智能归纳时，"
+                f"上游推理模型连接中断或未返回最终文本。{clues_block}\n\n"
+                "💡 建议：可尝试重新提问，或在设置中切换为更稳定的模型重试。"
+            )
+        else:
+            final_text = "⚠️ 沙箱运行正常，但上游模型未返回有效回复内容（可能网络连接超时或上游服务异常）。建议重新发送或切换模型重试。"
 
     return AgentLoopResult(
         final_text=final_text,

@@ -1,54 +1,67 @@
 .modal :global(.ant-modal-content) {
   border-radius: 20px;
-  padding: 24px 28px 28px;
+  padding: 22px 26px 26px;
 }
 
-.heading {
-  display: inline-flex;
+.headingWrapper {
+  display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 18px;
-  font-weight: 650;
+  gap: 12px;
 }
 
 .headingIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: rgba(79, 70, 229, 0.12);
-  color: var(--primary-color, #4f46e5);
-  font-size: 15px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(79, 70, 229, 0.25) 100%);
+  color: #6366f1;
+  font-size: 18px;
+  flex: none;
 }
 
-.sectionHeader {
+.headingTitleCol {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 14px 0 12px;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.sectionTitle {
+.headingTitleRow {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
-  font-weight: 650;
 }
 
-.sectionBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background: rgba(79, 70, 229, 0.12);
-  color: var(--primary-color, #4f46e5);
-  font-size: 11px;
+.headingTitle {
+  font-size: 17px;
   font-weight: 700;
+  color: var(--text-primary, #1e293b);
+  line-height: 1.2;
+}
+
+.headingSub {
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+  font-weight: 400;
+}
+
+.ruleSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 18px 0 12px;
+  padding-top: 4px;
+}
+
+.ruleSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text-primary, #1e293b);
 }
 
 .sectionSub {
@@ -58,12 +71,12 @@
 }
 
 .countBadge {
-  font-size: 12px;
-  color: #64748b;
-  background: #f1f5f9;
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-weight: 500;
+  font-size: 11.5px;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-weight: 600;
 }
 
 .formLabel {
@@ -214,7 +227,7 @@
 .multipleContainer {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
   width: 100%;
 }
 
@@ -222,12 +235,31 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
+}
+
+.addTimeHeaderBtn {
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  height: 28px !important;
+  color: #6366f1 !important;
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  font-weight: 500 !important;
+}
+
+.addTimeHeaderBtn:hover {
+  color: #4f46e5 !important;
+  border-color: #6366f1 !important;
+  background: rgba(99, 102, 241, 0.06) !important;
 }
 
 .multipleScrollArea {
-  max-height: 78px;
+  max-height: 260px;
   overflow-y: auto;
-  padding-right: 4px;
+  padding-right: 2px;
 }
 
 .timeGrid {
@@ -244,6 +276,7 @@
   border-radius: 8px;
   background: #ffffff;
   border: 1px solid #e4ebf5;
+  box-sizing: border-box;
 }
 
 .timeIndex {
@@ -252,109 +285,102 @@
   font-size: 11.5px;
 }
 
-.addTime {
-  height: 42px;
-  border-style: dashed;
-  color: var(--primary-color, #4f46e5);
-}
-
-/* 同一行双列交付配置卡片 */
-.deliveryConfigRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin: 14px 0 16px;
-}
-
-.deliveryCard {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid #e7edf5;
-  background: #fafcff;
-  transition: all 0.2s ease;
-  user-select: none;
-}
-
-.deliveryCard:hover {
-  border-color: #c7d8f3;
-}
-
-.deliveryCardDisabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
-
-.deliveryCardIcon {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: rgba(79, 70, 229, 0.1);
-  color: var(--primary-color, #4f46e5);
-  font-size: 17px;
-}
-
-.wechatIcon {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
-}
-
-.deliveryCardInfo {
-  flex: 1;
-  min-width: 0;
-}
-
-.deliveryCardHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.deliveryCardTitle {
-  font-size: 13.5px;
-  font-weight: 600;
-}
-
-.deliveryTag {
-  margin: 0;
-  font-size: 11px;
-}
-
-.deliveryCardDesc {
-  font-size: 11.5px;
-  color: #8b98aa;
-  margin-top: 2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  padding: 12px 0 14px;
+  gap: 16px;
+  padding: 16px 0 16px;
   border-bottom: 1px solid #edf0f5;
+  margin-top: 4px;
+}
+
+.actionControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .timezoneInfo {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12.5px;
+  font-size: 12px;
   color: #8b98aa;
 }
 
+.wechatSyncPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 40px;
+  box-sizing: border-box;
+}
+
+.wechatSyncPill:hover {
+  background: rgba(16, 185, 129, 0.06);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.wechatSyncPill.wechatActive {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+.wechatSyncPill.wechatDisabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.wechatPillIcon {
+  font-size: 16px;
+  color: #10b981;
+}
+
+.wechatPillText {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-primary, #334155);
+  white-space: nowrap;
+}
+
+.cancelBtn {
+  height: 40px !important;
+  border-radius: 10px !important;
+  font-size: 13.5px !important;
+}
+
 .submitBtn {
-  min-width: 100px;
-  font-weight: 550;
+  min-width: 116px;
+  height: 40px !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  font-size: 13.5px !important;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+}
+
+.submitBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.42) !important;
+  background: linear-gradient(135deg, #5558eb 0%, #4338ca 100%) !important;
+}
+
+.submitBtn:active {
+  transform: translateY(0);
 }
 
 /* 我的提醒列表区域 */
@@ -517,23 +543,40 @@
   background: rgba(79, 70, 229, 0.2);
 }
 
-[data-theme='dark'] .deliveryCard {
-  background: #192231;
-  border-color: #2d3848;
+[data-theme='dark'] .headingIcon {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(79, 70, 229, 0.35) 100%);
+  color: #a5b4fc;
 }
 
-[data-theme='dark'] .deliveryCard:hover {
-  border-color: #4a5c75;
+[data-theme='dark'] .headingTitle {
+  color: #f1f5f9;
 }
 
-[data-theme='dark'] .deliveryCardIcon {
-  background: rgba(79, 70, 229, 0.25);
-  color: #9bb7ff;
+[data-theme='dark'] .headingSub {
+  color: #94a3b8;
 }
 
-[data-theme='dark'] .wechatIcon {
+[data-theme='dark'] .ruleSectionTitle {
+  color: #f1f5f9;
+}
+
+[data-theme='dark'] .wechatSyncPill {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(71, 85, 105, 0.45);
+}
+
+[data-theme='dark'] .wechatSyncPill:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(52, 211, 153, 0.5);
+}
+
+[data-theme='dark'] .wechatSyncPill.wechatActive {
   background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.6);
+}
+
+[data-theme='dark'] .wechatPillText {
+  color: #e2e8f0;
 }
 
 [data-theme='dark'] .timeItem,
@@ -578,14 +621,19 @@
     padding: 16px;
   }
   .timeGrid,
-  .scheduleFieldsRow,
-  .deliveryConfigRow {
+  .scheduleFieldsRow {
     grid-template-columns: 1fr;
     flex-direction: column;
   }
   .actions {
     align-items: flex-start;
     flex-direction: column;
+    gap: 12px;
+  }
+  .actionControls {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
   }
   .ruleCard {
     flex-wrap: wrap;

@@ -208,4 +208,39 @@ describe('ChatResultNormalizerService', () => {
     expect(formatted).toContain('[part2.pdf](https://example.com/part2.pdf) (200 KB)');
     expect(formatted).toContain('执行单 ID: exec-split');
   });
+
+  it('formats workflow document execution result with nested result.result cleanly', () => {
+    const normalized = service.normalize(
+      {
+        result: {
+          title: 'ConfidentialityAgreementGenerationWorkflow',
+          resultType: 'document',
+          businessData: {
+            result: {
+              format: 'docx',
+              status: 'rendered',
+              skillId: 'skill-123',
+              fileName: '保密合同_豆包有限公司_v1_20260920.docx',
+              templateId: 'template-123',
+              downloadUrl: 'http://example.com/download/file.docx',
+            },
+          },
+        },
+        artifacts: [
+          {
+            name: '保密合同_豆包有限公司_v1_20260920.docx',
+            type: 'file',
+            downloadUrl: 'http://example.com/download/file.docx',
+          },
+        ],
+        downloadUrl: 'http://example.com/download/file.docx',
+      },
+      { executionId: 'exec-doc-1', status: 'success' }
+    );
+
+    const formatted = service.formatForChat(normalized, 'exec-doc-1');
+    expect(formatted).toBe(
+      '文档已生成。\n- 文件名：保密合同_豆包有限公司_v1_20260920.docx\n- 格式：DOCX\n- 可直接下载查看。'
+    );
+  });
 });
