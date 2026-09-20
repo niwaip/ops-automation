@@ -109,23 +109,35 @@ def fallback_search(query: str) -> str:
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=10) as response:
             html = response.read().decode("utf-8", errors="ignore")
-            snippets = re.findall(r'<div class="b_caption">.*?<p[^>]*>(.*?)</p>', html, re.DOTALL)
-            for s in snippets:
-                clean_text = re.sub(r'<[^>]+>', '', s).strip()
-                clean_text = clean_text.replace("&nbsp;", " ").replace("&#0183;", "·")
-                if any(re.search(pat, clean_text, re.I) for pat in discard_patterns):
+            blocks = re.findall(r'<li class="b_algo"[^>]*>(.*?)</li>', html, re.DOTALL)
+            for b in blocks:
+                m_h2 = re.search(r'<h2[^>]*><a[^>]*href="([^"]+)"[^>]*>(.*?)</a></h2>', b, re.DOTALL)
+                m_p = re.search(r'<p[^>]*>(.*?)</p>', b, re.DOTALL)
+                if not m_h2:
                     continue
-                if len(clean_text) > 15:
-                    results.append(clean_text)
+                link = m_h2.group(1).strip()
+                title = re.sub(r'<[^>]+>', '', m_h2.group(2)).strip()
+                snippet = re.sub(r'<[^>]+>', '', m_p.group(1)).strip() if m_p else ""
+                title = title.replace("&nbsp;", " ").replace("&#0183;", "·")
+                snippet = snippet.replace("&nbsp;", " ").replace("&#0183;", "·")
+                if any(re.search(pat, title, re.I) or re.search(pat, snippet, re.I) for pat in discard_patterns):
+                    continue
+                if title:
+                    results.append(f"[{title}]({link})\n    {snippet}")
+                if len(results) >= 6:
+                    break
     except Exception as e:
         results.append(f"(搜索连接反馈: {e})")
 
     if results:
-        return "\n".join([f"[{i+1}] {r}" for i, r in enumerate(results[:6])])
+        return "\n\n".join(results)
     return ""
 
 def search(query: str) -> str:
-    clean_q = re.sub(r'^(搜索|查询|查找|帮我搜索|请搜索|查看|获取|search|find|lookup)\s*', '', query, flags=re.I).strip() or query
+    clean_q = re.sub(r'^(搜索|查询|查找|帮我搜索|请搜索|查看|获取|调研|了解|search|find|lookup)\s*', '', query, flags=re.I).strip() or query
+    clean_q = re.sub(r'^(近\s*\d+\s*年[的]?|近年[的]?|近几年[的]?|历年[的]?|往年[的]?|历届[的]?|最近\s*\d+\s*天[的]?|近\s*\d+\s*天[的]?|最近一个月[的]?|近一个月[的]?|最近[的]?|最新[的]?|当前[的]?|今天[的]?|今日[的]?)\s*', '', clean_q, flags=re.I).strip() or clean_q
+    clean_q = re.sub(r'\s*[是为]?(什么时候|何时|哪天|几天|多久|哪一年|具体时间|时间安排|举办时间|安排|排期|日期)[呢吗呀啊\?？]*$', '', clean_q, flags=re.I).strip() or clean_q
+    clean_q = re.sub(r'\s*[是为]?(什么|哪些|哪几样|怎么回事|是什么概念|是什么意思)[呢吗呀啊\?？]*$', '', clean_q, flags=re.I).strip() or clean_q
     # 优先调用 modsearch CLI
     res = run_modsearch_cli(clean_q)
     if res and not res.startswith("Error:"):

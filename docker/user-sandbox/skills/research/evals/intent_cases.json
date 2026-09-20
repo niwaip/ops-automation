@@ -15,7 +15,7 @@
     "description": "架构对比与选型"
   },
   {
-    "query": "查下关于它的评价",
+    "query": "调查关于它的真实评价",
     "should_trigger": true,
     "description": "口语化口碑调研"
   },
@@ -38,5 +38,25 @@
     "query": "帮我做个汇报ppt，主题是AI Agent",
     "should_trigger": false,
     "description": "近邻抗干扰：PPT制作"
+  },
+  {
+    "query": "查看当前工作区有哪些文件",
+    "should_trigger": false,
+    "description": "日常文件查看"
+  },
+  {
+    "query": "检查一下这行代码报错原因",
+    "should_trigger": false,
+    "description": "日常代码检查"
+  },
+  {
+    "query": "查一下这个函数的用法",
+    "should_trigger": false,
+    "description": "日常函数问询"
+  },
+  {
+    "query": "排查一下网络接口状态",
+    "should_trigger": false,
+    "description": "日常状态查看"
   }
 ]

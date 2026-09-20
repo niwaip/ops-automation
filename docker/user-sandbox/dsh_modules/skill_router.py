@@ -26,6 +26,8 @@ class SkillRoutingResult:
     is_office_intent: bool = False
     is_research_intent: bool = False
     is_inspect_intent: bool = False
+    is_guide_intent: bool = False
+    is_search_intent: bool = False
     affinity_score: float = 0.0
     matched_reasons: List[str] = field(default_factory=list)
 
@@ -49,11 +51,20 @@ KNOWLEDGE_PATTERNS = [
     "个人空间", "知识库", "知识空间", "我的个人文档", "personal knowledge"
 ]
 
+GUIDE_PATTERNS = [
+    "安装方法", "安装教程", "安装步骤", "安装指南", "怎么安装", "如何安装",
+    "部署方法", "部署教程", "部署指南", "怎么部署", "如何部署",
+    "使用教程", "使用方法", "使用指南", "使用说明", "怎么使用", "如何使用", "怎么用",
+    "配置指南", "配置方法", "配置教程", "怎么配置", "如何配置",
+    "实现原理", "工作原理", "架构原理", "架构设计", "系统架构",
+    "命令说明", "参数说明", "写法说明", "语法说明", "是什么", "有什么用"
+]
+
 
 def clean_semantic_query(q: str) -> str:
     """Strips polite prefixes, search verbs, and pronouns."""
     cleaned = re.sub(
-        r'^(帮我|请|给我|带我|麻烦|协助)?\s*(查一下|查询|搜索|查找|看下|看看|检索|了解一下|获取|调研|调查|分析一下|评测一下|研究一下|调用|查看|search|find|lookup|research|investigate)\s*',
+        r'^(帮我|请|给我|带我|麻烦|协助)?\s*(查一下|查下|查询|搜索|查找|看下|看一下|看看|检索|了解一下|获取|调研|调查|分析一下|分析|评测一下|评测|研究一下|调用|查看|search|find|lookup|research|investigate)\s*',
         '',
         q,
         flags=re.I
@@ -64,7 +75,89 @@ def clean_semantic_query(q: str) -> str:
         cleaned,
         flags=re.I
     ).strip()
+    cleaned = re.sub(
+        r'^(他|她|它|其|这个|该|对方)[的]?\s*',
+        '',
+        cleaned,
+        flags=re.I
+    ).strip()
     return cleaned or q
+
+
+def extract_entity_from_history(history: Optional[List[Dict[str, Any]]]) -> Optional[str]:
+    """Extracts the core subject entity from recent conversation history."""
+    if not history:
+        return None
+    for h in reversed(history):
+        if not isinstance(h, dict):
+            continue
+        c = str(h.get("content") or "").strip()
+        if not c:
+            continue
+        # 1. 匹配 GitHub repo 或 URL
+        gh = re.search(r'github\.com/([a-zA-Z0-9_\-\.]+/[a-zA-Z0-9_\-\.]+)', c)
+        if gh:
+            return gh.group(1).rstrip('.')
+        url = re.search(r'https?://[^\s)\]>]+', c)
+        if url:
+            return url.group(0)
+        # 2. 匹配加粗或代码块实体如 **[xxx]** 或 `xxx`
+        bold = re.search(r'\*\*[`]?([a-zA-Z0-9_\-\./\s]{2,40})[`]?\*\*', c)
+        if bold:
+            ent = bold.group(1).strip()
+            if ent and not any(k in ent for k in ["项目", "分析", "总结", "方案", "代码", "文件"]):
+                return ent
+        # 3. 若为用户输入，提取剥离动词后的主体
+        if h.get("role") == "user":
+            clean_u = re.sub(
+                r'^(帮我|请|给我|带我|麻烦)?\s*(查一下|查下|查询|搜索|查找|看下|看一下|看看|检索|了解一下|获取|调研|调查|分析一下|分析|评测一下|评测|研究一下|调用|查看|search|find|lookup|research)\s*',
+                '',
+                c,
+                flags=re.I
+            ).strip()
+            clean_u = re.sub(
+                r'^(关于他|关于她|关于它|关于其|关于这个|关于该|关于|有关|针对其|针对这个|针对|对于|对于这个)[的]?\s*',
+                '',
+                clean_u,
+                flags=re.I
+            ).strip()
+            clean_u = re.sub(
+                r'^(这个项目|这个工具|这个库|这个框架|该项目|该工具|该库|该框架)[，,\s]*',
+                '',
+                clean_u
+            ).strip()
+            clean_u = re.sub(r'(并且进行分析|并进行分析|进行分析|做个分析|分析一下|分析|怎么样|评测)', '', clean_u).strip()
+            if len(clean_u) >= 2:
+                return clean_u
+    return None
+
+
+def resolve_contextual_query(q: str, history: Optional[List[Dict[str, Any]]]) -> str:
+    """Resolves pronouns or incomplete queries using conversation history entity."""
+    if not history:
+        return q
+    cleaned = re.sub(
+        r'^(帮我|请|给我|带我|麻烦|协助)?\s*(查一下|查下|查询|搜索|查找|看下|看一下|看看|检索|了解一下|获取|调研|调查|分析一下|分析|评测一下|评测|研究一下|调用|查看|search|find|lookup|research|investigate)\s*',
+        '',
+        q,
+        flags=re.I
+    ).strip()
+    has_pronoun = bool(re.search(
+        r'^(关于他|关于她|关于它|关于其|关于这个|关于该|关于|针对其|针对这个|针对|对于|对于这个|他|她|它|其|这个|该|对方)[的]?',
+        cleaned,
+        re.I
+    ))
+    clean_topic = re.sub(
+        r'^(关于他|关于她|关于它|关于其|关于这个|关于该|关于|针对其|针对这个|针对|对于|对于这个|他|她|它|其|这个|该|对方)[的]?\s*',
+        '',
+        cleaned,
+        flags=re.I
+    ).strip()
+    if has_pronoun or len(clean_topic) <= 6:
+        ent = extract_entity_from_history(history)
+        if ent:
+            return f"{ent} {clean_topic}".strip() if clean_topic else ent
+    return q
 
 
 def extract_query_features(text: str) -> List[str]:
@@ -184,7 +277,8 @@ class SkillRouter:
         cls,
         prompt: str,
         existing_history: Optional[List[Dict[str, Any]]] = None,
-        available_skills: Optional[List[Dict[str, Any]]] = None
+        available_skills: Optional[List[Dict[str, Any]]] = None,
+        allow_research: bool = False
     ) -> SkillRoutingResult:
         """
         Determines skill and intent for a given prompt via semantic affinity matching.
@@ -204,11 +298,29 @@ class SkillRouter:
         # 2. 探测文件外发意图
         result.is_send_intent = any(k in lower_query for k in SEND_PATTERNS)
 
-        # 3. 探测动作指令（查看、检查、检索、查阅、排查、探查等主动探查行为）
-        INSPECT_ACTION_PATTERNS = ["查看", "检查", "检索", "查阅", "排查", "查一下", "查下", "探查", "搜索", "搜下", "搜一下", "诊断"]
-        result.is_inspect_intent = any(k in lower_query for k in INSPECT_ACTION_PATTERNS)
+        # 3. 探测动作指令与知识/教程问答模态消歧
+        result.is_guide_intent = any(k in lower_query for k in GUIDE_PATTERNS)
 
-        # 4. 显式 Slash 命令优先匹配（确定性 100%）
+        # 4. 探测全网实时检索与最新动态意图（开放域外部资讯/开源生态/最新发布/会议展会时间，而非本地工作区）
+        SEARCH_CUES = [
+            "最新的", "最新", "最近", "近期", "当前最", "最热门", "热门", "新出", "最新发布",
+            "外部生态", "开源社区", "社区生态", "网上", "全网", "市场动态",
+            "近年", "近几年", "历年", "历届", "举办时间", "什么时候举办", "什么时候开", "召开时间"
+        ]
+        LOCAL_DISAMBIGUATION = [
+            "工作区", "当前目录", "本地文件", "已上传", "生成的", "刚才生成", "历史", "附件"
+        ]
+        is_asking_local = any(loc in lower_query for loc in LOCAL_DISAMBIGUATION)
+        result.is_search_intent = any(cue in lower_query for cue in SEARCH_CUES) and not is_asking_local
+
+        # 仅当不是知识/教程问答且不是开放域最新信息检索时，动词才属于本地系统环境的探查意图
+        INSPECT_ACTION_PATTERNS = ["查看", "检查", "检索", "查阅", "排查", "查一下", "查下", "探查", "搜索", "搜下", "搜一下", "诊断"]
+        if result.is_guide_intent or result.is_search_intent:
+            result.is_inspect_intent = False
+        else:
+            result.is_inspect_intent = any(k in lower_query for k in INSPECT_ACTION_PATTERNS)
+
+        # 5. 显式 Slash 命令优先匹配（确定性 100%）
         if lower_query.startswith("/"):
             parts = lower_query.split()
             cmd = parts[0][1:]
@@ -244,10 +356,33 @@ class SkillRouter:
                 matches = matcher.match(effective_query)
                 if matches:
                     top_id, top_score, top_reasons = matches[0]
-                    if top_score >= cls.AFFINITY_THRESHOLD:
-                        result.skill_id = top_id
-                        result.affinity_score = top_score
-                        result.matched_reasons = top_reasons
+                    # 门禁控制：深度调研 (research) 技能必须有明确指示才启用
+                    # 1) allow_research 为 True（前端勾选了调研开关）
+                    # 2) 或者包含明确的强调研意图短语（如深度调研、技术调研、竞品调研、技术选型对比等）
+                    # 简单的查看、日常问询、代码检查等严禁触发 research
+                    if top_id == "research":
+                        EXPLICIT_RESEARCH_PATTERNS = [
+                            "深度调研", "技术调研", "竞品调研", "架构选型对比", "选型对比",
+                            "技术选型", "最新动态调研", "背调", "社区口碑调研", "深度调查",
+                            "调研", "调查", "真实评价与争议", "近30天真实评价"
+                        ]
+                        is_research_permitted = (
+                            allow_research or any(p in lower_query for p in EXPLICIT_RESEARCH_PATTERNS)
+                        )
+                        CASUAL_INSPECT_PATTERNS = [
+                            "查看当前", "查看文件", "查看目录", "查看代码", "查看配置", "查看版本", "看下", "看代码",
+                            "检查代码", "检查一下", "检查报错", "查一下用法", "查下报错", "查下用法", "怎么写", "如何实现", "语法"
+                        ]
+                        is_casual = any(p in lower_query for p in CASUAL_INSPECT_PATTERNS)
+                        if is_research_permitted and not is_casual and top_score >= cls.AFFINITY_THRESHOLD:
+                            result.skill_id = top_id
+                            result.affinity_score = top_score
+                            result.matched_reasons = top_reasons
+                    else:
+                        if top_score >= cls.AFFINITY_THRESHOLD:
+                            result.skill_id = top_id
+                            result.affinity_score = top_score
+                            result.matched_reasons = top_reasons
 
         # 5. 上下文追问/确认探测（如前轮涉及 PDF 制作，本轮用户仅回复 "1" 或 "确认生成"）
         if not result.skill_id and existing_history and lower_query in ["1", "1.", "一是", "第一个", "确认", "生成", "导出"]:
@@ -275,6 +410,23 @@ class SkillRouter:
                     result.skill_id = "web-prototype"
                     result.is_design_intent = True
 
+        # 6. 调研开关显式优先提权（用户在前端主动勾选了调研开关：只要开启了调研开关，就是优先启用）
+        if allow_research and not result.skill_id:
+            CONFLICT_INTENTS = [
+                "做ppt", "生成ppt", "制作ppt", "做个ppt", "ppt", "slides",
+                "做个表", "生成excel", "导出excel", "xlsx",
+                "生成word", "做个合同", "生成合同", "docx",
+                "生成pdf", "导出pdf",
+                "查看当前工作区", "查看工作区", "查看当前目录", "检查代码报错", "代码报错"
+            ]
+            is_conflicting = any(c in lower_query for c in CONFLICT_INTENTS)
+            if not is_conflicting:
+                result.skill_id = "research"
+                result.affinity_score = 18.0
+                result.matched_reasons = ["toggle:allow_research_prioritized(+18.0)"]
+                result.is_research_intent = True
+                result.is_inspect_intent = False
+
         # 7. 标记意图分类与读取技能内容
         if result.skill_id:
             if result.skill_id in ["guizang-ppt", "pptx", "slides", "html-ppt"]:
@@ -288,10 +440,22 @@ class SkillRouter:
                 result.is_office_intent = True
             elif result.skill_id == "research":
                 result.is_research_intent = True
+                result.is_inspect_intent = False
 
             reasons_info = f" (亲和度得分: {result.affinity_score:.1f})" if result.affinity_score > 0 else ""
             print(f"🎯 [Skill Router] 命中意图规范: {result.skill_id}{reasons_info}，正在注入专业规范...", flush=True)
             result.skill_context = read_skill(result.skill_id)
 
+        if result.is_research_intent or result.skill_id == "research" or allow_research:
+            result.is_inspect_intent = False
+
         return result
+
+    @classmethod
+    def extract_entity_from_history(cls, history: Optional[List[Dict[str, Any]]]) -> Optional[str]:
+        return extract_entity_from_history(history)
+
+    @classmethod
+    def resolve_contextual_query(cls, q: str, history: Optional[List[Dict[str, Any]]]) -> str:
+        return resolve_contextual_query(q, history)
 

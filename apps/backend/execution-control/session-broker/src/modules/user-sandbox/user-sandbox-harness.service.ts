@@ -164,6 +164,7 @@ export class UserSandboxHarnessService {
     prompt: string,
     options?: {
       webSearch?: boolean;
+      research?: boolean;
       model?: string;
       modelDisplayName?: string;
       sessionId?: string;
@@ -197,6 +198,9 @@ export class UserSandboxHarnessService {
     }
     if (options?.webSearch) {
       dshCmd.push('--web-search');
+    }
+    if (options?.research) {
+      dshCmd.push('--research');
     }
     if (options?.model) {
       dshCmd.push('--model', options.model);

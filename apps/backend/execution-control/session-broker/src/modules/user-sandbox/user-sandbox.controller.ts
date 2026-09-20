@@ -150,6 +150,7 @@ export class UserSandboxController {
     }
     return this.userSandboxService.runHarness(dto.userId, dto.prompt, {
       webSearch: dto.webSearch,
+      research: dto.research,
       model: dto.model,
       sessionId: dto.sessionId,
       history: dto.history,
@@ -193,6 +194,7 @@ export class UserSandboxController {
     try {
       const result = await this.userSandboxService.runHarness(dto.userId, dto.prompt, {
         webSearch: dto.webSearch,
+        research: dto.research,
         model: dto.model,
         modelDisplayName: dto.modelDisplayName,
         sessionId: dto.sessionId,

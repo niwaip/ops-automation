@@ -83,6 +83,12 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
           summaryText = `${summaryText}\n\n${imgMatches.join('\n\n')}`;
         }
       }
+      if (plainContent.includes('```html') && !summaryText.includes('```html')) {
+        const htmlMatch = plainContent.match(/```html[\s\S]*?```/);
+        if (htmlMatch) {
+          summaryText = `${summaryText}\n\n${htmlMatch[0]}`;
+        }
+      }
       const dto: SaveTextNoteDto = {
         title: defaultTitle,
         content: summaryText,
@@ -95,7 +101,7 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
         executionId: executionId || undefined,
         skillUsed: message.metadata?.skillUsed,
         aiModel: (message.metadata as any)?.aiModel || (message.metadata as any)?.modelId,
-        rawResultData: rawResult,
+        rawResultData: rawResult || (plainContent !== summaryText ? { fullContent: plainContent } : undefined),
       };
       return await workspaceApi.saveTextNote(dto);
     },
@@ -106,12 +112,12 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
         void queryClient.invalidateQueries('workspace-nodes');
 
         const targetDesc = isTaskMode
-          ? '工作任务成果已保存至个人空间「工作任务成果」目录！'
-          : '文档已保存至个人空间「沙盒保存内容」目录！';
+          ? '工作任务成果已创建专属文件夹并归档！'
+          : '已在个人空间「沙盒保存内容」下创建专属文件夹！';
 
         void toast.success(
           <span>
-            {targetDesc} AI 正在后台自动提炼与归档。
+            {targetDesc} AI 正在后台自动提炼总结并归集所有生成资产。
             <Button
               type="link"
               size="small"
@@ -133,7 +139,7 @@ export function SaveToWorkspaceAction({ message, userQuery }: SaveToWorkspaceAct
   // 已保存状态
   if (savedNodeId) {
     return (
-      <Tooltip title="已保存至个人空间（AI 后台提炼中，点击前往资料空间查看）">
+      <Tooltip title="已归档为专属文件夹（AI 后台智能提炼与资产归集中，点击前往资料空间查看）">
         <Button
           type="text"
           size="small"

@@ -7,6 +7,7 @@ import {
   UserOrgBackupHandler,
   TaskPolicyBackupHandler,
   WorkspaceBackupHandler,
+  DocumentTemplateBackupHandler,
 } from '@ops/system-backup';
 
 describe('SystemBackupService', () => {
@@ -18,6 +19,7 @@ describe('SystemBackupService', () => {
   let userOrgHandler: jest.Mocked<UserOrgBackupHandler>;
   let taskPolicyHandler: jest.Mocked<TaskPolicyBackupHandler>;
   let workspaceHandler: jest.Mocked<WorkspaceBackupHandler>;
+  let documentTemplateHandler: jest.Mocked<DocumentTemplateBackupHandler>;
 
   beforeEach(() => {
     aiModelHandler = {
@@ -197,6 +199,29 @@ describe('SystemBackupService', () => {
       import: jest.fn().mockResolvedValue({ created: 0, updated: 1, skipped: 0 }),
     } as any;
 
+    documentTemplateHandler = {
+      count: jest.fn().mockResolvedValue(3),
+      export: jest.fn().mockResolvedValue({
+        templates: [
+          {
+            id: 'dt-1',
+            fileName: '保密协议.docx',
+            format: 'docx',
+            fileBase64: 'UEsDBBQAAAA...',
+          },
+        ],
+        skills: [],
+      }),
+      preview: jest.fn().mockResolvedValue({
+        moduleKey: 'documentTemplates',
+        totalInBackup: 1,
+        newCount: 0,
+        conflictCount: 1,
+        items: [{ key: 'dt-1', name: '文档模版: 保密协议.docx', existsInTarget: true, action: 'update' }],
+      }),
+      import: jest.fn().mockResolvedValue({ created: 0, updated: 1, skipped: 0 }),
+    } as any;
+
     service = new SystemBackupService(
       aiModelHandler,
       skillWorkflowHandler,
@@ -204,13 +229,14 @@ describe('SystemBackupService', () => {
       templateFlowHandler,
       userOrgHandler,
       taskPolicyHandler,
-      workspaceHandler
+      workspaceHandler,
+      documentTemplateHandler
     );
   });
 
   it('should summarize asset counts across all modules', async () => {
     const summary = await service.getAssetSummary();
-    expect(summary.totalAssets).toBe(41);
+    expect(summary.totalAssets).toBe(44);
     expect(summary.counts.aiModels).toBe(6);
     expect(summary.counts.skills).toBe(10);
     expect(summary.counts.temporalWorkflows).toBe(4);
@@ -220,6 +246,7 @@ describe('SystemBackupService', () => {
     expect(summary.counts.userOrganizations).toBe(8);
     expect(summary.counts.taskPolicies).toBe(2);
     expect(summary.counts.workspaces).toBe(1);
+    expect(summary.counts.documentTemplates).toBe(3);
   });
 
   it('should export all requested modules with manifest and checksum', async () => {
@@ -229,6 +256,7 @@ describe('SystemBackupService', () => {
     expect(archive.modules.aiModels?.models).toHaveLength(1);
     expect(archive.modules.skills?.skillConfigs).toHaveLength(1);
     expect(archive.modules.temporalWorkflows?.temporalWorkflows).toHaveLength(1);
+    expect(archive.modules.documentTemplates?.templates).toHaveLength(1);
   });
 
   it('should generate preview and conflict analysis for uploaded archive', async () => {

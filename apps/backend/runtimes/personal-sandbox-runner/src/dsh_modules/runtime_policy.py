@@ -45,10 +45,18 @@ class RuntimePolicy:
             timezone=os.getenv("TZ", "Asia/Shanghai")
         )
 
-    def determine_max_rounds(self, prompt: str, is_design_or_ppt: bool = False, is_search: bool = False) -> int:
+    def determine_max_rounds(
+        self,
+        prompt: str,
+        is_design_or_ppt: bool = False,
+        is_search: bool = False,
+        is_guide: bool = False
+    ) -> int:
         """
         Dynamically adjusts maximum execution rounds based on task complexity.
         """
+        if is_guide:
+            return 2
         if is_design_or_ppt:
             return 4
         lower_prompt = prompt.lower()

@@ -111,17 +111,22 @@ def cmd_run(args):
     history_file, existing_history = load_session_history(session_id)
 
     # 1. 意图与技能解析 (精确规则 + Slash 命令)
-    skill_res = SkillRouter.route(prompt, existing_history)
+    allow_research = bool(getattr(args, "research", False))
+    skill_res = SkillRouter.route(prompt, existing_history, allow_research=allow_research)
     knowledge_context = scan_personal_knowledge() if skill_res.is_knowledge_intent else ""
 
     # 2. 联网前置检索
-    is_search_intent = bool(args.web_search) or prompt.strip().startswith("/search ")
+    is_search_intent = bool(args.web_search) or prompt.strip().startswith("/search ") or skill_res.is_search_intent
     search_context = ""
     if is_search_intent:
         if task_deadline is not None and time.monotonic() >= task_deadline:
             raise TimeoutError("Task total execution deadline exceeded before pre-search")
-        print(f"🔍 [Harness Web Search] 正在检索实时数据: '{prompt}'...", flush=True)
-        search_context = perform_web_search(prompt, deadline=task_deadline)
+        search_prompt = SkillRouter.resolve_contextual_query(prompt, existing_history)
+        if search_prompt != prompt:
+            print(f"🔍 [Harness Web Search] 正在检索实时数据: '{search_prompt}' (根据上下文消歧指代: '{prompt}')...", flush=True)
+        else:
+            print(f"🔍 [Harness Web Search] 正在检索实时数据: '{prompt}'...", flush=True)
+        search_context = perform_web_search(search_prompt, deadline=task_deadline)
         if task_deadline is not None and time.monotonic() >= task_deadline:
             raise TimeoutError("Task total execution deadline exceeded during pre-search")
         if search_context:
@@ -175,6 +180,7 @@ def cmd_run(args):
         is_office_intent=skill_res.is_office_intent,
         is_research_intent=skill_res.is_research_intent,
         is_inspect_intent=skill_res.is_inspect_intent,
+        is_guide_intent=skill_res.is_guide_intent,
         existing_history=existing_history,
         max_skill_chars=policy.max_skill_chars,
         timestamp_str=get_current_timestamp_str(policy.timezone)
@@ -185,11 +191,19 @@ def cmd_run(args):
     max_rounds = policy.determine_max_rounds(
         prompt,
         is_design_or_ppt=(skill_res.is_ppt_intent or skill_res.is_design_intent),
-        is_search=is_search_intent
+        is_search=is_search_intent,
+        is_guide=skill_res.is_guide_intent
     )
 
     try:
-        loop_res = run_agent_loop(messages, model_name, policy, max_rounds, deadline=task_deadline)
+        loop_res = run_agent_loop(
+            messages,
+            model_name,
+            policy,
+            max_rounds,
+            deadline=task_deadline,
+            is_guide_intent=skill_res.is_guide_intent
+        )
 
         # 6. 产物导出与落盘 (HTML/PPT 及各种文档交付物)
         final_text, _ = ArtifactExporter.export_html(

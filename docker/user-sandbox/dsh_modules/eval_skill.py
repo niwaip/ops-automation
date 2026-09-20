@@ -43,6 +43,7 @@ DEFAULT_CORE_EVALS: Dict[str, List[Dict[str, Any]]] = {
         {"query": "调研关于他qwen 3.8 27b 最近30天的", "should_trigger": True, "description": "带时间约束的技术调研"},
         {"query": "深度调研 LangGraph 与 AutoGen 的架构差异与选型建议", "should_trigger": True, "description": "架构对比与选型"},
         {"query": "查下关于它的评价", "should_trigger": True, "description": "口语化口碑调研"},
+        {"query": "查看他的评价", "should_trigger": True, "description": "口语代词口碑评价"},
         {"query": "做个竞品调研报告，分析当前市场主流方案", "should_trigger": True, "description": "竞品调研报告"},
         {"query": "今天北京天气怎么样？", "should_trigger": False, "description": "普通天气事实查询"},
         {"query": "把这段话换成英文并解释语法", "should_trigger": False, "description": "通用润色翻译"},

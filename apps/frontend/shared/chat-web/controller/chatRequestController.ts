@@ -11,6 +11,7 @@ interface BuildChatRequestParams<TFile = unknown> {
   thinking?: boolean;
   reasoning?: boolean;
   webSearch?: boolean;
+  research?: boolean;
   files?: TFile[];
 }
 
@@ -27,6 +28,7 @@ export const buildChatRequest = <TFile = unknown>({
   thinking,
   reasoning,
   webSearch,
+  research,
   files,
 }: BuildChatRequestParams<TFile>) => ({
   message,
@@ -43,6 +45,7 @@ export const buildChatRequest = <TFile = unknown>({
     thinking,
     reasoning,
     webSearch,
+    research,
   },
 });
 

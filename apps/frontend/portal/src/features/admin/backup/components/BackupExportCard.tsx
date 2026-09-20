@@ -18,6 +18,7 @@ import {
   ApartmentOutlined,
   BranchesOutlined,
   FileTextOutlined,
+  FileWordOutlined,
   OrderedListOutlined,
   TeamOutlined,
   AuditOutlined,
@@ -62,6 +63,12 @@ const MODULE_OPTIONS: ModuleOption[] = [
     label: '能力发布中心版本',
     desc: '包含已发布版本、源码快照、LLM 生成代码构建产物',
     icon: <BranchesOutlined style={{ color: '#722ed1' }} />,
+  },
+  {
+    key: 'documentTemplates',
+    label: 'Carbone 文档模版与渲染资产',
+    desc: '包含 Office 模版源文件（Base64 封装）、语义标注规则、变量定义与 AI 技能配置',
+    icon: <FileWordOutlined style={{ color: '#13c2c2' }} />,
   },
   {
     key: 'browserTemplates',

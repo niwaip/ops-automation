@@ -19,6 +19,7 @@ import {
   ApartmentOutlined,
   BranchesOutlined,
   FileTextOutlined,
+  FileWordOutlined,
   AuditOutlined,
   FolderOpenOutlined,
 } from '@ant-design/icons';
@@ -44,6 +45,7 @@ export const SystemBackupAdminPage: React.FC = () => {
     queryClient.invalidateQueries(['models']);
     queryClient.invalidateQueries(['skills']);
     queryClient.invalidateQueries(['temporal-workflows']);
+    queryClient.invalidateQueries(['carbone-templates']);
   };
 
   return (
@@ -159,6 +161,22 @@ export const SystemBackupAdminPage: React.FC = () => {
               value={summary?.counts?.capabilityReleases ?? 0}
               loading={loadingSummary}
               valueStyle={{ fontWeight: 600, fontSize: 20 }}
+            />
+          </Card>
+        </Col>
+
+        <Col xs={12} sm={8} md={6} lg={3}>
+          <Card size="small" style={{ borderRadius: 10 }}>
+            <Statistic
+              title={
+                <Space size={4}>
+                  <FileWordOutlined style={{ color: '#13c2c2' }} />
+                  <Text type="secondary" style={{ fontSize: 12 }}>文档模版资产</Text>
+                </Space>
+              }
+              value={summary?.counts?.documentTemplates ?? 0}
+              loading={loadingSummary}
+              valueStyle={{ fontWeight: 600, color: '#13c2c2', fontSize: 20 }}
             />
           </Card>
         </Col>

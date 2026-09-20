@@ -7,12 +7,16 @@ import { WorkspaceContentIndexerService } from './workspace-content-indexer.serv
 import { WorkspaceDigestService } from './workspace-digest.service';
 import { WorkspaceNoteService } from './workspace-note.service';
 import { WorkspaceProcessArchiveService } from './workspace-process-archive.service';
+import { WorkspaceArtifactSyncHelper } from './workspace-artifact-sync.helper';
+import { WorkspaceNoteAiHelper } from './workspace-note-ai.helper';
 
 @Module({
   controllers: [WorkspaceController],
   providers: [
     WorkspaceService,
     WorkspaceNoteService,
+    WorkspaceArtifactSyncHelper,
+    WorkspaceNoteAiHelper,
     WorkspaceProcessArchiveService,
     WorkspaceContentIndexerService,
     WorkspaceDigestService,
@@ -25,6 +29,8 @@ import { WorkspaceProcessArchiveService } from './workspace-process-archive.serv
   exports: [
     WorkspaceService,
     WorkspaceNoteService,
+    WorkspaceArtifactSyncHelper,
+    WorkspaceNoteAiHelper,
     WorkspaceProcessArchiveService,
     WorkspaceContentIndexerService,
     WorkspaceDigestService,

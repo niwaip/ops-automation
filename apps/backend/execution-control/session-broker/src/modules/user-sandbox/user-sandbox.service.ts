@@ -200,6 +200,7 @@ export class UserSandboxService implements OnModuleInit, OnModuleDestroy {
     prompt: string,
     options?: {
       webSearch?: boolean;
+      research?: boolean;
       model?: string;
       modelDisplayName?: string;
       sessionId?: string;

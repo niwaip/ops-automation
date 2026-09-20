@@ -29,6 +29,7 @@ interface UseChatPageActionsOptions {
   draft: string;
   enableThinking: boolean;
   enableWebSearch?: boolean;
+  enableResearch?: boolean;
   ensureSession: (now: string) => ChatSession;
   isStreaming: boolean;
   nativeReasoningEnabled: boolean;
@@ -59,6 +60,7 @@ export function useChatPageActions({
   draft,
   enableThinking,
   enableWebSearch = false,
+  enableResearch = false,
   ensureSession,
   isStreaming,
   nativeReasoningEnabled,
@@ -322,7 +324,8 @@ export function useChatPageActions({
       mode: chatMode,
       thinking: enableThinking,
       reasoning: nativeReasoningEnabled,
-      webSearch: enableWebSearch,
+      webSearch: chatMode === 'task' ? enableWebSearch : true,
+      research: chatMode === 'chat' ? Boolean(enableResearch) : false,
     });
 
     if (pendingExecutionId) {
@@ -335,6 +338,7 @@ export function useChatPageActions({
     chatMode,
     clearError,
     draft,
+    enableResearch,
     enableThinking,
     enableWebSearch,
     ensureSession,
@@ -484,7 +488,8 @@ export function useChatPageActions({
         mode: chatMode,
         thinking: enableThinking,
         reasoning: nativeReasoningEnabled,
-        webSearch: enableWebSearch,
+        webSearch: chatMode === 'task' ? enableWebSearch : true,
+        research: chatMode === 'chat' ? Boolean(enableResearch) : false,
       });
 
       void runAssistantRequest(selectedSession, request, assistantMessageId);
@@ -493,6 +498,7 @@ export function useChatPageActions({
       activeMessages,
       chatMode,
       clearError,
+      enableResearch,
       enableThinking,
       enableWebSearch,
       isStreaming,

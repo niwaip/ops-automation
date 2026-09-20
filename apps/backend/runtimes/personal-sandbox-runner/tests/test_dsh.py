@@ -979,6 +979,54 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertIn("freshness='month'", user_turn)
         self.assertIn("deep_research.py", user_turn)
 
+        # 5. 简单的日常查看与代码问询：严禁触发 research
+        res_inspect1 = SkillRouter.route("查看当前工作区有哪些文件")
+        self.assertNotEqual(res_inspect1.skill_id, "research")
+        self.assertFalse(res_inspect1.is_research_intent)
+
+        res_inspect2 = SkillRouter.route("帮我检查一下这行代码报错原因")
+        self.assertNotEqual(res_inspect2.skill_id, "research")
+        self.assertFalse(res_inspect2.is_research_intent)
+
+        res_inspect3 = SkillRouter.route("查一下这个函数的用法")
+        self.assertNotEqual(res_inspect3.skill_id, "research")
+        self.assertFalse(res_inspect3.is_research_intent)
+
+        # 6. 普通查看指令在 prompt 中不应注入强制外部网络调研诱导
+        user_turn_inspect = build_user_turn(
+            prompt="查看当前工作区有哪些文件",
+            is_inspect_intent=True,
+            is_research_intent=False
+        )
+        self.assertNotIn("deep_research.py", user_turn_inspect)
+        self.assertIn("未明确指示深度调研时，切勿发起冗长外部网络调研", user_turn_inspect)
+
+        # 7. 用户开启调研开关 (allow_research=True)：优先启用深度调研，代词口语化追问精准消歧
+        history_last30days = [
+            {"role": "user", "content": "查看这个项目 并且进行分析 https://github.com/mvanhorn/last30days-skill"},
+            {"role": "assistant", "content": "对开源项目 **[`mvanhorn/last30days-skill`](https://github.com/mvanhorn/last30days-skill)** 进行深入拆解..."}
+        ]
+        res_toggle_oral = SkillRouter.route("查看他的评价", history_last30days, allow_research=True)
+        self.assertEqual(res_toggle_oral.skill_id, "research")
+        self.assertTrue(res_toggle_oral.is_research_intent)
+        self.assertFalse(res_toggle_oral.is_inspect_intent)
+
+        # 验证实体消歧
+        resolved_q = SkillRouter.resolve_contextual_query("查看他的评价", history_last30days)
+        self.assertIn("mvanhorn/last30days-skill", resolved_q)
+        self.assertIn("评价", resolved_q)
+
+        # 验证 Prompt 注入多轮实体指代消歧提示，且绝不注入反向抑制 prompt
+        user_turn_research_oral = build_user_turn(
+            prompt="查看他的评价",
+            is_research_intent=res_toggle_oral.is_research_intent,
+            is_inspect_intent=res_toggle_oral.is_inspect_intent,
+            existing_history=history_last30days
+        )
+        self.assertIn("【多轮实体指代消歧】", user_turn_research_oral)
+        self.assertIn("mvanhorn/last30days-skill", user_turn_research_oral)
+        self.assertNotIn("未明确指示深度调研时，切勿发起冗长外部网络调研", user_turn_research_oral)
+
     def test_context_continuity_for_followup_ppt(self):
         """验证多轮会话承接指令（如'生成一张ppt报告'）正确继承上一轮上下文主题，并实施范例主题隔离"""
         from dsh_modules.prompt_builder import (
