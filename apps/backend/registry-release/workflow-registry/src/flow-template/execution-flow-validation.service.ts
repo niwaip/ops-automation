@@ -241,7 +241,9 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
                     if (parsed.name || parsed.paramsSchema) {
                       generatedSkill = parsed;
                     }
-                  } catch {}
+                  } catch {
+                    // Ignore malformed optional action metadata.
+                  }
                 }
               } else if (data.type === 'error') {
                 executionError = data.content;

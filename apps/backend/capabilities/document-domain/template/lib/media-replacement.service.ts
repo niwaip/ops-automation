@@ -235,7 +235,7 @@ export class MediaReplacementService {
     mediaPath: string
   ): ImageRelationship[] {
     const relationships: ImageRelationship[] = [];
-    const relPattern = /<Relationship\s+Id="([^"]+)"\s+Type="([^"]+)"\s+Target="([^"]+)"[^\/]*\/>/g;
+    const relPattern = /<Relationship\s+Id="([^"]+)"\s+Type="([^"]+)"\s+Target="([^"]+)"[^/]*\/>/g;
     let match: RegExpExecArray | null;
 
     while ((match = relPattern.exec(xmlContent)) !== null) {

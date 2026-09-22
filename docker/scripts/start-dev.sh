@@ -73,7 +73,7 @@ get_service_dir() {
         "browser-worker") echo "apps/backend/runtimes/browser-worker" ;;
         "browser-template") echo "apps/backend/capabilities/browser-domain/templates" ;;
         "carbone-engine"|"document-engine") echo "apps/backend/capabilities/document-domain" ;;
-        "report") echo "apps/backend/capabilities/document-domain/report" ;;
+        "report") echo "apps/backend/capabilities/document-report" ;;
         "portal") echo "apps/frontend/portal" ;;
         *) echo "" ;;
     esac

@@ -14,7 +14,9 @@ export function debugStudioRenderHypothesis(
     const env = fs.readFileSync('.dbg/signing-date-render.env', 'utf8');
     url = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || url;
     sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || sessionId;
-  } catch {}
+  } catch {
+    // Optional local debug configuration is unavailable.
+  }
 
   fetch(url, {
     method: 'POST',

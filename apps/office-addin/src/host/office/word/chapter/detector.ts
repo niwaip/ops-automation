@@ -85,14 +85,14 @@ function deriveTextualHeadingLevel(text: string): number | null {
   }
 
   if (
-    /^[【\[]?(?:附件|付属文書)(?:[一二三四五六七八九十百千万零两0-9０-９]+)?[】\]]?(?:[\s　].*)?$/u.test(
+    /^[【[]?(?:附件|付属文書)(?:[一二三四五六七八九十百千万零两0-9０-９]+)?[】\]]?(?:[\s\u3000].*)?$/u.test(
       normalized
     )
   ) {
     return 1;
   }
   if (
-    /^第[一二三四五六七八九十百千万零两0-9０-９]+[章节編部節款項目](?:[\s　：:].*)?$/u.test(
+    /^第[一二三四五六七八九十百千万零两0-9０-９]+[章节編部節款項目](?:[\s\u3000：:].*)?$/u.test(
       normalized
     )
   ) {
@@ -101,7 +101,7 @@ function deriveTextualHeadingLevel(text: string): number | null {
   if (/^(?:chapter|section|article)\s+[0-9ivx]+(?:[\s:.-].*)?$/iu.test(normalized)) {
     return 1;
   }
-  if (/^[0-9０-９]+(?:\.[0-9０-９]+){1,3}(?:[\s　).）．:：-].*)?$/u.test(normalized)) {
+  if (/^[0-9０-９]+(?:\.[0-9０-９]+){1,3}(?:[\s\u3000).）．:：-].*)?$/u.test(normalized)) {
     return Math.min((normalized.match(/\./g) || []).length + 2, 4);
   }
   if (/^(?:[一二三四五六七八九十百千万零两]+|[0-9０-９]+)[、.)）．]\s*\S+/u.test(normalized)) {
@@ -137,7 +137,7 @@ function isPotentialSectionHeadingText(text: string): boolean {
     return false;
   }
 
-  return /^(?:[\u3040-\u30ff\u3400-\u9fffA-Za-z0-9][\u3040-\u30ff\u3400-\u9fffA-Za-z0-9\s　、，,:：()（）・\/\-]*)$/u.test(
+  return /^(?:[\u3040-\u30ff\u3400-\u9fffA-Za-z0-9][\u3040-\u30ff\u3400-\u9fffA-Za-z0-9\s\u3000、，,:：()（）・/-]*)$/u.test(
     compactText
   );
 }
@@ -149,12 +149,12 @@ function hasVisibleHeadingMarker(text: string): boolean {
   }
 
   return (
-    /^第[一二三四五六七八九十百千万零两0-9０-９]+[章节編部節款項目](?:[\s　：:].*)?$/u.test(
+    /^第[一二三四五六七八九十百千万零两0-9０-９]+[章节編部節款項目](?:[\s\u3000：:].*)?$/u.test(
       normalized
     ) ||
     /^(?:chapter|section|article)\s+[0-9ivx]+(?:[\s:.-].*)?$/iu.test(normalized) ||
     /^(?:[一二三四五六七八九十百千万零两]+|[0-9０-９]+)[、.)）．]\s*\S+/u.test(normalized) ||
-    /^[0-9０-９]+(?:\.[0-9０-９]+){1,3}(?:[\s　).）．:：-].*)?$/u.test(normalized)
+    /^[0-9０-９]+(?:\.[0-9０-９]+){1,3}(?:[\s\u3000).）．:：-].*)?$/u.test(normalized)
   );
 }
 

@@ -9,7 +9,7 @@ import {
 
 export function normalizeWordSampleValue(value: string): string {
   return safeWordRuleText(value)
-    .replace(/^[：:\s　]+/u, '')
+    .replace(/^[：:\s\u3000]+/u, '')
     .trim();
 }
 
@@ -82,7 +82,7 @@ export function extractSampleValueFromMatchText(anchorText: string, matchText: s
     }
     matchedExplicitAnchor = true;
     const directValue = trimReferenceValue(
-      snippet.slice(anchorCandidate.length).replace(/^[：:\s　]+/u, '')
+      snippet.slice(anchorCandidate.length).replace(/^[：:\s\u3000]+/u, '')
     );
     if (directValue) {
       return truncateWordRuleText(directValue, 80);
@@ -173,7 +173,7 @@ export function buildWordContextStopCandidates(normalizedSuffix: string): string
   });
 
   const lexicalTokens = normalizedSuffix
-    .split(/[\s，。；;、：:（）()【】\[\]“”"'‘’]+/u)
+    .split(/[\s，。；;、：:（）()【】[\]“”"'‘’]+/u)
     .map((token) => safeWordRuleText(token))
     .filter(Boolean);
   lexicalTokens.slice(0, 3).forEach((token, index) => {

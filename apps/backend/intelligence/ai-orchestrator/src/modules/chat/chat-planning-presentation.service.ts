@@ -57,7 +57,7 @@ export class ChatPlanningPresentationService {
     }
 
     if (message && typeof message === 'string') {
-      const mdRegex = /\[([^\]]+)\]\((https?:\/\/[^\s\)]+|\/[^\s\)]+)\)/g;
+      const mdRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g;
       const mdMatches: Array<{ title: string; url: string }> = [];
       let m: RegExpExecArray | null;
       while ((m = mdRegex.exec(message)) !== null) {
@@ -85,7 +85,7 @@ export class ChatPlanningPresentationService {
           }
         }
       } else if (!params.downloadUrl) {
-        const urlMatch = message.match(/https?:\/\/[^\s\)\"\'\<\>]+/);
+        const urlMatch = message.match(/https?:\/\/[^\s)"'<>]+/);
         if (urlMatch) {
           const matchedUrl = urlMatch[0];
           params.fileUrl = matchedUrl;

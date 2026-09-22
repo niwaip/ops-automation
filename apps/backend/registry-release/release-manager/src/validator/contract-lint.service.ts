@@ -115,7 +115,7 @@ export class ContractLintService {
     if (typeof node.$ref === 'string' && !node.$ref.startsWith('#/')) {
       errors.push({
         rule: 'external_ref_not_allowed',
-        message: `外部 \$ref "${node.$ref}" 不允许；只能引用 schema 内部 \$defs/definitions`,
+        message: `外部 $ref "${node.$ref}" 不允许；只能引用 schema 内部 $defs/definitions`,
         path,
         severity: 'error',
       });
@@ -201,7 +201,7 @@ export class ContractLintService {
         if (refs.has(target)) {
           errors.push({
             rule: 'circular_ref',
-            message: `检测到循环 \$ref 引用链: ${refs.get(target)} → ${path} → ${target}`,
+            message: `检测到循环 $ref 引用链: ${refs.get(target)} → ${path} → ${target}`,
             path,
             severity: 'error',
           });
@@ -213,7 +213,7 @@ export class ContractLintService {
       } else {
         errors.push({
           rule: 'unresolved_ref',
-          message: `\$ref "${target}" 无法解析到 \$defs/definitions`,
+          message: `$ref "${target}" 无法解析到 $defs/definitions`,
           path,
           severity: 'error',
         });

@@ -1,3 +1,7 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import JSZip from 'jszip';
+import { ReviewElementEvaluatorService, BUILTIN_REVIEW_ELEMENTS } from '../contract-elements';
 import { ContractAstParserService } from './contract-ast-parser.service';
 import { SectionAlignerService } from './section-aligner.service';
 import { CharDiffEngineService } from './char-diff-engine.service';
@@ -105,7 +109,6 @@ describe('ContractCompareService Suite', () => {
     });
 
     it('should decode XML entities like &#160; and format tabs and signing lines without garbling', async () => {
-      const JSZip = require('jszip');
       const zip = new JSZip();
       const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -240,8 +243,6 @@ describe('ContractCompareService Suite', () => {
     });
 
     it('should compare real .docx test files from tests/contract directory', async () => {
-      const fs = require('fs');
-      const path = require('path');
 
       const docxPathA = path.resolve(process.cwd(), 'tests/contract/contract_v1_baseline.docx');
       const docxPathB = path.resolve(process.cwd(), 'tests/contract/contract_v2_revised.docx');
@@ -268,8 +269,6 @@ describe('ContractCompareService Suite', () => {
     });
 
     it('should compare real .pdf test files from tests/contract directory', async () => {
-      const fs = require('fs');
-      const path = require('path');
 
       const pdfPathA = path.resolve(process.cwd(), 'tests/contract/contract_v1_baseline.pdf');
       const pdfPathB = path.resolve(process.cwd(), 'tests/contract/contract_v2_revised.pdf');
@@ -297,8 +296,6 @@ describe('ContractCompareService Suite', () => {
     });
 
     it('should prioritize fileBase64 even when text contains the filename string', async () => {
-      const fs = require('fs');
-      const path = require('path');
 
       const docxPathA = path.resolve(process.cwd(), 'tests/contract/contract_v1_baseline.docx');
       const docxPathB = path.resolve(process.cwd(), 'tests/contract/contract_v2_revised.docx');
@@ -708,7 +705,6 @@ describe('ContractCompareService Suite', () => {
     });
 
     it('should strictly return uncertain (不确定) when calendarToWorkDayRatio is unconfigured, without hardcoding assumptions', () => {
-      const { ReviewElementEvaluatorService, BUILTIN_REVIEW_ELEMENTS } = require('../contract-elements');
       const evaluator = new ReviewElementEvaluatorService();
 
       // Clone builtin elements and explicitly remove calendarToWorkDayRatio
@@ -738,7 +734,6 @@ describe('ContractCompareService Suite', () => {
     });
 
     it('should dynamically obey configured calendarToWorkDayRatio and durationReductionToleranceRatio without code change', () => {
-      const { ReviewElementEvaluatorService, BUILTIN_REVIEW_ELEMENTS } = require('../contract-elements');
       const evaluator = new ReviewElementEvaluatorService();
 
       // Case: configure custom ratio = 0.5 (weekend + holidays strict 50%) and custom tolerance = 0.05
@@ -1014,8 +1009,6 @@ describe('ContractCompareService Suite', () => {
     });
 
     it('should generate real demo contract comparison and verify legal checklist highlights', async () => {
-      const fs = require('fs');
-      const path = require('path');
       const candidates = [
         path.resolve(process.cwd(), 'tests/contract/contract_v1_baseline.md'),
         path.resolve(__dirname, '../../../../../../tests/contract/contract_v1_baseline.md'),
@@ -1100,5 +1093,4 @@ describe('ContractCompareService Suite', () => {
     });
   });
 });
-
 

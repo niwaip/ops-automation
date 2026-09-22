@@ -1,18 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { BranchAnalysisService } from '../../branch-analysis/branch-analysis.service';
-import { BrowserCommand } from '../intent';
-import type { BrowserCommandCandidate } from '../intent';
 import {
-  RecorderLoopDraftState,
-  RecorderLoopService,
-  RecorderManualInterventionRecord,
-  RecorderManualInterventionSignal,
-} from '../loop';
-import {
-  EPHEMERAL_REF_PATTERN,
-  SNAPSHOT_ROLE_ALTERNATION,
-  isRoleCompatibleWithTool,
+isRoleCompatibleWithTool
 } from '../browser-domain.constants';
+import type { BrowserCommandCandidate } from '../intent';
+import { BrowserCommand } from '../intent';
+import {
+RecorderLoopDraftState,
+RecorderLoopService,
+RecorderManualInterventionRecord,
+RecorderManualInterventionSignal,
+} from '../loop';
 
 interface ObservationLike {
   currentPageUrl?: string;
@@ -77,46 +75,46 @@ interface OptionalManualInterventionPlan {
 }
 
 import {
-  appendOptionalManualInterventionStepsForIndex,
-  appendInitialOptionalManualInterventionPrechecks,
-  appendOptionalManualInterventionCheckpoint,
-  buildOptionalManualInterventionPlan,
+appendInitialOptionalManualInterventionPrechecks,
+appendOptionalManualInterventionCheckpoint,
+appendOptionalManualInterventionStepsForIndex,
+buildOptionalManualInterventionPlan,
 } from './recorder-manual-intervention';
 import {
-  resolvePreferredBranchReadSelector,
-  resolveBranchReadSelectorFromCandidates,
-  buildFieldSelector,
-  scoreBranchFieldCandidate,
-  normalizeExportTemplateSteps,
-  dedupeSetupSteps,
-  buildSetupStepKey,
-  dedupeSetupCommands,
-  buildSetupCommandKey,
-  collectDedupedSetupItems,
-} from './recorder-template-normalizer';
-import {
-  resolveTemplateLocatorFromRecordedRef,
-  resolveTemplateLocatorFromSnapshotText,
-  parseTemplateLocatorFromSnapshotRef,
-  extractTurnExecutionIndex,
-  extractRecordedRef,
-  hasCoexistingGenericText,
-  countTextOccurrences,
-  escapeRegex,
-  normalize,
-  isGrossMarginHint,
-  isEphemeralRuntimeHandle,
-  inferTemplateLocatorType,
-  mapTemplateLocatorType,
-  isButtonLikeDescription,
-  withGroundingMetadata,
-  buildTemplateLocatorFromLabel,
-  toTemplateLocatorFromDescription,
-  toTemplateLocatorFromTarget,
-  toTemplateLocatorFromExpression,
-  toTemplateLocatorFromRuntimeLocator,
-  buildTemplateStepLocator,
+buildTemplateLocatorFromLabel,
+buildTemplateStepLocator,
+countTextOccurrences,
+escapeRegex,
+extractRecordedRef,
+extractTurnExecutionIndex,
+hasCoexistingGenericText,
+inferTemplateLocatorType,
+isButtonLikeDescription,
+isEphemeralRuntimeHandle,
+isGrossMarginHint,
+mapTemplateLocatorType,
+normalize,
+parseTemplateLocatorFromSnapshotRef,
+resolveTemplateLocatorFromRecordedRef,
+resolveTemplateLocatorFromSnapshotText,
+toTemplateLocatorFromDescription,
+toTemplateLocatorFromExpression,
+toTemplateLocatorFromRuntimeLocator,
+toTemplateLocatorFromTarget,
+withGroundingMetadata,
 } from './recorder-template-locator';
+import {
+buildFieldSelector,
+buildSetupCommandKey,
+buildSetupStepKey,
+collectDedupedSetupItems,
+dedupeSetupCommands,
+dedupeSetupSteps,
+normalizeExportTemplateSteps,
+resolveBranchReadSelectorFromCandidates,
+resolvePreferredBranchReadSelector,
+scoreBranchFieldCandidate,
+} from './recorder-template-normalizer';
 
 @Injectable()
 export class RecorderTemplateExportService {

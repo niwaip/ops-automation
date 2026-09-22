@@ -337,7 +337,7 @@ export class WechatIlinkClient {
     }
 
     // 6. Send message through iLink gateway
-    await this.request('POST', baseUrl, 'ilink/bot/sendmessage', {
+    const response = await this.request('POST', baseUrl, 'ilink/bot/sendmessage', {
       token,
       body: {
         msg: {
@@ -352,6 +352,12 @@ export class WechatIlinkClient {
         base_info: this.baseInfo(),
       },
     });
+
+    if (response?.ret !== undefined && response.ret !== 0) {
+      throw new Error(
+        `微信媒体消息发送失败（ret: ${response.ret}${response.errmsg ? `, errmsg: ${response.errmsg}` : ''}）`
+      );
+    }
 
     return clientId;
   }
@@ -368,7 +374,7 @@ export class WechatIlinkClient {
     const chunks = splitTextPreservingLines(sanitized, 1800);
     for (const [index, chunk] of chunks.entries()) {
       if (!chunk.trim()) continue;
-      await this.request('POST', baseUrl, 'ilink/bot/sendmessage', {
+      const response = await this.request('POST', baseUrl, 'ilink/bot/sendmessage', {
         token,
         body: {
           msg: {
@@ -383,6 +389,12 @@ export class WechatIlinkClient {
           base_info: this.baseInfo(),
         },
       });
+
+      if (response?.ret !== undefined && response.ret !== 0) {
+        throw new Error(
+          `微信消息发送失败（ret: ${response.ret}${response.errmsg ? `, errmsg: ${response.errmsg}` : ''}）`
+        );
+      }
     }
   }
 

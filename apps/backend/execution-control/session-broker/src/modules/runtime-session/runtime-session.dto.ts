@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsUUID, IsNumber, IsEnum } from 'class-validator';
+import { IsNumber,IsOptional,IsString,IsUUID } from 'class-validator';
 
 export class CreateRuntimeSessionDto {
   @IsOptional()

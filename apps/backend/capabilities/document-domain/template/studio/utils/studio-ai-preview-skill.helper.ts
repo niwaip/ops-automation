@@ -91,7 +91,7 @@ export async function executePreviewWithSkill(
     addLog(`[步骤3] 归一化后的数据结构: ${JSON.stringify(simulatedData, null, 2)}`);
 
     let templateBuffer: Buffer | undefined;
-    let templateId = body.templateId || skill.templateId;
+    const templateId = body.templateId || skill.templateId;
     let format = 'docx';
 
     addLog(`[步骤4] 查找模板: templateId=${templateId}`);

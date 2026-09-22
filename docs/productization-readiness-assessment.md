@@ -2,7 +2,7 @@
 
 > 评估日期：2026-08-14  
 > 评估范围：仓库结构、代码复杂度、协议一致性、CI/测试、部署、安全、文件数据链路与运维基础  
-> 文档性质：基于当前代码现态的产品化治理基线，不替代专项安全审计和生产压测
+> 文档性质：2026-08-14 的评估快照；以下分数、数量和“当前”判断仅代表当时基线，不可直接作为 2026-09 的发布结论。路径索引已随目录迁移更新，不替代专项安全审计和生产压测。
 
 ## 1. 执行摘要
 
@@ -106,7 +106,7 @@ PDF Skill 和后续文件类 Skill 应接收 `fileRef`，而不是整段 Base64�
 - `packages/user-core/src/domain/executions/result.ts`
 - `apps/backend/execution-control/control-plane/src/modules/execution/state/execution-result-normalizer.ts`
 - `apps/backend/intelligence/ai-orchestrator/src/modules/chat/chat-result-normalizer.service.ts`
-- `apps/backend/core/platform/src/modules/temporal-workflow/temporal-workflow.types.ts`
+- `apps/backend/registry-release/workflow-registry/src/temporal/temporal-workflow.types.ts`
 
 建议建立唯一协议包：
 
@@ -298,7 +298,7 @@ PDF 能力不应作为特殊硬编码链路；它应成为文件类能力的第�
 - E2E：`.github/workflows/e2e-test.yml`
 - Document Domain CORS：`apps/backend/capabilities/document-domain/main.ts`
 - Document 内容提取接口：`apps/backend/capabilities/document-domain/runtime-facade/content-extraction/document-content-extraction.controller.ts`
-- Skill match：`apps/backend/core/platform/src/modules/skill/skill.controller.ts`
+- Skill match：`apps/backend/registry-release/skill-registry/src/registry/skill.controller.ts`
 - 聊天文件暂存：`apps/backend/intelligence/ai-orchestrator/src/modules/chat/chat-media.service.ts`
 - 文件进入编排：`apps/backend/intelligence/ai-orchestrator/src/modules/chat/chat-orchestrator.service.ts`
 - 执行结果规范化：`apps/backend/execution-control/control-plane/src/modules/execution/state/execution-result-normalizer.ts`

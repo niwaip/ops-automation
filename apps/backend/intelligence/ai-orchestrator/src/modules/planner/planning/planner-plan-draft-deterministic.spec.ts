@@ -120,7 +120,7 @@ describe('PlannerPlanDraftService deterministic contract path', () => {
         context: {
           mode: 'waiting_input_resume',
           missing_inputs: ['content'],
-          already_collected: { content: '\"type\":\"paragraph\"' },
+          already_collected: { content: '"type":"paragraph"' },
         },
       },
       matchPhase: {

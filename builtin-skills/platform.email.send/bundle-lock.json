@@ -1,9 +1,9 @@
 {
   "capabilityKey": "platform.email.send",
-  "definitionVersion": "1.0.0",
-  "definitionDigest": "sha256:bea7f067eeb42caf01de1f5546216880e936b7246579fea6d1ff3b8f26eca54e",
+  "definitionVersion": "1.0.1",
+  "definitionDigest": "sha256:5f6b0e45aa4fcf65999d79c57b53b056a40a5aa99d82fa509877e87115addae5",
   "fileHashes": {
-    "manifest.yaml": "sha256:25482b07a6a5e267293ab30d9054e95e6106757dfdcf84e0abbc8524209eb11d",
+    "manifest.yaml": "sha256:5e1c81f2f5231bd660efa9a70a186b9d9b3c12cdf79a5c1ada5766a9c55ad7a2",
     "workflow.json": "sha256:23df3e11a16bf565518777ad083b58e111d3a50070de05aadaa1591fbc87a830",
     "fixtures/smoke-input.json": "sha256:a21db5a428f692d017642cba237736db7f2baeff2029e3502e0c3da90af6b5da"
   },

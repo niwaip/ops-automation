@@ -18,7 +18,7 @@ import type { UploadFile } from 'antd/es/upload/interface';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQueryClient } from 'react-query';
 import { useAuthStore } from '@/shared/store/authStore';
-import { workbenchInboxApi, type WorkbenchInboxItem } from '../../../api/workbenchInbox';
+import { workbenchInboxApi } from '../../../api/workbenchInbox';
 import {
   workbenchCoordinationApi,
   type CoordinationAttachment,
@@ -38,17 +38,8 @@ import { ComplianceAuditCard, extractAuditReportFromTask } from './ComplianceAud
 import { BusinessParametersCard } from './BusinessParametersCard';
 import { TaskStageBanner } from './TaskStageBanner';
 import { VoucherAttachmentsCard } from './VoucherAttachmentsCard';
-
-interface InboxTaskDetailModalProps {
-  open: boolean;
-  item: WorkbenchInboxItem | null;
-  onClose: () => void;
-  onFlow?: (item: WorkbenchInboxItem) => void;
-  onOpenInAi?: (item: WorkbenchInboxItem) => void;
-  onRecall?: (item: WorkbenchInboxItem) => void;
-  onRemind?: (item: WorkbenchInboxItem) => void;
-  onSuccess?: () => void;
-}
+import type { InboxTaskDetailModalProps } from './InboxTaskDetailModal.types';
+import { findCompanyCandidate } from './inboxTaskDetailText';
 
 export function InboxTaskDetailModal({
   open,
@@ -127,32 +118,6 @@ export function InboxTaskDetailModal({
       /(?:路|街|号|弄|区|道|巷|大厦|中心|大楼|\d+号)$/.test(trimmed) ||
       /(?:省|市|区|县|街|路|大道).*(?:号|室|层)/.test(trimmed)
     );
-  };
-
-  // 从说明文本中提取真实公司名称
-  const findCompanyCandidate = (text?: string): string | null => {
-    if (!text || typeof text !== 'string') return null;
-    const compMatch = text.match(
-      /(?:与|和)?(?:[^\s,，。]+?[省市区街道路弄号]+(?:的)?\s*)?([^\s,，。]+?(?:公司|集团|事务所|商行))/
-    );
-    if (compMatch && compMatch[1]) {
-      const candidate = compMatch[1]
-        .replace(/^(?:我方|对方|和|与|与我方|和对方|以及|向|由)\s*/, '')
-        .trim();
-      if (candidate.length >= 4 && /(?:公司|集团|事务所|商行)$/.test(candidate)) {
-        return candidate;
-      }
-    }
-    const generalMatch = text.match(/([^\s,，。]+?(?:公司|企业|集团|事务所|商行))/);
-    if (generalMatch && generalMatch[1]) {
-      const cand = generalMatch[1]
-        .replace(/^(?:我方|对方|和|与|以及|向|由)\s*/, '')
-        .trim();
-      if (cand.length >= 4 && /(?:公司|集团|事务所|商行)$/.test(cand)) {
-        return cand;
-      }
-    }
-    return null;
   };
 
   const candidateCompany = looksLikeAddress(params.counterpartyName)

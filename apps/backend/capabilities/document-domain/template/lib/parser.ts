@@ -45,8 +45,6 @@ export interface ImplicitArray {
 // 正则表达式定义
 const CARBONE_MARKER_REGEX = /\{([cdt])\.([^}]+)\}/g;
 const ARRAY_INDEX_REGEX = /\[(?:i(?:\+\d+)?)?\]/; // 支持 []、[i] 和 [i+n]
-const FORMATTER_REGEX = /:([a-zA-Z]+)(?:\(([^)]*)\))?/g;
-const LOOP_PATTERN_REGEX = /\{[cdt]\.([^}]+)\[i\+1\][^}]*\}/g;
 
 // 显式循环标记: {#d.array} 和 {/d.array}
 const LOOP_START_REGEX = /\{#([cdt])\.([^}]+)\}/g; // {#d.items}

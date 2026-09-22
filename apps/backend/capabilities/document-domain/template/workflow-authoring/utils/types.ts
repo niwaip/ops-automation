@@ -1,22 +1,5 @@
 // Carbone Engine - Studio AI Types
 
-import { DocumentElement, DocumentStructure } from '../document-structure.service';
-
-type AiModelDescriptor = {
-  id: string;
-  status: string;
-  [key: string]: unknown;
-};
-
-type AiModelsResponse = {
-  models?: AiModelDescriptor[];
-};
-
-type AiTestResponse = {
-  success?: boolean;
-  response?: any;
-  error?: string;
-};
 
 /**
  * 处理阶段枚举

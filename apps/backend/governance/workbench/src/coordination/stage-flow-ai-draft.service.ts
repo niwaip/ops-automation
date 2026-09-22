@@ -702,8 +702,8 @@ ${paramAssignments}
 
   private inferBusinessParams(
     category: string,
-    stageType: WorkflowStageType,
-    prompt: string
+    _stageType: WorkflowStageType,
+    _prompt: string
   ): Array<{ key: string; label: string; type: string; required: boolean; description?: string }> {
     if (category === 'hr') {
       return [

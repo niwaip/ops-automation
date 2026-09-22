@@ -207,7 +207,7 @@ export class PdfArtifactStorageService {
 
   private async acquireArtifactLock(lockPath: string): Promise<() => Promise<void>> {
     const deadline = Date.now() + ARTIFACT_LOCK_TIMEOUT_MS;
-    while (true) {
+    for (;;) {
       try {
         const handle = await fs.promises.open(lockPath, 'wx');
         await handle.writeFile(`${process.pid}:${Date.now()}`, 'utf8');

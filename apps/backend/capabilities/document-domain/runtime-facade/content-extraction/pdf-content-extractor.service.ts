@@ -300,7 +300,7 @@ export class PdfContentExtractorService {
   private isPageTextSufficient(text: string): boolean {
     const trimmed = text.trim();
     if (trimmed.length < 25) return false;
-    const substantive = trimmed.replace(/[\s\d\.\-\/\(\)（）\:\：,，。;；"“”'‘’_—·]/g, '');
+    const substantive = trimmed.replace(/[\s\d.\-/()（）:：,，。;；"“”'‘’_—·]/g, '');
     return substantive.length >= 15;
   }
 

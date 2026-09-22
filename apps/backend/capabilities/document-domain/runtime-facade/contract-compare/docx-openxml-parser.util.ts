@@ -282,7 +282,7 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
   };
 
   const articleRegex =
-    /^\s*(?:(?:第\s*[一二三四五六七八九十百千万\d]+\s*条)|(?:(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)|(?:[一二三四五六七八九十百]+[、\s]+)|(?:\d+[\.、\s]+(?!\d)))/i;
+    /^\s*(?:(?:第\s*[一二三四五六七八九十百千万\d]+\s*条)|(?:(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)|(?:[一二三四五六七八九十百]+[、\s]+)|(?:\d+[.、\s]+(?!\d)))/i;
   const annexRegex = /^(?:附件|附录|付属文書|Exhibit|Schedule|Annex|Appendix)\s*[一二三四五六七八九十\d\w]*/i;
   const chapterRegex =
     /^\s*(?:第\s*[一二三四五六七八九十百千万\d]+\s*[编章节篇部]|(?:CHAPTER|PART|TITLE|SECTION)\s+(?:[IVXLCDM\d]+|[A-Z]|\d+)\b)/i;
@@ -373,7 +373,7 @@ export async function parseDocxOpenXml(buffer: Buffer): Promise<ContractClauseNo
         /^\s*(第\s*[一二三四五六七八九十百千万\d]+\s*条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)\s*(.*)$/i
       );
       const matchNum = cleanText.match(
-        /^\s*(\d+[\.、\s]+(?!\d)|[一二三四五六七八九十百]+[、\s]+)\s*(.*)$/
+        /^\s*(\d+[.、\s]+(?!\d)|[一二三四五六七八九十百]+[、\s]+)\s*(.*)$/
       );
       if (matchFormal) {
         num = matchFormal[1].trim();

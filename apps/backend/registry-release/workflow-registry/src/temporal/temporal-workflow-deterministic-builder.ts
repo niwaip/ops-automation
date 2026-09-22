@@ -1,69 +1,57 @@
+import { TemporalWorkflowConfigService } from '../workflow-template/temporal-workflow-config.service';
 import {
-  AI_STRUCTURED_TRANSFORM_ACTIVITY_KEY,
-  BuiltinActivityRegistry,
-  DOCUMENT_RENDER_ACTIVITY_KEY,
-  HTTP_REQUEST_ACTIVITY_KEY,
-  HTTP_REQUEST_STEP_CONFIG_KEY,
-  STRUCTURED_TRANSFORM_ACTIVITY_KEY,
-  STRUCTURED_TRANSFORM_STEP_CONFIG_KEY,
-  FILE_READ_ACTIVITY_KEY,
-  FILE_WRITE_ACTIVITY_KEY,
-  WEBHOOK_NOTIFY_ACTIVITY_KEY,
-  EMAIL_SEND_ACTIVITY_KEY,
-  IM_NOTIFY_ACTIVITY_KEY,
-  CSV_PARSE_ACTIVITY_KEY,
-  JSON_TRANSFORM_ACTIVITY_KEY,
-  TEMPLATE_RENDER_ACTIVITY_KEY,
-  DATABASE_QUERY_ACTIVITY_KEY,
-  SHELL_COMMAND_ACTIVITY_KEY,
-  WAIT_DELAY_ACTIVITY_KEY,
-  CONDITION_CHECK_ACTIVITY_KEY,
-  FILE_READ_STEP_CONFIG_KEY,
-  FILE_WRITE_STEP_CONFIG_KEY,
-  WEBHOOK_NOTIFY_STEP_CONFIG_KEY,
-  EMAIL_SEND_STEP_CONFIG_KEY,
-  IM_NOTIFY_STEP_CONFIG_KEY,
-  CSV_PARSE_STEP_CONFIG_KEY,
-  JSON_TRANSFORM_STEP_CONFIG_KEY,
-  TEMPLATE_RENDER_STEP_CONFIG_KEY,
-  DATABASE_QUERY_STEP_CONFIG_KEY,
-  SHELL_COMMAND_STEP_CONFIG_KEY,
-  WAIT_DELAY_STEP_CONFIG_KEY,
-  CONDITION_CHECK_STEP_CONFIG_KEY,
+AI_STRUCTURED_TRANSFORM_ACTIVITY_KEY,
+BuiltinActivityRegistry,
+CONDITION_CHECK_ACTIVITY_KEY,
+CSV_PARSE_ACTIVITY_KEY,
+DATABASE_QUERY_ACTIVITY_KEY,
+DOCUMENT_RENDER_ACTIVITY_KEY,
+EMAIL_SEND_ACTIVITY_KEY,
+FILE_READ_ACTIVITY_KEY,
+FILE_WRITE_ACTIVITY_KEY,
+HTTP_REQUEST_ACTIVITY_KEY,
+HTTP_REQUEST_STEP_CONFIG_KEY,
+IM_NOTIFY_ACTIVITY_KEY,
+JSON_TRANSFORM_ACTIVITY_KEY,
+SHELL_COMMAND_ACTIVITY_KEY,
+STRUCTURED_TRANSFORM_ACTIVITY_KEY,
+STRUCTURED_TRANSFORM_STEP_CONFIG_KEY,
+TEMPLATE_RENDER_ACTIVITY_KEY,
+WAIT_DELAY_ACTIVITY_KEY,
+WEBHOOK_NOTIFY_ACTIVITY_KEY
 } from './builtin-activity.registry';
 import {
-  buildDeterministicBrowserActivityCode,
-  buildDeterministicCarboneActivityCode,
+buildDeterministicBrowserActivityCode,
+buildDeterministicCarboneActivityCode,
 } from './temporal-workflow-deterministic-activity-code.helpers';
 import {
-  buildFixedBrowserPhaseWorkflowCode as buildFixedBrowserPhaseWorkflowCodeHelper,
-  buildFixedDocumentRenderWorkflowCode as buildFixedDocumentRenderWorkflowCodeHelper,
-  buildFixedHttpRequestStructuredTransformWorkflowCode as buildFixedHttpRequestStructuredTransformWorkflowCodeHelper,
-  buildFixedHttpRequestWorkflowCode as buildFixedHttpRequestWorkflowCodeHelper,
-  buildFixedStructuredTransformWorkflowCode as buildFixedStructuredTransformWorkflowCodeHelper,
-  buildFixedBuiltinWorkflowCode as buildFixedBuiltinWorkflowCodeHelper,
-  buildWorkflowResultSupportLines,
+buildFixedBrowserPhaseWorkflowCode as buildFixedBrowserPhaseWorkflowCodeHelper,
+buildFixedBuiltinWorkflowCode as buildFixedBuiltinWorkflowCodeHelper,
+buildFixedDocumentRenderWorkflowCode as buildFixedDocumentRenderWorkflowCodeHelper,
+buildFixedHttpRequestStructuredTransformWorkflowCode as buildFixedHttpRequestStructuredTransformWorkflowCodeHelper,
+buildFixedHttpRequestWorkflowCode as buildFixedHttpRequestWorkflowCodeHelper,
+buildFixedStructuredTransformWorkflowCode as buildFixedStructuredTransformWorkflowCodeHelper,
+buildWorkflowResultSupportLines,
 } from './temporal-workflow-fixed-workflow-code.helpers';
-import {
-  buildV2StepResultsArgument,
-  hasV2OutputFields,
-} from './temporal-workflow-result-builder.helpers';
-import { TemporalWorkflowConfigService } from '../workflow-template/temporal-workflow-config.service';
-import { TemporalWorkflowNormalizationService } from './temporal-workflow-normalization.service';
-import { resolveDocumentWorkflowBindingPaths } from './temporal-workflow-template.helpers';
 import { pickFirstNonEmptyString } from './temporal-workflow-json.utils';
+import { TemporalWorkflowNormalizationService } from './temporal-workflow-normalization.service';
 import {
-  buildExecuteActivityTimeoutLines,
-  buildPythonJsonLiteral,
-  durationToTimedeltaCode,
-  normalizeInputParams,
-  toPythonLiteral,
+buildExecuteActivityTimeoutLines,
+buildPythonJsonLiteral,
+durationToTimedeltaCode,
+normalizeInputParams,
+toPythonLiteral,
 } from './temporal-workflow-python.utils';
+import {
+buildV2StepResultsArgument,
+hasV2OutputFields,
+} from './temporal-workflow-result-builder.helpers';
+import { resolveDocumentWorkflowBindingPaths } from './temporal-workflow-template.helpers';
 import type {
-  ActivityDefinition,
-  ActivityDsl,
-  WorkflowDsl,
-  WorkflowStep,
+ActivityDefinition,
+ActivityDsl,
+WorkflowDsl,
+WorkflowStep,
 } from './temporal-workflow.types';
 
 interface DeterministicBuilderDependencies {

@@ -26,6 +26,8 @@ export function parseJsonFromAiContent(content: string): Record<string, any> {
   try {
     const repaired = sanitized
       .replace(/,\s*([}\]])/g, '$1')
+      // Repair JSON strings containing literal control characters.
+      // eslint-disable-next-line no-control-regex
       .replace(/[\u0000-\u001F\u007F-\u009F]/g, (match) => {
         if (match === '\n') return '\\n';
         if (match === '\r') return '\\r';

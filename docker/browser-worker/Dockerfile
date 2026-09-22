@@ -148,6 +148,8 @@ COPY docker/scripts/start.sh /start.sh
 COPY docker/scripts/start-recorder.sh /start-recorder.sh
 COPY docker/scripts/entrypoint.sh /entrypoint.sh
 COPY docker/scripts/utils/codegen-api.py /scripts/codegen-api.py
+COPY docker/scripts/utils/codegen_runtime.py /scripts/codegen_runtime.py
+COPY docker/scripts/utils/codegen_ai_control.py /scripts/codegen_ai_control.py
 COPY docker/browser-chrome/scripts/execute-actions.js /scripts/execute-actions.js
 RUN chmod +x /start.sh /start-recorder.sh /entrypoint.sh /scripts/codegen-api.py /scripts/execute-actions.js
 

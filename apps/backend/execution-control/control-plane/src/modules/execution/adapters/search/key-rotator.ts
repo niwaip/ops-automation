@@ -45,9 +45,6 @@ export class KeyRotator {
       }
     }
 
-    const currentKeySet = new Set(this.keys);
-    const newKeySet = new Set(parsed);
-
     // Keep existing cooldown state if keys haven't changed
     const updatedStates = new Map<string, KeyState>();
     for (const key of parsed) {

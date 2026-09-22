@@ -102,7 +102,7 @@ export class MarkdownArtifactService {
 
     // Use uuid-based filename for stability across restarts (not Date.now())
     const rawFileName = input.fileName || `summary_${uuidv4().substring(0, 8)}`;
-    const baseName = path.basename(rawFileName).replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+    const baseName = path.basename(rawFileName).replace(/[^a-zA-Z0-9_\-.]/g, '_');
     const nameWithoutExt = baseName.replace(/\.[^/.]+$/, '').substring(0, 100);
     const finalFileName = `${nameWithoutExt || 'summary'}.md`;
 

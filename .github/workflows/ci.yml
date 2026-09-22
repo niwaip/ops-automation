@@ -25,6 +25,9 @@ jobs:
         with:
           version: 8.12.0
 
+      - name: Validate workspace architecture
+        run: node ./scripts/check-workspace-architecture.mjs
+
       - name: Check file complexity red line (AGENTS.md)
         run: bash ./scripts/check-file-complexity.sh
 

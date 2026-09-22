@@ -1,13 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable,Logger } from '@nestjs/common';
 import axios from 'axios';
-import { ActivityFormData, GenerateCodeResult } from './temporal-activity.types';
-import { normalizeInputParams } from './temporal-activity-input-params.utils';
 import { buildActivityBodyPrompt } from './activity-body-prompt-builder';
 import {
-  getAiOrchestratorUrl,
-  getCarboneExternalUrl,
-  getCarboneServiceUrl,
+getAiOrchestratorUrl
 } from './service-endpoints';
+import { ActivityFormData,GenerateCodeResult } from './temporal-activity.types';
 
 @Injectable()
 export class ActivityCodegenService {

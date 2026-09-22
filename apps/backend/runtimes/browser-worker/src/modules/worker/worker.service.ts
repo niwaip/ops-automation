@@ -15,8 +15,7 @@ import {
   WorkerEndpointsDto,
 } from '../../dto';
 import { getPublicHost, getSessionBrokerUrl } from '../../config/service-endpoints';
-
-const Docker = require('dockerode');
+import Docker from 'dockerode';
 
 const DEFAULT_DOCKER_SOCKET_PATH = '/var/run/docker.sock';
 const DEFAULT_BROWSER_PROFILE_ROOT = '/tmp/browser-profiles';
@@ -185,6 +184,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
         this.logger.log(`Docker orphan sweep removed ${removedCount} untracked container(s)`);
       }
     } catch (error) {
+      this.logger.error('Docker orphan container sweep failed', error);
       throw error;
     }
   }
@@ -311,7 +311,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Worker ${workerId} failed to start: ${errorMessage}`);
       try {
-        await container.remove({ force: true });
+        if (container) await container.remove({ force: true });
       } catch (removeError) {
         const removeErrorMessage =
           removeError instanceof Error ? removeError.message : String(removeError);

@@ -54,7 +54,6 @@ export class DeterministicParamResolverService {
       ...textResolution.params,
       ...urlResolution.params,
     };
-    const allResolvedFields = Object.keys(mergedParams);
     const fieldConfidences = {
       ...resolved.fieldConfidences,
       ...Object.fromEntries(Object.keys(textResolution.params).map((k) => [k, 1])),

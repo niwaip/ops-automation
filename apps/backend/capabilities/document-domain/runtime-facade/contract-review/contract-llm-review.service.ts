@@ -321,8 +321,8 @@ ${standardsDesc}${formIntegrityDesc}${customPromptDesc}
           legalAdvice:
             '本协议尚属于模板草案。正式签约前必须填入准确的签约主体全称、统一社会信用代码及合作项目名称，以确保合同生效要件完备并防范主体资格争议。',
           recommendedRevision: clauseText.replace(
-            /\{[a-zA-Z0-9_\.]+\}/g,
-            (m) => `【需填写：${m.replace(/[{}\.]/g, '_')}】`
+            /\{[a-zA-Z0-9_.]+\}/g,
+            (m) => `【需填写：${m.replace(/[{}.]/g, '_')}】`
           ),
           llmReviewed: false,
         };

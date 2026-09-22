@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
+import JSZip from 'jszip';
 
 type LoggerLike = {
   error: (message: string) => void;
@@ -111,7 +112,6 @@ export async function readTemplateSourcePreview(input: {
   }
 
   try {
-    const JSZip = require('jszip');
     const buffer = fs.readFileSync(templatePath);
     const zip = await JSZip.loadAsync(buffer);
 

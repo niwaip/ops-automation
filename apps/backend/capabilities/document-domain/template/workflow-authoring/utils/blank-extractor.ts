@@ -1,5 +1,4 @@
 import { Logger } from '@nestjs/common';
-import { DocumentElement } from '../document-structure.service';
 
 const logger = new Logger('StudioBlankExtractor');
 
@@ -35,7 +34,7 @@ export function calculateContextOverlap(context1: string, context2: string): num
 /**
  * 根据空白信息推断变量路径
  */
-export function inferVariablePath(beforeBlank: string, type: string, templateType: string): string {
+export function inferVariablePath(beforeBlank: string, _type: string, _templateType: string): string {
   // 使用已有标签映射进行推断
   const labelMappings: Record<string, string> = {
     甲方: 'd.partyA.name',
@@ -128,7 +127,7 @@ export function mergeUnderlineInfo(
 
   for (const underline of underlineInfo) {
     // 检查下划线文本是否包含空白（空格、下划线、制表符等）
-    const hasBlank = underline.text.match(/[＿_\s　\t]+/);
+    const hasBlank = underline.text.match(/[＿_\s\u3000\t]+/);
 
     // 如果下划线文本主要是空白，这是需要参数化的位置
     // 纯空格文本 trim() 后为空字符串，长度为0，所以 0 < length * 0.3 是 true
@@ -216,7 +215,7 @@ export function extractBlankPatterns(
   // 1. 日期格式作为整体（____年__月__日 或 年 月 日）
   // 这是最常见的日期填写位置
   const dateBlankRegex =
-    /[＿_]{2,}年[＿_]{2,}月[＿_]{2,}日|[\s　]{2,}年[\s　]{2,}月[\s　]{2,}日|[＿_\s　]{2,}年[＿_\s　]{2,}月[＿_\s　]{2,}日/g;
+    /[＿_]{2,}年[＿_]{2,}月[＿_]{2,}日|[\s\u3000]{2,}年[\s\u3000]{2,}月[\s\u3000]{2,}日|[＿_\s\u3000]{2,}年[＿_\s\u3000]{2,}月[＿_\s\u3000]{2,}日/g;
   while ((match = dateBlankRegex.exec(content)) !== null) {
     const startPos = Math.max(0, match.index - 20);
     const endPos = Math.min(content.length, match.index + match[0].length + 20);
@@ -279,7 +278,7 @@ export function extractBlankPatterns(
 
   // 3. 多个空格（至少5个，提高阈值减少误识别）
   // 某些合同使用空格表示空白填充位置
-  const spaceRegex = /[ 　]{5,}/g;
+  const spaceRegex = /[ \u3000]{5,}/g;
   while ((match = spaceRegex.exec(content)) !== null) {
     // TypeScript类型断言：在while循环内match不为null
     const m = match;

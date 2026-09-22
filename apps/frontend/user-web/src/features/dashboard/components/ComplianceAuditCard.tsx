@@ -80,7 +80,7 @@ export function ComplianceAuditCard({
   if (!reportData && !activeHtml) return null;
 
   const cardTitle = (reportData?.title || '合同合规智能审查')
-    .replace(/^[🤖\s]+/, '')
+    .replace(/^[🤖\s]+/u, '')
     .replace(/[【】]/g, '')
     .trim();
 

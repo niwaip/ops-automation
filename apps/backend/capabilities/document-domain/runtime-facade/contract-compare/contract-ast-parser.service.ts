@@ -1,22 +1,19 @@
+import { BadRequestException,Injectable,Logger } from '@nestjs/common';
 import * as fs from 'fs';
-import * as path from 'path';
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import * as mammoth from 'mammoth';
-import type {
-  ContractClauseNode,
-  DocumentAstMetadata,
-  ContractAstParseResult,
-} from './contract-compare.types';
+import * as path from 'path';
 import { PdfContentExtractorService } from '../content-extraction/pdf-content-extractor.service';
-import { parseDocxOpenXml } from './docx-openxml-parser.util';
 import {
-  parseTextToClauses,
-  parseHtmlToClauses,
-  cleanMarkdownFormatting,
-  TIER1_CHAPTER_REGEX,
-  TIER2_ARTICLE_REGEX,
-  ANNEX_BOUNDARY_REGEX,
+cleanMarkdownFormatting,
+parseHtmlToClauses,
+parseTextToClauses
 } from './contract-clause-segmenter.util';
+import type {
+ContractAstParseResult,
+ContractClauseNode,
+DocumentAstMetadata,
+} from './contract-compare.types';
+import { parseDocxOpenXml } from './docx-openxml-parser.util';
 
 function findWorkspaceRoot(startDir: string): string {
   let current = startDir;

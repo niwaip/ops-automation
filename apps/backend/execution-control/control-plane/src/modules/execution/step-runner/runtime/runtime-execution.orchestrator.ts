@@ -1,4 +1,5 @@
 import { Injectable, Optional } from '@nestjs/common';
+import * as fs from 'node:fs';
 import { RuntimeAdapterRegistry } from '../../adapters/runtime-adapter.registry';
 import {
   RuntimeCredentialResolverService,
@@ -24,7 +25,6 @@ export class RuntimeExecutionOrchestrator {
   ): void {
     const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
     if (!debugUrl) return;
-    const fs = require('fs') as typeof import('fs');
     const envPaths = [
       '/app/.dbg/workflow-branch-check.env',
       '/Users/chain/Documents/MyProject/ops-automation/.dbg/workflow-branch-check.env',

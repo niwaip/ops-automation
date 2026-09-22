@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import JSZip from 'jszip';
-// @ts-ignore - xml2js has no bundled type declarations here.
+// @ts-expect-error - xml2js has no bundled type declarations here.
 import * as xml2js from 'xml2js';
 
 export interface TableHeader {
@@ -838,7 +838,9 @@ export class DocumentStructureParser {
           styles[styleId] = name;
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      // Continue without optional style metadata.
+    }
     return styles;
   }
 }

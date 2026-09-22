@@ -14,6 +14,7 @@ import { RoutingCapabilityCardProjector } from '../candidate-selection/routing-c
 import { DeterministicTopologyPlannerService } from '../topology/deterministic-topology-planner.service';
 import { DeterministicTopologyValidatorService } from '../topology/deterministic-topology-validator.service';
 import { isAcceptedSkillMatch } from '../skill/skill-match-policy';
+import { SkillCacheService } from '../skill/skill-cache.service';
 import { DeterministicRecipeMatcherService } from '../topology/deterministic-recipe-matcher.service';
 import { DeterministicRecipeTopologyBuilderService } from '../topology/deterministic-recipe-topology-builder.service';
 import { ExplicitSkillIntentService } from '../topology/explicit-skill-intent.service';
@@ -63,15 +64,34 @@ export class DeterministicPlanGeneratorService {
     @Optional()
     private readonly userHabitRouter?: UserHabitRouterService,
     @Optional()
-    private readonly taskCommandResolver?: TaskCommandResolverService
+    private readonly taskCommandResolver?: TaskCommandResolverService,
+    @Optional()
+    private readonly skillCacheService?: SkillCacheService
   ) {}
 
   public async generatePlan(
     dto: GenerateDeterministicPlanRequestDto
   ): Promise<DeterministicPlanDraftV1> {
+    let availableSkills = dto.availableSkills;
+    if ((!availableSkills || availableSkills.length === 0) && this.skillCacheService) {
+      const webSearchEnabled =
+        hasRoutingSignal(dto.userRequest, 'search', createBuiltinRoutingPolicySnapshot()) ||
+        /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|查一下|查找|查询|搜搜|查查)/i.test(dto.userRequest);
+      const loaded = await this.skillCacheService.loadAvailableSkills(
+        dto.telemetry?.authToken,
+        dto.telemetry?.traceId,
+        undefined,
+        webSearchEnabled
+      );
+      availableSkills = loaded.map((skill) => ({
+        ...skill,
+        id: (skill as any).id || skill.skillId,
+        name: (skill as any).name || skill.skillName,
+      }));
+    }
     const { skillCards, llmOperationCards } = await this.candidateSelector.selectCandidates(
       dto.userRequest,
-      dto.availableSkills || []
+      availableSkills || []
     );
 
     if (

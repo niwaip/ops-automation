@@ -7,7 +7,7 @@ export class ContractFormIntegrityScannerService {
   private readonly logger = new Logger(ContractFormIntegrityScannerService.name);
 
   // Template placeholders: {d.partyA.name}, {{var}}, {var}, ${var}, [待定], 【待补充】
-  private readonly TEMPLATE_VAR_REGEX = /\{[a-zA-Z0-9_\.]+\}|\{\{[a-zA-Z0-9_\.]+\}|\$\{[a-zA-Z0-9_\.]+\}/g;
+  private readonly TEMPLATE_VAR_REGEX = /\{[a-zA-Z0-9_.]+\}|\{\{[a-zA-Z0-9_.]+\}|\$\{[a-zA-Z0-9_.]+\}/g;
   private readonly DRAFT_PLACEHOLDER_REGEX = /\[(?:待定|待填|待补充|TBD|待确认|●|详见附件)\]|【(?:待定|待填|待补充|待确认|请补充)】/gi;
 
   // Unfilled blanks: ____, ————, (   ), （   ）

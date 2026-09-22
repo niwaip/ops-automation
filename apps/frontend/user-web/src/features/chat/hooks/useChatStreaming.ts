@@ -40,6 +40,13 @@ interface UseChatStreamingOptions {
   snapshotMessageThoughts: (sessionId: string, messageId: string) => void;
   updateMessage: (sessionId: string, messageId: string, patch: Partial<ChatMessage>) => void;
   updateSessionMeta: (sessionId: string, patch: Partial<ChatSession>) => void;
+  getCurrentSelectedSessionId?: () => string | null;
+}
+
+interface ActiveStreamRecord {
+  abort: () => void;
+  sessionId: string;
+  executionId?: string;
 }
 
 export function useChatStreaming({
@@ -50,11 +57,17 @@ export function useChatStreaming({
   snapshotMessageThoughts,
   updateMessage,
   updateSessionMeta,
+  getCurrentSelectedSessionId,
 }: UseChatStreamingOptions) {
   const queryClient = useQueryClient();
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [abortStreaming, setAbortStreaming] = useState<(() => void) | null>(null);
+
+  // 多流并发计数器：每个 runAssistantRequest 启动 +1，结束 -1，归零才关闭 isStreaming
+  const streamingCountRef = useRef(0);
+  // 多流并发句柄表：messageId -> streamRecord
+  const activeStreamsMapRef = useRef<Map<string, ActiveStreamRecord>>(new Map());
 
   const activeExecutionIdRef = useRef<string | null>(null);
   const activeTaskTitleRef = useRef<string>('');
@@ -96,6 +109,7 @@ export function useChatStreaming({
     assistantMessageId: string,
     request: ChatRequest
   ) => {
+    // 仅更新"最新流"的追踪 refs（用于兼容单流场景）
     activeExecutionIdRef.current = null;
     activeTaskTitleRef.current = request.message || 'AI 任务执行';
     activeSessionIdRef.current = sessionId;
@@ -116,6 +130,10 @@ export function useChatStreaming({
       const executionId = reduced.messagePatch.metadata?.executionId;
       if (executionId) {
         activeExecutionIdRef.current = executionId;
+        const record = activeStreamsMapRef.current.get(assistantMessageId);
+        if (record) {
+          record.executionId = executionId;
+        }
       }
 
       if (reduced.progressLog) {
@@ -138,8 +156,18 @@ export function useChatStreaming({
         updateMessage(sessionId, assistantMessageId, reduced.messagePatch);
       }
     });
+
+    activeStreamsMapRef.current.set(assistantMessageId, {
+      abort: streamHandle.abort,
+      sessionId,
+    });
     setAbortStreaming(() => streamHandle.abort);
-    await streamHandle.promise;
+
+    try {
+      await streamHandle.promise;
+    } finally {
+      activeStreamsMapRef.current.delete(assistantMessageId);
+    }
   }, [
     appendProgressLog,
     getAccessToken,
@@ -156,21 +184,34 @@ export function useChatStreaming({
     assistantMessageId: string
   ) => {
     setError(null);
+    // 多流并发：计数 +1，保持 isStreaming = true
+    streamingCountRef.current += 1;
     setIsStreaming(true);
+
+    let localIsRunInBackground = false;
+    let localIsUserAborted = false;
 
     try {
       await startAssistantStream(session.id, assistantMessageId, request);
       snapshotMessageThoughts(session.id, assistantMessageId);
       updateMessage(session.id, assistantMessageId, { isStreaming: false });
       await syncRelatedQueries(session.id);
+
+      // 旧会话流完成提示：若用户当前浏览的不是该 session.id，弹出轻量 toast 提示
+      const currentSelectedId = getCurrentSelectedSessionId?.();
+      if (currentSelectedId && currentSelectedId !== session.id) {
+        const title = session.title || '前一个会话';
+        toast.info(`会话「${title}」已回复完成`, 4);
+      }
     } catch (streamError) {
-      if (isRunInBackgroundRef.current) {
-        // 已转入后台运行，流中断属正常解绑，不记录为错误
+      const runInBg = localIsRunInBackground || isRunInBackgroundRef.current;
+      const userAborted = localIsUserAborted || isUserAbortedRef.current;
+
+      if (runInBg) {
         return;
       }
 
-      if (isUserAbortedRef.current || isStreamAbortError(streamError)) {
-        // 用户主动停止任务：不作为系统失败展示，不抛出 BodyStreamBuffer was aborted
+      if (userAborted || isStreamAbortError(streamError)) {
         const currentMessage = (sessionMessagesRef.current[session.id] || []).find(
           (message) => message.id === assistantMessageId
         );
@@ -219,10 +260,15 @@ export function useChatStreaming({
       }
       updateMessage(session.id, assistantMessageId, errorPatch);
     } finally {
-      setIsStreaming(false);
-      setAbortStreaming(null);
+      // 多流并发：计数 -1，归零才关闭 isStreaming
+      streamingCountRef.current = Math.max(0, streamingCountRef.current - 1);
+      if (streamingCountRef.current === 0) {
+        setIsStreaming(false);
+        setAbortStreaming(null);
+      }
     }
   }, [
+    getCurrentSelectedSessionId,
     notifiedTaskStateKeysRef,
     sessionMessagesRef,
     snapshotMessageThoughts,
@@ -232,26 +278,43 @@ export function useChatStreaming({
     updateMessage,
   ]);
 
-  const handleStopStreaming = useCallback(() => {
+  const handleStopStreaming = useCallback((targetSessionId?: string) => {
     isUserAbortedRef.current = true;
-    const executionId = activeExecutionIdRef.current;
-    const sessionId = activeSessionIdRef.current;
+    const currentSessionId = targetSessionId || activeSessionIdRef.current;
 
-    // 1. 如果有活跃的后端执行单，显式调用后端取消接口终止控制面执行
-    if (executionId) {
-      void executionApi.cancel(executionId).catch((err) => {
-        console.warn(`[useChatStreaming] 终止后端执行单 ${executionId} 失败:`, err);
-      });
+    const streamsToStop: ActiveStreamRecord[] = [];
+    activeStreamsMapRef.current.forEach((record) => {
+      if (!currentSessionId || record.sessionId === currentSessionId) {
+        streamsToStop.push(record);
+      }
+    });
+
+    if (streamsToStop.length === 0) {
+      const executionId = activeExecutionIdRef.current;
+      if (executionId) {
+        void executionApi.cancel(executionId).catch(() => {});
+      }
+      if (currentSessionId) {
+        void apiClient.post('/ai/chat/stop', { sessionId: currentSessionId }).catch(() => {});
+      }
+      abortStreaming?.();
+      setAbortStreaming(null);
+      setIsStreaming(false);
+      toast.info('任务已终止');
+      return;
     }
 
-    // 2. 发送显式停止请求终止个人沙箱执行进程
-    void apiClient.post('/ai/chat/stop', { sessionId }).catch(() => {});
+    streamsToStop.forEach((rec) => {
+      if (rec.executionId) {
+        void executionApi.cancel(rec.executionId).catch(() => {});
+      }
+      void apiClient.post('/ai/chat/stop', { sessionId: rec.sessionId }).catch(() => {});
+      try {
+        rec.abort();
+      } catch {}
+    });
 
-    // 3. 中断前端流式拉取
-    abortStreaming?.();
-    setAbortStreaming(null);
-    setIsStreaming(false);
-    toast.info('任务已终止');
+    toast.info('对话输出已终止');
   }, [abortStreaming, toast]);
 
   const handleRunInBackground = useCallback(() => {

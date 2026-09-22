@@ -186,4 +186,99 @@ describe('ImChannelService Commands & WeChat Typing', () => {
       ).resolves.toBeUndefined();
     });
   });
+
+  describe('sendReminder & context_token persistence', () => {
+    it('passes contextToken from connection to wechat.sendText', async () => {
+      mockPrisma.imChannelConnection.findUnique.mockResolvedValue({
+        id: 'conn_1',
+        enabled: true,
+        status: 'online',
+        encryptedCredential:
+          'enc_{"baseUrl":"https://ilinkai.weixin.qq.com/","token":"tok","ownerUserId":"usr1"}',
+        contextToken: 'ctx_from_db',
+      });
+
+      await imChannelService.sendReminder('usr1', '滴眼药水');
+
+      expect(mockWechat.sendText).toHaveBeenCalledWith(
+        'https://ilinkai.weixin.qq.com/',
+        'tok',
+        'usr1',
+        expect.stringContaining('滴眼药水'),
+        'ctx_from_db',
+        undefined
+      );
+    });
+
+    it('catches session expiry error (ret: -2) and records friendly prompt in lastError', async () => {
+      mockPrisma.imChannelConnection.findUnique.mockResolvedValue({
+        id: 'conn_1',
+        enabled: true,
+        status: 'online',
+        encryptedCredential:
+          'enc_{"baseUrl":"https://ilinkai.weixin.qq.com/","token":"tok","ownerUserId":"usr1"}',
+        contextToken: 'ctx_from_db',
+      });
+      mockWechat.sendText.mockRejectedValueOnce(
+        new Error('微信消息发送失败（ret: -2, errmsg: session expired）')
+      );
+
+      await expect(imChannelService.sendReminder('usr1', '滴眼药水')).rejects.toThrow('ret: -2');
+
+      expect(mockPrisma.imChannelConnection.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'conn_1' },
+          data: expect.objectContaining({
+            lastError: expect.stringContaining('微信会话已过期'),
+          }),
+        })
+      );
+    });
+
+    it('persists context_token on inbound message and uses it in subsequent sendReminder', async () => {
+      mockPrisma.imChannelConnection.findUnique.mockResolvedValue({
+        id: 'conn_1',
+        enabled: true,
+        status: 'online',
+        encryptedCredential:
+          'enc_{"baseUrl":"https://ilinkai.weixin.qq.com/","token":"tok","ownerUserId":"usr1"}',
+        contextToken: 'old_db_token',
+      });
+
+      // Simulate inbound message with new context_token
+      await (imChannelService as any).handleInbound(
+        'usr1',
+        'conn_1',
+        'chat',
+        { baseUrl: 'https://ilinkai.weixin.qq.com/', token: 'tok', ownerUserId: 'usr1' },
+        {
+          from_user_id: 'usr1',
+          context_token: 'fresh_inbound_token',
+          item_list: [{ type: 1, text_item: { text: '/help' } }],
+        }
+      );
+
+      // Verify DB update
+      expect(mockPrisma.imChannelConnection.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'conn_1' },
+          data: expect.objectContaining({
+            contextToken: 'fresh_inbound_token',
+            contextTokenUpdatedAt: expect.any(Date),
+          }),
+        })
+      );
+
+      // Subsequent reminder should prioritize the memory-cached fresh token
+      await imChannelService.sendReminder('usr1', '滴眼药水');
+      expect(mockWechat.sendText).toHaveBeenLastCalledWith(
+        'https://ilinkai.weixin.qq.com/',
+        'tok',
+        'usr1',
+        expect.stringContaining('滴眼药水'),
+        'fresh_inbound_token',
+        undefined
+      );
+    });
+  });
 });

@@ -332,7 +332,7 @@ export class WorkspaceNoteAiHelper {
     // 检查重名冲突
     let finalName = candidate;
     let index = 1;
-    while (true) {
+    for (;;) {
       const existing = await this.prisma.workspaceNode.findFirst({
         where: {
           workspaceId,

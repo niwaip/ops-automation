@@ -326,7 +326,7 @@ describe('WorkspaceNoteService', () => {
     mockPrisma.workspace.findFirst.mockResolvedValue(personalWorkspace);
     mockPrisma.workspaceNode.findFirst.mockResolvedValue(null);
 
-    let createdNodes: any[] = [];
+    const createdNodes: any[] = [];
     mockPrisma.workspaceNode.create.mockImplementation((args: any) => {
       const node = {
         ...args.data,

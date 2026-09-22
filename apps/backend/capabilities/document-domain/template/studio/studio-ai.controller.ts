@@ -3,66 +3,64 @@
  */
 
 import {
-  Body,
-  Controller,
-  Get,
-  Header,
-  HttpException,
-  HttpStatus,
-  Param,
-  Post,
-  Query,
-  Res,
+Body,
+Controller,
+Get,
+Header,
+HttpException,
+HttpStatus,
+Param,
+Post,
+Query,
+Res,
 } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody,ApiOperation,ApiQuery,ApiResponse,ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
-import * as fs from 'fs';
-import * as path from 'path';
 import { PreviewService } from '../../render/preview/preview.service';
+import { RenderOutputRepository } from '../repository/render-output.repository';
+import { SkillRepository } from '../repository/skill.repository';
+import { TemplateRepository } from '../repository/template.repository';
 import {
-  AIIdentifierService,
-  AIIdentifyResponse,
+AIIdentifierService,
+AIIdentifyResponse,
 } from '../workflow-authoring/ai-identifier.service';
 import { DocumentStructureService } from '../workflow-authoring/document-structure.service';
-import { TemplateRepository } from '../repository/template.repository';
-import { SkillRepository } from '../repository/skill.repository';
-import { RenderOutputRepository } from '../repository/render-output.repository';
 import { TemplateWorkflowService } from '../workflow-authoring/template-workflow.service';
-import { isStudioSkillDebugEnabled, isStudioVerboseDebugEnabled } from './studio-debug.helper';
-import { AIIdentifyDto, AIVerifyDto, DirectAIIdentifyDto } from './studio.dto';
+import { isStudioSkillDebugEnabled,isStudioVerboseDebugEnabled } from './studio-debug.helper';
+import { AIIdentifyDto,AIVerifyDto,DirectAIIdentifyDto } from './studio.dto';
+import type { TemplateResponse } from './studio.types';
+import { parseJsonObjectOrDefault } from './utils/studio-ai-controller.helper';
 import {
-  executeDirectAiIdentify,
-  executeDirectAiIdentifyMultistage,
-  executeDirectAiIdentifyWithProgress,
+executeDirectAiIdentify,
+executeDirectAiIdentifyMultistage,
+executeDirectAiIdentifyWithProgress,
 } from './utils/studio-ai-direct-identify.helper';
 import {
-  executeTemplateAiIdentify,
-  executeTemplateAiIdentifyStream,
+executeTemplateAiIdentify,
+executeTemplateAiIdentifyStream,
 } from './utils/studio-ai-identify.helper';
 import { executePreviewWithSkill } from './utils/studio-ai-preview-skill.helper';
 import { getStudioAiSkillOrThrow } from './utils/studio-ai-skill-query.helper';
 import { executeGenerateAiSkill } from './utils/studio-ai-skill.helper';
-import {
-  buildHydratedStudioSkillSampleData,
-  generateStudioSimulatedData,
-  normalizeStudioRenderData,
-} from './utils/studio-controller-data.helper';
-import {
-  cacheStudioTemplateSuggestions,
-} from './utils/studio-template-meta.helper';
-import { createStudioControllerRuntime } from './utils/studio-runtime.helper';
-import type { TemplateResponse } from './studio.types';
-import {
-  createStudioRenderOutputSupport,
-  createStudioSkillSupport,
-  createStudioTemplateSupport,
-  type StudioRenderOutputSupport,
-  type StudioSkillSupport,
-  type StudioTemplateSupport,
-} from './utils/studio-controller-composition.helper';
-import { executeAiVerifyTemplate } from './utils/studio-ai-verify.helper';
 import { executeAiVerifyTemplateStreamResponse } from './utils/studio-ai-verify-stream.helper';
-import { parseJsonObjectOrDefault } from './utils/studio-ai-controller.helper';
+import { executeAiVerifyTemplate } from './utils/studio-ai-verify.helper';
+import {
+createStudioRenderOutputSupport,
+createStudioSkillSupport,
+createStudioTemplateSupport,
+type StudioRenderOutputSupport,
+type StudioSkillSupport,
+type StudioTemplateSupport,
+} from './utils/studio-controller-composition.helper';
+import {
+buildHydratedStudioSkillSampleData,
+generateStudioSimulatedData,
+normalizeStudioRenderData,
+} from './utils/studio-controller-data.helper';
+import { createStudioControllerRuntime } from './utils/studio-runtime.helper';
+import {
+cacheStudioTemplateSuggestions,
+} from './utils/studio-template-meta.helper';
 
 @ApiTags('studio')
 @Controller('studio')
@@ -484,7 +482,7 @@ export class StudioAiController {
   @Header('Content-Type', 'application/json')
   async downloadSkill(
     @Param('id') id: string,
-    @Res({ passthrough: true }) res: Response
+    @Res({ passthrough: true }) _res: Response
   ): Promise<any> {
     return getStudioAiSkillOrThrow(this.skillSupport.getSkillWithDbFallback, id);
   }

@@ -118,6 +118,8 @@ export interface ContractReviewMetrics {
 
 export interface ContractReviewOutput {
   summary: string;
+  /** 仅供聊天界面渲染 HtmlPreviewBlock 的扩展摘要（含内联 HTML 代码块），不持久化到 result.summary */
+  chatSummary?: string;
   contractType: ContractType;
   contractTypeName: string;
   myPosition: PartyPosition;

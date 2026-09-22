@@ -323,7 +323,7 @@ export class RecorderStructureProbeService {
           const resolvedRole = getDataAttr(element, 'role') || (isSegmented ? 'tab' : (isRadioWrapper ? 'radio' : element.tagName.toLowerCase()));
 
           const elementTextContent = toText(element.textContent);
-          const isOnlyNumber = /^\d+$/.test(elementTextContent);
+          const isOnlyNumber = /^d+$/.test(elementTextContent);
           const iconAriaLabel = (() => {
             const icon = element.querySelector ? element.querySelector('.anticon, [role="img"], [data-icon]') : null;
             if (!icon) return undefined;

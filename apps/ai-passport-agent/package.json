@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "build": "python scripts/build.py folo/ai-passport-c3 --name folo-ai-passport-c3 --language zh-CN --wake-word nihaoxiaozhi",
-    "test": "python -m unittest discover -s scripts/tests -v",
+    "test": "python3 -m unittest discover -s scripts/tests -v",
     "clean": "idf.py fullclean",
     "flash": "python -m esptool --chip esp32c3 --baud 460800 write_flash --flash_mode dio --flash_freq 80m --flash_size 8MB 0x0 build/merged-binary.bin"
   },

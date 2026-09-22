@@ -1,20 +1,15 @@
-import { Injectable, Optional } from '@nestjs/common';
-import type {
-  ExtractedLegalFacts,
-  PartyPosition,
-  ReviewElementCategory,
-  ReviewSeverity,
-  StandardContractType,
-  ClauseLegalFinding,
-} from './review-element.types';
-import type {
-  ReviewElementConfig,
-  PolarityOutcome,
-  PositionPolarityTarget,
-  PositionPolarityRule,
-} from './review-element-config.types';
-import { ReviewFactExtractorService } from './review-fact-extractor.service';
+import { Injectable,Optional } from '@nestjs/common';
 import { BUILTIN_REVIEW_ELEMENTS } from './builtin-review-elements.default';
+import type {
+PositionPolarityRule,
+PositionPolarityTarget,
+ReviewElementConfig
+} from './review-element-config.types';
+import type {
+ClauseLegalFinding,
+ExtractedLegalFacts,
+} from './review-element.types';
+import { ReviewFactExtractorService } from './review-fact-extractor.service';
 
 export interface DiffInsight {
   riskLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE';
@@ -109,7 +104,7 @@ export class ReviewElementEvaluatorService {
       riskSummary?: string;
       criteria?: { patterns?: string[]; factField?: keyof ExtractedLegalFacts };
     },
-    facts?: ExtractedLegalFacts
+    _facts?: ExtractedLegalFacts
   ): { evidenceQuote: string; charStart?: number; charEnd?: number } {
     if (!clauseText) {
       return { evidenceQuote: '待定位' };
@@ -148,7 +143,7 @@ export class ReviewElementEvaluatorService {
     // 2. Fallback: search by keywords from rule title & summary
     if (matchIndex === -1) {
       const stopWords =
-        /[\s,，、;；|:：/\\_\-()（）\[\]【】\d+%]+|是否|不得|应当|必须|超过|高于|低于|约定|排查|检查|若|如果|如|双方|甲方|乙方|开展|合作|合同|协议|条款|内容|规定|软件|系统|项目|业务/g;
+        /[\s,，、;；|:：/\\_\-()（）[\]【】\d+%]+|是否|不得|应当|必须|超过|高于|低于|约定|排查|检查|若|如果|如|双方|甲方|乙方|开展|合作|合同|协议|条款|内容|规定|软件|系统|项目|业务/g;
       const tokens = ((rule.title || '') + ' ' + (rule.riskSummary || ''))
         .split(stopWords)
         .filter((k) => k && k.length >= 2)
@@ -199,7 +194,7 @@ export class ReviewElementEvaluatorService {
 
     if (semantic.riskSummary) {
       const stopWords =
-        /[\s,，、;；|:：/\\_\-()（）\[\]【】\d+%]+|是否|不得|应当|必须|超过|高于|低于|约定|排查|检查|若|如果|如|双方|甲方|乙方|开展|合作|合同|协议|条款|内容|规定|软件|系统|项目|业务|连续性|风险|存在|严重|可能/g;
+        /[\s,，、;；|:：/\\_\-()（）[\]【】\d+%]+|是否|不得|应当|必须|超过|高于|低于|约定|排查|检查|若|如果|如|双方|甲方|乙方|开展|合作|合同|协议|条款|内容|规定|软件|系统|项目|业务|连续性|风险|存在|严重|可能/g;
       const tokens = semantic.riskSummary
         .split(stopWords)
         .filter((k: string) => k && k.length >= 2)
@@ -336,7 +331,7 @@ export class ReviewElementEvaluatorService {
       }
 
       // 2. Direct title substring match (min 4 chars)
-      const fTitle = (f.title || '').replace(/[【】\[\]()（）]/g, '').trim();
+      const fTitle = (f.title || '').replace(/[【】[\]()（）]/g, '').trim();
       if (fTitle.length >= 4 && sSummary.includes(fTitle)) {
         return true;
       }
@@ -376,7 +371,6 @@ export class ReviewElementEvaluatorService {
     const combined = `${title} ${srcText} ${tgtText}`;
     const pos = this.normalizePosition(myPosition);
 
-    let riskLevel: ReviewSeverity = 'LOW';
     let summary = '';
     let legalAdvice = '';
     let elementId: string | undefined;
@@ -385,7 +379,7 @@ export class ReviewElementEvaluatorService {
     // 0. Priority: Custom Checklist Rules
     if (customRules && Array.isArray(customRules)) {
       const stopWords =
-        /[\s,，、;；|:：/\\_\-()（）\[\]【】\d+%]+|是否|不得|应当|必须|超过|高于|低于|约定|排查|检查|若|如果|如/g;
+        /[\s,，、;；|:：/\\_\-()（）[\]【】\d+%]+|是否|不得|应当|必须|超过|高于|低于|约定|排查|检查|若|如果|如/g;
       for (const c of customRules) {
         const explicitKeywords = Array.isArray(c.keywords) ? c.keywords : [];
         const autoTokens = ((c.title || '') + ' ' + (c.rule || ''))

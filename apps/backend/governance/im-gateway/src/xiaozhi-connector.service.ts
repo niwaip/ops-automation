@@ -3,8 +3,8 @@ import { createHash, randomUUID } from 'crypto';
 import { ImCredentialCipher } from './im-channel.crypto';
 import { IM_GATEWAY_PRISMA, ImGatewayPrismaPort } from './ports';
 import { XiaozhiTaskService } from './xiaozhi-task.service';
+import WebSocket from 'ws';
 
-const WebSocket = require('ws');
 const TOOLS = [
   { name: 'ops_submit_task', description: '提交 ops 工作任务，只表示已受理。稍后请查询状态。', inputSchema: { type: 'object', properties: { instruction: { type: 'string', description: '完整任务指令' } }, required: ['instruction'], additionalProperties: false } },
   { name: 'ops_get_task_status', description: '查询刚才任务或完整请求编号的真实状态。待审批时请用户在网页处理。', inputSchema: { type: 'object', properties: { request_id: { type: 'string', description: '可选的完整请求编号；省略则查询当前连接最近任务' } }, additionalProperties: false } },

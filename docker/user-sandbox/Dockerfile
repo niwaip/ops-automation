@@ -78,10 +78,10 @@ COPY apps/backend/runtimes/personal-sandbox-runner/bin/dsh /usr/local/bin/dsh
 COPY apps/backend/runtimes/personal-sandbox-runner/src/dsh_modules /usr/local/bin/dsh_modules
 RUN chmod 755 /usr/local/bin/dsh && chmod -R 755 /usr/local/bin/dsh_modules
 
-COPY docker/user-sandbox/plugins/ /opt/dsh/plugins/
+COPY apps/backend/runtimes/personal-sandbox-runner/plugins/ /opt/dsh/plugins/
 RUN chmod 755 /opt/dsh/plugins/*.py 2>/dev/null || true
 
-COPY docker/user-sandbox/skills/ /opt/dsh/skills/
+COPY apps/backend/runtimes/personal-sandbox-runner/skills/ /opt/dsh/skills/
 RUN chmod -R 755 /opt/dsh/skills 2>/dev/null || true
 
 # 8. 拷贝入口脚本并设置权限

@@ -1,53 +1,42 @@
-import { Logger } from '@nestjs/common';
-import axios from 'axios';
-import { getAiOrchestratorUrl } from '../../../config/service-endpoints';
+import * as fs from 'node:fs';
+import { safeText } from './document-xml-parser';
 import {
-  WorkflowTemplateFieldSpec,
-  WorkflowResolvedAssets,
-  WorkflowRenderTranslationCandidate,
-  WorkflowTermAssets,
-  Primitive,
-  WorkflowBindingPlan,
-  WorkflowBindingPlanBinding,
+WorkflowBindingPlan,
+WorkflowBindingPlanBinding,
+WorkflowResolvedAssets,
+WorkflowTemplateFieldSpec
 } from './workflow-assets';
-import { safeText, escapeRegExp } from './document-xml-parser';
-import { parseAmount, parseDate, formatCurrency, formatDate } from './workflow-parser-format';
 import {
-  normalizeTableListRows,
-  resolveTabularRowWidth,
-  shouldMergeBilingualTabularRows,
-  mergeTabularCellText,
-  resolveListColumnKeys,
-} from './workflow-table-normalizer';
-import {
-  findTermMatch,
-  findEnumMatch,
-  resolveAssets,
-  resolveTemplateFieldLanguage,
+findEnumMatch,
+findTermMatch,
+resolveAssets,
+resolveTemplateFieldLanguage,
 } from './workflow-discover';
-import { tryParseJsonObject } from './workflow-ai';
-
+import { formatCurrency,formatDate,parseAmount,parseDate } from './workflow-parser-format';
 import {
-  readLocalizedFieldValue,
-  setLocalizedValue,
-  getLanguageAliases,
-} from './workflow-translation-helper';
-import { extractFieldValue, parseListValueFromText } from './workflow-input-helper';
+normalizeTableListRows
+} from './workflow-table-normalizer';
 
-const logger = new Logger('WorkflowRenderHelper');
+import { extractFieldValue,parseListValueFromText } from './workflow-input-helper';
+import {
+getLanguageAliases,
+readLocalizedFieldValue,
+setLocalizedValue,
+} from './workflow-translation-helper';
 
 // #region debug-point A:render-helper
 const debugReport = (hypothesisId: string, msg: string, data: Record<string, unknown> = {}) => {
   const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
   if (!debugUrl) return;
-  const fs = require('fs');
   let url = debugUrl;
   let sessionId = 'signing-date-render';
   try {
     const env = fs.readFileSync('.dbg/signing-date-render.env', 'utf8');
     url = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || url;
     sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || sessionId;
-  } catch {}
+  } catch {
+    // Optional local debug configuration is absent.
+  }
   fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

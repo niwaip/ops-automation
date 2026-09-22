@@ -20,7 +20,7 @@ export function cleanMarkdownFormatting(text: string): string {
     .replace(/^#{1,6}\s+/, '')
     .replace(/\*\*/g, '')
     .replace(/__/g, '')
-    .replace(/^[\*\-]\s+/, '')
+    .replace(/^[*-]\s+/, '')
     .trim();
 }
 
@@ -136,7 +136,7 @@ export function parseHtmlToClauses(html: string): ContractClauseNode[] {
     const cleanItText = cleanMarkdownFormatting(it.text);
     const isNumberedArticle =
       TIER2_ARTICLE_REGEX.test(cleanItText) ||
-      (/^\s*(?:(?:\d+)|[一二三四五六七八九十百]+)[\.、\s]+(?!\d)/i.test(cleanItText) &&
+      (/^\s*(?:(?:\d+)|[一二三四五六七八九十百]+)[.、\s]+(?!\d)/i.test(cleanItText) &&
         cleanItText.length < 50 &&
         !/[。！？；]$/.test(cleanItText));
 
@@ -171,7 +171,7 @@ export function parseHtmlToClauses(html: string): ContractClauseNode[] {
         /^\s*(第[一二三四五六七八九十百千万\d]+条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)\s*(.*)$/i
       );
       const matchNum = heading.match(
-        /^\s*(\d+[\.、\s]+(?!\d)|[一二三四五六七八九十百]+[、\s]+)\s*(.*)$/
+        /^\s*(\d+[.、\s]+(?!\d)|[一二三四五六七八九十百]+[、\s]+)\s*(.*)$/
       );
       let cNum = `第 ${clauseIndex} 条`;
       let cleanTitle = heading;
@@ -218,7 +218,7 @@ export function fallbackParagraphChunking(text: string): ContractClauseNode[] {
     let cur = '';
     for (const line of lines) {
       const isHeaderLike =
-        /^(?:第\s*[一二三四五六七八九十百千万\d]+\s*[编章节篇部条]|[一二三四五六七八九十百]+[、\.\s]|\d+[\.、\s]|#{1,6}\s|[【(（])/i.test(line) &&
+        /^(?:第\s*[一二三四五六七八九十百千万\d]+\s*[编章节篇部条]|[一二三四五六七八九十百]+[、.\s]|\d+[.、\s]|#{1,6}\s|[【(（])/i.test(line) &&
         line.length < 50;
       if (isHeaderLike && cur) {
         lineBlocks.push(cur);
@@ -270,10 +270,6 @@ export function parseTextToClauses(text: string): ContractClauseNode[] {
   const lines = rawLines.map((l) => l.trim()).filter((l) => l.length > 0);
   if (lines.length === 0) return [];
 
-  const hasFormalArticles = lines.some((l) =>
-    TIER2_ARTICLE_REGEX.test(cleanMarkdownFormatting(l))
-  );
-
   const clauses: ContractClauseNode[] = [];
   let currentClause: ContractClauseNode | null = null;
   let clauseIndex = 0;
@@ -310,7 +306,7 @@ export function parseTextToClauses(text: string): ContractClauseNode[] {
     const line = lines[i];
     const nextLine = lines[i + 1] || '';
 
-    let cleanLine = cleanMarkdownFormatting(line);
+    const cleanLine = cleanMarkdownFormatting(line);
 
     // Annex / Division
     const isAnnex = ANNEX_BOUNDARY_REGEX.test(cleanLine) && cleanLine.length < 30;
@@ -341,7 +337,7 @@ export function parseTextToClauses(text: string): ContractClauseNode[] {
     // Tier 2 Article: e.g. "第一条", "一、", "1.", "ARTICLE 1"
     const isNumberedArticle =
       TIER2_ARTICLE_REGEX.test(cleanLine) ||
-      (/^\s*(?:(?:\d+)|[一二三四五六七八九十百]+)[\.、\s]+(?!\d)/i.test(cleanLine) &&
+      (/^\s*(?:(?:\d+)|[一二三四五六七八九十百]+)[.、\s]+(?!\d)/i.test(cleanLine) &&
         cleanLine.length < 50 &&
         !/[。！？；]$/.test(cleanLine));
 
@@ -366,7 +362,7 @@ export function parseTextToClauses(text: string): ContractClauseNode[] {
         /^\s*(第\s*[一二三四五六七八九十百千万\d]+\s*条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b)\s*(.*)$/i
       );
       const matchNum = heading.match(
-        /^\s*(\d+[\.、\s]+(?!\d)|[一二三四五六七八九十百]+[、\s]+)\s*(.*)$/
+        /^\s*(\d+[.、\s]+(?!\d)|[一二三四五六七八九十百]+[、\s]+)\s*(.*)$/
       );
       let cNum = `第 ${clauseIndex} 条`;
       let cleanTitle = heading;

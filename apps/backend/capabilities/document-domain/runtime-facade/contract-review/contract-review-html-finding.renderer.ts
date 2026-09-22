@@ -189,7 +189,7 @@ export class ContractReviewHtmlFindingRenderer {
 
     // Try keyword matching in clause content
     if (clauseContent && clauseContent.trim()) {
-      const stopWords = /[\s,，、;；|:：/\\_\-()（）\[\]【】\d+%“”"‘’'《》]+|是否|不得|应当|必须|超过|高于|低于|约定|排查|检查|若|如果|如|双方|甲方|乙方|开展|合作|合同|协议|条款|内容|规定|软件|系统|项目|业务|风险|存在|可能/g;
+      const stopWords = /[\s,，、;；|:：/\\_\-()（）[\]【】\d+%“”"‘’'《》]+|是否|不得|应当|必须|超过|高于|低于|约定|排查|检查|若|如果|如|双方|甲方|乙方|开展|合作|合同|协议|条款|内容|规定|软件|系统|项目|业务|风险|存在|可能/g;
       const textTokens = (title + ' ' + summary)
         .split(stopWords)
         .filter((w) => w && w.length >= 2);

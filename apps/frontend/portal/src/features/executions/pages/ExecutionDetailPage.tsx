@@ -263,7 +263,7 @@ export const ExecutionDetailPage: React.FC = () => {
                               {/* 时间 */}
                               <div style={{ marginBottom: hasOutput || hasError ? 8 : 0 }}>
                                 <Text type="secondary" style={{ fontSize: 12 }}>
-                                  开始：{formatDateTime(step.startedAt)}　结束：{formatDateTime(step.endedAt)}
+                                  开始：{formatDateTime(step.startedAt)}\u3000结束：{formatDateTime(step.endedAt)}
                                 </Text>
                               </div>
 

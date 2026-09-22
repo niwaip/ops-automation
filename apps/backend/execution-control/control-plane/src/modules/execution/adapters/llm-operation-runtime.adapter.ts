@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
-import { getAiOrchestratorUrl } from '../../../config/service-endpoints';
+import { getAiOrchestratorUrl, getInternalServiceHeaders } from '../../../config/service-endpoints';
 
 export interface LlmOperationInvokeParams {
   executionId: string;
@@ -111,7 +111,7 @@ export class LlmOperationRuntimeAdapter {
         timeout: timeoutMs,
         headers: {
           'Content-Type': 'application/json',
-          'X-Internal-Service': 'control-plane',
+          ...getInternalServiceHeaders('control-plane'),
         },
       });
       const runtimeResult = response.data;

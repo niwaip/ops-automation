@@ -38,7 +38,7 @@ export class BudgetEnforcerService {
     const prepared = JSON.parse(JSON.stringify(input)) as Record<string, unknown>;
 
     // Trim array fields (e.g. items) when over budget
-    for (const [key, value] of Object.entries(prepared)) {
+    for (const value of Object.values(prepared)) {
       if (Array.isArray(value)) {
         while (value.length > 1 && this.estimateTokens(prepared) > maxInputTokens) {
           value.pop();

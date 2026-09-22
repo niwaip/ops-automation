@@ -67,14 +67,6 @@ docker-compose.override.yml
 
 # Generated files
 *.generated.ts
-.cache/
-.data/
-
-# Turbo
-.turbo/
-
-# Docker
-docker-compose.override.yml
 .docker-state/
 .docker-state/control-plane-runtime-build.*
 docker/office-addin/runtime-certs/*
@@ -104,19 +96,15 @@ services/carbone-engine/outputs/
 confidential_agreement*.docx
 doc-preview-*.png
 Template*Workflow.json
-.playwright-mcp/
 *.png
 test_contract.docx
 
-# Browser worker runtime artifacts
 # Playwright MCP test files
 .playwright-mcp/
-*.png
-test_contract.docx
 
 # Browser worker runtime artifacts
 .playwright-cli/
-apps/backend/runtime/browser-worker/.playwright-cli/page-*.yml
+apps/backend/runtimes/browser-worker/.playwright-cli/page-*.yml
 
 # Office temp files
 **/~$*.*
@@ -162,4 +150,3 @@ docker/ops
 managed_components/
 sdkconfig.old
 sdkconfig
-

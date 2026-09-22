@@ -1,23 +1,22 @@
 import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
+Inject,
+Injectable,
+Logger,
+NotFoundException
 } from '@nestjs/common';
-import { WORKBENCH_PRISMA, WorkbenchPrismaPort } from '../ports';
+import { WORKBENCH_PRISMA,WorkbenchPrismaPort } from '../ports';
 import { WorkbenchTodoService } from '../todo/workbench-todo.service';
 import {
-  ConvertInboxToTodoDto,
-  InboxAiClarification,
-  InboxItemStatus,
-  IngestInboxItemDto,
-  QueryInboxDto,
-  TodoStatus,
-  UnifiedInboxContent,
+ConvertInboxToTodoDto,
+InboxAiClarification,
+InboxItemStatus,
+IngestInboxItemDto,
+QueryInboxDto,
+TodoStatus,
+UnifiedInboxContent,
 } from './dto/workbench-inbox.dto';
-import { WorkbenchInboxIngestionService } from './workbench-inbox-ingestion.service';
 import { WorkbenchInboxClarifierService } from './workbench-inbox-clarifier.service';
+import { WorkbenchInboxIngestionService } from './workbench-inbox-ingestion.service';
 
 @Injectable()
 export class WorkbenchInboxService {

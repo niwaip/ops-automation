@@ -233,7 +233,14 @@ class BackgroundTaskManager {
     if (execution.failureReason) {
       detailText = `错误原因：${execution.failureReason}`;
     } else if (typeof execution.result?.content === 'string') {
-      detailText = execution.result.content;
+      const rawContent = execution.result.content;
+      // 若 result.content 是完整 HTML 文档，不直接嵌入 Markdown，避免收件箱显示原始 HTML 源码
+      const isHtmlDocument = /^\s*<!DOCTYPE\s+html/i.test(rawContent) || /^\s*<html[\s>]/i.test(rawContent);
+      if (isHtmlDocument) {
+        detailText = '任务已生成 HTML 交付文档，请前往执行详情页查看或下载。';
+      } else {
+        detailText = rawContent;
+      }
     } else if (execution.result && Object.keys(execution.result).length > 0) {
       detailText = JSON.stringify(execution.result, null, 2);
     }

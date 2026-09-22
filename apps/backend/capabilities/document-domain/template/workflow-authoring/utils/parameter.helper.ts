@@ -146,7 +146,6 @@ export function generateFallbackSuggestions(
 
   // 记录已使用的路径和标签，避免重复
   const usedPaths: Set<string> = new Set();
-  const usedLabels: Set<string> = new Set();
 
   for (let i = 0; i < patterns.length; i++) {
     const pattern = patterns[i];
@@ -211,7 +210,7 @@ export function generateFallbackSuggestions(
     // 获取匹配到的描述（用于显示项目意义）
     let matchedDescription = '';
     if (suggestedPath !== `d.field${i + 1}`) {
-      for (const [mappingLabel, mapping] of Object.entries(labelMappings)) {
+      for (const mapping of Object.values(labelMappings)) {
         if (suggestedPath === mapping.path) {
           matchedDescription = mapping.description;
           break;

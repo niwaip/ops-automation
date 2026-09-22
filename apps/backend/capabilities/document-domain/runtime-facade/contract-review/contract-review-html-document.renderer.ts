@@ -64,7 +64,7 @@ export class ContractReviewHtmlDocumentRenderer {
     let chapterTitleZh = chapterLabel;
     let chapterTitleJa = '';
     if (isBilingualChapter) {
-      const parts = chapterLabel.split(/[\/／]/);
+      const parts = chapterLabel.split(/[/／]/);
       chapterTitleZh = parts[0].trim();
       chapterTitleJa = parts.slice(1).join(' / ').trim();
     }
@@ -278,7 +278,7 @@ export class ContractReviewHtmlDocumentRenderer {
         let currentItem = '';
 
         for (const line of lines) {
-          const isItemStart = /^(\d+(?:\.\d+)+|[（\(](?:[0-9一二三四五六七八九十a-zA-Z]+)[）\)]|[一二三四五六七八九十]+[、\.]|[0-9a-zA-Z][)）\.、]|#{1,6}\s+|[-—_*]{3,})/.test(line);
+          const isItemStart = /^(\d+(?:\.\d+)+|[（(](?:[0-9一二三四五六七八九十a-zA-Z]+)[）)]|[一二三四五六七八九十]+[、.]|[0-9a-zA-Z][)）.、]|#{1,6}\s+|[-—_*]{3,})/.test(line);
           if (isItemStart || !currentItem) {
             if (currentItem) mergedItems.push(currentItem);
             currentItem = line;
@@ -351,7 +351,7 @@ export class ContractReviewHtmlDocumentRenderer {
     let zhPart = title;
     let jaPart = '';
     if (title.includes('/') || title.includes('／')) {
-      const parts = title.split(/[\/／]/);
+      const parts = title.split(/[/／]/);
       zhPart = parts[0].trim();
       jaPart = parts.slice(1).join(' / ').trim();
     }

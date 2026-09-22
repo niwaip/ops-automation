@@ -1,13 +1,18 @@
-// @ts-nocheck
 jest.mock('dockerode', () => jest.fn(() => ({})), { virtual: true });
+jest.mock('fs/promises', () => ({
+  __esModule: true,
+  ...jest.requireActual('fs/promises'),
+  readFile: jest.fn(),
+}));
 
 import { PlaywrightCliAdapter } from './playwright-cli.adapter';
+import * as fsPromises from 'fs/promises';
 
 describe('PlaywrightCliAdapter', () => {
   const createAdapter = () =>
     new PlaywrightCliAdapter({
       touchWorkerByRuntimeSessionId: jest.fn(),
-    });
+    } as unknown as ConstructorParameters<typeof PlaywrightCliAdapter>[0]);
 
   it('resolves runtime target refs before click execution', async () => {
     const adapter = createAdapter();
@@ -78,10 +83,10 @@ describe('PlaywrightCliAdapter', () => {
 
     expect(result.command).toBe('click');
     expect(execCliSpy).toHaveBeenCalledTimes(1);
-    expect(execCliSpy.mock.calls[0][0]).toBe('runtime-1');
-    expect(execCliSpy.mock.calls[0][1][0]).toBe('run-code');
-    expect(execCliSpy.mock.calls[0][1][1]).toContain(`getByText("RAM登录", { exact: false })`);
-    expect(execCliSpy.mock.calls[0][1][1]).toContain(
+    expect(execCliSpy.mock.calls[0]![0]).toBe('runtime-1');
+    expect(execCliSpy.mock.calls[0]![1][0]).toBe('run-code');
+    expect(execCliSpy.mock.calls[0]![1][1]).toContain(`getByText("RAM登录", { exact: false })`);
+    expect(execCliSpy.mock.calls[0]![1][1]).toContain(
       `getByRole('button', { name: "RAM登录", exact: false })`
     );
   });
@@ -138,13 +143,13 @@ describe('PlaywrightCliAdapter', () => {
 
     expect(result.command).toBe('wait');
     expect(execCliSpy).toHaveBeenCalledTimes(1);
-    expect(execCliSpy.mock.calls[0][0]).toBe('runtime-1');
-    expect(execCliSpy.mock.calls[0][1][0]).toBe('run-code');
-    expect(execCliSpy.mock.calls[0][1][1]).toContain(
+    expect(execCliSpy.mock.calls[0]![0]).toBe('runtime-1');
+    expect(execCliSpy.mock.calls[0]![1][0]).toBe('run-code');
+    expect(execCliSpy.mock.calls[0]![1][1]).toContain(
       'activePage.locator("role=textbox[name=\\"Enter username\\"]")'
     );
-    expect(execCliSpy.mock.calls[0][1][1]).toContain('waitFor({ timeout: 15000 })');
-    expect(execCliSpy.mock.calls[0][1][1]).toContain(
+    expect(execCliSpy.mock.calls[0]![1][1]).toContain('waitFor({ timeout: 15000 })');
+    expect(execCliSpy.mock.calls[0]![1][1]).toContain(
       'Timeout waiting for selector in page and iframes'
     );
   });
@@ -153,7 +158,7 @@ describe('PlaywrightCliAdapter', () => {
     const adapter = createAdapter();
     jest.spyOn(adapter, 'ensureDirectories').mockResolvedValue(undefined);
     jest.spyOn(adapter, 'ensureSessionReady').mockResolvedValue(undefined);
-    jest.spyOn(adapter as any, 'enrichResultArtifacts').mockImplementation(async (_s: string, res: any) => res);
+    jest.spyOn(adapter as any, 'enrichResultArtifacts').mockImplementation((async (_s: string, res: any) => res) as any);
     jest.spyOn(adapter as any, 'settlePageAfterAction').mockResolvedValue(undefined);
     const execCliSpy = jest.spyOn(adapter, 'execCli').mockResolvedValue({
       stdout: 'ok',
@@ -168,12 +173,12 @@ describe('PlaywrightCliAdapter', () => {
 
     expect(result.command).toBe('click');
     expect(execCliSpy).toHaveBeenCalledTimes(1);
-    expect(execCliSpy.mock.calls[0][0]).toBe('runtime-1');
-    expect(execCliSpy.mock.calls[0][1][0]).toBe('run-code');
-    expect(execCliSpy.mock.calls[0][1][1]).toContain(
+    expect(execCliSpy.mock.calls[0]![0]).toBe('runtime-1');
+    expect(execCliSpy.mock.calls[0]![1][0]).toBe('run-code');
+    expect(execCliSpy.mock.calls[0]![1][1]).toContain(
       'scope.locator("[data-ai-action=\\"detail\\"]").nth(0)'
     );
-    expect(execCliSpy.mock.calls[0][1][1]).toContain('locator.click({ force: true, timeout: 5000 })');
+    expect(execCliSpy.mock.calls[0]![1][1]).toContain('locator.click({ force: true, timeout: 5000 })');
   });
 
   describe('normalizeEvalStringOutput', () => {
@@ -245,12 +250,12 @@ describe('PlaywrightCliAdapter', () => {
 
     expect(result.command).toBe('wait');
     expect(execCliSpy).toHaveBeenCalledTimes(1);
-    expect(execCliSpy.mock.calls[0][0]).toBe('runtime-1');
-    expect(execCliSpy.mock.calls[0][1][0]).toBe('run-code');
-    expect(execCliSpy.mock.calls[0][1][1]).toContain(
+    expect(execCliSpy.mock.calls[0]![0]).toBe('runtime-1');
+    expect(execCliSpy.mock.calls[0]![1][0]).toBe('run-code');
+    expect(execCliSpy.mock.calls[0]![1][1]).toContain(
       'activePage.locator("[data-ai-action=\\"detail\\"]").nth(0).waitFor({ timeout: 15000 })'
     );
-    expect(execCliSpy.mock.calls[0][1][1]).toContain(
+    expect(execCliSpy.mock.calls[0]![1][1]).toContain(
       'frame.locator("[data-ai-action=\\"detail\\"]").nth(0).waitFor({ timeout: 15000 })'
     );
   });
@@ -275,7 +280,6 @@ describe('PlaywrightCliAdapter', () => {
     jest.spyOn(adapter as any, 'ensureSessionReady').mockResolvedValue(undefined);
     jest.spyOn(adapter as any, 'getOrCreateSession').mockReturnValue({ preferLatestTab: false });
 
-    const fsPromises = require('fs/promises');
     jest.spyOn(fsPromises, 'readFile').mockResolvedValue(
       JSON.stringify({
         url: 'https://example.com',
@@ -289,10 +293,10 @@ describe('PlaywrightCliAdapter', () => {
     );
 
     let capturedScript = '';
-    jest.spyOn(adapter as any, 'execCli').mockImplementation(async (_sid: string, args: string[]) => {
+    jest.spyOn(adapter as any, 'execCli').mockImplementation((async (_sid: string, args: string[]) => {
       if (args[0] === 'run-code' && args[1]) capturedScript = args[1];
       return { stdout: JSON.stringify({ restored: true, partial: false }), stderr: '', exitCode: 0 };
-    });
+    }) as any);
 
     await adapter.restoreState('rt-1', 'rw:rt-1:3');
 

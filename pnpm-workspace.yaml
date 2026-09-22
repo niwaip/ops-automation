@@ -1,5 +1,5 @@
 packages:
-  # Compatibility globs for the target backend planes.
+  # Backend planes and capability domains.
   - 'apps/backend/governance/*'
   - 'apps/backend/intelligence/*'
   - 'apps/backend/registry-release/*'
@@ -8,11 +8,18 @@ packages:
   - 'apps/backend/capabilities/browser-domain/*'
   - 'apps/backend/capabilities/document-domain/*'
   - 'apps/backend/runtimes/*'
-  # Keep legacy broad globs during migration.
-  - 'apps/*'
-  - 'apps/*/*'
-  - 'apps/*/*/*'
-  - 'apps/*/*/*/*'
+  - 'apps/backend/platform'
+
+  # Product clients and experience applications.
+  - 'apps/ai-passport-agent'
+  - 'apps/desktop'
+  - 'apps/frontend/*'
+  - 'apps/frontend/shared/*'
+  - 'apps/mobile'
+  - 'apps/office-addin'
+  - 'apps/social-platform'
+
+  # Shared libraries, contracts, and test applications.
   - 'tests/*'
   - 'packages/*'
-  - 'packages/*/*'
+  - 'packages/backend-contracts/*'

@@ -483,7 +483,6 @@ export async function generateUnderstandingSummaryWithAI(
       rawAiResponse,
     };
   } catch (error) {
-    const actualErrorMessage = error instanceof Error ? error.message : 'unknown error';
     return {
       summary: {
         understandingSummaryText: buildFallbackWorkflowUnderstandingSummaryText({

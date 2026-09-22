@@ -1,7 +1,10 @@
+import { validateSync } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
 import {
   WorkbenchTodoParserService,
   TodoPriority,
   TodoSourceType,
+  QueryWorkbenchTodoDto,
 } from '@ops/workbench/todo';
 
 describe('WorkbenchTodoParserService', () => {
@@ -49,9 +52,6 @@ describe('WorkbenchTodoParserService', () => {
 
 describe('QueryWorkbenchTodoDto validation', () => {
   it('should allow pageSize up to 500 and reject pageSize above 500', () => {
-    const { validateSync } = require('class-validator');
-    const { plainToInstance } = require('class-transformer');
-    const { QueryWorkbenchTodoDto } = require('@ops/workbench/todo');
 
     const dto100 = plainToInstance(QueryWorkbenchTodoDto, { pageSize: '100' });
     expect(validateSync(dto100)).toHaveLength(0);
@@ -68,4 +68,3 @@ describe('QueryWorkbenchTodoDto validation', () => {
     expect(errors600[0].constraints?.max).toContain('pageSize must not be greater than 500');
   });
 });
-

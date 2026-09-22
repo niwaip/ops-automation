@@ -105,10 +105,10 @@ platform.<domain>.<action>/
 ```json
 {
   "capabilityKey": "platform.search.web",
-  "definitionVersion": "1.0.3",
-  "definitionDigest": "sha256:7a6ae646457c0653cfcdd8156587cfc69557d84c260cb631c3b3d8ce01c165f7",
+  "definitionVersion": "1.0.4",
+  "definitionDigest": "sha256:ce379fdb64aa8cc8be7aa0e4dc31efa8cb1db24d26ecfbab148b8bb2b4327365",
   "fileHashes": {
-    "manifest.yaml": "sha256:0c03ba8496b2e64b7b3d0bf3801f6dfaa8c4a7afc2505dffa7c37abfdb45a24e",
+    "manifest.yaml": "sha256:224c8718da230b51fb848f052dc8d28dee02e821f7e163a80f84972e236f969a",
     "workflow.json": "sha256:e64122599db66239add4c4c4be9b3cda2348feb2e34a7606358920ae4024faab",
     "fixtures/smoke-input.json": "sha256:ca78d5a5495c10449810f70a115362837e363c329ee3b360354ec1ae8423929a"
   },
@@ -140,7 +140,7 @@ pnpm --filter @ops/platform exec ts-node src/commands/builtin-skill-export.comma
 ### 3. 激活与版本回滚 (Activate & Rollback)
 ```bash
 # 激活指定版本
-pnpm --filter @ops/platform exec ts-node src/commands/builtin-skill-activate.command.ts platform.search.web 1.0.3
+pnpm --filter @ops/platform exec ts-node src/commands/builtin-skill-activate.command.ts platform.search.web 1.0.4
 
 # 回滚到上一稳定版本
 pnpm --filter @ops/platform exec ts-node src/commands/builtin-skill-rollback.command.ts platform.search.web

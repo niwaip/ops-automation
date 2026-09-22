@@ -184,7 +184,7 @@ export class ContractChecklistMatrixService {
         ? (c as any).keywords
         : [];
       const stopWords =
-        /[\s,，、;；|:：/\\_\-()（）\[\]【】\d+%]+|是否|不得|应当|必须|超过|高于|低于|约定|排查|检查|若|如果|如/g;
+        /[\s,，、;；|:：/\\_\-()（）[\]【】\d+%]+|是否|不得|应当|必须|超过|高于|低于|约定|排查|检查|若|如果|如/g;
       const autoTokens = (c.title + ' ' + (c.rule || ''))
         .split(stopWords)
         .filter((k) => k && k.length >= 2);

@@ -88,7 +88,7 @@ export class WorkspaceDigestService implements OnApplicationBootstrap {
   public extractDigestFromText(
     text: string,
     fileName: string,
-    mimeType?: string | null
+    _mimeType?: string | null
   ): WorkspaceFileDigest {
     const lines = text.split(/\r?\n/);
     const headings: string[] = [];

@@ -4,7 +4,7 @@ import axios from 'axios';
 import { ERROR_CODES } from '@ops/backend-error-codes';
 import { computeContractDigest as computeSharedContractDigest } from '@ops/backend-runtime-capability-contract';
 import { buildBrowserCapabilityOutputSchema } from '@ops/backend-browser-execution-contract';
-import { getAiOrchestratorUrl } from '../../../config/service-endpoints';
+import { getAiOrchestratorUrl, getInternalServiceHeaders } from '../../../config/service-endpoints';
 
 export interface ResolvedCapabilityContract {
   capabilityRef?: {
@@ -241,7 +241,7 @@ const inputSchema = this.paramsSchemaToJsonSchema(skillConfig.paramsSchema);
       const definition = await axios
         .get(`${getAiOrchestratorUrl()}/ai/internal/operations/catalog/${encodeURIComponent(operationId)}`, {
           timeout: 8000,
-          headers: { 'X-Internal-Service': 'control-plane' },
+          headers: getInternalServiceHeaders('control-plane'),
         })
         .then((res) => res.data as {
           capabilityRef?: {

@@ -27,6 +27,8 @@ const KNOWN_CATEGORIES: SemanticRuleCategory[] = [
   'GENERIC_ALIAS',
 ];
 
+// Intentionally reject control characters in untrusted rule output.
+// eslint-disable-next-line no-control-regex
 const CONTROL_CHAR_PATTERN = /[\u0000-\u001f\u007f]/;
 const DEFAULT_ARRAY_LIMIT = 48;
 

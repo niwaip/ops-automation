@@ -58,7 +58,7 @@ describe('PDF built-in skill bundles', () => {
     for (const field of required) expect(fixture[field]).toBeDefined();
     expect(lock).toMatchObject({
       capabilityKey: capability.key,
-      definitionVersion: '1.0.0',
+      definitionVersion: manifest.spec.definitionVersion,
       definitionDigest: service.computeDigest(manifestContent, bundleDir),
     });
     for (const relativePath of [

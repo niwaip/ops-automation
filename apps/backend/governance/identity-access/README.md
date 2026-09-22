@@ -41,4 +41,4 @@
 - `auth.service`、`auth.controller`、`auth.module`、auth 契约、`user` 身份访问侧主体及 `user.controller` / `user.module` 已迁入本目录
 - `platform` 中当前仅保留 `core/platform/src/governance/identity-access/*` runtime bridge 绑定
 - 组织治理入口已集中在 `governance/organization`
-- 当前边界说明见 `apps/backend/core/platform/src/governance-boundaries.md`
+- 当前边界说明见 `apps/backend/platform/src/governance-boundaries.md`

@@ -35,7 +35,7 @@ export class LocalDiskStorageService implements StorageDriver {
   }
 
   public getAbsolutePath(storageKey: string): string {
-    const safeKey = path.normalize(storageKey).replace(/^(\.\.[\/\\])+/, '');
+    const safeKey = path.normalize(storageKey).replace(/^(\.\.[/\\])+/, '');
     return path.join(this.rootDir, safeKey);
   }
 

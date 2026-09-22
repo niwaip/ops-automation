@@ -18,9 +18,15 @@ import { WechatMediaAdapter } from './wechat-media.adapter';
 import { WechatOutboundQueueService } from './wechat-outbound-queue.service';
 import { formatForWeChat, splitTextPreservingLines } from './wechat-formatter.util';
 import { ChannelTaskGatewayService } from './channel-task-gateway.service';
+import {
+  resolveImInteraction,
+  InteractionMode,
+  ImInteractionResolution,
+} from './im-interaction.resolver';
+import { getWechatMediaType, resolveUserFilePath } from './im-channel-file-path';
+export type { ImInteractionResolution } from './im-interaction.resolver';
 
 type Credential = { token: string; baseUrl: string; ownerUserId: string };
-type InteractionMode = 'auto' | 'chat' | 'task';
 type Provisioning = {
   userId: string;
   qrcode: string;
@@ -52,14 +58,6 @@ interface StagedMediaSession {
   updatedAt: number;
 }
 
-export interface ImInteractionResolution {
-  type: 'ai' | 'system_reply';
-  mode: 'chat' | 'task';
-  message: string;
-  isNewSession?: boolean;
-  systemReplyText?: string;
-}
-
 @Injectable()
 export class ImChannelService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ImChannelService.name);
@@ -68,6 +66,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
   private readonly sessionTokens = new Map<string, string>();
   private readonly stagedMedia = new Map<string, StagedMediaSession>();
   private readonly activeModes = new Map<string, InteractionMode>();
+  private readonly latestContextTokens = new Map<string, string>();
   private static readonly STAGED_MEDIA_TTL_MS = 15 * 60 * 1000;
   private readonly mediaAdapter: WechatMediaAdapter;
   private readonly outboundQueue: WechatOutboundQueueService;
@@ -102,6 +101,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     for (const attempt of this.provisioning.values()) attempt.controller.abort();
     for (const runtime of this.runtimes.values()) runtime.abort();
     this.stagedMedia.clear();
+    this.latestContextTokens.clear();
   }
 
   async getWechat(userId: string) {
@@ -146,22 +146,52 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async sendReminder(userId: string, text: string, idempotencyKey: string): Promise<void> {
+  async sendReminder(userId: string, text: string, idempotencyKey?: string): Promise<void> {
     const connection = await this.prisma.imChannelConnection.findUnique({
       where: { userId_channel: { userId, channel: 'wechat' } },
     });
     if (!connection?.enabled || !connection.encryptedCredential || connection.status !== 'online') {
       throw new BadRequestException('微信渠道未连接');
     }
-    const credential = JSON.parse(this.cipher.decrypt(connection.encryptedCredential)) as Credential;
+    const credential = JSON.parse(
+      this.cipher.decrypt(connection.encryptedCredential)
+    ) as Credential;
     if (!this.outboundQueue.isBudgetAvailable(connection.id)) {
       throw new BadRequestException('微信发送额度暂时不足');
     }
-    await this.wechat.sendText(
-      credential.baseUrl, credential.token, credential.ownerUserId,
-      formatForWeChat(text), undefined, idempotencyKey
-    );
-    this.outboundQueue.recordSent(connection.id);
+    const contextToken =
+      this.latestContextTokens.get(connection.id) ?? connection.contextToken ?? undefined;
+    try {
+      await this.wechat.sendText(
+        credential.baseUrl,
+        credential.token,
+        credential.ownerUserId,
+        formatForWeChat(text),
+        contextToken,
+        idempotencyKey
+      );
+      this.outboundQueue.recordSent(connection.id);
+    } catch (sendErr) {
+      const errMsg = sendErr instanceof Error ? sendErr.message : String(sendErr);
+      this.logger.warn(
+        `Failed to deliver WeChat reminder for connection ${connection.id}: ${errMsg}`
+      );
+      if (
+        errMsg.includes('ret: -2') ||
+        errMsg.includes('ret: -14') ||
+        errMsg.toLowerCase().includes('session')
+      ) {
+        void this.prisma.imChannelConnection
+          .updateMany({
+            where: { id: connection.id },
+            data: {
+              lastError: '微信会话已过期，请在微信端向助手发送任意内容以重新激活主动提醒',
+            },
+          })
+          .catch(() => {});
+      }
+      throw sendErr;
+    }
   }
 
   async beginWechatProvisioning(userId: string) {
@@ -183,7 +213,13 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     this.provisioning.set(userId, attempt);
     await this.prisma.imChannelConnection.upsert({
       where: { userId_channel: { userId, channel: 'wechat' } },
-      create: { userId, channel: 'wechat', enabled: false, status: 'provisioning', interactionMode: 'chat' },
+      create: {
+        userId,
+        channel: 'wechat',
+        enabled: false,
+        status: 'provisioning',
+        interactionMode: 'chat',
+      },
       update: { enabled: false, status: 'provisioning', lastError: null },
     });
     void this.pollProvisioning(attempt);
@@ -230,6 +266,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     });
     if (!connection) throw new NotFoundException('微信渠道尚未配置');
     await this.stopRuntime(connection.id, true);
+    this.latestContextTokens.delete(connection.id);
     this.provisioning.get(userId)?.controller.abort();
     this.provisioning.delete(userId);
     await this.prisma.imChannelConnection.delete({ where: { id: connection.id } });
@@ -391,6 +428,9 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
       const credential = JSON.parse(
         this.cipher.decrypt(connection.encryptedCredential)
       ) as Credential;
+      if (connection.contextToken) {
+        this.latestContextTokens.set(connectionId, connection.contextToken);
+      }
       await this.wechat.notifyStart(credential.baseUrl, credential.token);
       await this.prisma.imChannelConnection.update({
         where: { id: connectionId },
@@ -501,6 +541,19 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     if (String(message?.from_user_id ?? '') !== credential.ownerUserId) {
       this.logger.warn(`Rejected non-owner WeChat message for ${connectionId}`);
       return;
+    }
+
+    const rawContextToken = message?.context_token ? String(message.context_token).trim() : '';
+    if (rawContextToken) {
+      this.latestContextTokens.set(connectionId, rawContextToken);
+      void this.prisma.imChannelConnection
+        .updateMany({
+          where: { id: connectionId },
+          data: { contextToken: rawContextToken, contextTokenUpdatedAt: new Date() },
+        })
+        .catch((err: any) => {
+          this.logger.warn(`Failed to persist context_token for ${connectionId}: ${err}`);
+        });
     }
 
     // 1. Reset budget on new user inbound interaction
@@ -629,9 +682,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
       const existing = this.stagedMedia.get(connectionId);
       const isStillValid =
         existing && now - existing.updatedAt < ImChannelService.STAGED_MEDIA_TTL_MS;
-      const mergedFiles = isStillValid
-        ? [...existing.files, ...incomingFiles]
-        : [...incomingFiles];
+      const mergedFiles = isStillValid ? [...existing.files, ...incomingFiles] : [...incomingFiles];
       this.stagedMedia.set(connectionId, { files: mergedFiles, updatedAt: now });
 
       let promptMessage = '';
@@ -654,7 +705,9 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
 
       // Persist this media receipt into the chat session so Session Management reflects it immediately
       const stagingSessionId = this.getSessionId(connectionId);
-      const mediaLabel = incomingFiles.some((f) => f.mimeType.startsWith('image/')) ? '图片' : '文件';
+      const mediaLabel = incomingFiles.some((f) => f.mimeType.startsWith('image/'))
+        ? '图片'
+        : '文件';
       const fileNames = incomingFiles.map((f) => f.fileName).join(', ');
       this.askAi(
         userId,
@@ -762,12 +815,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     const sessionId = this.getSessionId(connectionId);
 
     // Trigger WeChat native typing status immediately
-    await this.wechat.sendTyping(
-      credential.baseUrl,
-      credential.token,
-      credential.ownerUserId,
-      1
-    );
+    await this.wechat.sendTyping(credential.baseUrl, credential.token, credential.ownerUserId, 1);
 
     // Heartbeat typing interval (WeChat native typing expires in ~6s, refresh every 4.5s)
     const typingInterval = setInterval(() => {
@@ -788,10 +836,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
         .catch(() => {});
     }
 
-    const replyText =
-      typeof aiResult === 'string'
-        ? aiResult
-        : (aiResult?.response ?? '');
+    const replyText = typeof aiResult === 'string' ? aiResult : (aiResult?.response ?? '');
     await this.deliverReply(connectionId, credential, replyText, message?.context_token);
 
     // Deliver outbound files if emitted by AI or matched via user direct send intent
@@ -804,7 +849,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
       );
       if (explicitFileMatch && explicitFileMatch[1]) {
         const candidateName = explicitFileMatch[1].trim();
-        const resolved = this.resolveUserFilePath(userId, candidateName);
+        const resolved = resolveUserFilePath(userId, candidateName);
         if (resolved) {
           filesToSend.push({
             filePath: resolved,
@@ -832,100 +877,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     text: string,
     configuredMode: InteractionMode = 'chat'
   ): ImInteractionResolution {
-    const raw = text.trim();
-
-    // 1. Help command: /help, /?, /帮助
-    if (/^\s*\/(?:help|\?|帮助)(?:\s+|$)/i.test(raw)) {
-      return {
-        type: 'system_reply',
-        mode: 'chat',
-        message: '',
-        systemReplyText:
-          '💡 快捷指令帮助：\n' +
-          '• `/c` 或 `/chat <问题>`：个人问答模式（默认，安全沙箱与自由问答）\n' +
-          '• `/t` 或 `/task <指令>`：工作任务模式（多步技能编排、自动化任务）\n' +
-          '• `/n` 或 `/new [指令]`：重置并开启全新会话\n' +
-          '• `/cancel` 或 `/取消`：清空已暂存的待处理图片或文件\n' +
-          '• `/next` 或 `/继续`：补发因频率限制暂存的消息\n' +
-          '• `/help`：查看指令帮助',
-      };
-    }
-
-    // 2. New session command: /n, /new, /reset, /clear, /新会话
-    const newMatch = raw.match(/^\s*\/(?:n|new|reset|clear|新会话)(?:\s+|$)([\s\S]*)/i);
-    if (newMatch) {
-      const remaining = (newMatch[1] || '').trim();
-      if (!remaining) {
-        return {
-          type: 'system_reply',
-          mode: 'chat',
-          message: '',
-          isNewSession: true,
-          systemReplyText: '✨ 已为你开启全新会话，历史上下文已重置。请问有什么我可以帮你的？',
-        };
-      }
-      const sub = this.resolveInteraction(remaining, configuredMode);
-      return {
-        ...sub,
-        isNewSession: true,
-      };
-    }
-
-    // 3. Task mode command: /t, /task, /任务
-    const taskMatch = raw.match(/^\s*\/(?:t|task|任务)(?:\s+|$)([\s\S]*)/i);
-    if (taskMatch) {
-      const remaining = (taskMatch[1] || '').trim();
-      if (!remaining) {
-        return {
-          type: 'system_reply',
-          mode: 'task',
-          message: '',
-          systemReplyText:
-            '🤖 已切换至【工作任务模式】。\n后续输入将直接进入任务规划模式执行。你可以直接向我发送任务指令（例如：`生成保密合同`、`拆分PDF文件`）。如需切回问答模式请输入 `/c`。',
-        };
-      }
-      return {
-        type: 'ai',
-        mode: 'task',
-        message: remaining,
-      };
-    }
-
-    // 4. Chat mode command: /c, /chat, /聊天
-    const chatMatch = raw.match(/^\s*\/(?:c|chat|聊天)(?:\s+|$)([\s\S]*)/i);
-    if (chatMatch) {
-      const remaining = (chatMatch[1] || '').trim();
-      if (!remaining) {
-        return {
-          type: 'system_reply',
-          mode: 'chat',
-          message: '',
-          systemReplyText:
-            '💬 已切换至【个人问答模式】。\n后续输入将以个人问答模式执行。如需切回任务模式请输入 `/t`。',
-        };
-      }
-      return {
-        type: 'ai',
-        mode: 'chat',
-        message: remaining,
-      };
-    }
-
-    // 5. Configured / Default mode
-    // 智能工作流与技能意图识别：
-    // 若消息以 !/！ 开头，或包含明确的工作流/技能意图，自动进入 task 规划模式
-    const isExplicitWorkflow =
-      /^[!！]/.test(raw) ||
-      /^(?:生成|起草|拟定|拟写|创建|审查|比对)(?:保密合同|保密协议|合同|协议)/i.test(raw) ||
-      /(?:生成保密合同|保密合同起草|合同合规审查)/i.test(raw);
-
-    const resolvedMode: InteractionMode = isExplicitWorkflow ? 'task' : 'chat';
-
-    return {
-      type: 'ai',
-      mode: resolvedMode,
-      message: raw.replace(/^[!！]\s*/, ''),
-    };
+    return resolveImInteraction(text, configuredMode);
   }
 
   private async deliverReply(
@@ -934,6 +886,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     replyText: string,
     contextToken?: string
   ): Promise<void> {
+    const effectiveContextToken = contextToken ?? this.latestContextTokens.get(connectionId);
     const formatted = formatForWeChat(replyText);
     const chunks = splitTextPreservingLines(formatted, 1800);
     for (const chunk of chunks) {
@@ -942,7 +895,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
         this.outboundQueue.park(connectionId, {
           kind: 'text',
           text: chunk,
-          contextToken,
+          contextToken: effectiveContextToken,
         });
         continue;
       }
@@ -954,7 +907,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
         credential.token,
         credential.ownerUserId,
         payload,
-        contextToken
+        effectiveContextToken
       );
     }
     const pending = this.outboundQueue.getPendingCount(connectionId);
@@ -999,73 +952,6 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     return count;
   }
 
-  private getWechatMediaType(fileName: string): (typeof WechatUploadMediaType)[keyof typeof WechatUploadMediaType] {
-    const ext = path.extname(fileName).toLowerCase();
-    if (['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'].includes(ext)) {
-      return WechatUploadMediaType.IMAGE;
-    }
-    if (['.mp4', '.mov'].includes(ext)) {
-      return WechatUploadMediaType.VIDEO;
-    }
-    return WechatUploadMediaType.FILE;
-  }
-
-  private resolveUserFilePath(userId: string, targetPathOrName: string): string | null {
-    const sanitized = userId.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-    const projectRoot =
-      Boolean(process.env.DOCKER_ENV) && fs.existsSync('/workspace')
-        ? '/workspace'
-        : process.env.PROJECT_ROOT || process.cwd();
-
-    const clean = targetPathOrName.trim().replace(/^['"]|['"]$/g, '');
-    const userRoot = path.join(projectRoot, 'data', 'users', sanitized);
-    const workspaceDir = path.join(userRoot, 'workspace');
-    const knowledgeDir = path.join(userRoot, 'knowledge');
-
-    if (clean.startsWith('/workspace/')) {
-      const rel = clean.slice('/workspace/'.length);
-      const full = path.join(workspaceDir, rel);
-      if (fs.existsSync(full) && fs.statSync(full).isFile()) return full;
-    }
-    if (clean.startsWith('/knowledge/')) {
-      const rel = clean.slice('/knowledge/'.length);
-      const full = path.join(knowledgeDir, rel);
-      if (fs.existsSync(full) && fs.statSync(full).isFile()) return full;
-    }
-
-    const inWorkspace = path.join(workspaceDir, clean);
-    if (fs.existsSync(inWorkspace) && fs.statSync(inWorkspace).isFile()) return inWorkspace;
-
-    const inKnowledge = path.join(knowledgeDir, clean);
-    if (fs.existsSync(inKnowledge) && fs.statSync(inKnowledge).isFile()) return inKnowledge;
-
-    for (const dir of [knowledgeDir, workspaceDir]) {
-      if (!fs.existsSync(dir)) continue;
-      try {
-        const files = fs.readdirSync(dir);
-        const found = files.find(
-          (f) =>
-            f === clean ||
-            path.parse(f).name === clean ||
-            f.toLowerCase() === clean.toLowerCase()
-        );
-        if (found) {
-          const full = path.join(dir, found);
-          if (fs.statSync(full).isFile()) return full;
-        }
-        const sub = files.find((f) => f.includes(clean) || clean.includes(path.parse(f).name));
-        if (sub) {
-          const full = path.join(dir, sub);
-          if (fs.statSync(full).isFile()) return full;
-        }
-      } catch {
-        // ignore read error
-      }
-    }
-
-    return null;
-  }
-
   private async deliverFile(
     connectionId: string,
     credential: Credential,
@@ -1073,23 +959,26 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     fileInfo: OutboundFilePayload,
     contextToken?: string
   ): Promise<void> {
+    const effectiveContextToken = contextToken ?? this.latestContextTokens.get(connectionId);
     try {
-      const realPath = this.resolveUserFilePath(userId, fileInfo.filePath);
+      const realPath = resolveUserFilePath(userId, fileInfo.filePath);
       if (!realPath || !fs.existsSync(realPath)) {
-        this.logger.warn(`Outbound file not found on disk: ${fileInfo.filePath} for user ${userId}`);
+        this.logger.warn(
+          `Outbound file not found on disk: ${fileInfo.filePath} for user ${userId}`
+        );
         await this.wechat.sendText(
           credential.baseUrl,
           credential.token,
           credential.ownerUserId,
           `⚠️ 未能找到待发送的文件【${fileInfo.fileName}】，请确认文件是否存在于个人空间中。`,
-          contextToken
+          effectiveContextToken
         );
         return;
       }
 
       const buffer = fs.readFileSync(realPath);
       const fileName = fileInfo.fileName || path.basename(realPath);
-      const mediaType = this.getWechatMediaType(fileName);
+      const mediaType = getWechatMediaType(fileName);
 
       if (!this.outboundQueue.isBudgetAvailable(connectionId)) {
         this.outboundQueue.park(connectionId, {
@@ -1097,7 +986,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
           mediaType,
           buffer,
           fileName,
-          contextToken,
+          contextToken: effectiveContextToken,
         });
         this.logger.log(`Queued outbound file ${fileName} for ${connectionId}`);
         return;
@@ -1110,9 +999,11 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
         credential.ownerUserId,
         mediaType,
         buffer,
-        { fileName, contextToken }
+        { fileName, contextToken: effectiveContextToken }
       );
-      this.logger.log(`Successfully delivered outbound file ${fileName} to user ${userId} via WeChat`);
+      this.logger.log(
+        `Successfully delivered outbound file ${fileName} to user ${userId} via WeChat`
+      );
     } catch (err: any) {
       this.logger.error(
         `Failed to deliver outbound file ${fileInfo.fileName}: ${err.message}`,
@@ -1123,7 +1014,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
         credential.token,
         credential.ownerUserId,
         `⚠️ 发送文件【${fileInfo.fileName}】失败: ${err.message}`,
-        contextToken
+        effectiveContextToken
       );
     }
   }
@@ -1137,8 +1028,14 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     systemReply?: string
   ): Promise<{ response: string; outboundFiles?: OutboundFilePayload[] }> {
     if (this.taskGateway) {
-      const payload = await this.taskGateway.dispatch(userId, sessionId, message, mode, { files, systemReply });
-      return { response: payload.response?.trim() || '任务已处理，但没有可返回的文本结果。', outboundFiles: payload.outboundFiles };
+      const payload = await this.taskGateway.dispatch(userId, sessionId, message, mode, {
+        files,
+        systemReply,
+      });
+      return {
+        response: payload.response?.trim() || '任务已处理，但没有可返回的文本结果。',
+        outboundFiles: payload.outboundFiles,
+      };
     }
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

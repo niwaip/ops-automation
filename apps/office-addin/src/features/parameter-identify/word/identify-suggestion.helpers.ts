@@ -35,7 +35,7 @@ function isValidWordSuggestedPath(value: string): boolean {
   return (
     Boolean(normalized) &&
     /^[A-Za-z_][A-Za-z0-9_[\].]*$/.test(normalized) &&
-    !/[^\x00-\x7F]/.test(normalized)
+    !/\P{ASCII}/u.test(normalized)
   );
 }
 
@@ -332,7 +332,7 @@ function safeCompareText(value: unknown): string {
 function normalizeCompareLookupText(value: unknown): string {
   return safeCompareText(value)
     .toLowerCase()
-    .replace(/[（）()【】\[\]]/g, '')
+    .replace(/[（）()【】[\]]/g, '')
     .replace(/\s+/g, '');
 }
 

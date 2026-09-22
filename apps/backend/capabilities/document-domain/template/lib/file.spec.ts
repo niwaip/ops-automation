@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import { Builder } from './builder';
-import { FileHandler } from './file';
+import { FileHandler, sanitizeOpenXmlPackageBuffer } from './file';
 import { XlsxSharedStringsService } from './xlsx-shared-strings.service';
 import { XmlPreprocessor } from './xml-preprocessor';
 
@@ -347,7 +347,6 @@ describe('FileHandler', () => {
   });
 
   it('sanitizes standalone OpenXML buffer removing webextensions and empty dirs', async () => {
-    const { sanitizeOpenXmlPackageBuffer } = require('./file');
     const dirtyZip = new JSZip();
     dirtyZip.file('word/document.xml', '<w:document><w:body><w:p><w:r><w:t>Hello</w:t></w:r></w:p></w:body></w:document>');
     dirtyZip.file(
@@ -378,4 +377,3 @@ describe('FileHandler', () => {
     expect(ct).not.toContain('webextension');
   });
 });
-

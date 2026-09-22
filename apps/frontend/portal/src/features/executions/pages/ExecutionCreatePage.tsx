@@ -5,13 +5,11 @@ import {
   Alert,
   Button,
   Card,
-  Checkbox,
   Collapse,
   Descriptions,
   Empty,
   Form,
   Input,
-  InputNumber,
   List,
   Popconfirm,
   Radio,
@@ -19,7 +17,6 @@ import {
   Space,
   Spin,
   Statistic,
-  Switch,
   Tag,
   Typography,
 } from 'antd';
@@ -40,23 +37,22 @@ import { useTranslation } from 'react-i18next';
 import { executionApi } from '@/api/execution';
 import { scheduleApi } from '@/api/schedules';
 import { capabilityReleaseApi } from '@/api/capabilities';
-import { SkillParamsSchema, skillApi, SkillConfigDTO } from '@/api/skill';
+import { skillApi, SkillConfigDTO } from '@/api/skill';
 import { aiApi } from '@/api/ai';
 import type { UploadProps } from 'antd';
 import { Modal, Upload } from 'antd';
 import { useAuthStore } from '@/shared/store/authStore';
+import { ScheduleConfigurationCard } from '@/features/executions/components/ScheduleConfigurationCard';
+import {
+  getInitialInputValues,
+  getSchemaFields,
+  getTypeTagColor,
+  normalizeInputValues,
+  renderInputField,
+} from '@/features/executions/components/executionInputSchema';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
-
-type SchemaField = {
-  name: string;
-  type: string;
-  description?: string;
-  required: boolean;
-  defaultValue?: unknown;
-  enum?: Array<string | number>;
-};
 
 type PublishedSkillOption = {
   skillId: string;
@@ -78,22 +74,7 @@ import {
   buildScheduleCronExpression,
   buildScheduleRuleText,
   summarizeCronExpression,
-  WEEKDAY_OPTIONS,
-  HOUR_OPTIONS,
-  MINUTE_OPTIONS,
-  MONTH_DAY_OPTIONS,
-  TIMEZONE_OPTIONS,
-  MINUTELY_INTERVAL_OPTIONS,
-  HOURLY_INTERVAL_OPTIONS,
 } from '@/features/executions/lib/executionSchedule';
-
-const getTypeTagColor = (type: string) => {
-  const normalizedType = type.toLowerCase();
-  if (normalizedType === 'boolean') return 'green';
-  if (normalizedType === 'number' || normalizedType === 'integer') return 'blue';
-  if (normalizedType === 'object' || normalizedType === 'json') return 'purple';
-  return 'default';
-};
 
 const formatDateTime = (value?: string | Date | null) => {
   if (!value) {
@@ -115,102 +96,6 @@ const stringifyPreview = (value: unknown) => {
   }
 };
 
-
-const getSchemaFields = (schema?: SkillParamsSchema): SchemaField[] => {
-  if (!schema?.properties) {
-    return [];
-  }
-
-  const requiredFields = new Set(schema.required || []);
-  return Object.entries(schema.properties).map(([name, config]) => ({
-    name,
-    type: config?.type || 'string',
-    description: config?.description,
-    required: requiredFields.has(name) || Boolean(config?.required),
-    defaultValue: config?.default,
-    enum: config?.enum,
-  }));
-};
-
-const getInitialInputValues = (fields: SchemaField[]): Record<string, unknown> => {
-  return fields.reduce<Record<string, unknown>>((acc, field) => {
-    if (field.defaultValue === undefined) {
-      if (field.type === 'boolean') {
-        acc[field.name] = false;
-      }
-      return acc;
-    }
-
-    if (field.type === 'object' || field.type === 'json') {
-      acc[field.name] =
-        typeof field.defaultValue === 'string'
-          ? field.defaultValue
-          : JSON.stringify(field.defaultValue, null, 2);
-      return acc;
-    }
-
-    acc[field.name] = field.defaultValue;
-    return acc;
-  }, {});
-};
-
-const renderInputField = (field: SchemaField) => {
-  const normalizedType = field.type.toLowerCase();
-
-  if (Array.isArray(field.enum) && field.enum.length > 0) {
-    return (
-      <Select
-        style={{ width: '100%' }}
-        allowClear
-        placeholder={field.description || `请选择 ${field.name}`}
-        options={field.enum.map((value) => ({
-          label: String(value),
-          value,
-        }))}
-      />
-    );
-  }
-
-  if (normalizedType === 'number' || normalizedType === 'integer') {
-    return <InputNumber style={{ width: '100%' }} placeholder={`请输入 ${field.name}`} />;
-  }
-
-  if (normalizedType === 'boolean') {
-    return <Switch />;
-  }
-
-  if (normalizedType === 'object' || normalizedType === 'json') {
-    return <Input.TextArea rows={6} placeholder="请输入 JSON 字符串" />;
-  }
-
-  return <Input placeholder={field.description || `请输入 ${field.name}`} />;
-};
-
-const normalizeInputValues = (
-  values: Record<string, unknown>,
-  fields: SchemaField[]
-): Record<string, unknown> => {
-  return fields.reduce<Record<string, unknown>>((acc, field) => {
-    const rawValue = values[field.name];
-
-    if (rawValue === undefined || rawValue === null || rawValue === '') {
-      return acc;
-    }
-
-    const normalizedType = field.type.toLowerCase();
-
-    if (
-      (normalizedType === 'object' || normalizedType === 'json') &&
-      typeof rawValue === 'string'
-    ) {
-      acc[field.name] = JSON.parse(rawValue);
-      return acc;
-    }
-
-    acc[field.name] = rawValue;
-    return acc;
-  }, {});
-};
 
 const ExecutionCreatePage: React.FC = () => {
   const { message } = App.useApp();
@@ -984,249 +869,11 @@ const ExecutionCreatePage: React.FC = () => {
               </Form.Item>
 
               {executionMode === 'schedule' && (
-                <Card
-                  size="small"
-                  type="inner"
-                  style={{ ...panelCardStyle, marginBottom: 16 }}
-                  styles={{ body: { paddingTop: 16 } }}
-                >
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
-                      gap: 14,
-                    }}
-                  >
-                    <div
-                      style={{
-                        gridColumn: '1 / -1',
-                        display: 'grid',
-                        gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)',
-                        gap: 14,
-                      }}
-                    >
-                      <div style={{ ...subtleCardStyle, padding: 14 }}>
-                        <Form.Item
-                          name="scheduleName"
-                          label="任务名称"
-                          rules={[{ required: true, message: '请输入定时任务名称' }]}
-                          style={{ marginBottom: 0 }}
-                        >
-                          <Input placeholder="例如：日报生成-工作日早上" />
-                        </Form.Item>
-                      </div>
-                      <div style={{ ...subtleCardStyle, padding: 14 }}>
-                        <Form.Item
-                          name="timezone"
-                          label="时区"
-                          rules={[{ required: true, message: '请选择时区' }]}
-                          style={{ marginBottom: 0 }}
-                        >
-                          <Select options={TIMEZONE_OPTIONS} placeholder="请选择时区" />
-                        </Form.Item>
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        gridColumn: '1 / -1',
-                        display: 'grid',
-                        gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)',
-                        gap: 14,
-                      }}
-                    >
-                      <div style={{ ...subtleCardStyle, padding: 10 }}>
-                        <Text
-                          type="secondary"
-                          style={{ display: 'block', fontSize: 12, marginBottom: 8 }}
-                        >
-                          执行周期
-                        </Text>
-                        <Form.Item
-                          name="schedulePattern"
-                          rules={[{ required: true, message: '请选择执行周期' }]}
-                          style={{ marginBottom: 0 }}
-                        >
-                          <Radio.Group
-                            optionType="button"
-                            buttonStyle="solid"
-                            style={{
-                              width: '100%',
-                              display: 'grid',
-                              gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
-                            }}
-                          >
-                            <Radio.Button value="minutely">按分钟</Radio.Button>
-                            <Radio.Button value="hourly">按小时</Radio.Button>
-                            <Radio.Button value="workdays">工作日</Radio.Button>
-                            <Radio.Button value="weekly">按周</Radio.Button>
-                            <Radio.Button value="monthly">按月</Radio.Button>
-                          </Radio.Group>
-                        </Form.Item>
-                      </div>
-
-                      <div style={{ ...subtleCardStyle, padding: 14 }}>
-                        {schedulePattern === 'minutely' ? (
-                          <>
-                            <Text
-                              type="secondary"
-                              style={{ display: 'block', fontSize: 12, marginBottom: 8 }}
-                            >
-                              执行频率
-                            </Text>
-                            <Form.Item
-                              name="minutelyInterval"
-                              rules={[{ required: true, message: '请选择执行分钟间隔' }]}
-                              style={{ marginBottom: 0 }}
-                            >
-                              <Select
-                                size="small"
-                                style={{ width: '100%' }}
-                                options={MINUTELY_INTERVAL_OPTIONS}
-                                placeholder="选择间隔"
-                              />
-                            </Form.Item>
-                          </>
-                        ) : schedulePattern === 'hourly' ? (
-                          <>
-                            <Text
-                              type="secondary"
-                              style={{ display: 'block', fontSize: 12, marginBottom: 8 }}
-                            >
-                              执行频率与时间
-                            </Text>
-                            <div
-                              style={{
-                                display: 'inline-grid',
-                                gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
-                                gap: 6,
-                                alignItems: 'center',
-                                width: '100%',
-                              }}
-                            >
-                              <Form.Item
-                                name="hourlyInterval"
-                                noStyle
-                                rules={[{ required: true, message: '请选择小时周期' }]}
-                              >
-                                <Select
-                                  size="small"
-                                  style={{ width: '100%' }}
-                                  options={HOURLY_INTERVAL_OPTIONS}
-                                  placeholder="周期"
-                                />
-                              </Form.Item>
-                              <Text style={{ textAlign: 'center', minWidth: 12 }}>在</Text>
-                              <Form.Item
-                                name="scheduleMinute"
-                                noStyle
-                                rules={[{ required: true, message: '请选择分钟' }]}
-                              >
-                                <Select
-                                  size="small"
-                                  style={{ width: '100%' }}
-                                  options={MINUTE_OPTIONS.map((opt) => ({
-                                    label: `${opt.label} 分`,
-                                    value: opt.value,
-                                  }))}
-                                  placeholder="分钟"
-                                />
-                              </Form.Item>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <Text
-                              type="secondary"
-                              style={{ display: 'block', fontSize: 12, marginBottom: 8 }}
-                            >
-                              执行时间
-                            </Text>
-                            <Form.Item style={{ marginBottom: 0 }}>
-                              <div
-                                style={{
-                                  display: 'inline-grid',
-                                  gridTemplateColumns: '84px auto 84px',
-                                  gap: 6,
-                                  alignItems: 'center',
-                                }}
-                              >
-                                <Form.Item
-                                  name="scheduleHour"
-                                  noStyle
-                                  rules={[{ required: true, message: '请选择小时' }]}
-                                >
-                                  <Select
-                                    size="small"
-                                    style={{ width: '100%' }}
-                                    options={HOUR_OPTIONS}
-                                    placeholder="小时"
-                                  />
-                                </Form.Item>
-                                <Text style={{ textAlign: 'center', minWidth: 12 }}>:</Text>
-                                <Form.Item
-                                  name="scheduleMinute"
-                                  noStyle
-                                  rules={[{ required: true, message: '请选择分钟' }]}
-                                >
-                                  <Select
-                                    size="small"
-                                    style={{ width: '100%' }}
-                                    options={MINUTE_OPTIONS}
-                                    placeholder="分钟"
-                                  />
-                                </Form.Item>
-                              </div>
-                            </Form.Item>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {schedulePattern === 'weekly' && (
-                      <div style={{ ...subtleCardStyle, padding: 14, gridColumn: '1 / -1' }}>
-                        <Form.Item
-                          name="weeklyDays"
-                          label="每周执行日"
-                          rules={[{ required: true, message: '请选择每周执行日' }]}
-                          style={{ marginBottom: 0 }}
-                        >
-                          <Checkbox.Group options={WEEKDAY_OPTIONS} />
-                        </Form.Item>
-                      </div>
-                    )}
-
-                    {schedulePattern === 'monthly' && (
-                      <div style={{ ...subtleCardStyle, padding: 14, gridColumn: '1 / -1' }}>
-                        <Form.Item
-                          name="monthlyDay"
-                          label="每月执行日"
-                          rules={[{ required: true, message: '请选择每月执行日' }]}
-                          style={{ marginBottom: 0 }}
-                        >
-                          <Select
-                            style={{ maxWidth: 240 }}
-                            options={MONTH_DAY_OPTIONS}
-                            placeholder="请选择每月几号执行"
-                          />
-                        </Form.Item>
-                      </div>
-                    )}
-
-                    <div style={{ ...subtleCardStyle, gridColumn: '1 / -1', padding: 14 }}>
-                      <Form.Item
-                        name="scheduleDescription"
-                        label="说明"
-                        style={{ marginBottom: 0 }}
-                      >
-                        <Input.TextArea
-                          rows={3}
-                          placeholder="可选，补充任务用途、时间窗口或通知说明"
-                        />
-                      </Form.Item>
-                    </div>
-                  </div>
-                </Card>
+                <ScheduleConfigurationCard
+                  schedulePattern={schedulePattern}
+                  panelCardStyle={panelCardStyle}
+                  subtleCardStyle={subtleCardStyle}
+                />
               )}
 
               <Space>

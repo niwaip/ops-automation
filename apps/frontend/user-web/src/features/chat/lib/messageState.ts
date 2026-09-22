@@ -185,10 +185,6 @@ export const areMessagesEquivalent = (
   localMessage: ChatMessage,
   remoteMessage: ChatMessage
 ): boolean => {
-  if (localMessage.id && remoteMessage.id && localMessage.id === remoteMessage.id) {
-    return true;
-  }
-
   if (localMessage.role !== remoteMessage.role) {
     return false;
   }

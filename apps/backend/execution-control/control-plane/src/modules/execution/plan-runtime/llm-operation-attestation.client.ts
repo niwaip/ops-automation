@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
-import { getAiOrchestratorUrl } from '../../../config/service-endpoints';
+import { getAiOrchestratorUrl, getInternalServiceHeaders } from '../../../config/service-endpoints';
 
 /**
  * Control Plane client for querying LLM operation attestations from AI Orchestrator.
@@ -24,7 +24,7 @@ export class LlmOperationAttestationClient {
     try {
       const response = await axios.get(url, {
         timeout: 5000,
-        headers: { 'X-Internal-Service': 'control-plane' },
+        headers: getInternalServiceHeaders('control-plane'),
       });
 
       const data = response.data as { valid?: boolean };
@@ -53,7 +53,7 @@ export class LlmOperationAttestationClient {
     try {
       const response = await axios.get(url, {
         timeout: 5000,
-        headers: { 'X-Internal-Service': 'control-plane' },
+        headers: getInternalServiceHeaders('control-plane'),
       });
 
       const data = response.data as { valid?: boolean };

@@ -54,7 +54,7 @@ export class RecorderSnapshotService {
       !targetCandidate ||
       /^e\d+$/i.test(targetCandidate) ||
       /^\d+_\d+$/.test(targetCandidate) ||
-      /^(\[|\.|\#|[a-z0-9_-]+\[)/i.test(targetCandidate) ||
+      /^(\[|\.|#|[a-z0-9_-]+\[)/i.test(targetCandidate) ||
       targetCandidate.includes(':has')
     ) {
       return command;

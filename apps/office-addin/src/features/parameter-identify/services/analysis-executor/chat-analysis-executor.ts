@@ -105,7 +105,7 @@ export class ChatAnalysisExecutor implements StructuredAnalysisExecutor {
     const observationPayloads: string[] = [];
     const eventPayloads: Array<{ type: string; content: string }> = [];
 
-    while (true) {
+    for (;;) {
       const { done, value } = await reader.read();
       if (done) {
         break;

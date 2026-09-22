@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import * as fs from 'node:fs';
 import { ExecuteStepDto, ExecuteStepResultDto } from '../../../dto/worker.dto';
 import { BrowserPostActionStateService } from './browser-post-action-state.service';
 import { BrowserStepEvidenceCollectorService } from './browser-step-evidence-collector.service';
@@ -65,9 +66,11 @@ export class BrowserStepResultEnricherService {
         );
         try {
           if (html) {
-            require('fs').writeFileSync('/tmp/last-enrich-html.html', html);
+        fs.writeFileSync('/tmp/last-enrich-html.html', html);
           }
-        } catch {}
+        } catch {
+          // Debug output is best-effort.
+        }
         output.contentQuality = contentQuality;
         if (extracted.text && postAction.pageState?.pageUrl) {
           output.text = extracted.text;

@@ -1081,7 +1081,6 @@
       state.ignoredGroups = {};
     }
   }
-
   // Upload Function
   async function uploadTemplate(file) {
     const formData = new FormData();
@@ -1958,7 +1957,6 @@
 
     return summary;
   }
-
   // Detect potential loops from document structure
   function detectLoopsFromStructure(structure) {
     const loops = [];
@@ -2653,7 +2651,6 @@
       renderStructureTree();
     }
   }
-
   // 按文档顺序收集元素
   function collectElementsInOrder(parent, structure, apiTables, tableIndex = { value: 0 }) {
     const children = parent.children;
@@ -3282,7 +3279,6 @@
       });
     });
   }
-
   // Select element by XML index
   function selectElementByXmlIndex(type, xmlIndex) {
     // Map XML index to document element

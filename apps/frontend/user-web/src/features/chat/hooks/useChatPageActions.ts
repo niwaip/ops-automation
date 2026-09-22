@@ -93,7 +93,12 @@ export function useChatPageActions({
   const handleSend = useCallback((filesToSend?: UploadedFileDescriptor[], contentOverride?: string) => {
     const content = (contentOverride !== undefined ? contentOverride : draft).trim();
     const hasFiles = (filesToSend || []).length > 0;
-    if ((!content && !hasFiles) || isStreaming || isSubmittingRef.current) {
+    if ((!content && !hasFiles) || isSubmittingRef.current) {
+      return;
+    }
+
+    // 任务模式（task）下：streaming 时不允许发送（保持原有行为）
+    if (isStreaming && chatMode !== 'chat') {
       return;
     }
 
@@ -108,6 +113,8 @@ export function useChatPageActions({
       ? undefined
       : (pendingExecutionId || getLatestWaitingInputExecutionId(activeMessages));
     const now = toChatTimestamp();
+
+    // 留在当前会话页面，不需要切换视窗！
     const session = ensureSession(now);
     const userMessageId = buildMessageId();
     const userMessage: ChatMessage = {
@@ -313,11 +320,17 @@ export function useChatPageActions({
       return;
     }
 
+    // 个人模式下若当前正有流在并发运行，重置后端的 sessionId 避免沙箱状态锁冲突
+    const isCurrentStreaming = chatMode === 'chat' && isStreaming;
+    const backendSessionId = isCurrentStreaming
+      ? `${session.id}_seg_${Date.now().toString(36)}`
+      : session.id;
+
     const request: ChatRequest = buildChatRequest({
       message: content,
       clientMessageId: userMessageId,
       clientAssistantMessageId: assistantMessageId,
-      sessionId: session.id,
+      sessionId: backendSessionId,
       executionId: continuedExecutionId || undefined,
       modelId: resolvedModelId,
       files: filesToSend,
@@ -354,6 +367,7 @@ export function useChatPageActions({
     updateMessage,
     updateSessionMessages,
     updateSessionMeta,
+    createDraftSession,
   ]);
 
   const handleCreateSession = useCallback(() => {

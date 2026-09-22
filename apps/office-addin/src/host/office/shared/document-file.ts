@@ -289,7 +289,7 @@ export async function withWordTargetTableRow<T>(
     );
   }
 
-  let targetRowIndex = sourceRowIndex + 1;
+  const targetRowIndex = sourceRowIndex + 1;
 
   if (targetRowIndex >= rows.items.length) {
     try {

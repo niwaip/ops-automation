@@ -164,7 +164,15 @@ export const BUILTIN_ROUTING_POLICY: Omit<RoutingPolicySnapshotV1, 'digest'> = {
   capabilityRoles: {
     search: ['search', '搜索', 'explorer', 'workspace.explorer', '工作空间', '文档探索', '查询', 'query', '天气'],
     markdownWriter: ['markdown', '写'],
-    documentExtractor: ['content-extractor', 'pdf', '内容提取'],
+    documentExtractor: [
+      'content-extractor',
+      '内容提取',
+      'pdf-content-extractor',
+      '提取文档',
+      '解析文档',
+      '提取pdf',
+      '解析pdf',
+    ],
     contractComparator: [
       'contract-comparator',
       'contract_compare',

@@ -27,7 +27,9 @@ const safeUrlTransform = (url?: string): string => {
     if (['http:', 'https:', 'mailto:', 'tel:'].includes(parsed.protocol)) {
       return trimmed;
     }
-  } catch {}
+  } catch {
+    // Fall back to plain content when parsing fails.
+  }
   return '';
 };
 

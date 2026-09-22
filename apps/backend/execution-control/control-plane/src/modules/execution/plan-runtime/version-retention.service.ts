@@ -2,7 +2,6 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { PrismaService } from '../../prisma/prisma.service';
 
 const SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000; // daily sweep
-const TERMINAL_RELEASE_STATUSES = ['published', 'deployed', 'rolled_back'];
 
 /**
  * Version retention policy (design doc §15.4 P3 item 6).

@@ -29,10 +29,10 @@ export async function getDocumentFileViaWordRun(): Promise<string> {
     Word.run(async (context) => {
       const document = context.document;
 
-      // @ts-ignore - getFileOrNull may not exist in some Office versions
+      // @ts-expect-error - getFileOrNull may not exist in some Office versions
       if (document.getFileOrNull && typeof document.getFileOrNull === 'function') {
         try {
-          // @ts-ignore
+          // @ts-expect-error - getFileOrNull may not exist in some Office versions
           const file = document.getFileOrNull(Word.FileType.docx);
           file.load('base64');
           await context.sync();

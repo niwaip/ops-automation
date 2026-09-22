@@ -1,4 +1,8 @@
 import { describe, it, expect, beforeEach } from '@jest/globals';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { ReviewFactExtractorService, ReviewElementEvaluatorService } from '../contract-elements';
+import { ContractAstParserService } from '../contract-compare/contract-ast-parser.service';
 import { ContractTypeClassifierService } from './contract-type-classifier.service';
 import { ContractChecklistMatrixService } from './contract-checklist-matrix.service';
 import { ContractFormIntegrityScannerService } from './contract-form-integrity-scanner.service';
@@ -426,7 +430,6 @@ describe('Contract Review System', () => {
 
   describe('Review Elements & Fact Extractor Integration', () => {
     it('should accurately extract structured legal facts from clauses', () => {
-      const { ReviewFactExtractorService } = require('../contract-elements');
       const factExtractor = new ReviewFactExtractorService();
 
       // 1. 工期事实抽取
@@ -851,7 +854,6 @@ describe('Contract Review System', () => {
     });
 
     it('should deduplicate redundant findings using generic token/bigram similarity without hardcoded domain keywords', () => {
-      const { ReviewElementEvaluatorService } = require('../contract-elements');
       const evaluator = new ReviewElementEvaluatorService();
 
       const existingFindings: any[] = [
@@ -882,9 +884,6 @@ describe('Contract Review System', () => {
     });
 
     it('should review real .pdf contract file from tests/contract directory end-to-end', async () => {
-      const fs = require('fs');
-      const path = require('path');
-      const { ContractAstParserService } = require('../contract-compare/contract-ast-parser.service');
 
       const pdfPath = path.resolve(process.cwd(), 'tests/contract/contract_v1_baseline.pdf');
       if (fs.existsSync(pdfPath)) {
@@ -915,5 +914,4 @@ describe('Contract Review System', () => {
     });
   });
 });
-
 

@@ -25,7 +25,6 @@ import {
   UpOutlined,
 } from "@ant-design/icons";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQueryClient } from "react-query";
 import { InboxContentPreview } from "./InboxContentPreview";
 import {
   getContractComparisonPair,
@@ -39,7 +38,6 @@ import {
 import { replaceLocalhostWithCurrentHost } from "@/shared/utils/publicUrl";
 import { useChatStore } from "../../chat";
 import { useAuthStore } from "@/shared/store/authStore";
-import { workbenchCoordinationApi } from "@/api/workbenchCoordination";
 import {
   Button,
   Card,
@@ -52,7 +50,6 @@ import {
   Tag,
   Tooltip,
   Typography,
-  message,
 } from "antd";
 import { useNavigate } from "react-router-dom";
 import type { ExecutionDto } from "@ops/user-core";
@@ -61,13 +58,11 @@ import type { WorkbenchInboxFilter } from "../hooks/useWorkbenchInbox";
 import { InterventionList } from "./InterventionList";
 import { InboxTaskDetailModal } from "./InboxTaskDetailModal";
 import { classifyWorkflowNode, extractRollbackReason, extractApprovalComment } from "../lib/coordinationNodeClassifier";
-import {
-  applyOptimisticCoordinationSend,
-  rollbackOptimisticCoordinationSend,
-} from "../lib/coordinationOptimistic";
 import { formatMonthDayTime } from "../../../shared/utils/dateText";
 import styles from "../pages/DashboardPage.module.css";
 import inboxStyles from "./InboxList.module.css";
+import { useInboxCoordinationActions } from "../hooks/useInboxCoordinationActions";
+import { renderConfidenceTag, renderPriorityTag, renderSourceTag, renderStatusTag } from "./InboxTags";
 
 interface InboxListProps {
   inboxItems: WorkbenchInboxItem[];
@@ -133,11 +128,10 @@ export function InboxList({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isShaking, setIsShaking] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
-  const queryClient = useQueryClient();
-  const [quickSendingId, setQuickSendingId] = useState<string | null>(null);
   const [detailModalItem, setDetailModalItem] = useState<WorkbenchInboxItem | null>(null);
-  const [optimisticSentIds, setOptimisticSentIds] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { handleQuickCoordAction, handleRecallItem, handleRemindItem, optimisticSentIds, quickSendingId } =
+    useInboxCoordinationActions(onArchiveItem);
 
   const displayInboxItems: WorkbenchInboxItem[] = useMemo(() => {
     if (optimisticSentIds.size === 0) return inboxItems;
@@ -153,114 +147,6 @@ export function InboxList({
       total: Math.max(0, inboxSummary.total - sentCount),
     };
   }, [inboxSummary, optimisticSentIds]);
-
-  const handleQuickCoordAction = async (item: WorkbenchInboxItem) => {
-    try {
-      setQuickSendingId(item.id);
-      const nodeSemantics = classifyWorkflowNode(item, user?.username, user?.id);
-      const payload = (item.unifiedPayload || {}) as Record<string, any>;
-
-      // 针对归档/回执节点，快捷指令直接执行条目已阅归档
-      if (nodeSemantics.cardActionType === 'archive') {
-        onArchiveItem(item.id);
-        void workbenchCoordinationApi.submitAction(item.id, {
-          action: 'approve',
-          comment: '协同回执已阅并归档。',
-        }).catch(() => {});
-        void message.success(`已归档「${nodeSemantics.displayTitle || item.title}」，可在「已厘清/归档」中查阅`);
-        void queryClient.invalidateQueries(['workbench-inbox']);
-        void queryClient.invalidateQueries(['workbench-inbox-summary']);
-        return;
-      }
-
-      const isAssignment = payload.taskType === 'assignment' || nodeSemantics.cardActionType === 'flow';
-      const actionType =
-        nodeSemantics.cardActionType === 'send'
-          ? 'approve'
-          : isAssignment
-          ? 'complete'
-          : 'approve';
-
-      // 立即执行乐观 UI 迁移：条目瞬间离开「待整理」，直接进入「已发事项」！
-      if (nodeSemantics.cardActionType === 'send' || actionType === 'approve' || actionType === 'complete') {
-        setOptimisticSentIds((prev) => new Set(prev).add(item.id));
-        applyOptimisticCoordinationSend(queryClient, item, user);
-      }
-
-      void message.success(
-        nodeSemantics.cardActionType === 'send'
-          ? `已提交送审！系统正在进行智能合规诊断，已自动迁移至「已发事项」。`
-          : `已成功处理「${nodeSemantics.displayTitle || item.title}」，已自动迁移至「已发事项」！`
-      );
-
-      await workbenchCoordinationApi.submitAction(item.id, {
-        action: actionType,
-        comment:
-          nodeSemantics.cardActionText === '重新发送'
-            ? '已重新核验材料，重新提交发送后台审查。'
-            : nodeSemantics.cardActionType === 'send'
-            ? '初稿已核对无误，快捷发送提交流转。'
-            : isAssignment
-            ? '事项已完成，快捷提交流转。'
-            : '审核通过，快捷流转至下一节点。',
-      });
-
-      const triggerRefresh = () => {
-        void queryClient.invalidateQueries(['workbench-inbox']);
-        void queryClient.invalidateQueries(['workbench-inbox-summary']);
-        void queryClient.invalidateQueries(['workbench-todos']);
-        void queryClient.invalidateQueries(['workbench-todos-summary']);
-        void queryClient.invalidateQueries(['workbench-coordination-sent-tasks']);
-      };
-
-      triggerRefresh();
-      setTimeout(triggerRefresh, 1500);
-      setTimeout(triggerRefresh, 4000);
-      setTimeout(triggerRefresh, 8000);
-    } catch (err: any) {
-      setOptimisticSentIds((prev) => {
-        const next = new Set(prev);
-        next.delete(item.id);
-        return next;
-      });
-      rollbackOptimisticCoordinationSend(queryClient, item, user);
-      if (err?.message?.includes('未找到协同任务') || err?.response?.status === 404) {
-        void message.warning('该协同任务已在其他环节流转或已更新，已为您自动刷新最新状态');
-        void queryClient.invalidateQueries(['workbench-inbox']);
-        void queryClient.invalidateQueries(['workbench-inbox-summary']);
-        void queryClient.invalidateQueries(['workbench-todos']);
-        void queryClient.invalidateQueries(['workbench-coordination-sent-tasks']);
-        return;
-      }
-      void message.error(err?.message || '操作失败，您可点击「详细」进行处理');
-    } finally {
-      setQuickSendingId(null);
-    }
-  };
-
-  const handleRecallItem = async (item: WorkbenchInboxItem) => {
-    try {
-      const rawTaskId = item.sourceRefId || item.id;
-      const taskId = rawTaskId.startsWith('coord_coord_')
-        ? rawTaskId.replace(/^(?:coord_)+/, 'coord_')
-        : rawTaskId;
-      await workbenchCoordinationApi.recallTask(taskId, '发起人从收集箱撤回事项');
-      void message.success(`已成功撤回「${item.title}」，事项已退回至您的「待办」，您可重新编辑并再次发送。`);
-      void queryClient.invalidateQueries(['workbench-inbox']);
-      void queryClient.invalidateQueries(['workbench-inbox-summary']);
-      void queryClient.invalidateQueries(['workbench-todos']);
-      void queryClient.invalidateQueries(['workbench-todos-summary']);
-      void queryClient.invalidateQueries(['workbench-coordination-sent-tasks']);
-    } catch (err: any) {
-      void message.error(err?.message || '撤回失败，请重试');
-    }
-  };
-
-  const handleRemindItem = (item: WorkbenchInboxItem) => {
-    const nodeSemantics = classifyWorkflowNode(item, user?.username, user?.id);
-    const assigneeName = nodeSemantics.currentAssigneeName || '处理担当';
-    void message.success(`已向处理担当 @${assigneeName} 发送催办提醒，已催促尽快办理！`);
-  };
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => ({
@@ -304,123 +190,6 @@ export function InboxList({
       setErrorMessage(null);
     }
     onDraftChange(val);
-  };
-
-  const renderSourceTag = (sourceType: string) => {
-    switch (sourceType) {
-      case "chat":
-        return (
-          <Tag color="cyan" icon={<RobotOutlined />}>
-            智能协同
-          </Tag>
-        );
-      case "email":
-        return (
-          <Tag color="gold" icon={<MailOutlined />}>
-            邮件
-          </Tag>
-        );
-      case "schedule":
-        return (
-          <Tag color="geekblue" icon={<ClockCircleOutlined />}>
-            定时任务
-          </Tag>
-        );
-      case "im_channel":
-        return <Tag color="purple">IM 消息</Tag>;
-      case "workflow":
-        return (
-          <Tag color="blue" icon={<ThunderboltOutlined />}>
-            工作流
-          </Tag>
-        );
-      default:
-        return <Tag color="default">手动便签</Tag>;
-    }
-  };
-
-  const renderConfidenceTag = (item: WorkbenchInboxItem) => {
-    const extra = (item.extra || item.unifiedPayload?.extra || {}) as Record<string, any>;
-    const isIntervention = Boolean(
-      extra.requiresHumanIntervention || item.title?.includes("需人工介入")
-    );
-    if (isIntervention) {
-      return (
-        <Tag color="error" icon={<EyeOutlined />}>
-          需人工介入
-        </Tag>
-      );
-    }
-
-    const score = Math.round(item.confidence * 100);
-    if (score >= 75) {
-      return (
-        <Tooltip title={`要素完整度评分: ${score}%`}>
-          <Tag color="success" icon={<CheckCircleOutlined />}>
-            要素完整 · {score}%
-          </Tag>
-        </Tooltip>
-      );
-    }
-    return (
-      <Tooltip
-        title={`置信度 ${score}%: 条目要素（动作/时间/主体）不够清晰，建议点击上方「AI 智能整理」深度厘清`}
-      >
-        <Tag color="warning" icon={<RobotOutlined />}>
-          建议整理 · {score}%
-        </Tag>
-      </Tooltip>
-    );
-  };
-
-  const renderStatusTag = (status: string) => {
-    switch (status) {
-      case "unprocessed":
-        return (
-          <Tag color="processing" style={{ margin: 0, fontWeight: 500 }}>
-            未整理
-          </Tag>
-        );
-      case "clarified":
-        return (
-          <Tag color="cyan" style={{ margin: 0, fontWeight: 500 }}>
-            已AI厘清
-          </Tag>
-        );
-      case "converted":
-        return (
-          <Tag
-            color="success"
-            icon={<CheckCircleOutlined />}
-            style={{ margin: 0, fontWeight: 500 }}
-          >
-            已转待办
-          </Tag>
-        );
-      case "archived":
-        return (
-          <Tag color="default" style={{ margin: 0 }}>
-            已归档
-          </Tag>
-        );
-      default:
-        return null;
-    }
-  };
-
-  const renderPriorityTag = (priority?: string) => {
-    switch (priority) {
-      case "urgent":
-        return <Tag color="error">紧急</Tag>;
-      case "high":
-        return <Tag color="warning">高优先级</Tag>;
-      case "medium":
-        return <Tag color="processing">中优先级</Tag>;
-      case "low":
-        return <Tag color="default">低优先级</Tag>;
-      default:
-        return priority ? <Tag color="default">{priority}</Tag> : null;
-    }
   };
 
   const handleOpenTaskInAiChat = (item: WorkbenchInboxItem) => {

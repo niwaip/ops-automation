@@ -11,7 +11,7 @@ metadata:
     format: pdf
     operation: create
 spec:
-  definitionVersion: 1.0.0
+  definitionVersion: 1.0.1
   lifecycle: stable
   defaultAccess:
     mode: authenticated

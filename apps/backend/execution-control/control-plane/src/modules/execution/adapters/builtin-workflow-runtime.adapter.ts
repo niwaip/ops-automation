@@ -1,12 +1,12 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable,Logger,Optional } from '@nestjs/common';
+import { BuiltinHandlerRegistryService } from './builtin-handler-registry.service';
 import type {
-  RuntimeAdapter,
-  RuntimeStepInvokeRequest,
-  RuntimeStepInvokeResult,
-  RuntimeType,
-  RuntimeAdapterRouteKey,
+RuntimeAdapter,
+RuntimeAdapterRouteKey,
+RuntimeStepInvokeRequest,
+RuntimeStepInvokeResult,
+RuntimeType,
 } from './runtime-adapter.interface';
-import { BuiltinHandlerRegistryService, BuiltinHandlerFn } from './builtin-handler-registry.service';
 
 @Injectable()
 export class BuiltinWorkflowRuntimeAdapter implements RuntimeAdapter {

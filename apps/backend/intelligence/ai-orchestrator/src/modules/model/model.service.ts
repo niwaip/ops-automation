@@ -1,10 +1,8 @@
 import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import * as fs from 'fs';
-import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import {
   AIModelDTO,
-  AIModelConfig,
   ModelReasoningConfig,
   AIProviderConfigDTO,
   AIProviderSummaryDTO,
@@ -17,65 +15,22 @@ import {
   AIProviderModelListDTO,
 } from '../../interfaces';
 import { OpenAICompatibleClient } from '../../client/openai-compatible';
-import { AnthropicMessagesClient } from '../../client/anthropic-messages';
 import { LLMClient, PromptCachingConfig } from '../../client/llm-client';
 import {
   ModelInvocationTelemetryService,
   type ModelInvocationContext,
 } from './model-invocation-telemetry.service';
-import { SecretCryptoUtil } from '../../common/crypto/secret-crypto.util';
-
-// Persistence file paths. Resolution order:
-//   1. AI_MODELS_DATA_DIR env var (explicit override, used by docker-compose.full.yml)
-//   2. <repo>/apps/backend/var/cache/ai-orchestrator (walked from process.cwd())
-//   3. /app/data (legacy fallback when the package is mounted at /app)
-// The previous hardcoded `/app/data` caused silent data loss in stacks where the
-// container's working_dir is /workspace rather than /app, because the volume mount
-// only exposed the cache directory under the workspace path.
-const resolveDefaultDataDir = (): string => {
-  if (process.env.NODE_ENV === 'test') {
-    return path.join(process.cwd(), '.tmp', 'ai-models');
-  }
-  // Walk up from cwd until we find the monorepo root that owns apps/backend.
-  let cursor = process.cwd();
-  for (let depth = 0; depth < 6; depth += 1) {
-    const candidate = path.join(cursor, 'apps', 'backend', 'var', 'cache', 'ai-orchestrator');
-    if (cursor === path.dirname(cursor)) break; // reached filesystem root
-    // Prefer the first monorepo-shaped path that actually exists on disk.
-    if (fs.existsSync(path.join(cursor, 'apps', 'backend'))) {
-      return candidate;
-    }
-    cursor = path.dirname(cursor);
-  }
-  // Fall back to the legacy /app/data path which still works for stacks that
-  // bind-mount /workspace/.../cache → /app/data (e.g. docker-compose.base.yml).
-  return '/app/data';
-};
-const DATA_DIR = process.env.AI_MODELS_DATA_DIR || resolveDefaultDataDir();
-const MODELS_FILE = path.join(DATA_DIR, 'ai-models.json');
-const API_KEYS_FILE = path.join(DATA_DIR, 'ai-api-keys.json');
-const PROVIDERS_FILE = path.join(DATA_DIR, 'ai-providers.json');
-const PROVIDER_API_KEYS_FILE = path.join(DATA_DIR, 'ai-provider-api-keys.json');
-
-interface PersistedModel {
-  model: AIModelDTO;
-  apiKeyRef?: APIKeyReference;
-}
-
-interface PersistedApiKey {
-  id: string;
-  apiKey: string;
-}
-
-interface PersistedProvider {
-  provider: AIProviderConfigDTO;
-  apiKeyRef: APIKeyReference;
-}
-
-interface PersistedProviderApiKey {
-  id: string;
-  apiKey: string;
-}
+import {
+  getCapabilityWeight,
+  getDefaultScopeWeight,
+  getPromptCachingConfigForModel,
+  normalizeModelConfig,
+} from './model-config.helpers';
+import {
+  MODEL_STORAGE_DATA_DIR,
+} from './model-storage.constants';
+import { buildModelClient } from './model-client.factory';
+import { ModelStateRepository } from './model-state.repository';
 
 export interface ModelSelectionPolicyContext {
   mode?: 'chat' | 'task' | 'audio_transcription' | 'ocr' | 'vision' | 'image_generation';
@@ -98,361 +53,32 @@ export class ModelService implements OnModuleInit {
   private providerApiKeys: Map<string, string> = new Map();
   private clients: Map<string, LLMClient> = new Map();
 
-  constructor(@Optional() private readonly invocationTelemetry?: ModelInvocationTelemetryService) {}
+  private readonly stateRepository: ModelStateRepository;
 
-  private normalizeModelConfig(config?: AIModelConfig): AIModelConfig {
-    const normalized: AIModelConfig = {
-      ...(config || {}),
-    };
-
-    const defaultScope =
-      typeof normalized.default_scope === 'object' && normalized.default_scope
-        ? normalized.default_scope
-        : {};
-    normalized.default_scope = {
-      global: defaultScope.global === true || normalized.default === true,
-      admin_chat: defaultScope.admin_chat === true,
-      admin_task: defaultScope.admin_task === true,
-      audio_transcription: defaultScope.audio_transcription === true,
-      ocr: defaultScope.ocr === true,
-      image_generation: defaultScope.image_generation === true,
-    };
-
-    const routingPreferences =
-      typeof normalized.routing_preferences === 'object' && normalized.routing_preferences
-        ? normalized.routing_preferences
-        : {};
-    normalized.routing_preferences = {
-      prefer_for_code: routingPreferences.prefer_for_code === true,
-    };
-
-    const invocation =
-      typeof normalized.invocation === 'object' && normalized.invocation
-        ? normalized.invocation
-        : {};
-    const promptCaching =
-      typeof invocation.prompt_caching === 'object' && invocation.prompt_caching
-        ? invocation.prompt_caching
-        : {};
-    normalized.invocation = {
-      transport: invocation.transport,
-      prompt_caching: {
-        enabled: promptCaching.enabled !== false,
-        mode: promptCaching.mode,
-        retention: promptCaching.retention,
-        min_tokens: typeof promptCaching.min_tokens === 'number' ? promptCaching.min_tokens : 1024,
-      },
-    };
-
-    normalized.capability_tier =
-      normalized.capability_tier === 'advanced' ? 'advanced' : 'standard';
-    normalized.default = normalized.default_scope.global === true;
-
-    return normalized;
-  }
-
-  private buildClient(model: AIModelDTO, apiKey: string): LLMClient {
-    const transport =
-      model.config.invocation?.transport ||
-      (model.provider === 'anthropic' ? 'anthropic_messages' : 'openai_chat_completions');
-    const promptCaching = this.getPromptCachingConfigForModel(model);
-
-    if (transport === 'anthropic_messages') {
-      return new AnthropicMessagesClient({
-        baseURL: model.api_endpoint,
-        apiKey,
-        model: model.name,
-        provider: model.provider,
-        promptCacheRetention: promptCaching?.retention,
-      });
-    }
-
-    return new OpenAICompatibleClient({
-      baseURL: model.api_endpoint,
-      apiKey,
-      model: model.name,
-      provider: model.provider,
-      promptCacheRetention: promptCaching?.retention,
-    });
-  }
-
-  private getPromptCachingConfigForModel(model: AIModelDTO): PromptCachingConfig | undefined {
-    const configured = model.config.invocation?.prompt_caching;
-    if (configured?.enabled === false) {
-      return configured;
-    }
-
-    return {
-      enabled: configured?.enabled ?? true,
-      mode:
-        configured?.mode || (model.provider === 'anthropic' ? 'anthropic_explicit' : 'openai_auto'),
-      retention: configured?.retention || (model.provider === 'anthropic' ? '5m' : 'in_memory'),
-      min_tokens: typeof configured?.min_tokens === 'number' ? configured.min_tokens : 1024,
-    };
-  }
-
-  private getDefaultScopeWeight(model: AIModelDTO): number {
-    const scope = model.config.default_scope;
-    return (
-      (scope?.global ? 4 : 0) +
-      (scope?.admin_chat ? 3 : 0) +
-      (scope?.admin_task ? 3 : 0) +
-      (scope?.audio_transcription ? 3 : 0) +
-      (scope?.ocr ? 3 : 0) +
-      (scope?.image_generation ? 3 : 0) +
-      (model.config.default === true ? 1 : 0)
+  constructor(@Optional() private readonly invocationTelemetry?: ModelInvocationTelemetryService) {
+    this.stateRepository = new ModelStateRepository(
+      this.models,
+      this.providers,
+      this.apiKeyReferences,
+      this.providerApiKeyReferences,
+      this.apiKeys,
+      this.providerApiKeys,
+      this.clients,
+      this.logger
     );
   }
 
-  private getCapabilityWeight(model: AIModelDTO): number {
-    return model.config.capability_tier === 'advanced' ? 2 : 0;
-  }
-
-  private findProviderConfig(provider: string, apiEndpoint: string): AIProviderConfigDTO | null {
-    for (const providerConfig of this.providers.values()) {
-      if (providerConfig.provider === provider && providerConfig.api_endpoint === apiEndpoint) {
-        return providerConfig;
-      }
-    }
-
-    return null;
-  }
-
-  private getProviderConfigForModel(model: AIModelDTO): AIProviderConfigDTO | null {
-    if (model.providerConfigId) {
-      const providerConfig = this.providers.get(model.providerConfigId);
-      if (providerConfig) {
-        return providerConfig;
-      }
-    }
-
-    return this.findProviderConfig(model.provider, model.api_endpoint);
-  }
-
-  private getProviderGroupingKey(model: AIModelDTO): string {
-    const providerConfig = this.getProviderConfigForModel(model);
-    return providerConfig?.id || `${model.provider}::${model.api_endpoint}`;
-  }
-
-  private resolveProviderCredential(providerId: string): string | null {
-    if (this.providerApiKeys.has(providerId)) {
-      return this.providerApiKeys.get(providerId) || null;
-    }
-
-    const ref = this.providerApiKeyReferences.get(providerId);
-    if (!ref) {
-      return null;
-    }
-
-    return this.resolveApiKey(ref);
-  }
-
-  private hasConfiguredProviderCredential(providerId: string): boolean {
-    return Boolean(this.resolveProviderCredential(providerId));
-  }
-
-  private upsertProviderConfig(dto: CreateProviderConfigDTO): AIProviderConfigDTO {
-    const existing = this.findProviderConfig(dto.provider, dto.api_endpoint);
-    const now = new Date();
-
-    if (existing) {
-      if (dto.name !== undefined) {
-        existing.name = dto.name;
-      }
-      if (dto.api_key) {
-        this.providerApiKeys.set(existing.id, dto.api_key);
-      }
-      if (dto.env_key || dto.secret_type) {
-        this.providerApiKeyReferences.set(existing.id, {
-          reference_id:
-            dto.env_key ||
-            this.providerApiKeyReferences.get(existing.id)?.reference_id ||
-            existing.id,
-          secret_type:
-            dto.secret_type || this.providerApiKeyReferences.get(existing.id)?.secret_type || 'env',
-        });
-      }
-      const updated = {
-        ...existing,
-        name: dto.name !== undefined ? dto.name : existing.name,
-        updated_at: now,
-      };
-      this.providers.set(existing.id, updated);
-      return updated;
-    }
-
-    const providerConfig: AIProviderConfigDTO = {
-      id: uuidv4(),
-      name: dto.name,
-      provider: dto.provider,
-      api_endpoint: dto.api_endpoint,
-      created_at: now,
-      updated_at: now,
-    };
-    this.providers.set(providerConfig.id, providerConfig);
-
-    const ref: APIKeyReference = {
-      reference_id: dto.env_key || providerConfig.id,
-      secret_type: dto.secret_type || 'env',
-    };
-    this.providerApiKeyReferences.set(providerConfig.id, ref);
-    if (dto.api_key) {
-      this.providerApiKeys.set(providerConfig.id, dto.api_key);
-    }
-
-    return providerConfig;
-  }
-
-  private syncProviderConfigFromModel(modelId: string, model: AIModelDTO): void {
-    const modelRef = this.apiKeyReferences.get(modelId);
-    const apiKey = this.apiKeys.get(modelId) || (modelRef ? this.resolveApiKey(modelRef) : null);
-    const providerConfig = this.upsertProviderConfig({
-      provider: model.provider,
-      api_endpoint: model.api_endpoint,
-      ...(apiKey ? { api_key: apiKey } : {}),
-      ...(modelRef
-        ? {
-            env_key: modelRef.reference_id,
-            secret_type: modelRef.secret_type,
-          }
-        : {}),
-    });
-    if (model.providerConfigId !== providerConfig.id) {
-      this.models.set(modelId, {
-        ...model,
-        providerConfigId: providerConfig.id,
-      });
-    }
-  }
-
-  private clearDefaultScopeOnOtherModels(targetModelId: string, config: AIModelConfig): void {
-    const targetScope = config.default_scope;
-    if (
-      !targetScope?.global &&
-      !targetScope?.admin_chat &&
-      !targetScope?.admin_task &&
-      !targetScope?.audio_transcription &&
-      !targetScope?.ocr &&
-      !targetScope?.image_generation
-    ) {
-      return;
-    }
-
-    for (const [modelId, existingModel] of this.models) {
-      if (modelId === targetModelId) {
-        continue;
-      }
-
-      const nextConfig = this.normalizeModelConfig(existingModel.config);
-      let changed = false;
-
-      if (targetScope.global && nextConfig.default_scope?.global) {
-        nextConfig.default_scope.global = false;
-        nextConfig.default = false;
-        changed = true;
-      }
-      if (targetScope.admin_chat && nextConfig.default_scope?.admin_chat) {
-        nextConfig.default_scope.admin_chat = false;
-        changed = true;
-      }
-      if (targetScope.admin_task && nextConfig.default_scope?.admin_task) {
-        nextConfig.default_scope.admin_task = false;
-        changed = true;
-      }
-      if (targetScope.audio_transcription && nextConfig.default_scope?.audio_transcription) {
-        nextConfig.default_scope.audio_transcription = false;
-        changed = true;
-      }
-      if (targetScope.ocr && nextConfig.default_scope?.ocr) {
-        nextConfig.default_scope.ocr = false;
-        changed = true;
-      }
-      if (targetScope.image_generation && nextConfig.default_scope?.image_generation) {
-        nextConfig.default_scope.image_generation = false;
-        changed = true;
-      }
-
-      if (changed) {
-        this.models.set(modelId, {
-          ...existingModel,
-          config: nextConfig,
-          updated_at: new Date(),
-        });
-      }
-    }
-  }
-
   selectScopedDefaultModel(
-    scope: 'global' | 'admin_chat' | 'admin_task' | 'audio_transcription' | 'ocr' | 'image_generation'
+    scope:
+      | 'global'
+      | 'admin_chat'
+      | 'admin_task'
+      | 'audio_transcription'
+      | 'ocr'
+      | 'image_generation'
   ): AIModelDTO | null {
     const activeModels = this.getActiveModelsWithClients();
     return activeModels.find((model) => model.config.default_scope?.[scope] === true) || null;
-  }
-
-  private hasConfiguredCredential(id: string): boolean {
-    const model = this.models.get(id);
-    if (model) {
-      const providerConfig = this.getProviderConfigForModel(model);
-      if (providerConfig && this.hasConfiguredProviderCredential(providerConfig.id)) {
-        return true;
-      }
-    }
-
-    if (this.apiKeys.has(id)) {
-      return true;
-    }
-
-    const ref = this.apiKeyReferences.get(id);
-    if (!ref) {
-      return false;
-    }
-
-    return Boolean(this.resolveApiKey(ref, id));
-  }
-
-  private findReusableProviderCredential(
-    provider: string,
-    apiEndpoint: string
-  ): { sourceModelId: string; apiKey: string } | null {
-    const candidates = Array.from(this.models.values()).filter((model) => {
-      return model.provider === provider && model.api_endpoint === apiEndpoint;
-    });
-
-    for (const model of candidates) {
-      const ref = this.apiKeyReferences.get(model.id);
-      if (!ref) {
-        continue;
-      }
-      const apiKey = this.apiKeys.get(model.id) || this.resolveApiKey(ref, model.id);
-      if (apiKey) {
-        return {
-          sourceModelId: model.id,
-          apiKey,
-        };
-      }
-    }
-
-    return null;
-  }
-
-  private buildModelApiKeyRef(modelId: string, config?: AIModelConfig): APIKeyReference {
-    const explicitRefId = config?.env_key as string | undefined;
-    if (explicitRefId) {
-      return {
-        reference_id: explicitRefId,
-        secret_type: (config?.secret_type as 'vault' | 'env' | 'k8s_secret') || 'env',
-      };
-    }
-
-    return {
-      reference_id: `AI_API_KEY_${modelId}`,
-      secret_type: 'env',
-    };
-  }
-
-  private clearModelCredential(id: string): void {
-    this.apiKeys.delete(id);
-    this.apiKeyReferences.delete(id);
   }
 
   getPreferredDefaultModel(context?: ModelSelectionPolicyContext): AIModelDTO | null {
@@ -505,203 +131,33 @@ export class ModelService implements OnModuleInit {
     this.logger.log('Initializing model service...');
 
     // Ensure data directory exists with restricted permissions (0700)
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
+    if (!fs.existsSync(MODEL_STORAGE_DATA_DIR)) {
+      fs.mkdirSync(MODEL_STORAGE_DATA_DIR, { recursive: true, mode: 0o700 });
       try {
-        fs.chmodSync(DATA_DIR, 0o700);
-      } catch {}
-      this.logger.log(`Created data directory: ${DATA_DIR}`);
+        fs.chmodSync(MODEL_STORAGE_DATA_DIR, 0o700);
+      } catch {
+        // Best-effort permission hardening; storage still works when chmod is unavailable.
+      }
+      this.logger.log(`Created data directory: ${MODEL_STORAGE_DATA_DIR}`);
     }
 
     // Run migration and permission enforcement on existing storage files
-    await this.migrateAndSecureFiles();
+    await this.stateRepository.migrateAndSecureFiles();
 
     // Load persisted provider configs first
-    await this.loadPersistedProviders();
+    await this.stateRepository.loadPersistedProviders();
 
     // Load persisted models first
-    await this.loadPersistedModels();
-  }
-
-  private async migrateAndSecureFiles(): Promise<void> {
-    const files = [
-      PROVIDER_API_KEYS_FILE,
-      API_KEYS_FILE,
-      PROVIDERS_FILE,
-      MODELS_FILE,
-    ];
-
-    for (const file of files) {
-      if (!fs.existsSync(file)) continue;
-
-      try {
-        fs.chmodSync(file, 0o600);
-      } catch {
-        // ignore
-      }
-
-      if (file === PROVIDER_API_KEYS_FILE || file === API_KEYS_FILE) {
-        try {
-          const raw = fs.readFileSync(file, 'utf-8');
-          const list = JSON.parse(raw);
-          if (Array.isArray(list)) {
-            let changed = false;
-            for (const item of list) {
-              if (item.apiKey && !SecretCryptoUtil.isEncrypted(item.apiKey)) {
-                item.apiKey = SecretCryptoUtil.encrypt(item.apiKey);
-                changed = true;
-              }
-            }
-            if (changed) {
-              SecretCryptoUtil.writeSecureJsonFile(file, list);
-              this.logger.log(`Migrated plaintext keys in ${file} to AES-256-GCM`);
-            }
-          }
-        } catch (e: any) {
-          this.logger.warn(`Failed to migrate keys in ${file}: ${e.message}`);
-        }
-      }
-    }
+    await this.stateRepository.loadPersistedModels();
   }
 
   /**
    * Load persisted models from file
    */
-  private async loadPersistedModels(): Promise<void> {
-    try {
-      this.logger.log(`Checking for persisted models in ${MODELS_FILE}`);
-
-      // Load models
-      if (fs.existsSync(MODELS_FILE)) {
-        const data = fs.readFileSync(MODELS_FILE, 'utf-8');
-        const persisted: PersistedModel[] = JSON.parse(data);
-
-        for (const item of persisted) {
-          this.models.set(item.model.id, item.model);
-          item.model.config = this.normalizeModelConfig(item.model.config);
-          if (item.apiKeyRef) {
-            this.apiKeyReferences.set(item.model.id, item.apiKeyRef);
-          }
-          this.logger.debug(`Loaded model: ${item.model.name} (${item.model.id})`);
-        }
-
-        this.logger.log(`Loaded ${persisted.length} persisted models from file`);
-      } else {
-        this.logger.log(`No persisted models file found at ${MODELS_FILE}`);
-      }
-
-      // Load API keys
-      if (fs.existsSync(API_KEYS_FILE)) {
-        const data = fs.readFileSync(API_KEYS_FILE, 'utf-8');
-        const keys: PersistedApiKey[] = JSON.parse(data);
-
-        for (const item of keys) {
-          this.apiKeys.set(item.id, SecretCryptoUtil.decrypt(item.apiKey));
-        }
-
-        this.logger.log(`Loaded ${keys.length} persisted API keys from file`);
-      } else {
-        this.logger.log(`No persisted API keys file found at ${API_KEYS_FILE}`);
-      }
-
-      for (const [id, model] of this.models) {
-        this.syncProviderConfigFromModel(id, model);
-      }
-
-      // Initialize clients for loaded models
-      for (const [id, model] of this.models) {
-        const providerConfig = this.getProviderConfigForModel(model);
-        const modelRef = this.apiKeyReferences.get(id);
-        const apiKey = providerConfig
-          ? this.resolveProviderCredential(providerConfig.id)
-          : this.apiKeys.get(id) || (modelRef ? this.resolveApiKey(modelRef, id) : null);
-        if (apiKey) {
-          const client = this.buildClient(model, apiKey);
-          this.clients.set(id, client);
-          this.logger.log(`Client initialized for model ${model.name} (${id})`);
-        }
-      }
-    } catch (error: unknown) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Failed to load persisted models: ${errorMsg}`);
-    }
-  }
-
-  private async loadPersistedProviders(): Promise<void> {
-    try {
-      if (fs.existsSync(PROVIDERS_FILE)) {
-        const data = fs.readFileSync(PROVIDERS_FILE, 'utf-8');
-        const persisted: PersistedProvider[] = JSON.parse(data);
-        for (const item of persisted) {
-          this.providers.set(item.provider.id, item.provider);
-          this.providerApiKeyReferences.set(item.provider.id, item.apiKeyRef);
-        }
-      }
-
-      if (fs.existsSync(PROVIDER_API_KEYS_FILE)) {
-        const data = fs.readFileSync(PROVIDER_API_KEYS_FILE, 'utf-8');
-        const keys: PersistedProviderApiKey[] = JSON.parse(data);
-        for (const item of keys) {
-          this.providerApiKeys.set(item.id, SecretCryptoUtil.decrypt(item.apiKey));
-        }
-      }
-    } catch (error: unknown) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Failed to load persisted providers: ${errorMsg}`);
-    }
-  }
 
   /**
    * Persist models to file
    */
-  private async persistModels(): Promise<void> {
-    try {
-      // Ensure data directory exists with restricted permissions (0700)
-      if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
-        this.logger.log(`Created data directory: ${DATA_DIR}`);
-      }
-
-      // Persist models
-      const modelsData: PersistedModel[] = [];
-      for (const [id, model] of this.models) {
-        const apiKeyRef = this.apiKeyReferences.get(id);
-        modelsData.push({ model, apiKeyRef });
-      }
-      SecretCryptoUtil.writeSecureJsonFile(MODELS_FILE, modelsData);
-      this.logger.log(`Wrote ${modelsData.length} models to ${MODELS_FILE}`);
-
-      // Persist API keys (encrypted with AES-256-GCM, mode 0600)
-      const keysData: PersistedApiKey[] = [];
-      for (const [id, apiKey] of this.apiKeys) {
-        keysData.push({ id, apiKey: SecretCryptoUtil.encrypt(apiKey) });
-      }
-      SecretCryptoUtil.writeSecureJsonFile(API_KEYS_FILE, keysData);
-      this.logger.log(`Wrote ${keysData.length} API keys to ${API_KEYS_FILE}`);
-
-      const providersData: PersistedProvider[] = [];
-      for (const [id, provider] of this.providers) {
-        const apiKeyRef = this.providerApiKeyReferences.get(id);
-        if (apiKeyRef) {
-          providersData.push({ provider, apiKeyRef });
-        }
-      }
-      SecretCryptoUtil.writeSecureJsonFile(PROVIDERS_FILE, providersData);
-
-      const providerKeysData: PersistedProviderApiKey[] = [];
-      for (const [id, apiKey] of this.providerApiKeys) {
-        providerKeysData.push({ id, apiKey: SecretCryptoUtil.encrypt(apiKey) });
-      }
-      SecretCryptoUtil.writeSecureJsonFile(PROVIDER_API_KEYS_FILE, providerKeysData);
-
-      this.logger.log(
-        `Persisted ${modelsData.length} models, ${keysData.length} model API keys and ${providersData.length} providers`
-      );
-    } catch (error: unknown) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Failed to persist models: ${errorMsg}`);
-    }
-  }
 
   /**
    * List all registered models (only active ones for chat selector)
@@ -709,7 +165,7 @@ export class ModelService implements OnModuleInit {
   async listModels(): Promise<AIModelDTO[]> {
     return Array.from(this.models.values())
       .filter((m) => m.status === 'active')
-      .map((m) => ({ ...m, hasApiKey: this.hasConfiguredCredential(m.id) }));
+      .map((m) => ({ ...m, hasApiKey: this.stateRepository.hasConfiguredCredential(m.id) }));
   }
 
   /**
@@ -718,7 +174,7 @@ export class ModelService implements OnModuleInit {
   async listModelsForAdmin(): Promise<AIModelDTO[]> {
     return Array.from(this.models.values()).map((m) => ({
       ...m,
-      hasApiKey: this.hasConfiguredCredential(m.id),
+      hasApiKey: this.stateRepository.hasConfiguredCredential(m.id),
     }));
   }
 
@@ -732,14 +188,14 @@ export class ModelService implements OnModuleInit {
         api_endpoint: providerConfig.api_endpoint,
         modelCount: 0,
         activeModelCount: 0,
-        hasCredential: this.hasConfiguredProviderCredential(providerConfig.id),
+        hasCredential: this.stateRepository.hasConfiguredProviderCredential(providerConfig.id),
         advancedModelCount: 0,
         defaultScopes: [],
       });
     }
 
     for (const model of this.models.values()) {
-      const groupKey = this.getProviderGroupingKey(model);
+      const groupKey = this.stateRepository.getProviderGroupingKey(model);
       const existing = grouped.get(groupKey) || {
         id: groupKey,
         provider: model.provider,
@@ -752,10 +208,18 @@ export class ModelService implements OnModuleInit {
       };
       existing.modelCount += 1;
       existing.activeModelCount += model.status === 'active' ? 1 : 0;
-      existing.hasCredential = existing.hasCredential || this.hasConfiguredCredential(model.id);
+      existing.hasCredential =
+        existing.hasCredential || this.stateRepository.hasConfiguredCredential(model.id);
       existing.advancedModelCount += model.config.capability_tier === 'advanced' ? 1 : 0;
       const scopeKeys = (
-        ['global', 'admin_chat', 'admin_task', 'audio_transcription', 'ocr', 'image_generation'] as const
+        [
+          'global',
+          'admin_chat',
+          'admin_task',
+          'audio_transcription',
+          'ocr',
+          'image_generation',
+        ] as const
       ).filter((scope) => {
         return model.config.default_scope?.[scope] === true;
       });
@@ -779,7 +243,7 @@ export class ModelService implements OnModuleInit {
   async listProviderConfigs(): Promise<AIProviderConfigDTO[]> {
     return Array.from(this.providers.values()).map((provider) => ({
       ...provider,
-      hasCredential: this.hasConfiguredProviderCredential(provider.id),
+      hasCredential: this.stateRepository.hasConfiguredProviderCredential(provider.id),
     }));
   }
 
@@ -791,16 +255,16 @@ export class ModelService implements OnModuleInit {
 
     return {
       ...provider,
-      hasCredential: this.hasConfiguredProviderCredential(provider.id),
+      hasCredential: this.stateRepository.hasConfiguredProviderCredential(provider.id),
     };
   }
 
   async createProviderConfig(dto: CreateProviderConfigDTO): Promise<AIProviderConfigDTO> {
-    const provider = this.upsertProviderConfig(dto);
-    await this.persistModels();
+    const provider = this.stateRepository.upsertProviderConfig(dto);
+    await this.stateRepository.persistModels();
     return {
       ...provider,
-      hasCredential: this.hasConfiguredProviderCredential(provider.id),
+      hasCredential: this.stateRepository.hasConfiguredProviderCredential(provider.id),
     };
   }
 
@@ -816,7 +280,7 @@ export class ModelService implements OnModuleInit {
     const nextName = updates.name !== undefined ? updates.name : existing.name;
     const nextProvider = updates.provider || existing.provider;
     const nextEndpoint = updates.api_endpoint || existing.api_endpoint;
-    const duplicate = this.findProviderConfig(nextProvider, nextEndpoint);
+    const duplicate = this.stateRepository.findProviderConfig(nextProvider, nextEndpoint);
     if (duplicate && duplicate.id !== id) {
       throw new Error(`Provider ${nextProvider} with endpoint ${nextEndpoint} already exists`);
     }
@@ -864,18 +328,18 @@ export class ModelService implements OnModuleInit {
 
       const modelRef = this.apiKeyReferences.get(modelId);
       const apiKey =
-        this.resolveProviderCredential(id) ||
+        this.stateRepository.resolveProviderCredential(id) ||
         this.apiKeys.get(modelId) ||
-        (modelRef ? this.resolveApiKey(modelRef, modelId) : null);
+        (modelRef ? this.stateRepository.resolveApiKey(modelRef, modelId) : null);
       if (apiKey) {
-        this.clients.set(modelId, this.buildClient(updatedModel, apiKey));
+        this.clients.set(modelId, buildModelClient(updatedModel, apiKey));
       }
     }
 
-    await this.persistModels();
+    await this.stateRepository.persistModels();
     return {
       ...updatedProvider,
-      hasCredential: this.hasConfiguredProviderCredential(id),
+      hasCredential: this.stateRepository.hasConfiguredProviderCredential(id),
     };
   }
 
@@ -887,7 +351,7 @@ export class ModelService implements OnModuleInit {
       return { success: false, error: 'Provider not found' };
     }
 
-    const apiKey = this.resolveProviderCredential(id);
+    const apiKey = this.stateRepository.resolveProviderCredential(id);
     if (!apiKey) {
       return { success: false, error: 'No credential configured for this provider' };
     }
@@ -916,7 +380,7 @@ export class ModelService implements OnModuleInit {
       throw new Error('Provider not found');
     }
 
-    const apiKey = this.resolveProviderCredential(id);
+    const apiKey = this.stateRepository.resolveProviderCredential(id);
     if (!apiKey) {
       throw new Error('No credential configured for this provider');
     }
@@ -944,7 +408,7 @@ export class ModelService implements OnModuleInit {
   async getModel(id: string): Promise<AIModelDTO | null> {
     const model = this.models.get(id);
     if (!model) return null;
-    return { ...model, hasApiKey: this.hasConfiguredCredential(id) };
+    return { ...model, hasApiKey: this.stateRepository.hasConfiguredCredential(id) };
   }
 
   /**
@@ -953,7 +417,7 @@ export class ModelService implements OnModuleInit {
   async getModelByName(name: string): Promise<AIModelDTO | null> {
     for (const [id, model] of this.models) {
       if (model.name === name) {
-        return { ...model, hasApiKey: this.hasConfiguredCredential(id) };
+        return { ...model, hasApiKey: this.stateRepository.hasConfiguredCredential(id) };
       }
     }
     return null;
@@ -1012,8 +476,12 @@ export class ModelService implements OnModuleInit {
     }
     const tags = (model.config?.routing_tags || []).map((t) => String(t).toLowerCase());
     if (
-      tags.some((t) =>
-        t.includes('vision') || t.includes('multimodal') || t.includes('image') || t.includes('ocr')
+      tags.some(
+        (t) =>
+          t.includes('vision') ||
+          t.includes('multimodal') ||
+          t.includes('image') ||
+          t.includes('ocr')
       )
     ) {
       return true;
@@ -1065,7 +533,7 @@ export class ModelService implements OnModuleInit {
     return this.getDefaultModel();
   }
 
-  getPreferredImageGenerationModel(context?: ModelSelectionPolicyContext): AIModelDTO | null {
+  getPreferredImageGenerationModel(_context?: ModelSelectionPolicyContext): AIModelDTO | null {
     // 1. Check if an image_generation-scoped default model is configured and active
     const scopedModel = this.selectScopedDefaultModel('image_generation');
     if (scopedModel) {
@@ -1098,11 +566,11 @@ export class ModelService implements OnModuleInit {
 
   private sortFallbackCandidates(models: AIModelDTO[]): AIModelDTO[] {
     return [...models].sort((left, right) => {
-      const scopeDelta = this.getDefaultScopeWeight(right) - this.getDefaultScopeWeight(left);
+      const scopeDelta = getDefaultScopeWeight(right) - getDefaultScopeWeight(left);
       if (scopeDelta !== 0) {
         return scopeDelta;
       }
-      const capabilityDelta = this.getCapabilityWeight(right) - this.getCapabilityWeight(left);
+      const capabilityDelta = getCapabilityWeight(right) - getCapabilityWeight(left);
       if (capabilityDelta !== 0) {
         return capabilityDelta;
       }
@@ -1131,7 +599,8 @@ export class ModelService implements OnModuleInit {
       activeModels.filter((model) => {
         return (
           model.id !== currentModel.id &&
-          this.getProviderGroupingKey(model) === this.getProviderGroupingKey(currentModel)
+          this.stateRepository.getProviderGroupingKey(model) ===
+            this.stateRepository.getProviderGroupingKey(currentModel)
         );
       })
     );
@@ -1139,7 +608,8 @@ export class ModelService implements OnModuleInit {
       activeModels.filter((model) => {
         return (
           model.id !== currentModel.id &&
-          this.getProviderGroupingKey(model) !== this.getProviderGroupingKey(currentModel)
+          this.stateRepository.getProviderGroupingKey(model) !==
+            this.stateRepository.getProviderGroupingKey(currentModel)
         );
       })
     );
@@ -1185,13 +655,13 @@ export class ModelService implements OnModuleInit {
     const now = new Date();
 
     let apiKey: string | null = null;
-    const apiKeyRef: APIKeyReference = this.buildModelApiKeyRef(id, dto.config);
+    const apiKeyRef: APIKeyReference = this.stateRepository.buildModelApiKeyRef(id, dto.config);
 
     const existingProviderConfig = dto.providerConfigId
       ? this.providers.get(dto.providerConfigId)
       : null;
     const providerConfig = existingProviderConfig
-      ? this.upsertProviderConfig({
+      ? this.stateRepository.upsertProviderConfig({
           provider: existingProviderConfig.provider,
           api_endpoint: existingProviderConfig.api_endpoint,
           ...(dto.api_key ? { api_key: dto.api_key } : {}),
@@ -1200,7 +670,7 @@ export class ModelService implements OnModuleInit {
             ? { secret_type: dto.config.secret_type as 'vault' | 'env' | 'k8s_secret' }
             : {}),
         })
-      : this.upsertProviderConfig({
+      : this.stateRepository.upsertProviderConfig({
           provider: dto.provider,
           api_endpoint: dto.api_endpoint,
           ...(dto.api_key ? { api_key: dto.api_key } : {}),
@@ -1217,16 +687,18 @@ export class ModelService implements OnModuleInit {
     } else {
       const explicitRefId = dto.config?.env_key as string | undefined;
       if (explicitRefId) {
-        apiKey = this.resolveApiKey(apiKeyRef);
+        apiKey = this.stateRepository.resolveApiKey(apiKeyRef);
       } else {
-        const providerCredential = this.resolveProviderCredential(providerConfig.id);
+        const providerCredential = this.stateRepository.resolveProviderCredential(
+          providerConfig.id
+        );
         if (providerCredential) {
           apiKey = providerCredential;
           this.logger.log(
             `Model ${dto.name} reusing provider credentials from provider ${providerConfig.provider}`
           );
         } else {
-          const reusableCredential = this.findReusableProviderCredential(
+          const reusableCredential = this.stateRepository.findReusableProviderCredential(
             dto.provider,
             dto.api_endpoint
           );
@@ -1236,7 +708,7 @@ export class ModelService implements OnModuleInit {
               `Model ${dto.name} reusing provider credentials from model ${reusableCredential.sourceModelId}`
             );
           } else {
-            apiKey = this.resolveApiKey(apiKeyRef);
+            apiKey = this.stateRepository.resolveApiKey(apiKeyRef);
           }
         }
       }
@@ -1246,7 +718,7 @@ export class ModelService implements OnModuleInit {
       }
     }
 
-    const normalizedConfig = this.normalizeModelConfig(dto.config);
+    const normalizedConfig = normalizeModelConfig(dto.config);
     const model: AIModelDTO = {
       id,
       name: dto.name,
@@ -1259,22 +731,22 @@ export class ModelService implements OnModuleInit {
       updated_at: now,
     };
 
-    this.clearDefaultScopeOnOtherModels(id, normalizedConfig);
+    this.stateRepository.clearDefaultScopeOnOtherModels(id, normalizedConfig);
     this.models.set(id, model);
     if (dto.api_key || dto.config?.env_key) {
       this.apiKeyReferences.set(id, apiKeyRef);
     } else {
-      this.clearModelCredential(id);
+      this.stateRepository.clearModelCredential(id);
     }
 
     if (apiKey) {
-      const client = this.buildClient(model, apiKey);
+      const client = buildModelClient(model, apiKey);
       this.clients.set(id, client);
       this.logger.log(`Client initialized for model ${dto.name} (ID: ${id})`);
     }
 
     // Persist changes
-    await this.persistModels();
+    await this.stateRepository.persistModels();
 
     return model;
   }
@@ -1286,7 +758,7 @@ export class ModelService implements OnModuleInit {
     const model = this.models.get(id);
     if (!model) return null;
 
-    const currentProviderConfig = this.getProviderConfigForModel(model);
+    const currentProviderConfig = this.stateRepository.getProviderConfigForModel(model);
     const requestedProviderConfig = updates.providerConfigId
       ? this.providers.get(updates.providerConfigId) || null
       : null;
@@ -1304,14 +776,14 @@ export class ModelService implements OnModuleInit {
       updates.api_endpoint ||
       currentProviderConfig?.api_endpoint ||
       model.api_endpoint;
-    const providerConfig = this.upsertProviderConfig({
+    const providerConfig = this.stateRepository.upsertProviderConfig({
       provider: targetProvider,
       api_endpoint: targetEndpoint,
       ...(updates.api_key ? { api_key: updates.api_key } : {}),
     });
 
     const normalizedConfig = updates.config
-      ? this.normalizeModelConfig({
+      ? normalizeModelConfig({
           ...model.config,
           ...updates.config,
         })
@@ -1327,39 +799,42 @@ export class ModelService implements OnModuleInit {
       updated_at: new Date(),
     };
 
-    this.clearDefaultScopeOnOtherModels(id, normalizedConfig);
+    this.stateRepository.clearDefaultScopeOnOtherModels(id, normalizedConfig);
     this.models.set(id, updatedModel);
 
     if (updates.api_key) {
       if (updatedModel.providerConfigId) {
-        this.clearModelCredential(id);
+        this.stateRepository.clearModelCredential(id);
       } else {
         this.apiKeys.set(id, updates.api_key);
-        this.apiKeyReferences.set(id, this.buildModelApiKeyRef(id, normalizedConfig));
+        this.apiKeyReferences.set(
+          id,
+          this.stateRepository.buildModelApiKeyRef(id, normalizedConfig)
+        );
       }
     } else if (updates.config?.env_key) {
       this.apiKeys.delete(id);
-      this.apiKeyReferences.set(id, this.buildModelApiKeyRef(id, normalizedConfig));
+      this.apiKeyReferences.set(id, this.stateRepository.buildModelApiKeyRef(id, normalizedConfig));
     } else if (updatedModel.providerConfigId) {
-      this.clearModelCredential(id);
+      this.stateRepository.clearModelCredential(id);
     }
 
     // Reinitialize client if needed
     if (updates.api_endpoint || updates.name || updates.api_key || updates.providerConfigId) {
       const modelRef = this.apiKeyReferences.get(id);
       const apiKey =
-        this.resolveProviderCredential(providerConfig.id) ||
+        this.stateRepository.resolveProviderCredential(providerConfig.id) ||
         this.apiKeys.get(id) ||
-        (modelRef ? this.resolveApiKey(modelRef, id) : null);
+        (modelRef ? this.stateRepository.resolveApiKey(modelRef, id) : null);
       if (apiKey) {
-        const client = this.buildClient(updatedModel, apiKey);
+        const client = buildModelClient(updatedModel, apiKey);
         this.clients.set(id, client);
         this.logger.log(`Client reinitialized for model ${updatedModel.name} (ID: ${id})`);
       }
     }
 
     // Persist changes
-    await this.persistModels();
+    await this.stateRepository.persistModels();
 
     return updatedModel;
   }
@@ -1380,7 +855,7 @@ export class ModelService implements OnModuleInit {
     this.models.set(id, updatedModel);
 
     // Persist changes
-    await this.persistModels();
+    await this.stateRepository.persistModels();
 
     return updatedModel;
   }
@@ -1397,7 +872,7 @@ export class ModelService implements OnModuleInit {
       this.clients.delete(id);
 
       // Persist changes
-      await this.persistModels();
+      await this.stateRepository.persistModels();
     }
     return exists;
   }
@@ -1421,7 +896,7 @@ export class ModelService implements OnModuleInit {
         }
       }
 
-      await this.persistModels();
+      await this.stateRepository.persistModels();
       return true;
     }
     return false;
@@ -1455,7 +930,7 @@ export class ModelService implements OnModuleInit {
 
   getPromptCachingConfig(id: string): PromptCachingConfig | undefined {
     const model = this.resolveModelEntity(id);
-    return model ? this.getPromptCachingConfigForModel(model) : undefined;
+    return model ? getPromptCachingConfigForModel(model) : undefined;
   }
 
   /**
@@ -1478,23 +953,6 @@ export class ModelService implements OnModuleInit {
   /**
    * Resolve API key from reference
    */
-  private resolveApiKey(ref: APIKeyReference, modelId?: string): string | null {
-    if (modelId && this.apiKeys.has(modelId)) {
-      return this.apiKeys.get(modelId) || null;
-    }
-
-    switch (ref.secret_type) {
-      case 'env': {
-        if (ref.reference_id.includes('_')) {
-          return process.env[ref.reference_id] || null;
-        }
-        const envKey = `AI_API_KEY_${ref.reference_id}`;
-        return process.env[envKey] || null;
-      }
-      default:
-        return null;
-    }
-  }
 
   /**
    * Resolve plaintext API key for a model, checking direct keys, references, and provider keys
@@ -1507,17 +965,17 @@ export class ModelService implements OnModuleInit {
     }
     const ref = this.apiKeyReferences.get(modelId);
     if (ref) {
-      const k = this.resolveApiKey(ref, modelId);
+      const k = this.stateRepository.resolveApiKey(ref, modelId);
       if (k) return k;
     }
-    const providerConfig = this.getProviderConfigForModel(model);
+    const providerConfig = this.stateRepository.getProviderConfigForModel(model);
     if (providerConfig) {
       if (this.providerApiKeys.has(providerConfig.id)) {
         return this.providerApiKeys.get(providerConfig.id) || null;
       }
       const pRef = this.providerApiKeyReferences.get(providerConfig.id);
       if (pRef) {
-        return this.resolveApiKey(pRef);
+        return this.stateRepository.resolveApiKey(pRef);
       }
     }
     return null;

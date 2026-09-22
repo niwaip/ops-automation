@@ -2,7 +2,6 @@ import {
   BellOutlined,
   CheckCircleFilled,
   CheckCircleOutlined,
-  ClockCircleOutlined,
   CloseCircleOutlined,
   CloseCircleFilled,
   DownloadOutlined,
@@ -42,7 +41,6 @@ import {
   getFormattedContractVersions,
   triggerContractComparisonInAi,
 } from "../lib/contractComparisonHelper";
-import { formatMonthDayTime } from "@/shared/utils/dateText";
 import {
   PARAM_LABEL_MAP,
   formatParamValue,
@@ -51,36 +49,12 @@ import { InboxTaskDetailModal } from "./InboxTaskDetailModal";
 import { replaceLocalhostWithCurrentHost } from "@/shared/utils/publicUrl";
 import { useAuthStore } from "@/shared/store/authStore";
 import { useChatStore } from "../../chat/chatStore";
-import { isItemInitiatedByMe, type WorkbenchTodoTab } from "../hooks/useWorkbenchTodos";
+import { isItemInitiatedByMe } from "../hooks/useWorkbenchTodos";
 import { classifyWorkflowNode, extractRollbackReason, extractApprovalComment } from "../lib/coordinationNodeClassifier";
 import { applyOptimisticCoordinationSend } from "../lib/coordinationOptimistic";
 import styles from "../pages/DashboardPage.module.css";
-
-interface TodoCardProps {
-  todoDraft: string;
-  todoSummary: {
-    total: number;
-    pending: number;
-    completed?: number;
-    today?: number;
-    sent?: number;
-    ended?: number;
-    overdue?: number;
-  };
-  todos: WorkbenchTodoItem[];
-  activeTab?: WorkbenchTodoTab;
-  onTabChange?: (tab: WorkbenchTodoTab) => void;
-  onCreateTodo: () => void;
-  onDraftChange: (value: string) => void;
-  onLaunchAiAssistant: (prompt: string) => void;
-  onOpenNewExecution: () => void;
-  onToggleTodo: (id: string, completed: boolean) => void;
-  onExecuteTodo?: (id: string) => void;
-  onDeleteTodo?: (id: string) => void;
-  onArchiveTodo?: (id: string) => void;
-  onRecallTodo?: (item: WorkbenchTodoItem) => void;
-  onRemindTodo?: (item: WorkbenchTodoItem) => void;
-}
+import type { TodoCardProps } from "./TodoCard.types";
+import { renderDueDateTag, renderPriorityTag, renderSourceTag } from "./TodoCardTags";
 
 export function TodoCard({
   todoDraft,
@@ -303,53 +277,6 @@ export function TodoCard({
     } finally {
       setQuickSendingId(null);
     }
-  };
-
-  const renderPriorityTag = (priority: string) => {
-    switch (priority) {
-      case "urgent":
-        return <Tag color="error">紧急</Tag>;
-      case "high":
-        return <Tag color="warning">高</Tag>;
-      case "medium":
-        return <Tag color="processing">中</Tag>;
-      case "low":
-        return <Tag color="default">低</Tag>;
-      default:
-        return null;
-    }
-  };
-
-  const renderSourceTag = (sourceType: string) => {
-    switch (sourceType) {
-      case "chat":
-        return <Tag color="cyan">智能协同</Tag>;
-      case "email":
-        return <Tag color="gold">邮件</Tag>;
-      case "schedule":
-        return <Tag color="geekblue">定时任务</Tag>;
-      case "im_channel":
-        return <Tag color="purple">IM 消息</Tag>;
-      case "workflow":
-        return <Tag color="blue">工作流</Tag>;
-      default:
-        return null;
-    }
-  };
-
-  const renderDueDateTag = (dueDateStr?: string | null, isCompleted?: boolean) => {
-    if (!dueDateStr) return null;
-    const dueTime = new Date(dueDateStr).getTime();
-    const isOverdue = dueTime < Date.now() && !isCompleted;
-    return (
-      <Tag
-        color={isOverdue ? "volcano" : "default"}
-        icon={<ClockCircleOutlined />}
-        bordered={false}
-      >
-        {isOverdue ? `逾期: ${formatMonthDayTime(dueDateStr)}` : `截止: ${formatMonthDayTime(dueDateStr)}`}
-      </Tag>
-    );
   };
 
   return (

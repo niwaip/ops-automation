@@ -82,3 +82,14 @@ export const getCarboneServiceUrl = (): string => {
 
   return isContainerRuntime() ? 'http://carbone-engine:3009' : 'http://localhost:3009';
 };
+
+export const getInternalServiceHeaders = (serviceName = 'control-plane'): Record<string, string> => {
+  const internalSecret =
+    process.env.INTERNAL_API_SHARED_SECRET ||
+    process.env.INTERNAL_API_SECRET ||
+    process.env.JWT_SECRET;
+  return {
+    'X-Internal-Service': serviceName,
+    ...(internalSecret ? { 'X-Internal-Auth': internalSecret } : {}),
+  };
+};

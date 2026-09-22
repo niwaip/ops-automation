@@ -139,7 +139,7 @@ export function endsWithWordParamLabel(text: string): boolean {
 export function findWordInlineGapParam(text: string): WordGapParamMatch | null {
   const matched = String(text || '').match(
     new RegExp(
-      `^\\s*((?:[^\\s：:()（）]{1,${WORD_INLINE_ANCHOR_MAX_LENGTH}}(?:[（(][^）)]{1,${WORD_INLINE_ANCHOR_MAX_LENGTH}}[）)])?)[：:])([ 　\\t]{${WORD_PARAM_GAP_MIN_SPACES},})(\\S.*)$`,
+      `^\\s*((?:[^\\s：:()（）]{1,${WORD_INLINE_ANCHOR_MAX_LENGTH}}(?:[（(][^）)]{1,${WORD_INLINE_ANCHOR_MAX_LENGTH}}[）)])?)[：:])([ \u3000\\t]{${WORD_PARAM_GAP_MIN_SPACES},})(\\S.*)$`,
       'u'
     )
   );
@@ -170,7 +170,7 @@ export function findWordTerminalGapParam(text: string): WordGapParamMatch | null
   const sourceText = String(text || '');
   const matched = sourceText.match(
     new RegExp(
-      `^\\s*((?:.{1,${WORD_TERMINAL_ANCHOR_MAX_LENGTH}})[：:])([ 　\\t]{${WORD_PARAM_GAP_MIN_SPACES},})$`,
+      `^\\s*((?:.{1,${WORD_TERMINAL_ANCHOR_MAX_LENGTH}})[：:])([ \u3000\\t]{${WORD_PARAM_GAP_MIN_SPACES},})$`,
       'u'
     )
   );
@@ -268,7 +268,7 @@ function extractWordColonStandaloneValue(
   }
 
   const normalizedValue = String(nextLine.text || '')
-    .replace(/^[：:\s　]+/u, '')
+    .replace(/^[：:\s\u3000]+/u, '')
     .trim();
   if (!normalizedValue) {
     return undefined;

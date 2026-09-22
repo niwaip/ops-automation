@@ -30,7 +30,7 @@ export function createExecutableReviewElement(config: ReviewElementConfig): Revi
     legalAdvice: config.legalAdvice,
     recommendedRevision: config.recommendedRevision,
 
-    factMatcher: (facts: ExtractedLegalFacts, clauseText: string, clauseTitle: string) => {
+    factMatcher: (facts: ExtractedLegalFacts, _clauseText: string, _clauseTitle: string) => {
       if (!config.criteria) return false;
       const { factField, factCondition } = config.criteria;
       if (!factField || !factCondition) return false;

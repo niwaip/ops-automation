@@ -1,5 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import JSZip from 'jszip';
+import PDFDocument from 'pdfkit';
+import { createCanvas } from '@napi-rs/canvas';
 import { BadRequestException, PayloadTooLargeException } from '@nestjs/common';
 import { PdfContentExtractorService } from './pdf-content-extractor.service';
 
@@ -53,7 +56,6 @@ describe('PdfContentExtractorService', () => {
 
   it('extracts text from docx files when provided', async () => {
     // A minimal valid docx buffer created with zip / mammoth
-    const JSZip = require('jszip');
     const zip = new JSZip();
     zip.file('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
     zip.file('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
@@ -82,7 +84,6 @@ describe('PdfContentExtractorService', () => {
   });
 
   it('extracts text from pptx files when provided', async () => {
-    const JSZip = require('jszip');
     const zip = new JSZip();
     zip.file(
       'ppt/slides/slide1.xml',
@@ -101,8 +102,6 @@ describe('PdfContentExtractorService', () => {
   });
 
   describe('Scanned PDF and OCR Vision Fallback', () => {
-    const PDFDocument = require('pdfkit');
-    const { createCanvas } = require('@napi-rs/canvas');
 
     const createScannedPdfBase64 = async (textOnImage: string): Promise<string> => {
       return new Promise((resolve) => {
@@ -188,4 +187,3 @@ describe('PdfContentExtractorService', () => {
     });
   });
 });
-

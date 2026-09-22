@@ -342,7 +342,7 @@ function trimAfterLastMarker(content: string, markers: string[]): string {
     }
   });
 
-  return text.replace(/^[\s:：】\]\[]+/, '').trim();
+  return text.replace(/^[\s:：】\][]+/, '').trim();
 }
 
 function findStructuredHeadingStart(text: string): number | null {

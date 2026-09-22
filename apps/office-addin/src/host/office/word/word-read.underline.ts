@@ -60,7 +60,7 @@ function buildUnderlineMirrorShape(text: string): string {
   };
 
   for (const char of sourceText) {
-    if (/[ 　\t_＿]/u.test(char)) {
+    if (/[ \u3000\t_＿]/u.test(char)) {
       pushToken('_');
     } else if (/[：:]/u.test(char)) {
       pushToken(':');
@@ -213,7 +213,7 @@ export async function getUnderlinedTexts(): Promise<
           }
 
           const spaceMatches: Array<{ text: string; start: number; end: number }> = [];
-          const spaceRegex = /[ 　\t]{2,}/g;
+          const spaceRegex = /[ \u3000\t]{2,}/g;
           while ((match = spaceRegex.exec(fullText)) !== null) {
             if (!underlineCharMatches.some((u) => Math.abs(u.start - match!.index) < 2)) {
               spaceMatches.push({

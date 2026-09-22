@@ -5,9 +5,10 @@ jest.mock('../../config/service-endpoints', () => ({
 }));
 
 import { WorkerService } from './worker.service';
+import Docker from 'dockerode';
 
 describe('WorkerService', () => {
-  const Docker = require('dockerode') as jest.Mock;
+  const DockerMock = Docker as unknown as jest.Mock;
 
   const createService = () => {
     const createContainer = jest.fn();
@@ -17,7 +18,7 @@ describe('WorkerService', () => {
       listContainers: jest.fn().mockResolvedValue([]),
     };
 
-    Docker.mockImplementation(() => dockerInstance);
+    DockerMock.mockImplementation(() => dockerInstance);
     const service = new WorkerService();
     jest.spyOn(service as any, 'waitForHttpReady').mockResolvedValue(undefined);
     (global as any).fetch = jest.fn().mockResolvedValue({ ok: true });

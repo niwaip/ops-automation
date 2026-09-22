@@ -1,121 +1,24 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { getBrowserWorkerUrl, getInternalAuthHeaders } from '../../config/service-endpoints';
 
-export interface TemplateStep {
-  step_id: string;
-  step_number?: number;
-  action: string;
-  params?: Record<string, unknown>;
-  locator?: { type: string; value: string };
-  wait?: { type: string; value?: string; timeout?: number };
-  retry?: { max_attempts: number; delay_ms: number };
-  on_fail?: string;
-  selector?: string;
-  target?: string;
-  value?: string;
-  url?: string;
-  text?: string;
-  key?: string;
-  duration?: number;
-  direction?: string;
-  amount?: number;
-  output_var?: string;
-  description?: string;
-  execution_policy?:
-    | 'auto_execute'
-    | 'require_confirmation'
-    | 'require_takeover'
-    | 'forbid_in_replay';
-  branch?: {
-    condition_fn: string;
-    on_match: 'continue' | 'stop';
-    on_mismatch: 'continue' | 'stop' | 'takeover';
-    takeover_reason?: string;
-    description?: string;
-  };
-  capture_profile?: Record<string, any>;
-  captureProfile?: Record<string, any>;
-}
+import { extractMainTextFromHtml } from './cdp-html-text';
+import {
+  asRecord,
+  type ExecuteStepsOptions,
+  type ExecutionResult,
+  type LoopPlan,
+  type LoopStopRead,
+  type LoopStopReadPlan,
+  type TemplateLoopDraft,
+  type TemplateStep,
+} from './cdp-executor.types';
 
-export interface ExecutionResult {
-  success: boolean;
-  step_id: string;
-  step?: number;
-  action?: string;
-  error?: string;
-  message?: string;
-  screenshot?: string;
-  text?: string;
-  html?: string;
-  confirmation_required?: boolean;
-  confirmation_reason?: string;
-  takeover?: boolean;
-  takeover_reason?: string;
-  replay_forbidden?: boolean;
-  replay_forbidden_reason?: string;
-}
-
-type LoopStopReadType = 'count' | 'text' | 'page_signal';
-
-type LoopStopRead = {
-  type: LoopStopReadType;
-  key?: string;
-  locator?: { type: string; value: string };
-};
-
-export interface TemplateLoopDraft {
-  mode?: 'repeat_until';
-  eachIteration?: {
-    stepIds?: string[];
-    capturedFromIndex?: number;
-    capturedToIndex?: number;
-    stepCount?: number;
-  };
-  stopWhen?: {
-    read?: LoopStopRead;
-    conditionFn?: string;
-    description?: string;
-  };
-  maxIterations?: number;
-  onNoProgress?: 'takeover' | 'stop';
-}
-
-export interface ExecuteStepsOptions {
-  loopDraft?: TemplateLoopDraft;
-}
-
-type LoopStopReadPlan =
-  | {
-      type: 'count' | 'text';
-      key?: string;
-      step: TemplateStep;
-    }
-  | {
-      type: 'page_signal';
-      key: string;
-      step: TemplateStep;
-    };
-
-type LoopPlan = {
-  mode: 'repeat_until';
-  stopWhen: {
-    read: LoopStopReadPlan;
-    conditionFn: string;
-    description: string;
-  };
-  maxIterations: number;
-  onNoProgress: 'takeover' | 'stop';
-  preLoopSteps: TemplateStep[];
-  iterationSteps: TemplateStep[];
-  postLoopSteps: TemplateStep[];
-};
-
-const asRecord = (value: unknown): Record<string, unknown> | undefined => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return undefined;
-  }
-  return value as Record<string, unknown>;
-};
+export type {
+  ExecuteStepsOptions,
+  ExecutionResult,
+  TemplateLoopDraft,
+  TemplateStep,
+} from './cdp-executor.types';
 
 @Injectable()
 export class CdpExecutor implements OnModuleDestroy {
@@ -608,7 +511,7 @@ export class CdpExecutor implements OnModuleDestroy {
     const shouldExtract = this.shouldExtractMainContent(substitutedStep);
     const extractedText = shouldExtract
       ? (rawText && !this.isRawCliOutput(rawText) ? rawText.trim() : undefined) ||
-        (cleanHtml ? this.extractMainTextFromHtml(cleanHtml) : undefined)
+        (cleanHtml ? extractMainTextFromHtml(cleanHtml) : undefined)
       : undefined;
 
     return {
@@ -652,64 +555,6 @@ export class CdpExecutor implements OnModuleDestroy {
       return capture.mainContent === true;
     }
     return captureProfile.profile === 'article';
-  }
-
-  private extractMainTextFromHtml(html: string): string | undefined {
-    if (!html || !html.trim()) return undefined;
-    const sanitized = html
-      .replace(/<!--([\s\S]*?)-->/gu, '')
-      .replace(
-        /<(script|style|template|noscript|iframe|object|embed|svg|canvas)\b[^>]*>[\s\S]*?<\/\1\s*>/giu,
-        ''
-      )
-      .replace(/<(nav|footer|aside|dialog|select|option)\b[^>]*>[\s\S]*?<\/\1\s*>/giu, '')
-      .replace(
-        /<[a-z0-9]+\b[^>]*\brole\s*=\s*["']?(?:navigation|banner|contentinfo|complementary|dialog|alertdialog)["']?[^>]*>[\s\S]*?<\/[a-z0-9]+>/giu,
-        ''
-      )
-      .replace(
-        /<[a-z0-9]+\b[^>]*(?:class|id)\s*=\s*["'][^"']*\b(?:navbar|nav-menu|sidebar|footer|ad-container|advertisement|cookie-banner|share-buttons|social-links|comments-section|popup-overlay)\b[^"']*["'][^>]*>[\s\S]*?<\/[a-z0-9]+>/giu,
-        ''
-      )
-      .replace(
-        /<input\b[^>]*(?:type\s*=\s*["']?hidden|name\s*=\s*["']?(?:token|password|cookie|authorization))[^>]*>/giu,
-        ''
-      )
-      .replace(/\s(?:on\w+|style)\s*=\s*(["']).*?\1/giu, '')
-      .replace(/\s(?:hidden|aria-hidden\s*=\s*["']?true["']?)(?:\s|=|>)/giu, ' ');
-
-    const candidate =
-      sanitized.match(/<article\b[^>]*>([\s\S]*?)<\/article>/iu)?.[1] ||
-      sanitized.match(/<main\b[^>]*>([\s\S]*?)<\/main>/iu)?.[1] ||
-      sanitized.match(
-        /<([a-z0-9]+)\b[^>]*\brole\s*=\s*["']?main["']?[^>]*>([\s\S]*?)<\/\1>/iu
-      )?.[2] ||
-      sanitized.match(/<body\b[^>]*>([\s\S]*?)<\/body>/iu)?.[1] ||
-      sanitized;
-
-    const text = candidate
-      .replace(/<h1\b[^>]*>([\s\S]*?)<\/h1>/giu, '\n\n# $1\n\n')
-      .replace(/<h2\b[^>]*>([\s\S]*?)<\/h2>/giu, '\n\n## $1\n\n')
-      .replace(/<h3\b[^>]*>([\s\S]*?)<\/h3>/giu, '\n\n### $1\n\n')
-      .replace(/<h[4-6]\b[^>]*>([\s\S]*?)<\/h[4-6]>/giu, '\n\n#### $1\n\n')
-      .replace(/<li\b[^>]*>([\s\S]*?)<\/li>/giu, '\n- $1')
-      .replace(/<(?:br|\/p|\/div|\/li|\/tr|\/pre|\/blockquote)>/giu, '\n')
-      .replace(/<[^>]+>/gu, ' ')
-      .replace(/&nbsp;/giu, ' ')
-      .replace(/&amp;/giu, '&')
-      .replace(/&lt;/giu, '<')
-      .replace(/&gt;/giu, '>')
-      .replace(/&quot;/giu, '"')
-      .replace(/&#39;/giu, "'")
-      .replace(/&#x([0-9a-f]+);/giu, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-      .replace(/&#([0-9]+);/giu, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
-      .replace(/\r/g, '')
-      .replace(/[ \t]+/g, ' ')
-      .replace(/\n[ \t]+/g, '\n')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
-
-    return text.length > 0 ? text : undefined;
   }
 
   private extractCleanMessage(
@@ -1260,10 +1105,10 @@ export class CdpExecutor implements OnModuleDestroy {
           typeof extractedPage?.text === 'string'
             ? extractedPage.text
             : typeof rawPageData.text === 'string'
-            ? rawPageData.text
-            : typeof rawPage.text === 'string'
-              ? rawPage.text
-              : undefined,
+              ? rawPageData.text
+              : typeof rawPage.text === 'string'
+                ? rawPage.text
+                : undefined,
         html:
           typeof extractedPage?.html === 'string'
             ? extractedPage.html

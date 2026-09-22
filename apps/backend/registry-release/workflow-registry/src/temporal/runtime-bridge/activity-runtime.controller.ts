@@ -1,11 +1,10 @@
-import { Body, Controller, Post, Res } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body,Controller,Post,Res } from '@nestjs/common';
+import { ApiOperation,ApiTags } from '@nestjs/swagger';
 import { ActivityService } from '../temporal-activity.service';
-import { ActivityExecutionService } from './temporal-activity-execution.service';
 import {
-  ActivityFormData,
-  GenerateCodeResult,
+ActivityFormData
 } from '../temporal-activity.types';
+import { ActivityExecutionService } from './temporal-activity-execution.service';
 
 @ApiTags('Activities')
 @Controller('activities')

@@ -1,45 +1,44 @@
 import {
-  BadRequestException,
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Post,
-  Put,
-  Query,
-  Req,
-  Res,
-  UploadedFile,
-  UseGuards,
-  UseInterceptors,
-  UnauthorizedException,
-  Logger,
+BadRequestException,
+Body,
+Controller,
+Delete,
+Get,
+Logger,
+Param,
+Post,
+Put,
+Query,
+Req,
+Res,
+UnauthorizedException,
+UploadedFile,
+UseGuards,
+UseInterceptors,
 } from '@nestjs/common';
-import * as path from 'path';
-import * as fs from 'fs';
-import { ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { AiAuthGuard, verifyInternalSecret, Public } from '../../common/guards/ai-auth.guard';
-import { ChatRateLimiterGuard, ChatRateLimit } from '../../common/guards/chat-rate-limiter.guard';
-import type { Request, Response } from 'express';
+import { ApiConsumes,ApiOperation,ApiResponse,ApiTags } from '@nestjs/swagger';
+import type { Request,Response } from 'express';
+import * as path from 'path';
+import { AiAuthGuard,Public,verifyInternalSecret } from '../../common/guards/ai-auth.guard';
+import { ChatRateLimit,ChatRateLimiterGuard } from '../../common/guards/chat-rate-limiter.guard';
 import { getOrCreateTraceId } from '../../common/trace.util';
-import { StreamEventType } from '../react-engine/interfaces';
 import type { StreamEvent } from '../react-engine/interfaces';
-import type {
-  ChatHistoryResponseDTO,
-  ChatAudioTranscriptionResponseDTO,
-  ChatRequestDTO,
-  ChatResponseDTO,
-  ChatSessionsResponseDTO,
-  ChatUploadFileResponseDTO,
-} from './chat.dto';
-import { ChatFeedbackService } from './chat-feedback.service';
+import { StreamEventType } from '../react-engine/interfaces';
 import { SetAssistantFeedbackDto } from './assistant-feedback.dto';
 import { ChatConversationService } from './chat-conversation.service';
+import { ChatFeedbackService } from './chat-feedback.service';
 import { ChatMediaService } from './chat-media.service';
 import { ChatOrchestratorService } from './chat-orchestrator.service';
 import { parseChatSlashCommand } from './chat-slash-command.util';
+import type {
+ChatAudioTranscriptionResponseDTO,
+ChatHistoryResponseDTO,
+ChatRequestDTO,
+ChatResponseDTO,
+ChatSessionsResponseDTO,
+ChatUploadFileResponseDTO,
+} from './chat.dto';
 import { UserSandboxDispatcherService } from './user-sandbox-dispatcher.service';
 import { WorkspaceArtifactService } from './workspace-artifact.service';
 

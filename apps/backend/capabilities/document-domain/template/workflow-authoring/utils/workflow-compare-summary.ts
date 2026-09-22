@@ -1,67 +1,26 @@
 import {
-  WorkflowDocumentIR,
-  WorkflowDocumentElement,
-  WorkflowAnchor,
-  WorkflowLanguageProfile,
-  WorkflowTemplateFieldSpec,
-  WorkflowFieldDictionaryEntry,
-  WorkflowTermEntry,
-  WorkflowEnumItem,
-  WorkflowResolvedAssets,
-  WorkflowAnalyzeFieldResult,
-  WorkflowCandidateLocation,
-  WorkflowCandidateLanguageRelation,
-  WorkflowFieldCandidate,
-  WorkflowCompareResult,
-  WorkflowCompareSectionContext,
-  WorkflowCompareCandidateBuildResult,
+WorkflowCompareResult,
+WorkflowCompareSectionContext,
+WorkflowDocumentElement,
+WorkflowFieldCandidate
 } from './workflow-assets';
 
 import {
-  safeText,
-  escapeRegExp,
-  numberOrUndefined,
-  getElementHostData,
-  isLikelyDocumentTitle,
-  isLikelySectionHeading,
-  isBlankTableTemplateCell,
-  splitTableCellLines,
-  extractPlaceholderSampleValue,
-  extractSampleTableMatrices,
-  classifyTemplateTableStructure,
-  findNearestLeftTableLabel,
-  findNearestRightTableLabel,
-  extractTableCellCompareAnchors,
-  extractTableCellSampleValueByAnchor,
+safeText
 } from './document-xml-parser';
 
 import {
-  normalizeLookupText,
-  detectTextLanguageHint,
-  isConcreteLanguageHint,
-  hasCompareFieldShape,
-  extractAnchorPrefix,
-  inferRecognitionBlockTitle,
+extractAnchorPrefix
 } from './workflow-parser-format';
 
 import {
-  splitSampleTextIntoChunks,
-  buildTextCompareInputs,
-  findBestSectionSampleChunk,
-  findDirectCompareMatch,
-  extractCompareLabels,
-  extractLooseCandidateContext,
-  shouldIncludeSectionCompareProbe,
-  isCompactCompareBlock,
-  isLikelyNarrativeCompareText,
-  shouldKeepCompareCandidateUnnamed,
-  inferSectionInfo,
-  scoreLooseTextMatch,
+inferSectionInfo,
+scoreLooseTextMatch,
+shouldIncludeSectionCompareProbe,
+splitSampleTextIntoChunks
 } from './workflow-similarity';
 
-import { extractSampleTextRich } from './workflow-xml-text';
 
-import { normalizeConfidence, findTermMatch } from './workflow-discover';
 
 export function getCompareSectionPriority(status: 'aligned' | 'partial' | 'attention'): number {
   switch (status) {

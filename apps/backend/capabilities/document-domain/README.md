@@ -14,7 +14,7 @@
   - 对应当前 `domain/document-engine` 的预览、校验与正式渲染能力
   - 也承接历史 `domain/report` 的 Word / Excel / PDF 生成流水线
 - `report`
-  - 真实运行根目录已位于 `capabilities/document-domain/report`
+  - 真实运行根目录已提升为平级包 `capabilities/document-report`
   - 负责报表任务 API、分析、通知和结果编排
 - `runtime-facade`
   - 表示文档域面向执行链路的稳定运行时入口
@@ -22,8 +22,8 @@
 
 ## 当前物理状态
 
-- `report` 已完成首轮真实运行包根目录迁移，当前应从
-  `apps/backend/capabilities/document-domain/report` 启动。
+- `report` 已完成独立包迁移，当前应从
+  `apps/backend/capabilities/document-report` 启动。
 - 历史 `apps/backend/domain/report` 物理路径已在后续收口中完成删除。
 - `document-engine` 的主运行入口已经切到
   `apps/backend/capabilities/document-domain`，本地开发脚本、
@@ -31,7 +31,7 @@
 - 历史 `apps/backend/domain/document-engine` 物理路径已退出仓库，
   不再作为默认运行包根目录。
 - 历史 `carbone-engine` 包名仍暂时保留用于兼容 `pnpm --filter carbone-engine ...`
-  一类命令；当前由 `apps/backend/capabilities/document-domain/carbone-engine-compat`
+  一类命令；当前由 `apps/backend/capabilities/carbone-engine-compat`
   这个轻量 shell 承接，再转发到 `@ops/document-domain`，包括 `test:e2e` 与
   `migrate:sidecar-to-db` 这类历史入口。
 - `document-engine/carbone-engine` 的 Docker 启动入口必须统一从仓库根目录
@@ -56,11 +56,13 @@
 apps/backend/capabilities/document-domain/
 ├── template/         # 模板资产与 Studio 辅助编排
 ├── render/           # 预览、校验、正式渲染与生成流水线
-├── report/           # 报表任务、分析、通知与结果编排
 ├── runtime-facade/   # 面向执行链路的稳定运行时入口
 ├── index.ts          # 文档能力域稳定根入口
 └── README.md
 ```
+
+Studio 浏览器端源码位于 `studio-web/`，通过 `pnpm run build:studio-web`
+生成 `public/js/app.js`。`pnpm run check:studio-web` 检查提交的生成文件与源码一致。
 
 当前批次中，`report` 与 `document-engine` 都已经完成首轮运行包根目录迁移；
 `document-engine` 的旧物理路径已退出仓库主运行路径，不再承载本地源码、脚本或

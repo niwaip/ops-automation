@@ -11,7 +11,10 @@ import type { Prisma } from '../../prisma/client';
 import { buildSystemEvalFixtures } from './system-operation-eval-fixtures';
 import { SYSTEM_OPERATION_DEFINITIONS } from '../system-operation-definitions';
 
-export const SYSTEM_OPERATION_VERSION = '1.0.27';
+// Seeded operation contracts are immutable by version. Bump whenever a projected
+// template digest changes so existing environments can reconcile without mutating
+// an already-published contract.
+export const SYSTEM_OPERATION_VERSION = '1.0.28';
 
 export async function seedSystemLlmOperations(
   prisma: PrismaService,

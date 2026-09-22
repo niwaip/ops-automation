@@ -1,6 +1,6 @@
 import { LlmOperationAttestationClient } from '../src/modules/execution/plan-runtime/llm-operation-attestation.client';
 import axios from 'axios';
-import { getAiOrchestratorUrl } from '../src/config/service-endpoints';
+import { getAiOrchestratorUrl, getInternalServiceHeaders } from '../src/config/service-endpoints';
 
 jest.mock('axios');
 jest.mock('../src/config/service-endpoints');
@@ -9,10 +9,12 @@ describe('LlmOperationAttestationClient', () => {
   let client: LlmOperationAttestationClient;
   const mockAxios = axios as jest.Mocked<typeof axios>;
   const mockGetAiOrchestratorUrl = getAiOrchestratorUrl as jest.Mock;
+  const mockGetInternalServiceHeaders = getInternalServiceHeaders as jest.Mock;
 
   beforeEach(() => {
     client = new LlmOperationAttestationClient();
     mockGetAiOrchestratorUrl.mockReturnValue('http://ai-orchestrator:3007');
+    mockGetInternalServiceHeaders.mockReturnValue({ 'X-Internal-Service': 'control-plane' });
     jest.clearAllMocks();
   });
 

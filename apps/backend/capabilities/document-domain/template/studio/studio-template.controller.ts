@@ -3,51 +3,43 @@
  */
 
 import {
-  Body,
-  Controller,
-  Get,
-  Header,
-  HttpCode,
-  HttpException,
-  HttpStatus,
-  Param,
-  Post,
-  Res,
-  StreamableFile,
+Body,
+Controller,
+Get,
+HttpCode,
+HttpStatus,
+Param,
+Post
 } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Response } from 'express';
-import * as fs from 'fs';
-import * as path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { ApiBody,ApiOperation,ApiTags } from '@nestjs/swagger';
 import { PreviewService } from '../../render/preview/preview.service';
-import { AIIdentifierService } from '../workflow-authoring/ai-identifier.service';
-import { DocumentStructure, DocumentStructureService } from '../workflow-authoring/document-structure.service';
-import { TemplateRepository } from '../repository/template.repository';
-import { SkillRepository } from '../repository/skill.repository';
 import { RenderOutputRepository } from '../repository/render-output.repository';
+import { SkillRepository } from '../repository/skill.repository';
+import { TemplateRepository } from '../repository/template.repository';
+import { AIIdentifierService } from '../workflow-authoring/ai-identifier.service';
+import { DocumentStructure,DocumentStructureService } from '../workflow-authoring/document-structure.service';
 import {
-  WorkflowDocumentIR,
-  WorkflowSaveMeta,
-  WorkflowTemplateFieldSpec,
-  TemplateWorkflowService,
+TemplateWorkflowService,
+WorkflowDocumentIR,
+WorkflowSaveMeta,
+WorkflowTemplateFieldSpec,
 } from '../workflow-authoring/template-workflow.service';
-import { SaveMarkingsDto, SaveTemplateConfigDto } from './studio.dto';
+import { SaveMarkingsDto,SaveTemplateConfigDto } from './studio.dto';
 import { TemplateResponse } from './studio.types';
 import {
-  deleteStoredTemplate,
-  readTemplateSourcePreview,
-  renameStoredTemplate,
-  saveStoredTemplateConfig,
-  saveStoredTemplateMarkings,
-} from './utils/studio-template-controller.helper';
-import { createStudioControllerRuntime, isStudioPlainObject } from './utils/studio-runtime.helper';
-import {
-  createStudioSkillSupport,
-  createStudioTemplateSupport,
-  type StudioSkillSupport,
-  type StudioTemplateSupport,
+createStudioSkillSupport,
+createStudioTemplateSupport,
+type StudioSkillSupport,
+type StudioTemplateSupport,
 } from './utils/studio-controller-composition.helper';
+import { createStudioControllerRuntime,isStudioPlainObject } from './utils/studio-runtime.helper';
+import {
+deleteStoredTemplate,
+readTemplateSourcePreview,
+renameStoredTemplate,
+saveStoredTemplateConfig,
+saveStoredTemplateMarkings,
+} from './utils/studio-template-controller.helper';
 import { saveStoredTemplateFull } from './utils/studio-template-save-full.helper';
 import { readStudioTemplateDocumentStructure } from './utils/studio-template-structure.helper';
 

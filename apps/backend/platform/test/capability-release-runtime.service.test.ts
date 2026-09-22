@@ -125,6 +125,7 @@ describe('CapabilityReleaseRuntimeService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedAxios.post.mockReset();
     delete process.env.CARBONE_SERVICE_URL;
     delete process.env.CARBONE_EXTERNAL_URL;
     delete process.env.DOCKER_ENV;
@@ -678,7 +679,7 @@ describe('CapabilityReleaseRuntimeService', () => {
             expect.objectContaining({
               stepId: 'step_read',
               action: 'read_value',
-              text: '17.8%',
+              meta: expect.objectContaining({ text: '17.8%' }),
             }),
             expect.objectContaining({
               stepId: 'step_branch',
@@ -1083,15 +1084,15 @@ describe('CapabilityReleaseRuntimeService', () => {
             }),
             expect.objectContaining({
               stepId: 'loop_stop_read:before:1',
-              action: 'loop_stop_read',
-              text: '2',
+              action: 'read_value',
+              meta: expect.objectContaining({ text: '2' }),
             }),
             expect.objectContaining({ stepId: 'step_detail', action: 'click' }),
             expect.objectContaining({ stepId: 'step_approve', action: 'click' }),
             expect.objectContaining({
               stepId: 'loop_stop_read:after:2',
-              action: 'loop_stop_read',
-              text: '0',
+              action: 'read_value',
+              meta: expect.objectContaining({ text: '0' }),
             }),
           ]),
         }),
@@ -1111,13 +1112,10 @@ describe('CapabilityReleaseRuntimeService', () => {
       expect.anything(),
       expect.anything()
     );
-    expect(mockedAxios.post).toHaveBeenLastCalledWith(
+    expect(mockedAxios.post).not.toHaveBeenCalledWith(
       'http://localhost:3004/browser/reset',
-      expect.objectContaining({
-        backend: 'cli',
-        runtimeSessionId: expect.stringMatching(/^capability-runtime-/),
-      }),
-      { timeout: 30000 }
+      expect.anything(),
+      expect.anything()
     );
   });
 });

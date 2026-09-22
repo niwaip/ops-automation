@@ -139,8 +139,8 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
   if (!counterpartyName) {
     const companySuffixRegex = /([^\s,，。！!]{2,30}?(?:有限责任公司|股份有限公司|有限公司|集团|科技|网络|智能|软件|工作室|公司))/g;
     const suffixMatches = taskBody.match(companySuffixRegex) || [];
-    for (let m of suffixMatches) {
-      let cleaned = m
+    for (const m of suffixMatches) {
+      const cleaned = m
         .replace(/^(?:我需要|请帮我|帮我|我要|需要)?(?:和|与|跟|同)?/, '')
         .replace(/^[^\s,，。！!]+(?:路|街|道|号|大厦|大楼|园区|中心)(?:[0-9]+号)?\s*的\s*/, '')
         .trim();
@@ -159,7 +159,7 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
       /(?:与|和|同|跟)\s*(?:[^\s,，。！!]+(?:路|街|道|号|大厦|园区)\s*的\s*)?([^\s,，。！!]{2,30}?)(?:签署|签订|拟定|起草|达成)/
     );
     if (prepMatch && prepMatch[1]) {
-      let cand = prepMatch[1]
+      const cand = prepMatch[1]
         .replace(/^[^\s,，。！!]+(?:路|街|道|号|大厦|大楼|园区|中心)(?:[0-9]+号)?\s*的\s*/, '')
         .trim();
       if ((!ourParty || !cand.includes(ourParty)) && !/\d+号$/.test(cand) && cand.length >= 2) {
@@ -237,7 +237,7 @@ function extractContractEntities(taskBody: string): ExtractedContractEntities {
     } else if (/后天/.test(rawDateStr)) {
       signDate = dayjs().add(2, 'day').format('YYYY-MM-DD');
     } else {
-      const dMatch = rawDateStr.match(/(\d{4})[年\-\/.](\d{1,2})[月\-\/.](\d{1,2})日?/);
+      const dMatch = rawDateStr.match(/(\d{4})[年\-/.](\d{1,2})[月\-/.](\d{1,2})日?/);
       if (dMatch) {
         signDate = `${dMatch[1]}-${dMatch[2].padStart(2, '0')}-${dMatch[3].padStart(2, '0')}`;
       } else {

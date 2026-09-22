@@ -139,7 +139,7 @@ export class LegacyOutputAdapterService {
           );
         }
         // Validate MIME type format
-        if (!/^[a-z]+\/[a-z0-9\-\+\.]+(;\s*charset=[a-zA-Z0-9\-]+)?$/.test(val.mimeType)) {
+        if (!/^[a-z]+\/[a-z0-9\-+.]+(;\s*charset=[a-zA-Z0-9-]+)?$/.test(val.mimeType)) {
           this.raise(
             `Runtime output contract violation for node '${nodeId}': field '${expectedKey}.mimeType' has invalid format: '${val.mimeType}'`,
             ctx,

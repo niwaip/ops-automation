@@ -84,7 +84,7 @@ async function bootstrap() {
       const result = await provisioningService.provisionBundle(bundleDir, envArg);
       const isUntested =
         envArg === 'bootstrap' || process.env.BUILTIN_SKILL_PROVISION_SKIP_SMOKE === 'true';
-      if (isUntested) {
+      if (isUntested && process.env.BUILTIN_SKILL_AUTO_ACTIVATE !== 'true') {
         console.log(
           `  -> Registered ${result.skill.capabilityKey} v${result.version.definitionVersion} (untested; activation deferred)`
         );
