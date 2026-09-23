@@ -487,22 +487,9 @@ const ChatWindow: React.FC = () => {
     effectId?: string,
     approvedPayloadHash?: string
   ) => {
-    let finalEffectId = effectId;
-    let finalHash = approvedPayloadHash;
-    if (!finalHash) {
-      try {
-        const currentExec = await executionApi.get(executionId);
-        const firstPending = currentExec?.pendingOutboundEffects?.[0];
-        if (firstPending) {
-          finalEffectId = firstPending.effectId;
-          finalHash = firstPending.payloadHash;
-        }
-      } catch {}
-    }
-
     const execution = await executionApi.approve(executionId, {
-      ...(finalEffectId ? { effectId: finalEffectId } : {}),
-      ...(finalHash ? { approvedPayloadHash: finalHash } : {}),
+      ...(effectId ? { effectId } : {}),
+      ...(approvedPayloadHash ? { approvedPayloadHash } : {}),
     });
 
     updateMessageMetadataById(

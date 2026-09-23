@@ -8,6 +8,7 @@ import { DocumentRuntimeAdapter } from './adapters/document-runtime.adapter';
 import { ExecutionController } from './execution.controller';
 import { ExecutionCreateService } from './creation/execution-create.service';
 import { ExecutionApprovalService } from './human-control/execution-approval.service';
+import { OutboundEffectReconciliationService } from './human-control/outbound-effect-reconciliation.service';
 import { ExecutionLifecycleService } from './lifecycle/execution-lifecycle.service';
 import { ExecutionStreamService } from './lifecycle/execution-stream.service';
 import { ExecutionBrowserOrchestrationService } from './step-runner/browser/execution-browser-orchestration.service';
@@ -105,6 +106,7 @@ import { CompletionClaimSynthesizerService } from './plan-runtime/completion-cla
     ExecutionService,
     ExecutionCreateService,
     ExecutionApprovalService,
+    OutboundEffectReconciliationService,
     ExecutionBrowserOrchestrationService,
     ExecutionEventService,
     ExecutionStreamService,
@@ -154,6 +156,7 @@ import { CompletionClaimSynthesizerService } from './plan-runtime/completion-cla
     DeterministicPlanSchedulerService,
     ExecutionOutboxService,
     OutboundEffectLedgerService,
+    OutboundEffectReconciliationService,
     RuntimeCredentialResolverService,
   ],
 })

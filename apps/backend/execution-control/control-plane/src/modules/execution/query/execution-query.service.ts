@@ -7,6 +7,8 @@ import {
   ExecutionPhaseDto,
   ExecutionStepDto,
   ListExecutionsDto,
+  PendingOutboundEffectDto,
+  UnknownOutboundEffectDto,
 } from '../state/execution.dto';
 import {
   mapExecutionPhaseToDto,
@@ -47,49 +49,58 @@ export class ExecutionQueryService {
     });
     const phases = await this.executionPhaseService.listByExecutionId(id);
 
-    let pendingOutboundEffects: any[] | undefined = undefined;
-    let unknownOutboundEffects: any[] | undefined = undefined;
+    let pendingOutboundEffects: PendingOutboundEffectDto[] | undefined = undefined;
+    let unknownOutboundEffects: UnknownOutboundEffectDto[] | undefined = undefined;
 
-    if ((this.prisma as any).outboundEffectLedger) {
+    if (this.prisma.outboundEffectLedger) {
       if (execution.status === 'pending_approval' || execution.approvalStatus === 'pending') {
-        const records = await (this.prisma as any).outboundEffectLedger.findMany({
+        const records = await this.prisma.outboundEffectLedger.findMany({
           where: {
             idempotencyKey: { startsWith: `${id}:` },
             state: 'PREPARED',
           },
         });
         if (records.length > 0) {
-          pendingOutboundEffects = records.map((r: any) => ({
-            effectId: r.id,
-            capabilityKey: r.capabilityKey,
-            idempotencyKey: r.idempotencyKey,
-            payloadHash: r.payloadHash,
-            canonicalPayload: r.canonicalPayload
-              ? typeof r.canonicalPayload === 'string'
-                ? JSON.parse(r.canonicalPayload)
-                : r.canonicalPayload
-              : null,
-            state: r.state,
-            stepId: r.idempotencyKey.split(':')[1] || undefined,
-          }));
+          pendingOutboundEffects = records.map((r) => {
+            const rawPayload = r.canonicalPayloadJson;
+            let canonicalPayload: Record<string, unknown> | null = null;
+            if (rawPayload && typeof rawPayload === 'object') {
+              canonicalPayload = rawPayload as Record<string, unknown>;
+            } else if (typeof rawPayload === 'string') {
+              try {
+                canonicalPayload = JSON.parse(rawPayload);
+              } catch {
+                canonicalPayload = null;
+              }
+            }
+            return {
+              effectId: r.id,
+              capabilityKey: r.capabilityKey,
+              idempotencyKey: r.idempotencyKey,
+              payloadHash: r.payloadHash,
+              canonicalPayload,
+              state: r.state,
+              stepId: r.idempotencyKey.split(':')[1] || undefined,
+            };
+          });
         }
       }
 
       if (execution.status === 'human_control' || execution.takeoverRequired) {
-        const records = await (this.prisma as any).outboundEffectLedger.findMany({
+        const records = await this.prisma.outboundEffectLedger.findMany({
           where: {
             idempotencyKey: { startsWith: `${id}:` },
             state: 'UNKNOWN',
           },
         });
         if (records.length > 0) {
-          unknownOutboundEffects = records.map((r: any) => ({
+          unknownOutboundEffects = records.map((r) => ({
             effectId: r.id,
             capabilityKey: r.capabilityKey,
             idempotencyKey: r.idempotencyKey,
             payloadHash: r.payloadHash,
-            errorClassification: r.errorClassification,
-            resolutionReason: r.resolutionReason,
+            errorClassification: r.errorClassification || undefined,
+            resolutionReason: r.resolutionReason || undefined,
             state: r.state,
             stepId: r.idempotencyKey.split(':')[1] || undefined,
           }));

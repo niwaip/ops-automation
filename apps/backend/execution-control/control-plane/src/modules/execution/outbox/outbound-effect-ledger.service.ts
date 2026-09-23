@@ -54,6 +54,13 @@ export interface AuthorizeRetryInput {
   reason?: string;
 }
 
+export interface LedgerDatabaseClient {
+  $queryRawUnsafe<T = unknown>(query: string, ...values: unknown[]): Promise<T>;
+  outboundEffectLedger?: {
+    findUnique(args: any): Promise<any>;
+  };
+}
+
 @Injectable()
 export class OutboundEffectLedgerService {
   private readonly logger = new Logger(OutboundEffectLedgerService.name);
@@ -415,10 +422,13 @@ export class OutboundEffectLedgerService {
    * Human reconciliation: resolve UNKNOWN into COMMITTED, FAILED, or CANCELLED.
    * Also permits resolving stale COMMITTING records whose lease has expired.
    */
-  async resolveUnknown(input: ResolveUnknownInput & { staleTimeoutMs?: number }) {
+  async resolveUnknown(
+    input: ResolveUnknownInput & { staleTimeoutMs?: number },
+    client: LedgerDatabaseClient = this.prisma
+  ) {
     const staleTimeoutMs = input.staleTimeoutMs || 300_000;
     const intervalStr = `${Math.max(1, Math.floor(staleTimeoutMs / 1000))} seconds`;
-    const rows = await this.prisma.$queryRawUnsafe<Array<any>>(
+    const rows = await client.$queryRawUnsafe<Array<any>>(
       `UPDATE outbound_effect_ledgers
           SET state = $2,
               resolution_reason = $3,
@@ -439,9 +449,9 @@ export class OutboundEffectLedgerService {
       return rows[0];
     }
 
-    const existing = await this.prisma.outboundEffectLedger.findUnique({
-      where: { id: input.id },
-    });
+    const existing = client.outboundEffectLedger
+      ? await client.outboundEffectLedger.findUnique({ where: { id: input.id } })
+      : await this.prisma.outboundEffectLedger.findUnique({ where: { id: input.id } });
     throw new Error(
       `STATE_CONFLICT: Cannot resolve record ${input.id} because current state is '${existing?.state}' (expected 'UNKNOWN' or expired 'COMMITTING')`
     );
@@ -474,8 +484,8 @@ export class OutboundEffectLedgerService {
   /**
    * Explicit retry authorization: transitions FAILED -> APPROVED.
    */
-  async authorizeRetry(input: AuthorizeRetryInput) {
-    const rows = await this.prisma.$queryRawUnsafe<Array<any>>(
+  async authorizeRetry(input: AuthorizeRetryInput, client: LedgerDatabaseClient = this.prisma) {
+    const rows = await client.$queryRawUnsafe<Array<any>>(
       `UPDATE outbound_effect_ledgers
           SET state = 'APPROVED',
               resolution_reason = COALESCE($2, resolution_reason),
@@ -493,9 +503,9 @@ export class OutboundEffectLedgerService {
       return rows[0];
     }
 
-    const existing = await this.prisma.outboundEffectLedger.findUnique({
-      where: { id: input.id },
-    });
+    const existing = client.outboundEffectLedger
+      ? await client.outboundEffectLedger.findUnique({ where: { id: input.id } })
+      : await this.prisma.outboundEffectLedger.findUnique({ where: { id: input.id } });
     throw new Error(
       `STATE_CONFLICT: Cannot authorize retry for record ${input.id} because current state is '${existing?.state}' (expected 'FAILED')`
     );

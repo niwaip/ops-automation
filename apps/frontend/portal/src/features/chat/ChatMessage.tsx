@@ -41,8 +41,17 @@ interface ChatMessageProps {
   isStreaming?: boolean;
   streamingContent?: string;
   onRetry?: (messageId: string) => void;
-  onApproveExecution?: (messageId: string, executionId: string) => Promise<void> | void;
-  onRejectExecution?: (messageId: string, executionId: string) => Promise<void> | void;
+  onApproveExecution?: (
+    messageId: string,
+    executionId: string,
+    effectId?: string,
+    approvedPayloadHash?: string
+  ) => Promise<void> | void;
+  onRejectExecution?: (
+    messageId: string,
+    executionId: string,
+    effectId?: string
+  ) => Promise<void> | void;
   onResumeExecution?: (messageId: string, executionId: string) => Promise<void> | void;
 }
 
@@ -392,23 +401,23 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     }
   };
 
-  const handleApproveExecution = async () => {
+  const handleApproveExecution = async (effectId?: string, approvedPayloadHash?: string) => {
     if (!executionId || !onApproveExecution) return;
 
     try {
       setApprovalAction('approve');
-      await onApproveExecution(message.id, executionId);
+      await onApproveExecution(message.id, executionId, effectId, approvedPayloadHash);
     } finally {
       setApprovalAction(null);
     }
   };
 
-  const handleRejectExecution = async () => {
+  const handleRejectExecution = async (effectId?: string) => {
     if (!executionId || !onRejectExecution) return;
 
     try {
       setApprovalAction('reject');
-      await onRejectExecution(message.id, executionId);
+      await onRejectExecution(message.id, executionId, effectId);
     } finally {
       setApprovalAction(null);
     }
@@ -575,11 +584,11 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
                 approvalAction === 'approve' || approvalAction === 'reject' ? approvalAction : null
               }
               takeoverAction={approvalAction === 'resume' ? 'resume' : null}
-              onApproveExecution={() => {
-                void handleApproveExecution();
+              onApproveExecution={(effectId, approvedPayloadHash) => {
+                void handleApproveExecution(effectId, approvedPayloadHash);
               }}
-              onRejectExecution={() => {
-                void handleRejectExecution();
+              onRejectExecution={(effectId) => {
+                void handleRejectExecution(effectId);
               }}
               onResumeExecution={() => {
                 void handleResumeExecution();

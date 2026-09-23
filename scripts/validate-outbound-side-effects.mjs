@@ -419,12 +419,25 @@ if (fs.existsSync(schedulerHelpersPath)) {
   }
 }
 
-// 9e. Verify ExecutionApprovalService enforces cross-execution boundary and authentic approver binding
+// 9e. Verify OutboundEffectReconciliationService & ExecutionApprovalService enforce cross-execution boundary and authentic approver binding
+const reconServicePath = path.join(
+  root,
+  'apps/backend/execution-control/control-plane/src/modules/execution/human-control/outbound-effect-reconciliation.service.ts'
+);
+if (fs.existsSync(reconServicePath)) {
+  const reconContent = fs.readFileSync(reconServicePath, 'utf8');
+  if (!reconContent.includes('OUTBOUND_EFFECT_MISMATCH') || !reconContent.includes('startsWith(`${executionId}:`)')) {
+    errors.push('OutboundEffectReconciliationService must enforce cross-execution boundary check (OUTBOUND_EFFECT_MISMATCH)');
+  }
+  if (!reconContent.includes('TARGET_STEP_NOT_FOUND')) {
+    errors.push('OutboundEffectReconciliationService must fail closed with TARGET_STEP_NOT_FOUND when step correlation fails');
+  }
+  if (!reconContent.includes('AMBIGUOUS_TARGET_STEP')) {
+    errors.push('OutboundEffectReconciliationService must fail closed with AMBIGUOUS_TARGET_STEP when step correlation is ambiguous');
+  }
+}
 if (fs.existsSync(approvalServicePath)) {
   const content = fs.readFileSync(approvalServicePath, 'utf8');
-  if (!content.includes('OUTBOUND_EFFECT_MISMATCH') || !content.includes('startsWith(`${executionId}:`)')) {
-    errors.push('ExecutionApprovalService must enforce cross-execution boundary check (OUTBOUND_EFFECT_MISMATCH)');
-  }
   if (!content.includes('const effectiveApprover = requester?.id || userId')) {
     errors.push('ExecutionApprovalService must bind ledger approver to authenticated user/requester to prevent identity spoofing');
   }

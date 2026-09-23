@@ -22,6 +22,12 @@ describe('execution-transition-policy', () => {
     expect(
       canTransitionExecutionStatus(EXECUTION_STATUS.PENDING_APPROVAL, EXECUTION_STATUS.QUEUED)
     ).toBe(true);
+    expect(
+      canTransitionExecutionStatus(EXECUTION_STATUS.HUMAN_CONTROL, EXECUTION_STATUS.QUEUED)
+    ).toBe(true);
+    expect(
+      canTransitionExecutionStatus(EXECUTION_STATUS.HUMAN_CONTROL, EXECUTION_STATUS.RUNNING)
+    ).toBe(true);
     expect(canTransitionExecutionStatus(EXECUTION_STATUS.SUCCEEDED, EXECUTION_STATUS.RUNNING)).toBe(
       false
     );

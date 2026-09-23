@@ -53,9 +53,10 @@ interface TaskOutcomeCardProps {
     capabilityKey: string;
     idempotencyKey: string;
     payloadHash: string;
-    canonicalPayload?: Record<string, unknown>;
+    canonicalPayload?: Record<string, unknown> | null;
     stepId?: string;
   }>;
+  onFetchPendingEffects?: (executionId: string) => Promise<Array<any>>;
   onApproveExecution: (effectId?: string, approvedPayloadHash?: string) => void;
   onRejectExecution: (effectId?: string) => void;
   onResumeExecution?: () => void;
@@ -201,9 +202,52 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
   waitingInputItems,
   approvalAction,
   pendingOutboundEffects,
+  onFetchPendingEffects,
   onApproveExecution,
   onRejectExecution,
 }) => {
+  const [internalEffects, setInternalEffects] = React.useState<TaskOutcomeCardProps['pendingOutboundEffects'] | null>(null);
+  const [isLoadingEffects, setIsLoadingEffects] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    let isCancelled = false;
+    if (isPendingApproval && executionId && (!pendingOutboundEffects || pendingOutboundEffects.length === 0)) {
+      setIsLoadingEffects(true);
+      const fetchPromise = onFetchPendingEffects
+        ? onFetchPendingEffects(executionId)
+        : fetch(`/api/executions/${executionId}`)
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => data?.pendingOutboundEffects || []);
+
+      fetchPromise
+        .then((effects) => {
+          if (!isCancelled && Array.isArray(effects)) {
+            setInternalEffects(effects);
+          }
+        })
+        .catch(() => {
+          if (!isCancelled) {
+            setInternalEffects([]);
+          }
+        })
+        .finally(() => {
+          if (!isCancelled) {
+            setIsLoadingEffects(false);
+          }
+        });
+    } else {
+      setIsLoadingEffects(false);
+    }
+    return () => {
+      isCancelled = true;
+    };
+  }, [isPendingApproval, executionId, pendingOutboundEffects, onFetchPendingEffects]);
+
+  const effectivePendingEffects =
+    pendingOutboundEffects && pendingOutboundEffects.length > 0
+      ? pendingOutboundEffects
+      : internalEffects || [];
+
   const showDownloadButton = Boolean(downloadUrl && !browserExecutionMode);
   const showDetailButton = Boolean(executionDetailLink || temporalLink);
   const normalizedSkillName = skillName?.trim();
@@ -550,7 +594,26 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
           )}
         </div>
       ) : null}
-      {isPendingApproval && pendingOutboundEffects && pendingOutboundEffects.length > 0 ? (
+      {isPendingApproval && isLoadingEffects ? (
+        <div
+          className="chat-outcome-outbound-loading"
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 6,
+            background: 'rgba(0, 0, 0, 0.02)',
+            border: '1px dashed #d9d9d9',
+            fontSize: 12,
+            color: '#666',
+          }}
+        >
+          <Space>
+            <LoadingOutlined />
+            <span>正在加载待审批外发操作详情...</span>
+          </Space>
+        </div>
+      ) : null}
+      {isPendingApproval && !isLoadingEffects && effectivePendingEffects.length > 0 ? (
         <div
           className="chat-outcome-outbound-preview"
           style={{
@@ -562,9 +625,9 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
           }}
         >
           <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>
-            待审批外发操作 ({pendingOutboundEffects.length})
+            待审批外发操作 ({effectivePendingEffects.length})
           </div>
-          {pendingOutboundEffects.map((effect) => (
+          {effectivePendingEffects.map((effect) => (
             <div key={effect.effectId} style={{ marginBottom: 8, fontSize: 12 }}>
               <div>
                 <strong>能力: </strong>
@@ -603,8 +666,9 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             size="small"
             icon={<CheckOutlined />}
             loading={approvalAction === 'approve'}
+            disabled={isLoadingEffects}
             onClick={() => {
-              const first = pendingOutboundEffects?.[0];
+              const first = effectivePendingEffects[0];
               onApproveExecution(first?.effectId, first?.payloadHash);
             }}
           >
@@ -615,8 +679,9 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             size="small"
             icon={<CloseOutlined />}
             loading={approvalAction === 'reject'}
+            disabled={isLoadingEffects}
             onClick={() => {
-              const first = pendingOutboundEffects?.[0];
+              const first = effectivePendingEffects[0];
               onRejectExecution(first?.effectId);
             }}
           >

@@ -315,6 +315,7 @@ describe('ExecutionApprovalService', () => {
         id: 'step-1',
         executionId: 'exec-1',
         stepIndex: 0,
+        idempotencyKey: 'exec-1:step-1:v1',
         status: 'failed',
         takeoverTriggered: true,
         outputJson: {},
@@ -330,15 +331,18 @@ describe('ExecutionApprovalService', () => {
       hooksMock
     );
 
-    expect(ledgerMock.resolveUnknown).toHaveBeenCalledWith({
-      id: 'eff-1',
-      targetState: 'COMMITTED',
-      resolutionReason: 'Verified in SMTP server logs',
-      resolvedBy: 'user-1',
-    });
+    expect(ledgerMock.resolveUnknown).toHaveBeenCalledWith(
+      {
+        id: 'eff-1',
+        targetState: 'COMMITTED',
+        resolutionReason: 'Verified in SMTP server logs',
+        resolvedBy: 'user-1',
+      },
+      prismaMock
+    );
     expect(result.state).toBe('COMMITTED');
 
-    // Step updated to succeeded
+    // Step updated to succeeded with compliant output schema
     expect(prismaMock.executionStep.update).toHaveBeenCalledWith({
       where: { id: 'step-1' },
       data: expect.objectContaining({
@@ -346,20 +350,21 @@ describe('ExecutionApprovalService', () => {
         takeoverTriggered: false,
         outputJson: expect.objectContaining({
           deliveryId: 'msg-123',
-          reconciledState: 'COMMITTED',
+          state: 'accepted',
+          acceptedAt: expect.any(String),
         }),
       }),
     });
 
-    // Execution cleared and queued
+    // Execution cleared and status transitioned via hooks
     expect(prismaMock.execution.update).toHaveBeenCalledWith({
       where: { id: 'exec-1' },
       data: expect.objectContaining({
-        status: EXECUTION_STATUS.QUEUED,
         takeoverRequired: false,
         takeoverReason: null,
       }),
     });
+    expect(hooksMock.updateStatus).toHaveBeenCalledWith('exec-1', EXECUTION_STATUS.QUEUED);
   });
 
   it('rejects resolveOutboundEffect when record does not belong to execution (cross-execution boundary)', async () => {
@@ -404,6 +409,7 @@ describe('ExecutionApprovalService', () => {
         id: 'step-1',
         executionId: 'exec-1',
         stepIndex: 0,
+        idempotencyKey: 'exec-1:step-1:v1',
         status: 'failed',
         takeoverTriggered: true,
       },
@@ -418,11 +424,14 @@ describe('ExecutionApprovalService', () => {
       hooksMock
     );
 
-    expect(ledgerMock.authorizeRetry).toHaveBeenCalledWith({
-      id: 'eff-1',
-      authorizedBy: 'user-1',
-      reason: 'Network glitch resolved',
-    });
+    expect(ledgerMock.authorizeRetry).toHaveBeenCalledWith(
+      {
+        id: 'eff-1',
+        authorizedBy: 'user-1',
+        reason: 'Network glitch resolved',
+      },
+      prismaMock
+    );
     expect(result.state).toBe('APPROVED');
 
     // Step reset to pending
@@ -436,13 +445,13 @@ describe('ExecutionApprovalService', () => {
       }),
     });
 
-    // Execution queued
+    // Execution cleared and status transitioned via hooks
     expect(prismaMock.execution.update).toHaveBeenCalledWith({
       where: { id: 'exec-1' },
       data: expect.objectContaining({
-        status: EXECUTION_STATUS.QUEUED,
         takeoverRequired: false,
       }),
     });
+    expect(hooksMock.updateStatus).toHaveBeenCalledWith('exec-1', EXECUTION_STATUS.QUEUED);
   });
 });
