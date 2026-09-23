@@ -75,3 +75,44 @@ export function mapPlanRuntimeTypeToExecutionRuntime(
       return 'workflow';
   }
 }
+
+export function extractFinalOutputsFromSteps(
+  planDraft: any,
+  steps: any[],
+  artifacts: any[],
+  unwrapOutputFn: (val: any) => Record<string, any>
+): Array<Record<string, any>> {
+  const outputs: Array<Record<string, any>> = [];
+  if (!Array.isArray(planDraft?.finalOutputs) || planDraft.finalOutputs.length === 0) {
+    return outputs;
+  }
+
+  const stepByNode = new Map<string, any>();
+  for (const step of steps) {
+    if (step.planNodeId) stepByNode.set(step.planNodeId, step);
+  }
+
+  for (const req of planDraft.finalOutputs) {
+    const step = stepByNode.get(req.fromNodeId);
+    if (!step) continue;
+    const outputData = unwrapOutputFn(step.outputJson);
+    const value = outputData[req.fromNodeOutput];
+
+    const matchedArtifact = artifacts.find(
+      (art: any) => art.producerNodeId === req.fromNodeId || art.producerStepId === step.id
+    );
+
+    outputs.push({
+      targetField: req.targetField,
+      fromNodeId: req.fromNodeId,
+      fromNodeOutput: req.fromNodeOutput,
+      expectedType: req.expectedType,
+      mimeType: req.mimeType,
+      isArtifact: Boolean(req.isArtifact),
+      value,
+      artifact: matchedArtifact,
+    });
+  }
+
+  return outputs;
+}

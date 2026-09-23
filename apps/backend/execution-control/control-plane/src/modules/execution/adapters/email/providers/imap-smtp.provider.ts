@@ -77,6 +77,7 @@ export class ImapSmtpEmailProvider implements EmailProviderAdapter {
         subject: input.subject || '(无主题)',
         textBody: input.textBody,
         inReplyTo: input.replyToMessageRef,
+        clientRequestKey: input.clientRequestKey,
       },
       config
     );

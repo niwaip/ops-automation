@@ -109,6 +109,20 @@ export class RuntimeResultInterpreter {
       }
     );
 
+    if (
+      result.status === 'unknown' ||
+      result.errorCode === 'OUTBOUND_EFFECT_UNKNOWN'
+    ) {
+      if (context.takeover) {
+        await context.takeover(
+          result.takeoverReason ||
+            result.errorMessage ||
+            'Browser action resulted in uncertain external effect. Takeover required.'
+        );
+      }
+      return;
+    }
+
     if (result.status === 'takeover_required' || result.requiresTakeover) {
       if (context.takeover) {
         await context.takeover(result.takeoverReason || RECOVERY_MESSAGES.BROWSER_TAKEOVER);
@@ -192,6 +206,25 @@ export class RuntimeResultInterpreter {
         shouldTakeover: Boolean(result.requiresTakeover || result.status === 'takeover_required'),
       }
     );
+
+    if (
+      result.status === 'unknown' ||
+      result.errorCode === 'OUTBOUND_EFFECT_UNKNOWN'
+    ) {
+      const reason =
+        result.takeoverReason ||
+        result.errorMessage ||
+        'Outbound side effect outcome is unknown. Manual reconciliation or takeover required.';
+      if (context.takeover) {
+        await context.takeover(reason);
+        return;
+      }
+      await context.failExecution(
+        reason,
+        result.errorCode || 'OUTBOUND_EFFECT_UNKNOWN'
+      );
+      return;
+    }
 
     if (result.status === 'takeover_required' || result.requiresTakeover) {
       if (context.takeover) {

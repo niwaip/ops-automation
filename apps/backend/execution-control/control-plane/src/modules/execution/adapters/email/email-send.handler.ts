@@ -76,11 +76,26 @@ export async function executeEmailSend(
     (rawInput.idempotencyKey as string) ||
     '';
 
-  const rawPhase = (rawInput.phase || request.metadata?.phase || OUTBOUND_EFFECT_PHASE.DIRECT) as string;
-  const phase: OutboundEffectPhase =
-    rawPhase === OUTBOUND_EFFECT_PHASE.PREPARE || rawPhase === OUTBOUND_EFFECT_PHASE.COMMIT
-      ? rawPhase
-      : OUTBOUND_EFFECT_PHASE.DIRECT;
+  const rawPhase = (
+    (request.metadata as Record<string, any> | undefined)?.outboundEffect?.phase ||
+    request.metadata?.phase ||
+    rawInput.phase ||
+    OUTBOUND_EFFECT_PHASE.DIRECT
+  ) as string;
+
+  if (
+    rawPhase !== OUTBOUND_EFFECT_PHASE.PREPARE &&
+    rawPhase !== OUTBOUND_EFFECT_PHASE.COMMIT &&
+    rawPhase !== OUTBOUND_EFFECT_PHASE.DIRECT
+  ) {
+    return {
+      success: false,
+      status: 'failed',
+      errorCode: 'INVALID_EFFECT_PHASE',
+      errorMessage: `Unsupported outbound effect phase '${rawPhase}'`,
+    };
+  }
+  const phase: OutboundEffectPhase = rawPhase as OutboundEffectPhase;
 
   // 1. Normalize 'to' recipients
   let toList: Array<{ name?: string; address: string }> = [];
@@ -177,13 +192,27 @@ export async function executeEmailSend(
     };
   }
 
-  // Phase: COMMIT — verify caller payloadHash matches computed hash
+  // Phase: COMMIT — verify caller payloadHash matches computed hash (fail-closed)
   if (phase === OUTBOUND_EFFECT_PHASE.COMMIT) {
-    const providedPayloadHash =
-      (rawInput.payloadHash as string) ||
-      (request.metadata?.payloadHash as string) ||
-      (request.metadata?.approvedPayloadHash as string);
-    if (providedPayloadHash && providedPayloadHash !== payloadHash) {
+    const providedPayloadHash = (
+      (request.metadata as Record<string, any> | undefined)?.outboundEffect?.payloadHash ||
+      request.metadata?.payloadHash ||
+      request.metadata?.approvedPayloadHash ||
+      rawInput.payloadHash ||
+      ''
+    ) as string;
+
+    if (!providedPayloadHash || !providedPayloadHash.trim()) {
+      return {
+        success: false,
+        status: 'failed',
+        errorCode: 'PAYLOAD_HASH_REQUIRED',
+        errorMessage: 'Commit phase requires a non-empty approved payloadHash',
+        payloadHash,
+      };
+    }
+
+    if (providedPayloadHash !== payloadHash) {
       return {
         success: false,
         status: 'failed',

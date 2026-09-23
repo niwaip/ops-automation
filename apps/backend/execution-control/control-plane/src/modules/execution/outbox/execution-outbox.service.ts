@@ -8,6 +8,11 @@ export interface EnqueueExecutionOutboxInput {
   eventType: string;
   payload: Record<string, unknown>;
   availableAt?: Date;
+  traceContext?: {
+    traceId?: string;
+    traceparent?: string;
+    tracestate?: string;
+  };
 }
 
 export interface ClaimedExecutionOutboxItem {
@@ -33,6 +38,10 @@ export class ExecutionOutboxService {
     client: RawQueryClient = this.prisma
   ): Promise<string> {
     const id = randomUUID();
+    const effectivePayload = {
+      ...input.payload,
+      ...(input.traceContext ? { traceContext: input.traceContext } : {}),
+    };
     await client.$queryRawUnsafe(
       `INSERT INTO execution_outbox
         (id, aggregate_type, aggregate_id, event_type, payload_json, available_at)
@@ -41,7 +50,7 @@ export class ExecutionOutboxService {
       input.aggregateType,
       input.aggregateId,
       input.eventType,
-      JSON.stringify(input.payload),
+      JSON.stringify(effectivePayload),
       input.availableAt || new Date()
     );
     return id;

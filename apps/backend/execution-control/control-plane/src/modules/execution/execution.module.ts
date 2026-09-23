@@ -62,6 +62,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { ReminderModule } from '../reminders/reminder.module';
 import { SavedSkillModule } from '../saved-skill/saved-skill.module';
 import { ExecutionOutboxService } from './outbox/execution-outbox.service';
+import { OutboundEffectLedgerService } from './outbox/outbound-effect-ledger.service';
 import { ExecutionDispatcherService } from './dispatcher/execution-dispatcher.service';
 import { PlanRiskEvaluatorService } from './risk/plan-risk-evaluator.service';
 import { ResultRefController } from './result-ref/result-ref.controller';
@@ -136,6 +137,7 @@ import { CompletionClaimSynthesizerService } from './plan-runtime/completion-cla
     RuntimeResultInterpreter,
     RuntimeStepRequestFactory,
     ExecutionOutboxService,
+    OutboundEffectLedgerService,
     ExecutionDispatcherService,
     PlanRiskEvaluatorService,
     ResultRefService,
@@ -151,6 +153,7 @@ import { CompletionClaimSynthesizerService } from './plan-runtime/completion-cla
     DeterministicPlanFreezeService,
     DeterministicPlanSchedulerService,
     ExecutionOutboxService,
+    OutboundEffectLedgerService,
     RuntimeCredentialResolverService,
   ],
 })

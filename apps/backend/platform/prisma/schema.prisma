@@ -1330,6 +1330,31 @@ model ScheduleFire {
   @@map("schedule_fires")
 }
 
+model OutboundEffectLedger {
+  id                   String    @id @default(uuid()) @db.Uuid
+  tenantId             String    @default("default") @map("tenant_id") @db.VarChar(64)
+  capabilityKey        String    @map("capability_key") @db.VarChar(128)
+  operation            String    @default("send") @db.VarChar(64)
+  idempotencyKey       String    @map("idempotency_key") @db.VarChar(255)
+  payloadHash          String    @map("payload_hash") @db.VarChar(128)
+  canonicalPayloadJson Json      @map("canonical_payload_json")
+  state                String    @default("PREPARED") @db.VarChar(32)
+  attemptCount         Int       @default(0) @map("attempt_count")
+  provider             String?   @db.VarChar(64)
+  providerRequestId    String?   @map("provider_request_id") @db.VarChar(255)
+  providerMessageId    String?   @map("provider_message_id") @db.VarChar(255)
+  errorClassification  String?   @map("error_classification") @db.VarChar(64)
+  resolutionReason     String?   @map("resolution_reason") @db.Text
+  resolvedBy           String?   @map("resolved_by") @db.VarChar(128)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  resolvedAt           DateTime? @map("resolved_at") @db.Timestamptz
+
+  @@unique([tenantId, capabilityKey, idempotencyKey])
+  @@index([state, createdAt])
+  @@map("outbound_effect_ledgers")
+}
+
 model HabitLearningRun {
   id             String    @id @default(uuid()) @db.Uuid
   idempotencyKey String    @unique @map("idempotency_key") @db.VarChar(128)

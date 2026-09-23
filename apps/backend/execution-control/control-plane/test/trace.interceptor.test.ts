@@ -31,7 +31,7 @@ describe('TraceInterceptor & TraceContext', () => {
     expect(traceId.length).toBeGreaterThan(10);
   });
 
-  it('should intercept request, assign traceId to req, and set response header', (done) => {
+  it('should intercept request, assign traceId and traceparent to req, and set response headers', (done) => {
     const interceptor = new TraceInterceptor();
     const req: any = { headers: { 'x-trace-id': 'req-trace-abc' }, method: 'GET', url: '/api/executions' };
     const res: any = {
@@ -53,7 +53,16 @@ describe('TraceInterceptor & TraceContext', () => {
     interceptor.intercept(context, next).subscribe({
       next: (val) => {
         expect(req.traceId).toBe('req-trace-abc');
+        expect(req.traceparent).toBeDefined();
+        expect(req.traceparent.startsWith('00-')).toBe(true);
+        expect(req.traceContext).toEqual(
+          expect.objectContaining({
+            traceId: 'req-trace-abc',
+            traceparent: req.traceparent,
+          })
+        );
         expect(res.headers[TRACE_ID_HEADER]).toBe('req-trace-abc');
+        expect(res.headers[TRACEPARENT_HEADER]).toBe(req.traceparent);
         expect(val).toEqual({ success: true });
         done();
       },

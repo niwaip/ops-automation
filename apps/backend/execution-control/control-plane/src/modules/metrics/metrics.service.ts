@@ -25,12 +25,12 @@ export class MetricsService {
   private requestDurationSum: Map<string, number> = new Map();
   private totalRequests = 0;
   private cachedDbMetrics: CachedDbMetrics | null = null;
-  private readonly dbMetricsTtlMs: number;
+  private inFlightDbMetricsPromise: Promise<CachedDbMetrics> | null = null;
+  private dbMetricsTtlMs: number = DEFAULT_DB_METRICS_CACHE_TTL_MS;
 
-  constructor(
-    private readonly prisma: PrismaService,
-    ttlMs: number = DEFAULT_DB_METRICS_CACHE_TTL_MS
-  ) {
+  constructor(private readonly prisma: PrismaService) {}
+
+  setDbMetricsTtlMs(ttlMs: number): void {
     this.dbMetricsTtlMs = ttlMs;
   }
 
@@ -45,6 +45,7 @@ export class MetricsService {
 
   clearDbMetricsCache(): void {
     this.cachedDbMetrics = null;
+    this.inFlightDbMetricsPromise = null;
   }
 
   async getPrometheusMetrics(): Promise<string> {
@@ -76,32 +77,42 @@ export class MetricsService {
       let metrics = this.cachedDbMetrics;
 
       if (!metrics || now - metrics.cachedAt >= this.dbMetricsTtlMs) {
-        const [activeExecutions, totalExecutions, succeededExecutions, failedExecutions] =
-          await Promise.all([
-            this.prisma.execution.count({
-              where: {
-                status: {
-                  in: ['pending', 'running', 'waiting_input'],
-                },
-              },
-            }),
-            this.prisma.execution.count(),
-            this.prisma.execution.count({
-              where: { status: 'succeeded' },
-            }),
-            this.prisma.execution.count({
-              where: { status: 'failed' },
-            }),
-          ]);
+        if (!this.inFlightDbMetricsPromise) {
+          this.inFlightDbMetricsPromise = (async () => {
+            try {
+              const [activeExecutions, totalExecutions, succeededExecutions, failedExecutions] =
+                await Promise.all([
+                  this.prisma.execution.count({
+                    where: {
+                      status: {
+                        in: ['pending', 'running', 'waiting_input'],
+                      },
+                    },
+                  }),
+                  this.prisma.execution.count(),
+                  this.prisma.execution.count({
+                    where: { status: 'succeeded' },
+                  }),
+                  this.prisma.execution.count({
+                    where: { status: 'failed' },
+                  }),
+                ]);
 
-        metrics = {
-          activeExecutions,
-          totalExecutions,
-          succeededExecutions,
-          failedExecutions,
-          cachedAt: now,
-        };
-        this.cachedDbMetrics = metrics;
+              const newMetrics: CachedDbMetrics = {
+                activeExecutions,
+                totalExecutions,
+                succeededExecutions,
+                failedExecutions,
+                cachedAt: Date.now(),
+              };
+              this.cachedDbMetrics = newMetrics;
+              return newMetrics;
+            } finally {
+              this.inFlightDbMetricsPromise = null;
+            }
+          })();
+        }
+        metrics = await this.inFlightDbMetricsPromise;
       }
 
       lines.push('# HELP ops_active_executions_count Number of currently active executions');

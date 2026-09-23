@@ -100,6 +100,46 @@ describe('executeEmailSend', () => {
     expect(res.errorCode).toBe('PAYLOAD_HASH_MISMATCH');
   });
 
+  it('rejects invalid phase with INVALID_EFFECT_PHASE', async () => {
+    const sendSpy = jest.spyOn(SmtpClient, 'send');
+
+    const res = await executeEmailSend({
+      executionId: 'exe-1',
+      stepId: 'step-1',
+      skillId: 'platform.email.send',
+      input: {
+        phase: 'invalid_phase' as any,
+        to: [{ address: 'recipient@example.com' }],
+        subject: '部署上线通知',
+        textBody: '准备发布 v2.0',
+      },
+    } as any, 'idem-key-123');
+
+    expect(sendSpy).not.toHaveBeenCalled();
+    expect(res.success).toBe(false);
+    expect(res.errorCode).toBe('INVALID_EFFECT_PHASE');
+  });
+
+  it('rejects commit phase without payloadHash with PAYLOAD_HASH_REQUIRED', async () => {
+    const sendSpy = jest.spyOn(SmtpClient, 'send');
+
+    const res = await executeEmailSend({
+      executionId: 'exe-1',
+      stepId: 'step-1',
+      skillId: 'platform.email.send',
+      input: {
+        phase: 'commit',
+        to: [{ address: 'recipient@example.com' }],
+        subject: '部署上线通知',
+        textBody: '准备发布 v2.0',
+      },
+    } as any, 'idem-key-123');
+
+    expect(sendSpy).not.toHaveBeenCalled();
+    expect(res.success).toBe(false);
+    expect(res.errorCode).toBe('PAYLOAD_HASH_REQUIRED');
+  });
+
   it('supports commit phase: sends email when payloadHash matches', async () => {
     const canonicalPayload = {
       mailboxKey: null,

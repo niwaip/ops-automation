@@ -73,6 +73,7 @@
       "execution_steps",
       "execution_takeovers",
       "executions",
+      "outbound_effect_ledgers",
       "reminder_deliveries",
       "reminder_rules",
       "schedule_fires",

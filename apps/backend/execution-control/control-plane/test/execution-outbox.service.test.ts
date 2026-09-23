@@ -24,6 +24,30 @@ describe('ExecutionOutboxService', () => {
     expect(queryRaw).not.toHaveBeenCalled();
   });
 
+  it('embeds traceContext into outbox event payload when provided', async () => {
+    const transactionQuery = jest.fn().mockResolvedValue([]);
+    const id = await service.enqueue(
+      {
+        aggregateType: 'execution',
+        aggregateId: '11111111-1111-4111-8111-111111111111',
+        eventType: 'execution.ready',
+        payload: { executionId: '11111111-1111-4111-8111-111111111111' },
+        traceContext: {
+          traceId: 'trace-123',
+          traceparent: '00-trace123-span456-01',
+        },
+      },
+      { $queryRawUnsafe: transactionQuery }
+    );
+    expect(id).toMatch(/^[0-9a-f-]{36}$/u);
+    expect(transactionQuery).toHaveBeenCalledTimes(1);
+    const passedPayload = JSON.parse(transactionQuery.mock.calls[0][5]);
+    expect(passedPayload.traceContext).toEqual({
+      traceId: 'trace-123',
+      traceparent: '00-trace123-span456-01',
+    });
+  });
+
   it('claims only available unleased events with skip locked', async () => {
     queryRaw.mockResolvedValue([
       {

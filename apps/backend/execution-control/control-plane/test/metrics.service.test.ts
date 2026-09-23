@@ -1,4 +1,6 @@
+import { Test, TestingModule } from '@nestjs/testing';
 import { MetricsService } from '../src/modules/metrics/metrics.service';
+import { PrismaService } from '../src/modules/prisma/prisma.service';
 
 describe('MetricsService', () => {
   let service: MetricsService;
@@ -17,6 +19,22 @@ describe('MetricsService', () => {
       },
     };
     service = new MetricsService(mockPrisma);
+  });
+
+  it('instantiates cleanly via NestJS TestingModule IoC container', async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        MetricsService,
+        {
+          provide: PrismaService,
+          useValue: mockPrisma,
+        },
+      ],
+    }).compile();
+
+    const resolved = module.get<MetricsService>(MetricsService);
+    expect(resolved).toBeDefined();
+    expect(resolved).toBeInstanceOf(MetricsService);
   });
 
   it('should record requests and output prometheus format metrics', async () => {
@@ -51,5 +69,21 @@ describe('MetricsService', () => {
     service.clearDbMetricsCache();
     await service.getPrometheusMetrics();
     expect(mockPrisma.execution.count).toHaveBeenCalledTimes(8);
+  });
+
+  it('deduplicates concurrent in-flight database aggregation calls (single-flight)', async () => {
+    service.clearDbMetricsCache();
+    // Fire 5 concurrent requests simultaneously on empty cache
+    const results = await Promise.all([
+      service.getPrometheusMetrics(),
+      service.getPrometheusMetrics(),
+      service.getPrometheusMetrics(),
+      service.getPrometheusMetrics(),
+      service.getPrometheusMetrics(),
+    ]);
+
+    expect(results).toHaveLength(5);
+    // Even with 5 concurrent calls, only 1 DB query batch (4 counts) was executed
+    expect(mockPrisma.execution.count).toHaveBeenCalledTimes(4);
   });
 });

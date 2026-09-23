@@ -1,7 +1,7 @@
 # 架构治理与生产加固落地指南 (Architecture Hardening & Governance Guide)
 
-> 版本：v1.2（2026-09 落地实施版）  
-> 状态：Ready for Implementation (ADR-001 ~ ADR-005 全量定稿 & P0/P1/P2 基线就绪)  
+> 版本：v1.3（2026-09 架构整改与代码加固版）  
+> 状态：Proposed / In Progress — Hardening In Flight (代码级 8 项审查整改已闭环，待准生产环境联调验证)  
 > 适用对象：平台核心架构师、后端研发团队、基础架构与运维工程师  
 > 关联事实源：[`PROJECT_OVERVIEW.md`](PROJECT_OVERVIEW.md)、[`project_architecture_redesign.md`](project_architecture_redesign.md)、[`schema-ownership.json`](../database/schema-ownership.json)
 
@@ -224,9 +224,10 @@ SDK 中的字段名是 `sideEffectClass`。所有 `sideEffectClass: 'external_wr
 
 [`@ops/capability-sdk`](../packages/capability-sdk) 已包含 Manifest、digest、probe 与运行时适配骨架。治理重点是让 [`CapabilityRuntimeAdapter`](../apps/backend/execution-control/control-plane/src/modules/execution/adapters/capability-runtime.adapter.ts) 与真实 Capability Pack 端到端使用同一契约，而不是重新设计 gRPC 或另一套插件标准。
 
-已落地实践：
-- 已将低副作用的 `platform.search.web` 打包为首个认证 Production Capability Pack（源码位于 `packages/capability-sdk/src/packs/platform-search-web.ts` 与 `builtin-skills/platform.search.web/capability-pack.json`）；
-- 验证通过了 Manifest 校验、SHA-256 契约签名计算（`digestCapabilityContract`）、输入/输出 Schema 校验、健康探针（`/health`）与运维手册（[`docs/runbook/platform.search.web.md`](runbook/platform.search.web.md)）；
+已落地原型与样板（P2 契约级样板）：
+- 已将低副作用的 `platform.search.web` 打包为契约与测试样板 Capability Pack（源码位于 `packages/capability-sdk/src/packs/platform-search-web.ts` 与 `builtin-skills/platform.search.web/capability-pack.json`）；
+- 验证通过了 Manifest 校验、SHA-256 契约签名计算（`digestCapabilityContract`）、输入/输出 Schema 校验、健康探针（`/health`）与运维手册样板（[`docs/runbook/platform.search.web.md`](runbook/platform.search.web.md)）；
+- **注意**：当前 `platform.search.web` 为契约固化与回归测试样板（Fixture/Boilerplate），实际网络爬虫与搜索引擎 Provider（如 SearxNG/SerpAPI）对接规划在后续 P2 阶段推进，生产环境中不应视作已完成真实外网供应商接入。
 - 后续 Capability 迁移将依照此标准模板持续收敛，逐步退役旧版硬编码 Registry。
 
 ---
@@ -303,16 +304,19 @@ pnpm run validate:outbound-side-effects
 
 ---
 
-## 12. 升级为 Ready for Implementation 的达成复核
+## 12. 审查缺陷整改复核与推进状态
 
-所有升级为 `Ready for Implementation` 的前置条件现已全部达成：
+针对 2026-09 阶段性代码审查发现的 8 项关键缺陷（含 NestJS DI 启动反射失败、外发两阶段与持久账本、UNKNOWN 优先接管、Production Compose 角色矩阵、W3C Trace 链路、语义质量门禁等），本分支已完成以下源码级加固与单测覆盖：
 
-- [x] 第 4 节五项 ADR 已全部评审定稿并指定对应 Owner（见 [ADR 目录](adr/)）；
-- [x] 外发效果账本 Schema、契约类型与状态迁移表已定稿（见 [ADR-001](adr/ADR-001-outbound-effect-ledger.md)）；
-- [x] Durable 三角色配置、灰度与回滚 Runbook 已在生产 Compose 配置固化（见 [ADR-003](adr/ADR-003-durable-scheduler-rollout.md) 及 `docker-compose.production.yml`）；
-- [x] W3C Trace Context 实现方式与异步传播字段已定稿并落地（见 [ADR-002](adr/ADR-002-trace-context-propagation.md) 及 `trace.interceptor.ts`）；
-- [x] Capability Schema baseline migration 与治理准则已定稿并纳入 CI 门禁（见 [ADR-004](adr/ADR-004-capability-db-migration.md) 及 `database/schema-ownership.json`）；
-- [x] P0、P1 故障注入测试与外发副作用校验门禁（`validate:outbound-side-effects`）已接入仓库标准检查流水线。
+- [x] **[P0] MetricsService 依赖注入反射修复**：构造函数移除原生基本类型 `ttlMs`，避免 NestJS `design:paramtypes` 反射未注册的 `Number` 依赖导致容器崩溃；引入单飞并发防击穿（Single-Flight Promise Deduplication）。
+- [x] **[P0] 契约与调度器双向支持两阶段信号**：`runtime-capability-contract` 新增 `prepared` 状态；`DeterministicPlanSchedulerService` 调度器在入参清洗时白名单保留 `phase` 与 `payloadHash`，并安全注入内部可信 `metadata.outboundEffect`。
+- [x] **[P0] 邮件发送处理器 Fail-Closed 防御**：非法 `phase` 立即拦截并返回 `INVALID_EFFECT_PHASE`；`commit` 阶段强制要求经过审批的不可变 `payloadHash`（缺少即拒 `PAYLOAD_HASH_REQUIRED`，不一致即拒 `PAYLOAD_HASH_MISMATCH`）。
+- [x] **[P0] 外发效果账本持久化与 Provider 防重键**：Prisma 模型 `OutboundEffectLedger` 及数据表 `outbound_effect_ledgers` 纳入 `database/schema-ownership.json`（归属 `control-plane`）；提供原子 CAS 抢占 `acquireCommit()`；SMTP 与 Graph 邮件 Provider 全程消费并透传 `clientRequestKey`（`Message-ID` / `X-Client-Request-Key` / `client-request-id`）。
+- [x] **[P1] UNKNOWN 状态最高优先级强力阻断与接管**：调度器与步骤解释器（`runtime-result.interpreter.ts`、`deterministic-plan-scheduler.service.ts`）在遇到 `status === 'unknown'` 或 `OUTBOUND_EFFECT_UNKNOWN` 时，严格先于 `terminalOutputAllowed` 和 `failurePolicy === 'continue'` 执行，强行触发人工接管（`takeover`），杜绝不确定外发被误当成功并继续推进下游 DAG。
+- [x] **[P1] 生产 Compose 运行时与持久化 Outbox 角色标定**：`docker-compose.production.yml` 中 `control-plane-api` 默认启用 Durable Outbox 并显式关闭 `EXECUTION_DISPATCHER_V2_ENABLED` 与 `SCHEDULE_FIRE_V2_ENABLED`；`execution-dispatcher` 与 `schedule-trigger` 完成严格角色互斥。
+- [x] **[P1] W3C 分布式追踪标头生成与异步上下文关联**：`TraceInterceptor` 遇缺失标头时自动生成标准 W3C `00-${traceId}-${spanId}-01` 格式 `traceparent`，在响应头输出 `traceparent` 与 `x-trace-id`，并将跟踪上下文同步落入 Outbox 异步事件 Payload。
+- [x] **[P1] 语义级架构质量门禁升级**：`scripts/validate-outbound-side-effects.mjs` 升级为真实语义校验（Schema 所有权、账本原子约束、两阶段 Fail-Closed、UNKNOWN 优先次序与 Compose 角色隔离）。
+- [ ] **准生产环境（Staging）实机部署与端到端链路验收**：待真实 PostgreSQL 集群多副本并发压测与第三方邮件 Provider 超时故障注入演练通过后，方可升级为正式 Ready for Production。
 
 ---
 

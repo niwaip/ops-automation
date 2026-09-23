@@ -40,6 +40,22 @@ export function parseTraceparent(traceparent?: string): string | undefined {
   return parts[1];
 }
 
+export function generateW3cTraceparent(existingTraceId?: string): string {
+  let traceIdHex: string;
+  if (existingTraceId) {
+    const cleaned = existingTraceId.replace(/-/g, '').toLowerCase();
+    if (/^[0-9a-f]{32}$/.test(cleaned) && !/^0+$/.test(cleaned)) {
+      traceIdHex = cleaned;
+    } else {
+      traceIdHex = randomBytes(16).toString('hex');
+    }
+  } else {
+    traceIdHex = randomBytes(16).toString('hex');
+  }
+  const spanIdHex = randomBytes(8).toString('hex');
+  return `00-${traceIdHex}-${spanIdHex}-01`;
+}
+
 export function extractTraceId(headers: Record<string, string | string[] | undefined>): string {
   const xTrace = headers[TRACE_ID_HEADER];
   if (typeof xTrace === 'string' && xTrace.trim()) {
@@ -64,11 +80,35 @@ export class TraceInterceptor implements NestInterceptor {
     const req = http.getRequest<any>();
     const res = http.getResponse<any>();
 
-    const traceId = extractTraceId(req.headers || {});
+    const headers = req.headers || {};
+    const traceId = extractTraceId(headers);
     req.traceId = traceId;
+
+    const incomingTraceparent = headers[TRACEPARENT_HEADER];
+    const traceparent =
+      typeof incomingTraceparent === 'string' && isValidTraceparent(incomingTraceparent)
+        ? createChildTraceparent(incomingTraceparent)
+        : generateW3cTraceparent(traceId);
+
+    req.traceparent = traceparent;
+
+    const tracestate =
+      typeof headers[TRACESTATE_HEADER] === 'string'
+        ? headers[TRACESTATE_HEADER]
+        : undefined;
+
+    req.traceContext = {
+      traceId,
+      traceparent,
+      tracestate,
+    };
 
     if (res?.setHeader) {
       res.setHeader(TRACE_ID_HEADER, traceId);
+      res.setHeader(TRACEPARENT_HEADER, traceparent);
+      if (tracestate) {
+        res.setHeader(TRACESTATE_HEADER, tracestate);
+      }
     }
 
     const method = req.method || 'UNKNOWN';

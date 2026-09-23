@@ -32,6 +32,7 @@ import {
 } from './deterministic-contract-validation';
 import {
   extractArtifacts,
+  extractFinalOutputsFromSteps,
   isLegacyPlan,
   mapPlanRuntimeTypeToExecutionRuntime,
   resolveBrowserRunOutputSchemaDigest,
@@ -705,6 +706,8 @@ export class DeterministicPlanSchedulerService {
         !Object.prototype.hasOwnProperty.call(inputSchema.properties, k) &&
         k !== 'idempotencyKey' &&
         k !== 'taskContext' &&
+        k !== 'phase' &&
+        k !== 'payloadHash' &&
         ![
           'downloadUrl',
           'fileUrl',
@@ -734,10 +737,22 @@ export class DeterministicPlanSchedulerService {
     const capabilityType = isBuiltin ? 'builtin' : 'skill.runtime';
 
     const definitionVersion = frozenMeta.definitionVersion || capabilityVersion || '1.0.0';
+    const effectivePhase =
+      resolvedInput?.phase || planNode?.metadata?.phase || frozenMeta.phase || undefined;
+    const effectivePayloadHash =
+      resolvedInput?.payloadHash || planNode?.metadata?.payloadHash || frozenMeta.payloadHash || undefined;
+
     const metadata: Record<string, any> = {
       capabilityVersion: capabilityVersion || definitionVersion,
       definitionVersion,
       idempotencyKey: stepIdempotencyKey,
+      phase: effectivePhase,
+      payloadHash: effectivePayloadHash,
+      outboundEffect: {
+        phase: effectivePhase,
+        payloadHash: effectivePayloadHash,
+        idempotencyKey: stepIdempotencyKey,
+      },
     };
     const captureProfile =
       frozenMeta.captureProfile ||
@@ -808,20 +823,30 @@ export class DeterministicPlanSchedulerService {
       step
     );
 
+    const isUnknownEffect =
+      result?.status === 'unknown' || result?.errorCode === 'OUTBOUND_EFFECT_UNKNOWN';
+    if (isUnknownEffect) {
+      const errMsg = result?.errorMessage || `Outbound effect status unknown for '${capabilityId}'`;
+      const error = new Error(errMsg) as Error & { code?: string; isUnknown?: boolean; status?: string };
+      error.code = result?.errorCode || 'OUTBOUND_EFFECT_UNKNOWN';
+      error.status = 'unknown';
+      error.isUnknown = true;
+      throw error;
+    }
+
     const terminalOutputAllowed =
       planNode?.failurePolicy === 'continue' &&
       result?.output &&
       typeof result.output === 'object' &&
       !Array.isArray(result.output);
-    if ((!result || !result.success) && !terminalOutputAllowed) {
-      const errMsg = result?.errorMessage || `Skill execution '${capabilityId}' failed`;
-      const error = new Error(errMsg) as Error & { code?: string; isUnknown?: boolean; status?: string };
-      error.code = result?.errorCode || 'NODE_EXECUTION_FAILED';
-      error.status = result?.status;
-      if (result?.status === 'unknown' || result?.errorCode === 'OUTBOUND_EFFECT_UNKNOWN') {
-        error.isUnknown = true;
+    if (!result || !result.success) {
+      if (!terminalOutputAllowed) {
+        const errMsg = result?.errorMessage || `Skill execution '${capabilityId}' failed`;
+        const error = new Error(errMsg) as Error & { code?: string; isUnknown?: boolean; status?: string };
+        error.code = result?.errorCode || 'NODE_EXECUTION_FAILED';
+        error.status = result?.status;
+        throw error;
       }
-      throw error;
     }
 
     const runtimeOutput = await this.materializeContentRefs(
@@ -1061,42 +1086,14 @@ export class DeterministicPlanSchedulerService {
     planDraft: DeterministicPlanDraftV1,
     artifacts: any[]
   ): Promise<Array<Record<string, any>>> {
-    const outputs: Array<Record<string, any>> = [];
     if (!Array.isArray(planDraft.finalOutputs) || planDraft.finalOutputs.length === 0) {
-      return outputs;
+      return [];
     }
 
     const steps = await this.prisma.executionStep.findMany({
       where: { executionId, status: 'succeeded' },
     });
-    const stepByNode = new Map<string, any>();
-    for (const step of steps) {
-      if (step.planNodeId) stepByNode.set(step.planNodeId, step);
-    }
-
-    for (const req of planDraft.finalOutputs) {
-      const step = stepByNode.get(req.fromNodeId);
-      if (!step) continue;
-      const outputData = unwrapStoredStepOutput(step.outputJson);
-      const value = outputData[req.fromNodeOutput];
-
-      const matchedArtifact = artifacts.find(
-        (art: any) => art.producerNodeId === req.fromNodeId || art.producerStepId === step.id
-      );
-
-      outputs.push({
-        targetField: req.targetField,
-        fromNodeId: req.fromNodeId,
-        fromNodeOutput: req.fromNodeOutput,
-        expectedType: req.expectedType,
-        mimeType: req.mimeType,
-        isArtifact: Boolean(req.isArtifact),
-        value,
-        artifact: matchedArtifact,
-      });
-    }
-
-    return outputs;
+    return extractFinalOutputsFromSteps(planDraft, steps, artifacts, unwrapStoredStepOutput);
   }
 
 
