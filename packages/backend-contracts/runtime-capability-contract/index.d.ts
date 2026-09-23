@@ -14,6 +14,8 @@ export interface TraceContext {
     userId?: string;
     actorType?: 'system' | 'user' | 'approver' | 'operator';
     sourceService?: string;
+    traceparent?: string;
+    tracestate?: string;
 }
 export interface ArtifactRef {
     type: string;

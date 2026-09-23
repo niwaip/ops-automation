@@ -859,8 +859,8 @@ export class DeterministicPlanSchedulerService {
         (result.output || {}) as Record<string, any>,
         this.resultRefs
       );
-      const outputJson = this.validateOutputContract(step, runtimeOutput, execution.id);
-      await handlePreparedOutboundEffectStep(this.prisma, execution, step, outputJson);
+      // Intermediate protocol state for prepared outbound effect does not enforce final step output schema contract
+      await handlePreparedOutboundEffectStep(this.prisma, execution, step, runtimeOutput);
       this.logger.log(
         `Execution ${execution.id} step ${step.id} prepared outbound effect; suspended in pending_approval.`
       );

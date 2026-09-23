@@ -287,6 +287,15 @@ export async function executeEmailSend(
         payloadHash,
       });
     } catch (err: any) {
+      if (err.message?.includes('OUTBOUND_EFFECT_IN_UNKNOWN_STATE')) {
+        return {
+          success: false,
+          status: 'unknown',
+          errorCode: 'OUTBOUND_EFFECT_UNKNOWN',
+          errorMessage: err.message,
+          payloadHash,
+        };
+      }
       return {
         success: false,
         status: 'failed',

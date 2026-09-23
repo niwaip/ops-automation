@@ -50,6 +50,8 @@ export interface ReconcilePhaseTakeoverRequest {
 export interface ApprovalDecisionRequest {
   comment?: string;
   decidedBy?: string;
+  approvedPayloadHash?: string;
+  effectId?: string;
 }
 
 export interface SubmitInputRequest {

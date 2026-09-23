@@ -481,4 +481,50 @@ describe('executeEmailSend', () => {
     expect(res.errorCode).toBe('OUTBOUND_EFFECT_UNKNOWN');
     expect(res.errorMessage).toContain('效果账本提交落库失败');
   });
+
+  it('maps OUTBOUND_EFFECT_IN_UNKNOWN_STATE during acquireCommit to status unknown', async () => {
+    const canonicalPayload = {
+      mailboxKey: null,
+      mode: 'new',
+      to: [{ address: 'recipient@example.com' }],
+      cc: [],
+      bcc: [],
+      subject: '部署上线通知',
+      textBody: '准备发布 v2.0',
+      replyToMessageRef: null,
+    };
+    const validHash = computeOutboundPayloadHash(canonicalPayload);
+
+    const ledgerMock = {
+      prepare: jest.fn(),
+      acquireCommit: jest.fn().mockRejectedValue(
+        new Error("OUTBOUND_EFFECT_IN_UNKNOWN_STATE: Committing lease expired; transitioned to UNKNOWN")
+      ),
+      markCommitted: jest.fn(),
+      markUnknown: jest.fn(),
+      markFailed: jest.fn(),
+    } as any;
+
+    const res = await executeEmailSend(
+      {
+        executionId: 'exe-1',
+        stepId: 'step-1',
+        skillId: 'platform.email.send',
+        input: {
+          phase: 'commit',
+          payloadHash: validHash,
+          to: [{ address: 'recipient@example.com' }],
+          subject: '部署上线通知',
+          textBody: '准备发布 v2.0',
+        },
+      } as any,
+      'idem-key-123',
+      ledgerMock
+    );
+
+    expect(res.success).toBe(false);
+    expect(res.status).toBe('unknown');
+    expect(res.errorCode).toBe('OUTBOUND_EFFECT_UNKNOWN');
+    expect(res.errorMessage).toContain('OUTBOUND_EFFECT_IN_UNKNOWN_STATE');
+  });
 });

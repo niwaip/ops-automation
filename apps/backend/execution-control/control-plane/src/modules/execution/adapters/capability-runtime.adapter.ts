@@ -1,6 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { getAuthServiceUrl } from '../../../config/service-endpoints';
+import {
+  createChildTraceparent,
+  generateW3cTraceparent,
+  parseTraceparent,
+} from '../../../common/interceptors/trace.interceptor';
 import { OutputNormalizerService } from '../plan-runtime/output-normalizer.service';
 import {
   ArtifactRef,
@@ -71,16 +76,31 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
       const internalSecret =
         process.env.INTERNAL_API_SHARED_SECRET || process.env.INTERNAL_API_SECRET;
       const tracedUserId = request.traceContext?.userId;
+
+      const headers: Record<string, string> = {};
+      if (internalSecret && tracedUserId) {
+        headers['x-internal-auth'] = internalSecret;
+        headers['x-user-id'] = tracedUserId;
+      }
+
+      if (request.traceContext?.traceparent) {
+        headers['traceparent'] = createChildTraceparent(request.traceContext.traceparent);
+        const childTraceId = parseTraceparent(headers['traceparent']) || request.traceContext.traceId;
+        if (childTraceId) {
+          headers['x-trace-id'] = childTraceId;
+        }
+      } else if (request.traceContext?.traceId) {
+        headers['traceparent'] = generateW3cTraceparent(request.traceContext.traceId);
+        headers['x-trace-id'] = request.traceContext.traceId;
+      }
+
+      if (request.traceContext?.tracestate) {
+        headers['tracestate'] = request.traceContext.tracestate;
+      }
+
       const requestConfig = {
         timeout: 300_000,
-        ...(internalSecret && tracedUserId
-          ? {
-              headers: {
-                'x-internal-auth': internalSecret,
-                'x-user-id': tracedUserId,
-              },
-            }
-          : {}),
+        ...(Object.keys(headers).length > 0 ? { headers } : {}),
       };
       const captureProfile =
         (request.input?.captureProfile as Record<string, unknown>) ||

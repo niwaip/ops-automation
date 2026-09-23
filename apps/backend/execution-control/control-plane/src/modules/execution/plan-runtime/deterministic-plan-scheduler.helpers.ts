@@ -142,6 +142,15 @@ export function resolveOutboundEffectMetadata(
   const stepPreparedHash = previousStepOutput?.payloadHash;
   const isStepPreviouslyPrepared = previousStepOutput?.phase === 'prepare' && Boolean(stepPreparedHash);
 
+  const capabilityKey = step?.capabilityId || planNode?.capabilityId || '';
+  const sideEffectClass =
+    planNode?.sideEffectClass ||
+    planNode?.metadata?.sideEffectClass ||
+    frozenMeta?.sideEffectClass ||
+    (capabilityKey === 'platform.email.send' ? 'external_write' : undefined);
+  const isExternalWrite =
+    sideEffectClass === 'external_write' || capabilityKey === 'platform.email.send';
+
   // Enforce commit authority: caller cannot self-authorize 'commit' in resolvedInput
   if (resolvedInput?.phase === 'commit') {
     if (frozenPhase !== 'commit' && !isApproved) {
@@ -154,10 +163,12 @@ export function resolveOutboundEffectMetadata(
   let effectivePhase = frozenPhase;
   if (!effectivePhase && isStepPreviouslyPrepared && isApproved) {
     effectivePhase = 'commit';
+  } else if (!effectivePhase && (resolvedInput?.phase === 'commit' || frozenPhase === 'commit') && isApproved) {
+    effectivePhase = 'commit';
   } else if (!effectivePhase && resolvedInput?.phase === 'prepare') {
     effectivePhase = 'prepare';
-  } else if (!effectivePhase && resolvedInput?.phase === 'commit' && isApproved) {
-    effectivePhase = 'commit';
+  } else if (!effectivePhase && isExternalWrite && !isApproved) {
+    effectivePhase = 'prepare';
   }
 
   const effectivePayloadHash =

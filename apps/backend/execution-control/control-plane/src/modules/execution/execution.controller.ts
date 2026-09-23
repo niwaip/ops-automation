@@ -25,6 +25,7 @@ import {
   ListExecutionsDto,
   SubmitInputDto,
   ApprovalDecisionDto,
+  ResolveOutboundEffectDto,
   CleanupExecutionsBeforeDateDto,
   ReconcilePhaseTakeoverDto,
   UpdateWorkflowActivityProgressDto,
@@ -318,6 +319,23 @@ export class ExecutionController {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Rejection requested for execution ${id} by user ${userId}`);
     return this.executionService.reject(id, userId, dto, req.user);
+  }
+
+  @Post(':id/outbound-effects/:effectId/resolve')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reconcile an outbound effect in UNKNOWN state' })
+  @ApiResponse({ status: 200, description: 'Outbound effect reconciled' })
+  async resolveOutboundEffect(
+    @Param('id') id: string,
+    @Param('effectId') effectId: string,
+    @Body() dto: ResolveOutboundEffectDto,
+    @Req() req: AuthenticatedRequest
+  ): Promise<any> {
+    const userId = req.user?.id || 'anonymous';
+    this.logger.log(
+      `Outbound effect resolve requested for execution ${id} effect ${effectId} by user ${userId}`
+    );
+    return this.executionService.resolveOutboundEffect(id, effectId, dto, userId, req.user);
   }
 
   @Post(':id/cancel')

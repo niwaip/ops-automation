@@ -53,6 +53,7 @@ import {
   ListExecutionsDto,
   SubmitInputDto,
   ApprovalDecisionDto,
+  ResolveOutboundEffectDto,
   UpdateWorkflowActivityProgressDto,
 } from './state/execution.dto';
 import { ExecutionPlanningService } from './step-runner/planning/execution-planning.service';
@@ -406,6 +407,22 @@ export class ExecutionService {
       userId,
       dto,
       this.getApprovalHooks(),
+      requester
+    );
+  }
+
+  async resolveOutboundEffect(
+    id: string,
+    effectId: string,
+    dto: ResolveOutboundEffectDto,
+    userId: string,
+    requester?: RequestUserContext
+  ) {
+    return this.executionApprovalService.resolveOutboundEffect(
+      id,
+      effectId,
+      dto,
+      userId,
       requester
     );
   }

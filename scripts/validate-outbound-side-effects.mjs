@@ -142,6 +142,17 @@ if (!fs.existsSync(ledgerServicePath)) {
   }
 }
 
+const recoveryServicePath = path.join(
+  root,
+  'apps/backend/execution-control/control-plane/src/modules/execution/plan-runtime/deterministic-plan-recovery.service.ts'
+);
+if (fs.existsSync(recoveryServicePath)) {
+  const content = fs.readFileSync(recoveryServicePath, 'utf8');
+  if (!content.includes('reapStaleCommits')) {
+    errors.push('deterministic-plan-recovery.service.ts missing reapStaleCommits invocation in recoverPendingPlans');
+  }
+}
+
 // 5. Verify fail-closed commit & ledger integration in email.send handler
 const emailHandlerPath = path.join(
   root,
@@ -257,6 +268,11 @@ if (!fs.existsSync(schedulerPath)) {
   if (!content.includes("execution.status === 'pending_approval'")) {
     errors.push("DeterministicPlanSchedulerService does not suspend for 'pending_approval'");
   }
+  // Intermediate prepared status must directly call handlePreparedOutboundEffectStep without validateOutputContract
+  const preparedBlock = content.match(/if\s*\(result\?\.status\s*===\s*'prepared'\)\s*\{([\s\S]*?)\}/);
+  if (!preparedBlock || preparedBlock[1].includes('validateOutputContract')) {
+    errors.push('DeterministicPlanSchedulerService must NOT validate capability output contract on intermediate status: prepared');
+  }
 }
 
 // 7b. Verify BuiltinWorkflowRuntimeAdapter shares effect key across PREPARE and COMMIT
@@ -271,7 +287,7 @@ if (fs.existsSync(adapterPath)) {
   }
 }
 
-// 7c. Verify ExecutionApprovalService approves prepared outbound effects in ledger
+// 7c. Verify ExecutionApprovalService approves prepared outbound effects in ledger and requires approvedPayloadHash
 const approvalServicePath = path.join(
   root,
   'apps/backend/execution-control/control-plane/src/modules/execution/human-control/execution-approval.service.ts'
@@ -281,12 +297,32 @@ if (fs.existsSync(approvalServicePath)) {
   if (!content.includes('ledger.approve')) {
     errors.push('execution-approval.service.ts missing ledger.approve call for prepared outbound effects');
   }
+  if (!content.includes('APPROVED_PAYLOAD_HASH_REQUIRED')) {
+    errors.push('execution-approval.service.ts missing APPROVED_PAYLOAD_HASH_REQUIRED enforcement');
+  }
+}
+
+const executionDtoPath = path.join(
+  root,
+  'apps/backend/execution-control/control-plane/src/modules/execution/state/execution.dto.ts'
+);
+if (fs.existsSync(executionDtoPath)) {
+  const content = fs.readFileSync(executionDtoPath, 'utf8');
+  if (!content.includes('approvedPayloadHash')) {
+    errors.push('execution.dto.ts ApprovalDecisionDto missing approvedPayloadHash field');
+  }
+  if (!content.includes('ResolveOutboundEffectDto')) {
+    errors.push('execution.dto.ts missing ResolveOutboundEffectDto');
+  }
 }
 
 if (fs.existsSync(schedulerHelpersPath)) {
   const helpersContent = fs.readFileSync(schedulerHelpersPath, 'utf8');
   if (!helpersContent.includes('UNAUTHORIZED_EFFECT_COMMIT')) {
     errors.push('deterministic-plan-scheduler.helpers.ts missing UNAUTHORIZED_EFFECT_COMMIT guard');
+  }
+  if (!helpersContent.includes('isExternalWrite') || !helpersContent.includes("effectivePhase = 'prepare'")) {
+    errors.push('deterministic-plan-scheduler.helpers.ts missing automatic PREPARE phase derivation for external_write');
   }
 }
 
@@ -342,7 +378,19 @@ if (fs.existsSync(executionCreatePath)) {
   }
 }
 
-// 9b. Verify ExecutionController propagates traceContext into ExecutionService
+// 9b. Verify CapabilityRuntimeAdapter propagates downstream W3C traceparent
+const capabilityAdapterPath = path.join(
+  root,
+  'apps/backend/execution-control/control-plane/src/modules/execution/adapters/capability-runtime.adapter.ts'
+);
+if (fs.existsSync(capabilityAdapterPath)) {
+  const content = fs.readFileSync(capabilityAdapterPath, 'utf8');
+  if (!content.includes('createChildTraceparent') || !content.includes('traceparent')) {
+    errors.push('capability-runtime.adapter.ts missing downstream W3C traceparent propagation');
+  }
+}
+
+// 9c. Verify ExecutionController propagates traceContext into ExecutionService and exposes outbound effect resolve API
 const executionControllerPath = path.join(
   root,
   'apps/backend/execution-control/control-plane/src/modules/execution/execution.controller.ts'
@@ -351,6 +399,9 @@ if (fs.existsSync(executionControllerPath)) {
   const content = fs.readFileSync(executionControllerPath, 'utf8');
   if (!content.includes('traceContext') || !content.includes('traceContext,')) {
     errors.push('ExecutionController missing traceContext propagation into ExecutionService');
+  }
+  if (!content.includes('resolveOutboundEffect') || !content.includes(':id/outbound-effects/:effectId/resolve')) {
+    errors.push('ExecutionController missing POST :id/outbound-effects/:effectId/resolve reconcile endpoint');
   }
 }
 

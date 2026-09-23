@@ -10,7 +10,7 @@ import { APPROVAL_STATUS } from '../contracts/approval-status';
 import { EXECUTION_EVENT_TYPE } from '../contracts/execution-event-type';
 import { EXECUTION_STATUS, ExecutionStatus } from '../contracts/execution-status';
 import { CreateExecutionEventOptions } from '../state/execution-event.service';
-import { ApprovalDecisionDto, ExecutionDto } from '../state/execution.dto';
+import { ApprovalDecisionDto, ExecutionDto, ResolveOutboundEffectDto } from '../state/execution.dto';
 import { ensureExecutionPermission } from '../shared/execution-permission.util';
 import { ExecutionOutboxService } from '../outbox/execution-outbox.service';
 import { OutboundEffectLedgerService } from '../outbox/outbound-effect-ledger.service';
@@ -75,19 +75,27 @@ export class ExecutionApprovalService {
         },
       });
 
-      for (const record of preparedRecords) {
-        if ((dto as any).approvedPayloadHash && (dto as any).approvedPayloadHash !== record.payloadHash) {
+      if (preparedRecords.length > 0) {
+        if (!dto.approvedPayloadHash || !dto.approvedPayloadHash.trim()) {
           throw new BadRequestException(
-            `PAYLOAD_HASH_MISMATCH: Approved hash '${(dto as any).approvedPayloadHash}' does not match prepared hash '${record.payloadHash}'`
+            'APPROVED_PAYLOAD_HASH_REQUIRED: Approval of execution with prepared outbound effects requires approvedPayloadHash'
           );
         }
-        await this.ledger.approve({
-          tenantId: record.tenantId,
-          capabilityKey: record.capabilityKey,
-          idempotencyKey: record.idempotencyKey,
-          approvedPayloadHash: record.payloadHash,
-          approver: dto.decidedBy || userId,
-        });
+
+        for (const record of preparedRecords) {
+          if (dto.approvedPayloadHash !== record.payloadHash) {
+            throw new BadRequestException(
+              `PAYLOAD_HASH_MISMATCH: Approved hash '${dto.approvedPayloadHash}' does not match prepared hash '${record.payloadHash}'`
+            );
+          }
+          await this.ledger.approve({
+            tenantId: record.tenantId,
+            capabilityKey: record.capabilityKey,
+            idempotencyKey: record.idempotencyKey,
+            approvedPayloadHash: dto.approvedPayloadHash,
+            approver: dto.decidedBy || userId,
+          });
+        }
       }
     }
 
@@ -102,6 +110,8 @@ export class ExecutionApprovalService {
       userId,
       decidedBy: dto.decidedBy || userId,
       comment: dto.comment,
+      ...(dto.approvedPayloadHash ? { approvedPayloadHash: dto.approvedPayloadHash } : {}),
+      ...(dto.effectId ? { effectId: dto.effectId } : {}),
     });
 
     if (process.env.EXECUTION_OUTBOX_ENABLED === 'true' && this.outbox) {
@@ -187,5 +197,34 @@ export class ExecutionApprovalService {
 
     this.logger.log(`Execution ${id} rejected`);
     return hooks.getExecutionDto(id, requester || { id: userId });
+  }
+
+  async resolveOutboundEffect(
+    executionId: string,
+    effectId: string,
+    dto: ResolveOutboundEffectDto,
+    userId: string,
+    requester?: RequestUserContext
+  ) {
+    const execution = await this.prisma.execution.findUnique({
+      where: { id: executionId },
+    });
+
+    if (!execution) {
+      throw new NotFoundException(`Execution ${executionId} not found`);
+    }
+
+    ensureExecutionPermission(execution.createdBy, requester || { id: userId });
+
+    if (!this.ledger) {
+      throw new BadRequestException('Outbound effect ledger service is not available');
+    }
+
+    return this.ledger.resolveUnknown({
+      id: effectId,
+      targetState: dto.targetState,
+      resolutionReason: dto.resolutionReason,
+      resolvedBy: userId,
+    });
   }
 }

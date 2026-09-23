@@ -61,7 +61,7 @@ describe('ExecutionApprovalService', () => {
     const result = await service.approve(
       'exec-1',
       'user-1',
-      { comment: 'Looks good', decidedBy: 'approver-1' } as any,
+      { comment: 'Looks good', decidedBy: 'approver-1', approvedPayloadHash: 'sha256:hash-abc' } as any,
       hooksMock
     );
 
@@ -82,9 +82,43 @@ describe('ExecutionApprovalService', () => {
     expect(hooksMock.emitEvent).toHaveBeenCalledWith(
       'exec-1',
       EXECUTION_EVENT_TYPE.EXECUTION_APPROVED,
-      expect.objectContaining({ userId: 'user-1', decidedBy: 'approver-1' })
+      expect.objectContaining({
+        userId: 'user-1',
+        decidedBy: 'approver-1',
+        approvedPayloadHash: 'sha256:hash-abc',
+      })
     );
     expect(result.id).toBe('exec-1');
+  });
+
+  it('rejects approval when prepared records exist but approvedPayloadHash is missing', async () => {
+    prismaMock.execution.findUnique.mockResolvedValue({
+      id: 'exec-1',
+      createdBy: 'user-1',
+      status: EXECUTION_STATUS.PENDING_APPROVAL,
+    });
+
+    prismaMock.outboundEffectLedger.findMany.mockResolvedValue([
+      {
+        id: 'led-1',
+        tenantId: 'tenant-1',
+        capabilityKey: 'platform.email.send',
+        idempotencyKey: 'exec-1:step-1:key',
+        payloadHash: 'sha256:hash-original',
+        state: 'PREPARED',
+      },
+    ]);
+
+    await expect(
+      service.approve(
+        'exec-1',
+        'user-1',
+        { comment: 'Looks good' } as any,
+        hooksMock
+      )
+    ).rejects.toThrow('APPROVED_PAYLOAD_HASH_REQUIRED');
+
+    expect(ledgerMock.approve).not.toHaveBeenCalled();
   });
 
   it('rejects approval if approvedPayloadHash does not match prepared hash', async () => {
@@ -147,5 +181,32 @@ describe('ExecutionApprovalService', () => {
     });
 
     expect(hooksMock.updateStatus).toHaveBeenCalledWith('exec-1', EXECUTION_STATUS.CANCELLED);
+  });
+
+  it('resolves unknown outbound effect via ledger', async () => {
+    prismaMock.execution.findUnique.mockResolvedValue({
+      id: 'exec-1',
+      createdBy: 'user-1',
+      status: EXECUTION_STATUS.HUMAN_CONTROL,
+    });
+    ledgerMock.resolveUnknown = jest.fn().mockResolvedValue({
+      id: 'eff-1',
+      state: 'COMMITTED',
+    });
+
+    const result = await service.resolveOutboundEffect(
+      'exec-1',
+      'eff-1',
+      { targetState: 'COMMITTED', resolutionReason: 'Verified in SMTP server logs' },
+      'user-1'
+    );
+
+    expect(ledgerMock.resolveUnknown).toHaveBeenCalledWith({
+      id: 'eff-1',
+      targetState: 'COMMITTED',
+      resolutionReason: 'Verified in SMTP server logs',
+      resolvedBy: 'user-1',
+    });
+    expect(result.state).toBe('COMMITTED');
   });
 });

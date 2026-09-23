@@ -473,4 +473,37 @@ describe('DeterministicPlanSchedulerService', () => {
       )
     ).toThrow('UNAUTHORIZED_EFFECT_COMMIT');
   });
+
+  it('automatically derives PREPARE phase for external_write and email capabilities when unapproved', () => {
+    const { resolveOutboundEffectMetadata } = require('../src/modules/execution/plan-runtime/deterministic-plan-scheduler.helpers');
+    const meta = resolveOutboundEffectMetadata(
+      { capabilityId: 'platform.email.send' },
+      {},
+      {},
+      { approvalStatus: 'PENDING' },
+      'step-email',
+      'idem-email',
+      '1.0.0'
+    );
+    expect(meta.phase).toBe('prepare');
+    expect(meta.outboundEffect?.phase).toBe('prepare');
+  });
+
+  it('promotes previously prepared and approved step to COMMIT phase', () => {
+    const { resolveOutboundEffectMetadata } = require('../src/modules/execution/plan-runtime/deterministic-plan-scheduler.helpers');
+    const meta = resolveOutboundEffectMetadata(
+      { capabilityId: 'platform.email.send' },
+      {},
+      {},
+      { approvalStatus: 'APPROVED' },
+      'step-email',
+      'idem-email',
+      '1.0.0',
+      '1.0.0',
+      { outputJson: { phase: 'prepare', payloadHash: 'sha256:prep123', effectId: 'eff-1' } }
+    );
+    expect(meta.phase).toBe('commit');
+    expect(meta.approvedPayloadHash).toBe('sha256:prep123');
+    expect(meta.effectId).toBe('eff-1');
+  });
 });

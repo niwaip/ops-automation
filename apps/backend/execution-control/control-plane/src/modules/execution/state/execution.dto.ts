@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsInt, IsObject, IsOptional, IsString, Min } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsObject, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import type { ExecutionSemantic } from '@ops/backend-execution-core';
 import { ApprovalStatus, APPROVAL_STATUS_VALUES } from '../contracts/approval-status';
@@ -774,6 +774,29 @@ export class ApprovalDecisionDto {
   @IsOptional()
   @IsString()
   decidedBy?: string;
+
+  @ApiProperty({ description: 'Approved payload hash for outbound effects', required: false })
+  @IsOptional()
+  @IsString()
+  approvedPayloadHash?: string;
+
+  @ApiProperty({ description: 'Outbound effect ledger ID being approved', required: false })
+  @IsOptional()
+  @IsString()
+  effectId?: string;
+}
+
+export class ResolveOutboundEffectDto {
+  @ApiProperty({
+    description: 'Target state to reconcile to',
+    enum: ['COMMITTED', 'FAILED', 'CANCELLED'],
+  })
+  @IsIn(['COMMITTED', 'FAILED', 'CANCELLED'])
+  targetState: 'COMMITTED' | 'FAILED' | 'CANCELLED';
+
+  @ApiProperty({ description: 'Reason for manual reconciliation' })
+  @IsString()
+  resolutionReason: string;
 }
 
 export class RuntimeSessionSummaryDto {

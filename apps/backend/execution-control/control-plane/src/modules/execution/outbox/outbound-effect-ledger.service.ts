@@ -413,9 +413,11 @@ export class OutboundEffectLedgerService {
 
   /**
    * Human reconciliation: resolve UNKNOWN into COMMITTED, FAILED, or CANCELLED.
-   * Also permits resolving stale COMMITTING records.
+   * Also permits resolving stale COMMITTING records whose lease has expired.
    */
-  async resolveUnknown(input: ResolveUnknownInput) {
+  async resolveUnknown(input: ResolveUnknownInput & { staleTimeoutMs?: number }) {
+    const staleTimeoutMs = input.staleTimeoutMs || 300_000;
+    const intervalStr = `${Math.max(1, Math.floor(staleTimeoutMs / 1000))} seconds`;
     const rows = await this.prisma.$queryRawUnsafe<Array<any>>(
       `UPDATE outbound_effect_ledgers
           SET state = $2,
@@ -424,12 +426,13 @@ export class OutboundEffectLedgerService {
               resolved_at = NOW(),
               updated_at = NOW()
         WHERE id = $1::uuid
-          AND (state = 'UNKNOWN' OR state = 'COMMITTING')
+          AND (state = 'UNKNOWN' OR (state = 'COMMITTING' AND updated_at < NOW() - $5::interval))
         RETURNING *`,
       input.id,
       input.targetState,
       input.resolutionReason,
-      input.resolvedBy
+      input.resolvedBy,
+      intervalStr
     );
 
     if (rows && rows.length > 0) {
@@ -440,7 +443,7 @@ export class OutboundEffectLedgerService {
       where: { id: input.id },
     });
     throw new Error(
-      `STATE_CONFLICT: Cannot resolve record ${input.id} because current state is '${existing?.state}' (expected 'UNKNOWN' or 'COMMITTING')`
+      `STATE_CONFLICT: Cannot resolve record ${input.id} because current state is '${existing?.state}' (expected 'UNKNOWN' or expired 'COMMITTING')`
     );
   }
 
