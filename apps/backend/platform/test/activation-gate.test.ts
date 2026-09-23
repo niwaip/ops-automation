@@ -4,6 +4,7 @@ describe('Activation Gate (P3 item 4, §10.6)', () => {
   const createRegistry = (over: {
     attestation?: unknown | null;
     versionAttestationId?: string | null;
+    deployment?: unknown | null;
   } = {}) => {
     const prisma = {
       builtinSkill: {
@@ -34,11 +35,11 @@ describe('Activation Gate (P3 item 4, §10.6)', () => {
         findFirst: jest.fn().mockResolvedValue(over.attestation ?? null),
       },
       builtinSkillDeployment: {
-        findFirst: jest.fn().mockResolvedValue({
+        findUnique: jest.fn().mockResolvedValue(over.deployment === undefined ? {
           id: 'deploy-1',
           status: 'healthy',
           smokeTestStatus: 'passed',
-        }),
+        } : over.deployment),
       },
     };
     const auditService = {
@@ -78,6 +79,11 @@ describe('Activation Gate (P3 item 4, §10.6)', () => {
       where: { id: 'att-1' },
     });
     expect(prisma.builtinSkill.update).toHaveBeenCalled();
+    expect(prisma.builtinSkillDeployment.findUnique).toHaveBeenCalledWith({
+      where: { builtinSkillVersionId_environment: {
+        builtinSkillVersionId: 'v12', environment: 'production',
+      } },
+    });
   });
 
   it('blocks activation when the referenced attestation no longer exists (hard gate §10.6)', async () => {
@@ -126,8 +132,17 @@ describe('Activation Gate (P3 item 4, §10.6)', () => {
       builtinSkillId: 'skill-1',
       action: 'activate_version',
       versionId: 'v12',
-      payload: { versionStr: '1.2.0' },
+      payload: { versionStr: '1.2.0', environment: 'production' },
     });
+  });
+
+  it('blocks activation when the target environment has no verified deployment', async () => {
+    const { registry, prisma } = createRegistry({
+      versionAttestationId: 'att-1', attestation: { id: 'att-1' }, deployment: null,
+    });
+    await expect(registry.activateVersion('tavily_search', '1.2.0', 'staging'))
+      .rejects.toThrow('not verified healthy in staging');
+    expect(prisma.builtinSkill.update).not.toHaveBeenCalled();
   });
 
   it('throws NotFoundException for unknown skill or version', async () => {

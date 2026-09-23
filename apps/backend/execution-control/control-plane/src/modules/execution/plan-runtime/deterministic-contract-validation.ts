@@ -4,6 +4,19 @@ import { ContractViolationError } from './contract-violation.error';
 import { LegacyOutputAdapterService } from './legacy-output-adapter.service';
 import { OutputNormalizerService } from './output-normalizer.service';
 
+export function projectLlmOperationInput(
+  step: any,
+  input: Record<string, any>
+): Record<string, any> {
+  const schema = step.inputSchemaJson;
+  if (schema?.additionalProperties !== false || !schema.properties || typeof schema.properties !== 'object') {
+    return input;
+  }
+  return Object.fromEntries(
+    Object.entries(input).filter(([key]) => Object.prototype.hasOwnProperty.call(schema.properties, key))
+  );
+}
+
 export function validateInputContract(
   step: any,
   input: Record<string, any>,

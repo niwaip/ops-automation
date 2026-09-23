@@ -10,6 +10,8 @@
   _涵盖 5 大物理机能平面划分、业务主链（意图 -> 两阶段规划 -> 统一能力 -> 发布门禁 -> 调度执行）、六大核心架构设计模式、技术栈以及工程红线。_
 - **项目架构重塑背景书**：[`project_architecture_redesign.md`](project_architecture_redesign.md)  
   _详细阐述从旧单体分层向机能域驱动演进的根本原因、业务痛点与重塑原则。_
+- **架构治理与生产加固落地指南**：[`architecture-hardening-and-governance-guide.md`](architecture-hardening-and-governance-guide.md)
+  _沉淀自最新代码与配置核验，涵盖五大认知校准、P0~P3 分级重构路线图与关键修改点速查。_
 - **产品化就绪度评估（2026-08-14 快照）**：[`productization-readiness-assessment.md`](productization-readiness-assessment.md)
   _保留当时的风险判断与治理建议；分数、规模和风险现态需重新评估后才能用于发布决策。_
 

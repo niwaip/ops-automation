@@ -26,6 +26,7 @@ import { DeterministicRuntimeSessionCoordinatorService } from './deterministic-r
 import { ExecutionPhaseSyncService } from '../state/execution-phase-sync.service';
 import { CompletionClaimSynthesizerService } from './completion-claim-synthesizer.service';
 import {
+  projectLlmOperationInput,
   validateInputContract,
   validateOutputContract as validateOutputContractValue,
 } from './deterministic-contract-validation';
@@ -496,7 +497,8 @@ export class DeterministicPlanSchedulerService {
     step: any,
     resolvedInput: Record<string, any>
   ): Promise<void> {
-    validateInputContract(step, resolvedInput, execution.id);
+    const operationInput = projectLlmOperationInput(step, resolvedInput);
+    validateInputContract(step, operationInput, execution.id);
     const contractMeta = step.outputContractJson || {};
     const planJson = (execution.plan?.planJson || {}) as any;
     const planNodes = planJson.nodes || [];
@@ -532,7 +534,7 @@ export class DeterministicPlanSchedulerService {
       contractDigest: contractMeta.contractDigest || planNode?.contractDigest || '',
       modelId: contractMeta.modelId || planNode?.modelId,
       environment: 'production',
-      input: resolvedInput,
+      input: operationInput,
       idempotencyKey: step.idempotencyKey || `${execution.id}:${step.id}`,
     });
 

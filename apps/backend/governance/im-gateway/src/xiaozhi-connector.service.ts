@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'crypto';
 import { ImCredentialCipher } from './im-channel.crypto';
 import { IM_GATEWAY_PRISMA, ImGatewayPrismaPort } from './ports';
 import { XiaozhiTaskService } from './xiaozhi-task.service';
-import WebSocket from 'ws';
+import { WebSocket } from 'ws';
 
 const TOOLS = [
   { name: 'ops_submit_task', description: '提交 ops 工作任务，只表示已受理。稍后请查询状态。', inputSchema: { type: 'object', properties: { instruction: { type: 'string', description: '完整任务指令' } }, required: ['instruction'], additionalProperties: false } },
@@ -84,7 +84,11 @@ export class XiaozhiConnectorService implements OnModuleInit, OnModuleDestroy {
       }
       await this.tasks.drain(owned);
     } catch (error) {
-      this.logger.warn(`小智连接巡检失败: ${error instanceof Error ? error.name : 'unknown'}`);
+      const detail =
+        error instanceof Error
+          ? `${error.name}: ${error.message}${error.stack ? `\n${error.stack}` : ''}`
+          : String(error);
+      this.logger.warn(`小智连接巡检失败: ${detail}`);
     } finally { this.reconciling = false; }
   }
 

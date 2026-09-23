@@ -12,4 +12,5 @@ export * from './xiaozhi-channel.service';
 export * from './xiaozhi-connector.service';
 export * from './xiaozhi-task.service';
 export * from './channel-task-gateway.service';
+export * from './runtime-retry-scheduler';
 export * from './im-channel.module';

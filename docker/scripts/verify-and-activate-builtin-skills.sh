@@ -56,6 +56,6 @@ fi
 
 cd "$REPO_ROOT/apps/backend/platform"
 BUILTIN_SKILL_PROVISION_SKIP_SMOKE="false" \
-pnpm exec ts-node src/commands/builtin-skill-provision.command.ts "${TARGET}" full
+pnpm exec ts-node src/commands/builtin-skill-provision.command.ts "${TARGET}" full --activate
 
 log "Direct verification and activation complete."

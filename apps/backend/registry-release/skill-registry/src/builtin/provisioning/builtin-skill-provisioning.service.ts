@@ -382,10 +382,6 @@ export class BuiltinSkillProvisioningService {
       if (fs.existsSync(path.join(resolved, 'manifest.yaml'))) {
         return [resolved];
       }
-      const subBundles = findBundlesInDir(resolved);
-      if (subBundles.length > 0) {
-        return subBundles;
-      }
     }
 
     const searchRoots = [
@@ -402,11 +398,19 @@ export class BuiltinSkillProvisioningService {
     for (const root of searchRoots) {
       const bundles = findBundlesInDir(root);
       if (bundles.length > 0) {
-        return bundles;
+        if (!targetArg || targetArg === 'all') return bundles;
+        const matched = bundles.filter((bundleDir) =>
+          path.basename(bundleDir) === targetArg || path.resolve(bundleDir) === path.resolve(targetArg)
+        );
+        if (matched.length === 1) return matched;
       }
     }
 
-    return [];
+    throw new BadRequestException(
+      targetArg && targetArg !== 'all'
+        ? `Built-in skill bundle '${targetArg}' not found; no other bundles were selected`
+        : 'No built-in skill bundles found'
+    );
   }
 
   public async verifyAndActivateAll(
@@ -428,7 +432,8 @@ export class BuiltinSkillProvisioningService {
         const result = await this.provisionBundle(bundleDir, environment);
         await this.registryService.activateVersion(
           result.skill.capabilityKey,
-          result.version.definitionVersion
+          result.version.definitionVersion,
+          environment
         );
         succeeded.push(`${result.skill.capabilityKey}@${result.version.definitionVersion}`);
         this.logger.log(

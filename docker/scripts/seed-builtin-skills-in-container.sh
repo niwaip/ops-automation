@@ -35,7 +35,6 @@ ensure_dependencies
 
 cd "$REPO_ROOT/apps/backend/platform"
 
-BUILTIN_SKILL_AUTO_ACTIVATE="${BUILTIN_SKILL_AUTO_ACTIVATE:-true}" \
 BUILTIN_SKILL_PROVISION_SKIP_SMOKE="${BUILTIN_SKILL_PROVISION_SKIP_SMOKE:-true}" \
 pnpm exec ts-node src/commands/builtin-skill-provision.command.ts all bootstrap
 

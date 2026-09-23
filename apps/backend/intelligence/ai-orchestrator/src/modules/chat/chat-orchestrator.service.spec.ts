@@ -1,6 +1,7 @@
 import { ControlPlaneClient } from '../../client/control-plane.client';
 import { StreamEventType } from '../react-engine/interfaces';
 import { ChatOrchestratorService } from './chat-orchestrator.service';
+import { shouldRouteImageToNativeModel } from './chat-multimodal-routing';
 
 describe('ChatOrchestratorService', () => {
   const createAsyncGenerator = <T>(events: T[]) =>
@@ -1054,6 +1055,88 @@ describe('ChatOrchestratorService', () => {
     expect(resultEvent.data.status).toBe('completed');
     expect(resultEvent.data.executed).toBe(true);
     expect(resultEvent.content).toContain('def quicksort');
+  });
+
+  it('passes a new image upload to a vision model without binding an older task result', async () => {
+    const base = createDeterministicService();
+    base.chatConversationService.getLatestCompletedTaskResult.mockResolvedValue({
+      executionId: 'older-search',
+      summaryText: 'Unrelated search result',
+    });
+    const imageContent = [{ type: 'text', text: 'Describe the image' }, { type: 'image_url', image_url: { url: 'data:image/png;base64,iVBORw0KGgo=' } }];
+    const media = { buildMessageContent: jest.fn().mockResolvedValue(imageContent) };
+    const model = {
+      resolveModelEntity: jest.fn().mockReturnValue({ id: 'text-model' }),
+      isVisionCapableModel: jest.fn((candidate: { id: string }) => candidate.id === 'vision-model'),
+      getPreferredVisionModel: jest.fn().mockReturnValue({ id: 'vision-model' }),
+      callModelStreamWithMessages: jest.fn().mockImplementation(
+        async (_id: string, _messages: unknown[], onChunk: (chunk: string) => void) => {
+          onChunk('A diagram is shown.');
+          return { usage: { total_tokens: 12 } };
+        }
+      ),
+    };
+    const conversation = {
+      ...base.chatConversationService,
+      resolvePreferredChatModelId: jest.fn().mockReturnValue('text-model'),
+      isThinkingEnabled: jest.fn().mockReturnValue(false),
+      resolveReasoningConfig: jest.fn().mockResolvedValue({ enabled: false }),
+      buildConversationMessages: jest.fn().mockImplementation(async (_session: string, _system: string, content: unknown) => [
+        { role: 'user', content },
+      ]),
+      getVisibleChatContent: jest.fn((content: string) => content),
+    };
+    const service = new ChatOrchestratorService(
+      base.controlPlaneClient as any,
+      base.reactEngineService as any,
+      base.plannerService as any,
+      { isPromptDebugEnabled: () => false } as any,
+      base.waitingInputService as any,
+      base.executionStreamService as any,
+      conversation as any,
+      base.deterministicTaskExecutionService as any,
+      base.skillCacheService as any,
+      undefined, undefined, undefined, undefined, undefined,
+      model as any,
+      media as any
+    );
+    const files = [{ fileId: 'image-1', fileName: 'upload.png', mimeType: 'image/png', size: 20 }];
+    const events: any[] = [];
+    for await (const event of service.handleTaskMode(
+      { message: 'Describe the image', sessionId: 'image-session', files, modelId: 'text-model' },
+      { sessionId: 'image-session', userId: 'user-1', userRoles: ['employee'], traceId: 'image-trace', history: [], uploadedFiles: files },
+      'Bearer token'
+    )) events.push(event);
+
+    expect(base.deterministicTaskExecutionService.executeDeterministicTask).not.toHaveBeenCalled();
+    expect(base.chatConversationService.getLatestCompletedTaskResult).not.toHaveBeenCalled();
+    expect(media.buildMessageContent).toHaveBeenCalledWith('Describe the image', files, { userId: 'user-1' });
+    expect(model.callModelStreamWithMessages).toHaveBeenCalledWith(
+      'vision-model',
+      [{ role: 'user', content: imageContent }],
+      expect.any(Function),
+      expect.any(Object)
+    );
+    expect(events.at(-1)).toEqual(expect.objectContaining({ type: StreamEventType.RESULT, content: 'A diagram is shown.' }));
+
+    media.buildMessageContent.mockResolvedValueOnce([{ type: 'text', text: 'Describe the image' }]);
+    const missingImageEvents: any[] = [];
+    for await (const event of service.handleTaskMode(
+      { message: 'Describe the image', sessionId: 'image-session', files, modelId: 'text-model' },
+      { sessionId: 'image-session', userId: 'user-1', userRoles: ['employee'], traceId: 'image-trace-2', history: [], uploadedFiles: files },
+      'Bearer token'
+    )) missingImageEvents.push(event);
+    expect(missingImageEvents.at(-1)).toEqual(expect.objectContaining({ type: StreamEventType.ERROR }));
+    expect(model.callModelStreamWithMessages).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps image requests requiring tools in the planning path', () => {
+    const files = [{ fileId: 'image-1', fileName: 'upload.png', mimeType: 'image/png', size: 20 }];
+    expect(shouldRouteImageToNativeModel({ message: '查看图片内容', files })).toBe(true);
+    expect(shouldRouteImageToNativeModel({ message: 'Analyze and export a PDF', files })).toBe(false);
+    expect(shouldRouteImageToNativeModel({ message: '搜索图片相关资料', files })).toBe(false);
+    expect(shouldRouteImageToNativeModel({ message: 'Describe the image', files, webSearch: true })).toBe(false);
+    expect(shouldRouteImageToNativeModel({ message: 'Describe the image', files, externalMutation: true })).toBe(false);
   });
 
   it('safely rejects with CAPABILITY_NOT_FOUND when task explicitly demands unintegrated external mutation', async () => {

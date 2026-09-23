@@ -5,12 +5,13 @@ import { BuiltinSkillRegistryService } from '@ops/skill-registry/builtin';
 async function bootstrap() {
   const args = process.argv.slice(2);
   if (args.length < 2) {
-    console.error('Usage: ts-node builtin-skill-activate.command.ts <capabilityKey> <version>');
+    console.error('Usage: ts-node builtin-skill-activate.command.ts <capabilityKey> <version> [environment]');
     process.exit(1);
   }
 
   const capabilityKey = args[0];
   const targetVersion = args[1];
+  const environment = args[2] || 'production';
 
   const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error', 'warn', 'log'] });
   const registryService = app.get(BuiltinSkillRegistryService);
@@ -29,15 +30,7 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  const targetVerObj = version as any;
-  const isHealthy = targetVerObj.deployments ? targetVerObj.deployments.some((d: any) => d.status === 'healthy' || d.status === 'deployed') : true;
-  if (!isHealthy) {
-    console.error(`Cannot activate version '${targetVersion}': Deployment status is not healthy`);
-    await app.close();
-    process.exit(1);
-  }
-
-  await registryService.activateVersion(capabilityKey, targetVersion);
+  await registryService.activateVersion(capabilityKey, targetVersion, environment);
   console.log(`Successfully activated Built-in Skill '${capabilityKey}' version '${targetVersion}'`);
 
   await app.close();

@@ -125,14 +125,14 @@ platform.<domain>.<action>/
 平台通过 `apps/backend/platform/src/commands/` 提供了内置能力的完整运维工具链：
 
 ### 1. 预置导入能力包到数据库 (Provision)
-将指定能力包验证哈希、执行冒烟测试并入库注册：
+将指定能力包验证哈希、执行冒烟测试并入库注册。默认只暂存版本，不切换活动版本；目标必须是精确能力 key 或能力包路径，错误目标会直接失败：
 ```bash
 # 从仓库根目录执行
-pnpm --filter @ops/platform exec ts-node src/commands/builtin-skill-provision.command.ts builtin-skills/platform.search.web full
+pnpm --filter @ops/platform exec ts-node src/commands/builtin-skill-provision.command.ts platform.search.web production
 ```
 
 ### 2. 导出数据库中的能力为包 (Export)
-将数据库中已激活的能力版本逆向导出为标准 Bundle：
+从与数据库中活动版本摘要相符的源能力包复制完整 Bundle（含 fixtures 和原 lock）。若源码已更新，第三个参数可指定旧版能力包目录；找不到匹配源码时导出失败：
 ```bash
 pnpm --filter @ops/platform exec ts-node src/commands/builtin-skill-export.command.ts platform.search.web ./exported-skills/platform.search.web
 ```
@@ -140,10 +140,10 @@ pnpm --filter @ops/platform exec ts-node src/commands/builtin-skill-export.comma
 ### 3. 激活与版本回滚 (Activate & Rollback)
 ```bash
 # 激活指定版本
-pnpm --filter @ops/platform exec ts-node src/commands/builtin-skill-activate.command.ts platform.search.web 1.0.4
+pnpm --filter @ops/platform exec ts-node src/commands/builtin-skill-activate.command.ts platform.search.web 1.0.4 production
 
 # 回滚到上一稳定版本
-pnpm --filter @ops/platform exec ts-node src/commands/builtin-skill-rollback.command.ts platform.search.web
+pnpm --filter @ops/platform exec ts-node src/commands/builtin-skill-rollback.command.ts platform.search.web 1.0.3 production
 ```
 
 ### 4. 自动化锁与完整性校验测试
@@ -176,5 +176,7 @@ pnpm --filter @ops/platform test test/email-builtin-skill-bundle.test.ts
    计算各文件 SHA-256 指纹及整包 `definitionDigest`，写入 `bundle-lock.json`。
 6. **编写单元测试**：
    在 `apps/backend/platform/test/` 下添加针对该 bundle 的测试，确保 CI/CD 自动拦截文件篡改与配置漂移。
-7. **执行 Provision**：
-   在发布脚本或本地环境运行 `builtin-skill-provision.command.ts` 导入数据库生效。
+7. **暂存并激活**：
+   运行 `builtin-skill-provision.command.ts <key> production` 验证并暂存，再运行 `builtin-skill-activate.command.ts <key> <version> production` 显式激活。激活要求目标环境存在健康且烟测通过的部署记录。也可在 provision 命令末尾添加 `--activate` 一次完成。平台启动时仅在 `AUTO_ACTIVATE_BUILTIN_SKILLS=true` 时自动批量验证激活。
+
+更新已有能力时递增 `definitionVersion`、重算整包 lock，仅指定该能力 key。若修改 Handler 实现，必须部署对应服务并完成烟测后再激活；当前版本切换只切换能力声明，不会自动切换已部署的 Handler 代码。

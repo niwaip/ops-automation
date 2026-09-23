@@ -6,6 +6,7 @@ export const ROUTING_SIGNAL_GROUPS = [
   'webSource',
   'artifact',
   'search',
+  'externalSearch',
   'summarize',
   'markdown',
   'uncoveredAction',

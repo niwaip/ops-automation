@@ -24,6 +24,7 @@ import {
   ImInteractionResolution,
 } from './im-interaction.resolver';
 import { getWechatMediaType, resolveUserFilePath } from './im-channel-file-path';
+import { RuntimeRetryScheduler } from './runtime-retry-scheduler';
 export type { ImInteractionResolution } from './im-interaction.resolver';
 
 type Credential = { token: string; baseUrl: string; ownerUserId: string };
@@ -70,6 +71,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
   private static readonly STAGED_MEDIA_TTL_MS = 15 * 60 * 1000;
   private readonly mediaAdapter: WechatMediaAdapter;
   private readonly outboundQueue: WechatOutboundQueueService;
+  private readonly runtimeRetry: RuntimeRetryScheduler;
   private readonly maxActiveConnections = Number(
     process.env.IM_CHANNEL_MAX_ACTIVE_CONNECTIONS ?? 100
   );
@@ -80,10 +82,12 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     private readonly wechat: WechatIlinkClient,
     @Optional() mediaAdapter?: WechatMediaAdapter,
     @Optional() outboundQueue?: WechatOutboundQueueService,
-    @Optional() private readonly taskGateway?: ChannelTaskGatewayService
+    @Optional() private readonly taskGateway?: ChannelTaskGatewayService,
+    @Optional() runtimeRetry?: RuntimeRetryScheduler
   ) {
     this.mediaAdapter = mediaAdapter ?? new WechatMediaAdapter();
     this.outboundQueue = outboundQueue ?? new WechatOutboundQueueService();
+    this.runtimeRetry = runtimeRetry ?? new RuntimeRetryScheduler();
   }
 
   async onModuleInit() {
@@ -100,6 +104,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
   onModuleDestroy() {
     for (const attempt of this.provisioning.values()) attempt.controller.abort();
     for (const runtime of this.runtimes.values()) runtime.abort();
+    this.runtimeRetry.resetAll();
     this.stagedMedia.clear();
     this.latestContextTokens.clear();
   }
@@ -396,6 +401,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async stopRuntime(connectionId: string, notifyProvider = false) {
+    this.runtimeRetry.reset(connectionId);
     this.runtimes.get(connectionId)?.abort();
     this.runtimes.delete(connectionId);
     this.stagedMedia.delete(connectionId);
@@ -420,14 +426,19 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
     if (this.runtimes.has(connectionId)) return;
     const controller = new AbortController();
     this.runtimes.set(connectionId, controller);
+    let credentialReadAttempted = false;
+    let credentialResolved = false;
+    let reconnectAfterError: string | undefined;
     try {
       const connection = await this.prisma.imChannelConnection.findUnique({
         where: { id: connectionId },
       });
       if (!connection?.enabled || !connection.encryptedCredential) return;
+      credentialReadAttempted = true;
       const credential = JSON.parse(
         this.cipher.decrypt(connection.encryptedCredential)
       ) as Credential;
+      credentialResolved = true;
       if (connection.contextToken) {
         this.latestContextTokens.set(connectionId, connection.contextToken);
       }
@@ -454,6 +465,7 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
             controller.signal
           );
           consecutiveErrors = 0;
+          this.runtimeRetry.reset(connectionId);
         } catch (pollErr) {
           if (controller.signal.aborted) break;
           consecutiveErrors++;
@@ -511,16 +523,41 @@ export class ImChannelService implements OnModuleInit, OnModuleDestroy {
       if (!controller.signal.aborted) {
         const message = error instanceof Error ? error.message : String(error);
         this.logger.error(`WeChat runtime ${connectionId} stopped: ${message}`);
-        await this.prisma.imChannelConnection.updateMany({
-          where: { id: connectionId },
-          data: {
-            status: message.includes('失效') ? 'reauth_required' : 'error',
-            lastError: message,
-          },
-        });
+        const requiresReauth =
+          message.includes('失效') || (credentialReadAttempted && !credentialResolved);
+        if (requiresReauth) {
+          await this.prisma.imChannelConnection.updateMany({
+            where: { id: connectionId },
+            data: { status: 'reauth_required', lastError: message },
+          });
+        } else {
+          reconnectAfterError = message;
+        }
       }
     } finally {
       if (this.runtimes.get(connectionId) === controller) this.runtimes.delete(connectionId);
+      if (reconnectAfterError && !controller.signal.aborted) {
+        const retry = this.runtimeRetry.schedule(connectionId, async () => {
+          const current = await this.prisma.imChannelConnection.findUnique({
+            where: { id: connectionId },
+          });
+          if (!current?.enabled || !current.encryptedCredential) {
+            this.runtimeRetry.reset(connectionId);
+            return;
+          }
+          await this.startRuntime(connectionId);
+        });
+        await this.prisma.imChannelConnection.updateMany({
+          where: { id: connectionId },
+          data: {
+            status: 'connecting',
+            lastError: `连接中断，系统将在 ${Math.ceil(retry.delayMs / 1000)} 秒后自动重连：${reconnectAfterError}`,
+          },
+        });
+        this.logger.warn(
+          `Scheduled WeChat reconnect for ${connectionId} in ${retry.delayMs}ms (attempt ${retry.attempt})`
+        );
+      }
     }
   }
 

@@ -62,7 +62,7 @@ async function bootstrap() {
     logger.log(`Platform Service running on port ${port} (IPv4)`);
 
     // Background self-activation of untested builtin skills once service is listening
-    if (process.env.AUTO_ACTIVATE_BUILTIN_SKILLS !== 'false') {
+    if (process.env.AUTO_ACTIVATE_BUILTIN_SKILLS === 'true') {
       setTimeout(async () => {
         try {
           const provisioningService = app.get(BuiltinSkillProvisioningService, { strict: false });
