@@ -4,23 +4,34 @@ import {
   ContainerHandle,
   ContainerInspectData,
   IContainerDriver,
+  DriverMetadata,
 } from './container-driver.interface';
 
 @Injectable()
 export class DockerodeContainerDriver implements IContainerDriver {
   private readonly docker: Docker;
+  private readonly socketPath: string;
 
   constructor(options?: { socketPath?: string } | Docker) {
     if (options && typeof (options as any).getContainer === 'function') {
       this.docker = options as Docker;
+      this.socketPath = (options as any)?.modem?.socketPath || '/var/run/docker.sock';
     } else {
-      const socketPath =
+      this.socketPath =
         (options as any)?.socketPath ||
         process.env.DOCKER_SOCKET_PATH ||
         process.env.DOCKER_SOCK ||
         '/var/run/docker.sock';
-      this.docker = new Docker({ socketPath });
+      this.docker = new Docker({ socketPath: this.socketPath });
     }
+  }
+
+  getMetadata(): DriverMetadata {
+    return {
+      driverType: 'dockerode',
+      isRemote: false,
+      socketOrEndpoint: this.socketPath,
+    };
   }
 
   getRawDocker(): Docker {

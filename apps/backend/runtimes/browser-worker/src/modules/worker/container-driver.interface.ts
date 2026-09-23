@@ -26,9 +26,18 @@ export interface ContainerHandle {
   [key: string]: unknown;
 }
 
+export const CONTAINER_DRIVER = 'CONTAINER_DRIVER';
+
+export interface DriverMetadata {
+  driverType: 'dockerode' | 'kubernetes' | 'mock' | string;
+  isRemote: boolean;
+  socketOrEndpoint?: string;
+}
+
 export interface IContainerDriver {
   getContainer(idOrName: string): ContainerHandle;
   createContainer(options: Record<string, unknown>): Promise<ContainerHandle>;
   listContainers(options?: { all?: boolean; filters?: Record<string, string[] | string> }): Promise<any[]>;
   ping?(): Promise<boolean>;
+  getMetadata?(): DriverMetadata;
 }

@@ -5,6 +5,7 @@ import {
   OnModuleDestroy,
   OnModuleInit,
   Optional,
+  Inject,
 } from '@nestjs/common';
 import * as http from 'http';
 import * as path from 'path';
@@ -16,7 +17,7 @@ import {
   WorkerEndpointsDto,
 } from '../../dto';
 import { getPublicHost, getSessionBrokerUrl } from '../../config/service-endpoints';
-import { IContainerDriver } from './container-driver.interface';
+import { IContainerDriver, CONTAINER_DRIVER } from './container-driver.interface';
 import { DockerodeContainerDriver } from './dockerode-container.driver';
 
 const DEFAULT_DOCKER_SOCKET_PATH = '/var/run/docker.sock';
@@ -55,7 +56,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
     process.env.DOCKER_SOCKET_PATH || process.env.DOCKER_SOCK || DEFAULT_DOCKER_SOCKET_PATH;
   private readonly docker: IContainerDriver;
 
-  constructor(@Optional() containerDriver?: IContainerDriver) {
+  constructor(@Optional() @Inject(CONTAINER_DRIVER) containerDriver?: IContainerDriver) {
     this.docker =
       containerDriver || new DockerodeContainerDriver({ socketPath: this.dockerSocketPath });
   }

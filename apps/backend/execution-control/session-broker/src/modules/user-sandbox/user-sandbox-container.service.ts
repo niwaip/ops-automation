@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
   Optional,
+  Inject,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import {
@@ -12,7 +13,7 @@ import {
   UserSandboxLaunchOptions,
 } from './user-sandbox.interface';
 import { UserSandboxStorageService } from './user-sandbox-storage.service';
-import { IContainerDriver, ContainerHandle } from './container-driver.interface';
+import { IContainerDriver, ContainerHandle, CONTAINER_DRIVER } from './container-driver.interface';
 import { DockerodeContainerDriver } from './dockerode-container.driver';
 
 const DEFAULT_DOCKER_SOCKET = '/var/run/docker.sock';
@@ -41,7 +42,7 @@ export class UserSandboxContainerService {
 
   constructor(
     private readonly storageService: UserSandboxStorageService,
-    @Optional() containerDriver?: IContainerDriver,
+    @Optional() @Inject(CONTAINER_DRIVER) containerDriver?: IContainerDriver,
   ) {
     const socketPath = process.env.DOCKER_SOCKET_PATH || process.env.DOCKER_SOCK || DEFAULT_DOCKER_SOCKET;
     this.docker = containerDriver || new DockerodeContainerDriver({ socketPath });

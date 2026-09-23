@@ -14,6 +14,11 @@ interface TestSummary {
     recoveredBy: string;
     pass: boolean;
   };
+  outboxLeaseRecoveryResult: {
+    recoveredBy: string;
+    attempts: number;
+    pass: boolean;
+  };
   poisonIsolationResult: {
     quarantinedCount: number;
     pass: boolean;
@@ -238,7 +243,78 @@ export async function runScheduleConcurrencyVerification(
     console.log(`[Phase 3 Result] Skipped by normal claims: ${skippedByClaim}`);
     console.log(`[Phase 3 Result] Quarantined to dead letter: ${quarantinedCount} items`);
     console.log(`[Phase 3 Gate] ${poisonPass ? '✓ PASSED' : '✗ FAILED'}`);
+    console.log('------------------------------------------------------------------------');
+
+    if (!poisonPass) {
+      throw new Error('Phase 3 poison quarantine test failed assertion.');
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. Execution Outbox Crash Lease Recovery & SKIP LOCKED Reclaim
+    // -------------------------------------------------------------------------
+    console.log('[Phase 4] Testing Execution Outbox lease crash recovery with SKIP LOCKED...');
+    const outboxRecoveryId = randomUUID();
+    createdOutboxIds.push(outboxRecoveryId);
+
+    // Insert pending outbox event
+    await client.query(
+      `INSERT INTO execution_outbox
+         (id, aggregate_type, aggregate_id, event_type, payload_json, attempts, available_at)
+       VALUES
+         ($1::uuid, 'execution', $2::uuid, 'execution.step.execute', $3::jsonb, 0, NOW() - INTERVAL '30 seconds')`,
+      [outboxRecoveryId, randomUUID(), JSON.stringify({ executionId: randomUUID(), stepId: 'step-1' })]
+    );
+
+    // Worker 1 claims it but crashes, leaving an expired lease
+    await client.query(
+      `UPDATE execution_outbox
+          SET claimed_by = 'dispatcher-crashed-node-1',
+              lease_expires_at = NOW() - INTERVAL '15 seconds',
+              attempts = 1
+        WHERE id = $1::uuid`,
+      [outboxRecoveryId]
+    );
+
+    console.log('[Phase 4] Healthy Dispatcher 2 attempting atomic claim over expired outbox lease...');
+
+    // Worker 2 attempts atomic claim using exact query from ExecutionOutboxService.claimBatch
+    const outboxClaimRes = await client.query(
+      `WITH candidates AS (
+         SELECT id
+           FROM execution_outbox
+          WHERE published_at IS NULL
+            AND available_at <= NOW()
+            AND (lease_expires_at IS NULL OR lease_expires_at < NOW())
+            AND attempts < 10
+            AND id = $1::uuid
+          ORDER BY available_at ASC, created_at ASC
+          FOR UPDATE SKIP LOCKED
+          LIMIT 1
+       )
+       UPDATE execution_outbox AS outbox
+          SET claimed_by = 'dispatcher-healthy-node-2',
+              lease_expires_at = NOW() + INTERVAL '30 seconds',
+              attempts = attempts + 1
+         FROM candidates
+        WHERE outbox.id = candidates.id
+       RETURNING outbox.id, outbox.claimed_by, outbox.attempts, outbox.lease_expires_at`,
+      [outboxRecoveryId]
+    );
+
+    const outboxRecoveredBy = outboxClaimRes.rows[0]?.claimed_by || 'NONE';
+    const outboxAttempts = outboxClaimRes.rows[0]?.attempts || 0;
+    const outboxLeasePass =
+      outboxClaimRes.rows.length === 1 &&
+      outboxRecoveredBy === 'dispatcher-healthy-node-2' &&
+      outboxAttempts === 2;
+
+    console.log(`[Phase 4 Result] Outbox lease recovered by: ${outboxRecoveredBy}, attempts: ${outboxAttempts}`);
+    console.log(`[Phase 4 Gate] ${outboxLeasePass ? '✓ PASSED' : '✗ FAILED'}`);
     console.log('========================================================================');
+
+    if (!outboxLeasePass) {
+      throw new Error('Phase 4 Execution Outbox lease recovery test failed assertion.');
+    }
 
     return {
       concurrencyResult: {
@@ -252,6 +328,11 @@ export async function runScheduleConcurrencyVerification(
       leaseRecoveryResult: {
         recoveredBy,
         pass: leasePass,
+      },
+      outboxLeaseRecoveryResult: {
+        recoveredBy: outboxRecoveredBy,
+        attempts: outboxAttempts,
+        pass: outboxLeasePass,
       },
       poisonIsolationResult: {
         quarantinedCount,
@@ -283,6 +364,7 @@ if (require.main === module) {
       if (
         summary.concurrencyResult.pass &&
         summary.leaseRecoveryResult.pass &&
+        summary.outboxLeaseRecoveryResult.pass &&
         summary.poisonIsolationResult.pass
       ) {
         console.log('[SUCCESS] All PostgreSQL concurrency and resilience checks passed 100%!');

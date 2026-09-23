@@ -11,6 +11,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 node "$REPO_ROOT/database/scripts/validate-migration-authority.mjs"
 bash "$SCRIPT_DIR/apply-latest-db-schema-in-container.sh"
 bash "$SCRIPT_DIR/apply-ai-orchestrator-db-schema-in-container.sh"
+bash "$SCRIPT_DIR/apply-capability-db-schema-in-container.sh"
 
 if [[ -f "$SCRIPT_DIR/seed-builtin-skills-in-container.sh" ]]; then
   bash "$SCRIPT_DIR/seed-builtin-skills-in-container.sh" || {

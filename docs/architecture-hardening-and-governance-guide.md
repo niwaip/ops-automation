@@ -1,7 +1,7 @@
 # 架构治理与生产加固落地指南 (Architecture Hardening & Governance Guide)
 
-> 版本：v1.5（2026-09 架构治理与全面代码加固闭环版）  
-> 状态：In Progress / Code Hardening Complete, Production Acceptance Pending (代码级全部 P0/P1/P2/P3 加固与治理整改已闭环，待准生产环境实机联调与验收)  
+> 版本：v1.5（2026-09 架构治理与阶段性加固校准版）  
+> 状态：In Progress / Core Hardening Partially Complete / Production Acceptance Pending (核心 P0/P1 代码级加固与迁移治理就绪，部分 P1 观测/P2 领域下沉/P3 云原生演进与 Staging 实机验收推进中)  
 > 适用对象：平台核心架构师、后端研发团队、基础架构与运维工程师  
 > 关联事实源：[`PROJECT_OVERVIEW.md`](PROJECT_OVERVIEW.md)、[`project_architecture_redesign.md`](project_architecture_redesign.md)、[`schema-ownership.json`](../database/schema-ownership.json)
 
@@ -339,22 +339,29 @@ pnpm run validate:outbound-side-effects
   - `ExecutionOutboxService` 支持 `maxAttempts`（默认 10）阈值隔离，提供 `markDeadLetter` 与 `quarantinePoisonMessages`；
   - `ExecutionDispatcherService` 在消费 Outbox 事件及恢复定时扫描时，对超限毒丸消息（`attempts >= maxAttempts`）安全移入死信并记录结构化错误，杜绝反复消费卡死队列；
   - `ScheduleFireDispatcherService` 增加对失败 ScheduleFire 记录的毒丸重试上限检查与死信隔离。
-- [x] **[P1] OpenTelemetry Consumer Span 语义与 Span Link 批量扇出规范落地 (ADR-002)**：
-  - 新增 `consumer-span.ts` 通用追踪工具，提供规范的 OpenTelemetry `ConsumerSpanContext`、`createConsumerSpan`、`formatStructuredSpanLog` 以及多事件扇出的 `SpanLink` 结构；
-  - `ExecutionDispatcherService` 与 `ScheduleFireDispatcherService` 消费时统一基于上游 traceparent 派生 Consumer Span，多事件处理时通过 Span Link 关联各自独立的上下文。
-- [x] **[P1] Durable Scheduler 真实 PostgreSQL 50 并发压测与租约恢复实测闭环 (ADR-001/003)**：
-  - 编写专用验证套件 `scripts/verify-schedule-fire-concurrency.ts`，基于真实 PostgreSQL 容器直连运行；
-  - 实测验证 50 并发抢占单 Slot 产生唯一 ScheduleFire 记录、进程异常崩溃注入下的 Lease 超时自动回收、以及反复抛错超限的 Poison Message 隔离死信能力（3/3 测试 100% 通过）。
-- [x] **[P2] 生产数据库迁移治理与能力层 Prisma 迁移基线收敛 (ADR-004)**：
+- [ ] **[P1 阶段一完成 / 阶段二待办] W3C Trace 链路闭环与 OpenTelemetry 观测演进 (ADR-002)**：
+  - 阶段一（已完成）：`consumer-span.ts` 规范化 W3C Trace Context 派生、Consumer Span 语义与批量扇出 `SpanLink` 结构化日志对象；在 `ExecutionDispatcherService` 与 `ScheduleFireDispatcherService` 消费链路中完成注入与日志透传；
+  - 阶段二（待办）：引入正式 OpenTelemetry SDK、Tracer Provider、`startSpan()` 与 APM OTLP Exporter，实现真正的分布式 APM 导出闭环。
+- [x] **[P1] Durable Scheduler 真实 PostgreSQL 50 并发压测与 Outbox 租约崩溃恢复实测闭环 (ADR-001/003)**：
+  - 编写专用验证套件 `scripts/verify-schedule-fire-concurrency.ts`，基于真实本地 PostgreSQL 容器直连运行；
+  - 实测验证：
+    1. 50 并发抢占单 Slot 产生唯一 ScheduleFire 记录（49 个冲突安全捕获并退出）；
+    2. ScheduleFire Worker 崩溃注入下的 Lease 超时自动回收；
+    3. 反复抛错超限的 Poison Message 隔离死信能力；
+    4. **Execution Outbox 真实租约恢复**：Worker 1 领取后崩溃留存过期租约，Worker 2 通过 `(lease_expires_at < NOW()) FOR UPDATE SKIP LOCKED` 原子成功夺取接管，4/4 测试 100% 绿灯通过。
+- [x] **[P2] 生产数据库迁移治理与能力层 Prisma Baseline 自动接管 (ADR-004)**：
   - 彻底清理生产与基础 Compose 配置中各微服务容器内违规使用的 `prisma db push`；
-  - 为 `browser-template`、`browser-semantics`、`report`、`carbone-engine` 创建标准 `0_baseline/migration.sql` 初始迁移；
-  - 升级 `docker/scripts/run-production-schema-migrations.sh`，实现全平台与各能力域的统一受控迁移部署。
-- [x] **[P2] CdpExecutor 绞杀者模式重构（巨石拆解 $\le 200$ 行门禁达标） (ADR-005)**：
-  - 采用绞杀者模式将原 1,174 行的巨石文件 `cdp.executor.ts` 深度解耦拆分为门面服务与三个高内聚子服务：`CdpStepRunnerService`（步骤分发与重试）、`CdpLoopRunnerService`（微观列表与分页遍历）、`CdpWorkerClientService`（HTTP Worker 客户端适配与日志脱敏）；
-  - `cdp.executor.ts` 源码压缩至 186 行（严格符合 $\le 200$ 行门禁），8 套单元测试 58 个测试用例 100% 绿色通过。
-- [x] **[P3] Container Runtime Driver 容器驱动抽象解耦（Dockerode 隔离与适配）**：
-  - 建立统一的 `IContainerDriver` 与 `ContainerHandle` 驱动接口抽象；
-  - 在 `browser-worker` 与 `session-broker` 用户沙箱模块中消除对底层 `dockerode` 库的硬依赖耦合，提供 `DockerodeContainerDriver` 标准适配并支持无缝替换/Mock 测试。
+  - 为 `browser-template`、`browser-semantics`、`report`、`carbone-engine` 创建标准 `0_baseline/migration.sql` 初始迁移基线；
+  - 新增 `docker/scripts/apply-capability-db-schema-in-container.sh`，在全新空库直接部署迁移，在既有非空库中自动拦截 `P3005` 并执行 `migrate resolve --applied 0_baseline` 实现安全 Baseline 接管；
+  - 贯通接入 `apply-all-db-schema-in-container.sh`（开发冷启动）与 `run-production-schema-migrations.sh`（生产 Release Job），双向通过实测。
+- [ ] **[P2 阶段一完成 / 阶段二进行中] CdpExecutor 绞杀者模式重构与领域归位 (ADR-005)**：
+  - 阶段一（已完成）：采用绞杀者模式将原 1,174 行的巨石文件 `cdp.executor.ts` 在 `session-broker` 内拆分为门面服务与三个高内聚子服务（`CdpStepRunnerService` 498 行、`CdpLoopRunnerService` 360 行、`CdpWorkerClientService` 181 行），门面压缩至 186 行（$\le 200$ 行门禁达标），8 套测试 58 个用例通过；
+  - 阶段二/三（待办）：微观循环物理下沉至 Browser Domain / Worker 独立进程运行，补充 5 秒租约心跳、检查点持久化与 `AbortSignal` 取消传播。
+- [ ] **[P2] Capability SDK 业务调用链收敛与 Registry 统一**：
+  - `@ops/capability-sdk` 基础设施已具备，但业务调用链尚存遗留 `builtin-handler-registry` 硬编码（如 `platform.search.web`），旧注册表尚未完全退役，保持推进中。
+- [ ] **[P3 阶段一完成 / 演进中] Container Runtime Driver 容器驱动抽象解耦**：
+  - 阶段一（已完成）：建立 `IContainerDriver` 与 `ContainerHandle` 统一抽象，在 `browser-worker` 与 `session-broker` 用户沙箱模块解除底层 `dockerode` 硬依赖，规范定义 `CONTAINER_DRIVER` NestJS 依赖注入 Token 并注册 Provider；
+  - 阶段二（待办）：实现 Kubernetes CRI 驱动接入、超时自动回收及容器健康度指标导出。
 - [ ] **准生产环境（Staging）实机部署与端到端链路验收**：待真实多实例部署、Staging 跨容器网络与第三方邮件 Provider 故障注入演练通过后，方可升级为正式 Ready for Production。
 
 ---
