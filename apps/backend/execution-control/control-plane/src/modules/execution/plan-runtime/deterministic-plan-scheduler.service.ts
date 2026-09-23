@@ -33,8 +33,10 @@ import {
 import {
   extractArtifacts,
   extractFinalOutputsFromSteps,
+  handlePreparedOutboundEffectStep,
   isLegacyPlan,
   mapPlanRuntimeTypeToExecutionRuntime,
+  materializeContentRefs,
   resolveBrowserRunOutputSchemaDigest,
   resolveOutboundEffectMetadata,
 } from './deterministic-plan-scheduler.helpers';
@@ -61,6 +63,14 @@ export class DeterministicPlanSchedulerService {
     return isLegacyPlan(execution);
   }
 
+  async materializeContentRefs(
+    executionId: string,
+    producerStepId: string,
+    output: Record<string, any>
+  ): Promise<Record<string, any>> {
+    return materializeContentRefs(executionId, producerStepId, output, this.resultRefs);
+  }
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly inputResolver: DeterministicNodeInputResolverService,
@@ -85,7 +95,10 @@ export class DeterministicPlanSchedulerService {
   /**
    * Advances execution flow for a deterministic plan task.
    */
-  public async advanceExecution(executionId: string): Promise<void> {
+  public async advanceExecution(
+    executionId: string,
+    options?: { traceContext?: any }
+  ): Promise<void> {
     const execution = await this.prisma.execution.findUnique({
       where: { id: executionId },
       include: {
@@ -101,7 +114,8 @@ export class DeterministicPlanSchedulerService {
     if (
       execution.status === 'succeeded' ||
       execution.status === 'failed' ||
-      execution.status === 'cancelled'
+      execution.status === 'cancelled' ||
+      execution.status === 'pending_approval'
     ) {
       return;
     }
@@ -207,14 +221,19 @@ export class DeterministicPlanSchedulerService {
         execution.plan?.planJson,
         Number(process.env.SAFE_READY_SET_MAX_CONCURRENCY || 4)
       );
-      await Promise.all(batch.map((step) => this.executeStep(execution, step, false)));
-      await this.advanceExecution(execution.id);
+      await Promise.all(batch.map((step) => this.executeStep(execution, step, false, options)));
+      await this.advanceExecution(execution.id, options);
       return;
     }
-    await this.executeStep(execution, ready[0]);
+    await this.executeStep(execution, ready[0], true, options);
   }
 
-  private async executeStep(execution: any, step: any, autoAdvance = true): Promise<void> {
+  private async executeStep(
+    execution: any,
+    step: any,
+    autoAdvance = true,
+    options?: { traceContext?: any }
+  ): Promise<void> {
     const stepId = step.id;
     const planNodeId = step.planNodeId || step.name || `step_${step.stepIndex}`;
     const planNodes = Array.isArray((execution.plan?.planJson as any)?.nodes)
@@ -270,7 +289,7 @@ export class DeterministicPlanSchedulerService {
         { stepId, planNodeId, reason: skipReason },
         { stepId }
       );
-      if (autoAdvance) await this.advanceExecution(execution.id);
+      if (autoAdvance) await this.advanceExecution(execution.id, options);
       return;
     }
 
@@ -323,11 +342,11 @@ export class DeterministicPlanSchedulerService {
       if (step.nodeKind === 'llm_operation') {
         await this.runLlmStep(execution, step, resolvedInput);
       } else {
-        await this.runSkillStep(execution, step, resolvedInput);
+        await this.runSkillStep(execution, step, resolvedInput, options);
       }
 
       // After successful step execution, schedule the next step
-      if (autoAdvance) await this.advanceExecution(execution.id);
+      if (autoAdvance) await this.advanceExecution(execution.id, options);
     } catch (error: any) {
       const errMsg = error instanceof Error ? error.message : 'Node execution failed';
       const isUnknown = Boolean(
@@ -456,7 +475,7 @@ export class DeterministicPlanSchedulerService {
           { planNodeId, errorMessage: errMsg, errorCode: error.code || 'NODE_EXECUTION_FAILED' },
           { stepId }
         );
-        if (autoAdvance) await this.advanceExecution(execution.id);
+        if (autoAdvance) await this.advanceExecution(execution.id, options);
       }
     }
   }
@@ -689,7 +708,8 @@ export class DeterministicPlanSchedulerService {
   private async runSkillStep(
     execution: any,
     step: any,
-    resolvedInput: Record<string, any>
+    resolvedInput: Record<string, any>,
+    options?: { traceContext?: any }
   ): Promise<void> {
     validateInputContract(step, resolvedInput, execution.id);
     const capabilityId = step.capabilityId;
@@ -746,7 +766,8 @@ export class DeterministicPlanSchedulerService {
       step.id,
       stepIdempotencyKey,
       definitionVersion,
-      capabilityVersion
+      capabilityVersion,
+      step
     );
     const captureProfile =
       frozenMeta.captureProfile ||
@@ -783,7 +804,10 @@ export class DeterministicPlanSchedulerService {
       action: 'execute',
       input: inputWithIdempotency,
       policyContext: {},
-      traceContext: { userId: execution.createdBy || undefined },
+      traceContext: {
+        userId: execution.createdBy || undefined,
+        ...(options?.traceContext || (execution.metadata as any)?.traceContext || {}),
+      },
       metadata,
     };
 
@@ -828,6 +852,21 @@ export class DeterministicPlanSchedulerService {
       throw error;
     }
 
+    if (result?.status === 'prepared') {
+      const runtimeOutput = await materializeContentRefs(
+        execution.id,
+        step.id,
+        (result.output || {}) as Record<string, any>,
+        this.resultRefs
+      );
+      const outputJson = this.validateOutputContract(step, runtimeOutput, execution.id);
+      await handlePreparedOutboundEffectStep(this.prisma, execution, step, outputJson);
+      this.logger.log(
+        `Execution ${execution.id} step ${step.id} prepared outbound effect; suspended in pending_approval.`
+      );
+      return;
+    }
+
     const terminalOutputAllowed =
       planNode?.failurePolicy === 'continue' &&
       result?.output &&
@@ -843,10 +882,11 @@ export class DeterministicPlanSchedulerService {
       }
     }
 
-    const runtimeOutput = await this.materializeContentRefs(
+    const runtimeOutput = await materializeContentRefs(
       execution.id,
       step.id,
-      (result.output || {}) as Record<string, any>
+      (result.output || {}) as Record<string, any>,
+      this.resultRefs
     );
     const outputJson = this.validateOutputContract(step, runtimeOutput, execution.id);
 
@@ -1089,96 +1129,5 @@ export class DeterministicPlanSchedulerService {
     });
     return extractFinalOutputsFromSteps(planDraft, steps, artifacts, unwrapStoredStepOutput);
   }
-
-
-  private async materializeContentRefs(
-    executionId: string,
-    producerStepId: string,
-    output: Record<string, any>
-  ): Promise<Record<string, any>> {
-    const candidates = Array.isArray(output.contentCandidates) ? output.contentCandidates : [];
-    if (!candidates.length) return output;
-    const next = { ...output };
-    for (const candidate of candidates) {
-      if (
-        candidate &&
-        typeof candidate === 'object' &&
-        typeof candidate.outputName === 'string' &&
-        candidate.outputName.trim()
-      ) {
-        if (!next[candidate.outputName]) {
-          next[candidate.outputName] = candidate.text || candidate;
-        }
-      }
-    }
-    if (!this.resultRefs?.enabled || process.env.BROWSER_CONTENT_REF_ENABLED === 'false')
-      return next;
-    delete next.contentCandidates;
-    const browser =
-      next.browserRunOutput && typeof next.browserRunOutput === 'object'
-        ? (next.browserRunOutput as Record<string, any>)
-        : undefined;
-    for (const candidate of candidates) {
-      if (!candidate || typeof candidate !== 'object' || typeof candidate.text !== 'string')
-        continue;
-      if (typeof candidate.sourceUrl !== 'string' || !candidate.sourceUrl.trim()) {
-        // ContentRefV1 deliberately requires an origin.  Do not turn an
-        // anonymous/raw capture into a bindable document.
-        if (typeof candidate.outputName === 'string') delete next[candidate.outputName];
-        continue;
-      }
-      const text = candidate.text;
-      const ref = await this.resultRefs.create({
-        executionId,
-        producerStepId,
-        payload: { schemaVersion: 'extracted-content/v1', markdown: text },
-        schemaDigest: createHash('sha256').update('extracted-content/v1').digest('hex'),
-      });
-      const content = {
-        schemaVersion: 'content-ref/v1',
-        contentId: createHash('sha256')
-          .update(`${executionId}|${producerStepId}|${candidate.sourceStepId || ''}|${ref.id}`)
-          .digest('hex')
-          .slice(0, 32),
-        resultRefId: ref.id,
-        pageId: '',
-        sourceUrl: candidate.sourceUrl || '',
-        finalUrl: candidate.finalUrl || candidate.sourceUrl || '',
-        ...(candidate.title ? { title: candidate.title } : {}),
-        mediaType: 'text/plain',
-        extraction: {
-          profile: candidate.profile || 'article',
-          method: candidate.method || 'visible-text',
-          confidence: Number(candidate.confidence) || 0,
-          fallbackLevel: Number(candidate.fallbackLevel) || 0,
-          extractedAt: new Date().toISOString(),
-        },
-        integrity: {
-          sha256: createHash('sha256').update(text).digest('hex'),
-          chars: text.length,
-          bytes: Buffer.byteLength(text),
-          truncated: candidate.truncated === true,
-        },
-        safety: {
-          activeContentRemoved: candidate.activeContentRemoved === true,
-          suspectedPromptInjection: candidate.suspectedPromptInjection === true,
-          untrustedExternalContent: true,
-        },
-        preview: truncateString(text, 160),
-      };
-      const page = Array.isArray(browser?.pages)
-        ? browser.pages.find((item: any) => item.stepId === candidate.sourceStepId)
-        : undefined;
-      if (page) {
-        content.pageId = page.pageId;
-        page.content = content;
-      }
-      if (typeof candidate.outputName === 'string' && candidate.outputName.trim()) {
-        next[candidate.outputName] = content;
-      }
-    }
-    return next;
-  }
-
 }
 

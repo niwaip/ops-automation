@@ -340,6 +340,14 @@ describe('executeEmailSend', () => {
     };
     const validHash = computeOutboundPayloadHash(canonicalPayload);
 
+    const ledgerMock = {
+      prepare: jest.fn(),
+      acquireCommit: jest.fn().mockResolvedValue({ id: 'ledger-entry-1', state: 'COMMITTING' }),
+      markCommitted: jest.fn(),
+      markUnknown: jest.fn().mockResolvedValue({ id: 'ledger-entry-1', state: 'UNKNOWN' }),
+      markFailed: jest.fn(),
+    } as any;
+
     const res = await executeEmailSend({
       executionId: 'exe-1',
       stepId: 'step-1',
@@ -358,10 +366,119 @@ describe('executeEmailSend', () => {
           EMAIL_SMTP_HOST: 'smtp.example.com',
         },
       },
-    } as any, 'idem-key-123');
+    } as any, 'idem-key-123', ledgerMock);
 
     expect(res.success).toBe(false);
     expect(res.status).toBe('unknown');
     expect(res.errorCode).toBe('OUTBOUND_EFFECT_UNKNOWN');
+  });
+
+  it('rejects commit phase with OUTBOUND_EFFECT_LEDGER_UNAVAILABLE when ledger is missing', async () => {
+    const canonicalPayload = {
+      mailboxKey: null,
+      mode: 'new',
+      to: [{ address: 'recipient@example.com' }],
+      cc: [],
+      bcc: [],
+      subject: 'Test',
+      textBody: 'Body',
+      replyToMessageRef: null,
+    };
+    const validHash = computeOutboundPayloadHash(canonicalPayload);
+
+    const res = await executeEmailSend(
+      {
+        executionId: 'exe-1',
+        stepId: 'step-1',
+        skillId: 'platform.email.send',
+        input: {
+          phase: 'commit',
+          payloadHash: validHash,
+          to: [{ address: 'recipient@example.com' }],
+          subject: 'Test',
+          textBody: 'Body',
+        },
+      } as any,
+      'idem-key-123'
+    );
+
+    expect(res.success).toBe(false);
+    expect(res.errorCode).toBe('OUTBOUND_EFFECT_LEDGER_UNAVAILABLE');
+  });
+
+  it('rejects prepare phase with OUTBOUND_EFFECT_LEDGER_UNAVAILABLE when ledger is missing', async () => {
+    const res = await executeEmailSend(
+      {
+        executionId: 'exe-1',
+        stepId: 'step-1',
+        skillId: 'platform.email.send',
+        input: {
+          phase: 'prepare',
+          to: [{ address: 'recipient@example.com' }],
+          subject: 'Test',
+          textBody: 'Body',
+        },
+      } as any,
+      'idem-key-123'
+    );
+
+    expect(res.success).toBe(false);
+    expect(res.errorCode).toBe('OUTBOUND_EFFECT_LEDGER_UNAVAILABLE');
+  });
+
+  it('converts markCommitted database exception to status unknown and OUTBOUND_EFFECT_UNKNOWN', async () => {
+    const canonicalPayload = {
+      mailboxKey: null,
+      mode: 'new',
+      to: [{ address: 'recipient@example.com' }],
+      cc: [],
+      bcc: [],
+      subject: '部署上线通知',
+      textBody: '准备发布 v2.0',
+      replyToMessageRef: null,
+    };
+    const validHash = computeOutboundPayloadHash(canonicalPayload);
+
+    jest.spyOn(SmtpClient, 'send').mockResolvedValue({
+      deliveryId: 'del_commit_12345',
+      acceptedAt: '2026-09-23T12:00:00.000Z',
+    });
+
+    const ledgerMock = {
+      prepare: jest.fn(),
+      acquireCommit: jest.fn().mockResolvedValue({ id: 'ledger-entry-1', state: 'COMMITTING' }),
+      markCommitted: jest.fn().mockRejectedValue(new Error('Connection terminated unexpectedly')),
+      markUnknown: jest.fn(),
+      markFailed: jest.fn(),
+    } as any;
+
+    const res = await executeEmailSend(
+      {
+        executionId: 'exe-1',
+        stepId: 'step-1',
+        skillId: 'platform.email.send',
+        input: {
+          phase: 'commit',
+          payloadHash: validHash,
+          to: [{ address: 'recipient@example.com' }],
+          subject: '部署上线通知',
+          textBody: '准备发布 v2.0',
+        },
+        metadata: {
+          runtimeConfigs: {
+            EMAIL_ADDRESS: 'sender@example.com',
+            EMAIL_AUTH_PASSWORD: 'mock-password',
+            EMAIL_SMTP_HOST: 'smtp.example.com',
+          },
+        },
+      } as any,
+      'idem-key-123',
+      ledgerMock
+    );
+
+    expect(res.success).toBe(false);
+    expect(res.status).toBe('unknown');
+    expect(res.errorCode).toBe('OUTBOUND_EFFECT_UNKNOWN');
+    expect(res.errorMessage).toContain('效果账本提交落库失败');
   });
 });

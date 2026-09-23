@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -23,6 +24,7 @@ export interface AcquireCommitInput {
   capabilityKey: string;
   idempotencyKey: string;
   payloadHash: string;
+  staleTimeoutMs?: number;
 }
 
 export interface MarkCommittedInput {
@@ -65,6 +67,34 @@ export class OutboundEffectLedgerService {
   async prepare(input: PrepareOutboundEffectInput) {
     const tenantId = input.tenantId || 'default';
     const operation = input.operation || 'send';
+    const id = randomUUID();
+
+    if (this.prisma.$queryRawUnsafe) {
+      try {
+        const rows = await this.prisma.$queryRawUnsafe<Array<any>>(
+          `INSERT INTO outbound_effect_ledgers (
+             id, tenant_id, capability_key, operation, idempotency_key, payload_hash,
+             canonical_payload_json, state, attempt_count, created_at, updated_at
+           ) VALUES (
+             $1::uuid, $2, $3, $4, $5, $6, $7::jsonb, 'PREPARED', 0, NOW(), NOW()
+           )
+           ON CONFLICT (tenant_id, capability_key, idempotency_key) DO NOTHING
+           RETURNING *`,
+          id,
+          tenantId,
+          input.capabilityKey,
+          operation,
+          input.idempotencyKey,
+          input.payloadHash,
+          JSON.stringify(input.canonicalPayload || {})
+        );
+        if (rows && rows.length > 0) {
+          return rows[0];
+        }
+      } catch {
+        // Fall back to findUnique / create in unit tests or when raw SQL is unmocked
+      }
+    }
 
     const existing = await this.prisma.outboundEffectLedger.findUnique({
       where: {
@@ -222,6 +252,28 @@ export class OutboundEffectLedgerService {
     }
 
     if (record.state === 'COMMITTING') {
+      const staleTimeoutMs = input.staleTimeoutMs || 300_000;
+      const updatedAt = record.updatedAt ? new Date(record.updatedAt).getTime() : 0;
+      const isStale = Date.now() - updatedAt > staleTimeoutMs;
+      if (isStale) {
+        if (this.prisma.$queryRawUnsafe) {
+          try {
+            await this.prisma.$queryRawUnsafe(
+              `UPDATE outbound_effect_ledgers
+                  SET state = 'UNKNOWN',
+                      error_classification = 'OUTBOUND_EFFECT_COMMITTING_TIMEOUT',
+                      resolution_reason = 'Committing lease expired during acquireCommit; transitioned to UNKNOWN',
+                      updated_at = NOW()
+                WHERE id = $1::uuid
+                  AND state = 'COMMITTING'`,
+              record.id
+            );
+          } catch {}
+        }
+        throw new Error(
+          `OUTBOUND_EFFECT_IN_UNKNOWN_STATE: Committing lease expired for idempotency key '${input.idempotencyKey}'; record transitioned to UNKNOWN state for human reconciliation`
+        );
+      }
       throw new Error(
         `OUTBOUND_EFFECT_LOCKED: Idempotency key '${input.idempotencyKey}' is already in COMMITTING state by another worker`
       );
@@ -361,6 +413,7 @@ export class OutboundEffectLedgerService {
 
   /**
    * Human reconciliation: resolve UNKNOWN into COMMITTED, FAILED, or CANCELLED.
+   * Also permits resolving stale COMMITTING records.
    */
   async resolveUnknown(input: ResolveUnknownInput) {
     const rows = await this.prisma.$queryRawUnsafe<Array<any>>(
@@ -371,7 +424,7 @@ export class OutboundEffectLedgerService {
               resolved_at = NOW(),
               updated_at = NOW()
         WHERE id = $1::uuid
-          AND state = 'UNKNOWN'
+          AND (state = 'UNKNOWN' OR state = 'COMMITTING')
         RETURNING *`,
       input.id,
       input.targetState,
@@ -387,8 +440,32 @@ export class OutboundEffectLedgerService {
       where: { id: input.id },
     });
     throw new Error(
-      `STATE_CONFLICT: Cannot resolve record ${input.id} because current state is '${existing?.state}' (expected 'UNKNOWN')`
+      `STATE_CONFLICT: Cannot resolve record ${input.id} because current state is '${existing?.state}' (expected 'UNKNOWN' or 'COMMITTING')`
     );
+  }
+
+  /**
+   * Reaps stale COMMITTING records whose lease has expired into UNKNOWN state.
+   */
+  async reapStaleCommits(staleTimeoutMs: number = 300_000): Promise<number> {
+    if (!this.prisma.$queryRawUnsafe) return 0;
+    const intervalStr = `${Math.max(1, Math.floor(staleTimeoutMs / 1000))} seconds`;
+    try {
+      const rows = await this.prisma.$queryRawUnsafe<Array<any>>(
+        `UPDATE outbound_effect_ledgers
+            SET state = 'UNKNOWN',
+                error_classification = 'OUTBOUND_EFFECT_COMMITTING_TIMEOUT',
+                resolution_reason = 'Committing lease expired; transitioned to UNKNOWN for human reconciliation',
+                updated_at = NOW()
+          WHERE state = 'COMMITTING'
+            AND updated_at < NOW() - $1::interval
+          RETURNING id`,
+        intervalStr
+      );
+      return rows ? rows.length : 0;
+    } catch {
+      return 0;
+    }
   }
 
   /**

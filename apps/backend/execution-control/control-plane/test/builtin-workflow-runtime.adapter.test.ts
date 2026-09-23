@@ -7,7 +7,7 @@ describe('BuiltinWorkflowRuntimeAdapter Unit Tests', () => {
 
   beforeEach(() => {
     process.env.NODE_ENV = 'test';
-    registry = new BuiltinHandlerRegistryService();
+    registry = new BuiltinHandlerRegistryService({} as any);
     registry.onModuleInit();
     adapter = new BuiltinWorkflowRuntimeAdapter(registry);
   });
@@ -121,5 +121,31 @@ describe('BuiltinWorkflowRuntimeAdapter Unit Tests', () => {
 
     expect(result).toMatchObject({ success: true, status: 'completed' });
     expect(result.output?.text).toBe('extracted');
+  });
+
+  it('passes shared effectIdempotencyKey from input or metadata to the registered handler', async () => {
+    let capturedIdempotencyKey: string | undefined;
+    registry.registerHandler('custom.effect.handler', async (_req, idempotencyKey) => {
+      capturedIdempotencyKey = idempotencyKey;
+      return { success: true, status: 'completed' };
+    });
+
+    await adapter.invokeStep({
+      requestId: 'req-effect',
+      executionId: 'exec-100',
+      stepId: 'step-commit-node',
+      runtimeType: 'workflow',
+      capabilityType: 'builtin',
+      action: 'execute',
+      skillId: 'custom.effect.handler',
+      metadata: {
+        definitionVersion: '1.0.0',
+        handlerKey: 'custom.effect.handler',
+        effectIdempotencyKey: 'shared-effect-key-abc',
+      },
+      input: {},
+    });
+
+    expect(capturedIdempotencyKey).toBe('exec-100:shared-effect-key-abc:v1.0.0');
   });
 });

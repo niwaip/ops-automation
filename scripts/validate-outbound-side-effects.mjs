@@ -134,6 +134,12 @@ if (!fs.existsSync(ledgerServicePath)) {
   if (!hasCasOnCommitting) {
     errors.push('outbound-effect-ledger.service.ts terminal state updates must CAS check state = COMMITTING');
   }
+  if (!content.includes('reapStaleCommits')) {
+    errors.push('outbound-effect-ledger.service.ts missing reapStaleCommits stale COMMITTING recovery');
+  }
+  if (!content.includes('ON CONFLICT (tenant_id, capability_key, idempotency_key)')) {
+    errors.push('outbound-effect-ledger.service.ts prepare() must use ON CONFLICT for concurrency safety');
+  }
 }
 
 // 5. Verify fail-closed commit & ledger integration in email.send handler
@@ -165,6 +171,9 @@ if (!fs.existsSync(emailHandlerPath)) {
   }
   if (!content.includes('DIRECT_EXTERNAL_WRITE_FORBIDDEN')) {
     errors.push('email-send handler missing DIRECT_EXTERNAL_WRITE_FORBIDDEN fail-closed enforcement');
+  }
+  if (!content.includes('OUTBOUND_EFFECT_LEDGER_UNAVAILABLE')) {
+    errors.push('email-send handler missing OUTBOUND_EFFECT_LEDGER_UNAVAILABLE fail-closed check');
   }
   // Check active ledger calls
   if (
@@ -239,6 +248,39 @@ if (!fs.existsSync(schedulerPath)) {
   if (unknownIdx === -1 || terminalIdx === -1 || unknownIdx > terminalIdx) {
     errors.push('DeterministicPlanSchedulerService: isUnknownEffect check must precede terminalOutputAllowed check');
   }
+  if (!content.includes("result?.status === 'prepared'")) {
+    errors.push("DeterministicPlanSchedulerService does not handle 'prepared' status");
+  }
+  if (!content.includes('handlePreparedOutboundEffectStep')) {
+    errors.push('DeterministicPlanSchedulerService does not invoke handlePreparedOutboundEffectStep');
+  }
+  if (!content.includes("execution.status === 'pending_approval'")) {
+    errors.push("DeterministicPlanSchedulerService does not suspend for 'pending_approval'");
+  }
+}
+
+// 7b. Verify BuiltinWorkflowRuntimeAdapter shares effect key across PREPARE and COMMIT
+const adapterPath = path.join(
+  root,
+  'apps/backend/execution-control/control-plane/src/modules/execution/adapters/builtin-workflow-runtime.adapter.ts'
+);
+if (fs.existsSync(adapterPath)) {
+  const content = fs.readFileSync(adapterPath, 'utf8');
+  if (!content.includes('effectIdempotencyKey') || !content.includes('explicitEffectKey')) {
+    errors.push('builtin-workflow-runtime.adapter.ts missing effectIdempotencyKey sharing');
+  }
+}
+
+// 7c. Verify ExecutionApprovalService approves prepared outbound effects in ledger
+const approvalServicePath = path.join(
+  root,
+  'apps/backend/execution-control/control-plane/src/modules/execution/human-control/execution-approval.service.ts'
+);
+if (fs.existsSync(approvalServicePath)) {
+  const content = fs.readFileSync(approvalServicePath, 'utf8');
+  if (!content.includes('ledger.approve')) {
+    errors.push('execution-approval.service.ts missing ledger.approve call for prepared outbound effects');
+  }
 }
 
 if (fs.existsSync(schedulerHelpersPath)) {
@@ -297,6 +339,18 @@ if (fs.existsSync(executionCreatePath)) {
   const content = fs.readFileSync(executionCreatePath, 'utf8');
   if (!content.includes('traceContext')) {
     errors.push('ExecutionCreateService missing traceContext propagation into outbox event');
+  }
+}
+
+// 9b. Verify ExecutionController propagates traceContext into ExecutionService
+const executionControllerPath = path.join(
+  root,
+  'apps/backend/execution-control/control-plane/src/modules/execution/execution.controller.ts'
+);
+if (fs.existsSync(executionControllerPath)) {
+  const content = fs.readFileSync(executionControllerPath, 'utf8');
+  if (!content.includes('traceContext') || !content.includes('traceContext,')) {
+    errors.push('ExecutionController missing traceContext propagation into ExecutionService');
   }
 }
 

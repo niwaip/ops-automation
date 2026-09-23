@@ -13,10 +13,12 @@ import { CreateExecutionEventOptions } from '../state/execution-event.service';
 import { ApprovalDecisionDto, ExecutionDto } from '../state/execution.dto';
 import { ensureExecutionPermission } from '../shared/execution-permission.util';
 import { ExecutionOutboxService } from '../outbox/execution-outbox.service';
+import { OutboundEffectLedgerService } from '../outbox/outbound-effect-ledger.service';
 
 interface RequestUserContext {
   id: string;
   role?: string;
+  traceContext?: any;
 }
 
 export interface ExecutionApprovalHooks {
@@ -37,7 +39,8 @@ export class ExecutionApprovalService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Optional() private readonly outbox?: ExecutionOutboxService
+    @Optional() private readonly outbox?: ExecutionOutboxService,
+    @Optional() private readonly ledger?: OutboundEffectLedgerService
   ) {}
 
   async approve(
@@ -61,6 +64,31 @@ export class ExecutionApprovalService {
       throw new BadRequestException(
         `Execution ${id} is not in ${EXECUTION_STATUS.PENDING_APPROVAL} status`
       );
+    }
+
+    // Approve any prepared outbound effect ledger records associated with this execution
+    if (this.ledger) {
+      const preparedRecords = await this.prisma.outboundEffectLedger.findMany({
+        where: {
+          idempotencyKey: { startsWith: `${id}:` },
+          state: 'PREPARED',
+        },
+      });
+
+      for (const record of preparedRecords) {
+        if ((dto as any).approvedPayloadHash && (dto as any).approvedPayloadHash !== record.payloadHash) {
+          throw new BadRequestException(
+            `PAYLOAD_HASH_MISMATCH: Approved hash '${(dto as any).approvedPayloadHash}' does not match prepared hash '${record.payloadHash}'`
+          );
+        }
+        await this.ledger.approve({
+          tenantId: record.tenantId,
+          capabilityKey: record.capabilityKey,
+          idempotencyKey: record.idempotencyKey,
+          approvedPayloadHash: record.payloadHash,
+          approver: dto.decidedBy || userId,
+        });
+      }
     }
 
     await this.prisma.execution.update({
@@ -122,6 +150,24 @@ export class ExecutionApprovalService {
       throw new BadRequestException(
         `Execution ${id} is not in ${EXECUTION_STATUS.PENDING_APPROVAL} status`
       );
+    }
+
+    if (this.prisma.$queryRawUnsafe) {
+      try {
+        await this.prisma.$queryRawUnsafe(
+          `UPDATE outbound_effect_ledgers
+              SET state = 'CANCELLED',
+                  resolution_reason = $2,
+                  resolved_by = $3,
+                  resolved_at = NOW(),
+                  updated_at = NOW()
+            WHERE idempotency_key LIKE $1 || ':%'
+              AND state = 'PREPARED'`,
+          id,
+          dto.comment || 'Execution rejected during approval',
+          dto.decidedBy || userId
+        );
+      } catch {}
     }
 
     await this.prisma.execution.update({

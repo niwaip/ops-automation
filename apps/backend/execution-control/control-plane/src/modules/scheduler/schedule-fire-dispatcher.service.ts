@@ -78,6 +78,8 @@ export class ScheduleFireDispatcherService implements OnModuleInit, OnModuleDest
               triggerType: 'schedule',
               scheduleId: payload.scheduleId,
               idempotencyKey: `schedule-fire:${fireId}`,
+            }, {
+              traceContext: (item as any).traceContext || payload.traceContext,
             });
             executionId = execution.id;
             await this.prisma.$queryRawUnsafe(

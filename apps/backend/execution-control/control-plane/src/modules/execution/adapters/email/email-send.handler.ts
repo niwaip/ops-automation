@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Logger } from '@nestjs/common';
 import type { BuiltinSkillHandlerResult } from '@ops/backend-builtin-skill-contract';
 import {
   OUTBOUND_EFFECT_PHASE,
@@ -10,6 +11,8 @@ import type { RuntimeStepInvokeRequest } from '../runtime-adapter.interface';
 import type { OutboundEffectLedgerService } from '../../outbox/outbound-effect-ledger.service';
 import type { EmailSendInput } from './email-engine.types';
 import { defaultEmailOrchestrator } from './email-orchestrator';
+
+const logger = new Logger('email-send.handler');
 
 function isUncertainNetworkError(error: any): boolean {
   if (error?.isTimeout === true) {
@@ -197,19 +200,26 @@ export async function executeEmailSend(
 
   // Phase: PREPARE
   if (phase === OUTBOUND_EFFECT_PHASE.PREPARE) {
-    let ledgerId: string | undefined;
-    if (ledger && effectiveIdempotencyKey) {
-      const capabilityKey = request.publishedSkillId || request.skillId || 'platform.email.send';
-      const tenantId = (request.metadata?.tenantId as string) || 'default';
-      const record = await ledger.prepare({
-        tenantId,
-        capabilityKey,
-        idempotencyKey: effectiveIdempotencyKey,
-        canonicalPayload,
+    if (!ledger || !effectiveIdempotencyKey) {
+      return {
+        success: false,
+        status: 'failed',
+        errorCode: 'OUTBOUND_EFFECT_LEDGER_UNAVAILABLE',
+        errorMessage: 'Outbound effect ledger or idempotencyKey is unavailable for prepare phase',
         payloadHash,
-      });
-      ledgerId = record.id;
+      };
     }
+
+    const capabilityKey = request.publishedSkillId || request.skillId || 'platform.email.send';
+    const tenantId = (request.metadata?.tenantId as string) || 'default';
+    const record = await ledger.prepare({
+      tenantId,
+      capabilityKey,
+      idempotencyKey: effectiveIdempotencyKey,
+      canonicalPayload,
+      payloadHash,
+    });
+    const ledgerId = record.id;
 
     return {
       success: true,
@@ -217,7 +227,7 @@ export async function executeEmailSend(
       payloadHash,
       output: {
         phase: OUTBOUND_EFFECT_PHASE.PREPARE,
-        idempotencyKey: effectiveIdempotencyKey || undefined,
+        idempotencyKey: effectiveIdempotencyKey,
         payloadHash,
         canonicalPayload,
         ledgerId,
@@ -257,27 +267,35 @@ export async function executeEmailSend(
       };
     }
 
-    if (ledger && effectiveIdempotencyKey) {
-      const capabilityKey = request.publishedSkillId || request.skillId || 'platform.email.send';
-      const tenantId = (request.metadata?.tenantId as string) || 'default';
-      try {
-        commitRecord = await ledger.acquireCommit({
-          tenantId,
-          capabilityKey,
-          idempotencyKey: effectiveIdempotencyKey,
-          payloadHash,
-        });
-      } catch (err: any) {
-        return {
-          success: false,
-          status: 'failed',
-          errorCode: err.message.includes('OUTBOUND_EFFECT_')
-            ? err.message.split(':')[0].trim()
-            : 'COMMIT_ACQUISITION_FAILED',
-          errorMessage: err.message,
-          payloadHash,
-        };
-      }
+    if (!ledger || !effectiveIdempotencyKey) {
+      return {
+        success: false,
+        status: 'failed',
+        errorCode: 'OUTBOUND_EFFECT_LEDGER_UNAVAILABLE',
+        errorMessage: 'Outbound effect ledger or idempotencyKey is unavailable for commit phase',
+        payloadHash,
+      };
+    }
+
+    const capabilityKey = request.publishedSkillId || request.skillId || 'platform.email.send';
+    const tenantId = (request.metadata?.tenantId as string) || 'default';
+    try {
+      commitRecord = await ledger.acquireCommit({
+        tenantId,
+        capabilityKey,
+        idempotencyKey: effectiveIdempotencyKey,
+        payloadHash,
+      });
+    } catch (err: any) {
+      return {
+        success: false,
+        status: 'failed',
+        errorCode: err.message.includes('OUTBOUND_EFFECT_')
+          ? err.message.split(':')[0].trim()
+          : 'COMMIT_ACQUISITION_FAILED',
+        errorMessage: err.message,
+        payloadHash,
+      };
     }
   }
 
@@ -328,8 +346,20 @@ export async function executeEmailSend(
           providerRequestId: (result as any).deliveryId,
           providerMessageId: (result as any).deliveryId,
         });
-      } catch {
-        // ignore error to return completed result
+      } catch (err: any) {
+        logger.error(`Failed to mark outbound effect ${commitRecord.id} as COMMITTED: ${err.message}`);
+        return {
+          success: false,
+          status: 'unknown',
+          errorCode: 'OUTBOUND_EFFECT_UNKNOWN',
+          errorMessage: `邮件发送请求已被 Provider 处理，但效果账本提交落库失败 (${err.message})，转入人工接管`,
+          payloadHash,
+          output: {
+            ...(result as any),
+            ledgerError: err.message,
+            ledgerRecordId: commitRecord.id,
+          },
+        };
       }
     }
 

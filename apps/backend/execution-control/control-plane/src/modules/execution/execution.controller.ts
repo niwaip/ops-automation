@@ -49,8 +49,13 @@ export class ExecutionController {
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Creating execution for user ${userId}, skill ${dto.skillId}`);
+    const traceContext = (req as any).traceContext || {
+      traceparent: (req as any).traceparent || (req.headers['traceparent'] as string),
+      traceId: (req as any).traceId || (req.headers['x-trace-id'] as string),
+    };
     return this.executionService.create(userId, dto, {
       authToken: req.headers.authorization,
+      traceContext,
     });
   }
 
@@ -287,7 +292,16 @@ export class ExecutionController {
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Approval requested for execution ${id} by user ${userId}`);
-    return this.executionService.approve(id, userId, dto, req.user);
+    const requester = req.user
+      ? {
+          ...req.user,
+          traceContext: (req as any).traceContext || {
+            traceparent: (req as any).traceparent || (req.headers['traceparent'] as string),
+            traceId: (req as any).traceId || (req.headers['x-trace-id'] as string),
+          },
+        }
+      : undefined;
+    return this.executionService.approve(id, userId, dto, requester);
   }
 
   @Post(':id/reject')
@@ -338,7 +352,16 @@ export class ExecutionController {
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Input submission requested for execution ${id} by user ${userId}`);
-    return this.executionService.submitInputAndResume(id, userId, dto, req.user);
+    const requester = req.user
+      ? {
+          ...req.user,
+          traceContext: (req as any).traceContext || {
+            traceparent: (req as any).traceparent || (req.headers['traceparent'] as string),
+            traceId: (req as any).traceId || (req.headers['x-trace-id'] as string),
+          },
+        }
+      : undefined;
+    return this.executionService.submitInputAndResume(id, userId, dto, requester);
   }
 
   @Post('cleanup')

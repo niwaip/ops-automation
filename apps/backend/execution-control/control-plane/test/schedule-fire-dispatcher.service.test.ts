@@ -40,7 +40,8 @@ describe('ScheduleFireDispatcherService', () => {
       expect.objectContaining({
         idempotencyKey: 'schedule-fire:11111111-1111-4111-8111-111111111111',
         triggerType: 'schedule',
-      })
+      }),
+      expect.objectContaining({ traceContext: undefined })
     );
     expect(outbox.markPublished).toHaveBeenCalled();
   });

@@ -373,6 +373,92 @@ describe('DeterministicPlanSchedulerService', () => {
     );
   });
 
+  it('suspends execution to pending_approval when step returns status prepared', async () => {
+    const prisma = {
+      executionStep: {
+        update: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      execution: { update: jest.fn().mockResolvedValue({}) },
+    };
+    const orchestrator = {
+      executeStep: jest.fn().mockResolvedValue({
+        success: true,
+        status: 'prepared',
+        payloadHash: 'sha256:prep-hash',
+        output: {
+          phase: 'prepare',
+          ledgerId: 'led-1',
+          payloadHash: 'sha256:prep-hash',
+        },
+      }),
+    };
+    const events = { createEvent: jest.fn().mockResolvedValue(undefined) };
+    const legacyOutputAdapter = {
+      validateV1Contract: jest.fn().mockImplementation((_step, out) => out),
+    };
+    const outputNormalizer = {
+      normalize: (output: any) => output,
+    };
+    const service = new DeterministicPlanSchedulerService(
+      prisma as any,
+      { resolveInputs: jest.fn().mockResolvedValue({}) } as any,
+      { assertSatisfied: jest.fn() } as any,
+      {} as any,
+      orchestrator as any,
+      events as any,
+      legacyOutputAdapter as any,
+      {} as any,
+      outputNormalizer as any,
+      {} as any
+    ) as any;
+
+    const plan = {
+      planJson: {
+        nodes: [{ nodeId: 'email_node', capabilityId: 'platform.email.send' }],
+      },
+    };
+    const execution = {
+      id: 'exec-prep-1',
+      status: 'running',
+      executionMode: 'deterministic_plan',
+      plan,
+    };
+    const step = {
+      id: 'step-prep-1',
+      planNodeId: 'email_node',
+      capabilityId: 'platform.email.send',
+      nodeKind: 'skill',
+    };
+
+    await service.executeStep(execution, step, false);
+
+    expect(prisma.executionStep.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'step-prep-1' },
+        data: expect.objectContaining({
+          status: 'pending',
+          leaseExpiresAt: null,
+          outputJson: expect.objectContaining({
+            ledgerId: 'led-1',
+            payloadHash: 'sha256:prep-hash',
+          }),
+        }),
+      })
+    );
+
+    expect(prisma.execution.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'exec-prep-1' },
+        data: expect.objectContaining({
+          status: 'pending_approval',
+          approvalStatus: 'pending',
+        }),
+      })
+    );
+  });
+
   it('rejects caller attempting to self-authorize commit phase in runtime input without approval', () => {
     const { resolveOutboundEffectMetadata } = require('../src/modules/execution/plan-runtime/deterministic-plan-scheduler.helpers');
     expect(() =>

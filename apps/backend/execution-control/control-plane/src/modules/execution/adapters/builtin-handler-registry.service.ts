@@ -23,8 +23,8 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
   private readonly handlerMap = new Map<string, BuiltinHandlerFn>();
 
   constructor(
-    @Optional() private readonly reminders?: ReminderService,
-    @Optional() private readonly ledger?: OutboundEffectLedgerService
+    private readonly ledger: OutboundEffectLedgerService,
+    @Optional() private readonly reminders?: ReminderService
   ) {}
 
   onModuleInit() {

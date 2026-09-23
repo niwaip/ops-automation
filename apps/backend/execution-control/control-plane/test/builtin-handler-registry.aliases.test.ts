@@ -2,7 +2,7 @@ import { BuiltinHandlerRegistryService } from '../src/modules/execution/adapters
 
 describe('BuiltinHandlerRegistryService capability aliases', () => {
   it('resolves document handlers by both runtime handler key and capability key', () => {
-    const registry = new BuiltinHandlerRegistryService();
+    const registry = new BuiltinHandlerRegistryService({} as any);
     registry.onModuleInit();
 
     expect(registry.getHandler('platform.document.pdf-create')).toBe(

@@ -27,7 +27,10 @@ describe('ExecutionDispatcherService', () => {
     scheduler.advanceExecution.mockResolvedValue(undefined);
     outbox.markPublished.mockResolvedValue(true);
     await expect(service.dispatchOnce()).resolves.toBe(1);
-    expect(scheduler.advanceExecution).toHaveBeenCalledWith('execution-1');
+    expect(scheduler.advanceExecution).toHaveBeenCalledWith(
+      'execution-1',
+      expect.objectContaining({ traceContext: expect.any(Object) })
+    );
     expect(outbox.markPublished).toHaveBeenCalledWith('outbox-1', expect.any(String));
     expect(outbox.releaseForRetry).not.toHaveBeenCalled();
   });

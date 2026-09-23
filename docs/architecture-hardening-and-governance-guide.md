@@ -311,23 +311,30 @@ pnpm run validate:outbound-side-effects
 - [x] **[P0] 效果账本全面接入实际邮件执行链与 Fail-Closed 直写防御**：
   - `email-send.handler.ts` 全流程注入并调用 `OutboundEffectLedgerService` 的 `prepare`、`acquireCommit`、`markCommitted`、`markUnknown`、`markFailed`；
   - 默认彻底禁用未分阶段的外部直写（拦截并抛出 `DIRECT_EXTERNAL_WRITE_FORBIDDEN`，仅在显式配置 `ALLOW_LEGACY_DIRECT_EXTERNAL_WRITE=true` 时兼容遗留逻辑）；
+  - `BuiltinHandlerRegistryService` 将 `OutboundEffectLedgerService` 设为必选强依赖，缺失账本或幂等键时 Fail-Closed 返回 `OUTBOUND_EFFECT_LEDGER_UNAVAILABLE`；
+  - 若 `markCommitted` 发生数据库异常，将其转为 `status: 'unknown'` 与 `errorCode: 'OUTBOUND_EFFECT_UNKNOWN'`，强行收敛进入人工接管，杜绝外部已发信但账本悬挂问题；
   - `DeterministicPlanSchedulerService` 新增 `resolveOutboundEffectMetadata` 入参防护：严格拦截并阻断调用方通过 `resolvedInput` 越权传递 `phase: 'commit'` 或伪造 `payloadHash`（抛出 `UNAUTHORIZED_EFFECT_COMMIT`）。
-- [x] **[P0] 效果账本状态机收紧与 CAS 强校验**：
-  - `acquireCommit()` 严格限定仅允许 `APPROVED -> COMMITTING` 状态转换，全面拒绝 `PREPARED`（需先审批）、`UNKNOWN`（需人工裁决）、`FAILED`（需显式授权重试）；
-  - 终态标记（`markCommitted`、`markUnknown`、`markFailed`）增加 `WHERE state = 'COMMITTING'` 的 CAS 条件更新，防止并发或时序错乱覆盖人工裁决；
-  - 新增 `approve()`、`resolveUnknown()` 与 `authorizeRetry()` 状态流转方法，保持账本状态机闭环。
+- [x] **[P0] PREPARE → APPROVE → COMMIT 生产全链路闭环落地**：
+  - **调度层挂起拦截**：`DeterministicPlanSchedulerService` 捕获步骤返回的 `status === 'prepared'`，调用 `handlePreparedOutboundEffectStep` 将 Execution 状态原子挂起为 `pending_approval`，记录 `effectId`、`payloadHash` 与挂起元数据，阻止 DAG 自动提前推进；
+  - **人工审批绑定账本**：`ExecutionApprovalService` 审批时，检索当前 Execution 关联的所有 `PREPARED` 效果记录，逐一调用 `ledger.approve(...)` 校验并绑定 `payloadHash`；若审批被拒则将账本流转为 `CANCELLED`；
+  - **二阶段状态提升与共享键**：`resolveOutboundEffectMetadata` 在 Execution 审批通过（`approvalStatus === 'APPROVED'`）后将已准备节点提升至 `phase: 'commit'`；`BuiltinWorkflowRuntimeAdapter` 确保跨节点的 `effectIdempotencyKey` / `explicitEffectKey` 精确共享，命中同一账本记录。
+- [x] **[P0] 效果账本状态机收紧、并发安全与滞留 COMMITTING 恢复**：
+  - **并发原子性**：`prepare()` 采用 `INSERT INTO ... ON CONFLICT (tenant_id, capability_key, idempotency_key) DO NOTHING RETURNING *` 原生 SQL，彻底杜绝并发竞争条件；命中冲突时严格比对 `payloadHash`，不一致即报 `PAYLOAD_HASH_MISMATCH`；
+  - **提交权争抢与 CAS**：`acquireCommit()` 严格限定仅允许 `APPROVED -> COMMITTING` 状态转换，全面拒绝未授权状态；终态标记（`markCommitted`、`markUnknown`、`markFailed`）增加 `WHERE state = 'COMMITTING'` 的 CAS 条件更新；
+  - **进程崩溃与滞留租约恢复**：新增 `reapStaleCommits(staleTimeoutMs = 300_000)`，并在 `acquireCommit()` 中自动检测超时未完工的 `COMMITTING` 记录，原子 CAS 租约超时记录至 `UNKNOWN` 并抛出 `OUTBOUND_EFFECT_IN_UNKNOWN_STATE`；支持 `resolveUnknown()` 处置滞留中的 `COMMITTING` 与 `UNKNOWN` 记录。
 - [x] **[P0] Platform Prisma 迁移基线生成与唯一迁移权校验**：
   - 新增 `apps/backend/platform/prisma/migrations/20260923120000_add_outbound_effect_ledgers/migration.sql`，补齐 Platform 数据库的 `outbound_effect_ledgers` 表与 `(tenant_id, capability_key, idempotency_key)` 唯一约束；
   - 严格通过 `validate:schema-ownership`（95 表全量核验）与 `validate:migration-authority` 生产迁移唯一权限门禁。
 - [x] **[P0] SMTP 超时错误类型结构化与中文超时识别**：
   - `smtp-client.ts` 在套接字超时时明确附加 `code = 'ETIMEDOUT'` 与 `isTimeout = true`，并在底层 socket error 时透传原始错误码；
   - `email-send.handler.ts` 的 `isUncertainNetworkError` 分类器增加对 `isTimeout === true` 与中文 `'超时'` 关键词的准确识别，避免将发信超时机械归类为普通可重试失败。
-- [x] **[P1] W3C Trace 链路闭环（Proxy 子 Span 与 Outbox 上下文传播）**：
-  - `ProxyController` 转发下游请求时，基于已由 `TraceInterceptor` 标准化挂载的 `req.traceparent` / `req.traceContext` 生成下游子 Span（`createChildTraceparent`），保证分布式父子 Span 链条连续不断链；
-  - `ExecutionCreateService`、`ExecutionApprovalService`、`ExecutionSubmitInputService`、`ScheduleFireService` 在向 Outbox 写入事件时完整透传 `traceContext`；
-  - `ExecutionDispatcherService` 在消费 Outbox 事件时提取并结构化关联 Consumer Span。
+- [x] **[P1] W3C Trace 链路闭环（HTTP 请求级透传与 Outbox 上下文传播）**：
+  - `ExecutionController` 从真实 HTTP 请求中提取已由 `TraceInterceptor` 校验的标准 `req.traceContext`（含 `traceparent`、`traceId`、`tracestate`），贯通传入 `ExecutionService.create()`、`approve()` 与 `submitInput()`；
+  - `ProxyController` 转发下游请求时，基于已挂载的父 Span 生成标准子 Span（`createChildTraceparent`），保证分布式链路连续；
+  - `ScheduleFireDispatcherService` 触发定时任务时完整继承定时触发器上下文 `traceContext`；
+  - `ExecutionDispatcherService` 在消费 Outbox 事件时提取并结构化关联 Consumer Span，并将其注入调度推进链路。
 - [x] **[P1] 语义级架构质量门禁升级**：
-  - `scripts/validate-outbound-side-effects.mjs` 升级为真实语义级门禁，深度校验迁移文件存在性、账本状态机 CAS 约束、邮件 Handler 对账本的全生命周期调用、SMTP 超时结构、调度器入参防越权、Proxy 子 Span 派生与 Compose 角色隔离。
+  - `scripts/validate-outbound-side-effects.mjs` 升级为全面语义级门禁，深度校验迁移存在性、账本状态机 CAS、`reapStaleCommits` 恢复机制、Handler Fail-Closed、调度器 `prepared` 挂起与入参防越权、Runtime 共享 Effect Key、Approval 绑定 Ledger 审批、Controller Trace 提取与 Compose 角色隔离。
 - [x] **[P0/P1 基础能力回顾]**：
   - `MetricsService` 依赖注入反射修复（避免原生 `Number` 参数未注册导致 Nest 启动失败）；
   - 生产 Compose 角色矩阵隔离（`control-plane-api`、`execution-dispatcher`、`schedule-trigger` 环境变量互斥）。

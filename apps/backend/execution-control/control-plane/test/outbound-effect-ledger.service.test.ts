@@ -243,5 +243,39 @@ describe('OutboundEffectLedgerService', () => {
       expect(res).toBe(retriedRow);
       expect(prismaMock.$queryRawUnsafe.mock.calls[0][0]).toContain("state = 'FAILED'");
     });
+
+    it('reapStaleCommits transitions expired COMMITTING records to UNKNOWN', async () => {
+      prismaMock.$queryRawUnsafe.mockResolvedValue([{ id: 'ledger-1' }, { id: 'ledger-2' }]);
+
+      const count = await service.reapStaleCommits(60_000);
+      expect(count).toBe(2);
+      expect(prismaMock.$queryRawUnsafe.mock.calls[0][0]).toContain("SET state = 'UNKNOWN'");
+      expect(prismaMock.$queryRawUnsafe.mock.calls[0][0]).toContain("WHERE state = 'COMMITTING'");
+    });
+
+    it('acquireCommit automatically transitions stale COMMITTING record to UNKNOWN and throws', async () => {
+      prismaMock.$queryRawUnsafe.mockResolvedValue([]);
+      const staleDate = new Date(Date.now() - 400_000);
+      prismaMock.outboundEffectLedger.findUnique.mockResolvedValue({
+        id: 'ledger-1',
+        state: 'COMMITTING',
+        payloadHash: 'sha256:abc',
+        updatedAt: staleDate,
+      });
+
+      await expect(
+        service.acquireCommit({
+          capabilityKey: 'platform.email.send',
+          idempotencyKey: 'idem-1',
+          payloadHash: 'sha256:abc',
+          staleTimeoutMs: 300_000,
+        })
+      ).rejects.toThrow('OUTBOUND_EFFECT_IN_UNKNOWN_STATE');
+
+      expect(prismaMock.$queryRawUnsafe).toHaveBeenCalledWith(
+        expect.stringContaining("SET state = 'UNKNOWN'"),
+        'ledger-1'
+      );
+    });
   });
 });

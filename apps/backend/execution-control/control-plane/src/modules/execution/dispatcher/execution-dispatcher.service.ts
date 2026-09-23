@@ -78,7 +78,13 @@ export class ExecutionDispatcherService implements OnModuleInit, OnModuleDestroy
           `[${traceId}] Dispatching execution ${executionId} from outbox item ${item.id} (consumerTrace: ${consumerTraceparent})`
         );
         try {
-          await this.scheduler.advanceExecution(executionId);
+          await this.scheduler.advanceExecution(executionId, {
+            traceContext: {
+              traceparent: consumerTraceparent,
+              traceId: incomingTrace?.traceId,
+              tracestate: incomingTrace?.tracestate,
+            },
+          });
           if (await this.outbox.markPublished(item.id, this.owner)) completed += 1;
         } catch (error) {
           this.logger.error(

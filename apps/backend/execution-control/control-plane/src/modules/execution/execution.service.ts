@@ -253,7 +253,7 @@ export class ExecutionService {
   async create(
     userId: string,
     dto: CreateExecutionDto,
-    options?: { authToken?: string }
+    options?: { authToken?: string; traceContext?: any }
   ): Promise<ExecutionDto> {
     return this.executionCreateService.create(userId, dto, this.getCreateHooks(), options);
   }

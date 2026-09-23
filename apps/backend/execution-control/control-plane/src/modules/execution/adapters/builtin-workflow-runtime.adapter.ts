@@ -49,7 +49,15 @@ export class BuiltinWorkflowRuntimeAdapter implements RuntimeAdapter {
       };
     }
 
-    const idempotencyKey = `${request.executionId}:${request.stepId}:v${definitionVersion}`;
+    const explicitEffectKey =
+      (request.metadata?.effectIdempotencyKey as string) ||
+      (request.metadata?.effectKey as string) ||
+      (request.metadata?.effectId as string) ||
+      (request.input as any)?.effectIdempotencyKey ||
+      (request.input as any)?.effectKey ||
+      (request.input as any)?.effectId;
+    const effectScopedKey = explicitEffectKey || request.stepId;
+    const idempotencyKey = `${request.executionId}:${effectScopedKey}:v${definitionVersion}`;
 
     // Resolve handlerKey: from metadata or capabilityKey
     let handlerKey = request.metadata?.handlerKey as string | undefined;
