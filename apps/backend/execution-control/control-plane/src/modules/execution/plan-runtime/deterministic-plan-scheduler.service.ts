@@ -36,6 +36,7 @@ import {
   isLegacyPlan,
   mapPlanRuntimeTypeToExecutionRuntime,
   resolveBrowserRunOutputSchemaDigest,
+  resolveOutboundEffectMetadata,
 } from './deterministic-plan-scheduler.helpers';
 
 @Injectable()
@@ -737,23 +738,16 @@ export class DeterministicPlanSchedulerService {
     const capabilityType = isBuiltin ? 'builtin' : 'skill.runtime';
 
     const definitionVersion = frozenMeta.definitionVersion || capabilityVersion || '1.0.0';
-    const effectivePhase =
-      resolvedInput?.phase || planNode?.metadata?.phase || frozenMeta.phase || undefined;
-    const effectivePayloadHash =
-      resolvedInput?.payloadHash || planNode?.metadata?.payloadHash || frozenMeta.payloadHash || undefined;
-
-    const metadata: Record<string, any> = {
-      capabilityVersion: capabilityVersion || definitionVersion,
+    const metadata: Record<string, any> = resolveOutboundEffectMetadata(
+      planNode,
+      frozenMeta,
+      resolvedInput,
+      execution,
+      step.id,
+      stepIdempotencyKey,
       definitionVersion,
-      idempotencyKey: stepIdempotencyKey,
-      phase: effectivePhase,
-      payloadHash: effectivePayloadHash,
-      outboundEffect: {
-        phase: effectivePhase,
-        payloadHash: effectivePayloadHash,
-        idempotencyKey: stepIdempotencyKey,
-      },
-    };
+      capabilityVersion
+    );
     const captureProfile =
       frozenMeta.captureProfile ||
       frozenMeta.capture_profile ||

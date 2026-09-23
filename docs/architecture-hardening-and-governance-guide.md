@@ -1,7 +1,7 @@
 # 架构治理与生产加固落地指南 (Architecture Hardening & Governance Guide)
 
-> 版本：v1.3（2026-09 架构整改与代码加固版）  
-> 状态：Proposed / In Progress — Hardening In Flight (代码级 8 项审查整改已闭环，待准生产环境联调验证)  
+> 版本：v1.4（2026-09 架构整改与代码加固版）  
+> 状态：Proposed / In Progress — Hardening In Flight (代码级 4 项 P0 与 2 项 P1 审查整改已全部闭环，待准生产环境联调验证)  
 > 适用对象：平台核心架构师、后端研发团队、基础架构与运维工程师  
 > 关联事实源：[`PROJECT_OVERVIEW.md`](PROJECT_OVERVIEW.md)、[`project_architecture_redesign.md`](project_architecture_redesign.md)、[`schema-ownership.json`](../database/schema-ownership.json)
 
@@ -306,16 +306,31 @@ pnpm run validate:outbound-side-effects
 
 ## 12. 审查缺陷整改复核与推进状态
 
-针对 2026-09 阶段性代码审查发现的 8 项关键缺陷（含 NestJS DI 启动反射失败、外发两阶段与持久账本、UNKNOWN 优先接管、Production Compose 角色矩阵、W3C Trace 链路、语义质量门禁等），本分支已完成以下源码级加固与单测覆盖：
+针对 2026-09 阶段性代码审查发现的缺陷（特别是最新审查指出的 4 项 P0 与 2 项 P1 阻断性问题），本分支已完成以下源码级闭环加固与单测覆盖：
 
-- [x] **[P0] MetricsService 依赖注入反射修复**：构造函数移除原生基本类型 `ttlMs`，避免 NestJS `design:paramtypes` 反射未注册的 `Number` 依赖导致容器崩溃；引入单飞并发防击穿（Single-Flight Promise Deduplication）。
-- [x] **[P0] 契约与调度器双向支持两阶段信号**：`runtime-capability-contract` 新增 `prepared` 状态；`DeterministicPlanSchedulerService` 调度器在入参清洗时白名单保留 `phase` 与 `payloadHash`，并安全注入内部可信 `metadata.outboundEffect`。
-- [x] **[P0] 邮件发送处理器 Fail-Closed 防御**：非法 `phase` 立即拦截并返回 `INVALID_EFFECT_PHASE`；`commit` 阶段强制要求经过审批的不可变 `payloadHash`（缺少即拒 `PAYLOAD_HASH_REQUIRED`，不一致即拒 `PAYLOAD_HASH_MISMATCH`）。
-- [x] **[P0] 外发效果账本持久化与 Provider 防重键**：Prisma 模型 `OutboundEffectLedger` 及数据表 `outbound_effect_ledgers` 纳入 `database/schema-ownership.json`（归属 `control-plane`）；提供原子 CAS 抢占 `acquireCommit()`；SMTP 与 Graph 邮件 Provider 全程消费并透传 `clientRequestKey`（`Message-ID` / `X-Client-Request-Key` / `client-request-id`）。
-- [x] **[P1] UNKNOWN 状态最高优先级强力阻断与接管**：调度器与步骤解释器（`runtime-result.interpreter.ts`、`deterministic-plan-scheduler.service.ts`）在遇到 `status === 'unknown'` 或 `OUTBOUND_EFFECT_UNKNOWN` 时，严格先于 `terminalOutputAllowed` 和 `failurePolicy === 'continue'` 执行，强行触发人工接管（`takeover`），杜绝不确定外发被误当成功并继续推进下游 DAG。
-- [x] **[P1] 生产 Compose 运行时与持久化 Outbox 角色标定**：`docker-compose.production.yml` 中 `control-plane-api` 默认启用 Durable Outbox 并显式关闭 `EXECUTION_DISPATCHER_V2_ENABLED` 与 `SCHEDULE_FIRE_V2_ENABLED`；`execution-dispatcher` 与 `schedule-trigger` 完成严格角色互斥。
-- [x] **[P1] W3C 分布式追踪标头生成与异步上下文关联**：`TraceInterceptor` 遇缺失标头时自动生成标准 W3C `00-${traceId}-${spanId}-01` 格式 `traceparent`，在响应头输出 `traceparent` 与 `x-trace-id`，并将跟踪上下文同步落入 Outbox 异步事件 Payload。
-- [x] **[P1] 语义级架构质量门禁升级**：`scripts/validate-outbound-side-effects.mjs` 升级为真实语义校验（Schema 所有权、账本原子约束、两阶段 Fail-Closed、UNKNOWN 优先次序与 Compose 角色隔离）。
+- [x] **[P0] 效果账本全面接入实际邮件执行链与 Fail-Closed 直写防御**：
+  - `email-send.handler.ts` 全流程注入并调用 `OutboundEffectLedgerService` 的 `prepare`、`acquireCommit`、`markCommitted`、`markUnknown`、`markFailed`；
+  - 默认彻底禁用未分阶段的外部直写（拦截并抛出 `DIRECT_EXTERNAL_WRITE_FORBIDDEN`，仅在显式配置 `ALLOW_LEGACY_DIRECT_EXTERNAL_WRITE=true` 时兼容遗留逻辑）；
+  - `DeterministicPlanSchedulerService` 新增 `resolveOutboundEffectMetadata` 入参防护：严格拦截并阻断调用方通过 `resolvedInput` 越权传递 `phase: 'commit'` 或伪造 `payloadHash`（抛出 `UNAUTHORIZED_EFFECT_COMMIT`）。
+- [x] **[P0] 效果账本状态机收紧与 CAS 强校验**：
+  - `acquireCommit()` 严格限定仅允许 `APPROVED -> COMMITTING` 状态转换，全面拒绝 `PREPARED`（需先审批）、`UNKNOWN`（需人工裁决）、`FAILED`（需显式授权重试）；
+  - 终态标记（`markCommitted`、`markUnknown`、`markFailed`）增加 `WHERE state = 'COMMITTING'` 的 CAS 条件更新，防止并发或时序错乱覆盖人工裁决；
+  - 新增 `approve()`、`resolveUnknown()` 与 `authorizeRetry()` 状态流转方法，保持账本状态机闭环。
+- [x] **[P0] Platform Prisma 迁移基线生成与唯一迁移权校验**：
+  - 新增 `apps/backend/platform/prisma/migrations/20260923120000_add_outbound_effect_ledgers/migration.sql`，补齐 Platform 数据库的 `outbound_effect_ledgers` 表与 `(tenant_id, capability_key, idempotency_key)` 唯一约束；
+  - 严格通过 `validate:schema-ownership`（95 表全量核验）与 `validate:migration-authority` 生产迁移唯一权限门禁。
+- [x] **[P0] SMTP 超时错误类型结构化与中文超时识别**：
+  - `smtp-client.ts` 在套接字超时时明确附加 `code = 'ETIMEDOUT'` 与 `isTimeout = true`，并在底层 socket error 时透传原始错误码；
+  - `email-send.handler.ts` 的 `isUncertainNetworkError` 分类器增加对 `isTimeout === true` 与中文 `'超时'` 关键词的准确识别，避免将发信超时机械归类为普通可重试失败。
+- [x] **[P1] W3C Trace 链路闭环（Proxy 子 Span 与 Outbox 上下文传播）**：
+  - `ProxyController` 转发下游请求时，基于已由 `TraceInterceptor` 标准化挂载的 `req.traceparent` / `req.traceContext` 生成下游子 Span（`createChildTraceparent`），保证分布式父子 Span 链条连续不断链；
+  - `ExecutionCreateService`、`ExecutionApprovalService`、`ExecutionSubmitInputService`、`ScheduleFireService` 在向 Outbox 写入事件时完整透传 `traceContext`；
+  - `ExecutionDispatcherService` 在消费 Outbox 事件时提取并结构化关联 Consumer Span。
+- [x] **[P1] 语义级架构质量门禁升级**：
+  - `scripts/validate-outbound-side-effects.mjs` 升级为真实语义级门禁，深度校验迁移文件存在性、账本状态机 CAS 约束、邮件 Handler 对账本的全生命周期调用、SMTP 超时结构、调度器入参防越权、Proxy 子 Span 派生与 Compose 角色隔离。
+- [x] **[P0/P1 基础能力回顾]**：
+  - `MetricsService` 依赖注入反射修复（避免原生 `Number` 参数未注册导致 Nest 启动失败）；
+  - 生产 Compose 角色矩阵隔离（`control-plane-api`、`execution-dispatcher`、`schedule-trigger` 环境变量互斥）。
 - [ ] **准生产环境（Staging）实机部署与端到端链路验收**：待真实 PostgreSQL 集群多副本并发压测与第三方邮件 Provider 超时故障注入演练通过后，方可升级为正式 Ready for Production。
 
 ---

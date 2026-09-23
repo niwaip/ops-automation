@@ -82,7 +82,61 @@ for (const p of [platformPrismaPath, cpPrismaPath]) {
   }
 }
 
-// 4. Verify fail-closed commit logic in email.send handler
+// 3b. Verify Platform Prisma migration exists for outbound_effect_ledgers
+const platformMigrationsDir = path.join(root, 'apps/backend/platform/prisma/migrations');
+if (!fs.existsSync(platformMigrationsDir)) {
+  errors.push(`Missing platform prisma migrations dir: ${platformMigrationsDir}`);
+} else {
+  const migrationDirs = fs.readdirSync(platformMigrationsDir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name);
+
+  let hasLedgerMigration = false;
+  for (const dirName of migrationDirs) {
+    const sqlPath = path.join(platformMigrationsDir, dirName, 'migration.sql');
+    if (fs.existsSync(sqlPath)) {
+      const sql = fs.readFileSync(sqlPath, 'utf8');
+      if (
+        sql.includes('outbound_effect_ledgers') &&
+        sql.includes('CREATE TABLE') &&
+        sql.includes('CREATE UNIQUE INDEX')
+      ) {
+        hasLedgerMigration = true;
+        break;
+      }
+    }
+  }
+  if (!hasLedgerMigration) {
+    errors.push('apps/backend/platform/prisma/migrations missing migration creating outbound_effect_ledgers table');
+  }
+}
+
+// 4. Verify OutboundEffectLedgerService state machine and CAS enforcement
+const ledgerServicePath = path.join(
+  root,
+  'apps/backend/execution-control/control-plane/src/modules/execution/outbox/outbound-effect-ledger.service.ts'
+);
+if (!fs.existsSync(ledgerServicePath)) {
+  errors.push(`Missing outbound-effect-ledger.service.ts: ${ledgerServicePath}`);
+} else {
+  const content = fs.readFileSync(ledgerServicePath, 'utf8');
+  if (!content.includes('OUTBOUND_EFFECT_NOT_APPROVED')) {
+    errors.push('outbound-effect-ledger.service.ts missing OUTBOUND_EFFECT_NOT_APPROVED rejection in acquireCommit');
+  }
+  if (!content.includes('OUTBOUND_EFFECT_IN_UNKNOWN_STATE')) {
+    errors.push('outbound-effect-ledger.service.ts missing OUTBOUND_EFFECT_IN_UNKNOWN_STATE rejection in acquireCommit');
+  }
+  if (!content.includes('OUTBOUND_EFFECT_FAILED')) {
+    errors.push('outbound-effect-ledger.service.ts missing OUTBOUND_EFFECT_FAILED rejection in acquireCommit');
+  }
+  // CAS checks for markCommitted, markUnknown, markFailed on state = COMMITTING
+  const hasCasOnCommitting = content.includes("state = 'COMMITTING'") || content.includes("state: 'COMMITTING'");
+  if (!hasCasOnCommitting) {
+    errors.push('outbound-effect-ledger.service.ts terminal state updates must CAS check state = COMMITTING');
+  }
+}
+
+// 5. Verify fail-closed commit & ledger integration in email.send handler
 const emailHandlerPath = path.join(
   root,
   'apps/backend/execution-control/control-plane/src/modules/execution/adapters/email/email-send.handler.ts'
@@ -109,9 +163,22 @@ if (!fs.existsSync(emailHandlerPath)) {
   if (!content.includes('computeOutboundPayloadHash')) {
     errors.push('email-send handler missing computeOutboundPayloadHash calculation');
   }
+  if (!content.includes('DIRECT_EXTERNAL_WRITE_FORBIDDEN')) {
+    errors.push('email-send handler missing DIRECT_EXTERNAL_WRITE_FORBIDDEN fail-closed enforcement');
+  }
+  // Check active ledger calls
+  if (
+    !content.includes('ledger.prepare') ||
+    !content.includes('ledger.acquireCommit') ||
+    !content.includes('ledger.markCommitted') ||
+    !content.includes('ledger.markUnknown') ||
+    !content.includes('ledger.markFailed')
+  ) {
+    errors.push('email-send handler must actively call ledger.prepare, acquireCommit, markCommitted, markUnknown, markFailed');
+  }
 }
 
-// 5. Verify email providers propagate clientRequestKey (deduplication keys)
+// 6. Verify email providers propagate clientRequestKey and shape timeout error
 const smtpClientPath = path.join(
   root,
   'apps/backend/execution-control/control-plane/src/modules/execution/adapters/email/providers/smtp-client.ts'
@@ -120,6 +187,16 @@ if (fs.existsSync(smtpClientPath)) {
   const content = fs.readFileSync(smtpClientPath, 'utf8');
   if (!content.includes('clientRequestKey') || !content.includes('X-Client-Request-Key')) {
     errors.push('smtp-client.ts missing clientRequestKey / X-Client-Request-Key propagation');
+  }
+  if (!content.includes('ETIMEDOUT') || !content.includes('isTimeout')) {
+    errors.push('smtp-client.ts missing ETIMEDOUT code or isTimeout flag on socket timeout');
+  }
+}
+
+if (fs.existsSync(emailHandlerPath)) {
+  const content = fs.readFileSync(emailHandlerPath, 'utf8');
+  if (!content.includes('isTimeout === true') || !content.includes('超时')) {
+    errors.push('email-send.handler.ts isUncertainNetworkError must check isTimeout and Chinese 超时');
   }
 }
 
@@ -134,10 +211,14 @@ if (fs.existsSync(graphProviderPath)) {
   }
 }
 
-// 6. Verify DeterministicPlanSchedulerService handles UNKNOWN unconditionally before terminal output/continue
+// 7. Verify DeterministicPlanSchedulerService handles UNKNOWN unconditionally and guards against caller self-auth
 const schedulerPath = path.join(
   root,
   'apps/backend/execution-control/control-plane/src/modules/execution/plan-runtime/deterministic-plan-scheduler.service.ts'
+);
+const schedulerHelpersPath = path.join(
+  root,
+  'apps/backend/execution-control/control-plane/src/modules/execution/plan-runtime/deterministic-plan-scheduler.helpers.ts'
 );
 if (!fs.existsSync(schedulerPath)) {
   errors.push(`Missing deterministic plan scheduler: ${schedulerPath}`);
@@ -160,7 +241,14 @@ if (!fs.existsSync(schedulerPath)) {
   }
 }
 
-// 7. Verify RuntimeResultInterpreter routes UNKNOWN directly to context.takeover
+if (fs.existsSync(schedulerHelpersPath)) {
+  const helpersContent = fs.readFileSync(schedulerHelpersPath, 'utf8');
+  if (!helpersContent.includes('UNAUTHORIZED_EFFECT_COMMIT')) {
+    errors.push('deterministic-plan-scheduler.helpers.ts missing UNAUTHORIZED_EFFECT_COMMIT guard');
+  }
+}
+
+// 8. Verify RuntimeResultInterpreter routes UNKNOWN directly to context.takeover
 const interpreterPath = path.join(
   root,
   'apps/backend/execution-control/control-plane/src/modules/execution/step-runner/runtime/runtime-result.interpreter.ts'
@@ -172,7 +260,7 @@ if (fs.existsSync(interpreterPath)) {
   }
 }
 
-// 8. Verify W3C distributed trace propagation in TraceInterceptor
+// 9. Verify W3C distributed trace propagation in TraceInterceptor, ProxyController, and Outbox Enqueue
 const traceInterceptorPath = path.join(
   root,
   'apps/backend/execution-control/control-plane/src/common/interceptors/trace.interceptor.ts'
@@ -190,7 +278,29 @@ if (fs.existsSync(traceInterceptorPath)) {
   }
 }
 
-// 9. Verify production Compose durable role configuration
+const proxyControllerPath = path.join(
+  root,
+  'apps/backend/execution-control/control-plane/src/modules/proxy/proxy.controller.ts'
+);
+if (fs.existsSync(proxyControllerPath)) {
+  const content = fs.readFileSync(proxyControllerPath, 'utf8');
+  if (!content.includes('createChildTraceparent') || !content.includes('currentTraceparent')) {
+    errors.push('ProxyController missing child span derivation from traceparent via createChildTraceparent');
+  }
+}
+
+const executionCreatePath = path.join(
+  root,
+  'apps/backend/execution-control/control-plane/src/modules/execution/creation/execution-create.service.ts'
+);
+if (fs.existsSync(executionCreatePath)) {
+  const content = fs.readFileSync(executionCreatePath, 'utf8');
+  if (!content.includes('traceContext')) {
+    errors.push('ExecutionCreateService missing traceContext propagation into outbox event');
+  }
+}
+
+// 10. Verify production Compose durable role configuration
 const prodComposePath = path.join(root, 'docker/compose/docker-compose.production.yml');
 if (fs.existsSync(prodComposePath)) {
   const content = fs.readFileSync(prodComposePath, 'utf8');

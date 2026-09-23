@@ -116,3 +116,53 @@ export function extractFinalOutputsFromSteps(
 
   return outputs;
 }
+
+export function resolveOutboundEffectMetadata(
+  planNode: any,
+  frozenMeta: any,
+  resolvedInput: any,
+  execution: any,
+  stepId: string,
+  stepIdempotencyKey: string,
+  definitionVersion: string,
+  capabilityVersion?: string
+): Record<string, any> {
+  const frozenPhase = planNode?.metadata?.phase || frozenMeta.phase;
+  const frozenApprovedHash =
+    planNode?.metadata?.approvedPayloadHash || frozenMeta.approvedPayloadHash;
+  const frozenPayloadHash = planNode?.metadata?.payloadHash || frozenMeta.payloadHash;
+  const frozenEffectId = planNode?.metadata?.effectId || frozenMeta.effectId;
+
+  // Enforce commit authority: caller cannot self-authorize 'commit' in resolvedInput
+  if (resolvedInput?.phase === 'commit') {
+    if (frozenPhase !== 'commit' && execution?.approvalStatus !== 'APPROVED') {
+      throw new Error(
+        `UNAUTHORIZED_EFFECT_COMMIT: Step '${stepId}' cannot self-authorize 'commit' phase in runtime input without frozen plan or execution approval`
+      );
+    }
+  }
+
+  const effectivePhase =
+    frozenPhase || (resolvedInput?.phase === 'prepare' ? 'prepare' : undefined);
+  const effectivePayloadHash =
+    frozenApprovedHash ||
+    frozenPayloadHash ||
+    (effectivePhase === 'prepare' ? resolvedInput?.payloadHash : undefined);
+
+  return {
+    capabilityVersion: capabilityVersion || definitionVersion,
+    definitionVersion,
+    idempotencyKey: stepIdempotencyKey,
+    phase: effectivePhase,
+    payloadHash: effectivePayloadHash,
+    approvedPayloadHash: frozenApprovedHash,
+    effectId: frozenEffectId,
+    outboundEffect: {
+      phase: effectivePhase,
+      payloadHash: effectivePayloadHash,
+      approvedPayloadHash: frozenApprovedHash,
+      effectId: frozenEffectId,
+      idempotencyKey: stepIdempotencyKey,
+    },
+  };
+}

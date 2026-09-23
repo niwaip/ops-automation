@@ -7,10 +7,14 @@ import {
 } from '@ops/backend-execution-core';
 import { getAuthServiceUrl } from '../../../../config/service-endpoints';
 import type { RuntimeStepInvokeRequest } from '../runtime-adapter.interface';
+import type { OutboundEffectLedgerService } from '../../outbox/outbound-effect-ledger.service';
 import type { EmailSendInput } from './email-engine.types';
 import { defaultEmailOrchestrator } from './email-orchestrator';
 
 function isUncertainNetworkError(error: any): boolean {
+  if (error?.isTimeout === true) {
+    return true;
+  }
   const code = String(error?.code || '').toUpperCase();
   const rawMessage = (error instanceof Error ? error.message : String(error)).toLowerCase();
 
@@ -20,6 +24,7 @@ function isUncertainNetworkError(error: any): boolean {
   return (
     rawMessage.includes('timeout') ||
     rawMessage.includes('timed out') ||
+    rawMessage.includes('超时') ||
     rawMessage.includes('socket hang up') ||
     rawMessage.includes('connection reset') ||
     rawMessage.includes('econnreset') ||
@@ -64,7 +69,8 @@ async function resolveEmailRuntimeConfigs(
 
 export async function executeEmailSend(
   request: RuntimeStepInvokeRequest,
-  idempotencyKey?: string
+  idempotencyKey?: string,
+  ledger?: OutboundEffectLedgerService
 ): Promise<BuiltinSkillHandlerResult> {
   const rawInput = (request.input || {}) as Record<string, any>;
   const prompt = typeof rawInput.prompt === 'string' ? rawInput.prompt : '';
@@ -96,6 +102,18 @@ export async function executeEmailSend(
     };
   }
   const phase: OutboundEffectPhase = rawPhase as OutboundEffectPhase;
+
+  if (phase === OUTBOUND_EFFECT_PHASE.DIRECT) {
+    if (process.env.ALLOW_LEGACY_DIRECT_EXTERNAL_WRITE !== 'true') {
+      return {
+        success: false,
+        status: 'failed',
+        errorCode: 'DIRECT_EXTERNAL_WRITE_FORBIDDEN',
+        errorMessage:
+          "Direct execution of external_write capability 'platform.email.send' is forbidden without two-phase approval (set ALLOW_LEGACY_DIRECT_EXTERNAL_WRITE=true to override for legacy testing)",
+      };
+    }
+  }
 
   // 1. Normalize 'to' recipients
   let toList: Array<{ name?: string; address: string }> = [];
@@ -179,6 +197,20 @@ export async function executeEmailSend(
 
   // Phase: PREPARE
   if (phase === OUTBOUND_EFFECT_PHASE.PREPARE) {
+    let ledgerId: string | undefined;
+    if (ledger && effectiveIdempotencyKey) {
+      const capabilityKey = request.publishedSkillId || request.skillId || 'platform.email.send';
+      const tenantId = (request.metadata?.tenantId as string) || 'default';
+      const record = await ledger.prepare({
+        tenantId,
+        capabilityKey,
+        idempotencyKey: effectiveIdempotencyKey,
+        canonicalPayload,
+        payloadHash,
+      });
+      ledgerId = record.id;
+    }
+
     return {
       success: true,
       status: 'prepared',
@@ -188,16 +220,19 @@ export async function executeEmailSend(
         idempotencyKey: effectiveIdempotencyKey || undefined,
         payloadHash,
         canonicalPayload,
+        ledgerId,
       },
     };
   }
 
   // Phase: COMMIT — verify caller payloadHash matches computed hash (fail-closed)
+  let commitRecord: any;
   if (phase === OUTBOUND_EFFECT_PHASE.COMMIT) {
     const providedPayloadHash = (
+      (request.metadata as Record<string, any> | undefined)?.outboundEffect?.approvedPayloadHash ||
       (request.metadata as Record<string, any> | undefined)?.outboundEffect?.payloadHash ||
-      request.metadata?.payloadHash ||
       request.metadata?.approvedPayloadHash ||
+      request.metadata?.payloadHash ||
       rawInput.payloadHash ||
       ''
     ) as string;
@@ -221,6 +256,29 @@ export async function executeEmailSend(
         payloadHash,
       };
     }
+
+    if (ledger && effectiveIdempotencyKey) {
+      const capabilityKey = request.publishedSkillId || request.skillId || 'platform.email.send';
+      const tenantId = (request.metadata?.tenantId as string) || 'default';
+      try {
+        commitRecord = await ledger.acquireCommit({
+          tenantId,
+          capabilityKey,
+          idempotencyKey: effectiveIdempotencyKey,
+          payloadHash,
+        });
+      } catch (err: any) {
+        return {
+          success: false,
+          status: 'failed',
+          errorCode: err.message.includes('OUTBOUND_EFFECT_')
+            ? err.message.split(':')[0].trim()
+            : 'COMMIT_ACQUISITION_FAILED',
+          errorMessage: err.message,
+          payloadHash,
+        };
+      }
+    }
   }
 
   const input: EmailSendInput = {
@@ -241,6 +299,17 @@ export async function executeEmailSend(
     const result = await defaultEmailOrchestrator.sendMessage(input, runtimeConfigs);
 
     if (result.state === 'unknown') {
+      if (ledger && commitRecord?.id) {
+        try {
+          await ledger.markUnknown({
+            id: commitRecord.id,
+            errorClassification: 'OUTBOUND_EFFECT_UNKNOWN',
+            resolutionReason: 'Provider returned uncertain state',
+          });
+        } catch {
+          // ignore error to return structured unknown result
+        }
+      }
       return {
         success: false,
         status: 'unknown',
@@ -249,6 +318,19 @@ export async function executeEmailSend(
         payloadHash,
         output: result as unknown as Record<string, unknown>,
       };
+    }
+
+    if (ledger && commitRecord?.id) {
+      try {
+        await ledger.markCommitted({
+          id: commitRecord.id,
+          provider: (result as any).provider || 'smtp',
+          providerRequestId: (result as any).deliveryId,
+          providerMessageId: (result as any).deliveryId,
+        });
+      } catch {
+        // ignore error to return completed result
+      }
     }
 
     return {
@@ -261,6 +343,15 @@ export async function executeEmailSend(
     const rawMessage = error instanceof Error ? error.message : String(error);
 
     if (isUncertainNetworkError(error)) {
+      if (ledger && commitRecord?.id) {
+        try {
+          await ledger.markUnknown({
+            id: commitRecord.id,
+            errorClassification: 'OUTBOUND_EFFECT_UNKNOWN',
+            resolutionReason: rawMessage,
+          });
+        } catch {}
+      }
       return {
         success: false,
         status: 'unknown',
@@ -268,6 +359,16 @@ export async function executeEmailSend(
         errorMessage: `邮件外发状态不确定 (网络超时或连接重置): ${rawMessage}`,
         payloadHash,
       };
+    }
+
+    if (ledger && commitRecord?.id) {
+      try {
+        await ledger.markFailed({
+          id: commitRecord.id,
+          errorClassification: rawMessage.includes('未配置') ? 'EMAIL_NOT_CONFIGURED' : 'EMAIL_SEND_FAILED',
+          resolutionReason: rawMessage,
+        });
+      } catch {}
     }
 
     if (rawMessage.includes('未配置')) {

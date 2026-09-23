@@ -258,11 +258,18 @@ export class ExecutionSubmitInputService {
         { stepId }
       );
       if (process.env.EXECUTION_OUTBOX_ENABLED === 'true' && this.outbox) {
+        const inputTrace = (requester as any)?.traceContext || ((execution as any)?.metadata as any)?.traceContext;
         await this.outbox.enqueue({
           aggregateType: 'execution',
           aggregateId: executionId,
           eventType: 'execution.ready',
-          payload: { executionId, reason: 'input_submitted', dispatcherVersion: 'v2' },
+          payload: {
+            executionId,
+            reason: 'input_submitted',
+            dispatcherVersion: 'v2',
+            ...(inputTrace ? { traceContext: inputTrace } : {}),
+          },
+          traceContext: inputTrace,
         });
       } else {
         setTimeout(() => {

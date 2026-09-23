@@ -4,6 +4,10 @@ import { ExecutionOutboxService } from '../outbox/execution-outbox.service';
 import { DeterministicPlanRecoveryService } from '../plan-runtime/deterministic-plan-recovery.service';
 import { DeterministicPlanSchedulerService } from '../plan-runtime/deterministic-plan-scheduler.service';
 import { roleEnabled } from '../../../config/control-plane-role';
+import {
+  createChildTraceparent,
+  generateW3cTraceparent,
+} from '../../../common/interceptors/trace.interceptor';
 
 @Injectable()
 export class ExecutionDispatcherService implements OnModuleInit, OnModuleDestroy {
@@ -64,6 +68,15 @@ export class ExecutionDispatcherService implements OnModuleInit, OnModuleDestroy
           typeof item.payload.executionId === 'string'
             ? item.payload.executionId
             : item.aggregateId;
+        const incomingTrace = (item.payload.traceContext as any) || undefined;
+        const traceId = incomingTrace?.traceId || 'trace-dispatcher';
+        const consumerTraceparent = incomingTrace?.traceparent
+          ? createChildTraceparent(incomingTrace.traceparent)
+          : generateW3cTraceparent();
+
+        this.logger.log(
+          `[${traceId}] Dispatching execution ${executionId} from outbox item ${item.id} (consumerTrace: ${consumerTraceparent})`
+        );
         try {
           await this.scheduler.advanceExecution(executionId);
           if (await this.outbox.markPublished(item.id, this.owner)) completed += 1;

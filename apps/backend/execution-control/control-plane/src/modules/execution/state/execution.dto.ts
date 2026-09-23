@@ -271,6 +271,11 @@ export class CreateExecutionDto {
   @IsOptional()
   @IsString()
   scheduleId?: string;
+
+  @ApiProperty({ description: 'Execution metadata (tracing, context, etc.)', required: false })
+  @IsOptional()
+  @IsObject()
+  metadata?: Record<string, unknown>;
 }
 
 export class ExecutionDto {

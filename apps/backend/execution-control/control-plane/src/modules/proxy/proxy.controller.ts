@@ -231,7 +231,7 @@ export class ProxyController {
     }
 
     // Forward distributed tracing headers
-    const incomingTraceId = (req.headers[TRACE_ID_HEADER] as string) || (req as any).traceId;
+    const incomingTraceId = (req as any).traceId || (req.headers[TRACE_ID_HEADER] as string);
     if (incomingTraceId) {
       headers[TRACE_ID_HEADER] = incomingTraceId;
     }
@@ -239,12 +239,22 @@ export class ProxyController {
       headers['x-request-id'] = req.headers['x-request-id'] as string;
     }
 
-    const rawTraceparent = req.headers[TRACEPARENT_HEADER] as string | undefined;
-    if (rawTraceparent && isValidTraceparent(rawTraceparent)) {
-      headers[TRACEPARENT_HEADER] = createChildTraceparent(rawTraceparent);
-      if (req.headers[TRACESTATE_HEADER]) {
-        headers[TRACESTATE_HEADER] = req.headers[TRACESTATE_HEADER] as string;
-      }
+    const currentTraceparent =
+      (req as any).traceparent ||
+      (req as any).traceContext?.traceparent ||
+      (req.headers[TRACEPARENT_HEADER] as string | undefined);
+
+    if (currentTraceparent && isValidTraceparent(currentTraceparent)) {
+      headers[TRACEPARENT_HEADER] = createChildTraceparent(currentTraceparent);
+    } else if (currentTraceparent) {
+      headers[TRACEPARENT_HEADER] = currentTraceparent;
+    }
+
+    const currentTracestate =
+      (req as any).traceContext?.tracestate ||
+      (req.headers[TRACESTATE_HEADER] as string | undefined);
+    if (currentTracestate) {
+      headers[TRACESTATE_HEADER] = currentTracestate;
     }
 
     try {

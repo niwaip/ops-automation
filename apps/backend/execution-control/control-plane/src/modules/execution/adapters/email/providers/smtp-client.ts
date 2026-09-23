@@ -234,7 +234,10 @@ export class SmtpClient {
       const startSession = (socket: net.Socket | tls.TLSSocket, initialTls: boolean) => {
         activeSocket = socket;
         activeSocket.setTimeout(timeout, () => {
-          done(new Error(`SMTP 发信请求超时 (${timeout}ms)`));
+          const timeoutErr = new Error(`SMTP 发信请求超时 (${timeout}ms): connection or write timed out [ETIMEDOUT]`) as Error & { code?: string; isTimeout?: boolean };
+          timeoutErr.code = 'ETIMEDOUT';
+          timeoutErr.isTimeout = true;
+          done(timeoutErr);
         });
 
         let state = 'GREETING';
@@ -243,8 +246,10 @@ export class SmtpClient {
         let recipientIndex = 0;
 
         const attachHandlers = (s: net.Socket | tls.TLSSocket) => {
-          s.on('error', (err) => {
-            done(new Error(`SMTP 发信通信异常: ${err.message}`));
+          s.on('error', (err: any) => {
+            const wrappedErr = new Error(`SMTP 发信通信异常: ${err?.message || err}`) as Error & { code?: string };
+            wrappedErr.code = err?.code;
+            done(wrappedErr);
           });
 
           s.on('data', (chunk) => {

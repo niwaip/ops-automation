@@ -372,4 +372,19 @@ describe('DeterministicPlanSchedulerService', () => {
       expect.anything()
     );
   });
+
+  it('rejects caller attempting to self-authorize commit phase in runtime input without approval', () => {
+    const { resolveOutboundEffectMetadata } = require('../src/modules/execution/plan-runtime/deterministic-plan-scheduler.helpers');
+    expect(() =>
+      resolveOutboundEffectMetadata(
+        { metadata: {} },
+        {},
+        { phase: 'commit', payloadHash: 'sha256:abc' },
+        { approvalStatus: 'PENDING' },
+        'step-1',
+        'idem-1',
+        '1.0.0'
+      )
+    ).toThrow('UNAUTHORIZED_EFFECT_COMMIT');
+  });
 });

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExecutionOutboxService } from '../execution/outbox/execution-outbox.service';
+import { generateW3cTraceparent } from '../../common/interceptors/trace.interceptor';
 
 export interface CreateScheduleFireInput {
   scheduleId: string;
@@ -41,6 +42,10 @@ export class ScheduleFireService {
           nextRunAt: input.nextRunAt,
         },
       });
+      const scheduleTrace = {
+        traceparent: generateW3cTraceparent(),
+        originService: 'schedule-trigger',
+      };
       await this.outbox.enqueue(
         {
           aggregateType: 'schedule_fire',
@@ -54,7 +59,9 @@ export class ScheduleFireService {
             skillId: input.skillId,
             ...(input.skillVersion ? { skillVersion: input.skillVersion } : {}),
             input: input.input,
+            traceContext: scheduleTrace,
           },
+          traceContext: scheduleTrace,
         },
         tx
       );

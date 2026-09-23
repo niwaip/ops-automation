@@ -667,6 +667,12 @@ export class ExecutionCreateService {
         process.env.EXECUTION_OUTBOX_ENABLED === 'true' &&
         this.executionOutboxService
       ) {
+        const incomingTrace = (dto.metadata?.traceContext as any) || {
+          traceparent: (dto.metadata?.traceparent as string) || (dto.metadata?.w3cTraceparent as string) || undefined,
+          traceId: (dto.metadata?.traceId as string) || undefined,
+          tracestate: (dto.metadata?.tracestate as string) || undefined,
+        };
+        const hasTrace = Boolean(incomingTrace.traceparent || incomingTrace.traceId);
         await this.executionOutboxService.enqueue(
           {
             aggregateType: 'execution',
@@ -675,7 +681,9 @@ export class ExecutionCreateService {
             payload: {
               executionId: createdExecutionId,
               dispatcherVersion: 'v2',
+              ...(hasTrace ? { traceContext: incomingTrace } : {}),
             },
+            traceContext: hasTrace ? incomingTrace : undefined,
           },
           tx
         );

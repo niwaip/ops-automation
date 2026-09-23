@@ -77,11 +77,18 @@ export class ExecutionApprovalService {
     });
 
     if (process.env.EXECUTION_OUTBOX_ENABLED === 'true' && this.outbox) {
+      const approvalTrace = (requester as any)?.traceContext || ((execution as any)?.metadata as any)?.traceContext;
       await this.outbox.enqueue({
         aggregateType: 'execution',
         aggregateId: id,
         eventType: 'execution.ready',
-        payload: { executionId: id, reason: 'approval_granted', dispatcherVersion: 'v2' },
+        payload: {
+          executionId: id,
+          reason: 'approval_granted',
+          dispatcherVersion: 'v2',
+          ...(approvalTrace ? { traceContext: approvalTrace } : {}),
+        },
+        traceContext: approvalTrace,
       });
     } else {
       hooks.startExecution(id).catch((err) => {

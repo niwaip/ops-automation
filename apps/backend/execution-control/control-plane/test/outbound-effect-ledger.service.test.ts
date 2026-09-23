@@ -81,8 +81,49 @@ describe('OutboundEffectLedgerService', () => {
     });
   });
 
+  describe('approve', () => {
+    it('approves a prepared effect when payloadHash matches', async () => {
+      const row = { id: 'ledger-1', state: 'APPROVED', payloadHash: 'sha256:abc' };
+      prismaMock.$queryRawUnsafe.mockResolvedValue([row]);
+
+      const res = await service.approve({
+        capabilityKey: 'platform.email.send',
+        idempotencyKey: 'idem-1',
+        approvedPayloadHash: 'sha256:abc',
+        approver: 'admin-1',
+      });
+
+      expect(res.state).toBe('APPROVED');
+      expect(prismaMock.$queryRawUnsafe).toHaveBeenCalledWith(
+        expect.stringContaining("SET state = 'APPROVED'"),
+        'default',
+        'platform.email.send',
+        'idem-1',
+        'sha256:abc',
+        'admin-1'
+      );
+    });
+
+    it('throws IDEMPOTENCY_PAYLOAD_CONFLICT if approved hash does not match record', async () => {
+      prismaMock.$queryRawUnsafe.mockResolvedValue([]);
+      prismaMock.outboundEffectLedger.findUnique.mockResolvedValue({
+        id: 'ledger-1',
+        state: 'PREPARED',
+        payloadHash: 'sha256:original',
+      });
+
+      await expect(
+        service.approve({
+          capabilityKey: 'platform.email.send',
+          idempotencyKey: 'idem-1',
+          approvedPayloadHash: 'sha256:tampered',
+        })
+      ).rejects.toThrow('IDEMPOTENCY_PAYLOAD_CONFLICT');
+    });
+  });
+
   describe('acquireCommit', () => {
-    it('returns row when atomic CAS succeeds', async () => {
+    it('returns row when atomic CAS from APPROVED succeeds', async () => {
       const row = { id: 'ledger-1', state: 'COMMITTING' };
       prismaMock.$queryRawUnsafe.mockResolvedValue([row]);
 
@@ -93,27 +134,14 @@ describe('OutboundEffectLedgerService', () => {
       });
 
       expect(res).toBe(row);
-      expect(prismaMock.$queryRawUnsafe).toHaveBeenCalled();
+      expect(prismaMock.$queryRawUnsafe.mock.calls[0][0]).toContain("state = 'APPROVED'");
     });
 
-    it('throws OUTBOUND_EFFECT_NOT_PREPARED when no record exists', async () => {
-      prismaMock.$queryRawUnsafe.mockResolvedValue([]);
-      prismaMock.outboundEffectLedger.findUnique.mockResolvedValue(null);
-
-      await expect(
-        service.acquireCommit({
-          capabilityKey: 'platform.email.send',
-          idempotencyKey: 'idem-1',
-          payloadHash: 'sha256:abc',
-        })
-      ).rejects.toThrow('OUTBOUND_EFFECT_NOT_PREPARED');
-    });
-
-    it('throws OUTBOUND_EFFECT_LOCKED when already in COMMITTING state', async () => {
+    it('strictly rejects PREPARED state (bypass approval attempt)', async () => {
       prismaMock.$queryRawUnsafe.mockResolvedValue([]);
       prismaMock.outboundEffectLedger.findUnique.mockResolvedValue({
         id: 'ledger-1',
-        state: 'COMMITTING',
+        state: 'PREPARED',
         payloadHash: 'sha256:abc',
       });
 
@@ -123,14 +151,14 @@ describe('OutboundEffectLedgerService', () => {
           idempotencyKey: 'idem-1',
           payloadHash: 'sha256:abc',
         })
-      ).rejects.toThrow('OUTBOUND_EFFECT_LOCKED');
+      ).rejects.toThrow('OUTBOUND_EFFECT_NOT_APPROVED');
     });
 
-    it('throws OUTBOUND_EFFECT_ALREADY_COMMITTED when already in COMMITTED state', async () => {
+    it('strictly rejects UNKNOWN state (must be reconciled by human first)', async () => {
       prismaMock.$queryRawUnsafe.mockResolvedValue([]);
       prismaMock.outboundEffectLedger.findUnique.mockResolvedValue({
         id: 'ledger-1',
-        state: 'COMMITTED',
+        state: 'UNKNOWN',
         payloadHash: 'sha256:abc',
       });
 
@@ -140,31 +168,80 @@ describe('OutboundEffectLedgerService', () => {
           idempotencyKey: 'idem-1',
           payloadHash: 'sha256:abc',
         })
-      ).rejects.toThrow('OUTBOUND_EFFECT_ALREADY_COMMITTED');
+      ).rejects.toThrow('OUTBOUND_EFFECT_IN_UNKNOWN_STATE');
+    });
+
+    it('strictly rejects FAILED state without explicit retry authorization', async () => {
+      prismaMock.$queryRawUnsafe.mockResolvedValue([]);
+      prismaMock.outboundEffectLedger.findUnique.mockResolvedValue({
+        id: 'ledger-1',
+        state: 'FAILED',
+        payloadHash: 'sha256:abc',
+      });
+
+      await expect(
+        service.acquireCommit({
+          capabilityKey: 'platform.email.send',
+          idempotencyKey: 'idem-1',
+          payloadHash: 'sha256:abc',
+        })
+      ).rejects.toThrow('OUTBOUND_EFFECT_FAILED');
     });
   });
 
-  describe('outcomes', () => {
-    it('markCommitted updates state to COMMITTED', async () => {
-      prismaMock.outboundEffectLedger.update.mockResolvedValue({ id: 'ledger-1', state: 'COMMITTED' });
-      await service.markCommitted({ id: 'ledger-1', provider: 'smtp', providerRequestId: 'req-1' });
-      expect(prismaMock.outboundEffectLedger.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'ledger-1' },
-          data: expect.objectContaining({ state: 'COMMITTED', provider: 'smtp', providerRequestId: 'req-1' }),
-        })
-      );
+  describe('terminal outcomes & CAS protection', () => {
+    it('markCommitted enforces state = COMMITTING CAS', async () => {
+      const committedRow = { id: 'ledger-1', state: 'COMMITTED' };
+      prismaMock.$queryRawUnsafe.mockResolvedValue([committedRow]);
+
+      const res = await service.markCommitted({ id: 'ledger-1', provider: 'smtp', providerRequestId: 'req-1' });
+      expect(res).toBe(committedRow);
+      expect(prismaMock.$queryRawUnsafe.mock.calls[0][0]).toContain("state = 'COMMITTING'");
     });
 
-    it('markUnknown updates state to UNKNOWN', async () => {
-      prismaMock.outboundEffectLedger.update.mockResolvedValue({ id: 'ledger-1', state: 'UNKNOWN' });
-      await service.markUnknown({ id: 'ledger-1', errorClassification: 'ETIMEDOUT' });
-      expect(prismaMock.outboundEffectLedger.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'ledger-1' },
-          data: expect.objectContaining({ state: 'UNKNOWN', errorClassification: 'ETIMEDOUT' }),
-        })
-      );
+    it('markCommitted fails if stale worker attempts to commit record already resolved or non-committing', async () => {
+      prismaMock.$queryRawUnsafe.mockResolvedValue([]);
+      prismaMock.outboundEffectLedger.findUnique.mockResolvedValue({ id: 'ledger-1', state: 'UNKNOWN' });
+
+      await expect(
+        service.markCommitted({ id: 'ledger-1', provider: 'smtp' })
+      ).rejects.toThrow('STATE_CONFLICT');
+    });
+
+    it('markUnknown enforces state = COMMITTING CAS', async () => {
+      const unknownRow = { id: 'ledger-1', state: 'UNKNOWN' };
+      prismaMock.$queryRawUnsafe.mockResolvedValue([unknownRow]);
+
+      const res = await service.markUnknown({ id: 'ledger-1', errorClassification: 'ETIMEDOUT' });
+      expect(res).toBe(unknownRow);
+      expect(prismaMock.$queryRawUnsafe.mock.calls[0][0]).toContain("state = 'COMMITTING'");
+    });
+
+    it('resolveUnknown allows human operator to reconcile UNKNOWN to COMMITTED', async () => {
+      const resolvedRow = { id: 'ledger-1', state: 'COMMITTED', resolutionReason: 'Verified delivered via logs' };
+      prismaMock.$queryRawUnsafe.mockResolvedValue([resolvedRow]);
+
+      const res = await service.resolveUnknown({
+        id: 'ledger-1',
+        targetState: 'COMMITTED',
+        resolutionReason: 'Verified delivered via logs',
+        resolvedBy: 'operator-1',
+      });
+      expect(res).toBe(resolvedRow);
+      expect(prismaMock.$queryRawUnsafe.mock.calls[0][0]).toContain("state = 'UNKNOWN'");
+    });
+
+    it('authorizeRetry allows explicit transition from FAILED to APPROVED', async () => {
+      const retriedRow = { id: 'ledger-1', state: 'APPROVED' };
+      prismaMock.$queryRawUnsafe.mockResolvedValue([retriedRow]);
+
+      const res = await service.authorizeRetry({
+        id: 'ledger-1',
+        authorizedBy: 'admin-1',
+        reason: 'Temporary network glitch cleared',
+      });
+      expect(res).toBe(retriedRow);
+      expect(prismaMock.$queryRawUnsafe.mock.calls[0][0]).toContain("state = 'FAILED'");
     });
   });
 });
