@@ -151,11 +151,11 @@ export function resolveOutboundEffectMetadata(
   const isExternalWrite =
     sideEffectClass === 'external_write' || capabilityKey === 'platform.email.send';
 
-  // Enforce commit authority: caller cannot self-authorize 'commit' in resolvedInput
+  // Enforce commit authority: caller cannot self-authorize 'commit' in resolvedInput without prior prepare and approval
   if (resolvedInput?.phase === 'commit') {
-    if (frozenPhase !== 'commit' && !isApproved) {
+    if (frozenPhase !== 'commit' && (!isApproved || !isStepPreviouslyPrepared)) {
       throw new Error(
-        `UNAUTHORIZED_EFFECT_COMMIT: Step '${stepId}' cannot self-authorize 'commit' phase in runtime input without frozen plan or execution approval`
+        `UNAUTHORIZED_EFFECT_COMMIT: Step '${stepId}' cannot self-authorize 'commit' phase in runtime input without prior prepare and execution approval`
       );
     }
   }
@@ -163,11 +163,12 @@ export function resolveOutboundEffectMetadata(
   let effectivePhase = frozenPhase;
   if (!effectivePhase && isStepPreviouslyPrepared && isApproved) {
     effectivePhase = 'commit';
-  } else if (!effectivePhase && (resolvedInput?.phase === 'commit' || frozenPhase === 'commit') && isApproved) {
+  } else if (!effectivePhase && (resolvedInput?.phase === 'commit' || frozenPhase === 'commit') && isApproved && isStepPreviouslyPrepared) {
     effectivePhase = 'commit';
-  } else if (!effectivePhase && resolvedInput?.phase === 'prepare') {
+  } else if (!effectivePhase && isExternalWrite && !isStepPreviouslyPrepared) {
+    // An external_write step MUST always begin in PREPARE phase, even if plan pre-approval was granted
     effectivePhase = 'prepare';
-  } else if (!effectivePhase && isExternalWrite && !isApproved) {
+  } else if (!effectivePhase && resolvedInput?.phase === 'prepare') {
     effectivePhase = 'prepare';
   }
 

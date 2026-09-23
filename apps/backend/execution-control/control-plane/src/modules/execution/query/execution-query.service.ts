@@ -47,10 +47,62 @@ export class ExecutionQueryService {
     });
     const phases = await this.executionPhaseService.listByExecutionId(id);
 
+    let pendingOutboundEffects: any[] | undefined = undefined;
+    let unknownOutboundEffects: any[] | undefined = undefined;
+
+    if ((this.prisma as any).outboundEffectLedger) {
+      if (execution.status === 'pending_approval' || execution.approvalStatus === 'pending') {
+        const records = await (this.prisma as any).outboundEffectLedger.findMany({
+          where: {
+            idempotencyKey: { startsWith: `${id}:` },
+            state: 'PREPARED',
+          },
+        });
+        if (records.length > 0) {
+          pendingOutboundEffects = records.map((r: any) => ({
+            effectId: r.id,
+            capabilityKey: r.capabilityKey,
+            idempotencyKey: r.idempotencyKey,
+            payloadHash: r.payloadHash,
+            canonicalPayload: r.canonicalPayload
+              ? typeof r.canonicalPayload === 'string'
+                ? JSON.parse(r.canonicalPayload)
+                : r.canonicalPayload
+              : null,
+            state: r.state,
+            stepId: r.idempotencyKey.split(':')[1] || undefined,
+          }));
+        }
+      }
+
+      if (execution.status === 'human_control' || execution.takeoverRequired) {
+        const records = await (this.prisma as any).outboundEffectLedger.findMany({
+          where: {
+            idempotencyKey: { startsWith: `${id}:` },
+            state: 'UNKNOWN',
+          },
+        });
+        if (records.length > 0) {
+          unknownOutboundEffects = records.map((r: any) => ({
+            effectId: r.id,
+            capabilityKey: r.capabilityKey,
+            idempotencyKey: r.idempotencyKey,
+            payloadHash: r.payloadHash,
+            errorClassification: r.errorClassification,
+            resolutionReason: r.resolutionReason,
+            state: r.state,
+            stepId: r.idempotencyKey.split(':')[1] || undefined,
+          }));
+        }
+      }
+    }
+
     return mapExecutionToDto({
       ...execution,
       runtimeSessionId: runtimeSession?.id || null,
       phases,
+      pendingOutboundEffects,
+      unknownOutboundEffects,
     });
   }
 

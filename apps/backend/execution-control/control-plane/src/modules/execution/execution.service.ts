@@ -53,6 +53,7 @@ import {
   ListExecutionsDto,
   SubmitInputDto,
   ApprovalDecisionDto,
+  AuthorizeRetryOutboundEffectDto,
   ResolveOutboundEffectDto,
   UpdateWorkflowActivityProgressDto,
 } from './state/execution.dto';
@@ -423,7 +424,25 @@ export class ExecutionService {
       effectId,
       dto,
       userId,
-      requester
+      requester,
+      this.getApprovalHooks()
+    );
+  }
+
+  async authorizeRetryOutboundEffect(
+    id: string,
+    effectId: string,
+    dto: AuthorizeRetryOutboundEffectDto,
+    userId: string,
+    requester?: RequestUserContext
+  ) {
+    return this.executionApprovalService.authorizeRetryOutboundEffect(
+      id,
+      effectId,
+      dto,
+      userId,
+      requester,
+      this.getApprovalHooks()
     );
   }
 

@@ -65,11 +65,26 @@ export function useExecutionDetailActions({
   );
 
   const approveMutation = useMutation(
-    async () => {
+    async (payload?: { effectId?: string; approvedPayloadHash?: string } | void) => {
       if (!id) {
         throw new Error(text.approveFailed);
       }
-      return executionApi.approve(id);
+      let finalEffectId = payload?.effectId;
+      let finalHash = payload?.approvedPayloadHash;
+      if (!finalHash) {
+        try {
+          const currentExec = await executionApi.get(id);
+          const firstPending = currentExec?.pendingOutboundEffects?.[0];
+          if (firstPending) {
+            finalEffectId = firstPending.effectId;
+            finalHash = firstPending.payloadHash;
+          }
+        } catch {}
+      }
+      return executionApi.approve(id, {
+        ...(finalEffectId ? { effectId: finalEffectId } : {}),
+        ...(finalHash ? { approvedPayloadHash: finalHash } : {}),
+      });
     },
     {
       onSuccess: () => {

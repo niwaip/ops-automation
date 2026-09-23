@@ -390,7 +390,7 @@ if (fs.existsSync(capabilityAdapterPath)) {
   }
 }
 
-// 9c. Verify ExecutionController propagates traceContext into ExecutionService and exposes outbound effect resolve API
+// 9c. Verify ExecutionController propagates traceContext into ExecutionService and exposes outbound effect resolve and authorize-retry APIs
 const executionControllerPath = path.join(
   root,
   'apps/backend/execution-control/control-plane/src/modules/execution/execution.controller.ts'
@@ -402,6 +402,43 @@ if (fs.existsSync(executionControllerPath)) {
   }
   if (!content.includes('resolveOutboundEffect') || !content.includes(':id/outbound-effects/:effectId/resolve')) {
     errors.push('ExecutionController missing POST :id/outbound-effects/:effectId/resolve reconcile endpoint');
+  }
+  if (!content.includes('authorizeRetryOutboundEffect') || !content.includes(':id/outbound-effects/:effectId/authorize-retry')) {
+    errors.push('ExecutionController missing POST :id/outbound-effects/:effectId/authorize-retry endpoint');
+  }
+}
+
+// 9d. Verify deterministic scheduler helpers enforce PREPARE on un-prepared steps even with plan pre-approval
+if (fs.existsSync(schedulerHelpersPath)) {
+  const content = fs.readFileSync(schedulerHelpersPath, 'utf8');
+  if (!content.includes('!effectivePhase && isExternalWrite && !isStepPreviouslyPrepared')) {
+    errors.push('deterministic-plan-scheduler.helpers.ts must derive PREPARE when !isStepPreviouslyPrepared regardless of plan pre-approval');
+  }
+  if (!content.includes('UNAUTHORIZED_EFFECT_COMMIT') || !content.includes('!isStepPreviouslyPrepared')) {
+    errors.push('deterministic-plan-scheduler.helpers.ts must require prior preparation before permitting COMMIT phase');
+  }
+}
+
+// 9e. Verify ExecutionApprovalService enforces cross-execution boundary and authentic approver binding
+if (fs.existsSync(approvalServicePath)) {
+  const content = fs.readFileSync(approvalServicePath, 'utf8');
+  if (!content.includes('OUTBOUND_EFFECT_MISMATCH') || !content.includes('startsWith(`${executionId}:`)')) {
+    errors.push('ExecutionApprovalService must enforce cross-execution boundary check (OUTBOUND_EFFECT_MISMATCH)');
+  }
+  if (!content.includes('const effectiveApprover = requester?.id || userId')) {
+    errors.push('ExecutionApprovalService must bind ledger approver to authenticated user/requester to prevent identity spoofing');
+  }
+  if (!content.includes('authorizeRetryOutboundEffect')) {
+    errors.push('ExecutionApprovalService missing authorizeRetryOutboundEffect method');
+  }
+}
+
+// 9f. Verify @ops/user-core exports resolveOutboundEffect and authorizeRetryOutboundEffect
+const userCoreApiPath = path.join(root, 'packages/user-core/src/api/execution.api.ts');
+if (fs.existsSync(userCoreApiPath)) {
+  const content = fs.readFileSync(userCoreApiPath, 'utf8');
+  if (!content.includes('resolveOutboundEffect:') || !content.includes('authorizeRetryOutboundEffect:')) {
+    errors.push('packages/user-core/src/api/execution.api.ts missing resolveOutboundEffect or authorizeRetryOutboundEffect');
   }
 }
 

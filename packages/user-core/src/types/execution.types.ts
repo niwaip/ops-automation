@@ -117,6 +117,37 @@ export interface ExecutionDto {
   createdBy?: string;
   createdByName?: string;
   phases?: ExecutionPhaseDto[];
+  pendingOutboundEffects?: PendingOutboundEffectDto[];
+  unknownOutboundEffects?: UnknownOutboundEffectDto[];
+}
+
+export interface PendingOutboundEffectDto {
+  effectId: string;
+  capabilityKey: string;
+  idempotencyKey: string;
+  payloadHash: string;
+  canonicalPayload?: Record<string, unknown>;
+  stepId?: string;
+}
+
+export interface UnknownOutboundEffectDto {
+  effectId: string;
+  capabilityKey: string;
+  idempotencyKey: string;
+  payloadHash: string;
+  errorClassification?: string | null;
+  resolutionReason?: string | null;
+  state: string;
+  stepId?: string;
+}
+
+export interface ResolveOutboundEffectPayload {
+  targetState: 'COMMITTED' | 'FAILED' | 'CANCELLED';
+  resolutionReason: string;
+}
+
+export interface AuthorizeRetryOutboundEffectPayload {
+  reason?: string;
 }
 
 export interface ExecutionStepDto {

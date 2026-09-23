@@ -119,7 +119,20 @@ export function InterventionList({
 
   const handleApproveExecution = async (executionId: string) => {
     try {
-      await executionApi.approve(executionId);
+      let finalEffectId: string | undefined;
+      let finalHash: string | undefined;
+      try {
+        const currentExec = await executionApi.get(executionId);
+        const firstPending = currentExec?.pendingOutboundEffects?.[0];
+        if (firstPending) {
+          finalEffectId = firstPending.effectId;
+          finalHash = firstPending.payloadHash;
+        }
+      } catch {}
+      await executionApi.approve(executionId, {
+        ...(finalEffectId ? { effectId: finalEffectId } : {}),
+        ...(finalHash ? { approvedPayloadHash: finalHash } : {}),
+      });
       void message.success("已审批通过！");
       void queryClient.invalidateQueries(["dashboard-executions"]);
       void queryClient.invalidateQueries(["workbench-executions"]);

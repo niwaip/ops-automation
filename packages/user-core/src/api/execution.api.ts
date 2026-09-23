@@ -2,6 +2,7 @@ import type { ApiClient } from './client.js';
 import type { RuntimeConfigPort } from '../ports/runtime.port.js';
 import type {
   ApprovalStatus,
+  AuthorizeRetryOutboundEffectPayload,
   BrowserPhaseCheck,
   ExecutionDto,
   ExecutionPhaseArtifactDto,
@@ -10,11 +11,15 @@ import type {
   ExecutionStatus,
   ExecutionStepDto,
   ExecutionTakeoverRecordDto,
+  PendingOutboundEffectDto,
+  ResolveOutboundEffectPayload,
+  UnknownOutboundEffectDto,
 } from '../types/execution.types.js';
 import { resolveExecutionNormalizedResult } from '../domain/executions/result.js';
 
 export type {
   ApprovalStatus,
+  AuthorizeRetryOutboundEffectPayload,
   BrowserPhaseCheck,
   ExecutionDto,
   ExecutionPhaseArtifactDto,
@@ -23,6 +28,9 @@ export type {
   ExecutionStatus,
   ExecutionStepDto,
   ExecutionTakeoverRecordDto,
+  PendingOutboundEffectDto,
+  ResolveOutboundEffectPayload,
+  UnknownOutboundEffectDto,
 };
 
 export interface CreateExecutionRequest {
@@ -181,6 +189,10 @@ export const createExecutionApi = (client: ApiClient, runtimeConfig: RuntimeConf
     normalizeExecution(
       await client.post<ExecutionDto>(resolveExecutionPath(runtimeConfig, '/executions'), data)
     ),
+  get: async (id: string): Promise<ExecutionDto> =>
+    normalizeExecution(
+      await client.get<ExecutionDto>(resolveExecutionPath(runtimeConfig, `/executions/${id}`))
+    ),
   getById: async (id: string): Promise<ExecutionDto> =>
     normalizeExecution(
       await client.get<ExecutionDto>(resolveExecutionPath(runtimeConfig, `/executions/${id}`))
@@ -292,6 +304,30 @@ export const createExecutionApi = (client: ApiClient, runtimeConfig: RuntimeConf
         resolveExecutionPath(runtimeConfig, `/executions/${id}/reject`),
         data || {}
       )
+    ),
+  resolveOutboundEffect: async (
+    id: string,
+    effectId: string,
+    data: ResolveOutboundEffectPayload
+  ): Promise<any> =>
+    client.post<any>(
+      resolveExecutionPath(
+        runtimeConfig,
+        `/executions/${id}/outbound-effects/${encodeURIComponent(effectId)}/resolve`
+      ),
+      data
+    ),
+  authorizeRetryOutboundEffect: async (
+    id: string,
+    effectId: string,
+    data?: AuthorizeRetryOutboundEffectPayload
+  ): Promise<any> =>
+    client.post<any>(
+      resolveExecutionPath(
+        runtimeConfig,
+        `/executions/${id}/outbound-effects/${encodeURIComponent(effectId)}/authorize-retry`
+      ),
+      data || {}
     ),
   submitInput: async (id: string, data: SubmitInputRequest): Promise<ExecutionDto> =>
     normalizeExecution(

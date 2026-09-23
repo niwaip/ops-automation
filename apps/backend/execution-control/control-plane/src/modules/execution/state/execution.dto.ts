@@ -428,6 +428,68 @@ export class ExecutionDto {
   @ApiProperty({ required: false, type: () => [ExecutionPhaseDto] })
   @IsOptional()
   phases?: ExecutionPhaseDto[];
+
+  @ApiProperty({ required: false, type: () => [PendingOutboundEffectDto] })
+  @IsOptional()
+  pendingOutboundEffects?: PendingOutboundEffectDto[];
+
+  @ApiProperty({ required: false, type: () => [UnknownOutboundEffectDto] })
+  @IsOptional()
+  unknownOutboundEffects?: UnknownOutboundEffectDto[];
+}
+
+export class PendingOutboundEffectDto {
+  @ApiProperty()
+  effectId: string;
+
+  @ApiProperty()
+  capabilityKey: string;
+
+  @ApiProperty()
+  idempotencyKey: string;
+
+  @ApiProperty()
+  payloadHash: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  canonicalPayload?: Record<string, unknown> | null;
+
+  @ApiProperty()
+  state: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  stepId?: string;
+}
+
+export class UnknownOutboundEffectDto {
+  @ApiProperty()
+  effectId: string;
+
+  @ApiProperty()
+  capabilityKey: string;
+
+  @ApiProperty()
+  idempotencyKey: string;
+
+  @ApiProperty()
+  payloadHash: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  errorClassification?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  resolutionReason?: string | null;
+
+  @ApiProperty()
+  state: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  stepId?: string;
 }
 
 export class ExecutionPhaseArtifactDto {
@@ -797,6 +859,13 @@ export class ResolveOutboundEffectDto {
   @ApiProperty({ description: 'Reason for manual reconciliation' })
   @IsString()
   resolutionReason: string;
+}
+
+export class AuthorizeRetryOutboundEffectDto {
+  @ApiProperty({ description: 'Reason for retry authorization', required: false })
+  @IsOptional()
+  @IsString()
+  reason?: string;
 }
 
 export class RuntimeSessionSummaryDto {

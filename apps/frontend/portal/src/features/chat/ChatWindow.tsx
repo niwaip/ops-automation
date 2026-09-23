@@ -481,8 +481,29 @@ const ChatWindow: React.FC = () => {
     setAbortStreaming(abortStreaming);
   };
 
-  const handleApproveExecution = async (messageId: string, executionId: string) => {
-    const execution = await executionApi.approve(executionId);
+  const handleApproveExecution = async (
+    messageId: string,
+    executionId: string,
+    effectId?: string,
+    approvedPayloadHash?: string
+  ) => {
+    let finalEffectId = effectId;
+    let finalHash = approvedPayloadHash;
+    if (!finalHash) {
+      try {
+        const currentExec = await executionApi.get(executionId);
+        const firstPending = currentExec?.pendingOutboundEffects?.[0];
+        if (firstPending) {
+          finalEffectId = firstPending.effectId;
+          finalHash = firstPending.payloadHash;
+        }
+      } catch {}
+    }
+
+    const execution = await executionApi.approve(executionId, {
+      ...(finalEffectId ? { effectId: finalEffectId } : {}),
+      ...(finalHash ? { approvedPayloadHash: finalHash } : {}),
+    });
 
     updateMessageMetadataById(
       messageId,
@@ -526,8 +547,14 @@ const ChatWindow: React.FC = () => {
     );
   };
 
-  const handleRejectExecution = async (messageId: string, executionId: string) => {
-    const execution = await executionApi.reject(executionId);
+  const handleRejectExecution = async (
+    messageId: string,
+    executionId: string,
+    effectId?: string
+  ) => {
+    const execution = await executionApi.reject(executionId, {
+      ...(effectId ? { effectId } : {}),
+    });
 
     updateMessageMetadataById(
       messageId,

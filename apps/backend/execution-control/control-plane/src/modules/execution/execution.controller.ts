@@ -25,6 +25,7 @@ import {
   ListExecutionsDto,
   SubmitInputDto,
   ApprovalDecisionDto,
+  AuthorizeRetryOutboundEffectDto,
   ResolveOutboundEffectDto,
   CleanupExecutionsBeforeDateDto,
   ReconcilePhaseTakeoverDto,
@@ -336,6 +337,23 @@ export class ExecutionController {
       `Outbound effect resolve requested for execution ${id} effect ${effectId} by user ${userId}`
     );
     return this.executionService.resolveOutboundEffect(id, effectId, dto, userId, req.user);
+  }
+
+  @Post(':id/outbound-effects/:effectId/authorize-retry')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Authorize retry for an outbound effect in FAILED state' })
+  @ApiResponse({ status: 200, description: 'Outbound effect retry authorized' })
+  async authorizeRetryOutboundEffect(
+    @Param('id') id: string,
+    @Param('effectId') effectId: string,
+    @Body() dto: AuthorizeRetryOutboundEffectDto,
+    @Req() req: AuthenticatedRequest
+  ): Promise<any> {
+    const userId = req.user?.id || 'anonymous';
+    this.logger.log(
+      `Outbound effect retry authorization requested for execution ${id} effect ${effectId} by user ${userId}`
+    );
+    return this.executionService.authorizeRetryOutboundEffect(id, effectId, dto, userId, req.user);
   }
 
   @Post(':id/cancel')

@@ -48,8 +48,16 @@ interface TaskOutcomeCardProps {
   waitingInputItems: SharedDisplayGroupItem[];
   approvalAction: 'approve' | 'reject' | null;
   takeoverAction?: string | null;
-  onApproveExecution: () => void;
-  onRejectExecution: () => void;
+  pendingOutboundEffects?: Array<{
+    effectId: string;
+    capabilityKey: string;
+    idempotencyKey: string;
+    payloadHash: string;
+    canonicalPayload?: Record<string, unknown>;
+    stepId?: string;
+  }>;
+  onApproveExecution: (effectId?: string, approvedPayloadHash?: string) => void;
+  onRejectExecution: (effectId?: string) => void;
   onResumeExecution?: () => void;
 }
 
@@ -192,6 +200,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
   waitingInputGroups,
   waitingInputItems,
   approvalAction,
+  pendingOutboundEffects,
   onApproveExecution,
   onRejectExecution,
 }) => {
@@ -541,6 +550,52 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
           )}
         </div>
       ) : null}
+      {isPendingApproval && pendingOutboundEffects && pendingOutboundEffects.length > 0 ? (
+        <div
+          className="chat-outcome-outbound-preview"
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 6,
+            background: 'rgba(0, 0, 0, 0.02)',
+            border: '1px solid #d9d9d9',
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>
+            待审批外发操作 ({pendingOutboundEffects.length})
+          </div>
+          {pendingOutboundEffects.map((effect) => (
+            <div key={effect.effectId} style={{ marginBottom: 8, fontSize: 12 }}>
+              <div>
+                <strong>能力: </strong>
+                <code>{effect.capabilityKey}</code>
+              </div>
+              <div style={{ wordBreak: 'break-all', marginTop: 2 }}>
+                <strong>载荷哈希: </strong>
+                <code>{effect.payloadHash}</code>
+              </div>
+              {effect.canonicalPayload ? (
+                <div style={{ marginTop: 4 }}>
+                  <strong>请求载荷:</strong>
+                  <pre
+                    style={{
+                      margin: '4px 0 0',
+                      padding: 8,
+                      background: '#f5f5f5',
+                      borderRadius: 4,
+                      maxHeight: 160,
+                      overflow: 'auto',
+                      fontSize: 11,
+                    }}
+                  >
+                    {JSON.stringify(effect.canonicalPayload, null, 2)}
+                  </pre>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
       {isPendingApproval && executionId ? (
         <div className="chat-outcome-actions">
           <Button
@@ -548,7 +603,10 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             size="small"
             icon={<CheckOutlined />}
             loading={approvalAction === 'approve'}
-            onClick={onApproveExecution}
+            onClick={() => {
+              const first = pendingOutboundEffects?.[0];
+              onApproveExecution(first?.effectId, first?.payloadHash);
+            }}
           >
             批准
           </Button>
@@ -557,7 +615,10 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             size="small"
             icon={<CloseOutlined />}
             loading={approvalAction === 'reject'}
-            onClick={onRejectExecution}
+            onClick={() => {
+              const first = pendingOutboundEffects?.[0];
+              onRejectExecution(first?.effectId);
+            }}
           >
             驳回
           </Button>
