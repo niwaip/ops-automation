@@ -86,4 +86,19 @@ export interface ExecutionSemantic {
         reasonCodes: string[];
     };
 }
+export declare const OUTBOUND_EFFECT_PHASE: {
+    readonly PREPARE: "prepare";
+    readonly COMMIT: "commit";
+    readonly DIRECT: "direct";
+};
+export type OutboundEffectPhase = (typeof OUTBOUND_EFFECT_PHASE)[keyof typeof OUTBOUND_EFFECT_PHASE];
+export declare const OUTBOUND_EFFECT_STATUS: {
+    readonly PREPARED: "prepared";
+    readonly COMMITTED: "committed";
+    readonly UNKNOWN: "unknown";
+    readonly FAILED: "failed";
+};
+export type OutboundEffectStatus = (typeof OUTBOUND_EFFECT_STATUS)[keyof typeof OUTBOUND_EFFECT_STATUS];
+export declare function canonicalizePayloadObject(obj: unknown): unknown;
+export declare function computeOutboundPayloadHash(payload: unknown): string;
 //# sourceMappingURL=index.d.ts.map

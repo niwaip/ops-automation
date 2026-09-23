@@ -1,9 +1,32 @@
 import axios from 'axios';
 import type { BuiltinSkillHandlerResult } from '@ops/backend-builtin-skill-contract';
+import {
+  OUTBOUND_EFFECT_PHASE,
+  computeOutboundPayloadHash,
+  type OutboundEffectPhase,
+} from '@ops/backend-execution-core';
 import { getAuthServiceUrl } from '../../../../config/service-endpoints';
 import type { RuntimeStepInvokeRequest } from '../runtime-adapter.interface';
 import type { EmailSendInput } from './email-engine.types';
 import { defaultEmailOrchestrator } from './email-orchestrator';
+
+function isUncertainNetworkError(error: any): boolean {
+  const code = String(error?.code || '').toUpperCase();
+  const rawMessage = (error instanceof Error ? error.message : String(error)).toLowerCase();
+
+  if (['ETIMEDOUT', 'ESOCKETTIMEDOUT', 'ECONNRESET', 'EPIPE', 'ECONNABORTED'].includes(code)) {
+    return true;
+  }
+  return (
+    rawMessage.includes('timeout') ||
+    rawMessage.includes('timed out') ||
+    rawMessage.includes('socket hang up') ||
+    rawMessage.includes('connection reset') ||
+    rawMessage.includes('econnreset') ||
+    rawMessage.includes('esockettimedout') ||
+    rawMessage.includes('etimedout')
+  );
+}
 
 async function resolveEmailRuntimeConfigs(
   request: RuntimeStepInvokeRequest
@@ -40,10 +63,24 @@ async function resolveEmailRuntimeConfigs(
 }
 
 export async function executeEmailSend(
-  request: RuntimeStepInvokeRequest
+  request: RuntimeStepInvokeRequest,
+  idempotencyKey?: string
 ): Promise<BuiltinSkillHandlerResult> {
   const rawInput = (request.input || {}) as Record<string, any>;
   const prompt = typeof rawInput.prompt === 'string' ? rawInput.prompt : '';
+
+  const effectiveIdempotencyKey =
+    idempotencyKey ||
+    (request as any).idempotencyKey ||
+    (request.metadata?.idempotencyKey as string) ||
+    (rawInput.idempotencyKey as string) ||
+    '';
+
+  const rawPhase = (rawInput.phase || request.metadata?.phase || OUTBOUND_EFFECT_PHASE.DIRECT) as string;
+  const phase: OutboundEffectPhase =
+    rawPhase === OUTBOUND_EFFECT_PHASE.PREPARE || rawPhase === OUTBOUND_EFFECT_PHASE.COMMIT
+      ? rawPhase
+      : OUTBOUND_EFFECT_PHASE.DIRECT;
 
   // 1. Normalize 'to' recipients
   let toList: Array<{ name?: string; address: string }> = [];
@@ -66,6 +103,7 @@ export async function executeEmailSend(
   if (toList.length === 0) {
     return {
       success: false,
+      status: 'failed',
       errorCode: 'EMAIL_RECIPIENT_REQUIRED',
       errorMessage: '收件人邮箱地址不能为空',
     };
@@ -91,6 +129,7 @@ export async function executeEmailSend(
   if (!subject && !textBody) {
     return {
       success: false,
+      status: 'failed',
       errorCode: 'EMAIL_CONTENT_REQUIRED',
       errorMessage: '邮件主题或正文内容不能为空',
     };
@@ -110,6 +149,51 @@ export async function executeEmailSend(
     textBody = subject;
   }
 
+  // 3. Compute immutable payload hash for outbound effect ledger & two-phase protocol
+  const canonicalPayload = {
+    mailboxKey: rawInput.mailboxKey || null,
+    mode: rawInput.mode || 'new',
+    to: toList,
+    cc: Array.isArray(rawInput.cc) ? rawInput.cc : [],
+    bcc: Array.isArray(rawInput.bcc) ? rawInput.bcc : [],
+    subject,
+    textBody,
+    replyToMessageRef: rawInput.replyToMessageRef || null,
+  };
+  const payloadHash = computeOutboundPayloadHash(canonicalPayload);
+
+  // Phase: PREPARE
+  if (phase === OUTBOUND_EFFECT_PHASE.PREPARE) {
+    return {
+      success: true,
+      status: 'prepared',
+      payloadHash,
+      output: {
+        phase: OUTBOUND_EFFECT_PHASE.PREPARE,
+        idempotencyKey: effectiveIdempotencyKey || undefined,
+        payloadHash,
+        canonicalPayload,
+      },
+    };
+  }
+
+  // Phase: COMMIT — verify caller payloadHash matches computed hash
+  if (phase === OUTBOUND_EFFECT_PHASE.COMMIT) {
+    const providedPayloadHash =
+      (rawInput.payloadHash as string) ||
+      (request.metadata?.payloadHash as string) ||
+      (request.metadata?.approvedPayloadHash as string);
+    if (providedPayloadHash && providedPayloadHash !== payloadHash) {
+      return {
+        success: false,
+        status: 'failed',
+        errorCode: 'PAYLOAD_HASH_MISMATCH',
+        errorMessage: `Provided payloadHash '${providedPayloadHash}' does not match computed payloadHash '${payloadHash}'`,
+        payloadHash,
+      };
+    }
+  }
+
   const input: EmailSendInput = {
     mailboxKey: rawInput.mailboxKey,
     mode: rawInput.mode || 'new',
@@ -119,30 +203,60 @@ export async function executeEmailSend(
     subject,
     textBody,
     replyToMessageRef: rawInput.replyToMessageRef,
+    clientRequestKey: effectiveIdempotencyKey || undefined,
   };
 
   const runtimeConfigs = await resolveEmailRuntimeConfigs(request);
 
   try {
     const result = await defaultEmailOrchestrator.sendMessage(input, runtimeConfigs);
+
+    if (result.state === 'unknown') {
+      return {
+        success: false,
+        status: 'unknown',
+        errorCode: 'OUTBOUND_EFFECT_UNKNOWN',
+        errorMessage: '邮件外发结果不确定，待人工对账或 Provider 确认',
+        payloadHash,
+        output: result as unknown as Record<string, unknown>,
+      };
+    }
+
     return {
       success: true,
+      status: 'completed',
+      payloadHash,
       output: result as unknown as Record<string, unknown>,
     };
   } catch (error) {
     const rawMessage = error instanceof Error ? error.message : String(error);
+
+    if (isUncertainNetworkError(error)) {
+      return {
+        success: false,
+        status: 'unknown',
+        errorCode: 'OUTBOUND_EFFECT_UNKNOWN',
+        errorMessage: `邮件外发状态不确定 (网络超时或连接重置): ${rawMessage}`,
+        payloadHash,
+      };
+    }
+
     if (rawMessage.includes('未配置')) {
       return {
         success: false,
+        status: 'failed',
         errorCode: 'EMAIL_NOT_CONFIGURED',
         errorMessage: rawMessage,
+        payloadHash,
       };
     }
 
     return {
       success: false,
+      status: 'failed',
       errorCode: 'EMAIL_SEND_FAILED',
       errorMessage: `邮件发送失败: ${rawMessage}`,
+      payloadHash,
     };
   }
 }

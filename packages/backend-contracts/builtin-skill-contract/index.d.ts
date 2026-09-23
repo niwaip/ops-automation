@@ -116,6 +116,8 @@ export interface BuiltinSkillContext {
 }
 export interface BuiltinSkillHandlerResult {
     success: boolean;
+    status?: 'completed' | 'committed' | 'failed' | 'unknown' | 'blocked' | 'prepared';
+    payloadHash?: string;
     output?: Record<string, unknown>;
     errorCode?: string;
     errorMessage?: string;

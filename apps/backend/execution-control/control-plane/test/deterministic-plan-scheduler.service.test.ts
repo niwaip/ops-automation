@@ -289,4 +289,87 @@ describe('DeterministicPlanSchedulerService', () => {
       'deterministic_execution_succeeded'
     );
   });
+
+  it('handles UNKNOWN outbound effect: sets execution to human_control and tags takeoverTriggered', async () => {
+    const prisma = {
+      executionStep: {
+        update: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      execution: { update: jest.fn().mockResolvedValue({}) },
+    };
+    const orchestrator = {
+      executeStep: jest.fn().mockResolvedValue({
+        success: false,
+        status: 'unknown',
+        errorCode: 'OUTBOUND_EFFECT_UNKNOWN',
+        errorMessage: 'Connection timed out',
+      }),
+    };
+    const events = { createEvent: jest.fn().mockResolvedValue(undefined) };
+    const service = new DeterministicPlanSchedulerService(
+      prisma as any,
+      { resolveInputs: jest.fn().mockResolvedValue({}) } as any,
+      { assertSatisfied: jest.fn() } as any,
+      {} as any,
+      orchestrator as any,
+      events as any,
+      {} as any,
+      {} as any,
+      { normalize: (output: any) => output } as any,
+      {} as any
+    ) as any;
+
+    const plan = {
+      planJson: {
+        nodes: [{ nodeId: 'email_node', capabilityId: 'platform.email.send' }],
+      },
+    };
+    const execution = {
+      id: 'exec-unknown-1',
+      status: 'running',
+      executionMode: 'deterministic_plan',
+      plan,
+    };
+    const step = {
+      id: 'step-unknown-1',
+      planNodeId: 'email_node',
+      capabilityId: 'platform.email.send',
+      nodeKind: 'skill',
+    };
+
+    await service.executeStep(execution, step, false);
+
+    expect(prisma.executionStep.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'step-unknown-1' },
+        data: expect.objectContaining({
+          status: 'failed',
+          errorCode: 'OUTBOUND_EFFECT_UNKNOWN',
+          takeoverTriggered: true,
+        }),
+      })
+    );
+
+    expect(prisma.execution.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'exec-unknown-1' },
+        data: expect.objectContaining({
+          status: 'human_control',
+          takeoverRequired: true,
+        }),
+      })
+    );
+
+    expect(events.createEvent).toHaveBeenCalledWith(
+      'exec-unknown-1',
+      'step.failed',
+      expect.objectContaining({
+        isUnknown: true,
+        takeoverRequired: true,
+      }),
+      expect.anything()
+    );
+  });
 });

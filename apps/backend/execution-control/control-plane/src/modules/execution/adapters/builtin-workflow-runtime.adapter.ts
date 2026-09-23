@@ -75,9 +75,13 @@ export class BuiltinWorkflowRuntimeAdapter implements RuntimeAdapter {
 
     try {
       const result = await handlerFn(request, idempotencyKey);
+      const status =
+        (result.status as RuntimeStepInvokeResult['status']) ||
+        (result.success ? 'completed' : 'failed');
       return {
         success: result.success,
-        status: result.success ? 'completed' : 'failed',
+        status,
+        payloadHash: result.payloadHash,
         output: result.output,
         errorCode: result.errorCode,
         errorMessage: result.errorMessage,

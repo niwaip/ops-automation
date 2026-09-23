@@ -61,7 +61,8 @@ export interface RuntimeStepInvokeRequest {
 }
 export interface RuntimeStepInvokeResult {
     success: boolean;
-    status: 'completed' | 'failed' | 'blocked' | 'waiting' | 'takeover_required';
+    status: 'completed' | 'committed' | 'failed' | 'blocked' | 'waiting' | 'takeover_required' | 'unknown';
+    payloadHash?: string;
     output?: Record<string, unknown>;
     errorCode?: string;
     errorMessage?: string;
@@ -84,7 +85,7 @@ export interface RuntimePhaseInvokeRequest {
 }
 export interface RuntimePhaseInvokeResult {
     success: boolean;
-    status: 'completed' | 'failed' | 'blocked' | 'waiting' | 'takeover_required';
+    status: 'completed' | 'committed' | 'failed' | 'blocked' | 'waiting' | 'takeover_required' | 'unknown';
     stepResults: RuntimeStepInvokeResult[];
     failedStepId?: string;
     failedAction?: string;

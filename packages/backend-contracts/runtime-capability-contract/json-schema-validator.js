@@ -1,5 +1,5 @@
 "use strict";
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+/* eslint-disable @typescript-eslint/no-var-requires */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.jsonSchemaValidator = void 0;
 function safeRequire(moduleName) {

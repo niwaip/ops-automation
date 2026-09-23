@@ -33,4 +33,23 @@ describe('MetricsService', () => {
     expect(metrics).toContain('ops_executions_by_status{status="succeeded"} 7');
     expect(metrics).toContain('ops_executions_by_status{status="failed"} 1');
   });
+
+  it('should cache database aggregation metrics within TTL while keeping process metrics real-time', async () => {
+    // 1st call queries DB
+    await service.getPrometheusMetrics();
+    expect(mockPrisma.execution.count).toHaveBeenCalledTimes(4);
+
+    // 2nd call within TTL uses cached DB counts
+    service.recordRequest({ method: 'GET', path: '/api/health', statusCode: 200, durationMs: 5 });
+    const metrics2 = await service.getPrometheusMetrics();
+    // DB count should NOT have been called again
+    expect(mockPrisma.execution.count).toHaveBeenCalledTimes(4);
+    // But request count should be real-time (updated from 0 to 1)
+    expect(metrics2).toContain('ops_http_requests_total 1');
+
+    // After clearing cache, DB should be re-queried
+    service.clearDbMetricsCache();
+    await service.getPrometheusMetrics();
+    expect(mockPrisma.execution.count).toHaveBeenCalledTimes(8);
+  });
 });
