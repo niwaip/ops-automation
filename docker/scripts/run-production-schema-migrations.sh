@@ -41,4 +41,24 @@ DATABASE_URL="$CONTROL_PLANE_MIGRATION_DATABASE_URL" bash "$PLATFORM_MIGRATOR"
 log 'Validating AI Orchestrator schema against the canonical migration history...'
 DATABASE_URL="$AI_ORCHESTRATOR_MIGRATION_DATABASE_URL" bash "$AI_MIGRATOR"
 
-log 'The canonical production migration history is current.'
+apply_capability_migrations() {
+  local service_filter="$1"
+  local schema_rel_path="$2"
+  local target_schema="$3"
+  log "Applying capability migrations for $service_filter (schema=$target_schema)..."
+  local target_url
+  target_url="$(node -e "
+    const u = new URL(process.env.CONTROL_PLANE_MIGRATION_DATABASE_URL);
+    u.searchParams.set('schema', '$target_schema');
+    process.stdout.write(u.toString());
+  ")"
+  DATABASE_URL="$target_url" pnpm --dir "$REPO_ROOT" --filter "$service_filter" exec prisma migrate deploy --schema "$schema_rel_path"
+}
+
+log 'Applying capability migrations with release-only credential...'
+apply_capability_migrations "@ops/browser-template" "prisma/schema.prisma" "browser_templates"
+apply_capability_migrations "@ops/browser-semantics" "prisma/schema.prisma" "browser_semantics"
+apply_capability_migrations "@ops/report" "prisma/schema.prisma" "reports"
+apply_capability_migrations "@ops/document-domain" "template/prisma/schema.prisma" "document_engine"
+
+log 'The canonical production migration history and capability schemas are current.'

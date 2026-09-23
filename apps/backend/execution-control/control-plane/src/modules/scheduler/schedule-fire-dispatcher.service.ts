@@ -4,6 +4,12 @@ import { ExecutionService } from '../execution/execution.service';
 import { ExecutionOutboxService } from '../execution/outbox/execution-outbox.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { roleEnabled } from '../../config/control-plane-role';
+import {
+  createConsumerSpan,
+  formatStructuredSpanLog,
+  parseSpanComponents,
+  SpanLink,
+} from '../../common/tracing/consumer-span';
 
 @Injectable()
 export class ScheduleFireDispatcherService implements OnModuleInit, OnModuleDestroy {
@@ -39,16 +45,44 @@ export class ScheduleFireDispatcherService implements OnModuleInit, OnModuleDest
   async dispatchOnce(): Promise<number> {
     if (this.dispatching) return 0;
     this.dispatching = true;
+    const maxAttempts = Number(process.env.EXECUTION_OUTBOX_MAX_ATTEMPTS || 10);
     try {
       const items = await this.outbox.claimBatch(this.owner, {
         eventTypes: ['schedule.fire.created'],
         limit: 10,
         leaseMs: 30_000,
+        maxAttempts,
       });
       let completed = 0;
       for (const item of items) {
         const payload = item.payload;
         const fireId = typeof payload.fireId === 'string' ? payload.fireId : item.aggregateId;
+        const incomingTrace = (item as any).traceContext || payload.traceContext;
+        const parsedIncoming = parseSpanComponents(incomingTrace?.traceparent);
+        const links: SpanLink[] = parsedIncoming
+          ? [
+              {
+                traceId: parsedIncoming.traceId,
+                spanId: parsedIncoming.spanId,
+                attributes: { role: 'schedule_root' },
+              },
+            ]
+          : [];
+        const consumerSpan = createConsumerSpan({
+          links,
+          tracestate: incomingTrace?.tracestate,
+        });
+
+        this.logger.log(
+          JSON.stringify(
+            formatStructuredSpanLog(
+              consumerSpan,
+              `Dispatching schedule fire ${fireId} from outbox item ${item.id}`,
+              { fireId, outboxId: item.id, attempts: item.attempts }
+            )
+          )
+        );
+
         try {
           const existing = await this.prisma.$queryRawUnsafe<Array<{ executionId: string | null }>>(
             `SELECT execution_id AS "executionId"
@@ -65,22 +99,30 @@ export class ScheduleFireDispatcherService implements OnModuleInit, OnModuleDest
             ) {
               throw new Error(`Schedule fire ${fireId} has an invalid payload`);
             }
-            const execution = await this.executions.create(payload.createdBy, {
-              skillId: payload.skillId,
-              skillVersion:
-                typeof payload.skillVersion === 'string' ? payload.skillVersion : undefined,
-              input: {
-                ...(payload.input && typeof payload.input === 'object' && !Array.isArray(payload.input)
-                  ? (payload.input as Record<string, unknown>)
-                  : {}),
-                userId: payload.createdBy,
+            const execution = await this.executions.create(
+              payload.createdBy,
+              {
+                skillId: payload.skillId,
+                skillVersion:
+                  typeof payload.skillVersion === 'string' ? payload.skillVersion : undefined,
+                input: {
+                  ...(payload.input && typeof payload.input === 'object' && !Array.isArray(payload.input)
+                    ? (payload.input as Record<string, unknown>)
+                    : {}),
+                  userId: payload.createdBy,
+                },
+                triggerType: 'schedule',
+                scheduleId: payload.scheduleId,
+                idempotencyKey: `schedule-fire:${fireId}`,
               },
-              triggerType: 'schedule',
-              scheduleId: payload.scheduleId,
-              idempotencyKey: `schedule-fire:${fireId}`,
-            }, {
-              traceContext: (item as any).traceContext || payload.traceContext,
-            });
+              {
+                traceContext: {
+                  traceparent: consumerSpan.traceparent,
+                  traceId: consumerSpan.traceId,
+                  tracestate: consumerSpan.tracestate,
+                },
+              }
+            );
             executionId = execution.id;
             await this.prisma.$queryRawUnsafe(
               `UPDATE schedule_fires
@@ -94,14 +136,22 @@ export class ScheduleFireDispatcherService implements OnModuleInit, OnModuleDest
           }
           if (await this.outbox.markPublished(item.id, this.owner)) completed += 1;
         } catch (error) {
+          const errMessage = error instanceof Error ? error.message : String(error);
           this.logger.error(
-            `Failed to dispatch schedule fire ${fireId}: ${error instanceof Error ? error.message : String(error)}`
+            `[${consumerSpan.traceId}] Failed to dispatch schedule fire ${fireId} (attempt ${item.attempts}/${maxAttempts}): ${errMessage}`
           );
-          await this.outbox.releaseForRetry(
-            item.id,
-            this.owner,
-            Math.min(60_000, 1_000 * 2 ** Math.min(item.attempts, 6))
-          );
+          if (item.attempts >= maxAttempts) {
+            this.logger.error(
+              `[${consumerSpan.traceId}] Outbox item ${item.id} exceeded max attempts (${item.attempts}/${maxAttempts}), moving to dead-letter quarantine.`
+            );
+            await this.outbox.markDeadLetter(item.id, this.owner, errMessage);
+          } else {
+            await this.outbox.releaseForRetry(
+              item.id,
+              this.owner,
+              Math.min(60_000, 1_000 * 2 ** Math.min(item.attempts, 6))
+            );
+          }
         }
       }
       return completed;

@@ -137,6 +137,21 @@ class ArtifactExporter:
         return cleaned_text, exported_files
 
     @staticmethod
+    def is_temporary_file(file_name: str) -> bool:
+        """
+        Detects whether a file is a temporary or testing artifact (e.g., test.pdf, tmp.docx, dummy.xlsx).
+        """
+        clean = Path(file_name).stem.lower().strip()
+        temp_prefixes = ("test", "temp", "tmp", "dummy", "sample", "demo", "untitled")
+        if clean in temp_prefixes:
+            return True
+        if any(clean.startswith(f"{p}_") or clean.startswith(f"{p}-") or clean.startswith(f"{p}.") for p in temp_prefixes):
+            return True
+        if clean.endswith("_test") or clean.endswith("-test") or clean.startswith("_"):
+            return True
+        return False
+
+    @staticmethod
     def export_deliverables(
         workspace_dir: str,
         final_text: str,
@@ -160,6 +175,9 @@ class ArtifactExporter:
             for item in ws_path.iterdir():
                 if item.is_file() and item.suffix.lower() in doc_exts:
                     if item.stat().st_size > 0 and item.stat().st_mtime >= min_mtime:
+                        # 过滤未在最终正文中作为交付物明确提及的临时/测试文件（如 test.pdf）
+                        if ArtifactExporter.is_temporary_file(item.name) and (item.name not in final_text):
+                            continue
                         deliverables.append({"filePath": str(item), "fileName": item.name})
                         seen_names.add(item.name)
 

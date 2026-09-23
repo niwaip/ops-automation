@@ -58,11 +58,12 @@ export class ExecutionOutboxService {
 
   async claimBatch(
     owner: string,
-    options?: { limit?: number; leaseMs?: number; eventTypes?: string[] }
+    options?: { limit?: number; leaseMs?: number; eventTypes?: string[]; maxAttempts?: number }
   ): Promise<ClaimedExecutionOutboxItem[]> {
     const limit = Math.min(Math.max(options?.limit || 20, 1), 100);
     const leaseExpiresAt = new Date(Date.now() + Math.max(options?.leaseMs || 30_000, 1_000));
     const eventTypes = options?.eventTypes?.length ? options.eventTypes : null;
+    const maxAttempts = typeof options?.maxAttempts === 'number' ? options.maxAttempts : null;
     return this.prisma.$queryRawUnsafe<ClaimedExecutionOutboxItem[]>(
       `WITH candidates AS (
          SELECT id
@@ -71,6 +72,7 @@ export class ExecutionOutboxService {
             AND available_at <= NOW()
             AND (lease_expires_at IS NULL OR lease_expires_at < NOW())
             AND ($4::text[] IS NULL OR event_type = ANY($4::text[]))
+            AND ($5::int IS NULL OR attempts < $5)
           ORDER BY available_at ASC, created_at ASC
           FOR UPDATE SKIP LOCKED
           LIMIT $3
@@ -91,7 +93,8 @@ export class ExecutionOutboxService {
       owner,
       leaseExpiresAt,
       limit,
-      eventTypes
+      eventTypes,
+      maxAttempts
     );
   }
 
@@ -107,6 +110,54 @@ export class ExecutionOutboxService {
       owner
     );
     return rows.length === 1;
+  }
+
+  async markDeadLetter(id: string, owner: string, reason: string): Promise<boolean> {
+    const deadLetterMeta = JSON.stringify({
+      reason,
+      deadLetteredAt: new Date().toISOString(),
+    });
+    const rows = await this.prisma.$queryRawUnsafe<Array<{ id: string }>>(
+      `UPDATE execution_outbox
+          SET published_at = NOW(),
+              claimed_by = NULL,
+              lease_expires_at = NULL,
+              payload_json = jsonb_set(
+                CASE WHEN jsonb_typeof(payload_json) = 'object' THEN payload_json ELSE '{}'::jsonb END,
+                '{deadLetter}',
+                $3::jsonb,
+                true
+              )
+        WHERE id = $1::uuid
+          AND claimed_by = $2
+          AND published_at IS NULL
+       RETURNING id`,
+      id,
+      owner,
+      deadLetterMeta
+    );
+    return rows.length === 1;
+  }
+
+  async quarantinePoisonMessages(maxAttempts: number): Promise<number> {
+    const rows = await this.prisma.$queryRawUnsafe<Array<{ id: string }>>(
+      `UPDATE execution_outbox
+          SET published_at = NOW(),
+              claimed_by = NULL,
+              lease_expires_at = NULL,
+              payload_json = jsonb_set(
+                CASE WHEN jsonb_typeof(payload_json) = 'object' THEN payload_json ELSE '{}'::jsonb END,
+                '{deadLetter}',
+                jsonb_build_object('reason', 'Exceeded max retry attempts without resolution', 'deadLetteredAt', NOW()::text),
+                true
+              )
+        WHERE published_at IS NULL
+          AND attempts >= $1
+          AND (lease_expires_at IS NULL OR lease_expires_at < NOW())
+       RETURNING id`,
+      maxAttempts
+    );
+    return rows.length;
   }
 
   async releaseForRetry(id: string, owner: string, retryDelayMs: number): Promise<boolean> {

@@ -786,11 +786,28 @@ export class UserSandboxDispatcherService {
     // 2.2 收集外发及文本中提及的文件
     const candidateDeliverables: Array<{ fileName: string; filePath?: string; comment?: string }> = [];
 
+    const isTemporaryDeliverableFile = (fileName: string): boolean => {
+      const clean = path.basename(fileName).toLowerCase().trim();
+      const nameWithoutExt = clean.replace(/\.[^.]+$/, '');
+      const tempPrefixes = ['test', 'temp', 'tmp', 'dummy', 'sample', 'demo', 'untitled'];
+      const matchesPrefix = tempPrefixes.some(
+        (prefix) =>
+          nameWithoutExt === prefix ||
+          nameWithoutExt.startsWith(`${prefix}_`) ||
+          nameWithoutExt.startsWith(`${prefix}-`) ||
+          nameWithoutExt.startsWith(`${prefix}.`)
+      );
+      const matchesSuffix = nameWithoutExt.endsWith('_test') || nameWithoutExt.endsWith('-test');
+      return matchesPrefix || matchesSuffix || nameWithoutExt.startsWith('_');
+    };
+
     for (const f of outboundFiles) {
       const cleanName = path.basename(f.fileName || f.filePath || '').trim();
       if (!cleanName) continue;
       // 过滤输入文件
       if (inputFiles.has(cleanName.toLowerCase())) continue;
+      // 过滤未在最终正文中作为交付物明确提及的临时/测试文件（如 test.pdf, tmp.docx 等）
+      if (isTemporaryDeliverableFile(cleanName) && !result.includes(cleanName)) continue;
       const ext = path.extname(cleanName).toLowerCase();
       if (deliverableExts.has(ext) && !candidateDeliverables.some((c) => c.fileName === cleanName)) {
         candidateDeliverables.push({

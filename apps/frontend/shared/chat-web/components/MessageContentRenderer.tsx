@@ -33,11 +33,46 @@ const safeUrlTransform = (url?: string): string => {
   return '';
 };
 
+const extractLocalAuthToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    // 1. Direct keys
+    const directToken = localStorage.getItem('token') || localStorage.getItem('access_token');
+    if (directToken) return directToken;
+
+    // 2. user-web (packages/user-core): 'ops-user-auth' -> { accessToken: "..." }
+    const opsUserAuth = localStorage.getItem('ops-user-auth');
+    if (opsUserAuth) {
+      const parsed = JSON.parse(opsUserAuth);
+      if (parsed?.accessToken) return parsed.accessToken;
+      if (parsed?.token) return parsed.token;
+    }
+
+    // 3. portal: 'auth-storage' -> { state: { token: "..." } }
+    const authStorage = localStorage.getItem('auth-storage');
+    if (authStorage) {
+      const parsed = JSON.parse(authStorage);
+      if (parsed?.state?.token) return parsed.state.token;
+      if (parsed?.state?.accessToken) return parsed.state.accessToken;
+      if (parsed?.accessToken) return parsed.accessToken;
+    }
+
+    // 4. Fallback: check document.cookie for token=
+    if (typeof document !== 'undefined' && document.cookie) {
+      const m = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
+      if (m && m[1]) return decodeURIComponent(m[1]).trim();
+    }
+  } catch {
+    // Ignore storage parse errors
+  }
+  return null;
+};
+
 const appendAuthToken = (url: string): string => {
   if (typeof window === 'undefined' || !url.includes('/api/ai/chat/workspace-files/')) return url;
-  if (url.includes('token=')) return url;
+  if (url.includes('token=') || url.includes('access_token=')) return url;
   try {
-    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+    const token = extractLocalAuthToken();
     if (!token) return url;
     const sep = url.includes('?') ? '&' : '?';
     return `${url}${sep}token=${encodeURIComponent(token)}`;
@@ -45,6 +80,7 @@ const appendAuthToken = (url: string): string => {
     return url;
   }
 };
+
 
 const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
   content,

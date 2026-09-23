@@ -248,4 +248,38 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(resultEvent.content).not.toContain('生成产物已就绪');
     expect(resultEvent.content).not.toContain('点击直接下载');
   });
+
+  it('should filter out unmentioned temporary test files (like test.pdf) from deliverable cards', async () => {
+    jest.spyOn(service, 'getWorkspaceFilePath').mockImplementation((uid, fname) => {
+      if (fname === 'test.pdf') return '/mock/path/test.pdf';
+      if (fname === '东大方餐饮门店数字化服务巡检分析报告.pdf') {
+        return '/mock/path/东大方餐饮门店数字化服务巡检分析报告.pdf';
+      }
+      return null;
+    });
+
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    jest.spyOn(fs, 'statSync').mockReturnValue({ size: 92765 } as any);
+
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: done\ndata: {"success":true,"output":"<<<DSH_OUTBOUND_FILE:{\\"filePath\\":\\"/workspace/test.pdf\\",\\"fileName\\":\\"test.pdf\\"}>>>\\n<<<DSH_OUTBOUND_FILE:{\\"filePath\\":\\"/workspace/东大方餐饮门店数字化服务巡检分析报告.pdf\\",\\"fileName\\":\\"东大方餐饮门店数字化服务巡检分析报告.pdf\\"}>>>\\n<<<DSH_FINAL_OUTPUT>>>已为您生成了专业规范的《东大方餐饮门店数字化服务巡检分析报告.pdf》，请查收。","containerName":"ops-test","durationMs":100,"exitCode":0}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const success = await service.dispatchPersonalSandbox(
+      { message: '生成pdf报表', userId: 'test_user' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(success).toBe(true);
+    const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
+    expect(resultEvent).toBeDefined();
+    expect(resultEvent.content).toContain('生成产物已就绪');
+    expect(resultEvent.content).toContain('东大方餐饮门店数字化服务巡检分析报告.pdf');
+    // 关键断言：test.pdf 必须被过滤掉，不能出现在交付卡片中
+    expect(resultEvent.content).not.toContain('test.pdf');
+  });
 });

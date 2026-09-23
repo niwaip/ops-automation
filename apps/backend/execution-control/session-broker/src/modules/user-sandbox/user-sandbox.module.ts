@@ -5,6 +5,7 @@ import { UserSandboxStorageService } from './user-sandbox-storage.service';
 import { UserSandboxContainerService } from './user-sandbox-container.service';
 import { UserSandboxHarnessService } from './user-sandbox-harness.service';
 import { UserSandboxController } from './user-sandbox.controller';
+import { DockerodeContainerDriver } from './dockerode-container.driver';
 
 @Module({
   imports: [LockModule],
@@ -14,12 +15,14 @@ import { UserSandboxController } from './user-sandbox.controller';
     UserSandboxContainerService,
     UserSandboxHarnessService,
     UserSandboxService,
+    DockerodeContainerDriver,
   ],
   exports: [
     UserSandboxStorageService,
     UserSandboxContainerService,
     UserSandboxHarnessService,
     UserSandboxService,
+    DockerodeContainerDriver,
   ],
 })
 export class UserSandboxModule {}

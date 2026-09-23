@@ -355,7 +355,6 @@ services:
     container_name: ops-browser-template
     command: >
       sh -c "corepack enable && pnpm --filter @ops/browser-template exec prisma generate
-      && pnpm --filter @ops/browser-template exec prisma db push
       && pnpm --filter @ops/browser-template run build
       && rm -rf /workspace/apps/backend/capabilities/browser-domain/templates/dist/generated
       && mkdir -p /workspace/apps/backend/capabilities/browser-domain/templates/dist/generated
@@ -387,7 +386,6 @@ services:
     container_name: ops-browser-semantics
     command: >
       sh -c "corepack enable && pnpm --filter @ops/browser-semantics exec prisma generate
-      && pnpm --filter @ops/browser-semantics exec prisma db push
       && if [ \"${BROWSER_SEMANTICS_RUN_DEFAULT_SEED:-false}\" = \"true\" ]; then pnpm --filter @ops/browser-semantics run seed:browser-recorder; fi
       && pnpm --filter @ops/browser-semantics run build
       && rm -rf /workspace/apps/backend/capabilities/browser-domain/semantics/dist/generated
@@ -479,7 +477,6 @@ services:
     container_name: ops-report
     command: >
       sh -c "corepack enable && pnpm --filter @ops/report exec prisma generate
-      && pnpm --filter @ops/report exec prisma db push
       && pnpm --filter @ops/report run build
       && rm -rf /workspace/apps/backend/capabilities/document-report/dist/generated
       && mkdir -p /workspace/apps/backend/capabilities/document-report/dist/generated
@@ -521,7 +518,7 @@ services:
     image: ops-carbone-engine:dev
     container_name: carbone-engine
     command: >
-      sh -c "corepack enable && pnpm --filter @ops/document-domain exec prisma db push --skip-generate --schema template/prisma/schema.prisma
+      sh -c "corepack enable
       && pnpm --filter carbone-engine run dev"
     environment:
       <<: *common-env

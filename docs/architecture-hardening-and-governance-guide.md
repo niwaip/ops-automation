@@ -1,7 +1,7 @@
 # 架构治理与生产加固落地指南 (Architecture Hardening & Governance Guide)
 
-> 版本：v1.4（2026-09 架构整改与代码加固版）  
-> 状态：Proposed / In Progress — Hardening In Flight (代码级 4 项 P0 与 2 项 P1 审查整改已全部闭环，待准生产环境联调验证)  
+> 版本：v1.5（2026-09 架构治理与全面代码加固闭环版）  
+> 状态：In Progress / Code Hardening Complete, Production Acceptance Pending (代码级全部 P0/P1/P2/P3 加固与治理整改已闭环，待准生产环境实机联调与验收)  
 > 适用对象：平台核心架构师、后端研发团队、基础架构与运维工程师  
 > 关联事实源：[`PROJECT_OVERVIEW.md`](PROJECT_OVERVIEW.md)、[`project_architecture_redesign.md`](project_architecture_redesign.md)、[`schema-ownership.json`](../database/schema-ownership.json)
 
@@ -335,10 +335,27 @@ pnpm run validate:outbound-side-effects
   - `ExecutionDispatcherService` 在消费 Outbox 事件时提取并结构化关联 Consumer Span，并将其注入调度推进链路。
 - [x] **[P1] 语义级架构质量门禁升级**：
   - `scripts/validate-outbound-side-effects.mjs` 升级为全面语义级门禁，深度校验迁移存在性、账本状态机 CAS、`reapStaleCommits` 恢复机制、Handler Fail-Closed、调度器 `prepared` 挂起与入参防越权、Runtime 共享 Effect Key、Approval 绑定 Ledger 审批、Controller Trace 提取与 Compose 角色隔离。
-- [x] **[P0/P1 基础能力回顾]**：
-  - `MetricsService` 依赖注入反射修复（避免原生 `Number` 参数未注册导致 Nest 启动失败）；
-  - 生产 Compose 角色矩阵隔离（`control-plane-api`、`execution-dispatcher`、`schedule-trigger` 环境变量互斥）。
-- [ ] **准生产环境（Staging）实机部署与端到端链路验收**：待真实 PostgreSQL 集群多副本并发压测与第三方邮件 Provider 超时故障注入演练通过后，方可升级为正式 Ready for Production。
+- [x] **[P1] Durable Scheduler 与 Outbox 投递 Poison Message 隔离与死信处置 (Dead-Letter Quarantine)**：
+  - `ExecutionOutboxService` 支持 `maxAttempts`（默认 10）阈值隔离，提供 `markDeadLetter` 与 `quarantinePoisonMessages`；
+  - `ExecutionDispatcherService` 在消费 Outbox 事件及恢复定时扫描时，对超限毒丸消息（`attempts >= maxAttempts`）安全移入死信并记录结构化错误，杜绝反复消费卡死队列；
+  - `ScheduleFireDispatcherService` 增加对失败 ScheduleFire 记录的毒丸重试上限检查与死信隔离。
+- [x] **[P1] OpenTelemetry Consumer Span 语义与 Span Link 批量扇出规范落地 (ADR-002)**：
+  - 新增 `consumer-span.ts` 通用追踪工具，提供规范的 OpenTelemetry `ConsumerSpanContext`、`createConsumerSpan`、`formatStructuredSpanLog` 以及多事件扇出的 `SpanLink` 结构；
+  - `ExecutionDispatcherService` 与 `ScheduleFireDispatcherService` 消费时统一基于上游 traceparent 派生 Consumer Span，多事件处理时通过 Span Link 关联各自独立的上下文。
+- [x] **[P1] Durable Scheduler 真实 PostgreSQL 50 并发压测与租约恢复实测闭环 (ADR-001/003)**：
+  - 编写专用验证套件 `scripts/verify-schedule-fire-concurrency.ts`，基于真实 PostgreSQL 容器直连运行；
+  - 实测验证 50 并发抢占单 Slot 产生唯一 ScheduleFire 记录、进程异常崩溃注入下的 Lease 超时自动回收、以及反复抛错超限的 Poison Message 隔离死信能力（3/3 测试 100% 通过）。
+- [x] **[P2] 生产数据库迁移治理与能力层 Prisma 迁移基线收敛 (ADR-004)**：
+  - 彻底清理生产与基础 Compose 配置中各微服务容器内违规使用的 `prisma db push`；
+  - 为 `browser-template`、`browser-semantics`、`report`、`carbone-engine` 创建标准 `0_baseline/migration.sql` 初始迁移；
+  - 升级 `docker/scripts/run-production-schema-migrations.sh`，实现全平台与各能力域的统一受控迁移部署。
+- [x] **[P2] CdpExecutor 绞杀者模式重构（巨石拆解 $\le 200$ 行门禁达标） (ADR-005)**：
+  - 采用绞杀者模式将原 1,174 行的巨石文件 `cdp.executor.ts` 深度解耦拆分为门面服务与三个高内聚子服务：`CdpStepRunnerService`（步骤分发与重试）、`CdpLoopRunnerService`（微观列表与分页遍历）、`CdpWorkerClientService`（HTTP Worker 客户端适配与日志脱敏）；
+  - `cdp.executor.ts` 源码压缩至 186 行（严格符合 $\le 200$ 行门禁），8 套单元测试 58 个测试用例 100% 绿色通过。
+- [x] **[P3] Container Runtime Driver 容器驱动抽象解耦（Dockerode 隔离与适配）**：
+  - 建立统一的 `IContainerDriver` 与 `ContainerHandle` 驱动接口抽象；
+  - 在 `browser-worker` 与 `session-broker` 用户沙箱模块中消除对底层 `dockerode` 库的硬依赖耦合，提供 `DockerodeContainerDriver` 标准适配并支持无缝替换/Mock 测试。
+- [ ] **准生产环境（Staging）实机部署与端到端链路验收**：待真实多实例部署、Staging 跨容器网络与第三方邮件 Provider 故障注入演练通过后，方可升级为正式 Ready for Production。
 
 ---
 

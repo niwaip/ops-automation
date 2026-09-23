@@ -82,4 +82,40 @@ describe('ExecutionOutboxService', () => {
       service.releaseForRetry('11111111-1111-4111-8111-111111111111', 'dispatcher-1', 1_000)
     ).resolves.toBe(true);
   });
+
+  it('filters out poison messages exceeding maxAttempts when claiming batch', async () => {
+    queryRaw.mockResolvedValue([]);
+    await service.claimBatch('dispatcher-1', {
+      limit: 10,
+      leaseMs: 30_000,
+      maxAttempts: 10,
+    });
+    expect(queryRaw.mock.calls[0][0]).toContain('AND ($5::int IS NULL OR attempts < $5)');
+    expect(queryRaw.mock.calls[0][5]).toBe(10);
+  });
+
+  it('marks a poison message as dead letter with quarantine reason and metadata', async () => {
+    queryRaw.mockResolvedValue([{ id: '11111111-1111-4111-8111-111111111111' }]);
+    const result = await service.markDeadLetter(
+      '11111111-1111-4111-8111-111111111111',
+      'dispatcher-1',
+      'Fatal deserialize error'
+    );
+    expect(result).toBe(true);
+    expect(queryRaw.mock.calls[0][0]).toContain("'{deadLetter}'");
+    expect(queryRaw.mock.calls[0][0]).toContain('published_at = NOW()');
+    expect(queryRaw.mock.calls[0][1]).toBe('11111111-1111-4111-8111-111111111111');
+    expect(queryRaw.mock.calls[0][2]).toBe('dispatcher-1');
+    const passedMeta = JSON.parse(queryRaw.mock.calls[0][3]);
+    expect(passedMeta.reason).toBe('Fatal deserialize error');
+    expect(passedMeta.deadLetteredAt).toBeDefined();
+  });
+
+  it('quarantines expired unhandled poison messages in bulk', async () => {
+    queryRaw.mockResolvedValue([{ id: '1' }, { id: '2' }]);
+    const count = await service.quarantinePoisonMessages(10);
+    expect(count).toBe(2);
+    expect(queryRaw.mock.calls[0][0]).toContain('attempts >= $1');
+    expect(queryRaw.mock.calls[0][1]).toBe(10);
+  });
 });

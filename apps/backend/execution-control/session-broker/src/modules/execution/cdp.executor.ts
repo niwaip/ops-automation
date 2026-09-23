@@ -1,15 +1,10 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { getBrowserWorkerUrl, getInternalAuthHeaders } from '../../config/service-endpoints';
-
-import { extractMainTextFromHtml } from './cdp-html-text';
+import { Injectable, Logger, OnModuleDestroy, Optional } from '@nestjs/common';
+import { CdpWorkerClientService } from './cdp-worker-client.service';
+import { CdpStepRunnerService } from './cdp-step-runner.service';
+import { CdpLoopRunnerService } from './cdp-loop-runner.service';
 import {
-  asRecord,
   type ExecuteStepsOptions,
   type ExecutionResult,
-  type LoopPlan,
-  type LoopStopRead,
-  type LoopStopReadPlan,
-  type TemplateLoopDraft,
   type TemplateStep,
 } from './cdp-executor.types';
 
@@ -23,70 +18,43 @@ export type {
 @Injectable()
 export class CdpExecutor implements OnModuleDestroy {
   private readonly logger = new Logger(CdpExecutor.name);
-  private readonly browserWorkerUrl = getBrowserWorkerUrl();
+  private readonly workerClient: CdpWorkerClientService;
+  private readonly stepRunner: CdpStepRunnerService;
+  private readonly loopRunner: CdpLoopRunnerService;
+
+  constructor(
+    @Optional() workerClient?: CdpWorkerClientService,
+    @Optional() stepRunner?: CdpStepRunnerService,
+    @Optional() loopRunner?: CdpLoopRunnerService
+  ) {
+    this.workerClient = workerClient || new CdpWorkerClientService();
+    const proxyClient = {
+      postJson: <T>(path: string, body: Record<string, unknown>) => this.postJson<T>(path, body),
+    } as CdpWorkerClientService;
+    this.stepRunner = stepRunner || new CdpStepRunnerService(proxyClient);
+    this.loopRunner = loopRunner || new CdpLoopRunnerService(proxyClient, this.stepRunner);
+  }
 
   async onModuleDestroy() {
-    // No persistent browser connection to close
     this.logger.log('CdpExecutor destroyed');
   }
 
   private async postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
-    this.logger.log(`POST ${path} with body: ${JSON.stringify(body)}`);
-    const response = await fetch(`${this.browserWorkerUrl}${path}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getInternalAuthHeaders(),
-      },
-      body: JSON.stringify(body),
-    });
-
-    const text = await response.text();
-    if (!response.ok) {
-      this.logger.error(`Request failed ${path}: ${response.status} ${text}`);
-      throw new Error(text || `Request failed with status ${response.status}`);
-    }
-
-    try {
-      return JSON.parse(text) as T;
-    } catch {
-      throw new Error(`Failed to parse response: ${text}`);
-    }
+    return this.workerClient.postJson<T>(path, body);
   }
 
-  /**
-   * Start browser session via browser worker backend
-   */
   async startBrowser(
     sessionId: string,
     url: string
   ): Promise<{ success: boolean; error?: string }> {
-    try {
-      this.logger.log(`Starting browser for session ${sessionId} at ${url}`);
-      const result = await this.postJson<{ success: boolean; message?: string }>('/browser/init', {
-        runtimeSessionId: sessionId,
-        initialUrl: url,
-        backend: 'cli',
-      });
-      return result.success
-        ? { success: true }
-        : { success: false, error: result.message || 'Failed to start browser' };
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to start browser: ${errorMsg}`);
-      return { success: false, error: errorMsg };
-    }
+    return this.workerClient.startBrowser(sessionId, url);
   }
 
-  /**
-   * Navigate to URL (alias for startBrowser)
-   */
   async navigateToUrl(
     url: string,
     sessionId?: string
   ): Promise<{ success: boolean; error?: string }> {
-    const sid = sessionId || `session-${Date.now()}`;
-    return this.startBrowser(sid, url);
+    return this.workerClient.navigateToUrl(url, sessionId);
   }
 
   async executeStep(step: TemplateStep, sessionId?: string): Promise<ExecutionResult> {
@@ -101,132 +69,6 @@ export class CdpExecutor implements OnModuleDestroy {
     );
   }
 
-  private replaceParams(value: unknown, params: Record<string, unknown>): unknown {
-    if (typeof value === 'string') {
-      // Replace ${param_name} and {{param_name}} patterns
-      return value
-        .replace(/\$\{([a-zA-Z0-9_]+)\}/g, (match, paramName) => {
-          if (params[paramName] !== undefined) {
-            return String(params[paramName]);
-          }
-          return match;
-        })
-        .replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (match, paramName) => {
-          if (params[paramName] !== undefined) {
-            return String(params[paramName]);
-          }
-          return match;
-        });
-    }
-    return value;
-  }
-
-  private mapStepToCommand(
-    step: TemplateStep,
-    params: Record<string, unknown> = {}
-  ): { tool: string; params: Record<string, unknown> } {
-    const commandParams: Record<string, unknown> = { ...(step.params || {}) };
-
-    if (step.selector && commandParams.selector === undefined)
-      commandParams.selector = step.selector;
-    if (step.target && commandParams.target === undefined) commandParams.target = step.target;
-    if (step.value && commandParams.value === undefined) commandParams.value = step.value;
-    if (step.url && commandParams.url === undefined) commandParams.url = step.url;
-    if (step.text && commandParams.text === undefined) commandParams.text = step.text;
-    if (step.key && commandParams.key === undefined) commandParams.key = step.key;
-    if (step.duration !== undefined && commandParams.duration === undefined)
-      commandParams.duration = step.duration;
-    if (step.direction && commandParams.direction === undefined)
-      commandParams.direction = step.direction;
-    if (step.amount !== undefined && commandParams.amount === undefined)
-      commandParams.amount = step.amount;
-    if (step.locator) {
-      if (step.locator.type === 'ref' && commandParams.target === undefined) {
-        commandParams.target = step.locator.value;
-      } else if (commandParams.selector === undefined) {
-        commandParams.selector = this.buildSelector(step.locator);
-      }
-    }
-    if (step.wait) {
-      if (step.wait.value && commandParams.selector === undefined) {
-        commandParams.selector = step.wait.value;
-      }
-      if (step.wait.timeout !== undefined && commandParams.duration === undefined) {
-        commandParams.duration = step.wait.timeout;
-      }
-    }
-    const stepCaptureProfile = step.capture_profile || step.captureProfile;
-    if (stepCaptureProfile) {
-      if (commandParams.captureProfile === undefined) {
-        commandParams.captureProfile = stepCaptureProfile;
-      }
-      if (commandParams.capture_profile === undefined) {
-        commandParams.capture_profile = stepCaptureProfile;
-      }
-    }
-
-    for (const key of Object.keys(commandParams)) {
-      commandParams[key] = this.replaceParams(commandParams[key], params);
-    }
-
-    return {
-      tool: step.action,
-      params: commandParams,
-    };
-  }
-
-  /**
-   * Build a Playwright/CSS selector string from a template locator.
-   *
-   * Canonical mapping — keep in sync with buildSelectorFromLocator() in
-   * apps/backend/intelligence/ai-orchestrator/src/modules/browser/browser-domain.constants.ts.
-   * When adding a new locator type, update both files.
-   */
-  private buildSelector(locator: { type: string; value: string }): string {
-    // Normalise legacy spellings of the test-id type before switching.
-    const type = locator.type === 'testId' || locator.type === 'testid' ? 'test-id' : locator.type;
-
-    switch (type) {
-      case 'css':
-        return locator.value;
-
-      case 'xpath':
-        return locator.value; // XPath handled separately in execution
-
-      case 'text':
-        return `text=${locator.value}`;
-
-      case 'role':
-        return `role=${locator.value}`;
-
-      case 'ref':
-        return locator.value;
-
-      case 'placeholder':
-        return `[placeholder="${locator.value}"]`;
-
-      case 'label':
-        if (
-          locator.value.startsWith('#') ||
-          locator.value.startsWith('.') ||
-          locator.value.startsWith('[') ||
-          locator.value.startsWith('/')
-        ) {
-          return locator.value;
-        }
-        return `internal:label="${locator.value}"`;
-
-      case 'test-id':
-        return `[data-testid="${locator.value}"]`;
-
-      default:
-        return locator.value;
-    }
-  }
-
-  /**
-   * Execute all steps in a template
-   */
   async executeSteps(
     steps: TemplateStep[],
     sessionId?: string,
@@ -236,24 +78,21 @@ export class CdpExecutor implements OnModuleDestroy {
   ): Promise<ExecutionResult[]> {
     this.logger.log(`Executing ${steps.length} steps for session ${sessionId}`);
     this.logger.debug(`Steps: ${JSON.stringify(steps)}, Params: ${JSON.stringify(params)}`);
-    // Branch conditions may depend on both session params and runtime read_value outputs.
     const variables: Record<string, unknown> = { ...params };
 
     try {
       const initResult = await this.postJson<{ success: boolean; message?: string }>(
         '/browser/init',
-        {
-          runtimeSessionId: sessionId,
-          backend,
-        }
+        { runtimeSessionId: sessionId, backend }
       );
       if (!initResult.success) {
         throw new Error(initResult.message || 'Failed to initialize browser');
       }
+
       const results: ExecutionResult[] = [];
       const executeSequence = async (sequence: TemplateStep[]): Promise<ExecutionResult | null> => {
         for (const step of sequence) {
-          const result = await this.executeSingleStep(step, sessionId, params, backend, variables);
+          const result = await this.stepRunner.executeSingleStep(step, sessionId, params, backend, variables);
           results.push(result);
           if (!result.success) {
             return result;
@@ -261,15 +100,15 @@ export class CdpExecutor implements OnModuleDestroy {
         }
         return null;
       };
-      const loopPlan = this.buildLoopPlan(steps, options.loopDraft);
 
-      this.emitDebugEvent(
+      const loopPlan = this.loopRunner.buildLoopPlan(steps, options.loopDraft);
+      this.workerClient.emitDebugEvent(
         'cdp.executor.ts:executeSteps:plan',
         '[DEBUG] cdpExecutor initialized execution plan',
         {
           sessionId,
           backend,
-          stepIds: steps.map((step) => step.step_id),
+          stepIds: steps.map((s) => s.step_id),
           hasLoopDraft: Boolean(options.loopDraft),
           hasLoopPlan: Boolean(loopPlan),
           preLoopCount: loopPlan?.preLoopSteps.length || 0,
@@ -277,90 +116,18 @@ export class CdpExecutor implements OnModuleDestroy {
           postLoopCount: loopPlan?.postLoopSteps.length || 0,
         }
       );
+
       if (loopPlan) {
-        const preLoopFailure = await executeSequence(loopPlan.preLoopSteps);
-        if (preLoopFailure) {
-          return results;
-        }
-
-        for (let iteration = 1; iteration <= loopPlan.maxIterations; iteration += 1) {
-          const beforeStop = await this.readLoopStopSignal(
-            loopPlan,
-            iteration,
-            'before',
-            sessionId,
-            params,
-            backend,
-            variables
-          );
-          results.push(beforeStop.result);
-          if (!beforeStop.result.success) {
-            return results;
-          }
-          if (this.evaluateLoopStopCondition(loopPlan.stopWhen.conditionFn, beforeStop.rawValue)) {
-            break;
-          }
-
-          const beforeSignature = beforeStop.normalizedValue;
-          const iterationFailure = await executeSequence(loopPlan.iterationSteps);
-          if (iterationFailure) {
-            return results;
-          }
-
-          const afterStop = await this.readLoopStopSignal(
-            loopPlan,
-            iteration,
-            'after',
-            sessionId,
-            params,
-            backend,
-            variables
-          );
-          results.push(afterStop.result);
-          if (!afterStop.result.success) {
-            return results;
-          }
-          if (this.evaluateLoopStopCondition(loopPlan.stopWhen.conditionFn, afterStop.rawValue)) {
-            break;
-          }
-
-          if (beforeSignature === afterStop.normalizedValue) {
-            results.push(
-              loopPlan.onNoProgress === 'takeover'
-                ? {
-                    success: false,
-                    step_id: `loop_no_progress_${iteration}`,
-                    action: 'loop_control',
-                    error: `循环第 ${iteration} 轮执行后页面状态无进展`,
-                    message: loopPlan.stopWhen.description,
-                    takeover: true,
-                    takeover_reason: `循环第 ${iteration} 轮执行后页面状态无进展`,
-                  }
-                : {
-                    success: false,
-                    step_id: `loop_no_progress_${iteration}`,
-                    action: 'loop_control',
-                    error: `循环第 ${iteration} 轮执行后页面状态无进展`,
-                    message: loopPlan.stopWhen.description,
-                  }
-            );
-            return results;
-          }
-
-          if (iteration === loopPlan.maxIterations) {
-            results.push({
-              success: false,
-              step_id: 'loop_max_iterations',
-              action: 'loop_control',
-              error: `已达到最大循环次数 ${loopPlan.maxIterations}`,
-              message: loopPlan.stopWhen.description,
-            });
-            return results;
-          }
-        }
-
-        const postLoopFailure = await executeSequence(loopPlan.postLoopSteps);
-        if (postLoopFailure) {
+        const loopFailure = await this.loopRunner.runLoop(
+          loopPlan,
+          sessionId,
+          params,
+          backend,
+          variables,
+          results,
+          executeSequence
+        );
+        if (loopFailure) {
           return results;
         }
       } else {
@@ -370,7 +137,7 @@ export class CdpExecutor implements OnModuleDestroy {
         }
       }
 
-      this.emitDebugEvent(
+      this.workerClient.emitDebugEvent(
         'cdp.executor.ts:executeSteps:results',
         '[DEBUG] cdpExecutor finished execution',
         {
@@ -384,17 +151,11 @@ export class CdpExecutor implements OnModuleDestroy {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Execution failed: ${errorMsg}`);
-
-      this.emitDebugEvent(
+      this.workerClient.emitDebugEvent(
         'cdp.executor.ts:executeSteps:error',
         '[DEBUG] cdpExecutor execution failed',
-        {
-          sessionId,
-          backend,
-          error: errorMsg,
-        }
+        { sessionId, backend, error: errorMsg }
       );
-
       return [
         {
           success: false,
@@ -406,768 +167,20 @@ export class CdpExecutor implements OnModuleDestroy {
     }
   }
 
-  private async executeSingleStep(
-    step: TemplateStep,
-    sessionId: string | undefined,
-    params: Record<string, unknown>,
-    backend: string,
-    variables: Record<string, unknown>
-  ): Promise<ExecutionResult> {
-    const substitutedStep = this.substituteStep(step, params);
-
-    if (substitutedStep.execution_policy === 'forbid_in_replay') {
-      return {
-        success: false,
-        step_id: substitutedStep.step_id,
-        action: substitutedStep.action,
-        error: '步骤策略禁止在回放中自动执行',
-        message: substitutedStep.description || '步骤策略禁止在回放中自动执行',
-        replay_forbidden: true,
-        replay_forbidden_reason: '步骤策略禁止在回放中自动执行',
-      };
-    }
-
-    if (substitutedStep.execution_policy === 'require_confirmation') {
-      return {
-        success: false,
-        step_id: substitutedStep.step_id,
-        action: substitutedStep.action,
-        error: '步骤策略要求人工确认后执行',
-        message: substitutedStep.description || '步骤策略要求人工确认后执行',
-        confirmation_required: true,
-        confirmation_reason: '步骤策略要求人工确认后执行',
-      };
-    }
-
-    if (substitutedStep.execution_policy === 'require_takeover') {
-      return {
-        success: false,
-        step_id: substitutedStep.step_id,
-        action: substitutedStep.action,
-        error: '步骤策略要求人工接管',
-        message: substitutedStep.description || '步骤策略要求人工接管',
-        takeover: true,
-        takeover_reason: '步骤策略要求人工接管',
-      };
-    }
-
-    if (substitutedStep.action === 'read_value') {
-      return this.executeReadValueStep(substitutedStep, sessionId, backend, variables);
-    }
-
-    if (substitutedStep.action === 'branch') {
-      return this.executeBranchStep(substitutedStep, variables);
-    }
-
-    if (substitutedStep.action === 'takeover_gate') {
-      return {
-        success: false,
-        step_id: substitutedStep.step_id,
-        action: substitutedStep.action,
-        error: substitutedStep.params?.reason
-          ? String(substitutedStep.params.reason)
-          : '人工接管节点触发',
-        message: substitutedStep.description || '人工接管节点触发',
-        takeover: true,
-        takeover_reason:
-          typeof substitutedStep.params?.reason === 'string'
-            ? substitutedStep.params.reason
-            : '人工接管节点触发',
-      };
-    }
-
-    const command = this.mapStepToCommand(substitutedStep, params);
-    const captureProfile = substitutedStep.capture_profile || substitutedStep.captureProfile;
-    const commandArgs = { ...command.params };
-    delete commandArgs.captureProfile;
-    delete commandArgs.capture_profile;
-    const runtimeSessionId = sessionId || 'template-test-default';
-    const result = await this.postJson<{
-      success: boolean;
-      output?: Record<string, any>;
-      errorCode?: string;
-      errorMessage?: string;
-      warningCodes?: string[];
-    }>('/browser/execute-step', {
-      executionId: `template-test:${runtimeSessionId}`,
-      runtimeSessionId,
-      backend,
-      stepId: substitutedStep.step_id,
-      action: command.tool,
-      args: commandArgs,
-      ...(captureProfile ? { captureProfile } : {}),
-    });
-
-    const stepResult = (result.output || {}) as Record<string, any>;
-    const success = result.success === true;
-    const cleanHtml = this.extractHtmlResult(stepResult.html);
-    const rawText =
-      typeof stepResult?.data?.text === 'string'
-        ? stepResult.data.text
-        : typeof stepResult.text === 'string'
-          ? stepResult.text
-          : undefined;
-
-    const shouldExtract = this.shouldExtractMainContent(substitutedStep);
-    const extractedText = shouldExtract
-      ? (rawText && !this.isRawCliOutput(rawText) ? rawText.trim() : undefined) ||
-        (cleanHtml ? extractMainTextFromHtml(cleanHtml) : undefined)
-      : undefined;
-
-    return {
-      success,
-      step_id: substitutedStep.step_id,
-      action: String(stepResult.command || substitutedStep.action),
-      error: success
-        ? undefined
-        : String(result.errorMessage || stepResult.message || 'Step execution failed'),
-      message: success
-        ? this.extractCleanMessage(stepResult, {}, substitutedStep)
-        : String(result.errorMessage || substitutedStep.description || 'Step execution failed'),
-      screenshot: typeof stepResult.screenshot === 'string' ? stepResult.screenshot : undefined,
-      text: extractedText,
-      html: cleanHtml,
-    };
-  }
-
-  private isRawCliOutput(value?: string): boolean {
-    if (!value) return false;
-    const trimmed = value.trim();
-    return (
-      trimmed.includes('### Result') ||
-      trimmed.includes('### Ran Playwright code') ||
-      trimmed.startsWith('- Page URL:')
-    );
-  }
-
-  private shouldExtractMainContent(step: TemplateStep): boolean {
-    if (step.action === 'read_page' || step.action === 'get_text' || step.action === 'read_value') {
-      return true;
-    }
-    const captureProfile =
-      step.capture_profile ||
-      step.captureProfile ||
-      (step.params?.captureProfile as any) ||
-      (step.params?.capture_profile as any);
-    if (!captureProfile) return false;
-    const capture = captureProfile.capture;
-    if (capture && typeof capture === 'object') {
-      return capture.mainContent === true;
-    }
-    return captureProfile.profile === 'article';
-  }
-
-  private extractCleanMessage(
-    stepResult: Record<string, any>,
-    result: { message?: string },
-    substitutedStep: TemplateStep
-  ): string {
-    const raw =
-      typeof stepResult.message === 'string' && stepResult.message.trim()
-        ? stepResult.message.trim()
-        : typeof result.message === 'string' && result.message.trim()
-          ? result.message.trim()
-          : '';
-    if (raw && !raw.includes('### Result') && !raw.includes('### Ran Playwright code')) {
-      return raw;
-    }
-    return substitutedStep.description || `${substitutedStep.action} 执行成功`;
-  }
-
-  private extractHtmlResult(rawHtml?: unknown): string | undefined {
-    if (typeof rawHtml !== 'string' || !rawHtml.trim()) {
-      return undefined;
-    }
-    const trimmed = rawHtml.trim();
-    if (trimmed.includes('### Result')) {
-      const match = trimmed.match(
-        /### Result\s*\n?([\s\S]*?)(?:\n### Ran Playwright code|\n### |\n```|$)/
-      );
-      const candidate = match && typeof match[1] === 'string' ? match[1].trim() : trimmed;
-      try {
-        const parsed = JSON.parse(candidate);
-        if (typeof parsed === 'string' && /<[a-z!/][\s\S]*>/i.test(parsed.trim())) {
-          return parsed.trim();
-        }
-      } catch {
-        const unquoted =
-          (candidate.startsWith('"') && candidate.endsWith('"')) ||
-          (candidate.startsWith("'") && candidate.endsWith("'"))
-            ? candidate.slice(1, -1).trim()
-            : candidate;
-        if (/<[a-z!/][\s\S]*>/i.test(unquoted)) {
-          return unquoted;
-        }
-      }
-      return undefined;
-    }
-    return /<[a-z!/][\s\S]*>/i.test(trimmed) ? trimmed : undefined;
-  }
-
-  private async executeReadValueStep(
-    step: TemplateStep,
-    sessionId: string | undefined,
-    backend: string,
-    variables: Record<string, unknown>
-  ): Promise<ExecutionResult> {
-    const command = this.mapReadValueStepToCommand(step);
-    const result = await this.postJson<{
-      success: boolean;
-      results: Array<Record<string, unknown>>;
-      message?: string;
-    }>('/browser/execute', {
-      runtimeSessionId: sessionId,
-      backend,
-      commands: [command],
-    });
-
-    const raw = (
-      Array.isArray(result.results) && result.results.length > 0 ? result.results[0] || {} : {}
-    ) as Record<string, any>;
-    const success = raw.status !== 'error' && result.success !== false;
-    const rawText =
-      typeof raw?.data?.text === 'string'
-        ? raw.data.text
-        : typeof raw.text === 'string'
-          ? raw.text
-          : typeof raw.stdout === 'string'
-            ? raw.stdout
-            : '';
-    const textValue = this.extractReadValueText(rawText);
-
-    if (success && step.output_var) {
-      variables[step.output_var] = textValue;
-    }
-
-    return {
-      success,
-      step_id: step.step_id,
-      action: step.action,
-      error: success ? undefined : String(raw.message || result.message || '读取页面值失败'),
-      message: success
-        ? `读取到变量 ${step.output_var || 'value'}`
-        : String(raw.message || result.message || ''),
-      text: textValue,
-    };
-  }
-
-  private extractReadValueText(rawText: string): string {
-    const trimmed = rawText.trim();
-    if (!trimmed) {
-      return '';
-    }
-
-    const resultBlockMatch = trimmed.match(/### Result\s*\n([\s\S]*?)\n### Ran Playwright code/);
-    const candidate = resultBlockMatch?.[1]?.trim() || trimmed;
-
-    if (candidate === 'true' || candidate === 'false') {
-      return candidate;
-    }
-
-    if (
-      (candidate.startsWith('"') && candidate.endsWith('"')) ||
-      (candidate.startsWith("'") && candidate.endsWith("'"))
-    ) {
-      try {
-        const parsed = JSON.parse(candidate);
-        if (
-          typeof parsed === 'string' ||
-          typeof parsed === 'number' ||
-          typeof parsed === 'boolean'
-        ) {
-          return String(parsed).trim();
-        }
-      } catch {
-        return candidate.slice(1, -1).trim();
-      }
-    }
-
-    return candidate;
-  }
-
-  private executeBranchStep(
-    step: TemplateStep,
-    variables: Record<string, unknown>
-  ): ExecutionResult {
-    const branch = step.branch;
-    if (!branch?.condition_fn) {
-      return {
-        success: false,
-        step_id: step.step_id,
-        action: step.action,
-        error: 'branch step missing condition_fn',
-      };
-    }
-
-    try {
-      const evaluator = new Function(
-        'ctx',
-        `const fn = ${branch.condition_fn}; return fn(ctx);`
-      ) as (ctx: Record<string, unknown>) => unknown;
-      const matched = Boolean(evaluator(variables));
-      const outcome = matched ? branch.on_match : branch.on_mismatch;
-      if (outcome === 'continue') {
-        return {
-          success: true,
-          step_id: step.step_id,
-          action: step.action,
-          message: matched ? '条件成立，继续执行' : '条件不成立，但配置为继续执行',
-        };
-      }
-      if (outcome === 'stop') {
-        return {
-          success: false,
-          step_id: step.step_id,
-          action: step.action,
-          error: matched ? '条件成立，按配置停止执行' : '条件不满足，按配置停止执行',
-          message: branch.description || '条件分歧停止执行',
-        };
-      }
-      return {
-        success: false,
-        step_id: step.step_id,
-        action: step.action,
-        error: branch.takeover_reason || '条件不满足，需要人工接管',
-        message: branch.description || '条件分歧触发人工接管',
-        takeover: true,
-        takeover_reason: branch.takeover_reason || '条件不满足，需要人工接管',
-      };
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      return {
-        success: false,
-        step_id: step.step_id,
-        action: step.action,
-        error: `执行条件表达式失败: ${errorMsg}`,
-      };
-    }
-  }
-
-  private buildLoopPlan(steps: TemplateStep[], loopDraft?: TemplateLoopDraft): LoopPlan | null {
-    if (!loopDraft || loopDraft.mode !== 'repeat_until') {
-      return null;
-    }
-
-    const stepIds = Array.isArray(loopDraft.eachIteration?.stepIds)
-      ? loopDraft.eachIteration.stepIds
-          .filter(
-            (stepId): stepId is string => typeof stepId === 'string' && stepId.trim().length > 0
-          )
-          .map((stepId) => stepId.trim())
-      : [];
-    if (stepIds.length === 0) {
-      return null;
-    }
-
-    const matchedIndexes = stepIds
-      .map((stepId) => steps.findIndex((step) => step.step_id === stepId))
-      .filter((index) => index >= 0);
-    if (matchedIndexes.length === 0) {
-      return null;
-    }
-
-    const loopStartIndex = Math.min(...matchedIndexes);
-    const loopEndIndex = Math.max(...matchedIndexes);
-    const iterationSteps = steps.slice(loopStartIndex, loopEndIndex + 1);
-    if (iterationSteps.length === 0) {
-      return null;
-    }
-
-    const stopWhen = loopDraft.stopWhen;
-    const stopRead = stopWhen?.read;
-    const conditionFn =
-      typeof stopWhen?.conditionFn === 'string' ? stopWhen.conditionFn.trim() : '';
-    const description =
-      typeof stopWhen?.description === 'string' ? stopWhen.description.trim() : '';
-    if (!stopRead || !conditionFn || !description) {
-      return null;
-    }
-
-    const stopReadPlan = this.buildLoopStopReadPlan(stopRead);
-    if (!stopReadPlan) {
-      return null;
-    }
-
-    return {
-      mode: 'repeat_until',
-      stopWhen: {
-        read: stopReadPlan,
-        conditionFn,
-        description,
-      },
-      maxIterations: this.resolveLoopMaxIterations(loopDraft.maxIterations),
-      onNoProgress: loopDraft.onNoProgress === 'stop' ? 'stop' : 'takeover',
-      preLoopSteps: steps.slice(0, loopStartIndex),
-      iterationSteps,
-      postLoopSteps: steps.slice(loopEndIndex + 1),
-    };
-  }
-
-  private buildLoopStopReadPlan(read?: LoopStopRead): LoopStopReadPlan | null {
-    if (!read?.type) {
-      return null;
-    }
-
-    if (read.type === 'page_signal') {
-      const signalKey = typeof read.key === 'string' ? read.key.trim() : '';
-      if (!signalKey) {
-        return null;
-      }
-      return {
-        type: 'page_signal',
-        key: signalKey,
-        step: {
-          step_id: 'loop_stop_read',
-          action: 'read_page',
-          description: '读取循环终止页面信号',
-          params: { max_length: 4000 },
-        },
-      };
-    }
-
-    const locator = asRecord(read.locator);
-    if (!locator || typeof locator.type !== 'string' || typeof locator.value !== 'string') {
-      return null;
-    }
-
-    return {
-      type: read.type,
-      ...(typeof read.key === 'string' && read.key.trim() ? { key: read.key.trim() } : {}),
-      step: {
-        step_id: 'loop_stop_read',
-        action: 'read_value',
-        locator: {
-          type: locator.type,
-          value: locator.value,
-        },
-        params: {
-          selector: this.buildSelector({
-            type: locator.type,
-            value: locator.value,
-          }),
-        },
-        description: '读取循环终止信号',
-      },
-    };
-  }
-
-  private resolveLoopMaxIterations(value: unknown): number {
-    return typeof value === 'number' && Number.isFinite(value) && value > 0
-      ? Math.floor(value)
-      : 100;
-  }
-
-  private async readLoopStopSignal(
-    loopPlan: LoopPlan,
-    iteration: number,
-    phase: 'before' | 'after',
-    sessionId: string | undefined,
-    params: Record<string, unknown>,
-    backend: string,
-    variables: Record<string, unknown>
-  ): Promise<{ result: ExecutionResult; rawValue: unknown; normalizedValue: string }> {
-    const step = {
-      ...loopPlan.stopWhen.read.step,
-      step_id: `${loopPlan.stopWhen.read.step.step_id}:${phase}:${iteration}`,
-    };
-
-    if (loopPlan.stopWhen.read.type === 'page_signal') {
-      const result = await this.executePageReadStep(step, sessionId, params, backend, variables);
-      const rawValue = this.extractLoopPageSignalValue(
-        result.rawOutput,
-        loopPlan.stopWhen.read.key
-      );
-      const normalizedValue =
-        typeof rawValue === 'string' ? rawValue : JSON.stringify(rawValue ?? null);
-      return {
-        result: {
-          ...result.executionResult,
-          action: 'loop_stop_read',
-          text: normalizedValue,
-        },
-        rawValue,
-        normalizedValue,
-      };
-    }
-
-    const executionResult = await this.executeReadValueStep(step, sessionId, backend, variables);
-    return {
-      result: {
-        ...executionResult,
-        action: 'loop_stop_read',
-      },
-      rawValue: executionResult.text,
-      normalizedValue: executionResult.text || '',
-    };
-  }
-
-  private async executePageReadStep(
-    step: TemplateStep,
-    sessionId: string | undefined,
-    params: Record<string, unknown>,
-    backend: string,
-    _variables: Record<string, unknown>
-  ): Promise<{
-    executionResult: ExecutionResult;
-    rawOutput?: Record<string, unknown>;
-  }> {
-    const substitutedStep = this.substituteStep(step, params);
-    const result = await this.postJson<{
-      success: boolean;
-      results: Array<Record<string, unknown>>;
-      message?: string;
-    }>('/browser/execute', {
-      runtimeSessionId: sessionId,
-      backend,
-      commands: [this.mapStepToCommand(substitutedStep, params)],
-    });
-
-    const raw = (
-      Array.isArray(result.results) && result.results.length > 0 ? result.results[0] || {} : {}
-    ) as Record<string, any>;
-    const success = raw.status !== 'error' && result.success !== false;
-    const rawOutput = asRecord(raw.data) || raw;
-
-    return {
-      executionResult: {
-        success,
-        step_id: substitutedStep.step_id,
-        action: substitutedStep.action,
-        error: success ? undefined : String(raw.message || result.message || '读取页面信号失败'),
-        message: success
-          ? substitutedStep.description || '读取页面信号成功'
-          : String(raw.message || result.message || ''),
-        text:
-          typeof rawOutput?.text === 'string'
-            ? rawOutput.text
-            : typeof raw.text === 'string'
-              ? raw.text
-              : undefined,
-        html: this.extractHtmlResult(raw.html),
-      },
-      rawOutput,
-    };
-  }
-
-  private extractLoopPageSignalValue(output: unknown, key: string): unknown {
-    const trimmedKey = key.trim();
-    if (!trimmedKey) {
-      return undefined;
-    }
-
-    const keyParts = trimmedKey
-      .split('.')
-      .map((part) => part.trim())
-      .filter(Boolean);
-    let current: unknown = output;
-    for (const part of keyParts) {
-      if (!current || typeof current !== 'object' || Array.isArray(current)) {
-        return undefined;
-      }
-      current = (current as Record<string, unknown>)[part];
-    }
-    return current;
-  }
-
-  private evaluateLoopStopCondition(conditionFn: string, value: unknown): boolean {
-    try {
-      const evaluator = new Function(
-        'value',
-        `const fn = (value) => ${conditionFn}; return fn(value);`
-      ) as (input: unknown) => unknown;
-      return Boolean(evaluator(value));
-    } catch {
-      if (typeof value === 'number') {
-        return value === 0;
-      }
-      if (typeof value === 'string') {
-        return value.trim().length === 0;
-      }
-      return value === false || value == null;
-    }
-  }
-
-  private substituteStep(step: TemplateStep, params: Record<string, unknown>): TemplateStep {
-    const substituted = JSON.parse(JSON.stringify(step)) as TemplateStep;
-    const rewrite = (value: unknown): unknown => this.replaceParams(value, params);
-
-    if (substituted.params) {
-      substituted.params = Object.fromEntries(
-        Object.entries(substituted.params).map(([key, value]) => [key, rewrite(value)])
-      );
-    }
-    if (substituted.locator?.value) {
-      substituted.locator.value = String(rewrite(substituted.locator.value));
-    }
-    if (substituted.output_var) {
-      substituted.output_var = String(rewrite(substituted.output_var));
-    }
-    if (substituted.branch) {
-      substituted.branch = {
-        ...substituted.branch,
-        condition_fn: String(rewrite(substituted.branch.condition_fn)),
-        takeover_reason: substituted.branch.takeover_reason
-          ? String(rewrite(substituted.branch.takeover_reason))
-          : substituted.branch.takeover_reason,
-        description: substituted.branch.description
-          ? String(rewrite(substituted.branch.description))
-          : substituted.branch.description,
-      };
-    }
-    return substituted;
-  }
-
-  private mapReadValueStepToCommand(step: TemplateStep): {
-    tool: string;
-    params: Record<string, unknown>;
-  } {
-    const method =
-      typeof step.params?.method === 'string' && step.params.method.trim()
-        ? step.params.method.trim()
-        : undefined;
-    const selector =
-      typeof step.params?.selector === 'string'
-        ? step.params.selector
-        : step.locator
-          ? this.buildSelector(step.locator)
-          : undefined;
-    const maxLength = typeof step.params?.max_length === 'number' ? step.params.max_length : 4000;
-    return {
-      tool: 'get_text',
-      params: {
-        ...(selector ? { selector } : {}),
-        ...(method ? { method } : {}),
-        ...(typeof step.params?.attribute === 'string' && step.params.attribute.trim()
-          ? { attribute: step.params.attribute.trim() }
-          : {}),
-        max_length: maxLength,
-      },
-    };
-  }
-
   async captureFinalState(
     sessionId?: string,
     backend: string = 'cli',
     extractedPage?: Pick<ExecutionResult, 'text' | 'html'>
   ): Promise<ExecutionResult> {
-    try {
-      const reuseExtractedPage = Boolean(extractedPage?.text || extractedPage?.html);
-      const commands = reuseExtractedPage
-        ? [{ tool: 'screenshot', params: {} }]
-        : [
-            { tool: 'read_page', params: { max_length: 30000 } },
-            { tool: 'screenshot', params: {} },
-          ];
-      const result = await this.postJson<{
-        success: boolean;
-        results: Array<Record<string, unknown>>;
-        message?: string;
-      }>('/browser/execute', {
-        runtimeSessionId: sessionId,
-        backend,
-        commands,
-      });
-
-      const rawPage: any = reuseExtractedPage ? {} : result.results?.[0] || {};
-      const rawPageData: any = rawPage.data || {};
-      const rawScreenshot: any = result.results?.[reuseExtractedPage ? 0 : 1] || {};
-      const pageSuccess = reuseExtractedPage || rawPage.status !== 'error';
-      const screenshotSuccess = !rawScreenshot?.status || rawScreenshot.status !== 'error';
-      return {
-        success: pageSuccess,
-        step_id: 'final_state',
-        action: 'final_state',
-        error: pageSuccess
-          ? undefined
-          : String(
-              rawPage.message ||
-                rawScreenshot.message ||
-                result.message ||
-                'Final state capture failed'
-            ),
-        message:
-          typeof rawPage.message === 'string' &&
-          rawPage.message &&
-          !rawPage.message.includes('### Result')
-            ? rawPage.message
-            : typeof result.message === 'string' &&
-                result.message &&
-                !result.message.includes('### Result')
-              ? result.message
-              : '最终状态捕获成功',
-        screenshot:
-          screenshotSuccess && typeof rawScreenshot.screenshot === 'string'
-            ? rawScreenshot.screenshot
-            : typeof rawPage.screenshot === 'string'
-              ? rawPage.screenshot
-              : undefined,
-        text:
-          typeof extractedPage?.text === 'string'
-            ? extractedPage.text
-            : typeof rawPageData.text === 'string'
-              ? rawPageData.text
-              : typeof rawPage.text === 'string'
-                ? rawPage.text
-                : undefined,
-        html:
-          typeof extractedPage?.html === 'string'
-            ? extractedPage.html
-            : this.extractHtmlResult(rawPage.html),
-      };
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Final state capture failed: ${errorMsg}`);
-      return {
-        success: false,
-        step_id: 'final_state',
-        action: 'final_state',
-        error: errorMsg,
-      };
-    }
+    return this.workerClient.captureFinalState(
+      sessionId,
+      backend,
+      extractedPage,
+      (raw) => this.stepRunner.extractHtmlResult(raw)
+    );
   }
 
-  /**
-   * Close browser connection
-   */
   async closeBrowser(sessionId?: string): Promise<void> {
-    try {
-      const result = await this.postJson<{ success: boolean }>('/browser/reset', {
-        runtimeSessionId: sessionId,
-        backend: 'cli',
-      });
-      this.logger.log(`Browser stopped: ${result.success}`);
-    } catch (error) {
-      this.logger.warn(`Failed to stop browser: ${error}`);
-    }
-  }
-
-  /**
-   * Emit a structured debug event to the local debug server when present.
-   *
-   * Config is read from `.dbg/session-loop-stall.env` (optional — silently
-   * ignored when absent).  All three copy-pasted debug IIFE blocks previously
-   * scattered through executeSteps() have been collapsed into this helper.
-   */
-  private emitDebugEvent(location: string, msg: string, data: Record<string, unknown>): void {
-    try {
-      const debugUrl = process.env.SESSION_EXECUTION_DEBUG_ENDPOINT?.trim();
-      if (!debugUrl) {
-        return;
-      }
-      fetch(debugUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: process.env.SESSION_EXECUTION_DEBUG_SESSION_ID || 'session-execution',
-          runId: process.env.SESSION_EXECUTION_DEBUG_RUN_ID || 'runtime',
-          location,
-          msg,
-          data,
-          ts: Date.now(),
-        }),
-      }).catch(() => {});
-    } catch {
-      // debug emission must never throw
-    }
+    return this.workerClient.closeBrowser(sessionId);
   }
 }
