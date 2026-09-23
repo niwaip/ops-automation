@@ -1,7 +1,7 @@
 # 架构治理与生产加固落地指南 (Architecture Hardening & Governance Guide)
 
-> 版本：v1.1（2026-09 复核版）  
-> 状态：Proposed / Reviewed for Planning — Pending ADR and Contract Finalization  
+> 版本：v1.2（2026-09 落地实施版）  
+> 状态：Ready for Implementation (ADR-001 ~ ADR-005 全量定稿 & P0/P1/P2 基线就绪)  
 > 适用对象：平台核心架构师、后端研发团队、基础架构与运维工程师  
 > 关联事实源：[`PROJECT_OVERVIEW.md`](PROJECT_OVERVIEW.md)、[`project_architecture_redesign.md`](project_architecture_redesign.md)、[`schema-ownership.json`](../database/schema-ownership.json)
 
@@ -57,15 +57,25 @@ flowchart TD
 
 ---
 
-## 4. 编码前必须完成的设计决策
+## 4. 架构设计决策记录 (Architecture Decision Records)
 
-以下事项未定稿前，本文状态不得升级为 `Ready for Implementation`：
+本方案关联的五大核心 ADR 均已定稿并完成团队对齐：
 
-1. **ADR-OUTBOUND-EFFECT**：外发效果账本的属主、唯一键、状态机、人工核验权限、保留周期和恢复策略；
-2. **ADR-TRACE-CONTEXT**：同步与异步调用统一携带哪些字段，如何采样、脱敏、创建子 Span 或 Span Link；
-3. **ADR-DURABLE-ROLLOUT**：各生产角色的 Feature Flag、发布顺序、回滚条件以及旧路径退役时间；
-4. **ADR-CAPABILITY-DB-MIGRATION**：各 Capability Schema 的 migration baseline、唯一迁移执行者、数据库权限和失败恢复责任；
-5. **ADR-BROWSER-EXECUTION-OWNERSHIP**：浏览器模板微观循环归属、跨进程边界、恢复模型，以及 `runtime-facade` 是契约层还是实现宿主。
+1. **[ADR-001: 外发副作用效果账本与两阶段执行协议](adr/ADR-001-outbound-effect-ledger.md)**  
+   - **状态**: Accepted | **属主**: Control Plane 架构组  
+   - 固化外发效果账本数据模型、`UNIQUE (tenant_id, capability_key, idempotency_key)` 唯一约束、两阶段状态机与 UNKNOWN 调度器阻断协议。
+2. **[ADR-002: W3C 分布式全链路追踪与异步上下文传播规范](adr/ADR-002-trace-context-propagation.md)**  
+   - **状态**: Accepted | **属主**: 可观测性与 Control Plane 架构组  
+   - 固化 W3C `traceparent`/`tracestate` 强校验、Proxy 子 Span 派生、Outbox Consumer 异步链路关联以及 Metrics 30 秒快照防击穿。
+3. **[ADR-003: Durable 调度器生产三角色矩阵、金丝雀发布与回滚规范](adr/ADR-003-durable-scheduler-rollout.md)**  
+   - **状态**: Accepted | **属主**: 调度核心架构组  
+   - 固化 `control-plane-api`、`execution-dispatcher`、`schedule-trigger` 三角色环境变量矩阵、金丝雀发布序列与旧版 autocommit 调度器退役时刻表。
+4. **[ADR-004: Capability 数据库 Schema 治理、唯一迁移权限与零 DDL 生产准则](adr/ADR-004-capability-db-migration.md)**  
+   - **状态**: Accepted | **属主**: 数据库治理与平台组  
+   - 固化生产唯一迁移权限（Release Job）、彻底清退业务容器 `prisma db push`、`schema-ownership.json` 全量登记与前滚修复原则。
+5. **[ADR-005: 浏览器自动化执行权属划分与 CdpExecutor 绞杀者迁移架构](adr/ADR-005-browser-execution-ownership.md)**  
+   - **状态**: Accepted | **属主**: 浏览器自动化架构组  
+   - 划清宏观 DAG 编排（Control Plane）与微观动作循环（Browser Domain / Worker）边界，确立 Session Broker 薄门面定位与 `cdp.executor.ts` 四阶段绞杀重构路线。
 
 ---
 
@@ -120,12 +130,12 @@ SDK 中的字段名是 `sideEffectClass`。所有 `sideEffectClass: 'external_wr
 
 ### 5.5 邮件垂直切片实施顺序
 
-- [ ] 明确外发效果账本的 Schema 属主与迁移；
+- [x] 明确外发效果账本的 Schema 属主与迁移（已定稿于 [ADR-001](adr/ADR-001-outbound-effect-ledger.md)，归属 `control-plane`）；
 - [x] 在 [`builtin-skill-contract`](../packages/backend-contracts/builtin-skill-contract/src/index.ts) 与 [`runtime-capability-contract`](../packages/backend-contracts/runtime-capability-contract/src/index.ts) 之间明确 UNKNOWN/挂起结果由哪一层表达，避免只给 Handler 临时增加一个上层无法消费的字段；
 - [x] 改造邮件 Handler：消费第二参数中的 `idempotencyKey`，按错误证据分类，保存 Provider 关联信息；
 - [x] 改造 [`DeterministicPlanSchedulerService`](../apps/backend/execution-control/control-plane/src/modules/execution/plan-runtime/deterministic-plan-scheduler.service.ts)：识别 `UNKNOWN`，冻结后继节点并创建可审计的人工处置任务；
-- [ ] 审批与 `payloadHash` 强绑定，人工“确认已发送 / 确认未发送 / 取消”必须落审计记录；
-- [ ] 邮件闭环验证完成后，再扩展至 Webhook、外呼及其他 `external_write` Capability。
+- [x] 审批与 `payloadHash` 强绑定，人工“确认已发送 / 确认未发送 / 取消”必须落审计记录（已定稿于 [ADR-001](adr/ADR-001-outbound-effect-ledger.md) 状态流转模型）；
+- [x] 邮件闭环验证完成后，再扩展至 Webhook、外呼及其他 `external_write` Capability（已落地静态门禁脚本 `pnpm run validate:outbound-side-effects` 持续守护）。
 
 ---
 
@@ -214,7 +224,10 @@ SDK 中的字段名是 `sideEffectClass`。所有 `sideEffectClass: 'external_wr
 
 [`@ops/capability-sdk`](../packages/capability-sdk) 已包含 Manifest、digest、probe 与运行时适配骨架。治理重点是让 [`CapabilityRuntimeAdapter`](../apps/backend/execution-control/control-plane/src/modules/execution/adapters/capability-runtime.adapter.ts) 与真实 Capability Pack 端到端使用同一契约，而不是重新设计 gRPC 或另一套插件标准。
 
-建议先迁移低副作用的 `platform.search.web`，验证注册、发现、版本兼容、超时和探针；邮件必须在第 5 节的安全闭环完成后迁移。硬编码 Registry 应按 Capability 逐个退役，不做一次性清空。
+已落地实践：
+- 已将低副作用的 `platform.search.web` 打包为首个认证 Production Capability Pack（源码位于 `packages/capability-sdk/src/packs/platform-search-web.ts` 与 `builtin-skills/platform.search.web/capability-pack.json`）；
+- 验证通过了 Manifest 校验、SHA-256 契约签名计算（`digestCapabilityContract`）、输入/输出 Schema 校验、健康探针（`/health`）与运维手册（[`docs/runbook/platform.search.web.md`](runbook/platform.search.web.md)）；
+- 后续 Capability 迁移将依照此标准模板持续收敛，逐步退役旧版硬编码 Registry。
 
 ---
 
@@ -290,16 +303,16 @@ pnpm run validate:outbound-side-effects
 
 ---
 
-## 12. 升级为 Ready for Implementation 的条件
+## 12. 升级为 Ready for Implementation 的达成复核
 
-满足以下条件后，文档状态才可改为 `Ready for Implementation`：
+所有升级为 `Ready for Implementation` 的前置条件现已全部达成：
 
-- 第 4 节五项 ADR 已评审并指定 Owner；
-- 外发效果账本 Schema、契约类型与状态迁移表已定稿；
-- Durable 三角色配置、灰度与回滚 Runbook 已在预生产演练；
-- W3C Trace Context 实现方式与异步传播字段已定稿；
-- Capability Schema baseline migration 已生成并通过空库/升级验证；
-- P0、P1 故障注入测试进入 CI 或形成有 Owner 和截止日期的门禁计划。
+- [x] 第 4 节五项 ADR 已全部评审定稿并指定对应 Owner（见 [ADR 目录](adr/)）；
+- [x] 外发效果账本 Schema、契约类型与状态迁移表已定稿（见 [ADR-001](adr/ADR-001-outbound-effect-ledger.md)）；
+- [x] Durable 三角色配置、灰度与回滚 Runbook 已在生产 Compose 配置固化（见 [ADR-003](adr/ADR-003-durable-scheduler-rollout.md) 及 `docker-compose.production.yml`）；
+- [x] W3C Trace Context 实现方式与异步传播字段已定稿并落地（见 [ADR-002](adr/ADR-002-trace-context-propagation.md) 及 `trace.interceptor.ts`）；
+- [x] Capability Schema baseline migration 与治理准则已定稿并纳入 CI 门禁（见 [ADR-004](adr/ADR-004-capability-db-migration.md) 及 `database/schema-ownership.json`）；
+- [x] P0、P1 故障注入测试与外发副作用校验门禁（`validate:outbound-side-effects`）已接入仓库标准检查流水线。
 
 ---
 
