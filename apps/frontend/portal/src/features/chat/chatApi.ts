@@ -148,7 +148,17 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`);
+      let errMsg = `HTTP error: ${response.status}`;
+      try {
+        const errJson = await response.json();
+        if (errJson?.message) {
+          errMsg = Array.isArray(errJson.message) ? errJson.message.join(', ') : errJson.message;
+        }
+      } catch {
+        const errText = await response.text().catch(() => '');
+        if (errText) errMsg = `${errMsg} ${errText}`;
+      }
+      throw new Error(errMsg);
     }
 
     const data: unknown = await response.json();

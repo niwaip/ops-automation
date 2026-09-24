@@ -80,12 +80,14 @@ def build_system_prompt(
         "   - 知识问答与操作指导 (Knowledge & Guidance): 当用户询问使用方法、安装步骤、配置指南、架构原理或代码示例时（例如包含“安装方法”、“怎么配置”、“使用教程”、“原理”等），请直接输出深入、准确、格式工整的 Markdown 教程与示例代码。严禁未获用户明确指令前在终端私自执行可能变更系统环境的命令（如 pip install、apt install、rm 等）。\n"
         "   - 环境诊断与状态排查 (Environment Inspection): 仅当用户明确要求检查本地沙箱状态、查看工作区文件或排查具体报错时（如“查看当前目录有哪些文件”、“诊断沙箱环境”），才可调用只读检查工具（如 read_file、dsh doctor、ls、cat）。\n"
         "   - 任务实操与产物创建 (Action Execution): 当用户明确要求新建文件、生成演示文稿、修改代码或添加批注时，主动调用对应工具或技能脚本落盘生成交付物。\n"
+        "   - 交付物生成与执行闭环 (Deliverable Execution vs Code Output): 当用户要求生成文档、报表、PDF、Excel、Word、或处理具体数据任务时，【绝对不要直接向用户返回未经执行的 Python、Bash 等代码脚本或半成品】！你必须主动调用 `bash` 工具在终端静默执行脚本，将最终交付物文件生成并落盘至 `/workspace/<文件名>`，并向用户汇报生成结果与核心概要。仅当用户明确要求查看代码（例如包含‘查看代码’、‘写出代码’、‘给出源码’、‘show code’、‘代码怎么写’等意图）时，才允许在回复中输出代码块。\n"
         "   - 外部生态与最新资讯检索 (Live Intelligence): 当用户询问某个框架/工具的最新动态、最新插件、开源社区生态或前沿进展时（例如包含“最新”、“最热门”、“近期”、“社区”等），若沙箱本地缺乏相关情报，【必须主动调用 web_search 联网检索获取互联网最新真实数据】；切勿闭门造车，也切勿将沙箱本地预装的基础内置技能混淆为外部最新的开源插件。\n"
         "   - Zero Deflection Rule: 在技术问答中切勿随意推诿“请提供链接”或消极回应，充分利用已知知识、联网检索或已加载的专业技能直接给出权威解答。\n"
         "3. Save deliverables and persistent documents to the knowledge space (/knowledge) when requested.\n"
         "4. Output clean, beautifully structured, accurate Chinese Markdown. Never leave raw XML tags or unparsed function artifacts in the final answer.\n"
         "5. When creating or developing web pages, HTML games, dashboards, or prototypes, ALWAYS include the complete standalone HTML code in a single ```html ... ``` block in your final response (even if you write files to workspace). This enables the frontend live interactive preview, fullscreen mode, and download card.\n"
-        "6. When a user request matches any capability in 【Available Skills Catalog】, actively invoke `read_skill(skill_name=\"...\")` to load its specialized guide, templates, and execution scripts before proceeding.\n\n" +
+        "6. When a user request matches any capability in 【Available Skills Catalog】, actively invoke `read_skill(skill_name=\"...\")` to load its specialized guide, templates, and execution scripts before proceeding.\n"
+        "7. 表格与数据排版规范 (Table & Data Formatting): 当在回答中输出数据对比、统计摘要或多维报表时，【必须使用标准 GFM Markdown 表格语法】（即 `| 列名1 | 列名2 |\n| :--- | :--- |`）。【严禁使用 ``` 代码块包裹表格】，【严禁使用 ASCII/Unicode 字符画线条】（如 ┌ ─ ┬ ┐ │ ├ ┼ ┤ └ ┴ ┘ 等）绘制伪表格，确保前端能够渲染出原生自适应的交互式排版。\n\n" +
         build_skills_catalog(available_skills)
     )
 
@@ -188,7 +190,7 @@ def build_user_turn(
     is_inspect_intent: bool = False,
     is_guide_intent: bool = False,
     existing_history: Optional[List[dict]] = None,
-    max_skill_chars: int = 1500,
+    max_skill_chars: int = 5000,
     timestamp_str: Optional[str] = None
 ) -> str:
     """
@@ -273,7 +275,7 @@ def build_user_turn(
             "【HTML 演示文稿 / 报告生成要求】:\n"
             "- 请直接基于当前会话讨论的实质内容与数据（或附件主题），设计并输出精炼、高保真的现代化单文件 HTML 演示文稿 / 报告（4-6 页核心幻灯片，基于极简杂志/电子墨水风格，内嵌完整 CSS 与左右翻页交互）。\n"
             "- 若当前会话讨论的是天气、指标、业务总结等具体场景，请将该场景的真实数据结构化分配至各幻灯片页（如：封面页、总览/趋势页、逐项明细/关键卡片页、总结与出行/行动建议页），严禁脱离该主题！\n"
-            "- 请直接在回复中输出唯一的完整 ```html ... ``` 代码块，系统将自动落盘并导出为 presentation.html，且前端支持在线全屏预览与下载。切勿在回复中指导用户手动复制代码或在本地新建文件。"
+            "- 【代码完整性与闭环约束】：输出 HTML 时务必确保代码完全闭合（包含完整的 </html> 与闭合 ``` 标记）。若包含复杂图表或篇幅较长，推荐调用 `bash` 工具将 HTML 写入 `/workspace/presentation.html`（或 `/workspace/index.html`），系统将自动落盘并挂载前端全屏在线预览与下载卡片，彻底避免单次纯文本流式输出超限截断。"
         )
     elif is_iteration:
         user_parts.append(
@@ -286,7 +288,7 @@ def build_user_turn(
         user_parts.append(
             "【交互式网页 / 游戏开发要求】:\n"
             "- 请直接设计并输出高保真、纯前端自包含的单文件交互应用/游戏（内嵌完整 CSS 与 JS 逻辑，支持鼠标悬停、点击与移动端触控）。\n"
-            "- 请务必在最终回复中输出包含完整代码的 ```html ... ``` 代码块，系统前端将自动挂载实时交互式预览组件、全屏操作与下载卡片。切勿只在终端写文件而不在最终回复中输出 html 代码块。"
+            "- 【代码完整性约束】：输出 HTML 时务必保证自包含且完全闭合（包含完整的 </html> 与闭合 ``` 标记）。若内容较长，可调用 `bash` 工具将完整代码写入 `/workspace/index.html`，系统将自动挂载实时交互式预览组件、全屏操作与下载卡片。"
         )
 
     effective_is_docx = is_docx_intent or any(
@@ -299,6 +301,35 @@ def build_user_turn(
             "- 当用户要求审阅/审查文档、提出修改建议或添加批注时，【你必须调用 bash 工具在 Linux 终端执行相应的脚本命令（如 `python /opt/dsh/skills/docx/scripts/add_comment.py <输入文件> --target \"定位词\" --comment \"批注内容\" -o <输出文件>`）实际完成文件批注并落盘保存新文件（例如 `/workspace/xxx_批注版.docx`）】！\n"
             "- 若需保存至个人空间或知识库，请在生成后执行命令复制到 `/knowledge/`（如 `cp <新文件> /knowledge/`）。\n"
             "- 【严禁只在最终文字回复中口头声称已修改/已保存，但实际未调用任何工具执行落盘！】系统与用户需要看到真实生成落盘的文件。"
+        )
+
+    effective_is_pdf = (
+        is_office_intent and any(k in prompt.lower() for k in ["pdf", "导出pdf", "生成pdf", "pdf报告"])
+    ) or any(k in prompt.lower() for k in ["pdf", "导出pdf", "生成pdf", "pdf报表", "转成pdf", "转为pdf"])
+
+    if effective_is_pdf:
+        user_parts.append(
+            "【PDF 文档生成硬性执行要求 (Action Grounding)】:\n"
+            "- 【默认严禁只向用户返回代码】：除非用户指令明确要求‘查看代码’、‘写出代码’或‘给出源码’，否则绝对不要直接在回复中输出 Python/Bash 代码半成品！\n"
+            "- 【闭环执行落盘】：你必须调用 `bash` 工具在 Linux 终端静默执行 Python 脚本，将最终生成的 PDF 文件保存到工作区 `/workspace/<文件名>.pdf`！\n"
+            "- 【关键代码约束】：\n"
+            "  1. 必须使用内置中文字体 `/opt/dsh/skills/pdf/assets/NotoSansSC-Regular.otf`（或 `/tmp/font/NotoSansSC-Regular.otf`）；\n"
+            "  2. 初始化 FPDF 后，【必须先显式调用 `pdf.add_page()` 打开页面】，严禁在未调用 add_page() 前直接调用 ln() 或 cell()；\n"
+            "  3. 必须输出到 `/workspace/` 路径（如 `pdf.output('/workspace/天气预报.pdf')`），前端才能自动挂载下载卡片；\n"
+            "- 【自愈重试与结果汇报】：若脚本执行报错，分析 STDERR 报错并自愈修改代码后重新运行，直到文件成功生成落盘；生成完成后向用户汇报文件名称与大小。"
+        )
+
+    effective_is_xlsx = (
+        is_office_intent and any(k in prompt.lower() for k in ["excel", "xlsx", "表格", "表单", "算式"])
+    ) or any(k in prompt.lower() for k in ["excel", "xlsx", "做个表", "生成excel", "导出excel"])
+
+    if effective_is_xlsx and not effective_is_pdf:
+        user_parts.append(
+            "【Excel 表格生成硬性执行要求 (Action Grounding)】:\n"
+            "- 【默认严禁只向用户返回代码】：除非用户指令明确要求‘查看代码’、‘写出代码’或‘给出源码’，否则绝对不要在回复中直接输出 Python 代码半成品！\n"
+            "- 【闭环执行落盘】：你必须调用 `bash` 工具在 Linux 终端执行 Python openpyxl 脚本，将最终生成的表格保存到工作区 `/workspace/<文件名>.xlsx`！\n"
+            "- 【公式与重算规范】：生成公式时，调用 `/opt/dsh/skills/xlsx/scripts/recalc.py <file.xlsx>` 进行静态公式重算；\n"
+            "- 【自愈重试与结果汇报】：若脚本执行报错，修正代码重新运行，直到文件成功生成落盘；生成完成后向用户汇报文件名称与大小。"
         )
 
     if is_send_intent:

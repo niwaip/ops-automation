@@ -78,7 +78,11 @@ export function UserChatWidget() {
 
   return (
     <>
-      <div ref={triggerRef} className={styles['chat-widget-trigger']}>
+      <div
+        ref={triggerRef}
+        className={`${styles['chat-widget-trigger']}${open ? ` ${styles['is-hidden']}` : ''}`}
+        aria-hidden={open}
+      >
         <Badge dot={open ? false : undefined}>
           <Button
             onClick={() => setOpen(!open)}
@@ -97,24 +101,31 @@ export function UserChatWidget() {
         </Badge>
       </div>
       {open ? (
-        <div ref={containerRef} className={styles['chat-window-container']}>
-          <div className={styles['chat-window']}>
-            <div className={styles['chat-window-actions']}>
-              <Button
-                type="text"
-                icon={<CloseOutlined />}
-                onClick={() => setOpen(false)}
-                size="small"
-                className={styles['chat-window-close-btn']}
-              />
+        <>
+          <div
+            className={styles['chat-backdrop']}
+            onClick={() => setOpen(false)}
+            aria-label="点击背景关闭聊天窗"
+          />
+          <div ref={containerRef} className={styles['chat-window-container']}>
+            <div className={styles['chat-window']}>
+              <div className={styles['chat-window-actions']}>
+                <Button
+                  type="text"
+                  icon={<CloseOutlined />}
+                  onClick={() => setOpen(false)}
+                  size="small"
+                  className={styles['chat-window-close-btn']}
+                />
+              </div>
+              <Suspense
+                fallback={<Skeleton active paragraph={{ rows: 8 }} style={{ padding: 24 }} />}
+              >
+                <EmbeddedChatPage embedded />
+              </Suspense>
             </div>
-            <Suspense
-              fallback={<Skeleton active paragraph={{ rows: 8 }} style={{ padding: 24 }} />}
-            >
-              <EmbeddedChatPage embedded />
-            </Suspense>
           </div>
-        </div>
+        </>
       ) : null}
     </>
   );

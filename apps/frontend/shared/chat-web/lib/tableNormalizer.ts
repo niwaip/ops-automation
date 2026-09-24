@@ -1,7 +1,143 @@
+const BOX_BORDER_LINE_REGEX = /^[┌┐└┘├┤┬┴┼─━═╔╗╚╝╠╣╦╩╬\-\+\= \t|│┃║]+$/;
+const BOX_CELL_SPLIT_REGEX = /[│┃║]/;
+
+/**
+ * Converts a code block containing an ASCII/Unicode box-drawing table into standard GFM Markdown.
+ */
+export function convertBoxDrawingCodeBlock(codeText: string): string | null {
+  if (!codeText || typeof codeText !== 'string') {
+    return null;
+  }
+
+  // 严禁对 HTML、XML、脚本或代码文件进行伪表格解构
+  if (
+    /<!doctype\s+html/i.test(codeText) ||
+    /<html/i.test(codeText) ||
+    /<\/html>/i.test(codeText) ||
+    /<script/i.test(codeText) ||
+    /<style/i.test(codeText) ||
+    /def\s+\w+\s*\(/.test(codeText) ||
+    /import\s+[\w\{\*]/.test(codeText) ||
+    /function\s+\w*\s*\(/.test(codeText)
+  ) {
+    return null;
+  }
+
+  // 必须包含真实的盒线绘图字符 (┌ ┬ ┐ ├ ┼ ┤ └ ┴ ┘ ─ │ 等) 或明确的 +----+----+ 边框
+  const hasBoxDrawingChars = /[┌┐└┘├┤┬┴┼─━═╔╗╚╝╠╣╦╩╬│┃║]/.test(codeText);
+  const hasAsciiTableBorders = /^\+[\-]{2,}\+/m.test(codeText);
+  if (!hasBoxDrawingChars && !hasAsciiTableBorders) {
+    return null; // Not a box-drawing table at all!
+  }
+
+  const lines = codeText.split('\n');
+  const tableRows: string[][] = [];
+  const leadingNotes: string[] = [];
+  const trailingNotes: string[] = [];
+  let foundTable = false;
+  let finishedTable = false;
+  let borderLineCount = 0;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      if (foundTable && tableRows.length > 0) {
+        finishedTable = true;
+      }
+      continue;
+    }
+
+    if (finishedTable) {
+      trailingNotes.push(rawLine);
+      continue;
+    }
+
+    // Check if it's a border/divider line (e.g. ┌───┬───┐ or ├───┼───┤ or +---+---+)
+    const isBorder =
+      BOX_BORDER_LINE_REGEX.test(line) &&
+      (/[─━═\-\=]{2,}/.test(line) || /[┌┐└┘├┤┬┴┼╔╗╚╝╠╣╦╩╬\+]/.test(line));
+
+    if (isBorder) {
+      borderLineCount++;
+      foundTable = true;
+      continue;
+    }
+
+    // Check if it's a table row containing vertical separators (│, ┃, ║, or | with borders)
+    const isBoxRow =
+      BOX_CELL_SPLIT_REGEX.test(line) ||
+      (hasAsciiTableBorders && line.startsWith('|') && line.endsWith('|'));
+    if (isBoxRow && !line.includes('||')) {
+      const splitRegex = BOX_CELL_SPLIT_REGEX.test(line) ? BOX_CELL_SPLIT_REGEX : /\|/;
+      const rawCells = line.split(splitRegex).map((c) => c.trim());
+      // Trim empty edge cells from leading/trailing border characters
+      if (rawCells.length > 0 && rawCells[0] === '') {
+        rawCells.shift();
+      }
+      if (rawCells.length > 0 && rawCells[rawCells.length - 1] === '') {
+        rawCells.pop();
+      }
+
+      if (rawCells.length >= 2) {
+        foundTable = true;
+        tableRows.push(rawCells);
+        continue;
+      }
+    }
+
+    if (!foundTable) {
+      leadingNotes.push(rawLine);
+    } else {
+      trailingNotes.push(rawLine);
+    }
+  }
+
+  // 必须具有真正的边框线以及至少两行数据
+  if (borderLineCount === 0 || tableRows.length < 2) {
+    return null;
+  }
+
+  // 表头前置说明不能是一整篇文档（最多前置 5 行说明）
+  if (leadingNotes.length > 5) {
+    return null;
+  }
+
+  const maxCols = Math.max(...tableRows.map((r) => r.length));
+  const header = [...tableRows[0]];
+  while (header.length < maxCols) {
+    header.push(header.length === maxCols - 1 ? '备注' : `列${header.length + 1}`);
+  }
+
+  const mdLines: string[] = [];
+  if (leadingNotes.length > 0) {
+    const titleText = leadingNotes.join('\n').trim();
+    if (titleText) {
+      mdLines.push(`**${titleText}**\n`);
+    }
+  }
+
+  mdLines.push(`| ${header.join(' | ')} |`);
+  mdLines.push(`| ${header.map(() => '---').join(' | ')} |`);
+
+  for (let i = 1; i < tableRows.length; i++) {
+    const row = [...tableRows[i]];
+    while (row.length < maxCols) {
+      row.push('');
+    }
+    mdLines.push(`| ${row.join(' | ')} |`);
+  }
+
+  if (trailingNotes.length > 0) {
+    mdLines.push(`\n${trailingNotes.join('\n')}`);
+  }
+
+  return mdLines.join('\n');
+}
+
 /**
  * Splits a tabular text line into column cells.
  * Supports:
- * 1. Pipe-separated Markdown table lines (| col1 | col2 |)
+ * 1. Pipe or Box-drawing lines (| col1 | col2 | or │ col1 │ col2 │)
  * 2. Tab-separated lines (\t)
  * 3. Multi-space separated lines (\s{2,})
  */
@@ -11,14 +147,25 @@ export function splitTabularLine(line: string): string[] | null {
     return null;
   }
 
-  // 1. Pipe table line: | col1 | col2 |
-  if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-    const cells = trimmed
-      .slice(1, -1)
-      .split('|')
-      .map((c) => c.trim());
-    if (cells.length >= 2) {
-      return cells;
+  // 1. Pipe or Box-drawing line: | col1 | col2 | or │ col1 │ col2 │
+  const isPipeOrBox =
+    (trimmed.startsWith('|') && trimmed.endsWith('|')) ||
+    /[│┃║]/.test(trimmed);
+
+  if (isPipeOrBox) {
+    const isBorder =
+      BOX_BORDER_LINE_REGEX.test(trimmed) &&
+      (/[─━═]{2,}/.test(trimmed) || /[┌┐└┘├┤┬┴┼╔╗╚╝╠╣╦╩╬]/.test(trimmed));
+    if (isBorder) {
+      return null;
+    }
+
+    const rawCells = trimmed.split(/[│┃║|]/).map((c) => c.trim());
+    if (rawCells.length > 0 && rawCells[0] === '') rawCells.shift();
+    if (rawCells.length > 0 && rawCells[rawCells.length - 1] === '') rawCells.pop();
+
+    if (rawCells.length >= 2) {
+      return rawCells;
     }
   }
 
@@ -46,7 +193,7 @@ export function splitTabularLine(line: string): string[] | null {
 }
 
 /**
- * Normalizes plain text tables (multi-space separated, TSV tab-separated, or pipe tables without dividers)
+ * Normalizes plain text tables (multi-space separated, TSV tab-separated, ASCII/Unicode box tables, or pipe tables without dividers)
  * into standard GFM Markdown table syntax (| Col 1 | Col 2 |\n| --- | --- |)
  * so ReactMarkdown with remarkGfm renders clean HTML <table> elements.
  */
@@ -55,7 +202,32 @@ export function normalizeTabSeparatedTable(text: string): string {
     return text;
   }
 
-  const lines = text.split('\n');
+  // 1. Unpack code blocks containing box-drawing tables
+  // ONLY match untagged code blocks or blocks tagged with text/txt/ascii/table
+  const codeBlockRegex = /```([^\n]*)\n([\s\S]*?)\n```/g;
+  let normalizedText = text.replace(codeBlockRegex, (match, lang, codeContent) => {
+    const cleanLang = (lang || '').trim().toLowerCase();
+    // 绝不对标记了具体编程语言（如 html, js, py, sh, css, json 等）的代码块进行表格解构
+    if (cleanLang && !['text', 'txt', 'ascii', 'table'].includes(cleanLang)) {
+      return match;
+    }
+    const converted = convertBoxDrawingCodeBlock(codeContent);
+    return converted !== null ? converted : match;
+  });
+
+  // Also handle unclosed streaming code blocks containing a box table
+  const unclosedMatch = /```([^\n]*)\n([\s\S]+)$/.exec(normalizedText);
+  if (unclosedMatch && unclosedMatch[2]) {
+    const cleanLang = (unclosedMatch[1] || '').trim().toLowerCase();
+    if (!cleanLang || ['text', 'txt', 'ascii', 'table'].includes(cleanLang)) {
+      const converted = convertBoxDrawingCodeBlock(unclosedMatch[2]);
+      if (converted !== null) {
+        normalizedText = normalizedText.slice(0, unclosedMatch.index) + converted;
+      }
+    }
+  }
+
+  const lines = normalizedText.split('\n');
   const resultLines: string[] = [];
   let tableBuffer: string[][] = [];
 
@@ -70,7 +242,7 @@ export function normalizeTabSeparatedTable(text: string): string {
       // Header row
       const headerRow = [...tableBuffer[0]];
       while (headerRow.length < maxCols) {
-        headerRow.push('');
+        headerRow.push(headerRow.length === maxCols - 1 ? '备注' : `列${headerRow.length + 1}`);
       }
       resultLines.push(`| ${headerRow.join(' | ')} |`);
 
@@ -119,6 +291,16 @@ export function normalizeTabSeparatedTable(text: string): string {
 
     if (inCodeBlock) {
       resultLines.push(line);
+      continue;
+    }
+
+    const trimmed = line.trim();
+    const isBoxBorder =
+      BOX_BORDER_LINE_REGEX.test(trimmed) &&
+      (/[─━═]{2,}/.test(trimmed) || /[┌┐└┘├┤┬┴┼╔╗╚╝╠╣╦╩╬]/.test(trimmed) || /^\+[\-]{2,}\+/.test(trimmed));
+
+    if (isBoxBorder) {
+      // Box drawing border or ASCII border: keep tableBuffer intact
       continue;
     }
 

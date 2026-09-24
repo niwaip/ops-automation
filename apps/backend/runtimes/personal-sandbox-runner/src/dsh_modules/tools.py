@@ -31,6 +31,7 @@ from .office_tools import (
     extract_docx_text,
     extract_xlsx_text,
     extract_pdf_text,
+    extract_pptx_text,
 )
 
 from .file_tools import (
@@ -102,7 +103,7 @@ SANDBOX_TOOLS = [
         "type": "function",
         "function": {
             "name": "read_file",
-            "description": "读取沙箱工作区或知识库中的文件内容（支持代码文件、文本、markdown、docx、xlsx、pdf、json 等，支持行号切片查看大文件）",
+            "description": "读取沙箱工作区或知识库中的文件内容（支持代码文件、文本、markdown、docx、xlsx、pptx、pdf、json 等，支持行号切片查看大文件）",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -387,13 +388,13 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         cmd = params.get("cmd") or params.get("command") or ""
         if not cmd and params:
             cmd = str(list(params.values())[0])
-        cwd_dir = WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None
-        bash_to = max(0.5, min(20.0, remaining)) if remaining is not None else 20.0
+        bash_max = float(os.getenv("DSH_BASH_TIMEOUT", "60.0"))
+        bash_to = max(0.5, min(bash_max, remaining)) if remaining is not None else bash_max
         try:
             proc = subprocess.run(
                 cmd,
                 shell=True,
-                cwd=cwd_dir,
+                cwd=WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None,
                 text=True,
                 capture_output=True,
                 timeout=bash_to
@@ -425,7 +426,10 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
         except subprocess.TimeoutExpired:
             if deadline is not None and time.monotonic() >= deadline:
                 raise TimeoutError("Task total execution deadline exceeded during bash command")
-            res = f"命令执行超时 ({bash_to:.1f}s): {cmd[:60]}"
+            res = (
+                f"⚠️ [命令执行超时 ({bash_to:.1f}s)]: `{cmd[:80]}`\n"
+                f"💡 [优化建议]: 该命令执行耗时超过了限制（{bash_to:.1f}s），请检查是否存在交互式输入阻塞（如 apt/pip 缺少 -y）、网络下载慢或死循环，建议将复杂逻辑拆分处理。"
+            )
         except Exception as e:
             res = f"命令执行异常: {e}"
 

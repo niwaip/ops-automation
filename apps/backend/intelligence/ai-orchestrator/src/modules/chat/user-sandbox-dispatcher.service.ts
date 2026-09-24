@@ -9,6 +9,10 @@ import { ChatMediaService } from './chat-media.service';
 import { ModelService } from '../model/model.service';
 import { isWorkSlashCommand, isPersonalSlashCommand } from './chat-slash-command.util';
 
+const SANDBOX_HISTORY_TURNS_LIMIT = Number(process.env.SANDBOX_HISTORY_TURNS_LIMIT || 16);
+const SANDBOX_HISTORY_ITEM_CHAR_LIMIT = Number(process.env.SANDBOX_HISTORY_ITEM_CHAR_LIMIT || 12000);
+const SANDBOX_ATTACHMENT_TEXT_LIMIT = Number(process.env.SANDBOX_ATTACHMENT_TEXT_LIMIT || 16000);
+
 @Injectable()
 export class UserSandboxDispatcherService {
   private readonly logger = new Logger(UserSandboxDispatcherService.name);
@@ -158,6 +162,7 @@ export class UserSandboxDispatcherService {
       // 1. 获取当前会话上下文历史并收集属于当前会话的全部有效附件（会话作用域隔离）
       let recentHistory: Array<{ role: string; content: string }> = [];
       const sessionAttachedFiles: string[] = [];
+      const currentTurnFiles: string[] = [];
       const addSessionFile = (name?: string) => {
         if (!name) return;
         const clean = path.basename(name).trim();
@@ -169,6 +174,12 @@ export class UserSandboxDispatcherService {
       if (body.files && Array.isArray(body.files)) {
         for (const f of body.files as any[]) {
           const fn = typeof f === 'string' ? f : (f?.fileName || f?.filePath);
+          if (fn) {
+            const clean = path.basename(fn).trim();
+            if (clean && !currentTurnFiles.includes(clean)) {
+              currentTurnFiles.push(clean);
+            }
+          }
           addSessionFile(fn);
         }
       }
@@ -190,12 +201,12 @@ export class UserSandboxDispatcherService {
           }
 
           recentHistory = historyItems
-            .slice(-6)
+            .slice(-SANDBOX_HISTORY_TURNS_LIMIT)
             .filter((item) => item.role === 'user' || item.role === 'assistant')
             .map((item) => {
               let contentStr = typeof item.content === 'string' ? item.content : JSON.stringify(item.content);
-              if (contentStr.length > 3000) {
-                contentStr = contentStr.slice(0, 3000) + '...[历史内容截断]';
+              if (contentStr.length > SANDBOX_HISTORY_ITEM_CHAR_LIMIT) {
+                contentStr = contentStr.slice(0, SANDBOX_HISTORY_ITEM_CHAR_LIMIT) + '...[⚠️ 历史单条内容较长已截断]';
               }
               return {
                 role: item.role,
@@ -210,18 +221,29 @@ export class UserSandboxDispatcherService {
       // 2. 同步本轮附加文件到沙箱工作区并写入当前会话附件索引
       this.syncFilesToSandboxWorkspace(effectiveUserId, body.files, sessionId, sessionAttachedFiles);
 
-      // 3. 构造面向沙箱的高保真 Prompt（明确会话附件清单，严禁无意注入触发词）
+      // 3. 构造面向沙箱的高保真 Prompt（明确区分本轮上传附件与历史参考附件，避免越界联想）
       let promptForSandbox = body.message;
-      if (sessionAttachedFiles.length > 0) {
-        let prefix = `【当前会话有效附件清单】: ${sessionAttachedFiles.join(', ')}\n`;
+      if (currentTurnFiles.length > 0) {
+        let prefix = `【当前轮次用户上传附件】: ${currentTurnFiles.join(', ')}（这是用户本轮刚上传的新文件，为本次指令的主要处理对象）\n`;
+        const historicalFiles = sessionAttachedFiles.filter((f) => !currentTurnFiles.includes(f));
+        if (historicalFiles.length > 0) {
+          prefix += `【历史会话参考附件】: ${historicalFiles.join(', ')}（仅作为历史背景，除非用户指令明确要求对比或关联历史文件，否则默认只处理本轮上传附件）\n`;
+        }
         if (body.files && body.files.length > 0) {
           for (const f of body.files) {
             if (f.extractedText) {
-              const preview = f.extractedText.slice(0, 3000);
+              const textLimit = SANDBOX_ATTACHMENT_TEXT_LIMIT;
+              let preview = f.extractedText.slice(0, textLimit);
+              if (f.extractedText.length > textLimit) {
+                preview += `\n...[⚠️ 附件文本预览已截取前 ${textLimit} 字符，完整内容请直接读取工作区 /workspace/${f.fileName} 文件]`;
+              }
               prefix += `【本轮附件 ${f.fileName} 提取文本预览】:\n${preview}\n\n`;
             }
           }
         }
+        promptForSandbox = `${prefix}用户指令：${body.message}`;
+      } else if (sessionAttachedFiles.length > 0) {
+        let prefix = `【当前会话有效附件清单】: ${sessionAttachedFiles.join(', ')}\n`;
         promptForSandbox = `${prefix}用户指令：${body.message}`;
       }
 
@@ -292,7 +314,7 @@ export class UserSandboxDispatcherService {
           userId: effectiveUserId,
           prompt: promptForSandbox,
           sessionId,
-          files: sessionAttachedFiles,
+          files: currentTurnFiles.length > 0 ? currentTurnFiles : sessionAttachedFiles,
           history: recentHistory,
           webSearch: body.config?.webSearch !== undefined ? Boolean(body.config.webSearch) : true,
           research: Boolean((body.config as any)?.research),

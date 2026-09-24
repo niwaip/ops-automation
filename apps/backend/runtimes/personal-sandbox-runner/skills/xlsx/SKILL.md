@@ -20,6 +20,10 @@ triggers:
   - "csv转excel"
   - "整理数据"
   - "财务模型"
+deliverables:
+  - ".xlsx"
+requires_execution: true
+default_rounds: 5
 ---
 
 # XLSX Creation, Editing, Analysis & Recalculation Skill

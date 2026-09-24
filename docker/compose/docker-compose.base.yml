@@ -134,6 +134,7 @@ services:
 
   xiaozhi-connector:
     <<: *common-node-service
+    profiles: ['xiaozhi', 'connector', 'full']
     container_name: ops-xiaozhi-connector
     command: >
       sh -c "until node -e \"fetch('http://platform:${PLATFORM_PORT:-3001}/health').then(() => process.exit(0)).catch(() => process.exit(1))\"; do sleep 2; done
@@ -544,7 +545,6 @@ services:
   # ============================================
   portal:
     <<: *common-node-service
-    profiles: ['frontend', 'fe', 'full']
     container_name: ops-portal
     command: sh -c "corepack enable && pnpm --filter @ops/portal run dev --host 0.0.0.0 --port 5173"
     environment:
@@ -573,7 +573,6 @@ services:
 
   user-web:
     <<: *common-node-service
-    profiles: ['frontend', 'fe', 'full']
     container_name: ops-user-web
     command: sh -c "corepack enable && pnpm --filter @ops/user-web run dev --host 0.0.0.0 --port 5174"
     environment:

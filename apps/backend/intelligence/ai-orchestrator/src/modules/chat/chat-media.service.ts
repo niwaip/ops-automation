@@ -18,6 +18,7 @@ export interface AuthenticatedUserContext {
   userId?: string;
   organizationId?: string | null;
   role?: string;
+  mode?: 'chat' | 'task';
 }
 
 @Injectable()
@@ -266,13 +267,21 @@ export class ChatMediaService {
             workspaceId = segments[1] || '';
           }
 
+          // CRITICAL ISOLATION: In personal chat mode, immediately block storagePaths targeting department or company workspaces
+          if (contextUser.mode === 'chat' && (firstSegment === 'department' || firstSegment === 'company')) {
+            this.logger.warn(
+              `Rejected workspace file in personal chat mode: storagePath '${file.storagePath}' targets ${firstSegment} workspace`
+            );
+            continue;
+          }
+
           // Database ownership verification for workspace files
-          if (!isAdmin) {
-            if (!this.prisma) {
+          if (!this.prisma) {
+            if (!isAdmin) {
               this.logger.warn(`Workspace access denied: PrismaService not available for ownership verification`);
               continue;
             }
-
+          } else {
             const rows = await this.prisma.$queryRaw<
               Array<{ id: string; type: string; owner_user_id: string | null; department_id: string | null }>
             >`
@@ -280,32 +289,43 @@ export class ChatMediaService {
             `;
 
             if (!rows || rows.length === 0) {
-              this.logger.warn(`Workspace ${workspaceId} not found in database for storagePath: ${file.storagePath}`);
-              continue;
-            }
+              if (!isAdmin) {
+                this.logger.warn(`Workspace ${workspaceId} not found in database for storagePath: ${file.storagePath}`);
+                continue;
+              }
+            } else {
+              const ws = rows[0];
+              // CRITICAL ISOLATION: In personal chat mode, strictly disallow department, company, or process workspace files
+              if (contextUser.mode === 'chat' && ws.type !== 'personal') {
+                this.logger.warn(
+                  `Access denied in personal chat mode: workspace ${workspaceId} is of type '${ws.type}'. Only 'personal' workspace files are permitted in personal mode.`
+                );
+                continue;
+              }
 
-            const ws = rows[0];
-            if (!ws) continue;
-            if (ws.type === 'personal') {
-              if (!ws.owner_user_id || ws.owner_user_id !== contextUser.userId) {
-                this.logger.warn(
-                  `Access denied to personal workspace ${workspaceId}: owned by ${ws.owner_user_id}, requested by user ${contextUser.userId}`
-                );
-                continue;
-              }
-            } else if (ws.type === 'company') {
-              if (!contextUser.organizationId) {
-                this.logger.warn(
-                  `Access denied to company workspace ${workspaceId}: caller has no organization context`
-                );
-                continue;
-              }
-            } else if (ws.type === 'department') {
-              if (!contextUser.userId) {
-                this.logger.warn(
-                  `Access denied to department workspace ${workspaceId}: caller has no user context`
-                );
-                continue;
+              if (!isAdmin) {
+                if (ws.type === 'personal') {
+                  if (!ws.owner_user_id || ws.owner_user_id !== contextUser.userId) {
+                    this.logger.warn(
+                      `Access denied to personal workspace ${workspaceId}: owned by ${ws.owner_user_id}, requested by user ${contextUser.userId}`
+                    );
+                    continue;
+                  }
+                } else if (ws.type === 'company') {
+                  if (!contextUser.organizationId) {
+                    this.logger.warn(
+                      `Access denied to company workspace ${workspaceId}: caller has no organization context`
+                    );
+                    continue;
+                  }
+                } else if (ws.type === 'department') {
+                  if (!contextUser.userId) {
+                    this.logger.warn(
+                      `Access denied to department workspace ${workspaceId}: caller has no user context`
+                    );
+                    continue;
+                  }
+                }
               }
             }
           }

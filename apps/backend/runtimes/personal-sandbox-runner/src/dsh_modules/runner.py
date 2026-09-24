@@ -192,7 +192,14 @@ def cmd_run(args):
         prompt,
         is_design_or_ppt=(skill_res.is_ppt_intent or skill_res.is_design_intent),
         is_search=is_search_intent,
-        is_guide=skill_res.is_guide_intent
+        is_guide=skill_res.is_guide_intent,
+        is_office=skill_res.is_office_intent,
+        skill_res=skill_res,
+        deliverables=skill_res.deliverables,
+        requires_execution=skill_res.requires_execution,
+        default_rounds=skill_res.default_rounds,
+        is_generate_intent=skill_res.is_generate_intent,
+        is_inspect_intent=skill_res.is_inspect_intent
     )
 
     try:
@@ -202,7 +209,11 @@ def cmd_run(args):
             policy,
             max_rounds,
             deadline=task_deadline,
-            is_guide_intent=skill_res.is_guide_intent
+            is_guide_intent=skill_res.is_guide_intent,
+            turn_start_time=overall_start_time,
+            expected_deliverables=skill_res.deliverables,
+            is_generate_intent=skill_res.is_generate_intent,
+            is_inspect_intent=skill_res.is_inspect_intent
         )
 
         # 6. 产物导出与落盘 (HTML/PPT 及各种文档交付物)

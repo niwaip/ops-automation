@@ -8,6 +8,7 @@ import sys
 import time
 import urllib.request
 import urllib.error
+from typing import Any
 from .config import DEFAULT_PROXY_URL, VIRTUAL_API_KEY
 
 
@@ -15,12 +16,27 @@ def call_model_proxy(
     messages: list,
     model: str = None,
     tools: list = None,
-    timeout: int = 40,
-    deadline: float = None
+    timeout: int = None,
+    deadline: float = None,
+    temperature: float = None,
+    max_tokens: int = None,
+    policy: Any = None
 ) -> dict:
     """Invokes the central model proxy through internal network streaming, returning structured response with metrics and native tool calls"""
+    from .runtime_policy import RuntimePolicy
+    active_policy = policy if policy is not None else RuntimePolicy.from_env()
+
     api_endpoint = f"{DEFAULT_PROXY_URL.rstrip('/')}/chat/completions"
-    payload = {"messages": messages, "temperature": 0.4, "max_tokens": 4096, "stream": True}
+    effective_max_tokens = max_tokens if max_tokens is not None else active_policy.max_tokens
+    effective_temp = temperature if temperature is not None else active_policy.temperature
+    effective_socket_to = float(timeout) if timeout is not None else float(active_policy.model_socket_timeout)
+
+    payload = {
+        "messages": messages,
+        "temperature": effective_temp,
+        "max_tokens": effective_max_tokens,
+        "stream": True
+    }
     if model and model != "default":
         payload["model"] = model
     else:
@@ -40,15 +56,15 @@ def call_model_proxy(
     start_time = time.time()
     ttft_ms = None
 
-    max_retries = 2
+    max_retries = active_policy.model_max_retries
     for attempt in range(max_retries + 1):
         if deadline is not None:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise TimeoutError("Task total execution deadline exceeded")
-            effective_timeout = max(1.0, min(float(timeout), remaining))
+            effective_timeout = max(1.0, min(effective_socket_to, remaining))
         else:
-            effective_timeout = float(timeout)
+            effective_timeout = effective_socket_to
 
         try:
             with urllib.request.urlopen(req, timeout=effective_timeout) as response:
@@ -107,7 +123,12 @@ def call_model_proxy(
             break
         except urllib.error.HTTPError as e:
             err_msg = e.read().decode("utf-8", errors="ignore")
-            is_transient = any(kw in err_msg.lower() for kw in ["aborted", "socket hang up", "econnreset", "bad gateway", "timeout"]) or e.code in [502, 503, 504]
+            transient_tokens = [
+                "aborted", "socket hang up", "econnreset", "bad gateway", "timeout",
+                "socket disconnected", "network", "connection reset", "disconnected",
+                "tls", "stream failed", "client network socket disconnected"
+            ]
+            is_transient = any(kw in err_msg.lower() for kw in transient_tokens) or e.code in [500, 502, 503, 504]
             if is_transient and attempt < max_retries:
                 backoff = 1.5 * (attempt + 1)
                 if deadline is not None and time.monotonic() + backoff >= deadline:
@@ -129,7 +150,12 @@ def call_model_proxy(
             raise
         except RuntimeError as e:
             err_msg = str(e)
-            is_transient = any(kw in err_msg.lower() for kw in ["aborted", "socket hang up", "econnreset", "bad gateway", "timeout"])
+            transient_tokens = [
+                "aborted", "socket hang up", "econnreset", "bad gateway", "timeout",
+                "socket disconnected", "network", "connection reset", "disconnected",
+                "tls", "stream failed"
+            ]
+            is_transient = any(kw in err_msg.lower() for kw in transient_tokens)
             if is_transient and attempt < max_retries:
                 backoff = 1.5 * (attempt + 1)
                 if deadline is not None and time.monotonic() + backoff >= deadline:
@@ -333,6 +359,21 @@ def parse_tool_calls(text: str, is_guide: bool = False) -> list:
         if pipe_m:
             tools.append({"type": "bash", "name": "bash", "params": {"cmd": pipe_m.group(1).strip()}, "raw": pipe_m.group(1)})
 
+    # 6. Python 生成与分析提取脚本容错：模型直接输出了包含落盘或提取文件的 Python 完整脚本
+    if not tools and not is_guide:
+        py_matches = list(re.finditer(r'```(?:python|py)\s*\n([\s\S]*?)```', text))
+        for pm in py_matches:
+            py_code = pm.group(1).strip()
+            exec_triggers = [
+                ".output(", ".save(", "to_excel(", "to_csv(", "savefig(", "/workspace/",
+                "fpdf", "openpyxl", "Document(", "Presentation(", "pptx", "PdfReader(",
+                "parse_pptx", "read_pptx", "extract_"
+            ]
+            if any(k in py_code for k in exec_triggers):
+                bash_cmd = f"python3 - << 'EOF'\n{py_code}\nEOF"
+                tools.append({"type": "bash", "name": "bash", "params": {"cmd": bash_cmd}, "raw": pm.group(0)})
+                break
+
     return tools
 
 
@@ -349,9 +390,10 @@ def clean_output(text: str, is_guide: bool = False) -> str:
         if raw_snippet and raw_snippet in text:
             text = text.replace(raw_snippet, "")
 
-    # 仅在非教程模式下，移除残留的未执行或已执行 bash/sh 工具代码块与裸露管道
+    # 仅在非教程模式下，移除残留的未执行或已执行 bash/sh/python 生成与提取工具代码块与裸露管道
     if not is_guide:
         text = re.sub(r'```(?:bash|sh|shell|zsh)?\s*\n(?:curl|python|python3|cat|ls|node|git|sh|bash|grep|find|sed|awk|dsh|cd |mkdir|wget|pip|set |echo)[\s\S]*?```', '', text)
+        text = re.sub(r'```(?:python|py)\s*\n[\s\S]*?(?:\.output|\.save|to_excel|to_csv|savefig|/workspace/|Presentation|pptx|fpdf|openpyxl|Document)[\s\S]*?```', '', text)
         text = re.sub(r'curl\s+[^\n]+(?:\s*&&\s*python3\s*<<\s*[\'"]?EOF[\'"]?[\s\S]*?EOF)?', '', text, flags=re.DOTALL)
 
     # 移除如「页面已抓取成功，现在解析...」「页面已抓到...」这类中间垫话
@@ -379,8 +421,10 @@ def is_promising_action(text: str) -> bool:
         return False
 
     action_patterns = [
-        r"(?:我|让我|我们)?(?:换用|改用|换成|换个|重新|再次|继续|尝试)?(?:更精确|更准|更详细)?(?:的)?(?:关键词|词组|检索词)?(?:来|去)?(?:搜索|查询|检索|抓取|获取|查找|查)",
-        r"(?:我来|我将|我去|让我来|接下来|稍后|现在)?(?:搜索|查询|检索|查找|访问|抓取|查)(?:一下|这个|该|相关|看)",
+        r"(?:我|让我|我们)?(?:换用|改用|换成|换个|重新|再次|继续|尝试)[^，。！？\n]{0,25}(?:搜索|查询|检索|抓取|获取|查找)",
+        r"(?:关键词|词组|检索词)[^，。！？\n]{0,15}(?:搜索|查询|检索|抓取|获取|查找)",
+        r"(?:我来|我将|我去|让我来|接下来|稍后|现在)\s*(?:去|来)?\s*(?:搜索|查询|检索|查找|访问|抓取|查)(?:一下|这个|该|相关|看)?",
+        r"(?:我|让我)?\s*(?:搜索|查询|检索|查找|访问|抓取|查)一下",
         r"需要登录[，,。]?(?:我|我们)?(?:换用|改用|换|重新|尝试)",
     ]
     return any(re.search(p, cleaned) for p in action_patterns)

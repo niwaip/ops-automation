@@ -45,6 +45,10 @@ od:
     requires: false
   scenario: "marketing"
   example_prompt: "Create \"Write a Brand-to-Revenue Story like a Growth Strategy Lead\" as a Marketing and GTM deck in the Guizang Ppt visual system. Scene: annual-marketing-plan. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce a commercial-grade slide plan, written slides, visual direction, speaker-ready structure, and critic pass against this rubric: can the plan connect creative choices to measurable growth."
+deliverables:
+  - ".html"
+requires_execution: true
+default_rounds: 4
 ---
 
 # Magazine Web Ppt

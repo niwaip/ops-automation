@@ -95,7 +95,13 @@ export class ChatConversationService {
     );
 
     const userMessageForHistory = this.normalizeContentToText(messageContent);
-    let fullContent = '';
+    const explicitMaxTokens =
+      typeof (body.config as any)?.maxOutputTokens === 'number'
+        ? (body.config as any).maxOutputTokens
+        : typeof (body as any)?.maxOutputTokens === 'number'
+          ? (body as any).maxOutputTokens
+          : undefined;
+
     const response = await this.modelService.callModelStreamWithMessages(
       modelId,
       messages,
@@ -113,8 +119,29 @@ export class ChatConversationService {
       },
       {
         reasoning: reasoningConfig,
+        maxOutputTokens: explicitMaxTokens,
       }
     );
+
+    // 截断感知：若由于模型单次 Token 上限被意外截断，主动注入友好截断提醒与接力引导
+    if (response?.finishReason === 'length') {
+      const truncationTip =
+        '\n\n---\n⚠️ **输出截断提醒（已达到模型单次 Token 上限）**\n' +
+        '- **状态说明**：上游模型输出达到最大长度限制提前结束。\n' +
+        '- **💡 接力建议**：如需获取后续完整内容，请直接回复「**继续**」，模型将从中断处接力输出。';
+      if (!fullContent.includes('截断提醒')) {
+        fullContent += truncationTip;
+        emit({
+          type: StreamEventType.OBSERVATION,
+          content: this.getVisibleChatContent(fullContent, thinkingEnabled),
+          data: {
+            mode: 'chat',
+            thinking: thinkingEnabled,
+            isTruncated: true,
+          },
+        });
+      }
+    }
 
     const visibleContent = this.getVisibleChatContent(fullContent || '处理完成', thinkingEnabled);
     const historyAssistantContent = this.modelService.stripThinkingTags(fullContent || '处理完成');

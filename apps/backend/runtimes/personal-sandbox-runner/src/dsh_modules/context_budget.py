@@ -21,27 +21,31 @@ class ContextBudget:
         return text_str[:max_chars] + suffix
 
     @classmethod
-    def clip_attachment(cls, content: str, max_chars: int = 3500) -> str:
+    def clip_attachment(cls, content: str, max_chars: int = 12000) -> str:
         """Clips file attachment text."""
-        return cls.clip_text(content, max_chars, suffix="\n...[文件过长已截断]")
+        return cls.clip_text(
+            content,
+            max_chars,
+            suffix="\n...[⚠️ 附件文本超过限制已截断。💡 建议：如需深入分析长文档，可明确指定章节范围或调用 read_file 工具分页读取]"
+        )
 
     @classmethod
-    def clip_skill(cls, skill_content: str, max_chars: int = 1500) -> str:
+    def clip_skill(cls, skill_content: str, max_chars: int = 12000) -> str:
         """Clips injected skill guidance text."""
-        return cls.clip_text(skill_content, max_chars, suffix="\n...[技能规范已截断]")
+        return cls.clip_text(skill_content, max_chars, suffix="\n...[⚠️ 技能规范超出预算已安全截断]")
 
     @classmethod
-    def clip_tool_result(cls, result: str, max_chars: int = 3000) -> str:
+    def clip_tool_result(cls, result: str, max_chars: int = 10000) -> str:
         """Clips execution result of tools to prevent context blowup."""
-        suffix = f"\n...[工具输出超过 {max_chars} 字符，已自动截断以保障模型效率]"
+        suffix = f"\n...[⚠️ 工具输出超过 {max_chars} 字符已自动截断。💡 建议：可使用 grep/head/tail 缩小输出范围，或使用 read_file 分片读取]"
         return cls.clip_text(result, max_chars, suffix=suffix)
 
     @classmethod
     def budget_history(
         cls,
         existing_history: List[Dict[str, Any]],
-        max_total_chars: int = 4000,
-        max_item_chars: int = 1000
+        max_total_chars: int = 16000,
+        max_item_chars: int = 4000
     ) -> Tuple[List[Dict[str, Any]], int]:
         """
         Applies a reverse sliding window over conversation history.

@@ -275,13 +275,14 @@ export class ChatController {
     const resolvedUser = await this.chatOrchestratorService.resolveAuthenticatedUser(
       req.headers.authorization
     );
+    const mode: 'chat' | 'task' = parsed.mode;
     const userCtx = {
       userId: resolvedUser.userId,
       organizationId: resolvedUser.organizationId,
       role: resolvedUser.userRoles?.includes('admin') ? 'admin' : undefined,
+      mode,
     };
 
-    const mode: 'chat' | 'task' = parsed.mode;
     const resolvedFiles = await this.chatMediaService.resolveUploadedFiles(body.files, userCtx);
     body = {
       ...body,
@@ -351,6 +352,13 @@ export class ChatController {
         }
 
         // 沙箱未就绪、出现异常或为内部插件/服务分析调用时，直接进行模型流式交互
+        if (!shouldBypassSandbox && !abortController.signal.aborted) {
+          emit({
+            type: 'observation',
+            content: 'ℹ️ 个人专属安全沙箱当前连接异常或离线，已为您无缝切换至标准问答模式（注：标准对话模式暂不支持文件落盘与全屏交互卡片）。\n\n',
+          });
+        }
+
         await this.chatConversationService.streamChat(
           body,
           (event) => {
@@ -495,6 +503,13 @@ export class ChatController {
       userId: resolvedUser.userId,
       organizationId: resolvedUser.organizationId,
       role: resolvedUser.userRoles?.includes('admin') ? 'admin' : undefined,
+      mode,
+    };
+
+    const resolvedFiles = await this.chatMediaService.resolveUploadedFiles(body.files, userCtx);
+    body = {
+      ...body,
+      files: resolvedFiles,
     };
 
     if (mode === 'chat') {
@@ -514,7 +529,7 @@ export class ChatController {
 
     const taskBody: ChatRequestDTO = {
       ...body,
-      files: await this.chatMediaService.resolveUploadedFiles(body.files, userCtx),
+      files: resolvedFiles,
     };
     const taskModeContext = await this.chatOrchestratorService.buildTaskModeContext(
       taskBody,
@@ -765,18 +780,17 @@ export class ChatController {
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { fileSize: 20 * 1024 * 1024 },
-      fileFilter: (_req, file, callback) => {
+      fileFilter: (req: any, file, callback) => {
         const ext = path.extname(file.originalname).toLowerCase();
         const allowedExtensions = new Set([
           '.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg',
           '.mp3', '.wav', '.webm', '.ogg', '.m4a',
-          '.pdf', '.txt', '.md', '.csv', '.json', '.docx', '.xlsx',
+          '.pdf', '.txt', '.md', '.csv', '.json',
+          '.docx', '.xlsx', '.pptx', '.doc', '.xls', '.ppt',
         ]);
         if (!allowedExtensions.has(ext)) {
-          return callback(
-            new BadRequestException(`Unsupported file type extension: ${ext || 'none'}`),
-            false
-          );
+          req.fileValidationError = `Unsupported file type extension: ${ext || 'none'}`;
+          return callback(null, false);
         }
         callback(null, true);
       },
@@ -784,8 +798,11 @@ export class ChatController {
   )
   async uploadChatFile(
     @UploadedFile() file: Express.Multer.File,
-    @Req() req: Request & { user?: any }
+    @Req() req: Request & { user?: any; fileValidationError?: string }
   ): Promise<ChatUploadFileResponseDTO> {
+    if (req?.fileValidationError) {
+      throw new BadRequestException(req.fileValidationError);
+    }
     if (!file) {
       throw new BadRequestException('No file uploaded or file rejected by policy');
     }
@@ -807,14 +824,12 @@ export class ChatController {
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { fileSize: 25 * 1024 * 1024 },
-      fileFilter: (_req, file, callback) => {
+      fileFilter: (req: any, file, callback) => {
         const ext = path.extname(file.originalname).toLowerCase();
         const allowedAudioExts = new Set(['.mp3', '.wav', '.webm', '.ogg', '.m4a', '.flac', '.aac']);
         if (!allowedAudioExts.has(ext)) {
-          return callback(
-            new BadRequestException(`Only audio files are permitted for transcription: ${ext || 'none'}`),
-            false
-          );
+          req.fileValidationError = `Only audio files are permitted for transcription: ${ext || 'none'}`;
+          return callback(null, false);
         }
         callback(null, true);
       },
@@ -822,8 +837,12 @@ export class ChatController {
   )
   async transcribeAudio(
     @UploadedFile() file: Express.Multer.File,
-    @Body('modelId') modelId: string
+    @Body('modelId') modelId: string,
+    @Req() req: Request & { fileValidationError?: string }
   ): Promise<ChatAudioTranscriptionResponseDTO> {
+    if (req?.fileValidationError) {
+      throw new BadRequestException(req.fileValidationError);
+    }
     if (!file) {
       throw new BadRequestException('No audio file uploaded or file rejected by policy');
     }

@@ -18,9 +18,13 @@ PLUGIN_DIR = os.environ.get("DSH_PLUGIN_DIR", "/opt/dsh/plugins")
 _default_skill_dir = "/opt/dsh/skills"
 if not os.path.exists(_default_skill_dir):
     try:
-        _cand = Path(__file__).resolve().parents[6] / "docker" / "user-sandbox" / "skills"
+        _cand = Path(__file__).resolve().parents[2] / "skills"
         if _cand.exists():
             _default_skill_dir = str(_cand)
+        else:
+            _cand2 = Path(__file__).resolve().parents[6] / "docker" / "user-sandbox" / "skills"
+            if _cand2.exists():
+                _default_skill_dir = str(_cand2)
     except Exception:
         pass
 

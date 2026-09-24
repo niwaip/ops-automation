@@ -27,11 +27,11 @@ Usage:
   ./docker/start-smart.sh [mode|compose-file] -f <compose-file>... [docker-compose args]
 
 Recommended modes:
-  dev             Start the lightweight core development stack (6 services + init)
+  dev             Start the lightweight core development stack (backend core + portal + user-web)
   dev:browser     Core stack + Browser automation (worker, chrome, templates, semantics)
   dev:workflow    Core stack + Temporal workflow engine & workers
   dev:doc         Core stack + Carbone engine & reports
-  dev:fe          Core stack + Containerized frontends (portal, user-web)
+  dev:xiaozhi     Core stack + Xiaozhi voice channel connector
   full            Start the full stack (all 19 containers)
   infra           Start postgres + redis only
   addin           Start Office Add-in related services
@@ -198,10 +198,14 @@ resolve_target() {
             compose_files=("$(resolve_compose_file "compose/docker-compose.base.yml")")
             target_profiles+=("document")
             ;;
+        dev:xiaozhi|xiaozhi|connector)
+            target_entry="dev:xiaozhi"
+            compose_files=("$(resolve_compose_file "compose/docker-compose.base.yml")")
+            target_profiles+=("xiaozhi")
+            ;;
         dev:fe|fe|frontend)
             target_entry="dev:fe"
             compose_files=("$(resolve_compose_file "compose/docker-compose.base.yml")")
-            target_profiles+=("frontend")
             ;;
         full|docker-compose.full.yml|compose/docker-compose.full.yml)
             target_entry="full"

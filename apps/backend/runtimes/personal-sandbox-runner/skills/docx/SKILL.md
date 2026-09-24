@@ -12,14 +12,17 @@ tags:
 triggers:
   - "docx"
   - "word"
-  - "文档"
+  - "word文档"
   - "合同"
   - "生成word"
   - "导出word"
-  - "word文档"
   - "合同审阅"
   - "修订留痕"
   - "批注"
+deliverables:
+  - ".docx"
+requires_execution: true
+default_rounds: 5
 ---
 
 # DOCX Creation, Template Filling, Redlining & Commenting
