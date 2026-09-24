@@ -52,7 +52,23 @@ deploy_or_baseline_capability() {
   fi
 
   if [[ "$deploy_output" == *"P3005"* ]]; then
-    log "Existing non-empty schema detected for $target_schema without migration history. Resolving baseline '$baseline_name'..."
+    log "Existing non-empty schema detected for $target_schema without migration history. Verifying structural consistency against baseline..."
+    local diff_output
+    set +e
+    diff_output="$(DATABASE_URL="$target_url" pnpm --dir "$REPO_ROOT" --filter "$service_filter" exec prisma migrate diff \
+      --exit-code \
+      --from-url "$target_url" \
+      --to-schema-datamodel "$schema_rel_path" 2>&1)"
+    local diff_exit=$?
+    set -e
+
+    if [[ $diff_exit -ne 0 ]]; then
+      log "ERROR: Schema drift detected between live database and baseline for $target_schema! Fail-closed."
+      printf '%s\n' "$diff_output" >&2
+      return 1
+    fi
+
+    log "Schema structure verified in sync with baseline datamodel (no drift). Recording baseline '$baseline_name'..."
     DATABASE_URL="$target_url" pnpm --dir "$REPO_ROOT" --filter "$service_filter" exec prisma migrate resolve --schema "$schema_rel_path" --applied "$baseline_name"
     log "Baseline resolved. Re-running deploy to confirm..."
     DATABASE_URL="$target_url" pnpm --dir "$REPO_ROOT" --filter "$service_filter" exec prisma migrate deploy --schema "$schema_rel_path"

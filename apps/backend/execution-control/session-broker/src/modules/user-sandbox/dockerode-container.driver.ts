@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import Docker from 'dockerode';
 import {
   ContainerHandle,
@@ -12,7 +12,7 @@ export class DockerodeContainerDriver implements IContainerDriver {
   private readonly docker: Docker;
   private readonly socketPath: string;
 
-  constructor(options?: { socketPath?: string } | Docker) {
+  constructor(@Optional() options?: { socketPath?: string } | Docker) {
     if (options && typeof (options as any).getContainer === 'function') {
       this.docker = options as Docker;
       this.socketPath = (options as any)?.modem?.socketPath || '/var/run/docker.sock';

@@ -29,9 +29,31 @@ export async function runScheduleConcurrencyVerification(
   connectionString: string = process.env.DATABASE_URL || 'postgresql://ops:ops_secret@localhost:5432/ops',
   concurrency: number = 50
 ): Promise<TestSummary> {
+  // Probe PostgreSQL connection capacity to prevent "sorry, too many clients already"
+  let poolSize = 20;
+  const probePool = new Pool({ connectionString, max: 2 });
+  try {
+    const probeClient = await probePool.connect();
+    try {
+      const maxRes = await probeClient.query('SHOW max_connections');
+      const currRes = await probeClient.query('SELECT count(*)::int as count FROM pg_stat_activity');
+      const maxConn = parseInt(maxRes.rows[0].max_connections, 10) || 100;
+      const currConn = currRes.rows[0].count || 0;
+      const safeBuffer = 15;
+      const available = Math.max(maxConn - currConn - safeBuffer, 5);
+      poolSize = Math.min(available, 25);
+    } finally {
+      probeClient.release();
+    }
+  } catch {
+    poolSize = 15;
+  } finally {
+    await probePool.end();
+  }
+
   const pool = new Pool({
     connectionString,
-    max: Math.min(concurrency + 10, 70),
+    max: poolSize,
     idleTimeoutMillis: 5000,
   });
 
@@ -46,7 +68,7 @@ export async function runScheduleConcurrencyVerification(
   console.log('  Schedule Fire Real DB Concurrency & Lease Recovery Verification');
   console.log('========================================================================');
   console.log(`Connecting to: ${connectionString.replace(/:[^:@]+@/, ':****@')}`);
-  console.log(`Concurrency target: ${concurrency} parallel transactions`);
+  console.log(`Concurrency target: ${concurrency} parallel transactions (pool size: ${poolSize})`);
   console.log(`Test Schedule ID: ${testScheduleId}`);
   console.log(`Scheduled At: ${testScheduledAt.toISOString()}`);
   console.log('------------------------------------------------------------------------');

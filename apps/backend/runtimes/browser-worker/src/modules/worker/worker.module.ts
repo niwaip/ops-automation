@@ -1,3 +1,6 @@
+import { Module } from '@nestjs/common';
+import { WorkerController } from './worker.controller';
+import { WorkerService } from './worker.service';
 import { DockerodeContainerDriver } from './dockerode-container.driver';
 import { CONTAINER_DRIVER } from './container-driver.interface';
 
