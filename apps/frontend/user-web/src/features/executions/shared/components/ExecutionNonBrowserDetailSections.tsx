@@ -21,6 +21,20 @@ const fixLocalhostLink = (url?: string): string | undefined =>
 
 const { Text } = Typography;
 
+const isHtmlPreviewBlock = (className?: string, codeText?: string) => {
+  const match = /language-(\w+)/.exec(className || '');
+  if (!match || match[1] !== 'html' || !codeText) return false;
+  return (
+    codeText.includes('<!DOCTYPE html') ||
+    codeText.includes('<html') ||
+    codeText.includes('class="slide') ||
+    codeText.includes('presentation') ||
+    codeText.includes('guizang') ||
+    codeText.includes('diff-ins') ||
+    codeText.includes('diff-del')
+  );
+};
+
 /**
  * Collapsible container for displaying result text or Markdown with max-height truncation
  */
@@ -68,33 +82,37 @@ const CollapsibleResultView: React.FC<{
                   <table>{children}</table>
                 </div>
               ),
+              pre: ({ children, className: preClassName, ...props }: React.ComponentPropsWithoutRef<'pre'>) => {
+                const childElement = React.isValidElement(children) ? children : null;
+                const childProps = childElement ? (childElement.props as { className?: string; children?: React.ReactNode }) : null;
+                const codeClassName = childProps?.className || '';
+                const codeText = Array.isArray(childProps?.children)
+                  ? childProps.children.join('')
+                  : String(childProps?.children || '');
+
+                if (isHtmlPreviewBlock(codeClassName, codeText)) {
+                  return <>{children}</>;
+                }
+
+                const mergedClass = ['code-block', preClassName, codeClassName].filter(Boolean).join(' ');
+                return (
+                  <pre className={mergedClass} {...props}>
+                    {children}
+                  </pre>
+                );
+              },
               code: ({
                 className,
                 children,
                 ...props
               }: React.ComponentPropsWithoutRef<'code'> & { className?: string }) => {
-                const match = /language-(\w+)/.exec(className || '');
-                const codeText = String(children || '');
-                if (
-                  match &&
-                  match[1] === 'html' &&
-                  (codeText.includes('<!DOCTYPE html') ||
-                    codeText.includes('<html') ||
-                    codeText.includes('class="slide') ||
-                    codeText.includes('presentation') ||
-                    codeText.includes('guizang') ||
-                    codeText.includes('diff-ins') ||
-                    codeText.includes('diff-del'))
-                ) {
+                const codeText = Array.isArray(children) ? children.join('') : String(children || '');
+                if (isHtmlPreviewBlock(className, codeText)) {
                   return <HtmlPreviewBlock code={codeText.trim()} className={className} />;
                 }
 
-                return match ? (
-                  <pre className={`code-block language-${match[1]}`}>
-                    <code {...props}>{children}</code>
-                  </pre>
-                ) : (
-                  <code className="inline-code" {...props}>
+                return (
+                  <code className={className || 'inline-code'} {...props}>
                     {children}
                   </code>
                 );

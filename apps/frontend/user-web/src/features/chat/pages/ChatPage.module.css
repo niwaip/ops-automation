@@ -1691,6 +1691,19 @@
   overflow-wrap: anywhere;
 }
 
+.user-chat-message-content pre {
+  max-width: 100%;
+  overflow-x: auto;
+  box-sizing: border-box;
+}
+
+.user-chat-message-content code {
+  max-width: 100%;
+  box-sizing: border-box;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
 .user-chat-message-content a,
 .user-chat-message-bubble a {
   word-break: break-all !important;

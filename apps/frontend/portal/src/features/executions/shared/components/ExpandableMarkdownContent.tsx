@@ -15,6 +15,20 @@ export interface ExpandableMarkdownContentProps {
   bordered?: boolean;
 }
 
+const isHtmlPreviewBlock = (className?: string, codeText?: string) => {
+  const match = /language-(\w+)/.exec(className || '');
+  if (!match || match[1] !== 'html' || !codeText) return false;
+  return (
+    codeText.includes('<!DOCTYPE html') ||
+    codeText.includes('<html') ||
+    codeText.includes('class="slide') ||
+    codeText.includes('presentation') ||
+    codeText.includes('guizang') ||
+    codeText.includes('diff-ins') ||
+    codeText.includes('diff-del')
+  );
+};
+
 export const ExpandableMarkdownContent: React.FC<ExpandableMarkdownContentProps> = ({
   text,
   maxCollapsedHeight = 360,
@@ -113,56 +127,68 @@ export const ExpandableMarkdownContent: React.FC<ExpandableMarkdownContentProps>
                 {children}
               </blockquote>
             ),
-            code: ({
-              inline,
-              className,
-              children,
-              ...props
-            }: React.ComponentPropsWithoutRef<'code'> & { inline?: boolean; className?: string }) => {
-              const match = /language-(\w+)/.exec(className || '');
-              const codeText = String(children || '');
-              if (
-                match &&
-                match[1] === 'html' &&
-                (codeText.includes('<!DOCTYPE html') ||
-                  codeText.includes('<html') ||
-                  codeText.includes('class="slide') ||
-                  codeText.includes('presentation') ||
-                  codeText.includes('guizang') ||
-                  codeText.includes('diff-ins') ||
-                  codeText.includes('diff-del'))
-              ) {
-                return <HtmlPreviewBlock code={codeText.trim()} className={className} />;
+            pre: ({ children, className: preClassName, ...props }: React.ComponentPropsWithoutRef<'pre'>) => {
+              const childElement = React.isValidElement(children) ? children : null;
+              const childProps = childElement ? (childElement.props as { className?: string; children?: React.ReactNode }) : null;
+              const codeClassName = childProps?.className || '';
+              const codeText = Array.isArray(childProps?.children)
+                ? childProps.children.join('')
+                : String(childProps?.children || '');
+
+              if (isHtmlPreviewBlock(codeClassName, codeText)) {
+                return <>{children}</>;
               }
 
-              return inline ? (
-                <code
+              const mergedClass = ['code-block', preClassName, codeClassName].filter(Boolean).join(' ');
+              return (
+                <pre
+                  className={mergedClass}
                   style={{
-                    padding: '2px 5px',
-                    background: 'rgba(0, 0, 0, 0.06)',
-                    borderRadius: 4,
+                    margin: '6px 0',
+                    padding: '8px 12px',
+                    background: 'rgba(0, 0, 0, 0.04)',
+                    borderRadius: 6,
+                    overflowX: 'auto',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
                     fontSize: 12,
                     fontFamily: 'monospace',
                   }}
                   {...props}
                 >
                   {children}
-                </code>
-              ) : (
-                <pre
-                  className={match ? `code-block language-${match[1]}` : undefined}
+                </pre>
+              );
+            },
+            code: ({
+              className,
+              children,
+              ...props
+            }: React.ComponentPropsWithoutRef<'code'> & { className?: string }) => {
+              const codeText = Array.isArray(children) ? children.join('') : String(children || '');
+              if (isHtmlPreviewBlock(className, codeText)) {
+                return <HtmlPreviewBlock code={codeText.trim()} className={className} />;
+              }
+
+              return (
+                <code
+                  className={className || 'inline-code'}
                   style={{
-                    margin: '6px 0',
-                    padding: '8px 12px',
-                    background: 'rgba(0, 0, 0, 0.04)',
-                    borderRadius: 6,
-                    overflow: 'auto',
+                    padding: '2px 5px',
+                    background: 'rgba(0, 0, 0, 0.06)',
+                    borderRadius: 4,
                     fontSize: 12,
                     fontFamily: 'monospace',
+                    whiteSpace: 'break-spaces',
+                    wordBreak: 'break-all',
+                    overflowWrap: 'anywhere',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
                   }}
+                  {...props}
                 >
-                  <code {...props}>{children}</code>
-                </pre>
+                  {children}
+                </code>
               );
             },
             table: ({ children }: { children?: React.ReactNode }) => (
