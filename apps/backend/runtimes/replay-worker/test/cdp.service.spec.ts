@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CdpService } from '../src/modules/cdp';
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import * as playwright from 'playwright-core';
 
 // Mock playwright-core
 jest.mock('playwright-core', () => ({
@@ -61,8 +62,7 @@ describe('CdpService', () => {
       close: jest.fn().mockResolvedValue(undefined),
     };
 
-    const playwright = require('playwright-core');
-    playwright.chromium.connectOverCDP.mockResolvedValue(mockBrowser);
+    (playwright.chromium.connectOverCDP as jest.Mock).mockResolvedValue(mockBrowser);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [CdpService],
@@ -86,8 +86,7 @@ describe('CdpService', () => {
     });
 
     it('should handle connection failure', async () => {
-      const playwright = require('playwright-core');
-      playwright.chromium.connectOverCDP.mockRejectedValue(new Error('Connection failed'));
+      (playwright.chromium.connectOverCDP as jest.Mock).mockRejectedValue(new Error('Connection failed'));
 
       const cdpUrl = 'ws://invalid:9222';
 

@@ -1,35 +1,34 @@
 import {
-  BadRequestException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
-  OnModuleInit,
+BadRequestException,
+ForbiddenException,
+Inject,
+Injectable,
+Logger,
+NotFoundException,
+OnModuleInit,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { randomUUID } from 'crypto';
-import { WORKBENCH_PRISMA, WorkbenchPrismaPort } from '../ports';
-import { STORAGE_DRIVER, type StorageDriver } from './storage/storage-driver.interface';
+import { WORKBENCH_PRISMA,WorkbenchPrismaPort } from '../ports';
+import type {
+ContentSearchResultDto,
+DepartmentSummaryDto,
+MulterUploadedFile,
+MyWorkspacesResponseDto,
+RegenerateDigestDto,
+SaveTextNoteDto,
+WorkspaceNodeDto,
+WorkspaceSummaryDto
+} from './dto/workspace.dto';
+import { STORAGE_DRIVER,type StorageDriver } from './storage/storage-driver.interface';
 import { WorkspaceContentIndexerService } from './workspace-content-indexer.service';
 import { WorkspaceDigestService } from './workspace-digest.service';
-import type {
-  ContentSearchResultDto,
-  WorkspaceNodeDto,
-  WorkspaceSummaryDto,
-  DepartmentSummaryDto,
-  MyWorkspacesResponseDto,
-  RegenerateDigestDto,
-  BatchRegenerateDigestDto,
-  SaveTextNoteDto,
-  MulterUploadedFile,
-} from './dto/workspace.dto';
 import { WorkspaceNoteService } from './workspace-note.service';
 import {
-  WorkspaceProcessArchiveService,
-  type ArchiveDeliverablesOptions,
-  type ArchiveResult,
+WorkspaceProcessArchiveService,
+type ArchiveDeliverablesOptions,
+type ArchiveResult,
 } from './workspace-process-archive.service';
 
 @Injectable()
@@ -330,7 +329,7 @@ export class WorkspaceService implements OnModuleInit {
       // ignore
     }
     safeOriginalName = safeOriginalName.replace(/[\\/:*?"<>|]/g, '_');
-    const nodeId = require('crypto').randomUUID();
+    const nodeId = randomUUID();
     const storageKey = `${workspace.type}/${workspace.id}/${nodeId}_${safeOriginalName}`;
 
     // 物理落盘

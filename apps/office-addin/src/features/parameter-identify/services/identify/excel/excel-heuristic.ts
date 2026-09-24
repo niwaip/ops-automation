@@ -72,8 +72,8 @@ function stripExcelSheetRoleSuffix(sheetName: string): string {
 function buildAsciiIdentifier(value: string, fallback: string): string {
   const normalized = normalizeExcelText(value)
     .replace(/['"`]/g, '')
-    .replace(/[，。；：、,.!?:()[\]{}<>《》【】（）/\-]+/g, ' ')
-    .replace(/[^\x00-\x7F]+/g, ' ')
+    .replace(/[，。；：、,.!?:()[\]{}<>《》【】（）/-]+/g, ' ')
+    .replace(/\P{ASCII}+/gu, ' ')
     .replace(/\s+/g, '');
 
   return normalized || fallback;

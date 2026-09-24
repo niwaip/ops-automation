@@ -1,4 +1,5 @@
 import { Injectable, Optional } from '@nestjs/common';
+import * as localFs from 'node:fs';
 import axios from 'axios';
 import { BrowserRecordingRuntimeStep } from '../compiler/browser-recording-runtime.types';
 import { CapabilityReleaseBrowserSessionBrokerService } from './capability-release-browser-session-broker.service';
@@ -26,7 +27,6 @@ export class CapabilityReleaseBrowserRuntimeSupportService {
   ): void {
     const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
     if (!debugUrl) return;
-    const localFs = require('fs') as typeof import('fs');
     const envPaths = [
       '/app/.dbg/gross-margin-branch.env',
       '/Users/chain/Documents/MyProject/ops-automation/.dbg/gross-margin-branch.env',

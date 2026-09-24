@@ -1,22 +1,8 @@
-import { DocumentElement } from '../document-structure.service';
 import {
-  TemplateConfig,
-  VariableMapping,
-  TableLoop,
-  ColumnMapping,
-  CombinedVariable,
-  GroupLoop,
-  ContentPattern,
-  PathMappingRule,
-  UserIntent,
-  StaticElement,
-  DEFAULT_PATH_MAPPINGS,
+ColumnMapping,
+TableLoop,
+VariableMapping
 } from './types';
-import {
-  inferTableArrayPath,
-  generateColumnMappings,
-  calculateTableConfidence,
-} from './table-loop-helper';
 
 export function formatRawSuggestions(rawSuggestions: any[]): any[] {
   return rawSuggestions.map((s, idx) => ({
@@ -210,7 +196,7 @@ export function generateExtractionHint(
   name: string,
   fieldType: string,
   originalText: string,
-  templateType: string
+  _templateType: string
 ): string {
   const hints: Record<string, string> = {
     date: `查找内容中的日期表述，如"${originalText}"位置。常见格式：YYYY年MM月DD日、YYYY-MM-DD、YYYY/MM/DD`,
@@ -249,7 +235,7 @@ export function getDefaultFormatter(fieldType: string): string | null {
 /**
  * 获取验证规则
  */
-export function getValidationRules(fieldType: string, name: string): any {
+export function getValidationRules(fieldType: string, _name: string): any {
   const rules: Record<string, any> = {
     date: { pattern: '\\d{4}[-/年]\\d{1,2}[-/月]\\d{1,2}[日]?', message: '日期格式不正确' },
     amount: { pattern: '\\d+(\\.\\d{1,2})?', message: '金额必须是数字' },
@@ -568,7 +554,7 @@ export function buildDataExampleJson(
       const part = pathParts[i];
 
       // 匹配 array 格式: name[0], name[], name[i], 或者单纯的 []
-      const arrayMatch = part.match(/^([^\[]*)\[(\d+|i)?\]$/);
+      const arrayMatch = part.match(/^([^[]*)\[(\d+|i)?\]$/);
       const isArrayPart = !!arrayMatch;
       const key = arrayMatch ? arrayMatch[1] || '' : part;
 
@@ -888,7 +874,6 @@ export function buildSkillGuideMarkdown(
     parsedExample = dataExampleJson;
   }
   const formattedDataExample = JSON.stringify(parsedExample, null, 2);
-  const apiDataExample = JSON.stringify({ data: parsedExample }, null, 2);
 
   return `# ${templateType} 模板 Skill Guide
 

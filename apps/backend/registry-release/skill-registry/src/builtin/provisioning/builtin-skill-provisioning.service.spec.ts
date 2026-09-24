@@ -76,4 +76,18 @@ describe('BuiltinSkillProvisioningService', () => {
       expect(digest1).toBe(digest2);
     });
   });
+
+  describe('resolveTargetBundles', () => {
+    it('selects only the requested capability', () => {
+      const bundles = service.resolveTargetBundles('platform.search.web');
+      expect(bundles).toHaveLength(1);
+      expect(bundles[0]).toMatch(/platform\.search\.web$/);
+    });
+
+    it('rejects unknown capability instead of selecting every bundle', () => {
+      expect(() => service.resolveTargetBundles('platform.missing.capability')).toThrow(
+        "Built-in skill bundle 'platform.missing.capability' not found"
+      );
+    });
+  });
 });

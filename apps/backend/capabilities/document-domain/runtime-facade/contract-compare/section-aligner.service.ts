@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { AlignedClausePair, ContractClauseNode, DiffType } from './contract-compare.types';
+import type { AlignedClausePair,ContractClauseNode } from './contract-compare.types';
 
 @Injectable()
 export class SectionAlignerService {
@@ -180,7 +180,7 @@ export class SectionAlignerService {
       return String(cnToNumMap[cleaned]);
     }
 
-    return cleaned.replace(/[^\d\.]/g, '');
+    return cleaned.replace(/[^\d.]/g, '');
   }
 
   /**

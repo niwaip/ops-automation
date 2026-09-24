@@ -2,7 +2,7 @@
   "name": "ops-automation",
   "version": "1.0.0",
   "private": true,
-  "description": "Browser Control Plane - Ops Automation Monorepo",
+  "description": "Enterprise AI-native skills and automation orchestration monorepo",
   "scripts": {
     "dev:portal": "pnpm --filter @ops/portal run dev",
     "dev:user-web": "pnpm --filter @ops/user-web run dev",
@@ -12,12 +12,13 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "typecheck:prepare": "pnpm --filter @ops/identity-access run build && pnpm --filter @ops/organization run build && pnpm --filter @ops/browser-recorder run build && pnpm --filter @ops/im-gateway run build && pnpm --filter @ops/system-backup run build && pnpm --filter @ops/workflow-registry run build && pnpm --filter @ops/skill-registry run build && pnpm --filter @ops/release-manager run build && pnpm --filter @ops/workbench run build",
+    "typecheck:prepare": "pnpm --filter @ops/identity-access run build && pnpm --filter @ops/organization run build && pnpm --filter @ops/browser-recorder run build && pnpm --filter @ops/im-gateway run build && pnpm --filter @ops/system-backup run build && pnpm --filter @ops/workflow-registry run build && pnpm --filter @ops/skill-registry run build && pnpm --filter @ops/release-manager run build && pnpm --filter @ops/workbench run build && pnpm --filter @ops/user-core run build",
     "typecheck": "pnpm run typecheck:prepare && pnpm -r --if-present run typecheck",
     "prisma:generate": "pnpm --filter @ops/platform --filter @ops/control-plane --filter @ops/ai-orchestrator --filter @ops/session-broker --filter @ops/browser-template --filter @ops/browser-semantics --filter @ops/report --filter @ops/replay-engine exec prisma generate && pnpm --filter @ops/document-domain run prisma:generate",
     "test:db-e2e": "pnpm --filter @ops/control-plane exec prisma generate && pnpm --filter @ops/control-plane test -- test/deterministic-execution-e2e.test.ts",
     "check:complexity": "bash ./scripts/check-file-complexity.sh",
-    "ci:check": "pnpm run check:complexity && pnpm run validate:schema-ownership && bash ./docker/scripts/v4/validate-layering.sh",
+    "check:architecture": "node ./scripts/check-workspace-architecture.mjs",
+    "ci:check": "pnpm run check:architecture && pnpm run check:complexity && pnpm --filter @ops/document-domain run check:studio-web && pnpm run validate:schema-ownership && bash ./docker/scripts/v4/validate-layering.sh",
     "validate:user-core": "pnpm --filter @ops/user-core run typecheck && pnpm --filter @ops/user-core run build && pnpm --filter @ops/user-core run check:boundaries",
     "validate:schema-ownership": "node database/scripts/validate-schema-ownership.mjs",
     "validate:migration-authority": "node database/scripts/validate-migration-authority.mjs",
@@ -45,10 +46,9 @@
     "docker:v4:acceptance": "bash ./docker/scripts/v4/v4-acceptance.sh",
     "test:e2e": "jest --config tests/integration/jest.config.js",
     "test:e2e:coverage": "jest --config tests/integration/jest.config.js --coverage",
-    "test:unit": "pnpm run test:unit --filter @ops/*",
-    "test:integration": "pnpm run test:integration --filter @ops/*"
+    "test:unit": "pnpm --filter '@ops/*' --if-present run test:unit",
+    "test:integration": "pnpm --filter '@ops/*' --if-present run test:integration"
   },
-  "workspaces": ["apps/*", "apps/*/*", "apps/*/*/*", "apps/*/*/*/*", "tests/*", "packages/*"],
   "devDependencies": {
     "@jest/globals": "^30.3.0",
     "@playwright/cli": "^0.1.11",

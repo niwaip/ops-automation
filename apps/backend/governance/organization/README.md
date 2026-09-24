@@ -17,4 +17,4 @@
 - 组织治理 repository token 与契约
 - 组织归属读写入口已集中在本目录
 - `platform` 中当前仅保留 `core/platform/src/governance/organization/*` runtime bridge 绑定
-- 当前边界说明见 `apps/backend/core/platform/src/governance-boundaries.md`
+- 当前边界说明见 `apps/backend/platform/src/governance-boundaries.md`

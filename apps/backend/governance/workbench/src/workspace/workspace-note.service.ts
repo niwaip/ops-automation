@@ -132,7 +132,7 @@ export class WorkspaceNoteService {
     });
 
     const baseFileName = safeTitle.toLowerCase().endsWith('.md') ? safeTitle : `${safeTitle}.md`;
-    let finalFileName = baseFileName;
+    const finalFileName = baseFileName;
 
     const candidateParentIds = targetFolderNode ? [targetFolderNode.id, baseFolderId] : [baseFolderId];
     for (const pId of candidateParentIds) {

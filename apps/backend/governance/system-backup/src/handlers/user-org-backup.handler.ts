@@ -320,7 +320,7 @@ export class UserOrgBackupHandler {
           });
           created += 1;
         } else if (strategy === 'merge_override') {
-          const { id, createdAt, updatedAt, ...rest } = c;
+          const { id, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = c;
           await this.prisma.userCredential.update({
             where: { id },
             data: rest,

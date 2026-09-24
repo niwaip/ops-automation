@@ -1,35 +1,39 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable,Logger,Optional } from '@nestjs/common';
 import { ControlPlaneClient } from '../../client/control-plane.client';
 import {
-  CONTROL_PLANE_APPROVAL_STATUS,
-  CONTROL_PLANE_EXECUTION_STATUS,
+CONTROL_PLANE_APPROVAL_STATUS,
+CONTROL_PLANE_EXECUTION_STATUS,
 } from '../../client/control-plane.contracts';
 import { getAuthServiceUrl } from '../../config/service-endpoints';
 import { PlanDraftDTO } from '../../interfaces';
 import { PromptDebugSettingsService } from '../debug-settings/prompt-debug-settings.service';
+import { ModelService } from '../model/model.service';
 import { PlannerService } from '../planner';
-import type { ExecutionContext, StreamEvent } from '../react-engine/interfaces';
-import { StreamEventType } from '../react-engine/interfaces';
-import { ReActEngineService } from '../react-engine/react-engine.service';
-import type { ChatRequestDTO } from './chat.dto';
-import { ChatExecutionStreamService } from './chat-execution-stream.service';
-import { DeterministicTaskExecutionService } from './deterministic-task-execution.service';
-import { ChatConversationService } from './chat-conversation.service';
 import { SkillCacheService } from '../planner/skill/skill-cache.service';
 import {
-  NO_MATCHING_SKILL_MESSAGE,
-  formatNoMatchingSkillMessage,
+formatNoMatchingSkillMessage
 } from '../planner/skill/skill-match-policy';
-import type { WaitingInputSemantic } from './chat.types';
-import { ChatWaitingInputService } from './chat-waiting-input.service';
-import { PlanningDecisionShadowService } from './planning-decision-shadow.service';
-import { TaskFallbackPolicyService } from './task-fallback-policy.service';
-import { ChatTaskResumeService } from './chat-task-resume.service';
-import { ChatPlanningPresentationService } from './chat-planning-presentation.service';
-import { ScopedPlannerMemoryService } from './scoped-planner-memory.service';
+import {
+  createBuiltinRoutingPolicySnapshot,
+  hasRoutingSignal,
+} from '../planner/routing/routing-policy.matcher';
+import type { ExecutionContext,StreamEvent } from '../react-engine/interfaces';
+import { StreamEventType } from '../react-engine/interfaces';
+import { ReActEngineService } from '../react-engine/react-engine.service';
+import { ChatConversationService } from './chat-conversation.service';
 import { formatFriendlyExecutionError } from './chat-error-formatter';
-import { ModelService } from '../model/model.service';
+import { ChatExecutionStreamService } from './chat-execution-stream.service';
 import { ChatMediaService } from './chat-media.service';
+import { hasImageAttachment, shouldRouteImageToNativeModel } from './chat-multimodal-routing';
+import { ChatPlanningPresentationService } from './chat-planning-presentation.service';
+import { ChatTaskResumeService } from './chat-task-resume.service';
+import { ChatWaitingInputService } from './chat-waiting-input.service';
+import type { ChatRequestDTO } from './chat.dto';
+import type { WaitingInputSemantic } from './chat.types';
+import { DeterministicTaskExecutionService } from './deterministic-task-execution.service';
+import { PlanningDecisionShadowService } from './planning-decision-shadow.service';
+import { ScopedPlannerMemoryService } from './scoped-planner-memory.service';
+import { TaskFallbackPolicyService } from './task-fallback-policy.service';
 
 @Injectable()
 export class ChatOrchestratorService {
@@ -183,6 +187,24 @@ export class ChatOrchestratorService {
       }
     }
 
+    if (shouldRouteImageToNativeModel({
+      message: body.message,
+      files: body.files,
+      webSearch: body.config?.webSearch === true || (body.config as any)?.web_search_enabled === true,
+      externalMutation: this.isExternalSystemMutationRequest(body.message),
+    })) {
+      await this.planningDecisionShadowService?.record(body.message, {
+        authToken,
+        user,
+        routeClass: 'single_capability',
+        routeSource: 'deterministic_match',
+        confidence: 1,
+        reasonCodes: ['native_multimodal_input'],
+      });
+      yield* this.executeLlmNativeTask(body, context, resolvedModelId);
+      return;
+    }
+
     yield {
       type: StreamEventType.THOUGHT,
       content: '正在规划任务...',
@@ -199,6 +221,7 @@ export class ChatOrchestratorService {
         (body.config as any)?.web_search_enabled === true ||
         (context as any)?.webSearch === true ||
         (context as any)?.web_search_enabled === true ||
+        hasRoutingSignal(planningRequest, 'search', createBuiltinRoutingPolicySnapshot()) ||
         /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|查一下|查找|查询|搜搜|查查)/i.test(planningRequest)
       ) && !/邮件|email|收件箱/i.test(planningRequest);
 
@@ -890,9 +913,34 @@ export class ChatOrchestratorService {
       return;
     }
 
-    const modelId =
+    if (hasImageAttachment(body.files) && !this.chatMediaService) {
+      yield {
+        type: StreamEventType.ERROR,
+        content: '图片内容处理服务不可用，无法读取上传的图片。',
+      };
+      return;
+    }
+
+    let modelId =
       resolvedModelId ||
       this.chatConversationService.resolvePreferredChatModelId(body);
+    if (hasImageAttachment(body.files)) {
+      const selected = this.modelService.resolveModelEntity(modelId);
+      if (!selected || !this.modelService.isVisionCapableModel(selected)) {
+        const visionModel = this.modelService.getPreferredVisionModel({
+          mode: 'chat',
+          userRoles: context.userRoles,
+        });
+        if (!visionModel || !this.modelService.isVisionCapableModel(visionModel)) {
+          yield {
+            type: StreamEventType.ERROR,
+            content: '当前没有可用的视觉模型，无法读取上传的图片。',
+          };
+          return;
+        }
+        modelId = visionModel.id;
+      }
+    }
     const thinkingEnabled = this.chatConversationService.isThinkingEnabled(body);
     const reasoningConfig = await this.chatConversationService.resolveReasoningConfig(
       body,
@@ -902,6 +950,16 @@ export class ChatOrchestratorService {
     const messageContent = this.chatMediaService
       ? await this.chatMediaService.buildMessageContent(body.message, body.files, { userId: context.userId })
       : body.message;
+    if (
+      hasImageAttachment(body.files) &&
+      (!Array.isArray(messageContent) || !messageContent.some((block) => block.type === 'image_url'))
+    ) {
+      yield {
+        type: StreamEventType.ERROR,
+        content: '上传的图片内容不可用，请重新上传后再试。',
+      };
+      return;
+    }
 
     const systemPrompt =
       '你是一个专业的高级AI助手。当前运行在工作模式（受控生产模式）。针对无需调用外部工具的任务，请直接给出严谨、准确、结构清晰且高质量的完整回答或成果。';

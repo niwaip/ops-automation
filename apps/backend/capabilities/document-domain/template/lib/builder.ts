@@ -3,14 +3,14 @@
  * 根据数据和标记生成最终XML
  */
 
-import { Parser, Marker, LoopInfo, ParsedTemplate } from './parser';
-import { FormatterPipeline } from './formatters';
+import { FormatterPipeline, type FormatterFunction } from './formatters';
+import { LoopInfo,Marker,Parser } from './parser';
 
 export interface BuildOptions {
   lang?: string;
   timezone?: string;
   complement?: Record<string, any>;
-  formatters?: Record<string, Function>;
+  formatters?: Record<string, FormatterFunction>;
   skipLoops?: boolean;
 }
 
@@ -29,6 +29,8 @@ export class Builder {
   }
 
   private sanitizeXmlText(value: string): string {
+    // XML 1.0 forbids these control characters.
+    // eslint-disable-next-line no-control-regex
     return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, '');
   }
 
@@ -208,7 +210,7 @@ export class Builder {
 
       const part = parts[i];
       // Handle array index: items[0] or items[]
-      const arrayMatch = part.match(/^([^\[]+)\[(\d+)?\]$/);
+      const arrayMatch = part.match(/^([^[]+)\[(\d+)?\]$/);
       if (arrayMatch) {
         const key = arrayMatch[1];
         const index = arrayMatch[2] !== undefined ? parseInt(arrayMatch[2], 10) : 0;
@@ -244,13 +246,10 @@ export class Builder {
   /**
    * 处理单个循环
    */
-  private processSingleLoop(xml: string, loop: LoopInfo, data: any, allLoops: LoopInfo[]): string {
+  private processSingleLoop(xml: string, loop: LoopInfo, data: any, _allLoops: LoopInfo[]): string {
     // 提取数组路径中的路径部分
     const arrayPathMatch = loop.arrayPath.match(/^([cdt])\.(.+)$/);
     if (!arrayPathMatch) return xml;
-
-    const prefixChar = arrayPathMatch[1];
-    const pathPart = arrayPathMatch[2];
 
     // 获取数组数据
     let arrayData: any[];
@@ -350,8 +349,6 @@ export class Builder {
     // 例如: {d.categories[i].products[i].name}
     // 需要将父循环的 [i] 也替换成实际索引
 
-    const parentPath = loop.parentLoop?.replace(/^[cdt]\./, '') || '';
-
     // 替换父循环路径中的 [i] 为具体索引（使用0作为示例，实际应该在父循环渲染时处理）
     return unit.replace(
       /\{[cdt]\.([^}]+\[i\][^}]*)\[i\]([^}]*)\}/g,
@@ -403,7 +400,7 @@ export class Builder {
   /**
    * 替换简单变量（非循环）
    */
-  replaceVariables(xml: string, markers: Marker[], data: any, options: BuildOptions = {}): string {
+  replaceVariables(xml: string, markers: Marker[], data: any, _options: BuildOptions = {}): string {
     let resultXml = xml;
 
     // 过滤掉数组标记（它们在循环处理中已经替换）

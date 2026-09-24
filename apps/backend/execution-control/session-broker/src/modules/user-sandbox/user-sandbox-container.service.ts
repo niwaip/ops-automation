@@ -11,8 +11,7 @@ import {
   UserSandboxLaunchOptions,
 } from './user-sandbox.interface';
 import { UserSandboxStorageService } from './user-sandbox-storage.service';
-
-const Docker = require('dockerode');
+import Docker from 'dockerode';
 
 const DEFAULT_DOCKER_SOCKET = '/var/run/docker.sock';
 const DEFAULT_IMAGE_NAME = 'ops-user-sandbox:local';

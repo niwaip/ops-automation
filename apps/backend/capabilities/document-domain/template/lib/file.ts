@@ -299,7 +299,6 @@ export async function sanitizeOpenXmlPackageBuffer(
   }
 
   try {
-    const JSZip = require('jszip');
     const zip = new JSZip();
     await zip.loadAsync(buffer);
 
@@ -351,4 +350,3 @@ export async function sanitizeOpenXmlPackageBuffer(
     return buffer;
   }
 }
-

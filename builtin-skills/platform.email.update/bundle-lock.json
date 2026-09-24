@@ -1,9 +1,9 @@
 {
   "capabilityKey": "platform.email.update",
-  "definitionVersion": "1.0.0",
-  "definitionDigest": "sha256:18e1c774fb96841c9c03d75fa480c9d7db6e8c21a14e7198b5717191abdf3a43",
+  "definitionVersion": "1.0.1",
+  "definitionDigest": "sha256:844daeca16b7be2b3ed2fd95128db84a4801691a8177db81b6cf3a1b9a333a44",
   "fileHashes": {
-    "manifest.yaml": "sha256:61d59cef39395ca57d6e473d604995e4710fe2996f89cc3577e06792af718a72",
+    "manifest.yaml": "sha256:48d2d43f5c84c78a9c1cab5eae17f6fb5eb642a554c4639e692c3a1a68517b3f",
     "workflow.json": "sha256:4cb8e7e8ef19c9547a6a5f5645b140e5ca3d02513aa7f4fd728b1f59d158af31",
     "fixtures/smoke-input.json": "sha256:4dcdec91d676119adb7765f55123001a23f878e5f6ef6f43fbecfaaea07c59d7"
   },

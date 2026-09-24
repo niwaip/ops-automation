@@ -1,24 +1,24 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Query,
-  HttpCode,
-  HttpStatus,
-  Logger,
+Body,
+Controller,
+Get,
+HttpCode,
+HttpStatus,
+Logger,
+Param,
+Post,
+Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { RuntimeSessionService } from './runtime-session.service';
+import { ApiOperation,ApiResponse,ApiTags } from '@nestjs/swagger';
 import {
-  CreateRuntimeSessionDto,
-  RuntimeSessionDto,
-  FreezeRuntimeSessionDto,
-  ResumeRuntimeSessionDto,
-  CloseRuntimeSessionDto,
-  ListRuntimeSessionsDto,
+CloseRuntimeSessionDto,
+CreateRuntimeSessionDto,
+FreezeRuntimeSessionDto,
+ListRuntimeSessionsDto,
+ResumeRuntimeSessionDto,
+RuntimeSessionDto,
 } from './runtime-session.dto';
+import { RuntimeSessionService } from './runtime-session.service';
 
 @ApiTags('Runtime Sessions')
 @Controller('runtime-sessions')
@@ -89,7 +89,7 @@ export class RuntimeSessionController {
   @ApiResponse({ status: 404, description: 'Runtime session not found' })
   async close(
     @Param('id') id: string,
-    @Body() dto: CloseRuntimeSessionDto
+    @Body() _dto: CloseRuntimeSessionDto
   ): Promise<RuntimeSessionDto> {
     this.logger.log(`Closing runtime session ${id}`);
     return this.runtimeSessionService.close(id);

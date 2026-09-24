@@ -25,7 +25,7 @@ export function buildDocumentBlocksFromText(
   const preambleMetadata: Array<{ key: string; value: string }> = [];
 
   const LIST_PREFIX_REGEX =
-    /^(\d+(?:\.\d+)+|[（\(](?:[0-9一二三四五六七八九十a-zA-Z]+)[）\)]|[一二三四五六七八九十]+[、\.]|[0-9a-zA-Z][)）\.、])\s*(.*)$/;
+    /^(\d+(?:\.\d+)+|[（(](?:[0-9一二三四五六七八九十a-zA-Z]+)[）)]|[一二三四五六七八九十]+[、.]|[0-9a-zA-Z][)）.、])\s*(.*)$/;
 
   let currentBlock: DocumentBlock | null = null;
 

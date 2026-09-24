@@ -31,7 +31,7 @@ const TEXT_FIELD_CANDIDATES = [
 const MARKDOWN_SYNTAX = /(^|\n)\s{0,3}(#{1,6}\s|[-*+]\s|\d+\.\s|>\s|```|\|.+\|)|\*\*[^*]+\*\*/m;
 
 const LEGAL_ARTICLE_HEADER_REGEX =
-  /^\s*(?:第\s*[一二三四五六七八九十百千万\d]+\s*条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b|[一二三四五六七八九十百]+[、\s]+|(?:\d+[\.、\s]+[^\d\s]))/i;
+  /^\s*(?:第\s*[一二三四五六七八九十百千万\d]+\s*条|(?:ARTICLE|CLAUSE)\s+(?:[IVXLCDM\d]+|\d+)\b|[一二三四五六七八九十百]+[、\s]+|(?:\d+[.、\s]+[^\d\s]))/i;
 
 const LEGAL_CHAPTER_HEADER_REGEX =
   /^\s*(?:第\s*[一二三四五六七八九十百千万\d]+\s*[编章节篇部]|(?:CHAPTER|PART|TITLE|SECTION)\s+(?:[IVXLCDM\d]+|[A-Z]|\d+)\b)/i;

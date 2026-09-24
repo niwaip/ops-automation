@@ -1,9 +1,9 @@
 {
   "capabilityKey": "platform.document.pdf-content-extractor",
-  "definitionVersion": "1.0.0",
-  "definitionDigest": "sha256:1300618c7721dd2e8380100843cd01bc94ab2ad4cd277449b611d81fdc544077",
+  "definitionVersion": "1.0.1",
+  "definitionDigest": "sha256:7fee37ed0f4617de0384e7ac6d1ff4b7715f775fc05fb02a4dcf487061f34fb2",
   "fileHashes": {
-    "manifest.yaml": "sha256:4d58d64099d3e19bca33296cc83bd6e22e45f98931386b0e410f25e1d8a89831",
+    "manifest.yaml": "sha256:dd35027a2268e6b8460ba4a1644cbfd0075bb507031b8f00f92ebae20abc0c51",
     "workflow.json": "sha256:2e8c1b3ebcd5602e59be346aa73def280e789fbef22aa057eb0196d70007248b",
     "fixtures/smoke-input.json": "sha256:85e36c3e488d6781f23a7e3e58c22a8d8bfbe1aea58c9d588becc494929b7f19"
   },

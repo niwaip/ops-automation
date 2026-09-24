@@ -30,7 +30,6 @@ const resolveDependencyEntry = (relativePath: string): string => {
   return path.resolve(__dirname, '../../../', relativePath);
 };
 
-const isDockerEnv = Boolean(process.env.DOCKER_ENV);
 
 const resolveWorkspacePath = (mountedPath: string, repoRelativePath: string): string => {
   if (existsSync(mountedPath)) {

@@ -225,7 +225,7 @@ export class AIIdentifierService {
       paragraphIndex?: number;
       position: { start: number; end: number };
     }>,
-    paragraphFormats?: Array<{
+    _paragraphFormats?: Array<{
       text: string;
       index: number;
       format: {
@@ -235,7 +235,7 @@ export class AIIdentifierService {
         isTitle?: boolean;
       };
     }>,
-    skill?: any
+    _skill?: any
   ): Promise<AIIdentifyResponse> {
     this.logger.log(`开始多阶段AI识别, 类型: ${templateType}, 内容长度: ${documentContent.length}`);
 
@@ -521,7 +521,7 @@ export class AIIdentifierService {
     sectionResults: SectionParameterization[],
     documentUnderstanding: DocumentUnderstanding,
     fullContent: string,
-    templateType: string
+    _templateType: string
   ): Promise<any[]> {
     this.logger.log('阶段3: 开始整合确认');
     const allSuggestions = sectionResults.flatMap((sr) => sr.suggestions);

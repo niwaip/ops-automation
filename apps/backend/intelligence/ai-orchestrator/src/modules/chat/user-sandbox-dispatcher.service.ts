@@ -343,7 +343,7 @@ export class UserSandboxDispatcherService {
           let sseBuffer = '';
           let deltaAccumulator = '';
 
-          while (true) {
+          for (;;) {
             const { done, value } = await reader.read();
             if (done) break;
             sseBuffer += decoder.decode(value, { stream: true });

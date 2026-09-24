@@ -9,7 +9,7 @@ export function safeWordRuleText(value: unknown): string {
 export function normalizeWordLookupText(value: string): string {
   return safeWordRuleText(value)
     .toLowerCase()
-    .replace(/[（）()【】\[\]]/g, '')
+    .replace(/[（）()【】[\]]/g, '')
     .replace(/\s+/g, '');
 }
 

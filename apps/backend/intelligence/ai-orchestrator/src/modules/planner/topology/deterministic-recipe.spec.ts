@@ -290,6 +290,46 @@ describe('Two-Stage Deterministic Recipe & Binding Pipeline (Phase 1 & Phase 2)'
     expect(planDraft.finalOutputs[0]?.expectedType).toBe('artifact_ref');
   });
 
+  it('matches search_summarize_write_markdown for "获取最新 AI 新闻，总结，输出 md 文件" without being hijacked by document_extract', async () => {
+    const userRequest = '获取最新 AI 新闻，总结，输出 md 文件';
+    const matched = matcher.matchRecipe(userRequest);
+
+    expect(matched).not.toBeNull();
+    expect(matched?.recipeName).toBe('search_summarize_write_markdown');
+
+    const topology = topologyBuilder.buildTopologyFromRecipe(
+      matched!,
+      mockSkillCards,
+      mockLlmOpCards
+    );
+    expect(topology).not.toBeNull();
+    expect(topology?.nodes).toHaveLength(3);
+    expect(topology?.nodes[0]?.ref).toBe('n1');
+    expect(topology?.nodes[1]?.ref).toBe('n2');
+    expect(topology?.nodes[2]?.ref).toBe('n3');
+
+    const bindingResult = await binder.bindParameters(userRequest, topology!.nodes, capabilityMap);
+    expect(bindingResult.nodeBindings.n2?.items).toEqual({
+      source: 'node_output',
+      nodeId: 'n1',
+      path: 'searchResults',
+    });
+    expect(bindingResult.nodeBindings.n3?.content).toEqual({
+      source: 'node_output',
+      nodeId: 'n2',
+      path: 'summary',
+    });
+
+    const planDraft = contractAssembler.assemblePlan(topology!, bindingResult, capabilityMap);
+    expect(planDraft.nodes).toHaveLength(3);
+    expect(planDraft.nodes[1]?.kind).toBe('llm_operation');
+    expect(planDraft.nodes[1]?.inputBindings.items).toMatchObject({
+      source: 'node_output',
+      nodeId: 'n1_Web Search',
+      path: 'searchResults',
+    });
+  });
+
   it('uses a deterministic transform recipe for advice grounded in the previous result', async () => {
     const userRequest = '改写穿衣提示';
     const matched = matcher.matchRecipe(userRequest, {

@@ -54,9 +54,9 @@ function checkNeedsParameterization(content: string): boolean {
   const patterns = [
     /[：:]\s+/,
     /[_＿]{2,}/,
-    /[ 　]{4,}/,
-    /[（【\(][　 ]*[）】\)]/,
-    /[\s　]+年[\s　]+月[\s　]+日/,
+    /[ \u3000]{4,}/,
+    /[（【(][\u3000 ]*[）】)]/,
+    /[\s\u3000]+年[\s\u3000]+月[\s\u3000]+日/,
   ];
   return patterns.some((pattern) => pattern.test(content));
 }

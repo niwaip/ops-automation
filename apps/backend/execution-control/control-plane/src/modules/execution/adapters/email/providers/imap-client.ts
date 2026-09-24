@@ -42,12 +42,12 @@ function decodeRfc2047(text: string): string {
 function parseAddressHeader(headerValue?: string): EmailAddress[] {
   if (!headerValue) return [];
   const results: EmailAddress[] = [];
-  const parts = headerValue.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/);
+  const parts = headerValue.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
 
   for (const part of parts) {
     const trimmed = part.trim();
     if (!trimmed) continue;
-    const match = trimmed.match(/^(?:\"?([^\"]*)\"?\s*)?<([^>]+)>$/) || trimmed.match(/^([^<]+)$/);
+    const match = trimmed.match(/^(?:"?([^"]*)"?\s*)?<([^>]+)>$/) || trimmed.match(/^([^<]+)$/);
     if (match) {
       if (match[2]) {
         results.push({
@@ -224,7 +224,6 @@ export class ImapClient {
       let messageIds: number[] = [];
       const messages: NormalizedEmailMessage[] = [];
       let currentRawMessage = '';
-      let isFetching = false;
 
       socket.on('error', (err) => {
         done(new Error(`IMAP 通信异常: ${err.message}`));
@@ -275,7 +274,6 @@ export class ImapClient {
                 return;
               }
               tagState = 'FETCH';
-              isFetching = true;
               const idRange = messageIds.join(',');
               socket.write(`A004 FETCH ${idRange} (BODY.PEEK[])\r\n`);
             }
@@ -331,7 +329,7 @@ function parseRawRfc822(raw: string): NormalizedEmailMessage | null {
       .slice(0, 16);
     const messageRef = `emsg_v1_${opaqueDigest}`;
 
-    let bodyContent = bodyPart.slice(0, 4000);
+    const bodyContent = bodyPart.slice(0, 4000);
     const isTruncated = bodyPart.length > 4000;
 
     return {

@@ -440,6 +440,7 @@ export const getHistoryEntryExecutionStatusMeta = (
   if (isExplicitFailure) {
     const label =
       entry.result?.outcome?.verification?.failureReason ||
+      entry.result?.execution?.message ||
       entry.result?.message ||
       '执行失败';
     return {
@@ -487,4 +488,3 @@ export const getHistoryEntryExecutionStatusMeta = (
     defaultOpen: false,
   };
 };
-

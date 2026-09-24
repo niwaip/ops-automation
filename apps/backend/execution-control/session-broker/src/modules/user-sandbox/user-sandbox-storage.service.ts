@@ -47,7 +47,10 @@ export class UserSandboxStorageService {
     if (!userId || typeof userId !== 'string') {
       throw new BadRequestException('userId 不能为空');
     }
-    const sanitized = userId.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    const sanitized = userId
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, '_');
     if (!sanitized) {
       throw new BadRequestException('userId 包含无效字符');
     }
@@ -98,12 +101,13 @@ export class UserSandboxStorageService {
   /**
    * 写入用户独立配额设置
    */
-  writeUserQuota(userId: string, quota: { cpuLimit?: number; memoryLimitMb?: number }): UserSandboxQuota {
+  writeUserQuota(
+    userId: string,
+    quota: { cpuLimit?: number; memoryLimitMb?: number }
+  ): UserSandboxQuota {
     const current = this.getUserQuota(userId);
     const newCpu =
-      typeof quota.cpuLimit === 'number' && quota.cpuLimit > 0
-        ? quota.cpuLimit
-        : current.cpuLimit;
+      typeof quota.cpuLimit === 'number' && quota.cpuLimit > 0 ? quota.cpuLimit : current.cpuLimit;
     const newMem =
       typeof quota.memoryLimitMb === 'number' && quota.memoryLimitMb > 0
         ? quota.memoryLimitMb
@@ -115,9 +119,7 @@ export class UserSandboxStorageService {
       JSON.stringify({ cpuLimit: newCpu, memoryLimitMb: newMem }, null, 2),
       'utf-8'
     );
-    this.logger.log(
-      `Updated user sandbox quota for [${userId}]: ${newCpu} CPU, ${newMem} MB RAM`
-    );
+    this.logger.log(`Updated user sandbox quota for [${userId}]: ${newCpu} CPU, ${newMem} MB RAM`);
     return { cpuLimit: newCpu, memoryLimitMb: newMem };
   }
 
@@ -131,17 +133,47 @@ export class UserSandboxStorageService {
     const hostKnowledge = path.join(hostUserRoot, 'knowledge');
     const hostSharedPlugins = path.join(this.hostProjectRoot, 'data', 'shared', 'dsh-plugins');
     const hostSharedSkills = path.join(this.hostProjectRoot, 'data', 'shared', 'dsh-skills');
-    const localCanonicalDshModules = path.join(this.localProjectRoot, 'apps', 'backend', 'runtimes', 'personal-sandbox-runner', 'src', 'dsh_modules');
-    const hostCanonicalDshModules = path.join(this.hostProjectRoot, 'apps', 'backend', 'runtimes', 'personal-sandbox-runner', 'src', 'dsh_modules');
-    const hostFallbackDshModules = path.join(this.hostProjectRoot, 'docker', 'user-sandbox', 'dsh_modules');
-    const hostDshModules = fs.existsSync(localCanonicalDshModules) ? hostCanonicalDshModules : hostFallbackDshModules;
+    const localCanonicalDshModules = path.join(
+      this.localProjectRoot,
+      'apps',
+      'backend',
+      'runtimes',
+      'personal-sandbox-runner',
+      'src',
+      'dsh_modules'
+    );
+    const hostCanonicalDshModules = path.join(
+      this.hostProjectRoot,
+      'apps',
+      'backend',
+      'runtimes',
+      'personal-sandbox-runner',
+      'src',
+      'dsh_modules'
+    );
+    const hostDshModules = fs.existsSync(localCanonicalDshModules)
+      ? hostCanonicalDshModules
+      : undefined;
 
-    const localCanonicalDshBin = path.join(this.localProjectRoot, 'apps', 'backend', 'runtimes', 'personal-sandbox-runner', 'bin', 'dsh');
-    const hostCanonicalDshBin = path.join(this.hostProjectRoot, 'apps', 'backend', 'runtimes', 'personal-sandbox-runner', 'bin', 'dsh');
-    const hostFallbackDshBin = path.join(this.hostProjectRoot, 'docker', 'user-sandbox', 'dsh');
-    const hostDshBin = fs.existsSync(localCanonicalDshBin)
-      ? hostCanonicalDshBin
-      : (fs.existsSync(path.join(this.localProjectRoot, 'docker', 'user-sandbox', 'dsh')) ? hostFallbackDshBin : undefined);
+    const localCanonicalDshBin = path.join(
+      this.localProjectRoot,
+      'apps',
+      'backend',
+      'runtimes',
+      'personal-sandbox-runner',
+      'bin',
+      'dsh'
+    );
+    const hostCanonicalDshBin = path.join(
+      this.hostProjectRoot,
+      'apps',
+      'backend',
+      'runtimes',
+      'personal-sandbox-runner',
+      'bin',
+      'dsh'
+    );
+    const hostDshBin = fs.existsSync(localCanonicalDshBin) ? hostCanonicalDshBin : undefined;
 
     const localUserRoot = path.join(this.localProjectRoot, 'data', 'users', sanitized);
     const localWorkspace = path.join(localUserRoot, 'workspace');
@@ -245,11 +277,20 @@ export class UserSandboxStorageService {
     }
     const sanitizedSessionId = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
     const sanitizedUser = this.sanitizeUserId(userId);
-    const localWorkspace = path.join(this.localProjectRoot, 'data', 'users', sanitizedUser, 'workspace');
+    const localWorkspace = path.join(
+      this.localProjectRoot,
+      'data',
+      'users',
+      sanitizedUser,
+      'workspace'
+    );
 
     try {
       const validHistory = history
-        .filter((item) => item && typeof item === 'object' && !Array.isArray(item) && item.role && item.content)
+        .filter(
+          (item) =>
+            item && typeof item === 'object' && !Array.isArray(item) && item.role && item.content
+        )
         .map((item) => ({ role: String(item.role), content: String(item.content) }));
 
       if (validHistory.length === 0) {
@@ -280,17 +321,19 @@ export class UserSandboxStorageService {
   /**
    * 将会话关联的附件清单持久化至工作区 session 存储目录中
    */
-  writeSessionAttachments(
-    userId: string,
-    sessionId: string,
-    files: string[]
-  ): void {
+  writeSessionAttachments(userId: string, sessionId: string, files: string[]): void {
     if (!Array.isArray(files) || files.length === 0) {
       return;
     }
     const sanitizedSessionId = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
     const sanitizedUser = this.sanitizeUserId(userId);
-    const localWorkspace = path.join(this.localProjectRoot, 'data', 'users', sanitizedUser, 'workspace');
+    const localWorkspace = path.join(
+      this.localProjectRoot,
+      'data',
+      'users',
+      sanitizedUser,
+      'workspace'
+    );
 
     try {
       const validFiles = files

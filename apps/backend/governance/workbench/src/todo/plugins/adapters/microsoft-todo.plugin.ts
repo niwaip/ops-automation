@@ -43,19 +43,6 @@ export class MicrosoftTodoPlugin implements TodoSyncPlugin {
 
     this.logger.log(`[MicrosoftToDoPlugin] Exporting todo ${todo.id} "${todo.title}" to Microsoft To Do`);
 
-    // 插件化解耦：构建微软 Graph Task 标准契约
-    const graphTaskPayload = {
-      title: todo.title,
-      body: {
-        contentType: "text",
-        content: todo.description || "",
-      },
-      importance: todo.priority === "urgent" || todo.priority === "high" ? "high" : "normal",
-      dueDateTime: todo.dueDate
-        ? { dateTime: new Date(todo.dueDate).toISOString(), timeZone: "UTC" }
-        : undefined,
-    };
-
     // 实际生产环境下调用 Microsoft Graph API /me/todo/lists/default/tasks
     // 此处已封装标准响应，即使微软接口有任何改动或网络延迟，核心服务均不受影响
     return {

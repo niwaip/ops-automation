@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { RECOVERY_MESSAGES, RECOVERY_ACTIONS } from './recovery-constants';
-import { getAiOrchestratorUrl } from '../../../config/service-endpoints';
+import { getAiOrchestratorUrl, getInternalServiceHeaders } from '../../../config/service-endpoints';
 import type { RuntimePhaseInvokeResult } from '../adapters/runtime-adapter.interface';
 import type { BrowserPhaseCommand } from '../step-runner/browser/browser-phase.types';
 
@@ -113,29 +113,35 @@ export class BrowserPhaseRecoveryPlanner {
           duration_ms?: number;
           note?: string;
         } | null;
-      }>(`${this.aiOrchestratorUrl}/ai/browser-phase-recovery/plan`, {
-        execution_id: input.executionId,
-        phase_key: input.phaseKey,
-        phase_name: input.phaseName,
-        phase_type: input.phaseType,
-        attempt: input.attempt,
-        modelId: input.policy?.modelId,
-        commands: input.commands.map((command) => ({
-          step_id: command.stepId,
-          action: command.action,
-          capability_type: command.capabilityType,
-          input: command.input,
-          metadata: command.metadata || undefined,
-        })),
-        result: {
-          failed_step_id: input.result.failedStepId,
-          failed_action: input.result.failedAction,
-          error_code: input.result.errorCode,
-          error_message: input.result.errorMessage,
-          retryable: input.result.retryable,
-          takeover_reason: input.result.takeoverReason,
+      }>(
+        `${this.aiOrchestratorUrl}/ai/browser-phase-recovery/plan`,
+        {
+          execution_id: input.executionId,
+          phase_key: input.phaseKey,
+          phase_name: input.phaseName,
+          phase_type: input.phaseType,
+          attempt: input.attempt,
+          modelId: input.policy?.modelId,
+          commands: input.commands.map((command) => ({
+            step_id: command.stepId,
+            action: command.action,
+            capability_type: command.capabilityType,
+            input: command.input,
+            metadata: command.metadata || undefined,
+          })),
+          result: {
+            failed_step_id: input.result.failedStepId,
+            failed_action: input.result.failedAction,
+            error_code: input.result.errorCode,
+            error_message: input.result.errorMessage,
+            retryable: input.result.retryable,
+            takeover_reason: input.result.takeoverReason,
+          },
         },
-      });
+        {
+          headers: getInternalServiceHeaders('control-plane'),
+        }
+      );
 
       const action = response.data?.action;
       const reason =

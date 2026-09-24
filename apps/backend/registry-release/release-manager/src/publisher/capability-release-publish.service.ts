@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import * as localFs from 'node:fs';
 import { randomUUID } from 'crypto';
 import { CapabilityReleaseRecorderBridgeCompilerService } from '../compiler/capability-release-recorder-bridge-compiler.service';
 import { BrowserRecordingExecutionPlanValidatorService } from '../validator/browser-recording-execution-plan-validator.service';
@@ -494,7 +495,6 @@ export class CapabilityReleasePublishService {
   ): void {
     const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
     if (!debugUrl) return;
-    const localFs = require('fs') as typeof import('fs');
     const envPaths = [
       '/app/.dbg/runtime-loop-mismatch.env',
       '/Users/chain/Documents/MyProject/ops-automation/.dbg/runtime-loop-mismatch.env',

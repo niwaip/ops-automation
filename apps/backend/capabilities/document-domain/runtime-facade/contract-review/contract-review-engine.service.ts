@@ -1,33 +1,32 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import type {
-  ClauseReviewItem,
-  ContractReviewMetrics,
-  ContractType,
-  CustomCheckpointDto,
-  PartyPosition,
-  PartyPositionInput,
-  ReviewChapterGroup,
-  ReviewRiskLevel,
-} from './contract-review.types';
-import { ContractTypeClassifierService } from './contract-type-classifier.service';
-import {
-  ContractChecklistMatrixService,
-  type CheckpointRule,
-} from './contract-checklist-matrix.service';
-import {
-  ReviewFactExtractorService,
-  ReviewElementEvaluatorService,
-  type ClauseLegalFinding,
-  type ExtractedLegalFacts,
-  type ReviewSeverity,
-} from '../contract-elements';
+import { BadRequestException,Injectable } from '@nestjs/common';
 import { ContractAstParserService } from '../contract-compare/contract-ast-parser.service';
 import type { ContractClauseNode } from '../contract-compare/contract-compare.types';
+import {
+ReviewElementEvaluatorService,
+ReviewFactExtractorService,
+type ClauseLegalFinding,
+type ExtractedLegalFacts,
+type ReviewSeverity,
+} from '../contract-elements';
+import {
+ContractChecklistMatrixService,
+type CheckpointRule,
+} from './contract-checklist-matrix.service';
 import { ContractFormIntegrityScannerService } from './contract-form-integrity-scanner.service';
 import {
-  ContractLlmReviewService,
-  type ClauseLlmReviewResult,
+ContractLlmReviewService,
+type ClauseLlmReviewResult,
 } from './contract-llm-review.service';
+import type {
+ClauseReviewItem,
+ContractReviewMetrics,
+ContractType,
+CustomCheckpointDto,
+PartyPosition,
+PartyPositionInput,
+ReviewChapterGroup
+} from './contract-review.types';
+import { ContractTypeClassifierService } from './contract-type-classifier.service';
 
 export interface ReviewEngineInput {
   fileBase64?: string;
@@ -442,11 +441,11 @@ export class ContractReviewEngineService {
 
     if (isPartyA) {
       // Check if Party A is explicitly defined as seller/provider
-      if (/甲方\s*[（\(][^）\)]*(?:受托|卖方|供货|供方|出卖|开发|服务|承揽|接收方|劳动者|承租人)[^）\)]*[）\)]/i.test(preamble)) {
+      if (/甲方\s*[（(][^）)]*(?:受托|卖方|供货|供方|出卖|开发|服务|承揽|接收方|劳动者|承租人)[^）)]*[）)]/i.test(preamble)) {
         return 'seller';
       }
       // Check if Party A is explicitly defined as buyer/client
-      if (/甲方\s*[（\(][^）\)]*(?:委托|买方|采购|发包|客户|需方|透露方|披露方|用人单位|出租人)[^）\)]*[）\)]/i.test(preamble)) {
+      if (/甲方\s*[（(][^）)]*(?:委托|买方|采购|发包|客户|需方|透露方|披露方|用人单位|出租人)[^）)]*[）)]/i.test(preamble)) {
         return 'buyer';
       }
       return 'buyer';
@@ -454,11 +453,11 @@ export class ContractReviewEngineService {
 
     if (isPartyB) {
       // Check if Party B is explicitly defined as buyer/client
-      if (/乙方\s*[（\(][^）\)]*(?:委托|买方|采购|发包|客户|需方|透露方|披露方|用人单位|出租人)[^）\)]*[）\)]/i.test(preamble)) {
+      if (/乙方\s*[（(][^）)]*(?:委托|买方|采购|发包|客户|需方|透露方|披露方|用人单位|出租人)[^）)]*[）)]/i.test(preamble)) {
         return 'buyer';
       }
       // Check if Party B is explicitly defined as seller/provider
-      if (/乙方\s*[（\(][^）\)]*(?:受托|卖方|供货|供方|出卖|开发|服务|承揽|接收方|劳动者|承租人)[^）\)]*[）\)]/i.test(preamble)) {
+      if (/乙方\s*[（(][^）)]*(?:受托|卖方|供货|供方|出卖|开发|服务|承揽|接收方|劳动者|承租人)[^）)]*[）)]/i.test(preamble)) {
         return 'seller';
       }
       return 'seller';

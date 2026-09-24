@@ -75,6 +75,10 @@ export class DeterministicRecipeMatcherService {
       /(?:审查|审核|排查|风控|合规|诊断|风险|评估|分析)/i.test(userRequest) &&
       /(?:合同|协议|条款|文档|文件|附件|材料|版本|pdf|docx?)/i.test(userRequest);
     const hasWeb = hasRoutingSignal(userRequest, 'webSource', policy);
+    const requestWithoutFileExport = userRequest.replace(
+      /(?:生成|输出|导出|保存|写入|创建)\s*(?:为|成)?\s*(?:markdown|md|文档|文件|.*\.md)|\b(?:markdown|md)\s*(?:文件|交付件|文档)|\.md\b/gi,
+      ''
+    );
     const hasDocumentExtract =
       !hasPdfExport &&
       !hasPdfSplit &&
@@ -82,13 +86,38 @@ export class DeterministicRecipeMatcherService {
       !hasContractCompare &&
       !hasContractReview &&
       !hasWeb &&
-      hasRoutingSignal(userRequest, 'documentSource', policy);
+      !hasSearch &&
+      hasRoutingSignal(requestWithoutFileExport, 'documentSource', policy);
     const hasUncoveredAction = hasRoutingSignal(userRequest, 'uncoveredAction', policy);
     const terminalActions = extractTerminalActions(userRequest, policy);
     const hasTerminalNotify = terminalActions.some((a) => ['bark', 'email', 'sms'].includes(a));
     const hasNotifyAction =
       hasTerminalNotify ||
       (hasUncoveredAction && /(?:推送|通知|发送|发给|发信|bark)/i.test(userRequest));
+
+    // 搜索/查询 + 总结 + 输出 Markdown 文件
+    if (hasSearch && hasSummarize && hasMarkdown) {
+      this.logger.log(
+        `Matched Recipe: search_summarize_write_markdown for request: "${userRequest}"`
+      );
+      return {
+        recipeName: 'search_summarize_write_markdown',
+        objective: userRequest,
+        steps: [
+          { ref: 'n1', kind: 'skill', role: 'search', dependsOn: [] },
+          {
+            ref: 'n2',
+            kind: 'llm_operation',
+            role: 'summarize',
+            inputShape: 'list',
+            dependsOn: ['n1'],
+          },
+          { ref: 'n3', kind: 'skill', role: 'markdown_writer', dependsOn: ['n2'] },
+        ],
+        finalNodeRef: 'n3',
+        requiresExternalData: true,
+      };
+    }
 
     // 搜索/查询 + 总结 + 通知/推送
     if (hasSearch && hasSummarize && hasNotifyAction) {
@@ -275,30 +304,6 @@ export class DeterministicRecipeMatcherService {
         objective: userRequest,
         steps: [{ ref: 'n1', kind: 'skill', role: 'document_extract', dependsOn: [] }],
         finalNodeRef: 'n1',
-        requiresExternalData: true,
-      };
-    }
-
-    // 模式 1：搜索 + 总结 + 输出 Markdown 文件
-    if (hasSearch && hasSummarize && hasMarkdown) {
-      this.logger.log(
-        `Matched Recipe: search_summarize_write_markdown for request: "${userRequest}"`
-      );
-      return {
-        recipeName: 'search_summarize_write_markdown',
-        objective: userRequest,
-        steps: [
-          { ref: 'n1', kind: 'skill', role: 'search', dependsOn: [] },
-          {
-            ref: 'n2',
-            kind: 'llm_operation',
-            role: 'summarize',
-            inputShape: 'list',
-            dependsOn: ['n1'],
-          },
-          { ref: 'n3', kind: 'skill', role: 'markdown_writer', dependsOn: ['n2'] },
-        ],
-        finalNodeRef: 'n3',
         requiresExternalData: true,
       };
     }

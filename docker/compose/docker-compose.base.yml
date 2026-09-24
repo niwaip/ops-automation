@@ -10,7 +10,7 @@ x-common-env: &common-env
   REDIS_PORT: 6379
   REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
   EXTERNAL_HOST: ${HOST_IP:-localhost}
-  PRISMA_GENERATE_SKIP_AUTOINSTALL: "true"
+  PRISMA_GENERATE_SKIP_AUTOINSTALL: 'true'
   COREPACK_NPM_REGISTRY: ${COREPACK_NPM_REGISTRY:-https://registry.npmmirror.com}
   # Shared by the credential-writing platform service and every runtime that
   # decrypts credentials immediately before invoking a capability.
@@ -36,7 +36,7 @@ services:
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
-      PRISMA_GENERATE_SKIP_AUTOINSTALL: "true"
+      PRISMA_GENERATE_SKIP_AUTOINSTALL: 'true'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
     depends_on:
@@ -473,7 +473,6 @@ services:
       - ops-network
       - ops-sandbox-network
 
-
   report:
     <<: *common-node-service
     profiles: ['document', 'doc', 'full']
@@ -482,9 +481,9 @@ services:
       sh -c "corepack enable && pnpm --filter @ops/report exec prisma generate
       && pnpm --filter @ops/report exec prisma db push
       && pnpm --filter @ops/report run build
-      && rm -rf /workspace/apps/backend/capabilities/document-domain/report/dist/generated
-      && mkdir -p /workspace/apps/backend/capabilities/document-domain/report/dist/generated
-      && cp -R /workspace/apps/backend/capabilities/document-domain/report/generated/prisma /workspace/apps/backend/capabilities/document-domain/report/dist/generated/prisma
+      && rm -rf /workspace/apps/backend/capabilities/document-report/dist/generated
+      && mkdir -p /workspace/apps/backend/capabilities/document-report/dist/generated
+      && cp -R /workspace/apps/backend/capabilities/document-report/generated/prisma /workspace/apps/backend/capabilities/document-report/dist/generated/prisma
       && pnpm --filter @ops/report run start"
     environment:
       <<: *common-env
@@ -492,12 +491,12 @@ services:
       PORT: ${REPORT_PORT:-3008}
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
       SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
-      FILES_DIR: /workspace/apps/backend/capabilities/document-domain/report/files
+      FILES_DIR: /workspace/apps/backend/capabilities/document-report/files
     ports:
       - '${HOST_BIND_IP:-0.0.0.0}:${REPORT_PORT:-3008}:${REPORT_PORT:-3008}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}:/workspace
-      - report_files:/workspace/apps/backend/capabilities/document-domain/report/files
+      - report_files:/workspace/apps/backend/capabilities/document-report/files
     depends_on:
       workspace-deps-init:
         condition: service_completed_successfully

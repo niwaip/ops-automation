@@ -2,10 +2,10 @@ import { getWordHeaderAliasCandidates } from './parameter';
 
 const WORD_BLANK_PATTERNS = [
   /[＿_]{2,}/g,
-  /[ 　\t]{2,}/g,
+  /[ \u3000\t]{2,}/g,
   /：\s{2,}/g,
   /:\s{2,}/g,
-  /[\s＿_　]{2,}/g,
+  /[\s＿_\u3000]{2,}/g,
 ];
 
 export function stripWordContextSnippet(contextSnippet: string): string {

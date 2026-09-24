@@ -1,9 +1,9 @@
 {
   "capabilityKey": "platform.document.pdf-create",
-  "definitionVersion": "1.0.0",
-  "definitionDigest": "sha256:c5ea43d0f1a980cb3c50b1555185d1a1e807014ef5044cac748c9388c60dcd69",
+  "definitionVersion": "1.0.1",
+  "definitionDigest": "sha256:adaa7329e70271f14ed57cf6a26ef3046aa91e3346c35372ac22cb78e98d7c93",
   "fileHashes": {
-    "manifest.yaml": "sha256:e2445c667bd0613c06a78094ebf233daa9ebd038f831c919c71e1d0a7a201806",
+    "manifest.yaml": "sha256:b2dae5f07c8cc14cb007e500f053323cec0036a69ebc93148fea333b81c88159",
     "workflow.json": "sha256:79063931d87dc36e3786d038c88a0a9c787dcbf904878fba159e43ccf69b6af2",
     "fixtures/smoke-input.json": "sha256:ab536f771fe44c5697c4dbf8a843ac5be585b1c43df3b36a4c977bb40e22beac"
   },

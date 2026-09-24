@@ -10,7 +10,7 @@ metadata:
     domain: document
     format: multi-format
 spec:
-  definitionVersion: 1.0.0
+  definitionVersion: 1.0.1
   lifecycle: experimental
   defaultAccess:
     mode: authenticated

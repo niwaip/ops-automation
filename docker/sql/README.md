@@ -101,7 +101,7 @@ folded into this sequence (`20260609000000_add_execution_phases` /
 These files are placeholders only and are not part of automatic bootstrap:
 
 - `apps/backend/capabilities/browser-domain/templates/prisma/migrations/0_baseline/migration.sql`
-- `apps/backend/capabilities/document-domain/report/prisma/migrations/0_baseline/migration.sql`
+- `apps/backend/capabilities/document-report/prisma/migrations/0_baseline/migration.sql`
 - `apps/backend/runtimes/replay-worker/prisma/migrations/0_baseline/migration.sql`
 
 ## Deprecated files
@@ -132,5 +132,7 @@ It also does not represent current objects such as:
 
 ## Development flow
 
-`docker/scripts/start-dev.sh` now calls the latest schema script and no longer
-auto-applies `docker/sql/migrations/*.sql`.
+Start the development stack from the repository root with
+`./docker/start-smart.sh dev up -d`. The canonical Platform migration path is
+`apps/backend/platform/prisma/migrations`; historical files under
+`docker/sql/migrations/` are not automatically applied.

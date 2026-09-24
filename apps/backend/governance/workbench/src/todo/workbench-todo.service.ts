@@ -1,30 +1,29 @@
 import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
+Inject,
+Injectable,
+Logger,
+NotFoundException
 } from '@nestjs/common';
-import { WORKBENCH_PRISMA, WorkbenchPrismaPort } from '../ports';
+import { WORKBENCH_PRISMA,WorkbenchPrismaPort } from '../ports';
 import {
-  CreateWorkbenchTodoDto,
-  DueFilter,
-  ExtractTodoPreviewDto,
-  ExecuteTodoTaskDto,
-  QueryWorkbenchTodoDto,
-  TodoPriority,
-  TodoSourceType,
-  TodoStatus,
-  UpdateWorkbenchTodoDto,
+CreateWorkbenchTodoDto,
+DueFilter,
+ExecuteTodoTaskDto,
+ExtractTodoPreviewDto,
+QueryWorkbenchTodoDto,
+TodoPriority,
+TodoSourceType,
+TodoStatus,
+UpdateWorkbenchTodoDto,
 } from './dto/workbench-todo.dto';
 import {
-  ExtractedTodoPreview,
-  WorkbenchTodoParserService,
-} from './workbench-todo-parser.service';
-import {
-  TaskExecutionResult,
-  WorkbenchTodoExecutorService,
+TaskExecutionResult,
+WorkbenchTodoExecutorService,
 } from './workbench-todo-executor.service';
+import {
+ExtractedTodoPreview,
+WorkbenchTodoParserService,
+} from './workbench-todo-parser.service';
 
 export interface TaskRunnableCapability {
   id: string;

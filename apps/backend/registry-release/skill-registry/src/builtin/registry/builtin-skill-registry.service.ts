@@ -348,7 +348,7 @@ export class BuiltinSkillRegistryService {
     return attestedVersion;
   }
 
-  async activateVersion(keyOrAlias: string, versionStr: string) {
+  async activateVersion(keyOrAlias: string, versionStr: string, environment = 'production') {
     const skill = await this.findSkillByKey(keyOrAlias);
     if (!skill) {
       throw new NotFoundException(`Builtin skill '${keyOrAlias}' not found`);
@@ -414,14 +414,18 @@ export class BuiltinSkillRegistryService {
     }
 
     // Verify deployment health & smoke test status
-    const deployment = await this.prisma.builtinSkillDeployment.findFirst({
-      where: { builtinSkillVersionId: version.id },
-      orderBy: { deployedAt: 'desc' },
+    const deployment = await this.prisma.builtinSkillDeployment.findUnique({
+      where: {
+        builtinSkillVersionId_environment: {
+          builtinSkillVersionId: version.id,
+          environment,
+        },
+      },
     });
-    if (deployment && (deployment.status !== 'healthy' || deployment.smokeTestStatus !== 'passed')) {
+    if (!deployment || deployment.status !== 'healthy' || deployment.smokeTestStatus !== 'passed') {
       this.logger.error(
         `Activating version ${version.definitionVersion} of skill ${skill.capabilityKey} blocked — ` +
-          `deployment status is '${deployment.status}', smoke test status is '${deployment.smokeTestStatus}'`
+          `deployment in '${environment}' is missing or unverified`
       );
       await this.auditService.logEvent({
         builtinSkillId: skill.id,
@@ -429,14 +433,15 @@ export class BuiltinSkillRegistryService {
         versionId: version.id,
         payload: {
           versionStr,
+          environment,
           reason: 'deployment_unhealthy_or_untested',
-          status: deployment.status,
-          smokeTestStatus: deployment.smokeTestStatus,
+          status: deployment?.status ?? null,
+          smokeTestStatus: deployment?.smokeTestStatus ?? null,
         },
       });
       throw new BadRequestException(
         `Activation blocked: version ${version.definitionVersion} of skill ${skill.capabilityKey} ` +
-          `is not verified healthy (status: ${deployment.status}, smokeTest: ${deployment.smokeTestStatus})`
+          `is not verified healthy in ${environment} (status: ${deployment?.status ?? 'missing'}, smokeTest: ${deployment?.smokeTestStatus ?? 'missing'})`
       );
     }
 
@@ -452,14 +457,14 @@ export class BuiltinSkillRegistryService {
       builtinSkillId: skill.id,
       action: 'activate_version',
       versionId: version.id,
-      payload: { versionStr },
+      payload: { versionStr, environment },
     });
 
     return { skill: updatedSkill, version };
   }
 
-  async rollbackVersion(keyOrAlias: string, targetVersionStr: string) {
+  async rollbackVersion(keyOrAlias: string, targetVersionStr: string, environment = 'production') {
     this.logger.log(`Rolling back skill ${keyOrAlias} to version ${targetVersionStr}`);
-    return this.activateVersion(keyOrAlias, targetVersionStr);
+    return this.activateVersion(keyOrAlias, targetVersionStr, environment);
   }
 }

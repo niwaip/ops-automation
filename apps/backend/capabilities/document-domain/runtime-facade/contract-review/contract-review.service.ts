@@ -115,16 +115,23 @@ export class ContractReviewService {
       ``,
       `🔗 **[👉 点击在新窗口打开全屏审查报告](${artifact.url})**`,
       `*(下方产物卡片支持一键展开 560px 在线交互预览、全屏演示与 HTML 离线报告下载)*`,
+    );
+
+    // summary 只存摘要文字 + 报告链接，不含 HTML 源码，避免 result_json 膨胀
+    const summary = summaryLines.join('\n');
+
+    // chatSummary 含内联 HTML 代码块，仅供聊天界面 HtmlPreviewBlock 渲染交互预览
+    const chatSummary = [
+      ...summaryLines,
       ``,
       '```html',
       htmlReport,
-      '```'
-    );
-
-    const summary = summaryLines.join('\n');
+      '```',
+    ].join('\n');
 
     return {
       summary,
+      chatSummary,
       contractType,
       contractTypeName,
       myPosition,

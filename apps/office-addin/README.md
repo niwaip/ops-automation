@@ -18,7 +18,7 @@ Office Add-in for Carbone template generation with AI assistance.
 
 ```bash
 # 安装依赖
-npm install
+pnpm install
 
 # 开发模式
 npm run dev

@@ -138,7 +138,6 @@ describe('CapabilityReleaseTemporalSchemaService', () => {
       properties: {
         topic: expect.objectContaining({
           type: 'string',
-          required: false,
           default: 'general',
           enum: ['general', 'news', 'finance'],
         }),
@@ -571,14 +570,12 @@ describe('CapabilityReleaseTemporalSchemaService', () => {
     expect(schema).toEqual({
       properties: {
         'contract.projectName': expect.objectContaining({
-          required: false,
           default: {
             cn: '默认项目',
             jp: 'デフォルト案件',
           },
         }),
         'contract.signingDate': expect.objectContaining({
-          required: false,
           default: {
             cn: '2026-05-30',
             jp: '2026-05-30',
@@ -612,7 +609,6 @@ describe('CapabilityReleaseTemporalSchemaService', () => {
       properties: {
         'payment.bankAccount': expect.objectContaining({
           type: 'string',
-          required: true,
           renderPath: 'payment.bankAccount_cn',
         }),
       },
@@ -652,11 +648,8 @@ describe('CapabilityReleaseTemporalSchemaService', () => {
       properties: {
         'contract.partyA': expect.objectContaining({
           type: 'string',
-          required: false,
         }),
-        'contract.signingDate': expect.objectContaining({
-          required: true,
-        }),
+        'contract.signingDate': expect.objectContaining({ type: 'string' }),
       },
       required: ['contract.signingDate'],
     });

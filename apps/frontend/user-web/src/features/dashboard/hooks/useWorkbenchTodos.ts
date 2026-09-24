@@ -151,7 +151,9 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
       if (saved) {
         return new Set(JSON.parse(saved));
       }
-    } catch (_) {}
+    } catch (_) {
+      // Storage may be unavailable; start with an empty archive.
+    }
     return new Set();
   });
 
@@ -438,7 +440,7 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
       if (!isDirectTodo && !isRecalled) return false;
       if (i.status !== 'pending' && i.status !== 'in_progress') return false;
       if (archivedIds.has(i.id) && !isRecalled) return false;
-      if (Boolean(cData.isArchived)) return false;
+      if (cData.isArchived) return false;
       return true;
     }).length;
 
@@ -476,7 +478,7 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
       (i) =>
         i.status === 'completed' &&
         !archivedIds.has(i.id) &&
-        !Boolean((i.contextData as any)?.isArchived)
+        !(i.contextData as any)?.isArchived
     ).length;
 
     // 已结束：包含已完成 (completed) 和已归档/已废弃 (cancelled) 的所有事项（被撤回回退到待办的事项严格排除）
@@ -512,7 +514,7 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
         i.status !== 'completed' &&
         i.status !== 'cancelled' &&
         !archivedIds.has(i.id) &&
-        !Boolean((i.contextData as any)?.isArchived)
+        !(i.contextData as any)?.isArchived
     ).length;
 
     const total = allItems.filter((i) => {
@@ -522,7 +524,7 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
       if (!isCoord) {
         return (
           !archivedIds.has(i.id) &&
-          !Boolean(cData.isArchived)
+          !cData.isArchived
         );
       }
       return (
@@ -551,7 +553,7 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
       (i) =>
         i.status === 'completed' &&
         !archivedIds.has(i.id) &&
-        !Boolean((i.contextData as any)?.isArchived) &&
+        !(i.contextData as any)?.isArchived &&
         (isToday(i.completedAt) || isToday(i.updatedAt))
     ).length;
 
@@ -582,7 +584,7 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
           if (!isDirectTodo && !isRecalled) return false;
           if (i.status !== 'pending' && i.status !== 'in_progress') return false;
           if (archivedIds.has(i.id) && !isRecalled) return false;
-          if (Boolean(cData.isArchived)) return false;
+          if (cData.isArchived) return false;
           return true;
         });
       case 'sent':
@@ -644,7 +646,7 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
             i.status !== 'completed' &&
             i.status !== 'cancelled' &&
             !archivedIds.has(i.id) &&
-            !Boolean((i.contextData as any)?.isArchived)
+            !(i.contextData as any)?.isArchived
         );
       case 'all':
       default:
@@ -655,7 +657,7 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
           if (!isCoord) {
             return (
               !archivedIds.has(i.id) &&
-              !Boolean(cData.isArchived)
+              !cData.isArchived
             );
           }
           return (
@@ -807,7 +809,9 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
         }
         try {
           localStorage.setItem('ops_archived_workbench_ids', JSON.stringify(Array.from(next)));
-        } catch (_) {}
+        } catch (_) {
+          // Storage may be unavailable; keep the in-memory archive state.
+        }
         return next;
       });
       archiveMutation.mutate(id);
@@ -873,7 +877,9 @@ export function useWorkbenchTodos({ message }: UseWorkbenchTodosOptions) {
         if (cData.inboxItemId) next.delete(cData.inboxItemId);
         try {
           localStorage.setItem('ops_archived_workbench_ids', JSON.stringify(Array.from(next)));
-        } catch (_) {}
+        } catch (_) {
+          // Storage may be unavailable; keep the in-memory archive state.
+        }
         return next;
       });
 

@@ -5,12 +5,13 @@ import { BuiltinSkillRegistryService } from '@ops/skill-registry/builtin';
 async function bootstrap() {
   const args = process.argv.slice(2);
   if (args.length < 1) {
-    console.error('Usage: ts-node builtin-skill-rollback.command.ts <capabilityKey> [previousVersion]');
+    console.error('Usage: ts-node builtin-skill-rollback.command.ts <capabilityKey> [previousVersion] [environment]');
     process.exit(1);
   }
 
   const capabilityKey = args[0];
   const targetVersion = args[1];
+  const environment = args[2] || 'production';
 
   const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error', 'warn', 'log'] });
   const registryService = app.get(BuiltinSkillRegistryService);
@@ -40,7 +41,7 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  await registryService.activateVersion(capabilityKey, rollbackTo);
+  await registryService.rollbackVersion(capabilityKey, rollbackTo, environment);
   console.log(`Successfully rolled back Built-in Skill '${capabilityKey}' to version '${rollbackTo}'`);
 
   await app.close();

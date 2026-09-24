@@ -1116,8 +1116,15 @@ export function UserChatComposer(props: UserChatComposerProps) {
                 icon={<PlusOutlined />}
               />
             </Tooltip>
+            {/* 后台运行按钮：无论任务模式还是个人模式，正在流式输出时均可见 */}
             {isStreaming && onRunInBackground ? (
-              <Tooltip title="将当前任务转入后台异步运行，无需等待；任务完成后将自动通知并同步至 GTD 收集箱">
+              <Tooltip
+                title={
+                  chatMode === 'task'
+                    ? '将当前任务转入后台异步运行，无需等待；任务完成后将自动通知并同步至 GTD 收集箱'
+                    : '将当前回答转入后台继续生成，解锁输入框，您可在当前页面继续提问'
+                }
+              >
                 <Button
                   size="small"
                   icon={<CloudSyncOutlined />}
@@ -1128,28 +1135,46 @@ export function UserChatComposer(props: UserChatComposerProps) {
                 </Button>
               </Tooltip>
             ) : null}
-            <Button
-              type="primary"
-              danger={isStreaming}
-              size="small"
-              icon={isStreaming ? <StopOutlined /> : <SendOutlined />}
-              onClick={() => {
-                if (isStreaming) {
-                  onStop?.();
-                  return;
-                }
-                handleTriggerSend();
-              }}
-              disabled={
-                disabled ||
-                isTranscribing ||
-                isUploadingFile ||
-                (!isStreaming && !draft.trim() && uploadedFiles.length === 0)
-              }
-              className={styles['user-chat-input-send-btn']}
-            >
-              {isStreaming ? '停止' : '发送'}
-            </Button>
+            {/* 发送 / 停止按钮：个人模式下有文字时展示发送（无缝开新会话），无文字且输出中时展示停止 */}
+            {(() => {
+              const hasDraftContent = Boolean(draft.trim()) || uploadedFiles.length > 0;
+              const isTaskStreaming = isStreaming && chatMode !== 'chat';
+              const isChatStreamingWithoutInput = isStreaming && chatMode === 'chat' && !hasDraftContent;
+              const shouldShowStop = isTaskStreaming || isChatStreamingWithoutInput;
+
+              return (
+                <Tooltip
+                  title={
+                    isStreaming && chatMode === 'chat' && hasDraftContent
+                      ? '当前对话将在后台继续输出，新内容将作为新对话立即发送'
+                      : undefined
+                  }
+                >
+                  <Button
+                    type="primary"
+                    danger={shouldShowStop}
+                    size="small"
+                    icon={shouldShowStop ? <StopOutlined /> : <SendOutlined />}
+                    onClick={() => {
+                      if (shouldShowStop) {
+                        onStop?.();
+                        return;
+                      }
+                      handleTriggerSend();
+                    }}
+                    disabled={
+                      disabled ||
+                      isTranscribing ||
+                      isUploadingFile ||
+                      (!shouldShowStop && !hasDraftContent)
+                    }
+                    className={styles['user-chat-input-send-btn']}
+                  >
+                    {shouldShowStop ? '停止' : '发送'}
+                  </Button>
+                </Tooltip>
+              );
+            })()}
           </div>
         </div>
       </div>

@@ -1,4 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import * as fs from 'fs';
+
+jest.mock('fs', () => ({
+  __esModule: true,
+  ...jest.requireActual('fs'),
+  existsSync: jest.fn(),
+  statSync: jest.fn(),
+}));
 import { UserSandboxDispatcherService } from './user-sandbox-dispatcher.service';
 import { ChatConversationService } from './chat-conversation.service';
 import { ChatMediaService } from './chat-media.service';
@@ -182,7 +190,6 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
       return null;
     });
 
-    const fs = require('fs');
     jest.spyOn(fs, 'existsSync').mockImplementation((p: any) => {
       return String(p).includes('保密合同_审查意见书.docx');
     });
@@ -217,7 +224,6 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
       return null;
     });
 
-    const fs = require('fs');
     jest.spyOn(fs, 'existsSync').mockImplementation((p: any) => {
       return String(p).includes('保密合同.docx');
     });

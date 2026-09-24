@@ -1,24 +1,20 @@
 import { Logger } from '@nestjs/common';
 import { DocumentElement } from '../document-structure.service';
 import {
-  TemplateConfig,
-  VariableMapping,
-  TableLoop,
-  CombinedVariable,
-  GroupLoop,
-  PathMappingRule,
-  DEFAULT_PATH_MAPPINGS,
-} from './types';
+generateFallbackSuggestions,
+} from './parameter.helper';
+import { extractFormatter } from './skill-parameter.helper';
 import { validateTableLoops } from './table-loop-helper';
 import {
-  validateGroupLoops,
-  validateCombinedVariables,
-  validateVariableMappings,
+validateCombinedVariables,
+validateGroupLoops,
+validateVariableMappings,
 } from './template-config.helper';
-import { extractFormatter } from './skill-parameter.helper';
 import {
-  generateFallbackSuggestions,
-} from './parameter.helper';
+DEFAULT_PATH_MAPPINGS,
+PathMappingRule,
+TemplateConfig
+} from './types';
 
 const logger = new Logger('StudioAiPromptBuilder');
 
@@ -118,7 +114,7 @@ export async function analyzeBlankPatternsWithAI(
 export function mergeSuggestions(
   aiSuggestions: any[],
   fallbackSuggestions: any[],
-  patterns: any[]
+  _patterns: any[]
 ): any[] {
   const result: any[] = [...aiSuggestions];
 

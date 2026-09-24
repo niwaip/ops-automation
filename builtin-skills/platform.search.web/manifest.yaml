@@ -9,7 +9,7 @@ metadata:
     category: search
     domain: web
 spec:
-  definitionVersion: 1.0.3
+  definitionVersion: 1.0.4
   lifecycle: experimental
   defaultAccess:
     mode: authenticated

@@ -70,7 +70,7 @@ export async function validateStudioTemplateRender(
     path.join(deps.templatesDir, `${input.templateId}.${meta.format}`)
   );
   let config = meta.templateConfig || {};
-  let markedTemplateId =
+  const markedTemplateId =
     verifyResult?.markedTemplateId || meta.markedTemplateId || input.data?.markedTemplateId;
 
   if (markedTemplateId) {

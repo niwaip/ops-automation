@@ -1,6 +1,5 @@
-import { isPlaceholderTextValue } from "../../common/placeholder-value";
-import { normalizeSemanticRole } from "./semantic-role.registry";
 import { extractUrlFromInput } from "./recognizer-url-extractor";
+import { normalizeSemanticRole } from "./semantic-role.registry";
 
 export interface ParamSchemaProperty {
   type: string;
@@ -13,10 +12,6 @@ export interface ParamSchemaProperty {
   semanticRole?: string;
   extractionHints?: string[];
   displayName?: string;
-}
-
-function normalize(value: unknown): string {
-  return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
 export function resolveExpectedValueType(

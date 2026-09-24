@@ -1,29 +1,20 @@
 import {
-  safeText,
-  escapeRegExp,
-  numberOrUndefined,
-  hasBlankPlaceholder,
-  getElementHostData,
-  getElementFormat,
-  isBlankTableTemplateCell,
-  splitTableCellLines,
-  extractPlaceholderMatcher,
-  extractPlaceholderSampleValue,
+escapeRegExp,
+extractPlaceholderMatcher,
+extractPlaceholderSampleValue,
+getElementFormat,
+getElementHostData,
+hasBlankPlaceholder,
+isBlankTableTemplateCell,
+numberOrUndefined,
+safeText,
+splitTableCellLines,
 } from './document-xml-parser';
 
-import { WorkflowDocumentElement } from './workflow-assets';
 
 export {
-  safeText,
-  escapeRegExp,
-  numberOrUndefined,
-  hasBlankPlaceholder,
-  getElementHostData,
-  getElementFormat,
-  isBlankTableTemplateCell,
-  splitTableCellLines,
-  extractPlaceholderMatcher,
-  extractPlaceholderSampleValue,
+escapeRegExp,extractPlaceholderMatcher,
+extractPlaceholderSampleValue,getElementFormat,getElementHostData,hasBlankPlaceholder,isBlankTableTemplateCell,numberOrUndefined,safeText,splitTableCellLines
 };
 
 export function normalizeLookupText(value: unknown): string {

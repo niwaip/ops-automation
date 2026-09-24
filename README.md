@@ -7,11 +7,11 @@
 ## 1. 核心架构与文档入口
 
 - **最新项目全景说明书**：[`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md)  
-  *涵盖 5 大物理机能平面划分、端到端业务主链、核心架构设计模式、技术栈与工程红线。*
+  _涵盖 5 大物理机能平面划分、端到端业务主链、核心架构设计模式、技术栈与工程红线。_
 - **项目架构重塑背景书**：[`docs/project_architecture_redesign.md`](docs/project_architecture_redesign.md)  
-  *阐述架构演进动因与业务本质。*
+  _阐述架构演进动因与业务本质。_
 - **全局文档中心导航**：[`docs/README.md`](docs/README.md)  
-  *设计基线（`docs/design/v4/`）、框架迁移历史（`docs/design/archive/`）、运维手册等。*
+  _设计基线（`docs/design/v4/`）、框架迁移历史（`docs/design/archive/`）、运维手册等。_
 
 ---
 
@@ -28,8 +28,15 @@
 - `apps/frontend/`:
   - `portal/`: 企业管理控制台（React / Vite）
   - `user-web/`: 用户业务体验与交互端（React / Vite）
+- `apps/office-addin/`: Word、Excel、PowerPoint 模板设计与 AI 辅助插件
+- `apps/ai-passport-agent/`: ESP32-C3 随身语音任务终端固件
+- `apps/desktop/`、`apps/mobile/`、`apps/social-platform/`: 基于 `@ops/user-core` 的多端宿主脚手架
 - `packages/`: 跨服务共享契约与核心协议（发布清单、运行时能力契约、错误码等）
+- `builtin-skills/`: 平台内置技能的清单、工作流与不可变 bundle lock
+- `database/`: 跨服务 Schema 属主、迁移权威和数据库访问策略
 - `docker/`: 容器编排、Compose 模板与运维启动脚本
+- `tests/`: 跨服务验收、契约、集成与端到端测试
+- `docs/`: 当前架构基线、运行手册与历史设计档案
 
 ---
 
@@ -38,7 +45,7 @@
 所有 Docker 操作优先通过 `./docker/start-smart.sh` 统一入口执行：
 
 ```bash
-# 1. 启动轻量核心开发栈（6个后端核心服务，按需冷启只要15s）
+# 1. 启动轻量核心开发栈（当前共 8 个服务，含基础设施与初始化容器）
 ./docker/start-smart.sh dev up -d
 
 # 或按需启动特定功能组（例如带上浏览器自动化）
@@ -50,9 +57,12 @@
 # 3. 校验 4 层分层架构
 bash ./docker/scripts/v4/validate-layering.sh
 
-# 4. 校验数据库 Schema 归属权威
+# 4. 校验 Workspace 包边界、依赖协议与循环依赖
+pnpm run check:architecture
+
+# 5. 校验数据库 Schema 归属权威
 node database/scripts/validate-schema-ownership.mjs
 
-# 5. 校验 user-core 边界
+# 6. 校验 user-core 边界
 pnpm run validate:user-core
 ```

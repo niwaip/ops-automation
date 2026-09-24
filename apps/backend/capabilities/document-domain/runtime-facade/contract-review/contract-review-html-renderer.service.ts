@@ -33,20 +33,12 @@ export class ContractReviewHtmlRendererService {
   renderHtmlReport(input: RenderReviewHtmlInput): string {
     const {
       contractTypeName,
-      myPosition,
       metrics,
       clauses,
       missingClauses,
     } = input;
 
     const fileName = fixFilenameEncoding(input.fileName || '审查合同文档.docx');
-
-    const positionLabel =
-      myPosition === 'buyer'
-        ? '买方 / 委托方（严守风控底线）'
-        : myPosition === 'seller'
-        ? '卖方 / 开发方（保障合理免责）'
-        : '中立 / 客观评估立场';
 
     const scoreColor =
       metrics.healthScore >= 85

@@ -1,24 +1,23 @@
 import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Post,
-  Put,
-  Query,
-  Request,
-  UseGuards,
+Body,
+Controller,
+Delete,
+Get,
+Param,
+Post,
+Put,
+Query,
+Request
 } from '@nestjs/common';
 import { Public } from '@ops/identity-access';
 import { UserCredentialVaultService } from './user-credential-vault.service';
-import { UserSkillCredentialBindingService } from './user-skill-credential-binding.service';
 import {
-  BindSkillCredentialDto,
-  CreateUserCredentialDto,
-  ResolveRuntimeInputRequestDto,
-  UpdateUserCredentialDto,
+BindSkillCredentialDto,
+CreateUserCredentialDto,
+ResolveRuntimeInputRequestDto,
+UpdateUserCredentialDto,
 } from './user-credential.dto';
+import { UserSkillCredentialBindingService } from './user-skill-credential-binding.service';
 
 @Controller(['credentials', 'api/credentials'])
 export class UserCredentialController {

@@ -3,10 +3,10 @@
  * 核心引擎服务，整合所有模块
  */
 
-import { Parser, ParsedTemplate } from './parser';
-import { Builder, BuildOptions, BuildResult } from './builder';
+import { Builder,BuildOptions } from './builder';
+import { FileHandler,TemplateInfo } from './file';
 import { FormatterPipeline } from './formatters';
-import { FileHandler, TemplateInfo } from './file';
+import { Parser } from './parser';
 
 export interface RenderOptions extends BuildOptions {
   outputFormat?: 'docx' | 'xlsx' | 'pptx' | 'pdf' | 'html';
@@ -51,7 +51,7 @@ export class CarboneEngine {
     templateBuffer: Buffer,
     data: any,
     fileName: string,
-    options: RenderOptions = {}
+    _options: RenderOptions = {}
   ): Promise<Buffer> {
     return this.fileHandler.renderTemplate(templateBuffer, data, fileName);
   }
@@ -187,8 +187,6 @@ export class CarboneEngine {
     useRealisticData: boolean = true
   ): any {
     const data: any = {};
-    const timestamp = Date.now(); // 用于生成唯一标识
-
     // 生成变量映射数据
     if (config.variableMappings && Array.isArray(config.variableMappings)) {
       for (const mapping of config.variableMappings) {

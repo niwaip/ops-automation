@@ -227,7 +227,7 @@ export function generateVariableSuggestions(
 export function validateTableLoops(
   tableLoops: any[],
   elements: DocumentElement[],
-  pathMappings?: PathMappingRule[]
+  _pathMappings?: PathMappingRule[]
 ): TableLoop[] {
   const result: TableLoop[] = [];
 

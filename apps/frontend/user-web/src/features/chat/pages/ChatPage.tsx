@@ -126,6 +126,9 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     selectedModel,
     setCurrentSession,
   });
+  const selectedSessionIdRef = useRef<string | null>(selectedSessionId);
+  selectedSessionIdRef.current = selectedSessionId;
+
   const {
     clearError,
     error,
@@ -141,6 +144,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     snapshotMessageThoughts,
     updateMessage,
     updateSessionMeta,
+    getCurrentSelectedSessionId: () => selectedSessionIdRef.current,
   });
   const selectedSessionNeedsRefresh = useMemo(
     () =>
@@ -236,6 +240,30 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     updateSessionMeta,
   });
 
+  // 个人模式专属：点击“后台运行”后解锁输入框，页面视窗不变，旧流继续在当前页面流式输出
+  const [isChatBackgroundUnlocked, setIsChatBackgroundUnlocked] = useState(false);
+
+  useEffect(() => {
+    if (!isStreaming) {
+      setIsChatBackgroundUnlocked(false);
+    }
+  }, [isStreaming]);
+
+  const handleRunInBackgroundModeAware = useCallback(() => {
+    if (chatMode === 'task') {
+      handleRunInBackground();
+      return;
+    }
+
+    // 个人模式后台运行：
+    // 1. 视窗不变，停留在原页面！
+    // 2. 旧流不断开，继续在当前页面流式输出！
+    // 3. 不转到 GTD 收集箱！
+    // 4. 输入框立刻解锁，允许用户在当前页面继续输入新问题！
+    setIsChatBackgroundUnlocked(true);
+    toast.info('当前回答已转入后台生成，您可在当前页面继续提问');
+  }, [chatMode, handleRunInBackground, toast]);
+
   // Wrap handleSend to push draft into sent history before clearing it
   const handleSendWithHistory = useCallback((files?: UploadedFileDescriptor[], contentOverride?: string) => {
     const textToSave = contentOverride !== undefined ? contentOverride : draft;
@@ -245,6 +273,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
         return next.length > 50 ? next.slice(next.length - 50) : next;
       });
     }
+    setIsChatBackgroundUnlocked(false);
     handleSend(files, contentOverride);
   }, [draft, handleSend]);
 
@@ -574,8 +603,11 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             draft={draft}
             onDraftChange={setDraft}
             onSend={handleSendWithHistory}
-            onStop={handleStopStreaming}
-            onRunInBackground={handleRunInBackground}
+            onStop={() => {
+              setIsChatBackgroundUnlocked(false);
+              handleStopStreaming(selectedSessionId || undefined);
+            }}
+            onRunInBackground={isChatBackgroundUnlocked ? undefined : handleRunInBackgroundModeAware}
             onNewSession={handleCreateSession}
             chatMode={chatMode}
             onChatModeChange={handleChatModeChange}
@@ -591,7 +623,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             selectedModel={selectedModel}
             availableModels={availableModels}
             onModelChange={setSelectedModel}
-            isStreaming={isStreaming}
+            isStreaming={isChatBackgroundUnlocked ? false : isStreaming}
             modelsLoading={modelsQuery.isLoading}
             disabled={false}
             placeholder={placeholder}

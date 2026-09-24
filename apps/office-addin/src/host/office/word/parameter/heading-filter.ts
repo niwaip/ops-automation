@@ -31,7 +31,7 @@ export type WordHeadingFilterDependencies = {
 };
 
 export function isAttachmentHeading(text: string): boolean {
-  return /^[\s　]*[【\[]?(?:附件|付属文書)(?:[一二三四五六七八九十百千万零两0-9０-９]+)?[】\]]?[\s　：:]*/u.test(
+  return /^[\s\u3000]*[【[]?(?:附件|付属文書)(?:[一二三四五六七八九十百千万零两0-9０-９]+)?[】\]]?[\s\u3000：:]*/u.test(
     String(text || '').trim()
   );
 }
@@ -161,7 +161,7 @@ export function looksLikeContextualWordSectionLead(
     return false;
   }
 
-  return /^[\u3040-\u30ff\u3400-\u9fffA-Za-z0-9\s　"'“”‘’()（）【】\[\]、，\-]+$/u.test(
+  return /^[\u3040-\u30ff\u3400-\u9fffA-Za-z0-9\s\u3000"'“”‘’()（）【】[\]、，-]+$/u.test(
     displayText
   );
 }
@@ -232,7 +232,7 @@ export function inspectWordHeaderTitle(
   }
 
   if (
-    /^第[一二三四五六七八九十百千万零两0-9０-９]+[章节条編部節款項目](?:[\s　].*)?$/u.test(
+    /^第[一二三四五六七八九十百千万零两0-9０-９]+[章节条編部節款項目](?:[\s\u3000].*)?$/u.test(
       displayText
     )
   ) {
@@ -307,7 +307,7 @@ export function looksLikeWordOrderedTitleLine(text: string): boolean {
   }
 
   if (
-    /^第[一二三四五六七八九十百千万零两0-9０-９]+[章节条編部節款項目](?:[\s　].*)?$/u.test(
+    /^第[一二三四五六七八九十百千万零两0-9０-９]+[章节条編部節款項目](?:[\s\u3000].*)?$/u.test(
       displayText
     )
   ) {
@@ -425,7 +425,7 @@ export function extractStandaloneHeaderLineValue(
     return undefined;
   }
 
-  const normalizedValue = safeWordRuleText(nextSegment.text.replace(/^[：:\s　]+/u, ''));
+  const normalizedValue = safeWordRuleText(nextSegment.text.replace(/^[：:\s\u3000]+/u, ''));
   if (!normalizedValue) {
     return undefined;
   }

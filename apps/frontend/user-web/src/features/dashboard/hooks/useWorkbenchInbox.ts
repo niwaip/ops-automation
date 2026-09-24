@@ -32,7 +32,9 @@ export function useWorkbenchInbox({ message, onTodoCreated, defaultFilter }: Use
     try {
       const saved = localStorage.getItem('ops_archived_inbox_ids');
       if (saved) return new Set(JSON.parse(saved));
-    } catch (_) {}
+    } catch (_) {
+      // Storage may be unavailable; use the default state.
+    }
     return new Set();
   });
 
@@ -189,7 +191,9 @@ export function useWorkbenchInbox({ message, onTodoCreated, defaultFilter }: Use
         next.add(id);
         try {
           localStorage.setItem('ops_archived_inbox_ids', JSON.stringify(Array.from(next)));
-        } catch (_) {}
+        } catch (_) {
+          // Storage may be unavailable; retain in-memory state.
+        }
         return next;
       });
       updateStatusMutation.mutate({ id, status: "archived" });
@@ -204,7 +208,9 @@ export function useWorkbenchInbox({ message, onTodoCreated, defaultFilter }: Use
         next.delete(id);
         try {
           localStorage.setItem('ops_archived_inbox_ids', JSON.stringify(Array.from(next)));
-        } catch (_) {}
+        } catch (_) {
+          // Storage may be unavailable; retain in-memory state.
+        }
         return next;
       });
       updateStatusMutation.mutate({ id, status: "unprocessed" });

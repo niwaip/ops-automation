@@ -118,6 +118,11 @@ export const BUILTIN_ROUTING_POLICY: Omit<RoutingPolicySnapshotV1, 'digest'> = {
       '导出为pdf',
       'pdf 文件',
       'pdf文件',
+      'export',
+      'save as',
+      'write to file',
+      'generate file',
+      'generate pdf',
     ],
     search: [
       '搜索',
@@ -140,6 +145,7 @@ export const BUILTIN_ROUTING_POLICY: Omit<RoutingPolicySnapshotV1, 'digest'> = {
       '如何',
       '行情',
     ],
+    externalSearch: ['搜索', '联网', '检索', 'search', '查资料', '查新闻'],
     summarize: ['总结', '摘要', '归纳', '概括', '汇总', '提炼', 'summarize', 'summary'],
     markdown: ['markdown', 'md', '文件', '文档', '报告'],
     uncoveredAction: [
@@ -164,7 +170,15 @@ export const BUILTIN_ROUTING_POLICY: Omit<RoutingPolicySnapshotV1, 'digest'> = {
   capabilityRoles: {
     search: ['search', '搜索', 'explorer', 'workspace.explorer', '工作空间', '文档探索', '查询', 'query', '天气'],
     markdownWriter: ['markdown', '写'],
-    documentExtractor: ['content-extractor', 'pdf', '内容提取'],
+    documentExtractor: [
+      'content-extractor',
+      '内容提取',
+      'pdf-content-extractor',
+      '提取文档',
+      '解析文档',
+      '提取pdf',
+      '解析pdf',
+    ],
     contractComparator: [
       'contract-comparator',
       'contract_compare',

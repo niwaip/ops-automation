@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import * as fs from 'node:fs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EXECUTION_STATUS, ExecutionStatus } from '../contracts/execution-status';
 import { EXECUTION_STEP_STATUS } from '../contracts/execution-step-status';
@@ -80,7 +81,6 @@ export class ExecutionHumanControlService {
   ): void {
     const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
     if (!debugUrl) return;
-    const fs = require('fs') as typeof import('fs');
     const envPaths = [
       '/app/.dbg/phase-resume-no-effect.env',
       '/Users/chain/Documents/MyProject/ops-automation/.dbg/phase-resume-no-effect.env',

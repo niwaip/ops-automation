@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as crypto from 'crypto';
 import { BadRequestException } from '@nestjs/common';
 import {
   SystemBackupService,
@@ -518,8 +519,6 @@ describe('SystemBackup Integration Roundtrip Tests', () => {
       const sourceTemplateFlowHandler = new TemplateFlowBackupHandler(sourcePrisma as any);
 
       // Seed physical file on disk for contractPdf so export embeds contentBase64
-      const fs = require('fs');
-      const path = require('path');
       const physicalPdfPath = sourceWsHandler.resolveStoragePath(contractPdf.storagePath);
       fs.mkdirSync(path.dirname(physicalPdfPath), { recursive: true });
       fs.writeFileSync(physicalPdfPath, Buffer.from('TEST_PDF_FILE_BINARY_CONTENT'));
@@ -736,7 +735,6 @@ describe('SystemBackup Integration Roundtrip Tests', () => {
       );
 
       // Compute valid checksum for this test payload
-      const crypto = require('crypto');
       const jsonStr = JSON.stringify(archive.modules);
       archive.manifest.checksum = `sha256:${crypto.createHash('sha256').update(jsonStr, 'utf-8').digest('hex')}`;
 
@@ -835,7 +833,6 @@ describe('SystemBackup Integration Roundtrip Tests', () => {
           mockAuditService as any
         );
 
-        const path = require('path');
         const bundleDir = path.resolve(__dirname, '../../../../builtin-skills/platform.search.web');
 
         await service.provisionBundle(bundleDir, 'bootstrap');
@@ -943,7 +940,6 @@ describe('SystemBackup Integration Roundtrip Tests', () => {
         },
       };
 
-      const crypto = require('crypto');
       payload.manifest.checksum = `sha256:${crypto.createHash('sha256').update(JSON.stringify(payload.modules), 'utf-8').digest('hex')}`;
 
       const result = await targetBackupService.importBackup(payload, 'merge_override');
@@ -1009,7 +1005,6 @@ describe('SystemBackup Integration Roundtrip Tests', () => {
         },
       };
 
-      const crypto = require('crypto');
       payload.manifest.checksum = `sha256:${crypto.createHash('sha256').update(JSON.stringify(payload.modules), 'utf-8').digest('hex')}`;
 
       const result = await targetBackupService.importBackup(payload, 'skip_existing');
@@ -1105,7 +1100,6 @@ describe('SystemBackup Integration Roundtrip Tests', () => {
         },
       };
 
-      const crypto = require('crypto');
       payload.manifest.checksum = `sha256:${crypto.createHash('sha256').update(JSON.stringify(payload.modules), 'utf-8').digest('hex')}`;
 
       // Preview should detect all 3 as conflicts (existing in target)
@@ -1147,7 +1141,6 @@ describe('SystemBackup Integration Roundtrip Tests', () => {
           mockAuditService as any
         );
 
-        const path = require('path');
         const bundleDir = path.resolve(__dirname, '../../../../builtin-skills/platform.search.web');
 
         await service.provisionBundle(bundleDir, 'bootstrap');

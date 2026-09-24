@@ -17,7 +17,7 @@ export type WordRecognitionBatchOptions = {
 function normalizeCompareLookupText(value: unknown): string {
   return String(value || '')
     .replace(/\s+/g, '')
-    .replace(/[：:，,。；;、（）()\[\]{}]/g, '')
+    .replace(/[：:，,。；;、（）()[\]{}]/g, '')
     .toLowerCase()
     .trim();
 }

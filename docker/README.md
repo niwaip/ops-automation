@@ -25,18 +25,18 @@ Docker 体系负责整个仓库的基础设施、后端服务及测试环境的�
 
 ## 配置文件与启动模式
 
-本项目推荐唯一的智能启动入口：`./docker/start-smart.sh`。底层开发栈统一基于 `docker-compose.base.yml`，并通过 **Compose Profiles** 按需挂载组件，告别过去全量拉起 19 个容器的臃肿模式：
+本项目统一从仓库根目录通过 `./docker/start-smart.sh` 启停和测试。底层开发栈基于 `docker-compose.base.yml`，通过 Compose Profiles 按需挂载组件。以下数量由 `config --services` 核对，包含初始化容器：
 
 ### 启动模式与 Profiles
 
 | 启动模式 | 典型命令 | 包含服务与职责 | 容器数 |
 | :--- | :--- | :--- | :--- |
-| **`dev`** (默认核心) | `./docker/start-smart.sh dev up -d` | 基础设施 (`postgres`, `redis`) + 核心控制 (`platform`, `session-broker`, `control-plane`, `ai-orchestrator`) + 瞬态初始化 (`workspace-deps-init`) | **6+1 个** |
-| **`dev:browser`** | `./docker/start-smart.sh dev:browser up -d` | 核心栈 + 浏览器自动化 (`browser-worker`, `browser-chrome`, `browser-template`, `browser-semantics`) | 11 个 |
-| **`dev:workflow`** | `./docker/start-smart.sh dev:workflow up -d` | 核心栈 + Temporal 工作流引擎 (`temporal`, `temporal-ui`, `sandbox-worker`, `temporal-worker`) | 11 个 |
-| **`dev:doc`** | `./docker/start-smart.sh dev:doc up -d` | 核心栈 + 文档渲染与报表 (`carbone-engine`, `report`) | 9 个 |
-| **`dev:fe`** | `./docker/start-smart.sh dev:fe up -d` | 核心栈 + 容器化前端 (`portal`, `user-web`) | 9 个 |
-| **`full`** | `./docker/start-smart.sh full up -d` | 全量开发环境（激活全部 Profiles，包含以上全部 19 个服务） | 19 个 |
+| **`dev`** (默认核心) | `./docker/start-smart.sh dev up -d` | 基础设施 (`postgres`, `redis`) + 核心控制 (`platform`, `session-broker`, `control-plane`, `ai-orchestrator`, `xiaozhi-connector`) + 初始化 (`workspace-deps-init`) | **8 个** |
+| **`dev:browser`** | `./docker/start-smart.sh dev:browser up -d` | 核心栈 + 浏览器自动化 (`browser-worker`, `browser-chrome`, `browser-template`, `browser-semantics`) | 12 个 |
+| **`dev:workflow`** | `./docker/start-smart.sh dev:workflow up -d` | 核心栈 + Temporal 工作流引擎 (`temporal`, `temporal-ui`, `sandbox-worker`, `temporal-worker`) | 12 个 |
+| **`dev:doc`** | `./docker/start-smart.sh dev:doc up -d` | 核心栈 + 文档渲染与报表 (`carbone-engine`, `report`) | 10 个 |
+| **`dev:fe`** | `./docker/start-smart.sh dev:fe up -d` | 核心栈 + 容器化前端 (`portal`, `user-web`) | 10 个 |
+| **`full`** | `./docker/start-smart.sh full up -d` | 全量开发环境（激活全部 Profiles） | 20 个 |
 | **`infra`** | `./docker/start-smart.sh infra up -d` | 仅数据库与缓存 (`postgres`, `redis`) | 2 个 |
 | **`addin`** | `./docker/start-smart.sh addin up -d` | Office Add-in 专用栈 (`carbone-api`, `office-addin`) | 2 个 |
 
@@ -117,7 +117,7 @@ _注：建议优先通过 `pnpm` 触发，如 `pnpm docker:v4:validate`。_
 
 | 服务            | 端口 | 说明              |
 | --------------- | ---- | ----------------- |
-| auth            | 3001 | 认证服务          |
+| platform        | 3001 | 平台与认证 API    |
 | control-plane   | 3003 | 控制平面          |
 | ai-orchestrator | 3007 | AI 编排服务       |
 | browser-worker  | 3004 | 浏览器自动化      |

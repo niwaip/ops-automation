@@ -37,6 +37,7 @@ interface ExtractedBrowserStep {
   name?: string;
   action?: string;
   target?: string | null;
+  success?: boolean;
   status?: string;
   takeover?: boolean;
   takeoverReason?: string;
@@ -190,6 +191,7 @@ export const parseStepOutput = (
         name: typeof stepItem.name === 'string' ? stepItem.name : undefined,
         action: typeof stepItem.action === 'string' ? stepItem.action : undefined,
         target: typeof stepItem.target === 'string' ? stepItem.target : null,
+        success: typeof stepItem.success === 'boolean' ? stepItem.success : undefined,
         status: typeof stepItem.status === 'string' ? stepItem.status : undefined,
         takeover: stepItem.takeover === true,
         takeoverReason: typeof stepItem.takeoverReason === 'string' ? stepItem.takeoverReason : undefined,

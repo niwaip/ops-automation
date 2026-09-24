@@ -5,7 +5,7 @@ import {
   getPhaseArtifactPath,
   extractPhaseStepImageSources,
   extractWorkflowActivitySnapshotSources,
-} from './artifacts.js';
+} from '../../../dist/domain/executions/artifacts.js';
 
 describe('getPhaseArtifactPath', () => {
   it('extracts direct snapshotPath or artifactPath or path', () => {

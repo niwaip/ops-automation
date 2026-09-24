@@ -3,6 +3,7 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import {
   OrgWorkflowService,
   CoordinationTaskType,
+  StageFlowAiDraftService,
 } from '@ops/workbench/coordination';
 import { WORKBENCH_PRISMA } from '@ops/workbench';
 
@@ -263,7 +264,6 @@ describe('OrgWorkflowService', () => {
   });
 
   it('should generate stage flow AI drafts for API and browser template modes', async () => {
-    const { StageFlowAiDraftService } = require('@ops/workbench/coordination');
     const aiService = new StageFlowAiDraftService(mockPrismaService as any);
 
     // Mode 1: API update flow

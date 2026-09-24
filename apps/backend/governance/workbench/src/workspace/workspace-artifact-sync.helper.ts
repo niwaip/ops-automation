@@ -151,10 +151,14 @@ export class WorkspaceArtifactSyncHelper {
                   ) {
                     foundFiles.add(d.name);
                   }
-                } catch {}
+                } catch {
+                  // Best-effort cleanup must not interrupt artifact sync.
+                }
               }
             }
-          } catch {}
+          } catch {
+            // Best-effort cleanup must not interrupt artifact sync.
+          }
           break;
         }
       }
@@ -256,7 +260,9 @@ export class WorkspaceArtifactSyncHelper {
                       break;
                     }
                   }
-                } catch {}
+                } catch {
+                  // Best-effort cleanup must not interrupt artifact sync.
+                }
               }
               if (fileBuffer) break;
             }

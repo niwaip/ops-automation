@@ -45,7 +45,7 @@ export interface VirtualFlattenResult {
 }
 
 export class XmlPreprocessor {
-  private readonly carboneMarkerRegex = /\{[cdt][.#\/]?\.[^}]+\}/g;
+  private readonly carboneMarkerRegex = /\{[cdt][.#/]?\.[^}]+\}/g;
 
   /**
    * 扁平化XML - 合并被拆分的文本节点
@@ -259,7 +259,7 @@ export class XmlPreprocessor {
 
       // 合并相邻的文本节点（虚拟合并）
       const mergedText = textNodes.map((n) => n.text).join('');
-      const hasMarker = /\{[cdt][.#\/]?\./.test(mergedText);
+      const hasMarker = /\{[cdt][.#/]?\./.test(mergedText);
 
       const virtualNode: VirtualTextNode = {
         text: mergedText,
@@ -324,7 +324,7 @@ export class XmlPreprocessor {
     const markers: { marker: string; virtualPos: number; originalPositions: number[] }[] = [];
 
     // 在虚拟视图中查找标记
-    const markerPattern = /\{[cdt][.#\/]?\.([^}]+)\}/g;
+    const markerPattern = /\{[cdt][.#/]?\.([^}]+)\}/g;
     let match;
 
     for (const vnode of result.virtualNodes) {

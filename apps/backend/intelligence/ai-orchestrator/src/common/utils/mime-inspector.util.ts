@@ -14,7 +14,7 @@ export interface DetectedMimeResult {
 export function inspectBinaryMimeType(
   buffer: Buffer,
   declaredFilename: string,
-  declaredMimeType?: string
+  _declaredMimeType?: string
 ): DetectedMimeResult {
   if (!buffer || buffer.length === 0) {
     throw new BadRequestException('Empty file buffer provided');

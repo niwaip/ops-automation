@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractBrowserExecutionResult } from './browser.js';
+import { extractBrowserExecutionResult } from '../../../dist/domain/executions/browser.js';
 
 describe('extractBrowserExecutionResult', () => {
   it('should return null when runtimeType is non-browser (e.g. http or workflow)', () => {

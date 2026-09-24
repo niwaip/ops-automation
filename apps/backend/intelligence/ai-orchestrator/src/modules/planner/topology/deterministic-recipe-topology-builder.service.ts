@@ -51,9 +51,6 @@ export class DeterministicRecipeTopologyBuilderService {
       const bindingRole = step.role === 'summarize' && step.inputShape === 'list'
         ? 'summarize_list'
         : step.role;
-      const hasExplicitBinding = capabilityBindings.some(
-        (binding) => binding.capabilityRole === bindingRole
-      );
       const boundCard = this.selectExplicitlyBoundCapability(
         bindingRole,
         step.kind === 'skill' ? skillCards : llmOperationCards,
@@ -219,9 +216,11 @@ export class DeterministicRecipeTopologyBuilderService {
       );
     }
     if (role === 'document_extract') {
+      if (card.supportsArtifactOutput) return 0;
       const hasTextOutput = outputs.some(
         ([name, type]) =>
-          /content|text|body|markdown/i.test(name) || /string|markdown_content/i.test(type)
+          /content|text|body|markdown/i.test(name) &&
+          /^(?:string|markdown_content|text)$/i.test(String(type || ''))
       );
       if (!hasTextOutput) return 0;
       let score = 100;

@@ -25,8 +25,8 @@
     "@nestjs/platform-socket.io": "^10.3.0",
     "@nestjs/swagger": "^7.2.0",
     "@nestjs/websockets": "^10.3.0",
-    "@ops/backend-browser-execution-contract": "file:../../../../packages/backend-contracts/browser-execution-contract",
-    "@ops/backend-runtime-capability-contract": "file:../../../../packages/backend-contracts/runtime-capability-contract",
+    "@ops/backend-browser-execution-contract": "workspace:*",
+    "@ops/backend-runtime-capability-contract": "workspace:*",
     "@playwright/cli": "^0.1.11",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
@@ -54,19 +54,13 @@
     "typescript": "^5.3.0"
   },
   "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
+    "moduleFileExtensions": ["js", "json", "ts"],
     "rootDir": "src",
     "testRegex": ".*\\.(spec|test)\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
+    "collectCoverageFrom": ["**/*.(t|j)s"],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
   }

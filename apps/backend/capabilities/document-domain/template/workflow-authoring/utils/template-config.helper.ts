@@ -1,26 +1,24 @@
 import { DocumentElement } from '../document-structure.service';
 import {
-  TemplateConfig,
-  TableLoop,
-  ColumnMapping,
-  CombinedVariable,
-  GroupLoop,
-  ContentPattern,
-  UserIntent,
-} from './types';
-import {
-  inferTableArrayPath,
-  generateColumnMappings,
-  calculateTableConfidence,
+calculateTableConfidence,
+generateColumnMappings,
+inferTableArrayPath,
 } from './table-loop-helper';
+import {
+CombinedVariable,
+ContentPattern,
+GroupLoop,
+TemplateConfig,
+UserIntent
+} from './types';
 export {
-  matchPathPattern,
-  normalizeColumnPath,
-  normalizeFieldName,
-  normalizeTemplateConfig,
-  normalizeVariablePath,
-  shouldSkipProtectedTitleVariableMapping,
-  validateVariableMappings,
+matchPathPattern,
+normalizeColumnPath,
+normalizeFieldName,
+normalizeTemplateConfig,
+normalizeVariablePath,
+shouldSkipProtectedTitleVariableMapping,
+validateVariableMappings
 } from './template-config-path.helper';
 
 /**

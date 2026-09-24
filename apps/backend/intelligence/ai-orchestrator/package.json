@@ -20,12 +20,12 @@
     "prisma:seed:dev": "ts-node -r tsconfig-paths/register src/modules/llm-operation/seed/run-seed.ts"
   },
   "dependencies": {
-    "@ops/backend-agent-profile": "file:../../../../packages/backend-contracts/agent-profile",
-    "@ops/backend-browser-execution-contract": "file:../../../../packages/backend-contracts/browser-execution-contract",
-    "@ops/backend-deterministic-plan": "file:../../../../packages/backend-contracts/deterministic-plan",
-    "@ops/backend-error-codes": "file:../../../../packages/backend-contracts/error-codes",
-    "@ops/backend-planning-decision": "file:../../../../packages/backend-contracts/planning-decision",
-    "@ops/backend-runtime-capability-contract": "file:../../../../packages/backend-contracts/runtime-capability-contract",
+    "@ops/backend-agent-profile": "workspace:*",
+    "@ops/backend-browser-execution-contract": "workspace:*",
+    "@ops/backend-deterministic-plan": "workspace:*",
+    "@ops/backend-error-codes": "workspace:*",
+    "@ops/backend-planning-decision": "workspace:*",
+    "@ops/backend-runtime-capability-contract": "workspace:*",
     "@ops/browser-recorder": "workspace:*",
     "@ops/browser-runtime-facade": "workspace:*",
     "@nestjs/common": "^10.0.0",

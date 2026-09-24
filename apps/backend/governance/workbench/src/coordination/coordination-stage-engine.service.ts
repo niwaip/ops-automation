@@ -1,21 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable,Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import * as fs from 'fs';
-import axios from 'axios';
+import { CoordinationAutomationRunnerService } from './coordination-automation-runner.service';
 import type {
-  CoordinationAttachment,
-  SubmitCoordinationActionDto,
+CoordinationAttachment,
+SubmitCoordinationActionDto,
 } from './dto/workbench-coordination.dto';
 import {
-  CoordinationTaskPriority,
-  CoordinationTaskStatus,
-  CoordinationTaskType,
+CoordinationTaskPriority,
+CoordinationTaskStatus,
+CoordinationTaskType,
 } from './dto/workbench-coordination.dto';
 import type {
-  OrganizationWorkflowDefinition,
-  WorkflowStageDefinition,
+OrganizationWorkflowDefinition,
+WorkflowStageDefinition,
 } from './org-workflow.entity';
-import { CoordinationAutomationRunnerService } from './coordination-automation-runner.service';
 
 export interface StageTransitionContext {
   workflow: OrganizationWorkflowDefinition;
@@ -110,7 +108,7 @@ export class CoordinationStageEngineService {
     const isLegal =
       workflow.category === 'legal' || workflow.workflowId?.includes('legal');
 
-    let currentStageIndex = stages.findIndex((s) => s.id === currentStageId);
+    const currentStageIndex = stages.findIndex((s) => s.id === currentStageId);
     if (currentStageIndex === -1) {
       if (!currentStageId) {
         // 如果任务上下文未标记 currentStageId（例如单阶段审批或终审审批任务）

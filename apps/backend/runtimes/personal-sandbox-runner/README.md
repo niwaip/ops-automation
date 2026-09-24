@@ -29,6 +29,8 @@ personal-sandbox-runner/
 │       ├── skills.py           # 个人空间与系统认证技能扫描与读取
 │       ├── llm.py              # 模型代理流式通信与工具调用解析
 │       └── runner.py           # ReAct 智能交互主循环与命令执行器
+├── plugins/                    # 随镜像发布的认证插件
+├── skills/                     # 随镜像发布的系统技能资产
 └── tests/
     └── test_dsh.py             # 自动化单元测试
 ```

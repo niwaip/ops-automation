@@ -1,16 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import {
-  CapabilityBuildDTO,
-  CapabilityReleaseDTO,
-  CapabilitySourceSnapshotDTO,
+CapabilityReleaseDTO,
+CapabilitySourceSnapshotDTO
 } from '../interfaces';
-import {
-  ReleaseAssistAccessorDeps,
-  ReleaseBuildValidationAccessorDeps,
-  ReleaseDeploymentAccessorDeps,
-  ReleaseRuntimeAccessorDeps,
-} from './release-accessor-factory.service';
 import type { ReleaseRuntimeAccessorDepsSource } from './release-accessor-deps.service';
+import {
+ReleaseAssistAccessorDeps,
+ReleaseBuildValidationAccessorDeps,
+ReleaseDeploymentAccessorDeps,
+ReleaseRuntimeAccessorDeps,
+} from './release-accessor-factory.service';
 
 @Injectable()
 export class ReleaseRuntimeAccessorBindingsService {

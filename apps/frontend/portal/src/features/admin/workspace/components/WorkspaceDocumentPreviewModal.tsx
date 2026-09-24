@@ -269,7 +269,9 @@ export function WorkspaceDocumentPreviewModal({
                         if (['http:', 'https:', 'mailto:', 'tel:'].includes(parsed.protocol)) {
                           return trimmed;
                         }
-                      } catch {}
+                      } catch {
+                        // Preview cleanup is best-effort.
+                      }
                       return '';
                     }}
                     components={{

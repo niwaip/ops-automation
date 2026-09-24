@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { replaceLocalhostWithHost, buildNovncAutoConnectUrl } from './public-url.js';
+import { replaceLocalhostWithHost, buildNovncAutoConnectUrl } from '../../dist/lib/public-url.js';
 
 describe('public-url helpers', () => {
   describe('replaceLocalhostWithHost', () => {

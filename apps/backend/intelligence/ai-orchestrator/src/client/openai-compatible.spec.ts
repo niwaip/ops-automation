@@ -1,4 +1,5 @@
 import { OpenAICompatibleClient } from './openai-compatible';
+import { EventEmitter } from 'node:events';
 
 describe('OpenAICompatibleClient', () => {
   it('includes prompt_cache_key and prompt_cache_retention for assembly requests', async () => {
@@ -292,7 +293,6 @@ describe('OpenAICompatibleClient', () => {
   });
 
   it('buffers and reassembles fragmented SSE chunks without dropping tokens', async () => {
-    const { EventEmitter } = require('events');
     const client = new OpenAICompatibleClient({
       baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
       apiKey: 'test-key',
@@ -331,4 +331,3 @@ describe('OpenAICompatibleClient', () => {
     );
   });
 });
-

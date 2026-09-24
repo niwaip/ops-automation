@@ -149,7 +149,7 @@ export class TaskPolicyBackupHandler {
           if (strategy === 'skip_existing') {
             skipped += 1;
           } else {
-            const { id, createdAt, updatedAt, ...rest } = p;
+            const { id, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = p;
             await this.prisma.taskPolicySet.update({
               where: { id },
               data: rest,

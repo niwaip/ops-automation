@@ -114,7 +114,7 @@ export async function streamAiText(
 
   const decoder = new TextDecoder();
   let fullResponse = '';
-  while (true) {
+  for (;;) {
     const { done, value } = await reader.read();
     if (done) {
       break;

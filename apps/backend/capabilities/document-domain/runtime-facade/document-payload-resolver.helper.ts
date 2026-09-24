@@ -290,7 +290,7 @@ export async function resolveDocumentBuffer(
   // 1. Try resolving via URL (UUID or download path on disk first, then remote fetch)
   const targetUrl = target.downloadUrl || target.fileUrl || target.url;
   if (targetUrl) {
-    const queryNameMatch = targetUrl.match(/[\?&]fileName=([^&#]+)/i);
+    const queryNameMatch = targetUrl.match(/[?&]fileName=([^&#]+)/i);
     if (queryNameMatch && !resolvedFileName) {
       try {
         resolvedFileName = decodeURIComponent(queryNameMatch[1]);
@@ -299,8 +299,8 @@ export async function resolveDocumentBuffer(
       }
     }
 
-    const attMatch = targetUrl.match(/attachments\/(att_[0-9a-f\-]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
-    const pathIdMatch = targetUrl.match(/\/(?:studio\/download|download|renders|outputs|attachments)\/([a-zA-Z0-9_\-]+?)(?:\.[a-z0-9]+)?(?:[?#]|$)/i);
+    const attMatch = targetUrl.match(/attachments\/(att_[0-9a-f-]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+    const pathIdMatch = targetUrl.match(/\/(?:studio\/download|download|renders|outputs|attachments)\/([a-zA-Z0-9_-]+?)(?:\.[a-z0-9]+)?(?:[?#]|$)/i);
     const uuidMatch = targetUrl.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
     const targetFileId = attMatch?.[1] || pathIdMatch?.[1] || uuidMatch?.[1];
     if (targetFileId) {
@@ -399,7 +399,7 @@ export async function resolveReviewDocumentPayload(
         fallbackText = ref.detailText;
       }
       if (!targetUrl && typeof ref.detailText === 'string') {
-        const urlMatch = ref.detailText.match(/https?:\/\/[^\s\)\"\'\<\>]+/i);
+        const urlMatch = ref.detailText.match(/https?:\/\/[^\s)"'<>]+/i);
         if (urlMatch) {
           targetUrl = urlMatch[0];
         }
@@ -409,15 +409,15 @@ export async function resolveReviewDocumentPayload(
 
   // 4. Scan all string fields in input for markdown links or URLs
   if (!targetUrl) {
-    for (const [key, val] of Object.entries(input as Record<string, unknown>)) {
+    for (const val of Object.values(input as Record<string, unknown>)) {
       if (typeof val === 'string' && val.length > 0) {
-        const mdMatch = val.match(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+|\/[^\s\)]+)\)/i);
+        const mdMatch = val.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/i);
         if (mdMatch && mdMatch[2]) {
           targetUrl = mdMatch[2];
           if (!targetFileName && mdMatch[1]) targetFileName = mdMatch[1];
           break;
         }
-        const urlMatch = val.match(/(https?:\/\/[^\s\)\"\'\<\>]+)/i);
+        const urlMatch = val.match(/(https?:\/\/[^\s)"'<>]+)/i);
         if (urlMatch && urlMatch[1]) {
           targetUrl = urlMatch[1];
           break;

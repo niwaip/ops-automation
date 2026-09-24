@@ -491,7 +491,7 @@ export class ExecutionPlanningService {
           templateSteps: loopTemplateSteps,
         };
       }
-      if (Boolean(loopDraft)) {
+      if (loopDraft) {
         return {
           mode: 'direct_skill',
           steps: [],

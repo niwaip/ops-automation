@@ -1,9 +1,9 @@
 {
   "capabilityKey": "platform.document.contract-comparator",
-  "definitionVersion": "1.0.1",
-  "definitionDigest": "sha256:dbb7692c56dc5ecc68cf4553cf80b62050459ae37e37a08cd36be30cad07553e",
+  "definitionVersion": "1.0.2",
+  "definitionDigest": "sha256:c9862c80c5ea493a3de28300b2e8a8bc12e1cf0cb9fcc314364ad697b30c5480",
   "fileHashes": {
-    "manifest.yaml": "sha256:dea09944ee4f311bdaf715cf25cd092b86c5e7b44eff707df0ce2b4bd0f1c7ea",
+    "manifest.yaml": "sha256:285f973ad1c0334ee6d67c6753971492f8e2af705dd684665fcecc7b5c2faee2",
     "workflow.json": "sha256:ae64f95c8a7907d8b19962a4d5359c29bf45a65c23c67a07a2c54bb6d920299c",
     "fixtures/smoke-input.json": "sha256:c7b80670a974e4256d2153f164919c8b2d139719dc8c2a9be14217f96c4486fa"
   },

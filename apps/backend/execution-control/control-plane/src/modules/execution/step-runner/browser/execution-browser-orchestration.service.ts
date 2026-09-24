@@ -377,7 +377,7 @@ export class ExecutionBrowserOrchestrationService {
       return undefined;
     }
 
-    const { commands, precheck, postcheck, recoveryPolicy, recovery_policy, ...phaseInput } =
+    const { commands: _commands, precheck: _precheck, postcheck: _postcheck, recoveryPolicy: _recoveryPolicy, recovery_policy: _recovery_policy, ...phaseInput } =
       inputJson;
     return phaseInput;
   }

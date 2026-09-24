@@ -109,7 +109,7 @@ function inferWordLoopHeaderLineLanguageOrder<T extends WordTableCellLike>(
 
 export function isBlankWordTableCellText(text: string): boolean {
   const normalized = String(text || '')
-    .replace(/[\u00a0\s　]/gu, '')
+    .replace(/[\u00a0\s\u3000]/gu, '')
     .replace(/[＿_]+/gu, '')
     .trim();
   return normalized.length === 0;
@@ -233,9 +233,9 @@ function splitWordTableParamLabels(text: string): string[] {
     if (!safePart) {
       return [];
     }
-    if (/[\/／|｜]/u.test(safePart)) {
+    if (/[/／|｜]/u.test(safePart)) {
       const splitParts = safePart
-        .split(/[\/／|｜]/u)
+        .split(/[/／|｜]/u)
         .map((item) => safeWordRuleText(item))
         .filter(Boolean);
       if (splitParts.length >= 2) {

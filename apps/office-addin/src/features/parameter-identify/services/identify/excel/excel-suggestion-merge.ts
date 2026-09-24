@@ -51,8 +51,8 @@ function toColumnName(columnIndex: number): string {
 function buildAsciiIdentifier(value: string, fallback: string): string {
   const normalized = normalizeText(value)
     .replace(/['"`]/g, '')
-    .replace(/[，。；：、,.!?:()[\]{}<>《》【】（）/\-]+/g, ' ')
-    .replace(/[^\x00-\x7F]+/g, ' ')
+    .replace(/[，。；：、,.!?:()[\]{}<>《》【】（）/-]+/g, ' ')
+    .replace(/\P{ASCII}+/gu, ' ')
     .replace(/\s+/g, '');
 
   return normalized || fallback;

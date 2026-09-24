@@ -142,7 +142,8 @@ export class AiAuthGuard implements CanActivate {
     if (!request) return true;
 
     // 1. Check internal service communication header
-    const internalAuth = request.headers['x-internal-auth'];
+    const internalAuth =
+      request.headers['x-internal-auth'] || request.headers['x-internal-secret'];
     if (typeof internalAuth === 'string' && verifyInternalSecret(internalAuth)) {
       const requestedRole = request.headers['x-user-role'];
       const safeRole =

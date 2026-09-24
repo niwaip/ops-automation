@@ -14,9 +14,9 @@
   },
   "dependencies": {
     "@ant-design/icons": "^5.2.6",
-    "@ops/backend-ai-chat-protocol": "file:../../../packages/backend-contracts/ai-chat-protocol",
-    "@ops/backend-execution-core": "file:../../../packages/backend-contracts/execution-core",
-    "@ops/user-core": "file:../../../packages/user-core",
+    "@ops/backend-ai-chat-protocol": "workspace:*",
+    "@ops/backend-execution-core": "workspace:*",
+    "@ops/user-core": "workspace:*",
     "@types/uuid": "^9.0.8",
     "antd": "^5.12.0",
     "axios": "^1.6.2",
@@ -48,7 +48,8 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "typescript": "^5.3.3",
-    "vite": "^5.0.8"
+    "vite": "^5.0.8",
+    "vitest": "^1.6.1"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-arm64-gnu": "^4.60.1",

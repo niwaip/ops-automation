@@ -1,77 +1,47 @@
 import {
-  WorkflowDocumentIR,
-  WorkflowDocumentElement,
-  WorkflowAnchor,
-  WorkflowLanguageProfile,
-  WorkflowTemplateFieldSpec,
-  WorkflowFieldDictionaryEntry,
-  WorkflowTermEntry,
-  WorkflowEnumItem,
-  WorkflowResolvedAssets,
-  WorkflowAnalyzeFieldResult,
-  WorkflowCandidateLocation,
-  WorkflowCandidateLanguageRelation,
-  WorkflowFieldCandidate,
-  WorkflowCompareResult,
-  WorkflowCompareSectionContext,
-  WorkflowCompareCandidateBuildResult,
+WorkflowAnalyzeFieldResult,
+WorkflowCompareCandidateBuildResult,
+WorkflowDocumentIR,
+WorkflowFieldCandidate,
+WorkflowFieldDictionaryEntry,
+WorkflowResolvedAssets
 } from './workflow-assets';
 
 import {
-  safeText,
-  escapeRegExp,
-  numberOrUndefined,
-  getElementHostData,
-  isLikelyDocumentTitle,
-  isLikelySectionHeading,
-  isBlankTableTemplateCell,
-  splitTableCellLines,
-  extractPlaceholderSampleValue,
-  extractSampleTableMatrices,
-  classifyTemplateTableStructure,
-  findNearestLeftTableLabel,
-  findNearestRightTableLabel,
-  extractTableCellCompareAnchors,
-  extractTableCellSampleValueByAnchor,
+extractSampleTableMatrices,
+isLikelySectionHeading,
+safeText
 } from './document-xml-parser';
 
 import {
-  normalizeLookupText,
-  detectTextLanguageHint,
-  isConcreteLanguageHint,
-  hasCompareFieldShape,
-  extractAnchorPrefix,
-  inferRecognitionBlockTitle,
+extractAnchorPrefix,
+hasCompareFieldShape,
+inferRecognitionBlockTitle,
+normalizeLookupText
 } from './workflow-parser-format';
 
 import {
-  splitSampleTextIntoChunks,
-  buildTextCompareInputs,
-  findBestSectionSampleChunk,
-  findDirectCompareMatch,
-  extractCompareLabels,
-  extractLooseCandidateContext,
-  shouldIncludeSectionCompareProbe,
-  isCompactCompareBlock,
-  isLikelyNarrativeCompareText,
-  shouldKeepCompareCandidateUnnamed,
-  inferSectionInfo,
-  scoreLooseTextMatch,
+buildTextCompareInputs,
+extractCompareLabels,
+extractLooseCandidateContext,
+findDirectCompareMatch,
+inferSectionInfo,
+isCompactCompareBlock,
+shouldKeepCompareCandidateUnnamed
 } from './workflow-similarity';
 
 import { extractSampleTextRich } from './workflow-xml-text';
 
-import { normalizeConfidence, findTermMatch } from './workflow-discover';
 
 import {
-  buildCompareCandidateLocation,
-  buildCompareCandidateLanguageRelation,
-  buildTemplateTableMatrices,
-  buildTableCompareInputs,
-  shouldCreateCompareCandidate,
-  describeCompareCandidateReason,
-  buildCandidateSampleValue,
-  computeCompareCandidateConfidence,
+buildCandidateSampleValue,
+buildCompareCandidateLanguageRelation,
+buildCompareCandidateLocation,
+buildTableCompareInputs,
+buildTemplateTableMatrices,
+computeCompareCandidateConfidence,
+describeCompareCandidateReason,
+shouldCreateCompareCandidate,
 } from './workflow-compare-candidate.helper';
 import { buildCompareSectionContexts } from './workflow-compare-summary';
 

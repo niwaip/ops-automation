@@ -182,12 +182,6 @@ export class CapabilityReleaseDeploymentService {
         if (!workflowArtifactRef?.workflowId) {
           throw new Error('当前 Release 未绑定 Workflow artifact，无法部署');
         }
-        const taskQueue =
-          typeof effectiveConfig.taskQueue === 'string'
-            ? effectiveConfig.taskQueue
-            : typeof snapshot.sourcePayload.taskQueue === 'string'
-              ? snapshot.sourcePayload.taskQueue
-              : 'SKILL_TASK_QUEUE';
         const workerReloadRequested =
           typeof effectiveConfig.workerReload === 'boolean'
             ? effectiveConfig.workerReload

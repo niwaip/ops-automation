@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import type { AvailableSkillDefinition, SkillMatchResult } from '../../react-engine/interfaces';
 import { SkillCacheService, SkillMatcherService } from '../skill';
 import type { PlannerGeneratePlanInput, PlannerMatchPhaseResult } from '../facade';
+import {
+  createBuiltinRoutingPolicySnapshot,
+  hasRoutingSignal,
+} from '../routing/routing-policy.matcher';
 
 type SkillMatchFailure = NonNullable<PlannerMatchPhaseResult['failure']>;
 
@@ -30,6 +34,7 @@ export class PlannerMatchPhaseService {
     const webSearchEnabled =
       input.request.context?.web_search_enabled === true ||
       input.request.context?.webSearch === true ||
+      hasRoutingSignal(objective, 'search', createBuiltinRoutingPolicySnapshot()) ||
       /(?:^|[^a-zA-Z0-9])(?:请?帮我)?(?:搜索|联网搜索|全网搜索|检索|搜一下|查一下|查找|查询|搜搜|查查)/i.test(objective);
     const availableSkills = await this.loadAvailableSkills(
       input.authToken,

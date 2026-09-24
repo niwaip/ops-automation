@@ -1,6 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { jsonSchemaValidator } from '@ops/backend-runtime-capability-contract';
 import type {
   ReleaseManagerExecutionFlowValidationFacadePort,
   ReleaseManagerPrismaPort,
@@ -15,6 +14,14 @@ import { CapabilityReleaseBrowserRecordingService } from './capability-release-b
 import { CapabilityReleaseRuntimeService } from '../publisher/capability-release-runtime.service';
 import { CapabilityReleaseSkillDraftService } from '../capability-release-skill-draft.service';
 import { CapabilityReleaseTemporalSchemaService } from './capability-release-temporal-schema.service';
+import {
+  applyGate2OutputSchemaValidation,
+  expectRecord,
+  flattenPayload,
+  resolveExecutionTemplateIdForRuntime,
+  resolveSavedTemporalWorkflowArtifact,
+  validateExecutionFlowPayload,
+} from './capability-release-validation.helpers';
 import { ContractLintService, ContractLintResult } from '../validator/contract-lint.service';
 import {
   CapabilityBuildDTO,
@@ -129,7 +136,7 @@ export class CapabilityReleaseBuildValidationService {
 
     try {
       const logs: string[] = [];
-      let generatedCode: string | null = null;
+      const generatedCode: string | null = null;
       let generatedConfig: Record<string, unknown> | null = null;
       let diffSummary: string | null = null;
 
@@ -154,7 +161,11 @@ export class CapabilityReleaseBuildValidationService {
         logs.push(
           `[${new Date().toISOString()}] 识别为 Temporal 工作流，开始读取已保存的 Workflow 代码工件`
         );
-        const artifact = await this.resolveSavedTemporalWorkflowArtifact(release, snapshot);
+        const artifact = await resolveSavedTemporalWorkflowArtifact(
+          release,
+          snapshot,
+          this.temporalWorkflowService
+        );
         generatedConfig = {
           workflowArtifactRef: {
             workflowId: artifact.workflowId,
@@ -288,7 +299,7 @@ export class CapabilityReleaseBuildValidationService {
     await accessors.insertAuditEvent(id, 'build_started', userId, true, `开始构建 (${buildType})`);
 
     try {
-      let generatedCode: string | null = null;
+      const generatedCode: string | null = null;
       let generatedConfig: Record<string, unknown> | null = null;
       let diffSummary: string | null = null;
 
@@ -298,8 +309,12 @@ export class CapabilityReleaseBuildValidationService {
       // Gate 0 — Contract Lint (§10.1) before any codegen/artifact binding.
       const gate0Lint = this.runGate0ContractLint(release, snapshot);
       if (gate0Lint && !gate0Lint.passed) {
-        pushLog(`[${new Date().toISOString()}] CONTRACT_LINT_FAILED: 契约 Lint 未通过，禁止进入代码生成`);
-        const lintErrors = gate0Lint.errors.map((e) => `${e.rule}@${e.path}: ${e.message}`).join('; ');
+        pushLog(
+          `[${new Date().toISOString()}] CONTRACT_LINT_FAILED: 契约 Lint 未通过，禁止进入代码生成`
+        );
+        const lintErrors = gate0Lint.errors
+          .map((e) => `${e.rule}@${e.path}: ${e.message}`)
+          .join('; ');
         onEvent('error', {
           message: `CONTRACT_LINT_FAILED: ${lintErrors}`,
           releaseId: id,
@@ -313,7 +328,11 @@ export class CapabilityReleaseBuildValidationService {
         pushLog(
           `[${new Date().toISOString()}] 识别为 Temporal 工作流，开始读取已保存的 Workflow 代码工件`
         );
-        const artifact = await this.resolveSavedTemporalWorkflowArtifact(release, snapshot);
+        const artifact = await resolveSavedTemporalWorkflowArtifact(
+          release,
+          snapshot,
+          this.temporalWorkflowService
+        );
         generatedConfig = {
           workflowArtifactRef: {
             workflowId: artifact.workflowId,
@@ -435,14 +454,8 @@ export class CapabilityReleaseBuildValidationService {
       let errorSummary: string | null = null;
 
       if (release.sourceType === 'temporal_workflow') {
-        const workflowDsl = this.expectRecord(
-          snapshot.sourcePayload.workflowDsl,
-          '缺少 workflowDsl'
-        );
-        const activityDsl = this.expectRecord(
-          snapshot.sourcePayload.activityDsl,
-          '缺少 activityDsl'
-        );
+        const workflowDsl = expectRecord(snapshot.sourcePayload.workflowDsl, '缺少 workflowDsl');
+        const activityDsl = expectRecord(snapshot.sourcePayload.activityDsl, '缺少 activityDsl');
         const result = await this.temporalWorkflowService.validate(
           workflowDsl as any,
           activityDsl as any
@@ -465,7 +478,7 @@ export class CapabilityReleaseBuildValidationService {
         logs = result.logs;
         errorSummary = result.errorSummary;
       } else {
-        const result = this.validateExecutionFlowPayload(snapshot.sourcePayload);
+        const result = validateExecutionFlowPayload(snapshot.sourcePayload);
         success = result.isValid;
         score = result.score;
         resultSnapshot = result as unknown as Record<string, unknown>;
@@ -566,7 +579,7 @@ export class CapabilityReleaseBuildValidationService {
           : dto.testUserInput?.trim()
             ? [dto.testUserInput.trim()]
             : [];
-      const templateId = this.resolveExecutionTemplateIdForRuntime(release, snapshot);
+      const templateId = resolveExecutionTemplateIdForRuntime(release, snapshot);
 
       if (release.sourceType === 'temporal_workflow') {
         if (
@@ -630,7 +643,7 @@ export class CapabilityReleaseBuildValidationService {
             snapshot,
             'staging'
           );
-          const userFlatInput = dto.input ? this.flattenPayload(dto.input) : {};
+          const userFlatInput = dto.input ? flattenPayload(dto.input) : {};
           const effectiveInput = {
             ...baseInput,
             ...userFlatInput,
@@ -680,7 +693,7 @@ export class CapabilityReleaseBuildValidationService {
 
       // Gate 2 Output Schema Validation
       if (success && resultSnapshot) {
-        const gate2 = this.applyGate2OutputSchemaValidation(snapshot, resultSnapshot, score);
+        const gate2 = applyGate2OutputSchemaValidation(snapshot, resultSnapshot, score);
         success = gate2.success;
         score = gate2.score;
         if (gate2.errorSummary) {
@@ -788,7 +801,7 @@ export class CapabilityReleaseBuildValidationService {
           : dto.testUserInput?.trim()
             ? [dto.testUserInput.trim()]
             : [];
-      const templateId = this.resolveExecutionTemplateIdForRuntime(release, snapshot);
+      const templateId = resolveExecutionTemplateIdForRuntime(release, snapshot);
 
       if (release.sourceType === 'temporal_workflow') {
         if (!build.generatedCode) {
@@ -805,7 +818,7 @@ export class CapabilityReleaseBuildValidationService {
           snapshot,
           'staging'
         );
-        const userFlatInput = dto.input ? this.flattenPayload(dto.input) : {};
+        const userFlatInput = dto.input ? flattenPayload(dto.input) : {};
         const effectiveInput = {
           ...baseInput,
           ...userFlatInput,
@@ -877,7 +890,7 @@ export class CapabilityReleaseBuildValidationService {
 
       // Gate 2 Output Schema Validation (stream path — mirrors validateSandbox)
       if (success && resultSnapshot) {
-        const gate2 = this.applyGate2OutputSchemaValidation(snapshot, resultSnapshot, score);
+        const gate2 = applyGate2OutputSchemaValidation(snapshot, resultSnapshot, score);
         success = gate2.success;
         score = gate2.score;
         if (gate2.errorSummary) {
@@ -1011,54 +1024,6 @@ export class CapabilityReleaseBuildValidationService {
 
   private getDefaultBuildType(sourceType: string): CapabilityBuildType {
     return sourceType === 'temporal_workflow' ? 'codegen_workflow' : 'config_enhancement';
-  }
-
-  private async resolveSavedTemporalWorkflowArtifact(
-    release: CapabilityReleaseDTO,
-    snapshot: CapabilitySourceSnapshotDTO
-  ): Promise<{
-    workflowId: string;
-    artifactVersion?: number | null;
-    artifactHash?: string | null;
-    generatedCode: string;
-  }> {
-    const snapshotPayload =
-      snapshot.sourcePayload && typeof snapshot.sourcePayload === 'object'
-        ? (snapshot.sourcePayload as Record<string, unknown>)
-        : {};
-    const workflowId =
-      typeof release.sourceId === 'string' && release.sourceId.trim()
-        ? release.sourceId.trim()
-        : typeof snapshotPayload.id === 'string' && snapshotPayload.id.trim()
-          ? snapshotPayload.id.trim()
-          : '';
-
-    if (!workflowId) {
-      throw new Error(
-        '当前 Release 未绑定 Workflow，请先在 Workflow 页面保存并关联后再进入 Release'
-      );
-    }
-
-    const artifact = await this.temporalWorkflowService.getArtifact(workflowId);
-    const generatedCode =
-      typeof artifact.generatedCode === 'string' ? artifact.generatedCode.trim() : '';
-    if (!generatedCode) {
-      throw new Error(
-        `关联的 Workflow 尚未生成并保存代码: ${artifact.workflowName || workflowId}。请先在 Workflow 页面执行“生成并保存代码”`
-      );
-    }
-    if (artifact.validationStatus !== 'validated') {
-      throw new Error(
-        `关联的 Workflow 尚未完成 artifact 验证: ${artifact.workflowName || workflowId}。请先在 Workflow 页面执行“端到端验证”`
-      );
-    }
-
-    return {
-      workflowId,
-      artifactVersion: artifact.artifactVersion,
-      artifactHash: artifact.artifactHash,
-      generatedCode,
-    };
   }
 
   private async createValidationRecord(
@@ -1215,72 +1180,6 @@ export class CapabilityReleaseBuildValidationService {
     return accessors.getBuildOrThrow(syntheticBuildId);
   }
 
-  private resolveExecutionTemplateIdForRuntime(
-    release: CapabilityReleaseDTO,
-    snapshot: CapabilitySourceSnapshotDTO
-  ): string | null {
-    if (release.sourceType === 'temporal_workflow') {
-      return null;
-    }
-    if (release.sourceId && release.sourceId.trim()) {
-      return release.sourceId.trim();
-    }
-    const payload =
-      snapshot.sourcePayload && typeof snapshot.sourcePayload === 'object'
-        ? (snapshot.sourcePayload as Record<string, unknown>)
-        : {};
-    const sourceTemplate =
-      payload.sourceTemplate && typeof payload.sourceTemplate === 'object'
-        ? (payload.sourceTemplate as Record<string, unknown>)
-        : {};
-    const fromTemplate = sourceTemplate.templateId;
-    if (typeof fromTemplate === 'string' && fromTemplate.trim()) {
-      return fromTemplate.trim();
-    }
-    const fromPayloadId = payload.id;
-    if (typeof fromPayloadId === 'string' && fromPayloadId.trim()) {
-      return fromPayloadId.trim();
-    }
-    return null;
-  }
-
-  private validateExecutionFlowPayload(payload: Record<string, unknown>) {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-    const steps = Array.isArray(payload.steps) ? payload.steps : [];
-    const paramsSchema = this.parseJson(payload.paramsSchema) as Record<string, unknown>;
-
-    if (!payload.name || typeof payload.name !== 'string') {
-      errors.push('模板名称不能为空');
-    }
-    if (steps.length === 0) {
-      errors.push('至少需要一个流程步骤');
-    }
-    steps.forEach((step, index) => {
-      const record = this.parseJson(step) as Record<string, unknown>;
-      if (!record.name) {
-        errors.push(`步骤 ${index + 1} 缺少名称`);
-      }
-      if (!record.type) {
-        errors.push(`步骤 ${index + 1} 缺少类型`);
-      }
-      if (record.type === 'api' && !(record.api as Record<string, unknown> | undefined)?.endpoint) {
-        errors.push(`步骤 ${index + 1} 的 API endpoint 不能为空`);
-      }
-    });
-    if (!paramsSchema || typeof paramsSchema !== 'object') {
-      warnings.push('未配置 paramsSchema，后续参数提取能力会受限');
-    }
-
-    const score = Math.max(0, 100 - errors.length * 20 - warnings.length * 5);
-    return {
-      isValid: errors.length === 0,
-      score,
-      errors,
-      warnings,
-    };
-  }
-
   /**
    * Gate 2 (output schema conformance) — when the release declares an
    * authoritative output schema (`contracts.output.schema` or top-level
@@ -1288,92 +1187,4 @@ export class CapabilityReleaseBuildValidationService {
    * fails the validation with an OUTPUT_SCHEMA_VIOLATION summary. Shared by
    * the synchronous and streaming sandbox paths so both gates stay identical.
    */
-  private applyGate2OutputSchemaValidation(
-    snapshot: CapabilitySourceSnapshotDTO,
-    resultSnapshot: Record<string, unknown>,
-    score: number
-  ): { success: boolean; score: number; errorSummary: string | null } {
-    const payload = (snapshot?.sourcePayload as Record<string, unknown>) || {};
-    const contracts =
-      (payload?.contracts as Record<string, unknown>) ||
-      (payload?.manifest as any)?.spec?.contracts;
-    const outputContract = (contracts?.output as Record<string, unknown>) || {};
-    const outputSchema =
-      outputContract?.schema || (payload?.outputSchema as Record<string, unknown>);
-    if (
-      !outputSchema ||
-      typeof outputSchema !== 'object' ||
-      Object.keys(outputSchema).length === 0
-    ) {
-      return { success: true, score, errorSummary: null };
-    }
-    // 契约 dataPath 优先（§7.1：迁移期根 $.result.businessData、目标期根 $.data，
-    // 均相对验证 agent 返回的 workflow 返回值解析）；未声明时保留 legacy 默认
-    // resultSnapshot 坐标的 $.result.businessData 语义。
-    // falsy-safe：extractDataByPath 仅在路径缺失时返回 undefined，合法的 falsy
-    // 业务值（0 / false / '' / []）必须原样保留，不能整体回退到整个 result。
-    const contractDataPath =
-      typeof outputContract?.dataPath === 'string' && outputContract.dataPath.trim()
-        ? outputContract.dataPath.trim()
-        : undefined;
-    const workflowResult =
-      resultSnapshot && typeof resultSnapshot === 'object' ? resultSnapshot.result : undefined;
-    const extractedBusinessData = contractDataPath
-      ? jsonSchemaValidator.extractDataByPath(workflowResult, contractDataPath)
-      : jsonSchemaValidator.extractDataByPath(resultSnapshot, '$.result.businessData');
-    const businessData = extractedBusinessData === undefined ? resultSnapshot : extractedBusinessData;
-    const validationResult = jsonSchemaValidator.validate(
-      businessData,
-      outputSchema as Record<string, unknown>
-    );
-    if (validationResult.valid) {
-      return { success: true, score, errorSummary: null };
-    }
-    const schemaErrStr = validationResult.errors
-      ?.map((e: { path: string; message: string }) => `${e.path}: ${e.message}`)
-      .join('; ');
-    return {
-      success: false,
-      score: Math.min(score, 40),
-      errorSummary: `OUTPUT_SCHEMA_VIOLATION: ${schemaErrStr}`,
-    };
-  }
-
-  private expectRecord(value: unknown, errorMessage: string): Record<string, unknown> {
-    const record = this.parseJson(value);
-    if (!record || typeof record !== 'object' || Array.isArray(record)) {
-      throw new Error(errorMessage);
-    }
-    return record as Record<string, unknown>;
-  }
-
-  private parseJson<T = unknown>(value: unknown): T {
-    if (value === null || value === undefined) {
-      return value as T;
-    }
-    if (typeof value === 'string') {
-      try {
-        return JSON.parse(value) as T;
-      } catch {
-        return value as T;
-      }
-    }
-    return value as T;
-  }
-
-  private flattenPayload(
-    obj: Record<string, unknown>,
-    prefix = '',
-    res: Record<string, unknown> = {}
-  ): Record<string, unknown> {
-    for (const [k, v] of Object.entries(obj)) {
-      const key = prefix ? `${prefix}.${k}` : k;
-      if (v && typeof v === 'object' && !Array.isArray(v)) {
-        this.flattenPayload(v as Record<string, unknown>, key, res);
-      } else {
-        res[key] = v;
-      }
-    }
-    return res;
-  }
 }

@@ -1,24 +1,23 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { BadRequestException,Injectable,Logger } from '@nestjs/common';
+import type { ArtifactRef } from '@ops/backend-runtime-capability-contract';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import type { ArtifactRef } from '@ops/backend-runtime-capability-contract';
-import type {
-  AlignedClausePair,
-  ClauseAiInsight,
-  ContractCompareInput,
-  ContractCompareMetrics,
-  ContractCompareOutput,
-  RiskLevel,
-} from './contract-compare.types';
-import { ContractAstParserService } from './contract-ast-parser.service';
-import { SectionAlignerService } from './section-aligner.service';
-import { CharDiffEngineService } from './char-diff-engine.service';
-import { ContractHtmlRendererService } from './contract-html-renderer.service';
-import { fixFilenameEncoding } from '../filename-encoding.util';
 import { ReviewElementEvaluatorService } from '../contract-elements';
 import { resolveCompareDocumentPayloads } from '../document-payload-resolver.helper';
+import { fixFilenameEncoding } from '../filename-encoding.util';
+import { CharDiffEngineService } from './char-diff-engine.service';
+import { ContractAstParserService } from './contract-ast-parser.service';
+import type {
+AlignedClausePair,
+ClauseAiInsight,
+ContractCompareInput,
+ContractCompareMetrics,
+ContractCompareOutput
+} from './contract-compare.types';
+import { ContractHtmlRendererService } from './contract-html-renderer.service';
+import { SectionAlignerService } from './section-aligner.service';
 
 function findWorkspaceRoot(startDir: string): string {
   let current = startDir;

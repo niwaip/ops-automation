@@ -114,7 +114,7 @@ describe('Capability publish contract authority', () => {
     );
   });
 
-  it('allows temporal workflow publication with workflow-scoped parameters and defaults', async () => {
+  it('blocks temporal workflow publication with plaintext credential defaults', async () => {
     const { service, prisma } = createService();
     const draft = {
       name: '查询全网热榜',
@@ -139,6 +139,6 @@ describe('Capability publish contract authority', () => {
 
     const result = await service.validatePublishDraft(release, draft, credentialSnapshot);
 
-    expect(result.blocker).toBeUndefined();
+    expect(result.blocker).toEqual(expect.objectContaining({ code: 'sensitive_default_forbidden' }));
   });
 });

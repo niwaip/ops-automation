@@ -1,17 +1,16 @@
 import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
+BadRequestException,
+Inject,
+Injectable,
+Logger
 } from '@nestjs/common';
-import { WORKBENCH_PRISMA, WorkbenchPrismaPort } from '../ports';
+import { WORKBENCH_PRISMA,WorkbenchPrismaPort } from '../ports';
 import { UserCredentialVaultService } from './user-credential-vault.service';
 import {
-  CredentialCategoryType,
-  ResolveRuntimeInputResponseDto,
-  SkillCredentialFieldRequirement,
-  SkillCredentialStatusDto,
+CredentialCategoryType,
+ResolveRuntimeInputResponseDto,
+SkillCredentialFieldRequirement,
+SkillCredentialStatusDto,
 } from './user-credential.dto';
 
 @Injectable()
