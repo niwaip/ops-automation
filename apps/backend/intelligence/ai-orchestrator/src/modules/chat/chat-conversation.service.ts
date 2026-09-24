@@ -102,6 +102,7 @@ export class ChatConversationService {
           ? (body as any).maxOutputTokens
           : undefined;
 
+    let fullContent = '';
     const response = await this.modelService.callModelStreamWithMessages(
       modelId,
       messages,

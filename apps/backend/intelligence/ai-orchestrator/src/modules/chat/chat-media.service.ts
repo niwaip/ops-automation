@@ -295,6 +295,7 @@ export class ChatMediaService {
               }
             } else {
               const ws = rows[0];
+              if (!ws) continue;
               // CRITICAL ISOLATION: In personal chat mode, strictly disallow department, company, or process workspace files
               if (contextUser.mode === 'chat' && ws.type !== 'personal') {
                 this.logger.warn(
