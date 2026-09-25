@@ -116,7 +116,7 @@ export function inspectBinaryMimeType(
     return { mimeType: 'application/pdf', category: 'document', extension: '.pdf' };
   }
 
-  // ZIP / DOCX / XLSX: PK\x03\x04
+  // ZIP / DOCX / XLSX / PPTX: PK\x03\x04
   if (
     buffer.length >= 4 &&
     buffer[0] === 0x50 &&
@@ -124,16 +124,42 @@ export function inspectBinaryMimeType(
     buffer[2] === 0x03 &&
     buffer[3] === 0x04
   ) {
-    const allowedZipExts = new Set(['.docx', '.xlsx', '.zip']);
+    const allowedZipExts = new Set(['.docx', '.xlsx', '.pptx', '.zip']);
     if (!allowedZipExts.has(ext)) {
       throw new BadRequestException(`ZIP archive detected, but declared extension is ${ext || 'unspecified'}`);
     }
     const mimeMap: Record<string, string> = {
       '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
       '.zip': 'application/zip',
     };
     return { mimeType: mimeMap[ext] || 'application/zip', category: 'document', extension: ext };
+  }
+
+  // OLE2 / Compound File Binary Format (legacy .doc, .xls, .ppt)
+  // Magic bytes: D0 CF 11 E0 A1 B1 1A E1
+  if (
+    buffer.length >= 8 &&
+    buffer[0] === 0xd0 &&
+    buffer[1] === 0xcf &&
+    buffer[2] === 0x11 &&
+    buffer[3] === 0xe0 &&
+    buffer[4] === 0xa1 &&
+    buffer[5] === 0xb1 &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0xe1
+  ) {
+    const allowedOleExts = new Set(['.doc', '.xls', '.ppt']);
+    if (!allowedOleExts.has(ext)) {
+      throw new BadRequestException(`Compound binary document detected, but declared extension is ${ext || 'unspecified'}`);
+    }
+    const oleMimes: Record<string, string> = {
+      '.doc': 'application/msword',
+      '.xls': 'application/vnd.ms-excel',
+      '.ppt': 'application/vnd.ms-powerpoint',
+    };
+    return { mimeType: oleMimes[ext] || 'application/octet-stream', category: 'document', extension: ext };
   }
 
   // Audio formats:

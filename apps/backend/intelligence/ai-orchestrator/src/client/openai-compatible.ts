@@ -187,7 +187,10 @@ export class OpenAICompatibleClient {
     if (normalized.tool_choice) {
       data.tool_choice = normalized.tool_choice;
     }
-    this.applyReasoningConfig(data, normalized.reasoning || reasoning);
+    if (normalized.maxOutputTokens) {
+      data.max_tokens = normalized.maxOutputTokens;
+    }
+    this.applyReasoningConfig(data, normalized.reasoning || reasoning, normalized.maxOutputTokens);
 
     let response: any;
     try {
@@ -235,6 +238,7 @@ export class OpenAICompatibleClient {
       const stream = response.data;
       const decoder = new StringDecoder('utf-8');
       let sseBuffer = '';
+      let streamFatalError: Error | null = null;
 
       const processLine = (rawLine: string) => {
         const trimmed = rawLine.trim();
@@ -242,26 +246,36 @@ export class OpenAICompatibleClient {
         if (!trimmed.startsWith('data:')) return;
         const message = trimmed.replace(/^data:\s*/, '');
         if (message === '[DONE]') return;
+
+        let parsed: any;
         try {
-          const parsed = JSON.parse(message);
-
-          // Handle usage in stream
-          if (parsed.usage) {
-            finalUsage = parsed.usage;
-          }
-
-          const choice = parsed.choices?.[0];
-          const delta = choice?.delta;
-          const finishReason = choice?.finish_reason;
-          const content = delta?.content || '';
-          if (content) {
-            fullContent += content;
-            onChunk(content, { delta, finish_reason: finishReason, usage: parsed.usage });
-          } else if (delta?.tool_calls || finishReason || parsed.usage) {
-            onChunk('', { delta, finish_reason: finishReason, usage: parsed.usage });
-          }
+          parsed = JSON.parse(message);
         } catch {
           // Incomplete or invalid JSON chunk
+          return;
+        }
+
+        if (parsed?.error) {
+          const errMsg = parsed.error.message || parsed.error.code || JSON.stringify(parsed.error);
+          streamFatalError = new Error(`OpenAI API Stream Error: ${errMsg}`);
+          try { (stream as any).destroy?.(streamFatalError); } catch { /* ignore */ }
+          return;
+        }
+
+        // Handle usage in stream
+        if (parsed.usage) {
+          finalUsage = parsed.usage;
+        }
+
+        const choice = parsed.choices?.[0];
+        const delta = choice?.delta;
+        const finishReason = choice?.finish_reason;
+        const content = delta?.content || '';
+        if (content) {
+          fullContent += content;
+          onChunk(content, { delta, finish_reason: finishReason, usage: parsed.usage });
+        } else if (delta?.tool_calls || finishReason || parsed.usage) {
+          onChunk('', { delta, finish_reason: finishReason, usage: parsed.usage });
         }
       };
 
@@ -271,14 +285,23 @@ export class OpenAICompatibleClient {
         sseBuffer = lines.pop() ?? '';
         for (const line of lines) {
           processLine(line);
+          if (streamFatalError) break;
         }
       });
 
       return new Promise((resolve, reject) => {
         stream.on('end', () => {
+          if (streamFatalError) {
+            reject(streamFatalError);
+            return;
+          }
           sseBuffer += decoder.end();
           if (sseBuffer.trim()) {
             processLine(sseBuffer);
+          }
+          if (streamFatalError) {
+            reject(streamFatalError);
+            return;
           }
           resolve({
             content: fullContent,
@@ -286,7 +309,7 @@ export class OpenAICompatibleClient {
             rateLimit,
           });
         });
-        stream.on('error', reject);
+        stream.on('error', (err: any) => reject(streamFatalError || err));
       });
     } catch (error: unknown) {
       const errorMsg = await this.extractAxiosErrorMessage(error);
@@ -554,7 +577,7 @@ export class OpenAICompatibleClient {
       return {
         messages: request.messages,
         responseFormat: request.responseFormat,
-        maxOutputTokens: request.maxOutputTokens,
+        maxOutputTokens: request.maxOutputTokens ?? (request as any).max_tokens,
         promptCacheKey: request.assembly?.promptCacheKey || this.promptCacheKey,
         promptCacheRetention: request.promptCaching?.retention || this.promptCacheRetention,
         reasoning: request.reasoning,
@@ -574,7 +597,7 @@ export class OpenAICompatibleClient {
           { role: 'user', content: request.assembly.dynamicUser },
         ],
         responseFormat: request.responseFormat,
-        maxOutputTokens: request.maxOutputTokens,
+        maxOutputTokens: request.maxOutputTokens ?? (request as any).max_tokens,
         promptCacheKey: request.assembly.promptCacheKey || this.promptCacheKey,
         promptCacheRetention: request.promptCaching?.retention || this.promptCacheRetention,
         reasoning: request.reasoning,

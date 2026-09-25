@@ -55,6 +55,29 @@ describe('inspectBinaryMimeType', () => {
     );
   });
 
+  it('should correctly identify PPTX document', () => {
+    const zipHeader = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00]);
+    const result = inspectBinaryMimeType(
+      zipHeader,
+      'presentation.pptx',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    );
+    expect(result.mimeType).toBe(
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    );
+    expect(result.category).toBe('document');
+  });
+
+  it('should correctly identify legacy OLE documents (.doc, .xls, .ppt)', () => {
+    const oleHeader = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+    const pptResult = inspectBinaryMimeType(oleHeader, 'slides.ppt');
+    expect(pptResult.mimeType).toBe('application/vnd.ms-powerpoint');
+    const docResult = inspectBinaryMimeType(oleHeader, 'document.doc');
+    expect(docResult.mimeType).toBe('application/msword');
+    const xlsResult = inspectBinaryMimeType(oleHeader, 'sheet.xls');
+    expect(xlsResult.mimeType).toBe('application/vnd.ms-excel');
+  });
+
   it('should reject text file with XSS script tags', () => {
     const xssText = Buffer.from('<script>alert(1)</script>', 'utf-8');
     expect(() => inspectBinaryMimeType(xssText, 'page.txt', 'text/plain')).toThrow(

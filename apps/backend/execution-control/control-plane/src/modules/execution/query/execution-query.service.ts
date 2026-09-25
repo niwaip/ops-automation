@@ -7,6 +7,8 @@ import {
   ExecutionPhaseDto,
   ExecutionStepDto,
   ListExecutionsDto,
+  PendingOutboundEffectDto,
+  UnknownOutboundEffectDto,
 } from '../state/execution.dto';
 import {
   mapExecutionPhaseToDto,
@@ -47,10 +49,71 @@ export class ExecutionQueryService {
     });
     const phases = await this.executionPhaseService.listByExecutionId(id);
 
+    let pendingOutboundEffects: PendingOutboundEffectDto[] | undefined = undefined;
+    let unknownOutboundEffects: UnknownOutboundEffectDto[] | undefined = undefined;
+
+    if (this.prisma.outboundEffectLedger) {
+      if (execution.status === 'pending_approval' || execution.approvalStatus === 'pending') {
+        const records = await this.prisma.outboundEffectLedger.findMany({
+          where: {
+            idempotencyKey: { startsWith: `${id}:` },
+            state: 'PREPARED',
+          },
+        });
+        if (records.length > 0) {
+          pendingOutboundEffects = records.map((r) => {
+            const rawPayload = r.canonicalPayloadJson;
+            let canonicalPayload: Record<string, unknown> | null = null;
+            if (rawPayload && typeof rawPayload === 'object') {
+              canonicalPayload = rawPayload as Record<string, unknown>;
+            } else if (typeof rawPayload === 'string') {
+              try {
+                canonicalPayload = JSON.parse(rawPayload);
+              } catch {
+                canonicalPayload = null;
+              }
+            }
+            return {
+              effectId: r.id,
+              capabilityKey: r.capabilityKey,
+              idempotencyKey: r.idempotencyKey,
+              payloadHash: r.payloadHash,
+              canonicalPayload,
+              state: r.state,
+              stepId: r.idempotencyKey.split(':')[1] || undefined,
+            };
+          });
+        }
+      }
+
+      if (execution.status === 'human_control' || execution.takeoverRequired) {
+        const records = await this.prisma.outboundEffectLedger.findMany({
+          where: {
+            idempotencyKey: { startsWith: `${id}:` },
+            state: 'UNKNOWN',
+          },
+        });
+        if (records.length > 0) {
+          unknownOutboundEffects = records.map((r) => ({
+            effectId: r.id,
+            capabilityKey: r.capabilityKey,
+            idempotencyKey: r.idempotencyKey,
+            payloadHash: r.payloadHash,
+            errorClassification: r.errorClassification || undefined,
+            resolutionReason: r.resolutionReason || undefined,
+            state: r.state,
+            stepId: r.idempotencyKey.split(':')[1] || undefined,
+          }));
+        }
+      }
+    }
+
     return mapExecutionToDto({
       ...execution,
       runtimeSessionId: runtimeSession?.id || null,
       phases,
+      pendingOutboundEffects,
+      unknownOutboundEffects,
     });
   }
 

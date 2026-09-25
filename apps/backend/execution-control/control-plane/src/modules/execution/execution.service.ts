@@ -53,6 +53,8 @@ import {
   ListExecutionsDto,
   SubmitInputDto,
   ApprovalDecisionDto,
+  AuthorizeRetryOutboundEffectDto,
+  ResolveOutboundEffectDto,
   UpdateWorkflowActivityProgressDto,
 } from './state/execution.dto';
 import { ExecutionPlanningService } from './step-runner/planning/execution-planning.service';
@@ -253,7 +255,7 @@ export class ExecutionService {
   async create(
     userId: string,
     dto: CreateExecutionDto,
-    options?: { authToken?: string }
+    options?: { authToken?: string; traceContext?: any }
   ): Promise<ExecutionDto> {
     return this.executionCreateService.create(userId, dto, this.getCreateHooks(), options);
   }
@@ -407,6 +409,40 @@ export class ExecutionService {
       dto,
       this.getApprovalHooks(),
       requester
+    );
+  }
+
+  async resolveOutboundEffect(
+    id: string,
+    effectId: string,
+    dto: ResolveOutboundEffectDto,
+    userId: string,
+    requester?: RequestUserContext
+  ) {
+    return this.executionApprovalService.resolveOutboundEffect(
+      id,
+      effectId,
+      dto,
+      userId,
+      requester,
+      this.getApprovalHooks()
+    );
+  }
+
+  async authorizeRetryOutboundEffect(
+    id: string,
+    effectId: string,
+    dto: AuthorizeRetryOutboundEffectDto,
+    userId: string,
+    requester?: RequestUserContext
+  ) {
+    return this.executionApprovalService.authorizeRetryOutboundEffect(
+      id,
+      effectId,
+      dto,
+      userId,
+      requester,
+      this.getApprovalHooks()
     );
   }
 

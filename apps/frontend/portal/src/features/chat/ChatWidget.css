@@ -7,6 +7,14 @@
   bottom: 20px;
   right: 20px;
   z-index: 1000;
+  transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.22s;
+}
+
+.chat-widget-trigger.is-hidden {
+  opacity: 0;
+  transform: scale(0.6) translateY(14px);
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .chat-trigger-button {
@@ -25,4 +33,30 @@
 .chat-trigger-button:hover {
   transform: scale(1.08);
   box-shadow: 0 8px 24px rgb(99 102 241 / 0.45);
+}
+
+.chat-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 998;
+  background: rgba(15, 23, 42, 0.18);
+  backdrop-filter: blur(1.5px);
+  animation: backdropFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+[data-theme="dark"] .chat-backdrop {
+  background: rgba(0, 0, 0, 0.42);
+}
+
+@keyframes backdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

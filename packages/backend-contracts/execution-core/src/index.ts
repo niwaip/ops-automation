@@ -115,3 +115,46 @@ export interface ExecutionSemantic {
     reasonCodes: string[];
   };
 }
+
+export const OUTBOUND_EFFECT_PHASE = {
+  PREPARE: 'prepare',
+  COMMIT: 'commit',
+  DIRECT: 'direct',
+} as const;
+
+export type OutboundEffectPhase =
+  (typeof OUTBOUND_EFFECT_PHASE)[keyof typeof OUTBOUND_EFFECT_PHASE];
+
+export const OUTBOUND_EFFECT_STATUS = {
+  PREPARED: 'prepared',
+  COMMITTED: 'committed',
+  UNKNOWN: 'unknown',
+  FAILED: 'failed',
+} as const;
+
+export type OutboundEffectStatus =
+  (typeof OUTBOUND_EFFECT_STATUS)[keyof typeof OUTBOUND_EFFECT_STATUS];
+
+export function canonicalizePayloadObject(obj: unknown): unknown {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(canonicalizePayloadObject);
+  }
+  const sorted: Record<string, unknown> = {};
+  const keys = Object.keys(obj as Record<string, unknown>).sort();
+  for (const k of keys) {
+    sorted[k] = canonicalizePayloadObject((obj as Record<string, unknown>)[k]);
+  }
+  return sorted;
+}
+
+export function computeOutboundPayloadHash(payload: unknown): string {
+  const canonicalObj = canonicalizePayloadObject(payload);
+  const jsonStr = JSON.stringify(canonicalObj);
+  // Simple deterministic SHA-256 using Node crypto
+  const cryptoModule = require('crypto');
+  const hash = cryptoModule.createHash('sha256').update(jsonStr, 'utf8').digest('hex');
+  return `sha256:${hash}`;
+}

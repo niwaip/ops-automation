@@ -40,6 +40,12 @@ describe('ScheduleFireDispatcherService', () => {
       expect.objectContaining({
         idempotencyKey: 'schedule-fire:11111111-1111-4111-8111-111111111111',
         triggerType: 'schedule',
+      }),
+      expect.objectContaining({
+        traceContext: expect.objectContaining({
+          traceparent: expect.any(String),
+          traceId: expect.any(String),
+        }),
       })
     );
     expect(outbox.markPublished).toHaveBeenCalled();
@@ -60,5 +66,27 @@ describe('ScheduleFireDispatcherService', () => {
     outbox.markPublished.mockResolvedValue(true);
     await expect(service.dispatchOnce()).resolves.toBe(1);
     expect(executions.create).not.toHaveBeenCalled();
+  });
+
+  it('quarantines poison messages to dead letter when attempts reach maxAttempts', async () => {
+    outbox.claimBatch.mockResolvedValue([
+      {
+        id: 'outbox-poison-fire',
+        aggregateId: '11111111-1111-4111-8111-111111111111',
+        payload: {
+          fireId: '11111111-1111-4111-8111-111111111111',
+        },
+        attempts: 10,
+      },
+    ]);
+    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ executionId: null }]);
+    (outbox as any).markDeadLetter = jest.fn().mockResolvedValue(true);
+    await expect(service.dispatchOnce()).resolves.toBe(0);
+    expect((outbox as any).markDeadLetter).toHaveBeenCalledWith(
+      'outbox-poison-fire',
+      expect.any(String),
+      expect.stringContaining('invalid payload')
+    );
+    expect(outbox.releaseForRetry).not.toHaveBeenCalled();
   });
 });

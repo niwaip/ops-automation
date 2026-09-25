@@ -17,7 +17,7 @@ from typing import Optional
 
 from .config import WORKSPACE_DIR, KNOWLEDGE_DIR, DEFAULT_PROXY_URL, VIRTUAL_API_KEY
 from .web_tools import check_deadline, assert_not_timed_out
-from .office_tools import extract_docx_text, extract_xlsx_text, extract_pdf_text
+from .office_tools import extract_docx_text, extract_xlsx_text, extract_pdf_text, extract_pptx_text
 
 
 def scan_personal_knowledge() -> str:
@@ -118,6 +118,8 @@ def inspect_image(image_path: str, prompt: str = "", max_chars: int = 15000, dea
         )
 
         api_endpoint = f"{DEFAULT_PROXY_URL.rstrip('/')}/chat/completions"
+        from .runtime_policy import RuntimePolicy
+        pol = RuntimePolicy.from_env()
         payload = {
             "model": "vision",
             "messages": [
@@ -136,7 +138,7 @@ def inspect_image(image_path: str, prompt: str = "", max_chars: int = 15000, dea
                 }
             ],
             "temperature": 0.2,
-            "max_tokens": 4096,
+            "max_tokens": pol.max_tokens,
             "stream": False
         }
 
@@ -184,7 +186,7 @@ def inspect_image(image_path: str, prompt: str = "", max_chars: int = 15000, dea
 
 def read_workspace_file(
     file_path: str,
-    max_chars: int = 15000,
+    max_chars: int = 30000,
     start_line: Optional[int] = None,
     end_line: Optional[int] = None,
     deadline: Optional[float] = None
@@ -220,6 +222,10 @@ def read_workspace_file(
     elif suffix == ".pdf":
         return extract_pdf_text(p, max_chars=max_chars, start_line=start_line, end_line=end_line)
 
+    # 4. PPT 文档 (.pptx) 原生提取
+    elif suffix == ".pptx":
+        return extract_pptx_text(p, max_chars=max_chars, start_line=start_line, end_line=end_line)
+
     # 4. 检查是否有已提取的同名 .txt
     txt_sibling = p.parent / f"{p.name}.txt"
     if not txt_sibling.exists():
@@ -247,7 +253,10 @@ def read_workspace_file(
             return f"【文本文件 ({p.name}) 切片内容（第 {s_idx + 1} 至 {e_idx} 行，共 {total_lines} 行）】:\n" + content[:max_chars]
 
         if len(raw) > max_chars:
-            hint = f"\n\n[提示：文件总长 {len(raw)} 字符 / {total_lines} 行，已展示前 {max_chars} 字符。若需查看后续内容，可在调用 read_file 时指定 start_line 与 end_line 分页切片读取]"
+            hint = (
+                f"\n\n[⚠️ 文件长文本截断提醒]: 文件总长 {len(raw)} 字符 / {total_lines} 行，已读取展示前 {max_chars} 字符。"
+                f"\n💡 [通用建议]: 若需查看未展示的后续内容，请在调用 read_file 时指定 `start_line` 与 `end_line` 参数（例如 start_line={min(total_lines, (max_chars // 60))} 分页切片读取），或调用 bash 执行 `grep -n '关键词'` 精准定位。"
+            )
             return f"【文本文件 ({p.name}) 内容】:\n" + raw[:max_chars] + hint
         return f"【文本文件 ({p.name}) 内容】:\n" + raw
     except Exception as e:

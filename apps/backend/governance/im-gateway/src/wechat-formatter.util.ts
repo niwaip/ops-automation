@@ -1,3 +1,5 @@
+import * as crypto from 'crypto';
+
 /**
  * WeChat text formatting, markdown simplification, UTF-16 surrogate sanitization,
  * and line-preserving chunking utilities.
@@ -31,6 +33,29 @@ export function sanitizeWeChatText(text: string): string {
 }
 
 /**
+ * Generates a signed download JWT token for a given user ID,
+ * allowing safe access to workspace deliverables via IM links.
+ */
+export function generateSignedDeliverableToken(userId: string): string {
+  const rawJwtSecret = process.env.JWT_SECRET;
+  const jwtSecret = rawJwtSecret || 'ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa';
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const payload = Buffer.from(
+    JSON.stringify({
+      sub: userId,
+      role: 'employee',
+      // Valid for 7 days
+      exp: Math.floor(Date.now() / 1000) + 7 * 86400,
+    })
+  ).toString('base64url');
+  const signature = crypto
+    .createHmac('sha256', jwtSecret)
+    .update(`${header}.${payload}`)
+    .digest('base64url');
+  return `${header}.${payload}.${signature}`;
+}
+
+/**
  * Clean Markdown syntax for cleaner mobile WeChat display:
  * - Converts markdown links [text](url) -> text (url)
  * - Converts image tags ![alt](url) -> [图片: alt]
@@ -41,25 +66,46 @@ export function sanitizeWeChatText(text: string): string {
 export function formatForWeChat(text: string): string {
   let out = typeof text === 'string' ? text : (text ? String(text) : '');
 
-  // Image tags ![alt](url) -> [图片: alt]
+  // 1. Image tags ![alt](url) -> [图片: alt]
   out = out.replace(/!\[([^\]]*)\]\([^)]+\)/g, (_, alt) => (alt ? `[图片: ${alt}]` : '[图片]'));
 
-  // Links [text](url) -> text (url)
-  out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)');
-
-  // Bold / Italic markers
+  // 2. Bold / Italic markers (先于链接处理，避免破坏 URL 中的下划线与签名)
   out = out.replace(/\*\*\*(.+?)\*\*\*/g, '$1');
   out = out.replace(/\*\*(.+?)\*\*/g, '$1');
   out = out.replace(/\*(.+?)\*/g, '$1');
   out = out.replace(/___(.+?)___/g, '$1');
   out = out.replace(/__(.+?)__/g, '$1');
-  out = out.replace(/_(.+?)_/g, '$1');
+  out = out.replace(/(?:^|\s)_(.+?)_(?=\s|$|[，。！？；])/g, ' $1');
 
-  // Headings #, ##, etc.
+  // 3. Headings #, ##, etc.
   out = out.replace(/^#{1,6}\s+/gm, '');
 
-  // Excessive blank lines
+  // 4. Excessive blank lines
   out = out.replace(/\n{3,}/g, '\n\n');
+
+  // 5. Links [text](url) -> text (url)
+  // 如果链接是工作区文件且未带 token，且能解析出 targetUserId，则自动追加安全签名 token，支持在微信中免登直接下载
+  out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, url) => {
+    let finalUrl = url;
+    if (
+      finalUrl.includes('/api/ai/chat/workspace-files/') &&
+      !finalUrl.includes('token=') &&
+      !finalUrl.includes('access_token=')
+    ) {
+      const match = finalUrl.match(/\/api\/ai\/chat\/workspace-files\/([^/?#]+)/);
+      if (match && match[1]) {
+        try {
+          const targetUserId = decodeURIComponent(match[1]);
+          const token = generateSignedDeliverableToken(targetUserId);
+          const sep = finalUrl.includes('?') ? '&' : '?';
+          finalUrl = `${finalUrl}${sep}token=${encodeURIComponent(token)}`;
+        } catch {
+          // keep original URL if signing fails
+        }
+      }
+    }
+    return `${label} (${finalUrl})`;
+  });
 
   return out.trim();
 }

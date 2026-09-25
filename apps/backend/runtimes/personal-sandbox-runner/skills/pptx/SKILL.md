@@ -8,6 +8,10 @@ triggers:
   - "slide deck"
   - "create slides"
   - "edit pptx"
+  - "ppt"
+  - "幻灯片"
+  - "演示文稿"
+  - "pptx文档"
 od:
   mode: deck
   category: slides

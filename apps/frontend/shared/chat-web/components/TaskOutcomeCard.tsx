@@ -48,10 +48,33 @@ interface TaskOutcomeCardProps {
   waitingInputItems: SharedDisplayGroupItem[];
   approvalAction: 'approve' | 'reject' | null;
   takeoverAction?: string | null;
-  onApproveExecution: () => void;
-  onRejectExecution: () => void;
+  pendingOutboundEffects?: Array<{
+    effectId: string;
+    capabilityKey: string;
+    idempotencyKey: string;
+    payloadHash: string;
+    canonicalPayload?: Record<string, unknown> | null;
+    stepId?: string;
+  }>;
+  onFetchPendingEffects?: (executionId: string) => Promise<Array<any>>;
+  onApproveExecution: (effectId?: string, approvedPayloadHash?: string) => void;
+  onRejectExecution: (effectId?: string) => void;
   onResumeExecution?: () => void;
 }
+
+const isHtmlPreviewBlock = (className?: string, codeText?: string) => {
+  const match = /language-(\w+)/.exec(className || '');
+  if (!match || match[1] !== 'html' || !codeText) return false;
+  return (
+    codeText.includes('<!DOCTYPE html') ||
+    codeText.includes('<html') ||
+    codeText.includes('class="slide') ||
+    codeText.includes('presentation') ||
+    codeText.includes('guizang') ||
+    codeText.includes('diff-ins') ||
+    codeText.includes('diff-del')
+  );
+};
 
 export const getErrorPreview = (value?: string): string => {
   if (!value) {
@@ -192,9 +215,53 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
   waitingInputGroups,
   waitingInputItems,
   approvalAction,
+  pendingOutboundEffects,
+  onFetchPendingEffects,
   onApproveExecution,
   onRejectExecution,
 }) => {
+  const [internalEffects, setInternalEffects] = React.useState<TaskOutcomeCardProps['pendingOutboundEffects'] | null>(null);
+  const [isLoadingEffects, setIsLoadingEffects] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    let isCancelled = false;
+    if (isPendingApproval && executionId && (!pendingOutboundEffects || pendingOutboundEffects.length === 0)) {
+      setIsLoadingEffects(true);
+      const fetchPromise = onFetchPendingEffects
+        ? onFetchPendingEffects(executionId)
+        : fetch(`/api/executions/${executionId}`)
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => data?.pendingOutboundEffects || []);
+
+      fetchPromise
+        .then((effects) => {
+          if (!isCancelled && Array.isArray(effects)) {
+            setInternalEffects(effects);
+          }
+        })
+        .catch(() => {
+          if (!isCancelled) {
+            setInternalEffects([]);
+          }
+        })
+        .finally(() => {
+          if (!isCancelled) {
+            setIsLoadingEffects(false);
+          }
+        });
+    } else {
+      setIsLoadingEffects(false);
+    }
+    return () => {
+      isCancelled = true;
+    };
+  }, [isPendingApproval, executionId, pendingOutboundEffects, onFetchPendingEffects]);
+
+  const effectivePendingEffects =
+    pendingOutboundEffects && pendingOutboundEffects.length > 0
+      ? pendingOutboundEffects
+      : internalEffects || [];
+
   const showDownloadButton = Boolean(downloadUrl && !browserExecutionMode);
   const showDetailButton = Boolean(executionDetailLink || temporalLink);
   const normalizedSkillName = skillName?.trim();
@@ -387,33 +454,37 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
                 </div>
               ),
               a: renderMarkdownLink,
+              pre: ({ children, className: preClassName, ...props }: React.ComponentPropsWithoutRef<'pre'>) => {
+                const childElement = React.isValidElement(children) ? children : null;
+                const childProps = childElement ? (childElement.props as { className?: string; children?: React.ReactNode }) : null;
+                const codeClassName = childProps?.className || '';
+                const codeText = Array.isArray(childProps?.children)
+                  ? childProps.children.join('')
+                  : String(childProps?.children || '');
+
+                if (isHtmlPreviewBlock(codeClassName, codeText)) {
+                  return <>{children}</>;
+                }
+
+                const mergedClass = ['code-block', preClassName, codeClassName].filter(Boolean).join(' ');
+                return (
+                  <pre className={mergedClass} {...props}>
+                    {children}
+                  </pre>
+                );
+              },
               code: ({
                 className,
                 children,
                 ...props
               }: React.ComponentPropsWithoutRef<'code'> & { className?: string }) => {
-                const match = /language-(\w+)/.exec(className || '');
-                const codeText = String(children || '');
-                if (
-                  match &&
-                  match[1] === 'html' &&
-                  (codeText.includes('<!DOCTYPE html') ||
-                    codeText.includes('<html') ||
-                    codeText.includes('class="slide') ||
-                    codeText.includes('presentation') ||
-                    codeText.includes('guizang') ||
-                    codeText.includes('diff-ins') ||
-                    codeText.includes('diff-del'))
-                ) {
+                const codeText = Array.isArray(children) ? children.join('') : String(children || '');
+                if (isHtmlPreviewBlock(className, codeText)) {
                   return <HtmlPreviewBlock code={codeText.trim()} className={className} isStreaming={showRunningState} />;
                 }
 
-                return match ? (
-                  <pre className={`code-block language-${match[1]}`}>
-                    <code {...props}>{children}</code>
-                  </pre>
-                ) : (
-                  <code className="inline-code" {...props}>
+                return (
+                  <code className={className || 'inline-code'} {...props}>
                     {children}
                   </code>
                 );
@@ -474,33 +545,37 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             remarkPlugins={[remarkGfm]}
             components={{
               a: renderMarkdownLink,
+              pre: ({ children, className: preClassName, ...props }: React.ComponentPropsWithoutRef<'pre'>) => {
+                const childElement = React.isValidElement(children) ? children : null;
+                const childProps = childElement ? (childElement.props as { className?: string; children?: React.ReactNode }) : null;
+                const codeClassName = childProps?.className || '';
+                const codeText = Array.isArray(childProps?.children)
+                  ? childProps.children.join('')
+                  : String(childProps?.children || '');
+
+                if (isHtmlPreviewBlock(codeClassName, codeText)) {
+                  return <>{children}</>;
+                }
+
+                const mergedClass = ['code-block', preClassName, codeClassName].filter(Boolean).join(' ');
+                return (
+                  <pre className={mergedClass} {...props}>
+                    {children}
+                  </pre>
+                );
+              },
               code: ({
                 className,
                 children,
                 ...props
               }: React.ComponentPropsWithoutRef<'code'> & { className?: string }) => {
-                const match = /language-(\w+)/.exec(className || '');
-                const codeText = String(children || '');
-                if (
-                  match &&
-                  match[1] === 'html' &&
-                  (codeText.includes('<!DOCTYPE html') ||
-                    codeText.includes('<html') ||
-                    codeText.includes('class="slide') ||
-                    codeText.includes('presentation') ||
-                    codeText.includes('guizang') ||
-                    codeText.includes('diff-ins') ||
-                    codeText.includes('diff-del'))
-                ) {
+                const codeText = Array.isArray(children) ? children.join('') : String(children || '');
+                if (isHtmlPreviewBlock(className, codeText)) {
                   return <HtmlPreviewBlock code={codeText.trim()} className={className} isStreaming={showRunningState} />;
                 }
 
-                return match ? (
-                  <pre className={`code-block language-${match[1]}`}>
-                    <code {...props}>{children}</code>
-                  </pre>
-                ) : (
-                  <code className="inline-code" {...props}>
+                return (
+                  <code className={className || 'inline-code'} {...props}>
                     {children}
                   </code>
                 );
@@ -541,6 +616,71 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
           )}
         </div>
       ) : null}
+      {isPendingApproval && isLoadingEffects ? (
+        <div
+          className="chat-outcome-outbound-loading"
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 6,
+            background: 'rgba(0, 0, 0, 0.02)',
+            border: '1px dashed #d9d9d9',
+            fontSize: 12,
+            color: '#666',
+          }}
+        >
+          <Space>
+            <LoadingOutlined />
+            <span>正在加载待审批外发操作详情...</span>
+          </Space>
+        </div>
+      ) : null}
+      {isPendingApproval && !isLoadingEffects && effectivePendingEffects.length > 0 ? (
+        <div
+          className="chat-outcome-outbound-preview"
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 6,
+            background: 'rgba(0, 0, 0, 0.02)',
+            border: '1px solid #d9d9d9',
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>
+            待审批外发操作 ({effectivePendingEffects.length})
+          </div>
+          {effectivePendingEffects.map((effect) => (
+            <div key={effect.effectId} style={{ marginBottom: 8, fontSize: 12 }}>
+              <div>
+                <strong>能力: </strong>
+                <code>{effect.capabilityKey}</code>
+              </div>
+              <div style={{ wordBreak: 'break-all', marginTop: 2 }}>
+                <strong>载荷哈希: </strong>
+                <code>{effect.payloadHash}</code>
+              </div>
+              {effect.canonicalPayload ? (
+                <div style={{ marginTop: 4 }}>
+                  <strong>请求载荷:</strong>
+                  <pre
+                    style={{
+                      margin: '4px 0 0',
+                      padding: 8,
+                      background: '#f5f5f5',
+                      borderRadius: 4,
+                      maxHeight: 160,
+                      overflow: 'auto',
+                      fontSize: 11,
+                    }}
+                  >
+                    {JSON.stringify(effect.canonicalPayload, null, 2)}
+                  </pre>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
       {isPendingApproval && executionId ? (
         <div className="chat-outcome-actions">
           <Button
@@ -548,7 +688,11 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             size="small"
             icon={<CheckOutlined />}
             loading={approvalAction === 'approve'}
-            onClick={onApproveExecution}
+            disabled={isLoadingEffects}
+            onClick={() => {
+              const first = effectivePendingEffects[0];
+              onApproveExecution(first?.effectId, first?.payloadHash);
+            }}
           >
             批准
           </Button>
@@ -557,7 +701,11 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             size="small"
             icon={<CloseOutlined />}
             loading={approvalAction === 'reject'}
-            onClick={onRejectExecution}
+            disabled={isLoadingEffects}
+            onClick={() => {
+              const first = effectivePendingEffects[0];
+              onRejectExecution(first?.effectId);
+            }}
           >
             驳回
           </Button>

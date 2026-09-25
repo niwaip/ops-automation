@@ -22,8 +22,17 @@ import styles from '../pages/ChatPage.module.css';
 interface TaskOutcomeBlockProps {
   message: ChatMessage;
   actionLoadingByMessage: Record<string, 'approve' | 'reject' | undefined>;
-  onApproveExecution: (messageId: string, executionId: string) => void;
-  onRejectExecution: (messageId: string, executionId: string) => void;
+  onApproveExecution: (
+    messageId: string,
+    executionId: string,
+    effectId?: string,
+    approvedPayloadHash?: string
+  ) => void;
+  onRejectExecution: (
+    messageId: string,
+    executionId: string,
+    effectId?: string
+  ) => void;
 }
 
 export const hasTaskOutcomeContent = (message: ChatMessage): boolean => {
@@ -219,18 +228,19 @@ export function TaskOutcomeBlock({
         summaryToDisplay={finalSummary || normalizedSummary || resultTitle || undefined}
         waitingInputGroups={waitingInputGroups}
         waitingInputItems={waitingInputItems}
+        pendingOutboundEffects={(message.metadata as any)?.pendingOutboundEffects}
         approvalAction={(() => {
           const action = actionLoadingByMessage[message.id];
           return action === 'approve' || action === 'reject' ? action : null;
         })()}
-        onApproveExecution={() => {
+        onApproveExecution={(effectId, approvedPayloadHash) => {
           if (executionId) {
-            onApproveExecution(message.id, executionId);
+            onApproveExecution(message.id, executionId, effectId, approvedPayloadHash);
           }
         }}
-        onRejectExecution={() => {
+        onRejectExecution={(effectId) => {
           if (executionId) {
-            onRejectExecution(message.id, executionId);
+            onRejectExecution(message.id, executionId, effectId);
           }
         }}
       />

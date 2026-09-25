@@ -375,85 +375,101 @@ export function useChatPageActions({
     createDraftSession('新对话', toChatTimestamp());
   }, [clearError, createDraftSession]);
 
-  const handleApprove = useCallback(async (messageId: string, executionId: string) => {
-    if (!selectedSession) {
-      return;
-    }
-    setActionLoadingByMessage((current) => ({ ...current, [messageId]: 'approve' }));
-    try {
-      const execution = await executionApi.approve(executionId);
-      updateMessage(selectedSession.id, messageId, {
-        metadata: buildApprovedTaskPatch({
-          executionId,
-          executionStatus: execution.status,
-        }),
-      });
-      void toast.success('已批准任务，继续观察执行结果');
+  const handleApprove = useCallback(
+    async (
+      messageId: string,
+      executionId: string,
+      effectId?: string,
+      approvedPayloadHash?: string
+    ) => {
+      if (!selectedSession) {
+        return;
+      }
+      setActionLoadingByMessage((current) => ({ ...current, [messageId]: 'approve' }));
+      try {
+        const execution = await executionApi.approve(executionId, {
+          ...(effectId ? { effectId } : {}),
+          ...(approvedPayloadHash ? { approvedPayloadHash } : {}),
+        });
+        updateMessage(selectedSession.id, messageId, {
+          metadata: buildApprovedTaskPatch({
+            executionId,
+            executionStatus: execution.status,
+          }),
+        });
+        void toast.success('已批准任务，继续观察执行结果');
 
-      const assistantMessageId = buildMessageId();
-      const assistantMessage: ChatMessage = {
-        id: assistantMessageId,
-        sessionId: selectedSession.id,
-        role: 'assistant',
-        content: '',
-        timestamp: toChatTimestamp(),
-        isStreaming: true,
-        metadata: buildApprovedAssistantDraftMeta({
-          executionId,
-          executionStatus: execution.status,
-        }),
-      };
-      updateSessionMessages(selectedSession.id, (messages) =>
-        upsertMessage(messages, assistantMessage)
-      );
-      void runAssistantRequest(
-        selectedSession,
-        buildResumeExecutionRequest({
+        const assistantMessageId = buildMessageId();
+        const assistantMessage: ChatMessage = {
+          id: assistantMessageId,
           sessionId: selectedSession.id,
-          executionId,
-          modelId: selectedModel && selectedModel !== 'default' ? selectedModel : undefined,
-          mode: 'task',
-          thinking: enableThinking,
-          reasoning: false,
-        }),
-        assistantMessageId
-      );
-    } catch (approveError) {
-      void toast.error(approveError instanceof Error ? approveError.message : '批准执行失败');
-    } finally {
-      setActionLoadingByMessage((current) => ({ ...current, [messageId]: undefined }));
-    }
-  }, [
-    enableThinking,
-    runAssistantRequest,
-    selectedModel,
-    selectedSession,
-    toast,
-    updateMessage,
-    updateSessionMessages,
-  ]);
+          role: 'assistant',
+          content: '',
+          timestamp: toChatTimestamp(),
+          isStreaming: true,
+          metadata: buildApprovedAssistantDraftMeta({
+            executionId,
+            executionStatus: execution.status,
+          }),
+        };
+        updateSessionMessages(selectedSession.id, (messages) =>
+          upsertMessage(messages, assistantMessage)
+        );
+        void runAssistantRequest(
+          selectedSession,
+          buildResumeExecutionRequest({
+            sessionId: selectedSession.id,
+            executionId,
+            modelId: selectedModel && selectedModel !== 'default' ? selectedModel : undefined,
+            mode: 'task',
+            thinking: enableThinking,
+            reasoning: false,
+          }),
+          assistantMessageId
+        );
+      } catch (approveError) {
+        void toast.error(approveError instanceof Error ? approveError.message : '批准执行失败');
+      } finally {
+        setActionLoadingByMessage((current) => ({ ...current, [messageId]: undefined }));
+      }
+    },
+    [
+      enableThinking,
+      runAssistantRequest,
+      selectedModel,
+      selectedSession,
+      toast,
+      updateMessage,
+      updateSessionMessages,
+    ]
+  );
 
-  const handleReject = useCallback(async (messageId: string, executionId: string) => {
-    if (!selectedSession) {
-      return;
-    }
-    setActionLoadingByMessage((current) => ({ ...current, [messageId]: 'reject' }));
-    try {
-      const execution = await executionApi.reject(executionId);
-      updateMessage(selectedSession.id, messageId, {
-        metadata: buildRejectedTaskPatch({
-          executionId,
-          executionStatus: execution.status,
-        }),
-      });
-      await syncRelatedQueries(selectedSession.id);
-      void toast.success('已驳回任务');
-    } catch (rejectError) {
-      void toast.error(rejectError instanceof Error ? rejectError.message : '驳回执行失败');
-    } finally {
-      setActionLoadingByMessage((current) => ({ ...current, [messageId]: undefined }));
-    }
-  }, [selectedSession, syncRelatedQueries, toast, updateMessage]);
+  const handleReject = useCallback(
+    async (messageId: string, executionId: string, effectId?: string) => {
+      if (!selectedSession) {
+        return;
+      }
+      setActionLoadingByMessage((current) => ({ ...current, [messageId]: 'reject' }));
+      try {
+        const execution = await executionApi.reject(executionId, {
+          ...(effectId ? { effectId } : {}),
+        });
+        updateMessage(selectedSession.id, messageId, {
+          metadata: buildRejectedTaskPatch({
+            executionId,
+            executionStatus: execution.status,
+          }),
+        });
+        await syncRelatedQueries(selectedSession.id);
+        void toast.success('已驳回任务');
+      } catch (rejectError) {
+        void toast.error(rejectError instanceof Error ? rejectError.message : '驳回执行失败');
+      } finally {
+        setActionLoadingByMessage((current) => ({ ...current, [messageId]: undefined }));
+      }
+    },
+    [selectedSession, syncRelatedQueries, toast, updateMessage]
+  );
 
   const handleRetry = useCallback(
     (targetMessage: ChatMessage) => {

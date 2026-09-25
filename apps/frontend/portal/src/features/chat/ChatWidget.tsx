@@ -81,7 +81,11 @@ const ChatWidget: React.FC = () => {
   return (
     <>
       {/* 悬浮按钮 */}
-      <div ref={triggerRef} className="chat-widget-trigger">
+      <div
+        ref={triggerRef}
+        className={`chat-widget-trigger${isOpen ? ' is-hidden' : ''}`}
+        aria-hidden={isOpen}
+      >
         <Badge count={unreadCount} offset={[-5, 5]}>
           <Button
             shape="circle"
@@ -101,11 +105,14 @@ const ChatWidget: React.FC = () => {
         </Badge>
       </div>
 
-      {/* 聊天窗口 */}
+      {/* 聊天窗口与外部遮罩 */}
       {isOpen && (
-        <div ref={containerRef}>
-          <ChatWindow />
-        </div>
+        <>
+          <div className="chat-backdrop" onClick={() => setOpen(false)} aria-hidden="true" />
+          <div ref={containerRef}>
+            <ChatWindow />
+          </div>
+        </>
       )}
     </>
   );

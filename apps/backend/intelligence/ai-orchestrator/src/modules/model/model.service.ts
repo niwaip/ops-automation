@@ -1068,6 +1068,8 @@ export class ModelService implements OnModuleInit {
     options?: {
       reasoning?: ModelReasoningConfig;
       telemetry?: ModelInvocationContext;
+      maxOutputTokens?: number;
+      temperature?: number;
     }
   ): Promise<LLMResponse> {
     const client = this.getClient(id);
@@ -1075,10 +1077,28 @@ export class ModelService implements OnModuleInit {
       throw new Error(`No client initialized for model ${id}`);
     }
 
-    const result = await client.chatCompletionStream(messages, onChunk, options?.reasoning);
-    result.content = this.stripThinkingTags(result.content);
-
     const model = this.resolveModelEntity(id);
+    const configuredMaxOutputTokens =
+      options?.maxOutputTokens ??
+      (model?.config as any)?.max_output_tokens ??
+      (model?.config as any)?.maxOutputTokens ??
+      Number(process.env.DEFAULT_CHAT_MAX_OUTPUT_TOKENS || 8192);
+
+    const requestPayload: any = {
+      messages,
+      maxOutputTokens: configuredMaxOutputTokens,
+      reasoning: options?.reasoning,
+    };
+    if (typeof options?.temperature === 'number') {
+      requestPayload.temperature = options.temperature;
+    }
+
+    const result = await client.chatCompletionStream(
+      requestPayload,
+      onChunk,
+      options?.reasoning
+    );
+    result.content = this.stripThinkingTags(result.content);
     await this.invocationTelemetry?.record({
       modelId: model?.id || id,
       provider: model?.provider || 'unknown',

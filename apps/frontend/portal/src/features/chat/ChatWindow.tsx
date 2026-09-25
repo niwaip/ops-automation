@@ -481,8 +481,16 @@ const ChatWindow: React.FC = () => {
     setAbortStreaming(abortStreaming);
   };
 
-  const handleApproveExecution = async (messageId: string, executionId: string) => {
-    const execution = await executionApi.approve(executionId);
+  const handleApproveExecution = async (
+    messageId: string,
+    executionId: string,
+    effectId?: string,
+    approvedPayloadHash?: string
+  ) => {
+    const execution = await executionApi.approve(executionId, {
+      ...(effectId ? { effectId } : {}),
+      ...(approvedPayloadHash ? { approvedPayloadHash } : {}),
+    });
 
     updateMessageMetadataById(
       messageId,
@@ -526,8 +534,14 @@ const ChatWindow: React.FC = () => {
     );
   };
 
-  const handleRejectExecution = async (messageId: string, executionId: string) => {
-    const execution = await executionApi.reject(executionId);
+  const handleRejectExecution = async (
+    messageId: string,
+    executionId: string,
+    effectId?: string
+  ) => {
+    const execution = await executionApi.reject(executionId, {
+      ...(effectId ? { effectId } : {}),
+    });
 
     updateMessageMetadataById(
       messageId,

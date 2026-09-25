@@ -3,6 +3,7 @@ Skills scanning, discovery and template retrieval for DeepSeek Harness.
 """
 
 from pathlib import Path
+from typing import Optional
 from .config import CUSTOM_SKILL_DIR, SKILL_DIR, print_banner
 
 
@@ -36,6 +37,27 @@ def get_available_skills() -> list:
                 except Exception:
                     pass
 
+            # 内置标准技能契约缺省值
+            default_deliv = []
+            default_exec = False
+            default_rounds = 3
+            if item.name == "pdf":
+                default_deliv = [".pdf"]
+                default_exec = True
+                default_rounds = 5
+            elif item.name == "docx":
+                default_deliv = [".docx"]
+                default_exec = True
+                default_rounds = 5
+            elif item.name == "xlsx":
+                default_deliv = [".xlsx"]
+                default_exec = True
+                default_rounds = 5
+            elif item.name in ("guizang-ppt", "ppt"):
+                default_deliv = [".html"]
+                default_exec = True
+                default_rounds = 4
+
             meta = {
                 "id": item.name,
                 "name": item.name,
@@ -43,7 +65,10 @@ def get_available_skills() -> list:
                 "type": skill_type,
                 "path": str(item),
                 "triggers": triggers,
-                "aliases": [item.name.lower()]
+                "aliases": [item.name.lower()],
+                "deliverables": default_deliv,
+                "requires_execution": default_exec,
+                "default_rounds": default_rounds
             }
             if skill_file.exists():
                 try:
@@ -80,6 +105,13 @@ def get_available_skills() -> list:
                                         i += 1
                                         continue
 
+                                    if stripped.startswith("-") and current_block_key == "deliverables":
+                                        deliv_item = stripped.lstrip("-").strip().strip("\"'").lower()
+                                        if deliv_item:
+                                            meta["deliverables"].append(deliv_item)
+                                        i += 1
+                                        continue
+
                                     if (line.startswith("  ") or line.startswith("\t")) and current_block_key in ("description", "zh_description"):
                                         block_lines.append(stripped)
                                         i += 1
@@ -109,6 +141,20 @@ def get_available_skills() -> list:
                                                 meta["triggers"].extend(parts_trig)
                                             else:
                                                 current_block_key = "triggers"
+                                        elif k == "deliverables":
+                                            if v.startswith("[") and v.endswith("]"):
+                                                parts_d = [t.strip().strip("\"'").lower() for t in v[1:-1].split(",") if t.strip()]
+                                                meta["deliverables"] = parts_d
+                                            else:
+                                                meta["deliverables"] = []
+                                                current_block_key = "deliverables"
+                                        elif k == "requires_execution":
+                                            meta["requires_execution"] = v.lower() in ("true", "1", "yes")
+                                        elif k == "default_rounds":
+                                            try:
+                                                meta["default_rounds"] = int(v)
+                                            except ValueError:
+                                                pass
                                     i += 1
                                 flush_block()
 
@@ -151,8 +197,8 @@ def cmd_skills(args):
         print(f" • {s['id']:<16} [{s['name']}]{desc}")
 
 
-def read_skill(skill_name: str) -> str:
-    """Reads skill documentation, style guide, and templates from CUSTOM_SKILL_DIR or SKILL_DIR"""
+def read_skill(skill_name: str, prompt: Optional[str] = None) -> str:
+    """Reads skill documentation, style guide, and templates from CUSTOM_SKILL_DIR or SKILL_DIR with hierarchical progressive loading."""
     clean_name = skill_name.strip().lower()
     target_dir = None
 
@@ -200,9 +246,30 @@ def read_skill(skill_name: str) -> str:
             if len(parts) >= 3:
                 body = parts[2].strip()
 
+        # 分层载入：根据用户 prompt 动态加载 references 下的细分场景模块
+        hierarchical_section = ""
+        refs_dir = target_dir / "references"
+        if refs_dir.exists() and refs_dir.is_dir() and prompt:
+            p_lower = prompt.lower()
+            target_ref = None
+            if clean_name in ["pdf", "pdf report", "导出pdf", "生成pdf"]:
+                if any(k in p_lower for k in ["docx", "word", "合同", "转为pdf", "转成pdf", "转换"]):
+                    target_ref = refs_dir / "docx2pdf.md"
+                elif any(k in p_lower for k in ["表单", "填报", "填写", "fillable", "acroform"]):
+                    target_ref = refs_dir / "forms.md"
+                else:
+                    target_ref = refs_dir / "report_pdf.md"
+
+            if target_ref and target_ref.exists():
+                try:
+                    with open(target_ref, "r", encoding="utf-8") as rf:
+                        hierarchical_section = f"\n\n---\n【分层按需载入场景规范 ({target_ref.name})】:\n" + rf.read().strip()
+                except Exception:
+                    pass
+
         sub_files = []
         for p in target_dir.rglob("*"):
-            if p.is_file() and not p.name.startswith(".") and p != skill_file:
+            if p.is_file() and not p.name.startswith(".") and p != skill_file and "references" not in p.parts:
                 rel = p.relative_to(target_dir)
                 if len(str(rel)) < 80:
                     sub_files.append(str(rel))
@@ -211,6 +278,6 @@ def read_skill(skill_name: str) -> str:
         if sub_files:
             addon = f"\n\n【技能附带资源与可用模版 (位于 {target_dir})】:\n" + "\n".join(f"- {f}" for f in sub_files[:15])
 
-        return body + addon
+        return body + hierarchical_section + addon
     except Exception as e:
         return f"读取技能失败: {e}"

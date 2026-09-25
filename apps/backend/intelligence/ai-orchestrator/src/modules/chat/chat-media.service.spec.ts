@@ -126,4 +126,39 @@ describe('ChatMediaService', () => {
     );
     expect(resolvedEmptyUser).toEqual([]);
   });
+
+  it('strictly blocks department and company workspace files in personal chat mode', async () => {
+    const prisma = {
+      $queryRaw: jest.fn().mockResolvedValue([
+        { id: 'ws-comp-1', type: 'company', owner_user_id: null, department_id: null },
+      ]),
+    };
+    const modelService = {
+      getPreferredDefaultModel: jest.fn(),
+      getModel: jest.fn(),
+      getClient: jest.fn(),
+    };
+    const service = new ChatMediaService(modelService as any, undefined, prisma as any);
+
+    const personalUser = {
+      userId: 'user-test-1',
+      organizationId: 'org-test-1',
+      mode: 'chat' as const,
+    };
+
+    const resolved = await service.resolveUploadedFiles(
+      [
+        {
+          fileId: 'f-1',
+          fileName: 'company-doc.pdf',
+          mimeType: 'application/pdf',
+          size: 100,
+          source: 'workspace',
+          storagePath: 'company/ws-comp-1/company-doc.pdf',
+        },
+      ],
+      personalUser
+    );
+    expect(resolved).toEqual([]);
+  });
 });

@@ -120,6 +120,11 @@
   background: var(--bg-secondary, #f2f3f5);
   color: var(--primary-color, #1677ff);
   border: 1px solid var(--border-color, #e5e6eb);
+  white-space: break-spaces;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .preview-markdown pre {
@@ -129,6 +134,8 @@
   color: var(--text-primary, #d4d4d4);
   border-radius: 8px;
   overflow-x: auto;
+  max-width: 100%;
+  box-sizing: border-box;
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 12.5px;
   line-height: 1.6;

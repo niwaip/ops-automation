@@ -240,7 +240,10 @@ export class UserSandboxStorageService {
     if (!fs.existsSync(localSharedSkills)) {
       fs.mkdirSync(localSharedSkills, { recursive: true });
     }
-    const defaultSkillsDir = path.join(this.localProjectRoot, 'docker', 'user-sandbox', 'skills');
+    const runnerSkillsDir = path.join(this.localProjectRoot, 'apps', 'backend', 'runtimes', 'personal-sandbox-runner', 'skills');
+    const defaultSkillsDir = fs.existsSync(runnerSkillsDir)
+      ? runnerSkillsDir
+      : path.join(this.localProjectRoot, 'docker', 'user-sandbox', 'skills');
     if (fs.existsSync(defaultSkillsDir)) {
       try {
         const defaultSkills = fs.readdirSync(defaultSkillsDir);

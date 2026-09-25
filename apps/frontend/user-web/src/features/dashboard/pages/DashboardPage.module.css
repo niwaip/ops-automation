@@ -1130,28 +1130,41 @@
   border-radius: 12px;
 }
 
+.workbench-summary-result-content .chat-message-markdown :not(pre) > code,
 .workbench-summary-result-content .chat-message-markdown .inline-code {
   background: rgba(148, 163, 184, 0.14);
   padding: 2px 7px;
   border-radius: 8px;
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 12px;
+  white-space: break-spaces;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
+.workbench-summary-result-content .chat-message-markdown pre,
 .workbench-summary-result-content .chat-message-markdown .code-block {
   margin: 10px 0;
   padding: 12px 14px;
   border-radius: 14px;
   overflow-x: auto;
+  max-width: 100%;
+  box-sizing: border-box;
   border: 1px solid rgba(148, 163, 184, 0.14);
   background: rgba(241, 245, 249, 0.92);
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 12px;
 }
 
+.workbench-summary-result-content .chat-message-markdown pre code,
 .workbench-summary-result-content .chat-message-markdown .code-block code {
-  background: none;
-  padding: 0;
+  background: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  white-space: pre;
 }
 
 .workbench-summary-result-content .markdown-table-wrapper {
@@ -1211,6 +1224,7 @@
   border-left-color: rgba(129, 140, 248, 0.42);
 }
 
+[data-theme='dark'] .workbench-summary-result-content .chat-message-markdown pre,
 [data-theme='dark'] .workbench-summary-result-content .chat-message-markdown .code-block {
   background: rgba(15, 23, 42, 0.6);
   border-color: rgba(148, 163, 184, 0.2);

@@ -31,11 +31,11 @@ Docker 体系负责整个仓库的基础设施、后端服务及测试环境的�
 
 | 启动模式 | 典型命令 | 包含服务与职责 | 容器数 |
 | :--- | :--- | :--- | :--- |
-| **`dev`** (默认核心) | `./docker/start-smart.sh dev up -d` | 基础设施 (`postgres`, `redis`) + 核心控制 (`platform`, `session-broker`, `control-plane`, `ai-orchestrator`, `xiaozhi-connector`) + 初始化 (`workspace-deps-init`) | **8 个** |
-| **`dev:browser`** | `./docker/start-smart.sh dev:browser up -d` | 核心栈 + 浏览器自动化 (`browser-worker`, `browser-chrome`, `browser-template`, `browser-semantics`) | 12 个 |
-| **`dev:workflow`** | `./docker/start-smart.sh dev:workflow up -d` | 核心栈 + Temporal 工作流引擎 (`temporal`, `temporal-ui`, `sandbox-worker`, `temporal-worker`) | 12 个 |
-| **`dev:doc`** | `./docker/start-smart.sh dev:doc up -d` | 核心栈 + 文档渲染与报表 (`carbone-engine`, `report`) | 10 个 |
-| **`dev:fe`** | `./docker/start-smart.sh dev:fe up -d` | 核心栈 + 容器化前端 (`portal`, `user-web`) | 10 个 |
+| **`dev`** (默认核心) | `./docker/start-smart.sh dev up -d` | 基础设施 (`postgres`, `redis`) + 核心控制 (`platform`, `session-broker`, `control-plane`, `ai-orchestrator`) + 核心前端 (`portal`, `user-web`) + 初始化 (`workspace-deps-init`) | **9 个** |
+| **`dev:browser`** | `./docker/start-smart.sh dev:browser up -d` | 核心栈 + 浏览器自动化 (`browser-worker`, `browser-chrome`, `browser-template`, `browser-semantics`) | 13 个 |
+| **`dev:workflow`** | `./docker/start-smart.sh dev:workflow up -d` | 核心栈 + Temporal 工作流引擎 (`temporal`, `temporal-ui`, `sandbox-worker`, `temporal-worker`) | 13 个 |
+| **`dev:doc`** | `./docker/start-smart.sh dev:doc up -d` | 核心栈 + 文档渲染与报表 (`carbone-engine`, `report`) | 11 个 |
+| **`dev:xiaozhi`** | `./docker/start-smart.sh dev:xiaozhi up -d` | 核心栈 + 小智语音接入通道 (`xiaozhi-connector`) | 10 个 |
 | **`full`** | `./docker/start-smart.sh full up -d` | 全量开发环境（激活全部 Profiles） | 20 个 |
 | **`infra`** | `./docker/start-smart.sh infra up -d` | 仅数据库与缓存 (`postgres`, `redis`) | 2 个 |
 | **`addin`** | `./docker/start-smart.sh addin up -d` | Office Add-in 专用栈 (`carbone-api`, `office-addin`) | 2 个 |

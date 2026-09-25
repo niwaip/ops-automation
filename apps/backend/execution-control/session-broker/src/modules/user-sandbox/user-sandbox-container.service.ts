@@ -3,6 +3,8 @@ import {
   Logger,
   BadRequestException,
   NotFoundException,
+  Optional,
+  Inject,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import {
@@ -11,7 +13,8 @@ import {
   UserSandboxLaunchOptions,
 } from './user-sandbox.interface';
 import { UserSandboxStorageService } from './user-sandbox-storage.service';
-import Docker from 'dockerode';
+import { IContainerDriver, ContainerHandle, CONTAINER_DRIVER } from './container-driver.interface';
+import { DockerodeContainerDriver } from './dockerode-container.driver';
 
 const DEFAULT_DOCKER_SOCKET = '/var/run/docker.sock';
 const DEFAULT_IMAGE_NAME = 'ops-user-sandbox:local';
@@ -30,16 +33,19 @@ const DEFAULT_INTERNAL_API_SHARED_SECRET = 'ops_internal_shared_secret_change_me
 @Injectable()
 export class UserSandboxContainerService {
   private readonly logger = new Logger(UserSandboxContainerService.name);
-  private readonly docker: any;
+  private readonly docker: IContainerDriver;
   private readonly sandboxNetworkName: string;
   private readonly sandboxImage: string;
   private readonly aiOrchestratorHost: string;
   private readonly aiOrchestratorPort: string;
   private readonly lastActiveMap = new Map<string, number>();
 
-  constructor(private readonly storageService: UserSandboxStorageService) {
+  constructor(
+    private readonly storageService: UserSandboxStorageService,
+    @Optional() @Inject(CONTAINER_DRIVER) containerDriver?: IContainerDriver,
+  ) {
     const socketPath = process.env.DOCKER_SOCKET_PATH || process.env.DOCKER_SOCK || DEFAULT_DOCKER_SOCKET;
-    this.docker = new Docker({ socketPath });
+    this.docker = containerDriver || new DockerodeContainerDriver({ socketPath });
     this.sandboxNetworkName = process.env.SANDBOX_NETWORK_NAME || DEFAULT_SANDBOX_NETWORK;
     this.sandboxImage = process.env.USER_SANDBOX_IMAGE || DEFAULT_IMAGE_NAME;
     this.aiOrchestratorHost = process.env.AI_ORCHESTRATOR_HOST || 'ops-ai-orchestrator';
@@ -47,7 +53,7 @@ export class UserSandboxContainerService {
   }
 
   getDockerClient(): any {
-    return this.docker;
+    return (this.docker as any).getRawDocker ? (this.docker as any).getRawDocker() : this.docker;
   }
 
   getContainerName(userId: string): string {
@@ -73,7 +79,7 @@ export class UserSandboxContainerService {
     }
   }
 
-  async findContainer(containerName: string): Promise<any | null> {
+  async findContainer(containerName: string): Promise<ContainerHandle | null> {
     try {
       const container = this.docker.getContainer(containerName);
       await container.inspect();
@@ -189,7 +195,7 @@ export class UserSandboxContainerService {
 
     if (existing) {
       const inspect = await existing.inspect();
-      const state = inspect.State;
+      const state = inspect.State || {};
 
       if (state.Running) {
         this.logger.log(`Container ${containerName} is already running.`);
@@ -198,7 +204,9 @@ export class UserSandboxContainerService {
 
       if (state.Paused) {
         this.logger.log(`Unpausing container ${containerName}...`);
-        await existing.unpause();
+        if (existing.unpause) {
+          await existing.unpause();
+        }
         const freshInspect = await existing.inspect();
         return this.mapInspectToStatus(userId, containerName, paths, freshInspect);
       }
@@ -267,7 +275,7 @@ export class UserSandboxContainerService {
     }
 
     const inspect = await container.inspect();
-    if (inspect.State.Running) {
+    if (inspect.State?.Running) {
       this.logger.log(`Stopping container ${containerName} for freezing...`);
       await container.stop({ t: 5 });
     }
@@ -381,7 +389,7 @@ export class UserSandboxContainerService {
         if (sb.status !== 'running') continue;
         const quota = this.storageService.getUserQuota(sb.userId);
         const container = await this.findContainer(sb.containerName);
-        if (container) {
+        if (container && container.update) {
           try {
             await container.update({
               CpuQuota: Math.round(quota.cpuLimit * 100000),

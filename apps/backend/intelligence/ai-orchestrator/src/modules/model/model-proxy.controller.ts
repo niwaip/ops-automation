@@ -157,29 +157,48 @@ export class ModelProxyController {
             res.write(`data: ${JSON.stringify(ssePayload)}\n\n`);
           };
 
-          try {
-            await client.chatCompletionStream(
-              {
-                messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
-                temperature: body.temperature,
-                max_tokens: body.max_tokens,
-                tools: body.tools,
-                tool_choice: body.tool_choice,
-              },
-              (chunk: string, meta?: any) => writeChunk(chunk, resolvedModelName, meta)
-            );
-            streamSuccess = true;
-          } catch (primaryErr: any) {
+          const maxStreamRetries = 2;
+          let primaryStreamErr: any;
+          for (let attempt = 0; attempt <= maxStreamRetries; attempt++) {
+            try {
+              await client.chatCompletionStream(
+                {
+                  messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
+                  temperature: body.temperature,
+                  max_tokens: body.max_tokens,
+                  tools: body.tools,
+                  tool_choice: body.tool_choice,
+                },
+                (chunk: string, meta?: any) => writeChunk(chunk, resolvedModelName, meta)
+              );
+              streamSuccess = true;
+              break;
+            } catch (err: any) {
+              primaryStreamErr = err;
+              const errMsg = String(err?.message || err);
+              const isTransient = /socket|network|tls|econnreset|econnaborted|timeout|hang up|disconnected|fetch failed/i.test(errMsg);
+              if (isTransient && attempt < maxStreamRetries) {
+                this.logger.warn(
+                  `Primary model [${resolvedModelName}] stream hit transient error (attempt ${attempt + 1}/${maxStreamRetries + 1}): ${errMsg}. Retrying in ${attempt + 1}s...`
+                );
+                await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+                continue;
+              }
+              break;
+            }
+          }
+
+          if (!streamSuccess) {
             // 当显式指定了具体模型时，严禁静默 fallback 到其他模型，避免模型欺骗
             if (body.model && !isGenericOrPlaceholder) {
               this.logger.error(
-                `Primary model [${body.model}] stream failed (${primaryErr.message}). Explicit model requested; fallback is strictly disabled.`
+                `Primary model [${body.model}] stream failed (${primaryStreamErr?.message}). Explicit model requested; fallback is strictly disabled.`
               );
-              throw primaryErr;
+              throw primaryStreamErr;
             }
 
             this.logger.warn(
-              `Default model stream failed (${primaryErr.message}). Attempting fallback to platform resilient model...`
+              `Default model stream failed (${primaryStreamErr?.message}). Attempting fallback to platform resilient model...`
             );
             const fallbackCandidates = this.getResilientFallbackClients(isVisionRequested, client);
             for (const { id: fbKey, client: fbClient } of fallbackCandidates) {
@@ -196,7 +215,7 @@ export class ModelProxyController {
               }
             }
             if (!streamSuccess) {
-              throw primaryErr;
+              throw primaryStreamErr;
             }
           }
 
@@ -206,27 +225,49 @@ export class ModelProxyController {
         } else {
           let responseContent = '';
           let responseUsage: any = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
-          try {
-            const response = await client.chatCompletion({
-              messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
-              temperature: body.temperature,
-              max_tokens: body.max_tokens,
-              tools: body.tools,
-              tool_choice: body.tool_choice,
-            });
-            responseContent = response.content;
-            responseUsage = response.usage || responseUsage;
-          } catch (primaryErr: any) {
+          let nonStreamSuccess = false;
+          let primaryNonStreamErr: any;
+
+          const maxNonStreamRetries = 2;
+          for (let attempt = 0; attempt <= maxNonStreamRetries; attempt++) {
+            try {
+              const response = await client.chatCompletion({
+                messages: body.messages || [{ role: 'user', content: body.prompt || '' }],
+                temperature: body.temperature,
+                max_tokens: body.max_tokens,
+                tools: body.tools,
+                tool_choice: body.tool_choice,
+              });
+              responseContent = response.content;
+              responseUsage = response.usage || responseUsage;
+              nonStreamSuccess = true;
+              break;
+            } catch (err: any) {
+              primaryNonStreamErr = err;
+              const errMsg = String(err?.message || err);
+              const isTransient = /socket|network|tls|econnreset|econnaborted|timeout|hang up|disconnected|fetch failed/i.test(errMsg);
+              if (isTransient && attempt < maxNonStreamRetries) {
+                this.logger.warn(
+                  `Primary model [${resolvedModelName}] hit transient error (attempt ${attempt + 1}/${maxNonStreamRetries + 1}): ${errMsg}. Retrying in ${attempt + 1}s...`
+                );
+                await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+                continue;
+              }
+              break;
+            }
+          }
+
+          if (!nonStreamSuccess) {
             // 当显式指定了具体模型时，严禁静默 fallback 到其他模型，避免模型欺骗
             if (body.model && !isGenericOrPlaceholder) {
               this.logger.error(
-                `Primary model [${body.model}] failed (${primaryErr.message}). Explicit model requested; fallback is strictly disabled.`
+                `Primary model [${body.model}] failed (${primaryNonStreamErr?.message}). Explicit model requested; fallback is strictly disabled.`
               );
-              throw primaryErr;
+              throw primaryNonStreamErr;
             }
 
             this.logger.warn(
-              `Default model failed (${primaryErr.message}). Attempting fallback to platform resilient model...`
+              `Default model failed (${primaryNonStreamErr?.message}). Attempting fallback to platform resilient model...`
             );
             const fallbackCandidates = this.getResilientFallbackClients(isVisionRequested, client);
             let fallbackSucceeded = false;
@@ -247,7 +288,7 @@ export class ModelProxyController {
               }
             }
             if (!fallbackSucceeded) {
-              throw primaryErr;
+              throw primaryNonStreamErr;
             }
           }
 

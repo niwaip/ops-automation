@@ -4,6 +4,8 @@ import {
   NotFoundException,
   OnModuleDestroy,
   OnModuleInit,
+  Optional,
+  Inject,
 } from '@nestjs/common';
 import * as http from 'http';
 import * as path from 'path';
@@ -15,7 +17,8 @@ import {
   WorkerEndpointsDto,
 } from '../../dto';
 import { getPublicHost, getSessionBrokerUrl } from '../../config/service-endpoints';
-import Docker from 'dockerode';
+import { IContainerDriver, CONTAINER_DRIVER } from './container-driver.interface';
+import { DockerodeContainerDriver } from './dockerode-container.driver';
 
 const DEFAULT_DOCKER_SOCKET_PATH = '/var/run/docker.sock';
 const DEFAULT_BROWSER_PROFILE_ROOT = '/tmp/browser-profiles';
@@ -51,7 +54,12 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly runtimeSessionIndex = new Map<string, string>();
   private readonly dockerSocketPath =
     process.env.DOCKER_SOCKET_PATH || process.env.DOCKER_SOCK || DEFAULT_DOCKER_SOCKET_PATH;
-  private readonly docker = new Docker({ socketPath: this.dockerSocketPath });
+  private readonly docker: IContainerDriver;
+
+  constructor(@Optional() @Inject(CONTAINER_DRIVER) containerDriver?: IContainerDriver) {
+    this.docker =
+      containerDriver || new DockerodeContainerDriver({ socketPath: this.dockerSocketPath });
+  }
   private readonly dockerNetworkName = process.env.NETWORK_NAME || 'ops-network';
   private readonly sessionBrowserImage =
     process.env.SESSION_BROWSER_IMAGE || 'ops-browser-chrome:local';

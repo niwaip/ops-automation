@@ -1,8 +1,9 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DeterministicPlanSchedulerService } from './deterministic-plan-scheduler.service';
 import { GracePolicyService } from './grace-policy.service';
 import { ExecutionStreamService } from '../lifecycle/execution-stream.service';
+import { OutboundEffectLedgerService } from '../outbox/outbound-effect-ledger.service';
 import { roleEnabled } from '../../../config/control-plane-role';
 
 @Injectable()
@@ -13,7 +14,8 @@ export class DeterministicPlanRecoveryService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly scheduler: DeterministicPlanSchedulerService,
     private readonly gracePolicy: GracePolicyService,
-    private readonly eventStream: ExecutionStreamService
+    private readonly eventStream: ExecutionStreamService,
+    @Optional() private readonly ledger?: OutboundEffectLedgerService
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -28,6 +30,19 @@ export class DeterministicPlanRecoveryService implements OnModuleInit {
 
   public async recoverPendingPlans(): Promise<void> {
     this.logger.log('Scanning for uncompleted deterministic execution plans to recover...');
+
+    if (this.ledger) {
+      try {
+        const reaped = await this.ledger.reapStaleCommits();
+        if (reaped > 0) {
+          this.logger.warn(
+            `Reaped ${reaped} stale COMMITTING outbound effect record(s) to UNKNOWN for human reconciliation`
+          );
+        }
+      } catch (err) {
+        this.logger.error('Failed to reap stale COMMITTING outbound effects:', err);
+      }
+    }
 
     const now = new Date();
     const resetCount = await this.prisma.executionStep.updateMany({

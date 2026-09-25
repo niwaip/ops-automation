@@ -289,4 +289,255 @@ describe('DeterministicPlanSchedulerService', () => {
       'deterministic_execution_succeeded'
     );
   });
+
+  it('handles UNKNOWN outbound effect: sets execution to human_control and tags takeoverTriggered', async () => {
+    const prisma = {
+      executionStep: {
+        update: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      execution: { update: jest.fn().mockResolvedValue({}) },
+    };
+    const orchestrator = {
+      executeStep: jest.fn().mockResolvedValue({
+        success: false,
+        status: 'unknown',
+        errorCode: 'OUTBOUND_EFFECT_UNKNOWN',
+        errorMessage: 'Connection timed out',
+      }),
+    };
+    const events = { createEvent: jest.fn().mockResolvedValue(undefined) };
+    const service = new DeterministicPlanSchedulerService(
+      prisma as any,
+      { resolveInputs: jest.fn().mockResolvedValue({}) } as any,
+      { assertSatisfied: jest.fn() } as any,
+      {} as any,
+      orchestrator as any,
+      events as any,
+      {} as any,
+      {} as any,
+      { normalize: (output: any) => output } as any,
+      {} as any
+    ) as any;
+
+    const plan = {
+      planJson: {
+        nodes: [{ nodeId: 'email_node', capabilityId: 'platform.email.send' }],
+      },
+    };
+    const execution = {
+      id: 'exec-unknown-1',
+      status: 'running',
+      executionMode: 'deterministic_plan',
+      plan,
+    };
+    const step = {
+      id: 'step-unknown-1',
+      planNodeId: 'email_node',
+      capabilityId: 'platform.email.send',
+      nodeKind: 'skill',
+    };
+
+    await service.executeStep(execution, step, false);
+
+    expect(prisma.executionStep.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'step-unknown-1' },
+        data: expect.objectContaining({
+          status: 'failed',
+          errorCode: 'OUTBOUND_EFFECT_UNKNOWN',
+          takeoverTriggered: true,
+        }),
+      })
+    );
+
+    expect(prisma.execution.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'exec-unknown-1' },
+        data: expect.objectContaining({
+          status: 'human_control',
+          takeoverRequired: true,
+        }),
+      })
+    );
+
+    expect(events.createEvent).toHaveBeenCalledWith(
+      'exec-unknown-1',
+      'step.failed',
+      expect.objectContaining({
+        isUnknown: true,
+        takeoverRequired: true,
+      }),
+      expect.anything()
+    );
+  });
+
+  it('suspends execution to pending_approval when step returns status prepared', async () => {
+    const prisma = {
+      executionStep: {
+        update: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      execution: { update: jest.fn().mockResolvedValue({}) },
+    };
+    const orchestrator = {
+      executeStep: jest.fn().mockResolvedValue({
+        success: true,
+        status: 'prepared',
+        payloadHash: 'sha256:prep-hash',
+        output: {
+          phase: 'prepare',
+          ledgerId: 'led-1',
+          payloadHash: 'sha256:prep-hash',
+        },
+      }),
+    };
+    const events = { createEvent: jest.fn().mockResolvedValue(undefined) };
+    const legacyOutputAdapter = {
+      validateV1Contract: jest.fn().mockImplementation((_step, out) => out),
+    };
+    const outputNormalizer = {
+      normalize: (output: any) => output,
+    };
+    const service = new DeterministicPlanSchedulerService(
+      prisma as any,
+      { resolveInputs: jest.fn().mockResolvedValue({}) } as any,
+      { assertSatisfied: jest.fn() } as any,
+      {} as any,
+      orchestrator as any,
+      events as any,
+      legacyOutputAdapter as any,
+      {} as any,
+      outputNormalizer as any,
+      {} as any
+    ) as any;
+
+    const plan = {
+      planJson: {
+        nodes: [{ nodeId: 'email_node', capabilityId: 'platform.email.send' }],
+      },
+    };
+    const execution = {
+      id: 'exec-prep-1',
+      status: 'running',
+      executionMode: 'deterministic_plan',
+      plan,
+    };
+    const step = {
+      id: 'step-prep-1',
+      planNodeId: 'email_node',
+      capabilityId: 'platform.email.send',
+      nodeKind: 'skill',
+    };
+
+    await service.executeStep(execution, step, false);
+
+    expect(prisma.executionStep.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'step-prep-1' },
+        data: expect.objectContaining({
+          status: 'pending',
+          leaseExpiresAt: null,
+          outputJson: expect.objectContaining({
+            ledgerId: 'led-1',
+            payloadHash: 'sha256:prep-hash',
+          }),
+        }),
+      })
+    );
+
+    expect(prisma.execution.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'exec-prep-1' },
+        data: expect.objectContaining({
+          status: 'pending_approval',
+          approvalStatus: 'pending',
+        }),
+      })
+    );
+  });
+
+  it('rejects caller attempting to self-authorize commit phase in runtime input without approval', () => {
+    const { resolveOutboundEffectMetadata } = require('../src/modules/execution/plan-runtime/deterministic-plan-scheduler.helpers');
+    expect(() =>
+      resolveOutboundEffectMetadata(
+        { metadata: {} },
+        {},
+        { phase: 'commit', payloadHash: 'sha256:abc' },
+        { approvalStatus: 'PENDING' },
+        'step-1',
+        'idem-1',
+        '1.0.0'
+      )
+    ).toThrow('UNAUTHORIZED_EFFECT_COMMIT');
+  });
+
+  it('automatically derives PREPARE phase for external_write and email capabilities when unapproved', () => {
+    const { resolveOutboundEffectMetadata } = require('../src/modules/execution/plan-runtime/deterministic-plan-scheduler.helpers');
+    const meta = resolveOutboundEffectMetadata(
+      { capabilityId: 'platform.email.send' },
+      {},
+      {},
+      { approvalStatus: 'PENDING' },
+      'step-email',
+      'idem-email',
+      '1.0.0'
+    );
+    expect(meta.phase).toBe('prepare');
+    expect(meta.outboundEffect?.phase).toBe('prepare');
+  });
+
+  it('promotes previously prepared and approved step to COMMIT phase', () => {
+    const { resolveOutboundEffectMetadata } = require('../src/modules/execution/plan-runtime/deterministic-plan-scheduler.helpers');
+    const meta = resolveOutboundEffectMetadata(
+      { capabilityId: 'platform.email.send' },
+      {},
+      {},
+      { approvalStatus: 'APPROVED' },
+      'step-email',
+      'idem-email',
+      '1.0.0',
+      '1.0.0',
+      { outputJson: { phase: 'prepare', payloadHash: 'sha256:prep123', effectId: 'eff-1' } }
+    );
+    expect(meta.phase).toBe('commit');
+    expect(meta.approvedPayloadHash).toBe('sha256:prep123');
+    expect(meta.effectId).toBe('eff-1');
+  });
+
+  it('automatically derives PREPARE phase for external_write when plan was pre-approved but step has no prior prepare', () => {
+    const { resolveOutboundEffectMetadata } = require('../src/modules/execution/plan-runtime/deterministic-plan-scheduler.helpers');
+    const meta = resolveOutboundEffectMetadata(
+      { capabilityId: 'platform.email.send' },
+      {},
+      {},
+      { approvalStatus: 'APPROVED' },
+      'step-email',
+      'idem-email',
+      '1.0.0',
+      '1.0.0',
+      undefined // No previousStepOutput!
+    );
+    expect(meta.phase).toBe('prepare');
+    expect(meta.outboundEffect?.phase).toBe('prepare');
+  });
+
+  it('rejects caller attempting commit phase without previousStepOutput even when execution is approved', () => {
+    const { resolveOutboundEffectMetadata } = require('../src/modules/execution/plan-runtime/deterministic-plan-scheduler.helpers');
+    expect(() =>
+      resolveOutboundEffectMetadata(
+        { capabilityId: 'platform.email.send' },
+        {},
+        { phase: 'commit', payloadHash: 'sha256:abc' },
+        { approvalStatus: 'APPROVED' },
+        'step-email',
+        'idem-email',
+        '1.0.0',
+        '1.0.0',
+        undefined
+      )
+    ).toThrow('UNAUTHORIZED_EFFECT_COMMIT');
+  });
 });

@@ -46,8 +46,16 @@ def assert_not_timed_out(deadline: Optional[float], operation_name: str = "opera
         raise TimeoutError(f"Task total execution deadline exceeded during {operation_name}")
 
 
+WMO_WEATHER_CODES = {
+    0: "晴", 1: "晴间多云", 2: "多云", 3: "阴", 45: "有雾", 48: "雾凇",
+    51: "轻微毛毛雨", 53: "毛毛雨", 55: "密集毛毛雨",
+    61: "小雨", 63: "中雨", 65: "大雨", 71: "小雪", 73: "中雪", 75: "大雪",
+    80: "阵雨", 81: "强阵雨", 82: "暴雨", 95: "雷阵雨"
+}
+
+
 def fetch_weather(query_or_city: str, deadline: Optional[float] = None) -> str:
-    """Fetches high-accuracy real-time weather and 3-day forecast via structured weather API"""
+    """Fetches high-accuracy real-time weather and 7-day forecast via structured weather API"""
     target = "Shanghai"
     found_city = "上海"
     for k, v in CITY_PINYIN.items():
@@ -57,42 +65,87 @@ def fetch_weather(query_or_city: str, deadline: Optional[float] = None) -> str:
             break
 
     to = check_deadline(deadline, default_timeout=8.0)
+    lines = [f"【{found_city} 实时权威气象与多日预报 ({target})】:"]
+
+    wttr_weather = []
+    lat, lon = None, None
+
+    # 1. 尝试从 wttr.in 获取当前实时气况与自适应地理经纬度
     try:
         url = f"https://wttr.in/{target}?format=j1"
         req = urllib.request.Request(url, headers={"User-Agent": "curl/8.0"})
-        with urllib.request.urlopen(req, timeout=to) as resp:
+        with urllib.request.urlopen(req, timeout=min(to, 4.0)) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             assert_not_timed_out(deadline, "weather query")
-            weather = data.get("weather", [])
             current = data.get("current_condition", [{}])[0]
             curr_desc = current.get("weatherDesc", [{}])[0].get("value", "多云")
-            lines = [f"【{found_city} 实时权威气象与多日预报 ({target})】:"]
             lines.append(
                 f"- 当前实时气温: {current.get('temp_C')}°C (体感 {current.get('FeelsLikeC')}°C), "
                 f"湿度 {current.get('humidity')}%, 风速 {current.get('windspeedKmph')}km/h, 状况: {curr_desc}"
             )
-            for i, w in enumerate(weather[:3]):
-                label = "今天" if i == 0 else ("明天" if i == 1 else "后天")
-                hourly = w.get("hourly", [])
-                noon_desc = hourly[4].get("weatherDesc", [{}])[0].get("value", "多云") if len(hourly) > 4 else "晴间多云"
-                rain_chance = max([int(h.get("chanceofrain", "0")) for h in hourly]) if hourly else 0
-                lines.append(
-                    f"- {label} ({w.get('date')}): 最低 {w.get('mintempC')}°C ~ 最高 {w.get('maxtempC')}°C, "
-                    f"天气状况: {noon_desc}, 降水概率: {rain_chance}%"
-                )
-            return "\n".join(lines)
-    except TimeoutError:
-        raise
-    except Exception as e:
-        assert_not_timed_out(deadline, "weather query")
-        return f"查询 {found_city} 气象数据反馈: {e}"
+            wttr_weather = data.get("weather", [])
+            nearest = data.get("nearest_area", [{}])[0]
+            if nearest.get("latitude") and nearest.get("longitude"):
+                lat, lon = float(nearest["latitude"]), float(nearest["longitude"])
+    except Exception:
+        pass
+
+    # 2. 依据动态经纬度调用 open-meteo 获取权威完整 7 天（一周）预报
+    has_7day = False
+    if lat is not None and lon is not None:
+        try:
+            om_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto"
+            om_req = urllib.request.Request(om_url, headers={"User-Agent": "curl/8.0"})
+            with urllib.request.urlopen(om_req, timeout=min(to, 5.0)) as om_resp:
+                om_data = json.loads(om_resp.read().decode("utf-8"))
+                daily = om_data.get("daily", {})
+                dates = daily.get("time", [])
+                max_t = daily.get("temperature_2m_max", [])
+                min_t = daily.get("temperature_2m_min", [])
+                rain = daily.get("precipitation_probability_max", [])
+                codes = daily.get("weathercode", [])
+                if dates and len(dates) >= 7:
+                    lines.append(f"【未来 7 天 (一周) 趋势预报】:")
+                    day_labels = ["今天", "明天", "后天", "周四/第4天", "周五/第5天", "周六/第6天", "周日/第7天"]
+                    for idx in range(min(7, len(dates))):
+                        lbl = day_labels[idx] if idx < len(day_labels) else f"第{idx+1}天"
+                        cond = WMO_WEATHER_CODES.get(codes[idx], "多云") if idx < len(codes) else "多云"
+                        rain_pct = rain[idx] if idx < len(rain) and rain[idx] is not None else 0
+                        lines.append(
+                            f"- {lbl} ({dates[idx]}): 最低 {min_t[idx]}°C ~ 最高 {max_t[idx]}°C, "
+                            f"天气状况: {cond}, 降水概率: {rain_pct}%"
+                        )
+                    has_7day = True
+        except Exception:
+            has_7day = False
+
+    # 3. 若 7 天预报不可用，回退至 wttr.in 3 天预报
+    if not has_7day and wttr_weather:
+        for i, w in enumerate(wttr_weather[:3]):
+            label = "今天" if i == 0 else ("明天" if i == 1 else "后天")
+            hourly = w.get("hourly", [])
+            noon_desc = hourly[4].get("weatherDesc", [{}])[0].get("value", "多云") if len(hourly) > 4 else "晴间多云"
+            rain_chance = max([int(h.get("chanceofrain", "0")) for h in hourly]) if hourly else 0
+            lines.append(
+                f"- {label} ({w.get('date')}): 最低 {w.get('mintempC')}°C ~ 最高 {w.get('maxtempC')}°C, "
+                f"天气状况: {noon_desc}, 降水概率: {rain_chance}%"
+            )
+
+    if len(lines) <= 1:
+        return f"查询 {found_city} 气象数据暂无响应，请尝试调用 web_search 检索实时天气预报。"
+    return "\n".join(lines)
 
 
-def fetch_page(url: str, max_chars: int = 8000, deadline: Optional[float] = None) -> str:
+def fetch_page(url: str, max_chars: int = 20000, deadline: Optional[float] = None) -> str:
     """Universal webpage reader: extracts clean structured text, articles and links from any live URL"""
     target_url = url.strip()
     if not target_url.startswith(("http://", "https://")):
         target_url = f"https://{target_url}"
+
+    # 支持环境变量动态放宽
+    env_limit = os.environ.get("DSH_FETCH_PAGE_MAX_CHARS")
+    if env_limit and env_limit.isdigit():
+        max_chars = int(env_limit)
 
     # 1. 优先采用直接 HTTP 请求与语义化结构提取（快速、可靠、无第三方限流）
     to1 = check_deadline(deadline, default_timeout=10.0)
@@ -143,7 +196,13 @@ def fetch_page(url: str, max_chars: int = 8000, deadline: Optional[float] = None
         lines = [line.strip() for line in clean.splitlines() if line.strip()]
         result = "\n".join(lines)
         if len(result) > 50:
-            return f"【网页内容解析 ({target_url})】:\n" + result[:max_chars]
+            if len(result) > max_chars:
+                hint = (
+                    f"\n\n[⚠️ 网页长文本截断提醒]: 网页解析总长 {len(result)} 字符，已展示前 {max_chars} 字符。"
+                    f"\n💡 [通用建议]: 如需获取网页特定段落或深入信息，请结合页面核心关键词重新调用 web_search 精准检索相关主题]"
+                )
+                return f"【网页内容解析 ({target_url})】:\n" + result[:max_chars] + hint
+            return f"【网页内容解析 ({target_url})】:\n" + result
     except TimeoutError:
         raise
     except Exception:
@@ -161,7 +220,14 @@ def fetch_page(url: str, max_chars: int = 8000, deadline: Optional[float] = None
         # 过滤超长连续单行导航链接群
         cleaned_md = re.sub(r'(?:\[[^\]\n]{1,30}\]\([^\)]+\)\s*){5,}', '\n', text)
         if cleaned_md and len(cleaned_md.strip()) > 50:
-            return cleaned_md[:max_chars].strip()
+            content = cleaned_md.strip()
+            if len(content) > max_chars:
+                hint = (
+                    f"\n\n[⚠️ 网页长文本截断提醒]: 网页 Markdown 总长 {len(content)} 字符，已展示前 {max_chars} 字符。"
+                    f"\n💡 [通用建议]: 如需查看特定章节，请结合具体关键词检索]"
+                )
+                return content[:max_chars] + hint
+            return content
     except TimeoutError:
         raise
     except Exception as e:

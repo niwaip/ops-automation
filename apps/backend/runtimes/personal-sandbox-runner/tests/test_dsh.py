@@ -12,6 +12,7 @@ src_dir = Path(__file__).resolve().parent.parent / "src"
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
+import os
 import json
 import time
 import tempfile
@@ -25,11 +26,16 @@ from dsh_modules.llm import parse_tool_calls, clean_output, extract_bare_json_to
 from dsh_modules.runtime_policy import RuntimePolicy
 from dsh_modules.context_budget import ContextBudget
 from dsh_modules.prompt_builder import build_system_prompt, build_user_turn, build_skills_catalog
-from dsh_modules.skill_router import SkillRouter, SemanticSkillMatcher
+from dsh_modules.skill_router import SkillRouter, SemanticSkillMatcher, resolve_file_action_intent
 from dsh_modules.eval_skill import run_skill_eval
 from dsh_modules.artifact_exporter import ArtifactExporter
 from dsh_modules.telemetry import TelemetryStats
-from dsh_modules.agent_loop import run_agent_loop, sanitize_preview
+from dsh_modules.skills import read_skill
+from dsh_modules.agent_loop import (
+    run_agent_loop, sanitize_preview, is_explicit_code_request,
+    detect_unexecuted_script_leak, detect_missing_requested_deliverable,
+    detect_missing_claimed_artifacts
+)
 
 
 class TestDshCoreModules(unittest.TestCase):
@@ -172,13 +178,15 @@ class TestDshCoreModules(unittest.TestCase):
         import os
         policy = RuntimePolicy()
         self.assertEqual(policy.max_rounds, 3)
-        self.assertEqual(policy.max_history_chars, 4000)
-        self.assertEqual(policy.max_tool_result_chars, 3000)
+        self.assertEqual(policy.max_history_chars, 16000)
+        self.assertEqual(policy.max_tool_result_chars, 10000)
 
         # 动态轮数测试
         self.assertEqual(policy.determine_max_rounds("今天天气如何"), 2)
         self.assertEqual(policy.determine_max_rounds("普通任务"), 3)
         self.assertEqual(policy.determine_max_rounds("复杂原型设计", is_design_or_ppt=True), 4)
+        self.assertEqual(policy.determine_max_rounds("查询上海一周的天气，并且生成一页的pdf", is_office=True), 5)
+        self.assertEqual(policy.determine_max_rounds("查询上海一周的天气，并且生成一页的pdf"), 5)
 
         # 环境变量重载测试
         os.environ["DSH_MAX_ROUNDS"] = "5"
@@ -190,6 +198,54 @@ class TestDshCoreModules(unittest.TestCase):
         finally:
             del os.environ["DSH_MAX_ROUNDS"]
             del os.environ["DSH_MAX_HISTORY_CHARS"]
+
+    def test_skill_contract_driven_architecture(self):
+        """验证技能契约驱动体系：路由契约元数据提取、动态预算规划、物理交付物断言闭环"""
+        # 1. 验证 PDF 技能契约透传
+        pdf_res = SkillRouter.route("生成一页的pdf")
+        self.assertEqual(pdf_res.skill_id, "pdf")
+        self.assertIn(".pdf", pdf_res.deliverables)
+        self.assertTrue(pdf_res.requires_execution)
+        self.assertEqual(pdf_res.default_rounds, 5)
+
+        # 2. 验证 Word 技能契约透传
+        docx_res = SkillRouter.route("生成word合同文档")
+        self.assertEqual(docx_res.skill_id, "docx")
+        self.assertIn(".docx", docx_res.deliverables)
+        self.assertTrue(docx_res.requires_execution)
+        self.assertEqual(docx_res.default_rounds, 5)
+
+        # 3. 验证 Excel 技能契约透传
+        xlsx_res = SkillRouter.route("做个销售报表导出excel")
+        self.assertEqual(xlsx_res.skill_id, "xlsx")
+        self.assertIn(".xlsx", xlsx_res.deliverables)
+        self.assertTrue(xlsx_res.requires_execution)
+        self.assertEqual(xlsx_res.default_rounds, 5)
+
+        # 4. 验证契约驱动的执行轮数规划 (RuntimePolicy)
+        policy = RuntimePolicy()
+        self.assertEqual(policy.determine_max_rounds("任意无关提示词", skill_res=pdf_res), 5)
+        self.assertEqual(policy.determine_max_rounds("任意无关提示词", skill_res=docx_res), 5)
+        self.assertEqual(policy.determine_max_rounds("任意无关提示词", skill_res=xlsx_res), 5)
+
+        # 5. 验证契约驱动的物理交付物断言
+        with tempfile.TemporaryDirectory() as tmp_ws:
+            with patch("dsh_modules.agent_loop.WORKSPACE_DIR", tmp_ws):
+                now = time.time()
+                # 尚未生成任何物理文件 -> 必须断言缺失 .pdf
+                missing = detect_missing_requested_deliverable("请输出报告", now, expected_deliverables=[".pdf"])
+                self.assertEqual(missing, ".pdf")
+
+                # 生成空文件 -> 仍旧断言缺失
+                pdf_file = Path(tmp_ws) / "report.pdf"
+                pdf_file.touch()
+                missing = detect_missing_requested_deliverable("请输出报告", now, expected_deliverables=[".pdf"])
+                self.assertEqual(missing, ".pdf")
+
+                # 写入有效内容 -> 断言通过
+                pdf_file.write_bytes(b"%PDF-1.4 test")
+                missing = detect_missing_requested_deliverable("请输出报告", now, expected_deliverables=[".pdf"])
+                self.assertIsNone(missing)
 
     def test_context_budget_sliding_window(self):
         """AC-3: 验证 ContextBudget 历史滑动窗口裁剪与截断安全保护"""
@@ -384,6 +440,38 @@ class TestDshCoreModules(unittest.TestCase):
             self.assertIn("/workspace/gomoku.html", final_text3)
             self.assertIn("```html\n<!DOCTYPE html>", final_text3)
             self.assertTrue(any(e.endswith("gomoku.html") for e in exported3))
+
+            # 验证情况 C：模型因上游闪断或 Token 限制输出被截断且未闭合代码块（复现真实 0.8KB 白屏场景）
+            truncated_output = (
+                "为您生成微博实时热点报告：\n"
+                "```html\n"
+                "<!DOCTYPE html>\n"
+                "<html lang=\"zh-CN\">\n"
+                "<head>\n"
+                "    <meta charset=\"UTF-8\">\n"
+                "    <title>微博实时热点与舆情趋势洞察报告</title>\n"
+                "    <style>\n"
+                "        :root {\n"
+                "            --bg-canvas: #f6f5f1;\n"
+                "            --bg-paper: #fcf"
+            )
+            from dsh_modules.agent_loop import is_unclosed_or_truncated_html
+            self.assertTrue(is_unclosed_or_truncated_html(truncated_output))
+
+            final_text4, exported4 = ArtifactExporter.export_html(truncated_output, is_ppt_intent=False, workspace_dir=tmpdir)
+            self.assertEqual(len(exported4), 1)
+            self.assertTrue(exported4[0].endswith("index.html"))
+            self.assertIn("⚠️ **页面生成中断（已启动安全保护）**", final_text4)
+            self.assertIn("```html\n", final_text4)
+            self.assertTrue(final_text4.strip().endswith("```"))
+
+            # 校验导出的 HTML 文件已自愈闭合，不会呈现空白页面
+            with open(exported4[0], "r", encoding="utf-8") as f:
+                repaired_content = f.read()
+                self.assertIn("</style>", repaired_content)
+                self.assertIn("<body", repaired_content)
+                self.assertIn("页面内容未完全生成", repaired_content)
+                self.assertIn("</html>", repaired_content)
 
     def test_artifact_exporter_cross_turn_isolation(self):
         """验证跨轮次/跨会话历史 HTML 不会泄漏到后续无关对话中"""
@@ -1071,6 +1159,224 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertIn("【注意与主题隔离要求】", user_turn)
         self.assertIn("绝不是本次生成任务的内容主题", user_turn)
         self.assertIn("若当前会话讨论的是天气、指标、业务总结等具体场景", user_turn)
+
+    def test_hierarchical_pdf_skill_and_code_guard(self):
+        """验证 PDF 技能分层按需载入、max_skill_chars 预算提升及未执行代码拦截规则"""
+        # 1. 验证 RuntimePolicy 与 ContextBudget 预算提升至 12000
+        policy = RuntimePolicy()
+        self.assertEqual(policy.max_skill_chars, 12000)
+        clipped = ContextBudget.clip_skill("A" * 4000)
+        self.assertNotIn("内容已截断", clipped)
+
+        # 2. 验证分层载入：报告场景 vs Word转PDF vs 表单
+        pdf_report = read_skill("pdf", prompt="生成一页的pdf")
+        self.assertIn("CleanReportPDF", pdf_report)
+        self.assertIn("add_page()", pdf_report)
+        self.assertIn("report.pdf", pdf_report)
+
+        pdf_docx = read_skill("pdf", prompt="把合同转成pdf")
+        self.assertIn("docx2pdf.md", pdf_docx)
+        self.assertIn("DOCX_PATH", pdf_docx)
+
+        pdf_form = read_skill("pdf", prompt="填写这个pdf表单")
+        self.assertIn("fill_fillable_fields.py", pdf_form)
+
+        # 3. 验证显式代码咨询识别
+        self.assertFalse(is_explicit_code_request("生成一页的pdf"))
+        self.assertFalse(is_explicit_code_request("导出为excel报表"))
+        self.assertTrue(is_explicit_code_request("给我看下生成pdf的python代码"))
+        self.assertTrue(is_explicit_code_request("查看代码实现"))
+
+        # 4. 验证未执行代码脚本泄露检测
+        leak_code = "```python\nimport os\nfrom fpdf import FPDF\npdf = FPDF()\npdf.output('/workspace/test.pdf')\n```"
+        self.assertTrue(detect_unexecuted_script_leak(leak_code))
+
+        # 5. 验证 parse_tool_calls 将未调工具的 Python 生成脚本自动转换为 bash 容错执行
+        tools = parse_tool_calls(leak_code, is_guide=False)
+        self.assertEqual(len(tools), 1)
+        self.assertEqual(tools[0]["name"], "bash")
+        self.assertIn("python3 - << 'EOF'", tools[0]["params"]["cmd"])
+
+        # 6. 验证 PPTX 提取脚本容错执行与防泄露
+        pptx_leak_code = '```python\nfrom pptx import Presentation\nprs = Presentation("AIGC.pptx")\nprint(prs)\n```'
+        self.assertTrue(detect_unexecuted_script_leak(pptx_leak_code))
+        pptx_tools = parse_tool_calls(pptx_leak_code, is_guide=False)
+        self.assertEqual(len(pptx_tools), 1)
+        self.assertEqual(pptx_tools[0]["name"], "bash")
+        self.assertIn("AIGC.pptx", pptx_tools[0]["params"]["cmd"])
+
+        # 7. 验证 PPTX 原生文本提取
+        from dsh_modules.office_tools import extract_pptx_text
+        import zipfile
+        with tempfile.NamedTemporaryFile(suffix='.pptx', delete=False) as tf:
+            pptx_path = tf.name
+            slide_xml = "<?xml version='1.0' encoding='UTF-8' standalone='yes'?><p:sld xmlns:a='http://schemas.openxmlformats.org/drawingml/2006/main' xmlns:p='http://schemas.openxmlformats.org/presentationml/2006/main'><p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>AIGC 深度报告测试</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>"
+            with zipfile.ZipFile(pptx_path, 'w') as z:
+                z.writestr('ppt/slides/slide1.xml', slide_xml)
+        try:
+            pptx_res = extract_pptx_text(Path(pptx_path))
+            self.assertIn("AIGC 深度报告测试", pptx_res)
+        finally:
+            if os.path.exists(pptx_path):
+                os.unlink(pptx_path)
+
+    def test_semantic_intent_file_inspect_vs_generate(self):
+        """验证文件动作语义意图分类，解耦查阅与生成，杜绝查看文件时误触发物理产物拦截"""
+        # 1. 语义动作意图分类测试
+        # 纯查看/查阅/分析意图 -> is_generate=False, is_inspect=True
+        is_gen, is_insp = resolve_file_action_intent("查看文件内容")
+        self.assertFalse(is_gen)
+        self.assertTrue(is_insp)
+
+        is_gen, is_insp = resolve_file_action_intent("查看 sample.pdf 的内容")
+        self.assertFalse(is_gen)
+        self.assertTrue(is_insp)
+
+        is_gen, is_insp = resolve_file_action_intent("查阅 /workspace/data.xlsx 中的销售数据")
+        self.assertFalse(is_gen)
+        self.assertTrue(is_insp)
+
+        is_gen, is_insp = resolve_file_action_intent("看一下已上传的报告")
+        self.assertFalse(is_gen)
+        self.assertTrue(is_insp)
+
+        is_gen, is_insp = resolve_file_action_intent("这个pdf里讲了什么")
+        self.assertFalse(is_gen)
+        self.assertTrue(is_insp)
+
+        # 语法消歧：查看刚才生成的文件 -> 仍是查看
+        is_gen, is_insp = resolve_file_action_intent("查看刚才生成的 test.pdf")
+        self.assertFalse(is_gen)
+        self.assertTrue(is_insp)
+
+        is_gen, is_insp = resolve_file_action_intent("检查已生成的代码")
+        self.assertFalse(is_gen)
+        self.assertTrue(is_insp)
+
+        # 纯生成意图 -> is_generate=True, is_inspect=False
+        is_gen, is_insp = resolve_file_action_intent("生成一份pdf")
+        self.assertTrue(is_gen)
+        self.assertFalse(is_insp)
+
+        is_gen, is_insp = resolve_file_action_intent("做个销售报表导出excel")
+        self.assertTrue(is_gen)
+        self.assertFalse(is_insp)
+
+        is_gen, is_insp = resolve_file_action_intent("/pdf 制作总结")
+        self.assertTrue(is_gen)
+        self.assertFalse(is_insp)
+
+        # 分析并生成 -> 两者皆有
+        is_gen, is_insp = resolve_file_action_intent("分析数据并生成一份报告pdf")
+        self.assertTrue(is_gen)
+        self.assertTrue(is_insp)
+
+        # 2. SkillRouter 路由解耦测试
+        # 查看 sample.pdf：可以命中 pdf 技能提供解析上下文，但 deliverables 必须为空，requires_execution=False
+        res_insp = SkillRouter.route("查看 sample.pdf 的内容")
+        self.assertTrue(res_insp.is_inspect_intent)
+        self.assertFalse(res_insp.is_generate_intent)
+        self.assertEqual(res_insp.deliverables, [])
+        self.assertFalse(res_insp.requires_execution)
+        # 查看文档的内容，然后生成一份总结（目标为文本总结，绝非 Word 物理文件落盘）
+        res_doc_summary = SkillRouter.route("查看文档的内容，然后生成一份总结")
+        self.assertTrue(res_doc_summary.is_inspect_intent)
+        self.assertFalse(res_doc_summary.is_generate_intent)
+        self.assertEqual(res_doc_summary.deliverables, [])
+        self.assertFalse(res_doc_summary.requires_execution)
+
+        # 查看文档的内容，然后生成一份word格式的总结报告（明确指出 Word/物理文件载体）
+        res_doc_word = SkillRouter.route("查看文档的内容，然后生成一份word格式的总结报告")
+        self.assertTrue(res_doc_word.is_inspect_intent)
+        self.assertTrue(res_doc_word.is_generate_intent)
+        self.assertIn(".docx", res_doc_word.deliverables)
+        self.assertTrue(res_doc_word.requires_execution)
+
+        # 验证附件指代消歧：带 AIGC.pptx 附件且用代词“查看这个文档，并且进行总结”，应精准路由至 pptx 技能
+        res_attached_pptx = SkillRouter.route(
+            "【当前轮次用户上传附件】: AIGC.pptx（这是用户本轮刚上传的新文件，为本次指令的主要处理对象）\n用户指令：查看这个文档，并且进行总结"
+        )
+        self.assertEqual(res_attached_pptx.skill_id, "pptx")
+        self.assertTrue(res_attached_pptx.is_ppt_intent)
+        self.assertTrue(res_attached_pptx.is_inspect_intent)
+        self.assertFalse(res_attached_pptx.is_generate_intent)
+        self.assertEqual(res_attached_pptx.deliverables, [])
+
+        # 生成 sample.pdf：必须绑定 deliverables=[".pdf"]，requires_execution=True
+        res_gen = SkillRouter.route("生成一份pdf报告")
+        self.assertTrue(res_gen.is_generate_intent)
+        self.assertIn(".pdf", res_gen.deliverables)
+        self.assertTrue(res_gen.requires_execution)
+        self.assertEqual(res_gen.default_rounds, 5)
+
+        # 内容生成html报告：必须准确识别为物理生成意图 (is_generate_intent=True)
+        res_html = SkillRouter.route("内容生成html报告")
+        self.assertTrue(res_html.is_generate_intent)
+
+        # 3. 产物与交付物物理断言测试
+        # 查看场景下，即使模型文本包含了 "保存到 sample.pdf" 等词汇，绝不能拦截声称产物
+        claim_text = "我已查看完毕，内容已保存在 sample.pdf 中，主要指标包含：..."
+        missing_claims_insp = detect_missing_claimed_artifacts(
+            claim_text,
+            is_generate_intent=False,
+            is_inspect_intent=True
+        )
+        self.assertEqual(missing_claims_insp, [])
+
+        # 生成场景下，如果模型声称已保存但文件不存在，必须触发拦截
+        missing_claims_gen = detect_missing_claimed_artifacts(
+            claim_text,
+            is_generate_intent=True,
+            is_inspect_intent=False
+        )
+        self.assertIn("sample.pdf", missing_claims_gen)
+
+        # 查看场景下，交付物物理断言检测必须返回 None
+        missing_deliv_insp = detect_missing_requested_deliverable(
+            user_prompt="查看 sample.pdf 的内容",
+            turn_start_time=time.time(),
+            expected_deliverables=res_insp.deliverables,
+            is_generate_intent=False,
+            is_inspect_intent=True
+        )
+        self.assertIsNone(missing_deliv_insp)
+
+        # 生成场景下，若物理文件未落盘，必须断言返回期望后缀
+        missing_deliv_gen = detect_missing_requested_deliverable(
+            user_prompt="生成一份pdf报告",
+            turn_start_time=time.time(),
+            expected_deliverables=res_gen.deliverables,
+            is_generate_intent=True,
+            is_inspect_intent=False
+        )
+        self.assertEqual(missing_deliv_gen, ".pdf")
+
+        # 4. 轮数预算策略测试
+        policy = RuntimePolicy()
+        self.assertEqual(policy.determine_max_rounds("查看 sample.pdf 的内容", skill_res=res_insp), 3)
+        self.assertEqual(policy.determine_max_rounds("查看 sample.pdf 的内容", is_inspect_intent=True), 3)
+        self.assertEqual(policy.determine_max_rounds("生成一份pdf", skill_res=res_gen), 5)
+
+        # 5. ReAct Agent Loop 验证：纯查看任务严禁触发物理文件断言拦截死循环
+        messages = [{"role": "user", "content": "[User Request]:\n查看 sample.pdf 的内容"}]
+        mock_response = {
+            "content": "已为您查阅 sample.pdf，该文件总结保存在本地，其核心要点如下：1. 业务稳定 2. 增长良好。",
+            "tool_calls": []
+        }
+        with patch("dsh_modules.agent_loop.call_model_proxy", return_value=mock_response):
+            loop_res = run_agent_loop(
+                messages,
+                model="deepseek-v3",
+                policy=policy,
+                max_rounds=3,
+                is_generate_intent=False,
+                is_inspect_intent=True,
+                expected_deliverables=[]
+            )
+            # 必须一轮顺利完成，绝无系统拦截消息插入
+            self.assertIn("已为您查阅 sample.pdf", loop_res.final_text)
+            self.assertNotIn("【系统产物物理断言拦截】", str(loop_res.messages))
+            self.assertNotIn("【系统交付物断言拦截】", str(loop_res.messages))
 
 
 if __name__ == "__main__":

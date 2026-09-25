@@ -1,7 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EXECUTION_EVENT_TYPE_VALUES = exports.EXECUTION_EVENT_TYPE = exports.APPROVAL_STATUS_VALUES = exports.APPROVAL_STATUS = exports.EXECUTION_STEP_STATUS_VALUES = exports.EXECUTION_STEP_STATUS = exports.TERMINAL_EXECUTION_STATUSES = exports.EXECUTION_STATUS_VALUES = exports.EXECUTION_STATUS = void 0;
+exports.OUTBOUND_EFFECT_STATUS = exports.OUTBOUND_EFFECT_PHASE = exports.EXECUTION_EVENT_TYPE_VALUES = exports.EXECUTION_EVENT_TYPE = exports.APPROVAL_STATUS_VALUES = exports.APPROVAL_STATUS = exports.EXECUTION_STEP_STATUS_VALUES = exports.EXECUTION_STEP_STATUS = exports.TERMINAL_EXECUTION_STATUSES = exports.EXECUTION_STATUS_VALUES = exports.EXECUTION_STATUS = void 0;
 exports.isTerminalExecutionStatus = isTerminalExecutionStatus;
+exports.canonicalizePayloadObject = canonicalizePayloadObject;
+exports.computeOutboundPayloadHash = computeOutboundPayloadHash;
 exports.EXECUTION_STATUS = {
     DRAFT: 'draft',
     QUEUED: 'queued',
@@ -64,5 +66,38 @@ exports.EXECUTION_EVENT_TYPE = {
 exports.EXECUTION_EVENT_TYPE_VALUES = Object.values(exports.EXECUTION_EVENT_TYPE);
 function isTerminalExecutionStatus(status) {
     return exports.TERMINAL_EXECUTION_STATUSES.includes(status);
+}
+exports.OUTBOUND_EFFECT_PHASE = {
+    PREPARE: 'prepare',
+    COMMIT: 'commit',
+    DIRECT: 'direct',
+};
+exports.OUTBOUND_EFFECT_STATUS = {
+    PREPARED: 'prepared',
+    COMMITTED: 'committed',
+    UNKNOWN: 'unknown',
+    FAILED: 'failed',
+};
+function canonicalizePayloadObject(obj) {
+    if (obj === null || typeof obj !== 'object') {
+        return obj;
+    }
+    if (Array.isArray(obj)) {
+        return obj.map(canonicalizePayloadObject);
+    }
+    const sorted = {};
+    const keys = Object.keys(obj).sort();
+    for (const k of keys) {
+        sorted[k] = canonicalizePayloadObject(obj[k]);
+    }
+    return sorted;
+}
+function computeOutboundPayloadHash(payload) {
+    const canonicalObj = canonicalizePayloadObject(payload);
+    const jsonStr = JSON.stringify(canonicalObj);
+    // Simple deterministic SHA-256 using Node crypto
+    const cryptoModule = require('crypto');
+    const hash = cryptoModule.createHash('sha256').update(jsonStr, 'utf8').digest('hex');
+    return `sha256:${hash}`;
 }
 //# sourceMappingURL=index.js.map

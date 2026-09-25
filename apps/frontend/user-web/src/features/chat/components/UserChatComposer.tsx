@@ -248,9 +248,9 @@ export function UserChatComposer(props: UserChatComposerProps) {
   const [cardInitialTemplateId, setCardInitialTemplateId] = useState<string>('legal.contract.review_flow');
   const [cardInitialValues, setCardInitialValues] = useState<Record<string, any>>({});
 
-  // 智能嗅探自然语言协同意图
+  // 智能嗅探自然语言协同意图（仅协同任务模式生效）
   const detectedWorkflowIntent = useMemo(() => {
-    if (!draft || !draft.includes('@')) return null;
+    if (chatMode !== 'task' || !draft || !draft.includes('@')) return null;
     const lower = draft.toLowerCase();
     if (/保密|nda/i.test(lower)) {
       return {
@@ -267,7 +267,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
       };
     }
     return null;
-  }, [draft]);
+  }, [chatMode, draft]);
 
   const handleSelectUser = useCallback(
     (user: CollaboratorUser, mode: 'freeform' | 'card' = 'freeform') => {
@@ -399,7 +399,11 @@ export function UserChatComposer(props: UserChatComposerProps) {
       setUploadedFiles((prev) => [...prev, uploaded]);
     } catch (err: unknown) {
       console.error('File upload failed:', err);
-      void antdMessage.error(err instanceof Error ? err.message : '附件上传失败');
+      let msg = err instanceof Error ? err.message : '附件上传失败';
+      if (msg === 'Failed to fetch') {
+        msg = '附件上传失败：网络连接中断或服务异常';
+      }
+      void antdMessage.error(msg);
     } finally {
       activeUploadsCountRef.current -= 1;
       if (activeUploadsCountRef.current <= 0) {
@@ -504,6 +508,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
       <WorkspaceMentionDropdown
         open={workspaceMentionOpen}
         searchQuery={workspaceMentionQuery}
+        chatMode={chatMode}
         selectedIndex={workspaceMentionIndex}
         onHoverIndex={setWorkspaceMentionIndex}
         onFilteredNodesChange={setFilteredMentionNodes}
@@ -535,7 +540,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
         }}
       />
       <div className={styles['user-chat-input-shell']}>
-        {detectedWorkflowIntent && !workflowSelectionOpen ? (
+        {chatMode === 'task' && detectedWorkflowIntent && !workflowSelectionOpen ? (
           <div
             style={{
               padding: '6px 14px',
@@ -681,17 +686,19 @@ export function UserChatComposer(props: UserChatComposerProps) {
               const cursorPos = event.target.selectionStart ?? text.length;
               const textBeforeCursor = text.slice(0, cursorPos);
 
-              // 0. 探测光标处是否有 ! 或 ！工作流触发词（输入 ！可以弹出工作流，客户选择模版后输入自然语言）
-              const bangMatch = textBeforeCursor.match(/(?:^|\s)[!！]([^\s!！]*)$/);
-              if (bangMatch) {
-                setWorkflowSelectionMode('bang');
-                setWorkflowSelectionQuery(bangMatch[1]);
-                setWorkflowSelectionOpen(true);
-                setWorkflowSelectionIndex(0);
-                setUserMentionOpen(false);
-                setWorkspaceMentionOpen(false);
-                setSlashOpen(false);
-                return;
+              // 0. 探测光标处是否有 ! 或 ！工作流触发词（仅协同任务模式生效）
+              if (chatMode === 'task') {
+                const bangMatch = textBeforeCursor.match(/(?:^|\s)[!！]([^\s!！]*)$/);
+                if (bangMatch) {
+                  setWorkflowSelectionMode('bang');
+                  setWorkflowSelectionQuery(bangMatch[1]);
+                  setWorkflowSelectionOpen(true);
+                  setWorkflowSelectionIndex(0);
+                  setUserMentionOpen(false);
+                  setWorkspaceMentionOpen(false);
+                  setSlashOpen(false);
+                  return;
+                }
               }
 
               // 1. 探测光标处是否有 @ 人员协同触发词（半角 @ 与全角 ＠，未输入空格）
@@ -707,17 +714,19 @@ export function UserChatComposer(props: UserChatComposerProps) {
               }
               setUserMentionOpen(false);
 
-              // 2. 探测光标处是否刚刚在 @username 后面输入了空格（触发流程选择）
-              const atSpaceMatch = textBeforeCursor.match(/(?:^|\s)[@＠]([^\s@＠]+)\s$/);
-              if (atSpaceMatch) {
-                setWorkflowSelectionMode('at');
-                setWorkflowSelectionUser(atSpaceMatch[1]);
-                setWorkflowSelectionQuery('');
-                setWorkflowSelectionOpen(true);
-                setWorkflowSelectionIndex(0);
-                setWorkspaceMentionOpen(false);
-                setSlashOpen(false);
-                return;
+              // 2. 探测光标处是否刚刚在 @username 后面输入了空格（触发流程选择，仅协同任务模式生效）
+              if (chatMode === 'task') {
+                const atSpaceMatch = textBeforeCursor.match(/(?:^|\s)[@＠]([^\s@＠]+)\s$/);
+                if (atSpaceMatch) {
+                  setWorkflowSelectionMode('at');
+                  setWorkflowSelectionUser(atSpaceMatch[1]);
+                  setWorkflowSelectionQuery('');
+                  setWorkflowSelectionOpen(true);
+                  setWorkflowSelectionIndex(0);
+                  setWorkspaceMentionOpen(false);
+                  setSlashOpen(false);
+                  return;
+                }
               }
               setWorkflowSelectionOpen(false);
 
@@ -1005,33 +1014,32 @@ export function UserChatComposer(props: UserChatComposerProps) {
                   />
                 </div>
               ) : null}
-              <div
-                className={styles['user-chat-control-item']}
-                style={chatMode === 'chat' ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
-                title={
-                  chatMode === 'chat'
-                    ? '工作空间知识检索（/doc）为工作模式专属技能，个人模式下已禁用（个人沙箱已直接挂载 /knowledge）'
-                    : workspaceSearchEnabled
+              {chatMode === 'task' ? (
+                <div
+                  className={styles['user-chat-control-item']}
+                  title={
+                    workspaceSearchEnabled
                       ? '工作空间知识检索：已开启（提问将自动探查并研读空间文档，点击关闭）'
                       : '工作空间知识检索：已关闭（可选开启，开启后提问将自动探查并研读空间文档）'
-                }
-              >
-                <span className={styles['user-chat-control-label']}>
-                  {workspaceSearchEnabled && chatMode === 'task' ? (
-                    <FolderOpenOutlined style={{ marginRight: 4, color: '#6366f1' }} />
-                  ) : (
-                    <FolderOutlined style={{ marginRight: 4 }} />
-                  )}
-                  知识
-                </span>
-                <Switch
-                  size="small"
-                  disabled={disabled || isTranscribing || isUploadingFile || chatMode === 'chat'}
-                  checked={chatMode === 'task' && workspaceSearchEnabled}
-                  onChange={setWorkspaceSearchEnabled}
-                  className={styles['user-chat-input-dot-switch']}
-                />
-              </div>
+                  }
+                >
+                  <span className={styles['user-chat-control-label']}>
+                    {workspaceSearchEnabled ? (
+                      <FolderOpenOutlined style={{ marginRight: 4, color: '#6366f1' }} />
+                    ) : (
+                      <FolderOutlined style={{ marginRight: 4 }} />
+                    )}
+                    知识
+                  </span>
+                  <Switch
+                    size="small"
+                    disabled={disabled || isTranscribing || isUploadingFile}
+                    checked={workspaceSearchEnabled}
+                    onChange={setWorkspaceSearchEnabled}
+                    className={styles['user-chat-input-dot-switch']}
+                  />
+                </div>
+              ) : null}
             </div>
           </div>
           <div className={styles['user-chat-input-toolbar-spacer']} />
@@ -1054,19 +1062,21 @@ export function UserChatComposer(props: UserChatComposerProps) {
                 })),
               ]}
             />
-            <Tooltip title="快捷唤起企业组织工作流 (!)">
-              <Button
-                size="small"
-                icon={<ThunderboltOutlined style={{ color: '#722ed1' }} />}
-                onClick={() => {
-                  setWorkflowSelectionMode('bang');
-                  setWorkflowSelectionQuery('');
-                  setWorkflowSelectionOpen(true);
-                }}
-                disabled={disabled}
-                className={styles['user-chat-input-icon-btn']}
-              />
-            </Tooltip>
+            {chatMode === 'task' && (
+              <Tooltip title="快捷唤起企业组织工作流 (!)">
+                <Button
+                  size="small"
+                  icon={<ThunderboltOutlined style={{ color: '#722ed1' }} />}
+                  onClick={() => {
+                    setWorkflowSelectionMode('bang');
+                    setWorkflowSelectionQuery('');
+                    setWorkflowSelectionOpen(true);
+                  }}
+                  disabled={disabled}
+                  className={styles['user-chat-input-icon-btn']}
+                />
+              </Tooltip>
+            )}
             <Upload
               multiple
               beforeUpload={(file) => {

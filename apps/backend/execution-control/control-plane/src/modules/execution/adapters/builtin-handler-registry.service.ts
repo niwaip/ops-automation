@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import axios from 'axios';
 import { BuiltinSkillHandlerResult } from '@ops/backend-builtin-skill-contract';
 import type { RuntimeStepInvokeRequest } from './runtime-adapter.interface';
@@ -9,6 +9,7 @@ import { executeEmailSend } from './email/email-send.handler';
 import { executeEmailUpdate } from './email/email-update.handler';
 import { executeWorkspaceExplorer } from './workspace/workspace-explorer.handler';
 import { ReminderService } from '../../reminders/reminder.service';
+import { OutboundEffectLedgerService } from '../outbox/outbound-effect-ledger.service';
 import {
   DEFAULT_REMINDER_TIMEZONE,
   REMINDER_CAPABILITY_KEY,
@@ -21,7 +22,10 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
   private readonly logger = new Logger(BuiltinHandlerRegistryService.name);
   private readonly handlerMap = new Map<string, BuiltinHandlerFn>();
 
-  constructor(private readonly reminders?: ReminderService) {}
+  constructor(
+    private readonly ledger: OutboundEffectLedgerService,
+    @Optional() private readonly reminders?: ReminderService
+  ) {}
 
   onModuleInit() {
     this.registerDefaultHandlers();
@@ -80,8 +84,8 @@ export class BuiltinHandlerRegistryService implements OnModuleInit {
     // 2. Built-in Email Capabilities (email.messages, email.send, email.update)
     this.registerHandler('email.messages', executeEmailMessages);
     this.registerHandler('platform.email.messages', executeEmailMessages);
-    this.registerHandler('email.send', executeEmailSend);
-    this.registerHandler('platform.email.send', executeEmailSend);
+    this.registerHandler('email.send', (req, key) => executeEmailSend(req, key, this.ledger));
+    this.registerHandler('platform.email.send', (req, key) => executeEmailSend(req, key, this.ledger));
     this.registerHandler('email.update', executeEmailUpdate);
     this.registerHandler('platform.email.update', executeEmailUpdate);
 

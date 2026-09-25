@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsInt, IsObject, IsOptional, IsString, Min } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsObject, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import type { ExecutionSemantic } from '@ops/backend-execution-core';
 import { ApprovalStatus, APPROVAL_STATUS_VALUES } from '../contracts/approval-status';
@@ -271,6 +271,11 @@ export class CreateExecutionDto {
   @IsOptional()
   @IsString()
   scheduleId?: string;
+
+  @ApiProperty({ description: 'Execution metadata (tracing, context, etc.)', required: false })
+  @IsOptional()
+  @IsObject()
+  metadata?: Record<string, unknown>;
 }
 
 export class ExecutionDto {
@@ -423,6 +428,68 @@ export class ExecutionDto {
   @ApiProperty({ required: false, type: () => [ExecutionPhaseDto] })
   @IsOptional()
   phases?: ExecutionPhaseDto[];
+
+  @ApiProperty({ required: false, type: () => [PendingOutboundEffectDto] })
+  @IsOptional()
+  pendingOutboundEffects?: PendingOutboundEffectDto[];
+
+  @ApiProperty({ required: false, type: () => [UnknownOutboundEffectDto] })
+  @IsOptional()
+  unknownOutboundEffects?: UnknownOutboundEffectDto[];
+}
+
+export class PendingOutboundEffectDto {
+  @ApiProperty()
+  effectId: string;
+
+  @ApiProperty()
+  capabilityKey: string;
+
+  @ApiProperty()
+  idempotencyKey: string;
+
+  @ApiProperty()
+  payloadHash: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  canonicalPayload?: Record<string, unknown> | null;
+
+  @ApiProperty()
+  state: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  stepId?: string;
+}
+
+export class UnknownOutboundEffectDto {
+  @ApiProperty()
+  effectId: string;
+
+  @ApiProperty()
+  capabilityKey: string;
+
+  @ApiProperty()
+  idempotencyKey: string;
+
+  @ApiProperty()
+  payloadHash: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  errorClassification?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  resolutionReason?: string | null;
+
+  @ApiProperty()
+  state: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  stepId?: string;
 }
 
 export class ExecutionPhaseArtifactDto {
@@ -769,6 +836,36 @@ export class ApprovalDecisionDto {
   @IsOptional()
   @IsString()
   decidedBy?: string;
+
+  @ApiProperty({ description: 'Approved payload hash for outbound effects', required: false })
+  @IsOptional()
+  @IsString()
+  approvedPayloadHash?: string;
+
+  @ApiProperty({ description: 'Outbound effect ledger ID being approved', required: false })
+  @IsOptional()
+  @IsString()
+  effectId?: string;
+}
+
+export class ResolveOutboundEffectDto {
+  @ApiProperty({
+    description: 'Target state to reconcile to',
+    enum: ['COMMITTED', 'FAILED', 'CANCELLED'],
+  })
+  @IsIn(['COMMITTED', 'FAILED', 'CANCELLED'])
+  targetState: 'COMMITTED' | 'FAILED' | 'CANCELLED';
+
+  @ApiProperty({ description: 'Reason for manual reconciliation' })
+  @IsString()
+  resolutionReason: string;
+}
+
+export class AuthorizeRetryOutboundEffectDto {
+  @ApiProperty({ description: 'Reason for retry authorization', required: false })
+  @IsOptional()
+  @IsString()
+  reason?: string;
 }
 
 export class RuntimeSessionSummaryDto {

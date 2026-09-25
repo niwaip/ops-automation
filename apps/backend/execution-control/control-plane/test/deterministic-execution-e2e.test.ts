@@ -961,7 +961,7 @@ describe('Deterministic Plan Execution E2E Test', () => {
 
     try {
       // Use real BuiltinHandlerRegistryService with default HTTP handler
-      const handlerRegistry = new BuiltinHandlerRegistryService();
+      const handlerRegistry = new BuiltinHandlerRegistryService({} as any);
       handlerRegistry.onModuleInit(); // registers real document.markdown-artifact-writer handler
 
       const builtinAdapter = new BuiltinWorkflowRuntimeAdapter(handlerRegistry);

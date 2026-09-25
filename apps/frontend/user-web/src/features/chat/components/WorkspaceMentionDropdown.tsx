@@ -18,6 +18,7 @@ import styles from './WorkspaceMentionDropdown.module.css';
 interface WorkspaceMentionDropdownProps {
   open: boolean;
   searchQuery: string;
+  chatMode?: 'chat' | 'task';
   onSelect: (node: WorkspaceNode) => void;
   onClose: () => void;
   selectedIndex: number;
@@ -47,13 +48,17 @@ function formatBytes(bytesStr: string | number): string {
 export function WorkspaceMentionDropdown({
   open,
   searchQuery,
+  chatMode = 'chat',
   onSelect,
   onClose,
   selectedIndex,
   onHoverIndex,
   onFilteredNodesChange,
 }: WorkspaceMentionDropdownProps) {
-  const [activeScope, setActiveScope] = useState<'all' | 'personal' | 'department' | 'company'>('all');
+  const isPersonalOnly = chatMode === 'chat';
+  const [activeScope, setActiveScope] = useState<'all' | 'personal' | 'department' | 'company'>(
+    isPersonalOnly ? 'personal' : 'all'
+  );
 
   const { data: searchResults, isLoading: isSearchLoading } = useQuery(
     ['workspace-search', searchQuery],
@@ -92,9 +97,12 @@ export function WorkspaceMentionDropdown({
   }, [searchResults, contentResults]);
 
   const filteredNodes = useMemo(() => {
+    if (isPersonalOnly) {
+      return mergedNodes.filter((item) => item.workspaceType === 'personal');
+    }
     if (activeScope === 'all') return mergedNodes;
     return mergedNodes.filter((item) => item.workspaceType === activeScope);
-  }, [mergedNodes, activeScope]);
+  }, [mergedNodes, activeScope, isPersonalOnly]);
 
   const isLoading = isSearchLoading || isContentLoading;
 
@@ -125,19 +133,25 @@ export function WorkspaceMentionDropdown({
       {/* 顶部过滤条 */}
       <div className={styles['mention-header']}>
         <div className={styles['mention-title']}>
-          引用工作空间文件 {searchQuery ? `(匹配 "${searchQuery}")` : ''}
+          {isPersonalOnly ? '引用个人空间文件' : '引用工作空间文件'} {searchQuery ? `(匹配 "${searchQuery}")` : ''}
         </div>
-        <Segmented
-          size="small"
-          value={activeScope}
-          onChange={(v) => setActiveScope(v as any)}
-          options={[
-            { label: '全部', value: 'all' },
-            { label: '我的', value: 'personal' },
-            { label: '部门', value: 'department' },
-            { label: '公司', value: 'company' },
-          ]}
-        />
+        {!isPersonalOnly ? (
+          <Segmented
+            size="small"
+            value={activeScope}
+            onChange={(v) => setActiveScope(v as any)}
+            options={[
+              { label: '全部', value: 'all' },
+              { label: '我的', value: 'personal' },
+              { label: '部门', value: 'department' },
+              { label: '公司', value: 'company' },
+            ]}
+          />
+        ) : (
+          <Tag color="blue" icon={<UserOutlined />}>
+            个人模式 · 隔离空间
+          </Tag>
+        )}
       </div>
 
       {/* 文件列表区 */}
@@ -152,7 +166,11 @@ export function WorkspaceMentionDropdown({
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               description={
                 <span style={{ fontSize: 12, color: 'var(--text-light)' }}>
-                  {searchQuery ? '无匹配的工作空间文件' : '工作空间暂无可用文件'}
+                  {searchQuery
+                    ? '无匹配的个人空间文件'
+                    : isPersonalOnly
+                    ? '个人空间暂无可用文件'
+                    : '工作空间暂无可用文件'}
                 </span>
               }
             />

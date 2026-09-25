@@ -58,6 +58,7 @@ Final Answer: 最终回复
 - 对于内容总结、概括、翻译、改写、文本分析或聊天问答类任务（无需外部工具），直接基于已知上下文与 AI 自身能力输出 \`Final Answer:\`，无需调用外部工具
 - 不要重复调用同一个工具，除非用户提供了新信息
 - 如果任务完成，输出 Final Answer 包含最终回复
+- 最终回复（Final Answer）中如有统计数据、指标对比或表格，必须使用标准 GFM Markdown 表格语法（| 列1 | 列2 |\n| :--- | :--- |），严禁使用代码块 \`\`\` 包裹表格或使用 ASCII/Unicode 字符画手工画框
 `;
 
 const MAX_PROMPT_REACT_HISTORY = Number(process.env.REACT_PROMPT_TRACE_TAIL_MESSAGES || 6);

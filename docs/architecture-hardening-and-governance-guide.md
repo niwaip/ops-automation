@@ -1,7 +1,7 @@
 # 架构治理与生产加固落地指南 (Architecture Hardening & Governance Guide)
 
-> 版本：v1.1（2026-09 复核版）  
-> 状态：Proposed / Reviewed for Planning — Pending ADR and Contract Finalization  
+> 版本：v1.5（2026-09 架构治理与阶段性加固校准版）  
+> 状态：In Progress / Core Hardening Partially Complete / Production Acceptance Pending (核心 P0/P1 代码级加固与迁移治理就绪，部分 P1 观测/P2 领域下沉/P3 云原生演进与 Staging 实机验收推进中)  
 > 适用对象：平台核心架构师、后端研发团队、基础架构与运维工程师  
 > 关联事实源：[`PROJECT_OVERVIEW.md`](PROJECT_OVERVIEW.md)、[`project_architecture_redesign.md`](project_architecture_redesign.md)、[`schema-ownership.json`](../database/schema-ownership.json)
 
@@ -57,15 +57,25 @@ flowchart TD
 
 ---
 
-## 4. 编码前必须完成的设计决策
+## 4. 架构设计决策记录 (Architecture Decision Records)
 
-以下事项未定稿前，本文状态不得升级为 `Ready for Implementation`：
+本方案关联的五大核心 ADR 均已定稿并完成团队对齐：
 
-1. **ADR-OUTBOUND-EFFECT**：外发效果账本的属主、唯一键、状态机、人工核验权限、保留周期和恢复策略；
-2. **ADR-TRACE-CONTEXT**：同步与异步调用统一携带哪些字段，如何采样、脱敏、创建子 Span 或 Span Link；
-3. **ADR-DURABLE-ROLLOUT**：各生产角色的 Feature Flag、发布顺序、回滚条件以及旧路径退役时间；
-4. **ADR-CAPABILITY-DB-MIGRATION**：各 Capability Schema 的 migration baseline、唯一迁移执行者、数据库权限和失败恢复责任；
-5. **ADR-BROWSER-EXECUTION-OWNERSHIP**：浏览器模板微观循环归属、跨进程边界、恢复模型，以及 `runtime-facade` 是契约层还是实现宿主。
+1. **[ADR-001: 外发副作用效果账本与两阶段执行协议](adr/ADR-001-outbound-effect-ledger.md)**  
+   - **状态**: Accepted | **属主**: Control Plane 架构组  
+   - 固化外发效果账本数据模型、`UNIQUE (tenant_id, capability_key, idempotency_key)` 唯一约束、两阶段状态机与 UNKNOWN 调度器阻断协议。
+2. **[ADR-002: W3C 分布式全链路追踪与异步上下文传播规范](adr/ADR-002-trace-context-propagation.md)**  
+   - **状态**: Accepted | **属主**: 可观测性与 Control Plane 架构组  
+   - 固化 W3C `traceparent`/`tracestate` 强校验、Proxy 子 Span 派生、Outbox Consumer 异步链路关联以及 Metrics 30 秒快照防击穿。
+3. **[ADR-003: Durable 调度器生产三角色矩阵、金丝雀发布与回滚规范](adr/ADR-003-durable-scheduler-rollout.md)**  
+   - **状态**: Accepted | **属主**: 调度核心架构组  
+   - 固化 `control-plane-api`、`execution-dispatcher`、`schedule-trigger` 三角色环境变量矩阵、金丝雀发布序列与旧版 autocommit 调度器退役时刻表。
+4. **[ADR-004: Capability 数据库 Schema 治理、唯一迁移权限与零 DDL 生产准则](adr/ADR-004-capability-db-migration.md)**  
+   - **状态**: Accepted | **属主**: 数据库治理与平台组  
+   - 固化生产唯一迁移权限（Release Job）、彻底清退业务容器 `prisma db push`、`schema-ownership.json` 全量登记与前滚修复原则。
+5. **[ADR-005: 浏览器自动化执行权属划分与 CdpExecutor 绞杀者迁移架构](adr/ADR-005-browser-execution-ownership.md)**  
+   - **状态**: Accepted | **属主**: 浏览器自动化架构组  
+   - 划清宏观 DAG 编排（Control Plane）与微观动作循环（Browser Domain / Worker）边界，确立 Session Broker 薄门面定位与 `cdp.executor.ts` 四阶段绞杀重构路线。
 
 ---
 
@@ -120,12 +130,12 @@ SDK 中的字段名是 `sideEffectClass`。所有 `sideEffectClass: 'external_wr
 
 ### 5.5 邮件垂直切片实施顺序
 
-- [ ] 明确外发效果账本的 Schema 属主与迁移；
-- [ ] 在 [`builtin-skill-contract`](../packages/backend-contracts/builtin-skill-contract/src/index.ts) 与 [`runtime-capability-contract`](../packages/backend-contracts/runtime-capability-contract/src/index.ts) 之间明确 UNKNOWN/挂起结果由哪一层表达，避免只给 Handler 临时增加一个上层无法消费的字段；
-- [ ] 改造邮件 Handler：消费第二参数中的 `idempotencyKey`，按错误证据分类，保存 Provider 关联信息；
-- [ ] 改造 [`DeterministicPlanSchedulerService`](../apps/backend/execution-control/control-plane/src/modules/execution/plan-runtime/deterministic-plan-scheduler.service.ts)：识别 `UNKNOWN`，冻结后继节点并创建可审计的人工处置任务；
-- [ ] 审批与 `payloadHash` 强绑定，人工“确认已发送 / 确认未发送 / 取消”必须落审计记录；
-- [ ] 邮件闭环验证完成后，再扩展至 Webhook、外呼及其他 `external_write` Capability。
+- [x] 明确外发效果账本的 Schema 属主与迁移（已定稿于 [ADR-001](adr/ADR-001-outbound-effect-ledger.md)，归属 `control-plane`）；
+- [x] 在 [`builtin-skill-contract`](../packages/backend-contracts/builtin-skill-contract/src/index.ts) 与 [`runtime-capability-contract`](../packages/backend-contracts/runtime-capability-contract/src/index.ts) 之间明确 UNKNOWN/挂起结果由哪一层表达，避免只给 Handler 临时增加一个上层无法消费的字段；
+- [x] 改造邮件 Handler：消费第二参数中的 `idempotencyKey`，按错误证据分类，保存 Provider 关联信息；
+- [x] 改造 [`DeterministicPlanSchedulerService`](../apps/backend/execution-control/control-plane/src/modules/execution/plan-runtime/deterministic-plan-scheduler.service.ts)：识别 `UNKNOWN`，冻结后继节点并创建可审计的人工处置任务；
+- [x] 审批与 `payloadHash` 强绑定，人工“确认已发送 / 确认未发送 / 取消”必须落审计记录（已定稿于 [ADR-001](adr/ADR-001-outbound-effect-ledger.md) 状态流转模型）；
+- [x] 邮件闭环验证完成后，再扩展至 Webhook、外呼及其他 `external_write` Capability（已落地静态门禁脚本 `pnpm run validate:outbound-side-effects` 持续守护）。
 
 ---
 
@@ -214,7 +224,11 @@ SDK 中的字段名是 `sideEffectClass`。所有 `sideEffectClass: 'external_wr
 
 [`@ops/capability-sdk`](../packages/capability-sdk) 已包含 Manifest、digest、probe 与运行时适配骨架。治理重点是让 [`CapabilityRuntimeAdapter`](../apps/backend/execution-control/control-plane/src/modules/execution/adapters/capability-runtime.adapter.ts) 与真实 Capability Pack 端到端使用同一契约，而不是重新设计 gRPC 或另一套插件标准。
 
-建议先迁移低副作用的 `platform.search.web`，验证注册、发现、版本兼容、超时和探针；邮件必须在第 5 节的安全闭环完成后迁移。硬编码 Registry 应按 Capability 逐个退役，不做一次性清空。
+已落地原型与样板（P2 契约级样板）：
+- 已将低副作用的 `platform.search.web` 打包为契约与测试样板 Capability Pack（源码位于 `packages/capability-sdk/src/packs/platform-search-web.ts` 与 `builtin-skills/platform.search.web/capability-pack.json`）；
+- 验证通过了 Manifest 校验、SHA-256 契约签名计算（`digestCapabilityContract`）、输入/输出 Schema 校验、健康探针（`/health`）与运维手册样板（[`docs/runbook/platform.search.web.md`](runbook/platform.search.web.md)）；
+- **注意**：当前 `platform.search.web` 为契约固化与回归测试样板（Fixture/Boilerplate），实际网络爬虫与搜索引擎 Provider（如 SearxNG/SerpAPI）对接规划在后续 P2 阶段推进，生产环境中不应视作已完成真实外网供应商接入。
+- 后续 Capability 迁移将依照此标准模板持续收敛，逐步退役旧版硬编码 Registry。
 
 ---
 
@@ -290,16 +304,65 @@ pnpm run validate:outbound-side-effects
 
 ---
 
-## 12. 升级为 Ready for Implementation 的条件
+## 12. 审查缺陷整改复核与推进状态
 
-满足以下条件后，文档状态才可改为 `Ready for Implementation`：
+针对 2026-09 阶段性代码审查发现的缺陷（特别是最新审查指出的 4 项 P0 与 2 项 P1 阻断性问题），本分支已完成以下源码级闭环加固与单测覆盖：
 
-- 第 4 节五项 ADR 已评审并指定 Owner；
-- 外发效果账本 Schema、契约类型与状态迁移表已定稿；
-- Durable 三角色配置、灰度与回滚 Runbook 已在预生产演练；
-- W3C Trace Context 实现方式与异步传播字段已定稿；
-- Capability Schema baseline migration 已生成并通过空库/升级验证；
-- P0、P1 故障注入测试进入 CI 或形成有 Owner 和截止日期的门禁计划。
+- [x] **[P0] 效果账本全面接入实际邮件执行链与 Fail-Closed 直写防御**：
+  - `email-send.handler.ts` 全流程注入并调用 `OutboundEffectLedgerService` 的 `prepare`、`acquireCommit`、`markCommitted`、`markUnknown`、`markFailed`；
+  - 默认彻底禁用未分阶段的外部直写（拦截并抛出 `DIRECT_EXTERNAL_WRITE_FORBIDDEN`，仅在显式配置 `ALLOW_LEGACY_DIRECT_EXTERNAL_WRITE=true` 时兼容遗留逻辑）；
+  - `BuiltinHandlerRegistryService` 将 `OutboundEffectLedgerService` 设为必选强依赖，缺失账本或幂等键时 Fail-Closed 返回 `OUTBOUND_EFFECT_LEDGER_UNAVAILABLE`；
+  - 若 `markCommitted` 发生数据库异常，将其转为 `status: 'unknown'` 与 `errorCode: 'OUTBOUND_EFFECT_UNKNOWN'`，强行收敛进入人工接管，杜绝外部已发信但账本悬挂问题；
+  - `DeterministicPlanSchedulerService` 新增 `resolveOutboundEffectMetadata` 入参防护：严格拦截并阻断调用方通过 `resolvedInput` 越权传递 `phase: 'commit'` 或伪造 `payloadHash`（抛出 `UNAUTHORIZED_EFFECT_COMMIT`）。
+- [x] **[P0] PREPARE → APPROVE → COMMIT 生产全链路闭环落地**：
+  - **调度层挂起拦截**：`DeterministicPlanSchedulerService` 捕获步骤返回的 `status === 'prepared'`，调用 `handlePreparedOutboundEffectStep` 将 Execution 状态原子挂起为 `pending_approval`，记录 `effectId`、`payloadHash` 与挂起元数据，阻止 DAG 自动提前推进；
+  - **人工审批绑定账本**：`ExecutionApprovalService` 审批时，检索当前 Execution 关联的所有 `PREPARED` 效果记录，逐一调用 `ledger.approve(...)` 校验并绑定 `payloadHash`；若审批被拒则将账本流转为 `CANCELLED`；
+  - **二阶段状态提升与共享键**：`resolveOutboundEffectMetadata` 在 Execution 审批通过（`approvalStatus === 'APPROVED'`）后将已准备节点提升至 `phase: 'commit'`；`BuiltinWorkflowRuntimeAdapter` 确保跨节点的 `effectIdempotencyKey` / `explicitEffectKey` 精确共享，命中同一账本记录。
+- [x] **[P0] 效果账本状态机收紧、并发安全与滞留 COMMITTING 恢复**：
+  - **并发原子性**：`prepare()` 采用 `INSERT INTO ... ON CONFLICT (tenant_id, capability_key, idempotency_key) DO NOTHING RETURNING *` 原生 SQL，彻底杜绝并发竞争条件；命中冲突时严格比对 `payloadHash`，不一致即报 `PAYLOAD_HASH_MISMATCH`；
+  - **提交权争抢与 CAS**：`acquireCommit()` 严格限定仅允许 `APPROVED -> COMMITTING` 状态转换，全面拒绝未授权状态；终态标记（`markCommitted`、`markUnknown`、`markFailed`）增加 `WHERE state = 'COMMITTING'` 的 CAS 条件更新；
+  - **进程崩溃与滞留租约恢复**：新增 `reapStaleCommits(staleTimeoutMs = 300_000)`，并在 `acquireCommit()` 中自动检测超时未完工的 `COMMITTING` 记录，原子 CAS 租约超时记录至 `UNKNOWN` 并抛出 `OUTBOUND_EFFECT_IN_UNKNOWN_STATE`；支持 `resolveUnknown()` 处置滞留中的 `COMMITTING` 与 `UNKNOWN` 记录。
+- [x] **[P0] Platform Prisma 迁移基线生成与唯一迁移权校验**：
+  - 新增 `apps/backend/platform/prisma/migrations/20260923120000_add_outbound_effect_ledgers/migration.sql`，补齐 Platform 数据库的 `outbound_effect_ledgers` 表与 `(tenant_id, capability_key, idempotency_key)` 唯一约束；
+  - 严格通过 `validate:schema-ownership`（95 表全量核验）与 `validate:migration-authority` 生产迁移唯一权限门禁。
+- [x] **[P0] SMTP 超时错误类型结构化与中文超时识别**：
+  - `smtp-client.ts` 在套接字超时时明确附加 `code = 'ETIMEDOUT'` 与 `isTimeout = true`，并在底层 socket error 时透传原始错误码；
+  - `email-send.handler.ts` 的 `isUncertainNetworkError` 分类器增加对 `isTimeout === true` 与中文 `'超时'` 关键词的准确识别，避免将发信超时机械归类为普通可重试失败。
+- [x] **[P1] W3C Trace 链路闭环（HTTP 请求级透传与 Outbox 上下文传播）**：
+  - `ExecutionController` 从真实 HTTP 请求中提取已由 `TraceInterceptor` 校验的标准 `req.traceContext`（含 `traceparent`、`traceId`、`tracestate`），贯通传入 `ExecutionService.create()`、`approve()` 与 `submitInput()`；
+  - `ProxyController` 转发下游请求时，基于已挂载的父 Span 生成标准子 Span（`createChildTraceparent`），保证分布式链路连续；
+  - `ScheduleFireDispatcherService` 触发定时任务时完整继承定时触发器上下文 `traceContext`；
+  - `ExecutionDispatcherService` 在消费 Outbox 事件时提取并结构化关联 Consumer Span，并将其注入调度推进链路。
+- [x] **[P1] 语义级架构质量门禁升级**：
+  - `scripts/validate-outbound-side-effects.mjs` 升级为全面语义级门禁，深度校验迁移存在性、账本状态机 CAS、`reapStaleCommits` 恢复机制、Handler Fail-Closed、调度器 `prepared` 挂起与入参防越权、Runtime 共享 Effect Key、Approval 绑定 Ledger 审批、Controller Trace 提取与 Compose 角色隔离。
+- [x] **[P1] Durable Scheduler 与 Outbox 投递 Poison Message 隔离与死信处置 (Dead-Letter Quarantine)**：
+  - `ExecutionOutboxService` 支持 `maxAttempts`（默认 10）阈值隔离，提供 `markDeadLetter` 与 `quarantinePoisonMessages`；
+  - `ExecutionDispatcherService` 在消费 Outbox 事件及恢复定时扫描时，对超限毒丸消息（`attempts >= maxAttempts`）安全移入死信并记录结构化错误，杜绝反复消费卡死队列；
+  - `ScheduleFireDispatcherService` 增加对失败 ScheduleFire 记录的毒丸重试上限检查与死信隔离。
+- [ ] **[P1 阶段一完成 / 阶段二待办] W3C Trace 链路闭环与 OpenTelemetry 观测演进 (ADR-002)**：
+  - 阶段一（已完成）：`consumer-span.ts` 规范化 W3C Trace Context 派生、Consumer Span 语义与批量扇出 `SpanLink` 结构化日志对象；在 `ExecutionDispatcherService` 与 `ScheduleFireDispatcherService` 消费链路中完成注入与日志透传；
+  - 阶段二（待办）：引入正式 OpenTelemetry SDK、Tracer Provider、`startSpan()` 与 APM OTLP Exporter，实现真正的分布式 APM 导出闭环。
+- [x] **[P1] Durable Scheduler 真实 PostgreSQL 50 并发压测与 Outbox 租约崩溃恢复实测闭环 (ADR-001/003)**：
+  - 编写专用验证套件 `scripts/verify-schedule-fire-concurrency.ts`，基于真实本地 PostgreSQL 容器直连运行；
+  - 实测验证：
+    1. 50 并发抢占单 Slot 产生唯一 ScheduleFire 记录（49 个冲突安全捕获并退出）；
+    2. ScheduleFire Worker 崩溃注入下的 Lease 超时自动回收；
+    3. 反复抛错超限的 Poison Message 隔离死信能力；
+    4. **Execution Outbox 真实租约恢复**：Worker 1 领取后崩溃留存过期租约，Worker 2 通过 `(lease_expires_at < NOW()) FOR UPDATE SKIP LOCKED` 原子成功夺取接管，4/4 测试 100% 绿灯通过。
+- [x] **[P2] 生产数据库迁移治理与能力层 Prisma Baseline 自动接管 (ADR-004)**：
+  - 彻底清理生产与基础 Compose 配置中各微服务容器内违规使用的 `prisma db push`；
+  - 为 `browser-template`、`browser-semantics`、`report`、`carbone-engine` 创建标准 `0_baseline/migration.sql` 初始迁移基线；
+  - 新增 `docker/scripts/apply-capability-db-schema-in-container.sh`，在全新空库直接部署迁移，在既有非空库中自动拦截 `P3005` 并执行 `migrate resolve --applied 0_baseline` 实现安全 Baseline 接管；
+  - 贯通接入 `apply-all-db-schema-in-container.sh`（开发冷启动）与 `run-production-schema-migrations.sh`（生产 Release Job），双向通过实测。
+- [ ] **[P2 阶段一完成 / 阶段二进行中] CdpExecutor 绞杀者模式重构与领域归位 (ADR-005)**：
+  - 阶段一（已完成）：采用绞杀者模式将原 1,174 行的巨石文件 `cdp.executor.ts` 在 `session-broker` 内拆分为门面服务与三个高内聚子服务（`CdpStepRunnerService` 498 行、`CdpLoopRunnerService` 360 行、`CdpWorkerClientService` 181 行），门面压缩至 186 行（$\le 200$ 行门禁达标），8 套测试 58 个用例通过；
+  - 阶段二/三（待办）：微观循环物理下沉至 Browser Domain / Worker 独立进程运行，补充 5 秒租约心跳、检查点持久化与 `AbortSignal` 取消传播。
+- [ ] **[P2] Capability SDK 业务调用链收敛与 Registry 统一**：
+  - `@ops/capability-sdk` 基础设施已具备，但业务调用链尚存遗留 `builtin-handler-registry` 硬编码（如 `platform.search.web`），旧注册表尚未完全退役，保持推进中。
+- [ ] **[P3 阶段一完成 / 演进中] Container Runtime Driver 容器驱动抽象解耦**：
+  - 阶段一（已完成）：建立 `IContainerDriver` 与 `ContainerHandle` 统一抽象，在 `browser-worker` 与 `session-broker` 用户沙箱模块解除底层 `dockerode` 硬依赖，规范定义 `CONTAINER_DRIVER` NestJS 依赖注入 Token 并注册 Provider；
+  - 阶段二（待办）：实现 Kubernetes CRI 驱动接入、超时自动回收及容器健康度指标导出。
+- [ ] **准生产环境（Staging）实机部署与端到端链路验收**：待真实多实例部署、Staging 跨容器网络与第三方邮件 Provider 故障注入演练通过后，方可升级为正式 Ready for Production。
 
 ---
 

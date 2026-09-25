@@ -134,6 +134,7 @@ services:
 
   xiaozhi-connector:
     <<: *common-node-service
+    profiles: ['xiaozhi', 'connector', 'full']
     container_name: ops-xiaozhi-connector
     command: >
       sh -c "until node -e \"fetch('http://platform:${PLATFORM_PORT:-3001}/health').then(() => process.exit(0)).catch(() => process.exit(1))\"; do sleep 2; done
@@ -355,7 +356,6 @@ services:
     container_name: ops-browser-template
     command: >
       sh -c "corepack enable && pnpm --filter @ops/browser-template exec prisma generate
-      && pnpm --filter @ops/browser-template exec prisma db push
       && pnpm --filter @ops/browser-template run build
       && rm -rf /workspace/apps/backend/capabilities/browser-domain/templates/dist/generated
       && mkdir -p /workspace/apps/backend/capabilities/browser-domain/templates/dist/generated
@@ -387,7 +387,6 @@ services:
     container_name: ops-browser-semantics
     command: >
       sh -c "corepack enable && pnpm --filter @ops/browser-semantics exec prisma generate
-      && pnpm --filter @ops/browser-semantics exec prisma db push
       && if [ \"${BROWSER_SEMANTICS_RUN_DEFAULT_SEED:-false}\" = \"true\" ]; then pnpm --filter @ops/browser-semantics run seed:browser-recorder; fi
       && pnpm --filter @ops/browser-semantics run build
       && rm -rf /workspace/apps/backend/capabilities/browser-domain/semantics/dist/generated
@@ -479,7 +478,6 @@ services:
     container_name: ops-report
     command: >
       sh -c "corepack enable && pnpm --filter @ops/report exec prisma generate
-      && pnpm --filter @ops/report exec prisma db push
       && pnpm --filter @ops/report run build
       && rm -rf /workspace/apps/backend/capabilities/document-report/dist/generated
       && mkdir -p /workspace/apps/backend/capabilities/document-report/dist/generated
@@ -521,7 +519,7 @@ services:
     image: ops-carbone-engine:dev
     container_name: carbone-engine
     command: >
-      sh -c "corepack enable && pnpm --filter @ops/document-domain exec prisma db push --skip-generate --schema template/prisma/schema.prisma
+      sh -c "corepack enable
       && pnpm --filter carbone-engine run dev"
     environment:
       <<: *common-env
@@ -547,7 +545,6 @@ services:
   # ============================================
   portal:
     <<: *common-node-service
-    profiles: ['frontend', 'fe', 'full']
     container_name: ops-portal
     command: sh -c "corepack enable && pnpm --filter @ops/portal run dev --host 0.0.0.0 --port 5173"
     environment:
@@ -576,7 +573,6 @@ services:
 
   user-web:
     <<: *common-node-service
-    profiles: ['frontend', 'fe', 'full']
     container_name: ops-user-web
     command: sh -c "corepack enable && pnpm --filter @ops/user-web run dev --host 0.0.0.0 --port 5174"
     environment:

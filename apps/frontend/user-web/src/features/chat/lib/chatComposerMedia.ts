@@ -48,8 +48,17 @@ export async function uploadChatFile(file: File): Promise<UploadedFileDescriptor
   });
 
   if (!response.ok) {
-    const errText = await response.text().catch(() => '');
-    throw new Error(`HTTP error: ${response.status} ${errText}`);
+    let errMsg = `HTTP error: ${response.status}`;
+    try {
+      const errJson = await response.json();
+      if (errJson?.message) {
+        errMsg = Array.isArray(errJson.message) ? errJson.message.join(', ') : errJson.message;
+      }
+    } catch {
+      const errText = await response.text().catch(() => '');
+      if (errText) errMsg = `${errMsg} ${errText}`;
+    }
+    throw new Error(errMsg);
   }
 
   const payload = (await response.json()) as { fileId?: string };

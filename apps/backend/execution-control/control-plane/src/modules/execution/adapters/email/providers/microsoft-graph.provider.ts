@@ -284,16 +284,20 @@ export class MicrosoftGraphEmailProvider implements EmailProviderAdapter {
     };
 
     try {
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      };
+      if (input.clientRequestKey) {
+        headers['client-request-id'] = input.clientRequestKey;
+      }
       await axios.post('https://graph.microsoft.com/v1.0/me/sendMail', payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
         timeout: 15000,
       });
 
       return {
-        deliveryId,
+        deliveryId: input.clientRequestKey || deliveryId,
         state: 'accepted',
         acceptedAt: new Date().toISOString(),
         warnings: [],

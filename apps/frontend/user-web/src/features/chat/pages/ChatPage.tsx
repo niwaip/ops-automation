@@ -323,15 +323,21 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
 
   const handleApproveRef = useRef(handleApprove);
   handleApproveRef.current = handleApprove;
-  const handleApproveExecution = useCallback((messageId: string, executionId: string) => {
-    void handleApproveRef.current(messageId, executionId);
-  }, []);
+  const handleApproveExecution = useCallback(
+    (messageId: string, executionId: string, effectId?: string, approvedPayloadHash?: string) => {
+      void handleApproveRef.current(messageId, executionId, effectId, approvedPayloadHash);
+    },
+    []
+  );
 
   const handleRejectRef = useRef(handleReject);
   handleRejectRef.current = handleReject;
-  const handleRejectExecution = useCallback((messageId: string, executionId: string) => {
-    void handleRejectRef.current(messageId, executionId);
-  }, []);
+  const handleRejectExecution = useCallback(
+    (messageId: string, executionId: string, effectId?: string) => {
+      void handleRejectRef.current(messageId, executionId, effectId);
+    },
+    []
+  );
 
   const handleRetryRef = useRef(handleRetry);
   handleRetryRef.current = handleRetry;

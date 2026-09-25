@@ -28,8 +28,12 @@ class SkillRoutingResult:
     is_inspect_intent: bool = False
     is_guide_intent: bool = False
     is_search_intent: bool = False
+    is_generate_intent: bool = False
     affinity_score: float = 0.0
     matched_reasons: List[str] = field(default_factory=list)
+    deliverables: List[str] = field(default_factory=list)
+    requires_execution: bool = False
+    default_rounds: int = 0
 
 
 STOP_WORDS = {
@@ -59,6 +63,122 @@ GUIDE_PATTERNS = [
     "实现原理", "工作原理", "架构原理", "架构设计", "系统架构",
     "命令说明", "参数说明", "写法说明", "语法说明", "是什么", "有什么用"
 ]
+
+GENERATE_ACTION_PATTERNS = [
+    "生成", "制作", "创建", "导出", "新建", "做个", "做一份", "做一张", "做个表", "做个ppt", "做个幻灯片",
+    "写一份", "写个", "写出", "输出为", "保存为", "转为", "转成", "落盘", "另存为", "写成",
+    "generate", "create", "export", "build", "make", "produce"
+]
+
+INSPECT_ACTION_PATTERNS = [
+    "查看", "阅读", "查阅", "读取", "看下", "看一下", "看看", "检查", "分析", "审阅", "浏览",
+    "排查", "检索", "探查", "诊断", "查下", "查一下", "搜索", "搜下", "搜一下", "提取内容", "问答",
+    "帮我看", "看代码", "查代码", "read", "view", "inspect", "check", "examine", "analyze", "cat", "show"
+]
+
+CONTENT_QUERY_PATTERNS = [
+    "内容是什么", "有什么内容", "写了什么", "讲了什么", "包含什么", "里面有", "里面写了", "里写了"
+]
+
+GENERATIVE_SLASH_COMMANDS = {
+    "ppt", "slides", "deck", "image", "draw", "pdf", "excel", "table", "word", "docx", "doc", "design", "ui"
+}
+
+
+TEXT_ONLY_ACTION_TARGETS = [
+    "总结", "摘要", "分析", "结论", "建议", "提纲", "大纲", "概述", "要点",
+    "问答", "回答", "观点", "归纳", "汇报", "说明", "纪要", "备忘", "意见", "心法", "经验",
+    "介绍", "理解", "解释", "思考", "看法", "梳理", "草案", "方案"
+]
+
+PHYSICAL_DELIVERABLE_TARGETS = [
+    ".pdf", ".docx", ".xlsx", ".pptx", ".html", ".csv", ".json",
+    "pdf", "word", "excel", "ppt", "html", "表格", "幻灯片", "演示文稿", "报表",
+    "代码文件", "脚本", "落地文件", "物理文件", "本地文件", "单页", "原型", "看板", "网页", "单页报告"
+]
+
+
+def check_generation_target_is_physical(lower_q: str) -> bool:
+    """
+    Distinguishes whether a generative action targets a physical file deliverable
+    (.pdf, .docx, .xlsx, .pptx, etc.) or pure in-chat textual content (summary, outline, advice).
+    """
+    # 查找生成动词后紧随的目标词
+    m = re.search(r'(?:生成|导出|制作|创建|做|写|输出为|保存为|转为|转成|输出)\s*(?:一份|一个|一张|一段|出|成|为)?\s*([a-zA-Z0-9_\-\u4e00-\u9fa5\.]+)', lower_q)
+    if not m:
+        return any(p in lower_q for p in [".pdf", ".docx", ".xlsx", ".pptx", ".html", "word", "excel", "ppt", "html", "导出为", "保存为"])
+    target = m.group(1).strip()
+    has_physical = any(p in target for p in PHYSICAL_DELIVERABLE_TARGETS) or any(ext in lower_q for ext in [".pdf", ".docx", ".xlsx", ".pptx", ".html", "word", "excel", "ppt", "html", "导出为", "保存为"])
+    has_text_only = any(t in target for t in TEXT_ONLY_ACTION_TARGETS)
+    if has_text_only and not any(p in target for p in PHYSICAL_DELIVERABLE_TARGETS):
+        # 即使整句有通用词（如查看文档），若生成部分紧接纯文本目标且无显式物理介质词
+        if not any(ext in lower_q for ext in [".pdf", ".docx", ".xlsx", ".pptx", ".html", "word", "excel", "ppt", "html", "保存为", "导出为", "另存为", "写成文件", "生成文件"]):
+            return False
+    return has_physical
+
+
+def resolve_file_action_intent(query: str, history: Optional[List[Dict[str, Any]]] = None) -> Tuple[bool, bool]:
+    """
+    Semantically resolves whether user intent is physical file generation (is_generate_intent)
+    or read-only inspection/analysis (is_inspect_intent).
+    Returns (is_generate_intent, is_inspect_intent).
+    """
+    if not query:
+        return False, False
+
+    lower_q = query.lower().strip()
+
+    # 1. 显式生成类 Slash 命令（确定性 100% 具有产物生成交付意图）
+    if lower_q.startswith(("/", "／")):
+        cmd = lower_q.split()[0].lstrip("/／")
+        if cmd in GENERATIVE_SLASH_COMMANDS:
+            return True, False
+
+    # 2. 基础谓词模式检测
+    has_inspect = any(k in lower_q for k in INSPECT_ACTION_PATTERNS) or any(k in lower_q for k in CONTENT_QUERY_PATTERNS)
+    has_generate = any(k in lower_q for k in GENERATE_ACTION_PATTERNS)
+
+    # 3. 语法结构与消歧分析
+    if has_inspect and not has_generate:
+        # 纯查看/查阅/分析意图（如：“查看文件内容”、“查看 sample.pdf”、“分析销售数据”）
+        return False, True
+
+    if has_generate and not has_inspect:
+        # 纯生成/导出/创建意图：进一步区分是物理文件交付还是纯文本创作（如“生成一份总结”）
+        is_physical = check_generation_target_is_physical(lower_q)
+        if is_physical:
+            return True, False
+        else:
+            # 纯文本创作（如“生成一份总结”、“写个大纲”）
+            return False, False
+
+    if has_inspect and has_generate:
+        # 同时包含查阅与生成动词时的结构分析：
+        # 情况 A: 主语/谓词为查看，修饰语包含生成（如：“查看生成的文件”、“看看刚才导出的pdf”、“检查已生成的代码”）
+        # 此时核心动作仍是“查看”，绝非要求重新生成文件！
+        if re.search(r'(查看|看下|看一下|看看|检查|阅读|查阅|分析|浏览)\s*(?:刚才|之前|已|历史|沙箱)?\s*(生成|输出|制作|导出|新建)的?', lower_q):
+            return False, True
+
+        # 情况 B: 查阅并在其基础上进行后续产出
+        is_physical = check_generation_target_is_physical(lower_q)
+        if is_physical:
+            # 查阅并在其基础上生成新物理文件（如：“分析数据并生成报告pdf”、“读取文件后输出为Word”）
+            return True, True
+        else:
+            # 查阅并生成纯文本总结/分析（如：“查看文档的内容，然后生成一份总结”、“分析材料给出建议”）
+            # 此时交付载体为聊天文本，绝不属于物理文件生成！
+            return False, True
+
+    # 4. 上下文追问/确认探测（例如上一轮提供了方案，本轮用户回复“确认生成”、“导出”、“1”）
+    if history and lower_q in ["1", "1.", "一是", "第一个", "确认", "生成", "导出", "确认生成", "请生成"]:
+        for h in reversed(history[-4:]):
+            if not isinstance(h, dict):
+                continue
+            c = str(h.get("content", "")).lower()
+            if any(k in c for k in ["pdf", "word", "excel", "ppt", "导出", "生成文档", "fpdf", "docx", "xlsx"]):
+                return True, False
+
+    return False, False
 
 
 def clean_semantic_query(q: str) -> str:
@@ -284,6 +404,16 @@ class SkillRouter:
         Determines skill and intent for a given prompt via semantic affinity matching.
         """
         effective_query = prompt
+        # 提取上传附件或有效附件信息，用于指代消歧与多模态文件亲和度解析
+        attached_files: List[str] = []
+        att_match = re.search(r'【(?:当前轮次用户上传附件|当前会话有效附件清单)】:\s*([^（\n]+)', prompt)
+        if att_match:
+            raw_files = att_match.group(1).split(",")
+            for rf in raw_files:
+                clean_f = rf.strip()
+                if clean_f and "." in clean_f:
+                    attached_files.append(clean_f)
+
         if "用户指令：" in prompt:
             effective_query = prompt.split("用户指令：")[-1].strip()
         elif "用户指令:" in prompt:
@@ -313,12 +443,13 @@ class SkillRouter:
         is_asking_local = any(loc in lower_query for loc in LOCAL_DISAMBIGUATION)
         result.is_search_intent = any(cue in lower_query for cue in SEARCH_CUES) and not is_asking_local
 
-        # 仅当不是知识/教程问答且不是开放域最新信息检索时，动词才属于本地系统环境的探查意图
-        INSPECT_ACTION_PATTERNS = ["查看", "检查", "检索", "查阅", "排查", "查一下", "查下", "探查", "搜索", "搜下", "搜一下", "诊断"]
+        # 仅当不是知识/教程问答且不是开放域最新信息检索时，进行结构化文件动作意图解析
+        is_gen, is_insp = resolve_file_action_intent(effective_query, existing_history)
+        result.is_generate_intent = is_gen
         if result.is_guide_intent or result.is_search_intent:
             result.is_inspect_intent = False
         else:
-            result.is_inspect_intent = any(k in lower_query for k in INSPECT_ACTION_PATTERNS)
+            result.is_inspect_intent = is_insp
 
         # 5. 显式 Slash 命令优先匹配（确定性 100%）
         if lower_query.startswith("/"):
@@ -353,7 +484,12 @@ class SkillRouter:
             all_skills = available_skills or get_available_skills()
             if all_skills:
                 matcher = SemanticSkillMatcher(all_skills)
-                matches = matcher.match(effective_query)
+                semantic_query = effective_query
+                EXPLICIT_FORMAT_CUES = [".pdf", ".docx", ".xlsx", ".pptx", ".html", "pdf", "word", "excel", "ppt", "表格", "幻灯片", "演示文稿", "报表", "海报", "图片", "代码"]
+                has_explicit_format = any(fmt in lower_query for fmt in EXPLICIT_FORMAT_CUES)
+                if attached_files and not has_explicit_format:
+                    semantic_query = f"{effective_query} {' '.join(attached_files)}"
+                matches = matcher.match(semantic_query)
                 if matches:
                     top_id, top_score, top_reasons = matches[0]
                     # 门禁控制：深度调研 (research) 技能必须有明确指示才启用
@@ -442,9 +578,34 @@ class SkillRouter:
                 result.is_research_intent = True
                 result.is_inspect_intent = False
 
+            # 填充技能契约元数据 (deliverables, requires_execution, default_rounds)
+            all_skills = available_skills or get_available_skills()
+            for s in all_skills:
+                if s.get("id") == result.skill_id or s.get("name") == result.skill_id:
+                    skill_delivs = list(s.get("deliverables") or [])
+                    skill_req_exec = bool(s.get("requires_execution", False))
+                    skill_rounds = int(s.get("default_rounds") or 0)
+
+                    # 核心解耦规则：仅当用户意图属于产物生成/输出时，才绑定交付物契约与执行强制要求。
+                    # 当用户为纯查阅、阅读、分析、检查已有文件时，保留技能参考上下文，但不强制产物物理交付闭环。
+                    if result.is_generate_intent:
+                        result.deliverables = skill_delivs
+                        result.requires_execution = skill_req_exec
+                        result.default_rounds = skill_rounds
+                    elif result.is_inspect_intent:
+                        result.deliverables = []
+                        result.requires_execution = False
+                        result.default_rounds = min(skill_rounds, 3) if skill_rounds > 0 else 2
+                    else:
+                        # 兜底安全原则（Opt-in）：若无显式物理文件生成意图，绝不强行断言物理交付物！
+                        result.deliverables = []
+                        result.requires_execution = False
+                        result.default_rounds = min(skill_rounds, 3) if skill_rounds > 0 else 3
+                    break
+
             reasons_info = f" (亲和度得分: {result.affinity_score:.1f})" if result.affinity_score > 0 else ""
             print(f"🎯 [Skill Router] 命中意图规范: {result.skill_id}{reasons_info}，正在注入专业规范...", flush=True)
-            result.skill_context = read_skill(result.skill_id)
+            result.skill_context = read_skill(result.skill_id, prompt=effective_query)
 
         if result.is_research_intent or result.skill_id == "research" or allow_research:
             result.is_inspect_intent = False

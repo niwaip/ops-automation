@@ -252,6 +252,12 @@ export const mapExecutionToDto = (execution: Record<string, unknown>): Execution
     createdBy: (execution.createdBy || execution.created_by) as string | null,
     createdByName: (execution.createdByName || execution.created_by_name) as string | null,
     phases: rawPhases.map((phase) => mapExecutionPhaseToDto(phase as Record<string, unknown>)),
+    pendingOutboundEffects: Array.isArray(execution.pendingOutboundEffects)
+      ? (execution.pendingOutboundEffects as any)
+      : undefined,
+    unknownOutboundEffects: Array.isArray(execution.unknownOutboundEffects)
+      ? (execution.unknownOutboundEffects as any)
+      : undefined,
   };
 };
 

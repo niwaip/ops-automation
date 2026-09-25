@@ -18,4 +18,5 @@ __exportStar(require("./manifest"), exports);
 __exportStar(require("./routing-card"), exports);
 __exportStar(require("./runtime-adapter"), exports);
 __exportStar(require("./test-kit"), exports);
+__exportStar(require("./packs/platform-search-web"), exports);
 //# sourceMappingURL=index.js.map

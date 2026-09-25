@@ -41,4 +41,7 @@ DATABASE_URL="$CONTROL_PLANE_MIGRATION_DATABASE_URL" bash "$PLATFORM_MIGRATOR"
 log 'Validating AI Orchestrator schema against the canonical migration history...'
 DATABASE_URL="$AI_ORCHESTRATOR_MIGRATION_DATABASE_URL" bash "$AI_MIGRATOR"
 
-log 'The canonical production migration history is current.'
+log 'Applying capability migrations with release-only credential...'
+DATABASE_URL="$CONTROL_PLANE_MIGRATION_DATABASE_URL" bash "$SCRIPT_DIR/apply-capability-db-schema-in-container.sh"
+
+log 'The canonical production migration history and capability schemas are current.'

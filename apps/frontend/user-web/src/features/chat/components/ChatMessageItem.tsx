@@ -45,8 +45,17 @@ interface ChatMessageItemProps {
   actionLoading?: 'approve' | 'reject' | undefined;
   expandedThought: boolean;
   onToggleThought: (messageId: string) => void;
-  onApproveExecution: (messageId: string, executionId: string) => void;
-  onRejectExecution: (messageId: string, executionId: string) => void;
+  onApproveExecution: (
+    messageId: string,
+    executionId: string,
+    effectId?: string,
+    approvedPayloadHash?: string
+  ) => void;
+  onRejectExecution: (
+    messageId: string,
+    executionId: string,
+    effectId?: string
+  ) => void;
   onRetry?: (message: ChatMessage) => void;
 }
 

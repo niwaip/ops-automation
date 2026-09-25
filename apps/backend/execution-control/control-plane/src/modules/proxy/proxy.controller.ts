@@ -15,6 +15,13 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { ProxyService } from './proxy.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthenticatedRequest } from '../auth/auth.middleware';
+import {
+  TRACE_ID_HEADER,
+  TRACEPARENT_HEADER,
+  TRACESTATE_HEADER,
+  isValidTraceparent,
+  createChildTraceparent,
+} from '../../common/interceptors/trace.interceptor';
 
 @ApiTags('Proxy')
 @ApiBearerAuth()
@@ -221,6 +228,33 @@ export class ProxyController {
     if (req.user) {
       headers['X-User-Id'] = req.user.id;
       headers['X-User-Role'] = req.user.role;
+    }
+
+    // Forward distributed tracing headers
+    const incomingTraceId = (req as any).traceId || (req.headers[TRACE_ID_HEADER] as string);
+    if (incomingTraceId) {
+      headers[TRACE_ID_HEADER] = incomingTraceId;
+    }
+    if (req.headers['x-request-id']) {
+      headers['x-request-id'] = req.headers['x-request-id'] as string;
+    }
+
+    const currentTraceparent =
+      (req as any).traceparent ||
+      (req as any).traceContext?.traceparent ||
+      (req.headers[TRACEPARENT_HEADER] as string | undefined);
+
+    if (currentTraceparent && isValidTraceparent(currentTraceparent)) {
+      headers[TRACEPARENT_HEADER] = createChildTraceparent(currentTraceparent);
+    } else if (currentTraceparent) {
+      headers[TRACEPARENT_HEADER] = currentTraceparent;
+    }
+
+    const currentTracestate =
+      (req as any).traceContext?.tracestate ||
+      (req.headers[TRACESTATE_HEADER] as string | undefined);
+    if (currentTracestate) {
+      headers[TRACESTATE_HEADER] = currentTracestate;
     }
 
     try {

@@ -311,4 +311,43 @@ describe('CapabilityRuntimeAdapter', () => {
     );
     expect(result.retryable).toBe(false);
   });
+
+  it('propagates child W3C traceparent and tracestate in HTTP request headers', async () => {
+    mockedAxios.post.mockResolvedValue({
+      data: {
+        success: true,
+        releaseId: 'rel-trace',
+        capabilityId: 'skill-trace',
+        publishedSkillId: 'skill-trace',
+        runtime: 'custom',
+        logs: [],
+        output: {},
+      },
+    } as any);
+
+    const adapter = new CapabilityRuntimeAdapter(new OutputNormalizerService());
+    await adapter.invokeStep({
+      requestId: 'req-trace',
+      executionId: 'exec-trace',
+      stepId: 'step-trace',
+      runtimeType: 'custom',
+      publishedSkillId: 'skill-trace',
+      capabilityType: 'skill.runtime',
+      action: 'execute',
+      input: {},
+      traceContext: {
+        traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
+        traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
+        tracestate: 'rojo=1',
+      },
+    });
+
+    const callArgs = mockedAxios.post.mock.calls[0];
+    const config = callArgs[2];
+    expect(config.headers).toBeDefined();
+    expect(config.headers['traceparent']).toMatch(/^00-4bf92f3577b34da6a3ce929d0e0e4736-[0-9a-f]{16}-01$/);
+    expect(config.headers['traceparent']).not.toBe('00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01');
+    expect(config.headers['x-trace-id']).toBe('4bf92f3577b34da6a3ce929d0e0e4736');
+    expect(config.headers['tracestate']).toBe('rojo=1');
+  });
 });

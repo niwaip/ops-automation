@@ -87,7 +87,7 @@ export class UserSandboxService implements OnModuleInit, OnModuleDestroy {
     const updated = this.storageService.writeUserQuota(userId, quota);
     const containerName = this.getContainerName(userId);
     const container = await this.containerService.findContainer(containerName);
-    if (container) {
+    if (container && container.update) {
       try {
         await container.update({
           CpuQuota: Math.round(updated.cpuLimit * 100000),

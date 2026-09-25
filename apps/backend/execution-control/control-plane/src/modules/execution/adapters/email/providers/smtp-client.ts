@@ -13,6 +13,7 @@ export interface SmtpSendOptions {
   subject: string;
   textBody: string;
   inReplyTo?: string;
+  clientRequestKey?: string;
 }
 
 function encodeRfc2047(text: string): string {
@@ -185,7 +186,9 @@ export class SmtpClient {
     const toHeader = options.to.map(formatAddressHeader).join(', ');
     const ccHeader = (options.cc || []).map(formatAddressHeader).join(', ');
     const dateHeader = new Date().toUTCString();
-    const messageId = `<${uuidv4()}@${host}>`;
+    const messageId = options.clientRequestKey
+      ? `<${options.clientRequestKey}@${host}>`
+      : `<${uuidv4()}@${host}>`;
 
     let rawEmail = '';
     rawEmail += `From: ${fromHeader}\r\n`;
@@ -196,6 +199,9 @@ export class SmtpClient {
     rawEmail += `Subject: ${encodeRfc2047(options.subject)}\r\n`;
     rawEmail += `Date: ${dateHeader}\r\n`;
     rawEmail += `Message-ID: ${messageId}\r\n`;
+    if (options.clientRequestKey) {
+      rawEmail += `X-Client-Request-Key: ${options.clientRequestKey}\r\n`;
+    }
     if (options.inReplyTo) {
       rawEmail += `In-Reply-To: ${options.inReplyTo}\r\n`;
       rawEmail += `References: ${options.inReplyTo}\r\n`;
@@ -228,7 +234,10 @@ export class SmtpClient {
       const startSession = (socket: net.Socket | tls.TLSSocket, initialTls: boolean) => {
         activeSocket = socket;
         activeSocket.setTimeout(timeout, () => {
-          done(new Error(`SMTP 发信请求超时 (${timeout}ms)`));
+          const timeoutErr = new Error(`SMTP 发信请求超时 (${timeout}ms): connection or write timed out [ETIMEDOUT]`) as Error & { code?: string; isTimeout?: boolean };
+          timeoutErr.code = 'ETIMEDOUT';
+          timeoutErr.isTimeout = true;
+          done(timeoutErr);
         });
 
         let state = 'GREETING';
@@ -237,8 +246,10 @@ export class SmtpClient {
         let recipientIndex = 0;
 
         const attachHandlers = (s: net.Socket | tls.TLSSocket) => {
-          s.on('error', (err) => {
-            done(new Error(`SMTP 发信通信异常: ${err.message}`));
+          s.on('error', (err: any) => {
+            const wrappedErr = new Error(`SMTP 发信通信异常: ${err?.message || err}`) as Error & { code?: string };
+            wrappedErr.code = err?.code;
+            done(wrappedErr);
           });
 
           s.on('data', (chunk) => {

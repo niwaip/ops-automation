@@ -15,7 +15,9 @@ from pathlib import Path
 
 # Add src to sys.path
 PROJECT_ROOT = Path(__file__).resolve().parents[5]
-SANDBOX_SKILLS_DIR = PROJECT_ROOT / "docker" / "user-sandbox" / "skills"
+SANDBOX_SKILLS_DIR = PROJECT_ROOT / "apps" / "backend" / "runtimes" / "personal-sandbox-runner" / "skills"
+if not SANDBOX_SKILLS_DIR.exists():
+    SANDBOX_SKILLS_DIR = PROJECT_ROOT / "docker" / "user-sandbox" / "skills"
 DSH_MODULES_DIR = PROJECT_ROOT / "apps" / "backend" / "runtimes" / "personal-sandbox-runner" / "src" / "dsh_modules"
 
 os.environ["DSH_SKILL_DIR"] = str(SANDBOX_SKILLS_DIR)
