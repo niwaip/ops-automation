@@ -1,5 +1,4 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import * as localFs from 'node:fs';
 import { randomUUID } from 'crypto';
 import { CapabilityReleaseRecorderBridgeCompilerService } from '../compiler/capability-release-recorder-bridge-compiler.service';
 import { BrowserRecordingExecutionPlanValidatorService } from '../validator/browser-recording-execution-plan-validator.service';
@@ -488,48 +487,9 @@ export class CapabilityReleasePublishService {
   }
 
   private reportRuntimeLoopMismatchDebug(
-    hypothesisId: 'A' | 'B' | 'C' | 'D' | 'E',
-    msg: string,
-    data: Record<string, unknown>,
-    runId = 'pre-fix'
-  ): void {
-    const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
-    if (!debugUrl) return;
-    const envPaths = [
-      '/app/.dbg/runtime-loop-mismatch.env',
-      '/Users/chain/Documents/MyProject/ops-automation/.dbg/runtime-loop-mismatch.env',
-    ];
-    let serverUrl = debugUrl;
-    let sessionId = 'runtime-loop-mismatch';
-    for (const envPath of envPaths) {
-      try {
-        const envContent = localFs.readFileSync(envPath, 'utf8');
-        const resolvedUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim();
-        const resolvedSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim();
-        if (resolvedUrl) {
-          serverUrl = resolvedUrl;
-        }
-        if (resolvedSessionId) {
-          sessionId = resolvedSessionId;
-        }
-        break;
-      } catch {
-        // optional debug probe env file not found, use default
-      }
-    }
-    const payload = {
-      sessionId,
-      runId,
-      hypothesisId,
-      location: 'capability-release-publish.service',
-      msg: `[DEBUG] ${msg}`,
-      data,
-      ts: Date.now(),
-    };
-    void fetch(serverUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }).catch(() => undefined);
-  }
+    _hypothesisId: 'A' | 'B' | 'C' | 'D' | 'E',
+    _msg: string,
+    _data: Record<string, unknown>,
+    _runId = 'pre-fix'
+  ): void {}
 }

@@ -83,7 +83,7 @@ export class BrowserExecutionPlannerService {
 
     try {
       const response = await this.callModelWithFallback(chatModel.id, prompt);
-      console.log(`[AI Planner Raw Response]:\n`, response.content);
+      this.logger.debug(`[AI Planner Raw Response]:\n${response.content}`);
       return this.browserPlannerResponseParser.parsePlanResponse(response.content);
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';

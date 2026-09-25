@@ -21,8 +21,8 @@ def check_python_modules() -> List[Dict[str, Any]]:
         ("docx", "python-docx", True, "Word 文档读写与批注修订"),
         ("openpyxl", "openpyxl", True, "Excel 表格读写与公式重算"),
         ("pypdf", "pypdf", True, "PDF 文档解析与页面提取"),
+        ("pptx", "python-pptx", True, "PowerPoint 演示文稿生成"),
         ("fitz", "PyMuPDF", False, "PDF 高保真表单与渲染提取"),
-        ("pptx", "python-pptx", False, "PowerPoint 演示文稿生成"),
         ("requests", "requests", False, "HTTP 高级网络客户端"),
         ("playwright", "playwright", False, "浏览器端到端无头自动化")
     ]
@@ -136,7 +136,7 @@ def check_connectivity() -> List[Dict[str, Any]]:
             "category": "通信与网络通道",
             "name": "DNS 解析",
             "status": "PASS",
-            "required": True,
+            "required": False,
             "detail": "公网域名解析正常"
         })
     except Exception as e:
@@ -145,7 +145,7 @@ def check_connectivity() -> List[Dict[str, Any]]:
             "name": "DNS 解析",
             "status": "WARN",
             "required": False,
-            "detail": f"公网 DNS 解析异常: {e}"
+            "detail": f"公网 DNS 解析异常 (离线或无外网): {e}"
         })
 
     # 2. Model Proxy Gateway
@@ -162,21 +162,32 @@ def check_connectivity() -> List[Dict[str, Any]]:
             "detail": f"响应就绪 ({proxy_url}, HTTP {code})"
         })
     except urllib.error.HTTPError as e:
-        # 404 or 405 on base path still indicates gateway is reachable
-        results.append({
-            "category": "通信与网络通道",
-            "name": "模型代理网关",
-            "status": "PASS",
-            "required": True,
-            "detail": f"网关可达 ({proxy_url}, HTTP {e.code})"
-        })
+        # 4xx 客户端响应码（如 400, 401, 403, 404, 405 等）表明 HTTP 代理网关在第 7 层存活并积极响应请求
+        # 5xx 服务端错误（如 500, 502 Bad Gateway, 503 Service Unavailable, 504 Gateway Timeout）表明网关崩溃或上游连接失败
+        if 400 <= e.code < 500:
+            results.append({
+                "category": "通信与网络通道",
+                "name": "模型代理网关",
+                "status": "PASS",
+                "required": True,
+                "detail": f"网关就绪 ({proxy_url}, HTTP {e.code} 存活响应)"
+            })
+        else:
+            results.append({
+                "category": "通信与网络通道",
+                "name": "模型代理网关",
+                "status": "FAIL",
+                "required": True,
+                "detail": f"网关服务故障 ({proxy_url}, HTTP {e.code}): 服务端内部错误或上游模型服务不可用"
+            })
     except Exception as e:
+        # 连接被拒 (Connection refused)、超时、无法解析网关主机名等，沙箱大模型核心通道完全不可用
         results.append({
             "category": "通信与网络通道",
             "name": "模型代理网关",
-            "status": "WARN",
-            "required": False,
-            "detail": f"网关暂未连通 ({proxy_url}): {e}"
+            "status": "FAIL",
+            "required": True,
+            "detail": f"网关无法连接 ({proxy_url}): {e}"
         })
 
     return results
@@ -191,7 +202,7 @@ def run_doctor_checks() -> Tuple[bool, List[Dict[str, Any]]]:
     all_checks.extend(check_connectivity())
 
     has_critical_failure = any(
-        c["status"] == "FAIL" and c["required"] for c in all_checks
+        c["status"] == "FAIL" and c.get("required", True) for c in all_checks
     )
     return (not has_critical_failure), all_checks
 
@@ -220,9 +231,12 @@ def cmd_doctor(args=None):
         print(f"{mark} {c['name']:<18} : {c['detail']}")
 
     print("\n" + "-" * 64)
-    if is_healthy:
-        print("  🎉 整体健康状态: 优秀 (沙箱所有核心功能均可正常运作)")
-    else:
+    has_warnings = any(c["status"] == "WARN" for c in checks)
+    if not is_healthy:
         print("  ⚠️ 整体健康状态: 存在异常 (部分关键依赖未就绪，请参考上述提示修复)")
+    elif has_warnings:
+        print("  💡 整体健康状态: 良好 (沙箱所有核心功能均正常运作，部分可选扩展未就绪)")
+    else:
+        print("  🎉 整体健康状态: 优秀 (沙箱所有核心及扩展功能均就绪)")
     print("-" * 64 + "\n")
     return 0 if is_healthy else 1

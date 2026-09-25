@@ -1,4 +1,4 @@
-const BOX_BORDER_LINE_REGEX = /^[┌┐└┘├┤┬┴┼─━═╔╗╚╝╠╣╦╩╬\-\+\= \t|│┃║]+$/;
+const BOX_BORDER_LINE_REGEX = /^[┌┐└┘├┤┬┴┼─━═╔╗╚╝╠╣╦╩╬\-+= \t|│┃║]+$/;
 const BOX_CELL_SPLIT_REGEX = /[│┃║]/;
 
 /**
@@ -17,7 +17,7 @@ export function convertBoxDrawingCodeBlock(codeText: string): string | null {
     /<script/i.test(codeText) ||
     /<style/i.test(codeText) ||
     /def\s+\w+\s*\(/.test(codeText) ||
-    /import\s+[\w\{\*]/.test(codeText) ||
+    /import\s+[\w{*]/.test(codeText) ||
     /function\s+\w*\s*\(/.test(codeText)
   ) {
     return null;
@@ -25,7 +25,7 @@ export function convertBoxDrawingCodeBlock(codeText: string): string | null {
 
   // 必须包含真实的盒线绘图字符 (┌ ┬ ┐ ├ ┼ ┤ └ ┴ ┘ ─ │ 等) 或明确的 +----+----+ 边框
   const hasBoxDrawingChars = /[┌┐└┘├┤┬┴┼─━═╔╗╚╝╠╣╦╩╬│┃║]/.test(codeText);
-  const hasAsciiTableBorders = /^\+[\-]{2,}\+/m.test(codeText);
+  const hasAsciiTableBorders = /^\+[-]{2,}\+/m.test(codeText);
   if (!hasBoxDrawingChars && !hasAsciiTableBorders) {
     return null; // Not a box-drawing table at all!
   }
@@ -55,7 +55,7 @@ export function convertBoxDrawingCodeBlock(codeText: string): string | null {
     // Check if it's a border/divider line (e.g. ┌───┬───┐ or ├───┼───┤ or +---+---+)
     const isBorder =
       BOX_BORDER_LINE_REGEX.test(line) &&
-      (/[─━═\-\=]{2,}/.test(line) || /[┌┐└┘├┤┬┴┼╔╗╚╝╠╣╦╩╬\+]/.test(line));
+      (/[─━═\-=]{2,}/.test(line) || /[┌┐└┘├┤┬┴┼╔╗╚╝╠╣╦╩╬+]/.test(line));
 
     if (isBorder) {
       borderLineCount++;
@@ -297,7 +297,7 @@ export function normalizeTabSeparatedTable(text: string): string {
     const trimmed = line.trim();
     const isBoxBorder =
       BOX_BORDER_LINE_REGEX.test(trimmed) &&
-      (/[─━═]{2,}/.test(trimmed) || /[┌┐└┘├┤┬┴┼╔╗╚╝╠╣╦╩╬]/.test(trimmed) || /^\+[\-]{2,}\+/.test(trimmed));
+      (/[─━═]{2,}/.test(trimmed) || /[┌┐└┘├┤┬┴┼╔╗╚╝╠╣╦╩╬]/.test(trimmed) || /^\+[-]{2,}\+/.test(trimmed));
 
     if (isBoxBorder) {
       // Box drawing border or ASCII border: keep tableBuffer intact

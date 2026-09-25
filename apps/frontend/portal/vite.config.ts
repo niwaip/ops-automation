@@ -204,6 +204,11 @@ export default defineConfig({
         ),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
+        headers: {
+          'x-internal-auth':
+            readEnv('INTERNAL_API_SHARED_SECRET', 'INTERNAL_API_SECRET') ||
+            'ops_internal_shared_secret_change_me',
+        },
       },
       '/api/workers': {
         target: getProxyTarget(

@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { validateSync } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import {
@@ -7,10 +8,15 @@ import {
   QueryWorkbenchTodoDto,
 } from '@ops/workbench/todo';
 
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+
 describe('WorkbenchTodoParserService', () => {
   let service: WorkbenchTodoParserService;
 
   beforeEach(() => {
+    mockedAxios.post.mockReset();
+    mockedAxios.post.mockRejectedValue(new Error('AI Orchestrator offline'));
     service = new WorkbenchTodoParserService();
   });
 
@@ -47,6 +53,37 @@ describe('WorkbenchTodoParserService', () => {
     expect(preview.suggestedWorkflowId).toBe('wf-db-backup');
     expect(preview.suggestedWorkflowName).toBe('备份数据库工作流');
     expect(preview.sourceType).toBe(TodoSourceType.chat);
+  });
+
+  it('should use AI extraction when AI Orchestrator returns structured 5W1H JSON', async () => {
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        response: JSON.stringify({
+          what: '备份数据库',
+          why: '下周审计',
+          who: ['李四'],
+          when: '明天上午',
+          priority: 'high',
+          suggestedWorkflowId: 'wf-db-backup',
+          suggestedWorkflowName: '备份数据库工作流',
+        }),
+      },
+    } as any);
+
+    const workflows = [
+      { id: 'wf-db-backup', name: '备份数据库工作流', description: '自动备份 Postgres' },
+    ];
+
+    const preview = await service.extractTodoPreview(
+      {
+        text: '李四负责明天上午备份数据库以备下周审计',
+        sourceType: TodoSourceType.chat,
+      },
+      workflows
+    );
+
+    expect(preview.title).toBe('备份数据库');
+    expect(preview.suggestedWorkflowId).toBe('wf-db-backup');
   });
 });
 

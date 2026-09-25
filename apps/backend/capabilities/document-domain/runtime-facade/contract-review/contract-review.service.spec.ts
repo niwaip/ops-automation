@@ -123,8 +123,8 @@ describe('Contract Review System', () => {
       expect(result.htmlReport).toContain('缺失必备保护条款');
       expect(result.htmlReport).toContain('综合合规评级');
 
-      // Check summary format has embedded html block for HtmlPreviewBlock rendering
-      expect(result.summary).toContain('```html');
+      // Check chatSummary format has embedded html block for HtmlPreviewBlock rendering
+      expect(result.chatSummary).toContain('```html');
       expect(result.summary).toContain('### ⚖️ 合同智能合规审查与风险诊断完成');
       expect(result.summary).toContain('🔗 **[👉 点击在新窗口打开全屏审查报告]');
       expect(result.artifact).toBeDefined();

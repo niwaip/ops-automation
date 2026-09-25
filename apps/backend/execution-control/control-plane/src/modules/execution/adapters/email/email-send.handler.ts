@@ -389,7 +389,11 @@ export async function executeEmailSend(
             errorClassification: 'OUTBOUND_EFFECT_UNKNOWN',
             resolutionReason: rawMessage,
           });
-        } catch {}
+        } catch (ledgerError) {
+          logger.warn(
+            `Failed to mark ledger unknown for ${commitRecord.id}: ${ledgerError instanceof Error ? ledgerError.message : String(ledgerError)}`
+          );
+        }
       }
       return {
         success: false,
@@ -407,7 +411,11 @@ export async function executeEmailSend(
           errorClassification: rawMessage.includes('未配置') ? 'EMAIL_NOT_CONFIGURED' : 'EMAIL_SEND_FAILED',
           resolutionReason: rawMessage,
         });
-      } catch {}
+      } catch (ledgerError) {
+        logger.warn(
+          `Failed to mark ledger failed for ${commitRecord.id}: ${ledgerError instanceof Error ? ledgerError.message : String(ledgerError)}`
+        );
+      }
     }
 
     if (rawMessage.includes('未配置')) {

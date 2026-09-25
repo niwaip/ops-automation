@@ -10,7 +10,13 @@ cd "$REPO_ROOT"
 
 echo "Validating Docker Compose files..."
 for compose_file in "$DOCKER_DIR"/compose/*.yml; do
-    bash "$DOCKER_DIR/start-smart.sh" "$(basename "$compose_file")" config --quiet >/dev/null
+    file_name="$(basename "$compose_file")"
+    if [ "$file_name" = "docker-compose.production.yml" ]; then
+        # Production compose requires immutable digests & dedicated release secrets;
+        # validated separately by docker/scripts/validate-production-delivery.sh
+        continue
+    fi
+    bash "$DOCKER_DIR/start-smart.sh" "$file_name" config --quiet >/dev/null
 done
 
 echo "Validating shell scripts..."

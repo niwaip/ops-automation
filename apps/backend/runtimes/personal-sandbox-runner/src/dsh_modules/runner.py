@@ -238,7 +238,7 @@ def cmd_run(args):
                 existing_history.append({"role": "user", "content": prompt})
                 existing_history.append({"role": "assistant", "content": final_text})
                 with open(history_file, "w", encoding="utf-8") as f:
-                    json.dump(existing_history[-policy.recent_history_save_count:], f, ensure_ascii=False, indent=2)
+                    json.dump(existing_history[-policy.recent_history_save_count:], f, ensure_ascii=False, indent=2, default=str)
             except Exception:
                 pass
 
@@ -251,6 +251,8 @@ def cmd_run(args):
             if payload not in outbound_set and not any(item["fileName"] in existing for existing in outbound_set):
                 outbound_set.append(payload)
         TelemetryStats.emit_outbound_files(outbound_set)
+        if getattr(loop_res, "outbound_reminders", None):
+            TelemetryStats.emit_outbound_reminders(loop_res.outbound_reminders)
         loop_res.telemetry.emit_metrics_event()
         TelemetryStats.emit_final_output(final_text)
 

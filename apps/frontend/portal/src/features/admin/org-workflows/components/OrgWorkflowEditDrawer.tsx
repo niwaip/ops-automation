@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Drawer,
   Form,
@@ -79,28 +79,31 @@ export const OrgWorkflowEditDrawer: React.FC<OrgWorkflowEditDrawerProps> = ({
     { enabled: visible }
   );
 
-  const applyPresetTemplate = (templateId: string) => {
-    const preset = PRESET_WORKFLOW_TEMPLATES.find((p) => p.id === templateId);
-    if (!preset || !preset.workflow) return;
+  const applyPresetTemplate = useCallback(
+    (templateId: string) => {
+      const preset = PRESET_WORKFLOW_TEMPLATES.find((p) => p.id === templateId);
+      if (!preset || !preset.workflow) return;
 
-    setSelectedTemplateId(templateId);
-    form.setFieldsValue({
-      workflowId: preset.workflow.workflowId,
-      name: preset.workflow.name,
-      description: preset.workflow.description,
-      category: preset.workflow.category,
-      taskType: preset.workflow.taskType,
-      icon: preset.workflow.icon || 'ApartmentOutlined',
-    });
+      setSelectedTemplateId(templateId);
+      form.setFieldsValue({
+        workflowId: preset.workflow.workflowId,
+        name: preset.workflow.name,
+        description: preset.workflow.description,
+        category: preset.workflow.category,
+        taskType: preset.workflow.taskType,
+        icon: preset.workflow.icon || 'ApartmentOutlined',
+      });
 
-    setAssembledWorkflows(preset.workflow.assembledWorkflows || []);
-    setStages(preset.workflow.processDefinition?.stages || []);
-    setSelectedRoleIds(preset.workflow.grantedRoleIds || ['employee', 'admin']);
-    setIsPublished(preset.workflow.isPublished ?? true);
-    setParamsSchema(preset.workflow.paramsSchema);
+      setAssembledWorkflows(preset.workflow.assembledWorkflows || []);
+      setStages(preset.workflow.processDefinition?.stages || []);
+      setSelectedRoleIds(preset.workflow.grantedRoleIds || ['employee', 'admin']);
+      setIsPublished(preset.workflow.isPublished ?? true);
+      setParamsSchema(preset.workflow.paramsSchema);
 
-    message.success(`已成功载入模版【${preset.name}】，包含预置阶段与合规锁定规则！`);
-  };
+      message.success(`已成功载入模版【${preset.name}】，包含预置阶段与合规锁定规则！`);
+    },
+    [form]
+  );
 
   useEffect(() => {
     if (visible) {
@@ -167,7 +170,7 @@ export const OrgWorkflowEditDrawer: React.FC<OrgWorkflowEditDrawerProps> = ({
         setParamsSchema(undefined);
       }
     }
-  }, [workflow, visible, initialTemplateId, form]);
+  }, [workflow, visible, initialTemplateId, form, applyPresetTemplate]);
 
   const saveMutation = useMutation(
     async (values: any) => {

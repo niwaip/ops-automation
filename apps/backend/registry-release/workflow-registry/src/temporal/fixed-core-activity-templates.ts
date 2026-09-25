@@ -15,7 +15,6 @@ from temporalio import activity
 from temporalio.exceptions import ApplicationError
 from typing import Dict, Any
 import json
-import urllib.request
 
 
 @activity.defn(name="documentRender")
@@ -95,29 +94,6 @@ async def documentRender(input_data: Dict[str, Any]) -> Dict[str, Any]:
 
     if not deduped_base_urls:
         raise ApplicationError("未配置可用的 Carbone 服务地址", non_retryable=True)
-
-    # #region debug-point B:debug-report
-    def _debug_report(msg: str, data: Dict[str, Any], hypothesis_id: str = "B") -> None:
-        try:
-            debug_server_url = os.environ.get("DEBUG_SERVER_URL", "").strip()
-            if not debug_server_url:
-                return
-            debug_session_id = "document-render-aborted"
-            urllib.request.urlopen(urllib.request.Request(
-                debug_server_url,
-                data=json.dumps({
-                    "sessionId": debug_session_id,
-                    "runId": "pre-fix",
-                    "hypothesisId": hypothesis_id,
-                    "location": "fixed-activity-templates:documentRender",
-                    "msg": msg,
-                    "data": data,
-                }).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
-            )).read()
-        except Exception:
-            pass
-    # #endregion
 
     payload = {
         "data": render_data,
@@ -215,42 +191,13 @@ async def documentRender(input_data: Dict[str, Any]) -> Dict[str, Any]:
             },
         )
         try:
-            # #region debug-point B:before-render-request
-            _debug_report("[DEBUG] documentRender before requests.post", {
-                "templateId": template_id,
-                "skillId": skill_id,
-                "publishedSkillId": published_skill_id,
-                "baseUrl": base_url,
-                "renderUrl": render_url,
-                "renderUrlRepr": repr(render_url),
-                "requestTimeoutSeconds": resolved_request_timeout_seconds,
-                "dedupedBaseUrls": deduped_base_urls,
-                "fieldCount": field_count,
-            })
-            # #endregion
             response = requests.post(render_url, json=request_payload, timeout=resolved_request_timeout_seconds)
-            # #region debug-point C:render-response
-            _debug_report("[DEBUG] documentRender received response", {
-                "renderUrl": render_url,
-                "statusCode": getattr(response, "status_code", None),
-                "contentType": response.headers.get("Content-Type") if getattr(response, "headers", None) else None,
-            }, "C")
-            # #endregion
             response.raise_for_status()
             render_result = response.json()
             resolved_payload = request_payload
             activity.heartbeat("carbone_render_completed")
             break
         except requests.RequestException as exc:
-            # #region debug-point D:render-request-exception
-            _debug_report("[DEBUG] documentRender requests exception", {
-                "renderUrl": render_url,
-                "errorType": exc.__class__.__name__,
-                "errorMessage": str(exc),
-                "errorRepr": repr(exc),
-                "responseStatusCode": getattr(getattr(exc, "response", None), "status_code", None),
-            }, "D")
-            # #endregion
             last_error = exc
             activity.logger.error(
                 "Carbone 渲染失败，尝试下一个地址",
@@ -325,29 +272,6 @@ async def httpRequest(input_data: Dict[str, Any]) -> Dict[str, Any]:
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     )
 
-    # #region debug-point A:debug-report
-    def _debug_report(msg: str, data: Dict[str, Any], hypothesis_id: str = "A") -> None:
-        try:
-            debug_server_url = os.environ.get("DEBUG_SERVER_URL", "").strip()
-            if not debug_server_url:
-                return
-            debug_session_id = "weather-empty-fields"
-            urllib.request.urlopen(urllib.request.Request(
-                debug_server_url,
-                data=json.dumps({
-                    "sessionId": debug_session_id,
-                    "runId": "pre-fix",
-                    "hypothesisId": hypothesis_id,
-                    "location": "fixed-activity-templates:httpRequest",
-                    "msg": msg,
-                    "data": data,
-                }).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
-            )).read()
-        except Exception:
-            pass
-    # #endregion
-
     request_kwargs = {
         "headers": normalized_headers,
         "params": params,
@@ -362,18 +286,6 @@ async def httpRequest(input_data: Dict[str, Any]) -> Dict[str, Any]:
         "发起 HTTP 请求",
         extra={"method": method, "url": url, "params": params, "hasJson": json_body is not None, "hasData": data_body is not None},
     )
-    # #region debug-point A:http-request-input
-    _debug_report("[DEBUG] httpRequest input", {
-        "method": method,
-        "url": url,
-        "urlRepr": repr(url),
-        "params": params,
-        "headersKeys": sorted(list(normalized_headers.keys())),
-        "hasJson": json_body is not None,
-        "hasData": data_body is not None,
-        "timeout": timeout,
-    })
-    # #endregion
 
     def send_request(target_url: str):
         if method == "GET":
@@ -494,18 +406,6 @@ async def httpRequest(input_data: Dict[str, Any]) -> Dict[str, Any]:
         except Exception:
             parsed_body = raw_text
 
-    # #region debug-point A:http-request-output
-    _debug_report("[DEBUG] httpRequest output", {
-        "finalUrl": response.url if hasattr(response, "url") else url,
-        "finalUrlRepr": repr(response.url if hasattr(response, "url") else url),
-        "statusCode": response.status_code,
-        "contentType": content_type,
-        "bodyType": type(parsed_body).__name__ if parsed_body is not None else None,
-        "bodyKeys": sorted(list(parsed_body.keys()))[:20] if isinstance(parsed_body, dict) else None,
-        "rawTextPreview": raw_text[:400],
-    })
-    # #endregion
-
     return {
         "status": "success",
         "ok": True,
@@ -520,7 +420,6 @@ async def httpRequest(input_data: Dict[str, Any]) -> Dict[str, Any]:
 
 export const FIXED_STRUCTURED_TRANSFORM_ACTIVITY_CODE = `import json
 import re
-import urllib.request
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 from typing import Dict, Any
@@ -652,29 +551,6 @@ async def structuredTransform(input_data: Dict[str, Any]) -> Dict[str, Any]:
     text_template = str(input_data.get("textTemplate") or "").strip()
     field_mappings = input_data.get("fieldMappings") if isinstance(input_data.get("fieldMappings"), dict) else {}
 
-    # #region debug-point B:debug-report
-    def _debug_report(msg: str, data: Dict[str, Any], hypothesis_id: str = "B") -> None:
-        try:
-            debug_server_url = os.environ.get("DEBUG_SERVER_URL", "").strip()
-            if not debug_server_url:
-                return
-            debug_session_id = "weather-empty-fields"
-            urllib.request.urlopen(urllib.request.Request(
-                debug_server_url,
-                data=json.dumps({
-                    "sessionId": debug_session_id,
-                    "runId": "pre-fix",
-                    "hypothesisId": hypothesis_id,
-                    "location": "fixed-activity-templates:structuredTransform",
-                    "msg": msg,
-                    "data": data,
-                }).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
-            )).read()
-        except Exception:
-            pass
-    # #endregion
-
     if content is None or (isinstance(content, str) and not content.strip()):
         raise ApplicationError("content 是必需的参数", non_retryable=True)
     if output_mode not in {"json", "text"}:
@@ -701,29 +577,8 @@ async def structuredTransform(input_data: Dict[str, Any]) -> Dict[str, Any]:
             "contextLength": len(serialized_context),
         },
     )
-    # #region debug-point B:structured-transform-input
-    _debug_report("[DEBUG] structuredTransform input", {
-        "contentType": content_type,
-        "outputMode": output_mode,
-        "fieldMappingKeys": sorted(list(field_mappings.keys()))[:30],
-        "outputSchemaKeys": sorted(list(output_schema.keys()))[:30] if isinstance(output_schema, dict) else None,
-        "hasInstruction": bool(instruction),
-        "hasTextTemplate": bool(text_template),
-        "contentPreview": serialized_content[:500],
-        "contextPreview": serialized_context[:300],
-    })
-    # #endregion
 
     values = _build_values(normalized_content, field_mappings, normalized_context)
-    # #region debug-point C:structured-transform-values
-    _debug_report("[DEBUG] structuredTransform resolved values", {
-        "resolvedValueKeys": sorted(list(values.keys()))[:50],
-        "sampleValues": {
-            str(key): values.get(str(key))
-            for key in list(field_mappings.keys())[:10]
-        },
-    }, "C")
-    # #endregion
 
     if output_mode == "json":
         if not field_mappings and output_schema:
@@ -764,12 +619,6 @@ async def structuredTransform(input_data: Dict[str, Any]) -> Dict[str, Any]:
                 result.setdefault(str(key), None)
 
         raw_result = json.dumps(result, ensure_ascii=False)
-        # #region debug-point D:structured-transform-json-output
-        _debug_report("[DEBUG] structuredTransform json output", {
-            "resultKeys": sorted(list(result.keys()))[:30] if isinstance(result, dict) else None,
-            "rawPreview": raw_result[:500],
-        }, "D")
-        # #endregion
         return {
             "status": "success",
             "mode": "fixed",
@@ -792,13 +641,6 @@ async def structuredTransform(input_data: Dict[str, Any]) -> Dict[str, Any]:
         ).strip()
     else:
         rendered_text = _stringify(normalized_content).strip()
-
-    # #region debug-point D:structured-transform-text-output
-    _debug_report("[DEBUG] structuredTransform text output", {
-        "renderedTextPreview": rendered_text[:500],
-        "renderedTextLength": len(rendered_text),
-    }, "D")
-    # #endregion
 
     return {
         "status": "success",

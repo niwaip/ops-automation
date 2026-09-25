@@ -25,7 +25,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # 2. 全局安装 pnpm、modsearch 与核心办公文档依赖库
 RUN npm install -g pnpm @liustack/modsearch || npm install -g --registry=https://registry.npmmirror.com pnpm @liustack/modsearch
-RUN pip3 install --no-cache-dir --break-system-packages fpdf2 python-docx openpyxl pypdf defusedxml pdf2image pdfplumber
+COPY apps/backend/runtimes/personal-sandbox-runner/requirements.txt /tmp/requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/requirements.txt && rm -f /tmp/requirements.txt
 
 # 3. 创建集中式不可变系统插件库、技能库与默认配置
 RUN mkdir -p /opt/dsh/plugins /opt/dsh/skills /etc/dsh \

@@ -131,14 +131,15 @@ export class LockService {
    * Acquire execution lock for user personal sandbox to prevent concurrent overlapping dsh executions
    */
   async acquireSandboxLock(userId: string, ttlSeconds: number = 180): Promise<{ success: boolean; token: string }> {
-    const lockKey = `lock:sandbox:exec:${userId}`;
+    const canonicalUserId = (userId || '').trim().toLowerCase();
+    const lockKey = `lock:sandbox:exec:${canonicalUserId}`;
     const token = uuidv4();
     const result = await this.redisService.set(lockKey, token, ttlSeconds);
     const success = result === 'OK';
     if (!success) {
-      this.logger.warn(`Sandbox execution lock conflict for user [${userId}]`);
+      this.logger.warn(`Sandbox execution lock conflict for user [${canonicalUserId}]`);
     } else {
-      this.logger.log(`Sandbox execution lock acquired for user [${userId}], token=${token}`);
+      this.logger.log(`Sandbox execution lock acquired for user [${canonicalUserId}], token=${token}`);
     }
     return { success, token };
   }
@@ -147,11 +148,26 @@ export class LockService {
    * Release sandbox execution lock safely
    */
   async releaseSandboxLock(userId: string, token: string): Promise<boolean> {
-    const lockKey = `lock:sandbox:exec:${userId}`;
+    const canonicalUserId = (userId || '').trim().toLowerCase();
+    const lockKey = `lock:sandbox:exec:${canonicalUserId}`;
     const result = await this.redisService.eval(SAFE_RELEASE_SCRIPT, [lockKey], [token]);
     const released = result === 1;
     if (released) {
-      this.logger.log(`Sandbox execution lock released for user [${userId}]`);
+      this.logger.log(`Sandbox execution lock released for user [${canonicalUserId}]`);
+    }
+    return released;
+  }
+
+  /**
+   * Forcibly release sandbox execution lock regardless of token (e.g. on task cancellation, stop or timeout)
+   */
+  async forceReleaseSandboxLock(userId: string): Promise<boolean> {
+    const canonicalUserId = (userId || '').trim().toLowerCase();
+    const lockKey = `lock:sandbox:exec:${canonicalUserId}`;
+    const result = await this.redisService.del(lockKey);
+    const released = result > 0;
+    if (released) {
+      this.logger.log(`Sandbox execution lock forcibly released for user [${canonicalUserId}]`);
     }
     return released;
   }

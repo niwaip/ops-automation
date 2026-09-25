@@ -41,7 +41,6 @@ import {
 } from '../../template/studio/utils/studio-controller-composition.helper';
 import { readStudioWorkflowConfig } from '../../template/studio/utils/studio-workflow-config.helper';
 import { RenderResolvedDto } from '../../runtime-facade/render-entry/document-runtime-facade.dto';
-import { debugStudioRenderHypothesis } from './utils/studio-render-debug.helper';
 import {
   previewStudioTemplateContent,
   validateStudioTemplateContent,
@@ -66,10 +65,6 @@ export class StudioRenderController {
   private readonly templateSupport: StudioTemplateSupport;
   private readonly skillSupport: StudioSkillSupport;
   private readonly renderOutputSupport: StudioRenderOutputSupport;
-
-  private debugReport(hypothesisId: string, msg: string, data: Record<string, unknown> = {}): void {
-    debugStudioRenderHypothesis(hypothesisId, msg, data);
-  }
 
   constructor(
     private readonly previewService: PreviewService,
@@ -128,7 +123,6 @@ export class StudioRenderController {
         engine: this.studio.engine,
         generateOutputFileName: generateStudioRenderOutputFileName,
         syncRenderOutputToDb: this.renderOutputSupport.syncRenderOutputToDb,
-        debugReport: this.debugReport.bind(this),
         logger: this.studio.logger,
       },
       {

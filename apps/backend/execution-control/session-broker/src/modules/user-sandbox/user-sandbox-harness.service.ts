@@ -17,6 +17,8 @@ import { UserSandboxStorageService } from './user-sandbox-storage.service';
 import { UserSandboxContainerService } from './user-sandbox-container.service';
 import { LockService } from '../lock/lock.service';
 
+const MAX_SANDBOX_OUTPUT_BYTES = 1024 * 1024; // 1MB 硬上限，防止进程大输出拖死 NodeJS 主进程
+
 export type SandboxExecutorFn = (
   userId: string,
   cmd: string | string[],
@@ -41,10 +43,11 @@ export class UserSandboxHarnessService {
     cmd: string | string[],
     options?: { timeoutMs?: number; workDir?: string; onStdoutChunk?: (chunk: string) => void }
   ): Promise<UserSandboxExecResult> {
+    const sanitizedUserId = this.storageService.sanitizeUserId(userId);
     const startTime = Date.now();
-    const containerName = this.containerService.getContainerName(userId);
+    const containerName = this.containerService.getContainerName(sanitizedUserId);
     // 确保沙箱处于运行状态
-    await this.containerService.ensureUserSandbox(userId);
+    await this.containerService.ensureUserSandbox(sanitizedUserId);
 
     const container = await this.containerService.findContainer(containerName);
     if (!container) {
@@ -88,13 +91,21 @@ export class UserSandboxHarnessService {
 
         let stdout = '';
         let stderr = '';
+        let stdoutTruncated = false;
+        let stderrTruncated = false;
         const stdoutDecoder = new StringDecoder('utf-8');
         const stderrDecoder = new StringDecoder('utf-8');
 
         const stdoutStream = new Writable({
           write(chunk, encoding, callback) {
             const decoded = stdoutDecoder.write(chunk);
-            stdout += decoded;
+            if (!stdoutTruncated) {
+              stdout += decoded;
+              if (stdout.length > MAX_SANDBOX_OUTPUT_BYTES) {
+                stdout = stdout.slice(0, MAX_SANDBOX_OUTPUT_BYTES) + '\n[警告: 沙箱 stdout 输出已超过 1MB 上限，已自动截断]';
+                stdoutTruncated = true;
+              }
+            }
             if (options?.onStdoutChunk && decoded) {
               try { options.onStdoutChunk(decoded); } catch { /* ignore */ }
             }
@@ -104,7 +115,14 @@ export class UserSandboxHarnessService {
 
         const stderrStream = new Writable({
           write(chunk, encoding, callback) {
-            stderr += stderrDecoder.write(chunk);
+            const decoded = stderrDecoder.write(chunk);
+            if (!stderrTruncated) {
+              stderr += decoded;
+              if (stderr.length > MAX_SANDBOX_OUTPUT_BYTES) {
+                stderr = stderr.slice(0, MAX_SANDBOX_OUTPUT_BYTES) + '\n[警告: 沙箱 stderr 输出已超过 1MB 上限，已自动截断]';
+                stderrTruncated = true;
+              }
+            }
             callback();
           },
         });
@@ -114,7 +132,13 @@ export class UserSandboxHarnessService {
         } else {
           stream.on('data', (chunk: Buffer) => {
             const decoded = stdoutDecoder.write(chunk);
-            stdout += decoded;
+            if (!stdoutTruncated) {
+              stdout += decoded;
+              if (stdout.length > MAX_SANDBOX_OUTPUT_BYTES) {
+                stdout = stdout.slice(0, MAX_SANDBOX_OUTPUT_BYTES) + '\n[警告: 沙箱 stdout 输出已超过 1MB 上限，已自动截断]';
+                stdoutTruncated = true;
+              }
+            }
             if (options?.onStdoutChunk && decoded) {
               try { options.onStdoutChunk(decoded); } catch { /* ignore */ }
             }
@@ -124,11 +148,15 @@ export class UserSandboxHarnessService {
         stream.on('end', async () => {
           clearTimeout(timer);
           if (timedOut) return;
-          stdout += stdoutDecoder.end();
-          stderr += stderrDecoder.end();
+          if (!stdoutTruncated) {
+            stdout += stdoutDecoder.end();
+          }
+          if (!stderrTruncated) {
+            stderr += stderrDecoder.end();
+          }
           try {
             const inspect = await exec.inspect();
-            this.containerService.recordActivity(userId);
+            this.containerService.recordActivity(sanitizedUserId);
             resolve({
               exitCode: inspect.ExitCode ?? 0,
               stdout: stdout.trim(),
@@ -137,7 +165,7 @@ export class UserSandboxHarnessService {
               containerName,
             });
           } catch {
-            this.containerService.recordActivity(userId);
+            this.containerService.recordActivity(sanitizedUserId);
             resolve({
               exitCode: 0,
               stdout: stdout.trim(),
@@ -175,16 +203,17 @@ export class UserSandboxHarnessService {
     },
     customExecutor?: SandboxExecutorFn
   ): Promise<UserSandboxHarnessResult> {
+    const sanitizedUserId = this.storageService.sanitizeUserId(userId);
     const sanitizedSessionId = (options?.sessionId || 'default').replace(/[^a-zA-Z0-9_-]/g, '_');
 
     // 若传入了多轮会话历史记录，委托 storageService 写入工作区 session 存储目录
     if (options?.history && Array.isArray(options.history) && options.history.length > 0) {
-      this.storageService.writeSessionHistory(userId, sanitizedSessionId, options.history);
+      this.storageService.writeSessionHistory(sanitizedUserId, sanitizedSessionId, options.history);
     }
 
     // 若传入了会话关联附件列表，委托 storageService 写入 session 附件索引
     if (options?.files && Array.isArray(options.files) && options.files.length > 0) {
-      this.storageService.writeSessionAttachments(userId, sanitizedSessionId, options.files);
+      this.storageService.writeSessionAttachments(sanitizedUserId, sanitizedSessionId, options.files);
     }
 
     const dshCmd = ['dsh', 'run', prompt, '--session-id', sanitizedSessionId];
@@ -221,7 +250,7 @@ export class UserSandboxHarnessService {
     let lockToken: string | null = null;
     if (this.lockService) {
       const ttlSeconds = Math.ceil(timeoutMs / 1000) + 15;
-      const lockResult = await this.lockService.acquireSandboxLock(userId, ttlSeconds);
+      const lockResult = await this.lockService.acquireSandboxLock(sanitizedUserId, ttlSeconds);
       if (!lockResult.success) {
         throw new ConflictException(`该用户的个人沙箱当前正在执行其他任务，请稍后再试`);
       }
@@ -229,7 +258,7 @@ export class UserSandboxHarnessService {
     }
 
     try {
-      const execResult = await executor(userId, dshCmd, {
+      const execResult = await executor(sanitizedUserId, dshCmd, {
         timeoutMs,
         workDir: '/workspace',
         onStdoutChunk: options?.onStdoutChunk,
@@ -252,7 +281,7 @@ export class UserSandboxHarnessService {
       };
     } finally {
       if (this.lockService && lockToken) {
-        await this.lockService.releaseSandboxLock(userId, lockToken);
+        await this.lockService.releaseSandboxLock(sanitizedUserId, lockToken);
       }
     }
   }
@@ -261,6 +290,11 @@ export class UserSandboxHarnessService {
    * 强制终止用户沙箱中正在执行的 DeepSeek Harness 或前台任务进程
    */
   async stopSandboxExecution(userId: string): Promise<boolean> {
+    const sanitizedUserId = this.storageService.sanitizeUserId(userId);
+    if (this.lockService) {
+      await this.lockService.forceReleaseSandboxLock(sanitizedUserId).catch(() => {});
+    }
+
     const containerName = this.containerService.getContainerName(userId);
     const container = await this.containerService.findContainer(containerName);
     if (!container) return false;

@@ -33,7 +33,6 @@ type ExecuteResolvedRenderDeps = {
     data?: Record<string, any>
   ) => string;
   syncRenderOutputToDb: (meta: Record<string, any>, filePath: string) => Promise<void>;
-  debugReport: (hypothesisId: string, msg: string, data?: Record<string, unknown>) => void;
   logger: {
     error: (message: string, stack?: string) => void;
   };
@@ -229,17 +228,6 @@ export async function executeResolvedRender(
     }
 
     const normalizedData = deps.normalizeRenderData(renderInputData);
-    deps.debugReport('B', 'render-resolved normalized data prepared', {
-      templateId: input.templateId,
-      prepareLocalizedRenderData: input.prepareLocalizedRenderData === true,
-      sourceLanguage,
-      targetLanguages,
-      signingDateCnType: typeof normalizedData?.contract?.signingDate_cn,
-      signingDateJpType: typeof normalizedData?.contract?.signingDate_jp,
-      signingDateCnValue: normalizedData?.contract?.signingDate_cn ?? null,
-      signingDateJpValue: normalizedData?.contract?.signingDate_jp ?? null,
-      itemRowCount: Array.isArray(normalizedData?.items) ? normalizedData.items.length : 0,
-    });
 
     const templateBuffer = fs.readFileSync(templatePath);
     const config = meta.templateConfig || {};
@@ -295,27 +283,6 @@ export async function executeResolvedRender(
     const message = error instanceof Error ? error.message : 'Unknown error';
     const stack = error instanceof Error ? error.stack : undefined;
     deps.logger.error(`render-resolved failed for template=${input.templateId}: ${message}`, stack);
-    deps.debugReport('B', 'render-resolved failed', {
-      templateId: input.templateId,
-      skillId: input.skillId || null,
-      publishedSkillId: input.publishedSkillId || null,
-      sourceLanguage: input.sourceLanguage || null,
-      targetLanguages: Array.isArray(input.targetLanguages) ? input.targetLanguages : [],
-      prepareLocalizedRenderData: input.prepareLocalizedRenderData === true,
-      inputKeyCount: input.data && typeof input.data === 'object' ? Object.keys(input.data).length : 0,
-      inputKeysSample:
-        input.data && typeof input.data === 'object' ? Object.keys(input.data).slice(0, 15) : [],
-      workflowInputParamKeys:
-        input.workflowInputParams && typeof input.workflowInputParams === 'object'
-          ? Object.keys(input.workflowInputParams).slice(0, 15)
-          : [],
-      workflowInputPolicyKeys:
-        input.workflowInputPolicy && typeof input.workflowInputPolicy === 'object'
-          ? Object.keys(input.workflowInputPolicy).slice(0, 15)
-          : [],
-      errorName: error instanceof Error ? error.name : typeof error,
-      errorMessage: message,
-    });
     throw new HttpException(
       `Failed to render resolved document: ${message}`,
       HttpStatus.INTERNAL_SERVER_ERROR

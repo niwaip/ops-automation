@@ -138,6 +138,46 @@ describe('AiAuthGuard & AiAdminGuard', () => {
       process.env.INTERNAL_API_SHARED_SECRET = 'internal-test-secret';
       expect(parseAndVerifySandboxToken('sandbox-user-token-user-1.invalid')).toBeNull();
     });
+
+    it('verifies a valid timestamped expiring sandbox token', () => {
+      process.env.INTERNAL_API_SHARED_SECRET = 'internal-test-secret';
+      const userId = 'sandbox-user-expiring';
+      const exp = Math.floor(Date.now() / 1000) + 3600;
+      const signature = crypto
+        .createHmac('sha256', 'internal-test-secret')
+        .update(`${userId}:${exp}`)
+        .digest('base64url');
+      const token = `sandbox-user-token-${userId}.${exp}.${signature}`;
+
+      expect(parseAndVerifySandboxToken(token)).toBe(userId);
+    });
+
+    it('rejects an expired timestamped sandbox token', () => {
+      process.env.INTERNAL_API_SHARED_SECRET = 'internal-test-secret';
+      const userId = 'sandbox-user-expired';
+      const exp = Math.floor(Date.now() / 1000) - 3600; // expired
+      const signature = crypto
+        .createHmac('sha256', 'internal-test-secret')
+        .update(`${userId}:${exp}`)
+        .digest('base64url');
+      const token = `sandbox-user-token-${userId}.${exp}.${signature}`;
+
+      expect(parseAndVerifySandboxToken(token)).toBeNull();
+    });
+
+    it('rejects default insecure secret in production environment', () => {
+      const origEnv = process.env.NODE_ENV;
+      const origSecret = process.env.INTERNAL_API_SHARED_SECRET;
+      try {
+        process.env.NODE_ENV = 'production';
+        process.env.INTERNAL_API_SHARED_SECRET = 'ops_internal_shared_secret_change_me';
+        const token = 'sandbox-user-token-user1.dummySig';
+        expect(parseAndVerifySandboxToken(token)).toBeNull();
+      } finally {
+        process.env.NODE_ENV = origEnv;
+        process.env.INTERNAL_API_SHARED_SECRET = origSecret;
+      }
+    });
   });
 
   describe('AiAdminGuard', () => {

@@ -24,32 +24,6 @@ import {
   readFileAsBase64,
 } from '../../../shared/utils/office-file-upload';
 
-// #region debug-point shared:upload-render-loop-reporter
-const UPLOAD_RENDER_LOOP_DEBUG_URL =
-  (typeof window !== 'undefined' && (window as any).__DEBUG_SERVER_URL__) || '';
-const reportUploadRenderLoop = (
-  hypothesisId: 'D' | 'E',
-  location: string,
-  msg: string,
-  data: Record<string, unknown>
-) => {
-  if (!UPLOAD_RENDER_LOOP_DEBUG_URL) return;
-  void fetch(UPLOAD_RENDER_LOOP_DEBUG_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sessionId: 'upload-render-loop',
-      runId: 'pre-fix',
-      hypothesisId,
-      location,
-      msg: `[DEBUG] ${msg}`,
-      data,
-      ts: Date.now(),
-    }),
-  }).catch(() => {});
-};
-// #endregion
-
 export const TemplateConfigPanel: React.FC = () => {
   const { officeType, templateConfig, setTemplateConfig, suggestions, apiBaseUrl, addDebugLog } =
     useAppStore();
@@ -125,17 +99,6 @@ export const TemplateConfigPanel: React.FC = () => {
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    // #region debug-point D:upload-handler-start
-    reportUploadRenderLoop(
-      'D',
-      'TemplateConfigPanel:handleFileUpload:start',
-      'upload handler started',
-      {
-        fileName: file.name,
-        fileSize: file.size,
-      }
-    );
-    // #endregion
 
     setLoadingStates((prev) => ({ ...prev, upload: true }));
     setStatusMessage('正在读取上传的文档...');
@@ -152,31 +115,9 @@ export const TemplateConfigPanel: React.FC = () => {
       setUploadedFile(file);
       setUploadedFileBase64(base64);
       setStatusMessage(`文档已上传: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
-      // #region debug-point D:upload-handler-success
-      reportUploadRenderLoop(
-        'D',
-        'TemplateConfigPanel:handleFileUpload:success',
-        'upload handler completed',
-        {
-          fileName: file.name,
-          fileSize: file.size,
-          base64Length: base64.length,
-        }
-      );
-      // #endregion
       setLoadingStates((prev) => ({ ...prev, upload: false }));
       console.log('文件上传成功，base64长度:', base64.length);
     } catch (error: any) {
-      // #region debug-point E:upload-handler-error
-      reportUploadRenderLoop(
-        'E',
-        'TemplateConfigPanel:handleFileUpload:error',
-        'upload handler failed',
-        {
-          message: error?.message || 'unknown-error',
-        }
-      );
-      // #endregion
       console.error('文件上传失败:', error);
       setStatusMessage(`文件上传失败: ${error.message}`);
       setLoadingStates((prev) => ({ ...prev, upload: false }));

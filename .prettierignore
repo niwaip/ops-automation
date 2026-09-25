@@ -40,3 +40,15 @@ temp/
 
 # Turbo
 .turbo/
+
+# Generated code and builds
+**/generated/
+.generated/
+.dbg/
+
+# Partial concatenated scripts and bundle
+apps/backend/capabilities/document-domain/studio-web/
+apps/backend/capabilities/document-domain/public/js/app.js
+
+# C/C++ Embedded IoT Agent (managed components, FreeType, LVGL)
+apps/ai-passport-agent/

@@ -522,31 +522,6 @@ import ssl
 
 os.environ.setdefault('TEMPORAL_SANDBOX', 'true')
 
-# #region debug-point A:runner-debug-report
-def _debug_report(hypothesis_id, msg, data):
-    try:
-        import os
-        import urllib.request
-        debug_server_url = os.environ.get("DEBUG_SERVER_URL", "").strip()
-        if not debug_server_url:
-            return
-        debug_session_id = "shared-http-fallback"
-        urllib.request.urlopen(urllib.request.Request(
-            debug_server_url,
-            data=json.dumps({
-                "sessionId": debug_session_id,
-                "runId": "pre-fix",
-                "hypothesisId": hypothesis_id,
-                "location": "runtime-bridge/temporal-activity-execution.service:fallback-runner",
-                "msg": msg,
-                "data": data,
-            }).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-        )).read()
-    except Exception:
-        pass
-# #endregion
-
 # Set SSL certificates location for HTTPS requests when certifi is available
 try:
     import certifi
@@ -725,17 +700,6 @@ class RequestsShim(types.ModuleType):
 
         normalized_url = self._normalize_url(target_url)
 
-        # #region debug-point A:requests-shim-hit
-        _debug_report("A", "[DEBUG] fallback runner requests shim called", {
-            "method": str(method).upper(),
-            "url": normalized_url,
-            "timeout": timeout,
-            "hasJson": json is not None,
-            "hasData": data is not None,
-            "paramsKeys": sorted(list(params.keys())) if isinstance(params, dict) else None,
-        })
-        # #endregion
-
         try:
             request = urllib.request.Request(
                 normalized_url,
@@ -800,14 +764,6 @@ except ImportError:
     requests_backend_name = 'urllib_requests_shim'
     sys.modules['requests.exceptions'] = requests_backend.exceptions
 
-# #region debug-point C:requests-module-patched
-_debug_report("C", "[DEBUG] fallback runner prepared requests backend", {
-    "moduleName": "requests",
-    "backend": requests_backend_name,
-    "tempDir": '${tempDir}',
-})
-# #endregion
-
 # Set up activity with all required attributes
 # Make defn work as @activity.defn() decorator - returns a decorator function
 def make_defn_decorator():
@@ -835,15 +791,6 @@ def workflow_run(func):
 
 async def workflow_execute_activity(fn, input_data=None, *args, **kwargs):
     payload = input_data or {}
-    # #region debug-point B:execute-activity-input
-    _debug_report("B", "[DEBUG] fallback runner execute_activity invoked", {
-        "activityName": getattr(fn, "_activity_name", getattr(fn, "__name__", "unknown")),
-        "payloadType": type(payload).__name__,
-        "payloadKeys": sorted(list(payload.keys()))[:20] if isinstance(payload, dict) else None,
-        "argCount": len(args),
-        "kwargKeys": sorted(list(kwargs.keys())),
-    })
-    # #endregion
     if isinstance(payload, dict):
         sig = inspect.signature(fn)
         positional_params = [
@@ -871,13 +818,6 @@ mock_temporalio.workflow.logger = MockActivityLogger()
 mock_temporalio.workflow.execute_activity = workflow_execute_activity
 
 mock_temporalio.exceptions.ApplicationError = MockApplicationError
-
-# #region debug-point E:requests-backend-mode
-_debug_report("E", "[DEBUG] fallback runner requests backend selected", {
-    "backend": requests_backend_name,
-    "reason": "prefer native requests and fall back to urllib-based shim when requests is unavailable",
-})
-# #endregion
 
 # RetryPolicy mock - accept various parameter names
 class MockRetryPolicy:

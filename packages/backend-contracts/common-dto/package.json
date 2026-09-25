@@ -16,6 +16,8 @@
     "src",
     "index.js",
     "index.d.ts",
+    "service-endpoints.js",
+    "service-endpoints.d.ts",
     "README.md",
     "tsconfig.json"
   ],

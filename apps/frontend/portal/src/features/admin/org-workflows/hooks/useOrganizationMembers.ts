@@ -24,13 +24,15 @@ export function useOrganizationMembers() {
     { enabled: !!activeOrgId, staleTime: 60000 }
   );
 
-  const departments = structureQuery.data?.departments || [];
-  const memberships = structureQuery.data?.memberships || [];
-  const activeMembers = memberships.filter((m) => m.user?.isActive !== false);
+  const rawDepartments = structureQuery.data?.departments;
+  const rawMemberships = structureQuery.data?.memberships;
+  const departments = rawDepartments || [];
 
   const memberOptions: OrgMemberOption[] = useMemo(() => {
+    const activeMembers = (rawMemberships || []).filter((m) => m.user?.isActive !== false);
+    const depts = rawDepartments || [];
     return activeMembers.map((m) => {
-      const dept = departments.find((d) => d.id === m.departmentId);
+      const dept = depts.find((d) => d.id === m.departmentId);
       const deptLabel = dept ? ` [${dept.name}]` : '';
       const titleLabel = m.title ? ` (${m.title})` : '';
       return {
@@ -42,11 +44,11 @@ export function useOrganizationMembers() {
         departmentName: dept?.name,
       };
     });
-  }, [activeMembers, departments]);
+  }, [rawMemberships, rawDepartments]);
 
   const departmentOptions = useMemo(() => {
-    if (departments.length > 0) {
-      return departments.map((d) => ({ value: d.name, label: d.name, id: d.id }));
+    if (rawDepartments && rawDepartments.length > 0) {
+      return rawDepartments.map((d) => ({ value: d.name, label: d.name, id: d.id }));
     }
     return [
       { value: '法务部', label: '法务部' },
@@ -55,7 +57,7 @@ export function useOrganizationMembers() {
       { value: '人力资源部', label: '人力资源部' },
       { value: '信息技术与运维部', label: '信息技术与运维部' },
     ];
-  }, [departments]);
+  }, [rawDepartments]);
 
   return {
     departments,

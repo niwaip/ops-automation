@@ -361,37 +361,14 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.logger.log(`Deleting worker ${id}`);
-    // #region debug-point B:delete-worker
-    this.reportDebugEvent('B', 'worker.service.ts:deleteWorker:start', '[DEBUG] deleteWorker start', {
-      workerId: id,
-      containerName: worker.container_name,
-      runtimeSessionId: worker.runtime_session_id,
-    });
-    // #endregion
     worker.status = 'stopping';
     worker.updated_at = new Date();
     this.workers.set(id, worker);
     try {
       const container = this.docker.getContainer(worker.container_name);
       await container.remove({ force: true });
-      // #region debug-point B:delete-worker-result
-      this.reportDebugEvent(
-        'B',
-        'worker.service.ts:deleteWorker:removed',
-        '[DEBUG] deleteWorker container removed',
-        { workerId: id, containerName: worker.container_name }
-      );
-      // #endregion
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      // #region debug-point B:delete-worker-error
-      this.reportDebugEvent(
-        'B',
-        'worker.service.ts:deleteWorker:error',
-        '[DEBUG] deleteWorker container removal failed',
-        { workerId: id, containerName: worker.container_name, errorMessage }
-      );
-      // #endregion
       this.logger.warn(`Failed to remove container ${worker.container_name}: ${errorMessage}`);
     }
 
@@ -700,21 +677,6 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
   private async runtimeSessionExists(runtimeSessionId: string): Promise<boolean> {
     const sessionUrl = `${this.sessionBrokerUrl}/runtime-sessions/${runtimeSessionId}`;
     const statusCode = await this.readStatusCode(sessionUrl, this.orphanSweepRequestTimeoutMs);
-    // #region debug-point C:orphan-runtime-session-lookup
-    this.reportDebugEvent(
-      'C',
-      'worker.service.ts:runtimeSessionExists',
-      '[DEBUG] orphan runtime session lookup',
-      {
-        runtimeSessionId,
-        statusCode,
-        isUuid:
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-            runtimeSessionId
-          ),
-      }
-    );
-    // #endregion
     if (statusCode === 404) {
       this.logger.warn(
         `Runtime session ${runtimeSessionId} not found (404), worker can be removed`
@@ -771,32 +733,6 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       return fallback;
     }
     return Math.floor(parsed);
-  }
-
-  private reportDebugEvent(
-    hypothesisId: 'A' | 'B' | 'C' | 'D',
-    location: string,
-    msg: string,
-    data: Record<string, unknown>
-  ): void {
-    const debugServerUrl = process.env.DEBUG_SERVER_URL?.trim();
-    if (!debugServerUrl) return;
-    const debugSessionId = process.env.DEBUG_SESSION_ID?.trim() || 'browser-worker-runtime';
-    const debugRunId = process.env.DEBUG_RUN_ID?.trim() || 'default';
-
-    void fetch(debugServerUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: debugSessionId,
-        runId: debugRunId,
-        hypothesisId,
-        location,
-        msg,
-        data,
-        ts: Date.now(),
-      }),
-    }).catch(() => {});
   }
 
   private async allocateRequestedHostPorts(): Promise<RequestedHostPortBindings> {

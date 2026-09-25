@@ -26,18 +26,19 @@ export const BrowserSemanticOverviewCards: React.FC<BrowserSemanticOverviewCards
 }) => {
   const { token } = theme.useToken();
 
-  const rules = selectedRuleSet?.rules || [];
+  const rawRules = selectedRuleSet?.rules;
+  const rules = rawRules || [];
   const enabledCount = rules.filter((r) => r.enabled).length;
 
   const categories = useMemo(() => {
     const set = new Set<SemanticRuleCategory>();
-    for (const rule of rules) {
+    for (const rule of rawRules || []) {
       if (rule.category) {
         set.add(rule.category);
       }
     }
     return Array.from(set);
-  }, [rules]);
+  }, [rawRules]);
 
   const enabledPercent = rules.length > 0 ? Math.round((enabledCount / rules.length) * 100) : 100;
 

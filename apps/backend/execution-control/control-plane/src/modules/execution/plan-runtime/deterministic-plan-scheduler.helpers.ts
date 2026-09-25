@@ -163,8 +163,6 @@ export function resolveOutboundEffectMetadata(
   let effectivePhase = frozenPhase;
   if (!effectivePhase && isStepPreviouslyPrepared && isApproved) {
     effectivePhase = 'commit';
-  } else if (!effectivePhase && (resolvedInput?.phase === 'commit' || frozenPhase === 'commit') && isApproved && isStepPreviouslyPrepared) {
-    effectivePhase = 'commit';
   } else if (!effectivePhase && isExternalWrite && !isStepPreviouslyPrepared) {
     // An external_write step MUST always begin in PREPARE phase, even if plan pre-approval was granted
     effectivePhase = 'prepare';

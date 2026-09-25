@@ -6,31 +6,6 @@ import {
   readFileAsBase64,
 } from '../../../shared/utils/office-file-upload';
 
-const UPLOAD_RENDER_LOOP_DEBUG_URL =
-  (typeof window !== 'undefined' && (window as any).__DEBUG_SERVER_URL__) || '';
-
-const reportUploadRenderLoop = (
-  hypothesisId: 'D' | 'E',
-  location: string,
-  msg: string,
-  data: Record<string, unknown>
-) => {
-  if (!UPLOAD_RENDER_LOOP_DEBUG_URL) return;
-  void fetch(UPLOAD_RENDER_LOOP_DEBUG_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sessionId: 'upload-render-loop',
-      runId: 'sample-upload',
-      hypothesisId,
-      location,
-      msg: `[DEBUG] ${msg}`,
-      data,
-      ts: Date.now(),
-    }),
-  }).catch(() => {});
-};
-
 export interface SampleUploadState {
   uploaded: boolean;
   fileName?: string;
@@ -74,16 +49,6 @@ export const SampleDocumentUploadPanel: React.FC<SampleDocumentUploadPanelProps>
     const file = event.target.files?.[0];
     if (!file) return;
 
-    reportUploadRenderLoop(
-      'D',
-      'SampleDocumentUploadPanel:handleFileUpload:start',
-      'upload handler started',
-      {
-        fileName: file.name,
-        fileSize: file.size,
-      }
-    );
-
     setIsUploading(true);
 
     try {
@@ -100,26 +65,7 @@ export const SampleDocumentUploadPanel: React.FC<SampleDocumentUploadPanelProps>
         fileBase64: base64,
         revision: Date.now(),
       });
-
-      reportUploadRenderLoop(
-        'D',
-        'SampleDocumentUploadPanel:handleFileUpload:success',
-        'upload handler completed',
-        {
-          fileName: file.name,
-          fileSize: file.size,
-          base64Length: base64.length,
-        }
-      );
     } catch (error: any) {
-      reportUploadRenderLoop(
-        'E',
-        'SampleDocumentUploadPanel:handleFileUpload:error',
-        'upload handler failed',
-        {
-          message: error?.message || 'unknown-error',
-        }
-      );
       onUploadStateChange?.({ uploaded: false, revision: Date.now() });
     } finally {
       setIsUploading(false);

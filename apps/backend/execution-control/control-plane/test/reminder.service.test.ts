@@ -82,4 +82,52 @@ describe('ReminderService', () => {
     }));
     expect(created.title).toBe('按时服用维生素C');
   });
+
+  it('checks wechat availability correctly', async () => {
+    prisma.imChannelConnection.findUnique.mockResolvedValueOnce(null);
+    expect(await service.isWechatAvailable('user-1')).toBe(false);
+
+    prisma.imChannelConnection.findUnique.mockResolvedValueOnce({
+      enabled: true,
+      encryptedCredential: 'encrypted-token',
+    });
+    expect(await service.isWechatAvailable('user-1')).toBe(true);
+  });
+
+  it('creates batch reminders defaulting sendWechat to wechat availability', async () => {
+    prisma.imChannelConnection.findUnique.mockResolvedValue({
+      enabled: true,
+      encryptedCredential: 'encrypted-token',
+    });
+    prisma.reminderRule.create.mockImplementation(({ data }) => Promise.resolve({ id: 'rule-batch', ...data }));
+
+    const results = await service.createBatch('owner', [
+      {
+        title: 'WSBK 排位赛',
+        message: 'WorldSSP300 排位赛',
+        cronExpression: '0 19 * * *',
+      },
+      {
+        title: 'WSBK 正赛',
+        message: 'WorldSSP300 第一场正赛',
+        cronExpression: '30 17 * * *',
+        sendWechat: false, // explicitly false
+      },
+    ]);
+
+    expect(results).toHaveLength(2);
+    expect(prisma.reminderRule.create).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      data: expect.objectContaining({
+        title: 'WSBK 排位赛',
+        sendWechat: true, // defaulted to available
+      }),
+    }));
+    expect(prisma.reminderRule.create).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      data: expect.objectContaining({
+        title: 'WSBK 正赛',
+        sendWechat: false, // respected explicit false
+      }),
+    }));
+  });
 });
+

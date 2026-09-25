@@ -4,6 +4,7 @@ exports.OUTBOUND_EFFECT_STATUS = exports.OUTBOUND_EFFECT_PHASE = exports.EXECUTI
 exports.isTerminalExecutionStatus = isTerminalExecutionStatus;
 exports.canonicalizePayloadObject = canonicalizePayloadObject;
 exports.computeOutboundPayloadHash = computeOutboundPayloadHash;
+const crypto_1 = require("crypto");
 exports.EXECUTION_STATUS = {
     DRAFT: 'draft',
     QUEUED: 'queued',
@@ -96,8 +97,7 @@ function computeOutboundPayloadHash(payload) {
     const canonicalObj = canonicalizePayloadObject(payload);
     const jsonStr = JSON.stringify(canonicalObj);
     // Simple deterministic SHA-256 using Node crypto
-    const cryptoModule = require('crypto');
-    const hash = cryptoModule.createHash('sha256').update(jsonStr, 'utf8').digest('hex');
+    const hash = (0, crypto_1.createHash)('sha256').update(jsonStr, 'utf8').digest('hex');
     return `sha256:${hash}`;
 }
 //# sourceMappingURL=index.js.map

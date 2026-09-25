@@ -4,29 +4,6 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 type RawRecord = Record<string, unknown>;
 
-const reportLoopHistoryDebug = (
-  hypothesisId: string,
-  location: string,
-  msg: string,
-  data: Record<string, unknown>
-) => {
-  const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
-  if (!debugUrl) return;
-  fetch(debugUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sessionId: 'chat-failure-loop-history',
-      runId: 'backend-phase-persistence',
-      hypothesisId,
-      location,
-      msg,
-      data,
-      ts: Date.now(),
-    }),
-  }).catch(() => {});
-};
-
 interface UpsertExecutionPhaseInput {
   executionId: string;
   phaseKey: string;
@@ -91,19 +68,6 @@ export class ExecutionPhaseService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createOrUpdatePhase(input: UpsertExecutionPhaseInput): Promise<void> {
-    reportLoopHistoryDebug(
-      'H4',
-      'apps/backend/execution-control/control-plane/src/modules/execution/execution-phase.service.ts:createOrUpdatePhase',
-      'Persisting execution phase record',
-      {
-        executionId: input.executionId,
-        phaseKey: input.phaseKey,
-        status: input.status || 'pending',
-        attempt: input.attempt || 0,
-        hasInput: Boolean(input.input),
-        hasOutput: Boolean(input.output),
-      }
-    );
     await this.prisma.$executeRawUnsafe(
       `
         INSERT INTO execution_phases (
@@ -417,31 +381,8 @@ export class ExecutionPhaseService {
       const phase = await this.getByExecutionIdAndPhaseKey(executionId, phaseKey);
       const phaseId = typeof phase?.id === 'string' ? phase.id : String(phase?.id || '').trim();
       if (!phaseId) {
-        reportLoopHistoryDebug(
-          'H4',
-          'apps/backend/execution-control/control-plane/src/modules/execution/execution-phase.service.ts:replaceSteps',
-          'Skipped replacing phase steps because phase record is missing',
-          {
-            executionId,
-            phaseKey,
-            stepCount: steps.length,
-          }
-        );
         return;
       }
-      reportLoopHistoryDebug(
-        'H4',
-        'apps/backend/execution-control/control-plane/src/modules/execution/execution-phase.service.ts:replaceSteps',
-        'Replacing phase steps for execution phase',
-        {
-          executionId,
-          phaseKey,
-          phaseId,
-          stepCount: steps.length,
-          stepIndexes: steps.map((step) => step.stepIndex),
-          stepIds: steps.map((step) => step.stepId || null),
-        }
-      );
 
       await this.prisma.$transaction(async (tx) => {
         await tx.$executeRawUnsafe(
@@ -516,31 +457,8 @@ export class ExecutionPhaseService {
       const phase = await this.getByExecutionIdAndPhaseKey(executionId, phaseKey);
       const phaseId = typeof phase?.id === 'string' ? phase.id : String(phase?.id || '').trim();
       if (!phaseId) {
-        reportLoopHistoryDebug(
-          'H4',
-          'apps/backend/execution-control/control-plane/src/modules/execution/execution-phase.service.ts:appendSteps',
-          'Skipped appending phase steps because phase record is missing',
-          {
-            executionId,
-            phaseKey,
-            stepCount: steps.length,
-          }
-        );
         return;
       }
-      reportLoopHistoryDebug(
-        'H4',
-        'apps/backend/execution-control/control-plane/src/modules/execution/execution-phase.service.ts:appendSteps',
-        'Appending phase steps for execution phase',
-        {
-          executionId,
-          phaseKey,
-          phaseId,
-          stepCount: steps.length,
-          stepIndexes: steps.map((step) => step.stepIndex),
-          stepIds: steps.map((step) => step.stepId || null),
-        }
-      );
 
       for (const step of steps) {
         await this.prisma.$executeRawUnsafe(
@@ -605,30 +523,8 @@ export class ExecutionPhaseService {
       const phase = await this.getByExecutionIdAndPhaseKey(executionId, phaseKey);
       const phaseId = typeof phase?.id === 'string' ? phase.id : String(phase?.id || '').trim();
       if (!phaseId) {
-        reportLoopHistoryDebug(
-          'H4',
-          'apps/backend/execution-control/control-plane/src/modules/execution/execution-phase.service.ts:replaceArtifacts',
-          'Skipped replacing phase artifacts because phase record is missing',
-          {
-            executionId,
-            phaseKey,
-            artifactCount: artifacts.length,
-          }
-        );
         return;
       }
-      reportLoopHistoryDebug(
-        'H4',
-        'apps/backend/execution-control/control-plane/src/modules/execution/execution-phase.service.ts:replaceArtifacts',
-        'Replacing phase artifacts for execution phase',
-        {
-          executionId,
-          phaseKey,
-          phaseId,
-          artifactCount: artifacts.length,
-          artifactTypes: artifacts.map((artifact) => artifact.artifactType),
-        }
-      );
 
       await this.prisma.$executeRawUnsafe(
         `
@@ -683,30 +579,8 @@ export class ExecutionPhaseService {
       const phase = await this.getByExecutionIdAndPhaseKey(executionId, phaseKey);
       const phaseId = typeof phase?.id === 'string' ? phase.id : String(phase?.id || '').trim();
       if (!phaseId) {
-        reportLoopHistoryDebug(
-          'H4',
-          'apps/backend/execution-control/control-plane/src/modules/execution/execution-phase.service.ts:appendArtifacts',
-          'Skipped appending phase artifacts because phase record is missing',
-          {
-            executionId,
-            phaseKey,
-            artifactCount: artifacts.length,
-          }
-        );
         return;
       }
-      reportLoopHistoryDebug(
-        'H4',
-        'apps/backend/execution-control/control-plane/src/modules/execution/execution-phase.service.ts:appendArtifacts',
-        'Appending phase artifacts for execution phase',
-        {
-          executionId,
-          phaseKey,
-          phaseId,
-          artifactCount: artifacts.length,
-          artifactTypes: artifacts.map((artifact) => artifact.artifactType),
-        }
-      );
 
       for (const artifact of artifacts) {
         await this.prisma.$executeRawUnsafe(

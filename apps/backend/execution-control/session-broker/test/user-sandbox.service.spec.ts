@@ -18,7 +18,9 @@ describe('UserSandboxService', () => {
     it('should sanitize user ID and generate deterministic container name', () => {
       expect(service.getContainerName('User_123')).toBe('ops-user-sandbox-user_123');
       expect(service.getContainerName('alice-bob')).toBe('ops-user-sandbox-alice-bob');
-      expect(service.getContainerName('charlie.smith@domain')).toBe('ops-user-sandbox-charlie_smith_domain');
+      expect(() => service.getContainerName('charlie.smith@domain')).toThrow();
+      expect(() => service.getContainerName('a/b/c')).toThrow();
+      expect(() => service.getContainerName('a?b')).toThrow();
     });
 
     it('should reject empty or whitespace user ID', () => {
@@ -57,7 +59,7 @@ describe('UserSandboxService', () => {
       expect(sanitized).toContain('USER_MODE=personal');
       expect(
         sanitized.some((e: string) =>
-          /^DEEPSEEK_API_KEY=sandbox-user-token-test_user_unit\.[A-Za-z0-9_-]+$/u.test(e)
+          /^DEEPSEEK_API_KEY=sandbox-user-token-test_user_unit\.[A-Za-z0-9_.-]+$/u.test(e)
         )
       ).toBe(true);
       expect(sanitized.some((e: string) => e.startsWith('DEEPSEEK_BASE_URL='))).toBe(true);

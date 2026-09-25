@@ -1,4 +1,3 @@
-import * as fs from 'node:fs';
 import { BROWSER_ACTIONS, BROWSER_RUNTIME } from '../browser/browser-execution-constants';
 import { isMaskedPlaceholder } from '../../credentials/runtime-credential-resolver.service';
 import type { BrowserLoopWorkflowPlanLike } from '../browser/browser-loop-workflow-plan.builder';
@@ -25,69 +24,6 @@ export class BrowserPhaseCommandBuilder {
       }
 
       const input = this.buildBrowserPhaseCommandInput(normalizedAction, config, resolvedInput);
-
-      // #region debug-point A:browser-phase-command-normalization
-      (() => {
-        const suspiciousAction = ['read_value', 'branch'].includes(normalizedAction);
-        const suspiciousShape =
-          typeof step.action === 'string' ||
-          Boolean((step as Record<string, unknown>).locator) ||
-          Boolean((step as Record<string, unknown>).params) ||
-          Boolean((step as Record<string, unknown>).branch) ||
-          typeof (step as Record<string, unknown>).output_var === 'string';
-        if (!suspiciousAction && !suspiciousShape) {
-          return;
-        }
-        const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
-        if (!debugUrl) {
-          return;
-        }
-        let u = debugUrl;
-        let s = 'gross-margin-review';
-        try {
-          const env = fs.readFileSync('.dbg/gross-margin-review.env', 'utf8');
-          u = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || u;
-          s = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || s;
-        } catch {
-          // optional debug probe env file not found, use default
-        }
-        fetch(u, {
-          method: 'POST',
-          body: JSON.stringify({
-            sessionId: s,
-            runId: 'pre-fix',
-            hypothesisId: suspiciousAction ? 'A' : 'B',
-            location: 'execution-plan-normalization.service.ts:765',
-            msg: '[DEBUG] browser phase command normalized',
-            data: {
-              activityName,
-              activityOrder,
-              index: index + 1,
-              rawStepAction: this.readNonEmptyString(step.action, config.action) || null,
-              normalizedAction,
-              rawStepKeys: Object.keys(step),
-              configKeys: Object.keys(config),
-              builtInput: input,
-              rawStep: {
-                step_id: this.readNonEmptyString(step.step_id, step.stepId) || null,
-                action: step.action || null,
-                locator: this.readRecord(step.locator),
-                params: this.readRecord(step.params),
-                branch: this.readRecord(step.branch),
-                output_var:
-                  typeof step.output_var === 'string'
-                    ? step.output_var
-                    : typeof step.outputVar === 'string'
-                      ? step.outputVar
-                      : null,
-              },
-              resolvedInput,
-            },
-            ts: Date.now(),
-          }),
-        }).catch(() => {});
-      })();
-      // #endregion
 
       const metadata = {
         stepName: this.rewriteLegacyGrossMarginThresholdText(

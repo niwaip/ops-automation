@@ -1,8 +1,5 @@
 import { randomBytes } from 'crypto';
-import {
-  generateW3cTraceparent,
-  isValidTraceparent,
-} from '../interceptors/trace.interceptor';
+import { generateW3cTraceparent } from '../interceptors/trace.interceptor';
 
 export interface SpanLink {
   traceId: string;

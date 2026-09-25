@@ -188,8 +188,8 @@ export function useChatStreaming({
     streamingCountRef.current += 1;
     setIsStreaming(true);
 
-    let localIsRunInBackground = false;
-    let localIsUserAborted = false;
+    const localIsRunInBackground = false;
+    const localIsUserAborted = false;
 
     try {
       await startAssistantStream(session.id, assistantMessageId, request);
@@ -311,7 +311,9 @@ export function useChatStreaming({
       void apiClient.post('/ai/chat/stop', { sessionId: rec.sessionId }).catch(() => {});
       try {
         rec.abort();
-      } catch {}
+      } catch (_err) {
+        // Stream may have already completed or aborted; safe to ignore
+      }
     });
 
     toast.info('对话输出已终止');

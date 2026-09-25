@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { StreamEventType } from '../react-engine/interfaces';
@@ -8,6 +8,8 @@ import { ChatConversationService } from './chat-conversation.service';
 import { ChatMediaService } from './chat-media.service';
 import { ModelService } from '../model/model.service';
 import { isWorkSlashCommand, isPersonalSlashCommand } from './chat-slash-command.util';
+import { getInternalServiceHeaders } from '../../config/internal-service-auth';
+import { PersonalReminderBridgeService, extractDshMarkers, stripDshMarkers } from './personal-reminder-bridge.service';
 
 const SANDBOX_HISTORY_TURNS_LIMIT = Number(process.env.SANDBOX_HISTORY_TURNS_LIMIT || 16);
 const SANDBOX_HISTORY_ITEM_CHAR_LIMIT = Number(process.env.SANDBOX_HISTORY_ITEM_CHAR_LIMIT || 12000);
@@ -21,7 +23,8 @@ export class UserSandboxDispatcherService {
   constructor(
     private readonly chatConversationService: ChatConversationService,
     private readonly chatMediaService: ChatMediaService,
-    private readonly modelService: ModelService
+    private readonly modelService: ModelService,
+    @Optional() private readonly reminderBridge?: PersonalReminderBridgeService
   ) {
     const host =
       process.env.SESSION_BROKER_HOST ||
@@ -118,6 +121,7 @@ export class UserSandboxDispatcherService {
       this.logger.log(`Stopping personal sandbox execution for user [${effectiveUserId}]...`);
       const res = await fetch(`${this.sessionBrokerUrl}/user-sandboxes/${effectiveUserId}/stop-exec`, {
         method: 'POST',
+        headers: getInternalServiceHeaders(),
       });
       return res.ok;
     } catch (err: any) {
@@ -243,8 +247,28 @@ export class UserSandboxDispatcherService {
         }
         promptForSandbox = `${prefix}用户指令：${body.message}`;
       } else if (sessionAttachedFiles.length > 0) {
-        let prefix = `【当前会话有效附件清单】: ${sessionAttachedFiles.join(', ')}\n`;
+        const prefix = `【当前会话有效附件清单】: ${sessionAttachedFiles.join(', ')}\n`;
         promptForSandbox = `${prefix}用户指令：${body.message}`;
+      }
+
+      // 若用户指令涉及提醒/日程/闹钟，注入数据库中真实的提醒规则列表，防止模型幻觉或无法回答当前列表
+      if (this.reminderBridge && /(?:提醒|日程|闹钟|待办|通知)/.test(body.message)) {
+        try {
+          const list = await this.reminderBridge.listReminders(effectiveUserId);
+          if (list && list.length > 0) {
+            const lines = list.slice(0, 10).map((r: any, idx: number) => {
+              const timeDesc = r.runAt || r.cronExpression || '未指定时间';
+              const ch = r.sendWechat ? '微信+站内' : '站内';
+              const st = r.isActive ? '运行中' : '已停用';
+              return `${idx + 1}. 【${r.title}】内容: ${r.message} | 时间: ${timeDesc} | 推送渠道: ${ch} | 状态: ${st}`;
+            });
+            promptForSandbox = `【系统真实提醒日程列表 (来自数据库已生效数据，请直接据此回答)】:\n${lines.join('\n')}\n\n` + promptForSandbox;
+          } else {
+            promptForSandbox = `【系统真实提醒日程列表 (来自数据库)】: 当前系统内暂无任何已生效的提醒日程。\n\n` + promptForSandbox;
+          }
+        } catch {
+          // 降级容错
+        }
       }
 
       // 立即向前端发送沙箱连接状态，消除白屏与挂起感
@@ -265,6 +289,9 @@ export class UserSandboxDispatcherService {
       if (abortSignal) {
         abortSignal.addEventListener('abort', onAbort, { once: true });
       }
+
+      // 记录当前轮次任务启动时间戳，用于准确区分新产物与历史遗留文件
+      const turnStartTime = Date.now();
 
       // 尝试向 Session Broker 发起 run-harness 请求
       const timeoutMs =
@@ -325,7 +352,7 @@ export class UserSandboxDispatcherService {
 
         let res = await fetch(`${this.sessionBrokerUrl}/user-sandboxes/run-harness-stream`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getInternalServiceHeaders(),
           body: JSON.stringify(payload),
           signal: controller.signal,
         });
@@ -334,7 +361,7 @@ export class UserSandboxDispatcherService {
           this.logger.log('Streaming endpoint not available, falling back to standard run-harness');
           res = await fetch(`${this.sessionBrokerUrl}/user-sandboxes/run-harness`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getInternalServiceHeaders(),
             body: JSON.stringify(payload),
             signal: controller.signal,
           });
@@ -403,6 +430,8 @@ export class UserSandboxDispatcherService {
                   type: StreamEventType.OBSERVATION,
                   content: parsed.content,
                 });
+              } else if (eventType === 'delta_reset') {
+                deltaAccumulator = '';
               } else if (eventType === 'delta' && parsed?.content) {
                 deltaAccumulator += parsed.content;
                 emit({
@@ -458,7 +487,13 @@ export class UserSandboxDispatcherService {
       let telemetrySummary = '';
       let cleanAnswer = '';
 
-      if (rawOutput.includes('<<<DSH_FINAL_OUTPUT>>>')) {
+      // 优先从长度前缀帧 <<<DSH_FINAL_OUTPUT:len={LEN}:{PAYLOAD}>>> 解析最终回复正文
+      const finalOutputMarkers = extractDshMarkers(rawOutput, 'FINAL_OUTPUT');
+      const firstFinal = finalOutputMarkers[0];
+      if (firstFinal && firstFinal.payload) {
+        telemetrySummary = rawOutput.slice(0, firstFinal.startIndex).trim();
+        cleanAnswer = firstFinal.payload.trim();
+      } else if (rawOutput.includes('<<<DSH_FINAL_OUTPUT>>>')) {
         const parts = rawOutput.split('<<<DSH_FINAL_OUTPUT>>>');
         telemetrySummary = (parts[0] || '').trim();
         cleanAnswer = parts.slice(1).join('<<<DSH_FINAL_OUTPUT>>>').trim();
@@ -482,12 +517,11 @@ export class UserSandboxDispatcherService {
         cleanAnswer = answerLines.join('\n').trim() || rawOutput;
       }
 
-      // 解析并提取沙箱外发文件标记（如 <<<DSH_OUTBOUND_FILE:...>>>）
+      // 解析并提取沙箱外发文件标记（支持长度前缀与内容中包含 >>> 的容错）
       const outboundFiles: Array<{ filePath: string; fileName: string; comment?: string }> = [];
-      const outboundMarkerRegex = /<<<DSH_OUTBOUND_FILE:([\s\S]*?)>>>/g;
-      let m: RegExpExecArray | null;
-      while ((m = outboundMarkerRegex.exec(rawOutput)) !== null) {
-        const markerContent = m[1];
+      const extractedOutbounds = extractDshMarkers(rawOutput, 'OUTBOUND_FILE');
+      for (const item of extractedOutbounds) {
+        const markerContent = item.payload;
         if (!markerContent) continue;
         try {
           const parsed = JSON.parse(markerContent.trim());
@@ -503,36 +537,71 @@ export class UserSandboxDispatcherService {
         }
       }
 
-      // 解析并提取结构化性能遥测指标（如 <<<DSH_METRICS:...>>>）
+      // 解析并提取结构化性能遥测指标（支持长度前缀与内容容错）
       let executionMetrics: Record<string, unknown> | undefined;
-      const metricsMatch = rawOutput.match(/<<<DSH_METRICS:([\s\S]*?)>>>/);
-      if (metricsMatch && metricsMatch[1]) {
+      const extractedMetrics = extractDshMarkers(rawOutput, 'METRICS');
+      const firstMetric = extractedMetrics[0];
+      if (firstMetric && firstMetric.payload) {
         try {
-          executionMetrics = JSON.parse(metricsMatch[1].trim());
+          executionMetrics = JSON.parse(firstMetric.payload.trim());
         } catch {
           // 忽略非法格式指标
         }
       }
 
-      // 二次防御：彻底剔除可能意外残留在正文中的工具调用裸 JSON 与 XML 标签及外发文件标记
+      // 解析并处理沙箱创建的个人提醒（<<<DSH_REMINDER_CREATE:...>>>）
+      let createdReminders: any[] = [];
+      let reminderError: string | undefined;
+      let reminderRequestedCount = 0;
+      if (this.reminderBridge && (rawOutput.includes('<<<DSH_REMINDER_CREATE:') || rawOutput.includes('<<<DSH_REMINDER_CREATE'))) {
+        try {
+          const reminderRes = await this.reminderBridge.processSandboxReminders(
+            effectiveUserId,
+            rawOutput
+          );
+          createdReminders = reminderRes.created;
+          reminderError = reminderRes.error;
+          reminderRequestedCount = reminderRes.requestedCount || 0;
+        } catch (rErr: any) {
+          this.logger.warn(`Failed to process sandbox reminders: ${rErr.message}`);
+          reminderError = rErr.message;
+        }
+      }
+
+      // 二次防御：彻底剔除可能意外残留在正文中的工具调用裸 JSON 与 XML 标签及协议标记
       cleanAnswer = this.stripToolCallArtifacts(cleanAnswer);
-      cleanAnswer = cleanAnswer
-        .replace(/<<<DSH_DELTA:[\s\S]*?>>>/g, '')
-        .replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '')
-        .replace(/<<<DSH_METRICS:[\s\S]*?>>>/g, '')
-        .trim();
-      telemetrySummary = telemetrySummary
-        .replace(/<<<DSH_DELTA:[\s\S]*?>>>/g, '')
-        .replace(/<<<DSH_OUTBOUND_FILE:[\s\S]*?>>>/g, '')
-        .replace(/<<<DSH_METRICS:[\s\S]*?>>>/g, '')
-        .trim();
+      const tagsToStrip = ['DELTA', 'DELTA_RESET', 'OUTBOUND_FILE', 'REMINDER_CREATE', 'METRICS', 'FINAL_OUTPUT'];
+      cleanAnswer = stripDshMarkers(cleanAnswer, tagsToStrip).trim();
+      telemetrySummary = stripDshMarkers(telemetrySummary, tagsToStrip).trim();
+
+      // 纠正虚假提醒成功文案：严格根据控制面确认落库结果校验
+      if (reminderRequestedCount > 0) {
+        if (createdReminders.length === 0) {
+          // 控制面未确认落库，提醒调度创建失败！
+          const failureNotice = `⚠️ 【提醒创建失败】后台调度系统未确认落库（原因: ${reminderError || '提醒时间未指定或已过期，调度服务拒绝落库'}）。该提醒并未实际生效，请提供明确的未来具体时间（如 2026-09-26T10:00:00）或 Cron 表达式后重试。`;
+          if (/(?:已成功为您创建|已为您创建|已成功创建|已创建|提醒已成功同步|✓ 已成功|已准备提交)/.test(cleanAnswer)) {
+            cleanAnswer = failureNotice;
+          } else {
+            cleanAnswer = `${failureNotice}\n\n${cleanAnswer}`.trim();
+          }
+        } else if (createdReminders.length < reminderRequestedCount) {
+          const partialNotice = `⚠️ 部分提醒落库失败（成功 ${createdReminders.length}/${reminderRequestedCount} 条，原因: ${reminderError || '部分时间参数未通过校验'}）。\n已生效提醒：\n${createdReminders.map((r, i) => `${i + 1}. 【${r.title}】下次执行: ${r.nextRunAt}`).join('\n')}`;
+          cleanAnswer = `${partialNotice}\n\n${cleanAnswer}`.trim();
+        } else {
+          const confirmationBanner = `✓ [控制面已确认] ${createdReminders.length} 条提醒日程已成功落库并挂载后台调度系统：\n${createdReminders.map((r, i) => `${i + 1}. 【${r.title}】下次执行: ${r.nextRunAt} (渠道: ${r.sendWechat ? '微信+站内' : '站内'})`).join('\n')}`;
+          if (!cleanAnswer.includes('控制面已确认')) {
+            cleanAnswer = `${cleanAnswer}\n\n${confirmationBanner}`.trim();
+          }
+        }
+      }
 
       // 自动解析沙箱生成/外发的图片与各类交付物文件（Word/Excel/PPT/PDF等），转换为内联 Markdown 或专属下载卡片
       cleanAnswer = this.embedWorkspaceDeliverablesAndImagesInAnswer(
         effectiveUserId,
         cleanAnswer,
         outboundFiles,
-        sessionAttachedFiles
+        sessionAttachedFiles,
+        turnStartTime
       );
 
       if (!cleanAnswer) {
@@ -564,6 +633,7 @@ export class UserSandboxDispatcherService {
             metrics: executionMetrics,
           },
           outboundFiles: outboundFiles.length > 0 ? outboundFiles : undefined,
+          reminders: createdReminders.length > 0 ? createdReminders : undefined,
         },
       });
 
@@ -591,6 +661,17 @@ export class UserSandboxDispatcherService {
         emit({
           type: StreamEventType.ERROR,
           content: `⚠️ 沙箱任务执行异常 (${err.message})，未能完成指令执行。请重试或检查模型服务连接。`,
+        });
+        return true;
+      }
+      if (
+        err.message?.includes('正在执行其他任务') ||
+        err.message?.includes('沙箱当前正在执行') ||
+        err.status === 409
+      ) {
+        emit({
+          type: StreamEventType.ERROR,
+          content: '⚠️ 个人专属安全沙箱当前正在执行其他任务。请稍候片刻等待当前任务完成，或刷新后重试。',
         });
         return true;
       }
@@ -757,7 +838,8 @@ export class UserSandboxDispatcherService {
     userId: string,
     text: string,
     outboundFiles: Array<{ filePath: string; fileName: string; comment?: string }>,
-    sessionFiles: string[] = []
+    sessionFiles: string[] = [],
+    turnStartTime?: number
   ): string {
     // 1. 先进行图片内联转换（保持既有行为与规范）
     let result = this.embedWorkspaceImagesInAnswer(userId, text, outboundFiles);
@@ -848,11 +930,41 @@ export class UserSandboxDispatcherService {
       if (!foundName) continue;
       // 严禁将用户本轮上传的原始输入附件作为“AI生成产物”挂载
       if (inputFiles.has(foundName.toLowerCase())) continue;
+
+      // 语意排除：若文件名紧随在示例/引用/历史说明词之后（如 “例如 xxx.xlsx”、“(如 xxx.xlsx)”、“历史文件 xxx.xlsx”、“最后更新 ... (如 xxx.xlsx)”），不视为生成交付物
+      const matchIndex = match.index;
+      const prefixText = result.slice(Math.max(0, matchIndex - 40), matchIndex);
+      if (
+        /(?:(?:例如|比如|样例|示例|例[：:]?|e\.g\.|eg\.|最后更新|更新于|历史文件|旧文件)|(?:^|[（(【\s])如[：:]?)\s*$/i.test(
+          prefixText
+        )
+      ) {
+        continue;
+      }
+
       if (!candidateDeliverables.some((c) => c.fileName === foundName)) {
         const ext = path.extname(foundName).toLowerCase();
         if (deliverableExts.has(ext)) {
           const filePath = this.getWorkspaceFilePath(userId, foundName);
           if (filePath && fs.existsSync(filePath)) {
+            // 物理时间戳防误判：如果提供了 turnStartTime，且文件修改时间明确早于本轮交互开始前（缓冲3秒），说明该文件是历史遗留文件而非本轮生成，不自动作为产物挂载
+            if (turnStartTime) {
+              try {
+                const stats = fs.statSync(filePath);
+                const mtime =
+                  typeof stats.mtimeMs === 'number'
+                    ? stats.mtimeMs
+                    : stats.mtime instanceof Date
+                      ? stats.mtime.getTime()
+                      : undefined;
+                if (typeof mtime === 'number' && mtime < turnStartTime - 3000) {
+                  continue;
+                }
+              } catch {
+                // 读取失败则忽略异常
+              }
+            }
+
             candidateDeliverables.push({ fileName: foundName, filePath });
           }
         }

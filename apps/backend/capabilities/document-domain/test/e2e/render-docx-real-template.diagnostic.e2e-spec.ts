@@ -1,11 +1,16 @@
 import * as fs from 'fs';
+import * as path from 'path';
 import JSZip from 'jszip';
 import { FileHandler } from '../../../../../capabilities/document-domain/template/lib/file';
 
 describe('Render real DOCX template diagnostic', () => {
   it('renders template 9517d1eb without concatenating adjacent loop rows', async () => {
     const templatePath =
-      '/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/9517d1eb-ee64-442a-ba67-c0dbe2a5ecf6.docx';
+      process.env.REAL_DOCX_DIAGNOSTIC_PATH ||
+      path.resolve(process.cwd(), '.data/carbone-engine/templates/9517d1eb-ee64-442a-ba67-c0dbe2a5ecf6.docx');
+    if (!fs.existsSync(templatePath)) {
+      return;
+    }
     const templateBuffer = fs.readFileSync(templatePath);
     const handler = new FileHandler();
 

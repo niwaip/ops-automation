@@ -12,12 +12,14 @@ import { ChatConversationService } from './chat-conversation.service';
 import { ChatMediaService } from './chat-media.service';
 import { ModelService } from '../model/model.service';
 import { StreamEventType } from '../react-engine/interfaces';
+import { PersonalReminderBridgeService } from './personal-reminder-bridge.service';
 
 describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name', () => {
   let service: UserSandboxDispatcherService;
   let mockConversationService: Partial<ChatConversationService>;
   let mockMediaService: Partial<ChatMediaService>;
   let mockModelService: Partial<ModelService>;
+  let mockReminderBridge: Partial<PersonalReminderBridgeService>;
   let originalFetch: any;
 
   beforeAll(() => {
@@ -35,6 +37,10 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
       buildSessionPatchEvent: jest.fn().mockReturnValue({ type: StreamEventType.SESSION_PATCH, data: {} } as any),
     } as any;
     mockMediaService = {};
+    mockReminderBridge = {
+      processSandboxReminders: jest.fn().mockResolvedValue({ created: [], requestedCount: 0, cleanOutput: '' }),
+      listReminders: jest.fn().mockResolvedValue([]),
+    };
     mockModelService = {
       getPreferredDefaultModel: jest.fn().mockReturnValue({ id: 'uuid-1234', name: 'qwen36-35b-a3b' }),
       getDefaultModel: jest.fn().mockReturnValue({ id: 'uuid-1234', name: 'qwen36-35b-a3b' }),
@@ -52,6 +58,7 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
         { provide: ChatConversationService, useValue: mockConversationService },
         { provide: ChatMediaService, useValue: mockMediaService },
         { provide: ModelService, useValue: mockModelService },
+        { provide: PersonalReminderBridgeService, useValue: mockReminderBridge },
       ],
     }).compile();
 
@@ -112,6 +119,30 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
     expect(resultEvent).toBeDefined();
     expect(resultEvent.content).toBe('你好世界');
+  });
+
+  it('should reset deltaAccumulator when receiving delta_reset event', async () => {
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: delta\ndata: {"content":"旧的错误"}\n\n',
+        'event: delta_reset\ndata: {}\n\n',
+        'event: delta\ndata: {"content":"新的正确"}\n\n',
+        'event: done\ndata: {"success":true,"output":"<<<DSH_FINAL_OUTPUT>>>新的正确","containerName":"ops-test","durationMs":50,"exitCode":0}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const success = await service.dispatchPersonalSandbox(
+      { message: '你好', userId: 'test_user', modelId: 'uuid-1234' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(success).toBe(true);
+    const deltaEvents = emittedEvents.filter((e) => e.data?.isDelta);
+    expect(deltaEvents.length).toBe(2);
+    expect(deltaEvents[0].content).toBe('旧的错误');
+    expect(deltaEvents[1].content).toBe('新的正确');
   });
 
   it('should NOT swallow SSE error events or fabricate fake success', async () => {
@@ -282,4 +313,187 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     // 关键断言：test.pdf 必须被过滤掉，不能出现在交付卡片中
     expect(resultEvent.content).not.toContain('test.pdf');
   });
+
+  it('should NOT treat historical or example files mentioned in environment diagnostics as deliverables', async () => {
+    jest.spyOn(service, 'getWorkspaceFilePath').mockImplementation((uid, fname) => {
+      if (fname === '2026年度财务收支与现金流统计报表.xlsx') {
+        return '/mock/path/2026年度财务收支与现金流统计报表.xlsx';
+      }
+      return null;
+    });
+
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    // 模拟文件是昨天修改的历史文件
+    const yesterday = Date.now() - 24 * 3600 * 1000;
+    jest.spyOn(fs, 'statSync').mockReturnValue({ size: 45678, mtimeMs: yesterday } as any);
+
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: done\ndata: {"success":true,"output":"<<<DSH_FINAL_OUTPUT>>>【当前沙箱环境配置】\\n最后更新：2026-09-24 (如 2026年度财务收支与现金流统计报表.xlsx)","containerName":"ops-test","durationMs":100,"exitCode":0}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const success = await service.dispatchPersonalSandbox(
+      { message: '查看沙箱环境信息', userId: 'test_user' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(success).toBe(true);
+    const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
+    expect(resultEvent).toBeDefined();
+    // 关键断言：绝对不能生成产物就绪卡片
+    expect(resultEvent.content).not.toContain('生成产物已就绪');
+    expect(resultEvent.content).not.toContain('点击直接下载');
+    expect(resultEvent.content).toContain('2026年度财务收支与现金流统计报表.xlsx');
+  });
+
+  it('should treat freshly generated files with mtime >= turnStartTime as deliverables', async () => {
+    jest.spyOn(service, 'getWorkspaceFilePath').mockImplementation((uid, fname) => {
+      if (fname === '本轮新鲜生成的周报.xlsx') {
+        return '/mock/path/本轮新鲜生成的周报.xlsx';
+      }
+      return null;
+    });
+
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    // 模拟文件是在本轮交互中新生成的（mtime 为当前时间）
+    jest.spyOn(fs, 'statSync').mockReturnValue({ size: 54321, mtimeMs: Date.now() + 50 } as any);
+
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: done\ndata: {"success":true,"output":"<<<DSH_FINAL_OUTPUT>>>我已经完成了数据处理，并生成了《本轮新鲜生成的周报.xlsx》，请查收。","containerName":"ops-test","durationMs":100,"exitCode":0}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const success = await service.dispatchPersonalSandbox(
+      { message: '生成本周周报', userId: 'test_user' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(success).toBe(true);
+    const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
+    expect(resultEvent).toBeDefined();
+    expect(resultEvent.content).toContain('生成产物已就绪');
+    expect(resultEvent.content).toContain('本轮新鲜生成的周报.xlsx');
+    expect(resultEvent.content).toContain('点击直接下载');
+  });
+
+  it('[P1] should correct and replace false reminder success text when control plane rejects persistence', async () => {
+    (mockReminderBridge.processSandboxReminders as jest.Mock).mockResolvedValue({
+      created: [],
+      error: '请选择未来的一次性提醒时间',
+      requestedCount: 1,
+      cleanOutput: '',
+    });
+
+    const fakeSandboxOutput =
+      '<<<DSH_REMINDER_CREATE:[{"title": "开会"}]>>>\n✓ 已成功为您创建 1 条提醒日程：\n1. 【开会】时间: 指定时间 (提醒渠道: 站内)\n提醒已成功同步至后台调度系统，到达设定时间将自动为您推送。';
+
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        `event: done\ndata: {"success":true,"output":${JSON.stringify(fakeSandboxOutput)},"containerName":"ops-test","durationMs":100,"exitCode":0}\n\n`,
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const success = await service.dispatchPersonalSandbox(
+      { message: '帮我定个提醒开会', userId: 'test_user' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(success).toBe(true);
+    const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
+    expect(resultEvent).toBeDefined();
+    // 关键断言：绝对不能向用户虚假宣告创建成功，必须修正为失败提示
+    expect(resultEvent.content).toContain('【提醒创建失败】后台调度系统未确认落库');
+    expect(resultEvent.content).toContain('请选择未来的一次性提醒时间');
+    expect(resultEvent.content).not.toContain('✓ 已成功为您创建 1 条提醒日程');
+    expect(resultEvent.content).not.toContain('提醒已成功同步至后台调度系统');
+  });
+
+  it('[P1] should confirm reminder schedule when control plane successfully creates reminders', async () => {
+    (mockReminderBridge.processSandboxReminders as jest.Mock).mockResolvedValue({
+      created: [
+        {
+          id: 'rem_1',
+          title: '客户拜访',
+          message: '拜访客户',
+          nextRunAt: '2026-09-26T14:00:00.000Z',
+          sendWechat: true,
+        },
+      ],
+      requestedCount: 1,
+      cleanOutput: '',
+    });
+
+    const fakeSandboxOutput =
+      '<<<DSH_REMINDER_CREATE:[{"title": "客户拜访", "runAt": "2026-09-26T14:00:00+08:00"}]>>>\n已准备提交 1 条提醒日程至系统调度中心：\n1. 【客户拜访】时间: 2026-09-26T14:00:00+08:00 (提醒渠道: 微信+站内)';
+
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        `event: done\ndata: {"success":true,"output":${JSON.stringify(fakeSandboxOutput)},"containerName":"ops-test","durationMs":100,"exitCode":0}\n\n`,
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const success = await service.dispatchPersonalSandbox(
+      { message: '明天下午两点拜访客户', userId: 'test_user' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(success).toBe(true);
+    const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
+    expect(resultEvent).toBeDefined();
+    expect(resultEvent.content).toContain('控制面已确认');
+    expect(resultEvent.content).toContain('客户拜访');
+    expect(resultEvent.content).toContain('2026-09-26T14:00:00.000Z');
+  });
+
+  it('[P2] should parse outbound file markers containing >>> in comments and embed them into deliverable cards', async () => {
+    jest.spyOn(service, 'getWorkspaceFilePath').mockImplementation((uid, fname) => {
+      if (fname === 'diag.png') {
+        return '/mock/path/diag.png';
+      }
+      return null;
+    });
+
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    jest.spyOn(fs, 'statSync').mockReturnValue({ size: 12345, mtimeMs: Date.now() + 50 } as any);
+
+    const comment = '系统拓扑: 客户端 >>> 反向代理 >>> 微服务集群';
+    const markerPayload = JSON.stringify({
+      filePath: '/workspace/diag.png',
+      fileName: 'diag.png',
+      comment,
+    });
+    const fakeOutput = `<<<DSH_OUTBOUND_FILE:len=${markerPayload.length}:${markerPayload}>>>\n<<<DSH_FINAL_OUTPUT>>>拓扑分析已完成，请查看架构图。`;
+
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        `event: done\ndata: {"success":true,"output":${JSON.stringify(fakeOutput)},"containerName":"ops-test","durationMs":100,"exitCode":0}\n\n`,
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const success = await service.dispatchPersonalSandbox(
+      { message: '分析拓扑架构', userId: 'test_user' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(success).toBe(true);
+    const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
+    expect(resultEvent).toBeDefined();
+    // 成功提取并注入为卡片，且没有被 >>> 截断
+    expect(resultEvent.content).toContain('diag.png');
+    expect(resultEvent.content).toContain(comment);
+    expect(resultEvent.content).toContain('/api/ai/chat/workspace-files/test_user/diag.png');
+  });
 });
+

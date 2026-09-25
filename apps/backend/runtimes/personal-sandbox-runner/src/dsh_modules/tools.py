@@ -42,6 +42,10 @@ from .file_tools import (
     send_workspace_file,
 )
 
+from .reminder_tools import (
+    create_personal_reminders,
+)
+
 SANDBOX_TOOLS = [
     {
         "type": "function",
@@ -258,6 +262,49 @@ SANDBOX_TOOLS = [
                     }
                 },
                 "required": ["prompt"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_reminders",
+            "description": "为用户创建单次或多个定时/定期日程与提醒事项（如观看赛事、会议开会、运维点检、待办等）。根据上下文给出的具体日期、时间和项目，自动提取并计算准确的未来时间（ISO 8601格式，默认 Asia/Shanghai 时区）并创建提醒。已连接微信时默认同步微信推送。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "reminders": {
+                        "type": "array",
+                        "description": "待创建的提醒事项列表",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "title": {
+                                    "type": "string",
+                                    "description": "提醒标题，简要概括事项，例如 'WSBK WorldSSP300 排位赛'"
+                                },
+                                "message": {
+                                    "type": "string",
+                                    "description": "提醒详细内容与说明，例如 'WSBK WorldSSP300 排位赛（决定发车位）即将开始，比赛时间 19:10 - 19:35'"
+                                },
+                                "run_at": {
+                                    "type": "string",
+                                    "description": "一次性提醒的未来时间（ISO 8601 格式，例如 '2026-09-25T19:10:00+08:00' 或提前5分钟 '2026-09-25T19:05:00+08:00'）"
+                                },
+                                "cron_expression": {
+                                    "type": "string",
+                                    "description": "循环提醒的五段式 Cron 表达式（可选，如 '0 9 * * 1-5'，与 run_at 二选一）"
+                                },
+                                "send_wechat": {
+                                    "type": "boolean",
+                                    "description": "是否同步发送至微信。已配置微信时默认为 true"
+                                }
+                            },
+                            "required": ["title", "message"]
+                        }
+                    }
+                },
+                "required": ["reminders"]
             }
         }
     }
@@ -477,6 +524,12 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
                 res = f"生图插件执行异常: {e}"
         else:
             res = "【系统提示】当前对话模型具备多模态视觉理解能力（支持识图分析），但不支持原生图像生成/绘图（Text-to-Image）。如需生成图片文件，需在平台接入生图模型（如 Imagen / DALL-E / Flux / ComfyUI）。"
+
+    elif name_clean in [
+        "create_reminders", "create_reminder", "set_reminder", "set_reminders",
+        "add_reminder", "add_reminders", "remind", "reminder"
+    ]:
+        res = create_personal_reminders(**params)
 
     else:
         plugin_file = Path(PLUGIN_DIR) / f"{tool_name}.py"
