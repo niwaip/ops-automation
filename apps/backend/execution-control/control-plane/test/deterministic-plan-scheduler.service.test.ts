@@ -1,4 +1,5 @@
 import { DeterministicPlanSchedulerService } from '../src/modules/execution/plan-runtime/deterministic-plan-scheduler.service';
+import { resolveOutboundEffectMetadata } from '../src/modules/execution/plan-runtime/deterministic-plan-scheduler.helpers';
 
 describe('DeterministicPlanSchedulerService', () => {
   const createService = (contractCatalogOver: any = {}) =>
@@ -460,7 +461,6 @@ describe('DeterministicPlanSchedulerService', () => {
   });
 
   it('rejects caller attempting to self-authorize commit phase in runtime input without approval', () => {
-    const { resolveOutboundEffectMetadata } = require('../src/modules/execution/plan-runtime/deterministic-plan-scheduler.helpers');
     expect(() =>
       resolveOutboundEffectMetadata(
         { metadata: {} },
@@ -475,7 +475,6 @@ describe('DeterministicPlanSchedulerService', () => {
   });
 
   it('automatically derives PREPARE phase for external_write and email capabilities when unapproved', () => {
-    const { resolveOutboundEffectMetadata } = require('../src/modules/execution/plan-runtime/deterministic-plan-scheduler.helpers');
     const meta = resolveOutboundEffectMetadata(
       { capabilityId: 'platform.email.send' },
       {},
@@ -490,7 +489,6 @@ describe('DeterministicPlanSchedulerService', () => {
   });
 
   it('promotes previously prepared and approved step to COMMIT phase', () => {
-    const { resolveOutboundEffectMetadata } = require('../src/modules/execution/plan-runtime/deterministic-plan-scheduler.helpers');
     const meta = resolveOutboundEffectMetadata(
       { capabilityId: 'platform.email.send' },
       {},
@@ -508,7 +506,6 @@ describe('DeterministicPlanSchedulerService', () => {
   });
 
   it('automatically derives PREPARE phase for external_write when plan was pre-approved but step has no prior prepare', () => {
-    const { resolveOutboundEffectMetadata } = require('../src/modules/execution/plan-runtime/deterministic-plan-scheduler.helpers');
     const meta = resolveOutboundEffectMetadata(
       { capabilityId: 'platform.email.send' },
       {},
@@ -525,7 +522,6 @@ describe('DeterministicPlanSchedulerService', () => {
   });
 
   it('rejects caller attempting commit phase without previousStepOutput even when execution is approved', () => {
-    const { resolveOutboundEffectMetadata } = require('../src/modules/execution/plan-runtime/deterministic-plan-scheduler.helpers');
     expect(() =>
       resolveOutboundEffectMetadata(
         { capabilityId: 'platform.email.send' },

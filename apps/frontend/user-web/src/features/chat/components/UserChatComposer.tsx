@@ -34,32 +34,13 @@ import { useChatStore } from '../chatStore';
 
 import styles from '../pages/ChatPage.module.css';
 
-const { TextArea } = Input;
+import { UserChatTaskContextBar } from './UserChatTaskContextBar';
+import {
+  PARAM_LABEL_MAP,
+  IGNORED_TASK_CONTEXT_PARAM_KEYS,
+} from '../lib/chatComposerConstants';
 
-const PARAM_LABEL_MAP: Record<string, string> = {
-  contractTitle: '合同名称',
-  counterpartyName: '相对方企业主体',
-  cooperationSubject: '合作业务主题',
-  durationYears: '保密义务年限',
-  myPosition: '我方合同立场',
-  penaltyAmount: '违约金赔偿约定',
-  remarks: '商务诉求说明',
-  contractType: '合同类型',
-  signDate: '签署日期',
-  currentStage: '当前流程阶段',
-  leaveType: '请假类型',
-  startTime: '开始时间',
-  endTime: '结束时间',
-  durationHours: '请假时长',
-  reason: '请假事由',
-  handoverPerson: '工作交接人',
-  expenseType: '报销类型',
-  amount: '报销金额',
-  baseFileName: '基准版本',
-  compareFileName: '比对版本',
-  fileNameA: '基准合同',
-  fileNameB: '比对合同',
-};
+const { TextArea } = Input;
 
 interface UserChatComposerProps {
   draft: string;
@@ -455,12 +436,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
       }
       if (taskContext.parameters && Object.keys(taskContext.parameters).length > 0) {
         const paramStrs = Object.entries(taskContext.parameters)
-          .filter(([k]) => ![
-            'downloadUrl', 'fileUrl', 'contractUrl', 'fileName', 'contractFileName',
-            'executionId', 'isDraftReplaced', 'originalDraftUrl', 'originalDraftFileName',
-            'originalDraftSize', 'rawContent', 'text',
-            'fileUrlA', 'downloadUrlA', 'fileNameA', 'fileUrlB', 'downloadUrlB', 'fileNameB'
-          ].includes(k))
+          .filter(([k]) => !IGNORED_TASK_CONTEXT_PARAM_KEYS.has(k))
           .map(([k, v]) => `${PARAM_LABEL_MAP[k] || k}: ${v}`);
         if (paramStrs.length > 0) {
           contextLines.push(`- **业务要件**：${paramStrs.join('； ')}`);
@@ -574,83 +550,16 @@ export function UserChatComposer(props: UserChatComposerProps) {
         ) : null}
 
         {taskContext ? (
-          <div className={styles['user-chat-task-context-bar']}>
-            <div className={styles['user-chat-task-context-header']}>
-              <div className={styles['user-chat-task-context-badge']}>
-                <RobotOutlined style={{ color: '#722ed1', fontSize: 13 }} />
-                <span style={{ fontWeight: 600, fontSize: 12, color: '#722ed1' }}>
-                  {taskContext.workflowId === 'platform.document.contract-comparator'
-                    ? '已载入两份合同版本 · 准备比对与红线审查'
-                    : '已带入协同任务上下文'}
-                </span>
-                {taskContext.workflowId ? (
-                  <Tag color="purple" style={{ margin: 0, fontSize: 10, padding: '0 4px', lineHeight: '18px' }}>
-                    {taskContext.workflowId === 'platform.document.contract-comparator'
-                      ? '合同文档智能比对与红线审查'
-                      : taskContext.workflowId}
-                  </Tag>
-                ) : null}
-              </div>
-              <Button
-                type="text"
-                size="small"
-                className={styles['user-chat-task-context-close-btn']}
-                onClick={() => setTaskContext(null)}
-                title="取消关联此任务上下文"
-              >
-                × 取消带入
-              </Button>
-            </div>
-            <div className={styles['user-chat-task-context-body']}>
-              <div className={styles['user-chat-task-context-title']}>
-                <strong>任务：</strong>{taskContext.taskTitle}
-              </div>
-              {taskContext.parameters && Object.keys(taskContext.parameters).length > 0 ? (
-                <div className={styles['user-chat-task-context-params']}>
-                  <strong>要求要件：</strong>
-                  {Object.entries(taskContext.parameters)
-                    .filter(([k]) => ![
-                      'downloadUrl', 'fileUrl', 'contractUrl', 'fileName', 'contractFileName',
-                      'executionId', 'isDraftReplaced', 'originalDraftUrl', 'originalDraftFileName',
-                      'originalDraftSize', 'rawContent', 'text',
-                      'fileUrlA', 'downloadUrlA', 'fileNameA', 'fileUrlB', 'downloadUrlB', 'fileNameB'
-                    ].includes(k))
-                    .map(([k, v]) => `${PARAM_LABEL_MAP[k] || k}: ${v}`)
-                    .join('； ')}
-                </div>
-              ) : null}
-            </div>
-            <div className={styles['user-chat-task-context-suggestions']}>
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginRight: 4 }}>快捷输入：</span>
-              {(taskContext.workflowId === 'platform.document.contract-comparator'
-                ? [
-                    '比较合同',
-                    '比对新旧版本条款差异与红线',
-                    '重点排查保密期限与违约金变更',
-                    '生成合同修订前后并排比对报告',
-                  ]
-                : [
-                    '对比审查文档差异与合规风险',
-                    '提取文档要点并给出批注建议',
-                    '基于业务要求重新生成初稿',
-                    '总结任务要求与后续办理事项',
-                  ]
-              ).map((suggestion) => (
-                <Tag
-                  key={suggestion}
-                  className={styles['user-chat-suggestion-pill']}
-                  onClick={() => {
-                    onDraftChange(suggestion);
-                    setTimeout(() => {
-                      inputRef.current?.focus();
-                    }, 50);
-                  }}
-                >
-                  {suggestion}
-                </Tag>
-              ))}
-            </div>
-          </div>
+          <UserChatTaskContextBar
+            taskContext={taskContext}
+            onClear={() => setTaskContext(null)}
+            onSelectSuggestion={(suggestion) => {
+              onDraftChange(suggestion);
+              setTimeout(() => {
+                inputRef.current?.focus();
+              }, 50);
+            }}
+          />
         ) : null}
 
         {uploadedFiles.length > 0 && (

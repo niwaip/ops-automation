@@ -128,7 +128,9 @@ export function InterventionList({
           finalEffectId = firstPending.effectId;
           finalHash = firstPending.payloadHash;
         }
-      } catch {}
+      } catch (_err) {
+        // Fall back to direct approval without pre-filled effect ID if query fails
+      }
       await executionApi.approve(executionId, {
         ...(finalEffectId ? { effectId: finalEffectId } : {}),
         ...(finalHash ? { approvedPayloadHash: finalHash } : {}),

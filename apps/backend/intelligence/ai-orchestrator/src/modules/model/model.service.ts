@@ -21,8 +21,6 @@ import {
   type ModelInvocationContext,
 } from './model-invocation-telemetry.service';
 import {
-  getCapabilityWeight,
-  getDefaultScopeWeight,
   getPromptCachingConfigForModel,
   normalizeModelConfig,
 } from './model-config.helpers';
@@ -32,10 +30,18 @@ import {
 import { buildModelClient } from './model-client.factory';
 import { ModelStateRepository } from './model-state.repository';
 
-export interface ModelSelectionPolicyContext {
-  mode?: 'chat' | 'task' | 'audio_transcription' | 'ocr' | 'vision' | 'image_generation';
-  userRoles?: string[];
-}
+import {
+  type ModelSelectionPolicyContext,
+  selectScopedDefaultModel,
+  isVisionCapableModel,
+  sortFallbackCandidates,
+  getPreferredImageGenerationModel,
+  getPreferredVisionModel,
+  getPreferredDefaultModel,
+  resolveFallbackModelIds,
+} from './model-selection.policy';
+
+export type { ModelSelectionPolicyContext };
 
 /**
  * Model Service
@@ -77,51 +83,17 @@ export class ModelService implements OnModuleInit {
       | 'ocr'
       | 'image_generation'
   ): AIModelDTO | null {
-    const activeModels = this.getActiveModelsWithClients();
-    return activeModels.find((model) => model.config.default_scope?.[scope] === true) || null;
+    return selectScopedDefaultModel(scope, this.getActiveModelsWithClients());
   }
 
   getPreferredDefaultModel(context?: ModelSelectionPolicyContext): AIModelDTO | null {
-    const userRoles = context?.userRoles || [];
-    const isAdmin = userRoles.includes('admin');
-
-    if (context?.mode === 'image_generation') {
-      return (
-        this.selectScopedDefaultModel('image_generation') ||
-        this.getPreferredImageGenerationModel(context)
-      );
-    }
-
-    if (context?.mode === 'audio_transcription') {
-      return this.selectScopedDefaultModel('audio_transcription') || this.getDefaultModel();
-    }
-
-    if (context?.mode === 'ocr' || context?.mode === 'vision') {
-      return (
-        this.selectScopedDefaultModel('ocr') ||
-        this.getPreferredVisionModel(context) ||
-        this.getDefaultModel()
-      );
-    }
-
-    if (context?.mode === 'task') {
-      return (
-        this.selectScopedDefaultModel('admin_task') ||
-        this.selectScopedDefaultModel('admin_chat') ||
-        this.selectScopedDefaultModel('global') ||
-        this.getDefaultModel()
-      );
-    }
-
-    if (isAdmin && context?.mode === 'chat') {
-      return (
-        this.selectScopedDefaultModel('admin_chat') ||
-        this.selectScopedDefaultModel('global') ||
-        this.getDefaultModel()
-      );
-    }
-
-    return this.selectScopedDefaultModel('global') || this.getDefaultModel();
+    return getPreferredDefaultModel(
+      context,
+      this.getActiveModelsWithClients(),
+      this.getDefaultModel(),
+      () => this.getPreferredImageGenerationModel(context),
+      () => this.getPreferredVisionModel(context)
+    );
   }
 
   /**
@@ -468,94 +440,19 @@ export class ModelService implements OnModuleInit {
   }
 
   isVisionCapableModel(model: AIModelDTO | null | undefined): boolean {
-    if (!model || model.status !== 'active') {
-      return false;
-    }
-    if (model.config?.default_scope?.['ocr'] === true) {
-      return true;
-    }
-    const tags = (model.config?.routing_tags || []).map((t) => String(t).toLowerCase());
-    if (
-      tags.some(
-        (t) =>
-          t.includes('vision') ||
-          t.includes('multimodal') ||
-          t.includes('image') ||
-          t.includes('ocr')
-      )
-    ) {
-      return true;
-    }
-    const name = (model.name || '').toLowerCase();
-    const provider = (model.provider || '').toLowerCase();
-    if (provider === 'gemini' || name.includes('gemini')) {
-      return true;
-    }
-    if (
-      name.includes('vision') ||
-      name.includes('-vl') ||
-      name.includes('vl-') ||
-      name.includes('gpt-4o') ||
-      name.includes('claude-3') ||
-      name.includes('omni')
-    ) {
-      return true;
-    }
-    return false;
+    return isVisionCapableModel(model);
   }
 
   getPreferredVisionModel(context?: ModelSelectionPolicyContext): AIModelDTO | null {
-    // 1. Check if an OCR-scoped default model is configured and active
-    const ocrModel = this.selectScopedDefaultModel('ocr');
-    if (ocrModel && this.isVisionCapableModel(ocrModel) && this.clients.has(ocrModel.id)) {
-      return ocrModel;
-    }
-
-    // 2. Check if the default chat model is vision-capable
-    const defaultChat = this.getPreferredDefaultModel({
-      mode: 'chat',
-      userRoles: context?.userRoles,
-    });
-    if (defaultChat && this.isVisionCapableModel(defaultChat) && this.clients.has(defaultChat.id)) {
-      return defaultChat;
-    }
-
-    // 3. Search all active models with initialized clients for any vision-capable model
-    const activeModels = this.listActiveModelsForRouting();
-    const visionCandidate = activeModels.find(
-      (m) => this.isVisionCapableModel(m) && this.clients.has(m.id)
+    return getPreferredVisionModel(
+      this.getActiveModelsWithClients(),
+      this.getDefaultModel(),
+      context
     );
-    if (visionCandidate) {
-      return visionCandidate;
-    }
-
-    // 4. Fallback to general default model
-    return this.getDefaultModel();
   }
 
-  getPreferredImageGenerationModel(_context?: ModelSelectionPolicyContext): AIModelDTO | null {
-    // 1. Check if an image_generation-scoped default model is configured and active
-    const scopedModel = this.selectScopedDefaultModel('image_generation');
-    if (scopedModel) {
-      return scopedModel;
-    }
-
-    // 2. Search active models with routing tags or known image generation names
-    const activeModels = this.getActiveModelsWithClients();
-    const candidate = activeModels.find((m) => {
-      const tags = (m.config?.routing_tags || []).map((t) => String(t).toLowerCase());
-      const name = (m.name || '').toLowerCase();
-      return (
-        tags.includes('image_generation') ||
-        tags.includes('image') ||
-        name.includes('imagen') ||
-        name.includes('dall-e') ||
-        name.includes('flux') ||
-        name.includes('wanx') ||
-        name.includes('cogview')
-      );
-    });
-    return candidate || null;
+  getPreferredImageGenerationModel(context?: ModelSelectionPolicyContext): AIModelDTO | null {
+    return getPreferredImageGenerationModel(this.getActiveModelsWithClients(), context);
   }
 
   private getActiveModelsWithClients(): AIModelDTO[] {
@@ -564,22 +461,8 @@ export class ModelService implements OnModuleInit {
     });
   }
 
-  private sortFallbackCandidates(models: AIModelDTO[]): AIModelDTO[] {
-    return [...models].sort((left, right) => {
-      const scopeDelta = getDefaultScopeWeight(right) - getDefaultScopeWeight(left);
-      if (scopeDelta !== 0) {
-        return scopeDelta;
-      }
-      const capabilityDelta = getCapabilityWeight(right) - getCapabilityWeight(left);
-      if (capabilityDelta !== 0) {
-        return capabilityDelta;
-      }
-      return 0;
-    });
-  }
-
   listActiveModelsForRouting(): AIModelDTO[] {
-    return this.sortFallbackCandidates(this.getActiveModelsWithClients());
+    return sortFallbackCandidates(this.getActiveModelsWithClients());
   }
 
   getFallbackModelIds(
@@ -591,39 +474,12 @@ export class ModelService implements OnModuleInit {
   ): string[] {
     const activeModels = this.getActiveModelsWithClients();
     const currentModel = this.resolveModelEntity(id);
-    if (!currentModel) {
-      return this.sortFallbackCandidates(activeModels).map((model) => model.id);
-    }
-
-    const sameProviderModels = this.sortFallbackCandidates(
-      activeModels.filter((model) => {
-        return (
-          model.id !== currentModel.id &&
-          this.stateRepository.getProviderGroupingKey(model) ===
-            this.stateRepository.getProviderGroupingKey(currentModel)
-        );
-      })
+    return resolveFallbackModelIds(
+      currentModel,
+      activeModels,
+      (model) => this.stateRepository.getProviderGroupingKey(model),
+      strategy
     );
-    const crossProviderModels = this.sortFallbackCandidates(
-      activeModels.filter((model) => {
-        return (
-          model.id !== currentModel.id &&
-          this.stateRepository.getProviderGroupingKey(model) !==
-            this.stateRepository.getProviderGroupingKey(currentModel)
-        );
-      })
-    );
-    const groupedCandidates = {
-      same_provider: sameProviderModels.map((model) => model.id),
-      cross_provider: crossProviderModels.map((model) => model.id),
-    };
-    const groupOrder = strategy?.groupOrder || ['same_provider', 'cross_provider'];
-    const orderedCandidates = groupOrder.flatMap((group) => groupedCandidates[group]);
-
-    return [
-      ...(strategy?.includeCurrentModel === false ? [] : [currentModel.id]),
-      ...orderedCandidates,
-    ];
   }
 
   /**

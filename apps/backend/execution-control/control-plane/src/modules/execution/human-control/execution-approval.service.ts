@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -210,7 +209,11 @@ export class ExecutionApprovalService {
           dto.comment || 'Execution rejected during approval',
           effectiveRejecter
         );
-      } catch {}
+      } catch (ledgerError) {
+        this.logger.warn(
+          `Failed to reject pending outbound effects for execution ${id}: ${ledgerError instanceof Error ? ledgerError.message : String(ledgerError)}`
+        );
+      }
     }
 
     await this.prisma.execution.update({

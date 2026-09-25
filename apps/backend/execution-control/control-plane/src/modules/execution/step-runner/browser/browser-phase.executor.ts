@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import * as fs from 'node:fs';
 import {
   BrowserPhaseRecoveryDecision,
   BrowserPhaseRecoveryPatch,
@@ -45,48 +44,6 @@ export interface BrowserPhaseExecuteRequest {
 
 @Injectable()
 export class BrowserPhaseExecutor {
-  // #region debug-point shared:phase-resume-no-effect
-  private reportPhaseResumeDebug(
-    hypothesisId: 'A' | 'B' | 'C' | 'D' | 'E',
-    msg: string,
-    data: Record<string, unknown>,
-    runId = 'pre-fix'
-  ): void {
-    const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
-    if (!debugUrl) return;
-    const envPaths = [
-      '/app/.dbg/phase-resume-no-effect.env',
-      '/Users/chain/Documents/MyProject/ops-automation/.dbg/phase-resume-no-effect.env',
-    ];
-    let url = debugUrl;
-    let sessionId = 'phase-resume-no-effect';
-    for (const envPath of envPaths) {
-      try {
-        const env = fs.readFileSync(envPath, 'utf8');
-        url = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim() || url;
-        sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim() || sessionId;
-        break;
-      } catch {
-        // optional debug probe env file not found, use default
-      }
-    }
-    const payload = {
-      sessionId,
-      runId,
-      hypothesisId,
-      location: 'browser-phase.executor',
-      msg: `[DEBUG] ${msg}`,
-      data,
-      ts: Date.now(),
-    };
-    void fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }).catch(() => undefined);
-  }
-  // #endregion
-
   constructor(
     private readonly browserPhaseRecoveryPlanner: BrowserPhaseRecoveryPlanner,
     private readonly browserRuntimeAdapter: BrowserRuntimeAdapter,
@@ -109,30 +66,12 @@ export class BrowserPhaseExecutor {
       existingPatch,
       request.input
     );
-    // #region debug-point E:browser-phase-existing-decision
-    this.reportPhaseResumeDebug('E', 'browser phase executor loaded existing recovery decision', {
-      executionId: request.executionId,
-      phaseKey: request.phaseKey,
-      runtimeSessionId: request.runtimeSessionId || null,
-      originalCommandStepIds: request.commands.map((command) => command.stepId),
-      existingDecision: existingDecision || null,
-      shouldApplyExistingPatch,
-    });
-    // #endregion
     if (existingPatch && shouldApplyExistingPatch) {
       phaseCommands = this.applyRecoveryPatch(
         phaseCommands,
         existingPatch as unknown as BrowserPhaseRecoveryPatch,
         request.executionStepId
       );
-      // #region debug-point E:browser-phase-patch-applied
-      this.reportPhaseResumeDebug('E', 'browser phase executor applied recovery patch', {
-        executionId: request.executionId,
-        phaseKey: request.phaseKey,
-        patchType: existingPatch.type || null,
-        patchedCommandStepIds: phaseCommands.map((command) => command.stepId),
-      });
-      // #endregion
     }
 
     const precheckMatched = await this.isCheckMatched(request.precheck, request.runtimeSessionId);

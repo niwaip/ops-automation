@@ -11,7 +11,8 @@
     "prepare-manifest:ppt": "node scripts/render-manifest.mjs manifest-ppt.xml .generated/manifest-ppt.xml",
     "sideload:word": "npm run prepare-manifest:word && office-addin-debugging start word --manifest .generated/manifest-word.xml",
     "sideload:excel": "npm run prepare-manifest:excel && office-addin-debugging start excel --manifest .generated/manifest-excel.xml",
-    "sideload:ppt": "npm run prepare-manifest:ppt && office-addin-debugging start powerpoint --manifest .generated/manifest-ppt.xml"
+    "sideload:ppt": "npm run prepare-manifest:ppt && office-addin-debugging start powerpoint --manifest .generated/manifest-ppt.xml",
+    "test": "jest"
   },
   "dependencies": {
     "@microsoft/office-js": "^1.1.79",

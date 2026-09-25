@@ -59,11 +59,12 @@ export const BrowserSemanticRulesListTab: React.FC<BrowserSemanticRulesListTabPr
   const { token } = theme.useToken();
   const [keyword, setKeyword] = useState('');
 
-  const rules = currentRuleSet?.rules || [];
+  const rawRules = currentRuleSet?.rules;
+  const rules = rawRules || [];
 
   // Filtered rules
   const filteredRules = useMemo(() => {
-    return rules.filter((rule) => {
+    return (rawRules || []).filter((rule) => {
       // Category match
       if (selectedCategory && (rule.category || 'GENERIC_ALIAS') !== selectedCategory) {
         return false;
@@ -79,7 +80,7 @@ export const BrowserSemanticRulesListTab: React.FC<BrowserSemanticRulesListTabPr
       }
       return true;
     });
-  }, [rules, selectedCategory, keyword]);
+  }, [rawRules, selectedCategory, keyword]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

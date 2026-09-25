@@ -1,3 +1,5 @@
+import { createHash } from 'crypto';
+
 export const EXECUTION_STATUS = {
   DRAFT: 'draft',
   QUEUED: 'queued',
@@ -154,7 +156,6 @@ export function computeOutboundPayloadHash(payload: unknown): string {
   const canonicalObj = canonicalizePayloadObject(payload);
   const jsonStr = JSON.stringify(canonicalObj);
   // Simple deterministic SHA-256 using Node crypto
-  const cryptoModule = require('crypto');
-  const hash = cryptoModule.createHash('sha256').update(jsonStr, 'utf8').digest('hex');
+  const hash = createHash('sha256').update(jsonStr, 'utf8').digest('hex');
   return `sha256:${hash}`;
 }

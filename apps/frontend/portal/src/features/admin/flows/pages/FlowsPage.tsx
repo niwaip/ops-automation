@@ -43,18 +43,19 @@ export const FlowsPage: React.FC = () => {
     { staleTime: 30_000 }
   );
 
-  const rawTemplates = templatesQuery.data?.templates || [];
+  const templatesData = templatesQuery.data?.templates;
+  const rawTemplates = templatesData || [];
 
   // Filter templates based on activeFilter from overview cards
   const filteredTemplates = useMemo(() => {
-    let list = rawTemplates;
+    let list = templatesData || [];
     if (activeFilter === 'public') {
       list = list.filter((t) => t.isPublic);
     } else if (activeFilter === 'verified') {
       list = list.filter((t) => t.validation?.isValid);
     }
     return list;
-  }, [rawTemplates, activeFilter]);
+  }, [templatesData, activeFilter]);
 
   // Mutations
   const deleteMutation = useMutation(executionFlowApi.delete, {

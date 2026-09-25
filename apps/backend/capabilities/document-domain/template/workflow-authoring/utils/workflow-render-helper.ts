@@ -1,4 +1,3 @@
-import * as fs from 'node:fs';
 import { safeText } from './document-xml-parser';
 import {
 WorkflowBindingPlan,
@@ -23,35 +22,6 @@ getLanguageAliases,
 readLocalizedFieldValue,
 setLocalizedValue,
 } from './workflow-translation-helper';
-
-// #region debug-point A:render-helper
-const debugReport = (hypothesisId: string, msg: string, data: Record<string, unknown> = {}) => {
-  const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
-  if (!debugUrl) return;
-  let url = debugUrl;
-  let sessionId = 'signing-date-render';
-  try {
-    const env = fs.readFileSync('.dbg/signing-date-render.env', 'utf8');
-    url = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || url;
-    sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || sessionId;
-  } catch {
-    // Optional local debug configuration is absent.
-  }
-  fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sessionId,
-      runId: 'pre-fix',
-      hypothesisId,
-      location: 'workflow-render-helper.ts',
-      msg: `[DEBUG] ${msg}`,
-      data,
-      ts: Date.now(),
-    }),
-  }).catch(() => {});
-};
-// #endregion
 
 function collectLocalizedOverrideFromSiblingKeys(
   userOverrides: Record<string, unknown> | undefined,
@@ -295,25 +265,6 @@ export function resolveFieldValue(
 
     if (spec.type === 'date') {
       const normalizedDate = parseDate(sourceValue);
-      // #region debug-point A:signing-date-resolve
-      if (spec.fieldId === 'contract.signingDate') {
-        debugReport('A', 'resolving signingDate field value', {
-          fieldId: spec.fieldId,
-          sourceValue: sourceValue === undefined ? null : sourceValue,
-          normalizedDate: normalizedDate || null,
-          overrideType:
-            overrideValue === undefined
-              ? 'undefined'
-              : Array.isArray(overrideValue)
-                ? 'array'
-                : typeof overrideValue,
-          sourceLanguage,
-          targetLanguages: targetLangs,
-          policy: spec.policy || null,
-          type: spec.type || null,
-        });
-      }
-      // #endregion
       if (!normalizedDate) {
         if (spec.required) {
           missingFields.push(spec.fieldId);
@@ -326,18 +277,6 @@ export function resolveFieldValue(
       for (const lang of targetLangs) {
         resolvedValue[lang] = formatDate(normalizedDate, lang);
       }
-      // #region debug-point A:signing-date-resolve-result
-      if (spec.fieldId === 'contract.signingDate') {
-        debugReport('A', 'resolved signingDate localized value', {
-          fieldId: spec.fieldId,
-          resolvedValue,
-          sourceTrace: {
-            resolution: 'format_rule',
-            rule: 'fmt_date_v1',
-          },
-        });
-      }
-      // #endregion
       sourceTrace.resolution = 'format_rule';
       sourceTrace.rule = 'fmt_date_v1';
       return { value: resolvedValue, sourceTrace, warnings, missingFields, needsReviewFields };

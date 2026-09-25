@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import * as fs from 'node:fs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EXECUTION_STATUS, ExecutionStatus } from '../contracts/execution-status';
 import { EXECUTION_STEP_STATUS } from '../contracts/execution-step-status';
@@ -71,48 +70,6 @@ export interface ExecutionHumanControlHooks {
 @Injectable()
 export class ExecutionHumanControlService {
   private readonly logger = new Logger(ExecutionHumanControlService.name);
-
-  // #region debug-point shared:phase-resume-no-effect
-  private reportPhaseResumeDebug(
-    hypothesisId: 'A' | 'B' | 'C' | 'D' | 'E',
-    msg: string,
-    data: Record<string, unknown>,
-    runId = 'pre-fix'
-  ): void {
-    const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
-    if (!debugUrl) return;
-    const envPaths = [
-      '/app/.dbg/phase-resume-no-effect.env',
-      '/Users/chain/Documents/MyProject/ops-automation/.dbg/phase-resume-no-effect.env',
-    ];
-    let url = debugUrl;
-    let sessionId = 'phase-resume-no-effect';
-    for (const envPath of envPaths) {
-      try {
-        const env = fs.readFileSync(envPath, 'utf8');
-        url = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim() || url;
-        sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim() || sessionId;
-        break;
-      } catch {
-        // optional debug probe env file not found, use defaults
-      }
-    }
-    const payload = {
-      sessionId,
-      runId,
-      hypothesisId,
-      location: 'execution-human-control.service',
-      msg: `[DEBUG] ${msg}`,
-      data,
-      ts: Date.now(),
-    };
-    void fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }).catch(() => undefined);
-  }
-  // #endregion
 
   constructor(
     private readonly prisma: PrismaService,
@@ -333,20 +290,6 @@ export class ExecutionHumanControlService {
     }
 
     const phase = await this.requirePhaseRecord(executionId, phaseKey);
-    // #region debug-point A:resume-phase-request
-    this.reportPhaseResumeDebug('A', 'resumePhaseTakeover received request', {
-      executionId,
-      phaseKey,
-      userId,
-      requestedStepId: dto.stepId || null,
-      comment: dto.comment || null,
-      executionStatus: execution.status,
-      currentPhaseKey: (execution as unknown as Record<string, unknown>).currentPhaseKey || null,
-      phaseStatus: phase.status || null,
-      phaseRuntimeSessionId: phase.runtime_session_id || null,
-      recoveryDecision: phase.recovery_decision_json || null,
-    });
-    // #endregion
     await this.resolvePhaseTakeoverAndMarkRunning(executionId, phase, userId, dto.comment);
     const runtimeSessionId = await this.exitHumanControlAndResume(
       executionId,
@@ -354,14 +297,6 @@ export class ExecutionHumanControlService {
       dto.stepId,
       phase.runtime_session_id
     );
-    // #region debug-point B:resume-phase-after-exit
-    this.reportPhaseResumeDebug('B', 'resumePhaseTakeover resumed human control', {
-      executionId,
-      phaseKey,
-      requestedStepId: dto.stepId || null,
-      runtimeSessionId: runtimeSessionId || null,
-    });
-    // #endregion
     await hooks.emitEvent(executionId, EXECUTION_EVENT_TYPE.EXECUTION_RESUMED, {
       userId,
       stepId: dto.stepId,
@@ -494,17 +429,6 @@ export class ExecutionHumanControlService {
       const currentStepPhase = this.extractStepPhaseMetadata(
         currentStep as Record<string, unknown> | null | undefined
       );
-      // #region debug-point C:resolve-phase-current-step
-      this.reportPhaseResumeDebug('C', 'resolvePhaseTakeoverAndMarkRunning inspected current step', {
-        executionId,
-        phaseKey: phase.phase_key || null,
-        currentStepId: execution.currentStepId,
-        currentStepStatus: currentStep?.status || null,
-        currentStepPhaseKey: currentStepPhase?.phaseKey || null,
-        resolutionNote: resolutionNote || null,
-        recoveryDecision: phase.recovery_decision_json || null,
-      });
-      // #endregion
       if (
         currentStep &&
         currentStep.status === EXECUTION_STEP_STATUS.FAILED &&
@@ -512,13 +436,6 @@ export class ExecutionHumanControlService {
         !skipFailedStepRequeue
       ) {
         await this.executionStepService.requeueFailedStep(currentStep.id);
-        // #region debug-point D:requeue-failed-step
-        this.reportPhaseResumeDebug('D', 'resolvePhaseTakeoverAndMarkRunning requeued failed step', {
-          executionId,
-          phaseKey: phase.phase_key || null,
-          requeuedStepId: currentStep.id,
-        });
-        // #endregion
       }
     }
 

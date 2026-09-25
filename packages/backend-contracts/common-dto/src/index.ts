@@ -11,3 +11,5 @@ export interface AuditStamp {
 export interface KeyValueRecord {
   [key: string]: unknown;
 }
+
+export * from './service-endpoints';

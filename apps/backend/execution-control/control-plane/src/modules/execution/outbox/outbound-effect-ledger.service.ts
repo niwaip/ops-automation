@@ -275,7 +275,11 @@ export class OutboundEffectLedgerService {
                   AND state = 'COMMITTING'`,
               record.id
             );
-          } catch {}
+          } catch (queryError) {
+            this.logger.warn(
+              `Failed to transition expired committing lease to UNKNOWN for record ${record.id}: ${queryError instanceof Error ? queryError.message : String(queryError)}`
+            );
+          }
         }
         throw new Error(
           `OUTBOUND_EFFECT_IN_UNKNOWN_STATE: Committing lease expired for idempotency key '${input.idempotencyKey}'; record transitioned to UNKNOWN state for human reconciliation`

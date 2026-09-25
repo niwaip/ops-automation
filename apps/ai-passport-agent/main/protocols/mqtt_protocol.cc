@@ -78,24 +78,19 @@ bool MqttProtocol::StartMqttClient(bool report_error) {
     Settings settings("mqtt", false);
     auto endpoint = settings.GetString("endpoint");
     if (endpoint.empty()) {
-        endpoint = "g1b1c82e.ala.cn-hangzhou.emqxsl.cn:8883";
+        ESP_LOGE(TAG, "MQTT endpoint is not configured in settings");
+        return false;
     }
     auto client_id = settings.GetString("client_id");
     if (client_id.empty()) {
         client_id = "passport_c3_001";
     }
     auto username = settings.GetString("username");
-    if (username.empty()) {
-        username = "ai_passport";
-    }
     auto password = settings.GetString("password");
-    if (password.empty()) {
-        password = "BadgePass2026!";
-    }
     int keepalive_interval = settings.GetInt("keepalive", 60);
     publish_topic_ = settings.GetString("publish_topic");
     if (publish_topic_.empty()) {
-        publish_topic_ = "ops/passport/passport_c3_001/task";
+        publish_topic_ = "ops/passport/" + client_id + "/task";
     }
 
     auto network = Board::GetInstance().GetNetwork();

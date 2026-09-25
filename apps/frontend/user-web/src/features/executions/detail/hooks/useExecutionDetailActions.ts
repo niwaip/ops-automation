@@ -79,7 +79,9 @@ export function useExecutionDetailActions({
             finalEffectId = firstPending.effectId;
             finalHash = firstPending.payloadHash;
           }
-        } catch {}
+        } catch (_err) {
+          // Fall back to direct approval if pre-fetching pending effect fails
+        }
       }
       return executionApi.approve(id, {
         ...(finalEffectId ? { effectId: finalEffectId } : {}),

@@ -1,5 +1,4 @@
 import { Injectable, Optional } from '@nestjs/common';
-import * as localFs from 'node:fs';
 import axios from 'axios';
 import { BrowserRecordingRuntimeStep } from '../compiler/browser-recording-runtime.types';
 import { CapabilityReleaseBrowserSessionBrokerService } from './capability-release-browser-session-broker.service';
@@ -20,52 +19,11 @@ export class CapabilityReleaseBrowserRuntimeSupportService {
   ) {}
 
   reportApproveThresholdDebug(
-    hypothesisId: 'A' | 'B' | 'C' | 'D' | 'E',
-    msg: string,
-    data: Record<string, unknown>,
-    runId = 'pre-fix'
-  ): void {
-    const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
-    if (!debugUrl) return;
-    const envPaths = [
-      '/app/.dbg/gross-margin-branch.env',
-      '/Users/chain/Documents/MyProject/ops-automation/.dbg/gross-margin-branch.env',
-      '/app/.dbg/approve-threshold-param.env',
-      '/Users/chain/Documents/MyProject/ops-automation/.dbg/approve-threshold-param.env',
-    ];
-    let serverUrl = debugUrl;
-    let sessionId = 'gross-margin-branch';
-    for (const envPath of envPaths) {
-      try {
-        const envContent = localFs.readFileSync(envPath, 'utf8');
-        const resolvedUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim();
-        const resolvedSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim();
-        if (resolvedUrl) {
-          serverUrl = resolvedUrl;
-        }
-        if (resolvedSessionId) {
-          sessionId = resolvedSessionId;
-        }
-        break;
-      } catch {
-        // optional debug probe env file not found, use default
-      }
-    }
-    const payload = {
-      sessionId,
-      runId,
-      hypothesisId,
-      location: 'capability-release-browser-runtime.service',
-      msg: `[DEBUG] ${msg}`,
-      data,
-      ts: Date.now(),
-    };
-    void fetch(serverUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }).catch(() => undefined);
-  }
+    _hypothesisId: 'A' | 'B' | 'C' | 'D' | 'E',
+    _msg: string,
+    _data: Record<string, unknown>,
+    _runId = 'pre-fix'
+  ): void {}
 
   extractBrowserStepText(output?: Record<string, unknown>): string {
     const rawValue =

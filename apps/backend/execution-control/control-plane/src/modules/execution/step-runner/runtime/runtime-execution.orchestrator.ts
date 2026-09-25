@@ -1,5 +1,4 @@
 import { Injectable, Optional } from '@nestjs/common';
-import * as fs from 'node:fs';
 import { RuntimeAdapterRegistry } from '../../adapters/runtime-adapter.registry';
 import {
   RuntimeCredentialResolverService,
@@ -16,47 +15,6 @@ import {
 
 @Injectable()
 export class RuntimeExecutionOrchestrator {
-  // #region debug-point shared:workflow-branch-check
-  private reportWorkflowBranchDebug(
-    hypothesisId: 'A' | 'B' | 'C' | 'D' | 'E',
-    msg: string,
-    data: Record<string, unknown>,
-    runId = 'pre-fix'
-  ): void {
-    const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
-    if (!debugUrl) return;
-    const envPaths = [
-      '/app/.dbg/workflow-branch-check.env',
-      '/Users/chain/Documents/MyProject/ops-automation/.dbg/workflow-branch-check.env',
-    ];
-    let url = debugUrl;
-    let sessionId = 'workflow-branch-check';
-    for (const envPath of envPaths) {
-      try {
-        const env = fs.readFileSync(envPath, 'utf8');
-        url = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim() || url;
-        sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim() || sessionId;
-        break;
-      } catch {
-        // optional debug probe env file not found, use default
-      }
-    }
-    void fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId,
-        runId,
-        hypothesisId,
-        location: 'runtime-execution.orchestrator',
-        msg: `[DEBUG] ${msg}`,
-        data,
-        ts: Date.now(),
-      }),
-    }).catch(() => undefined);
-  }
-  // #endregion
-
   constructor(
     private readonly runtimeAdapterRegistry: RuntimeAdapterRegistry,
     @Optional() private readonly credentialResolver?: RuntimeCredentialResolverService
@@ -94,41 +52,9 @@ export class RuntimeExecutionOrchestrator {
       ...(persistedPhaseVariables || {}),
       ...inputPhaseVariables,
     };
-    // #region debug-point A:workflow-phase-input
-    this.reportWorkflowBranchDebug('A', 'initialized workflow phase variables', {
-      executionId: request.executionId,
-      phaseKey: request.phaseKey,
-      metadataInput: metadataInput || null,
-      inputPhaseVariables,
-      persistedPhaseVariables: persistedPhaseVariables || null,
-      initialPhaseVariables: { ...phaseVariables },
-    });
-    // #endregion
-
     for (const step of request.steps) {
       if (step.action === 'branch') {
-        // #region debug-point B:workflow-branch-before-eval
-        this.reportWorkflowBranchDebug('B', 'evaluating workflow branch step', {
-          executionId: request.executionId,
-          phaseKey: request.phaseKey,
-          stepId: step.stepId,
-          branchMetadata: step.metadata?.branch || null,
-          phaseVariables: { ...phaseVariables },
-        });
-        // #endregion
         const result = this.evaluateBrowserBranchStep(step, phaseVariables);
-        // #region debug-point C:workflow-branch-result
-        this.reportWorkflowBranchDebug('C', 'workflow branch evaluation finished', {
-          executionId: request.executionId,
-          phaseKey: request.phaseKey,
-          stepId: step.stepId,
-          success: result.success,
-          status: result.status,
-          errorCode: result.errorCode || null,
-          errorMessage: result.errorMessage || null,
-          output: result.output || null,
-        });
-        // #endregion
         stepResults.push(result);
 
         if (!result.success) {

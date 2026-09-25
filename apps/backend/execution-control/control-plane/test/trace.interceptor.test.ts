@@ -5,6 +5,8 @@ import {
   TRACEPARENT_HEADER,
   extractTraceId,
   parseTraceparent,
+  isValidTraceparent,
+  createChildTraceparent,
 } from '../src/common/interceptors/trace.interceptor';
 
 describe('TraceInterceptor & TraceContext', () => {
@@ -71,7 +73,6 @@ describe('TraceInterceptor & TraceContext', () => {
 
   describe('W3C Traceparent validation & child span generation', () => {
     it('validates correct W3C traceparent and rejects invalid formats', () => {
-      const { isValidTraceparent } = require('../src/common/interceptors/trace.interceptor');
       expect(isValidTraceparent('00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01')).toBe(true);
       expect(isValidTraceparent('00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00')).toBe(true);
       // Version ff is forbidden
@@ -88,7 +89,6 @@ describe('TraceInterceptor & TraceContext', () => {
     });
 
     it('generates a new child span ID with identical traceId and version', () => {
-      const { createChildTraceparent } = require('../src/common/interceptors/trace.interceptor');
       const parent = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
       const child = createChildTraceparent(parent);
 

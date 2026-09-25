@@ -18,14 +18,16 @@ export const ActivityPage: React.FC = () => {
   const state = useActivityState();
   const mutations = useActivityMutations();
 
-  const customList = mutations.customActivitiesQuery.data || [];
-  const builtinList = mutations.builtinActivitiesQuery.data || [];
+  const customData = mutations.customActivitiesQuery.data;
+  const builtinData = mutations.builtinActivitiesQuery.data;
+  const customList = customData || [];
+  const builtinList = builtinData || [];
   const isRefreshing =
     mutations.customActivitiesQuery.isFetching || mutations.builtinActivitiesQuery.isFetching;
 
   // Filter custom list
   const filteredCustomList = useMemo(() => {
-    let list = customList;
+    let list = customData || [];
     if (state.activeFilter === 'builtin') return [];
     if (['script', 'api', 'browser', 'carbone'].includes(state.activeFilter)) {
       list = list.filter((item) => (item.handler || 'script') === state.activeFilter);
@@ -39,11 +41,11 @@ export const ActivityPage: React.FC = () => {
         item.fn.toLowerCase().includes(kw) ||
         (item.config?.description || '').toLowerCase().includes(kw)
     );
-  }, [customList, state.activeFilter, state.searchText]);
+  }, [customData, state.activeFilter, state.searchText]);
 
   // Filter builtin list
   const filteredBuiltinList = useMemo(() => {
-    let list = builtinList;
+    let list = builtinData || [];
     if (state.activeFilter === 'custom') return [];
     if (['script', 'api', 'browser', 'carbone'].includes(state.activeFilter)) {
       list = list.filter((item: BuiltinActivityDTO) => (item.handler || 'script') === state.activeFilter);
@@ -57,7 +59,7 @@ export const ActivityPage: React.FC = () => {
         item.fn.toLowerCase().includes(kw) ||
         (item.description || '').toLowerCase().includes(kw)
     );
-  }, [builtinList, state.activeFilter, state.searchText]);
+  }, [builtinData, state.activeFilter, state.searchText]);
 
   const handleSelectFilter = (filter: ActivityQuickFilter) => {
     state.setActiveFilter(filter);

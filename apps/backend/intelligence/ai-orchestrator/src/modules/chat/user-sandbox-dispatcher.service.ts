@@ -243,7 +243,7 @@ export class UserSandboxDispatcherService {
         }
         promptForSandbox = `${prefix}用户指令：${body.message}`;
       } else if (sessionAttachedFiles.length > 0) {
-        let prefix = `【当前会话有效附件清单】: ${sessionAttachedFiles.join(', ')}\n`;
+        const prefix = `【当前会话有效附件清单】: ${sessionAttachedFiles.join(', ')}\n`;
         promptForSandbox = `${prefix}用户指令：${body.message}`;
       }
 

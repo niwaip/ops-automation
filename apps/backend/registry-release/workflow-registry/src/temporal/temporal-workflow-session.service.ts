@@ -20,18 +20,6 @@ export interface TemporalWorkflowSessionSupport {
   }): Promise<AiWorkflowDraft>;
 }
 
-const reportDebugEvent = (
-  debugUrl: string | undefined,
-  body: Record<string, unknown>
-): { catch: (fn: () => void) => void } => {
-  if (!debugUrl) return { catch: () => {} };
-  return fetch(debugUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-};
-
 @Injectable()
 export class TemporalWorkflowSessionService {
   constructor(
@@ -44,51 +32,8 @@ export class TemporalWorkflowSessionService {
     support: TemporalWorkflowSessionSupport,
     userId?: string
   ): Promise<AiWorkflowDraftSession> {
-    const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
-    const debugSessionId = process.env.DEBUG_SESSION_ID || 'draft-sessions-401';
-    // #region debug-point B:create-session-enter
-    reportDebugEvent(debugUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: debugSessionId,
-        runId: 'pre-fix',
-        hypothesisId: 'B',
-        location: 'temporal-workflow-session.service.ts:34',
-        msg: '[DEBUG] createAiDraftSession entered',
-        data: {
-          userId: userId || null,
-          descriptionLength: String(data?.description || '').length,
-          hasReferenceUrl: Boolean(String(data?.referenceUrl || '').trim()),
-        },
-        ts: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     const effectiveUserId = userId || (await this.resolveFallbackUserId());
     const draft = await support.generateAiWorkflowDraft(data);
-    // #region debug-point C:draft-generated
-    reportDebugEvent(debugUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: debugSessionId,
-        runId: 'pre-fix',
-        hypothesisId: 'C',
-        location: 'temporal-workflow-session.service.ts:39',
-        msg: '[DEBUG] ai draft generated before persistence',
-        data: {
-          effectiveUserId,
-          draftName: draft?.name || draft?.workflowDsl?.name || null,
-          stepCount: Array.isArray(draft?.workflowDsl?.steps)
-            ? draft.workflowDsl.steps.length
-            : null,
-          warningCount: Array.isArray(draft?.warnings) ? draft.warnings.length : 0,
-        },
-        ts: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     const userPrompt = [
       String(data?.description || '').trim(),
       data?.referenceUrl ? `参考 URL: ${String(data.referenceUrl).trim()}` : '',
@@ -128,21 +73,6 @@ export class TemporalWorkflowSessionService {
         },
       },
     });
-    // #region debug-point D:session-persisted
-    reportDebugEvent(debugUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: debugSessionId,
-        runId: 'pre-fix',
-        hypothesisId: 'D',
-        location: 'temporal-workflow-session.service.ts:76',
-        msg: '[DEBUG] draft session persisted',
-        data: { sessionId: session.id, effectiveUserId, title: session.title || null },
-        ts: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
 
     return this.getAiDraftSession(session.id, effectiveUserId);
   }
@@ -218,20 +148,7 @@ export class TemporalWorkflowSessionService {
   }
 
   async listAiDraftSessions(userId?: string): Promise<AiWorkflowDraftSessionListItem[]> {
-    const debugUrl = process.env.DEBUG_SERVER_URL?.trim();
-    const debugSessionId = process.env.DEBUG_SESSION_ID || 'draft-sessions-401';
     const effectiveUserId = userId || (await this.resolveFallbackUserId());
-    // #region debug-point B:list-session-enter
-    reportDebugEvent(debugUrl, {
-      sessionId: debugSessionId,
-      runId: 'pre-fix',
-      hypothesisId: 'B',
-      location: 'temporal-workflow-session.service.ts:152',
-      msg: '[DEBUG] listAiDraftSessions entered',
-      data: { userId: userId || null, effectiveUserId },
-      ts: Date.now(),
-    });
-    // #endregion
     const sessions = await this.prisma.chatSession.findMany({
       where: {
         userId: effectiveUserId,
@@ -241,25 +158,6 @@ export class TemporalWorkflowSessionService {
       take: 20,
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
-    // #region debug-point D:list-session-result
-    reportDebugEvent(debugUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: debugSessionId,
-        runId: 'pre-fix',
-        hypothesisId: 'D',
-        location: 'temporal-workflow-session.service.ts:164',
-        msg: '[DEBUG] listAiDraftSessions queried sessions',
-        data: {
-          effectiveUserId,
-          sessionCount: sessions.length,
-          sessionIds: sessions.slice(0, 5).map((session: any) => session.id),
-        },
-        ts: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
 
     return sessions.map((session: any) => {
       const currentDraft = this.extractLatestDraftFromMessages(session.messages);

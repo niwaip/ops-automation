@@ -1,15 +1,39 @@
 const trimTrailingSlash = (value: string): string => value.replace(/\/+$/, '');
 
+const stripWrappingQuotes = (value: string): string => {
+  let normalized = value.trim();
+  while (
+    normalized.length >= 2 &&
+    ((normalized.startsWith('"') && normalized.endsWith('"')) ||
+      (normalized.startsWith("'") && normalized.endsWith("'")) ||
+      (normalized.startsWith('`') && normalized.endsWith('`')))
+  ) {
+    normalized = normalized.slice(1, -1).trim();
+  }
+  return normalized;
+};
+
 const isContainerRuntime = (): boolean =>
   process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production';
 
 const readConfiguredUrl = (...candidates: Array<string | undefined>): string | undefined => {
   const configured = candidates.find((value) => typeof value === 'string' && value.trim());
-  return configured ? trimTrailingSlash(configured.trim()) : undefined;
+  if (!configured) {
+    return undefined;
+  }
+  const normalized = trimTrailingSlash(stripWrappingQuotes(configured));
+  return normalized || undefined;
 };
 
-export const getPublicHost = (): string =>
-  process.env.HOST_IP?.trim() || process.env.EXTERNAL_HOST?.trim() || 'localhost';
+export const getPublicHost = (): string => {
+  const configured = (process.env.HOST_IP?.trim() || process.env.EXTERNAL_HOST?.trim())
+    ?.replace(/^https?:\/\//, '')
+    ?.replace(/\/+$/, '');
+  if (configured && configured !== '0.0.0.0') {
+    return configured;
+  }
+  return 'localhost';
+};
 
 export const getAuthServiceUrl = (): string => {
   const configured = readConfiguredUrl(
