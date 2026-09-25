@@ -29,6 +29,14 @@ const FORBIDDEN_ENV_PREFIXES = [
   'INTERNAL_API_',
 ];
 const DEFAULT_INTERNAL_API_SHARED_SECRET = 'ops_internal_shared_secret_change_me';
+const INSECURE_INTERNAL_SECRETS = new Set([
+  'ops_internal_shared_secret_change_me',
+  'ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa',
+  'ops-automation-jwt-secret-key-change-in-production',
+  'secret',
+  'default_secret',
+  'change_me',
+]);
 
 @Injectable()
 export class UserSandboxContainerService {
@@ -104,8 +112,19 @@ export class UserSandboxContainerService {
       process.env.INTERNAL_API_SHARED_SECRET ||
       process.env.INTERNAL_API_SECRET ||
       DEFAULT_INTERNAL_API_SHARED_SECRET;
-    const signature = crypto.createHmac('sha256', sharedSecret).update(sanitized).digest('base64url');
-    const virtualUserToken = `sandbox-user-token-${sanitized}.${signature}`;
+
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (isProduction && (!sharedSecret || INSECURE_INTERNAL_SECRETS.has(sharedSecret) || sharedSecret.length < 16)) {
+      throw new BadRequestException('FATAL: Insecure or default INTERNAL_API_SHARED_SECRET in production environment');
+    }
+
+    // 虚拟用户 Token 绑定有效期 (7天) 与时间戳，防止无期限重放与跨租户伪造
+    const exp = Math.floor(Date.now() / 1000) + 7 * 86400;
+    const signature = crypto
+      .createHmac('sha256', sharedSecret)
+      .update(`${sanitized}:${exp}`)
+      .digest('base64url');
+    const virtualUserToken = `sandbox-user-token-${sanitized}.${exp}.${signature}`;
 
     const envList: string[] = [
       'USER_MODE=personal',
@@ -242,6 +261,8 @@ export class UserSandboxContainerService {
         Memory: memoryLimitMb * 1024 * 1024,
         CpuQuota: cpuLimit * 100000,
         CpuPeriod: 100000,
+        PidsLimit: 256,
+        SecurityOpt: ['no-new-privileges:true'],
         RestartPolicy: { Name: 'unless-stopped' },
       },
       NetworkingConfig: {

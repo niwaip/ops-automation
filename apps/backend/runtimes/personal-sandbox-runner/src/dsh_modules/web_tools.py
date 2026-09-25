@@ -12,9 +12,12 @@ import time
 import urllib.request
 import urllib.parse
 import urllib.error
+import http.client
 import subprocess
+import socket
+import ipaddress
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 from .config import PLUGIN_DIR
 
@@ -26,7 +29,15 @@ CITY_PINYIN = {
     "福州": "Fuzhou", "厦门": "Xiamen", "合肥": "Hefei", "南昌": "Nanchang", "昆明": "Kunming",
     "贵阳": "Guiyang", "南宁": "Nanning", "海口": "Haikou", "三亚": "Sanya", "石家庄": "Shijiazhuang",
     "太原": "Taiyuan", "呼和浩特": "Hohhot", "兰州": "Lanzhou", "西宁": "Xining", "银川": "Yinchuan",
-    "乌鲁木齐": "Urumqi", "拉萨": "Lhasa", "香港": "Hong_Kong", "澳门": "Macau", "台北": "Taipei"
+    "乌鲁木齐": "Urumqi", "拉萨": "Lhasa", "香港": "Hong_Kong", "澳门": "Macau", "台北": "Taipei",
+    "无锡": "Wuxi", "宁波": "Ningbo", "佛山": "Foshan", "东莞": "Dongguan", "温州": "Wenzhou",
+    "常州": "Changzhou", "绍兴": "Shaoxing", "嘉兴": "Jiaxing", "金华": "Jinhua", "扬州": "Yangzhou",
+    "镇江": "Zhenjiang", "泰州": "Taizhou", "盐城": "Yancheng", "宿迁": "Suqian", "淮安": "Huaian",
+    "徐州": "Xuzhou", "台州": "Taizhou_Zhejiang", "珠海": "Zhuhai", "中山": "Zhongshan", "江门": "Jiangmen",
+    "汕头": "Shantou", "烟台": "Yantai", "潍坊": "Weifang", "威海": "Weihai", "淄博": "Zibo",
+    "临沂": "Linyi", "洛阳": "Luoyang", "南阳": "Nanyang", "襄阳": "Xiangyang", "宜昌": "Yichang",
+    "芜湖": "Wuhu", "赣州": "Ganzhou", "九江": "Jiujiang", "泉州": "Quanzhou", "漳州": "Zhangzhou",
+    "桂林": "Guilin", "柳州": "Liuzhou", "绵阳": "Mianyang", "宜宾": "Yibin", "遵义": "Zunyi"
 }
 
 
@@ -56,16 +67,33 @@ WMO_WEATHER_CODES = {
 
 def fetch_weather(query_or_city: str, deadline: Optional[float] = None) -> str:
     """Fetches high-accuracy real-time weather and 7-day forecast via structured weather API"""
-    target = "Shanghai"
-    found_city = "上海"
+    target = None
+    found_city = None
+    clean_input = (query_or_city or "").strip()
+
     for k, v in CITY_PINYIN.items():
-        if k in query_or_city:
+        if k in clean_input:
             target = v
             found_city = k
             break
 
+    if not found_city:
+        # 尝试提取用户或模型传递的纯城市名（2-6个中文字符）
+        if re.match(r'^[\u4e00-\u9fa5]{2,6}$', clean_input):
+            found_city = clean_input
+            target = urllib.parse.quote(clean_input)
+        else:
+            m = re.search(r'([\u4e00-\u9fa5]{2,6})(?:市|区|县)?(?:的天气|天气|气象|预报)', clean_input)
+            if m:
+                found_city = m.group(1)
+                target = urllib.parse.quote(found_city)
+            else:
+                target = "Shanghai"
+                found_city = "上海"
+
     to = check_deadline(deadline, default_timeout=8.0)
-    lines = [f"【{found_city} 实时权威气象与多日预报 ({target})】:"]
+    display_target = urllib.parse.unquote(target)
+    lines = [f"【{found_city} 实时权威气象与多日预报 ({display_target})】:"]
 
     wttr_weather = []
     lat, lon = None, None
@@ -136,11 +164,254 @@ def fetch_weather(query_or_city: str, deadline: Optional[float] = None) -> str:
     return "\n".join(lines)
 
 
+FORBIDDEN_HOSTS = {
+    'localhost',
+    'metadata.google.internal',
+    'instance-data',
+    '169.254.169.254',
+    'ops-postgres',
+    'ops-redis',
+    'ops-platform',
+    'ops-session-broker',
+    'ops-control-plane',
+    'ops-ai-orchestrator',
+    'session-broker',
+    'control-plane',
+    'platform',
+    'ai-orchestrator',
+}
+
+MAX_FETCH_RESPONSE_BYTES = 5 * 1024 * 1024  # 5MB 响应读取硬上限
+
+
+def resolve_and_validate_destination(host: str, port: int) -> Tuple[bool, str]:
+    """
+    Resolves host and verifies that resolved IP does not fall into forbidden/private/loopback ranges.
+    Returns (True, safe_ip_str) or (False, error_reason).
+    """
+    clean_host = (host or '').strip().lower()
+    if not clean_host:
+        return False, "缺少主机名"
+
+    if clean_host in FORBIDDEN_HOSTS or clean_host.endswith('.internal') or clean_host.endswith('.local'):
+        return False, f"禁止访问内部网络或云元数据服务: {clean_host}"
+
+    try:
+        addr_info = socket.getaddrinfo(clean_host, port, proto=socket.IPPROTO_TCP)
+    except Exception as dns_err:
+        return False, f"无法解析目标主机: {dns_err}"
+
+    if not addr_info:
+        return False, f"无法解析目标域名: {clean_host}"
+
+    for item in addr_info:
+        ip_str = item[4][0]
+        try:
+            ip = ipaddress.ip_address(ip_str)
+            if (
+                ip.is_loopback
+                or ip.is_private
+                or ip.is_link_local
+                or ip.is_multicast
+                or ip.is_reserved
+                or ip.is_unspecified
+            ):
+                return False, f"禁止访问私有内网或元数据地址 ({ip_str})"
+        except ValueError:
+            return False, f"无效的 IP 地址: {ip_str}"
+
+    return True, addr_info[0][4][0]
+
+
+def is_safe_web_url(url: str) -> Tuple[bool, str]:
+    """SSRF 校验：检查 URL 协议及目标 IP 是否属于私网、回环、保留地址或云元数据地址"""
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ('http', 'https'):
+            return False, f"不支持的 URL 协议: {parsed.scheme}，仅允许 http 与 https"
+
+        hostname = (parsed.hostname or '').strip().lower()
+        if not hostname:
+            return False, "无效的 URL: 缺少主机名"
+
+        port = parsed.port or (443 if parsed.scheme == 'https' else 80)
+        safe, ip_or_err = resolve_and_validate_destination(hostname, port)
+        if not safe:
+            return False, ip_or_err
+        return True, ""
+    except Exception as e:
+        return False, f"URL 解析或安全检查失败: {e}"
+
+
+class SSRFPinnedHTTPConnection(http.client.HTTPConnection):
+    """Pins socket connection directly to pre-validated IP to eliminate DNS rebinding attacks"""
+    def connect(self):
+        sys.audit("http.client.connect", self, self.host, self.port)
+        safe, ip_or_err = resolve_and_validate_destination(self.host, self.port)
+        if not safe:
+            raise OSError(f"SSRF Blocked: {ip_or_err}")
+        self.sock = self._create_connection(
+            (ip_or_err, self.port), self.timeout, self.source_address
+        )
+        try:
+            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        except OSError:
+            pass
+        if self._tunnel_host:
+            self._tunnel()
+
+
+class SSRFPinnedHTTPSConnection(http.client.HTTPSConnection):
+    """Pins socket connection directly to pre-validated IP and performs SNI/cert verification with host"""
+    def connect(self):
+        safe, ip_or_err = resolve_and_validate_destination(self.host, self.port)
+        if not safe:
+            raise OSError(f"SSRF Blocked: {ip_or_err}")
+        self.sock = self._create_connection(
+            (ip_or_err, self.port), self.timeout, self.source_address
+        )
+        try:
+            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        except OSError:
+            pass
+        server_hostname = self._tunnel_host if self._tunnel_host else self.host
+        self.sock = self._context.wrap_socket(self.sock, server_hostname=server_hostname)
+
+
+class SSRFHTTPHandler(urllib.request.HTTPHandler):
+    def http_open(self, req):
+        return self.do_open(SSRFPinnedHTTPConnection, req)
+
+
+class SSRFHTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(
+            SSRFPinnedHTTPSConnection,
+            req,
+            context=self._context,
+            check_hostname=self._check_hostname
+        )
+
+
+class SSRFSafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """防止重定向跳转至内部网络或元数据服务的安全重定向处理器"""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        safe, err = is_safe_web_url(newurl)
+        if not safe:
+            raise urllib.error.HTTPError(newurl, 403, f"SSRF Blocked: {err}", headers, fp)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def _read_limited_response(resp, max_bytes: int = MAX_FETCH_RESPONSE_BYTES) -> str:
+    """分块读取 HTTP 响应并在达到字节上限时截断，防止大文件耗尽内存"""
+    chunks = []
+    total = 0
+    while True:
+        chunk = resp.read(64 * 1024)
+        if not chunk:
+            break
+        chunks.append(chunk)
+        total += len(chunk)
+        if total >= max_bytes:
+            break
+    return b"".join(chunks).decode("utf-8", errors="ignore")
+
+
+def _parse_html_articles(raw_html: str, target_url: str) -> Optional[str]:
+    """针对榜单、信息流、趋势卡片（包含多个标准 <article> 语义标签）提取结构化列表"""
+    articles = re.findall(r'<article\b[^>]*>(.*?)</article>', raw_html, re.DOTALL | re.I)
+    if len(articles) < 2:
+        return None
+    extracted_items = []
+    for i, a in enumerate(articles[:25], 1):
+        clean = re.sub(r'<(?:script|style|svg|noscript)[^>]*>.*?</(?:script|style|svg|noscript)>', '', a, flags=re.DOTALL | re.I)
+        clean = re.sub(r'<h[1-6][^>]*>(.*?)</h[1-6]>', r'\n\1\n', clean, flags=re.I)
+        clean = re.sub(r'<a[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', r'[\2](\1)', clean, flags=re.I)
+        clean = re.sub(r'<p[^>]*>(.*?)</p>', r'\n\1\n', clean, flags=re.I)
+        clean = re.sub(r'<[^>]+>', ' ', clean)
+        clean = html.unescape(clean)
+        lines = [line.strip() for line in clean.splitlines() if line.strip()]
+        summary = " · ".join([l for l in lines if l not in ["Sponsor", "Star", "Unstar", "Follow", "Built by"]][:5])
+        if summary:
+            extracted_items.append(f"{i}. {summary}")
+    if extracted_items:
+        return f"【网页结构化解析 ({target_url})】:\n" + "\n".join(extracted_items[:20])
+    return None
+
+
+def _parse_html_main(raw_html: str, target_url: str, max_chars: int) -> Optional[str]:
+    """针对常规正文提取 (<main> 或 <body>) 并清洗格式"""
+    main_m = re.search(r'<(?:main|body)\b[^>]*>(.*?)</(?:main|body)>', raw_html, re.DOTALL | re.I)
+    content = main_m.group(1) if main_m else raw_html
+
+    clean = re.sub(r'<(?:script|style|svg|noscript|nav|header|footer|aside)[^>]*>.*?</(?:script|style|svg|noscript|nav|header|footer|aside)>', '', content, flags=re.DOTALL | re.I)
+    clean = re.sub(r'<!--.*?-->', '', clean, flags=re.DOTALL)
+    clean = re.sub(r'<h[1-6][^>]*>(.*?)</h[1-6]>', r'\n\n### \1\n', clean, flags=re.I)
+    clean = re.sub(r'<a[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', r'[\2](\1)', clean, flags=re.I)
+    clean = re.sub(r'<li[^>]*>(.*?)</li>', r'\n- \1', clean, flags=re.I)
+    clean = re.sub(r'<p[^>]*>(.*?)</p>', r'\n\n\1\n', clean, flags=re.I)
+    clean = re.sub(r'<br\s*/?>', '\n', clean, flags=re.I)
+    clean = re.sub(r'<[^>]+>', ' ', clean)
+    clean = html.unescape(clean)
+    lines = [line.strip() for line in clean.splitlines() if line.strip()]
+    result = "\n".join(lines)
+    if len(result) <= 50:
+        return None
+
+    if len(result) > max_chars:
+        hint = (
+            f"\n\n[⚠️ 网页长文本截断提醒]: 网页解析总长 {len(result)} 字符，已展示前 {max_chars} 字符。"
+            f"\n💡 [通用建议]: 如需获取网页特定段落或深入信息，请结合页面核心关键词重新调用 web_search 精准检索相关主题]"
+        )
+        return f"【网页内容解析 ({target_url})】:\n" + result[:max_chars] + hint
+    return f"【网页内容解析 ({target_url})】:\n" + result
+
+
+def _fetch_jina_fallback(target_url: str, max_chars: int, timeout: float, deadline: Optional[float]) -> Tuple[Optional[str], Optional[str]]:
+    """备用：调用 Jina Reader 智能转 Markdown"""
+    jina_url = f"https://r.jina.ai/{target_url}"
+    safe_jina, _ = is_safe_web_url(jina_url)
+    if not safe_jina:
+        return None, f"获取网页内容失败 ({target_url}): Jina Reader 地址受限"
+    try:
+        req = urllib.request.Request(jina_url, headers={"User-Agent": "Mozilla/5.0"})
+        opener = urllib.request.build_opener(SSRFSafeRedirectHandler())
+        with opener.open(req, timeout=timeout) as resp:
+            text = _read_limited_response(resp)
+        assert_not_timed_out(deadline, "webpage fetch fallback")
+        cleaned_md = re.sub(r'(?:\[[^\]\n]{1,30}\]\([^\)]+\)\s*){5,}', '\n', text)
+        if cleaned_md and len(cleaned_md.strip()) > 50:
+            content = cleaned_md.strip()
+            if len(content) > max_chars:
+                hint = (
+                    f"\n\n[⚠️ 网页长文本截断提醒]: 网页 Markdown 总长 {len(content)} 字符，已展示前 {max_chars} 字符。"
+                    f"\n💡 [通用建议]: 如需查看特定章节，请结合具体关键词检索]"
+                )
+                return content[:max_chars] + hint, None
+            return content, None
+    except TimeoutError:
+        raise
+    except urllib.error.HTTPError as http_err:
+        if http_err.code == 403 and "SSRF Blocked" in str(http_err):
+            return None, f"【安全拦截】重定向目标受限 ({target_url}): {http_err.reason}"
+        assert_not_timed_out(deadline, "webpage fetch fallback")
+        return None, f"获取网页内容失败 ({target_url}): {http_err}"
+    except Exception as e:
+        assert_not_timed_out(deadline, "webpage fetch fallback")
+        return None, f"获取网页内容失败 ({target_url}): {e}"
+    return None, None
+
+
 def fetch_page(url: str, max_chars: int = 20000, deadline: Optional[float] = None) -> str:
     """Universal webpage reader: extracts clean structured text, articles and links from any live URL"""
     target_url = url.strip()
     if not target_url.startswith(("http://", "https://")):
         target_url = f"https://{target_url}"
+
+    # SSRF 前置安全拦截
+    safe, reason = is_safe_web_url(target_url)
+    if not safe:
+        return f"【安全拦截】无法访问目标网址 ({target_url}): {reason}"
 
     # 支持环境变量动态放宽
     env_limit = os.environ.get("DSH_FETCH_PAGE_MAX_CHARS")
@@ -157,82 +428,38 @@ def fetch_page(url: str, max_chars: int = 20000, deadline: Optional[float] = Non
                 "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8"
             }
         )
-        with urllib.request.urlopen(req, timeout=to1) as resp:
-            raw_html = resp.read().decode("utf-8", errors="ignore")
+        opener = urllib.request.build_opener(
+            SSRFSafeRedirectHandler(),
+            SSRFHTTPHandler(),
+            SSRFHTTPSHandler()
+        )
+        with opener.open(req, timeout=to1) as resp:
+            raw_html = _read_limited_response(resp)
         assert_not_timed_out(deadline, "webpage fetch")
 
-        # 针对榜单、信息流、趋势卡片（包含多个标准 <article> 语义标签）
-        articles = re.findall(r'<article\b[^>]*>(.*?)</article>', raw_html, re.DOTALL | re.I)
-        if len(articles) >= 2:
-            extracted_items = []
-            for i, a in enumerate(articles[:25], 1):
-                clean = re.sub(r'<(?:script|style|svg|noscript)[^>]*>.*?</(?:script|style|svg|noscript)>', '', a, flags=re.DOTALL | re.I)
-                clean = re.sub(r'<h[1-6][^>]*>(.*?)</h[1-6]>', r'\n\1\n', clean, flags=re.I)
-                clean = re.sub(r'<a[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', r'[\2](\1)', clean, flags=re.I)
-                clean = re.sub(r'<p[^>]*>(.*?)</p>', r'\n\1\n', clean, flags=re.I)
-                clean = re.sub(r'<[^>]+>', ' ', clean)
-                clean = html.unescape(clean)
-                lines = [line.strip() for line in clean.splitlines() if line.strip()]
-                summary = " · ".join([l for l in lines if l not in ["Sponsor", "Star", "Unstar", "Follow", "Built by"]][:5])
-                if summary:
-                    extracted_items.append(f"{i}. {summary}")
-            if extracted_items:
-                return f"【网页结构化解析 ({target_url})】:\n" + "\n".join(extracted_items[:20])
+        articles_summary = _parse_html_articles(raw_html, target_url)
+        if articles_summary:
+            return articles_summary
 
-        # 针对常规正文提取 (<main> 或 <body>)
-        main_m = re.search(r'<(?:main|body)\b[^>]*>(.*?)</(?:main|body)>', raw_html, re.DOTALL | re.I)
-        content = main_m.group(1) if main_m else raw_html
-
-        # 剥离脚本、样式、导航、页眉页脚、侧边栏
-        clean = re.sub(r'<(?:script|style|svg|noscript|nav|header|footer|aside)[^>]*>.*?</(?:script|style|svg|noscript|nav|header|footer|aside)>', '', content, flags=re.DOTALL | re.I)
-        clean = re.sub(r'<!--.*?-->', '', clean, flags=re.DOTALL)
-        clean = re.sub(r'<h[1-6][^>]*>(.*?)</h[1-6]>', r'\n\n### \1\n', clean, flags=re.I)
-        clean = re.sub(r'<a[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', r'[\2](\1)', clean, flags=re.I)
-        clean = re.sub(r'<li[^>]*>(.*?)</li>', r'\n- \1', clean, flags=re.I)
-        clean = re.sub(r'<p[^>]*>(.*?)</p>', r'\n\n\1\n', clean, flags=re.I)
-        clean = re.sub(r'<br\s*/?>', '\n', clean, flags=re.I)
-        clean = re.sub(r'<[^>]+>', ' ', clean)
-        clean = html.unescape(clean)
-        lines = [line.strip() for line in clean.splitlines() if line.strip()]
-        result = "\n".join(lines)
-        if len(result) > 50:
-            if len(result) > max_chars:
-                hint = (
-                    f"\n\n[⚠️ 网页长文本截断提醒]: 网页解析总长 {len(result)} 字符，已展示前 {max_chars} 字符。"
-                    f"\n💡 [通用建议]: 如需获取网页特定段落或深入信息，请结合页面核心关键词重新调用 web_search 精准检索相关主题]"
-                )
-                return f"【网页内容解析 ({target_url})】:\n" + result[:max_chars] + hint
-            return f"【网页内容解析 ({target_url})】:\n" + result
+        main_summary = _parse_html_main(raw_html, target_url, max_chars)
+        if main_summary:
+            return main_summary
     except TimeoutError:
         raise
+    except urllib.error.HTTPError as http_err:
+        if http_err.code == 403 and "SSRF Blocked" in str(http_err):
+            return f"【安全拦截】重定向目标受限 ({target_url}): {http_err.reason}"
+        assert_not_timed_out(deadline, "webpage fetch")
     except Exception:
         assert_not_timed_out(deadline, "webpage fetch")
-        pass
 
-    # 2. 备用：调用 Jina Reader 智能转 Markdown
+    # 2. 备用：调用 Jina Reader 智能转 Markdown (仅当目标仍然合规时)
     to2 = check_deadline(deadline, default_timeout=10.0)
-    try:
-        jina_url = f"https://r.jina.ai/{target_url}"
-        req = urllib.request.Request(jina_url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=to2) as resp:
-            text = resp.read().decode("utf-8", errors="ignore")
-        assert_not_timed_out(deadline, "webpage fetch fallback")
-        # 过滤超长连续单行导航链接群
-        cleaned_md = re.sub(r'(?:\[[^\]\n]{1,30}\]\([^\)]+\)\s*){5,}', '\n', text)
-        if cleaned_md and len(cleaned_md.strip()) > 50:
-            content = cleaned_md.strip()
-            if len(content) > max_chars:
-                hint = (
-                    f"\n\n[⚠️ 网页长文本截断提醒]: 网页 Markdown 总长 {len(content)} 字符，已展示前 {max_chars} 字符。"
-                    f"\n💡 [通用建议]: 如需查看特定章节，请结合具体关键词检索]"
-                )
-                return content[:max_chars] + hint
-            return content
-    except TimeoutError:
-        raise
-    except Exception as e:
-        assert_not_timed_out(deadline, "webpage fetch fallback")
-        return f"获取网页内容失败 ({target_url}): {e}"
+    jina_content, jina_err = _fetch_jina_fallback(target_url, max_chars, to2, deadline)
+    if jina_content:
+        return jina_content
+    if jina_err:
+        return jina_err
 
     assert_not_timed_out(deadline, "webpage fetch")
     return f"未能获取网页有效内容 ({target_url})"

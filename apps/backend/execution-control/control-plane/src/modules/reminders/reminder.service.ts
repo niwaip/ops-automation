@@ -148,6 +148,39 @@ export class ReminderService {
     }
   }
 
+  async isWechatAvailable(userId: string): Promise<boolean> {
+    const channel = await this.prisma.imChannelConnection.findUnique({
+      where: { userId_channel: { userId, channel: WECHAT_CHANNEL } },
+    });
+    return Boolean(channel?.enabled && channel?.encryptedCredential);
+  }
+
+  async createBatch(userId: string, dtos: CreateReminderDto[]) {
+    await this.assertSkillEnabled();
+    const wechatAvailable = await this.isWechatAvailable(userId);
+    const results = [];
+    for (const dto of dtos) {
+      const effectiveSendWechat =
+        dto.sendWechat === undefined ? wechatAvailable : Boolean(dto.sendWechat && wechatAvailable);
+      const title = this.resolveTitle(dto.title, dto.message);
+      this.assertContent(title, dto.message);
+      const timezone = dto.timezone || DEFAULT_REMINDER_TIMEZONE;
+      const schedule = resolveReminderSchedule(dto.cronExpression, dto.runAt, timezone);
+      const created = await this.prisma.reminderRule.create({
+        data: {
+          userId,
+          title,
+          message: dto.message.trim(),
+          ...schedule,
+          timezone,
+          sendWechat: effectiveSendWechat,
+        },
+      });
+      results.push(created);
+    }
+    return results;
+  }
+
   private async assertSkillEnabled() {
     const skill = await this.prisma.builtinSkill.findUnique({
       where: { capabilityKey: REMINDER_CAPABILITY_KEY },
@@ -167,3 +200,4 @@ export class ReminderService {
     }
   }
 }
+

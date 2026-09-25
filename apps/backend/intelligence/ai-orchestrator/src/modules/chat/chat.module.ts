@@ -22,6 +22,7 @@ import { ChatPlanningPresentationService } from './chat-planning-presentation.se
 import { ScopedPlannerMemoryService } from './scoped-planner-memory.service';
 import { UserSandboxDispatcherService } from './user-sandbox-dispatcher.service';
 import { WorkspaceArtifactService } from './workspace-artifact.service';
+import { PersonalReminderBridgeService } from './personal-reminder-bridge.service';
 import { StorageConfigModule } from '../storage/storage-config.module';
 
 @Module({
@@ -52,6 +53,7 @@ import { StorageConfigModule } from '../storage/storage-config.module';
     ScopedPlannerMemoryService,
     UserSandboxDispatcherService,
     WorkspaceArtifactService,
+    PersonalReminderBridgeService,
   ],
   exports: [WorkspaceArtifactService],
 })

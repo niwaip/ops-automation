@@ -530,19 +530,15 @@ class TestDshSkillsAndArtifacts(unittest.TestCase):
         leak_code = "```python\nimport os\nfrom fpdf import FPDF\npdf = FPDF()\npdf.output('/workspace/test.pdf')\n```"
         self.assertTrue(detect_unexecuted_script_leak(leak_code))
 
-        # 5. 验证 parse_tool_calls 将未调工具的 Python 生成脚本自动转换为 bash 容错执行
+        # 5. 验证安全防线：未调工具的 Python/Bash 脚本不会被 parse_tool_calls 自动升级为命令执行（防 Prompt Injection 注入）
         tools = parse_tool_calls(leak_code, is_guide=False)
-        self.assertEqual(len(tools), 1)
-        self.assertEqual(tools[0]["name"], "bash")
-        self.assertIn("python3 - << 'EOF'", tools[0]["params"]["cmd"])
+        self.assertEqual(len(tools), 0)
 
-        # 6. 验证 PPTX 提取脚本容错执行与防泄露
+        # 6. 验证 PPTX 脚本同样被 detect_unexecuted_script_leak 检出，且不会被 parse_tool_calls 静默执行
         pptx_leak_code = '```python\nfrom pptx import Presentation\nprs = Presentation("AIGC.pptx")\nprint(prs)\n```'
         self.assertTrue(detect_unexecuted_script_leak(pptx_leak_code))
         pptx_tools = parse_tool_calls(pptx_leak_code, is_guide=False)
-        self.assertEqual(len(pptx_tools), 1)
-        self.assertEqual(pptx_tools[0]["name"], "bash")
-        self.assertIn("AIGC.pptx", pptx_tools[0]["params"]["cmd"])
+        self.assertEqual(len(pptx_tools), 0)
 
         # 7. 验证 PPTX 原生文本提取
         with tempfile.NamedTemporaryFile(suffix='.pptx', delete=False) as tf:

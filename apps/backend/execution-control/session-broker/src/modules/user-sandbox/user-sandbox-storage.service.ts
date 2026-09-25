@@ -42,19 +42,20 @@ export class UserSandboxStorageService {
 
   /**
    * 校验并清洗安全的用户标识
+   * 严格校验 1-64 位小写字母、数字、下划线及中划线，杜绝目录穿越与有损替换导致的租户碰撞
    */
   sanitizeUserId(userId: string): string {
     if (!userId || typeof userId !== 'string') {
       throw new BadRequestException('userId 不能为空');
     }
-    const sanitized = userId
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]/g, '_');
-    if (!sanitized) {
-      throw new BadRequestException('userId 包含无效字符');
+    const trimmed = userId.trim();
+    const VALID_USER_ID_REGEX = /^[a-zA-Z0-9_-]{1,64}$/;
+    if (!VALID_USER_ID_REGEX.test(trimmed)) {
+      throw new BadRequestException(
+        `非法 userId: [${trimmed}]。仅允许 1-64 位字母、数字、下划线(_)与中划线(-)，严禁特殊字符与路径遍历符号`
+      );
     }
-    return sanitized;
+    return trimmed.toLowerCase();
   }
 
   /**

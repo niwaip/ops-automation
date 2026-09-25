@@ -129,7 +129,7 @@ services:
       PORT: ${SESSION_BROKER_PORT:-3002}
       EXTERNAL_HOST: ${HOST_IP:-localhost}
     ports:
-      - '${HOST_BIND_IP:-0.0.0.0}:${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}'
+      - '${SESSION_BROKER_BIND_IP:-127.0.0.1}:${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}'
     volumes:
       - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/apps/backend/execution-control/session-broker:/app
       - session_broker_node_modules:/app/node_modules

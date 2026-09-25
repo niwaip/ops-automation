@@ -22,6 +22,7 @@ from dsh_modules.tools import (
     CITY_PINYIN, normalize_search_query, extract_query_freshness, execute_tool, SANDBOX_TOOLS,
     get_sandbox_tools, perform_web_search, fetch_weather, fetch_page, inspect_image, read_workspace_file
 )
+from dsh_modules.web_tools import is_safe_web_url
 from dsh_modules.llm import parse_tool_calls, clean_output, extract_bare_json_tool_calls, is_promising_action, call_model_proxy
 from dsh_modules.runtime_policy import RuntimePolicy
 from dsh_modules.context_budget import ContextBudget
@@ -111,6 +112,39 @@ class TestDshCoreModules(unittest.TestCase):
         cleaned = clean_output(raw)
         self.assertEqual(cleaned, "")
 
+    def test_parse_tool_calls_xml(self):
+        # 验证各类 XML 格式工具调用的提取与参数映射
+        raw_self_closing = '<read_skill skill_name="web-prototype"/>'
+        calls1 = parse_tool_calls(raw_self_closing)
+        self.assertEqual(len(calls1), 1)
+        self.assertEqual(calls1[0]["name"], "read_skill")
+        self.assertEqual(calls1[0]["params"].get("skill_name"), "web-prototype")
+
+        raw_bash_attr = '<bash cmd="ls -la /workspace"/>'
+        calls2 = parse_tool_calls(raw_bash_attr)
+        self.assertEqual(len(calls2), 1)
+        self.assertEqual(calls2[0]["name"], "bash")
+        self.assertEqual(calls2[0]["params"].get("cmd"), "ls -la /workspace")
+
+        raw_paired = '<read_skill>pdf</read_skill>'
+        calls3 = parse_tool_calls(raw_paired)
+        self.assertEqual(len(calls3), 1)
+        self.assertEqual(calls3[0]["name"], "read_skill")
+        self.assertEqual(calls3[0]["params"].get("skill_name"), "pdf")
+
+        raw_nested = '<invoke name="bash"><parameter name="cmd">pwd</parameter></invoke>'
+        calls4 = parse_tool_calls(raw_nested)
+        self.assertEqual(len(calls4), 1)
+        self.assertEqual(calls4[0]["name"], "bash")
+        self.assertEqual(calls4[0]["params"].get("cmd"), "pwd")
+
+    def test_clean_output_xml(self):
+        raw = '正在准备执行：<read_skill skill_name="web-prototype"/> 完成。'
+        cleaned = clean_output(raw)
+        self.assertNotIn('<read_skill', cleaned)
+        self.assertIn('正在准备执行：', cleaned)
+        self.assertIn('完成。', cleaned)
+
     def test_execute_tool_fallback(self):
         res = execute_tool("unknown_test_tool", {"foo": "bar"})
         self.assertIn("未识别工具名称", res)
@@ -137,9 +171,9 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertEqual(calls[0]["params"].get("aspect_ratio"), "16:9")
 
     def test_sandbox_tools_schema_completeness(self):
-        """AC-1: 验证 SANDBOX_TOOLS 包含全部 11 个工具且包含 vision_inspect, image_gen 与 patch_file"""
+        """AC-1: 验证 SANDBOX_TOOLS 包含全部 12 个工具且包含 vision_inspect, image_gen, patch_file 与 create_reminders"""
         tool_names = [t["function"]["name"] for t in SANDBOX_TOOLS]
-        self.assertEqual(len(tool_names), 11)
+        self.assertEqual(len(tool_names), 12)
         self.assertIn("vision_inspect", tool_names)
         self.assertIn("image_gen", tool_names)
         self.assertIn("patch_file", tool_names)
@@ -151,6 +185,7 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertIn("scan_knowledge", tool_names)
         self.assertIn("read_skill", tool_names)
         self.assertIn("send_file", tool_names)
+        self.assertIn("create_reminders", tool_names)
 
         # 检查 read_file 是否支持 start_line 与 end_line 切片
         rf_tool = next(t for t in SANDBOX_TOOLS if t["function"]["name"] == "read_file")
@@ -166,6 +201,30 @@ class TestDshCoreModules(unittest.TestCase):
         ig_tool = next(t for t in SANDBOX_TOOLS if t["function"]["name"] == "image_gen")
         self.assertIn("prompt", ig_tool["function"]["parameters"]["properties"])
         self.assertEqual(ig_tool["function"]["parameters"]["required"], ["prompt"])
+
+    def test_fetch_page_ssrf_blocking(self):
+        """验证 fetch_page 与 is_safe_web_url 针对私网 IP、元数据地址与内网域名的拦截"""
+        # 回环地址
+        res_loopback = fetch_page("http://127.0.0.1:8080")
+        self.assertIn("【安全拦截】", res_loopback)
+
+        # 云元数据地址 (AWS/GCP/Alibaba/Azure)
+        res_metadata = fetch_page("http://169.254.169.254/latest/meta-data/")
+        self.assertIn("【安全拦截】", res_metadata)
+
+        # localhost 保留域名
+        res_localhost = fetch_page("http://localhost:3000")
+        self.assertIn("【安全拦截】", res_localhost)
+
+        # is_safe_web_url 单元校验
+        safe, _ = is_safe_web_url("http://10.0.0.1/admin")
+        self.assertFalse(safe)
+        safe, _ = is_safe_web_url("http://172.18.0.2/health")
+        self.assertFalse(safe)
+        safe, _ = is_safe_web_url("http://192.168.1.1/")
+        self.assertFalse(safe)
+        safe, _ = is_safe_web_url("http://ops-session-broker:3002/user-sandboxes")
+        self.assertFalse(safe)
 
     def test_runtime_policy_defaults_and_overrides(self):
         """AC-3: 验证 RuntimePolicy 默认策略配置与环境变量覆盖机制"""
@@ -472,6 +531,46 @@ class TestDshCoreModules(unittest.TestCase):
                 self.assertIn('<<<DSH_DELTA:"你好">>>', output)
                 self.assertIn('<<<DSH_DELTA:"世界">>>', output)
 
+    def test_tool_calling_round_suppresses_delta_streaming(self):
+        """验证工具调用轮次（传入 tools 且触发 tool_calls）不会向 stdout 泄漏内部前置垫话与脚本，并发出 DSH_DELTA_RESET"""
+        import io
+        chunk_data = {
+            "choices": [{
+                "delta": {
+                    "content": "我需要使用 bash 工具：\ncat > /workspace/index.html << 'EOF'\n",
+                    "tool_calls": [{
+                        "index": 0,
+                        "function": {"name": "bash", "arguments": '{"cmd": "ls"}'}
+                    }]
+                }
+            }]
+        }
+        fake_sse_lines = [
+            f"data: {json.dumps(chunk_data)}\n".encode("utf-8"),
+            b"data: [DONE]\n"
+        ]
+        class MockResponse:
+            def __enter__(self):
+                return iter(fake_sse_lines)
+            def __exit__(self, *args):
+                pass
+
+        captured_stdout = io.StringIO()
+        with patch("urllib.request.urlopen", return_value=MockResponse()):
+            with patch("sys.stdout", captured_stdout):
+                res = call_model_proxy(
+                    [{"role": "user", "content": "生成游戏"}],
+                    tools=[{"type": "function", "function": {"name": "bash"}}]
+                )
+                output = captured_stdout.getvalue()
+                self.assertEqual(len(res["tool_calls"]), 1)
+                self.assertEqual(res["tool_calls"][0]["function"]["name"], "bash")
+                # 严禁向 stdout 泄漏内部垫话和 cat > 脚本
+                self.assertNotIn('<<<DSH_DELTA:"我需要使用 bash 工具', output)
+                self.assertNotIn('cat > /workspace/index.html', output)
+                # 必须发送 DSH_DELTA_RESET 确保前端清空
+                self.assertIn('<<<DSH_DELTA_RESET>>>', output)
+
 
     def test_execute_tool_deadline(self):
         """验证 execute_tool 在截止时间已过时抛出 TimeoutError"""
@@ -511,6 +610,48 @@ class TestDshCoreModules(unittest.TestCase):
                 # messages 中应该收到死循环拦截提示
                 has_warning = any("已调用过且参数完全一致" in m.get("content", "") for m in res.messages if m.get("role") == "tool")
                 self.assertTrue(has_warning)
+
+    def test_agent_loop_dynamic_round_extension(self):
+        """验证 agent_loop 当断言守卫触发时能动态扩充轮次，而非被 python for-in-range 不变性提前终止"""
+        policy = RuntimePolicy(max_rounds=1, single_request_timeout=10, total_task_timeout=30)
+        # Round 0: claims to generate report.pdf but no physical file exists and no tool called
+        mock_step_claim = {
+            "content": "已为您生成并输出了 《report.pdf》，请查收。",
+            "tool_calls": [],
+            "usage": {"total_tokens": 10},
+            "total_ms": 50,
+            "ttft_ms": 20
+        }
+        # Round 1: Model was nudged by assertion guard and calls bash
+        mock_step_tool = {
+            "content": "",
+            "tool_calls": [{"id": "c1", "type": "function", "function": {"name": "bash", "arguments": '{"cmd": "touch /workspace/report.pdf"}'}}],
+            "usage": {"total_tokens": 10},
+            "total_ms": 50,
+            "ttft_ms": 20
+        }
+        # Round 2: Model finishes
+        mock_step_final = {
+            "content": "任务已顺利完成，分析结果已就绪。",
+            "tool_calls": [],
+            "usage": {"total_tokens": 10},
+            "total_ms": 50,
+            "ttft_ms": 20
+        }
+        with patch("dsh_modules.agent_loop.call_model_proxy", side_effect=[mock_step_claim, mock_step_tool, mock_step_final]) as mock_call:
+            with patch("dsh_modules.agent_loop.execute_tool", return_value="created") as mock_exec:
+                res = run_agent_loop(
+                    [{"role": "user", "content": "生成一份报告"}],
+                    "default",
+                    policy,
+                    max_rounds=1, # Initial max_rounds is 1!
+                    is_generate_intent=True
+                )
+                # It should have dynamically extended and executed more than 1 call
+                self.assertGreaterEqual(mock_call.call_count, 2)
+                # Verify guard prompt was injected into messages
+                has_guard = any("【系统产物物理断言拦截】" in str(m.get("content", "")) for m in res.messages)
+                self.assertTrue(has_guard)
 
     def test_network_tool_weather_deadline_enforcement(self):
         """验证网络工具 (weather) 在总 deadline 超时时抛出 TimeoutError，杜绝吞没超时或返回伪成功"""
@@ -677,6 +818,183 @@ class TestDshCoreModules(unittest.TestCase):
             self.assertIn(c["status"], ["PASS", "WARN", "FAIL"])
             self.assertTrue(len(c["name"]) > 0)
             self.assertTrue(len(c["detail"]) > 0)
+
+    def test_scan_personal_knowledge_symlink_defense(self):
+        """[P1] 验证知识库扫描杜绝跟随软链接逃逸至 /knowledge 之外系统文件"""
+        from dsh_modules.file_tools import scan_personal_knowledge
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_kn = Path(tmp_dir) / "knowledge"
+            tmp_kn.mkdir()
+
+            # 正常知识库文件
+            normal_file = tmp_kn / "guide.md"
+            normal_file.write_text("这是正常的企业内部操作指引知识文档。", encoding="utf-8")
+
+            # 恶意符号链接：指向 /etc/hosts
+            symlink_hosts = tmp_kn / "evil_hosts_link"
+            try:
+                symlink_hosts.symlink_to("/etc/hosts")
+            except OSError:
+                pass
+
+            # 恶意相对符号链接：指向沙箱外部
+            symlink_parent = tmp_kn / "evil_parent_link"
+            try:
+                symlink_parent.symlink_to("../../etc/hosts")
+            except OSError:
+                pass
+
+            with patch("dsh_modules.config.KNOWLEDGE_DIR", str(tmp_kn)):
+                with patch("dsh_modules.file_tools.KNOWLEDGE_DIR", str(tmp_kn)):
+                    summary = scan_personal_knowledge()
+
+            self.assertIn("guide.md", summary)
+            self.assertIn("正常的企业内部操作指引", summary)
+            self.assertNotIn("evil_hosts_link", summary)
+            self.assertNotIn("evil_parent_link", summary)
+            self.assertNotIn("localhost", summary.lower())
+            self.assertNotIn("127.0.0.1", summary)
+
+    def test_send_workspace_file_rejects_directory_and_special(self):
+        """[P2] 验证交付物外发协议拒绝目录、未指定文件及特殊文件"""
+        from dsh_modules.file_tools import send_workspace_file
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_ws = Path(tmp_dir) / "workspace"
+            tmp_ws.mkdir()
+
+            sub_dir = tmp_ws / "reports_folder"
+            sub_dir.mkdir()
+
+            with patch("dsh_modules.config.WORKSPACE_DIR", str(tmp_ws)):
+                # 尝试直接外发目录
+                res_dir = send_workspace_file(str(sub_dir))
+                self.assertIn("发送失败", res_dir)
+                self.assertIn("不是普通文件", res_dir)
+                self.assertNotIn("<<<DSH_OUTBOUND_FILE:", res_dir)
+
+                # 尝试外发根工作区目录
+                res_ws = send_workspace_file(str(tmp_ws))
+                self.assertIn("发送失败", res_ws)
+                self.assertIn("不是普通文件", res_ws)
+
+                # 正常文件允许外发
+                valid_file = tmp_ws / "report.pdf"
+                valid_file.write_bytes(b"%PDF-1.4 test")
+                res_file = send_workspace_file(str(valid_file))
+                self.assertIn("<<<DSH_OUTBOUND_FILE:", res_file)
+                self.assertIn("report.pdf", res_file)
+
+    def test_image_gen_plugin_path_traversal_defense(self):
+        """[P1] 验证生图插件严格拦截输入参考图与输出路径的越界逃逸与目录穿越"""
+        plugin_path = Path(__file__).resolve().parent.parent / "plugins" / "image_gen.py"
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("image_gen_plugin", str(plugin_path))
+        ig_plugin = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ig_plugin)
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_ws = Path(tmp_dir) / "workspace"
+            tmp_ws.mkdir()
+            with patch.dict(os.environ, {"WORKSPACE": str(tmp_ws)}):
+                with patch("dsh_modules.config.WORKSPACE_DIR", str(tmp_ws)):
+                    # 1. 尝试将输出路径穿越至 /etc/cron.d 或系统目录
+                    res_out_traversal = ig_plugin.generate_image({
+                        "prompt": "一只可爱的猫",
+                        "output_filename": "../../etc/cron.d/hack.png"
+                    })
+                    self.assertIn("【系统拦截】图片输出路径非法", res_out_traversal)
+
+                    res_abs_traversal = ig_plugin.generate_image({
+                        "prompt": "一只可爱的猫",
+                        "output_filename": "/etc/shadow"
+                    })
+                    self.assertIn("【系统拦截】图片输出路径非法", res_abs_traversal)
+
+                    # 2. 尝试使用逃出沙箱的绝对/相对路径作为输入参考图
+                    res_in_traversal = ig_plugin.generate_image({
+                        "prompt": "基于参考图重绘",
+                        "input_image": "/etc/hosts"
+                    })
+                    self.assertIn("指定的参考图片不存在或访问被拒绝", res_in_traversal)
+
+    def test_universal_code_guard_and_action_intents(self):
+        """验证通用执行闭环：非显式索要代码任务严禁输出代码，动作/排查任务不会被误判为代码查看"""
+        from dsh_modules.agent_loop import is_explicit_code_request, detect_unexecuted_script_leak, auto_heal_unexecuted_file_writes
+
+        # 1. 动作性与故障排查指令必须判定为 False（需要执行而非向用户展示代码）
+        action_queries = [
+            "生成一个网页的贪吃蛇游戏",
+            "做个五子棋对战游戏",
+            "开始后，游戏就停了",
+            "改一下代码",
+            "帮我修一下代码报错",
+            "优化代码性能并保存",
+            "把数据整理成excel",
+            "生成一页html的报告",
+            "做个大屏原型",
+            "代码运行失败了排查下"
+        ]
+        for q in action_queries:
+            self.assertFalse(is_explicit_code_request(q), f"Failed for {q}")
+
+        # 2. 显式索要/查看代码指令判定为 True
+        code_queries = [
+            "查看代码",
+            "看下代码",
+            "看一下代码",
+            "显示代码",
+            "输出代码",
+            "代码怎么写",
+            "示例代码",
+            "给我看下生成pdf的python代码",
+            "查看源码",
+            "show code",
+            "view code"
+        ]
+        for q in code_queries:
+            self.assertTrue(is_explicit_code_request(q), f"Failed for {q}")
+
+        # 3. 验证未执行脚本与伪命令泄露检测 (包括 write_file, cat >, heredoc, html)
+        leak_write_file = "```\nwrite_file << 'EOF' /workspace/index.html\n<!DOCTYPE html>\n<html><body>Snake</body></html>\nEOF\n```"
+        self.assertTrue(detect_unexecuted_script_leak(leak_write_file))
+
+        leak_cat_heredoc = "```bash\ncat > /workspace/index.html << 'EOF'\n<!DOCTYPE html>\n<html><body>Snake</body></html>\nEOF\n```"
+        self.assertTrue(detect_unexecuted_script_leak(leak_cat_heredoc))
+
+        leak_raw_write_file = "write_file << 'EOF' /workspace/index.html\n<!DOCTYPE html>\n<html><body>Snake</body></html>\nEOF"
+        self.assertTrue(detect_unexecuted_script_leak(leak_raw_write_file))
+
+        leak_html_block = "```html\n<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head><title>Test</title></head>\n<body><div>App</div></body>\n</html>\n```"
+        self.assertTrue(detect_unexecuted_script_leak(leak_html_block))
+
+    def test_auto_heal_unexecuted_file_writes(self):
+        """验证自愈机制：自动提取未执行的 write_file/cat 写入命令并落盘物理文件，清除聊天中的长篇源码"""
+        from dsh_modules.agent_loop import auto_heal_unexecuted_file_writes
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            raw_text = (
+                "确认需求，正在为您生成贪吃蛇游戏：\n\n"
+                "```\n"
+                "write_file << 'EOF' /workspace/index.html\n"
+                "<!DOCTYPE html>\n"
+                "<html lang=\"zh-CN\">\n"
+                "<head><title>贪吃蛇</title></head>\n"
+                "<body><canvas id=\"game\"></canvas></body>\n"
+                "</html>\n"
+                "EOF\n"
+                "```\n\n"
+                "文件已生成完毕。"
+            )
+            cleaned_text, written = auto_heal_unexecuted_file_writes(raw_text, tmp_dir)
+            self.assertEqual(len(written), 1)
+            target_file = Path(written[0])
+            self.assertTrue(target_file.exists())
+            self.assertEqual(target_file.name, "index.html")
+            content = target_file.read_text(encoding="utf-8")
+            self.assertIn("<title>贪吃蛇</title>", content)
+            # 确认聊天正文中不再残留 write_file 或裸源码
+            self.assertNotIn("write_file", cleaned_text)
+            self.assertIn("✨ 已成功生成并保存文件：`/workspace/index.html`", cleaned_text)
 
 
 if __name__ == "__main__":

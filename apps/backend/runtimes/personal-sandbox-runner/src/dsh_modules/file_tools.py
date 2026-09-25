@@ -12,29 +12,176 @@ import time
 import urllib.request
 import urllib.parse
 import urllib.error
+import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple, List
 
-from .config import WORKSPACE_DIR, KNOWLEDGE_DIR, DEFAULT_PROXY_URL, VIRTUAL_API_KEY
+from .config import WORKSPACE_DIR, KNOWLEDGE_DIR, DEFAULT_PROXY_URL, VIRTUAL_API_KEY, SKILL_DIR, CUSTOM_SKILL_DIR, PLUGIN_DIR
 from .web_tools import check_deadline, assert_not_timed_out
 from .office_tools import extract_docx_text, extract_xlsx_text, extract_pdf_text, extract_pptx_text
 
 
+def get_allowed_roots(for_write: bool = False, for_outbound: bool = False) -> List[Path]:
+    """Returns the set of canonical directories accessible by sandbox file tools."""
+    import dsh_modules.config as cfg
+    roots = []
+    # 核心沙箱读写空间
+    for d in [getattr(cfg, "WORKSPACE_DIR", "/workspace"), getattr(cfg, "KNOWLEDGE_DIR", "/knowledge")]:
+        if d:
+            try:
+                roots.append(Path(d).resolve())
+            except Exception:
+                pass
+
+    # 临时文件目录（允许读取/补丁临时脚本，严格禁止作为外发交付物）
+    if not for_outbound:
+        try:
+            roots.append(Path(tempfile.gettempdir()).resolve())
+            roots.append(Path("/tmp").resolve())
+        except Exception:
+            pass
+
+    # 集中式技能与插件只读目录（仅允许只读检查，严禁写入或作为交付物外发）
+    if not for_write and not for_outbound:
+        for d in [
+            getattr(cfg, "SKILL_DIR", "/opt/dsh/skills"),
+            getattr(cfg, "CUSTOM_SKILL_DIR", "/knowledge/skills"),
+            getattr(cfg, "PLUGIN_DIR", "/opt/dsh/plugins")
+        ]:
+            if d:
+                try:
+                    roots.append(Path(d).resolve())
+                except Exception:
+                    pass
+
+    return roots
+
+
+def is_path_within(target: Path, base_dirs: List[Path]) -> bool:
+    """Checks whether the target path is strictly inside or equal to any base directory."""
+    try:
+        resolved = target.resolve()
+    except Exception:
+        resolved = target
+
+    for base in base_dirs:
+        try:
+            base_resolved = base.resolve()
+            resolved.relative_to(base_resolved)
+            return True
+        except ValueError:
+            if resolved == base_resolved or resolved == base:
+                return True
+            continue
+        except Exception:
+            continue
+    return False
+
+
+def _locate_readable_candidate(raw: str, ws: str, kn: str) -> Optional[Path]:
+    """Tries to find an existing file in workspace or knowledge using relative path or glob matching."""
+    kn_candidate = Path(kn) / raw
+    if kn_candidate.exists():
+        return kn_candidate
+    ws_path = Path(ws)
+    if ws_path.exists():
+        try:
+            ws_matches = list(ws_path.glob(f"*{raw}*"))
+            if ws_matches:
+                return ws_matches[0]
+        except Exception:
+            pass
+    kn_path = Path(kn)
+    if kn_path.exists():
+        try:
+            kn_matches = list(kn_path.glob(f"*{raw}*"))
+            if kn_matches:
+                return kn_matches[0]
+        except Exception:
+            pass
+    return None
+
+
+def resolve_sandboxed_path(
+    file_path: str,
+    for_write: bool = False,
+    for_outbound: bool = False
+) -> Tuple[Optional[Path], Optional[str]]:
+    """
+    Resolves a file path and strictly enforces directory confinement within sandbox boundaries.
+    Rejects path traversal ('..'), symlink escape, and system root access (/etc, /root, /proc, etc.).
+    """
+    if not file_path or not str(file_path).strip():
+        return None, "未指定有效文件路径"
+
+    raw = str(file_path).strip().strip("'\"")
+    allowed_roots = get_allowed_roots(for_write=for_write, for_outbound=for_outbound)
+
+    import dsh_modules.config as cfg
+    ws = getattr(cfg, "WORKSPACE_DIR", "/workspace")
+    kn = getattr(cfg, "KNOWLEDGE_DIR", "/knowledge")
+
+    # 构造初始候选 Path
+    candidate = Path(raw) if os.path.isabs(raw) else Path(ws) / raw
+
+    # 若未找到，且为相对路径读取，尝试在知识库或通配符中查找
+    if not candidate.exists() and not for_write and not for_outbound and not os.path.isabs(raw):
+        fuzzy = _locate_readable_candidate(raw, ws, kn)
+        if fuzzy:
+            candidate = fuzzy
+
+    # 解析绝对符号并进行边界校验
+    try:
+        resolved = candidate.resolve()
+    except Exception as e:
+        return None, f"路径解析失败: {e}"
+
+    if not is_path_within(resolved, allowed_roots):
+        action_type = "写入与修改" if for_write else ("交付物外发" if for_outbound else "读取与访问")
+        allowed_str = "/workspace, /knowledge" if (for_write or for_outbound) else "/workspace, /knowledge, /opt/dsh"
+        return None, f"【安全拦截】路径越界访问拒绝: 目标文件 ({raw}) 位于沙箱指定边界 ({allowed_str}) 之外，禁止{action_type}系统目录。"
+
+    return resolved, None
+
+
+
 def scan_personal_knowledge() -> str:
     """Scans personal knowledge space for reference material, saved deliverables, and custom skills"""
-    if not os.path.exists(KNOWLEDGE_DIR):
+    import dsh_modules.config as cfg
+    kn_dir = getattr(cfg, "KNOWLEDGE_DIR", KNOWLEDGE_DIR)
+    kn_path = Path(kn_dir)
+    if not kn_path.exists():
         return ""
-    files = list(Path(KNOWLEDGE_DIR).glob("**/*"))
-    files = [f for f in files if f.is_file() and not f.name.startswith(".")]
-    if not files:
+    try:
+        kn_resolved = kn_path.resolve()
+    except Exception:
+        return ""
+
+    files = list(kn_path.glob("**/*"))
+    valid_entries = []
+    for f in files:
+        if f.name.startswith("."):
+            continue
+        try:
+            # 严格解析真实物理路径，禁止通过符号链接逃逸到 /knowledge 之外（如逃逸至 /etc/hosts 等）
+            resolved, err = resolve_sandboxed_path(str(f), for_write=False, for_outbound=False)
+            if err or not resolved or not resolved.is_file():
+                continue
+            if not is_path_within(resolved, [kn_resolved]):
+                continue
+            valid_entries.append((f, resolved))
+        except Exception:
+            continue
+
+    if not valid_entries:
         return "Personal Knowledge Base (/knowledge) 目前为空。你可以将持久化交付物、报表、文档或自定义技能 (/knowledge/skills) 保存在此处。"
 
     summary = ["Personal Knowledge Base (/knowledge) contents:"]
-    for f in files[:15]:
+    for f, resolved in valid_entries[:15]:
         try:
-            rel = f.relative_to(KNOWLEDGE_DIR)
-            content_preview = f.read_text(encoding="utf-8", errors="ignore")[:300]
-            summary.append(f"- File: {rel} ({f.stat().st_size} bytes)\n  Preview: {content_preview.strip()}")
+            rel = f.relative_to(kn_path)
+            content_preview = resolved.read_text(encoding="utf-8", errors="ignore")[:300]
+            summary.append(f"- File: {rel} ({resolved.stat().st_size} bytes)\n  Preview: {content_preview.strip()}")
         except Exception:
             continue
     return "\n".join(summary)
@@ -46,21 +193,11 @@ def inspect_image(image_path: str, prompt: str = "", max_chars: int = 15000, dea
     located in /workspace or /knowledge via the platform's multimodal vision model proxy.
     """
     assert_not_timed_out(deadline, "image vision inspection")
-    raw_name = image_path.strip().strip("'\"")
-    p = Path(WORKSPACE_DIR) / raw_name if not os.path.isabs(raw_name) else Path(raw_name)
+    p, err = resolve_sandboxed_path(image_path, for_write=False, for_outbound=False)
+    if err:
+        return f"无法识别图片：{err}"
     if not p.exists():
-        if not os.path.isabs(raw_name) and (Path(KNOWLEDGE_DIR) / raw_name).exists():
-            p = Path(KNOWLEDGE_DIR) / raw_name
-        else:
-            candidates = list(Path(WORKSPACE_DIR).glob(f"*{raw_name}*"))
-            if candidates:
-                p = candidates[0]
-            else:
-                knowledge_candidates = list(Path(KNOWLEDGE_DIR).glob(f"*{raw_name}*"))
-                if knowledge_candidates:
-                    p = knowledge_candidates[0]
-                else:
-                    return f"图片文件未找到: {image_path}"
+        return f"图片文件未找到: {image_path}"
 
     suffix = p.suffix.lower()
     mime_map = {
@@ -192,21 +329,13 @@ def read_workspace_file(
     deadline: Optional[float] = None
 ) -> str:
     """Reads and extracts text from workspace or knowledge files, with native support for .docx, .xlsx, .txt, .md, .json, .py, .pdf, .jpg, .png"""
-    raw_name = file_path.strip().strip("'\"")
-    p = Path(WORKSPACE_DIR) / raw_name if not os.path.isabs(raw_name) else Path(raw_name)
+    p, err = resolve_sandboxed_path(file_path, for_write=False, for_outbound=False)
+    if err:
+        return err
     if not p.exists():
-        if not os.path.isabs(raw_name) and (Path(KNOWLEDGE_DIR) / raw_name).exists():
-            p = Path(KNOWLEDGE_DIR) / raw_name
-        else:
-            candidates = list(Path(WORKSPACE_DIR).glob(f"*{raw_name}*"))
-            if candidates:
-                p = candidates[0]
-            else:
-                knowledge_candidates = list(Path(KNOWLEDGE_DIR).glob(f"*{raw_name}*"))
-                if knowledge_candidates:
-                    p = knowledge_candidates[0]
-                else:
-                    return f"文件未找到: {file_path}"
+        return f"文件未找到: {file_path}"
+    if not p.is_file():
+        return f"读取失败：目标不是普通文件: {file_path}"
 
     suffix = p.suffix.lower()
 
@@ -275,22 +404,11 @@ def patch_workspace_file(file_path: str, target_text: str, replacement_text: str
     if replacement_text is None:
         replacement_text = ""
 
-    raw_name = file_path.strip().strip("'\"")
-    p = Path(WORKSPACE_DIR) / raw_name if not os.path.isabs(raw_name) else Path(raw_name)
+    p, err = resolve_sandboxed_path(file_path, for_write=True, for_outbound=False)
+    if err:
+        return f"替换失败：{err}"
     if not p.exists():
-        if not os.path.isabs(raw_name) and (Path(KNOWLEDGE_DIR) / raw_name).exists():
-            p = Path(KNOWLEDGE_DIR) / raw_name
-        else:
-            candidates = list(Path(WORKSPACE_DIR).glob(f"*{raw_name}*"))
-            if candidates:
-                p = candidates[0]
-            else:
-                knowledge_candidates = list(Path(KNOWLEDGE_DIR).glob(f"*{raw_name}*"))
-                if knowledge_candidates:
-                    p = knowledge_candidates[0]
-                else:
-                    return f"替换失败：文件未找到: {file_path}"
-
+        return f"替换失败：文件未找到: {file_path}"
     if not p.is_file():
         return f"替换失败：目标不是普通文件: {file_path}"
 
@@ -334,21 +452,28 @@ def send_workspace_file(file_path: str, comment: str = "") -> str:
     """
     Emits the special delivery protocol token to send a deliverable file from sandbox to user chat interface.
     """
-    raw_name = file_path.strip().strip("'\"")
-    p = Path(WORKSPACE_DIR) / raw_name if not os.path.isabs(raw_name) else Path(raw_name)
+    p, err = resolve_sandboxed_path(file_path, for_write=False, for_outbound=True)
+    if err:
+        return f"发送失败：{err}"
     if not p.exists():
-        if not os.path.isabs(raw_name) and (Path(KNOWLEDGE_DIR) / raw_name).exists():
-            p = Path(KNOWLEDGE_DIR) / raw_name
-        else:
-            candidates = list(Path(WORKSPACE_DIR).glob(f"*{raw_name}*"))
-            if candidates:
-                p = candidates[0]
-            else:
-                return f"文件不存在，无法发送给用户: {file_path}"
+        return f"文件不存在，无法发送给用户: {file_path}"
+    if not p.is_file():
+        return f"发送失败：目标路径 ({p.name}) 不是普通文件（不支持直接外发目录、FIFO管道或特殊设备文件）。"
+    if not os.access(p, os.R_OK):
+        return f"发送失败：文件不可读，缺少读取权限 ({p.name})"
+
+    try:
+        size = p.stat().st_size
+        max_bytes = 500 * 1024 * 1024  # 500MB 硬上限
+        if size > max_bytes:
+            return f"发送失败：文件体积过大 ({size / (1024 * 1024):.1f} MB > 500 MB)，超出沙箱交付物外发上限。"
+    except Exception as e:
+        return f"发送失败：无法获取文件信息 ({p.name}): {e}"
 
     payload = {
         "filePath": str(p),
         "fileName": p.name,
         "comment": comment.strip()
     }
-    return f"<<<DSH_OUTBOUND_FILE:{json.dumps(payload, ensure_ascii=False)}>>>"
+    payload_json = json.dumps(payload, ensure_ascii=False)
+    return f"<<<DSH_OUTBOUND_FILE:len={len(payload_json)}:{payload_json}>>>"

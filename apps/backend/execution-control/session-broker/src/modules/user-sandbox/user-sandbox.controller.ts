@@ -8,9 +8,11 @@ import {
   Param,
   Res,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { InternalAuthGuard } from '../../common/guards/internal-auth.guard';
 import { UserSandboxService } from './user-sandbox.service';
 import {
   LaunchUserSandboxDto,
@@ -27,6 +29,7 @@ import {
 } from './user-sandbox.interface';
 
 @ApiTags('User Sandboxes')
+@UseGuards(InternalAuthGuard)
 @Controller('user-sandboxes')
 export class UserSandboxController {
   constructor(private readonly userSandboxService: UserSandboxService) {}
@@ -215,6 +218,8 @@ export class UserSandboxController {
               } catch {
                 // ignore
               }
+            } else if (trimmed === '<<<DSH_DELTA_RESET>>>') {
+              sendEvent('delta_reset', {});
             } else if (
               trimmed.startsWith('⚡') ||
               trimmed.startsWith('✓') ||

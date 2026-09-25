@@ -311,53 +311,57 @@ export class NotificationService {
   }
 
   private async listReportNotifications(limit: number): Promise<AppNotificationDto[]> {
-    const internalSecret =
-      process.env.INTERNAL_API_SHARED_SECRET ||
-      process.env.INTERNAL_API_SECRET ||
-      'ops_internal_shared_secret_change_me';
-    const response = await axios.get<{ reports: ReportNotificationSource[] }>(
-      `${this.reportServiceUrl}/reports`,
-      {
-        timeout: 30000,
-        headers: {
-          'x-internal-auth': internalSecret,
-        },
-      }
-    );
-
-    return (response.data.reports || [])
-      .filter((report) => ['completed', 'failed'].includes(report.status))
-      .map((report) => {
-        const timestampSource = report.completed_at || report.created_at;
-        const timestamp = new Date(timestampSource).toISOString();
-
-        return {
-          id: `report:${report.id}`,
-          dedupeKey: `report:${report.id}`,
-          source: 'report',
-          sourceId: report.id,
-          sourceName: report.template_id,
-          severity: report.status === 'completed' ? 'success' : 'error',
-          category: report.status === 'completed' ? 'completed' : 'failed',
-          status: report.status,
-          stateKey: report.status,
-          timestamp,
-          unread: false,
-          requiresAction: false,
-          actionUrl: `/reports/${encodeURIComponent(report.id)}`,
-          metadata: {
-            reportId: report.id,
-            templateId: report.template_id,
-            sessionId: report.session_id,
-            resultFile: report.result_file,
-            error: report.error,
+    try {
+      const internalSecret =
+        process.env.INTERNAL_API_SHARED_SECRET ||
+        process.env.INTERNAL_API_SECRET ||
+        'ops_internal_shared_secret_change_me';
+      const response = await axios.get<{ reports: ReportNotificationSource[] }>(
+        `${this.reportServiceUrl}/reports`,
+        {
+          timeout: 5000,
+          headers: {
+            'x-internal-auth': internalSecret,
           },
-        } satisfies AppNotificationDto;
-      })
-      .sort(
-        (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime()
-      )
-      .slice(0, Math.max(limit * 2, 20));
+        }
+      );
+
+      return (response.data.reports || [])
+        .filter((report) => ['completed', 'failed'].includes(report.status))
+        .map((report) => {
+          const timestampSource = report.completed_at || report.created_at;
+          const timestamp = new Date(timestampSource).toISOString();
+
+          return {
+            id: `report:${report.id}`,
+            dedupeKey: `report:${report.id}`,
+            source: 'report',
+            sourceId: report.id,
+            sourceName: report.template_id,
+            severity: report.status === 'completed' ? 'success' : 'error',
+            category: report.status === 'completed' ? 'completed' : 'failed',
+            status: report.status,
+            stateKey: report.status,
+            timestamp,
+            unread: false,
+            requiresAction: false,
+            actionUrl: `/reports/${encodeURIComponent(report.id)}`,
+            metadata: {
+              reportId: report.id,
+              templateId: report.template_id,
+              sessionId: report.session_id,
+              resultFile: report.result_file,
+              error: report.error,
+            },
+          } satisfies AppNotificationDto;
+        })
+        .sort(
+          (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime()
+        )
+        .slice(0, Math.max(limit * 2, 20));
+    } catch {
+      return [];
+    }
   }
 
   private isRelevantExecutionStatus(status: ExecutionStatus): boolean {

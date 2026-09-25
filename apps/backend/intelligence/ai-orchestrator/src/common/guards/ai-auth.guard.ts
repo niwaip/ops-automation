@@ -21,6 +21,7 @@ export interface AuthenticatedUser {
 }
 
 const INSECURE_FALLBACK_SECRETS = new Set([
+  'ops_internal_shared_secret_change_me',
   'ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa',
   'ops-automation-jwt-secret-key-change-in-production',
   'secret',
@@ -93,29 +94,60 @@ export function parseAndVerifySandboxToken(token: string): string | null {
   if (!token.startsWith(prefix)) return null;
 
   const signedValue = token.slice(prefix.length);
-  const separatorIndex = signedValue.lastIndexOf('.');
-  if (separatorIndex <= 0) return null;
+  const parts = signedValue.split('.');
+  if (parts.length < 2 || parts.length > 3) return null;
 
-  const userId = signedValue.slice(0, separatorIndex);
-  const providedSignature = signedValue.slice(separatorIndex + 1);
   const sharedSecret =
     process.env.INTERNAL_API_SHARED_SECRET || process.env.INTERNAL_API_SECRET;
-  if (!sharedSecret || !providedSignature) return null;
+  if (!sharedSecret) return null;
 
-  const expectedSignature = crypto
-    .createHmac('sha256', sharedSecret)
-    .update(userId)
-    .digest('base64url');
-  const providedBuffer = Buffer.from(providedSignature);
-  const expectedBuffer = Buffer.from(expectedSignature);
-  if (
-    providedBuffer.length !== expectedBuffer.length ||
-    !crypto.timingSafeEqual(providedBuffer, expectedBuffer)
-  ) {
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (isProduction && (INSECURE_FALLBACK_SECRETS.has(sharedSecret) || sharedSecret.length < 16)) {
     return null;
   }
 
-  return userId;
+  if (parts.length === 3) {
+    // 包含有效期的安全 Token: sandbox-user-token-${userId}.${exp}.${signature}
+    const [userId, expStr, providedSignature] = parts;
+    if (!userId || !expStr || !providedSignature) return null;
+    const exp = parseInt(expStr, 10);
+    if (!exp || isNaN(exp) || exp < Math.floor(Date.now() / 1000)) {
+      return null; // 过期或非法格式
+    }
+
+    const expectedSignature = crypto
+      .createHmac('sha256', sharedSecret)
+      .update(`${userId}:${expStr}`)
+      .digest('base64url');
+    const providedBuffer = Buffer.from(providedSignature);
+    const expectedBuffer = Buffer.from(expectedSignature);
+    if (
+      providedBuffer.length !== expectedBuffer.length ||
+      !crypto.timingSafeEqual(providedBuffer, expectedBuffer)
+    ) {
+      return null;
+    }
+
+    return userId;
+  } else {
+    // 兼容历史短期 Token: sandbox-user-token-${userId}.${signature}
+    const [userId, providedSignature] = parts;
+    if (!userId || !providedSignature) return null;
+    const expectedSignature = crypto
+      .createHmac('sha256', sharedSecret)
+      .update(userId)
+      .digest('base64url');
+    const providedBuffer = Buffer.from(providedSignature);
+    const expectedBuffer = Buffer.from(expectedSignature);
+    if (
+      providedBuffer.length !== expectedBuffer.length ||
+      !crypto.timingSafeEqual(providedBuffer, expectedBuffer)
+    ) {
+      return null;
+    }
+
+    return userId;
+  }
 }
 
 @Injectable()

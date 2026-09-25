@@ -57,6 +57,10 @@ def get_available_skills() -> list:
                 default_deliv = [".html"]
                 default_exec = True
                 default_rounds = 4
+            elif item.name == "pptx":
+                default_deliv = [".pptx"]
+                default_exec = True
+                default_rounds = 5
 
             meta = {
                 "id": item.name,

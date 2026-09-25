@@ -813,15 +813,16 @@ export class ChatConversationService {
   }
 
   private buildChatSystemMessage(thinkingEnabled: boolean, includeFiles: boolean): string {
-    const basePrompt = includeFiles
-      ? '你是一个智能助手，请用中文友好地回答用户的问题。如果用户上传了文件，请分析文件内容并给出相关回答。'
-      : '你是一个智能助手，请用中文友好地回答用户的问题。';
+    const fileRule = includeFiles ? '如果用户上传了文件，请分析文件内容并给出相关回答。' : '';
+    const codeRule =
+      '【核心输出规范】：除非用户在提问中显式要求查看、显示、给出或提供代码/源码，否则严禁直接在对话窗口中倾倒大段未请求的源代码、HTML/JS 脚本或文件内容；若用户提出生成游戏、网页、应用或文档等需求，应直接进行功能与架构总结说明。';
+    const basePrompt = `你是一个智能助手，请用中文友好地回答用户的问题。${fileRule}\n\n${codeRule}`;
 
     if (thinkingEnabled) {
-      return `${basePrompt} 如模型支持推理或 think 模式，请先充分思考，再给出清晰结论。`;
+      return `${basePrompt}\n\n如模型支持推理或 think 模式，请先充分思考，再给出清晰结论。`;
     }
 
-    return `${basePrompt} 直接输出结论，不要输出思考过程、推理细节或 <think> 标签。`;
+    return `${basePrompt}\n\n直接输出结论，不要输出思考过程、推理细节或 <think> 标签。`;
   }
 
   getVisibleChatContent(content: string, thinkingEnabled: boolean): string {
