@@ -57,6 +57,10 @@ def _is_valid_cron(cron_str: str) -> bool:
     return True
 
 
+def _get_current_time(tz: datetime.tzinfo) -> datetime.datetime:
+    return datetime.datetime.now(tz)
+
+
 def _validate_and_normalize_run_at(run_at_val: Any, tz_name: str) -> Tuple[Optional[str], Optional[str]]:
     """
     Validates run_at against future time in specified timezone.
@@ -85,7 +89,7 @@ def _validate_and_normalize_run_at(run_at_val: Any, tz_name: str) -> Tuple[Optio
     except Exception as e:
         return None, f"时间解析失败（{val_str}）: {e}"
 
-    now = datetime.datetime.now(tz)
+    now = _get_current_time(tz)
     if dt <= now:
         return None, f"提醒时间（{val_str}）必须是将来的时间，当前时间为 {now.strftime('%Y-%m-%d %H:%M:%S')}"
 

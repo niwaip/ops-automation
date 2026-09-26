@@ -128,20 +128,53 @@ export class LockService {
   }
 
   /**
-   * Acquire execution lock for user personal sandbox to prevent concurrent overlapping dsh executions
+   * Acquire execution lock for user personal sandbox to prevent concurrent overlapping dsh executions.
+   * Supports retry spinning with waitTimeoutSeconds and onWaiting callback.
    */
-  async acquireSandboxLock(userId: string, ttlSeconds: number = 180): Promise<{ success: boolean; token: string }> {
+  async acquireSandboxLock(
+    userId: string,
+    ttlSeconds: number = 180,
+    waitTimeoutSeconds: number = 35,
+    onWaiting?: (waitedMs: number) => void
+  ): Promise<{ success: boolean; token: string; waitedMs?: number }> {
     const canonicalUserId = (userId || '').trim().toLowerCase();
     const lockKey = `lock:sandbox:exec:${canonicalUserId}`;
     const token = uuidv4();
-    const result = await this.redisService.set(lockKey, token, ttlSeconds);
-    const success = result === 'OK';
-    if (!success) {
-      this.logger.warn(`Sandbox execution lock conflict for user [${canonicalUserId}]`);
-    } else {
-      this.logger.log(`Sandbox execution lock acquired for user [${canonicalUserId}], token=${token}`);
+    const startTime = Date.now();
+    const maxWaitMs = Math.max(0, waitTimeoutSeconds * 1000);
+    const pollIntervalMs = 500;
+    let hasNotifiedWaiting = false;
+
+    for (;;) {
+      const result = await this.redisService.set(lockKey, token, ttlSeconds);
+      if (result === 'OK') {
+        const waitedMs = Date.now() - startTime;
+        this.logger.log(
+          `Sandbox execution lock acquired for user [${canonicalUserId}], token=${token}, waitedMs=${waitedMs}`
+        );
+        return { success: true, token, waitedMs };
+      }
+
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= maxWaitMs) {
+        this.logger.warn(
+          `Sandbox execution lock conflict/timeout for user [${canonicalUserId}] after waiting ${elapsed}ms`
+        );
+        return { success: false, token: '', waitedMs: elapsed };
+      }
+
+      if (!hasNotifiedWaiting && onWaiting) {
+        hasNotifiedWaiting = true;
+        try {
+          onWaiting(elapsed);
+        } catch {
+          // ignore callback error
+        }
+      }
+
+      const sleepTime = Math.min(pollIntervalMs, maxWaitMs - elapsed);
+      await new Promise((resolve) => setTimeout(resolve, sleepTime));
     }
-    return { success, token };
   }
 
   /**

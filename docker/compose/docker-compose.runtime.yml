@@ -67,7 +67,7 @@ services:
   browser-chrome:
     build:
       context: ../..
-      dockerfile: docker/browser-worker/Dockerfile
+      dockerfile: docker/browser-chrome/Dockerfile
     image: ${SESSION_BROWSER_IMAGE:-ops-browser-chrome:local}
     container_name: ops-browser-chrome
     ports:

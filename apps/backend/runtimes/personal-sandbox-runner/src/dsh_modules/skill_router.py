@@ -66,7 +66,7 @@ GUIDE_PATTERNS = [
 
 GENERATE_ACTION_PATTERNS = [
     "生成", "制作", "创建", "导出", "新建", "做个", "做一份", "做一张", "做个表", "做个ppt", "做个幻灯片",
-    "写一份", "写个", "写出", "输出为", "保存为", "转为", "转成", "落盘", "另存为", "写成",
+    "写一份", "写个", "写出", "输出", "输出为", "保存为", "转为", "转成", "落盘", "另存为", "写成",
     "generate", "create", "export", "build", "make", "produce"
 ]
 
@@ -92,8 +92,8 @@ TEXT_ONLY_ACTION_TARGETS = [
 ]
 
 PHYSICAL_DELIVERABLE_TARGETS = [
-    ".pdf", ".docx", ".xlsx", ".pptx", ".html", ".csv", ".json",
-    "pdf", "word", "excel", "ppt", "html", "表格", "幻灯片", "演示文稿", "报表",
+    ".pdf", ".docx", ".xlsx", ".pptx", ".html", ".csv", ".json", ".md",
+    "pdf", "word", "excel", "ppt", "html", "markdown", "md文件", "md 文件", "表格", "幻灯片", "演示文稿", "报表",
     "代码文件", "脚本", "落地文件", "物理文件", "本地文件", "单页", "原型", "看板", "网页", "单页报告"
 ]
 
@@ -106,13 +106,13 @@ def check_generation_target_is_physical(lower_q: str) -> bool:
     # 查找生成动词后紧随的目标词
     m = re.search(r'(?:生成|导出|制作|创建|做|写|输出为|保存为|转为|转成|输出)\s*(?:一份|一个|一张|一段|出|成|为)?\s*([a-zA-Z0-9_\-\u4e00-\u9fa5\.]+)', lower_q)
     if not m:
-        return any(p in lower_q for p in [".pdf", ".docx", ".xlsx", ".pptx", ".html", "word", "excel", "ppt", "html", "导出为", "保存为"])
+        return any(p in lower_q for p in [".pdf", ".docx", ".xlsx", ".pptx", ".html", ".md", "word", "excel", "ppt", "html", "markdown", "md 文件", "导出为", "保存为"])
     target = m.group(1).strip()
-    has_physical = any(p in target for p in PHYSICAL_DELIVERABLE_TARGETS) or any(ext in lower_q for ext in [".pdf", ".docx", ".xlsx", ".pptx", ".html", "word", "excel", "ppt", "html", "导出为", "保存为"])
+    has_physical = any(p in target for p in PHYSICAL_DELIVERABLE_TARGETS) or any(ext in lower_q for ext in [".pdf", ".docx", ".xlsx", ".pptx", ".html", ".md", "word", "excel", "ppt", "html", "markdown", "md 文件", "导出为", "保存为"])
     has_text_only = any(t in target for t in TEXT_ONLY_ACTION_TARGETS)
     if has_text_only and not any(p in target for p in PHYSICAL_DELIVERABLE_TARGETS):
         # 即使整句有通用词（如查看文档），若生成部分紧接纯文本目标且无显式物理介质词
-        if not any(ext in lower_q for ext in [".pdf", ".docx", ".xlsx", ".pptx", ".html", "word", "excel", "ppt", "html", "保存为", "导出为", "另存为", "写成文件", "生成文件"]):
+        if not any(ext in lower_q for ext in [".pdf", ".docx", ".xlsx", ".pptx", ".html", ".md", "word", "excel", "ppt", "html", "markdown", "md 文件", "保存为", "导出为", "另存为", "写成文件", "生成文件"]):
             return False
     return has_physical
 
@@ -619,4 +619,3 @@ class SkillRouter:
     @classmethod
     def resolve_contextual_query(cls, q: str, history: Optional[List[Dict[str, Any]]]) -> str:
         return resolve_contextual_query(q, history)
-

@@ -176,4 +176,14 @@ export class RunHarnessDto {
   @IsOptional()
   @IsArray()
   files?: string[];
+
+  @ApiPropertyOptional({
+    description: '沙箱锁争抢最大排队自旋等待超时（秒，0 - 120）',
+    default: 35,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(120)
+  waitTimeoutSeconds?: number;
 }

@@ -348,6 +348,7 @@ export class UserSandboxDispatcherService {
           model: effectiveModel,
           modelDisplayName,
           timeoutMs,
+          waitTimeoutSeconds: 35,
         };
 
         let res = await fetch(`${this.sessionBrokerUrl}/user-sandboxes/run-harness-stream`, {
@@ -375,7 +376,7 @@ export class UserSandboxDispatcherService {
           if (res.status === 409) {
             emit({
               type: StreamEventType.ERROR,
-              content: '⚠️ 该沙箱当前正在执行前一个任务，请稍后再试或点击停止。',
+              content: '⏳ 当前沙箱正在执行前序任务，排队等待超时。请稍候再试，或在前一会话中点击“停止”后再试。',
             });
             return true;
           }
@@ -429,6 +430,7 @@ export class UserSandboxDispatcherService {
                 emit({
                   type: StreamEventType.OBSERVATION,
                   content: parsed.content,
+                  data: parsed.data,
                 });
               } else if (eventType === 'delta_reset') {
                 deltaAccumulator = '';
@@ -667,11 +669,13 @@ export class UserSandboxDispatcherService {
       if (
         err.message?.includes('正在执行其他任务') ||
         err.message?.includes('沙箱当前正在执行') ||
+        err.message?.includes('正在执行前序任务') ||
+        err.message?.includes('排队等待超时') ||
         err.status === 409
       ) {
         emit({
           type: StreamEventType.ERROR,
-          content: '⚠️ 个人专属安全沙箱当前正在执行其他任务。请稍候片刻等待当前任务完成，或刷新后重试。',
+          content: '⏳ 个人专属安全沙箱当前正在执行前序任务，排队等待超时。请稍候片刻再试，或在前一会话中点击“停止”释放沙箱。',
         });
         return true;
       }
@@ -847,7 +851,7 @@ export class UserSandboxDispatcherService {
     // 2. 文档与交付物扩展名
     const deliverableExts = new Set([
       '.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt',
-      '.pdf', '.zip', '.tar', '.gz', '.csv', '.txt'
+      '.pdf', '.zip', '.tar', '.gz', '.csv', '.txt', '.md', '.markdown'
     ]);
 
     // 记录用户上传的原始输入附件文件名，严禁将其作为“新生成产物”推荐给用户
@@ -860,6 +864,7 @@ export class UserSandboxDispatcherService {
       if (ext === '.xlsx' || ext === '.xls' || ext === '.csv') return '📊';
       if (ext === '.pptx' || ext === '.ppt') return '📑';
       if (ext === '.pdf') return '📕';
+      if (ext === '.md' || ext === '.markdown') return '📝';
       if (ext === '.zip' || ext === '.tar' || ext === '.gz') return '📦';
       return '📎';
     };
@@ -874,7 +879,7 @@ export class UserSandboxDispatcherService {
 
     // 2.1 将正文中现存的 Markdown 链接中的 /workspace/xxx 或本地文件名改写为直链下载地址
     result = result.replace(
-      /\[(.*?)\]\((?:(?:\/workspace\/)?([a-zA-Z0-9_\-\u4e00-\u9fa5 ]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv)))\)/gi,
+      /\[(.*?)\]\((?:(?:\/workspace\/)?([a-zA-Z0-9_\-\u4e00-\u9fa5 ]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv|md|markdown)))\)/gi,
       (match, label, fileName) => {
         const cleanName = path.basename(fileName.trim());
         const filePath = this.getWorkspaceFilePath(userId, cleanName);
@@ -923,7 +928,7 @@ export class UserSandboxDispatcherService {
     }
 
     // 扫描正文提及的文件名（如 《保密合同_审查意见书.docx》 或 保密合同_审查意见书.docx）
-    const mentionRegex = /(?:《|【|“|"|'|`|\/workspace\/)?([a-zA-Z0-9_\-\u4e00-\u9fa5 ]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv))(?:》|】|”|"|'|`|\b)?/gi;
+    const mentionRegex = /(?:《|【|“|"|'|`|\/workspace\/)?([a-zA-Z0-9_\-\u4e00-\u9fa5 ]+\.(?:docx?|xlsx?|pptx?|pdf|zip|tar|gz|csv|md|markdown))(?:》|】|”|"|'|`|\b)?/gi;
     let match: RegExpExecArray | null;
     while ((match = mentionRegex.exec(result)) !== null) {
       const foundName = match[1]?.trim();

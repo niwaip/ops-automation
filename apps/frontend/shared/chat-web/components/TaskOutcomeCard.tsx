@@ -11,6 +11,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { normalizeTabSeparatedTable } from '../lib/tableNormalizer';
 import { HtmlPreviewBlock } from './HtmlPreviewBlock';
+import { MarkdownPreviewBlock } from './MarkdownPreviewBlock';
 
 export interface SharedDisplayGroupItem {
   key: string;
@@ -20,6 +21,15 @@ export interface SharedDisplayGroupItem {
 export interface SharedDisplayGroup {
   label: string;
   items: SharedDisplayGroupItem[];
+}
+
+export interface TaskOutcomeArtifactItem {
+  name?: string;
+  label?: string;
+  url?: string;
+  downloadUrl?: string;
+  mimeType?: string;
+  sizeBytes?: number | string;
 }
 
 interface TaskOutcomeCardProps {
@@ -60,6 +70,7 @@ interface TaskOutcomeCardProps {
   onApproveExecution: (effectId?: string, approvedPayloadHash?: string) => void;
   onRejectExecution: (effectId?: string) => void;
   onResumeExecution?: () => void;
+  artifacts?: TaskOutcomeArtifactItem[];
 }
 
 const isHtmlPreviewBlock = (className?: string, codeText?: string) => {
@@ -219,6 +230,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
   onFetchPendingEffects,
   onApproveExecution,
   onRejectExecution,
+  artifacts,
 }) => {
   const [internalEffects, setInternalEffects] = React.useState<TaskOutcomeCardProps['pendingOutboundEffects'] | null>(null);
   const [isLoadingEffects, setIsLoadingEffects] = React.useState<boolean>(false);
@@ -262,10 +274,39 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
       ? pendingOutboundEffects
       : internalEffects || [];
 
+  const htmlArtifact = React.useMemo(() => {
+    if (!artifacts || !Array.isArray(artifacts) || artifacts.length === 0) return null;
+    return (
+      artifacts.find((art) => {
+        const name = (art.name || art.label || '').toLowerCase();
+        const url = (art.url || art.downloadUrl || '').toLowerCase();
+        const mime = (art.mimeType || '').toLowerCase();
+        return mime.includes('text/html') || name.endsWith('.html') || url.includes('.html');
+      }) || null
+    );
+  }, [artifacts]);
+
+  const mdArtifact = React.useMemo(() => {
+    if (!artifacts || !Array.isArray(artifacts) || artifacts.length === 0) return null;
+    return (
+      artifacts.find((art) => {
+        const name = (art.name || art.label || '').toLowerCase();
+        const url = (art.url || art.downloadUrl || '').toLowerCase();
+        const mime = (art.mimeType || '').toLowerCase();
+        return mime.includes('markdown') || name.endsWith('.md') || url.includes('.md');
+      }) || null
+    );
+  }, [artifacts]);
+
   const showDownloadButton = Boolean(downloadUrl && !browserExecutionMode);
   const showDetailButton = Boolean(executionDetailLink || temporalLink);
   const normalizedSkillName = skillName?.trim();
   const displaySuccessResult = finalResult?.trim() || getStructuredResultPreview(structuredResultText);
+
+  const hasInlineHtmlFence = React.useMemo(() => {
+    if (!displaySuccessResult) return false;
+    return /```html[\s\S]*?```/i.test(displaySuccessResult);
+  }, [displaySuccessResult]);
   const sanitizeWaitingInputSummary = (summary?: string): string | undefined => {
     if (!summary) {
       return undefined;
@@ -413,7 +454,15 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
     );
   }
 
-  if (displaySuccessResult) {
+  const hasCompletedArtifact = Boolean(
+    (executionStatus === '已完成' ||
+      executionStatus === 'completed' ||
+      executionStatus === 'succeeded' ||
+      !showRunningState) &&
+      (htmlArtifact || mdArtifact)
+  );
+
+  if (displaySuccessResult || hasCompletedArtifact) {
     return (
       <div className="chat-outcome-card success">
         <div className="chat-outcome-header">
@@ -444,67 +493,92 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
           </div>
         ) : null}
 
-        <div className="chat-outcome-body">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              table: ({ children }: { children?: React.ReactNode }) => (
-                <div className="markdown-table-wrapper">
-                  <table>{children}</table>
-                </div>
-              ),
-              a: renderMarkdownLink,
-              pre: ({ children, className: preClassName, ...props }: React.ComponentPropsWithoutRef<'pre'>) => {
-                const childElement = React.isValidElement(children) ? children : null;
-                const childProps = childElement ? (childElement.props as { className?: string; children?: React.ReactNode }) : null;
-                const codeClassName = childProps?.className || '';
-                const codeText = Array.isArray(childProps?.children)
-                  ? childProps.children.join('')
-                  : String(childProps?.children || '');
+        {displaySuccessResult ? (
+          <div className="chat-outcome-body">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                table: ({ children }: { children?: React.ReactNode }) => (
+                  <div className="markdown-table-wrapper">
+                    <table>{children}</table>
+                  </div>
+                ),
+                a: renderMarkdownLink,
+                pre: ({ children, className: preClassName, ...props }: React.ComponentPropsWithoutRef<'pre'>) => {
+                  const childElement = React.isValidElement(children) ? children : null;
+                  const childProps = childElement ? (childElement.props as { className?: string; children?: React.ReactNode }) : null;
+                  const codeClassName = childProps?.className || '';
+                  const codeText = Array.isArray(childProps?.children)
+                    ? childProps.children.join('')
+                    : String(childProps?.children || '');
 
-                if (isHtmlPreviewBlock(codeClassName, codeText)) {
-                  return <>{children}</>;
-                }
+                  if (isHtmlPreviewBlock(codeClassName, codeText)) {
+                    return <>{children}</>;
+                  }
 
-                const mergedClass = ['code-block', preClassName, codeClassName].filter(Boolean).join(' ');
-                return (
-                  <pre className={mergedClass} {...props}>
-                    {children}
-                  </pre>
-                );
-              },
-              code: ({
-                className,
-                children,
-                ...props
-              }: React.ComponentPropsWithoutRef<'code'> & { className?: string }) => {
-                const codeText = Array.isArray(children) ? children.join('') : String(children || '');
-                if (isHtmlPreviewBlock(className, codeText)) {
-                  return <HtmlPreviewBlock code={codeText.trim()} className={className} isStreaming={showRunningState} />;
-                }
+                  const mergedClass = ['code-block', preClassName, codeClassName].filter(Boolean).join(' ');
+                  return (
+                    <pre className={mergedClass} {...props}>
+                      {children}
+                    </pre>
+                  );
+                },
+                code: ({
+                  className,
+                  children,
+                  ...props
+                }: React.ComponentPropsWithoutRef<'code'> & { className?: string }) => {
+                  const codeText = Array.isArray(children) ? children.join('') : String(children || '');
+                  if (isHtmlPreviewBlock(className, codeText)) {
+                    return <HtmlPreviewBlock code={codeText.trim()} className={className} isStreaming={showRunningState} />;
+                  }
 
-                return (
-                  <code className={className || 'inline-code'} {...props}>
-                    {children}
-                  </code>
-                );
-              },
-              img: ({ src, alt }: { src?: string; alt?: string }) => (
-                <img
-                  src={src}
-                  alt={alt || ''}
-                  className="chat-outcome-inline-img"
-                  loading="lazy"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              ),
-            }}
-          >
-            {normalizeTabSeparatedTable(displaySuccessResult || '')}
-          </ReactMarkdown>
-        </div>
+                  return (
+                    <code className={className || 'inline-code'} {...props}>
+                      {children}
+                    </code>
+                  );
+                },
+                img: ({ src, alt }: { src?: string; alt?: string }) => (
+                  <img
+                    src={src}
+                    alt={alt || ''}
+                    className="chat-outcome-inline-img"
+                    loading="lazy"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                ),
+              }}
+            >
+              {normalizeTabSeparatedTable(displaySuccessResult || '')}
+            </ReactMarkdown>
+          </div>
+        ) : null}
+
+        {/* HTML 产物在线交互预览卡片（当 artifacts 中存在 HTML 且正文中未内联 ```html 代码块时） */}
+        {htmlArtifact && !hasInlineHtmlFence ? (
+          <HtmlPreviewBlock
+            srcUrl={htmlArtifact.url || htmlArtifact.downloadUrl}
+            defaultTitle={htmlArtifact.name || htmlArtifact.label}
+            sizeBytes={htmlArtifact.sizeBytes}
+            defaultExpanded={true}
+            isStreaming={showRunningState}
+          />
+        ) : null}
+
+        {/* Markdown 产物在线阅读卡片（借鉴个人沙箱交互：富文本排版、复制全文、全屏阅读、本地导出） */}
+        {mdArtifact ? (
+          <MarkdownPreviewBlock
+            srcUrl={mdArtifact.url || mdArtifact.downloadUrl}
+            fileName={mdArtifact.name || mdArtifact.label}
+            sizeBytes={mdArtifact.sizeBytes}
+            defaultExpanded={true}
+            isStreaming={showRunningState}
+          />
+        ) : null}
+
         {showDownloadButton ? renderResourceLinks({ showDetailAction: false }) : null}
         {shouldShowStructuredResult && structuredResultText ? (
           <details className="chat-outcome-details">

@@ -24,6 +24,12 @@ from .llm import (
     detect_unexecuted_script_leak
 )
 from .config import WORKSPACE_DIR, KNOWLEDGE_DIR
+from .action_protocol import is_internal_plan_output, recover_text_tool_calls
+from .deliverable_contract import (
+    materialize_requested_markdown,
+    requests_markdown_artifact,
+    unwrap_outer_markdown_fence,
+)
 
 
 CLAIM_PATTERNS = [
@@ -35,7 +41,7 @@ CLAIM_PATTERNS = [
 
 DELIVERABLE_EXTS = {
     ".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt", ".pdf",
-    ".html", ".csv", ".json", ".py", ".sh", ".txt", ".png", ".jpg"
+    ".html", ".csv", ".json", ".md", ".py", ".sh", ".txt", ".png", ".jpg"
 }
 
 
@@ -77,9 +83,9 @@ def detect_missing_claimed_artifacts(
         return []
 
     # 提取被引号/书名号包裹的文件名（可包含空格）
-    quoted_pattern = r'(?:《|【|“|"|\'|`)([^《》【】“”"\'`\n\r]+?\.(?:docx?|xlsx?|pptx?|pdf|html|csv|json|py|sh|txt|png|jpg))(?:》|】|”|"|\'|`)'
+    quoted_pattern = r'(?:《|【|“|"|\'|`)([^《》【】“”"\'`\n\r]+?\.(?:docx?|xlsx?|pptx?|pdf|html|csv|json|md|py|sh|txt|png|jpg))(?:》|】|”|"|\'|`)'
     # 提取未带引号的文件名（以路径或空白/标点分隔，不含空格）
-    unquoted_pattern = r'(?:(?:/workspace/|/knowledge/)|(?:^|[\s，。！？；：\(\)\[\]（）]))([a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|html|csv|json|py|sh|txt|png|jpg))'
+    unquoted_pattern = r'(?:(?:/workspace/|/knowledge/)|(?:^|[\s，。！？；：\(\)\[\]（）]))([a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|html|csv|json|md|py|sh|txt|png|jpg))'
 
     found_names = re.findall(quoted_pattern, text) + re.findall(unquoted_pattern, text)
     if not found_names:
@@ -166,6 +172,11 @@ def detect_missing_requested_deliverable(
         req_ext = ".xlsx"
     elif any(k in lower for k in ["生成word", "导出word", "做成word", "制作word", "做个word", "导出docx", "生成docx"]):
         req_ext = ".docx"
+    elif (
+        re.search(r'(?:输出|生成|创建|导出|保存|写入|制作|做成)[^，。\n]{0,16}(?:\.md\b|\bmarkdown\b|\bmd\b)', lower, re.I) or
+        re.search(r'(?:\.md\b|\bmarkdown\b|\bmd\b)\s*(?:格式)?\s*文件', lower, re.I)
+    ):
+        req_ext = ".md"
     elif (
         any(k in lower for k in ["生成html", "导出html", "做成html", "制作html", "html报告", "生成网页", "做个网页", "生成单页", "网页游戏", "html游戏", "五子棋", "贪吃蛇", "原型", "看板", "大屏"]) or
         (any(v in lower for v in ["生成", "做个", "做成", "制作", "创建", "输出", "开发"]) and any(n in lower for n in ["网页", "单页", "html", "游戏", "页面"]))
@@ -385,6 +396,21 @@ def _check_no_tool_assertion_guard(
     Returns: (action, guard_user_message, new_max_rounds)
       action: "continue" (add message and continue loop), "break" (stop loop), or "pass" (allow completion)
     """
+    # 0. 内部计划与伪工具调用绝不能成为终态。可恢复的安全动作已在上游转换；
+    # 到这里说明模型仍只是在描述计划，需要再次收敛为原生工具调用或最终答案。
+    if not is_guide_intent and is_internal_plan_output(reply_text):
+        if round_idx < max_rounds - 1 or max_rounds < 6:
+            if round_idx >= max_rounds - 1:
+                max_rounds = min(6, max_rounds + 2)
+            print("⚡ [Harness Plan Guard] 检测到内部计划文本，正在要求模型转换为结构化动作...", flush=True)
+            msg = (
+                "你的计划方向正确，但当前输出仍是内部执行草稿，不能作为最终回复。"
+                "请不要复述计划；下一条只发起一个原生工具调用。需要检索时调用 web_search，"
+                "需要保存 Markdown 时调用 write_markdown。若所有动作已经完成，则只输出最终中文结果。"
+            )
+            return "continue", msg, max_rounds
+        return "break", None, max_rounds
+
     # 1. 产物声称物理断言
     if is_generate_intent or (not is_inspect_intent and not is_guide_intent):
         missing = detect_missing_claimed_artifacts(
@@ -601,6 +627,7 @@ def _finalize_agent_text(
     """Finalizes agent text, requesting forced summary if needed and applying fallback reports."""
     has_pending_tool_calls = bool(parse_tool_calls(reply_text, is_guide=is_guide_intent))
     final_text = clean_output(reply_text, is_guide=is_guide_intent)
+    has_internal_plan = is_internal_plan_output(reply_text)
 
     is_transitional_filler = (
         len(final_text) < 120 and
@@ -609,7 +636,7 @@ def _finalize_agent_text(
     has_raw_dsml = bool(re.search(r'<[｜|]{1,2}\s*DSML\s*[｜|]{1,2}', reply_text))
     has_raw_tool = bool(re.search(r'<(?:tool_call|tool_calls)', reply_text))
 
-    if has_pending_tool_calls or not final_text or is_transitional_filler or has_raw_dsml or has_raw_tool:
+    if has_pending_tool_calls or not final_text or is_transitional_filler or has_raw_dsml or has_raw_tool or has_internal_plan:
         messages.append({"role": "assistant", "content": reply_text or None})
         messages.append({
             "role": "user",
@@ -629,21 +656,21 @@ def _finalize_agent_text(
                 len(forced_clean) < 120 and
                 (any(kw in forced_clean for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(forced_reply))
             )
-            if forced_clean and not is_still_filler:
+            if forced_clean and not is_still_filler and not is_internal_plan_output(forced_clean):
                 final_text = forced_clean
-            elif is_transitional_filler:
+            elif is_transitional_filler or has_internal_plan:
                 final_text = ""
         except TimeoutError:
             raise
         except Exception:
-            if is_transitional_filler:
+            if is_transitional_filler or has_internal_plan:
                 final_text = ""
 
     is_terminal_filler = (
         len(final_text) < 120 and
         (any(kw in final_text for kw in ACTION_FILLER_KEYWORDS) or is_promising_action(final_text))
     )
-    if not final_text or is_terminal_filler:
+    if not final_text or is_terminal_filler or is_internal_plan_output(final_text):
         if deadline is not None and time.monotonic() >= deadline:
             raise TimeoutError(f"Task total execution deadline ({policy.total_task_timeout}s) exceeded")
         final_text = _build_fallback_report(messages, executed_calls_history)
@@ -729,8 +756,39 @@ def run_agent_loop(
                         }
                     })
 
+        # 小模型协议适配：恢复明确计划中的安全只读调用，以及参数受限的 Markdown 写入调用。
+        # bash 等通用可变更工具不会通过此路径自动执行。
+        if not structured_calls and reply_text:
+            structured_calls = recover_text_tool_calls(reply_text, round_idx=round_idx)
+            if structured_calls:
+                print(
+                    "⚡ [Harness Protocol Recovery] 已将小模型文本动作转换为受控结构化工具调用...",
+                    flush=True,
+                )
+
         # 若当轮无任何工具调用
         if not structured_calls:
+            # Markdown 是声明式产物：当模型已经给出完整正文时，由运行时安全编译落盘，
+            # 不再要求小模型拼接 bash/heredoc 命令。
+            markdown_path, created_now = materialize_requested_markdown(
+                last_user_prompt,
+                reply_text,
+                WORKSPACE_DIR,
+                turn_start_time=start_ts,
+            )
+            if markdown_path:
+                outbound_payload = json.dumps(
+                    {"filePath": markdown_path, "fileName": Path(markdown_path).name},
+                    ensure_ascii=False,
+                )
+                if outbound_payload not in outbound_files:
+                    outbound_files.append(outbound_payload)
+                if created_now:
+                    print(
+                        f"✨ [Harness Artifact Compiler] 已将最终正文编译为 Markdown 文件: {markdown_path}",
+                        flush=True,
+                    )
+
             action, guard_msg, max_rounds = _check_no_tool_assertion_guard(
                 reply_text=reply_text,
                 last_user_prompt=last_user_prompt,
@@ -810,9 +868,31 @@ def run_agent_loop(
         telemetry=telemetry,
         last_user_prompt=last_user_prompt
     )
+    if requests_markdown_artifact(last_user_prompt):
+        final_text = unwrap_outer_markdown_fence(final_text)
     for hf in healed_files:
         if hf not in outbound_files:
             outbound_files.append(hf)
+
+    # 强制总结分支也可能首次产生可交付正文，因此在最终返回前再执行一次声明式产物编译。
+    markdown_path, created_now = materialize_requested_markdown(
+        last_user_prompt,
+        final_text,
+        WORKSPACE_DIR,
+        turn_start_time=start_ts,
+    )
+    if markdown_path:
+        outbound_payload = json.dumps(
+            {"filePath": markdown_path, "fileName": Path(markdown_path).name},
+            ensure_ascii=False,
+        )
+        if outbound_payload not in outbound_files:
+            outbound_files.append(outbound_payload)
+        if created_now:
+            print(
+                f"✨ [Harness Artifact Compiler] 已将最终正文编译为 Markdown 文件: {markdown_path}",
+                flush=True,
+            )
 
     return AgentLoopResult(
         final_text=final_text,

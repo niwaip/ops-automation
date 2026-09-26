@@ -354,11 +354,11 @@ describe('Deterministic Plan Execution E2E Test', () => {
 
   afterAll(async () => {
     await prisma.skillConfig.deleteMany({
-      where: { name: { in: ['tavily_search', 'platform.document.markdown-artifact-writer'] } },
+      where: { name: { in: ['tavily_search'] } },
     });
     // Remove hermetic seeds (versions cascade via onDelete: Cascade)
     await prisma.builtinSkill.deleteMany({
-      where: { capabilityKey: { in: ['tavily_search', 'platform.document.markdown-artifact-writer'] } },
+      where: { capabilityKey: { in: ['tavily_search'] } },
     });
     await prisma.$disconnect();
   });

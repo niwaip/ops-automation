@@ -58,4 +58,21 @@ describe('reduceChatStreamEvent', () => {
     assert.equal(r2.messagePatch.isStreaming, true);
     assert.equal(r2.accumulatedContent.includes('【观察】'), false);
   });
+
+  it('correctly sets isQueued and queued taskStatus on queued observation event', () => {
+    const reduced = reduceChatStreamEvent({
+      event: {
+        type: StreamEventType.OBSERVATION,
+        content: '⏳ 任务已排队，等待前序任务完成后自动开始...',
+        data: { isQueued: true, waitedMs: 1200 },
+      },
+      accumulatedContent: '',
+      mode: 'chat',
+    });
+
+    assert.equal(reduced.messagePatch.isStreaming, true);
+    assert.equal(reduced.messagePatch.metadata?.isQueued, true);
+    assert.equal(reduced.messagePatch.metadata?.taskStatus, 'queued');
+    assert.ok(reduced.messagePatch.content?.includes('⏳ 任务已排队'));
+  });
 });

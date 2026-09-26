@@ -101,9 +101,9 @@ class RuntimePolicy:
         lower_prompt = prompt.lower()
         # 兼容无技能上下文时的兜底探测（如用户输入文件生成指令但未匹配技能）
         is_prompt_deliverable = (
-            any(w in lower_prompt for w in ["生成文件", "导出文件", "制作文件", "写入文件"]) or
-            (any(v in lower_prompt for v in ["生成", "导出", "制作", "创建", "做个", "做一份", "写一份", "转为", "转成"]) and
-             any(ext in lower_prompt for ext in [".pdf", ".docx", ".xlsx", ".csv", ".json", "pdf", "word", "excel", "ppt", "表格", "文档", "报表"]))
+            any(w in lower_prompt for w in ["生成文件", "导出文件", "制作文件", "写入文件", "输出文件"]) or
+            (any(v in lower_prompt for v in ["生成", "导出", "输出", "制作", "创建", "做个", "做一份", "写一份", "转为", "转成"]) and
+             any(ext in lower_prompt for ext in [".pdf", ".docx", ".xlsx", ".csv", ".json", ".md", "pdf", "word", "excel", "ppt", "markdown", "md 文件", "表格", "文档", "报表"]))
         )
         if is_prompt_deliverable:
             return 5

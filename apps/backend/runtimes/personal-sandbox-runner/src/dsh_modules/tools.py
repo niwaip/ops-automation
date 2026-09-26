@@ -45,6 +45,7 @@ from .file_tools import (
 from .reminder_tools import (
     create_personal_reminders,
 )
+from .deliverable_contract import write_markdown_artifact
 
 SANDBOX_TOOLS = [
     {
@@ -150,6 +151,27 @@ SANDBOX_TOOLS = [
                     }
                 },
                 "required": ["file_path", "target_text", "replacement_text"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "write_markdown",
+            "description": "将最终 Markdown 正文安全写入沙箱工作区的 .md 文件，并返回可下载的文件产物",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "工作区内的 Markdown 文件名，例如 latest_ai_news.md"
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "需要写入文件的完整 Markdown 正文"
+                    }
+                },
+                "required": ["file_path", "content"]
             }
         }
     },
@@ -311,9 +333,14 @@ SANDBOX_TOOLS = [
 ]
 
 
-def get_sandbox_tools(available_skills: Optional[list] = None) -> list:
-    """Returns sandbox tools with dynamically enriched read_skill schema based on registered skills."""
+def get_sandbox_tools(available_skills: Optional[list] = None, allowed_names: Optional[set] = None) -> list:
+    """Returns dynamically enriched sandbox tools, optionally reduced to an intent-specific allowlist."""
     tools = copy.deepcopy(SANDBOX_TOOLS)
+    if allowed_names:
+        tools = [
+            tool for tool in tools
+            if tool.get("function", {}).get("name") in allowed_names
+        ]
     try:
         if available_skills is None:
             from .skills import get_available_skills
@@ -366,6 +393,11 @@ def execute_tool(tool_name: str, params: dict, deadline: Optional[float] = None)
             query = str(list(params.values())[0])
         freshness = params.get("freshness") or params.get("time_range") or params.get("time_window")
         res = perform_web_search(query, freshness=freshness, deadline=deadline)
+
+    elif name_clean in ["write_markdown", "write_md", "save_markdown"]:
+        file_path = params.get("file_path") or params.get("path") or params.get("filename") or "result.md"
+        content = params.get("content") or params.get("markdown") or params.get("text") or ""
+        res = write_markdown_artifact(WORKSPACE_DIR, str(file_path), str(content))
 
     elif name_clean in ["fetch_page", "read_url", "web_fetch", "curl_page", "browse", "get_page", "page_fetch"]:
         url = (

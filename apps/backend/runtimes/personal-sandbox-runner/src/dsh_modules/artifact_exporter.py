@@ -277,12 +277,12 @@ class ArtifactExporter:
         turn_start_time: float = None
     ) -> List[dict]:
         """
-        Scans workspace for newly created or mentioned document deliverables (docx, xlsx, pptx, pdf, zip, etc.)
+        Scans workspace for newly created or mentioned document deliverables (docx, xlsx, pptx, pdf, md, zip, etc.)
         and returns list of {filePath, fileName}.
         """
         deliverables = []
         seen_names = set()
-        doc_exts = {".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt", ".pdf", ".zip", ".csv"}
+        doc_exts = {".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt", ".pdf", ".md", ".zip", ".csv"}
 
         ws_path = Path(workspace_dir)
         if not ws_path.exists():
@@ -302,7 +302,7 @@ class ArtifactExporter:
 
         # 2. 扫描文本中明确提及的文件名
         mentioned = re.findall(
-            r'(?:/workspace/|workspace/|`|《|“|"|\')?([a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|zip|csv))(?:`|》|”|"|\')?',
+            r'(?:/workspace/|workspace/|`|《|“|"|\')?([a-zA-Z0-9_\-\u4e00-\u9fa5]+\.(?:docx?|xlsx?|pptx?|pdf|md|zip|csv))(?:`|》|”|"|\')?',
             final_text,
             re.I
         )

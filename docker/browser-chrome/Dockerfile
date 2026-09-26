@@ -143,18 +143,18 @@ RUN useradd -m -s /bin/bash chrome \
     && mkdir -p /home/chrome/downloads \
     && chown -R chrome:chrome /home/chrome
 
-# Copy startup scripts
-COPY docker/scripts/start.sh /start.sh
-COPY docker/scripts/start-recorder.sh /start-recorder.sh
-COPY docker/scripts/entrypoint.sh /entrypoint.sh
-COPY docker/scripts/utils/codegen-api.py /scripts/codegen-api.py
-COPY docker/scripts/utils/codegen_runtime.py /scripts/codegen_runtime.py
-COPY docker/scripts/utils/codegen_ai_control.py /scripts/codegen_ai_control.py
+# Copy startup and runtime scripts
+COPY docker/browser-chrome/scripts/start.sh /start.sh
+COPY docker/browser-chrome/scripts/start-recorder.sh /start-recorder.sh
+COPY docker/browser-chrome/scripts/entrypoint.sh /entrypoint.sh
+COPY docker/browser-chrome/scripts/codegen-api.py /scripts/codegen-api.py
+COPY docker/browser-chrome/scripts/codegen_runtime.py /scripts/codegen_runtime.py
+COPY docker/browser-chrome/scripts/codegen_ai_control.py /scripts/codegen_ai_control.py
 COPY docker/browser-chrome/scripts/execute-actions.js /scripts/execute-actions.js
 RUN chmod +x /start.sh /start-recorder.sh /entrypoint.sh /scripts/codegen-api.py /scripts/execute-actions.js
 
 # Create necessary directories
-RUN mkdir -p /var/log/supervisor /tmp/.X11-unix /tmp/codegen /scripts && chmod 1777 /tmp/.X11-unix
+RUN mkdir -p /tmp/.X11-unix /tmp/codegen /scripts && chmod 1777 /tmp/.X11-unix
 
 # Expose ports
 # 8080 - noVNC web interface

@@ -357,11 +357,22 @@ export const ChatMessageItem = memo(function ChatMessageItem({
             </span>
             {message.isStreaming ? (
               <span className={`${styles['user-chat-message-meta-item']} ${styles['user-chat-message-meta-status']} ${styles['status-processing']}`}>
-                <LoadingOutlined spin />
-                <span>生成中</span>
+                {message.metadata?.isQueued || resolvedTaskStatus === 'queued' ? (
+                  <>
+                    <ClockCircleOutlined />
+                    <span>排队中</span>
+                  </>
+                ) : (
+                  <>
+                    <LoadingOutlined spin />
+                    <span>生成中</span>
+                  </>
+                )}
               </span>
             ) : null}
-            {statusLabel && statusColor && !(message.isStreaming && statusLabel === '进行中') ? (
+            {statusLabel &&
+            statusColor &&
+            !(message.isStreaming && (statusLabel === '进行中' || statusLabel === '排队中')) ? (
               <span
                 className={`${styles['user-chat-message-meta-item']} ${styles['user-chat-message-meta-status']} ${styles[`status-${statusColor}`] || ''}`}
               >

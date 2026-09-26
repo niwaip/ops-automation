@@ -159,6 +159,7 @@ export class UserSandboxController {
       history: dto.history,
       timeoutMs: dto.timeoutMs,
       files: dto.files,
+      waitTimeoutSeconds: dto.waitTimeoutSeconds,
     });
   }
 
@@ -204,6 +205,13 @@ export class UserSandboxController {
         history: dto.history,
         timeoutMs: dto.timeoutMs,
         files: dto.files,
+        waitTimeoutSeconds: dto.waitTimeoutSeconds,
+        onWaiting: (waitedMs: number) => {
+          sendEvent('observation', {
+            content: '⏳ 任务已排队，等待前序任务完成后自动开始...',
+            data: { isQueued: true, waitedMs },
+          });
+        },
         onStdoutChunk: (chunk: string) => {
           buffer += chunk;
           const lines = buffer.split('\n');

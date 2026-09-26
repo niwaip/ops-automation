@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 80;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 80;
 const PUBLIC_DIR = __dirname;
 
 const MIME_TYPES = {
@@ -49,8 +49,9 @@ const server = http.createServer((req, res) => {
 
 server
   .listen(PORT, () => {
-    console.log(`\n\x1b[32m🚀 [Mock ERP] Server is running at http://localhost\x1b[0m`);
-    console.log(`\x1b[36m👉 Access the site in your browser: http://localhost\x1b[0m\n`);
+    const url = PORT === 80 ? 'http://localhost' : `http://localhost:${PORT}`;
+    console.log(`\n\x1b[32m🚀 [Mock ERP] Server is running at ${url}\x1b[0m`);
+    console.log(`\x1b[36m👉 Access the site in your browser: ${url}\x1b[0m\n`);
     console.log(`Press Ctrl+C to stop the server.`);
   })
   .on('error', (err) => {
@@ -59,14 +60,14 @@ server
         `\n\x1b[31m❌ Error: Port ${PORT} is a privileged port and requires administrative privileges (sudo).\x1b[0m`
       );
       console.error(
-        `\x1b[33m👉 Please run the command with sudo or use the start.sh script.\x1b[0m\n`
+        `\x1b[33m👉 Please run with sudo, or run on an unprivileged port (e.g. PORT=8080 node server.js).\x1b[0m\n`
       );
     } else if (err.code === 'EADDRINUSE') {
       console.error(
         `\n\x1b[31m❌ Error: Port ${PORT} is already in use by another process.\x1b[0m`
       );
       console.error(
-        `\x1b[33m👉 Please stop any other web servers running on port 80 first.\x1b[0m\n`
+        `\x1b[33m👉 Please stop any other web servers running on port ${PORT} or specify another PORT.\x1b[0m\n`
       );
     } else {
       console.error(`Server Error:`, err.message);
