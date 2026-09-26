@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Optional, Tuple, List
 
 from .config import WORKSPACE_DIR, KNOWLEDGE_DIR, print_banner
-from .tools import scan_personal_knowledge, perform_web_search, read_workspace_file
+from .tools import scan_personal_knowledge, perform_web_search, read_workspace_file, get_sandbox_tools
 from .runtime_policy import RuntimePolicy
 from .context_budget import ContextBudget
 from .prompt_builder import build_system_prompt, build_user_turn
@@ -21,6 +21,7 @@ from .skill_router import SkillRouter
 from .agent_loop import run_agent_loop
 from .artifact_exporter import ArtifactExporter
 from .telemetry import TelemetryStats
+from .deliverable_contract import requests_markdown_artifact
 
 
 def load_session_history(session_id: str) -> tuple[Optional[Path], list]:
@@ -202,12 +203,29 @@ def cmd_run(args):
         is_inspect_intent=skill_res.is_inspect_intent
     )
 
+    # 小模型优先使用与当前意图匹配的最小工具集合，减少工具选择与协议负担。
+    # 专业技能任务保留完整工具集，避免裁掉技能自身所需能力。
+    active_tools = None
+    if not skill_res.skill_id:
+        wants_markdown = requests_markdown_artifact(prompt)
+        if is_search_intent and wants_markdown:
+            active_tools = get_sandbox_tools(
+                allowed_names={"web_search", "fetch_page", "write_markdown"}
+            )
+        elif is_search_intent:
+            active_tools = get_sandbox_tools(allowed_names={"web_search", "fetch_page"})
+        elif wants_markdown:
+            active_tools = get_sandbox_tools(
+                allowed_names={"read_file", "read_workspace_file", "write_markdown"}
+            )
+
     try:
         loop_res = run_agent_loop(
             messages,
             model_name,
             policy,
             max_rounds,
+            tools=active_tools,
             deadline=task_deadline,
             is_guide_intent=skill_res.is_guide_intent,
             turn_start_time=overall_start_time,

@@ -171,9 +171,9 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertEqual(calls[0]["params"].get("aspect_ratio"), "16:9")
 
     def test_sandbox_tools_schema_completeness(self):
-        """AC-1: 验证 SANDBOX_TOOLS 包含全部 12 个工具且包含 vision_inspect, image_gen, patch_file 与 create_reminders"""
+        """AC-1: 验证 SANDBOX_TOOLS 包含完整工具集及受控 Markdown 写入能力"""
         tool_names = [t["function"]["name"] for t in SANDBOX_TOOLS]
-        self.assertEqual(len(tool_names), 12)
+        self.assertEqual(len(tool_names), 13)
         self.assertIn("vision_inspect", tool_names)
         self.assertIn("image_gen", tool_names)
         self.assertIn("patch_file", tool_names)
@@ -186,6 +186,7 @@ class TestDshCoreModules(unittest.TestCase):
         self.assertIn("read_skill", tool_names)
         self.assertIn("send_file", tool_names)
         self.assertIn("create_reminders", tool_names)
+        self.assertIn("write_markdown", tool_names)
 
         # 检查 read_file 是否支持 start_line 与 end_line 切片
         rf_tool = next(t for t in SANDBOX_TOOLS if t["function"]["name"] == "read_file")
@@ -999,6 +1000,5 @@ class TestDshCoreModules(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
 
 

@@ -6,7 +6,7 @@ DOCKER_DIR="$(dirname "$SCRIPT_DIR")"
 REPO_ROOT="$(dirname "$DOCKER_DIR")"
 DOCKER_ENV_FILE="$DOCKER_DIR/.env"
 
-OUTPUT_PATH="${1:-$REPO_ROOT/docker/sql/exports/platform-initial-data-$(date +%Y%m%d-%H%M%S).sql}"
+OUTPUT_PATH="${1:-$REPO_ROOT/database/exports/platform-initial-data-$(date +%Y%m%d-%H%M%S).sql}"
 
 EXPORT_TABLES=(
   "roles"

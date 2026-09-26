@@ -17,26 +17,19 @@
 
 ## 2. 仓库目录结构
 
-- `apps/backend/`:
-  - `governance/`: 认证权限、组织、工作台协同、IM 网关（微信长连）、系统灾备引擎
-  - `intelligence/`: AI 编排主控、意图解析、参数识别、浏览器动作智能体、代码生成智能体
-  - `registry-release/`: 技能/工作流/模板注册中心、发布态门禁管理
-  - `execution-control/`: 任务调度控制中心（Control Plane）、会话仲裁管理（Session Broker）
-  - `capabilities/`: 浏览器能力域（录制、模板、语义、执行门面）、文档能力域
-  - `runtimes/`: 浏览器执行器（Playwright）、无头浏览器集群、Temporal Worker、沙箱环境
-  - `platform/`: NestJS Composition Root & 数据库权威（仅依赖注入桥接，零业务逻辑）
-- `apps/frontend/`:
-  - `portal/`: 企业管理控制台（React / Vite）
-  - `user-web/`: 用户业务体验与交互端（React / Vite）
-- `apps/office-addin/`: Word、Excel、PowerPoint 模板设计与 AI 辅助插件
-- `apps/ai-passport-agent/`: ESP32-C3 随身语音任务终端固件
-- `apps/desktop/`、`apps/mobile/`、`apps/social-platform/`: 基于 `@ops/user-core` 的多端宿主脚手架
-- `packages/`: 跨服务共享契约与核心协议（发布清单、运行时能力契约、错误码等）
-- `builtin-skills/`: 平台内置技能的清单、工作流与不可变 bundle lock
-- `database/`: 跨服务 Schema 属主、迁移权威和数据库访问策略
-- `docker/`: 容器编排、Compose 模板与运维启动脚本
-- `tests/`: 跨服务验收、契约、集成与端到端测试
-- `docs/`: 当前架构基线、运行手册与历史设计档案
+- [`apps/`](apps/README.md): 业务应用与服务平面（含后端 7 大机能平面、Web 前台/后台、Office 插件与硬件终端）
+  - `apps/backend/`: 后端微服务（`governance/`, `intelligence/`, `registry-release/`, `execution-control/`, `capabilities/`, `runtimes/`, `platform/`）
+  - `apps/frontend/`: Web 应用（`portal/` 管理控制台、`user-web/` 用户交互端、`shared/` 通用组件）
+  - `apps/office-addin/`: Word、Excel、PowerPoint Office.js 协同插件
+  - `apps/ai-passport-agent/`: ESP32-C3 随身语音硬件终端固件
+  - `apps/desktop/`、`apps/mobile/`、`apps/social-platform/`: 基于 `@ops/user-core` 的多端宿主脚手架
+- [`packages/`](packages/README.md): 跨端共享契约与核心协议包（14 个跨服务协议包、能力 SDK 与多端状态机 `user-core`）
+- [`builtin-skills/`](builtin-skills/README.md): 平台内置技能资产（14 个系统技能、工作流定义与契约清单）
+- [`database/`](database/README.md): 全局数据库治理中心（95 表单一属主映射、RBAC 安全角色与迁移一致性校验）
+- [`docker/`](docker/README.md): 统一容器编排、分层镜像构建与环境管理中心（入口: `./docker/start-smart.sh`）
+- [`scripts/`](scripts/README.md): 仓库工程质量门禁与工具中心（架构无环、1600 行红线、副作用状态机与迁移工具）
+- [`tests/`](tests/README.md): 跨服务测试中心（文档提取比对基线、E2E 集成测试、PostgreSQL 50 并发压测与 Mock 服务）
+- [`docs/`](docs/README.md): 当前架构基线、设计文档、ADR 决策与运行维护手册
 
 ---
 
@@ -45,7 +38,7 @@
 所有 Docker 操作优先通过 `./docker/start-smart.sh` 统一入口执行：
 
 ```bash
-# 1. 启动轻量核心开发栈（当前共 8 个服务，含基础设施与初始化容器）
+# 1. 启动轻量核心开发栈（当前共 10 个服务，含基础设施、核心控制、文档引擎与前端）
 ./docker/start-smart.sh dev up -d
 
 # 或按需启动特定功能组（例如带上浏览器自动化）

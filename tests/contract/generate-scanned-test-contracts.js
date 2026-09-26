@@ -3,7 +3,7 @@ const path = require('path');
 const { createCanvas } = require('@napi-rs/canvas');
 const PDFDocument = require('pdfkit');
 
-const TARGET_DIR = path.resolve(__dirname, '../tests/contract');
+const TARGET_DIR = __dirname;
 
 if (!fs.existsSync(TARGET_DIR)) {
   fs.mkdirSync(TARGET_DIR, { recursive: true });

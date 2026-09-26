@@ -276,6 +276,10 @@ const resolveTaskStatus = (
   mode?: 'chat' | 'task',
   data?: Record<string, unknown>
 ): NonNullable<NonNullable<ChatMessage['metadata']>['taskStatus']> | undefined => {
+  if (data?.isQueued === true) {
+    return CHAT_TASK_STATUS.QUEUED;
+  }
+
   const executionStatus = asString(data?.status) || asString(data?.taskStatus);
   if (mode === 'task' && executionStatus) {
     switch (executionStatus) {
@@ -292,8 +296,9 @@ const resolveTaskStatus = (
       case 'succeeded':
       case 'completed':
         return CHAT_TASK_STATUS.COMPLETED;
-      case 'draft':
       case 'queued':
+        return CHAT_TASK_STATUS.QUEUED;
+      case 'draft':
       case 'running':
       case 'paused':
         return CHAT_TASK_STATUS.RUNNING;
@@ -531,6 +536,7 @@ export const reduceChatStreamEvent = ({
               : undefined,
         skillUsed: asString(data?.skillUsed) || asString(data?.skillId),
         taskStatus,
+        isQueued: Boolean(data?.isQueued),
         executionId: asString(data?.executionId),
         executionStatus: asString(data?.status),
         resultType: asString(data?.resultType) || normalizedResult?.resultType,

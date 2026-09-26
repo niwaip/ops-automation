@@ -9,6 +9,7 @@ export declare const CHAT_CHANNEL_TYPE: {
 export type ChatChannelType = (typeof CHAT_CHANNEL_TYPE)[keyof typeof CHAT_CHANNEL_TYPE];
 export declare const CHAT_TASK_STATUS: {
     readonly RUNNING: "running";
+    readonly QUEUED: "queued";
     readonly WAITING_INPUT: "waiting_input";
     readonly PENDING_APPROVAL: "pending_approval";
     readonly HUMAN_CONTROL: "human_control";

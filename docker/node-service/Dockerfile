@@ -11,7 +11,7 @@ COPY apps/backend ./apps/backend
 # Keep only their audited entrypoints and baseline guard SQL in that artifact;
 # Compose files and local development assets are intentionally not copied.
 COPY docker/scripts ./docker/scripts
-COPY docker/sql ./docker/sql
+COPY database/sql ./database/sql
 COPY database/scripts ./database/scripts
 COPY database/security ./database/security
 ARG PACKAGE_FILTER

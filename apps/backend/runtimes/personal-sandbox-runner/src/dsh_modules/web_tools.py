@@ -389,8 +389,9 @@ def _fetch_jina_fallback(target_url: str, max_chars: int, timeout: float, deadli
                 )
                 return content[:max_chars] + hint, None
             return content, None
-    except TimeoutError:
-        raise
+    except TimeoutError as timeout_err:
+        assert_not_timed_out(deadline, "webpage fetch fallback")
+        return None, f"获取网页内容超时 ({target_url}): {timeout_err}"
     except urllib.error.HTTPError as http_err:
         if http_err.code == 403 and "SSRF Blocked" in str(http_err):
             return None, f"【安全拦截】重定向目标受限 ({target_url}): {http_err.reason}"
@@ -445,7 +446,9 @@ def fetch_page(url: str, max_chars: int = 20000, deadline: Optional[float] = Non
         if main_summary:
             return main_summary
     except TimeoutError:
-        raise
+        # A socket/read timeout belongs to this source, not to the whole task. Only
+        # propagate when the shared task deadline itself has actually elapsed.
+        assert_not_timed_out(deadline, "webpage fetch")
     except urllib.error.HTTPError as http_err:
         if http_err.code == 403 and "SSRF Blocked" in str(http_err):
             return f"【安全拦截】重定向目标受限 ({target_url}): {http_err.reason}"
@@ -477,6 +480,8 @@ def extract_query_freshness(q: str) -> Optional[str]:
         return "day"
     if re.search(r'(最近一年|近一年|今年|past\s*year)', q, re.I):
         return "year"
+    if re.search(r'(最新|近期|最近|latest|recent)', q, re.I):
+        return "week"
     return None
 
 
@@ -502,6 +507,15 @@ def normalize_search_query(q: str) -> str:
         flags=re.I
     ).strip()
     cleaned = re.sub(r'^[的得地]\s*', '', cleaned).strip()
+
+    # 搜索只保留信息主题，剥离“总结、输出文件”等后续交付指令。
+    # 这些动作由执行计划处理，不应污染搜索引擎关键词。
+    cleaned = re.split(
+        r'\s*(?:[，,；;]|然后|并且|并)\s*(?:请)?(?:总结|汇总|归纳|提炼|输出|生成|创建|导出|保存|写入|制作|做成)\b',
+        cleaned,
+        maxsplit=1,
+        flags=re.I,
+    )[0].strip()
 
     substance = re.sub(r'(今天|今日|现在|最新|最近|近年|历年|历届|的|热点|热搜|热门|动态|新闻|\s+)', '', cleaned)
     if len(substance) >= 2:

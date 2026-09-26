@@ -247,6 +247,38 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(resultEvent.content).toContain('点击直接下载 · 38.0 KB');
   });
 
+  it('should embed generated Markdown deliverables as download cards', async () => {
+    jest.spyOn(service, 'getWorkspaceFilePath').mockImplementation((uid, fname) => {
+      return fname === 'ai-daily-news-20260926.md'
+        ? '/mock/path/ai-daily-news-20260926.md'
+        : null;
+    });
+    jest.spyOn(fs, 'existsSync').mockImplementation((p: any) => {
+      return String(p).includes('ai-daily-news-20260926.md');
+    });
+    jest.spyOn(fs, 'statSync').mockReturnValue({ size: 2142 } as any);
+
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: done\ndata: {"success":true,"output":"<<<DSH_OUTBOUND_FILE:{\\"filePath\\":\\"/workspace/ai-daily-news-20260926.md\\",\\"fileName\\":\\"ai-daily-news-20260926.md\\"}>>>\\n<<<DSH_FINAL_OUTPUT>>>已生成 **ai-daily-news-20260926.md**，请下载查看。","containerName":"ops-test","durationMs":100,"exitCode":0}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const success = await service.dispatchPersonalSandbox(
+      { message: '获取最新 AI 新闻，总结，输出 md 文件', userId: 'test_user' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(success).toBe(true);
+    const resultEvent = emittedEvents.find((e) => e.type === StreamEventType.RESULT);
+    expect(resultEvent.content).toContain('生成产物已就绪');
+    expect(resultEvent.content).toContain('ai-daily-news-20260926.md');
+    expect(resultEvent.content).toContain('点击直接下载 · 2.1 KB');
+    expect(resultEvent.content).toContain('/api/ai/chat/workspace-files/test_user/ai-daily-news-20260926.md');
+  });
+
   it('should NEVER include uploaded session input files in deliverable download cards', async () => {
     jest.spyOn(service, 'getWorkspaceFilePath').mockImplementation((uid, fname) => {
       if (fname === '保密合同.docx') {
@@ -495,5 +527,49 @@ describe('UserSandboxDispatcherService - SSE Error Handling & Model Display Name
     expect(resultEvent.content).toContain(comment);
     expect(resultEvent.content).toContain('/api/ai/chat/workspace-files/test_user/diag.png');
   });
-});
 
+  it('should forward queuing observation event with isQueued data', async () => {
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return createMockSseResponse([
+        'event: observation\ndata: {"content":"⏳ 任务已排队，等待前序任务完成后自动开始...","data":{"isQueued":true,"waitedMs":500}}\n\n',
+        'event: delta\ndata: {"content":"天气晴朗"}\n\n',
+        'event: done\ndata: {"success":true,"output":"<<<DSH_FINAL_OUTPUT>>>上海今天天气晴朗","containerName":"ops-test","durationMs":600,"exitCode":0}\n\n',
+      ]);
+    });
+
+    const emittedEvents: any[] = [];
+    const success = await service.dispatchPersonalSandbox(
+      { message: '上海的天气', userId: 'test_user' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(success).toBe(true);
+    const queueObs = emittedEvents.find((e) => e.content?.includes('任务已排队'));
+    expect(queueObs).toBeDefined();
+    expect(queueObs.data?.isQueued).toBe(true);
+  });
+
+  it('should emit friendly message instead of raw failure on 409 queue timeout', async () => {
+    global.fetch = jest.fn().mockImplementation(async () => {
+      return {
+        ok: false,
+        status: 409,
+        text: async () => 'Conflict: personal sandbox busy',
+        headers: new Headers(),
+      };
+    });
+
+    const emittedEvents: any[] = [];
+    const handled = await service.dispatchPersonalSandbox(
+      { message: '上海的天气', userId: 'test_user' } as any,
+      (evt) => emittedEvents.push(evt),
+      'test_user'
+    );
+
+    expect(handled).toBe(true);
+    const errorEvt = emittedEvents.find((e) => e.type === StreamEventType.ERROR);
+    expect(errorEvt).toBeDefined();
+    expect(errorEvt.content).toContain('正在执行前序任务，排队等待超时');
+  });
+});

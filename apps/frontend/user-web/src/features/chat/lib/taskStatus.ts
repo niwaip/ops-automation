@@ -35,6 +35,8 @@ export const getMessageStatusLabel = (status?: ChatTaskStatus | string): string 
       return '人工处理';
     case 'running':
       return '进行中';
+    case 'queued':
+      return '排队中';
     case 'completed':
       return '已完成';
     case 'failed':
@@ -54,6 +56,7 @@ export const getStatusTagColor = (status?: ChatTaskStatus | string): string | un
     case 'human_control':
       return 'gold';
     case 'running':
+    case 'queued':
       return 'processing';
     case 'completed':
       return 'success';
@@ -72,6 +75,7 @@ export const normalizeTaskStatus = (value?: string): ChatTaskStatus | undefined 
     case 'pending_approval':
     case 'human_control':
     case 'running':
+    case 'queued':
     case 'completed':
     case 'failed':
       return value;
@@ -168,8 +172,14 @@ export const resolveMessageTaskStatus = (message: ChatMessage): ChatTaskStatus |
     return 'failed';
   }
 
-  // If message has finished streaming and was left with running status, clear it
-  if (!message.isStreaming && (metadataStatus === 'running' || partsStatus === 'running')) {
+  // If message has finished streaming and was left with running or queued status, clear it
+  if (
+    !message.isStreaming &&
+    (metadataStatus === 'running' ||
+      partsStatus === 'running' ||
+      metadataStatus === 'queued' ||
+      partsStatus === 'queued')
+  ) {
     return undefined;
   }
 

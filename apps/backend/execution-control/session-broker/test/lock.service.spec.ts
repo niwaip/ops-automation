@@ -79,4 +79,68 @@ describe('LockService', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('acquireSandboxLock', () => {
+    it('should acquire sandbox lock immediately when not held', async () => {
+      redisService.set.mockResolvedValue('OK');
+
+      const result = await service.acquireSandboxLock('user-123', 180, 0);
+
+      expect(result.success).toBe(true);
+      expect(result.token).toBeDefined();
+      expect(redisService.set).toHaveBeenCalledWith(
+        'lock:sandbox:exec:user-123',
+        expect.any(String),
+        180
+      );
+    });
+
+    it('should retry and acquire sandbox lock after waiting when released by previous task', async () => {
+      // First attempt fails, second attempt succeeds
+      redisService.set
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce('OK');
+
+      const onWaiting = jest.fn();
+      const result = await service.acquireSandboxLock('user-123', 180, 2, onWaiting);
+
+      expect(result.success).toBe(true);
+      expect(onWaiting).toHaveBeenCalledTimes(1);
+      expect(redisService.set).toHaveBeenCalledTimes(2);
+    });
+
+    it('should timeout and return failure when lock is held past wait timeout', async () => {
+      redisService.set.mockResolvedValue(null);
+
+      const onWaiting = jest.fn();
+      // wait timeout 0.1s (100ms)
+      const result = await service.acquireSandboxLock('user-123', 180, 0.1, onWaiting);
+
+      expect(result.success).toBe(false);
+      expect(result.token).toBe('');
+      expect(onWaiting).toHaveBeenCalledTimes(1);
+    });
+
+    it('should safely release sandbox lock with Lua script', async () => {
+      redisService.eval.mockResolvedValue(1);
+
+      const released = await service.releaseSandboxLock('user-123', 'token-abc');
+
+      expect(released).toBe(true);
+      expect(redisService.eval).toHaveBeenCalledWith(
+        expect.any(String),
+        ['lock:sandbox:exec:user-123'],
+        ['token-abc']
+      );
+    });
+
+    it('should forcibly release sandbox lock by deleting key', async () => {
+      redisService.del.mockResolvedValue(1 as any);
+
+      const released = await service.forceReleaseSandboxLock('user-123');
+
+      expect(released).toBe(true);
+      expect(redisService.del).toHaveBeenCalledWith('lock:sandbox:exec:user-123');
+    });
+  });
 });

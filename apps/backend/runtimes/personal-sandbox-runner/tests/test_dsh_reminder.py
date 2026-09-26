@@ -13,6 +13,16 @@ from dsh_modules.tools import execute_tool, SANDBOX_TOOLS
 
 
 class TestDshReminderTool(unittest.TestCase):
+    def setUp(self):
+        self._patcher = patch(
+            "dsh_modules.reminder_tools._get_current_time",
+            return_value=datetime.datetime(2026, 9, 26, 8, 0, 0, tzinfo=zoneinfo.ZoneInfo("Asia/Shanghai"))
+        )
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+
     def test_create_personal_reminders_batch(self):
         items = [
             {

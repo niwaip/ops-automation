@@ -113,6 +113,7 @@ services:
       BROWSER_RUN_OUTPUT_V2_DUAL_WRITE: ${BROWSER_RUN_OUTPUT_V2_DUAL_WRITE:-true}
       BROWSER_CONTENT_REF_ENABLED: ${BROWSER_CONTENT_REF_ENABLED:-true}
       BROWSER_POST_STATE_RECONCILIATION_ENABLED: ${BROWSER_POST_STATE_RECONCILIATION_ENABLED:-true}
+      AUTO_ACTIVATE_BUILTIN_SKILLS: 'true'
     command: >
       sh -c "corepack enable && pnpm --filter @ops/platform run build
       && rm -rf /workspace/apps/backend/platform/dist/generated /workspace/apps/backend/platform/dist/src/generated
@@ -131,6 +132,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      carbone-engine:
+        condition: service_started
 
   xiaozhi-connector:
     <<: *common-node-service
@@ -273,6 +276,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      carbone-engine:
+        condition: service_started
 
   schedule-trigger:
     <<: *common-node-service
@@ -512,7 +517,6 @@ services:
   # ============================================
   carbone-engine:
     <<: *common-node-service
-    profiles: ['document', 'doc', 'full']
     build:
       context: ${PROJECT_ROOT:?PROJECT_ROOT must be set}
       dockerfile: docker/carbone-engine/Dockerfile
@@ -606,7 +610,7 @@ services:
     profiles: ['browser', 'full']
     build:
       context: ../..
-      dockerfile: docker/browser-worker/Dockerfile
+      dockerfile: docker/browser-chrome/Dockerfile
     image: ${SESSION_BROWSER_IMAGE:-ops-browser-chrome:local}
     container_name: ops-browser-chrome
     ports:
@@ -620,8 +624,8 @@ services:
       CODEGEN_API_PORT: ${CODEGEN_API_PORT:-3011}
     command: ['/start-recorder.sh']
     volumes:
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/docker/scripts/entrypoint.sh:/entrypoint.sh
-      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/docker/scripts/start-recorder.sh:/start-recorder.sh
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/docker/browser-chrome/scripts/entrypoint.sh:/entrypoint.sh
+      - ${PROJECT_ROOT:?PROJECT_ROOT must be set}/docker/browser-chrome/scripts/start-recorder.sh:/start-recorder.sh
     healthcheck:
       test:
         [

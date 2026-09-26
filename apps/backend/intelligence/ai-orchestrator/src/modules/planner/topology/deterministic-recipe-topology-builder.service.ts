@@ -159,7 +159,18 @@ export class DeterministicRecipeTopologyBuilderService {
             : 'search';
     const candidates = skillCards.filter((card) => {
       if (card.kind !== 'skill') return false;
-      if (role === 'markdown_writer' && card.supportsArtifactOutput) return true;
+      if (role === 'markdown_writer') {
+        const isMarkdownMatch =
+          /markdown|md/i.test(card.id) ||
+          /markdown/i.test(card.displayName || '') ||
+          Boolean(card.goals && card.goals.some((g) => /markdown/i.test(g))) ||
+          matchesCapabilityRole(
+            [card.displayName, card.id, card.summary, card.goals],
+            policyRole,
+            policy
+          );
+        return Boolean(card.supportsArtifactOutput && isMarkdownMatch);
+      }
       return matchesCapabilityRole(
         [card.displayName, card.id, card.summary, card.goals],
         policyRole,

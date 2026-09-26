@@ -14,69 +14,115 @@ import {
 } from '@ant-design/icons';
 
 interface HtmlPreviewBlockProps {
-  code: string;
+  code?: string;
+  srcUrl?: string;
   className?: string;
   defaultTitle?: string;
   defaultExpanded?: boolean;
   isStreaming?: boolean;
+  sizeBytes?: number | string;
 }
 
+export const normalizeArtifactUrl = (url?: string): string => {
+  if (!url) return '';
+  const target = url.trim();
+  if (typeof window !== 'undefined') {
+    if (/^(?:https?:\/\/[^/]+)?(?:\/api)?\/renders\/(.*)$/i.test(target)) {
+      const rest = target.replace(/^(?:https?:\/\/[^/]+)?(?:\/api)?\/renders\//i, '');
+      return `/api/renders/${rest}`;
+    }
+    if (/^(?:https?:\/\/[^/]+)?(?:\/api)?\/studio\/(.*)$/i.test(target)) {
+      const rest = target.replace(/^(?:https?:\/\/[^/]+)?(?:\/api)?\/studio\//i, '');
+      return `/studio/${rest}`;
+    }
+  }
+  return target;
+};
+
 export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(function HtmlPreviewBlock({
-  code,
+  code = '',
+  srcUrl,
   className,
   defaultTitle = 'HTML 演示文稿 / 原型',
   defaultExpanded,
   isStreaming = false,
+  sizeBytes,
 }) {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [isFullscreenModal, setIsFullscreenModal] = useState<boolean>(false);
+  const [fetchedCode, setFetchedCode] = useState<string>('');
+  const [isFetchingCode, setIsFetchingCode] = useState<boolean>(false);
+
+  const normalizedSrcUrl = React.useMemo(() => normalizeArtifactUrl(srcUrl), [srcUrl]);
+
+  useEffect(() => {
+    if (activeTab === 'code' && !code && normalizedSrcUrl && !fetchedCode && !isFetchingCode) {
+      setIsFetchingCode(true);
+      fetch(normalizedSrcUrl)
+        .then((res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.text();
+        })
+        .then((text) => setFetchedCode(text))
+        .catch((err) => console.error('Failed to fetch html source for code view:', err))
+        .finally(() => setIsFetchingCode(false));
+    }
+  }, [activeTab, code, normalizedSrcUrl, fetchedCode, isFetchingCode]);
+
+  const targetForDetection = `${code} ${defaultTitle || ''} ${srcUrl || ''}`;
 
   const isPresentation =
-    code.includes('guizang') ||
-    code.includes('slide') ||
-    code.includes('presentation') ||
-    code.includes('deck') ||
-    code.includes('swiper') ||
-    code.includes('html报告') ||
-    code.includes('阶段性报告') ||
-    code.includes('项目报告') ||
-    code.includes('进度报告') ||
-    code.includes('演示文稿');
+    targetForDetection.includes('guizang') ||
+    targetForDetection.includes('slide') ||
+    targetForDetection.includes('presentation') ||
+    targetForDetection.includes('deck') ||
+    targetForDetection.includes('swiper') ||
+    targetForDetection.includes('html报告') ||
+    targetForDetection.includes('阶段性报告') ||
+    targetForDetection.includes('项目报告') ||
+    targetForDetection.includes('进度报告') ||
+    targetForDetection.includes('演示文稿');
 
   const isContractReview =
-    code.includes('合同智能审查') ||
-    code.includes('合同合规审查') ||
-    code.includes('法务审查工作底稿') ||
-    code.includes('审查工作台') ||
-    code.includes('合同智能审查与合规诊断');
+    targetForDetection.includes('合同智能审查') ||
+    targetForDetection.includes('合同合规审查') ||
+    targetForDetection.includes('法务审查工作底稿') ||
+    targetForDetection.includes('审查工作台') ||
+    targetForDetection.includes('合同智能审查与合规诊断') ||
+    targetForDetection.includes('contract_review') ||
+    targetForDetection.includes('审查报告');
 
   const isContractCompare =
-    code.includes('合同文档智能比对') ||
-    code.includes('diff-ins') ||
-    code.includes('diff-del') ||
-    code.includes('基准合同 (A)');
+    targetForDetection.includes('合同文档智能比对') ||
+    targetForDetection.includes('diff-ins') ||
+    targetForDetection.includes('diff-del') ||
+    targetForDetection.includes('基准合同 (A)') ||
+    targetForDetection.includes('contract_diff') ||
+    targetForDetection.includes('比对报告');
 
   const isInteractiveApp =
     !isPresentation &&
     !isContractReview &&
     !isContractCompare &&
-    (code.includes('<canvas') ||
-      code.includes('五子棋') ||
-      code.includes('gomoku') ||
-      code.includes('坦克大战') ||
-      code.includes('tank') ||
-      code.includes('贪吃蛇') ||
-      code.includes('snake') ||
-      code.includes('2048') ||
-      code.includes('game-container') ||
-      code.includes('audioCtx') ||
-      code.includes('AudioContext') ||
-      code.includes('dashboard'));
+    (targetForDetection.includes('<canvas') ||
+      targetForDetection.includes('五子棋') ||
+      targetForDetection.includes('gomoku') ||
+      targetForDetection.includes('坦克大战') ||
+      targetForDetection.includes('tank') ||
+      targetForDetection.includes('贪吃蛇') ||
+      targetForDetection.includes('snake') ||
+      targetForDetection.includes('2048') ||
+      targetForDetection.includes('game-container') ||
+      targetForDetection.includes('audioCtx') ||
+      targetForDetection.includes('AudioContext') ||
+      targetForDetection.includes('dashboard'));
 
   // Reports can execute scripts and load large assets. Mount only on demand.
   // Games & interactive apps are auto-expanded by default so users can play immediately.
   const [isExpanded, setIsExpanded] = useState<boolean>(
-    defaultExpanded !== undefined ? defaultExpanded : Boolean(isInteractiveApp)
+    defaultExpanded !== undefined
+      ? defaultExpanded
+      : Boolean(isInteractiveApp || isContractReview || isPresentation)
   );
 
   // Never mount iframe or expand content while streaming to prevent executing partial code
@@ -159,31 +205,61 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
 
   // 从 HTML 代码中提取 title 标签内容
   const extractedTitle = React.useMemo(() => {
-    const match = code.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const raw = code || fetchedCode;
+    if (!raw) return null;
+    const match = raw.match(/<title[^>]*>([^<]+)<\/title>/i);
     return match ? match[1].trim() : null;
-  }, [code]);
+  }, [code, fetchedCode]);
 
-  const displayTitle = isContractReview
-    ? (extractedTitle ? `⚖️ ${extractedTitle}` : '⚖️ 合同文档智能审查与合规诊断报告')
-    : isContractCompare
-      ? (extractedTitle ? `⚖️ ${extractedTitle}` : '⚖️ 合同文档智能比对与红线审查报告')
-      : isPresentation
-        ? (extractedTitle ? `🎨 ${extractedTitle}` : '🎨 交互式 HTML 演示文稿 (Presentation)')
-        : isInteractiveApp
-          ? (extractedTitle ? `🎮 ${extractedTitle}` : '🎮 交互式 Web 原型 / 应用')
-          : (extractedTitle ? `🎨 ${extractedTitle}` : `🎨 ${defaultTitle}`);
+  const displayTitle =
+    defaultTitle && !defaultTitle.toLowerCase().endsWith('.html') && defaultTitle !== 'HTML 演示文稿 / 原型'
+      ? (isContractReview ? `⚖️ ${defaultTitle}` : isPresentation ? `🎨 ${defaultTitle}` : `📄 ${defaultTitle}`)
+      : isContractReview
+        ? (extractedTitle ? `⚖️ ${extractedTitle}` : '⚖️ 合同文档智能审查与合规诊断报告')
+        : isContractCompare
+          ? (extractedTitle ? `⚖️ ${extractedTitle}` : '⚖️ 合同文档智能比对与红线审查报告')
+          : isPresentation
+            ? (extractedTitle ? `🎨 ${extractedTitle}` : '🎨 交互式 HTML 演示文稿 (Presentation)')
+            : isInteractiveApp
+              ? (extractedTitle ? `🎮 ${extractedTitle}` : '🎮 交互式 Web 原型 / 应用')
+              : (extractedTitle ? `🎨 ${extractedTitle}` : (defaultTitle ? `📄 ${defaultTitle}` : '📄 HTML 交付物'));
 
-  const defaultFileName = isContractReview
-    ? 'contract_review_report.html'
-    : isContractCompare
-      ? 'contract_diff_report.html'
-      : isPresentation
-        ? 'presentation.html'
-        : (code.includes('五子棋') || code.includes('gomoku'))
-          ? 'gomoku.html'
-          : 'index.html';
+  let defaultFileName = 'index.html';
+  if (defaultTitle && defaultTitle.toLowerCase().endsWith('.html')) {
+    defaultFileName = defaultTitle;
+  } else if (srcUrl) {
+    const match = srcUrl.match(/\/([^/?#]+\.html)(?:[?#]|$)/i);
+    if (match && match[1]) {
+      defaultFileName = match[1];
+    }
+  } else if (isContractReview) {
+    defaultFileName = 'contract_review_report.html';
+  } else if (isContractCompare) {
+    defaultFileName = 'contract_diff_report.html';
+  } else if (isPresentation) {
+    defaultFileName = 'presentation.html';
+  } else if (code.includes('五子棋') || code.includes('gomoku')) {
+    defaultFileName = 'gomoku.html';
+  }
 
-  const approxSize = `${(code.length / 1024).toFixed(1)} KB`;
+  const approxSize = React.useMemo(() => {
+    if (typeof sizeBytes === 'number' && !isNaN(sizeBytes) && sizeBytes > 0) {
+      if (sizeBytes >= 1024 * 1024) return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+      return `${(sizeBytes / 1024).toFixed(1)} KB`;
+    }
+    if (typeof sizeBytes === 'string' && sizeBytes.trim()) {
+      const num = parseFloat(sizeBytes);
+      if (!isNaN(num) && num > 0) {
+        if (num >= 1024 * 1024) return `${(num / (1024 * 1024)).toFixed(1)} MB`;
+        return `${(num / 1024).toFixed(1)} KB`;
+      }
+      return sizeBytes;
+    }
+    if (code && code.length > 0) {
+      return `${(code.length / 1024).toFixed(1)} KB`;
+    }
+    return '';
+  }, [sizeBytes, code]);
 
   const readyTipText = isTruncated
     ? '⚠️ HTML 产物在生成过程中未完全闭合（点击展开查看已生成部分与恢复指引）'
@@ -214,15 +290,25 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
 
   useEffect(() => {
     if (effectiveExpanded && activeTab === 'preview' && iframeRef.current) {
-      if (lastRenderedCodeRef.current !== repairedHtml || !iframeRef.current.srcdoc) {
-        lastRenderedCodeRef.current = repairedHtml;
-        iframeRef.current.srcdoc = repairedHtml;
+      if (repairedHtml) {
+        if (lastRenderedCodeRef.current !== repairedHtml || !iframeRef.current.srcdoc) {
+          lastRenderedCodeRef.current = repairedHtml;
+          iframeRef.current.srcdoc = repairedHtml;
+        }
+      } else if (normalizedSrcUrl) {
+        if (iframeRef.current.src !== normalizedSrcUrl && !iframeRef.current.src.endsWith(normalizedSrcUrl)) {
+          iframeRef.current.src = normalizedSrcUrl;
+        }
       }
     }
-  }, [repairedHtml, effectiveExpanded, activeTab]);
+  }, [repairedHtml, normalizedSrcUrl, effectiveExpanded, activeTab]);
 
   // Open full HTML document in new tab reliably using document.write instead of ephemeral Blob URLs
   const handleOpenNewWindow = useCallback(() => {
+    if (normalizedSrcUrl) {
+      window.open(normalizedSrcUrl, '_blank');
+      return;
+    }
     try {
       const newWin = window.open('', '_blank');
       if (newWin) {
@@ -236,9 +322,18 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
       console.error('Failed to open window, opening modal instead:', err);
       setIsFullscreenModal(true);
     }
-  }, [repairedHtml]);
+  }, [normalizedSrcUrl, repairedHtml]);
 
   const handleDownload = useCallback(() => {
+    if (normalizedSrcUrl) {
+      const a = document.createElement('a');
+      a.href = normalizedSrcUrl;
+      a.download = defaultFileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
     try {
       const blob = new Blob([repairedHtml], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
@@ -258,7 +353,7 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
     } catch (err) {
       console.error('Failed to download html:', err);
     }
-  }, [repairedHtml, defaultFileName]);
+  }, [normalizedSrcUrl, repairedHtml, defaultFileName]);
 
   return (
     <div
@@ -313,17 +408,19 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
               >
                 {defaultFileName}
               </span>
-              <span
-                style={{
-                  fontSize: '11px',
-                  padding: '1px 5px',
-                  borderRadius: '4px',
-                  background: 'rgba(0, 0, 0, 0.04)',
-                  color: '#64748b',
-                }}
-              >
-                {approxSize}
-              </span>
+              {approxSize ? (
+                <span
+                  style={{
+                    fontSize: '11px',
+                    padding: '1px 5px',
+                    borderRadius: '4px',
+                    background: 'rgba(0, 0, 0, 0.04)',
+                    color: '#64748b',
+                  }}
+                >
+                  {approxSize}
+                </span>
+              ) : null}
               {isTruncated && !isStreaming && (
                 <span
                   style={{
@@ -466,7 +563,9 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
             fontSize: '12px',
           }}
         >
-          <code>{code}</code>
+          <code>
+            {isFetchingCode ? '正在加载 HTML 源码...' : (code || fetchedCode || '// 无源代码')}
+          </code>
         </pre>
       ))}
 
@@ -496,7 +595,7 @@ export const HtmlPreviewBlock: React.FC<HtmlPreviewBlockProps> = React.memo(func
         }
       >
         <iframe
-          srcDoc={repairedHtml}
+          {...(repairedHtml ? { srcDoc: repairedHtml } : { src: normalizedSrcUrl })}
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
           allowFullScreen
           style={{

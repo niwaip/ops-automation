@@ -96,6 +96,12 @@ const isHtmlPreviewBlock = (className?: string, codeText?: string) => {
   );
 };
 
+export const unwrapOuterMarkdownFence = (content: string): string => {
+  const trimmed = content.trim();
+  const match = trimmed.match(/^```(?:markdown|md)\s*\n([\s\S]*?)\n```\s*$/i);
+  return match ? match[1].trim() : content;
+};
+
 const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
   content,
   mode,
@@ -288,7 +294,7 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
           ),
         }}
       >
-        {normalizeTabSeparatedTable(content)}
+        {normalizeTabSeparatedTable(unwrapOuterMarkdownFence(content))}
       </ReactMarkdown>
       {isStreaming ? <span className="streaming-indicator" aria-label="generating" /> : null}
     </div>
