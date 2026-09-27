@@ -596,6 +596,14 @@ def perform_multi_web_search(
     deadline: Optional[float] = None,
 ) -> str:
     """Runs bounded diversified searches and returns a deduplicated evidence bundle."""
+    clean_q = normalize_search_query(query)
+
+    # 1. 针对天气意图优先调用高精度结构化气象源
+    if re.search(r'(天气|预报|气温|下雨|晴天|降雨|温度|weather|forecast)', clean_q, re.I):
+        weather_res = fetch_weather(clean_q, deadline=deadline)
+        if "实时权威气象与多日预报" in weather_res:
+            return weather_res[:max_chars]
+
     # Vertical real-time rankings must run before generic web search.  A generic
     # provider can return topically related pages while still missing the actual
     # live chart; treating that as success used to prevent Weibo/modsearch from

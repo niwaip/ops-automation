@@ -955,10 +955,18 @@ def run_agent_loop(
         )
 
         # A weather lookup already returns current conditions plus forecast, and a successful
-        # reminder creation may not be repeated. Remove only these single-use capabilities
+        # reminder mutation may not be repeated. Remove only these single-use capabilities
         # from later rounds. Search/read tools remain available because different arguments
         # can represent legitimate multi-step research.
-        single_use_tools = {"weather", "create_reminders"}
+        single_use_tools = {
+            "weather",
+            "create_reminders",
+            "create_reminder",
+            "update_reminder",
+            "update_reminders",
+            "delete_reminder",
+            "delete_reminders",
+        }
         executed_names = {
             call_sig.split(":", 1)[0]
             for call_sig in executed_calls_history
